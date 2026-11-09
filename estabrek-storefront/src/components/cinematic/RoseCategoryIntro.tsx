@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useRoseTheme } from "./RoseThemeProvider";
@@ -43,12 +43,15 @@ export function RoseCategoryIntro({
   const theme = useRoseTheme();
   const look = useStoreLook();
 
+  // The collection's own colour, in its opening only: the bar, the header and the page keep the store's
+  // colours like every inner page (app/rose-inner.css). A colour the shopper picked wins.
+  const intro = useRef<HTMLElement>(null);
   useEffect(() => {
     const shell = theme?.root.current;
-    if (!shell || shell.dataset.storefrontColor || look.theme) return;
+    const own = intro.current;
+    if (!shell || !own || shell.dataset.storefrontColor || look.theme) return;
     const seed = collectionSeed({ label: name, href: `/c/${slug}` }, 0);
-    shell.dataset.navbarColor = seed;
-    tweenTheme(shell, storefrontPalette(seed), { duration: 0.8 });
+    tweenTheme(own, storefrontPalette(seed), { duration: 0.8 });
   }, [theme, name, slug, look.theme]);
 
   // Rose changes into the outfit of this collection.
@@ -74,7 +77,7 @@ export function RoseCategoryIntro({
     );
   }
   return (
-    <section className="rose-shop-intro rose-category-intro" data-rose-palette="pearl">
+    <section ref={intro} className="rose-shop-intro rose-category-intro" data-rose-palette="pearl">
       <div data-reveal>
         <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>
           {crumbs.map((c, i) => (

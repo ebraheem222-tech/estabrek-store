@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProductBySlug, getPublicSettings, getStoreTemplate, listCategories, listProducts } from "@/lib/api";
+import { independentDesign } from "@/storeThemes/snapshot";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import { bindStore, productValues } from "@/pageTree/storeBind";
 import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
@@ -164,8 +165,10 @@ const productLd: any = {
 
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
 
-  // The store's own product page design (made in the editor, W3): drawn for this product when published.
-  const design = await getStoreTemplate("product", lang);
+  // The store's own product page design (made in the editor, W3): drawn for this product when published,
+  // in a store that runs on its own design; a rose store keeps its rose product page.
+  const ownDesign = independentDesign((await settingsPromise)?.site?.header);
+  const design = ownDesign ? await getStoreTemplate("product", lang) : null;
   if (design?.tree) {
     const drawn = await renderCmsPageBySlug(`/p/${params.slug}`, undefined, { page: Promise.resolve({ ...design, slug: `/p/${params.slug}`, tree: bindStore(design.tree as any, productValues(product as any), lang) } as any), lang, product: product as any, allowFallback: false, allowNotFound: false });
     if (drawn) return (

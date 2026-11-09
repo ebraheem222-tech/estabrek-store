@@ -149,6 +149,7 @@ function StorePages() {
     <section className={card} data-testid="store-pages">
       <div className="mb-1 text-sm font-medium">{say("صفحات المتجر|The store's pages|דפי החנות")}</div>
       <p className="mb-3 text-sm text-white/55">{say("صمّم صفحة المنتج وصفحة القسم مرة وحدة: كل منتج وكل قسم بيظهر فيها ببياناته. المتجر بيضل على صفحاته الحالية لحد ما تنشر التصميم من المحرر.|Design the product page and the category page once: every product and category shows in it with its own data. The shop keeps its current pages until you publish the design from the editor.|עצב את דף המוצר ודף הקטגוריה פעם אחת: כל מוצר וכל קטגוריה מוצגים בו עם הנתונים שלהם. החנות נשארת עם הדפים הנוכחיים עד שתפרסם את העיצוב מהעורך.")}</p>
+      <p className="mb-3 text-xs text-amber-100/70" data-testid="store-pages-note">{say("للمتاجر اللي إلها تصميمها الخاص. متجر بتصميم إستبرق (الوردي) بيضل على صفحات المنتج والقسم تبعته حتى لو التصميم منشور.|For stores on their own design. A store on the rose design keeps its own product and category pages even when a design is published.|לחנויות עם עיצוב משלהן. חנות בעיצוב הוורוד שומרת על דפי המוצר והקטגוריה שלה גם כשעיצוב מפורסם.")}</p>
       <div className="space-y-2">
         {row("product", "🛍", "صمّم صفحة المنتج|Design the product page|עצב את דף המוצר", true)}
         {row("category", "▦", "صمّم صفحة القسم|Design the category page|עצב את דף הקטגוריה", false)}
