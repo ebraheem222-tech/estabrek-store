@@ -22,6 +22,8 @@ const api = vi.hoisted(() => ({
   storeTemplate: vi.fn(),
 }));
 vi.mock("../../api/collections.api", () => api);
+const pagesApi = vi.hoisted(() => ({ listPages: vi.fn(async () => []), updatePage: vi.fn(async () => ({})) }));
+vi.mock("../../api/pages.api", () => pagesApi);
 vi.mock("../../components/media/MediaLibraryModal", () => ({ MediaLibraryModal: () => null }));
 import CollectionsPage from "./CollectionsPage";
 
@@ -76,5 +78,20 @@ describe("collection helpers", () => {
     expect(bindContext(index, heading.id, { id: "p" }, [blog as never])?.id).toBe("c1");
     expect(bindContext(index, "s", { id: "p" }, [blog as never])).toBeNull();
     expect(bindContext(index, "s", { id: "p", kind: "collectionTemplate" }, [{ ...blog, templateId: "p" } as never])?.id).toBe("c1");
+  });
+});
+
+describe("the store's page designs", () => {
+  it("shows when a design is live and turns it back to a draft, so the shop shows its own page again", async () => {
+    setLangForTests("en");
+    api.listCollections.mockResolvedValue([]);
+    api.collectionPresets.mockResolvedValue({});
+    pagesApi.listPages.mockResolvedValue([{ id: "cat-design", slug: "/__category-page", status: "PUBLISHED" }, { id: "prod-design", slug: "/__product-page", status: "DRAFT" }] as never);
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><CollectionsPage /></MemoryRouter></QueryClientProvider>);
+    await waitFor(() => expect(screen.getByTestId("store-design-category").getAttribute("data-state")).toBe("live"));
+    expect(screen.getByTestId("store-design-product").getAttribute("data-state")).toBe("draft");
+    expect(screen.queryByTestId("stop-product-design")).toBeNull();
+    fireEvent.click(screen.getByTestId("stop-category-design"));
+    await waitFor(() => expect(pagesApi.updatePage).toHaveBeenCalledWith("cat-design", { status: "DRAFT" }));
   });
 });
