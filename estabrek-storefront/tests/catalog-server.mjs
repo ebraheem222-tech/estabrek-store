@@ -671,6 +671,17 @@ http
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     res.setHeader("Content-Type", "application/json");
     const pathname = new URL(req.url, "http://localhost").pathname;
+    // Admin → الإعدادات → الثيم والألوان: where a picked colour shows ({ follow: "product" } or {} for the default).
+    if (pathname === "/__test/color-follow" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (data.follow) site.header.storefront.colorFollow = data.follow; else delete site.header.storefront.colorFollow;
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname === "/__test/commerce" && req.method === "POST") {
       let body = "";
       req.on("data", c => { body += c; });

@@ -28,6 +28,8 @@ export type RoseStoreData = {
   announcement?: string;
   announcementHref?: string;
   footerEnabled?: boolean;
+  /** Where a picked colour shows (header.storefront.colorFollow): the whole store, or the product area only. */
+  colorFollow?: "everything" | "product";
 };
 const StoreContext = createContext<RoseStoreData>({});
 export function useRoseStore() { return useContext(StoreContext); }
@@ -427,6 +429,7 @@ export function StorefrontChrome({
       <StoreContext.Provider value={storeData}>
         <RoseThemeProvider key={pathname}
           restoreSelection={!pathname.startsWith("/about") && !studio}
+          colorScope={storeData.colorFollow === "product" ? "product" : "everything"}
           className={`cinematic-shell ${home ? "cinematic-home-shell" : "cinematic-interior-shell"}`}
         >
           {bare ? null : <Header />}

@@ -43,15 +43,21 @@ export function RoseCategoryIntro({
   const theme = useRoseTheme();
   const look = useStoreLook();
 
-  // The collection's own colour, in its opening only: the bar, the header and the page keep the store's
-  // colours like every inner page (app/rose-inner.css). A colour the shopper picked wins.
+  // The collection's own colour. A colour the shopper picked wins. Where the store lets colours dress the
+  // whole store (the default), the page, the bar and the header take it; where it keeps them to the product
+  // area (data-color-scope="product", app/rose-inner.css), only the category's opening does.
   const intro = useRef<HTMLElement>(null);
   useEffect(() => {
     const shell = theme?.root.current;
     const own = intro.current;
     if (!shell || !own || shell.dataset.storefrontColor || look.theme) return;
     const seed = collectionSeed({ label: name, href: `/c/${slug}` }, 0);
-    tweenTheme(own, storefrontPalette(seed), { duration: 0.8 });
+    if (shell.dataset.colorScope === "product") {
+      tweenTheme(own, storefrontPalette(seed), { duration: 0.8 });
+      return;
+    }
+    shell.dataset.navbarColor = seed;
+    tweenTheme(shell, storefrontPalette(seed), { duration: 0.8 });
   }, [theme, name, slug, look.theme]);
 
   // Rose changes into the outfit of this collection.
