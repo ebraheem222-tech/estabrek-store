@@ -8,7 +8,7 @@ import { adminLang } from "../lib/lang";
 import type { Motion } from "./look";
 
 type Scroll = NonNullable<Motion["scroll"]>;
-export type ScrollGroup = "enter" | "turn" | "parallax" | "pin" | "words";
+export type ScrollGroup = "enter" | "turn" | "parallax" | "pin" | "travel" | "words" | "lines";
 export type ScrollEffect = { key: string; group: ScrollGroup; name: () => string; scroll: Scroll; only?: ReadonlySet<string> };
 
 const say = (t: string) => () => { const [ar, en, he] = t.split("|"); return { ar, en, he: he ?? en }[adminLang()]; };
@@ -16,6 +16,9 @@ const keys = (from: NonNullable<Scroll["from"]>, start = 100, end = 40, ease?: s
 const S = (key: string, group: ScrollGroup, name: string, scroll: Scroll, only?: ReadonlySet<string>): ScrollEffect => ({ key, group, name: say(name), scroll, ...(only ? { only } : {}) });
 const SECTION = new Set(["section"]);
 const WORDY = new Set(["heading", "text", "button"]);
+// What holds things that can travel around a circle, an arc or a wave; and what has lines to draw.
+const HOLDERS = new Set(["stack", "grid", "cell"]);
+const LINES = new Set(["svg", "icon", "divider"]);
 
 export const SCROLL_EFFECTS: ScrollEffect[] = [
   S("fade-up", "enter", "يطلع ويوضح|Fades up into view|עולה ומתבהר", keys({ opacity: 0, y: 80 })),
@@ -49,7 +52,13 @@ export const SCROLL_EFFECTS: ScrollEffect[] = [
   S("pin", "pin", "يثبت شاشة كاملة|Holds for a screen|נעצר למסך שלם", { kind: "pin", length: 100 }, SECTION),
   S("pin-long", "pin", "يثبت شاشتين|Holds for two screens|נעצר לשני מסכים", { kind: "pin", length: 200 }, SECTION),
   S("sideways", "pin", "يمشي بالعرض مع التمرير (معرض أفقي)|Slides sideways as you scroll (horizontal gallery)|זז הצידה בגלילה (גלריה אופקית)", { kind: "sideways" }, new Set(["stack"])),
+  S("orbit-ring", "travel", "اللي جوّا بيلف بدايرة مع التمرير|What it holds turns in a ring as you scroll|מה שבתוכו מסתובב בטבעת בגלילה", { kind: "orbit", orbit: { shape: "circle", radius: 70, turn: 0.5 } }, HOLDERS),
+  S("orbit-ring-held", "travel", "دايرة بتلف وهي ثابتة|A ring that turns while held|טבעת שמסתובבת כשהיא נעצרת", { kind: "orbit", orbit: { shape: "circle", radius: 70, turn: 1 }, length: 150 }, HOLDERS),
+  S("orbit-arc", "travel", "بيمشوا على قوس متل قوس قزح|They travel along an arc, like a rainbow|נעים לאורך קשת", { kind: "orbit", orbit: { shape: "arc", radius: 85, turn: 0.6 } }, HOLDERS),
+  S("orbit-wave", "travel", "بيمشوا على موجة|They travel along a wave|נעים לאורך גל", { kind: "orbit", orbit: { shape: "wave", radius: 60, turn: 0.8 } }, HOLDERS),
   S("words-light", "words", "الكلمات تضوي مع التمرير|Words light up as you scroll|המילים נדלקות בגלילה", { kind: "words" }, WORDY),
+  S("count-scroll", "words", "الرقم بيعدّ مع التمرير|The number counts with the scroll|המספר סופר עם הגלילה", { kind: "count" }, WORDY),
+  S("draw-scroll", "lines", "الخطوط بترسم حالها مع التمرير|Its lines draw themselves as you scroll|הקווים מצטיירים בגלילה", { kind: "draw" }, LINES),
 ];
 
 export const SCROLL_GROUPS: Array<[ScrollGroup, () => string]> = [
@@ -57,7 +66,9 @@ export const SCROLL_GROUPS: Array<[ScrollGroup, () => string]> = [
   ["turn", say("يلف ويميل|Turns and tilts|מסתובב ונוטה")],
   ["parallax", say("عمق (بارالاكس)|Depth (parallax)|עומק (פרלקסה)")],
   ["pin", say("يثبت مكانه|Holds in place|נעצר במקום")],
+  ["travel", say("بيمشوا مع التمرير|Travel with the scroll|נעים עם הגלילה")],
   ["words", say("الكلام|The words|המילים")],
+  ["lines", say("الخطوط|The lines|הקווים")],
 ];
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);

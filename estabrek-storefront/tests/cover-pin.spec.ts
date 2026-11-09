@@ -8,8 +8,8 @@ import { importDesign } from "../src/storeThemes/kits/importDesign";
 test.describe("held and covered, as data", () => {
   test("settings are cleaned, and the measures follow the section, the screen and the next one", () => {
     expect(coverOf(null)).toBeNull();
-    expect(coverOf({ hold: 9, under: "spin", phone: false })).toEqual({ hold: 0, under: "none", phone: false });
-    expect(coverOf({ hold: 1.5, under: "shrink" })).toEqual({ hold: 1.5, under: "shrink", phone: true });
+    expect(coverOf({ hold: 9, under: "spin", phone: false })).toEqual({ hold: 0, under: "none", phone: false, enter: "rise" });
+    expect(coverOf({ hold: 1.5, under: "shrink" })).toEqual({ hold: 1.5, under: "shrink", phone: true, enter: "rise" });
     // A full screen: sticks at the top, the next one comes all the way over it.
     expect(coverMeasure(800, 800, 1200)).toEqual({ top: 0, seen: 800, d: 800 });
     // Taller than the screen: sticks once its end is in sight.

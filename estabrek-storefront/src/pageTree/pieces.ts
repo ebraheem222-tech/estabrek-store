@@ -35,7 +35,10 @@ export type ScrollSceneSpec = {
   dim?: SceneRange & { opacity: number; color?: string };
   zoom?: SceneRange & { scale: number };
   progress: "none" | "bar" | "dots" | "line";
+  /** The picture seen through a window that opens from small to the whole screen between two moments. */
+  window?: SceneRange & { shape: (typeof SCENE_WINDOWS)[number] };
 };
+export const SCENE_WINDOWS = ["circle", "arch", "rounded", "diamond"] as const;
 const range = (r: Record<string, unknown> | undefined) => {
   const from = within(r?.from, 0, 100);
   const to = within(r?.to, 0, 100);
@@ -71,6 +74,7 @@ export function scrollSceneOf(p: Record<string, unknown> | undefined): ScrollSce
     ...(dr && dimOpacity !== undefined ? { dim: { ...dr, opacity: dimOpacity, ...(isColor(dim?.color) ? { color: dim!.color as string } : {}) } } : {}),
     ...(zr && zoomScale !== undefined ? { zoom: { ...zr, scale: zoomScale } } : {}),
     progress: inList(p?.progress, ["none", "bar", "dots", "line"] as const) ?? "none",
+    ...(range(obj(p?.window)) && inList(obj(p?.window)?.shape, SCENE_WINDOWS) ? { window: { ...range(obj(p?.window))!, shape: inList(obj(p?.window)?.shape, SCENE_WINDOWS)! } } : {}),
   };
 }
 
@@ -78,7 +82,9 @@ export function scrollSceneOf(p: Record<string, unknown> | undefined): ScrollSce
 
 /** What a held section does while the next one covers it. */
 export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as const;
-export type CoverSpec = { hold: number; under: (typeof COVER_UNDER)[number]; phone: boolean };
+/** How the next one's top edge comes over it: straight, an arch that flattens, a slant that levels. */
+export const COVER_ENTER = ["rise", "arch", "tilt"] as const;
+export type CoverSpec = { hold: number; under: (typeof COVER_UNDER)[number]; phone: boolean; enter: (typeof COVER_ENTER)[number] };
 
 /**
  * A section held on the screen while the page scrolls (`hold` screens), then covered by the
@@ -87,7 +93,7 @@ export type CoverSpec = { hold: number; under: (typeof COVER_UNDER)[number]; pho
 export function coverOf(v: unknown): CoverSpec | null {
   const c = obj(v);
   if (!c) return null;
-  return { hold: within(c.hold, 0, 6) ?? 0, under: inList(c.under, COVER_UNDER) ?? "none", phone: c.phone !== false };
+  return { hold: within(c.hold, 0, 6) ?? 0, under: inList(c.under, COVER_UNDER) ?? "none", phone: c.phone !== false, enter: inList(c.enter, COVER_ENTER) ?? "rise" };
 }
 
 /** Where it sticks (one taller than the screen once its end is in sight), the part of it on the screen, and how far the next one comes over it. */
@@ -99,6 +105,23 @@ export function coverMeasure(height: number, screen: number, next: number) {
 
 /** How much of it is covered (0–1): the next one's top going from its end on the screen up by `d`. */
 export const coverAmount = (nextTop: number, seen: number, d: number) => (d > 0 ? Math.max(0, Math.min(1, (seen - nextTop) / d)) : 0);
+
+/** The painted section in the middle of the screen (its colour), or null (TreePaint). */
+export function paintAt(spots: Array<{ top: number; bottom: number; paint: string }>, middle: number): string | null {
+  return spots.find((s) => s.top <= middle && s.bottom > middle)?.paint ?? null;
+}
+
+/* -------------------------------------------------------------- the cursor */
+
+/** The page's cursor (a dot, a ring, or one that turns what's under it around), its colour drawn by `paint`. */
+export function cursorOf(v: unknown, paint: (c: unknown) => string | undefined): { kind: "dot" | "ring" | "blend"; color?: string; size?: number } | null {
+  const c = obj(v);
+  const kind = inList(c?.kind, ["dot", "ring", "blend"] as const);
+  if (!kind) return null;
+  const drawn = isColor(c?.color) ? paint(c!.color) : undefined;
+  const size = within(c?.size, 8, 120);
+  return { kind, ...(drawn ? { color: drawn } : {}), ...(size !== undefined ? { size } : {}) };
+}
 
 /* ------------------------------------------------------------- the layers */
 

@@ -202,8 +202,10 @@ export const ENTER_KINDS = [
 // "type" types its words, waits, and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
 // "words" lights its words up one by one with the scroll; "pin" holds a section in place for `length` % of a screen;
-// "sideways" holds it while what it holds slides along its row with the scroll.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways"] as const;
+// "sideways" holds it while what it holds slides along its row with the scroll; "count" counts its number up as
+// it crosses the screen; "orbit" sends what it holds around a circle, along an arc or a wave; "draw" draws its lines.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw"] as const;
+export const ORBIT_SHAPES = ["circle", "arc", "wave"] as const;
 // Then one-time plays as the mouse comes over it, a light that follows the mouse, a ripple where it's
 // pressed (a finger too), and springy ones (Motion's springs): it follows the mouse, or wobbles like jelly.
 export const HOVER_KINDS = [
@@ -221,7 +223,7 @@ export type TreeMotionSpec = {
   /** When it shows inside a scroll scene (pageTree/scrollScene.ts). */
   cue?: CueSpec;
   enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
-  scroll?: { kind: (typeof SCROLL_KINDS)[number]; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
+  scroll?: { kind: (typeof SCROLL_KINDS)[number]; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: (typeof ORBIT_SHAPES)[number]; radius: number; turn: number } };
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
   hover?: { kind: (typeof HOVER_KINDS)[number]; amount?: number; color?: string };
   fx?: { kind: (typeof FX_KINDS)[number]; speed?: number; color?: string; to?: string };
@@ -248,7 +250,11 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   const enter = inList(m.enter?.kind, ENTER_KINDS);
   if (enter) out.enter = { kind: enter, duration: within(m.enter.duration, 0, 6), delay: within(m.enter.delay, 0, 6), ease: inList(m.enter.ease, EASES), distance: within(m.enter.distance, 0, 400), stagger: within(m.enter.stagger, 0, 1) };
   const scroll = inList(m.scroll?.kind, SCROLL_KINDS);
-  if (scroll) out.scroll = { kind: scroll, speed: within(m.scroll.speed, -1, 1), from: keysOf(m.scroll.from), to: keysOf(m.scroll.to), start: within(m.scroll.start, 0, 100), end: within(m.scroll.end, 0, 100), ease: inList(m.scroll.ease, EASES), length: within(m.scroll.length, 10, 400) };
+  if (scroll) {
+    const o = m.scroll.orbit && typeof m.scroll.orbit === "object" ? m.scroll.orbit : null;
+    out.scroll = { kind: scroll, speed: within(m.scroll.speed, -1, 1), from: keysOf(m.scroll.from), to: keysOf(m.scroll.to), start: within(m.scroll.start, 0, 100), end: within(m.scroll.end, 0, 100), ease: inList(m.scroll.ease, EASES), length: within(m.scroll.length, 10, 400) };
+    if (scroll === "orbit") out.scroll.orbit = { shape: inList(o?.shape, ORBIT_SHAPES) ?? "arc", radius: within(o?.radius, 10, 100) ?? 45, turn: within(o?.turn, -2, 2) ?? 0.5 };
+  }
   const loop = inList(m.loop?.kind, LOOP_KINDS);
   if (loop) out.loop = { kind: loop, duration: within(m.loop.duration, 0.2, 20), amount: within(m.loop.amount, 0.1, 3) };
   const hover = inList(m.hover?.kind, HOVER_KINDS);
@@ -377,7 +383,10 @@ export function treeNeeds(tree: PageTree) {
   });
   // Sections held until the next one covers them (TreeCovers).
   const covers = (tree.root.children ?? []).some((n) => n.type === "section" && n.props?.cover && typeof n.props.cover === "object");
-  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers };
+  // Sections that colour the page (TreePaint), and the page's own cursor (TreeCursor).
+  const paint = (tree.root.children ?? []).some((n) => n.type === "section" && typeof n.props?.paint === "string");
+  const cursor = Boolean(tree.root.props?.cursor && typeof tree.root.props.cursor === "object");
+  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

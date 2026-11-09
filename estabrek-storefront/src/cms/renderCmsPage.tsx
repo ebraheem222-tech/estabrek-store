@@ -51,6 +51,9 @@ import { TreeMotion } from "@/pageTree/TreeMotion";
 import { TreeMedia } from "@/pageTree/TreeMedia";
 import { TreeScenes } from "@/pageTree/TreeScenes";
 import { TreeCovers } from "@/pageTree/TreeCovers";
+import { TreeCursor, TreePaint } from "@/pageTree/TreePage";
+import { cursorOf } from "@/pageTree/pieces";
+import { color as treeColor } from "@/pageTree/css";
 import { TreeTriggers } from "@/pageTree/TreeTriggers";
 import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
 import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
@@ -538,6 +541,9 @@ export async function renderCmsPageBySlug(
   let treeScenes = false;
   let treeTriggers = false;
   let treeCovers = false;
+  let treePaint = false;
+  // The page's own cursor, as the page carries it (TreeCursor reads it from there).
+  let treeCursor: string | null = null;
   // Animated media and smooth scrolling (TreeMedia loads each player only then).
   let treeMedia: { smooth: boolean } | null = null;
   // The editor's looks that move (parts of old sections and scenes), for the motion engine.
@@ -575,6 +581,9 @@ export async function renderCmsPageBySlug(
     treeScenes = needs.scenes;
     treeTriggers = needs.triggers;
     treeCovers = needs.covers;
+    treePaint = needs.paint;
+    const cursor = needs.cursor ? cursorOf(tree.root.props?.cursor, treeColor) : null;
+    if (cursor) treeCursor = JSON.stringify(cursor);
     if (needs.media || needs.smooth) treeMedia = { smooth: needs.smooth };
     const moving = looksOf(tree).map(([t, l]) => [t, treeMotionOf(lookNode(t, l))] as const).filter(([, m]) => m);
     if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");
@@ -599,6 +608,9 @@ export async function renderCmsPageBySlug(
       {treeScenes && !independentDesign(settingsHeader) ? <TreeScenes /> : null}
       {treeTriggers && !independentDesign(settingsHeader) ? <TreeTriggers /> : null}
       {treeCovers && !independentDesign(settingsHeader) ? <TreeCovers /> : null}
+      {treePaint && !independentDesign(settingsHeader) ? <TreePaint /> : null}
+      {treeCursor ? <span hidden aria-hidden="true" data-pt-cursor={treeCursor} /> : null}
+      {treeCursor && !independentDesign(settingsHeader) ? <TreeCursor /> : null}
       {treeMedia && !independentDesign(settingsHeader) ? <TreeMedia smooth={treeMedia.smooth} /> : null}
 
       {roseHome && storeTheme ? <ThemedHome

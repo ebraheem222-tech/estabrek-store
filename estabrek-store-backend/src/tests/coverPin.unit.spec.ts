@@ -27,12 +27,12 @@ describe("held and covered sections", () => {
     expect(r.ok ? [] : r.issues).toEqual([]);
     if (!r.ok) return;
     expect(dropped(made, (r.tree as any).root.children[0], "ready")).toEqual([]);
-    expect((r.tree as any).root.children[0].props.cover).toEqual({ hold: 1, under: "dim", phone: true });
+    expect((r.tree as any).root.children[0].props.cover).toEqual({ hold: 1, under: "dim", phone: true, enter: "rise" });
   });
 
   test("its settings get their defaults, and values out of range are refused", () => {
     const r = checkTree(page(held({}), after));
-    expect(r.ok && (r.tree as any).root.children[0].props.cover).toEqual({ hold: 0, under: "none", phone: true });
+    expect(r.ok && (r.tree as any).root.children[0].props.cover).toEqual({ hold: 0, under: "none", phone: true, enter: "rise" });
     for (const bad of [{ hold: 7 }, { hold: -1 }, { under: "spin" }, { phone: "no" }]) expect(checkTree(page(held(bad), after)).ok).toBe(false);
     for (const under of ["none", "dim", "shrink", "blur", "slow", "fade"]) expect(checkTree(page(held({ hold: 2.5, under, phone: false }), after)).ok).toBe(true);
   });
