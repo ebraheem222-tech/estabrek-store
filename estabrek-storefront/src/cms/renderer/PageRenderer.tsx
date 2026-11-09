@@ -3347,7 +3347,7 @@ export function CmsPageRenderer({
   const groups = buildSectionGroups(sorted);
 
   return (
-    <div className={cls("space-y-5", className)}>
+    <div className={cls("space-y-5", className)} data-cms-sections="">
       {groups.flatMap((group) => {
         const renderSectionItem = (sec: CmsSection) => {
           const layout = normalizeSectionLayout((sec as any)?.data?.layout);

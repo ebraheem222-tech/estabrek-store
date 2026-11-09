@@ -870,6 +870,14 @@ export const BASE_CSS = [
   ".pt-ss-frame{position:absolute;inset:0;z-index:-2;overflow:clip}",
   ".pt-ss-media{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--pt-ss-focus,50% 50%);transform:scale(var(--pt-ss-zoom));filter:blur(var(--pt-ss-blur));will-change:transform,filter}",
   ".pt-ss-contain .pt-ss-media{object-fit:contain}",
+  // The picture through a window that opens with the scroll (--pt-ss-win 0 → 1, TreeScenes): a circle, an arch,
+  // a rounded frame or a diamond, small in the middle at first, the whole screen at the end.
+  ".pt-ss-win{--pt-ss-win:0}.pt-ss-win .pt-ss-frame,.pt-ss-win .pt-ss-dim{will-change:clip-path}",
+  ".pt-ss-win-circle :is(.pt-ss-frame,.pt-ss-dim){clip-path:circle(calc(9% + var(--pt-ss-win) * 63%) at 50% 50%)}",
+  ".pt-ss-win-arch :is(.pt-ss-frame,.pt-ss-dim){clip-path:inset(calc((1 - var(--pt-ss-win)) * 22%) calc((1 - var(--pt-ss-win)) * 36%) calc((1 - var(--pt-ss-win)) * 12%) round calc((1 - var(--pt-ss-win)) * 50vw) calc((1 - var(--pt-ss-win)) * 50vw) 0 0)}",
+  ".pt-ss-win-rounded :is(.pt-ss-frame,.pt-ss-dim){clip-path:inset(calc((1 - var(--pt-ss-win)) * 28%) calc((1 - var(--pt-ss-win)) * 30%) round calc((1 - var(--pt-ss-win)) * 48px))}",
+  ".pt-ss-win-diamond :is(.pt-ss-frame,.pt-ss-dim){clip-path:polygon(50% calc(30% - var(--pt-ss-win) * 80%),calc(70% + var(--pt-ss-win) * 80%) 50%,50% calc(70% + var(--pt-ss-win) * 80%),calc(30% - var(--pt-ss-win) * 80%) 50%)}",
+  ".pt-ss-still.pt-ss-win :is(.pt-ss-frame,.pt-ss-dim){clip-path:none}",
   ".pt-ss-dim{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--pt-ss-dimc,#000);opacity:var(--pt-ss-dim)}",
   ".pt-ss-layer{position:absolute;inset:0;display:grid;place-items:center;padding:6vh 16px}.pt-ss-layer>*{grid-area:1/1;max-width:min(100%,1100px)}",
   "[data-pt-cue-wait]{visibility:hidden}",
@@ -889,6 +897,10 @@ export const BASE_CSS = [
   ".pt-cover-room{display:block;height:calc(var(--pt-cv-hold,0) * 100vh + var(--pt-cv-d,0px));pointer-events:none}.pt-cover[data-pt-cover-off]+.pt-cover-room{display:none}",
   // What covers it goes over it, never see-through: the page's colour under its own background.
   ".pt-cover-next{position:relative;z-index:1}:where(.pt-cover-next){background-color:var(--bg,#fff)}",
+  // Its edge while it comes over: an arch that flattens, or a slant that levels (--pt-cv-q: 0 → 1).
+  ".pt-cover-next[data-pt-cv-entering][data-pt-cv-enter=arch]{clip-path:inset(0 round 50% 50% 0 0 / calc((1 - var(--pt-cv-q,0)) * 28vh) calc((1 - var(--pt-cv-q,0)) * 28vh) 0 0)}",
+  ".pt-cover-next[data-pt-cv-entering][data-pt-cv-enter=tilt]{clip-path:polygon(0 calc((1 - var(--pt-cv-q,0)) * 18vh),100% 0,100% 100%,0 100%)}",
+  "[dir=rtl] .pt-cover-next[data-pt-cv-entering][data-pt-cv-enter=tilt]{clip-path:polygon(0 0,100% calc((1 - var(--pt-cv-q,0)) * 18vh),100% 100%,0 100%)}",
   ".pt-cover-shade{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0}",
   ".pt-cover-dim>.pt-cover-shade{background:#000;opacity:calc(var(--pt-cv-p) * .65)}",
   ".pt-cover-fade>.pt-cover-shade{background:var(--bg,#fff);opacity:calc(var(--pt-cv-p) * .9)}",
@@ -897,6 +909,22 @@ export const BASE_CSS = [
   ".pt-cover-slow{translate:0 calc(var(--pt-cv-p) * var(--pt-cv-d,100vh) * -.3)}",
   `@media (max-width:${PHONE_MAX}px){.pt-section.pt-cover.pt-cover-desk:not([data-pt-cover-off]):has(+.pt-cover-room){position:relative;top:auto}.pt-cover-desk+.pt-cover-room{display:none}}`,
   "@media (prefers-reduced-motion:reduce){.pt-cover-shade{display:none}.pt-cover-shrink,.pt-cover-slow{scale:none;translate:none;clip-path:none!important}}",
+  // What travels around a circle, an arc or a wave with the scroll (motion.scroll "orbit"): each thing from the
+  // box's middle, where TreeMotion puts it; the box is as tall as their way needs.
+  "[data-pt-orbit]{position:relative!important;display:block!important}[data-pt-orbit]>[data-tree-node],[data-pt-orbit]>.pt-inner>[data-tree-node]{position:absolute!important;left:50%;top:50%;margin:0!important;translate:-50% -50%;will-change:translate,scale}[data-pt-orbit]>.pt-inner{position:absolute;inset:0;max-width:none}",
+  // The page's colour from the section in the middle of the screen (section paint, TreePaint): the page and the
+  // boxes that draw its background glide to it, and back.
+  "html[data-pt-paints] body,html[data-pt-paints] :is([data-gallery-theme-active],[data-page-tree-root],.rose-page-frame,.cinematic-shell,[data-cms-sections]){transition:background-color .8s ease}",
+  "html[data-pt-painting],html[data-pt-painting] body,html[data-pt-painting] :is([data-gallery-theme-active],[data-page-tree-root],.rose-page-frame,.cinematic-shell,[data-cms-sections]){background-color:var(--pt-paint)!important}",
+  "@media (prefers-reduced-motion:reduce){html[data-pt-paints] body,html[data-pt-paints] :is([data-gallery-theme-active],[data-page-tree-root],.rose-page-frame,.cinematic-shell,[data-cms-sections]){transition:none}}",
+  // The page's cursor (TreeCursor): a dot, a ring, or one that turns what's under it around; bigger over a
+  // link, and bigger still with words in it over an element that has them.
+  ".pt-cursor{--pt-cur-c:var(--accent,#7d2448);--pt-cur-s:14px;position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;opacity:0;transition:opacity .25s}.pt-cursor.pt-cursor-in{opacity:1}",
+  ".pt-cursor>i{display:grid;place-items:center;width:var(--pt-cur-s);height:var(--pt-cur-s);translate:-50% -50%;border-radius:50%;font:600 12px/1.1 system-ui,sans-serif;font-style:normal;text-align:center;overflow:hidden;transition:width .3s cubic-bezier(.2,.7,.2,1),height .3s cubic-bezier(.2,.7,.2,1),background-color .3s,border-color .3s}",
+  ".pt-cursor>i>span{opacity:0;padding:0 6px;transition:opacity .2s;color:#fff}",
+  ".pt-cursor-dot>i{background:var(--pt-cur-c)}.pt-cursor-ring>i{border:1.5px solid var(--pt-cur-c);background:transparent}.pt-cursor-blend{mix-blend-mode:difference}.pt-cursor-blend>i{background:#fff}",
+  ".pt-cursor-link>i{width:calc(var(--pt-cur-s) * 2.6);height:calc(var(--pt-cur-s) * 2.6)}",
+  ".pt-cursor-label>i{width:84px;height:84px;background:var(--pt-cur-c);border-color:transparent}.pt-cursor-label>i>span{opacity:1}.pt-cursor-blend.pt-cursor-label{mix-blend-mode:normal}",
   // What slides sideways with the scroll (motion.scroll "sideways") keeps its row on one line.
   "[data-pt-sideways]{flex-wrap:nowrap!important;overflow:clip}[data-pt-sideways]>*{flex-shrink:0;translate:var(--pt-sw,0px) 0}",
   // A section's inner box fills it down to its padding (a taller section than its words), so what's placed

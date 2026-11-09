@@ -23,6 +23,8 @@ export type SceneProps = {
   dim?: { from: number; to: number; opacity: number; color?: string };
   zoom?: { from: number; to: number; scale: number };
   progress?: "none" | "bar" | "dots" | "line";
+  /** The picture seen through a window that opens from small to the whole screen between two moments. */
+  window?: { shape: "circle" | "arch" | "rounded" | "diamond"; from: number; to: number };
 };
 
 export const CUE_KINDS: Array<[string, () => string]> = [

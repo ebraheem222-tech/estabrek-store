@@ -38,6 +38,10 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["ready-scroll-story", () => say("صورة ثابتة والبطاقات بتمر فوقها|Held picture with cards scrolling over|תמונה קבועה וכרטיסים שגוללים מעליה"), "▤"],
       ["ready-scroll-zoom", () => say("صورة بتقرّب وتغمق مع السكرول|Picture that zooms and darkens with the scroll|תמונה שמתקרבת ומתכהה בגלילה"), "⊕"],
       ["ready-cover", () => say("صورة بتثبت واللي بعدها بيغطيها|Picture that stays, then the next section covers it|תמונה שנשארת, והמקטע הבא מכסה אותה"), "⧉"],
+      ["ready-portal", () => say("صورة من شبّاك بيكبر مع السكرول|Picture through a window that grows as you scroll|תמונה מבעד לחלון שגדל בגלילה"), "◯"],
+      ["ready-orbit", () => say("حلقة بتلف مع السكرول|Ring that turns with the scroll|טבעת שמסתובבת בגלילה"), "↻"],
+      ["ready-counters", () => say("أرقام بتعدّ مع السكرول|Numbers that count with the scroll|מספרים שסופרים בגלילה"), "#"],
+      ["ready-paint", () => say("قسم بيلوّن الصفحة كلها|Section that colours the whole page|מקטע שצובע את כל הדף"), "◐"],
     ],
   },
   {

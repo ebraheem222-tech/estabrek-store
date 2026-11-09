@@ -9,7 +9,15 @@ import { say } from "./say";
 
 type Ids = (prefix: string) => string;
 export type CoverUnder = "none" | "dim" | "shrink" | "blur" | "slow" | "fade";
-export type Cover = { hold: number; under: CoverUnder; phone: boolean };
+export type CoverEnter = "rise" | "arch" | "tilt";
+export type Cover = { hold: number; under: CoverUnder; phone: boolean; enter?: CoverEnter };
+
+/** How the next one's top edge comes over it. */
+export const COVER_ENTERS: Array<[CoverEnter, () => string]> = [
+  ["rise", () => say("مستقيم|Straight|ישר")],
+  ["arch", () => say("قوس بينفرد|An arch that flattens|קשת שמתיישרת")],
+  ["tilt", () => say("مايل بيتعدّل|A slant that levels|אלכסון שמתיישר")],
+];
 
 /** What it does while the next one covers it. */
 export const COVER_UNDERS: Array<[CoverUnder, () => string]> = [
@@ -31,11 +39,15 @@ export function coverOfNode(node: PageTreeNode): Cover | null {
   const v = c as Record<string, unknown>;
   const hold = typeof v.hold === "number" && Number.isFinite(v.hold) ? Math.max(0, Math.min(6, v.hold)) : 0;
   const under = COVER_UNDERS.some(([k]) => k === v.under) ? (v.under as CoverUnder) : "none";
-  return { hold, under, phone: v.phone !== false };
+  const enter = COVER_ENTERS.some(([k]) => k === v.enter) ? (v.enter as CoverEnter) : "rise";
+  return { hold, under, phone: v.phone !== false, ...(enter !== "rise" ? { enter } : {}) };
 }
 
 /** The change that holds it (with these settings) or lets it go (null). */
 export const coverOp = (node: PageTreeNode, next: Cover | null): PageDraftOp => ({ op: "setProps", nodeId: node.id, props: { ...node.props, cover: next ?? undefined } });
+
+/** The change that gives the page this colour while the section is in the middle of the screen (null = none). */
+export const paintOp = (node: PageTreeNode, paint: string | null): PageDraftOp => ({ op: "setProps", nodeId: node.id, props: { ...node.props, paint: paint ?? undefined } });
 
 /** Header and footer sections stay put (they aren't one of the page's sections). */
 export const canCover = (node: PageTreeNode) => node.type === "section" && !["header", "footer"].includes(String(node.props?.tag ?? "section"));

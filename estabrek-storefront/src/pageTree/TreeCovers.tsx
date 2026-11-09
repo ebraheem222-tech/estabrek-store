@@ -71,6 +71,9 @@ function mountCover(el: HTMLElement, spec: CoverSpec, env: { phone: boolean; red
     ro.unobserve(next);
     next.style.removeProperty("margin-top");
     next.classList.remove("pt-cover-next");
+    next.removeAttribute("data-pt-cv-enter");
+    next.removeAttribute("data-pt-cv-entering");
+    next.style.removeProperty("--pt-cv-q");
     written.get(next)?.delete("margin-top");
   };
   const bind = () => {
@@ -81,6 +84,7 @@ function mountCover(el: HTMLElement, spec: CoverSpec, env: { phone: boolean; red
     next = found?.next ?? null;
     if (!next) return;
     next.classList.add("pt-cover-next");
+    if (spec.enter !== "rise") next.setAttribute("data-pt-cv-enter", spec.enter);
     ro.observe(next);
   };
   let m = { top: 0, seen: 0, d: 0 };
@@ -105,6 +109,13 @@ function mountCover(el: HTMLElement, spec: CoverSpec, env: { phone: boolean; red
     if (p === shown) return;
     shown = p;
     put(el, "--pt-cv-p", String(p));
+    // Its edge's shape follows how far it has come (straight once it's all over).
+    if (next && spec.enter !== "rise" && !env.reduced) {
+      const q = m.d > 0 ? p : 1;
+      next.style.setProperty("--pt-cv-q", String(q));
+      if (q < 1) next.setAttribute("data-pt-cv-entering", "");
+      else next.removeAttribute("data-pt-cv-entering");
+    }
     if (p > 0) el.setAttribute("data-pt-covering", "");
     else el.removeAttribute("data-pt-covering");
   };

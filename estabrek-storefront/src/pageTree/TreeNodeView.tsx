@@ -106,7 +106,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const motion = motionOf(node);
   // Triggers go as data too, their links and words already in this page's language (TreeTriggers runs them).
   const triggers = triggersOf(p.triggers, link, say);
-  const mark = { "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}) };
+  const mark = { "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
   // Its two extra layers (behind its content, or in front), drawn when it has a look or keyframes for them.
   const layers = layersOf(p.layers);
   const piece = (part: "before" | "after") => (layers?.[part] || motion?.keys?.parts[part] ? <span className={`pt-pc pt-pc-${part}${layers?.[part]?.front ? " pt-pc-front" : ""}`} aria-hidden="true" /> : null);
@@ -147,8 +147,10 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // is the scroll it's held for, and what the next one slides over.
       const cover = coverOf(p.cover);
       const coverClass = cover ? ` pt-cover pt-cover-${cover.under}${cover.phone ? "" : " pt-cover-desk"}` : "";
+      // The page's colour while it's in the middle of the screen (TreePaint).
+      const paint = p.paint ? color(p.paint) : undefined;
       const held = (
-        <Tag className={`${cls(node)}${edges.length || dots || scene ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})}>
+        <Tag className={`${cls(node)}${edges.length || dots || scene ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})} {...(paint ? { "data-pt-paint": paint } : {})}>
           {scene ? <SceneView spec={scene} primary={color(scene.color ?? "accent")!} secondary={color(scene.secondary ?? "text")!} /> : null}
           {dots ? <div className="pt-particles" data-pt-particles={JSON.stringify({ kind: dots.kind, amount: dots.amount, speed: dots.speed })} style={tint ? { color: tint } : undefined} aria-hidden="true" /> : null}
           {edges}
@@ -195,7 +197,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       ) : m.kind === "image" && m.src ? (
         <img className="pt-ss-media" src={m.src} alt={say(m.label)} decoding="async" />
       ) : null;
-      const live = { mode: spec.mode, chapters: spec.chapters, smooth: spec.smooth, fps: spec.fps, kind: m.kind, ...(m.phone ? { phone: m.phone } : {}), ...(spec.blur ? { blur: spec.blur } : {}), ...(spec.dim ? { dim: spec.dim } : {}), ...(spec.zoom ? { zoom: spec.zoom } : {}) };
+      const live = { mode: spec.mode, chapters: spec.chapters, smooth: spec.smooth, fps: spec.fps, kind: m.kind, ...(m.phone ? { phone: m.phone } : {}), ...(spec.blur ? { blur: spec.blur } : {}), ...(spec.dim ? { dim: spec.dim } : {}), ...(spec.zoom ? { zoom: spec.zoom } : {}), ...(spec.window ? { window: spec.window } : {}) };
       const styled = { "--pt-ss-len": String(spec.length), ...(spec.dim?.color ? { "--pt-ss-dimc": color(spec.dim.color) } : {}), ...(m.focus ? { "--pt-ss-focus": `${m.focus.x}% ${m.focus.y}%` } : {}) } as CSSProperties;
       const progress = spec.progress === "none" ? null : (
         <span className={`pt-ss-progress pt-ss-progress-${spec.progress}`} aria-hidden="true">
@@ -204,7 +206,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       );
       const inside = { ...ctx, inScene: spec.mode === "pin" };
       return (
-        <div className={cls(node, `pt-ss-${spec.mode}`, m.fit === "contain" ? "pt-ss-contain" : "")} {...mark} data-pt-scroll-scene={JSON.stringify(live)} style={styled}>
+        <div className={cls(node, `pt-ss-${spec.mode}`, m.fit === "contain" ? "pt-ss-contain" : "", spec.window ? `pt-ss-win pt-ss-win-${spec.window.shape}` : "")} {...mark} data-pt-scroll-scene={JSON.stringify(live)} style={styled}>
           <div className="pt-ss-stage">
             {media ? <div className="pt-ss-frame">{media}</div> : null}
             <span className="pt-ss-dim" aria-hidden="true" />

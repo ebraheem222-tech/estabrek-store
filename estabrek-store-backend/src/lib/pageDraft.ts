@@ -277,13 +277,21 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
       }
       case "setProps": {
         const at = locate(d.tree, raw.nodeId);
-        // The page's own settings: only its smooth scrolling (its looks change through their own ops).
+        // The page's own settings: its smooth scrolling or its cursor (its looks change through their own ops).
         if (at?.node.type === "page" && isPlain(raw.props)) {
           const props = { ...(at.node.props ?? {}) };
           if (raw.controls === true) {
             for (const key of ["interactions", "cardDesign"]) {
               if (Object.hasOwn(raw.props, key)) props[key] = clone(raw.props[key]); else delete props[key];
             }
+            at.node.props = props;
+            break;
+          }
+          // Its cursor alone ({ cursor: … } or null to take it off); else its smooth scrolling, as always.
+          if (Object.hasOwn(raw.props, "cursor")) {
+            const cursor = raw.props.cursor;
+            if (cursor && typeof cursor === "object" && !Array.isArray(cursor)) props.cursor = clone(cursor);
+            else delete props.cursor;
             at.node.props = props;
             break;
           }

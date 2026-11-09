@@ -60,7 +60,8 @@ import { pageMotionOps, type MotionProfile } from "./motionProfiles";
 import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
-import { CoverPanel } from "./CoverPanel";
+import { CoverPanel, PaintPanel } from "./CoverPanel";
+import { CursorTextPanel, PageCursorPanel } from "./CursorPanel";
 import { canCover } from "./coverPin";
 import { ScenePanel } from "./ScenePanel";
 import { ScrollEffectsPanel } from "./ScrollEffectsPanel";
@@ -2328,10 +2329,12 @@ function StudioDocument() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <CoverPanel node={selFree} isLast={pageKids[pageKids.length - 1]?.id === selFree.id} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <PaintPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <EdgesPanel key={`edges:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} />
             {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type !== "page" ? <CursorTextPanel key={`cursor:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
             {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
@@ -2437,6 +2440,7 @@ function StudioDocument() {
         {selected === index.root && draft?.tree.root ? <VisualControlsPanel key={`visual:${index.root}`} node={draft.tree.root} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", event })} /> : null}
         {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} roseOf={roseOf} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}
 
+        {selected === index.root && index.nodes.get(index.root) ? <PageCursorPanel root={index.nodes.get(index.root)!.node} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
         {selected === index.root ? (
           <label className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] p-3 text-xs" data-testid="studio-page-smooth">
             <span className="text-white/75">

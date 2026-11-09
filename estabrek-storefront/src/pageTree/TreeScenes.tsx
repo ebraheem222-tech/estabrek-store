@@ -35,6 +35,7 @@ type Live = {
   blur?: Range & { amount: number };
   dim?: Range & { opacity: number };
   zoom?: Range & { scale: number };
+  window?: Range & { shape: string };
 };
 type Env = { rtl: boolean; reduced: boolean; phone: boolean };
 
@@ -138,6 +139,8 @@ function mountScene(el: HTMLElement, live: Live, env: Env): () => void {
     if (live.blur) write(el, "--pt-ss-blur", `${round(live.blur.amount * between(p, live.blur.from, live.blur.to))}px`, stageCache);
     if (live.dim) write(el, "--pt-ss-dim", String(round(live.dim.opacity * between(p, live.dim.from, live.dim.to))), stageCache);
     if (live.zoom) write(el, "--pt-ss-zoom", String(round(1 + (live.zoom.scale - 1) * between(p, live.zoom.from, live.zoom.to))), stageCache);
+    // The window the picture is seen through, from small (0) to the whole screen (1).
+    if (live.window) write(el, "--pt-ss-win", String(round(between(p, live.window.from, live.window.to))), stageCache);
     write(el, "--pt-ss-p", String(round(p)), stageCache);
     const now = Math.min(live.chapters - 1, Math.floor(p * live.chapters));
     if (now !== chapter) {

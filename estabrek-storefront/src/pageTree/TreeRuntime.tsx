@@ -9,14 +9,17 @@ import { TreeMedia } from "./TreeMedia";
 const TreeScenes = dynamic(() => import("./TreeScenes").then((m) => m.TreeScenes), { ssr: false });
 const TreeTriggers = dynamic(() => import("./TreeTriggers").then((m) => m.TreeTriggers), { ssr: false });
 const TreeCovers = dynamic(() => import("./TreeCovers").then((m) => m.TreeCovers), { ssr: false });
-const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers]", covers: "[data-pt-cover]" } as const;
+const TreePaint = dynamic(() => import("./TreePage").then((m) => m.TreePaint), { ssr: false });
+const TreeCursor = dynamic(() => import("./TreePage").then((m) => m.TreeCursor), { ssr: false });
+const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers]", covers: "[data-pt-cover]", paint: "[data-pt-paint]", cursor: "[data-pt-cursor]" } as const;
 type Needs = Record<keyof typeof NEEDS, boolean>;
-const needsOf = (): Needs => ({ scenes: Boolean(document.querySelector(NEEDS.scenes)), triggers: Boolean(document.querySelector(NEEDS.triggers)), covers: Boolean(document.querySelector(NEEDS.covers)) });
+const NONE: Needs = { scenes: false, triggers: false, covers: false, paint: false, cursor: false };
+const needsOf = (): Needs => Object.fromEntries(Object.entries(NEEDS).map(([k, sel]) => [k, Boolean(document.querySelector(sel))])) as Needs;
 
 /** One runtime for all customer documents, including pages arriving after a loading boundary. */
 export function TreeRuntime() {
   const [revision, setRevision] = useState(0);
-  const [needs, setNeeds] = useState<Needs>({ scenes: false, triggers: false, covers: false });
+  const [needs, setNeeds] = useState<Needs>(NONE);
   useEffect(() => {
     let frame = 0;
     const containsTree = (node: Node) => node instanceof Element && (node.matches("[data-page-tree-root]") || Boolean(node.querySelector("[data-page-tree-root]")));
@@ -33,7 +36,7 @@ export function TreeRuntime() {
   useEffect(() => {
     const look = () => {
       const found = needsOf();
-      setNeeds((was) => (was.scenes === found.scenes && was.triggers === found.triggers && was.covers === found.covers ? was : found));
+      setNeeds((was) => ((Object.keys(NEEDS) as Array<keyof Needs>).every((k) => was[k] === found[k]) ? was : found));
     };
     look();
     // The editor's preview: a scene, trigger or held section added in place.
@@ -47,6 +50,8 @@ export function TreeRuntime() {
       {needs.scenes ? <TreeScenes revision={revision} /> : null}
       {needs.triggers ? <TreeTriggers revision={revision} /> : null}
       {needs.covers ? <TreeCovers revision={revision} /> : null}
+      {needs.paint ? <TreePaint revision={revision} /> : null}
+      {needs.cursor ? <TreeCursor revision={revision} /> : null}
     </>
   );
 }

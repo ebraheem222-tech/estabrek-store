@@ -309,8 +309,12 @@ export const ENTER_KINDS = [
 // "type" types its words, waits and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
 // "words" lights its words up one by one with the scroll; "pin" holds it in place for `length` % of a screen;
-// "sideways" holds it while what it holds slides along its row with the scroll (a horizontal gallery).
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways"] as const;
+// "sideways" holds it while what it holds slides along its row with the scroll (a horizontal gallery);
+// "count" counts its number up as it crosses the screen; "orbit" sends what it holds around a circle, along
+// an arc or a wave with the scroll; "draw" draws its lines with the scroll.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw"] as const;
+/** The way "orbit" sends what it holds: around a circle, along an arc (a rainbow), or along a wave. */
+export const ORBIT_SHAPES = ["circle", "arc", "wave"] as const;
 // Then plays once as the mouse comes over it, a light following the mouse, a ripple where it's pressed, springy ones.
 export const HOVER_KINDS = [
   "lift", "grow", "tilt", "magnetic", "glow", "zoom",
@@ -402,7 +406,9 @@ export const NodeMotion = z.object({
   cue: NodeCue.optional(),
   engine: z.enum(["gsap", "anime"]).optional(),
   enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: z.enum(EASES).optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional() }).optional(),
-  scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional() }).optional(),
+  scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional(),
+    // "orbit": its shape, how big (% of its width) and how many turns the scroll gives it (minus = the other way).
+    orbit: z.object({ shape: z.enum(ORBIT_SHAPES), radius: z.number().min(10).max(100).optional(), turn: z.number().min(-2).max(2).optional() }).optional() }).optional(),
   loop: z.object({ kind: z.enum(LOOP_KINDS), duration: z.number().min(0.2).max(20).optional(), amount: z.number().min(0.1).max(3).optional() }).optional(),
   hover: z.object({ kind: z.enum(HOVER_KINDS), amount: z.number().min(0.1).max(3).optional(), color: color.optional() }).optional(),
   fx: z.object({ kind: z.enum(FX_KINDS), speed: z.number().min(0.2).max(5).optional(), color: color.optional(), to: color.optional() }).optional(),
@@ -514,7 +520,9 @@ export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as 
 
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
-  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), commerceVersion: z.literal(1).optional() }),
+  // `cursor`: a mark that follows the mouse (a dot, a ring, or one that turns what's under it around), with
+  // an element's `cursorText` in it while the mouse is over that element.
+  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), commerceVersion: z.literal(1).optional(), cursor: z.object({ kind: z.enum(["dot", "ring", "blend"]), color: color.optional(), size: px(8, 120).optional() }).optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
@@ -536,7 +544,11 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       hold: z.number().finite().min(0).max(6).default(0),
       under: z.enum(COVER_UNDER).default("none"),
       phone: z.boolean().default(true),
+      // How the next one's top edge comes over it: straight, an arch that flattens, or a slant that levels.
+      enter: z.enum(["rise", "arch", "tilt"]).default("rise"),
     }).optional(),
+    // The page takes this colour while this section is in the middle of the screen (and back after).
+    paint: color.optional(),
   }),
   grid: none,
   stack: none,
@@ -565,6 +577,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     dim: z.object({ from: pct, to: pct, opacity: z.number().min(0).max(0.95), color: color.optional() }).optional(),
     zoom: z.object({ from: pct, to: pct, scale: z.number().finite().min(0.5).max(3) }).optional(),
     progress: z.enum(["none", "bar", "dots", "line"]).optional(),
+    // The picture seen through a window that opens from small to the whole screen between two moments.
+    window: z.object({ shape: z.enum(["circle", "arch", "rounded", "diamond"]), from: pct, to: pct }).optional(),
   }),
   deck:z.object({ presentation: z.enum(["deck", "tabs", "vertical-tabs"]).optional(), transition: z.enum(["slide", "fade", "wipe"]).optional(), duration: z.number().finite().min(0).max(2).optional(), initial: z.number().int().min(0).max(11).optional(), arrows: z.boolean().optional(), dots: z.boolean().optional(), menu: z.boolean().optional(), labels: z.record(z.string().regex(/^[A-Za-z0-9_-]{1,40}$/), local(80)).refine(labels => Object.keys(labels).length <= 12, "At most 12 panel labels").optional() }),
   // On a phone the cells go one under the other (stack), the last first (reverse), or stay side by side (keep).
@@ -880,7 +894,7 @@ NODE_PROPS.page = (NODE_PROPS.page as z.ZodObject).safeExtend({ interactions: In
 for (const t of NODE_TYPES) {
   if (t !== "page") NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ partLooks: PartLooks.optional() });
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
-  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ bind: NodeBind.optional(), styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ cursorText: local(24).optional(), bind: NodeBind.optional(), styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
 
 /* ------------------------------------------------------------------ tree */

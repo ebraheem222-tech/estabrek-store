@@ -24,6 +24,7 @@ import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { EASE_MAP, keySteps, originCss, type KeysSpec } from "./keyframes";
 import { keyPlayers } from "./motionPlayers";
+import { orbitHeight, orbitSpot } from "./orbit";
 
 type Gsap = typeof import("gsap").gsap;
 type ST = typeof import("gsap/ScrollTrigger").ScrollTrigger;
@@ -239,6 +240,61 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
         ease: "none",
         scrollTrigger: { trigger: el, start: "top top", end: () => `+=${Math.max(1, distance())}`, pin: true, scrub: 0.6, invalidateOnRefresh: true },
       });
+    } else if (s.kind === "count") {
+      // Its first number counts up from 0 as it crosses the screen, and back down when scrolled back.
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let found: { node: Text; at: NonNullable<ReturnType<typeof countUpText>> } | null = null;
+      while (!found && walker.nextNode()) {
+        const at = countUpText((walker.currentNode as Text).data);
+        if (at) found = { node: walker.currentNode as Text, at };
+      }
+      if (found) {
+        const { node, at } = found;
+        const was = node.data;
+        const v = { n: 0 };
+        node.data = at.before + at.format(0) + at.after;
+        gsap.to(v, { n: at.target, ease: "none", scrollTrigger: { trigger: el, start: `top ${s.start ?? 90}%`, end: `top ${s.end ?? 35}%`, scrub: 0.4 }, onUpdate: () => void (node.data = at.before + at.format(v.n) + at.after) });
+        off.push(() => void (node.data = was));
+      }
+    } else if (s.kind === "draw") {
+      // Its lines draw themselves as it crosses the screen (one after another), and undraw going back.
+      const lines = linesOf(el);
+      if (lines.length) gsap.fromTo(lines, { drawSVG: "0%" }, { drawSVG: "100%", ease: "none", stagger: 0.15, scrollTrigger: { trigger: el, start: `top ${s.start ?? 85}%`, end: `bottom ${s.end ?? 45}%`, scrub: 0.5 } });
+    } else if (s.kind === "orbit" && s.orbit) {
+      // What it holds travels around a circle, along an arc or a wave with the scroll; held for `length` %
+      // of a screen when it has one, else while it crosses the screen.
+      const o = s.orbit;
+      const kids = Array.from(el.querySelectorAll<HTMLElement>(":scope > [data-tree-node], :scope > .pt-inner > [data-tree-node]"));
+      if (kids.length) {
+        el.setAttribute("data-pt-orbit", o.shape);
+        const place = (p: number) => {
+          const w = el.clientWidth;
+          kids.forEach((k, i) => {
+            const at = orbitSpot(o.shape, i, kids.length, p, o.turn, w, o.radius, env.rtl);
+            k.style.translate = `calc(-50% + ${at.x.toFixed(1)}px) calc(-50% + ${at.y.toFixed(1)}px)`;
+            k.style.scale = at.scale.toFixed(3);
+            k.style.opacity = at.opacity.toFixed(3);
+            k.style.zIndex = String(at.z);
+          });
+        };
+        const size = () => {
+          const tallest = Math.max(...kids.map((k) => k.offsetHeight));
+          el.style.height = `${orbitHeight(o.shape, el.clientWidth, o.radius, tallest)}px`;
+        };
+        size();
+        place(0);
+        const ro = new ResizeObserver(() => size());
+        ro.observe(el);
+        // A proxy the scroll eases (scrub), so the things glide rather than jump with each wheel step.
+        const at = { p: 0 };
+        gsap.to(at, { p: 1, ease: "none", onUpdate: () => place(at.p), scrollTrigger: { trigger: el, start: s.length ? "top top" : "top bottom", end: s.length ? `+=${s.length}%` : "bottom top", pin: Boolean(s.length), scrub: 0.6, invalidateOnRefresh: true } });
+        off.push(() => {
+          ro.disconnect();
+          el.removeAttribute("data-pt-orbit");
+          el.style.removeProperty("height");
+          kids.forEach((k) => ["translate", "scale", "opacity", "z-index"].forEach((x) => k.style.removeProperty(x)));
+        });
+      }
     } else if (s.kind === "parallax") {
       const d = 120 * (s.speed ?? 0.4);
       gsap.fromTo(el, { "--pt-my": `${-d}px` }, { "--pt-my": `${d}px`, ease: "none", scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: true } });

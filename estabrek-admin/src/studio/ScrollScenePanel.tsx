@@ -89,7 +89,7 @@ export function ScrollScenePanel({ node, lang, busy, ids, onOps, onSeek, onSelec
     const made = atChapter(newElement(kind, lang, ids), chapters, chapter);
     onOps(`${L}: ${say("إضافة بالفصل|Add at the chapter|הוספה בפרק")} ${chapter + 1}`, [{ op: "insert", parentId: node.id, index: kids.length, node: made }]);
   };
-  const effect = <K extends "blur" | "dim" | "zoom">(key: K, on: Partial<SceneProps>[K]) => save(L, { [key]: on } as Partial<SceneProps>);
+  const effect = <K extends "blur" | "dim" | "zoom" | "window">(key: K, on: Partial<SceneProps>[K]) => save(L, { [key]: on } as Partial<SceneProps>);
 
   return (
     <div className={box} data-testid="studio-scroll-scene">
@@ -143,6 +143,13 @@ export function ScrollScenePanel({ node, lang, busy, ids, onOps, onSeek, onSelec
         {p.zoom ? <>
           <Range label={say("لأي حجم|To what size|לאיזה גודל")} min={0.5} max={3} step={0.05} unit="×" busy={busy} value={p.zoom.scale} onSave={(scale) => effect("zoom", { ...p.zoom!, scale })} />
           <Between from={p.zoom.from} to={p.zoom.to} busy={busy} onSave={(from, to) => effect("zoom", { ...p.zoom!, from, to })} testId="scene-zoom-range" />
+        </> : null}
+        {toggle(say("الصورة من شبّاك بيكبر|Picture through a growing window|תמונה מבעד לחלון שגדל"), Boolean(p.window), busy, (on) => effect("window", on ? { shape: "circle", from: 0, to: 60 } : undefined), "scene-window")}
+        {p.window ? <>
+          <Picks label={say("شكل الشبّاك|Window shape|צורת החלון")} value={p.window.shape} busy={busy}
+            testId="scene-window-shape" options={[["circle", say("دايرة|Circle|עיגול")], ["arch", say("قوس|Arch|קשת")], ["rounded", say("مستطيل مدوّر|Rounded|מעוגל")], ["diamond", say("معيّن|Diamond|מעוין")]]}
+            onPick={(shape) => effect("window", { ...p.window!, shape: shape as NonNullable<SceneProps["window"]>["shape"] })} />
+          <Between from={p.window.from} to={p.window.to} busy={busy} onSave={(from, to) => effect("window", { ...p.window!, from, to })} testId="scene-window-range" />
         </> : null}
         <Picks label={say("علامة التقدّم|Progress mark|סימן התקדמות")} value={p.progress ?? "none"} busy={busy}
           options={[["none", say("بلا|None|ללא")], ["bar", say("شريط فوق|Top bar|פס עליון")], ["line", say("خط عالجنب|Side line|קו בצד")], ["dots", say("نقاط الفصول|Chapter dots|נקודות פרקים")]]}

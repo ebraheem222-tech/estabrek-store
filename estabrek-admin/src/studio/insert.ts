@@ -17,6 +17,7 @@ import { makeReferenceSection, type ReferenceKind } from "./referenceSections";
 import { makeLiveSection, type LiveKind } from "./liveSections";
 import { readyScrollStory, readyScrollVideo, readyScrollZoom } from "./scrollScene";
 import { readyCover } from "./coverPin";
+import { readyCounters, readyOrbit, readyPaint, readyPortal } from "./scrollTricks";
 import type { Extra, TreeIndex } from "./treeIndex";
 
 export type Where = "before" | "after" | "inside";
@@ -129,11 +130,11 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /* ------------------------------------------------------------- ready blocks */
 
 /** Ready-made blocks: a few elements already put together. */
-export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer", "ready-scroll-video", "ready-scroll-story", "ready-scroll-zoom", "ready-cover"] as const;
+export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer", "ready-scroll-video", "ready-scroll-story", "ready-scroll-zoom", "ready-cover", "ready-orbit", "ready-counters", "ready-portal", "ready-paint"] as const;
 export type ReadyKind = (typeof READY)[number];
 export type AddKind = NewKind | ReadyKind | ReferenceKind | LiveKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
-export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image", scrollScene: "video", "ready-scroll-video": "video", "ready-scroll-story": "image", "ready-scroll-zoom": "image", "ready-cover": "image" };
+export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image", scrollScene: "video", "ready-scroll-video": "video", "ready-scroll-story": "image", "ready-scroll-zoom": "image", "ready-cover": "image", "ready-portal": "image" };
 
 /** A new element, ready block or empty section, in the language being edited. */
 export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): PageTreeNode {
@@ -193,6 +194,14 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
       return readyScrollZoom(lang, ids, src);
     case "ready-cover":
       return readyCover(lang, ids, src);
+    case "ready-orbit":
+      return readyOrbit(lang, ids);
+    case "ready-counters":
+      return readyCounters(lang, ids);
+    case "ready-portal":
+      return readyPortal(lang, ids, src);
+    case "ready-paint":
+      return readyPaint(lang, ids);
     case "ready-header":
       return newHeader(lang, ids);
     case "ready-footer":
