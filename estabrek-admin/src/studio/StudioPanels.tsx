@@ -102,6 +102,8 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           {toggle("rose3dEnabled", tr("مشهد القماش", "The fabric scene"))}
           {toggle("roseSeasonsEnabled", tr("المواسم", "Seasons"))}
           {toggle("roseStoriesEnabled", tr("قصص الكولكشن", "Collection stories"))}
+          {/* The collections section as a scroll story, one collection at a time with a 3D model (off: the grid). */}
+          {toggle("roseCollectionsStoryEnabled", tr("المجموعات بقصة 3D", "Collections as a 3D story"))}
           {toggle("roseInstagramEnabled", tr("إنستغرام", "Instagram"))}
           <Field
             label={tr("سطور الفيلم (سطر لكل لفّة)", "Film lines (one per turn)")}

@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, type FocusEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
 import type { ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
@@ -26,6 +26,8 @@ import {
 } from "@/lib/themePreview";
 import { useNames } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
+import { RoseCollectionsScroll } from "./RoseCollectionsScroll";
+import { sectionMotionOn } from "@/lib/motionSettings";
 import { sceneField, sceneWord } from "./sceneWords";
 import { isRtl } from "@/lib/i18n";
 
@@ -477,11 +479,14 @@ export function RoseCollections({
   title,
   subtitle,
   anchor = "collections",
+  story: storyAllowed = true,
 }: {
   items: RoseCollection[];
   title?: string;
   subtitle?: string;
   anchor?: string;
+  /** The scroll story with a 3D model each (Admin → the opening → «المجموعات بقصة 3D», on by default). */
+  story?: boolean;
 }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
@@ -514,9 +519,18 @@ export function RoseCollections({
 );
   };
   useEffect(() => () => window.clearTimeout(intent.current), []);
+  // On the store (not in the editor's frame, and with motion), the collections are a scroll story with a
+  // 3D model each (RoseCollectionsScroll); the grid stays for the editor and for less motion.
+  const [story, setStory] = useState(false);
+  useEffect(() => {
+    const framed = window.self !== window.top || /(^|\/)studio-frame$/.test(window.location.pathname);
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setStory(storyAllowed && !framed && !still && items.length >= 2 && sectionMotionOn("collections"));
+  }, [items.length, storyAllowed]);
   const leaveFocus = (event: FocusEvent<HTMLDivElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) restore();
   };
+  if (story) return <RoseCollectionsScroll items={items} title={title} subtitle={subtitle} anchor={anchor} />;
   return (
     <section id={anchor} className="atelier-collections atelier-section">
       <div className="atelier-section-heading" data-reveal>

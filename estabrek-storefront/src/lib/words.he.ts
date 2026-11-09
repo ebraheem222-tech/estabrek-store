@@ -794,4 +794,13 @@ export const HE: Record<string, string> = {
   "Place order": "שליחת הזמנה",
   "Opening the page…": "הדף נפתח…",
   "Pieces from the shop: drag to turn them": "פריטים מהחנות: גררי כדי לסובב",
+  "Soft warmth for cold days, in deeper colours.": "חום רך לימים קרים, בצבעים עמוקים יותר.",
+  "Light fabrics that breathe, in fresh colours.": "בדים קלים שנושמים, בצבעים רעננים.",
+  "Scents that fill the home, with an Arabic touch.": "ניחוחות שממלאים את הבית, בנגיעה ערבית.",
+  "Small details that finish your look.": "פרטים קטנים שמשלימים את המראה שלך.",
+  "Comfy, lovely pieces for the little ones.": "פריטים נוחים ומתוקים לקטנים.",
+  "Quiet moments, soft pieces.": "רגעים שקטים, פריטים רכים.",
+  "Folds that flow with you all day.": "קפלים שזורמים איתך כל היום.",
+  "Modest cuts for every occasion.": "גזרות צנועות לכל אירוע.",
+  "Pieces chosen for you, with love.": "פריטים שנבחרו בשבילך, באהבה.",
 };

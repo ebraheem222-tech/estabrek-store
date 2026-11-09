@@ -210,6 +210,7 @@ export function RoseCmsHome({
             title={d.title}
             subtitle={d.subtitle}
             items={d.items || []}
+            story={(hero?.data as any)?.roseCollectionsStoryEnabled !== false}
             anchor={
               sorted.find(
                 (s) =>

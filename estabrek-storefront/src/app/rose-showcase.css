@@ -14,6 +14,9 @@
  * 8. The waves: the page flows into the footer (the home too), the openings and the product end on a wave.
  * 9. Smooth scrolling's base rules (SmoothScroll).
  * 10. The home's silk film with the 3D ring of the newest pieces around it.
+ * 11. The home's collections as a scroll story: one big collection at a time with its 3D model (RoseCollectionsScroll).
+ * 12. The product's backdrop in the piece's own colour, as blurred light.
+ * 13. Phones: the film's ring keeps off its words.
  */
 
 /* ---------------------------------------------------------------- 1. the page loader */
@@ -596,4 +599,107 @@ html.lenis, html.lenis body { height: auto; }
 @media (max-width: 760px) {
   .cinematic-shell .rose-video-orbiting .rose-video-stage > .rose-video-copy { grid-column: 1; grid-row: 2; }
   .cinematic-shell .rose-video-orbit .rose-ring { --ring-r: 160px; --ring-w: 62px; top: 82%; }
+}
+
+/* ---------------------------------------------------------------- 11. the home's collections, a scroll story */
+
+.cinematic-shell .rose-collections-scroll {
+  position: relative; height: calc(var(--cs-n, 4) * 80svh + 40svh);
+  background: linear-gradient(180deg, var(--selection-page, #fbeef4), var(--selection-soft, #f7dce8));
+  color: var(--selection-ink, #4d2039); transition: background-color .8s ease;
+}
+.cinematic-shell .rose-cs-stage {
+  position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate;
+  display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center;
+  padding: 120px 7% 48px;
+}
+/* A soft glow of the collection's colour where its model turns. */
+.cinematic-shell .rose-cs-glow {
+  position: absolute; z-index: 0; top: 52%; inset-inline-end: 4%; width: min(58vw, 760px); aspect-ratio: 1; translate: 0 -50%;
+  border-radius: 50%; filter: blur(24px);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--selection-accent, #a43b64) 34%, transparent), color-mix(in srgb, var(--selection-seed, #d99fb6) 16%, transparent) 55%, transparent);
+  transition: background .8s ease;
+}
+.cinematic-shell .rose-cs-head { position: absolute; z-index: 2; top: 96px; inset-inline-start: 7%; max-width: 420px; }
+.cinematic-shell .rose-cs-head h2 { font-family: var(--atelier-serif); font-size: clamp(24px, 2.4vw, 34px); line-height: 1.4; margin: 6px 0 0; }
+.cinematic-shell .rose-cs-head p { font-size: 13px; color: var(--selection-muted, #703c58); margin-top: 6px; white-space: pre-line; }
+.cinematic-shell .rose-cs-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.cinematic-shell .rose-cs-canvas canvas { width: 100% !important; height: 100% !important; }
+
+/* The collection in view: its count, its arched photo, its name rising, a line and its link. */
+.cinematic-shell .rose-cs-copy { position: relative; z-index: 2; grid-column: 1; display: grid; justify-items: start; gap: 16px; max-width: 480px; margin-top: 70px; }
+.cinematic-shell .rose-cs-count { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .2em; color: var(--selection-muted, #703c58); }
+.cinematic-shell .rose-cs-count i { display: block; width: 46px; height: 1px; background: currentColor; }
+.cinematic-shell .rose-cs-photo {
+  position: relative; display: block; width: clamp(150px, 15vw, 210px); aspect-ratio: 4 / 5; overflow: hidden;
+  border-radius: 999px 999px 18px 18px; border: 5px solid #fff;
+  box-shadow: 0 30px 60px -30px color-mix(in srgb, var(--selection-ink, #4d2039) 70%, transparent);
+}
+.cinematic-shell .rose-cs-photo img { object-fit: cover; }
+.cinematic-shell .rose-cs-name { font-family: var(--atelier-serif); font-size: clamp(42px, 5.4vw, 82px); line-height: 1.25; font-weight: 500; margin: 0; }
+.cinematic-shell .rose-cs-name > span { display: inline-block; }
+.cinematic-shell .rose-cs-line { font-size: 15px; line-height: 1.9; color: var(--selection-muted, #703c58); max-width: 380px; margin: 0; }
+.cinematic-shell .rose-cs-cta { margin-top: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .cinematic-shell .rose-cs-count, .cinematic-shell .rose-cs-line, .cinematic-shell .rose-cs-cta { animation: rose-arrive .8s cubic-bezier(.2, .8, .2, 1) both; }
+  .cinematic-shell .rose-cs-line { animation-delay: .25s; }
+  .cinematic-shell .rose-cs-cta { animation-delay: .35s; }
+  .cinematic-shell .rose-cs-photo { animation: rose-cs-photo .9s cubic-bezier(.3, 1.4, .5, 1) both; }
+  .cinematic-shell .rose-cs-name > span { animation: rose-rise .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 90ms + 80ms); }
+}
+@keyframes rose-cs-photo { from { opacity: 0; scale: .7; rotate: -6deg; } }
+
+/* The collections, as a column of dots on the far side: the one in view is a longer bar. */
+.cinematic-shell .rose-cs-dots { position: absolute; z-index: 3; inset-inline-end: 3%; top: 50%; translate: 0 -50%; display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.cinematic-shell .rose-cs-dots a { display: block; width: 8px; height: 8px; border-radius: 8px; background: color-mix(in srgb, var(--selection-ink, #4d2039) 25%, transparent); transition: height .4s ease, background-color .4s ease; }
+.cinematic-shell .rose-cs-dots li[aria-current] a { height: 30px; background: var(--selection-accent, #a43b64); }
+
+/* On a phone the model turns in the upper half, the collection's words below it. */
+@media (max-width: 899px) {
+  .cinematic-shell .rose-collections-scroll { height: calc(var(--cs-n, 4) * 75svh + 30svh); }
+  .cinematic-shell .rose-cs-stage { grid-template-columns: 1fr; align-items: end; padding: 84px 6% 34px; }
+  .cinematic-shell .rose-cs-head { top: 76px; inset-inline-start: 6%; }
+  .cinematic-shell .rose-cs-head p { display: none; }
+  .cinematic-shell .rose-cs-glow { width: 120vw; top: 34%; inset-inline-end: -10%; }
+  .cinematic-shell .rose-cs-copy {
+    grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 8px; align-items: center; margin: 0; max-width: none;
+    padding: 16px; border-radius: 24px; background: color-mix(in srgb, #fff 72%, transparent); backdrop-filter: blur(10px);
+  }
+  .cinematic-shell .rose-cs-count { grid-column: 1 / -1; }
+  .cinematic-shell .rose-cs-photo { grid-row: span 2; width: 92px; border-width: 3px; }
+  .cinematic-shell .rose-cs-name { font-size: 30px; }
+  .cinematic-shell .rose-cs-line { font-size: 13px; }
+  .cinematic-shell .rose-cs-cta { grid-column: 1 / -1; justify-self: stretch; justify-content: center; }
+  .cinematic-shell .rose-cs-dots { top: 30%; }
+}
+
+/* ---------------------------------------------------------------- 12. the product's backdrop takes the piece's colour */
+
+/* Not the category's colour any more: the colour of the piece (the one picked), as soft blurred light, gliding
+   to the next one when another colour is picked. The drawings stay the category's. It sits inside the product
+   area (.rose-pdp-grid), so it keeps the piece's colour also where the store keeps colours to the product. */
+.cinematic-interior-shell .rose-pdp-grid { position: relative; isolation: isolate; }
+.cinematic-interior-shell .rose-pdp-grid > .rose-pdp-backdrop {
+  top: -26px; height: min(780px, calc(100% + 40px)); inset-inline: -3%;
+  color: var(--selection-accent, currentColor);
+  background:
+    radial-gradient(55% 60% at 74% 36%, color-mix(in srgb, var(--selection-seed, var(--mood)) 44%, transparent), transparent 72%),
+    radial-gradient(50% 55% at 18% 72%, color-mix(in srgb, var(--selection-seed, var(--mood)) 24%, transparent), transparent 70%),
+    linear-gradient(165deg, var(--selection-soft, var(--mood)), color-mix(in srgb, var(--selection-soft, var(--mood)) 35%, transparent) 70%, transparent);
+  background-size: 120% 120%, 120% 120%, 100% 100%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selection-seed, var(--mood)) 14%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cinematic-interior-shell .rose-pdp-grid > .rose-pdp-backdrop { animation: rose-breathe-light 12s ease-in-out infinite alternate; }
+}
+@keyframes rose-breathe-light { to { background-position: 30% 20%, 70% 80%, 0 0; } }
+@media (max-width: 900px) {
+  .cinematic-interior-shell .rose-pdp-grid > .rose-pdp-backdrop { top: -14px; height: 560px; }
+}
+
+/* ---------------------------------------------------------------- 13. phones: the film's ring keeps off its words */
+
+@media (max-width: 760px) {
+  .cinematic-shell .rose-video-orbiting .rose-video-stage > .rose-video-media { margin-bottom: 34px; }
+  .cinematic-shell .rose-video-orbit .rose-ring { --ring-r: 150px; --ring-w: 54px; top: 74%; }
 }
