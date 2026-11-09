@@ -60,6 +60,8 @@ import { pageMotionOps, type MotionProfile } from "./motionProfiles";
 import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
+import { CoverPanel } from "./CoverPanel";
+import { canCover } from "./coverPin";
 import { ScenePanel } from "./ScenePanel";
 import { ScrollEffectsPanel } from "./ScrollEffectsPanel";
 import { CuePanel, ScrollScenePanel } from "./ScrollScenePanel";
@@ -2325,6 +2327,7 @@ function StudioDocument() {
               <CellPanel node={selFree} cols={nodeOf(selNode?.parentId) ?? null} busy={busy} onOps={(l, ops) => void change(l, ops, ops.some((o) => o.op === "remove" && o.nodeId === selected) ? selNode?.parentId ?? null : undefined)} />
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <CoverPanel node={selFree} isLast={pageKids[pageKids.length - 1]?.id === selFree.id} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <EdgesPanel key={`edges:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} />
             {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}

@@ -375,7 +375,9 @@ export function treeNeeds(tree: PageTree) {
     if (n.type === "scrollScene") scenes = true;
     if (Array.isArray(n.props?.triggers) && n.props.triggers.length) triggers = true;
   });
-  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers };
+  // Sections held until the next one covers them (TreeCovers).
+  const covers = (tree.root.children ?? []).some((n) => n.type === "section" && n.props?.cover && typeof n.props.cover === "object");
+  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers };
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

@@ -46,7 +46,7 @@ import { nodeEdges, withDecoration } from "./NodeDecorations";
 import { CommerceCartPart } from "./CommerceCart";
 import { CommerceShop, type CommerceShopData } from "./CommerceShop";
 import { CardDesignScope } from "@/components/VisualControlsProvider";
-import { layersOf, scrollSceneOf, triggersOf } from "./pieces";
+import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -143,14 +143,20 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const dots = particlesOf(p.particles);
       const scene = sceneOf(p.scene);
       const tint = dots?.color ? color(dots.color) : undefined;
-      return (
-        <Tag className={`${cls(node)}${edges.length || dots || scene ? " pt-has-edges" : ""}`} id={anchor} {...mark}>
+      // Held on the screen, then covered by the next section (TreeCovers measures it): the room under it
+      // is the scroll it's held for, and what the next one slides over.
+      const cover = coverOf(p.cover);
+      const coverClass = cover ? ` pt-cover pt-cover-${cover.under}${cover.phone ? "" : " pt-cover-desk"}` : "";
+      const held = (
+        <Tag className={`${cls(node)}${edges.length || dots || scene ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})}>
           {scene ? <SceneView spec={scene} primary={color(scene.color ?? "accent")!} secondary={color(scene.secondary ?? "text")!} /> : null}
           {dots ? <div className="pt-particles" data-pt-particles={JSON.stringify({ kind: dots.kind, amount: dots.amount, speed: dots.speed })} style={tint ? { color: tint } : undefined} aria-hidden="true" /> : null}
           {edges}
           {p.contained ? <div className="pt-inner">{kids()}</div> : kids()}
+          {cover && ["dim", "blur", "fade"].includes(cover.under) ? <span className="pt-cover-shade" aria-hidden="true" /> : null}
         </Tag>
       );
+      return cover ? <>{held}<div className="pt-cover-room" aria-hidden="true" style={{ "--pt-cv-hold": String(cover.hold) } as CSSProperties} /></> : held;
     }
     case "popup": {
       // Over the page when its moment comes (PopupView); its content like a section's.

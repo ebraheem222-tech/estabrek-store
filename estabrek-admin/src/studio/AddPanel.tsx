@@ -37,6 +37,7 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["ready-scroll-video", () => say("فيديو بيمشي مع السكرول وفصول|Video that plays with the scroll, in chapters|וידאו שזז עם הגלילה, בפרקים"), "⏯"],
       ["ready-scroll-story", () => say("صورة ثابتة والبطاقات بتمر فوقها|Held picture with cards scrolling over|תמונה קבועה וכרטיסים שגוללים מעליה"), "▤"],
       ["ready-scroll-zoom", () => say("صورة بتقرّب وتغمق مع السكرول|Picture that zooms and darkens with the scroll|תמונה שמתקרבת ומתכהה בגלילה"), "⊕"],
+      ["ready-cover", () => say("صورة بتثبت واللي بعدها بيغطيها|Picture that stays, then the next section covers it|תמונה שנשארת, והמקטע הבא מכסה אותה"), "⧉"],
     ],
   },
   {

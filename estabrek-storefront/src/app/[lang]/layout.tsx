@@ -176,6 +176,7 @@ export default async function RootLayout({
       data-theme={defaultTheme}
       data-store-theme={storeTheme?.theme.id}
       data-store-kit={kit ? "" : undefined}
+      data-store-design={ownedDesign ? "cms" : undefined}
       className={defaultTheme}
       suppressHydrationWarning
     >

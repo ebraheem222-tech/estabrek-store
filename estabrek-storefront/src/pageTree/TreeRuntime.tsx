@@ -1,12 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { TreeMotion } from "./TreeMotion";
 import { TreeMedia } from "./TreeMedia";
 
+// Scroll scenes, triggers and held sections, each loaded only once a page has one.
+const TreeScenes = dynamic(() => import("./TreeScenes").then((m) => m.TreeScenes), { ssr: false });
+const TreeTriggers = dynamic(() => import("./TreeTriggers").then((m) => m.TreeTriggers), { ssr: false });
+const TreeCovers = dynamic(() => import("./TreeCovers").then((m) => m.TreeCovers), { ssr: false });
+const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers]", covers: "[data-pt-cover]" } as const;
+type Needs = Record<keyof typeof NEEDS, boolean>;
+const needsOf = (): Needs => ({ scenes: Boolean(document.querySelector(NEEDS.scenes)), triggers: Boolean(document.querySelector(NEEDS.triggers)), covers: Boolean(document.querySelector(NEEDS.covers)) });
+
 /** One runtime for all customer documents, including pages arriving after a loading boundary. */
 export function TreeRuntime() {
   const [revision, setRevision] = useState(0);
+  const [needs, setNeeds] = useState<Needs>({ scenes: false, triggers: false, covers: false });
   useEffect(() => {
     let frame = 0;
     const containsTree = (node: Node) => node instanceof Element && (node.matches("[data-page-tree-root]") || Boolean(node.querySelector("[data-page-tree-root]")));
@@ -20,5 +30,23 @@ export function TreeRuntime() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, []);
-  return <><TreeMotion revision={revision} /><TreeMedia revision={revision} /></>;
+  useEffect(() => {
+    const look = () => {
+      const found = needsOf();
+      setNeeds((was) => (was.scenes === found.scenes && was.triggers === found.triggers && was.covers === found.covers ? was : found));
+    };
+    look();
+    // The editor's preview: a scene, trigger or held section added in place.
+    window.addEventListener("studio-view-updated", look);
+    return () => window.removeEventListener("studio-view-updated", look);
+  }, [revision]);
+  return (
+    <>
+      <TreeMotion revision={revision} />
+      <TreeMedia revision={revision} />
+      {needs.scenes ? <TreeScenes revision={revision} /> : null}
+      {needs.triggers ? <TreeTriggers revision={revision} /> : null}
+      {needs.covers ? <TreeCovers revision={revision} /> : null}
+    </>
+  );
 }
