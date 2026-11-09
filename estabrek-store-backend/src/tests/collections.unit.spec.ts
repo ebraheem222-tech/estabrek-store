@@ -54,6 +54,9 @@ describe("collections", () => {
     // A field of the wrong kind, or an empty one, leaves the element's own.
     const odd = bindTree(page({ id: "x", type: "heading", props: { text: { en: "Own" }, bind: { text: "cover" } } }) as never, items[0], blog) as any;
     expect(odd.root.children[0].children[0].props.text).toEqual({ en: "Own" });
+    // A fitting field the item left empty shows no words, never the design's sample.
+    const empty = bindTree(page({ id: "e", type: "text", props: { text: { en: "Summary" }, bind: { text: "excerpt" } } }) as never, items[1], blog) as any;
+    expect(empty.root.children[0].children[0].props.text).toEqual({});
     // Dates and numbers come in each language.
     const d = bindTree(page({ id: "d", type: "text", props: { text: { en: "" }, bind: { text: "date" } } }) as never, items[0], blog) as any;
     expect(d.root.children[0].children[0].props.text.en).toBe("1 March 2026");

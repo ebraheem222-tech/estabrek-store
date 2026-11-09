@@ -29,6 +29,9 @@ test.describe("store page designs as data", () => {
     expect(l.props.categoryId).toBe("dresses");
     // A value of the wrong kind leaves the element's own.
     expect(x.props.text).toEqual({ en: "Own" });
+    // A product without a description: no words, never the design's sample sentence.
+    const noText = bindStore(design("product", [{ id: "d", type: "text", props: { text: { en: "The product's description" }, bind: { text: "description" } } }]).tree as any, productValues(product), "en") as any;
+    expect(noText.root.children[0].children[0].props.text).toEqual({});
     const cat = bindStore(design("category", [{ id: "h", type: "heading", props: { text: { en: "x" }, bind: { text: "title" } } }]).tree as any, categoryValues({ id: "d", slug: "dresses", name: "فساتين" }), "ar") as any;
     expect(cat.root.children[0].children[0].props.text).toEqual({ ar: "فساتين" });
   });

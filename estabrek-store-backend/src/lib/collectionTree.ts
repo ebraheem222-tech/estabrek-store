@@ -57,6 +57,10 @@ export function boundValue(prop: string, ref: string, item: ItemLite, collection
   }
 }
 
+const WORDS_PROPS = new Set(["text", "label", "alt"]);
+/** Whether a field of the collection fits an element prop (its kind is one the prop takes). */
+const fits = (prop: string, ref: string, collection: CollectionLite) => { const f = collection.fields.find((x) => x.id === ref); return Boolean(f && (PROP_FIELDS[prop] ?? []).includes(f.type)); };
+
 /** One element (and what it holds) with its connected props filled from the item; `bind` itself goes. */
 export function bindNode(node: Node, item: ItemLite | null, collection: CollectionLite | null): Node {
   const bind = node.props?.bind as Record<string, string> | undefined;
@@ -68,6 +72,8 @@ export function bindNode(node: Node, item: ItemLite | null, collection: Collecti
       if (!(BINDABLE[node.type] ?? []).includes(prop) || !BIND_REF.test(ref)) continue;
       const v = boundValue(prop, ref, item, collection);
       if (v !== undefined) props = { ...props, [prop]: v };
+      // A fitting field this item left empty: no words (the design's sample words never show as its own).
+      else if (WORDS_PROPS.has(prop) && fits(prop, ref, collection)) props = { ...props, [prop]: {} };
     }
   }
   const children = node.children?.map((c) => (c.type === "collectionList" ? c : bindNode(c, item, collection)));

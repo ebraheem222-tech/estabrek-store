@@ -58,7 +58,9 @@ export function bindStore(tree: PageTree, v: StoreValues, lang: Lang): PageTree 
         const kind = PROP_KIND[prop];
         if (ref === "$url") { if (kind === "href") props = { ...props, href: v.url }; continue; }
         const value = v.values[ref];
-        if (!value || v.kinds[ref] !== kind) continue;
+        if (v.kinds[ref] !== kind) continue;
+        // A value this product or category doesn't have: no words (the design's sample never shows as its own).
+        if (!value) { if (kind === "words") props = { ...props, [prop]: {} }; continue; }
         props = { ...props, [prop]: kind === "words" ? { [lang]: value } : value };
       }
     }
