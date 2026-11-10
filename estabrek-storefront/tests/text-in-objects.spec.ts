@@ -43,6 +43,18 @@ test("a word on a card of a held ring is written in place, even when the page me
   await word.evaluate(() => window.dispatchEvent(new Event("resize")));
   await page.waitForTimeout(700);
   await expect(word).toHaveAttribute("contenteditable", "true");
+  // Typing starts once the page has measured again and the word has its focus back, steadily (a fixed wait was
+  // too short on CI's slower machine: the first letters went in while the held box was out and were lost).
+  await expect.poll(() => word.evaluate((el) => new Promise<boolean>((resolve) => {
+    let steady = 0;
+    const tick = () => {
+      const doc = el.ownerDocument;
+      if (!(doc.activeElement === el || el.contains(doc.activeElement)) || el.getAttribute("contenteditable") !== "true") return resolve(false);
+      if (++steady >= 4) return resolve(true);
+      window.setTimeout(tick, 120);
+    };
+    tick();
+  })), { timeout: 15000 }).toBe(true);
   await page.keyboard.press("Control+A");
   await page.keyboard.type("Gentle");
   await page.keyboard.press("Enter");
