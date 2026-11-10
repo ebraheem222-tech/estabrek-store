@@ -56,6 +56,24 @@ test.describe.serial("the home's showpieces", () => {
     expect(drawn).toBeGreaterThan(10);
   });
 
+  test("the particles wear a colour per chapter from the theme's, and the page (the header too) follows it", async ({ page }) => {
+    await page.goto("/");
+    const seed = () => page.locator(".atelier-header").evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed").trim());
+    expect(await seed()).toBe("");
+    await scrollThrough(page, ".rose-particles", 0.04);
+    await expect.poll(seed).toMatch(/^#[0-9a-f]{6}$/i);
+    await page.waitForTimeout(1500); // the glide settles
+    const logo = await seed();
+    await scrollThrough(page, ".rose-particles", 0.97);
+    await expect(page.locator(".rose-particles-words h2")).toHaveText("وبكبسة بتوصلك.");
+    await expect.poll(seed).not.toBe(logo);
+    // The section's background is drawn from the colour it wears.
+    const bg = await page.locator(".rose-particles-stage").evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(bg).toContain("radial-gradient");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(seed, { timeout: 8000 }).toBe("");
+  });
+
   test("the rooms: one piece lit at a time, the next one comes in as you scroll", async ({ page }) => {
     await page.goto("/");
     const rooms = page.locator(".rose-rooms .rose-room");
@@ -193,6 +211,12 @@ test.describe.serial("the home's showpieces", () => {
     await expect(pill.locator("strong")).toHaveText("البداية");
     await pill.click();
     await expect(pill.locator("strong")).not.toHaveText("البداية");
+    // While the "you viewed" note shows at the bottom, the pill steps aside.
+    await page.evaluate(() => { const note = document.querySelector(".rose-recent") ?? Object.assign(document.body.appendChild(document.createElement("div")), { className: "rose-recent" }); note.setAttribute("aria-hidden", "false"); });
+    await expect(pill).toHaveAttribute("data-yield", "");
+    await expect.poll(() => pill.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeLessThan(0.05);
+    await page.evaluate(() => document.querySelector(".rose-recent")?.setAttribute("aria-hidden", "true"));
+    await expect(pill).not.toHaveAttribute("data-yield", /.*/);
   });
 });
 
