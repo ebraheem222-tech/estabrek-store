@@ -4112,7 +4112,13 @@ html[data-theme-crossfade]::view-transition-new(root) {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center;
   gap: clamp(28px, 5vw, 84px); padding: 104px 6% 44px;
 }
-.rose-film[data-motion="false"] .rose-film-sticky { position: relative; height: auto; min-height: min(100svh, 820px); }
+/* Until the scroll takes the film over (and if it never does) the opening keeps the very size it has with
+   motion, so nothing jumps when it starts: switching from a shorter "still" layout moved the whole first screen
+   about 7 s in on a mid-range phone (layout shift 0.21). Only for less motion is it the compact layout. */
+.rose-film[data-motion="false"] .rose-film-sticky { position: relative; }
+@media (prefers-reduced-motion: reduce) {
+  .rose-film[data-motion="false"] .rose-film-sticky { height: auto; min-height: min(100svh, 820px); }
+}
 .film-copy { position: relative; z-index: 3; display: grid; align-content: center; max-width: 580px; }
 .film-lines {
   display: grid; margin: 24px 0 18px; min-height: 2.9em; align-items: end;
@@ -4211,7 +4217,9 @@ html[data-theme-crossfade]::view-transition-new(root) {
   /* Beside the words, clear of the scarf (spot measured in mascot/phoneSpot.ts). */
   .rose-film .hero-mascot { left: var(--mascot-side, 2px); bottom: var(--mascot-bottom, -10px); height: var(--mascot-h, 98px); }
   [dir="ltr"] .rose-film .hero-mascot { left: auto; right: var(--mascot-side, 2px); }
-  .rose-film[data-motion="false"] .rose-film-sticky { grid-template-rows: 52svh auto; }
+  @media (prefers-reduced-motion: reduce) {
+    .rose-film[data-motion="false"] .rose-film-sticky { grid-template-rows: 52svh auto; }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .film-word { transition: none; }
