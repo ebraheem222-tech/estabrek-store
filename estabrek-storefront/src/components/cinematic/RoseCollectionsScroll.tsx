@@ -99,8 +99,11 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
     let shown = -1;
     const render = (progress: number) => {
       // Where the scroll is among the collections (0 … n-1), and how much of each one shows.
-      const at = progress * n - 0.5;
-      const per = chapters.map((_, i) => 1 - smooth(0.25, 0.75, Math.abs(at - i)));
+      // (Held at the ends: the first model is there as the section opens, the last stays to its end.)
+      const at = Math.min(n - 1, Math.max(0, progress * n - 0.5));
+      // One model at a time: the one in view leaves fully before the next one rises (crossed, two models
+      // stood on the same spot at a hand-over and looked like a glitch).
+      const per = chapters.map((_, i) => 1 - smooth(0.3, 0.5, Math.abs(at - i)));
       weights.current = keys.map((k) => Math.max(0, ...chapters.map((c, i) => (c.key === k ? per[i] : 0))));
       const leadNow = Math.max(0, Math.min(n - 1, Math.round(at)));
       tint.current = chapters[leadNow].seed;

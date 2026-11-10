@@ -270,6 +270,8 @@ export function RoseCmsHome({
     .filter((p): p is ProductMini & { slug: string; imageUrl: string } => Boolean(p.slug && p.imageUrl) && !seen.has(p.slug!) && Boolean(seen.add(p.slug!)))
     .slice(0, 10)
     .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 260, h: 325, c: "fill", g: "auto" }) }));
-  // Each section holds and the next slides over it (Admin → the opening → «الأقسام فوق بعض», on by default).
-  return <RingPiecesProvider pieces={ring}><RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled !== false} /></RoseHomeFrame></RingPiecesProvider>;
+  // Each section holds and the next slides over it: only when switched on (Admin → the opening → «الأقسام فوق بعض»).
+  // Off by default: on this home most sections are scroll scenes of their own, and held under each other they
+  // clashed (one scene's parts over the next, a half-painted background).
+  return <RingPiecesProvider pieces={ring}><RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} /></RoseHomeFrame></RingPiecesProvider>;
 }

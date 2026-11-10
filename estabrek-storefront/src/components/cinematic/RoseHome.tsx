@@ -107,7 +107,7 @@ export function RoseHome({
       {stories.length > 0 && <RoseCollectionStory chapters={stories} />}
       <RoseInstagram images={entries.map((p) => p.imageUrl).filter((u): u is string => Boolean(u))} />
       <RoseCta data={{}} />
-      <RoseHomeStack />
+      <RoseHomeStack enabled={false} />
     </RoseHomeFrame>
     </RingPiecesProvider>
   );

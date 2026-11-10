@@ -105,7 +105,7 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           {/* The collections section as a scroll story, one collection at a time with a 3D model (off: the grid). */}
           {toggle("roseCollectionsStoryEnabled", tr("المجموعات بقصة 3D", "Collections as a 3D story"))}
           {/* Each section holds and the next one slides up over it (off: plain scrolling). */}
-          {toggle("roseStackEnabled", tr("الأقسام فوق بعض مع السكرول", "Sections stack as you scroll"))}
+          {toggle("roseStackEnabled", tr("الأقسام فوق بعض مع السكرول", "Sections stack as you scroll"), false)}
           {toggle("roseInstagramEnabled", tr("إنستغرام", "Instagram"))}
           <Field
             label={tr("سطور الفيلم (سطر لكل لفّة)", "Film lines (one per turn)")}
