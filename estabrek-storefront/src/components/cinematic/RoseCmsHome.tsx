@@ -118,7 +118,8 @@ export function RoseCmsHome({
   const heroData = (hero?.data ?? {}) as Record<string, unknown>;
   const particlesOn = heroData.roseParticlesEnabled !== false;
   const worldOn = heroData.roseWorldEnabled !== false;
-  const roomsOn = heroData.roseRoomsEnabled !== false;
+  // The rooms only when the owner turns them on (the opening's settings): off by default since 2026-11-10.
+  const roomsOn = heroData.roseRoomsEnabled === true;
   const roomPieces: RoomPiece[] = (() => {
     const firstIds: string[] = ((firstProducts?.data as any)?.productIds || (firstProducts?.data as any)?.products || []) as string[];
     const pool = [...firstIds.map((id) => productLookup[id]).filter(Boolean), ...Object.values(productLookup)];
