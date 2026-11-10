@@ -76,8 +76,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: estabrek-admin/package-lock.json
+          cache-dependency-path: |
+            estabrek-admin/package-lock.json
+            estabrek-storefront/package-lock.json
       - run: npm ci
+      - name: Install the shop (some admin tests use its packages, e.g. gsap's SplitText)
+        run: npm ci --prefix ../estabrek-storefront --ignore-scripts
       - name: Typecheck
         run: npx tsc --noEmit -p .
       - name: Tests
