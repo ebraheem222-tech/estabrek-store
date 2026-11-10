@@ -244,3 +244,52 @@ test("adding a piece opens the small bag on the page: the piece marked, its tota
   await expect(page).toHaveURL(/\/cart$/, { timeout: 60000 });
   await expect(bag).not.toHaveAttribute("data-open", "true");
 });
+
+test("a colour picked on a card washes the card in it; the small bag is frosted glass in it", async ({ page }) => {
+  await page.goto("/shop");
+  const card = page.locator(".rose-product-tile").first();
+  await card.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await expect(card).not.toHaveAttribute("data-tinted", /.+/);
+  await card.getByRole("button", { name: "Berry", exact: true }).click();
+  await expect(card).toHaveAttribute("data-tinted", "true");
+  expect(await card.evaluate((el) => el.style.getPropertyValue("--card-tint"))).toBe("#6b2446");
+  await expect.poll(() => card.evaluate((el) => getComputedStyle(el, "::before").opacity)).toBe("1");
+  // Added (from the product page: a card's add first asks for the size): the small bag is glass lit by the colour.
+  await page.goto("/p/rose-dress");
+  await page.locator('button.color-swatch[title="Berry"]').first().click();
+  await page.getByRole("button", { name: /أضيفي للحقيبة|Add to bag/ }).first().click();
+  const panel = page.locator(".rose-minibag-panel");
+  await expect(page.locator(".rose-minibag")).toHaveAttribute("data-open", "true");
+  expect(await panel.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain("blur");
+});
+
+test.describe("the home's sections as a stack", () => {
+  const stack = async (page: import("@playwright/test").Page, on: boolean) => {
+    await page.request.get(`http://127.0.0.1:4100/__test/home-stack?on=${on ? 1 : 0}`);
+    await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
+  };
+  test.afterEach(async ({ page }) => stack(page, false));
+
+  test("each section holds and the next one slides up over it", async ({ page }) => {
+    await stack(page, true);
+    await page.goto("/");
+    const frame = page.locator(".rose-page-frame.rose-home");
+    await expect(frame).toHaveAttribute("data-stack", "true");
+    const boxes = frame.locator(":scope > .rose-stack-box");
+    expect(await boxes.count()).toBeGreaterThan(2);
+    expect(await boxes.first().evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
+    // Later sections lie over earlier ones.
+    const z = await boxes.evaluateAll((els) => els.map((el) => Number(getComputedStyle(el).zIndex)));
+    expect(z).toEqual([...z].sort((a, b) => a - b));
+    // Scrolling to where the second section comes over the first: the first is marked as covered.
+    await boxes.nth(1).evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2));
+    await expect(boxes.first()).toHaveAttribute("data-covered", "true");
+  });
+
+  test("switched off in the opening's settings, the sections scroll plainly", async ({ page }) => {
+    await stack(page, false);
+    await page.goto("/");
+    await page.waitForTimeout(600);
+    await expect(page.locator(".rose-page-frame.rose-home")).not.toHaveAttribute("data-stack", /.+/);
+  });
+});

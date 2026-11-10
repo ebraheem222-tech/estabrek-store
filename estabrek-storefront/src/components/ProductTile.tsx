@@ -309,7 +309,9 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
     setAutoIndex(0);
   }, [appearance]);
 
-  if (appearance === "rose") return <article data-cms-part="card" ref={cardRef} className="rose-product-tile" onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+  // The colour picked on this card tints the card itself, as soft blurred light (rose-showcase.css).
+  const tint = appearance === "rose" ? swatches.find((s) => s.key === selectedSwatch)?.hex : undefined;
+  if (appearance === "rose") return <article data-cms-part="card" ref={cardRef} className="rose-product-tile" data-tinted={tint ? "true" : undefined} style={tint ? ({ "--card-tint": tint } as React.CSSProperties) : undefined} onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
     <Link data-cms-part="card-image" className={`rose-product-image${secondary && shownImg === primary ? " has-alt" : ""}`} href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
       {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
       {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-alt" /> : null}

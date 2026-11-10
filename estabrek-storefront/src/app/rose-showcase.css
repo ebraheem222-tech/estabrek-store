@@ -18,6 +18,9 @@
  * 12. The product's backdrop in the piece's own colour, as blurred light.
  * 13. Phones: the film's ring keeps off its words.
  * 14. The small bag: adding a piece opens it at the side (a sheet on a phone) instead of the bag page.
+ * 15. A card in the colour picked on it, as blurred light.
+ * 16. The small bag as frosted glass lit by the colour picked.
+ * 17. The home's stack: each section holds, the next slides up over it (RoseHomeStack).
  */
 
 /* ---------------------------------------------------------------- 1. the page loader */
@@ -777,4 +780,62 @@ html.lenis, html.lenis body { height: auto; }
 @media (prefers-reduced-motion: reduce) {
   .rose-minibag-panel, .rose-minibag-scrim { transition: none; }
   .rose-minibag[data-open] .rose-minibag-lines > li[data-fresh], .rose-minibag[data-open] .rose-minibag-added svg path { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ---------------------------------------------------------------- 15. a card in the colour picked on it */
+
+/* Picking a colour on a card washes the card in it, as soft blurred light behind the photo and the words. */
+.cinematic-interior-shell .rose-product-tile::before {
+  content: ""; position: absolute; inset: -20%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(45% 40% at 50% 28%, color-mix(in srgb, var(--card-tint, transparent) 70%, transparent), transparent 75%),
+    radial-gradient(60% 45% at 50% 92%, color-mix(in srgb, var(--card-tint, transparent) 45%, transparent), transparent 75%);
+  filter: blur(26px); opacity: 0; transition: opacity .6s ease;
+}
+.cinematic-interior-shell .rose-product-tile[data-tinted]::before { opacity: 1; }
+.cinematic-interior-shell .rose-product-tile[data-tinted] {
+  background: color-mix(in srgb, var(--card-tint) 14%, #fff) !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--card-tint) 24%, transparent), 0 26px 50px -30px color-mix(in srgb, var(--card-tint) 75%, transparent) !important;
+}
+.cinematic-interior-shell .rose-product-tile[data-tinted] .rose-product-image::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-tint) 30%, transparent); }
+
+/* ---------------------------------------------------------------- 16. the small bag in the colour picked */
+
+/* Frosted glass lit by the colour picked (the page's own colours before any pick). */
+.rose-minibag-panel {
+  background: color-mix(in srgb, var(--selection-surface, #fff8f4) 80%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(1.35); -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, #fff 60%, transparent);
+  isolation: isolate;
+}
+.rose-minibag-panel::after {
+  content: ""; position: absolute; inset: -30%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(40% 35% at 75% 12%, color-mix(in srgb, var(--selection-seed, #c97794) 55%, transparent), transparent 75%),
+    radial-gradient(45% 40% at 20% 90%, color-mix(in srgb, var(--selection-seed, #c97794) 35%, transparent), transparent 75%);
+  filter: blur(30px);
+}
+.rose-minibag-lines > li { background: color-mix(in srgb, #fff 82%, transparent); }
+.rose-minibag-foot { background: color-mix(in srgb, var(--selection-soft, #f7dce8) 45%, transparent); }
+.rose-minibag-scrim { background: color-mix(in srgb, var(--selection-seed, #4d2039) 18%, color-mix(in srgb, var(--selection-ink, #4d2039) 22%, transparent)); }
+
+/* ---------------------------------------------------------------- 17. the home's stack (RoseHomeStack) */
+
+/* Each section holds once its end is in sight; the next one slides up over it with rounded corners and a soft
+   shadow, while the one underneath dims a little. Opaque, so the one underneath never shows through. */
+.rose-page-frame[data-stack] > .rose-stack-box {
+  position: sticky; top: var(--stack-top, 0px);
+  background: var(--atelier-bg, #fff8f4);
+}
+.rose-page-frame[data-stack] > .rose-stack-box + .rose-stack-box {
+  border-radius: 36px 36px 0 0; overflow: clip;
+  box-shadow: 0 -24px 50px -34px color-mix(in srgb, var(--selection-ink, #4d2039) 55%, transparent);
+}
+.rose-page-frame[data-stack] > .rose-stack-box::after {
+  content: ""; position: absolute; inset: 0; z-index: 60; pointer-events: none;
+  background: var(--selection-ink, #4d2039); opacity: 0;
+}
+.rose-page-frame[data-stack] > .rose-stack-box[data-covered]::after { opacity: calc(var(--stack-p, 0) * .28); }
+@media (max-width: 760px) {
+  .rose-page-frame[data-stack] > .rose-stack-box + .rose-stack-box { border-radius: 26px 26px 0 0; }
 }
