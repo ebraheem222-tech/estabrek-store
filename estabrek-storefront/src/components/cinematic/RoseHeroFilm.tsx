@@ -139,11 +139,27 @@ export function RoseHeroFilm({
     const url = el.canPlayType('video/webm; codecs="vp9"') ? set.webm : set.mp4;
     const ctrl = new AbortController();
     let objectUrl = "";
-    fetch(url, { signal: ctrl.signal })
+    let idle = 0, late = 0;
+    const get = () => fetch(url, { signal: ctrl.signal })
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
       .then((blob) => { objectUrl = URL.createObjectURL(blob); setFilmSrc(objectUrl); })
       .catch(() => { if (!ctrl.signal.aborted) setStreamed(true); });
-    return () => { ctrl.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    // After the page has loaded and is idle for a moment: the film (about 2 MB on a phone) took the line from
+    // the page's own code and pictures while it was still loading. The still shows until then.
+    const start = () => {
+      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+      if (w.requestIdleCallback) idle = w.requestIdleCallback(() => void get(), { timeout: 1500 });
+      else late = window.setTimeout(() => void get(), 300);
+    };
+    if (document.readyState === "complete") start();
+    else window.addEventListener("load", start, { once: true });
+    return () => {
+      ctrl.abort();
+      window.removeEventListener("load", start);
+      if (idle) (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(idle);
+      window.clearTimeout(late);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
     // filmSrc is left out: once the film is in, it stays (also if reduced motion comes and goes).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantFilm]);
@@ -471,7 +487,8 @@ export function RoseHeroFilm({
             <canvas ref={canvas} className="film-canvas" aria-hidden="true" />
             {/* The scarf at once, before (or without) the video's first frame. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="film-still" src="/editorial/hero-film-still.webp" alt="" aria-hidden="true" decoding="async" />
+            {/* The page's biggest picture on first paint: fetched first (fetchpriority) and shown as soon as it decodes. */}
+            <img className="film-still" src="/editorial/hero-film-still.webp" alt="" aria-hidden="true" decoding="async" loading="eager" {...({ fetchpriority: "high" } as Record<string, string>)} />
             <span className="film-glow" aria-hidden="true" />
             {/* When the hijab is complete it catches the light. */}
             <span className="film-sparkles" aria-hidden="true">
