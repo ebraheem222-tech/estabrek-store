@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cldUrl } from "@/lib/cloudinary";
+import { normalHex, sceneTheme, shiftHue } from "@/lib/sceneColour";
 import { tr } from "@/lib/words";
 import { useLanguage } from "./Language";
 
@@ -9,6 +10,9 @@ import { useLanguage } from "./Language";
  * "the particles"): the section holds the screen; between two shapes the points scatter into a soft cloud and
  * gather again; the pointer pushes them aside. The logo is the store's own (its picture's shape, or its name
  * when there is no picture); the hijab and the bag are drawn here. A 2D canvas: light enough for phones.
+ * Colours: each chapter has its own, from the theme's (the logo in the store's colour, the hijab and the bag in
+ * its neighbours); the points, their glints, the glow and the background take it, and while the section holds
+ * the screen the page and the header wear it too (lib/sceneColour.ts).
  */
 type Shape = Float32Array; // x0,y0,x1,y1… in -1…1
 
@@ -70,9 +74,14 @@ const rgb = (hex: string): Rgb => {
 };
 const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const css = (c: Rgb, alpha = 1) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${alpha})`;
-/** Each chapter's colours (light points, deep points, the glow behind): the store's own for its logo, lilac for
- *  the hijab, champagne gold for the bag. They blend as one shape becomes the next. */
-const TONES: Array<[string, string, string]> = [["", "", ""], ["#efe6ff", "#bfa2ff", "#7a52c8"], ["#fff2d2", "#f5c56a", "#b8812c"]];
+/** Each chapter's colour, from the store's own (or the shopper's pick): the logo in it, the hijab and the bag in
+ *  its neighbours on the colour wheel, so every chapter sits well with the theme. */
+const CHAPTER_TURN = [0, -40, 34];
+/** A chapter's light points, deep points and glow, from its colour. */
+const tonesOf = (seed: string): [Rgb, Rgb, Rgb] => {
+  const c = rgb(seed);
+  return [mix(c, [255, 255, 255], 0.74), mix(c, [255, 255, 255], 0.28), c];
+};
 
 export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null; storeName: string }) {
   const { language: lang } = useLanguage();
@@ -103,12 +112,31 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     const size = new Float32Array(n), tone = new Float32Array(n), seed = new Float32Array(n);
     for (let i = 0; i < n; i++) { size[i] = 0.6 + Math.random() * 1.6; tone[i] = Math.random(); seed[i] = Math.random() * Math.PI * 2; }
     const pointer = { x: -9999, y: -9999 };
-    // The chapters' colours; the first is the store's own (read again now and then: a colour picked meanwhile).
-    const tones: Array<[Rgb, Rgb, Rgb]> = TONES.map(([l, d, g]) => [rgb(l), rgb(d), rgb(g)]);
+    // The chapters' colours, from the theme's (read again now and then: a colour picked meanwhile). Read on the
+    // page's shell: this section itself wears the chapter's colour while it holds the screen.
+    const shell = el.closest<HTMLElement>(".cinematic-shell");
+    let base = "";
+    let seeds: string[] = [];
+    let tones: Array<[Rgb, Rgb, Rgb]> = [];
     const readColours = () => {
-      const cs = getComputedStyle(el);
-      const hex = (name: string, fallback: string) => { const v = cs.getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
-      tones[0] = [rgb(hex("--selection-soft", "#fde6ef")), rgb(hex("--selection-decorative", hex("--selection-seed", "#e8a8c3"))), rgb(hex("--selection-accent", "#a43b64"))];
+      const cs = getComputedStyle(shell ?? document.documentElement);
+      const now = normalHex(shell?.dataset.storefrontColor) ?? normalHex(cs.getPropertyValue("--selection-seed")) ?? normalHex(cs.getPropertyValue("--selection-accent")) ?? "#c97794";
+      if (now === base) return;
+      base = now;
+      seeds = CHAPTER_TURN.map((turn) => (turn ? shiftHue(base, turn) : base));
+      tones = seeds.map(tonesOf);
+      if (holding && shown >= 0) theme?.wear(seeds[Math.min(seeds.length - 1, shown)], 0.8);
+    };
+    // While the section holds the screen the page (the header too) wears the chapter's colour.
+    const theme = sceneTheme(el, "particles");
+    let holding = false;
+    const hold = () => {
+      const r = el.getBoundingClientRect();
+      const on = r.top < window.innerHeight * 0.55 && r.bottom > window.innerHeight * 0.45;
+      if (on === holding) return;
+      holding = on;
+      if (on) theme?.wear(seeds[Math.max(0, Math.min(seeds.length - 1, shown))] ?? base, 0.8);
+      else theme?.giveBack();
     };
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -164,7 +192,11 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       const t = smooth(Math.min(1, Math.max(0, (local - 0.35) / 0.4)));
       const scatter = Math.sin(Math.PI * t) * (phone ? 70 : 120);
       const lead = Math.round(at);
-      if (lead !== shown) { shown = lead; setChapter(lead); }
+      if (lead !== shown) {
+        shown = lead;
+        setChapter(lead);
+        if (holding) theme?.wear(seeds[Math.min(seeds.length - 1, lead)], 0.9);
+      }
       const scale = Math.min(w, h) * (phone ? 0.4 : 0.36);
       const cx = w / 2, cy = h * (phone ? 0.42 : 0.46);
       const time = now / 1000;
@@ -218,7 +250,8 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       if (visible && !raf && shapes.length) { last = performance.now(); raf = requestAnimationFrame(frame); }
     });
     io.observe(el);
-    const onScroll = () => { if (reduced && visible) frame(performance.now()); };
+    const onScroll = () => { hold(); if (reduced && visible) frame(performance.now()); };
+    hold();
     const onMove = (e: PointerEvent) => { const r = cv.getBoundingClientRect(); pointer.x = e.clientX - r.left; pointer.y = e.clientY - r.top; };
     const onLeave = () => { pointer.x = pointer.y = -9999; };
     const colours = window.setInterval(readColours, 900);
@@ -233,6 +266,7 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       window.removeEventListener("scroll", onScroll);
       cv.removeEventListener("pointermove", onMove);
       cv.removeEventListener("pointerleave", onLeave);
+      theme?.giveBack(true);
     };
   }, [logoUrl, storeName]);
 

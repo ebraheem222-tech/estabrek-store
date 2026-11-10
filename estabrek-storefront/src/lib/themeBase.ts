@@ -35,6 +35,11 @@ export function holdsTheme(shell: HTMLElement, owner: string) {
   return Boolean(states.get(shell)?.owners.has(owner));
 }
 
+/** How many scenes (or a preview) hold the colours of this shell right now. */
+export function themeHeldBy(shell: HTMLElement) {
+  return states.get(shell)?.owners.size ?? 0;
+}
+
 /** True while any scene or preview still holds the colours. */
 export function themeHeld(shell: HTMLElement) {
   return Boolean(states.get(shell)?.owners.size);

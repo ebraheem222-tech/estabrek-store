@@ -11,13 +11,16 @@
 
 /* ---------------------------------------------------------------- 1. the particles */
 
-.rose-particles { position: relative; height: calc(var(--rp-n, 3) * 90svh + 40svh); background: #1d0b16; color: #fff; }
+/* A night sky in the chapter's colour: all of it from the colour the section wears (the theme's, then each
+   chapter's), so the background always sits with the theme. */
+.rose-particles { position: relative; height: calc(var(--rp-n, 3) * 90svh + 40svh); background: color-mix(in srgb, var(--selection-ink, #4d2039) 70%, #000); color: #fff; }
 .rose-particles-stage {
   position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate;
   background:
-    radial-gradient(60% 55% at 50% 45%, color-mix(in srgb, var(--selection-accent, #a43b64) 38%, transparent), transparent 70%),
-    radial-gradient(40% 35% at 20% 85%, color-mix(in srgb, var(--selection-seed, #c97794) 26%, transparent), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--selection-ink, #4d2039) 92%, #000), #12060d);
+    radial-gradient(62% 55% at 50% 44%, color-mix(in srgb, var(--selection-seed, #c97794) 44%, transparent), transparent 72%),
+    radial-gradient(45% 38% at 18% 88%, color-mix(in srgb, var(--selection-accent, #a43b64) 30%, transparent), transparent 70%),
+    radial-gradient(40% 30% at 85% 10%, color-mix(in srgb, var(--selection-decorative, #e8a8c3) 18%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--selection-ink, #4d2039) 86%, #000), color-mix(in srgb, var(--selection-ink, #4d2039) 45%, #000));
 }
 .rose-particles-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; }
 .rose-particles-words { position: absolute; inset-inline: 8%; bottom: 13%; text-align: center; pointer-events: none; }
@@ -271,7 +274,7 @@
   .rose-story-pill span { white-space: nowrap; }
   /* While the "you viewed" note shows at the bottom, the pill steps aside. */
   .rose-story-pill { transition: opacity .3s ease, translate .3s ease; }
-  html:has(.rose-recent[aria-hidden="false"]) .rose-story-pill { opacity: 0; translate: -50% 14px; pointer-events: none; }
+  .rose-story-pill[data-yield], html:has(.rose-recent[aria-hidden="false"]) .rose-story-pill { opacity: 0; translate: -50% 14px; pointer-events: none; }
   .rose-story-pill i { position: absolute; inset-inline-start: 0; bottom: 0; height: 2px; width: calc(var(--story-p, 0) * 100%); background: var(--selection-accent, #a43b64); transition: width .4s ease; }
 }
 /* Razan takes a few steps with the new chapter. */

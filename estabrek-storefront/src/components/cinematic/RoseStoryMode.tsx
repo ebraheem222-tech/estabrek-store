@@ -59,6 +59,7 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
   const [chapters, setChapters] = useState<Array<{ kind: Kind; name: string }>>([]);
   const [current, setCurrent] = useState(0);
   const list = useRef<Chapter[]>([]);
+  const pill = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!enabled || window.self !== window.top) return;
@@ -101,6 +102,20 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
     const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
     build();
     update();
+    // The phone's pill steps aside while the "you viewed" note shows at the bottom (watched here: a CSS :has()
+    // rule alone isn't in every phone's browser).
+    let watched: Element | null = null;
+    let recentObserver: MutationObserver | null = null;
+    const yieldPill = () => {
+      const recent = document.querySelector(".rose-recent");
+      pill.current?.toggleAttribute("data-yield", recent?.getAttribute("aria-hidden") === "false");
+      if (recent === watched) return;
+      recentObserver?.disconnect();
+      watched = recent;
+      if (recent) { recentObserver = new MutationObserver(yieldPill); recentObserver.observe(recent, { attributes: true, attributeFilter: ["aria-hidden"] }); }
+    };
+    const recentTimer = window.setInterval(yieldPill, 1500);
+    yieldPill();
     const kids = new MutationObserver(() => { build(); schedule(); });
     kids.observe(frame, { childList: true });
     window.addEventListener("scroll", schedule, { passive: true });
@@ -110,6 +125,8 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
       window.clearTimeout(sayTimer);
       window.clearTimeout(walkTimer);
       kids.disconnect();
+      recentObserver?.disconnect();
+      window.clearInterval(recentTimer);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
     };
@@ -131,7 +148,7 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
         </ol>
         <span className="rose-story-now" aria-hidden="true">{chapters[current]?.name}</span>
       </nav>
-      <button type="button" className="rose-story-pill" onClick={() => go(Math.min(chapters.length - 1, current + 1))} aria-label={tr(lang, "الفصل الجاي", "Next chapter")}>
+      <button ref={pill} type="button" className="rose-story-pill" onClick={() => go(Math.min(chapters.length - 1, current + 1))} aria-label={tr(lang, "الفصل الجاي", "Next chapter")}>
         <span dir="ltr">{count(current)}/{count(chapters.length - 1)}</span>
         <strong>{chapters[current]?.name}</strong>
         <i style={{ "--story-p": (current + 1) / chapters.length } as React.CSSProperties} aria-hidden="true" />
