@@ -631,6 +631,8 @@ export async function renderCmsPageBySlug(
         stories={stories}
         logoUrl={bootstrap.site.logoUrl}
         siteName={bootstrap.site.siteName}
+        delivery={settingsHeader?.delivery ?? null}
+        currencyCode={(bootstrap.site as any).currencyCode ?? null}
         renderProductCard={(id) => <ProductCard productId={id} />}
         renderQuickAdd={(ref) => <QuickAddButton productId={ref.productId} slug={ref.slug} buttonLabel="أضيفي للحقيبة" />}
       /> : ["/contact", "/about", "/shop"].includes(slug) && cinematic ? <RoseCmsInterior

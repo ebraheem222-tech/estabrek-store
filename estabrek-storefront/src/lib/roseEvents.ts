@@ -16,6 +16,14 @@ export function roseReact(moment: RoseMoment) {
   window.dispatchEvent(new CustomEvent<RoseMoment>(ROSE_EVENT, { detail: moment }));
 }
 
+/** A line Rose says now, with a little gesture (story mode's chapters: RoseStoryMode). */
+export const ROSE_SAY_EVENT = "rose:say";
+export type RoseSay = { text: string; act?: "wave" | "joy" | "cheer" | "wink" | "dance" | "surprise" };
+export function roseSay(text: string, act?: RoseSay["act"]) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<RoseSay>(ROSE_SAY_EVENT, { detail: { text, act } }));
+}
+
 /** What she says, in both languages. */
 export const ROSE_LINES: Record<RoseMoment | "color-pick" | "hello", { ar: string[]; en: string[]; he: string[] }> = {
   "cart-add": { ar: ["تمّت الإضافة للسلة! 🛍️", "يا سلام، اختيار موفّق! 🛍️", "صارت بسلتك 💗"], en: ["Added to your bag! 🛍️", "Great pick! 🛍️", "It's in your bag 💗"], he: ["נוסף לתיק! 🛍️", "איזו בחירה מוצלחת! 🛍️", "זה כבר בתיק 💗"] },

@@ -11,6 +11,7 @@ import { RoseThemeProvider } from "./RoseThemeProvider";
 import { RouteLoader } from "./RouteLoader";
 import { SmoothScroll } from "./SmoothScroll";
 import { RoseMiniBag } from "./RoseMiniBag";
+import { RoseSecret } from "./RoseSecret";
 import { RoseWave } from "./RoseWave";
 import { PerfOverlay } from "./PerfOverlay";
 import { useNames, useStoreIdentity } from "@/store/storeIdentity";
@@ -34,6 +35,8 @@ export type RoseStoreData = {
   footerEnabled?: boolean;
   /** Where a picked colour shows (header.storefront.colorFollow): the whole store, or the product area only. */
   colorFollow?: "everything" | "product";
+  /** The store's secret (header.storefront.secret*): holding the logo down opens it. */
+  secret?: { enabled: boolean; code?: string; text?: string };
 };
 const StoreContext = createContext<RoseStoreData>({});
 export function useRoseStore() { return useContext(StoreContext); }
@@ -437,6 +440,7 @@ export function StorefrontChrome({
         {studio ? null : <RouteLoader logoUrl={storeData.logoUrl} />}
         {studio ? null : <SmoothScroll />}
         {studio ? null : <RoseMiniBag />}
+        {studio ? null : <RoseSecret enabled={storeData.secret?.enabled !== false} code={storeData.secret?.code} text={storeData.secret?.text} />}
         <RoseThemeProvider key={pathname}
           restoreSelection={!pathname.startsWith("/about") && !studio}
           colorScope={storeData.colorFollow === "product" ? "product" : "everything"}

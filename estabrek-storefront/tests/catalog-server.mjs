@@ -583,6 +583,13 @@ const home = {
         roseCollectionsStoryEnabled: false,
         // The sections stay in plain flow here (the scroll tests measure them); /__test/home-stack?on=1 stacks them.
         roseStackEnabled: false,
+        // The home's showpieces stay off here (the scroll and layout tests measure the sections); wonders.spec
+        // switches them on with /__test/wonders?on=1.
+        roseParticlesEnabled: false,
+        roseWorldEnabled: false,
+        roseRoomsEnabled: false,
+        roseHeroObjectEnabled: false,
+        roseStoryModeEnabled: false,
         subtitle: "وصف الحملة من لوحة الإدارة",
         primaryButton: { label: "تسوّقي المجموعة", href: "/shop" },
         secondaryButton: { label: "قصتنا في الحملة", href: "/about" },
@@ -911,6 +918,25 @@ http
           globalThis.sharedPreviewDrafts ??= {};
           globalThis.sharedPreviewDrafts[incoming.previewToken] = incoming;
         } else globalThis.previewDraft = incoming;
+        res.end("{}");
+      });
+      return;
+    }
+    // The home's showpieces (particles, the world, the rooms, the page hero, story mode), for wonders.spec.
+    if (pathname === "/__test/wonders") {
+      const on = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
+      for (const key of ["roseParticlesEnabled", "roseWorldEnabled", "roseRoomsEnabled", "roseHeroObjectEnabled", "roseStoryModeEnabled"]) home.sections[0].data[key] = on;
+      return res.end("{}");
+    }
+    // Admin → الإعدادات → سرّ المتجر: the hidden coupon behind the logo ({ code, text, enabled }).
+    if (pathname === "/__test/secret" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        for (const [key, value] of [["secretCode", data.code], ["secretText", data.text], ["secretEnabled", data.enabled]]) {
+          if (value === undefined) delete site.header.storefront[key]; else site.header.storefront[key] = value;
+        }
         res.end("{}");
       });
       return;

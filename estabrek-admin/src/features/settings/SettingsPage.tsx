@@ -425,6 +425,10 @@ type StorefrontConfig = {
   themeColorsEnabled: boolean;
   /** Where a colour the shopper picks shows: the whole store (bar, header, page, footer) or the product area only. */
   colorFollow: "everything" | "product";
+  /** The store's secret: holding the logo down on the shop opens a hidden coupon. */
+  secretEnabled: boolean;
+  secretCode: string;
+  secretText: string;
   buttonThemeId: string;
   accentColor: string;
   accentColor2: string;
@@ -534,6 +538,9 @@ function normalizeStorefront(v: any): StorefrontConfig {
     // Theme
     themeColorsEnabled: o.themeColorsEnabled !== false,
     colorFollow: o.colorFollow === "product" ? "product" : "everything",
+    secretEnabled: o.secretEnabled !== false,
+    secretCode: typeof o.secretCode === "string" ? o.secretCode : "",
+    secretText: typeof o.secretText === "string" ? o.secretText : "",
     buttonThemeId: (() => {
       const raw = typeof o.buttonThemeId === "string" ? o.buttonThemeId : "default";
       if (raw === "default") return raw;
@@ -3018,6 +3025,27 @@ export default function SettingsPage() {
                           { value: "product", label: "بس منطقة المنتج (الهيدر والصفحة بألوان المتجر)" },
                         ]}
                         data-testid="settings-color-follow"
+                      />
+                      <Toggle
+                        label="سرّ المتجر: كبسة طويلة على اللوجو بتفتح كوبون مخفي"
+                        checked={storefrontCfg.secretEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, secretEnabled: v }))}
+                      />
+                      <Input
+                        label="كود الكوبون المخفي (لازم يكون موجود بالكوبونات)"
+                        value={storefrontCfg.secretCode}
+                        onChange={(e) => setStorefrontCfg((p) => ({ ...p, secretCode: e.target.value.toUpperCase().slice(0, 40) }))}
+                        placeholder="SECRET10"
+                        disabled={!storefrontCfg.secretEnabled}
+                        data-testid="settings-secret-code"
+                      />
+                      <Input
+                        label="كلمة السر للزبونة (اختياري)"
+                        value={storefrontCfg.secretText}
+                        onChange={(e) => setStorefrontCfg((p) => ({ ...p, secretText: e.target.value.slice(0, 200) }))}
+                        placeholder="هدية إلك لأنك فضولية…"
+                        disabled={!storefrontCfg.secretEnabled}
+                        data-testid="settings-secret-text"
                       />
                       <Select
                         label="ثيم الأزرار"

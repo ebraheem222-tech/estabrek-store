@@ -7,7 +7,7 @@ import { RoseWave } from "./RoseWave";
  * petals for spring, curls of smoke for incense, sparkles and pearls for accessories…) that pop in one after
  * another and then float, and a wave at its foot (rose-showcase.css, "the product's backdrop"). All drawn here.
  */
-const DRAWINGS: Record<Mood, [ReactNode, ReactNode]> = {
+export const DRAWINGS: Record<Mood, [ReactNode, ReactNode]> = {
   winter: [
     <g key="flake"><path d="M24 4v40M6.7 14l34.6 20M6.7 34l34.6-20" /><path d="M24 11l-4-4M24 11l4-4M24 37l-4 4M24 37l4 4M12.3 17.3l-5.3-1.4M12.3 17.3l1.4-5.3M35.7 30.7l5.3 1.4M35.7 30.7l-1.4 5.3M12.3 30.7l-5.3 1.4M12.3 30.7l1.4 5.3M35.7 17.3l5.3-1.4M35.7 17.3l-1.4-5.3" /></g>,
     <g key="dot"><circle cx="24" cy="24" r="5" className="fill" /><circle cx="24" cy="24" r="11" /></g>,

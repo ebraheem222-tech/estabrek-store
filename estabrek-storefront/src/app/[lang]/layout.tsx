@@ -6,6 +6,8 @@ import "../cinematic.css";
 import "../rose-inner.css";
 // Its showpieces: the page loader, the cards, the filters and the motion (app/rose-showcase.css).
 import "../rose-showcase.css";
+// The home's showpieces: particles, rooms, the secret, the world, the page hero, story mode (app/rose-wonders.css).
+import "../rose-wonders.css";
 import "../store-themes.css";
 import "@/pageTree/commerce.css";
 import Providers from "../providers";
@@ -265,6 +267,8 @@ export default async function RootLayout({
                   announcementHref: bootstrap.site.announcement?.linkUrl || "",
                   // Admin → الإعدادات → الثيم والألوان: a picked colour dresses the whole store, or the product area only.
                   colorFollow: initialStorefrontSettings?.colorFollow === "product" ? "product" : "everything",
+                  // Admin → الإعدادات → سرّ المتجر: holding the logo down opens a hidden coupon.
+                  secret: { enabled: initialStorefrontSettings?.secretEnabled !== false, code: typeof initialStorefrontSettings?.secretCode === "string" ? initialStorefrontSettings.secretCode.trim().slice(0, 40) : "", text: typeof initialStorefrontSettings?.secretText === "string" ? initialStorefrontSettings.secretText.slice(0, 200) : "" },
                 }}
                 legacyHeader={regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
                   <>
