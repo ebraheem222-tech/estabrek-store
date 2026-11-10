@@ -603,6 +603,7 @@ export const HE: Record<string, string> = {
   "Collapse the menu": "כיווץ התפריט",
   "Collection stories": "סיפורי הקולקציה",
   "Collections as a 3D story": "קולקציות כסיפור תלת־ממדי",
+  "Sections stack as you scroll": "החלקים נערמים בגלילה",
   "Collections": "קולקציות",
   "Colour": "צבע",
   "Colour / size": "צבע / מידה",

@@ -16,6 +16,7 @@ import {
 import { RoseSeasons } from "./RoseSeasons";
 import { RoseCollectionStory } from "./RoseCollectionStory";
 import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
+import { RoseHomeStack } from "./RoseHomeStack";
 import { cldUrl } from "@/lib/cloudinary";
 import type { StoryChapter } from "@/lib/collectionStories";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
@@ -106,6 +107,7 @@ export function RoseHome({
       {stories.length > 0 && <RoseCollectionStory chapters={stories} />}
       <RoseInstagram images={entries.map((p) => p.imageUrl).filter((u): u is string => Boolean(u))} />
       <RoseCta data={{}} />
+      <RoseHomeStack />
     </RoseHomeFrame>
     </RingPiecesProvider>
   );

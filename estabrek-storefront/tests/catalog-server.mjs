@@ -581,6 +581,8 @@ const home = {
         // The collections stay a grid here (home-performance, theme-preview); rose-showcase.spec switches the
         // scroll story on with /__test/collections-story?on=1.
         roseCollectionsStoryEnabled: false,
+        // The sections stay in plain flow here (the scroll tests measure them); /__test/home-stack?on=1 stacks them.
+        roseStackEnabled: false,
         subtitle: "وصف الحملة من لوحة الإدارة",
         primaryButton: { label: "تسوّقي المجموعة", href: "/shop" },
         secondaryButton: { label: "قصتنا في الحملة", href: "/about" },
@@ -912,6 +914,10 @@ http
         res.end("{}");
       });
       return;
+    }
+    if (pathname === "/__test/home-stack") {
+      home.sections[0].data.roseStackEnabled = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
+      return res.end("{}");
     }
     if (pathname === "/__test/collections-story") {
       home.sections[0].data.roseCollectionsStoryEnabled = new URL(req.url, "http://localhost").searchParams.get("on") === "1";

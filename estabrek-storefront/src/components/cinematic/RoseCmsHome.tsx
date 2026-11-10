@@ -7,6 +7,7 @@ import { RoseHomeFrame, RoseFabricStudy, RoseNativeSections } from "./RoseHome";
 import { sectionPalette } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
 import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
+import { RoseHomeStack } from "./RoseHomeStack";
 import { cldUrl } from "@/lib/cloudinary";
 import {
   RoseHero,
@@ -269,5 +270,6 @@ export function RoseCmsHome({
     .filter((p): p is ProductMini & { slug: string; imageUrl: string } => Boolean(p.slug && p.imageUrl) && !seen.has(p.slug!) && Boolean(seen.add(p.slug!)))
     .slice(0, 10)
     .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 260, h: 325, c: "fill", g: "auto" }) }));
-  return <RingPiecesProvider pieces={ring}><RoseHomeFrame>{nodes}</RoseHomeFrame></RingPiecesProvider>;
+  // Each section holds and the next slides over it (Admin → the opening → «الأقسام فوق بعض», on by default).
+  return <RingPiecesProvider pieces={ring}><RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled !== false} /></RoseHomeFrame></RingPiecesProvider>;
 }
