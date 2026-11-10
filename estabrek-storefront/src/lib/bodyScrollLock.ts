@@ -37,6 +37,10 @@ export function clearBodyScrollLocks() {
   lockCount = 0;
   if (typeof document !== "undefined") {
     const root = document.documentElement;
+    const body = document.body.style;
+    // Nothing locked or shifted: nothing to undo. (Reading and resetting the sideways scroll made the browser
+    // lay the whole page out at once, right while a page was still starting.)
+    if (prevOverflow === null && !body.overflow && !body.position && !body.top && !body.transform && !body.paddingRight && !root.style.overflow && !root.style.transform) return;
     document.body.style.overflow = prevOverflow ?? "";
     document.body.style.position = "";
     document.body.style.left = "";

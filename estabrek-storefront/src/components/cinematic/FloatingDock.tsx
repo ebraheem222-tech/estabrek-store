@@ -31,12 +31,14 @@ const ROW = ".rose-companion-figure, .rose-companion-mini, .rose-companion-wa, .
 export function FloatingDock() {
   useEffect(() => {
     const root = document.documentElement;
-    let raf = 0;
+    let checkTimer = 0, lastCheck = 0, measureFrame = 0, wantMeasure = false;
     const set = (name: string, value: string | null) => {
       if (value === null) { if (root.style.getPropertyValue(name)) root.style.removeProperty(name); }
       else if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
     };
+    /** Where the bottom row stands (it reads sizes and styles: only when something may have moved, see below). */
     const measure = () => {
+      measureFrame = 0;
       if (window.innerWidth > 760 || root.dataset.uiCover || root.dataset.uiBag) return;
       const w = window.innerWidth, h = window.innerHeight;
       let left = 12, right = 12, top = h;
@@ -57,29 +59,46 @@ export function FloatingDock() {
       const clear = said && said.width && said.bottom > h - 260 ? Math.min(top, said.top) : top;
       set("--dock-clear", `${Math.round(Math.max(64, h - clear))}px`);
     };
+    const measureSoon = () => { if (!measureFrame) measureFrame = requestAnimationFrame(measure); };
+    /** The page states (a few look-ups, no sizes); a state that changed moves the row, so it is measured then. */
     const check = () => {
-      raf = 0;
+      checkTimer = 0;
+      lastCheck = performance.now();
+      let changed = false;
       for (const [key, selector] of STATES) {
         const on = Boolean(document.querySelector(selector));
         if (on !== (root.dataset[key] === "true")) {
+          changed = true;
           if (on) root.dataset[key] = "true";
           else delete root.dataset[key];
         }
       }
-      measure();
+      if (changed || wantMeasure) { wantMeasure = false; measureSoon(); }
     };
-    const schedule = () => { if (!raf) raf = requestAnimationFrame(check); };
+    // At most four checks a second, however busy the page: checking (and measuring) on every change cost about a
+    // second of a mid-range phone's processor in the home's first seconds, the scenes change classes all the time.
+    const schedule = () => {
+      if (checkTimer) return;
+      checkTimer = window.setTimeout(check, Math.max(0, 250 - (performance.now() - lastCheck)));
+    };
     // Layers open and close by being added or by a class or attribute; the scroll scenes' style writes don't count.
-    const watch = new MutationObserver(schedule);
+    const watch = new MutationObserver((records) => {
+      // Razan starting or ending a sentence changes the space above her (the note's place).
+      for (const r of records) if (r.attributeName === "data-show" && (r.target as Element).classList?.contains("rose-mascot-bubble")) { wantMeasure = true; break; }
+      schedule();
+    });
     watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-open", "data-show", "aria-hidden"] });
-    window.addEventListener("resize", schedule);
+    const again = () => { wantMeasure = true; schedule(); };
+    window.addEventListener("resize", again);
     // Razan moves now and then (her walks, a scene's own spot for her): measure again from time to time.
-    const tick = window.setInterval(schedule, 1500);
+    const tick = window.setInterval(again, 2000);
     check();
+    measureSoon();
     return () => {
-      cancelAnimationFrame(raf);
+      window.clearTimeout(checkTimer);
+      cancelAnimationFrame(measureFrame);
       watch.disconnect();
-      window.removeEventListener("resize", schedule);
+      window.removeEventListener("resize", again);
       window.clearInterval(tick);
       for (const [key] of STATES) delete root.dataset[key];
       ["--dock-left", "--dock-right", "--dock-lift", "--dock-clear"].forEach((name) => root.style.removeProperty(name));

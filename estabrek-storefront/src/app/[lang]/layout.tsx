@@ -15,13 +15,10 @@ import { notFound } from "next/navigation";
 import { LANGS, LANG_LOCALE, dirOf, isLang, langConfigOf, type Lang } from "@/lib/i18n";
 import { getBootstrap, getPublicSettings, getStoreDesignRegions } from "@/lib/api";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
-import { Topbar } from "@/components/Topbar";
-import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ScriptTags } from "@/components/ScriptTags";
 import { ThemeWrap } from "@/components/ThemeWrap";
 import { UiSettingsProvider } from "@/components/UiSettingsProvider";
-import { HeaderOffset } from "@/components/HeaderOffset";
 import { getLoadingById } from "@/cms/effects/loadingAnimations";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { EffectsStyles } from "@/components/EffectsStyles";
@@ -41,6 +38,8 @@ import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
 import { StoreThemePreview } from "@/storeThemes/StoreThemePreview";
 import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
 import { StoreDesignRegion } from "@/components/StoreDesignRegion";
+// The plain header (stores without the cinematic design): its own download (PlainHeaderParts.tsx).
+import { HeaderOffset, Navbar, Topbar } from "@/components/PlainHeaderParts";
 import { TreeRuntime } from "@/pageTree/TreeRuntime";
 
 /** Every language is its own static page: /ar…, /en…, /he… (see src/middleware.ts). */
@@ -270,7 +269,7 @@ export default async function RootLayout({
                   // Admin → الإعدادات → سرّ المتجر: holding the logo down opens a hidden coupon.
                   secret: { enabled: initialStorefrontSettings?.secretEnabled !== false, code: typeof initialStorefrontSettings?.secretCode === "string" ? initialStorefrontSettings.secretCode.trim().slice(0, 40) : "", text: typeof initialStorefrontSettings?.secretText === "string" ? initialStorefrontSettings.secretText.slice(0, 200) : "" },
                 }}
-                legacyHeader={regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
+                legacyHeader={cinematic ? null : regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
                   <>
                     <div data-studio-region="header" id="site-header" className="site-header">
                       <AnnouncementBar site={settings.site} />
@@ -285,7 +284,7 @@ export default async function RootLayout({
                     <HeaderOffset />
                   </>
                 }
-                legacyFooter={regions?.footer ? <StoreDesignRegion tree={regions.footer} region="footer" lang={lang} /> :
+                legacyFooter={cinematic ? null : regions?.footer ? <StoreDesignRegion tree={regions.footer} region="footer" lang={lang} /> :
                   <Footer
                     site={bootstrap.site}
                     footerMenu={bootstrap.footerMenu}

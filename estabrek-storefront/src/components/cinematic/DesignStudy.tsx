@@ -9,9 +9,8 @@ import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
-import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
-import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
+import { lazyMargin, prebuildNear, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import { tr } from "@/lib/words";
 import { useLanguage } from "./Language";
 import type { Lang } from "@/lib/i18n";
@@ -170,9 +169,9 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
   // Built ahead while the page rests (between the seasons and the collection worlds),
   // so its start-up never lands in the middle of a scroll.
   useEffect(() => {
-    const after = prebuildAfter(1);
-    if (motionLevel() === "lite" || after === null) return;
-    return onPageRest(() => setNear(true), { after, quiet: 600 });
+    const el = root.current;
+    if (!el || motionLevel() === "lite") return;
+    return prebuildNear(el, 1, () => setNear(true));
   }, []);
   useEffect(() => {
     if (!loadScene) return;

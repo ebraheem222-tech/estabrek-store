@@ -6,9 +6,8 @@ import { Component, useEffect, useRef, useState, type CSSProperties, type ReactN
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
-import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
-import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
+import { lazyMargin, prebuildNear, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
@@ -150,8 +149,7 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
     // every pass meant a fresh WebGL start-up and shader compile each time).
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: lazyMargin(700) });
     // Built ahead while the page rests (after the seasons scene), so the scroll never waits for it.
-    const after = prebuildAfter(2);
-    const early = motionLevel() === "lite" || after === null ? null : onPageRest(() => setNear(true), { after, quiet: 600 });
+    const early = motionLevel() === "lite" ? null : prebuildNear(el, 2, () => setNear(true));
     const view = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
     io.observe(el);
     view.observe(el);

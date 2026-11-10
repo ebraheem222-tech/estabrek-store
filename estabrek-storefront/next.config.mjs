@@ -18,6 +18,9 @@ const nextConfig = {
   // reaches lib/studioOrigins.ts when the host only passes its own variables at runtime.
   env: { ADMIN_ORIGIN: process.env.ADMIN_ORIGIN ?? "" },
   staticPageGenerationTimeout: 180,
+  // SOURCE_MAPS=1 npm run build: the browser code comes with its maps, to see which source each byte comes from
+  // (scripts/bundle-weight.mjs). Off by default.
+  productionBrowserSourceMaps: process.env.SOURCE_MAPS === "1",
   // The opening film, the campaign clip and their stills (public/editorial) are kept by the
   // browser for a week (and reused while it checks for a newer one for a month): they were
   // sent with "check every time", so every visit asked the server again before the film could

@@ -15,7 +15,7 @@
  */
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { themeById } from "../registry";
+import type { StoreTheme } from "../types";
 import { MOTION, type MotionPreset } from "./presets";
 
 type Gsap = typeof import("gsap").gsap;
@@ -32,7 +32,15 @@ export function ThemeMotion() {
     mo.observe(root, { attributes: true, attributeFilter: ["data-store-theme"] });
     return () => mo.disconnect();
   }, []);
-  const style = themeById(themeId)?.motion ?? null;
+  // The theme's motion, looked up in the list of every theme (over 1 MB of code) only when a theme is on: the
+  // list was in every shopper's first download, the rose design's too.
+  const [style, setStyle] = useState<StoreTheme["motion"] | null>(null);
+  useEffect(() => {
+    if (!themeId) { setStyle(null); return; }
+    let live = true;
+    void import("../registry").then((m) => { if (live) setStyle(m.themeById(themeId)?.motion ?? null); });
+    return () => { live = false; };
+  }, [themeId]);
   useEffect(() => {
     const root = document.documentElement;
     if (!style) {
