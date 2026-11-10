@@ -331,7 +331,8 @@ export function RoseCmsHome({
   return (
     <RingPiecesProvider pieces={ring}>
       <RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} /></RoseHomeFrame>
-      <RosePageHero enabled={heroData.roseHeroObjectEnabled !== false} />
+      {/* The flying 3D silk only when the owner turns it on (off by default since 2026-11-10). */}
+      <RosePageHero enabled={heroData.roseHeroObjectEnabled === true} />
       <RoseStoryMode enabled={heroData.roseStoryModeEnabled !== false} />
     </RingPiecesProvider>
   );

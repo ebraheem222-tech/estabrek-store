@@ -184,18 +184,22 @@ test.describe.serial("the home's showpieces", () => {
     await world.getByRole("button", { name: "حجاب" }).click();
     await expect(world).toHaveAttribute("data-dressed", "true");
     await expect.poll(seed).toMatch(/^#[0-9a-f]{6}$/i);
+    // The section's whole surface takes the colour too.
+    await expect.poll(() => world.evaluate((el) => Number(getComputedStyle(el, "::before").opacity))).toBeGreaterThan(0.95);
     await world.locator(".rose-world-card-close").click();
     await expect(world).not.toHaveAttribute("data-dressed", /.+/);
     await expect.poll(seed, { timeout: 8000 }).toBe("");
   });
 
-  test("the rooms show only once the owner switches them on", async ({ page }) => {
-    await page.request.get(`${API}/__test/wonders?on=1&rooms=unset`);
+  test("the rooms and the flying 3D silk show only once the owner switches them on", async ({ page }) => {
+    await page.request.get(`${API}/__test/wonders?on=1&unset=rooms,hero`);
     await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
     try {
       await page.goto("/");
       await expect(page.locator(".rose-particles")).toHaveCount(1);
       await expect(page.locator(".rose-rooms")).toHaveCount(0);
+      await page.waitForTimeout(800);
+      await expect(page.locator(".rose-page-hero")).toHaveCount(0);
     } finally {
       await page.request.get(`${API}/__test/wonders?on=1`);
       await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
