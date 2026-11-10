@@ -63,6 +63,17 @@ function loadLogo(url: string | null | undefined): Promise<HTMLImageElement | nu
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
+type Rgb = [number, number, number];
+const rgb = (hex: string): Rgb => {
+  const h = /^#[0-9a-f]{6}$/i.test(hex) ? hex : "#f7dce8";
+  return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as Rgb;
+};
+const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const css = (c: Rgb, alpha = 1) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${alpha})`;
+/** Each chapter's colours (light points, deep points, the glow behind): the store's own for its logo, lilac for
+ *  the hijab, champagne gold for the bag. They blend as one shape becomes the next. */
+const TONES: Array<[string, string, string]> = [["", "", ""], ["#efe6ff", "#bfa2ff", "#7a52c8"], ["#fff2d2", "#f5c56a", "#b8812c"]];
+
 export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null; storeName: string }) {
   const { language: lang } = useLanguage();
   const root = useRef<HTMLElement>(null);
@@ -92,11 +103,12 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     const size = new Float32Array(n), tone = new Float32Array(n), seed = new Float32Array(n);
     for (let i = 0; i < n; i++) { size[i] = 0.6 + Math.random() * 1.6; tone[i] = Math.random(); seed[i] = Math.random() * Math.PI * 2; }
     const pointer = { x: -9999, y: -9999 };
-    let light = "#fde6ef", deep = "#e8a8c3";
+    // The chapters' colours; the first is the store's own (read again now and then: a colour picked meanwhile).
+    const tones: Array<[Rgb, Rgb, Rgb]> = TONES.map(([l, d, g]) => [rgb(l), rgb(d), rgb(g)]);
     const readColours = () => {
       const cs = getComputedStyle(el);
-      light = cs.getPropertyValue("--selection-soft").trim() || "#fde6ef";
-      deep = cs.getPropertyValue("--selection-decorative").trim() || cs.getPropertyValue("--selection-seed").trim() || "#e8a8c3";
+      const hex = (name: string, fallback: string) => { const v = cs.getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
+      tones[0] = [rgb(hex("--selection-soft", "#fde6ef")), rgb(hex("--selection-decorative", hex("--selection-seed", "#e8a8c3"))), rgb(hex("--selection-accent", "#a43b64"))];
     };
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -156,7 +168,18 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       const scale = Math.min(w, h) * (phone ? 0.4 : 0.36);
       const cx = w / 2, cy = h * (phone ? 0.42 : 0.46);
       const time = now / 1000;
+      // This moment's colours: chapter a's, turning into chapter b's as the shape does.
+      const ta = tones[Math.min(tones.length - 1, a)], tb = tones[Math.min(tones.length - 1, b)];
+      const lightC = mix(ta[0], tb[0], t), deepC = mix(ta[1], tb[1], t), glowC = mix(ta[2], tb[2], t);
+      const light = css(lightC), deep = css(deepC);
+      const spark = css(mix(lightC, [255, 255, 255], 0.6));
       ctx.clearRect(0, 0, w, h);
+      // A glow of the chapter's colour behind the shape.
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.62);
+      glow.addColorStop(0, css(glowC, 0.42));
+      glow.addColorStop(1, css(glowC, 0));
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
       for (let i = 0; i < n; i++) {
         const sa = shapes[a], sb = shapes[b];
         let tx = cx + (sa[i * 2] + (sb[i * 2] - sa[i * 2]) * t) * scale;
@@ -175,6 +198,17 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
         ctx.fillStyle = tone[i] > 0.72 ? deep : light;
         ctx.globalAlpha = 0.55 + tone[i] * 0.45;
         ctx.fillRect(px[i], py[i], size[i], size[i]);
+        // A few points sparkle now and then: a small four-pointed glint.
+        if (tone[i] > 0.965) {
+          const flash = reduced ? 0.7 : Math.sin(time * (1.6 + seed[i]) + seed[i] * 7);
+          if (flash > 0.6) {
+            const k = (flash - 0.6) / 0.4, len = 1.5 + k * (phone ? 4 : 5);
+            ctx.globalAlpha = k * 0.85;
+            ctx.fillStyle = spark;
+            ctx.fillRect(px[i] - len, py[i] - 0.5, len * 2, 1);
+            ctx.fillRect(px[i] - 0.5, py[i] - len, 1, len * 2);
+          }
+        }
       }
       ctx.globalAlpha = 1;
       if (visible && !reduced) raf = requestAnimationFrame(frame);

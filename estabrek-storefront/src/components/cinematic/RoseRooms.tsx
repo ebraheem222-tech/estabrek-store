@@ -2,21 +2,58 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { tr } from "@/lib/words";
+import { normalHex, photoColour, sceneTheme } from "@/lib/sceneColour";
 import { useLanguage } from "./Language";
 
-export type RoomPiece = { slug: string; title: string; image: string; price?: string | null };
+/** `colour`: the piece's own (its first colour option); `photo`: its picture, to read a colour from otherwise. */
+export type RoomPiece = { slug: string; title: string; image: string; price?: string | null; colour?: string | null; photo?: string | null };
 
 /*
  * The rooms (rose-wonders.css, "the rooms"): a room for each signature piece, like a pavilion's alcoves. The
  * section holds the screen while the page scroll walks sideways through them; the room in front lights up
  * (a spotlight, its piece comes forward), the others wait in the half-dark. A piece's room tilts a little
- * towards the pointer. A tap opens the piece.
+ * towards the pointer. A tap opens the piece. While the rooms hold the screen the gallery and the page (the
+ * header too) wear the lit piece's colour: its own colour, else its photo's (lib/sceneColour.ts).
  */
 export function RoseRooms({ pieces, title }: { pieces: RoomPiece[]; title?: string }) {
   const { language: lang } = useLanguage();
   const root = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const [lit, setLit] = useState(0);
+  // Each piece's colour, once known.
+  const [colours, setColours] = useState<Array<string | null>>(() => pieces.map((p) => normalHex(p.colour)));
+  useEffect(() => {
+    let live = true;
+    void Promise.all(pieces.map((p) => normalHex(p.colour) ? Promise.resolve(normalHex(p.colour)) : photoColour(p.photo || p.image))).then((found) => { if (live) setColours(found); });
+    return () => { live = false; };
+  }, [pieces]);
+  const theme = useRef<ReturnType<typeof sceneTheme>>(null);
+  const holding = useRef(false);
+  const dress = useRef(() => {});
+  // The lit piece's colour on the gallery and the page, while the rooms hold the screen.
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    theme.current = sceneTheme(el, "rooms");
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const r = el.getBoundingClientRect();
+      const on = r.top < window.innerHeight * 0.55 && r.bottom > window.innerHeight * 0.45;
+      if (on === holding.current) return;
+      holding.current = on;
+      if (on) dress.current();
+      else theme.current?.giveBack();
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(check); };
+    check();
+    window.addEventListener("scroll", schedule, { passive: true });
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", schedule); theme.current?.giveBack(true); theme.current = null; holding.current = false; };
+  }, []);
+  useEffect(() => {
+    dress.current = () => { const c = colours[lit]; if (holding.current && c) theme.current?.wear(c, 0.7); };
+    dress.current();
+  }, [lit, colours]);
 
   useEffect(() => {
     const el = root.current;

@@ -48,8 +48,9 @@
 .rose-rooms-stage {
   position: sticky; top: 0; height: 100svh; overflow: hidden; display: grid; grid-template-rows: auto 1fr; padding-top: 104px; color: #fff;
   background:
-    radial-gradient(70% 45% at 50% 0%, color-mix(in srgb, var(--selection-seed, #c97794) 34%, transparent), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--selection-ink, #4d2039) 80%, #000), color-mix(in srgb, var(--selection-ink, #4d2039) 50%, #000));
+    radial-gradient(70% 50% at 50% 0%, color-mix(in srgb, var(--selection-seed, #c97794) 52%, transparent), transparent 72%),
+    radial-gradient(60% 40% at 50% 100%, color-mix(in srgb, var(--selection-seed, #c97794) 30%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--selection-ink, #4d2039) 78%, #000), color-mix(in srgb, var(--selection-ink, #4d2039) 50%, #000));
 }
 .rose-rooms-head { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 0 6%; }
 .rose-rooms-head .atelier-eyebrow { color: rgba(255, 255, 255, .7); }
@@ -150,6 +151,12 @@
     linear-gradient(90deg, color-mix(in srgb, #bcd8e6 80%, transparent) 0 10%, transparent 26%),
     linear-gradient(170deg, color-mix(in srgb, var(--selection-soft, #f7dce8) 40%, #fbf5ec), #f3eadb);
 }
+/* The sea takes the colour of the island tapped (the page's, while it wears it). */
+.rose-world-wash {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .9s ease;
+  background: radial-gradient(85% 85% at 50% 45%, color-mix(in srgb, var(--selection-seed, #d99fb6) 46%, transparent), color-mix(in srgb, var(--selection-seed, #d99fb6) 22%, transparent) 70%);
+}
+.rose-world[data-dressed] .rose-world-wash { opacity: 1; }
 .rose-world-map { position: absolute; left: 0; top: 0; width: 1600px; height: 1000px; transform-origin: 0 0; will-change: transform; }
 .rose-world-frame:not([data-dragging]) .rose-world-map { transition: transform .7s cubic-bezier(.2, .8, .2, 1); }
 .rose-world-routes { position: absolute; inset: 0; width: 1600px; height: 1000px; overflow: visible; pointer-events: none; }
@@ -262,6 +269,9 @@
   .rose-story-pill span { letter-spacing: .1em; color: var(--selection-muted, #703c58); }
   .rose-story-pill strong { font-weight: 700; white-space: nowrap; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; }
   .rose-story-pill span { white-space: nowrap; }
+  /* While the "you viewed" note shows at the bottom, the pill steps aside. */
+  .rose-story-pill { transition: opacity .3s ease, translate .3s ease; }
+  html:has(.rose-recent[aria-hidden="false"]) .rose-story-pill { opacity: 0; translate: -50% 14px; pointer-events: none; }
   .rose-story-pill i { position: absolute; inset-inline-start: 0; bottom: 0; height: 2px; width: calc(var(--story-p, 0) * 100%); background: var(--selection-accent, #a43b64); transition: width .4s ease; }
 }
 /* Razan takes a few steps with the new chapter. */

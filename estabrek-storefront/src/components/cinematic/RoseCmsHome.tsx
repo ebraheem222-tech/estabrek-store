@@ -126,7 +126,7 @@ export function RoseCmsHome({
     return pool
       .filter((p): p is ProductMini & { slug: string; imageUrl: string } => Boolean(p?.slug && p.imageUrl) && !seen.has(p.slug!) && Boolean(seen.add(p.slug!)))
       .slice(0, 6)
-      .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 640, h: 800, c: "fill", g: "auto" }), price: p.priceText ?? null }));
+      .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 640, h: 800, c: "fill", g: "auto" }), price: p.priceText ?? null, colour: (p as { colors?: string[] }).colors?.[0] ?? null, photo: p.imageUrl }));
   })();
   const worldCollections: WorldCollection[] = (() => {
     const items = ((sorted.find(isCollections)?.data as any)?.items ?? []) as Array<{ label?: string; title?: string; href?: string; imageUrl?: string }>;

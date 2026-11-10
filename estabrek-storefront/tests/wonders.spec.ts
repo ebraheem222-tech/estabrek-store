@@ -148,6 +148,29 @@ test.describe.serial("the home's showpieces", () => {
     await expect(steps.last()).toHaveAttribute("aria-current", "step");
   });
 
+  test("the page wears the lit room's piece colour while the rooms hold the screen, and gives it back after", async ({ page }) => {
+    await page.goto("/");
+    const seed = () => page.locator(".atelier-header").evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed").trim());
+    expect(await seed()).toBe("");
+    await scrollThrough(page, ".rose-rooms", 0.02);
+    await expect.poll(seed).toMatch(/^#[0-9a-f]{6}$/i);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(seed, { timeout: 8000 }).toBe("");
+  });
+
+  test("a tap on an island washes the sea and dresses the page in its collection's colour; closing it gives it back", async ({ page }) => {
+    await page.goto("/");
+    const world = page.locator(".rose-world");
+    await world.scrollIntoViewIfNeeded();
+    const seed = () => page.locator(".atelier-header").evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed").trim());
+    await world.getByRole("button", { name: "حجاب" }).click();
+    await expect(world).toHaveAttribute("data-dressed", "true");
+    await expect.poll(seed).toMatch(/^#[0-9a-f]{6}$/i);
+    await world.locator(".rose-world-card-close").click();
+    await expect(world).not.toHaveAttribute("data-dressed", /.+/);
+    await expect.poll(seed, { timeout: 8000 }).toBe("");
+  });
+
   test("on a phone, story mode is a small pill at the bottom of the screen", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
@@ -210,5 +233,31 @@ test.describe.serial("the store's secret", () => {
     await hold(page, 1500);
     await page.waitForTimeout(300);
     await expect(page.getByRole("dialog", { name: "سرّ المتجر" })).toHaveCount(0);
+  });
+});
+
+test.describe("the collections story in each collection's colour", () => {
+  const story = async (page: Page, on: boolean) => {
+    await page.request.get(`${API}/__test/collections-story?on=${on ? 1 : 0}`);
+    await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
+  };
+  test.afterEach(async ({ page }) => story(page, false));
+
+  test("the page (the header too) takes each collection's colour in turn, and gives it back after", async ({ page }) => {
+    await story(page, true);
+    await page.goto("/");
+    const section = page.locator(".rose-collections-scroll");
+    await expect(section).toHaveCount(1);
+    const seed = () => page.locator(".atelier-header").evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed").trim());
+    await section.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + 40));
+    await expect(section.locator(".rose-cs-name")).toHaveText("فساتين");
+    await expect.poll(seed).toMatch(/^#[0-9a-f]{6}$/i);
+    await page.waitForTimeout(1200); // the glide settles
+    const first = await seed();
+    await section.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + el.offsetHeight - window.innerHeight - 20));
+    await expect(section.locator(".rose-cs-name")).toHaveText("حجاب");
+    await expect.poll(seed).not.toBe(first);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(seed, { timeout: 8000 }).toBe("");
   });
 });
