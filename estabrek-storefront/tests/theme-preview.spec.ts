@@ -21,16 +21,20 @@ test("quick-add colour preview commits a palette once and restores the page", as
   await expect(shell).toHaveAttribute("data-theme-preview", "true");
   await expect.poll(() => header.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(before);
   // One colour of the hover cycle (a new one every 2.2 s): settled after its 0.28 s glide,
-  // then left alone, not written again on every frame. Measured from the start of a colour, so the readings
-  // stay inside one cycle on a slow machine too (CI read the next colour).
-  const seed = () => header.evaluate(el => el.style.getPropertyValue("--selection-seed"));
-  const first = await seed();
-  await expect.poll(seed, { intervals: [40], timeout: 8000 }).not.toBe(first);
-  await page.waitForTimeout(400);
-  const previewColour = await header.evaluate(el => el.style.getPropertyValue("--selection-seed"));
+  // then left alone, not written again on every frame. Timed inside the page from the moment a colour starts:
+  // on CI each step from the test to the page took 0.3–0.9 s, and the readings crossed into the next colour.
+  const [previewColour, later] = await header.evaluate((el) => new Promise<[string, string]>((resolve) => {
+    const seed = () => (el as HTMLElement).style.getPropertyValue("--selection-seed");
+    const first = seed();
+    const watch = new MutationObserver(() => {
+      if (seed() === first) return;
+      watch.disconnect();
+      window.setTimeout(() => { const settled = seed(); window.setTimeout(() => resolve([settled, seed()]), 700); }, 400);
+    });
+    watch.observe(el, { attributes: true, attributeFilter: ["style"] });
+  }));
   expect(previewColour).not.toBe("");
-  await page.waitForTimeout(700);
-  expect(await header.evaluate(el => el.style.getPropertyValue("--selection-seed"))).toBe(previewColour);
+  expect(later).toBe(previewColour);
   expect(await page.evaluate(() => (window as typeof window & { themeWrites: number }).themeWrites)).toBe(0);
   await page.mouse.move(5, 180);
   await expect(shell).not.toHaveAttribute("data-theme-preview", /.*/);
