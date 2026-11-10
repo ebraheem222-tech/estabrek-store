@@ -8,6 +8,12 @@ import { sectionPalette } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
 import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
 import { RoseHomeStack } from "./RoseHomeStack";
+import { RoseParticles } from "./RoseParticles";
+import { RoseRooms, type RoomPiece } from "./RoseRooms";
+import { RoseWorld, type WorldCollection } from "./RoseWorld";
+import { RosePageHero } from "./RosePageHero";
+import { RoseStoryMode } from "./RoseStoryMode";
+import { normalizeDelivery } from "@/lib/delivery";
 import { cldUrl } from "@/lib/cloudinary";
 import {
   RoseHero,
@@ -34,6 +40,8 @@ export function RoseCmsHome({
   renderProductCard,
   seasons = [],
   stories = [],
+  delivery = null,
+  currencyCode = null,
 }: {
   sections: CmsSection[];
   productLookup: Record<string, ProductMini>;
@@ -46,6 +54,9 @@ export function RoseCmsHome({
   seasons?: SeasonEdit[];
   /** Accessories → kids → incense scene; hidden from Admin with hero.roseStoriesEnabled = false. */
   stories?: StoryChapter[];
+  /** The delivery settings (header.delivery), for the store's world map. */
+  delivery?: unknown;
+  currencyCode?: string | null;
 }) {
   const sorted = sections
     .filter((s) => s.isVisible !== false)
@@ -102,8 +113,30 @@ export function RoseCmsHome({
     const n = (s?.data as any)?.node;
     return n?.children?.length ? { nodes: n.children, ctx: (s!.data as any).ctx } : undefined;
   };
+  // The showpieces (rose-wonders.css): three scenes with a place of their own, and two layers over the home.
+  // Each one switched in the opening's settings (on by default).
+  const heroData = (hero?.data ?? {}) as Record<string, unknown>;
+  const particlesOn = heroData.roseParticlesEnabled !== false;
+  const worldOn = heroData.roseWorldEnabled !== false;
+  const roomsOn = heroData.roseRoomsEnabled !== false;
+  const roomPieces: RoomPiece[] = (() => {
+    const firstIds: string[] = ((firstProducts?.data as any)?.productIds || (firstProducts?.data as any)?.products || []) as string[];
+    const pool = [...firstIds.map((id) => productLookup[id]).filter(Boolean), ...Object.values(productLookup)];
+    const seen = new Set<string>();
+    return pool
+      .filter((p): p is ProductMini & { slug: string; imageUrl: string } => Boolean(p?.slug && p.imageUrl) && !seen.has(p.slug!) && Boolean(seen.add(p.slug!)))
+      .slice(0, 6)
+      .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 640, h: 800, c: "fill", g: "auto" }), price: p.priceText ?? null }));
+  })();
+  const worldCollections: WorldCollection[] = (() => {
+    const items = ((sorted.find(isCollections)?.data as any)?.items ?? []) as Array<{ label?: string; title?: string; href?: string; imageUrl?: string }>;
+    const fromGrid = items.filter((i) => i.href && (i.label || i.title)).map((i) => ({ label: (i.label || i.title)!, href: i.href!, imageUrl: i.imageUrl ?? null }));
+    if (fromGrid.length) return fromGrid;
+    return categories.filter((c) => !c.parentId).slice(0, 8).map((c) => ({ label: c.name, href: `/c/${encodeURIComponent(c.slug)}`, imageUrl: null }));
+  })();
+  const deliverySettings = delivery ? normalizeDelivery(delivery) : null;
   const block = (name: string, node: ReactNode) => (
-    <div key={`block-${name}`} data-rose-block={name} data-edit-section={hero?.id}>
+    <div key={`block-${name}`} data-rose-block={name} data-edit-section={hero?.id} data-hero-busy={["particles", "world", "rooms"].includes(name) || undefined}>
       {node}
       <OverlayLayer over={overOf(name)} />
     </div>
@@ -111,6 +144,13 @@ export function RoseCmsHome({
   const seasonsScene = () => block("seasons", <RoseSeasons seasons={seasons} words={scenes.seasons} />);
   const storiesScene = () => block("stories", <RoseCollectionStory chapters={stories} words={scenes.stories} />);
   const instagramScene = () => block("instagram", <RoseInstagram images={instagramImages} words={scenes.instagram} />);
+  const particlesScene = () => block("particles", <RoseParticles logoUrl={logoUrl} storeName={siteName || "Estabrek"} />);
+  const roomsScene = () => block("rooms", <RoseRooms pieces={roomPieces} />);
+  const worldScene = () => block("world", <RoseWorld collections={worldCollections} delivery={deliverySettings} currencyCode={currencyCode} />);
+  const showParticles = particlesOn && !placed.has("particles");
+  const showRooms = roomsOn && roomPieces.length >= 2 && !placed.has("rooms");
+  const showWorld = worldOn && (worldCollections.length > 0 || Boolean(deliverySettings?.zones.length)) && !placed.has("world");
+  let tailShown = false;
   const nodes: ReactNode[] = [];
   let native: CmsSection[] = [];
   const flush = () => {
@@ -142,10 +182,12 @@ export function RoseCmsHome({
       storiesShown = true;
       nodes.push(storiesScene());
     }
-    if (instagramOn && !instagramShown && section.id === instagramBefore) {
+    if (!tailShown && section.id === instagramBefore) {
       flush();
-      instagramShown = true;
-      nodes.push(instagramScene());
+      tailShown = true;
+      if (showRooms) nodes.push(roomsScene());
+      if (instagramOn && !instagramShown) { instagramShown = true; nodes.push(instagramScene()); }
+      if (showWorld) nodes.push(worldScene());
     }
     // A rose block where the editor put it.
     if ((section.type as string) === "TREE_NODE" && d.node?.type === "roseBlock") {
@@ -154,6 +196,9 @@ export function RoseCmsHome({
       if (name === "seasons" && seasonsOn) nodes.push(seasonsScene());
       else if (name === "stories" && storiesOn) nodes.push(storiesScene());
       else if (name === "instagram" && instagramOn) nodes.push(instagramScene());
+      else if (name === "particles" && particlesOn) nodes.push(particlesScene());
+      else if (name === "rooms" && roomsOn && roomPieces.length >= 2) nodes.push(roomsScene());
+      else if (name === "world" && worldOn) nodes.push(worldScene());
       continue;
     }
     let node: ReactNode;
@@ -247,6 +292,10 @@ export function RoseCmsHome({
         </div>,
       );
     } else native.push(section);
+    if (section.id === hero?.id && showParticles) {
+      flush();
+      nodes.push(particlesScene());
+    }
     if (section.id === studyAfter && showStudy) {
       flush();
       nodes.push(block("fabric", <RoseFabricStudy words={(hero?.data as any)?.roseStoryWords} />));
@@ -263,7 +312,11 @@ export function RoseCmsHome({
   }
   flush();
   if (showStories && !storiesShown) nodes.push(storiesScene());
-  if (instagramOn && !instagramShown) nodes.push(instagramScene());
+  if (!tailShown) {
+    if (showRooms) nodes.push(roomsScene());
+    if (instagramOn && !instagramShown) nodes.push(instagramScene());
+    if (showWorld) nodes.push(worldScene());
+  }
   // The pieces the page shows, for the 3D ring around the silk film (rose-showcase.css).
   const seen = new Set<string>();
   const ring: RingPiece[] = Object.values(productLookup)
@@ -273,5 +326,12 @@ export function RoseCmsHome({
   // Each section holds and the next slides over it: only when switched on (Admin → the opening → «الأقسام فوق بعض»).
   // Off by default: on this home most sections are scroll scenes of their own, and held under each other they
   // clashed (one scene's parts over the next, a half-painted background).
-  return <RingPiecesProvider pieces={ring}><RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} /></RoseHomeFrame></RingPiecesProvider>;
+  // The two layers sit beside the frame (not in it: they are not sections).
+  return (
+    <RingPiecesProvider pieces={ring}>
+      <RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} /></RoseHomeFrame>
+      <RosePageHero enabled={heroData.roseHeroObjectEnabled !== false} />
+      <RoseStoryMode enabled={heroData.roseStoryModeEnabled !== false} />
+    </RingPiecesProvider>
+  );
 }

@@ -26,7 +26,7 @@ export type Spot = { x: number; y: number };
 type Ids = (prefix: string) => string;
 
 /** The scenes that can have a place of their own (the fabric study follows the first products). */
-export const PLACEABLE_SCENES = ["seasons", "stories", "instagram"] as const;
+export const PLACEABLE_SCENES = ["seasons", "stories", "instagram", "particles", "world", "rooms"] as const;
 
 export type InsertCtx = {
   index: TreeIndex;

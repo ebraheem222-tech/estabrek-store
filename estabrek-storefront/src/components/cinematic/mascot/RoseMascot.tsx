@@ -12,7 +12,7 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useSyncExternalStore, type MutableRefObject } from "react";
 import { razanMaySpeak, razanNow, type SpeakKind } from "@/lib/razanRuntime";
 import { pageScrolling } from "@/lib/pageRest";
-import { ROSE_EVENT, roseLine, type RoseExtras, type RoseMoment, type RoseOutfit } from "@/lib/roseEvents";
+import { ROSE_EVENT, ROSE_SAY_EVENT, roseLine, type RoseExtras, type RoseMoment, type RoseOutfit, type RoseSay } from "@/lib/roseEvents";
 import { fillAuto } from "@/lib/storeNames";
 import { useLanguage } from "../Language";
 
@@ -463,10 +463,20 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       api.current.say(roseLine(kind, lang), 2400);
     };
     const onMoment = (e: Event) => answer((e as CustomEvent<RoseMoment>).detail);
+    // Story mode: a chapter's line (it counts as a reaction for the owner's Razan settings).
+    const onSay = (e: Event) => {
+      const said = (e as CustomEvent<RoseSay>).detail;
+      if (!said?.text || !reactive || !visible || s.muted || !razanNow().reactions || !razanNow().enabled) return;
+      lastSaid = performance.now() / 1000;
+      if (said.act) api.current[said.act]();
+      else api.current.wave();
+      api.current.say(said.text, 2800, "react");
+    };
     const onColor = (e: Event) => { const c = e as Event & { restored?: boolean; auto?: boolean }; if (!c.restored && !c.auto) answer("color-pick"); };
     if (reactive) {
       window.addEventListener(ROSE_EVENT, onMoment);
       window.addEventListener("storefront-color-selected", onColor);
+      window.addEventListener(ROSE_SAY_EVENT, onSay);
     }
     let greetTimer = 0;
     if (greeting) {
@@ -480,6 +490,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener(ROSE_EVENT, onMoment);
+      window.removeEventListener(ROSE_SAY_EVENT, onSay);
       window.removeEventListener("storefront-color-selected", onColor);
       window.clearTimeout(greetTimer);
       window.clearTimeout(sayTimer.current);

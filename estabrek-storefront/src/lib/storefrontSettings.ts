@@ -94,6 +94,10 @@ export type StorefrontSettings = {
   // Theme & Colors
   themeColorsEnabled: boolean;
   colorFollow: ColorFollow;
+  /** The store's secret: holding the logo down opens a hidden coupon (RoseSecret). */
+  secretEnabled: boolean;
+  secretCode: string;
+  secretText: string;
   accentColor: string;
   accentColor2: string;
   glassEffectsEnabled: boolean;
@@ -196,6 +200,9 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   // Theme & Colors
   themeColorsEnabled: true,
   colorFollow: "everything",
+  secretEnabled: true,
+  secretCode: "",
+  secretText: "",
   accentColor: "#8b5cf6",
   accentColor2: "#f59e0b",
   glassEffectsEnabled: true,

@@ -868,7 +868,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     pause: z.boolean().optional(),
     separator: z.string().trim().max(4).optional(),
   }),
-  roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram"]) }),
+  roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram", "particles", "world", "rooms"]) }),
   legacy: z.object({ sectionId: id }),
   // A saved block linked here (lib/pageBlocks.ts): the shop draws the block's sections in its place.
   block: z.object({ blockId: id }),

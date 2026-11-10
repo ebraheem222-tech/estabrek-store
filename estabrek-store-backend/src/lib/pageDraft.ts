@@ -16,7 +16,8 @@ import { publicationSnapshot, type PublicationPage, type PublicationSnapshot } f
 
 export const DRAFT_LANGS = ["ar", "en", "he"] as const;
 export type DraftLang = (typeof DRAFT_LANGS)[number];
-export const ROSE_BLOCKS = ["seasons", "stories", "instagram"] as const;
+/** Rose scenes the editor can place: the seasons, the stories, Instagram, and the particles, the store's world and the rooms. */
+export const ROSE_BLOCKS = ["seasons", "stories", "instagram", "particles", "world", "rooms"] as const;
 export const SCREENS = ["base", "tablet", "mobile"] as const;
 
 export type DraftSection = { id: string; type: string; data: unknown; isVisible: boolean; tr: Partial<Record<DraftLang, unknown>> };

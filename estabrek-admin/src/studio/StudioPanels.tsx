@@ -106,6 +106,12 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           {toggle("roseCollectionsStoryEnabled", tr("المجموعات بقصة 3D", "Collections as a 3D story"))}
           {/* Each section holds and the next one slides up over it (off: plain scrolling). */}
           {toggle("roseStackEnabled", tr("الأقسام فوق بعض مع السكرول", "Sections stack as you scroll"), false)}
+          {/* The showpieces (rose-wonders): three scenes, and two layers over the whole home. */}
+          {toggle("roseParticlesEnabled", tr("الجزيئات (لوجو، حجاب، حقيبة)", "Particles (logo, hijab, bag)"))}
+          {toggle("roseWorldEnabled", tr("عالم المتجر (خريطة المجموعات والتوصيل)", "The store's world (collections and delivery map)"))}
+          {toggle("roseRoomsEnabled", tr("غرف القطع المميزة", "Rooms of signature pieces"))}
+          {toggle("roseHeroObjectEnabled", tr("بطل الصفحة: حجاب 3D بيمشي معكِ", "Page hero: a 3D hijab that travels with you"))}
+          {toggle("roseStoryModeEnabled", tr("وضع الحكاية: رزان بتمشي معكِ فصل فصل", "Story mode: Razan walks you chapter by chapter"))}
           {toggle("roseInstagramEnabled", tr("إنستغرام", "Instagram"))}
           <Field
             label={tr("سطور الفيلم (سطر لكل لفّة)", "Film lines (one per turn)")}
@@ -176,6 +182,9 @@ const SCENE_SOURCE: Record<string, () => string> = {
   stories: () => tr("كل فصل من تصنيف: إكسسوارات، أطفال، بخور. فصل بلا تصنيف ما بيطلع.", "Each chapter comes from a category: accessories, kids, incense. A chapter without its category doesn't show."),
   instagram: () => tr("الحساب من رابط إنستغرام بالإعدادات، والصور من أول صور المنتجات.", "The account is the Instagram link in the settings; the pictures are the first product pictures."),
   fabric: () => tr("دراسة القماش بتطلع بعد أول قسم منتجات.", "The fabric study shows after the first products section."),
+  particles: () => tr("جزيئات بتصير لوجو المتجر، بعدين حجاب، بعدين حقيبة مع السكرول. اللوجو من إعدادات المتجر.", "Particles that become the store's logo, then a hijab, then a bag as the page scrolls. The logo is the store's own."),
+  world: () => tr("خريطة بتتسحب: جزر المجموعات (من قسم المجموعات)، ومدن التوصيل بأسعارها (من إعدادات التوصيل).", "A map to drag around: the collections as islands (from the collections section), and the delivery cities with their prices (from the delivery settings)."),
+  rooms: () => tr("غرفة لكل قطعة مميزة (أول قطع وصل حديثاً)، بتمشي بينها مع السكرول.", "A room for each signature piece (the first new arrivals), walked through as the page scrolls."),
 };
 
 /**

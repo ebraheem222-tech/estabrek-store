@@ -142,9 +142,12 @@ const BLOCK_LABEL: Record<string, () => string> = {
   stories: () => tr("قصص الكولكشن", "Collection stories"),
   instagram: () => tr("إنستغرام", "Instagram"),
   fabric: () => tr("دراسة القماش", "Fabric study"),
+  particles: () => tr("الجزيئات", "Particles"),
+  world: () => tr("عالم المتجر", "The store's world"),
+  rooms: () => tr("غرف القطع", "The rooms"),
 };
 /** The opening's switch that shows each rose scene. */
-const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
+const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled", particles: "roseParticlesEnabled", world: "roseWorldEnabled", rooms: "roseRoomsEnabled" };
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
 /** Boxes that can carry a pattern over their background. */
