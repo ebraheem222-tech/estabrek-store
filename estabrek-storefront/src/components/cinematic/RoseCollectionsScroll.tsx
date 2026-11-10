@@ -10,7 +10,7 @@ import { Icon } from "./Icons";
 import { collectionSeed } from "@/lib/collectionTheme";
 import { moodOf, type Mood } from "@/lib/categoryMood";
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { normalHex, photoColour, sceneTheme } from "@/lib/sceneColour";
+import { collectionSeeds, normalHex, photoColour, sceneTheme } from "@/lib/sceneColour";
 import { lazyMargin } from "@/lib/motionSettings";
 import { motionLevel } from "@/lib/motionBudget";
 import { tr } from "@/lib/words";
@@ -44,12 +44,6 @@ function lineFor(mood: Mood, lang: Parameters<typeof tr>[0]) {
   }
 }
 
-/** How far apart two colours look (0 … ~440). */
-function colourDistance(a: string, b: string) {
-  const ch = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
-  return Math.hypot(ch(a, 1) - ch(b, 1), ch(a, 3) - ch(b, 3), ch(a, 5) - ch(b, 5));
-}
-
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -81,14 +75,7 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
     void Promise.all(items.map((item) => (normalHex((item as { themeColor?: string }).themeColor) || normalHex((item as { color?: string }).color) ? Promise.resolve(null) : photoColour(item.imageUrl)))).then((found) => { if (live) setPhotoSeeds(found); });
     return () => { live = false; };
   }, [items]);
-  const seeds = useMemo(() => {
-    const out: string[] = [];
-    chapters.forEach((c, i) => {
-      const photo = photoSeeds[i];
-      out.push(photo && (!i || colourDistance(photo, out[i - 1]) > 60) ? photo : c.seed);
-    });
-    return out;
-  }, [chapters, photoSeeds]);
+  const seeds = useMemo(() => collectionSeeds(items, photoSeeds), [items, photoSeeds]);
   const keys = useMemo(() => Array.from(new Set(chapters.map((c) => c.key))), [chapters]);
   // Read by the scroll (a photo's colour arriving late doesn't rebuild the scroll triggers).
   const seedsRef = useRef(seeds);

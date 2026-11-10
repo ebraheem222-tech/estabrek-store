@@ -130,8 +130,8 @@ export function RoseCmsHome({
       .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 640, h: 800, c: "fill", g: "auto" }), price: p.priceText ?? null, colour: (p as { colors?: string[] }).colors?.[0] ?? null, photo: p.imageUrl }));
   })();
   const worldCollections: WorldCollection[] = (() => {
-    const items = ((sorted.find(isCollections)?.data as any)?.items ?? []) as Array<{ label?: string; title?: string; href?: string; imageUrl?: string }>;
-    const fromGrid = items.filter((i) => i.href && (i.label || i.title)).map((i) => ({ label: (i.label || i.title)!, href: i.href!, imageUrl: i.imageUrl ?? null }));
+    const items = ((sorted.find(isCollections)?.data as any)?.items ?? []) as Array<{ label?: string; title?: string; href?: string; imageUrl?: string; themeColor?: string; color?: string }>;
+    const fromGrid = items.filter((i) => i.href && (i.label || i.title)).map((i) => ({ label: (i.label || i.title)!, href: i.href!, imageUrl: i.imageUrl ?? null, themeColor: i.themeColor || i.color || null }));
     if (fromGrid.length) return fromGrid;
     return categories.filter((c) => !c.parentId).slice(0, 8).map((c) => ({ label: c.name, href: `/c/${encodeURIComponent(c.slug)}`, imageUrl: null }));
   })();

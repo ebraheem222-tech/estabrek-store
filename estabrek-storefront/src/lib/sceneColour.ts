@@ -1,5 +1,5 @@
 import { cldUrl } from "@/lib/cloudinary";
-import { sampleImageColor } from "@/lib/collectionTheme";
+import { collectionSeed, sampleImageColor } from "@/lib/collectionTheme";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { claimTheme, holdsTheme, releaseTheme, themeHeld, themeHeldBy } from "@/lib/themeBase";
 import { themeFollower } from "@/lib/themeTween";
@@ -150,4 +150,27 @@ export function shiftHue(seed: string, degrees: number): string {
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => Math.round((l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))) * 255);
   return `#${[f(0), f(8), f(4)].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** How far apart two colours look (0 … ~440). */
+export function colourDistance(a: string, b: string) {
+  const ch = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
+  return Math.hypot(ch(a, 1) - ch(b, 1), ch(a, 3) - ch(b, 3), ch(a, 5) - ch(b, 5));
+}
+
+type CollectionLike = { themeColor?: string; color?: string; label?: string; title?: string; href?: string };
+/**
+ * Each collection's colour, the same wherever it shows (the collections story, the map): the colour the owner
+ * gave it; else its photo's (`photos[i]`, once read), unless that is too close to the one before (so the colour
+ * visibly changes from one collection to the next); else its kind's (collectionSeed).
+ */
+export function collectionSeeds(items: CollectionLike[], photos: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  items.forEach((item, i) => {
+    const own = collectionSeed(item, i);
+    const authored = normalHex(item.themeColor) || normalHex(item.color);
+    const photo = photos[i];
+    out.push(!authored && photo && (!i || colourDistance(photo, out[i - 1]) > 60) ? photo : own);
+  });
+  return out;
 }
