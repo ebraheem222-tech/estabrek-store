@@ -29,11 +29,13 @@ test("original-card colour overrides work without browser focus and survive quic
   await card.locator("button.color-swatch").last().evaluate((button: HTMLButtonElement) => { (document.activeElement as HTMLElement)?.blur(); button.click(); });
   expect(await shell.evaluate(el => (el as HTMLElement).style.getPropertyValue("--selection-seed"))).toBe(before);
   await card.getByRole("button", { name: "Quick preview", exact: true }).click();
-  const dialog = page.getByRole("dialog");
+  // The quick view (the dialog with the colour choices): after an add the small bag opens, a dialog of its own.
+  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("radio") });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("radio").last().click();
   await dialog.getByRole("button", { name: "Add to bag", exact: true }).click();
   await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".rose-minibag")).toHaveAttribute("data-open", "true");
   expect(await shell.evaluate(el => (el as HTMLElement).style.getPropertyValue("--selection-seed"))).toBe(before);
 });
 test("the global controls screen saves card and trigger defaults through its dedicated endpoint", async ({ page }) => {
