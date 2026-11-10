@@ -19,7 +19,10 @@ const setTree = async (request: APIRequestContext, on: boolean) => {
 };
 /** The page's server HTML, from <main> to its end (no scripts run). */
 const mainHtml = async (request: APIRequestContext, path: string) => {
-  const html = await (await request.get(path)).text();
+  // A cold page can stream parts of <main> after it (a pending "<!--$?-->" placeholder, filled in later): fetch
+  // again until the page comes whole, so two fetches compare like for like.
+  let html = await (await request.get(path)).text();
+  for (let i = 0; i < 4 && html.slice(html.indexOf("<main"), html.lastIndexOf("</main>")).includes("<!--$?-->"); i++) html = await (await request.get(path)).text();
   const start = html.indexOf("<main");
   const end = html.lastIndexOf("</main>");
   expect(start, `${path} has a <main>`).toBeGreaterThan(-1);
@@ -225,7 +228,9 @@ test.describe("styles become safe CSS", () => {
     expect(css).toContain("@font-face{font-family:\"th-amiri\";src:url(\"/fonts/themes/amiri-arabic-400.woff2\")");
     expect(css).toContain("@font-face{font-family:\"th-cairo\"");
     expect(css).not.toContain("th-nope");
-    expect(css).toMatch(/@media \(hover:hover\)\{:is\(\[data-cms-section="abc"\]\[data-cms-section\] \[data-edit-box="title"\]/);
+    // On hover (where there is one), the old section's title takes the accent (its selector also covers the title's
+    // languages and leaves the editor's part preview alone).
+    expect(css).toMatch(/@media \(hover:hover\)\{[^{}]*\[data-cms-section="abc"\]\[data-cms-section\] \[data-edit-box="title"\][^{}]*:hover\{color:var\(--accent\)\}/);
     // Headings take the store theme's display font when there is one.
     expect(css).toContain(":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}");
   });
