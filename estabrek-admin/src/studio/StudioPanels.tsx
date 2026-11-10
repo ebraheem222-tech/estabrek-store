@@ -110,7 +110,7 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           {toggle("roseParticlesEnabled", tr("الجزيئات (لوجو، حجاب، حقيبة)", "Particles (logo, hijab, bag)"))}
           {toggle("roseWorldEnabled", tr("عالم المتجر (خريطة المجموعات والتوصيل)", "The store's world (collections and delivery map)"))}
           {toggle("roseRoomsEnabled", tr("غرف القطع المميزة", "Rooms of signature pieces"), false)}
-          {toggle("roseHeroObjectEnabled", tr("بطل الصفحة: حجاب 3D بيمشي معكِ", "Page hero: a 3D hijab that travels with you"))}
+          {toggle("roseHeroObjectEnabled", tr("بطل الصفحة: حجاب 3D بيمشي معكِ", "Page hero: a 3D hijab that travels with you"), false)}
           {toggle("roseStoryModeEnabled", tr("وضع الحكاية: رزان بتمشي معكِ فصل فصل", "Story mode: Razan walks you chapter by chapter"))}
           {toggle("roseInstagramEnabled", tr("إنستغرام", "Instagram"))}
           <Field

@@ -127,7 +127,16 @@
 
 /* ---------------------------------------------------------------- 4. the store's world */
 
-.rose-world { padding: 70px 5% 60px; display: grid; gap: 22px; }
+.rose-world { position: relative; isolation: isolate; padding: 70px 5% 60px; display: grid; gap: 22px; }
+/* The section's whole surface takes the colour of the collection tapped (and glides back after), the way the
+   header and the sea do: a layer in that colour fades in behind everything. */
+.rose-world::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity .9s ease;
+  background:
+    radial-gradient(70% 60% at 50% 55%, color-mix(in srgb, var(--selection-seed, #d99fb6) 30%, transparent), transparent 75%),
+    linear-gradient(180deg, color-mix(in srgb, var(--selection-seed, #d99fb6) 20%, var(--selection-page, #fbeef4)), color-mix(in srgb, var(--selection-seed, #d99fb6) 34%, var(--selection-soft, #f7dce8)));
+}
+.rose-world[data-dressed]::before { opacity: 1; }
 .rose-world-head { display: grid; justify-items: center; gap: 8px; text-align: center; }
 .rose-world-head h2 { font-family: var(--atelier-serif); font-size: clamp(28px, 3.4vw, 48px); margin: 0; color: var(--selection-ink, #4d2039); }
 .rose-world-tabs { display: inline-flex; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--selection-soft, #f7dce8) 60%, #fff); border: 1px solid var(--selection-line, #efdde5); }

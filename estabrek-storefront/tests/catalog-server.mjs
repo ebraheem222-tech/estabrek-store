@@ -587,7 +587,6 @@ const home = {
         // switches them on with /__test/wonders?on=1.
         roseParticlesEnabled: false,
         roseWorldEnabled: false,
-        roseHeroObjectEnabled: false,
         roseStoryModeEnabled: false,
         subtitle: "وصف الحملة من لوحة الإدارة",
         primaryButton: { label: "تسوّقي المجموعة", href: "/shop" },
@@ -926,8 +925,11 @@ http
       const on = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
       const params = new URL(req.url, "http://localhost").searchParams;
       for (const key of ["roseParticlesEnabled", "roseWorldEnabled", "roseRoomsEnabled", "roseHeroObjectEnabled", "roseStoryModeEnabled"]) home.sections[0].data[key] = on;
-      // The rooms are off unless switched on: rooms=unset leaves their switch as a new store has it.
-      if (!on || params.get("rooms") === "unset") delete home.sections[0].data.roseRoomsEnabled;
+      // The rooms and the flying 3D silk are off unless switched on: unset=rooms,hero leaves those switches as a
+      // new store has them.
+      const unset = (params.get("unset") ?? "").split(",");
+      if (!on || unset.includes("rooms")) delete home.sections[0].data.roseRoomsEnabled;
+      if (!on || unset.includes("hero")) delete home.sections[0].data.roseHeroObjectEnabled;
       return res.end("{}");
     }
     // Admin → الإعدادات → سرّ المتجر: the hidden coupon behind the logo ({ code, text, enabled }).
