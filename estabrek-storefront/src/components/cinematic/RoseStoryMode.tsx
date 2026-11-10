@@ -8,7 +8,8 @@ import { useLanguage } from "./Language";
 /*
  * Story mode (rose-wonders.css, "the story"): the home read as a tale in chapters, one per section. A rail on
  * the page's far edge counts them (03 / 10) and names the one you're in, written upright; a tap on a chapter
- * goes there. On a phone a small pill at the bottom of the screen says where you are and leads to the next chapter.
+ * goes there. On a phone a small pill at the bottom of the screen (in the dock's free lane, FloatingDock.tsx) shows
+ * for a moment as each chapter starts and says where you are and leads to the next chapter.
  * Each time a new chapter opens, Razan walks a few steps and says a word about it (once a chapter a visit,
  * within the owner's Razan settings). Not in the editor's frame.
  */
@@ -59,7 +60,8 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
   const [chapters, setChapters] = useState<Array<{ kind: Kind; name: string }>>([]);
   const [current, setCurrent] = useState(0);
   const list = useRef<Chapter[]>([]);
-  const pill = useRef<HTMLButtonElement>(null);
+  // On a phone the pill shows for a moment when a new chapter starts, then steps aside (the screen is small).
+  const [flash, setFlash] = useState(true);
 
   useEffect(() => {
     if (!enabled || window.self !== window.top) return;
@@ -102,20 +104,6 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
     const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
     build();
     update();
-    // The phone's pill steps aside while the "you viewed" note shows at the bottom (watched here: a CSS :has()
-    // rule alone isn't in every phone's browser).
-    let watched: Element | null = null;
-    let recentObserver: MutationObserver | null = null;
-    const yieldPill = () => {
-      const recent = document.querySelector(".rose-recent");
-      pill.current?.toggleAttribute("data-yield", recent?.getAttribute("aria-hidden") === "false");
-      if (recent === watched) return;
-      recentObserver?.disconnect();
-      watched = recent;
-      if (recent) { recentObserver = new MutationObserver(yieldPill); recentObserver.observe(recent, { attributes: true, attributeFilter: ["aria-hidden"] }); }
-    };
-    const recentTimer = window.setInterval(yieldPill, 1500);
-    yieldPill();
     const kids = new MutationObserver(() => { build(); schedule(); });
     kids.observe(frame, { childList: true });
     window.addEventListener("scroll", schedule, { passive: true });
@@ -125,12 +113,16 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
       window.clearTimeout(sayTimer);
       window.clearTimeout(walkTimer);
       kids.disconnect();
-      recentObserver?.disconnect();
-      window.clearInterval(recentTimer);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
     };
   }, [enabled, lang]);
+
+  useEffect(() => {
+    setFlash(true);
+    const t = window.setTimeout(() => setFlash(false), 2800);
+    return () => window.clearTimeout(t);
+  }, [current]);
 
   if (!enabled || chapters.length < 2) return null;
   const go = (i: number) => list.current[i]?.el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -148,7 +140,7 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
         </ol>
         <span className="rose-story-now" aria-hidden="true">{chapters[current]?.name}</span>
       </nav>
-      <button ref={pill} type="button" className="rose-story-pill" onClick={() => go(Math.min(chapters.length - 1, current + 1))} aria-label={tr(lang, "الفصل الجاي", "Next chapter")}>
+      <button type="button" className="rose-story-pill" data-show={flash || undefined} onClick={() => go(Math.min(chapters.length - 1, current + 1))} aria-label={tr(lang, "الفصل الجاي", "Next chapter")}>
         <span dir="ltr">{count(current)}/{count(chapters.length - 1)}</span>
         <strong>{chapters[current]?.name}</strong>
         <i style={{ "--story-p": (current + 1) / chapters.length } as React.CSSProperties} aria-hidden="true" />

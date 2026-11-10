@@ -12,6 +12,7 @@ import { RouteLoader } from "./RouteLoader";
 import { SmoothScroll } from "./SmoothScroll";
 import { RoseMiniBag } from "./RoseMiniBag";
 import { RoseSecret } from "./RoseSecret";
+import { FloatingDock } from "./FloatingDock";
 import { RoseWave } from "./RoseWave";
 import { PerfOverlay } from "./PerfOverlay";
 import { useNames, useStoreIdentity } from "@/store/storeIdentity";
@@ -440,6 +441,7 @@ export function StorefrontChrome({
         {studio ? null : <RouteLoader logoUrl={storeData.logoUrl} />}
         {studio ? null : <SmoothScroll />}
         {studio ? null : <RoseMiniBag />}
+        {studio ? null : <FloatingDock />}
         {studio ? null : <RoseSecret enabled={storeData.secret?.enabled !== false} code={storeData.secret?.code} text={storeData.secret?.text} />}
         <RoseThemeProvider key={pathname}
           restoreSelection={!pathname.startsWith("/about") && !studio}

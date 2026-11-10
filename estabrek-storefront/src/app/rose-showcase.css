@@ -718,7 +718,7 @@ html.lenis, html.lenis body { height: auto; }
 /* On a phone the floating helpers step aside while it is open (its sheet is where they float). On a computer
    it keeps clear of them instead, and Rose cheers beside it. */
 @media (max-width: 760px) {
-  html[data-cinematic-storefront="true"]:has(.rose-minibag[data-open]) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
+  html[data-cinematic-storefront="true"][data-ui-bag] :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
 }
 .rose-minibag-scrim {
   position: absolute; inset: 0; border: 0; padding: 0; cursor: pointer;

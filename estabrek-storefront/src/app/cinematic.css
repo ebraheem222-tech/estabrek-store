@@ -2523,6 +2523,8 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
 .cinematic-shell[data-navbar-color] .atelier-header { background:var(--navbar-bg); color:var(--navbar-ink); border-color:color-mix(in srgb,var(--navbar-ink) 15%,transparent); transition:background-color .3s ease,color .3s ease; }
 .cinematic-shell[data-navbar-color] .atelier-header :is(.atelier-brand,.brand-arabic,.brand-english,.language-button,.atelier-icon-button,.atelier-desktop-nav>.rose-nav-item>a) { color:var(--navbar-ink); }
 html:has(.rose-shop) { scroll-behavior:smooth; }
+/* The same from the page states (FloatingDock.tsx), for browsers without :has(). */
+html[data-ui-shop] { scroll-behavior:smooth; }
 .design-study[data-reduced-motion="false"] .design-study-sticky { top:88px; height:calc(100svh - 88px); min-height:0; padding:35px 6.5% 24px; }
 .design-study[data-reduced-motion="false"] .model-stage { height:100%; min-height:0; }
 .design-study[data-reduced-motion="false"] .model-canvas-wrap { min-height:0; }
@@ -2536,6 +2538,7 @@ html:has(.rose-shop) { scroll-behavior:smooth; }
 }
 @media(prefers-reduced-motion:reduce) {
  html:has(.rose-shop) { scroll-behavior:auto; }
+ html[data-ui-shop] { scroll-behavior:auto; }
  .cinematic-shell[data-navbar-color] .atelier-header { transition:none; }
 }
 .cinematic-shell[data-rose-tone="dark"] .atelier-header .brand-arabic,
@@ -3111,9 +3114,11 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
 }
 
 /* Floating widgets step aside while a drawer or dialog is open, and never stack on WhatsApp. */
-/* Class names only inside :has() on html: an attribute there (like [open]) makes Chrome restyle
-   the whole page on every element added or removed anywhere — that was the scroll-scene stutter. */
-html[data-cinematic-storefront="true"]:has(.quick-add-layer, .size-guide-dialog.is-open) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .rose-companion) { visibility: hidden; }
+/* The page states come from FloatingDock.tsx (data-ui-* on html): :has() isn't in every phone's browser, and an
+   attribute inside :has() on html makes Chrome restyle the whole page on every element added or removed
+   anywhere (that was the scroll-scene stutter). data-ui-cover: a quick add, the size guide, the photo viewer
+   or a sheet is open. */
+html[data-cinematic-storefront="true"][data-ui-cover] :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
 html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !important; left: 22px !important; }
 @media (max-width: 760px) {
   html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 72px !important; left: 14px !important; width: min(18rem, calc(100vw - 28px)); }
@@ -3382,7 +3387,7 @@ svg[data-icon="heart"] .icon-fill { opacity: 0; transition: opacity .25s ease; }
 }
 
 /* The "recent activity" popup would sit on top of the colour/size choices: not on product pages. */
-html[data-cinematic-storefront="true"]:has(.rose-product-page) .recent-activity-popup { display: none !important; }
+html[data-cinematic-storefront="true"][data-ui-no-recent] .recent-activity-popup { display: none !important; }
 /* ---------- Bag (/cart), wishlist and search: rose pages ---------- */
 .rose-cart, .rose-wishlist { padding: 34px 6% 90px; color: var(--selection-ink, #4d2039); }
 .rose-cart-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 28px; padding-bottom: 26px; margin-bottom: 30px; border-bottom: 1px solid var(--selection-line, #efdde5); }
@@ -3512,8 +3517,8 @@ html[data-cinematic-storefront="true"]:has(.rose-product-page) .recent-activity-
 }
 @media (prefers-reduced-motion: reduce) { .rose-cart-empty-icon, .rose-cart-done-mark { animation: none; } }
 
-/* The "recent activity" popup would cover the order total: not on the bag, wishlist or search. */
-html[data-cinematic-storefront="true"]:has(.rose-cart-page, .rose-search-page) .recent-activity-popup { display: none !important; }
+/* The "recent activity" popup would cover the order total: not on the bag, wishlist or search (data-ui-no-recent,
+   with the product page, above). */
 
 /* ---------- Product photos: click to view full screen ---------- */
 .rose-pdp-zoom { cursor: zoom-in; }
@@ -3551,7 +3556,7 @@ html[data-cinematic-storefront="true"]:has(.rose-cart-page, .rose-search-page) .
 .rose-viewer-thumbs button { position: relative; flex: none; width: 56px; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; border: 2px solid transparent; opacity: .55; transition: opacity .25s ease, border-color .25s ease, transform .25s ease; }
 .rose-viewer-thumbs button:hover { opacity: 1; transform: translateY(-2px); }
 .rose-viewer-thumbs button[aria-current="true"] { opacity: 1; border-color: var(--selection-accent, #7d2448); }
-html[data-cinematic-storefront="true"]:has(.rose-viewer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
+/* The helpers step aside while it is open: data-ui-cover (see "Floating widgets step aside"). */
 @media (max-width: 760px) {
   .rose-viewer-stage { margin: 0; border-radius: 0; }
   .rose-viewer-nav { width: 42px; height: 42px; }
@@ -3611,7 +3616,7 @@ html[data-cinematic-storefront="true"]:has(.rose-viewer) :is(.whatsapp-floating-
   .rose-sheet-quickadd .rose-sheet { width: 100%; height: auto; max-height: 90svh; border-radius: 26px 26px 0 0; }
   .rose-sheet-quickadd .rose-sheet-photo { aspect-ratio: 16 / 10; }
 }
-html[data-cinematic-storefront="true"]:has(.rose-sheet-layer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
+/* The helpers step aside while a sheet is open: data-ui-cover (see "Floating widgets step aside"). */
 @media (prefers-reduced-motion: reduce) { .rose-sheet-layer, .rose-sheet-layer.closing { animation: none; } }
 
 /* ---------- "You viewed" reminder: a small pill beside WhatsApp, shown briefly ---------- */
@@ -3638,7 +3643,7 @@ html[data-cinematic-storefront="true"] .recent-activity-popup.rose-recent {
   .rose-recent-text b { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .recent-activity-popup.rose-recent { transition: none; } }
-html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, .rose-viewer, .size-guide-dialog.is-open) .recent-activity-popup.rose-recent { visibility: hidden !important; }
+html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.rose-recent { visibility: hidden !important; }
 
 /* ------------------------------------------------------------------ Rose, the 2D guide */
 .rose-mascot {
@@ -4407,6 +4412,9 @@ html[data-theme-crossfade]::view-transition-new(root) {
 /* Nothing floats over the maintenance screen (companion, accessibility button, chat…). */
 body:has(.rose-maint) :is(.rose-companion, .a11y-fab, .season-mascot, .live-chat-button, .whatsapp-float, .scroll-to-top, .mobile-bottom-nav) { display: none !important; }
 body:has(.rose-maint) { overflow: hidden; }
+/* The same from the page states (FloatingDock.tsx), for browsers without :has(). */
+html[data-ui-maint] :is(.rose-companion, .a11y-fab, .season-mascot, .live-chat-button, .whatsapp-float, .scroll-to-top, .mobile-bottom-nav) { display: none !important; }
+html[data-ui-maint] body { overflow: hidden; }
 
 /* Product-type details on the product page (admin → أنواع المنتجات). */
 .rose-pdp-specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin: 14px 0 0; }

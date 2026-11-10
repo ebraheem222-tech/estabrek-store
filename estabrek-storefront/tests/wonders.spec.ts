@@ -206,21 +206,66 @@ test.describe.serial("the home's showpieces", () => {
     }
   });
 
-  test("on a phone, story mode is a small pill at the bottom of the screen", async ({ page }) => {
+  test("on a phone, story mode is a small pill in the dock's lane, shown for a moment at each new chapter", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await expect(page.locator(".rose-story-rail")).toBeHidden();
     const pill = page.locator(".rose-story-pill");
-    await expect(pill).toBeVisible();
+    await expect(pill).toHaveAttribute("data-show", "true");
     await expect(pill.locator("strong")).toHaveText("البداية");
+    // In the lane: clear of Razan, her WhatsApp button and the accessibility button.
+    const clear = await page.evaluate(() => {
+      const p = document.querySelector(".rose-story-pill")!.getBoundingClientRect();
+      return Array.from(document.querySelectorAll(".rose-companion-figure, .rose-companion-mini, .rose-companion-wa, .a11y-fab")).every((el) => {
+        const r = el.getBoundingClientRect();
+        return !r.width || r.right <= p.left || r.left >= p.right || r.bottom <= p.top || r.top >= p.bottom;
+      });
+    });
+    expect(clear).toBe(true);
     await pill.click();
     await expect(pill.locator("strong")).not.toHaveText("البداية");
-    // While the "you viewed" note shows at the bottom, the pill steps aside.
+    // It steps aside after a moment…
+    await expect(pill).not.toHaveAttribute("data-show", /.+/, { timeout: 6000 });
+    await expect.poll(() => pill.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeLessThan(0.05);
+    // …and comes back with the next chapter.
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight * 2.5));
+    await expect(pill).toHaveAttribute("data-show", "true");
+    // While the "you viewed" note shows at the bottom, it steps aside too (the page state comes from FloatingDock).
     await page.evaluate(() => { const note = document.querySelector(".rose-recent") ?? Object.assign(document.body.appendChild(document.createElement("div")), { className: "rose-recent" }); note.setAttribute("aria-hidden", "false"); });
-    await expect(pill).toHaveAttribute("data-yield", "");
+    await expect(page.locator("html")).toHaveAttribute("data-ui-recent", "true");
     await expect.poll(() => pill.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeLessThan(0.05);
     await page.evaluate(() => document.querySelector(".rose-recent")?.setAttribute("aria-hidden", "true"));
-    await expect(pill).not.toHaveAttribute("data-yield", /.*/);
+    await expect(page.locator("html")).not.toHaveAttribute("data-ui-recent", /.+/);
+  });
+});
+
+test.describe("the dock", () => {
+  test("a layer over the page sets the page state and the floating helpers step aside, without :has()", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/shop");
+    const companion = page.locator(".rose-companion");
+    await expect(companion).toHaveCount(1);
+    await expect(page.locator("html")).toHaveAttribute("data-ui-shop", "true");
+    await page.evaluate(() => document.body.appendChild(Object.assign(document.createElement("div"), { className: "rose-sheet-layer" })));
+    await expect(page.locator("html")).toHaveAttribute("data-ui-cover", "true");
+    await expect.poll(() => companion.evaluate((el) => getComputedStyle(el).visibility)).toBe("hidden");
+    await page.evaluate(() => document.querySelector("body > .rose-sheet-layer")?.remove());
+    await expect(page.locator("html")).not.toHaveAttribute("data-ui-cover", /.+/);
+    await expect.poll(() => companion.evaluate((el) => getComputedStyle(el).visibility)).toBe("visible");
+  });
+
+  test("on a phone the dock measures its row, and the \"you viewed\" note shows above it", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/shop");
+    await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue("--dock-lift"))).toMatch(/^\d+px$/);
+    const lift = await page.evaluate(() => parseFloat(document.documentElement.style.getPropertyValue("--dock-lift")));
+    // A note in place: its bottom stays above the row.
+    await page.evaluate(() => {
+      const note = Object.assign(document.body.appendChild(document.createElement("div")), { className: "recent-activity-popup rose-recent" });
+      note.style.cssText = "visibility: visible; opacity: 1; width: 200px;";
+    });
+    const bottom = await page.evaluate(() => document.querySelector("body > .rose-recent")!.getBoundingClientRect().bottom);
+    expect(bottom).toBeLessThanOrEqual(844 - lift + 1);
   });
 });
 
