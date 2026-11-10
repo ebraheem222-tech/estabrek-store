@@ -4,6 +4,9 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
   workers: 1,
+  // GitHub's machines run the 3D on the processor and are several times slower: a test that only lost a race
+  // with them gets two more tries there (it shows as "flaky"); one that fails every time still fails.
+  retries: process.env.CI ? 2 : 0,
   timeout: 60000,
   expect: { timeout: 15000 },
   use: {

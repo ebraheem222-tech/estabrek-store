@@ -26,10 +26,14 @@ test("quick-add colour preview commits a palette once and restores the page", as
   const [previewColour, later] = await header.evaluate((el) => new Promise<[string, string]>((resolve) => {
     const seed = () => (el as HTMLElement).style.getPropertyValue("--selection-seed");
     const first = seed();
+    // Settled = no change to the header's colours for 250 ms (the glide can run slower than its 0.28 s on a slow
+    // machine); then read again 700 ms later.
+    let quiet = 0, started = false;
+    const settle = () => { window.clearTimeout(quiet); quiet = window.setTimeout(() => { watch.disconnect(); const settled = seed(); window.setTimeout(() => resolve([settled, seed()]), 700); }, 250); };
     const watch = new MutationObserver(() => {
-      if (seed() === first) return;
-      watch.disconnect();
-      window.setTimeout(() => { const settled = seed(); window.setTimeout(() => resolve([settled, seed()]), 700); }, 400);
+      if (!started && seed() === first) return;
+      started = true;
+      settle();
     });
     watch.observe(el, { attributes: true, attributeFilter: ["style"] });
   }));

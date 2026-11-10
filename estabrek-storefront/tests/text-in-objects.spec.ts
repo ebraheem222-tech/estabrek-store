@@ -56,6 +56,12 @@ test("a word on a card of a held ring is written in place, even when the page me
     tick();
   })), { timeout: 15000 }).toBe(true);
   await page.keyboard.press("Control+A");
+  // The editor selects the word's own text a moment after the keys: the first letter waits for it (on CI it
+  // went in before, and only "entle" was saved).
+  await expect.poll(() => word.evaluate((el) => {
+    const sel = el.ownerDocument.getSelection();
+    return Boolean(sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode) && sel.toString().trim() === (el.textContent ?? "").trim());
+  }), { timeout: 10000 }).toBe(true);
   await page.keyboard.type("Gentle");
   await page.keyboard.press("Enter");
   await expect.poll(async () => JSON.stringify((await draftNode(page, id))?.props?.text ?? (await draftNode(page, id))?.node?.props?.text)).toContain("Gentle");
