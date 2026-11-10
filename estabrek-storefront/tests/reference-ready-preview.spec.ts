@@ -11,8 +11,9 @@ test.beforeAll(() => {
   writeFileSync(path.join(folder, "reference-ready-sections.json"), JSON.stringify(sections));
 });
 
-test("all 19 reference starters render editable content and fit desktop and mobile", async ({ page }) => {
-  test.setTimeout(180000);
+// Every starter in the list (19 at first; the list grew with the new reference designs, cc97d9b).
+test("all the reference starters render editable content and fit desktop and mobile", async ({ page }) => {
+  test.setTimeout(420000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -21,7 +22,7 @@ test("all 19 reference starters render editable content and fit desktop and mobi
     await page.goto("/en/reference-lab");
     await page.addStyleTag({ content: "header:not([data-tree-node]){visibility:hidden!important}" });
     const sections = page.locator("section[data-tree-node]");
-    await expect(sections).toHaveCount(19);
+    await expect(sections).toHaveCount(REFERENCE_SECTIONS.length);
     for (const [index, reference] of REFERENCE_SECTIONS.entries()) {
       const section = sections.nth(index);
       await section.scrollIntoViewIfNeeded();

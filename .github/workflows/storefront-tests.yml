@@ -1,0 +1,88 @@
+name: Storefront and admin tests
+# The shop's browser tests (Playwright, against the test API in tests/catalog-server.mjs and the admin's editor
+# test page) and the admin's own tests, on every pull request and on main. The shop's suite is split in four
+# parts that run side by side, each with its own servers.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'estabrek-storefront/**'
+      - 'estabrek-admin/**'
+      - '.github/workflows/storefront-tests.yml'
+  pull_request:
+    paths:
+      - 'estabrek-storefront/**'
+      - 'estabrek-admin/**'
+      - '.github/workflows/storefront-tests.yml'
+permissions:
+  contents: read
+concurrency:
+  group: storefront-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  storefront:
+    name: storefront (part ${{ matrix.shard }} of 4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    defaults:
+      run:
+        working-directory: estabrek-storefront
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            estabrek-storefront/package-lock.json
+            estabrek-admin/package-lock.json
+      - run: npm ci
+      - name: Install the admin (its editor test page is served for the editor specs)
+        run: npm ci --prefix ../estabrek-admin --ignore-scripts
+      - name: Google Chrome (the tests run in it)
+        run: command -v google-chrome || npx playwright install --with-deps chrome
+      - name: Typecheck
+        if: matrix.shard == 1
+        run: npx tsc --noEmit -p .
+      - name: Browser tests
+        run: npx playwright test --shard=${{ matrix.shard }}/4 --reporter=line
+      - name: Keep the traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-test-results-${{ matrix.shard }}
+          path: estabrek-storefront/test-results
+          retention-days: 7
+  admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: estabrek-admin
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            estabrek-admin/package-lock.json
+            estabrek-storefront/package-lock.json
+      - run: npm ci
+      - name: Install the shop (some admin tests use its packages, e.g. gsap's SplitText)
+        run: npm ci --prefix ../estabrek-storefront --ignore-scripts
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+      - name: Tests
+        run: npx vitest run

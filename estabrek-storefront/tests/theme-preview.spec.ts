@@ -21,12 +21,24 @@ test("quick-add colour preview commits a palette once and restores the page", as
   await expect(shell).toHaveAttribute("data-theme-preview", "true");
   await expect.poll(() => header.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(before);
   // One colour of the hover cycle (a new one every 2.2 s): settled after its 0.28 s glide,
-  // then left alone, not written again on every frame.
-  await page.waitForTimeout(400);
-  const previewColour = await header.evaluate(el => el.style.getPropertyValue("--selection-seed"));
+  // then left alone, not written again on every frame. Timed inside the page from the moment a colour starts:
+  // on CI each step from the test to the page took 0.3–0.9 s, and the readings crossed into the next colour.
+  const [previewColour, later] = await header.evaluate((el) => new Promise<[string, string]>((resolve) => {
+    const seed = () => (el as HTMLElement).style.getPropertyValue("--selection-seed");
+    const first = seed();
+    // Settled = no change to the header's colours for 250 ms (the glide can run slower than its 0.28 s on a slow
+    // machine); then read again 700 ms later.
+    let quiet = 0, started = false;
+    const settle = () => { window.clearTimeout(quiet); quiet = window.setTimeout(() => { watch.disconnect(); const settled = seed(); window.setTimeout(() => resolve([settled, seed()]), 700); }, 250); };
+    const watch = new MutationObserver(() => {
+      if (!started && seed() === first) return;
+      started = true;
+      settle();
+    });
+    watch.observe(el, { attributes: true, attributeFilter: ["style"] });
+  }));
   expect(previewColour).not.toBe("");
-  await page.waitForTimeout(700);
-  expect(await header.evaluate(el => el.style.getPropertyValue("--selection-seed"))).toBe(previewColour);
+  expect(later).toBe(previewColour);
   expect(await page.evaluate(() => (window as typeof window & { themeWrites: number }).themeWrites)).toBe(0);
   await page.mouse.move(5, 180);
   await expect(shell).not.toHaveAttribute("data-theme-preview", /.*/);

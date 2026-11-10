@@ -82,7 +82,9 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
     const update = () => {
       raf = 0;
       const mid = window.innerHeight * 0.45;
-      const at = list.current.findIndex((c) => { const r = c.el.getBoundingClientRect(); return r.top <= mid && r.bottom > mid; });
+      // At the very bottom the last chapter is the one you're in, even when it is too short to reach the middle.
+      const bottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
+      const at = bottom ? list.current.length - 1 : list.current.findIndex((c) => { const r = c.el.getBoundingClientRect(); return r.top <= mid && r.bottom > mid; });
       if (at < 0 || at === shown) return;
       shown = at;
       setCurrent(at);
