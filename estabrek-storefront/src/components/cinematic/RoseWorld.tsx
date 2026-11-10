@@ -6,11 +6,12 @@ import { cityPoint, CITY_BOUNDS } from "@/lib/cityPoints";
 import { formatMoney } from "@/lib/catalog";
 import type { DeliverySettings } from "@/lib/delivery";
 import { tr } from "@/lib/words";
-import { photoColour, sceneTheme } from "@/lib/sceneColour";
+import { collectionSeeds, photoColour, sceneTheme } from "@/lib/sceneColour";
 import { useLanguage } from "./Language";
 import { DRAWINGS } from "./RoseProductBackdrop";
 
-export type WorldCollection = { label: string; href: string; imageUrl?: string | null };
+/** `themeColor`: the colour the owner gave the collection, if any. */
+export type WorldCollection = { label: string; href: string; imageUrl?: string | null; themeColor?: string | null };
 
 /*
  * The store's world (rose-wonders.css, "the world"): a map to explore by dragging (and zooming with the
@@ -51,13 +52,14 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
   const [hint, setHint] = useState(true);
   const [narrow, setNarrow] = useState(false);
   const section = useRef<HTMLElement>(null);
-  // Each collection's colour, read from its photo (null until known, or with no photo).
-  const [isleColours, setIsleColours] = useState<Array<string | null>>([]);
+  // Each collection's colour: the same as in the collections story (the owner's, else its photo's, else its kind's).
+  const [photos, setPhotos] = useState<Array<string | null>>([]);
   useEffect(() => {
     let live = true;
-    void Promise.all(collections.slice(0, 10).map((c) => photoColour(c.imageUrl))).then((found) => { if (live) setIsleColours(found); });
+    void Promise.all(collections.slice(0, 10).map((c) => (c.themeColor ? Promise.resolve(null) : photoColour(c.imageUrl)))).then((found) => { if (live) setPhotos(found); });
     return () => { live = false; };
   }, [collections]);
+  const isleColours = useMemo(() => collectionSeeds(collections.slice(0, 10).map((c) => ({ label: c.label, href: c.href, themeColor: c.themeColor ?? undefined })), photos), [collections, photos]);
   const fit = useRef(0.5);
   const viewRef = useRef(view);
   viewRef.current = view;

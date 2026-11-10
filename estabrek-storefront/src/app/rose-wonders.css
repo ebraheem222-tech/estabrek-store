@@ -139,10 +139,12 @@
   position: relative; height: min(72svh, 640px); overflow: hidden; border-radius: 32px; touch-action: none; cursor: grab; outline: 0;
   border: 1px solid var(--selection-line, #efdde5);
   box-shadow: 0 30px 70px -40px color-mix(in srgb, var(--selection-ink, #4d2039) 60%, transparent);
+  /* A soft sea in the theme's own colour (it follows the colour picked), with the ripples in its accent. */
   background:
-    radial-gradient(60% 60% at 30% 30%, rgba(255, 255, 255, .5), transparent 70%),
-    repeating-radial-gradient(circle at 70% 60%, transparent 0 26px, color-mix(in srgb, #9cc3d8 22%, transparent) 26px 27px),
-    linear-gradient(160deg, color-mix(in srgb, #cfe3ef 70%, var(--selection-soft, #f7dce8)), color-mix(in srgb, #b9d4e6 70%, var(--selection-page, #fbeef4)));
+    radial-gradient(55% 55% at 28% 26%, rgba(255, 255, 255, .55), transparent 70%),
+    radial-gradient(60% 60% at 82% 86%, color-mix(in srgb, var(--selection-seed, #d99fb6) 26%, transparent), transparent 70%),
+    repeating-radial-gradient(circle at 70% 60%, transparent 0 26px, color-mix(in srgb, var(--selection-accent, #a43b64) 11%, transparent) 26px 27px),
+    linear-gradient(160deg, color-mix(in srgb, var(--selection-seed, #d99fb6) 12%, var(--selection-page, #fbeef4)), color-mix(in srgb, var(--selection-seed, #d99fb6) 30%, var(--selection-soft, #f7dce8)));
 }
 /* On a touch screen one finger up or down still scrolls the page; sideways drags and two fingers move the map. */
 @media (pointer: coarse) { .rose-world-frame { touch-action: pan-y; } }
@@ -151,8 +153,8 @@
 .rose-world[data-mode="delivery"] .rose-world-frame {
   background:
     repeating-radial-gradient(ellipse at 65% 45%, transparent 0 34px, color-mix(in srgb, var(--selection-accent, #a43b64) 10%, transparent) 34px 35px),
-    linear-gradient(90deg, color-mix(in srgb, #bcd8e6 80%, transparent) 0 10%, transparent 26%),
-    linear-gradient(170deg, color-mix(in srgb, var(--selection-soft, #f7dce8) 40%, #fbf5ec), #f3eadb);
+    linear-gradient(90deg, color-mix(in srgb, var(--selection-seed, #d99fb6) 34%, var(--selection-soft, #f7dce8)) 0 10%, transparent 26%),
+    linear-gradient(170deg, color-mix(in srgb, var(--selection-soft, #f7dce8) 55%, #fff), color-mix(in srgb, var(--selection-seed, #d99fb6) 16%, var(--selection-page, #fbeef4)));
 }
 /* The sea takes the colour of the island tapped (the page's, while it wears it). */
 .rose-world-wash {
@@ -168,7 +170,7 @@
 @keyframes rose-route { to { stroke-dashoffset: -28; } }
 
 .rose-island { position: absolute; translate: -50% -50%; width: calc(260px * var(--s, 1)); height: calc(180px * var(--s, 1)); border: 0; padding: 0; background: none; cursor: pointer; display: grid; place-items: center; }
-.rose-island-land { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 18px 18px rgba(30, 60, 80, .25)); }
+.rose-island-land { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 18px 18px color-mix(in srgb, var(--selection-ink, #4d2039) 26%, transparent)); }
 .rose-island-land path { fill: var(--isle, #f2cfdc); stroke: #fff; stroke-width: 6; }
 .rose-island-mark { position: absolute; width: 34%; height: 34%; top: 18%; inset-inline-start: 12%; color: color-mix(in srgb, var(--selection-ink, #4d2039) 55%, transparent); fill: none; stroke: currentColor; stroke-width: 2; opacity: .7; }
 .rose-island-mark .fill { fill: currentColor; stroke: none; }
@@ -176,7 +178,7 @@
 .rose-island-photo img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .rose-island-name { position: absolute; bottom: 16%; padding: 6px 14px; border-radius: 999px; background: #fff; color: var(--selection-ink, #4d2039); font-family: var(--atelier-serif); font-size: 18px; font-weight: 600; white-space: nowrap; box-shadow: 0 8px 18px -12px rgba(0, 0, 0, .4); }
 .rose-island:is(:hover, :focus-visible, [data-picked]) .rose-island-photo { translate: 0 -10px; }
-.rose-island[data-picked] .rose-island-land path { stroke: var(--selection-accent, #a43b64); }
+.rose-island[data-picked] .rose-island-land path { fill: color-mix(in srgb, var(--isle, #f2cfdc) 55%, #fff); stroke: var(--selection-accent, #a43b64); }
 
 .rose-pin { position: absolute; translate: -50% -100%; display: grid; justify-items: center; gap: 4px; border: 0; background: none; padding: 0; cursor: pointer; }
 .rose-pin-dot { width: 18px; height: 18px; border-radius: 50% 50% 50% 0; rotate: -45deg; background: var(--selection-accent, #a43b64); border: 3px solid #fff; box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .5); order: 3; }
