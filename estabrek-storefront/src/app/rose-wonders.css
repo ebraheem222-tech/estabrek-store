@@ -39,8 +39,9 @@
 @media (max-width: 760px) {
   .rose-particles { height: calc(var(--rp-n, 3) * 80svh + 30svh); }
   /* Above story mode's pill at the bottom of the screen. */
-  .rose-particles-pill { bottom: calc(78px + env(safe-area-inset-bottom)); }
-  .rose-particles-words { bottom: calc(128px + env(safe-area-inset-bottom)); }
+  /* Above the dock's row and Razan's speech bubble over it. */
+  .rose-particles-pill { bottom: calc(var(--dock-lift, 112px) + 52px + env(safe-area-inset-bottom)); }
+  .rose-particles-words { bottom: calc(var(--dock-lift, 112px) + 100px + env(safe-area-inset-bottom)); }
   .rose-particles-words p { font-size: 13px; }
 }
 
@@ -274,23 +275,36 @@
 .rose-story-pill { display: none; }
 @media (max-width: 900px) {
   .rose-story-rail { display: none; }
+  /* In the dock's free lane between Razan and WhatsApp on one side and accessibility on the other (FloatingDock.tsx
+     measures it), never wider than the lane; it shows for a moment when a new chapter starts (data-show). */
   .rose-story-pill {
-    position: fixed; z-index: 70; bottom: calc(14px + env(safe-area-inset-bottom)); left: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 10px; overflow: hidden;
+    position: fixed; z-index: 70; bottom: calc(14px + env(safe-area-inset-bottom));
+    left: calc((var(--dock-left, 140px) + 100vw - var(--dock-right, 64px)) / 2); translate: -50% 0;
+    max-width: calc(100vw - var(--dock-left, 140px) - var(--dock-right, 64px)); min-width: 0;
+    display: inline-flex; align-items: center; gap: 10px; overflow: hidden;
     padding: 7px 14px; border-radius: 999px; border: 1px solid var(--selection-line, #efdde5);
     background: color-mix(in srgb, #fff 82%, transparent); backdrop-filter: blur(10px); color: var(--selection-ink, #4d2039); font-size: 12px;
     box-shadow: 0 10px 24px -18px rgba(0, 0, 0, .5);
+    transition: opacity .35s ease, translate .35s ease;
   }
-  .rose-story-pill span { letter-spacing: .1em; color: var(--selection-muted, #703c58); }
-  .rose-story-pill strong { font-weight: 700; white-space: nowrap; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; }
-  .rose-story-pill span { white-space: nowrap; }
-  /* While the "you viewed" note shows at the bottom, the pill steps aside. */
-  .rose-story-pill { transition: opacity .3s ease, translate .3s ease; }
-  .rose-story-pill[data-yield], html:has(.rose-recent[aria-hidden="false"]) .rose-story-pill { opacity: 0; translate: -50% 14px; pointer-events: none; }
+  .rose-story-pill span { flex: none; letter-spacing: .1em; color: var(--selection-muted, #703c58); white-space: nowrap; }
+  .rose-story-pill strong { min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Out of the way between chapters, and while the "you viewed" note shows. */
+  .rose-story-pill:not([data-show]), html[data-ui-recent] .rose-story-pill { opacity: 0; translate: -50% 14px; pointer-events: none; }
   .rose-story-pill i { position: absolute; inset-inline-start: 0; bottom: 0; height: 2px; width: calc(var(--story-p, 0) * 100%); background: var(--selection-accent, #a43b64); transition: width .4s ease; }
 }
-/* Razan takes a few steps with the new chapter. */
+/* Razan takes a few steps with the new chapter; on a phone a hop where she stands (her steps took her onto the
+   WhatsApp button beside her). */
 @media (prefers-reduced-motion: no-preference) {
   .rose-companion[data-walking] .rose-companion-figure { animation: rose-walk 1.4s ease-in-out; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 760px) {
+  .rose-companion[data-walking] .rose-companion-figure { animation-name: rose-hop; }
+}
+@keyframes rose-hop {
+  25% { translate: 0 -7px; rotate: 3deg; }
+  50% { translate: 0 0; rotate: -3deg; }
+  75% { translate: 0 -7px; rotate: 3deg; }
 }
 @keyframes rose-walk {
   0% { translate: 0 0; rotate: 0deg; }
@@ -299,4 +313,15 @@
   45% { translate: 30px -6px; rotate: 3deg; }
   60% { translate: 30px 0; rotate: 0deg; }
   100% { translate: 0 0; rotate: 0deg; }
+}
+
+/* ---------------------------------------------------------------- 7. the dock */
+
+/* On a phone the "you viewed" note shows above the bottom row (it sat on the WhatsApp button beside it). */
+@media (max-width: 760px) {
+  html[data-cinematic-storefront="true"] .recent-activity-popup.rose-recent {
+    bottom: calc(var(--dock-clear, var(--dock-lift, 76px)) + 10px + env(safe-area-inset-bottom)) !important; left: 12px !important; right: auto !important;
+    transition: bottom .35s ease;
+    max-width: calc(100vw - 24px);
+  }
 }
