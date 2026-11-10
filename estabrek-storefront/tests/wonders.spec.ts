@@ -171,6 +171,19 @@ test.describe.serial("the home's showpieces", () => {
     await expect.poll(seed, { timeout: 8000 }).toBe("");
   });
 
+  test("the rooms show only once the owner switches them on", async ({ page }) => {
+    await page.request.get(`${API}/__test/wonders?on=1&rooms=unset`);
+    await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
+    try {
+      await page.goto("/");
+      await expect(page.locator(".rose-particles")).toHaveCount(1);
+      await expect(page.locator(".rose-rooms")).toHaveCount(0);
+    } finally {
+      await page.request.get(`${API}/__test/wonders?on=1`);
+      await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
+    }
+  });
+
   test("on a phone, story mode is a small pill at the bottom of the screen", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");

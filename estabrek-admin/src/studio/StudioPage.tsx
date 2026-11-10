@@ -148,6 +148,10 @@ const BLOCK_LABEL: Record<string, () => string> = {
 };
 /** The opening's switch that shows each rose scene. */
 const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled", particles: "roseParticlesEnabled", world: "roseWorldEnabled", rooms: "roseRoomsEnabled" };
+/** Scenes that show only once switched on (the rest show unless switched off). */
+const BLOCK_OFF_BY_DEFAULT = new Set(["rooms"]);
+const blockShown = (data: Record<string, unknown> | undefined, block: string) =>
+  BLOCK_OFF_BY_DEFAULT.has(block) ? data?.[BLOCK_FLAG[block]] === true : data?.[BLOCK_FLAG[block]] !== false;
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
 /** Boxes that can carry a pattern over their background. */
@@ -2282,7 +2286,7 @@ function StudioDocument() {
               <SceneSettings
                 block={selBlock}
                 scene={(((heroSection.data as Record<string, unknown>)?.roseScenes ?? {}) as Record<string, Record<string, unknown> | undefined>)[selBlock]}
-                shown={(heroSection.data as Record<string, unknown>)?.[BLOCK_FLAG[selBlock]] !== false}
+                shown={blockShown(heroSection.data as Record<string, unknown> | undefined, selBlock)}
                 busy={busy}
                 onShown={(on) => void run(on ? tr("إظهار", "Show") : tr("إخفاء", "Hide"), [{ op: "setField", sectionId: heroSection.id, lang: main, path: [BLOCK_FLAG[selBlock]], value: on }])}
                 onSeed={(part, hex) => void setField(heroSection.id, ["roseScenes", selBlock, part, "seed"], hex, main)}
