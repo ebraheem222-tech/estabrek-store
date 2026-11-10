@@ -6,9 +6,10 @@ import { useEffect } from "react";
  * end is in sight, and the next one slides up over it with rounded corners, while the one underneath dims a
  * little. Every box straight under the home's frame is one section (RoseCmsHome / RoseHome wrap each one).
  * A tall section (a scroll scene) first plays out, then holds: its sticky top is the screen's height minus its
- * own. Off in the editor's frame, for reduced motion, and with Admin → the opening → «الأقسام فوق بعض».
+ * own. Only when switched on (Admin → the opening → «الأقسام فوق بعض», off by default: the home's own scroll
+ * scenes clashed held under each other); never in the editor's frame or for reduced motion.
  */
-export function RoseHomeStack({ enabled = true }: { enabled?: boolean }) {
+export function RoseHomeStack({ enabled = false }: { enabled?: boolean }) {
   useEffect(() => {
     if (!enabled || window.self !== window.top) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
