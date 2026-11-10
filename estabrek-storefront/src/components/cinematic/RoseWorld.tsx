@@ -6,6 +6,7 @@ import { cityPoint, CITY_BOUNDS } from "@/lib/cityPoints";
 import { formatMoney } from "@/lib/catalog";
 import type { DeliverySettings } from "@/lib/delivery";
 import { tr } from "@/lib/words";
+import { photoColour, sceneTheme } from "@/lib/sceneColour";
 import { useLanguage } from "./Language";
 import { DRAWINGS } from "./RoseProductBackdrop";
 
@@ -19,6 +20,8 @@ export type WorldCollection = { label: string; href: string; imageUrl?: string |
  * - the delivery, the cities from the delivery settings where they are, routes from the store, and each
  *   city's price; a tap opens its card. Cities the map doesn't know are listed beside it with their price.
  * A hint shows how to move until the first touch. The wheel alone still scrolls the page.
+ * Each island's land is in its collection's colour (its photo's, else its mood's); a tap on one washes the sea
+ * and dresses the page (the header too) in that colour while the map is in view (lib/sceneColour.ts).
  */
 const W = 1600, H = 1000;
 type View = { x: number; y: number; z: number };
@@ -47,6 +50,14 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
   const [picked, setPicked] = useState<number | null>(null);
   const [hint, setHint] = useState(true);
   const [narrow, setNarrow] = useState(false);
+  const section = useRef<HTMLElement>(null);
+  // Each collection's colour, read from its photo (null until known, or with no photo).
+  const [isleColours, setIsleColours] = useState<Array<string | null>>([]);
+  useEffect(() => {
+    let live = true;
+    void Promise.all(collections.slice(0, 10).map((c) => photoColour(c.imageUrl))).then((found) => { if (live) setIsleColours(found); });
+    return () => { live = false; };
+  }, [collections]);
   const fit = useRef(0.5);
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -66,6 +77,23 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
     const dx = W / 2 - (Math.min(...xs) + Math.max(...xs)) / 2, dy = H / 2 - (Math.min(...ys) + Math.max(...ys)) / 2;
     return placed.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }));
   }, [collections, narrow]);
+
+  // A picked island dresses the page in its colour while the map is in view; closing it, or leaving, gives it back.
+  const pickedColour = mode === "collections" && picked != null ? (isleColours[picked] ?? MOOD_TINT[islands[picked]?.mood ?? "default"]) : null;
+  const theme = useRef<ReturnType<typeof sceneTheme>>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = section.current;
+    if (!el) return;
+    theme.current = sceneTheme(el, "world");
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.35 });
+    io.observe(el);
+    return () => { io.disconnect(); theme.current?.giveBack(true); theme.current = null; };
+  }, []);
+  useEffect(() => {
+    if (pickedColour && inView) theme.current?.wear(pickedColour, 0.8);
+    else theme.current?.giveBack();
+  }, [pickedColour, inView]);
 
   // The delivery cities where they are (a city the map doesn't know is only listed).
   const map = useMemo(() => {
@@ -241,7 +269,7 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
   const showTabs = hasDelivery && collections.length > 0;
 
   return (
-    <section className="rose-world" data-mode={mode} aria-label={title || tr(lang, "عالم المتجر", "The store's world")}>
+    <section ref={section} className="rose-world" data-mode={mode} data-dressed={pickedColour ? "true" : undefined} aria-label={title || tr(lang, "عالم المتجر", "The store's world")}>
       <header className="rose-world-head">
         <span className="atelier-eyebrow">{tr(lang, "عالم المتجر", "THE STORE'S WORLD")}</span>
         <h2>{title || (mode === "collections" ? tr(lang, "تجوّلي بين المجموعات.", "Wander through the collections.") : tr(lang, "لوين بنوصّل، وبقديش.", "Where we deliver, and for how much."))}</h2>
@@ -254,6 +282,7 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
       </header>
       <div className="rose-world-body">
         <div ref={frame} className="rose-world-frame" tabIndex={0} aria-label={tr(lang, "خريطة: اسحبي للتنقل، وكبّري بالأزرار", "Map: drag to move, zoom with the buttons")} style={{ "--pan-x": `${view.x}px`, "--pan-y": `${view.y}px` } as CSSProperties}>
+          <span className="rose-world-wash" aria-hidden="true" />
           <div className="rose-world-map" dir="ltr" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.z})` }}>
             {mode === "collections" ? (
               <>
@@ -266,7 +295,7 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
                 </svg>
                 {islands.map((isle, i) => (
                   <button key={isle.href + i} type="button" className="rose-island" data-picked={picked === i || undefined}
-                    style={{ left: isle.x, top: isle.y, "--isle": MOOD_TINT[isle.mood], "--s": isle.size / 100 } as CSSProperties}
+                    style={{ left: isle.x, top: isle.y, "--isle": isleColours[i] ? `color-mix(in srgb, ${isleColours[i]} 55%, #fff)` : MOOD_TINT[isle.mood], "--s": isle.size / 100 } as CSSProperties}
                     onClick={() => { setPicked(i); flyTo(isle.x, isle.y); }} aria-label={isle.label}>
                     <svg className="rose-island-land" viewBox="-160 -110 320 220" aria-hidden="true"><path d={islandPath(isle.seed, 100)} /></svg>
                     <svg className="rose-island-mark" viewBox="0 0 48 48" aria-hidden="true">{DRAWINGS[isle.mood][0]}</svg>

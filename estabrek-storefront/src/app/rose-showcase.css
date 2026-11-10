@@ -607,10 +607,13 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ---------------------------------------------------------------- 11. the home's collections, a scroll story */
 
+/* Washed in the collection's colour (its seed), clearly, so the change from one collection to the next shows. */
 .cinematic-shell .rose-collections-scroll {
   position: relative; height: calc(var(--cs-n, 4) * 80svh + 40svh);
-  background: linear-gradient(180deg, var(--selection-page, #fbeef4), var(--selection-soft, #f7dce8));
-  color: var(--selection-ink, #4d2039); transition: background-color .8s ease;
+  background:
+    radial-gradient(70% 55% at 72% 46%, color-mix(in srgb, var(--selection-seed, #d99fb6) 46%, transparent), transparent 72%),
+    linear-gradient(180deg, color-mix(in srgb, var(--selection-seed, #d99fb6) 26%, var(--selection-page, #fbeef4)), color-mix(in srgb, var(--selection-seed, #d99fb6) 44%, var(--selection-soft, #f7dce8)));
+  color: var(--selection-ink, #4d2039);
 }
 .cinematic-shell .rose-cs-stage {
   position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate;
@@ -667,7 +670,7 @@ html.lenis, html.lenis body { height: auto; }
   .cinematic-shell .rose-cs-glow { width: 120vw; top: 34%; inset-inline-end: -10%; }
   .cinematic-shell .rose-cs-copy {
     grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 8px; align-items: center; margin: 0; max-width: none;
-    padding: 16px; border-radius: 24px; background: color-mix(in srgb, #fff 72%, transparent); backdrop-filter: blur(10px);
+    padding: 16px; border-radius: 24px; background: color-mix(in srgb, color-mix(in srgb, #fff 80%, var(--selection-seed, #d99fb6)) 76%, transparent); backdrop-filter: blur(10px);
   }
   .cinematic-shell .rose-cs-count { grid-column: 1 / -1; }
   .cinematic-shell .rose-cs-photo { grid-row: span 2; width: 92px; border-width: 3px; }

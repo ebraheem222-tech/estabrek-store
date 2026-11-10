@@ -10,6 +10,7 @@ import { Icon } from "./Icons";
 import { collectionSeed } from "@/lib/collectionTheme";
 import { moodOf, type Mood } from "@/lib/categoryMood";
 import { storefrontPalette } from "@/lib/storefrontPalette";
+import { normalHex, photoColour, sceneTheme } from "@/lib/sceneColour";
 import { lazyMargin } from "@/lib/motionSettings";
 import { motionLevel } from "@/lib/motionBudget";
 import { tr } from "@/lib/words";
@@ -43,6 +44,12 @@ function lineFor(mood: Mood, lang: Parameters<typeof tr>[0]) {
   }
 }
 
+/** How far apart two colours look (0 … ~440). */
+function colourDistance(a: string, b: string) {
+  const ch = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
+  return Math.hypot(ch(a, 1) - ch(b, 1), ch(a, 3) - ch(b, 3), ch(a, 5) - ch(b, 5));
+}
+
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -53,7 +60,9 @@ const smooth = (a: number, b: number, x: number) => {
  * screen while it scrolls through the collections one by one. Each one comes big, with its arched photo,
  * its name rising word by word, a line about it and its link; beside it its 3D model turns (a draped
  * hijab in the collection's colour, or the bracelet, the little dress, the incense burner), handing over
- * to the next one's as the page scrolls. The section takes the colours of the collection in view.
+ * to the next one's as the page scrolls. The section takes the colours of the collection in view: the colour
+ * the owner gave it, else its photo's (the garment's), else its kind's; and while the section holds the screen
+ * the header and the page wear that colour too, gliding from one collection's to the next (lib/sceneColour.ts).
  * Without motion (or the editor's frame) the collections stay a grid (RoseCollections).
  */
 export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collections" }: { items: RoseCollection[]; title?: string; subtitle?: string; anchor?: string }) {
@@ -64,7 +73,28 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
     const mood = moodOf([item.label, item.title, item.href]);
     return { item, mood, key: modelFor(mood), seed: collectionSeed(item, i) };
   }), [items]);
+  // Each collection's own colour: the owner's, else its photo's once read (kept apart from its neighbour's, so
+  // the colour visibly changes from one to the next), else its kind's.
+  const [photoSeeds, setPhotoSeeds] = useState<Array<string | null>>([]);
+  useEffect(() => {
+    let live = true;
+    void Promise.all(items.map((item) => (normalHex((item as { themeColor?: string }).themeColor) || normalHex((item as { color?: string }).color) ? Promise.resolve(null) : photoColour(item.imageUrl)))).then((found) => { if (live) setPhotoSeeds(found); });
+    return () => { live = false; };
+  }, [items]);
+  const seeds = useMemo(() => {
+    const out: string[] = [];
+    chapters.forEach((c, i) => {
+      const photo = photoSeeds[i];
+      out.push(photo && (!i || colourDistance(photo, out[i - 1]) > 60) ? photo : c.seed);
+    });
+    return out;
+  }, [chapters, photoSeeds]);
   const keys = useMemo(() => Array.from(new Set(chapters.map((c) => c.key))), [chapters]);
+  // Read by the scroll (a photo's colour arriving late doesn't rebuild the scroll triggers).
+  const seedsRef = useRef(seeds);
+  seedsRef.current = seeds;
+  const wearRef = useRef<((seed: string) => void) | null>(null);
+  useEffect(() => { wearRef.current?.(seeds[lead] ?? seeds[0]); }, [seeds]); // eslint-disable-line react-hooks/exhaustive-deps
   const weights = useRef<number[]>(keys.map((k) => (k === chapters[0]?.key ? 1 : 0)));
   const tint = useRef<string>(chapters[0]?.seed ?? "#d99fb6");
   const [lead, setLead] = useState(0);
@@ -95,8 +125,19 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
     const n = chapters.length;
     if (!el || n < 1) return;
     gsap.registerPlugin(ScrollTrigger);
-    const palettes = chapters.map((c) => storefrontPalette(c.seed));
+    // While the section holds the screen the page (the header too) wears the collection's colour.
+    const theme = sceneTheme(el, "collections");
     let shown = -1;
+    let leadSeed = seedsRef.current[0];
+    let themeOn = false;
+    /** The section (and, while it holds the screen, the page) in a collection's colour. */
+    const dress = (seed: string, seconds: number) => {
+      leadSeed = seed;
+      if (theme && themeOn && !document.documentElement.hasAttribute("data-visual-theme")) theme.wear(seed, seconds);
+      // Outside the store's shell (or under a CMS visual theme) the section alone takes the colours.
+      else if (!theme || document.documentElement.hasAttribute("data-visual-theme")) Object.entries(storefrontPalette(seed)).forEach(([name, value]) => el.style.setProperty(name, value));
+    };
+    wearRef.current = (seed) => dress(seed, 0.7);
     const render = (progress: number) => {
       // Where the scroll is among the collections (0 … n-1), and how much of each one shows.
       // (Held at the ends: the first model is there as the section opens, the last stays to its end.)
@@ -106,16 +147,28 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
       const per = chapters.map((_, i) => 1 - smooth(0.3, 0.5, Math.abs(at - i)));
       weights.current = keys.map((k) => Math.max(0, ...chapters.map((c, i) => (c.key === k ? per[i] : 0))));
       const leadNow = Math.max(0, Math.min(n - 1, Math.round(at)));
-      tint.current = chapters[leadNow].seed;
+      tint.current = seedsRef.current[leadNow];
       el.style.setProperty("--cs-progress", progress.toFixed(4));
       if (leadNow === shown) return;
       shown = leadNow;
-      Object.entries(palettes[leadNow]).forEach(([name, value]) => el.style.setProperty(name, value));
+      dress(seedsRef.current[leadNow], 0.7);
       setLead(leadNow);
     };
     render(0);
     const trigger = ScrollTrigger.create({ trigger: el, start: "top top", end: "bottom bottom", onUpdate: (self) => render(self.progress) });
-    return () => trigger.kill();
+    // The colours are taken a little before the section fills the screen and given back after.
+    const themeTrigger = theme ? ScrollTrigger.create({
+      trigger: el,
+      start: "top 55%",
+      end: "bottom 45%",
+      onToggle: (self) => {
+        themeOn = self.isActive;
+        if (self.isActive) dress(leadSeed, 0.8);
+        else theme.giveBack();
+      },
+    }) : null;
+    if (themeTrigger?.isActive) { themeOn = true; dress(leadSeed, 0); }
+    return () => { wearRef.current = null; trigger.kill(); themeTrigger?.kill(); theme?.giveBack(true); };
   }, [chapters, keys]);
 
   const chapter = chapters[lead];
