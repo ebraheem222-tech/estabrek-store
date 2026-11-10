@@ -15,7 +15,6 @@ import { themeCss } from "./css";
 import { applyCursorTheme } from "@/theme/cursorTheme";
 import { applyCustom, customFromParam } from "./custom";
 import { kitCss, kitFromParam } from "./packs";
-import { themeById } from "./registry";
 import type { StoreTheme } from "./types";
 
 const KEY = "store-theme-preview";
@@ -44,7 +43,12 @@ export function StoreThemePreview({ saved, owned }: { saved: string | null; owne
     }
     if (!want) return;
     const root = document.documentElement;
-    const found = want === owned?.id ? owned : themeById(want);
+    let live = true;
+    // The list of every theme and template (over 1 MB of code) loads only for a preview: it was in every
+    // shopper's first download.
+    const wanted = want;
+    void (want === owned?.id ? Promise.resolve(owned) : import("./registry").then((m) => m.themeById(wanted))).then((found) => {
+    if (!live) return;
     const theme = found ? applyCustom(found, customFromParam(custom)) : null;
     let tag = document.getElementById(KEY) as HTMLStyleElement | null;
     if (!theme) {
@@ -74,6 +78,8 @@ export function StoreThemePreview({ saved, owned }: { saved: string | null; owne
       root.dataset.storeKit = "";
       applyCursorTheme(kit.cursor === "none" ? null : kit.cursor);
     }
+    });
+    return () => { live = false; };
   }, [pathname, saved, owned]);
   return null;
 }

@@ -6,9 +6,8 @@ import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
-import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
-import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
+import { lazyMargin, prebuildNear, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { SeasonEdit, SeasonKey } from "@/lib/seasonalEdits";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
@@ -141,8 +140,7 @@ export function RoseSeasons({ seasons, words }: { seasons: SeasonEdit[]; words?:
     const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: lazyMargin(600) });
     // Built ahead while the shopper reads (the page resting), so it is ready before she
     // gets here: built on the way in, its start-up stopped her scroll for a moment.
-    const after = prebuildAfter(0);
-    const early = motionLevel() === "lite" || after === null ? null : onPageRest(() => setNear(true), { after, quiet: 600 });
+    const early = motionLevel() === "lite" ? null : prebuildNear(el, 0, () => setNear(true));
     const view = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
     io.observe(el);
     view.observe(el);

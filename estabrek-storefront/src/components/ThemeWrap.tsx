@@ -3,8 +3,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
 import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
-import { GalleryThemeMotionBackdrop } from "@/cms/themes/GalleryThemeMotionBackdrop";
+import dynamic from "next/dynamic";
 import { applyCursorTheme } from "@/theme/cursorTheme";
+
+// The CMS gallery's moving backgrounds (about 100 KB of code) load only when a gallery theme is chosen
+// ("theme-gallery-NN"); the rest of the time they were in every shopper's first download for nothing.
+const GalleryThemeMotionBackdrop = dynamic(() => import("@/cms/themes/GalleryThemeMotionBackdrop").then((m) => m.GalleryThemeMotionBackdrop));
+const GALLERY_THEME = /^theme-gallery-\d+$/i;
 import { useStorefrontSettings, type StorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type ThemeCfg = {
@@ -247,7 +252,7 @@ export function ThemeWrap({
         } as React.CSSProperties
       }
     >
-      {!disableGalleryBackdrop && <GalleryThemeMotionBackdrop websiteThemeId={websiteTheme?.id} />}
+      {!disableGalleryBackdrop && websiteTheme?.id && GALLERY_THEME.test(String(websiteTheme.id)) ? <GalleryThemeMotionBackdrop websiteThemeId={websiteTheme.id} /> : null}
       <div className="relative z-10">{children}</div>
     </div>
   );

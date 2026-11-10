@@ -14,6 +14,7 @@
  * (lib/ab.ts); the owner's preview always wins over a test.
  */
 import { abTests, abValue } from "./ab";
+import { onPageRest } from "./pageRest";
 
 export const MOTION_SECTIONS = ["hero", "opening", "study", "seasons", "collections", "campaign"] as const;
 export type MotionSection = (typeof MOTION_SECTIONS)[number];
@@ -178,6 +179,27 @@ export function lazyMargin(px: number) {
 export function prebuildAfter(order: number) {
   const s = motionSettings();
   return s.prebuild3d ? s.prebuildAfterMs + order * 1000 : null;
+}
+
+/**
+ * Builds the n-th 3D scene ahead (prebuildAfter), but only once it is within two and a half screens of the
+ * shopper, in a pause of her scroll: building every scene of the home in its first seconds, however far down,
+ * blocked a mid-range phone for about three seconds (each scene's start-up is a long task). A scene near the
+ * first screen still starts after prebuildAfter's wait; one reached later starts in the next pause. Returns a
+ * cancel function; does nothing when building ahead is off.
+ */
+export function prebuildNear(el: Element, order: number, build: () => void) {
+  const after = prebuildAfter(order);
+  if (after === null || typeof window === "undefined") return () => {};
+  const born = performance.now();
+  let rest: (() => void) | null = null;
+  const io = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting) return;
+    io.disconnect();
+    rest = onPageRest(build, { after: Math.max(0, after - (performance.now() - born)), quiet: 600 });
+  }, { rootMargin: `${Math.round(window.innerHeight * 2.5)}px 0px` });
+  io.observe(el);
+  return () => { io.disconnect(); rest?.(); };
 }
 
 /** Tests: read the settings again. */
