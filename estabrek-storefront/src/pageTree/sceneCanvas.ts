@@ -1,3 +1,4 @@
+import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
 import type { ExtraSceneKind, MoreSceneKind, SceneSpec } from "./scene";
 type Pointer = { x: number; y: number } | null;
 const TAU = Math.PI * 2;
@@ -1299,17 +1300,26 @@ export function mountScene(canvas: HTMLCanvasElement, spec: SceneSpec): () => vo
   const stop = () => { if (frame) cancelAnimationFrame(frame); frame = 0; last = 0; };
   const measure = () => {
     const rect = host.getBoundingClientRect(); width = Math.max(1, rect.width); height = Math.max(1, rect.height);
-    const dpr = Math.min(2, Math.max(1, devicePixelRatio || 1), 4096 / width, 4096 / height);
+    const dpr = Math.min(1.5, Math.max(1, devicePixelRatio || 1), 4096 / width, 4096 / height);
     canvas.width = Math.max(1, Math.round(width * dpr)); canvas.height = Math.max(1, Math.round(height * dpr));
     ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
     const style = getComputedStyle(canvas); primary = style.color || "#8b5cf6"; secondary = style.borderTopColor || "#38bdf8";
   };
   const paint = () => { if (ctx) drawScene(ctx, spec, width, height, elapsed, media?.matches ? null : pointer, primary, secondary); };
+  // A background's slow motion, drawn 30 times a second (it was every frame: 120–144 on fast screens), and not at
+  // all while the page rests (lib/pageIdle.ts): it carries on from where it was when the page is touched again.
+  const GAP = 1000 / 30;
+  let owed = 0;
   const tick = (now: number) => {
     frame = 0;
     if (disposed || !visible || document.hidden || media?.matches || spec.speed === 0) return;
-    if (last) elapsed += Math.min(.05, Math.max(0, (now - last) / 1000));
-    last = now; paint(); frame = requestAnimationFrame(tick);
+    if (isPageIdle()) { last = 0; return; }
+    const step = last ? Math.max(0, now - last) : GAP;
+    elapsed += Math.min(.05, step / 1000);
+    last = now;
+    owed = Math.min(owed + step, GAP * 2);
+    if (owed + 0.5 >= GAP) { owed -= GAP; paint(); }
+    frame = requestAnimationFrame(tick);
   };
   const sync = () => {
     if (disposed) return;
@@ -1332,12 +1342,13 @@ export function mountScene(canvas: HTMLCanvasElement, spec: SceneSpec): () => vo
   observer?.observe(host); resize?.observe(host);
   if (!resize) window.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", sync);
+  const offIdle = onPageIdle((rest) => { if (!rest && !frame) sync(); }, { start: false });
   media?.addEventListener("change", sync);
   if (spec.interactive) { host.addEventListener("pointermove", onPointer, { passive: true }); host.addEventListener("pointerleave", onLeave, { passive: true }); }
   if (visible) sync();
   return () => {
     disposed = true; stop(); observer?.disconnect(); resize?.disconnect();
-    window.removeEventListener("resize", onResize); document.removeEventListener("visibilitychange", sync); media?.removeEventListener("change", sync);
+    window.removeEventListener("resize", onResize); document.removeEventListener("visibilitychange", sync); offIdle(); media?.removeEventListener("change", sync);
     host.removeEventListener("pointermove", onPointer); host.removeEventListener("pointerleave", onLeave);
     ctx = null; pointer = null;
   };

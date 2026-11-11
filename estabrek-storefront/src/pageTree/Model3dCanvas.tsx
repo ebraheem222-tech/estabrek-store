@@ -15,6 +15,7 @@ import { GlbModel } from "@/storeThemes/three/GlbModel";
 import type { ModelColours } from "@/storeThemes/three/parts";
 import { model3dMoves, type Model3dSpec } from "./model3d";
 import { usePageIdle } from "@/lib/pageIdle";
+import { ScenePacer } from "@/components/cinematic/ScenePacer";
 
 const FLOOR_Y = -1.45;
 
@@ -97,10 +98,13 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
   return (
     <Canvas
       dpr={[1, 1.75]}
-      frameloop={active && moves && !resting ? "always" : "demand"}
+      // Drawn by ScenePacer: full pace while the page scrolls or the pointer moves, 30 a second for its own slow
+      // motion otherwise ("always" drew it at the screen's 120–144 a second).
+      frameloop="demand"
       camera={{ position: [0, spec.camera.height, spec.camera.distance], fov: spec.camera.fov }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >
+      <ScenePacer active={active && moves && !resting} />
       {spec.bg ? <color attach="background" args={[spec.bg]} /> : null}
       <ambientLight intensity={l.ambient} />
       <directionalLight position={[3, 5, 4]} intensity={l.key} />

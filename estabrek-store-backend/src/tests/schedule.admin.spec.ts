@@ -67,10 +67,10 @@ describe("Scheduled changes", () => {
   });
 
   test("motion settings, a page section, and emptying the cache", async () => {
-    await request(app).post("/v1/admin/schedule").send({ kind: "motion", title: "أخف", payload: { changes: { maxFps: 60 } }, runAt: iso(0), undoAt: iso(2) }).expect(201);
-    expect((await readPerformance()).storefront.maxFps).toBe(60);
+    await request(app).post("/v1/admin/schedule").send({ kind: "motion", title: "أخف", payload: { changes: { maxFps: 30 } }, runAt: iso(0), undoAt: iso(2) }).expect(201);
+    expect((await readPerformance()).storefront.maxFps).toBe(30);
     await runScheduled(Date.now() + 2.01 * H);
-    expect((await readPerformance()).storefront.maxFps).toBe(120);
+    expect((await readPerformance()).storefront.maxFps).toBe(60);
 
     const page = await prisma.page.create({ data: { name: "تجربة", slug: "/schedule-test", status: "PUBLISHED", sections: { create: [{ type: "HERO", data: { title: "عرض" }, isVisible: true }] } }, include: { sections: true } });
     await request(app).post("/v1/admin/schedule").send({ kind: "section", title: "خبي العرض", payload: { sectionId: page.sections[0].id, visible: false }, runAt: iso(0), undoAt: null }).expect(201);

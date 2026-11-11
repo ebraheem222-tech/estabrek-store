@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { usePageIdle } from "@/lib/pageIdle";
+import { ScenePacer } from "@/components/cinematic/ScenePacer";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type * as THREE from "three";
 import type { Palette } from "../colour";
@@ -48,11 +49,13 @@ export default function ModelSpot({ kind, palette, finish, onReady }: { kind: Mo
     <div ref={box} className="th-model-spot" aria-hidden>
       <Canvas
         dpr={[1, 1.6]}
-        frameloop={seen && !still && !resting ? "always" : "demand"}
+        // Drawn by ScenePacer (full pace while the page scrolls or the pointer moves, 30 a second otherwise).
+        frameloop="demand"
         camera={{ position: [0, 0.4, 6.2], fov: 34 }}
         gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
         onCreated={() => onReady?.()}
       >
+        <ScenePacer active={seen && !still && !resting} />
         <hemisphereLight args={["#ffffff", palette.bg, 0.9]} />
         <directionalLight position={[4, 6, 5]} intensity={1.8} />
         <pointLight position={[-4, 1, 3]} intensity={18} color={palette.accent} />

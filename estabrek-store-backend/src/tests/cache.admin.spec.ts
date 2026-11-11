@@ -218,26 +218,26 @@ describe("The shop's motion settings", () => {
   test("saved with the cache settings, in the history, and sent with the public settings", async () => {
     const out = await request(app)
       .patch("/v1/admin/system/cache")
-      .send({ storefront: { maxFps: 60, phoneGlass: true, sections: { seasons: { on: false } } } })
+      .send({ storefront: { maxFps: 45, phoneGlass: true, sections: { seasons: { on: false } } } })
       .expect(200);
     expect(out.body.changed.sort()).toEqual(["storefront.maxFps", "storefront.phoneGlass", "storefront.sections.seasons.on"]);
     expect(out.body.storefront.sections.seasons).toEqual({ on: false, smoothMs: 90 });
 
     const page = await request(app).get("/v1/admin/system/cache").expect(200);
-    expect(page.body.storefront.maxFps).toBe(60);
-    expect(page.body.storefrontDefaults.maxFps).toBe(120);
+    expect(page.body.storefront.maxFps).toBe(45);
+    expect(page.body.storefrontDefaults.maxFps).toBe(60);
     expect(page.body.fpsChoices).toEqual([30, 45, 60, 90, 120]);
     expect(page.body.revisions).toHaveLength(1);
 
     // The shop's public settings carry them (and the cached copy was cleared by the save).
     const pub = await request(app).get("/v1/settings").expect(200);
-    expect(pub.body.site.performance).toMatchObject({ maxFps: 60, phoneGlass: true });
+    expect(pub.body.site.performance).toMatchObject({ maxFps: 45, phoneGlass: true });
     expect(pub.body.site.performance.sections.seasons.on).toBe(false);
 
     // Restoring the version before puts both parts back.
     await request(app).post(`/v1/admin/system/cache/revisions/${page.body.revisions[0].id}/restore`).expect(200);
     const back = await request(app).get("/v1/settings").expect(200);
-    expect(back.body.site.performance.maxFps).toBe(120);
+    expect(back.body.site.performance.maxFps).toBe(60);
   });
 
   test("motion values out of range or unknown are refused", async () => {

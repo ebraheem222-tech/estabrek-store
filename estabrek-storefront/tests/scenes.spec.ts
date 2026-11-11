@@ -108,6 +108,12 @@ test.describe("collection worlds on a phone", () => {
     expect(kids).not.toBe("");
     expect(kids).not.toBe(await seedOf(".story-accessories"));
     expect(await stories.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed"))).toBe("");
+    // Back in the accessories' world (the scenes above may have finished building and moved the page meanwhile).
+    await expect(async () => {
+      await at(0.1);
+      await expect(stories).toHaveAttribute("data-chapter", "accessories", { timeout: 2000 });
+      await expect(rose).toHaveAttribute("data-outfit", "abaya", { timeout: 2000 });
+    }).toPass({ timeout: 20000 });
     // Into the kids' world with the finger still moving: Razan twirls into its outfit and colour with the world,
     // not once the scroll pauses (she used to keep the last world's colour until then).
     // Her flip is an animation the graphics card plays (a transform on her drawing), not her own drawing loop.
@@ -116,12 +122,17 @@ test.describe("collection worlds on a phone", () => {
       window.scrollTo({ top: top + (el.offsetHeight - innerHeight) * 0.5, behavior: "instant" });
       const her = el.querySelector<HTMLElement>(".story-mascot")!;
       const drawing = her.querySelector<SVGSVGElement>("svg[role='img']")!;
+      // Each animation started on her drawing (a slow test browser can start and end the flip between two checks).
       let flipped = false;
+      const play = drawing.animate.bind(drawing);
+      drawing.animate = (frames, options) => {
+        if (Array.isArray(frames) && frames.some((k) => String((k as Keyframe).transform ?? "").includes("scaleX(0.04)"))) flipped = true;
+        return play(frames, options);
+      };
       const t0 = performance.now();
       while (performance.now() - t0 < 4000) {
         await new Promise((done) => requestAnimationFrame(done));
         window.scrollBy(0, 1);
-        flipped ||= drawing.getAnimations().some((a) => (a.effect as KeyframeEffect).getKeyframes().some((k) => String(k.transform ?? "").includes("scaleX(0.04)")));
         if (her.dataset.outfit === "tunic") return { dressed: true, flipped };
       }
       return { dressed: false, flipped };

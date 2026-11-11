@@ -63,9 +63,12 @@ export function isPageIdle() {
   return idle;
 }
 
-/** Called with true when the page comes to rest and false when it wakes. Returns an unsubscribe. */
-export function onPageIdle(fn: (idle: boolean) => void) {
-  start();
+/**
+ * Called with true when the page comes to rest and false when it wakes. Returns an unsubscribe. `start: false`
+ * only listens (the CMS's pieces, also drawn in the studio, where the page never rests: StorefrontChrome starts it).
+ */
+export function onPageIdle(fn: (idle: boolean) => void, { start: starting = true }: { start?: boolean } = {}) {
+  if (starting) start();
   listeners.add(fn);
   return () => { listeners.delete(fn); };
 }
