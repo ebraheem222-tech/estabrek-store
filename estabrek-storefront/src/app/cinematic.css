@@ -4875,3 +4875,5 @@ html[data-ui-maint] body { overflow: hidden; }
 .rose-cart-addresses button:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 2px; }
 .rose-cart-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
 .rose-cart-check input { width: 18px; height: 18px; accent-color: var(--selection-accent, #7d2448); }
+/* The tracking page's intro wraps under its title (a flex item kept it on one line, past the screen's edge). */
+.rose-trackpage .rose-cart-head p { flex: 1 1 260px; min-width: 0; margin: 0; color: var(--selection-muted, #8b6d7b); line-height: 1.8; }
