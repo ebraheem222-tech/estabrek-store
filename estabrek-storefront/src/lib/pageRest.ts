@@ -50,3 +50,24 @@ export function onPageRest(fn: () => void, { quiet = 400, after = 0, idle: whenI
     if (idle && "cancelIdleCallback" in window) window.cancelIdleCallback(idle);
   };
 }
+
+/**
+ * html[data-scrolling] while the wheel turns (and a moment after, as the page glides). The cards set the pointer
+ * aside then (cinematic.css): with the pointer resting over a grid, every card the scroll carried under it played
+ * its hover in and out (the arch drawn, the second photo, the lift), and the graphics card repainted cards on every
+ * frame of the scroll (about 150 a second on the shop; 3% of a laptop's graphics with the pointer elsewhere, over
+ * 20% over the cards). The wheel only: a scroll made by the page or a link (a card brought into view to be
+ * clicked), the keys or a finger leave the cards as they are.
+ */
+let flagWatching = false;
+export function watchScrollingFlag() {
+  if (flagWatching || typeof window === "undefined") return;
+  flagWatching = true;
+  const root = document.documentElement;
+  let timer = 0;
+  window.addEventListener("wheel", () => {
+    if (!("scrolling" in root.dataset)) root.dataset.scrolling = "";
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => { delete root.dataset.scrolling; }, 300);
+  }, { passive: true, capture: true });
+}
