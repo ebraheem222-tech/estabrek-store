@@ -57,9 +57,10 @@ export type MascotHandle = {
 
 /**
  * Her open palm, written every frame while she holds something: in her drawing's own units (the 300 × 420
- * picture as it shows, mirrored when she is), with the drawing, to place it on the screen (palmOnScreen).
+ * picture as it shows, mirrored when she is), with the box her drawing fills (her wrapper, which her twirl
+ * doesn't squeeze), to place it on the screen (palmOnScreen).
  */
-export type PalmRef = MutableRefObject<{ x: number; y: number; dir: 1 | -1; svg: SVGSVGElement } | null>;
+export type PalmRef = MutableRefObject<{ x: number; y: number; dir: 1 | -1; box: HTMLElement } | null>;
 
 /** Where the palm is on the screen (viewport px), given her drawing's box (the picture keeps its proportions). */
 export function palmOnScreen(palm: { x: number; y: number }, box: DOMRect) {
@@ -154,6 +155,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
   const id = (name: string) => `${name}-${uid}`;
   const wrap = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
+  const fxLayer = useRef<SVGSVGElement>(null);
   const bubble = useRef<HTMLSpanElement>(null);
   const state = useRef({
     pose, prop, mood, muted, outfit, pearls: Boolean(extras?.pearls),
@@ -177,7 +179,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     const now = () => performance.now() / 1000;
     const act = (a: Action) => { const s = state.current; s.action = a; s.actionAt = now(); };
     const burst = (kind: "heart" | "star", n = 6) => {
-      const fx = svg.current?.querySelector<SVGGElement>("[data-fx]");
+      const fx = fxLayer.current?.querySelector<SVGGElement>("[data-fx]");
       if (!fx) return;
       for (let i = 0; i < n; i++) {
         const h = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -292,24 +294,8 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       }
       const k = act ? envelope(at, ACTION_LENGTH[act]) : 0;
 
-      // Outfit twirl: squeeze to a sliver and back, swapping clothes in the middle.
-      // (A change asked for during this frame, by a scene's scroll, is stamped a little after the frame's own
-      // time: it starts its twirl now instead of skipping it.)
-      const sw = Math.max(0, now - s.swapAt);
-      let twirl = 1;
-      if (sw >= 0 && sw < 0.6) {
-        twirl = Math.max(0.04, Math.abs(Math.cos((sw / 0.6) * Math.PI)));
-        if (sw > 0.3 && (s.shownOutfit !== s.outfit || s.shownPearls !== s.pearls)) {
-          s.shownOutfit = s.outfit; s.shownPearls = s.pearls;
-          showOutfit(s.shownOutfit, s.shownPearls);
-          (api.current as MascotHandle & { poof?: () => void }).poof?.();
-        }
-      } else if (s.shownOutfit !== s.outfit || s.shownPearls !== s.pearls) {
-        s.shownOutfit = s.outfit; s.shownPearls = s.pearls;
-        showOutfit(s.shownOutfit, s.shownPearls);
-      }
-      // New colours with the same clothes: at once.
-      if (s.shownOutfit === s.outfit && s.shownPearls === s.pearls) wearColours();
+      // How narrow the twirl has her just now (dress() plays it; her palm follows it).
+      const twirl = twirlWidth(performance.now() / 1000);
 
       const bob = reduce ? 0 : stepping ? Math.abs(step) * -4 : Math.sin(t * 2.4);
       let jump = 0, squash = 1 + (stepping ? 0 : bob * 0.012), spin = 0;
@@ -327,7 +313,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       }
       const cold = s.mood === "cold";
       const shiver = cold && !reduce ? Math.sin(now * 55) * 1.1 : 0;
-      stage.setAttribute("transform", `translate(${f(walkX)} 0) translate(150 0) scale(${twirl.toFixed(3)} 1) translate(-150 0)`);
+      stage.setAttribute("transform", `translate(${f(walkX)} 0)`);
       const lift = (1 - enter) * -120 + jump + bob * 1.5;
       const charT = `translate(${f(shiver)} ${f(lift)}) rotate(${f(spin)} 150 400) translate(150 400) scale(${(2 - squash).toFixed(3)} ${squash.toFixed(3)}) translate(-150 -400)`;
       char.setAttribute("transform", charT);
@@ -436,7 +422,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
           hy += lift - 13 * sy;
           const x = mirrored ? 300 - hx : hx;
           // dir: which side of her the palm is on, so held things lean away from her.
-          palm.current = { x, y: hy, dir: x >= 150 ? 1 : -1, svg: el };
+          palm.current = { x, y: hy, dir: x >= 150 ? 1 : -1, box };
         } else palm.current = null;
       }
     };
@@ -444,11 +430,48 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     // ~30 frames a second is plenty for a 2D character and leaves the page's 3D scenes the rest; ~15 while the
     // page scrolls (below). Her motion follows the clock, so she keeps her speed.
     let last = 0;
+    // An outfit change: a twirl, squeezing her to a sliver and back, with the new clothes (and colours) put on in
+    // its middle, while she is a sliver. The graphics card plays the twirl on her whole drawing: drawn by her own
+    // loop, it had her 15 drawings a second while the page scrolls, and phones showed a slow, jerky flip. The
+    // change itself is checked on every frame, so it lands on the twirl's middle.
+    let twirlFrom = -10, twirlFor = -10;
+    let twirling: Animation | null = null;
+    /** Her width in the twirl at `now` (s): |cos| of the turn, as the animation plays it. */
+    const twirlWidth = (now: number) => {
+      const k = (now - twirlFrom) / 0.6;
+      return k >= 0 && k < 1 ? Math.max(0.04, Math.abs(Math.cos(k * Math.PI))) : 1;
+    };
+    const TURN = [1, 0.924, 0.707, 0.383, 0.04, 0.383, 0.707, 0.924, 1];
+    const dress = () => {
+      const now = performance.now() / 1000;
+      // New colours with the same clothes: at once.
+      if (s.shownOutfit === s.outfit && s.shownPearls === s.pearls) { wearColours(); return; }
+      // Asked for a while ago (she was out of sight, or the page rested): put on at once, no twirl.
+      if (now - s.swapAt > 0.6 && twirlFor !== s.swapAt) {
+        s.shownOutfit = s.outfit; s.shownPearls = s.pearls;
+        showOutfit(s.shownOutfit, s.shownPearls);
+        return;
+      }
+      if (twirlFor !== s.swapAt) {
+        twirlFor = s.swapAt;
+        twirlFrom = now;
+        twirling?.cancel();
+        // As a transform (with her mirroring in it): Chrome plays a `scale` on an SVG on the main thread.
+        const side = mirrored ? -1 : 1;
+        twirling = reduce || typeof el.animate !== "function" ? null : el.animate(TURN.map((x) => ({ transform: `scaleX(${side * x})` })), { duration: 600 });
+      }
+      if (now - twirlFrom >= 0.3) {
+        s.shownOutfit = s.outfit; s.shownPearls = s.pearls;
+        showOutfit(s.shownOutfit, s.shownPearls);
+        (api.current as MascotHandle & { poof?: () => void }).poof?.();
+      }
+    };
     // While the page rests (lib/pageIdle.ts) she stands still: her last drawing stays, and nothing is drawn
     // until someone touches the page again. Her idle breathing and swaying kept the processor busy for nobody.
     let sleeping = isPageIdle();
     const loop = (ms: number) => {
       frame = 0;
+      dress();
       // While the page scrolls, ~15 a second on every screen: her small motions aren't seen mid-scroll, and each
       // drawing restyles and repaints her whole SVG (measured on a computer: a quarter of the graphics work of a
       // category page's scroll). ~30 otherwise.
@@ -472,6 +495,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     // all of them, also those nobody could see.
     const nearby = new IntersectionObserver(([entry]) => { el.toggleAttribute("data-away", !entry.isIntersecting); }, { rootMargin: "50% 0px" });
     nearby.observe(box);
+    dress();
     draw(performance.now());
 
     let lookHold = 0;
@@ -750,7 +774,6 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
               </g>
             </g>
           </g>
-          <g data-fx />
       </>
   ), [uid]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -759,6 +782,9 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       <svg ref={svg} viewBox="0 0 300 420" role="img" aria-label={label} onClick={() => { api.current.joy(); api.current.wink(); }}>
         {drawing}
       </svg>
+      {/* Hearts and stars fly on a layer of their own: inside her drawing, each of their frames repainted all of
+          her (for over a second, on top of a scene's 3D, as she changed or jumped). */}
+      <svg ref={fxLayer} className="rose-mascot-fx" viewBox="0 0 300 420" aria-hidden="true" focusable="false"><g data-fx /></svg>
     </div>
   );
 });
