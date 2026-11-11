@@ -121,6 +121,34 @@ export function glowPools(hexes: string[]): string {
   return list.map((hex, i) => `radial-gradient(42% 36% at ${spots[i][0]}% ${spots[i][1]}%, color-mix(in srgb, ${hex} 55%, transparent), transparent 75%)`).join(", ");
 }
 
+/** Three colours for a dye (the scarf, the films): the mix, the last one repeated when there are fewer. */
+export function dyeStops(hexes: string[]): [string, string, string] | null {
+  const list = [...new Set(hexes.filter(isHex).map(norm))].slice(-3);
+  if (!list.length) return null;
+  while (list.length < 3) list.push(list[list.length - 1]);
+  return [list[0], list[1], list[2]];
+}
+
+/** The dye as a CSS paint: the colours flowing across (for the photo and film tints over pictures). */
+export function dyePaint(hexes: string[]): string {
+  const list = [...new Set(hexes.filter(isHex).map(norm))].slice(-3);
+  if (list.length < 2) return "none";
+  const at = list.length === 2 ? ["15%", "85%"] : ["8%", "50%", "92%"];
+  return `linear-gradient(115deg, ${list.map((c, i) => `${c} ${at[i]}`).join(", ")})`;
+}
+
+/** The colours the store wears now (the mix, or the one colour), from the page (RoseThemeProvider writes them). */
+export function currentColours(): string[] {
+  if (typeof document === "undefined") return [];
+  const d = document.documentElement.dataset;
+  const mix = (d.colourMix ?? "").split(" ").filter(isHex);
+  if (mix.length > 1) return mix;
+  return isHex(d.storefrontColor) ? [d.storefrontColor] : [];
+}
+
+/** Sent on window with the colours the store wears after each pick ({ colours }): the dyes follow it. */
+export const COLOURS_EVENT = "storefront-colours";
+
 /* ---------------- Her mix of card colours (this device) ---------------- */
 
 const MIX_KEY = "estabrek_theme_mix";

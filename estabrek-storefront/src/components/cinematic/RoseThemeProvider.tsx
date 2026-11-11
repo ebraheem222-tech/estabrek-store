@@ -5,7 +5,8 @@ import { storefrontPalette } from "@/lib/storefrontPalette";
 import { crossfadeTheme, setThemeNow, tweenTheme } from "@/lib/themeTween";
 import { themeHeld } from "@/lib/themeBase";
 import { discardThemePreview, storeThemeOn } from "@/lib/themePreview";
-import { addToMix, blendColours, meshBackground, readMix, saveMix } from "@/lib/colourMix";
+import { COLOURS_EVENT, addToMix, blendColours, dyePaint, meshBackground, readMix, saveMix } from "@/lib/colourMix";
+import { isNearWhite } from "@/lib/storefrontPalette";
 import { colourBlendOn } from "@/lib/colourEngine";
 
 type Theme = { root: RefObject<HTMLDivElement>; apply: (background: string) => void; reset: () => void };
@@ -107,14 +108,22 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         shell.dataset.navbarColor = color;
         shell.dataset.storefrontColor = color;
         document.documentElement.dataset.storefrontColor = color;
-        // The header wears the mixed colours as a gradient mesh over their blend.
+        // The mixed colours: the header wears them as a gradient mesh over their blend, the page as a light one
+        // behind everything, and the dyes (the scarf, the films, the campaign photo) flow through them.
         if (meshOn) {
           shell.style.setProperty("--navbar-mesh", meshBackground(mix));
+          shell.style.setProperty("--page-mesh", meshBackground(mix, { light: 0.86 }));
+          const dyed = mix.filter((c) => !isNearWhite(c));
+          if (dyed.length > 1) shell.style.setProperty("--selection-dye-paint", dyePaint(dyed));
+          else shell.style.removeProperty("--selection-dye-paint");
           shell.dataset.colourMix = mix.join(" ");
+          document.documentElement.dataset.colourMix = mix.join(" ");
         } else {
-          shell.style.removeProperty("--navbar-mesh");
+          for (const name of ["--navbar-mesh", "--page-mesh", "--selection-dye-paint"]) shell.style.removeProperty(name);
           delete shell.dataset.colourMix;
+          delete document.documentElement.dataset.colourMix;
         }
+        window.dispatchEvent(new CustomEvent(COLOURS_EVENT, { detail: { colours: meshOn ? [...mix] : [color] } }));
       };
       selected = true;
       const pick = ++picks;

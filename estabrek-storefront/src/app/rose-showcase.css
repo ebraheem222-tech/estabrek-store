@@ -364,7 +364,7 @@
 /* The film takes the colour picked (none picked: the silk's own rose). */
 .cinematic-interior-shell .rose-stage-dye {
   position: absolute; inset: 0; pointer-events: none;
-  background: var(--selection-dye, transparent); mix-blend-mode: color; opacity: .9; transition: background-color .8s ease;
+  background: var(--selection-dye, transparent); background-image: var(--selection-dye-paint, none); mix-blend-mode: color; opacity: .9; transition: background-color .8s ease;
 }
 /* A category's photo in the arch breathes slowly (a slow push in and out). */
 @media (prefers-reduced-motion: no-preference) {
@@ -875,3 +875,17 @@ html.lenis, html.lenis body { height: auto; }
 .rose-minibag[data-open] .rose-minibag-colours i:nth-child(3) { animation-delay: .12s; }
 .rose-minibag[data-open] .rose-minibag-colours i:nth-child(4) { animation-delay: .18s; }
 @media (prefers-reduced-motion: reduce) { .rose-minibag[data-open] .rose-minibag-colours i { animation: none; } }
+
+
+/* The page in the mixed colours: a light gradient mesh of them behind everything, held still on the screen
+   (a fixed layer: it moves on the graphics card and never repaints while scrolling). It steps aside while a scene
+   holds the page's colours (the seasons, the collection worlds) and comes back after. */
+/* The page's own colour gives way to the mesh under it (and comes back for a scene). */
+.cinematic-shell[data-colour-mix]:not([data-theme-held]) { background-color: transparent; }
+.cinematic-shell[data-colour-mix]::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--page-mesh, none); opacity: 1; transition: opacity .6s ease;
+  will-change: opacity;
+}
+.cinematic-shell[data-colour-mix][data-theme-held]::before { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .cinematic-shell[data-colour-mix]::before { transition: none; } }

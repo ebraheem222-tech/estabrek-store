@@ -22,7 +22,9 @@ void main() {
 const FRAG = `
 precision mediump float;
 uniform sampler2D frame;
-uniform vec3 tint;     // the shopper's colour
+uniform vec3 tint;     // the shopper's colour (with a mix of colours: the first of three)
+uniform vec3 tint2;    // the mix's second and third colours (the first again with one colour)
+uniform vec3 tint3;
 uniform float amount;  // 0 = the scarf's own pastel, 1 = fully in her colour
 uniform vec2 reach;    // about 4 px of a 720p frame, in texture units (checked at 1× and 2×)
 varying vec2 uv;
@@ -45,6 +47,12 @@ vec3 clipColor(vec3 c) {
   return c;
 }
 vec3 setLum(vec3 c, float l) { return clipColor(c + (l - lum(c))); }
+// The colour at this point of the cloth: the three flow into each other along it, corner to corner across
+// the middle of the frame where the scarf flies (one colour: all the same).
+vec3 tintAt(vec2 p) {
+  float t = clamp(((p.x + p.y) * 0.5 - 0.3) / 0.4, 0.0, 1.0);
+  return t < 0.5 ? mix(tint, tint2, smoothstep(0.08, 0.5, t)) : mix(tint2, tint3, smoothstep(0.5, 0.92, t));
+}
 void main() {
   vec3 c = texture2D(frame, uv).rgb;
   float m = peak(c);
@@ -72,8 +80,9 @@ void main() {
   // Dyed in her colour. The "color" blend keeps the fabric's own (light) shade, so a deep
   // pick (wine, navy, black, bottle green) came out as its pastel: wine looked pink.
   // Deep colours also darken the fabric, towards their own depth.
-  float depth = clamp(lum(tint) / 0.5, 0.32, 1.0);
-  col = mix(col, setLum(tint, lum(col) * depth), amount);
+  vec3 tc = tintAt(uv);
+  float depth = clamp(lum(tc) / 0.5, 0.32, 1.0);
+  col = mix(col, setLum(tc, lum(col) * depth), amount);
   // Whatever reaches the edge of the frame fades out instead of being cut (was a CSS
   // mask on the canvas: the graphics card had to mask the whole, large, moving film
   // again on every frame of the scroll).
@@ -98,6 +107,8 @@ export type FilmCutout = {
   stop: () => void;
   /** Dye the scarf in a colour (glides there), or back to its own pastel with null. */
   setTint: (hex: string | null) => void;
+  /** Dye it in a mix of colours flowing along the cloth (up to three; one is the same as setTint). */
+  setTints: (hexes: string[] | null) => void;
   /** The current frame (dyed, without its black) cropped to the scarf, as a plain canvas. */
   snapshot: () => HTMLCanvasElement | null;
 };
@@ -132,10 +143,11 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.clearColor(0, 0, 0, 0);
-  const uTint = gl.getUniformLocation(program, "tint");
+  const uTints = ["tint", "tint2", "tint3"].map((name) => gl.getUniformLocation(program, name));
   const uAmount = gl.getUniformLocation(program, "amount");
-  const tint = { now: [1, 1, 1] as number[], to: [1, 1, 1] as number[], amount: 0, amountTo: 0 };
-  gl.uniform3f(uTint, 1, 1, 1);
+  // Three colours, nine numbers: each glides on its own.
+  const tint = { now: Array(9).fill(1) as number[], to: Array(9).fill(1) as number[], amount: 0, amountTo: 0 };
+  uTints.forEach((u) => gl.uniform3f(u, 1, 1, 1));
   gl.uniform1f(uAmount, 0);
   // The hem check looks this far (the same share of the picture in the phone and computer films).
   gl.uniform2f(gl.getUniformLocation(program, "reach"), 4 / 1280, 4 / 720);
@@ -174,12 +186,12 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
     const k = 1 - Math.exp(-dt / 0.16);
     let moving = Math.abs(tint.amountTo - tint.amount) > 0.002;
     tint.amount += (tint.amountTo - tint.amount) * k;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 9; i++) {
       const d = tint.to[i] - tint.now[i];
       if (Math.abs(d) > 0.002) moving = true;
       tint.now[i] += d * k;
     }
-    gl.uniform3f(uTint, tint.now[0], tint.now[1], tint.now[2]);
+    uTints.forEach((u, j) => gl.uniform3f(u, tint.now[j * 3], tint.now[j * 3 + 1], tint.now[j * 3 + 2]));
     gl.uniform1f(uAmount, tint.amount);
     if (hasFrame && alive) paint();
     tintFrame = moving && alive ? requestAnimationFrame(glide) : 0;
@@ -207,17 +219,20 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
     events.forEach(([e, f]) => v.removeEventListener(e, f));
     canvas.removeEventListener("webglcontextlost", lost);
   };
-  const setTint = (hex: string | null) => {
-    // White/ivory would only turn the scarf grey: it keeps its own colour.
-    if (hex && /^#[0-9a-f]{6}$/i.test(hex) && !isNearWhite(hex)) {
-      const rgb = toRgb(hex);
-      // Start from the colour itself when the scarf was still its own pastel.
+  const setTints = (hexes: string[] | null) => {
+    // White/ivory would only turn the scarf grey: those keep its own colour.
+    const list = (hexes ?? []).filter((h) => /^#[0-9a-f]{6}$/i.test(h) && !isNearWhite(h)).slice(-3);
+    if (list.length) {
+      while (list.length < 3) list.push(list[list.length - 1]);
+      const rgb = list.flatMap(toRgb);
+      // Start from the colours themselves when the scarf was still its own pastel.
       if (tint.amount < 0.01) tint.now = [...rgb];
       tint.to = rgb;
       tint.amountTo = 0.85;
     } else tint.amountTo = 0;
     if (!tintFrame) tintFrame = requestAnimationFrame(glide);
   };
+  const setTint = (hex: string | null) => setTints(hex ? [hex] : null);
   const snapshot = () => {
     if (!alive) return null;
     draw();
@@ -252,5 +267,5 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
       return null;
     }
   };
-  return { stop, setTint, snapshot };
+  return { stop, setTint, setTints, snapshot };
 }
