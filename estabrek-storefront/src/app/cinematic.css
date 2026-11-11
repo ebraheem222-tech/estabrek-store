@@ -3670,6 +3670,8 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
    (content-visibility skipped only layout: a colour pick still restyled her.) The
    wrapper keeps its size through its aspect-ratio, so she is still seen coming. */
 .rose-mascot svg[data-away] { display: none; }
+/* Her hearts and stars (RoseMascot.tsx): over her, on a layer of their own, so their flight repaints only them. */
+.rose-mascot .rose-mascot-fx { position: absolute; inset: 0; pointer-events: none; cursor: auto; will-change: transform; }
 .rose-mascot-bubble {
   position: absolute;
   bottom: 100%;

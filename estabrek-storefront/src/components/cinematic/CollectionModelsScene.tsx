@@ -79,9 +79,9 @@ type ModelProps = { weight: () => number; rtl: boolean; compact: boolean; palm?:
  * every frame (60 a second, two models during a hand-over), and each read made the browser
  * lay the page out again in the middle of the frame, which phones felt.
  */
-const canvasBoxes = new WeakMap<HTMLCanvasElement, { at: number; box: DOMRect; rose?: SVGSVGElement; roseBox?: DOMRect }>();
+const canvasBoxes = new WeakMap<HTMLCanvasElement, { at: number; box: DOMRect; rose?: HTMLElement; roseBox?: DOMRect }>();
 /** The canvas's box, and Razan's drawing's when she holds the models: read together, so they always agree. */
-function canvasBox(canvas: HTMLCanvasElement, rose?: SVGSVGElement) {
+function canvasBox(canvas: HTMLCanvasElement, rose?: HTMLElement) {
   const now = performance.now();
   const kept = canvasBoxes.get(canvas);
   if (kept && now - kept.at < 100 && kept.rose === rose) return kept;
@@ -105,7 +105,7 @@ function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScal
     const palm = hold?.palm?.current;
     if (palm) {
       // Smaller, floating just above Rose's palm (screen px → world units on the z = 0 plane).
-      const { box: rect, roseBox } = canvasBox(gl.domElement, palm.svg);
+      const { box: rect, roseBox } = canvasBox(gl.domElement, palm.box);
       const at = palmOnScreen(palm, roseBox!);
       const px = ((at.x - rect.left) / rect.width - 0.5) * viewport.width;
       const py = -((at.y - rect.top) / rect.height - 0.5) * viewport.height;
