@@ -86,7 +86,8 @@ describe("section scene lifecycle", () => {
     expect(frames.size).toBe(0);
     intersection([{ isIntersecting: true, target: host } as unknown as IntersectionObserverEntry], {} as IntersectionObserver);
     expect(canvas.dataset.sceneState).toBe("running");
-    expect(canvas.width).toBe(1280); expect(canvas.height).toBe(800);
+    // Drawn at most 1.5× the screen's pixels (a phone at 3× drew four times the pixels for no visible gain).
+    expect(canvas.width).toBe(960); expect(canvas.height).toBe(600);
     expect(frames.size).toBe(1);
     intersection([{ isIntersecting: false, target: host } as unknown as IntersectionObserverEntry], {} as IntersectionObserver);
     expect(canvas.dataset.sceneState).toBe("paused"); expect(frames.size).toBe(0);
