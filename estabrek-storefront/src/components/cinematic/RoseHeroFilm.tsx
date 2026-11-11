@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
+import { onPageRest } from "@/lib/pageRest";
 import { createFilmScrubber } from "./heroFilmPlayback";
 import { createHeroScrollMotion } from "./heroScrollMotion";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -108,6 +109,14 @@ export function RoseHeroFilm({
   const [step, setStep] = useState(0);
   const [motion, setMotion] = useState(false);
   const final = step >= lines.length;
+  // The finished hijab catches the light (sparkles, one glint, the halo) once the shopper
+  // stops on it. Started the moment it was complete, they ran on every frame of the scroll
+  // past it: about a fifth of the graphics card's work while scrolling the opening.
+  const [glint, setGlint] = useState(false);
+  useEffect(() => {
+    if (!final) { setGlint(false); return; }
+    return onPageRest(() => setGlint(true), { quiet: 300 });
+  }, [final]);
   // The whole film is fetched into memory once (about 0.6 MB on phones, 1 MB on computers)
   // and played from there. Streamed, the first scroll often asked for parts not yet
   // downloaded, and every such jump waited for the network: the first pass stuttered on
@@ -399,6 +408,7 @@ export function RoseHeroFilm({
       // How the opening runs: "full"/"lite" = the scroll plays the film, "static" = the still.
       data-playback={motion ? (lite ? "lite" : "full") : "static"}
       data-final={final ? "true" : undefined}
+      data-glint={final && glint ? "true" : undefined}
       data-cutout={cutout}
       aria-labelledby="hero-title"
       style={{ "--film-steps": lines.length } as CSSProperties}
@@ -457,7 +467,7 @@ export function RoseHeroFilm({
             ))}
           </ol>
           {motion && (
-            <span className="film-cue" aria-hidden="true" data-part="cue">
+            <span className="film-cue" aria-hidden="true" data-part="cue" data-off={step > 0 ? "true" : undefined}>
               <Icon name="down" />
               {tr(lang, "مرّري ودعي الحجاب يكتمل", "Scroll and watch the hijab come together")}
             </span>

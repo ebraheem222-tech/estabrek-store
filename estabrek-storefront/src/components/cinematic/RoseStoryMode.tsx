@@ -68,7 +68,25 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
     const frame = document.querySelector<HTMLElement>(".rose-page-frame.rose-home");
     if (!frame) return;
     const said = new Set<Kind>();
-    let shown = -1, raf = 0, sayTimer = 0, walkTimer = 0;
+    let shown = -1, sayTimer = 0, walkTimer = 0;
+    // The browser says which chapter crosses the reading line (45 % down the screen) and when the
+    // page's end is in view. Measured on every scroll frame instead (each chapter's box, the page's
+    // height), the page was laid out again mid-frame: the heaviest script of the home's scroll.
+    const crossing = new Set<Element>();
+    let atEnd = false;
+    const line = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) crossing.add(e.target);
+        else crossing.delete(e.target);
+      }
+      update();
+    }, { rootMargin: "-45% 0px -55% 0px" });
+    const end = document.createElement("div");
+    end.setAttribute("aria-hidden", "true");
+    end.style.cssText = "height:1px;margin-top:-1px;pointer-events:none";
+    document.body.appendChild(end);
+    const bottom = new IntersectionObserver(([e]) => { atEnd = e.isIntersecting; update(); }, { rootMargin: "0px 0px 4px 0px" });
+    bottom.observe(end);
     const build = () => {
       const boxes = (Array.from(frame.children) as HTMLElement[]).filter((b) => b.offsetHeight > 120);
       list.current = boxes.map((el, i) => {
@@ -78,13 +96,14 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
         return { el, kind, name: own ? short : NAMES[kind](lang) };
       });
       setChapters(list.current.map(({ kind, name }) => ({ kind, name })));
+      line.disconnect();
+      crossing.clear();
+      list.current.forEach((c) => line.observe(c.el));
     };
     const update = () => {
-      raf = 0;
-      const mid = window.innerHeight * 0.45;
-      // At the very bottom the last chapter is the one you're in, even when it is too short to reach the middle.
-      const bottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
-      const at = bottom ? list.current.length - 1 : list.current.findIndex((c) => { const r = c.el.getBoundingClientRect(); return r.top <= mid && r.bottom > mid; });
+      // At the very bottom the last chapter is the one you're in, even when it is too short to reach the line.
+      let at = atEnd ? list.current.length - 1 : -1;
+      for (let i = list.current.length - 1; at < 0 && i >= 0; i--) if (crossing.has(list.current[i].el)) at = i;
       if (at < 0 || at === shown) return;
       shown = at;
       setCurrent(at);
@@ -103,20 +122,16 @@ export function RoseStoryMode({ enabled = true }: { enabled?: boolean }) {
         roseSay(LINES[chapter.kind](lang), chapter.kind === "cta" ? "cheer" : "wave");
       }, 700);
     };
-    const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
     build();
-    update();
-    const kids = new MutationObserver(() => { build(); schedule(); });
+    const kids = new MutationObserver(build);
     kids.observe(frame, { childList: true });
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
     return () => {
-      cancelAnimationFrame(raf);
       window.clearTimeout(sayTimer);
       window.clearTimeout(walkTimer);
       kids.disconnect();
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
+      line.disconnect();
+      bottom.disconnect();
+      end.remove();
     };
   }, [enabled, lang]);
 
