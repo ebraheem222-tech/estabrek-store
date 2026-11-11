@@ -105,6 +105,8 @@ export type StorefrontSettings = {
   colorScenes: Record<SceneColourKey, boolean>;
   /** How strongly a colour tints the page's surfaces. */
   colorStrength: ColourStrength;
+  /** Colours tapped on the shop's cards blend into one, the header wearing them as a gradient mesh (lib/colourMix.ts). */
+  colorBlend: boolean;
   /** The store's secret: holding the logo down opens a hidden coupon (RoseSecret). */
   secretEnabled: boolean;
   secretCode: string;
@@ -216,6 +218,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   colorFollow: "everything",
   colorScenes: Object.fromEntries(SCENE_COLOUR_KEYS.map((key) => [key, true])) as Record<SceneColourKey, boolean>,
   colorStrength: "normal",
+  colorBlend: true,
   secretEnabled: true,
   secretCode: "",
   secretText: "",

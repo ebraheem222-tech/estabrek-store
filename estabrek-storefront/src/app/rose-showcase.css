@@ -854,3 +854,24 @@ html.lenis, html.lenis body { height: auto; }
 @media (max-width: 760px) {
   .rose-page-frame[data-stack] > .rose-stack-box + .rose-stack-box { border-radius: 26px 26px 0 0; }
 }
+
+
+/* ---------------------------------------------------------------- 18. mixed colours (lib/colourMix.ts) */
+
+/* The header wears the colours tapped on the shop's cards as a gradient mesh over their blend (RoseThemeProvider
+   sets --navbar-mesh with data-colour-mix). Only where the header follows the colour. */
+.cinematic-shell[data-navbar-color][data-colour-mix]:not([data-color-scope="product"]) .atelier-header { background-image: var(--navbar-mesh); }
+
+/* The small bag in the colours of what's in it: a pastel mesh of them on its head, their pools lighting its glass,
+   and their dots by the count. */
+.rose-minibag-panel[data-mixed]::after { background: var(--minibag-glow); }
+.rose-minibag-panel[data-mixed] .rose-minibag-head { background: var(--minibag-mesh); }
+.rose-minibag-head:has(.rose-minibag-colours) { grid-template-columns: 1fr auto auto auto; }
+.rose-minibag-colours { display: inline-flex; }
+.rose-minibag-colours i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px color-mix(in srgb, var(--selection-ink, #4d2039) 25%, transparent); }
+.rose-minibag-colours i + i { margin-inline-start: -6px; }
+.rose-minibag[data-open] .rose-minibag-colours i { animation: rose-pop-in .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+.rose-minibag[data-open] .rose-minibag-colours i:nth-child(2) { animation-delay: .06s; }
+.rose-minibag[data-open] .rose-minibag-colours i:nth-child(3) { animation-delay: .12s; }
+.rose-minibag[data-open] .rose-minibag-colours i:nth-child(4) { animation-delay: .18s; }
+@media (prefers-reduced-motion: reduce) { .rose-minibag[data-open] .rose-minibag-colours i { animation: none; } }

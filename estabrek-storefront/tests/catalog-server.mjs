@@ -1412,7 +1412,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           for (const p of all) for (const item of p.items || []) for (const v of item.variants || []) {
             if (v.id === it.variantId) {
               const img = item.images?.[0]?.url || p.images?.[0]?.url || p.primaryImageUrl;
-              return { variantId: v.id, quantity: it.quantity, productTitle: p.title, productTranslations: p.translations ?? {}, productSlug: p.slug, colorName: item.colorName, sizeName: v.size?.name, imageUrl: img, unitPrice: v.price, lineSubtotal: v.price * it.quantity, lineTotal: v.price * it.quantity, available: v.stock ?? 99, fulfillment: p.type?.fulfillment ?? "SHIPPING", eventStartsAt: p.eventStartsAt ?? null };
+              return { variantId: v.id, quantity: it.quantity, productTitle: p.title, productTranslations: p.translations ?? {}, productSlug: p.slug, colorName: item.colorName, colorHex: item.colorHex ?? null, sizeName: v.size?.name, imageUrl: img, unitPrice: v.price, lineSubtotal: v.price * it.quantity, lineTotal: v.price * it.quantity, available: v.stock ?? 99, fulfillment: p.type?.fulfillment ?? "SHIPPING", eventStartsAt: p.eventStartsAt ?? null };
             }
           }
           return null;

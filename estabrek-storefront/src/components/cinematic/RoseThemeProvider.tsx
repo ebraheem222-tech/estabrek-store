@@ -5,6 +5,8 @@ import { storefrontPalette } from "@/lib/storefrontPalette";
 import { crossfadeTheme, setThemeNow, tweenTheme } from "@/lib/themeTween";
 import { themeHeld } from "@/lib/themeBase";
 import { discardThemePreview, storeThemeOn } from "@/lib/themePreview";
+import { addToMix, blendColours, meshBackground, readMix, saveMix } from "@/lib/colourMix";
+import { colourBlendOn } from "@/lib/colourEngine";
 
 type Theme = { root: RefObject<HTMLDivElement>; apply: (background: string) => void; reset: () => void };
 const ThemeContext = createContext<Theme | null>(null);
@@ -73,10 +75,24 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     let selected = false;
     let picks = 0;
     const globalProperties = new Map<string, string>();
+    // The colours she tapped on the shop's cards, oldest → newest (lib/colourMix.ts): the theme is their blend.
+    let mix: string[] = readMix();
     const select = (event: Event) => {
-      const color = (event as CustomEvent<string>).detail;
-      if (!/^#[0-9a-f]{6}$/i.test(color) || !root.current || storeThemeOn()) return;
+      const picked = (event as CustomEvent<string>).detail;
+      if (!/^#[0-9a-f]{6}$/i.test(picked) || !root.current || storeThemeOn()) return;
       const restored = Boolean((event as CustomEvent & { restored?: boolean }).restored);
+      const auto = Boolean((event as CustomEvent & { auto?: boolean }).auto);
+      const mixing = Boolean((event as CustomEvent & { mix?: boolean }).mix) && colourBlendOn();
+      if (!restored && !auto) {
+        // A card's colour joins the mix; tapping the newest one again keeps it alone. Any other pick starts afresh.
+        const again = mix.length > 1 && mix[mix.length - 1] === picked.toLowerCase();
+        mix = mixing && !again ? addToMix(mix, picked) : [picked.toLowerCase()];
+        saveMix(mix);
+      }
+      // A colour carried over from the last page is the mix's blend when it was one.
+      const blended = mix.length > 1 ? blendColours(mix) : null;
+      const meshOn = Boolean(blended) && !auto && (restored ? blended === picked.toLowerCase() : mixing);
+      const color = meshOn ? blended! : picked;
       if (!restored) discardThemePreview();
       const palette = storefrontPalette(color);
       // Global quick view and floating controls are outside the shell.
@@ -91,6 +107,14 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         shell.dataset.navbarColor = color;
         shell.dataset.storefrontColor = color;
         document.documentElement.dataset.storefrontColor = color;
+        // The header wears the mixed colours as a gradient mesh over their blend.
+        if (meshOn) {
+          shell.style.setProperty("--navbar-mesh", meshBackground(mix));
+          shell.dataset.colourMix = mix.join(" ");
+        } else {
+          shell.style.removeProperty("--navbar-mesh");
+          delete shell.dataset.colourMix;
+        }
       };
       selected = true;
       const pick = ++picks;
@@ -112,10 +136,9 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         tweenTheme(document.documentElement, global, { duration });
         mark();
       }
-      // Only a colour the shopper picked is carried to the next pages. The colour a
+      // Only a colour the shopper picked is carried to the next pages (a mix as its blend). The colour a
       // product page takes on its own (`auto`, e.g. a white piece) stays on that page:
       // carried over, it turned the whole site white after a refresh.
-      const auto = Boolean((event as CustomEvent & { auto?: boolean }).auto);
       if (!restored && !auto) saveColor(color);
       lastActive = Date.now();
     };
