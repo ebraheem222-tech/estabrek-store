@@ -1,4 +1,5 @@
-import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
+// By its path, not "@/…": the admin draws these scenes too (its "@" is its own src).
+import { isPageIdle, onPageIdle } from "../lib/pageIdleCore";
 import type { ExtraSceneKind, MoreSceneKind, SceneSpec } from "./scene";
 type Pointer = { x: number; y: number } | null;
 const TAU = Math.PI * 2;
