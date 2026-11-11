@@ -92,7 +92,7 @@ describe("the home page's sections in numbers", () => {
     const created = (await request(app).post("/v1/admin/experiments").send({ name: "ترتيب الرئيسية", kind: "homeOrder", a: "published", b }).expect(201)).body.experiment;
     await request(app).post(`/v1/admin/experiments/${created.id}/start`).expect(200);
     // The shop gets it with the public settings.
-    const site = (await request(app).get("/v1/storefront/settings").expect(200)).body.site;
+    const site = (await request(app).get("/v1/settings").expect(200)).body.site;
     expect(site.experiments).toEqual([expect.objectContaining({ id: created.id, kind: "homeOrder", a: "published", b })]);
 
     await request(app).post(`/v1/admin/experiments/${created.id}/keep`).send({ winner: "B" }).expect(200);
