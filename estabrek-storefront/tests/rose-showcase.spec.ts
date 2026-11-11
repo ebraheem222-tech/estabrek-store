@@ -136,6 +136,24 @@ test("automated browsers keep plain scrolling (the smooth scroll is for shoppers
   expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
 });
 
+test("smooth scrolling is the home's alone: every other page keeps the browser's own, lighter scrolling", async ({ browser }) => {
+  // A shopper's browser (automated ones always keep plain scrolling).
+  const context = await browser.newContext();
+  await context.addInitScript(() => Object.defineProperty(Navigator.prototype, "webdriver", { get: () => false }));
+  const page = await context.newPage();
+  const smooth = () => page.evaluate(() => document.documentElement.classList.contains("lenis"));
+  await page.goto("/");
+  await expect.poll(smooth).toBe(true);
+  // Into the shop by a link (the page's chrome stays): the smoothing stops.
+  await page.locator('a[href="/shop"]').first().click();
+  await expect(page).toHaveURL(/\/shop/);
+  await expect.poll(smooth).toBe(false);
+  await page.goto("/contact");
+  await page.waitForTimeout(1200);
+  expect(await smooth()).toBe(false);
+  await context.close();
+});
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true });
 
