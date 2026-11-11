@@ -16,6 +16,7 @@ import { AccessibilityTools } from "@/components/AccessibilityTools";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import { useStoreIdentity } from "@/store/storeIdentity";
 import { modestShop } from "@/lib/storeIdentity";
+import { setColourEngine } from "@/lib/colourEngine";
 import {
   DEFAULT_STOREFRONT_SETTINGS,
   normalizeStorefrontSettings,
@@ -61,6 +62,9 @@ export function StorefrontFeaturesProvider({
   const [settings, setSettings] = useState<StorefrontSettings>(() =>
     normalizeStorefrontSettings(initialSettings)
   );
+  // The colour engine reads the owner's choices (which scenes colour the page, how strongly); set as this renders,
+  // before the components below make any palette.
+  setColourEngine({ scenes: settings.colorScenes, strength: settings.colorStrength });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

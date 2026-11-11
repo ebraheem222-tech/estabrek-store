@@ -1,3 +1,4 @@
+import { COLOUR_STRENGTHS, SCENE_COLOUR_KEYS, type ColourStrength, type SceneColourKey } from "./colourEngine";
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 type LiveChatPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ChatbotPosition = "bottom-left" | "bottom-right" | "bottom-center";
@@ -94,6 +95,10 @@ export type StorefrontSettings = {
   // Theme & Colors
   themeColorsEnabled: boolean;
   colorFollow: ColorFollow;
+  /** Which scenes dress the page in their colour while they hold the screen (lib/colourEngine.ts). */
+  colorScenes: Record<SceneColourKey, boolean>;
+  /** How strongly a colour tints the page's surfaces. */
+  colorStrength: ColourStrength;
   /** The store's secret: holding the logo down opens a hidden coupon (RoseSecret). */
   secretEnabled: boolean;
   secretCode: string;
@@ -200,6 +205,8 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   // Theme & Colors
   themeColorsEnabled: true,
   colorFollow: "everything",
+  colorScenes: Object.fromEntries(SCENE_COLOUR_KEYS.map((key) => [key, true])) as Record<SceneColourKey, boolean>,
+  colorStrength: "normal",
   secretEnabled: true,
   secretCode: "",
   secretText: "",
@@ -221,7 +228,7 @@ const liveChatPositions = ["bottom-left", "bottom-right", "bottom-center"] as co
 const chatbotPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
 const toastPositions = ["top-right", "top-left", "bottom-right", "bottom-left"] as const;
 const colorFollows = ["everything", "product"] as const;
-const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow"]);
+const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow", "colorStrength"]);
 
 const boolKeys = Object.entries(DEFAULT_STOREFRONT_SETTINGS)
   .filter(([, value]) => typeof value === "boolean")
@@ -288,6 +295,9 @@ export function normalizeStorefrontSettings(
   next.chatbotPosition = toEnum(raw.chatbotPosition, chatbotPositions, base.chatbotPosition);
   next.toastPosition = toEnum(raw.toastPosition, toastPositions, base.toastPosition);
   next.colorFollow = toEnum(raw.colorFollow, colorFollows, base.colorFollow);
+  next.colorStrength = toEnum(raw.colorStrength, COLOUR_STRENGTHS, base.colorStrength);
+  const scenes = raw.colorScenes && typeof raw.colorScenes === "object" ? (raw.colorScenes as Record<string, unknown>) : {};
+  next.colorScenes = Object.fromEntries(SCENE_COLOUR_KEYS.map((key) => [key, typeof scenes[key] === "boolean" ? (scenes[key] as boolean) : base.colorScenes[key]])) as Record<SceneColourKey, boolean>;
 
   return next;
 }

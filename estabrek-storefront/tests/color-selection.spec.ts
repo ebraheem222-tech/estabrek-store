@@ -492,3 +492,51 @@ test.describe("a store that keeps a picked colour to the product area", () => {
     await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
   });
 });
+
+// Admin → الإعدادات → الثيم والألوان: the colour engine (lib/colourEngine.ts) — which scenes colour the page, how
+// strongly, and text that stays readable with any colour.
+test.describe.serial("the colour engine", () => {
+  const engine = async (request: import("@playwright/test").APIRequestContext, data: Record<string, unknown> = {}) => {
+    await request.post("http://127.0.0.1:4100/__test/color-engine", { data });
+    await request.post("/api/revalidate", { data: { tags: ["settings", "cms", "cms:pages"], paths: ["/"] } });
+  };
+  test.afterEach(async ({ request }) => engine(request));
+
+  test("a strong store leans its page further to the colour than a soft one", async ({ page, request }) => {
+    const pageColour = async (strength: string) => {
+      await engine(request, { strength });
+      await page.goto("/shop");
+      const shell = page.locator(".cinematic-shell");
+      await expect(shell).toHaveAttribute("data-color-selection-ready", "true");
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#1f7a8c" })));
+      await expect(shell).toHaveAttribute("data-storefront-color", "#1f7a8c");
+      return shell.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-page").trim());
+    };
+    // How far from the plain page colour (#fff8f4) each one is.
+    const away = (hex: string) => [1, 3, 5].reduce((sum, i) => sum + Math.abs(parseInt(hex.slice(i, i + 2), 16) - parseInt("fff8f4".slice(i - 1, i + 1), 16)), 0);
+    const soft = await pageColour("soft");
+    const strong = await pageColour("strong");
+    expect(away(strong)).toBeGreaterThan(away(soft) * 2);
+  });
+
+  test("a product page takes its piece's colour unless the owner switched that off", async ({ page, request }) => {
+    await engine(request, { scenes: { product: false } });
+    await page.goto("/p/rose-dress");
+    const shell = page.locator(".cinematic-shell");
+    await expect(shell).toHaveAttribute("data-color-selection-ready", "true");
+    await page.waitForTimeout(1500);
+    await expect(page.locator("html")).not.toHaveAttribute("data-storefront-color", /.+/);
+    // On again: the page takes the piece's colour on its own.
+    await engine(request);
+    await page.goto("/p/rose-dress");
+    await expect(page.locator("html")).toHaveAttribute("data-storefront-color", /^#/);
+  });
+
+  test("a pale colour chosen for the film's titles is kept readable; a readable one is left as it is", async () => {
+    const { readableOnLight } = await import("../src/lib/colourEngine");
+    const lum = (hex: string) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((n) => (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)); return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722; };
+    const contrast = (a: string, b: string) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    expect(contrast(readableOnLight("#fff2a8"), "#fff8f4")).toBeGreaterThanOrEqual(3);
+    expect(readableOnLight("#7c5fa8")).toBe("#7c5fa8");
+  });
+});

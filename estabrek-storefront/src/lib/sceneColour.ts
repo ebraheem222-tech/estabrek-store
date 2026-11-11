@@ -3,6 +3,7 @@ import { collectionSeed, sampleImageColor } from "@/lib/collectionTheme";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { claimTheme, holdsTheme, releaseTheme, themeHeld, themeHeldBy } from "@/lib/themeBase";
 import { themeFollower } from "@/lib/themeTween";
+import { sceneColoursOn } from "@/lib/colourEngine";
 
 /** `#abc` / `#aabbccdd` → `#aabbcc`; anything else → null. */
 export function normalHex(value?: string | null): string | null {
@@ -55,6 +56,8 @@ export function photoColour(url?: string | null): Promise<string | null> {
  * colours back. Null outside the store's shell (the editor's preview of a lone section).
  */
 export function sceneTheme(section: HTMLElement, owner: string) {
+  // The owner switched this scene's colour off (Admin → الثيم والألوان): it keeps the page as it is.
+  if (!sceneColoursOn(owner)) return null;
   const shell = section.closest<HTMLElement>(".cinematic-shell");
   if (!shell) return null;
   const header = shell.querySelector<HTMLElement>(".atelier-header");

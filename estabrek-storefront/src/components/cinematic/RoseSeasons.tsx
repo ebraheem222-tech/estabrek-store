@@ -19,6 +19,7 @@ import { Icon } from "./Icons";
 import { RoseBadge } from "./RoseBadge";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { useRoseTheme } from "./RoseThemeProvider";
+import { sceneColoursOn } from "@/lib/colourEngine";
 import { mixHex } from "./roseDesign";
 import { sceneField, sceneSeed, sceneWord } from "./sceneWords";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
@@ -170,6 +171,8 @@ export function RoseSeasons({ seasons, words }: { seasons: SeasonEdit[]; words?:
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
       const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
+        // The owner switched the seasons' colours off (Admin → الثيم والألوان): the page keeps its own.
+        if (!sceneColoursOn("seasons")) return;
         if (!shell || !follow || document.documentElement.hasAttribute("data-visual-theme")) return;
         // Most scroll frames do not change the colour (it only moves while the
         // seasons hand over): nothing to write, so the page is not restyled.
