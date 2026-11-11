@@ -2,7 +2,8 @@
 // stored in site settings (header.delivery). The same rules as the admin
 // (admin/src/lib/orders.ts), so the bag and the order page show the same fee.
 
-export type DeliveryZone = { id: string; name: string; fee: number; cities: string[] };
+/** An area: its price, its cities, and how many days delivery takes there (empty = the piece's own days). */
+export type DeliveryZone = { id: string; name: string; fee: number; cities: string[]; minDays?: number | null; maxDays?: number | null };
 export type DeliverySettings = { zones: DeliveryZone[]; defaultFee: number | null; freeOver: number | null };
 
 const num = (v: unknown) => {
@@ -22,12 +23,38 @@ export function normalizeDelivery(raw: unknown): DeliverySettings {
           name: String(zz.name ?? "").trim(),
           fee: num(zz.fee),
           cities: (Array.isArray(zz.cities) ? zz.cities : String(zz.cities ?? "").split(/[,،\n]/)).map((c) => String(c).trim()).filter(Boolean),
+          minDays: days(zz.minDays),
+          maxDays: days(zz.maxDays),
         };
       })
       .filter((z) => z.name),
     defaultFee: o.defaultFee == null || o.defaultFee === "" ? null : num(o.defaultFee),
     freeOver: o.freeOver == null || o.freeOver === "" ? null : num(o.freeOver),
   };
+}
+
+/** A whole number of days (0–60), or null when empty. */
+const days = (v: unknown) => {
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 ? Math.min(60, n) : null;
+};
+
+const CITY_KEY = "estabrak_city_v1";
+/** The city she last picked (product page or bag), on this device. */
+export function rememberedCity(): string {
+  try {
+    return localStorage.getItem(CITY_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+export function rememberCity(city: string) {
+  try {
+    if (city.trim()) localStorage.setItem(CITY_KEY, city.trim());
+  } catch {
+    /* private mode: it just isn't kept */
+  }
 }
 
 const norm = (s: string) => s.trim().replace(/^ال/, "").replace(/[أإآ]/g, "ا").replace(/ة$/, "ه").replace(/ى$/, "ي").toLowerCase();

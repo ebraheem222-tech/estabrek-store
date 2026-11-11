@@ -25,3 +25,39 @@ export function deliveryText(d: Delivery | null | undefined, lang: Lang): string
   const parts = [when, from ? (tr(lang, `بينشحن من ${from}`, "Ships from {0}", [from])) : ""].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
 }
+
+/** Fewest and most days, each filling the other when only one is set, in order; null when neither is. */
+function span(min?: number | null, max?: number | null) {
+  const a = min ?? max ?? null, b = max ?? min ?? null;
+  if (a == null || b == null) return null;
+  return a <= b ? { min: a, max: b } : { min: b, max: a };
+}
+
+/**
+ * The days to her city: the area's when the owner set them, else the piece's own. A piece that takes clearly
+ * longer than the area (its fewest days past the area's most: made to order, say) keeps its own days.
+ */
+export function arrivalDays(zone: { minDays?: number | null; maxDays?: number | null } | null, piece: Delivery | null | undefined) {
+  const area = span(zone?.minDays, zone?.maxDays);
+  const own = span(piece?.minDays, piece?.maxDays);
+  if (!area) return own;
+  if (own && own.min > area.max) return own;
+  return area;
+}
+
+/** "بيوصل بين الخميس 13 نوفمبر والسبت 15 نوفمبر", counted from today in Israel time. */
+export function arrivalText({ min, max }: { min: number; max: number }, lang: Lang, now = new Date()) {
+  if (max === 0) return tr(lang, "بيوصل اليوم", "Arrives today");
+  const locale = lang === "ar" ? "ar-u-nu-latn" : lang === "he" ? "he-IL" : "en-GB";
+  const day = (n: number) => {
+    const d = new Date(now.getTime() + n * 86400000);
+    try {
+      return new Intl.DateTimeFormat(locale, { timeZone: "Asia/Jerusalem", weekday: "long", day: "numeric", month: "long" }).format(d);
+    } catch {
+      return d.toDateString();
+    }
+  };
+  const a = day(min), b = day(max);
+  if (min === max || a === b) return tr(lang, `بيوصل ${b}`, "Arrives {0}", [b]);
+  return tr(lang, `بيوصل بين ${a} و${b}`, "Arrives between {0} and {1}", [a, b]);
+}

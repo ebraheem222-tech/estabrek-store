@@ -724,7 +724,7 @@ http
     // Delivery prices from the admin (header.delivery), switched on by the delivery test.
     if (pathname === "/__test/delivery") {
       const on = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
-      if (on) site.header.delivery = { zones: [{ id: "z1", name: "القدس", fee: 20, cities: ["القدس", "بيت حنينا"] }, { id: "z2", name: "الداخل", fee: 35, cities: ["حيفا", "الناصرة"] }], defaultFee: 50, freeOver: 800 };
+      if (on) site.header.delivery = { zones: [{ id: "z1", name: "القدس", fee: 20, cities: ["القدس", "بيت حنينا"], minDays: 1, maxDays: 2 }, { id: "z2", name: "الداخل", fee: 35, cities: ["حيفا", "الناصرة"], minDays: 3, maxDays: 5 }], defaultFee: 50, freeOver: 800 };
       else delete site.header.delivery;
       return res.end(JSON.stringify({ ok: true, delivery: site.header.delivery ?? null }));
     }
@@ -1159,6 +1159,25 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
     if (/^\/v1\/ugc\/products\/[^/]+\/reviews$/.test(pathname)) {
       const id = decodeURIComponent(pathname.split("/").at(-2));
       return res.end(JSON.stringify(id === "coat" ? globalThis.reviewsFixture?.list ?? [] : []));
+    }
+    // «كمّلي اللبسة» without AI (complete-look.spec.ts): the dress is completed by the hijabs; the picked colour
+    // is logged so the test sees the pieces follow it. /__test/look {"off": true} answers with nothing.
+    if (pathname === "/__test/look" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => { globalThis.lookOff = JSON.parse(body || "{}").off === true; globalThis.lookLog = []; res.end("{}"); });
+      return;
+    }
+    if (pathname === "/__test/look-log") return res.end(JSON.stringify(globalThis.lookLog ?? []));
+    if (/^\/v1\/catalog\/products\/[^/]+\/look$/.test(pathname)) {
+      const color = new URL(req.url, "http://localhost").searchParams.get("color");
+      (globalThis.lookLog ??= []).push({ productId: decodeURIComponent(pathname.split("/").at(-2)), color });
+      if (globalThis.lookOff) return res.end(JSON.stringify({ products: [] }));
+      const img = "http://localhost:3000/editorial/hijab-campaign.webp";
+      return res.end(JSON.stringify({ products: [
+        { id: "bag", title: "شال وردي بتفاصيل ناعمة", slug: "rose-hijab", image: img, price: 190, colorName: "Rose" },
+        { id: "pearl", title: "حجاب لؤلؤي", slug: "pearl-hijab", image: img, price: 280, colorName: null },
+      ] }));
     }
     if (/^\/v1\/catalog\/products\/[^/]+\/reviews$/.test(pathname) && req.method === "POST") {
       let body = "";

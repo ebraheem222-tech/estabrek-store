@@ -5213,4 +5213,6 @@ export const HE: Record<string, string> = {
   "No particles": "בלי חלקיקים",
   "Find a kind…": "חיפוש סוג…",
   "Find a particle kind": "חיפוש סוג חלקיקים",
+  "Arrives within": "מגיע תוך",
+  "(empty = the piece's own days; pieces that take much longer, like made to order, keep their own)": "(ריק = הימים של הפריט עצמו; פריטים שלוקחים הרבה יותר זמן, כמו הזמנה אישית, נשארים עם הימים שלהם)",
 };

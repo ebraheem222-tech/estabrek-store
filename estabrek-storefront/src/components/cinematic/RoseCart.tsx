@@ -8,7 +8,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { LqipImage } from "@/components/LqipImage";
 import { cldUrl } from "@/lib/cloudinary";
 import { whatsappLink } from "@/lib/whatsapp";
-import { deliveryCities, deliveryFor, hasDeliveryPrices, lowestFee, normalizeDelivery } from "@/lib/delivery";
+import { deliveryCities, deliveryFor, hasDeliveryPrices, lowestFee, normalizeDelivery, rememberCity, rememberedCity } from "@/lib/delivery";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
@@ -170,6 +170,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const delivery = useMemo(() => normalizeDelivery(deliveryRaw), [deliveryRaw]);
   const priced = hasDeliveryPrices(delivery);
   const cityGroups = useMemo(() => deliveryCities(delivery), [delivery]);
+  // The city she picked on a product page (this device), when the form has none yet.
+  useEffect(() => {
+    const saved = rememberedCity();
+    if (saved && cityGroups.some((g) => g.cities.includes(saved))) setForm((f) => (f.city ? f : { ...f, city: saved }));
+  }, [cityGroups]);
   const subtotalNum = Number(quote?.subtotal ?? 0);
   const ship = deliveryFor(form.city, subtotalNum, delivery);
   const freeLeft = delivery.freeOver != null && quote ? Math.max(0, delivery.freeOver - subtotalNum) : null;
@@ -516,7 +521,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                 {!otherCity ? (
                   <select
                     value={form.city}
-                    onChange={(e) => { if (e.target.value === "__other") { setOtherCity(true); setForm({ ...form, city: "" }); } else setForm({ ...form, city: e.target.value }); }}
+                    onChange={(e) => { if (e.target.value === "__other") { setOtherCity(true); setForm({ ...form, city: "" }); } else { setForm({ ...form, city: e.target.value }); rememberCity(e.target.value); } }}
                     aria-label={tr(lang, "المدينة", "City")}
                     data-testid="cart-city"
                   >

@@ -368,6 +368,9 @@ type StorefrontConfig = {
   productRecentlyViewedCount: number;
   productRecommendations: boolean;
   productRecommendationsCount: number;
+  productReviews: boolean;
+  productCompleteLook: boolean;
+  productDeliveryCity: boolean;
   productQuickView: boolean;
   productZoomEnabled: boolean;
   productCompareEnabled: boolean;
@@ -480,6 +483,9 @@ function normalizeStorefront(v: any): StorefrontConfig {
     productRecentlyViewed: o.productRecentlyViewed !== false,
     productRecentlyViewedCount: o.productRecentlyViewedCount || 6,
     productRecommendations: o.productRecommendations !== false,
+    productReviews: o.productReviews !== false,
+    productCompleteLook: o.productCompleteLook !== false,
+    productDeliveryCity: o.productDeliveryCity !== false,
     productRecommendationsCount: o.productRecommendationsCount || 8,
     productQuickView: o.productQuickView !== false,
     productZoomEnabled: o.productZoomEnabled !== false,
@@ -2632,6 +2638,21 @@ export default function SettingsPage() {
                         label="المنتجات المقترحة"
                         checked={storefrontCfg.productRecommendations}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, productRecommendations: v }))}
+                      />
+                      <Toggle
+                        label="التقييمات (والنجوم جنب السعر)"
+                        checked={storefrontCfg.productReviews}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productReviews: v }))}
+                      />
+                      <Toggle
+                        label="كمّلي اللبسة (قطع بألوان بتلبق مع اللون المختار)"
+                        checked={storefrontCfg.productCompleteLook}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productCompleteLook: v }))}
+                      />
+                      <Toggle
+                        label="موعد الوصول وسعر التوصيل حسب المدينة"
+                        checked={storefrontCfg.productDeliveryCity}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productDeliveryCity: v }))}
                       />
                       <Toggle
                         label="العرض السريع"

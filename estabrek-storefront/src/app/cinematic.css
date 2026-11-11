@@ -4787,3 +4787,54 @@ html[data-ui-maint] body { overflow: hidden; }
   .rose-review-stars label { transition: none; }
   .rose-review-stars label:hover { transform: none; }
 }
+
+/* ---------------- Arrival dates by city (RoseDeliveryCity.tsx) ---------------- */
+.rose-pdp-city { margin: 16px 0 -6px; display: grid; gap: 8px; font-size: 13.5px; color: var(--selection-ink, #4d2039); }
+.rose-pdp-city label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rose-pdp-city svg { width: 18px; height: 18px; color: var(--selection-accent, #7d2448); flex: none; }
+.rose-pdp-city select { min-height: 40px; max-width: 100%; padding: 0 34px 0 14px; border-radius: 999px; border: 1px solid var(--selection-line, #e3cdd8); background: #fff; color: #2b1a22; font: inherit; font-size: 14px; cursor: pointer; }
+[dir="rtl"] .rose-pdp-city select { padding: 0 14px 0 34px; }
+.rose-pdp-city select:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 2px; }
+.rose-pdp-city p { margin: 0; padding-inline-start: 26px; display: grid; gap: 2px; line-height: 1.7; }
+.rose-pdp-city p b { font-weight: 700; }
+.rose-pdp-city p span { color: var(--selection-muted, #8b6d7b); font-size: 12.5px; }
+
+/* ---------------- «كمّلي اللبسة» without AI (RoseCompleteLook.tsx): the AI card's look, four across ---------------- */
+.rose-look { margin-top: 56px; padding: 0; max-width: none; }
+.rose-look h2 { font-family: var(--atelier-serif); font-weight: 600; font-size: clamp(24px, 2.4vw, 32px); margin: 0 0 4px; }
+.rose-look-sub { margin: 0 0 16px; font-size: 13.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-look ul { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.rose-look a { gap: 6px; font-size: 13.5px; }
+.rose-look a:hover img, .rose-look a:focus-visible img { transform: translateY(-3px); }
+.rose-look img { transition: transform .25s ease; }
+.rose-look a:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 4px; border-radius: 16px; }
+@media (max-width: 760px) {
+  .rose-look ul { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding-bottom: 6px; }
+  .rose-look li { flex: 0 0 44%; scroll-snap-align: start; }
+}
+@media (prefers-reduced-motion: reduce) { .rose-look img { transition: none; } .rose-look a:hover img { transform: none; } }
+
+/* ---------------- The size guide: this piece's sizes, a tap to pick, her size from her measurements ---------------- */
+.size-guide-legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--selection-muted, #8b6d7b); margin: -6px 0 12px; }
+.size-guide-legend i { width: 14px; height: 14px; border-radius: 4px; flex: none; background: color-mix(in srgb, var(--selection-accent, #7d2448) 14%, #fff); border: 1px solid color-mix(in srgb, var(--selection-accent, #7d2448) 45%, #fff); }
+.size-guide-dialog tbody tr[data-has] { background: color-mix(in srgb, var(--selection-accent, #7d2448) 8%, transparent); }
+.size-guide-dialog tbody tr[data-picked] { background: color-mix(in srgb, var(--selection-accent, #7d2448) 18%, transparent); }
+.size-guide-dialog tbody tr[data-picked] th { box-shadow: inset 3px 0 0 var(--selection-accent, #7d2448); }
+[dir="rtl"] .size-guide-dialog tbody tr[data-picked] th { box-shadow: inset -3px 0 0 var(--selection-accent, #7d2448); }
+.size-guide-dialog tbody tr[data-out] { opacity: .6; }
+.size-guide-dialog tbody tr[data-found] td, .size-guide-dialog tbody tr[data-found] th { font-weight: 700; }
+.size-guide-dialog tbody th button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--selection-accent, #7d2448); background: transparent; color: var(--selection-accent, #7d2448); font: inherit; font-weight: 700; cursor: pointer; }
+.size-guide-dialog tbody th button[aria-pressed="true"] { background: var(--selection-accent, #7d2448); color: #fff; }
+.size-guide-dialog tbody th button:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 2px; }
+.size-guide-dialog tbody th small { font-weight: 400; color: var(--selection-muted, #8b6d7b); }
+.size-guide-finder { margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--selection-line, #efdde5); border-radius: 16px; display: grid; gap: 10px; }
+.size-guide-finder legend { padding: 0 6px; font-weight: 700; font-size: 14px; }
+.size-guide-finder > small { color: var(--selection-muted, #8b6d7b); font-size: 12px; }
+.size-guide-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.size-guide-inputs label { display: grid; gap: 4px; font-size: 12px; color: var(--selection-muted, #8b6d7b); }
+.size-guide-inputs input { width: 100%; box-sizing: border-box; height: 42px; border: 1px solid var(--selection-line, #e3cdd8); border-radius: 12px; padding: 0 10px; font: inherit; font-size: 16px; text-align: center; background: #fff; color: #2b1a22; }
+.size-guide-inputs input:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 1px; }
+.size-guide-finder p { margin: 0; font-size: 13.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.size-guide-found span { font-weight: 700; }
+.size-guide-found button { min-height: 38px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--selection-accent, #7d2448); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.size-guide-found small { color: var(--selection-muted, #8b6d7b); }

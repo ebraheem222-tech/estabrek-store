@@ -143,7 +143,8 @@ export function shortOrderId(id: string) {
 
 /* --------------------------------------------------------------- delivery */
 
-export type DeliveryZone = { id: string; name: string; fee: number; cities: string[] };
+/** An area: its price and cities, and how many days delivery takes there (shown on the product page; empty = the piece's own days). */
+export type DeliveryZone = { id: string; name: string; fee: number; cities: string[]; minDays?: number | null; maxDays?: number | null };
 export type DeliverySettings = { zones: DeliveryZone[]; defaultFee: number | null; freeOver: number | null };
 
 export const EMPTY_DELIVERY: DeliverySettings = { zones: [], defaultFee: null, freeOver: null };
@@ -160,12 +161,21 @@ export function normalizeDelivery(raw: unknown): DeliverySettings {
           name: String(zz.name ?? "").trim(),
           fee: num(zz.fee),
           cities: (Array.isArray(zz.cities) ? zz.cities : String(zz.cities ?? "").split(/[,،\n]/)).map((c) => String(c).trim()).filter(Boolean),
+          minDays: deliveryDays(zz.minDays),
+          maxDays: deliveryDays(zz.maxDays),
         };
       })
       .filter((z) => z.name),
     defaultFee: o.defaultFee == null || o.defaultFee === "" ? null : num(o.defaultFee),
     freeOver: o.freeOver == null || o.freeOver === "" ? null : num(o.freeOver),
   };
+}
+
+/** A whole number of days (0–60), or null when empty. */
+export function deliveryDays(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 ? Math.min(60, n) : null;
 }
 
 const norm = (s: string) => s.trim().replace(/^ال/, "").replace(/[أإآ]/g, "ا").replace(/ة$/, "ه").replace(/ى$/, "ي").toLowerCase();
