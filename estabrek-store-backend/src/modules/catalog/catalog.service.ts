@@ -993,8 +993,8 @@ export async function getProductById(id: string) {
         },
         orderBy: { createdAt: "asc" },
       },
-      reviews: true,
-      comments: true,
+      reviews: { where: { status: "APPROVED" }, select: { rating: true } },
+      comments: { where: { status: "APPROVED" }, select: { id: true, body: true, createdAt: true } },
       type: { select: publicTypeSelect },
     },
   });
@@ -1004,7 +1004,8 @@ export async function getProductById(id: string) {
   const pricedItems = applySalePricingToItems(product.items ?? [], now, expiredSales);
   const minPrice = computeMinPriceFromItems(pricedItems);
   await resetExpiredSales(prisma, expiredSales);
-  return { ...product, items: pricedItems, minPrice, ...typeDetails(product) };
+  const { reviews, ...rest } = product;
+  return { ...rest, items: pricedItems, minPrice, rating: ratingSummary(reviews), ...typeDetails(product) };
 }
 
 export async function getProductBySlug(slug: string) {
@@ -1036,8 +1037,8 @@ export async function getProductBySlug(slug: string) {
         },
         orderBy: { createdAt: "asc" },
       },
-      reviews: true,
-      comments: true,
+      reviews: { where: { status: "APPROVED" }, select: { rating: true } },
+      comments: { where: { status: "APPROVED" }, select: { id: true, body: true, createdAt: true } },
       type: { select: publicTypeSelect },
     },
   });
@@ -1047,7 +1048,8 @@ export async function getProductBySlug(slug: string) {
   const pricedItems = applySalePricingToItems(product.items ?? [], now, expiredSales);
   const minPrice = computeMinPriceFromItems(pricedItems);
   await resetExpiredSales(prisma, expiredSales);
-  return { ...product, items: pricedItems, minPrice, ...typeDetails(product) };
+  const { reviews, ...rest } = product;
+  return { ...rest, items: pricedItems, minPrice, rating: ratingSummary(reviews), ...typeDetails(product) };
 }
 
 export async function getCategoriesTree() {
@@ -1232,7 +1234,14 @@ export async function listProductsBySlugs(slugs: string[], opts?: { lite?: boole
   return ordered;
 }
 
-export function createReview(productId: string, data: { rating: number; title?: string; body: string; userId?: string }) {
+/** A product's approved reviews in short: how many, and their average (one decimal); null with none yet. */
+function ratingSummary(reviews: Array<{ rating: number }>) {
+  if (!reviews.length) return null;
+  const sum = reviews.reduce((total, r) => total + r.rating, 0);
+  return { count: reviews.length, average: Math.round((sum / reviews.length) * 10) / 10 };
+}
+
+export function createReview(productId: string, data: { rating: number; title?: string; body: string; userId?: string | null }) {
   return prisma.review.create({
     data: {
       productId,

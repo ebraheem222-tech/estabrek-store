@@ -95,6 +95,7 @@ r.get("/products/:id", cacheResponse("products", { subject: productOfBody }), as
 // reviews
 r.post(
   "/products/:id/reviews",
+  optionalCustomer,
   (req, _res, next) => {
     if (req.body?.comment && req.body?.body == null) req.body.body = req.body.comment;
     next();
@@ -103,7 +104,10 @@ r.post(
   asyncHandler(async (req, res) => {
     const prod = await getProductById(req.params.id);
     if (!prod) return res.status(404).json({ error: "NOT_FOUND" });
-    res.status(201).json(await createReview(req.params.id, req.body));
+    // The writer is the signed-in shopper, if any (never an id sent with the review).
+    const userId = await activeCustomerId(req.customer?.id);
+    const review = await createReview(req.params.id, { ...req.body, userId });
+    res.status(201).json({ id: review.id, status: review.status });
   })
 );
 
