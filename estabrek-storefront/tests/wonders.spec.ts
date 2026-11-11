@@ -257,13 +257,16 @@ test.describe("the dock", () => {
   test("on a phone the dock measures its row, and the \"you viewed\" note shows above it", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/shop");
-    await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue("--dock-lift"))).toMatch(/^\d+px$/);
-    const lift = await page.evaluate(() => parseFloat(document.documentElement.style.getPropertyValue("--dock-lift")));
     // A note in place: its bottom stays above the row.
     await page.evaluate(() => {
       const note = Object.assign(document.body.appendChild(document.createElement("div")), { className: "recent-activity-popup rose-recent" });
       note.style.cssText = "visibility: visible; opacity: 1; width: 200px;";
     });
+    // The numbers reach only what reads them (a small style sheet), never the whole page through <html>.
+    const lifted = () => page.evaluate(() => getComputedStyle(document.querySelector("body > .rose-recent")!).getPropertyValue("--dock-lift").trim());
+    await expect.poll(lifted).toMatch(/^\d+px$/);
+    const lift = parseFloat(await lifted());
+    expect(await page.evaluate(() => document.documentElement.style.getPropertyValue("--dock-lift"))).toBe("");
     const bottom = await page.evaluate(() => document.querySelector("body > .rose-recent")!.getBoundingClientRect().bottom);
     expect(bottom).toBeLessThanOrEqual(844 - lift + 1);
   });

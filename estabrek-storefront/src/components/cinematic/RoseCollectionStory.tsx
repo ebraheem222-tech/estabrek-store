@@ -2,7 +2,7 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { Component, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Component, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
@@ -133,11 +133,10 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
   const weights = useRef<number[]>(chapters.map((_, i) => (i === 0 ? 1 : 0)));
   const palm: PalmRef = useRef(null);
   const rose = useRef<MascotHandle>(null);
+  // The world on stage. Rose takes its colour and outfit at the hand-over, with the world (she greets it in the
+  // next pause of the scroll).
   const [lead, setLead] = useState(0);
-  // The world Rose is in: she follows the scroll's world once the shopper pauses. At a hand-over her outfit,
-  // her colour, her place and her greeting all landed in the same half second as the scene's own hand-over,
-  // restyling her whole drawing mid-scroll: the frame drop phones showed as she jumped.
-  const [roseLead, setRoseLead] = useState(0);
+  const meter = useRef<HTMLOListElement>(null);
   const [motion, setMotion] = useState(false);
   const [near, setNear] = useState(false);
   const [inView, setInView] = useState(false);
@@ -237,9 +236,17 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
       const cards = layers.map((layer) =>
         Array.from(layer.querySelectorAll<HTMLElement>(".season-card")).map((card) => ({ card, i: Number(card.style.getPropertyValue("--i")) || 0 })));
       const px = (n: number) => `translateY(${n.toFixed(2)}px)`;
-      // The section wears the leading chapter's colours, so it never glides them; it
-      // changes at a hand-over's midpoint, when neither chapter's copy shows.
+      // Each chapter's copy and cards wear their own chapter's colours from the start (written once), so a
+      // hand-over doesn't restyle them. Written on the section at each hand-over, the colours restyled the whole
+      // scene, Rose and the three worlds' copy and cards (an 80 ms frame on a phone). Only the chapter meter,
+      // shared by all worlds, takes the new world's colours at a hand-over's midpoint, when neither chapter's
+      // copy shows; Rose takes them with her new outfit (roseColours, below).
       const palettes = seeds.map((seed) => storefrontPalette(seed));
+      const wearOn = (part: HTMLElement | null | undefined, palette: Record<string, string> | undefined) => {
+        if (part && palette) for (const name in palette) part.style.setProperty(name, palette[name]);
+      };
+      layers.forEach((layer, i) => wearOn(layer, palettes[i]));
+      const shared = () => [meter.current];
       const render = (p: number) => {
         const w = chapterWeights(p, n);
         weights.current = w;
@@ -258,7 +265,7 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
         });
         if (lead === shownLead) return; // attributes only change at a hand-over
         shownLead = lead;
-        Object.entries(palettes[lead]).forEach(([name, value]) => el.style.setProperty(name, value));
+        shared().forEach((part) => wearOn(part, palettes[lead]));
         el.dataset.chapter = chapters[lead].key;
         setLead(lead);
         layers.forEach((layer, i) => { layer.inert = i !== lead; });
@@ -303,7 +310,7 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
         giveBack(true);
         layers.forEach((layer) => { layer.inert = false; layer.style.removeProperty("opacity"); layer.style.removeProperty("transform"); });
         cards.flat().forEach(({ card }) => card.style.removeProperty("transform"));
-        Object.keys(palettes[0] ?? {}).forEach((name) => el.style.removeProperty(name));
+        [...layers, ...shared()].forEach((part) => Object.keys(palettes[0] ?? {}).forEach((name) => part?.style.removeProperty(name)));
         el.dataset.motion = "false";
         setMotion(false);
       };
@@ -311,31 +318,17 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
     return () => mm.revert();
   }, [settings.scrollAnimationsEnabled, theme, chapters, seedKey]);
 
-  // Rose catches up with the world in the next pause of the scroll (at once without motion).
-  useEffect(() => {
-    if (roseLead === lead) return;
-    if (!motion) { setRoseLead(lead); return; }
-    return onPageRest(() => setRoseLead(lead), { quiet: 250 });
-  }, [lead, roseLead, motion]);
-  // Her hijab takes the world's colour then, not with the section's (it is her own variable, set on her).
-  const roseSeeds = seedKey.split(",");
-  const roseSeed = roseSeeds[roseLead] ?? roseSeeds[0];
-  useEffect(() => {
-    const mascot = root.current?.querySelector<HTMLElement>(".story-mascot");
-    if (mascot && roseSeed) mascot.style.setProperty("--m-hijab", roseSeed);
-  }, [roseSeed, near, motion]);
-
-  // Rose introduces each chapter as she reaches it.
+  // Rose introduces each chapter as she reaches it, in the next pause of the scroll (her hop and hearts landing
+  // mid-scroll, on top of the hand-over, were what phones showed as a jolt).
   useEffect(() => {
     if (!motion || !inView) return;
-    const key = chapters[roseLead]?.key;
+    const key = chapters[lead]?.key;
     if (!key) return;
-    const t = window.setTimeout(() => {
+    return onPageRest(() => {
       rose.current?.say(ROSE_LINE[key][lang], 2600);
       rose.current?.joy();
-    }, 350);
-    return () => window.clearTimeout(t);
-  }, [roseLead, motion, inView, chapters, ar, lang]);
+    }, { quiet: 200, after: 300, idle: false });
+  }, [lead, motion, inView, chapters, ar, lang]);
 
   // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
   useEffect(() => {
@@ -347,7 +340,36 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
     // Re-measure once the new chapter's copy has settled into place (and Rose has reached it).
     const t = window.setTimeout(() => placeMascotOnPhone(root.current), 450);
     return () => window.clearTimeout(t);
-  }, [roseLead, motion, near]);
+  }, [lead, motion, near]);
+
+  // Rose's colours in each world (her hijab follows --selection-seed): she changes into them mid-twirl, with the
+  // world's outfit, a moment after the hand-over.
+  const roseColours = useMemo(() => seedKey.split(",").map((seed) => storefrontPalette(seed)), [seedKey]);
+
+  // The worlds' copy and cards never change at a hand-over: made once (each hand-over re-renders the scene for Rose).
+  const stage = useMemo(() => chapters.map((chapter, i) => {
+    const own = STORY[chapter.key][lang];
+    const word = (name: keyof Copy) => sceneWord(words, [chapter.key, name], lang, own[name]);
+    const field = (name: keyof Copy) => sceneField("stories", [chapter.key, name], lang);
+    return (
+      <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties}>
+        <div className="season-copy story-copy">
+          <span className="atelier-eyebrow">
+            <Icon name="spark" />
+            <span data-edit={field("eyebrow")}>{word("eyebrow")}</span>
+            <em data-part="category">· {chapter.categoryName}</em>
+          </span>
+          <h2 data-edit={field("title")} data-edit-lines="">{word("title")}</h2>
+          <p data-edit={field("text")}>{word("text")}</p>
+          <Link href={chapter.href} className="atelier-button button-dark" data-edit-box={field("cta")}>
+            <span data-edit={field("cta")} data-edit-boxed="">{word("cta")}</span>
+            <Icon name="arrow" />
+          </Link>
+        </div>
+        <StoryRack chapter={chapter} ar={ar} />
+      </div>
+    );
+  }), [chapters, lang, words, ar]);
 
   if (!chapters.length) return null;
   return (
@@ -389,39 +411,16 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
             ar={ar}
             reactive
             pose={sceneFailed ? "idle" : "hold"}
-            outfit={STORY_OUTFIT[chapters[roseLead]?.key ?? "accessories"].outfit}
-            extras={STORY_OUTFIT[chapters[roseLead]?.key ?? "accessories"].extras}
+            outfit={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].outfit}
+            extras={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].extras}
+            colours={roseColours[lead] ?? roseColours[0]}
             mirrored={!isRtl(lang)}
             palm={palm}
             label={tr(lang, `${n.assistantFull} تعرض المجموعة`, "{0} presents the collection", [n.assistantFull])}
           />
         )}
-        <div className="story-stage">
-          {chapters.map((chapter, i) => {
-            const own = STORY[chapter.key][lang];
-            const word = (name: keyof Copy) => sceneWord(words, [chapter.key, name], lang, own[name]);
-            const field = (name: keyof Copy) => sceneField("stories", [chapter.key, name], lang);
-            return (
-              <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties}>
-                <div className="season-copy story-copy">
-                  <span className="atelier-eyebrow">
-                    <Icon name="spark" />
-                    <span data-edit={field("eyebrow")}>{word("eyebrow")}</span>
-                    <em data-part="category">· {chapter.categoryName}</em>
-                  </span>
-                  <h2 data-edit={field("title")} data-edit-lines="">{word("title")}</h2>
-                  <p data-edit={field("text")}>{word("text")}</p>
-                  <Link href={chapter.href} className="atelier-button button-dark" data-edit-box={field("cta")}>
-                    <span data-edit={field("cta")} data-edit-boxed="">{word("cta")}</span>
-                    <Icon name="arrow" />
-                  </Link>
-                </div>
-                <StoryRack chapter={chapter} ar={ar} />
-              </div>
-            );
-          })}
-        </div>
-        <ol className="story-meter" aria-hidden="true" data-part="meter">
+        <div className="story-stage">{stage}</div>
+        <ol ref={meter} className="story-meter" aria-hidden="true" data-part="meter">
           {chapters.map((chapter, i) => (
             <li key={chapter.key} className="story-meter-step" data-active={i === 0 ? "" : undefined}>
               <span />

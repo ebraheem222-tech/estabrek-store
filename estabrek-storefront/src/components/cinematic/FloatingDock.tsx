@@ -20,6 +20,9 @@ const STATES: Array<[key: string, selector: string]> = [
 /** The helpers that stand in the bottom row on a phone (Razan, her WhatsApp button, accessibility, chat). */
 const ROW = ".rose-companion-figure, .rose-companion-mini, .rose-companion-wa, .whatsapp-floating-btn, .a11y-fab, .chat-widget-root > button";
 
+/** What reads the dock's numbers (rose-wonders.css): the story pill, the particles' pill and words, the note. */
+const READERS = ".rose-story-pill, .rose-particles-pill, .rose-particles-words, .recent-activity-popup.rose-recent";
+
 /*
  * The floating helpers' dock (rose-wonders.css, "the dock"). On a phone the bottom of the screen holds Razan
  * and WhatsApp on one side and the accessibility button on the other; this measures that row and tells the CSS
@@ -32,9 +35,23 @@ export function FloatingDock() {
   useEffect(() => {
     const root = document.documentElement;
     let checkTimer = 0, lastCheck = 0, measureFrame = 0, wantMeasure = false;
-    const set = (name: string, value: string | null) => {
-      if (value === null) { if (root.style.getPropertyValue(name)) root.style.removeProperty(name); }
-      else if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
+    // The numbers go in one small style sheet, for the few things that read them. Written on <html>, every
+    // change was inherited by the whole page: all ~2,900 elements of the home restyled (about 190 ms on a
+    // mid-range phone), each time Razan in the corner stepped aside for a scene, as the collection worlds came in.
+    const sheet = document.createElement("style");
+    sheet.dataset.dock = "";
+    document.head.appendChild(sheet);
+    const values = new Map<string, string>();
+    let dirty = false;
+    const set = (name: string, value: string) => {
+      if (values.get(name) === value) return;
+      values.set(name, value);
+      dirty = true;
+    };
+    const write = () => {
+      if (!dirty) return;
+      dirty = false;
+      sheet.textContent = `${READERS} { ${Array.from(values, ([name, value]) => `${name}: ${value};`).join(" ")} }`;
     };
     /** Where the bottom row stands (it reads sizes and styles: only when something may have moved, see below). */
     const measure = () => {
@@ -58,6 +75,7 @@ export function FloatingDock() {
       const said = document.querySelector<HTMLElement>('.rose-companion .rose-mascot-bubble[data-show="true"]')?.getBoundingClientRect();
       const clear = said && said.width && said.bottom > h - 260 ? Math.min(top, said.top) : top;
       set("--dock-clear", `${Math.round(Math.max(64, h - clear))}px`);
+      write();
     };
     const measureSoon = () => { if (!measureFrame) measureFrame = requestAnimationFrame(measure); };
     /** The page states (a few look-ups, no sizes); a state that changed moves the row, so it is measured then. */
@@ -101,7 +119,7 @@ export function FloatingDock() {
       window.removeEventListener("resize", again);
       window.clearInterval(tick);
       for (const [key] of STATES) delete root.dataset[key];
-      ["--dock-left", "--dock-right", "--dock-lift", "--dock-clear"].forEach((name) => root.style.removeProperty(name));
+      sheet.remove();
     };
   }, []);
   return null;

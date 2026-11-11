@@ -7,7 +7,7 @@ import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { useStagedParts, warmScene } from "./warmScene";
 import type { StoryKey } from "@/lib/collectionStories";
-import type { PalmRef } from "./mascot/RoseMascot";
+import { palmOnScreen, type PalmRef } from "./mascot/RoseMascot";
 import { createDisplayHead, createHijabGeometry } from "./HijabGeometry";
 import { createFabricTexture } from "./fabricTexture";
 
@@ -79,14 +79,15 @@ type ModelProps = { weight: () => number; rtl: boolean; compact: boolean; palm?:
  * every frame (60 a second, two models during a hand-over), and each read made the browser
  * lay the page out again in the middle of the frame, which phones felt.
  */
-const canvasBoxes = new WeakMap<HTMLCanvasElement, { at: number; box: DOMRect }>();
-function canvasBox(canvas: HTMLCanvasElement) {
+const canvasBoxes = new WeakMap<HTMLCanvasElement, { at: number; box: DOMRect; rose?: SVGSVGElement; roseBox?: DOMRect }>();
+/** The canvas's box, and Razan's drawing's when she holds the models: read together, so they always agree. */
+function canvasBox(canvas: HTMLCanvasElement, rose?: SVGSVGElement) {
   const now = performance.now();
   const kept = canvasBoxes.get(canvas);
-  if (kept && now - kept.at < 100) return kept.box;
-  const box = canvas.getBoundingClientRect();
-  canvasBoxes.set(canvas, { at: now, box });
-  return box;
+  if (kept && now - kept.at < 100 && kept.rose === rose) return kept;
+  const next = { at: now, box: canvas.getBoundingClientRect(), rose, roseBox: rose?.getBoundingClientRect() };
+  canvasBoxes.set(canvas, next);
+  return next;
 }
 
 /** Shared choreography: each model rises, unfolds and turns in as its chapter arrives. */
@@ -104,9 +105,10 @@ function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScal
     const palm = hold?.palm?.current;
     if (palm) {
       // Smaller, floating just above Rose's palm (screen px → world units on the z = 0 plane).
-      const rect = canvasBox(gl.domElement);
-      const px = ((palm.x - rect.left) / rect.width - 0.5) * viewport.width;
-      const py = -((palm.y - rect.top) / rect.height - 0.5) * viewport.height;
+      const { box: rect, roseBox } = canvasBox(gl.domElement, palm.svg);
+      const at = palmOnScreen(palm, roseBox!);
+      const px = ((at.x - rect.left) / rect.width - 0.5) * viewport.width;
+      const py = -((at.y - rect.top) / rect.height - 0.5) * viewport.height;
       // Phones: a little smaller and closer over her hand, so the piece stays in her
       // free corner instead of drifting behind the title.
       const s = baseScale * (viewport.height / (compact ? 12 : 7)) * (0.55 + 0.45 * e);

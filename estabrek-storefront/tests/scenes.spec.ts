@@ -89,4 +89,41 @@ test.describe("collection worlds on a phone", () => {
     await expect(page.locator(".story-canvas canvas")).toHaveCount(1, { timeout: 30000 });
     expect(await page.locator(".story-canvas canvas").evaluate((el) => getComputedStyle(el).filter)).toBe("none");
   });
+
+  test("Razan changes into each world's outfit and colour with the world; each world keeps its own colours", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto("/");
+    const stories = page.locator(".rose-stories");
+    await expect(stories).toHaveAttribute("data-motion", "true");
+    const at = (f: number) => stories.evaluate((el, f) => {
+      const top = el.getBoundingClientRect().top + scrollY;
+      window.scrollTo({ top: top + (el.offsetHeight - innerHeight) * f, behavior: "instant" });
+    }, f);
+    await at(0.1);
+    const rose = page.locator(".story-mascot");
+    await expect(rose).toHaveAttribute("data-outfit", "abaya", { timeout: 30000 });
+    // Each world's copy and cards wear their own colours from the start: a hand-over doesn't restyle the scene.
+    const seedOf = (selector: string) => page.locator(selector).evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed"));
+    const kids = await seedOf(".story-kids");
+    expect(kids).not.toBe("");
+    expect(kids).not.toBe(await seedOf(".story-accessories"));
+    expect(await stories.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed"))).toBe("");
+    // Into the kids' world with the finger still moving: Razan twirls into its outfit and colour with the world,
+    // not once the scroll pauses (she used to keep the last world's colour until then).
+    const dressedWhileScrolling = await stories.evaluate(async (el) => {
+      const top = el.getBoundingClientRect().top + scrollY;
+      window.scrollTo({ top: top + (el.offsetHeight - innerHeight) * 0.5, behavior: "instant" });
+      const her = el.querySelector<HTMLElement>(".story-mascot")!;
+      const t0 = performance.now();
+      while (performance.now() - t0 < 4000) {
+        await new Promise((done) => requestAnimationFrame(done));
+        window.scrollBy(0, 1);
+        if (her.dataset.outfit === "tunic") return true;
+      }
+      return false;
+    });
+    expect(dressedWhileScrolling).toBe(true);
+    await expect(stories).toHaveAttribute("data-chapter", "kids");
+    await expect.poll(() => rose.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed")), { timeout: 3000 }).toBe(kids);
+  });
 });

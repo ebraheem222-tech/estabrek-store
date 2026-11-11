@@ -20,9 +20,11 @@ export function pageScrolling(ms = 180) {
 
 /**
  * Runs `fn` once the page has not scrolled for `quiet` ms (and no sooner than
- * `after` ms from now), when the browser is idle. Returns a cancel function.
+ * `after` ms from now), when the browser is idle (`idle: false`: at once then, for
+ * what the shopper should see as she stops, like Razan greeting a new world; a busy
+ * page's idle moment can come a second later). Returns a cancel function.
  */
-export function onPageRest(fn: () => void, { quiet = 400, after = 0 }: { quiet?: number; after?: number } = {}) {
+export function onPageRest(fn: () => void, { quiet = 400, after = 0, idle: whenIdle = true }: { quiet?: number; after?: number; idle?: boolean } = {}) {
   if (typeof window === "undefined") return () => {};
   watch();
   let timer = 0;
@@ -38,7 +40,7 @@ export function onPageRest(fn: () => void, { quiet = 400, after = 0 }: { quiet?:
       return;
     }
     const run = () => { if (!done && !pageScrolling(quiet)) { done = true; fn(); } else if (!done) check(); };
-    if ("requestIdleCallback" in window) idle = window.requestIdleCallback(run, { timeout: 1000 });
+    if (whenIdle && "requestIdleCallback" in window) idle = window.requestIdleCallback(run, { timeout: 1000 });
     else run();
   };
   check();
