@@ -19,6 +19,7 @@ import recommend from "./recommend.routes.js";
 import { searchProductsByImageBuffer } from "./imageSearch.service.js";
 import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
+import { searchProductIds } from "../catalog/catalog.service.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
 import { createCheckoutSession, verifyCheckoutSession } from "./checkout.service.js";
 import { noteSignals } from "../../lib/popularity.js";
@@ -461,15 +462,19 @@ r.get("/search/suggest", cacheResponse("search"), validate({ query: StorefrontSe
   const normalized = normalizeSearchText(q);
   const categoryLimit = Math.min(limit, 8);
 
+  // Products: every word, any Arabic spelling (catalog.service.ts searchProductIds).
+  const ids = await searchProductIds(q);
   const [products, categories] = await Promise.all([
     prisma.product.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { slug: { contains: q, mode: "insensitive" } },
-        ],
-      },
+      where: ids
+        ? { isActive: true, id: { in: ids } }
+        : {
+            isActive: true,
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { slug: { contains: q, mode: "insensitive" } },
+            ],
+          },
       select: { id: true, title: true, slug: true },
       orderBy: { createdAt: "desc" },
       take: limit,
