@@ -357,6 +357,18 @@ model Experiment {
   @@index([status])
 }
 
+/// The home page's sections in numbers (lib/homeStats.ts): per store day and section ("s:<section id>" or
+/// "b:<scene name>"), how many visits saw it, tapped something in it, and added to the bag after a tap in it.
+model HomeSectionDay {
+  day     DateTime @db.Date
+  section String
+  seen    Int      @default(0)
+  taps    Int      @default(0)
+  bags    Int      @default(0)
+
+  @@id([day, section])
+}
+
 /// An A/B test's numbers per store day and side.
 model ExperimentDay {
   experimentId String

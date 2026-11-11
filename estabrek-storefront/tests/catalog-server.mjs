@@ -810,6 +810,21 @@ http
       return;
     }
     if (pathname === "/__test/ab-events") return res.end(JSON.stringify(globalThis.abEvents ?? []));
+    // The home's sections in numbers (home-order.spec.ts): what the shop reports, kept here.
+    if (pathname === "/v1/storefront/home-stats" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        try { (globalThis.homeStats ??= []).push(...JSON.parse(body).e); } catch { /* ignore */ }
+        res.statusCode = 204;
+        res.end();
+      });
+      return;
+    }
+    if (pathname === "/__test/home-stats") {
+      if (req.method === "DELETE") globalThis.homeStats = [];
+      return res.end(JSON.stringify(globalThis.homeStats ?? []));
+    }
     // Real shoppers' speed (rum.spec.ts, WebVitalsReporter): kept here, read by the tests.
     if (pathname === "/v1/storefront/rum" && req.method === "POST") {
       let body = "";

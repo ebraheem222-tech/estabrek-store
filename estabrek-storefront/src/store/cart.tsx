@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { roseReact } from "@/lib/roseEvents";
 import { signal } from "@/lib/signals";
 import { abConvert } from "@/lib/ab";
+import { noteHomeBag } from "@/lib/homeStats";
 
 export type CartItem = { variantId: string; quantity: number };
 /** Sent on window when a piece is added to the bag ({ variantId, quantity }): the small bag (RoseMiniBag) opens on it. */
@@ -71,7 +72,7 @@ export function CartProvider({ children, isolated = false }: { children: React.R
       addItem: (variantId, qty = 1) => {
         const addQty = Math.max(1, Number(qty || 1));
         if (!isolated) {
-          roseReact("cart-add"); signal("bag", { variantId }); abConvert("bag");
+          roseReact("cart-add"); signal("bag", { variantId }); abConvert("bag"); noteHomeBag();
           window.setTimeout(() => window.dispatchEvent(new CustomEvent(BAG_ADDED, { detail: { variantId, quantity: addQty } })), 0);
         }
         setItems((prev) => {

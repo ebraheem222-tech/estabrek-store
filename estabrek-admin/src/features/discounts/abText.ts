@@ -33,10 +33,12 @@ export const FIELD_INPUT: Record<string, FieldInput> = {
 export const HERO_TEXT: Record<string, string> = { film: tr("فيلم الوشاح", "The scarf film"), photo: tr("الصورة", "The photo") };
 
 export function whatText(kind: ExperimentKind, field: string | null): string {
+  if (kind === "homeOrder") return tr("ترتيب أقسام الرئيسية", "The home page's section order");
   return kind === "heroOpening" ? tr("افتتاحية الرئيسية", "Home page opening") : MOTION_TEXT[field ?? ""] ?? field ?? "";
 }
 
 export function valueText(kind: ExperimentKind, field: string | null, v: unknown): string {
+  if (kind === "homeOrder") return Array.isArray(v) ? tr("الترتيب الجديد", "The new order") : tr("الترتيب المنشور", "The published order");
   if (kind === "heroOpening") return HERO_TEXT[String(v)] ?? String(v);
   const input = FIELD_INPUT[field ?? ""];
   if (input?.type === "bool") return v ? tr("شغّال", "On") : tr("مطفي", "Off");

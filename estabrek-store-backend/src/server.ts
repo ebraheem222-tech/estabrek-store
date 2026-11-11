@@ -11,6 +11,7 @@ import { loadMediaSettings } from "./lib/mediaSettings.js";
 import { loadTrafficConfig } from "./lib/traffic.js";
 import { stopRum } from "./lib/rum.js";
 import { flushAb } from "./lib/experiments.js";
+import { flushHomeStats } from "./lib/homeStats.js";
 import { stopPopularity } from "./lib/popularity.js";
 import { registerCatalogWarmers } from "./modules/catalog/catalog.warm.js";
 import { loadJobsConfig, startJobs, stopJobs } from "./lib/jobs.js";
@@ -32,6 +33,7 @@ async function shutdown(code = 0) {
     await stopPopularity();
     await stopRum();
     await flushAb().catch(() => undefined);
+    await flushHomeStats().catch(() => undefined);
     if (server) {
       await new Promise<void>((resolve) => server!.close(() => resolve()));
     }

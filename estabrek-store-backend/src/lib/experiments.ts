@@ -2,6 +2,8 @@
  * A/B tests (admin → تجارب A/B). What can be tested:
  *   heroOpening  the home page opens with the scarf film or the photo
  *   motion       one of the shop's motion settings (frames a second, glass on phones…)
+ *   homeOrder    the home page's sections in another order (B: the section keys in order; A: as published),
+ *                usually the order the numbers suggest (lib/homeStats.ts)
  * Running tests go to the shop with the public settings (site.experiments). The
  * shop picks A or B per visit in the browser and keeps it for that visit only
  * (sessionStorage; no cookie, nothing about the shopper), then reports, once per
@@ -14,7 +16,7 @@ import { prisma } from "./prisma.js";
 import { isBot, storeDay, visitorOf } from "./popularity.js";
 import { StorefrontMotionSchema } from "./storefrontMotion.js";
 
-export const EXPERIMENT_KINDS = ["heroOpening", "motion"] as const;
+export const EXPERIMENT_KINDS = ["heroOpening", "motion", "homeOrder"] as const;
 export type ExperimentKind = (typeof EXPERIMENT_KINDS)[number];
 
 /** The motion settings a test may change (the ones a shopper can feel). */
@@ -22,10 +24,22 @@ export const MOTION_TEST_FIELDS = ["maxFps", "adaptive", "phoneGlass", "desktopD
 export type MotionTestField = (typeof MOTION_TEST_FIELDS)[number];
 
 const HeroValue = z.enum(["film", "photo"]);
+/** A home order: the page's sections ("s:<section id>") in their new order, each once. */
+const HomeOrderValue = z
+  .array(z.string().regex(/^s:[A-Za-z0-9_-]{1,40}$/))
+  .min(2)
+  .max(60)
+  .refine((keys) => new Set(keys).size === keys.length, "each section once");
 
 /** A and B checked for what's tested; the same value twice is refused. */
 export function checkValues(kind: ExperimentKind, field: string | null, a: unknown, b: unknown): { a: unknown; b: unknown } | string {
   let schema: z.ZodTypeAny;
+  if (kind === "homeOrder") {
+    // A is the page as published; B the new order.
+    if (a !== "published") return "BAD_VALUE";
+    const pb = HomeOrderValue.safeParse(b);
+    return pb.success ? { a: "published", b: pb.data } : "BAD_VALUE";
+  }
   if (kind === "heroOpening") schema = HeroValue;
   else {
     if (!field || !(MOTION_TEST_FIELDS as readonly string[]).includes(field)) return "BAD_FIELD";
