@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 
 const runtime = ts.transpileModule(readFileSync(new URL("../src/pageTree/sceneCanvas.ts", import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
+// The scenes rest with the page (lib/pageIdleCore.ts, their one import): handed to them as `require` gives it.
+const idleCore = ts.transpileModule(readFileSync(new URL("../src/lib/pageIdleCore.ts", import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
 
 test("all section scenes paint distinct still backgrounds without blocking merchant content", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -32,7 +34,7 @@ test("all section scenes paint distinct still backgrounds without blocking merch
 test("native scene runtime pauses offscreen and hidden, freezes reduced motion, and disposes observers and frames", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.setContent('<style>body{margin:0}section{position:relative;isolation:isolate;height:440px}canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;color:#8b5cf6;border-color:#38bdf8}a{position:relative;z-index:1}</style><section><canvas></canvas><a href="#end">Content link</a></section><div style="height:2000px" id="end"></div>');
-  await page.evaluate(({ source }) => {
+  await page.evaluate(({ source, idle }) => {
     const target = window as unknown as { sceneDispose: () => void; sceneDraws: number; sceneDisconnects: number; sceneFrames: Set<number> };
     target.sceneDraws = 0; target.sceneDisconnects = 0; target.sceneFrames = new Set();
     const originalRequest = requestAnimationFrame.bind(window), originalCancel = cancelAnimationFrame.bind(window);
@@ -44,9 +46,11 @@ test("native scene runtime pauses offscreen and hidden, freezes reduced motion, 
     const clear = CanvasRenderingContext2D.prototype.clearRect;
     CanvasRenderingContext2D.prototype.clearRect = function (...args) { target.sceneDraws++; clear.apply(this, args); };
     const api = {} as { mountScene: (canvas: HTMLCanvasElement, spec: object) => () => void };
-    new Function("exports", source)(api);
+    const core = {};
+    new Function("exports", idle)(core);
+    new Function("exports", "require", source)(api, () => core);
     target.sceneDispose = api.mountScene(document.querySelector("canvas")!, { kind: "constellation", amount: 32, speed: 1, intensity: 1, interactive: true });
-  }, { source: runtime });
+  }, { source: runtime, idle: idleCore });
   const canvas = page.locator("canvas");
   await expect(canvas).toHaveAttribute("data-scene-state", "running");
   await page.evaluate(() => window.scrollTo(0, 1200));
