@@ -444,6 +444,8 @@ type StorefrontConfig = {
   colorScenes: Record<ColourSceneKey, boolean>;
   /** How strongly a colour tints the page's surfaces. */
   colorStrength: "soft" | "normal" | "strong";
+  /** Colours tapped on the shop's cards blend into one (the shop's lib/colourMix.ts). */
+  colorBlend: boolean;
   /** The store's secret: holding the logo down on the shop opens a hidden coupon. */
   secretEnabled: boolean;
   secretCode: string;
@@ -562,6 +564,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     colorFollow: o.colorFollow === "product" ? "product" : "everything",
     colorScenes: Object.fromEntries(COLOUR_SCENES.map(({ key }) => [key, (o.colorScenes as Record<string, unknown> | undefined)?.[key] !== false])) as Record<ColourSceneKey, boolean>,
     colorStrength: o.colorStrength === "soft" || o.colorStrength === "strong" ? o.colorStrength : "normal",
+    colorBlend: o.colorBlend !== false,
     secretEnabled: o.secretEnabled !== false,
     secretCode: typeof o.secretCode === "string" ? o.secretCode : "",
     secretText: typeof o.secretText === "string" ? o.secretText : "",
@@ -3075,6 +3078,11 @@ export default function SettingsPage() {
                           { value: "strong", label: "قوي (الصفحة بتلبس اللون أكتر)" },
                         ]}
                         data-testid="settings-color-strength"
+                      />
+                      <Toggle
+                        label="دمج الألوان: كل لون بينكبس على كروت المتجر بيندمج مع اللي قبله، والهيدر بيلبس مزيجهم (والحقيبة الصغيرة بتلبس ألوان القطع اللي فيها)"
+                        checked={storefrontCfg.colorBlend}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, colorBlend: v }))}
                       />
                       <div className="md:col-span-2 grid gap-2" data-testid="settings-color-scenes">
                         <div className="text-sm font-semibold">المشاهد اللي بتلبّس الصفحة لونها وهي عالشاشة</div>

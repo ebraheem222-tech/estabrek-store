@@ -64,7 +64,7 @@ export function StorefrontFeaturesProvider({
   );
   // The colour engine reads the owner's choices (which scenes colour the page, how strongly); set as this renders,
   // before the components below make any palette.
-  setColourEngine({ scenes: settings.colorScenes, strength: settings.colorStrength });
+  setColourEngine({ scenes: settings.colorScenes, strength: settings.colorStrength, blend: settings.colorBlend });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

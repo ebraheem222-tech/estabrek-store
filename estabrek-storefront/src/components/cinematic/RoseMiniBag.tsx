@@ -1,4 +1,5 @@
 "use client";
+import type React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCart, BAG_ADDED } from "@/store/cart";
@@ -7,6 +8,8 @@ import { LqipImage } from "@/components/LqipImage";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
 import { localizeCartLine } from "@/lib/localize";
+import { blendColours, glowPools, isHex, meshBackground } from "@/lib/colourMix";
+import { storefrontPalette } from "@/lib/storefrontPalette";
 import { tr } from "@/lib/words";
 import { usePathname } from "@/lib/shopPath";
 import { useLanguage } from "./Language";
@@ -19,6 +22,7 @@ type Line = {
   productTranslations?: unknown;
   colorLabel?: string;
   colorName?: string | null;
+  colorHex?: string | null;
   boxLabel?: string | null;
   sizeName?: string | null;
   imageUrl?: string | null;
@@ -37,6 +41,8 @@ function apiBase() {
  * quick view) opens it at the side of the page, on a phone from the bottom, instead of a note or the bag
  * page. It shows the bag with the piece just added marked, its count and total, and two ways on: «إتمام
  * الطلب» (the bag page, where the order is sent) and «متابعة التسوق» (closes it). Not on the bag page itself.
+ * It wears the colours of what's in it: their blend for its buttons and words, a gradient mesh of them on its
+ * head and glass (lib/colourMix.ts), with the piece just added counting most.
  */
 export function RoseMiniBag() {
   const { language: lang } = useLanguage();
@@ -94,11 +100,33 @@ export function RoseMiniBag() {
   // The piece just added first.
   const shown = useMemo(() => [...lines].sort((a, b) => Number(b.variantId === fresh) - Number(a.variantId === fresh)), [lines, fresh]);
   const subtotal = quote?.subtotal != null ? Number(quote.subtotal) : null;
+  // The bag's colours: each piece's, weighted by how many, the one just added last (it counts most).
+  const colours = useMemo(() => {
+    const weight = new Map<string, number>();
+    const ordered = [...(quote?.lines ?? [])].sort((a, b) => Number(a.variantId === fresh) - Number(b.variantId === fresh));
+    for (const line of ordered) {
+      if (!isHex(line.colorHex)) continue;
+      const hex = `#${line.colorHex.replace("#", "").toLowerCase()}`;
+      weight.delete(hex);
+      weight.set(hex, (weight.get(hex) ?? 0) + Math.max(1, line.quantity) + (line.variantId === fresh ? 1 : 0));
+    }
+    return [...weight.entries()].slice(-4);
+  }, [quote, fresh]);
+  const look = useMemo(() => {
+    if (!colours.length) return undefined;
+    const hexes = colours.map(([hex]) => hex);
+    const blend = blendColours(hexes, colours.map(([, w]) => w));
+    return {
+      ...storefrontPalette(blend),
+      "--minibag-glow": glowPools(hexes),
+      "--minibag-mesh": meshBackground(hexes, { light: 0.8 }),
+    } as React.CSSProperties;
+  }, [colours]);
 
   return (
     <div className="rose-minibag" data-open={open ? "true" : undefined} aria-hidden={!open}>
       <button type="button" className="rose-minibag-scrim" tabIndex={-1} aria-label={tr(lang, "إغلاق الحقيبة", "Close the bag")} onClick={() => setOpen(false)} />
-      <div ref={panel} className="rose-minibag-panel" role="dialog" aria-modal="true" aria-label={tr(lang, "حقيبتكِ", "Your bag")} tabIndex={-1}>
+      <div ref={panel} className="rose-minibag-panel" role="dialog" aria-modal="true" aria-label={tr(lang, "حقيبتكِ", "Your bag")} tabIndex={-1} style={look} data-mixed={colours.length ? colours.map(([hex]) => hex).join(" ") : undefined}>
         <header className="rose-minibag-head">
           {fresh ? (
             <span className="rose-minibag-added">
@@ -106,6 +134,11 @@ export function RoseMiniBag() {
               {tr(lang, "انضافت لحقيبتكِ", "Added to your bag")}
             </span>
           ) : <span className="rose-minibag-added">{tr(lang, "حقيبتكِ", "Your bag")}</span>}
+          {colours.length > 1 ? (
+            <span className="rose-minibag-colours" aria-hidden="true">
+              {colours.map(([hex]) => <i key={hex} style={{ background: hex }} />)}
+            </span>
+          ) : null}
           <span className="rose-minibag-count">{tr(lang, `${count} قطعة`, "{0} pieces", [count])}</span>
           <button type="button" className="rose-minibag-close" aria-label={tr(lang, "إغلاق الحقيبة", "Close the bag")} onClick={() => setOpen(false)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>

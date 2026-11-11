@@ -327,7 +327,7 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
       <span data-cms-part="card-category" className="rose-product-category">{product.category?.name ? <svg className="rose-card-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" /></svg> : null}{product.category?.name}</span>
       <Link href={`/p/${product.slug}`}><h3 data-cms-part="card-name">{product.title}</h3></Link>
       <span data-cms-part="card-price" className="rose-product-price">{product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—"}</span>
-      {!!swatches.length && <div data-cms-part="card-swatches" className="rose-product-swatches">{swatches.map(s => <button data-cms-part="card-swatch" key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={event => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex, { source: event.currentTarget }); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
+      {!!swatches.length && <div data-cms-part="card-swatches" className="rose-product-swatches">{swatches.map(s => <button data-cms-part="card-swatch" key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={event => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex, { source: event.currentTarget, mix: true }); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
       <div data-cms-part="card-actions" className="rose-product-actions"><QuickAddButton product={product} selectedColorKey={selectedSwatch ?? undefined} className="rose-product-add" buttonLabel={tr(lang, "إضافة للحقيبة", "Add to bag")} />{quickViewEnabled && <button className="rose-product-preview" onClick={event => openQuickView(product, event.currentTarget)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}><svg className="rose-card-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" /></svg>{tr(lang, "معاينة", "Preview")}</button>}</div>
     </div>
   </article>;
@@ -478,7 +478,7 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
                       e.preventDefault();
                       e.stopPropagation();
                       setSelectedSwatch(swatch.key);
-                      selectStorefrontColor(swatch.hex, { source: e.currentTarget });
+                      selectStorefrontColor(swatch.hex, { source: e.currentTarget, mix: true });
                     }}
                     onMouseEnter={(e) => {
                       e.preventDefault();

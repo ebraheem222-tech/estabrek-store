@@ -18,10 +18,17 @@ export const STRENGTH_SCALE: Record<ColourStrength, number> = { soft: 0.55, norm
 
 let scenes: Partial<Record<SceneColourKey, boolean>> = {};
 let strength: ColourStrength = "normal";
+let blend = true;
 
-export function setColourEngine(next: { scenes?: Partial<Record<SceneColourKey, boolean>>; strength?: ColourStrength }) {
+export function setColourEngine(next: { scenes?: Partial<Record<SceneColourKey, boolean>>; strength?: ColourStrength; blend?: boolean }) {
   if (next.scenes) scenes = next.scenes;
   if (next.strength) strength = next.strength;
+  if (typeof next.blend === "boolean") blend = next.blend;
+}
+
+/** Colours tapped on the shop's cards blend into one (lib/colourMix.ts), unless the owner switched it off. */
+export function colourBlendOn() {
+  return blend;
 }
 
 /** True unless the owner switched this scene's colour off. */
