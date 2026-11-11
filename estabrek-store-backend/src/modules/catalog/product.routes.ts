@@ -13,6 +13,7 @@ import {
   ProductIdsBody,
   ProductSlugsBody,
   CreateReviewBody,
+  LookQuery,
   CreateCommentBody,
   CreateOrderRequestBody,
   QuoteBody,
@@ -30,6 +31,7 @@ import {
   quoteOrderRequest,
   quoteCart,
 } from "./catalog.service.js";
+import { completeTheLook } from "./look.service.js";
 
 const r = Router();
 
@@ -83,6 +85,12 @@ r.get("/products/slug/:slug", cacheResponse("products", { subject: productOfBody
   if (!p) return res.status(404).json({ error: "NOT_FOUND" });
   // Its 360° views (scans linked to it), for the product page.
   res.json({ ...p, spins: await spinsForProduct(p.id, (rel) => makePublicUrl(req, rel)) });
+}));
+
+// «كمّلي اللوك» without AI: pieces from the other categories in colours that go with the one she picked.
+r.get("/products/:id/look", cacheResponse("listings"), validate({ query: LookQuery }), asyncHandler(async (req, res) => {
+  const color = typeof req.query.color === "string" ? req.query.color : null;
+  res.json(await completeTheLook(req.params.id, color));
 }));
 
 // detail by id

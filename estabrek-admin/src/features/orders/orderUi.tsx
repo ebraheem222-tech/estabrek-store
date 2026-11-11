@@ -1,7 +1,7 @@
 // Small pieces shared by the orders list, the order page and printing.
 import React, { useEffect, useState } from "react";
 import { cn } from "../../components/ui/cn";
-import { STATUS_INFO, TONE_CLASS, isPaid, sourceLabel, type DeliverySettings, type DeliveryZone, type OrderStatus } from "../../lib/orders";
+import { STATUS_INFO, TONE_CLASS, deliveryDays, isPaid, sourceLabel, type DeliverySettings, type DeliveryZone, type OrderStatus } from "../../lib/orders";
 import { useSaveDelivery } from "./useDelivery";
 import { currencySign } from "../../lib/money";
 import { tr } from "@/lib/words";
@@ -57,7 +57,9 @@ export function DeliverySettingsDialog({ open, value, onClose }: { open: boolean
 
 function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: () => void }) {
   const save = useSaveDelivery();
-  const [zones, setZones] = useState<Array<DeliveryZone & { citiesText: string; feeText: string }>>(() => value.zones.map((z) => ({ ...z, citiesText: z.cities.join("، "), feeText: String(z.fee) })));
+  const [zones, setZones] = useState<Array<DeliveryZone & { citiesText: string; feeText: string; minText: string; maxText: string }>>(() =>
+    value.zones.map((z) => ({ ...z, citiesText: z.cities.join("، "), feeText: String(z.fee), minText: z.minDays == null ? "" : String(z.minDays), maxText: z.maxDays == null ? "" : String(z.maxDays) })),
+  );
   const [defaultFee, setDefaultFee] = useState(value.defaultFee == null ? "" : String(value.defaultFee));
   const [freeOver, setFreeOver] = useState(value.freeOver == null ? "" : String(value.freeOver));
 
@@ -70,7 +72,14 @@ function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: ()
   const field = "h-10 w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/30 focus:border-accent-500/50 focus:outline-none";
   const submit = async () => {
     await save.mutateAsync({
-      zones: zones.filter((z) => z.name.trim()).map((z) => ({ id: z.id, name: z.name.trim(), fee: Number(z.feeText) || 0, cities: z.citiesText.split(/[,،\n]/).map((c) => c.trim()).filter(Boolean) })),
+      zones: zones.filter((z) => z.name.trim()).map((z) => {
+        // Days to this area: one number is both ends; reversed ends are put right.
+        let minDays = deliveryDays(z.minText), maxDays = deliveryDays(z.maxText);
+        if (minDays == null) minDays = maxDays;
+        if (maxDays == null) maxDays = minDays;
+        if (minDays != null && maxDays != null && maxDays < minDays) [minDays, maxDays] = [maxDays, minDays];
+        return { id: z.id, name: z.name.trim(), fee: Number(z.feeText) || 0, cities: z.citiesText.split(/[,،\n]/).map((c) => c.trim()).filter(Boolean), minDays, maxDays };
+      }),
       defaultFee: defaultFee.trim() === "" ? null : Number(defaultFee) || 0,
       freeOver: freeOver.trim() === "" ? null : Number(freeOver) || 0,
     });
@@ -97,9 +106,18 @@ function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: ()
               </div>
               <button type="button" onClick={() => setZones((all) => all.filter((_, j) => j !== i))} className="h-10 rounded-xl px-3 text-sm text-red-300/80 hover:bg-red-500/10">{tr("حذف", "Delete")}</button>
               <input className={cn(field, "sm:col-span-3")} placeholder={tr("المدن (مفصولة بفاصلة): القدس، بيت حنينا، شعفاط", "Cities (separated by commas): Jerusalem, Beit Hanina, Shuafat")} value={z.citiesText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, citiesText: e.target.value } : x)))} aria-label={tr("المدن", "Cities")} />
+              {/* How long delivery takes there: the product page shows the dates for the shopper's city. */}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-white/60 sm:col-span-3" data-testid="delivery-zone-days">
+                <span>{tr("بيوصل خلال", "Arrives within")}</span>
+                <input className={cn(field, "w-16 text-center")} inputMode="numeric" placeholder="1" value={z.minText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, minText: e.target.value.replace(/\D/g, "").slice(0, 2) } : x)))} aria-label={tr("أقل عدد أيام", "Fewest days")} />
+                <span>–</span>
+                <input className={cn(field, "w-16 text-center")} inputMode="numeric" placeholder="3" value={z.maxText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, maxText: e.target.value.replace(/\D/g, "").slice(0, 2) } : x)))} aria-label={tr("أكتر عدد أيام", "Most days")} />
+                <span>{tr("أيام", "days")}</span>
+                <span className="text-white/40">{tr("(فارغ = حسب أيام القطعة. القطع اللي بتاخد وقت أطول بكتير، متل التفصيل، بتضل على أيامها)", "(empty = the piece's own days; pieces that take much longer, like made to order, keep their own)")}</span>
+              </div>
             </div>
           ))}
-          <button type="button" onClick={() => setZones((all) => [...all, { id: `z${Date.now().toString(36)}`, name: "", fee: 0, cities: [], citiesText: "", feeText: "" }])} className="text-sm text-accent-300 hover:text-accent-200">{tr("+ إضافة منطقة", "+ Add an area")}</button>
+          <button type="button" onClick={() => setZones((all) => [...all, { id: `z${Date.now().toString(36)}`, name: "", fee: 0, cities: [], citiesText: "", feeText: "", minText: "", maxText: "" }])} className="text-sm text-accent-300 hover:text-accent-200">{tr("+ إضافة منطقة", "+ Add an area")}</button>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-white/60">

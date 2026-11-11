@@ -29,6 +29,12 @@ export type StorefrontSettings = {
   productQuickView: boolean;
   productZoomEnabled: boolean;
   productCompareEnabled: boolean;
+  /** The reviews section and the stars by the price (RoseReviews.tsx). */
+  productReviews: boolean;
+  /** «كمّلي اللبسة» without AI: pieces in colours that go with her pick (RoseCompleteLook.tsx). */
+  productCompleteLook: boolean;
+  /** Arrival dates and the delivery price for her city (RoseDeliveryCity.tsx). */
+  productDeliveryCity: boolean;
 
   // Search & Discovery
   voiceSearchEnabled: boolean;
@@ -139,6 +145,9 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   productQuickView: true,
   productZoomEnabled: true,
   productCompareEnabled: true,
+  productReviews: true,
+  productCompleteLook: true,
+  productDeliveryCity: true,
 
   // Search & Discovery
   voiceSearchEnabled: true,

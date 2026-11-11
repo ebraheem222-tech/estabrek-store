@@ -46,6 +46,9 @@ import { RoseStockAlert } from "./RoseStockAlert";
 import { RoseRequestForm } from "./RoseRequestForm";
 import { RoseReviewSummary, RoseShopTheLook, RoseSizeAdvice } from "./RoseProductAi";
 import { RatingLink, RoseReviews } from "./RoseReviews";
+import { RoseDeliveryCity } from "./RoseDeliveryCity";
+import { RoseCompleteLook } from "./RoseCompleteLook";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { translatedTypeLabel } from "@/lib/localize";
@@ -88,6 +91,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const toast = useToastShortcuts();
   // Admin → بانتظار التوفّر: sold-out sizes can be picked to leave an email.
   const { stockAlerts, requests, ai, scarcity } = useSiteFeatures();
+  // Admin → الإعدادات → صفحة المنتج: the reviews, «كمّلي اللبسة» and the dates by city (each on unless switched off).
+  const pageCfg = useStorefrontSettings();
   // «اطلبي قطعتكِ»: a size or colour this piece doesn't come in (admin → الطلبات الخاصة).
   const [asking, setAsking] = useState(false);
   // The kind of product names its two choices (e.g. "الدرجة" for a ticket) and can hide them.
@@ -290,7 +295,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </Link>
           )}
           <h1 id="pdp-title">{product.title}</h1>
-          <RatingLink rating={product.rating} />
+          {pageCfg.productReviews ? <RatingLink rating={product.rating} /> : null}
           <div className="rose-pdp-price">
             {price != null && price > 0 ? <strong>{formatMoney(price, currency)}</strong> : <strong>{tr(lang, "تواصلي معنا للسعر", "Ask us for the price")}</strong>}
             {discount && compareAt ? <s>{formatMoney(compareAt, currency)}</s> : null}
@@ -334,7 +339,13 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
               <div className="rose-pdp-option-head">
                 <span>{sizeLabel}</span>
                 <b>{sizeKey !== "default" ? sizeKey : ""}</b>
-                <SizeGuide />
+                {/* This piece's sizes marked in the table; a tap there (or her measurements) picks one. */}
+                <SizeGuide
+                  sizes={sizes}
+                  selected={sizeKey}
+                  available={(key) => { const v = variants.find((x) => sizeKeyOf(x) === key); return Boolean(v) && (v!.stock == null || v!.stock > 0); }}
+                  onPick={(key) => { setSizeKey(key); setStatus(null); notePick(); }}
+                />
               </div>
               <div className="rose-pdp-sizes" role="radiogroup" aria-label={sizeLabel}>
                 {sizes.map((key) => {
@@ -440,6 +451,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
                 {eta}
               </p>
             ) : null}
+            {/* Her city's dates and delivery price, from the owner's delivery areas. */}
+            {fulfillment === "SHIPPING" && pageCfg.productDeliveryCity ? <RoseDeliveryCity days={product.delivery} price={price} currency={currency ?? undefined} /> : null}
             <ul className="rose-pdp-trust">
               <li><Icon name="truck" />{tr(lang, "توصيل لكل البلاد", "Delivery nationwide")}</li>
               <li><Icon name="cash" />{tr(lang, "الدفع عند الاستلام", "Cash on delivery")}</li>
@@ -481,9 +494,10 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
         </section>
       </div>
 
-      {ai.shopTheLook ? <RoseShopTheLook productId={product.id} ar={ar} /> : null}
+      {/* The AI stylist's picks (with reasons) when it is on; else the pieces whose colours go with her pick. */}
+      {ai.shopTheLook ? <RoseShopTheLook productId={product.id} ar={ar} /> : pageCfg.productCompleteLook ? <RoseCompleteLook productId={product.id} colorHex={item?.colorHex} colorName={item?.colorName} /> : null}
 
-      <RoseReviews productId={product.id} rating={product.rating} />
+      {pageCfg.productReviews ? <RoseReviews productId={product.id} rating={product.rating} /> : null}
 
       {related.length > 0 && (
         <section className="rose-pdp-related" aria-labelledby="pdp-related">

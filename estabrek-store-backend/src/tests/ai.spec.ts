@@ -109,6 +109,24 @@ describe("AI features", () => {
     expect(out.products[0]).toMatchObject({ slug: "ai-caihijab002", reason: "البيج بيلبق مع الأسود", price: 45 });
   });
 
+  test("complete the look without AI: the other pieces, the nearest to the picked colour first; nothing asked of a model", async () => {
+    setAiProvider(fake);
+    // The wine colour picked: the wine hijab first, then the beige (a neutral goes with anything), the navy last.
+    const wine = (await request(app).get("/v1/catalog/products/caiabaya001/look?color=6b2446").expect(200)).body;
+    expect(wine.products.map((p: any) => p.id)).toEqual(["caihijab001", "caihijab002", "caihijab003"]);
+    expect(wine.products[0]).toMatchObject({ slug: "ai-caihijab001", price: 60, colorName: "خمري", image: "https://img.test/caihijab001.jpg" });
+    // No colour: the abaya's own (black goes with everything); never the piece itself.
+    const own = (await request(app).get("/v1/catalog/products/caiabaya001/look").expect(200)).body;
+    expect(own.products.map((p: any) => p.id).sort()).toEqual(["caihijab001", "caihijab002", "caihijab003"]);
+    // A hijab is completed by the abaya.
+    const hijab = (await request(app).get("/v1/catalog/products/caihijab002/look").expect(200)).body;
+    expect(hijab.products.map((p: any) => p.id)).toEqual(["caiabaya001"]);
+    expect(seen).toHaveLength(0);
+    // Unknown products complete nothing; a colour must be a colour.
+    expect((await request(app).get("/v1/catalog/products/nope/look").expect(200)).body).toEqual({ products: [] });
+    await request(app).get("/v1/catalog/products/caiabaya001/look?color=red").expect(400);
+  });
+
   test("size advice: one of the piece's sizes or nothing; one-size pieces aren't asked", async () => {
     setAiProvider(fake);
     await setAi({ sizeAdvice: true }).expect(200);

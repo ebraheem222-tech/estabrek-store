@@ -57,6 +57,11 @@ export const CreateReviewBody = z.object({
   body: z.string().trim().min(5).max(2000),
 });
 
+/** «كمّلي اللوك»: the colour she picked on the page (hex, with or without #). */
+export const LookQuery = z.object({
+  color: z.string().regex(/^#?[0-9a-fA-F]{6}$/).optional(),
+});
+
 export const CreateCommentBody = z.object({
   body: z.string().trim().min(2).max(2000),
   userId: z.string().cuid().optional(),
