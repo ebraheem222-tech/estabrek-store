@@ -2847,8 +2847,10 @@ html[data-cinematic-storefront="true"] body { font-family: "Estabrek Text", "Ate
 
 /* ---------- Product imagery: one frame, one ratio, one backdrop ---------- */
 .cinematic-shell {
-  --frame-bg: #f4ebe3;          /* light beige studio backdrop shared by every product photo */
-  --frame-shade: inset 0 0 0 1px color-mix(in srgb, #8a6a5a 7%, transparent);
+  /* The studio backdrop behind every product photo: a light beige, leaning a little to the store's colour (it stayed
+     beige under any colour picked). */
+  --frame-bg: color-mix(in srgb, #f4ebe3 85%, var(--selection-seed, #f4ebe3));
+  --frame-shade: inset 0 0 0 1px color-mix(in srgb, var(--selection-ink, #8a6a5a) 7%, transparent);
 }
 .editorial-product-image,
 .rose-product-image,
@@ -3658,7 +3660,9 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
   --m-hijab: var(--selection-seed, #e3a3bb);
   --m-dress: color-mix(in srgb, var(--m-hijab) 26%, #fff);
   --m-skin: #f6d2bd;
-  --m-ink: #5a2a3e;
+  /* Her ink and her deep shade come from her own hijab colour (fixed plum, they stayed rose under any colour). */
+  --m-deep: color-mix(in srgb, var(--m-hijab) 26%, #3a1a28);
+  --m-ink: color-mix(in srgb, var(--m-hijab) 22%, #3a1a28);
   position: absolute;
   z-index: 4;
   aspect-ratio: 300 / 420;
@@ -3717,35 +3721,35 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
 }
 .rose-mascot .m-stop-hijab-light { stop-color: color-mix(in srgb, var(--m-hijab) 75%, #fff); }
 .rose-mascot .m-stop-hijab { stop-color: var(--m-hijab); }
-.rose-mascot .m-stop-hijab-dark { stop-color: color-mix(in srgb, var(--m-hijab) 80%, #4a1c30); }
+.rose-mascot .m-stop-hijab-dark { stop-color: color-mix(in srgb, var(--m-hijab) 80%, var(--m-deep)); }
 .rose-mascot .m-stop-dress-light { stop-color: color-mix(in srgb, var(--m-dress) 85%, #fff); }
 .rose-mascot .m-stop-dress { stop-color: var(--m-dress); }
-.rose-mascot .m-stop-dress-dark { stop-color: color-mix(in srgb, var(--m-dress) 82%, #4a1c30); }
+.rose-mascot .m-stop-dress-dark { stop-color: color-mix(in srgb, var(--m-dress) 82%, var(--m-deep)); }
 .rose-mascot .m-stop-skin-light { stop-color: color-mix(in srgb, var(--m-skin) 60%, #fff); }
 .rose-mascot .m-stop-skin { stop-color: var(--m-skin); }
 .rose-mascot .m-stop-skin-dark { stop-color: color-mix(in srgb, var(--m-skin) 86%, #b2614a); }
 .rose-mascot .m-outline { stroke: color-mix(in srgb, var(--m-ink) 75%, transparent); stroke-width: 2.4; stroke-linejoin: round; }
 .rose-mascot .m-dress { fill: var(--m-dress); }
 .rose-mascot .m-skin { fill: var(--m-skin); }
-.rose-mascot .m-hijab-dark { fill: color-mix(in srgb, var(--m-hijab) 74%, #4a1c30); }
+.rose-mascot .m-hijab-dark { fill: color-mix(in srgb, var(--m-hijab) 74%, var(--m-deep)); }
 .rose-mascot .m-hijab-light { fill: color-mix(in srgb, var(--m-hijab) 55%, #fff); }
 .rose-mascot .m-tail { stroke: color-mix(in srgb, var(--m-ink) 55%, transparent); stroke-width: 2; }
-.rose-mascot .m-shoe { fill: #6b3a4e; }
+.rose-mascot .m-shoe { fill: color-mix(in srgb, var(--m-hijab) 38%, #3a1f2a); }
 .rose-mascot .m-shadow { fill: var(--selection-dark, #7d2448); opacity: .12; }
 .rose-mascot .m-line { fill: none; stroke: var(--m-ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .rose-mascot .m-lash { stroke-width: 2; }
 .rose-mascot .m-thick { stroke-width: 3; }
-.rose-mascot .m-dress-fold { fill: none; stroke: color-mix(in srgb, var(--m-dress) 60%, #4a1c30); stroke-width: 2; stroke-linecap: round; opacity: .45; }
-.rose-mascot .m-hijab-fold { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 60%, #4a1c30); stroke-width: 2; stroke-linecap: round; opacity: .45; }
-.rose-mascot .m-pin circle { fill: #fff; stroke: color-mix(in srgb, var(--m-hijab) 60%, #4a1c30); stroke-width: 1; }
+.rose-mascot .m-dress-fold { fill: none; stroke: color-mix(in srgb, var(--m-dress) 60%, var(--m-deep)); stroke-width: 2; stroke-linecap: round; opacity: .45; }
+.rose-mascot .m-hijab-fold { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 60%, var(--m-deep)); stroke-width: 2; stroke-linecap: round; opacity: .45; }
+.rose-mascot .m-pin circle { fill: #fff; stroke: color-mix(in srgb, var(--m-hijab) 60%, var(--m-deep)); stroke-width: 1; }
 .rose-mascot .m-heart { fill: #f08aa0; transition: transform 1.4s cubic-bezier(.2,.7,.3,1), opacity 1.4s; }
 .rose-mascot .m-heart-alt { fill: var(--m-hijab); }
 .rose-mascot .m-umbrella { fill: #fff; stroke: color-mix(in srgb, var(--m-ink) 70%, transparent); stroke-width: 2.4; stroke-linejoin: round; }
-.rose-mascot .m-umbrella-rib { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 2; opacity: .7; }
-.rose-mascot .m-umbrella-handle { fill: none; stroke: #6b3a4e; stroke-width: 4; stroke-linecap: round; }
+.rose-mascot .m-umbrella-rib { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, var(--m-deep)); stroke-width: 2; opacity: .7; }
+.rose-mascot .m-umbrella-handle { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 38%, #3a1f2a); stroke-width: 4; stroke-linecap: round; }
 .rose-mascot .m-stem { fill: none; stroke: #6f9a5e; stroke-width: 3; stroke-linecap: round; }
 .rose-mascot .m-leaf { fill: #8bb576; }
-.rose-mascot .m-petal { fill: #fff; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 1.2; }
+.rose-mascot .m-petal { fill: #fff; stroke: color-mix(in srgb, var(--m-hijab) 70%, var(--m-deep)); stroke-width: 1.2; }
 
 /* In the collection story her hands are busy above her head: she talks from below. */
 .story-mascot .rose-mascot-bubble { bottom: auto; top: 100%; translate: -50% -8px; }
@@ -3811,7 +3815,7 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
 .rose-companion[data-side="right"] .rose-mascot-bubble { left: auto; right: 0; }
 .rose-companion[data-side="right"] .rose-mascot-bubble::after { left: auto; right: 28px; }
 .rose-mascot .m-bag { fill: var(--m-hijab); stroke: color-mix(in srgb, var(--m-ink) 70%, transparent); stroke-width: 2.2; stroke-linejoin: round; }
-.rose-mascot .m-bag-handle { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 3; stroke-linecap: round; }
+.rose-mascot .m-bag-handle { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, var(--m-deep)); stroke-width: 3; stroke-linecap: round; }
 .rose-mascot .m-bag-flower { fill: #fff; }
 @media (max-width: 899px) {
   .rose-companion { width: 72px; bottom: 82px; left: 8px; }
@@ -3851,31 +3855,31 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
 
 .rose-mascot .m-stop-frock-light { stop-color: color-mix(in srgb, var(--m-frock) 80%, #fff); }
 .rose-mascot .m-stop-frock { stop-color: var(--m-frock); }
-.rose-mascot .m-stop-frock-dark { stop-color: color-mix(in srgb, var(--m-frock) 80%, #4a1c30); }
+.rose-mascot .m-stop-frock-dark { stop-color: color-mix(in srgb, var(--m-frock) 80%, var(--m-deep)); }
 .rose-mascot .m-stop-coat-light { stop-color: color-mix(in srgb, var(--m-coat) 82%, #fff); }
 .rose-mascot .m-stop-coat { stop-color: var(--m-coat); }
 .rose-mascot .m-stop-coat-dark { stop-color: color-mix(in srgb, var(--m-coat) 80%, #1d1016); }
 
 .rose-mascot .m-outline { stroke: color-mix(in srgb, var(--m-ink) 62%, transparent); stroke-width: 2.1; }
 .rose-mascot .m-sleeve { fill: var(--m-sleeve); }
-.rose-mascot .m-cuff { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 3.2; stroke-linecap: round; opacity: .8; }
+.rose-mascot .m-cuff { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, var(--m-deep)); stroke-width: 3.2; stroke-linecap: round; opacity: .8; }
 .rose-mascot[data-outfit="eid"] .m-cuff { stroke: var(--m-gold-c); opacity: 1; }
-.rose-mascot .m-side-shade { fill: color-mix(in srgb, var(--m-dress) 70%, #4a1c30); opacity: .22; }
-.rose-mascot .m-placket { fill: none; stroke: color-mix(in srgb, var(--m-dress) 60%, #4a1c30); stroke-width: 1.4; opacity: .35; }
+.rose-mascot .m-side-shade { fill: color-mix(in srgb, var(--m-dress) 70%, var(--m-deep)); opacity: .22; }
+.rose-mascot .m-placket { fill: none; stroke: color-mix(in srgb, var(--m-dress) 60%, var(--m-deep)); stroke-width: 1.4; opacity: .35; }
 .rose-mascot .m-hem { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 60%, #fff); stroke-width: 4.5; stroke-linecap: round; opacity: .85; }
-.rose-mascot .m-belt { fill: color-mix(in srgb, var(--m-hijab) 74%, #4a1c30); }
+.rose-mascot .m-belt { fill: color-mix(in srgb, var(--m-hijab) 74%, var(--m-deep)); }
 .rose-mascot .m-belt-pin { fill: color-mix(in srgb, var(--m-hijab) 55%, #fff); stroke: #fff; stroke-width: 1.5; }
 .rose-mascot .m-gold, .rose-mascot .m-gold-line { fill: var(--m-gold-c); }
 .rose-mascot .m-gold-line { fill: none; stroke: var(--m-gold-c); stroke-width: 4; stroke-linecap: round; }
 .rose-mascot .m-gold-line.m-thin { stroke-width: 1.8; stroke-dasharray: 2 5; }
 .rose-mascot .m-print { fill: #fff; opacity: .85; }
-.rose-mascot .m-bow { fill: color-mix(in srgb, var(--m-hijab) 72%, #4a1c30); stroke: color-mix(in srgb, var(--m-ink) 55%, transparent); stroke-width: 1.4; }
+.rose-mascot .m-bow { fill: color-mix(in srgb, var(--m-hijab) 72%, var(--m-deep)); stroke: color-mix(in srgb, var(--m-ink) 55%, transparent); stroke-width: 1.4; }
 .rose-mascot .m-coat-seam { fill: none; stroke: color-mix(in srgb, var(--m-coat) 55%, #000); stroke-width: 1.6; stroke-linecap: round; opacity: .5; }
 .rose-mascot .m-button { fill: #e9c27a; stroke: color-mix(in srgb, var(--m-coat) 50%, #000); stroke-width: 1; }
-.rose-mascot .m-ruffle { fill: none; stroke: color-mix(in srgb, var(--m-frock) 55%, #4a1c30); stroke-width: 2.2; stroke-linejoin: round; }
+.rose-mascot .m-ruffle { fill: none; stroke: color-mix(in srgb, var(--m-frock) 55%, var(--m-deep)); stroke-width: 2.2; stroke-linejoin: round; }
 .rose-mascot .m-pants { fill: #f6ece3; stroke: color-mix(in srgb, var(--m-ink) 50%, transparent); stroke-width: 1.8; }
 .rose-mascot .m-shoe-shine { fill: #fff; opacity: .35; }
-.rose-mascot .m-hijab-shadow { fill: color-mix(in srgb, var(--m-hijab) 62%, #4a1c30); opacity: .45; }
+.rose-mascot .m-hijab-shadow { fill: color-mix(in srgb, var(--m-hijab) 62%, var(--m-deep)); opacity: .45; }
 .rose-mascot .m-underscarf { fill: color-mix(in srgb, var(--m-hijab) 40%, #fff); }
 .rose-mascot .m-hijab-shine { fill: none; stroke: #fff; stroke-width: 6; stroke-linecap: round; opacity: .35; }
 .rose-mascot .m-brow { stroke-width: 2.4; opacity: .85; }
@@ -3957,7 +3961,7 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
 .rose-chat-row[data-role="user"] .rose-chat-msg { background: var(--selection-accent, #a43b64); color: #fff; border-end-end-radius: 6px; }
 .rose-chat-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
 .rose-chat-products a { display: grid; gap: 3px; color: inherit; text-decoration: none; font-size: 12px; line-height: 1.35; }
-.rose-chat-products img, .rose-chat-noimg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 12px; background: #f4ebe3; display: block; }
+.rose-chat-products img, .rose-chat-noimg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 12px; background: var(--frame-bg, #f4ebe3); display: block; }
 .rose-chat-products em { font-style: normal; font-weight: 700; color: var(--selection-accent, #a43b64); }
 .rose-chat-typing { display: flex; gap: 4px; padding: 12px 14px; }
 .rose-chat-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--selection-muted, #8b6d7b); animation: rose-typing 1s infinite ease-in-out; }
@@ -4123,7 +4127,7 @@ html[data-theme-crossfade]::view-transition-new(root) {
 }
 
 /* ---------- Opening film: the scarf that becomes a hijab (RoseHeroFilm.tsx) ---------- */
-.rose-film { --film-accent: #b2486a; position: relative; height: 340vh; color: var(--selection-ink, #4d2039); }
+.rose-film { --film-accent: var(--selection-accent, #b2486a); position: relative; height: 340vh; color: var(--selection-ink, #4d2039); }
 .rose-film[data-motion="false"] { height: auto; }
 .rose-film-sticky {
   position: sticky; top: 0; height: 100svh; min-height: 560px; overflow: hidden;
