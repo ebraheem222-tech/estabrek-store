@@ -471,7 +471,10 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       // While the page scrolls, ~15 a second on every screen: her small motions aren't seen mid-scroll, and each
       // drawing restyles and repaints her whole SVG (measured on a computer: a quarter of the graphics work of a
       // category page's scroll). ~30 otherwise.
-      if (ms - last >= (pageScrolling() ? 64 : 32)) { last = ms; draw(ms); }
+      // The companion in the corner isn't drawn at all mid-scroll (on every page, nobody watches her then); she
+      // carries on as the page stops. A scene's Razan keeps drawing: the 3D models follow her hand.
+      const scrolling = pageScrolling();
+      if (!(companion && scrolling) && ms - last >= (scrolling ? 64 : 32)) { last = ms; draw(ms); }
       if (visible && !reduce && !sleeping) frame = requestAnimationFrame(loop);
     };
     const offIdle = onPageIdle((rest) => {

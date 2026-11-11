@@ -442,7 +442,7 @@ export function StorefrontChrome({
       <StoreContext.Provider value={storeData}>
         {/* Outside the page's shell (it is new on every page): the logo that fills while the next page loads. */}
         {studio ? null : <RouteLoader logoUrl={storeData.logoUrl} />}
-        {studio ? null : <SmoothScroll />}
+        {studio ? null : <SmoothScroll on={home} />}
         {studio ? null : <RoseMiniBag />}
         {studio ? null : <FloatingDock />}
         {studio ? null : <RoseSecret enabled={storeData.secret?.enabled !== false} code={storeData.secret?.code} text={storeData.secret?.text} />}
