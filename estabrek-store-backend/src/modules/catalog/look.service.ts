@@ -8,8 +8,14 @@ import { hexToLab, stylePieces, type StylePiece } from "../razan/styleQuiz.servi
  */
 type Lab = [number, number, number];
 const deltaE = (a: Lab, b: Lab) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-/** Black, white, beige, grey: they go with anything. */
-const neutral = (lab: Lab) => Math.hypot(lab[1], lab[2]) < 12;
+/**
+ * The colours that go with anything: black, white, grey, beige and cream (little colour in them), and the
+ * dark ones like navy, charcoal and dark brown (dark, with only some colour).
+ */
+const neutral = (lab: Lab) => {
+  const chroma = Math.hypot(lab[1], lab[2]);
+  return chroma < 20 || (lab[0] < 30 && chroma < 30);
+};
 
 export type LookPiece = { id: string; title: string; slug: string; image: string | null; price: number | null; colorName: string | null };
 
