@@ -7,7 +7,7 @@ import { phoneKey } from "../../lib/phoneKey.js";
 import { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
 import { openaiEmbedText } from "../../lib/openai.js";
-import { scoreTextMatch } from "../../lib/searchText.js";
+import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
 import { attributesWhere, deliveryOf, fieldsOf, publicType, publicTypeSelect, specsOf, type DeliveryFields } from "../productTypes/productTypes.js";
 import { DIGITAL_STOCK, eventIsOver } from "../fulfillment/fulfillment.service.js";
 import { variantsWithCodes } from "../fulfillment/codes.service.js";
@@ -534,13 +534,47 @@ function translatedTitleWhere(q: string): Prisma.ProductWhereInput[] {
   return CONTENT_LANGS.flatMap((lang) => spellings.map((s) => ({ translations: { path: [lang, "title"], string_contains: s } })));
 }
 
-function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string; categoryIds?: string[]; type?: string; attrs?: Record<string, string[]> }): Prisma.ProductWhereInput {
+/**
+ * The words a search asks for, as the shop's text is matched: Arabic spellings evened out (lib/searchText.ts:
+ * أ/إ/آ → ا, ى → ي, ة → ه, ؤ → و, ئ → ي, no diacritics or ـ), and "ال" off the front of longer words
+ * ("الاسود" finds "أسود").
+ */
+export function searchWords(q: string): string[] {
+  const words = normalizeSearchText(q).split(" ").filter(Boolean).map((w) => (w.length > 4 && w.startsWith("ال") ? w.slice(2) : w));
+  return [...new Set(words)].slice(0, 8);
+}
+
+// The same evening-out in SQL: diacritics and ـ dropped, then the letters mapped one for one.
+const SQL_MARKS = "[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]";
+const SQL_FROM = "أإآٱىئؤةگپچ";
+const SQL_TO = "ااااييوهكبج";
+
+/**
+ * Products whose words hold every searched word, whatever the spelling: "عبايه" finds "عباية", "فستان اسود"
+ * finds "فستان سهرة أسود" (each word anywhere: title, description, link, category, translated titles).
+ * Null when nothing is searched.
+ */
+export async function searchProductIds(q: string): Promise<string[] | null> {
+  const words = searchWords(q);
+  if (!words.length) return null;
+  const hay = Prisma.sql`translate(regexp_replace(lower(concat_ws(' ', p."title", p."description", p."slug", c."name", p."translations"::text)), ${SQL_MARKS}, '', 'g'), ${SQL_FROM}, ${SQL_TO})`;
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT p."id" FROM "Product" p JOIN "Category" c ON c."id" = p."categoryId"
+    WHERE p."isActive" AND ${Prisma.join(words.map((w) => Prisma.sql`${hay} LIKE ${"%" + w + "%"}`), " AND ")}
+    LIMIT 2000`;
+  return rows.map((r) => r.id);
+}
+
+function buildBaseProductWhere(input: { q?: string; qIds?: string[] | null; category?: string; categoryId?: string; categoryIds?: string[]; type?: string; attrs?: Record<string, string[]> }): Prisma.ProductWhereInput {
   const and: Prisma.ProductWhereInput[] = [{ isActive: true }];
   // Product type and its fields (attr_<key>=a,b), see productTypes.ts.
   if (input.type) and.push({ type: { slug: input.type } });
   and.push(...attributesWhere(input.attrs));
 
-  if (input.q) {
+  if (input.qIds) {
+    // Found by searchProductIds (every word, any Arabic spelling).
+    and.push({ id: { in: input.qIds } });
+  } else if (input.q) {
     and.push({
       OR: [
         { title: { contains: input.q, mode: "insensitive" } },
@@ -607,6 +641,8 @@ function buildItemWhere(input: {
  */
 function buildProductsWhere(input: {
   q?: string;
+  /** The products a search found (searchProductIds); used instead of matching `q` as one phrase. */
+  qIds?: string[] | null;
   type?: string;
   attrs?: Record<string, string[]>;
   category?: string; // category slug
@@ -628,6 +664,7 @@ function buildProductsWhere(input: {
 }) {
   const baseProductWhere = buildBaseProductWhere({
     q: input.q,
+    qIds: input.qIds,
     category: input.category,
     categoryId: input.categoryId,
     categoryIds: input.categoryIds,
@@ -846,7 +883,7 @@ export async function listProducts(params: {
     itemWhereNoSize,
     colorsArr,
     sizeArr,
-  } = buildProductsWhere({ ...params, now, categoryIds });
+  } = buildProductsWhere({ ...params, now, categoryIds, qIds: query ? await searchProductIds(query) : null });
 
   const pageSize: number = params.limit ?? params.pageSize;
   const orderBy: Prisma.ProductOrderByWithRelationInput =
