@@ -21,6 +21,7 @@ import { LanguageSwitch } from "./LanguageSwitch";
 import { tr } from "@/lib/words";
 import { dirOf } from "@/lib/i18n";
 import { watchPageIdle } from "@/lib/pageIdle";
+import { watchScrollingFlag } from "@/lib/pageRest";
 
 type RoseNavLink = { href: string; label: string; children?: RoseNavLink[] };
 export type RoseStoreData = {
@@ -417,7 +418,7 @@ export function StorefrontChrome({
   useEffect(() => setStudioHome(studio && Boolean(document.querySelector("[data-studio-home]"))), [studio, pathname]);
   const home = pathname === "/" || studioHome;
   // The page at rest stops drawing what only moves for show (lib/pageIdle.ts); not in the editor's frame.
-  useEffect(() => { if (!studio && !bare) watchPageIdle(); }, [studio, bare]);
+  useEffect(() => { if (!studio && !bare) { watchPageIdle(); watchScrollingFlag(); } }, [studio, bare]);
   useEffect(() => {
     document.documentElement.dataset.cinematicHome =
       enabled && home ? "true" : "false";

@@ -14080,7 +14080,7 @@ html {
   translate: -100% 0;
   animation: lqip-image-shimmer 1.25s linear infinite;
   /* Its own layer, so the graphics card slides it (without one, each waiting picture was repainted on every frame). */
-  will-change: translate;
+  will-change: transform;
 }
 
 @keyframes lqip-image-shimmer {

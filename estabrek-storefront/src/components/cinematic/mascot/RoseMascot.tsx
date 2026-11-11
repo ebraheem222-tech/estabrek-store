@@ -473,8 +473,10 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       // category page's scroll). ~30 otherwise.
       // The companion in the corner isn't drawn at all mid-scroll (on every page, nobody watches her then); she
       // carries on as the page stops. A scene's Razan keeps drawing: the 3D models follow her hand.
+      // The companion breathes at ~15 drawings a second (small in her corner, it looks the same; ~30 kept a quiet
+      // page, the cart or an account, drawing all the time).
       const scrolling = pageScrolling();
-      if (!(companion && scrolling) && ms - last >= (scrolling ? 64 : 32)) { last = ms; draw(ms); }
+      if (!(companion && scrolling) && ms - last >= (scrolling || companion ? 64 : 32)) { last = ms; draw(ms); }
       if (visible && !reduce && !sleeping) frame = requestAnimationFrame(loop);
     };
     const offIdle = onPageIdle((rest) => {

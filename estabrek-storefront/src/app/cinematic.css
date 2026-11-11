@@ -3254,6 +3254,10 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
 }
 
 /* ---------- Shop cards: one rounded card, image and details together ---------- */
+/* While the page scrolls (lib/pageRest.ts watchScrollingFlag) the cards and the product's photo ignore the
+   pointer: the scroll carrying card after card under a resting pointer played each one's hover in and out, and
+   repainted cards on every frame. Hover comes back as the scroll stops. */
+html[data-scrolling] :is(.rose-product-tile, .season-card, .rose-pdp-frame) { pointer-events: none; }
 .rose-product-tile {
   border-radius: 20px !important; overflow: hidden; isolation: isolate;
   background: var(--selection-surface, #fff8f4) !important;
@@ -3668,6 +3672,8 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
   pointer-events: auto;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* Her drawing on a layer of its own: each drawing of her repaints only her, not the page behind her. */
+  will-change: transform;
 }
 .rose-mascot[data-mirrored="true"] svg { transform: scaleX(-1); }
 /* Well off screen (RoseMascot.tsx): left out of style and layout until she comes near.
