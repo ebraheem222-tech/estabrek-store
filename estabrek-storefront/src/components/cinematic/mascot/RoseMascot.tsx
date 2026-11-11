@@ -9,7 +9,7 @@
  * Everything moves from one requestAnimationFrame loop that only runs while she
  * is on screen; with reduced motion she simply stands still.
  */
-import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useSyncExternalStore, type MutableRefObject } from "react";
+import { forwardRef, useEffect, useId, useImperativeHandle, useMemo, useRef, useSyncExternalStore, type MutableRefObject } from "react";
 import { razanMaySpeak, razanNow, type SpeakKind } from "@/lib/razanRuntime";
 import { pageScrolling } from "@/lib/pageRest";
 import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
@@ -55,8 +55,17 @@ export type MascotHandle = {
   lookAt?: (clientX: number, clientY: number, holdMs?: number) => void;
 };
 
-/** Screen position (viewport px) of her open palm, written every frame while she holds something. */
-export type PalmRef = MutableRefObject<{ x: number; y: number; dir: 1 | -1 } | null>;
+/**
+ * Her open palm, written every frame while she holds something: in her drawing's own units (the 300 × 420
+ * picture as it shows, mirrored when she is), with the drawing, to place it on the screen (palmOnScreen).
+ */
+export type PalmRef = MutableRefObject<{ x: number; y: number; dir: 1 | -1; svg: SVGSVGElement } | null>;
+
+/** Where the palm is on the screen (viewport px), given her drawing's box (the picture keeps its proportions). */
+export function palmOnScreen(palm: { x: number; y: number }, box: DOMRect) {
+  const s = Math.min(box.width / 300, box.height / 420);
+  return { x: box.left + (box.width - 300 * s) / 2 + palm.x * s, y: box.top + (box.height - 420 * s) / 2 + palm.y * s };
+}
 
 type Props = {
   className?: string;
@@ -82,6 +91,12 @@ type Props = {
   muted?: boolean;
   /** Little idle habits (looking around, fixing her hijab, a hop). */
   idleHabits?: boolean;
+  /**
+   * Colours she wears, written on her (her hijab follows --selection-seed). A change that comes with a change of
+   * clothes lands with them, in the middle of the twirl, while she is a sliver: one restyle of her whole drawing
+   * does both (each is a restyle of all of her), away from the scene's own busy moment. Without it she inherits.
+   */
+  colours?: Record<string, string>;
 };
 
 type Action = "wave" | "joy" | "dance" | "cheer" | "adjust" | "hop" | "look";
@@ -130,7 +145,7 @@ const MOUTH = {
 export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
   {
     className, pose = "idle", prop = "none", mood = "happy", outfit = "abaya", extras, mirrored = false, greeting, walkIn = false,
-    palm, label, ar = true, reactive = false, companion = false, muted = false, idleHabits = true,
+    palm, label, ar = true, reactive = false, companion = false, muted = false, idleHabits = true, colours,
   },
   ref,
 ) {
@@ -143,11 +158,12 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
   const state = useRef({
     pose, prop, mood, muted, outfit, pearls: Boolean(extras?.pearls),
     shownOutfit: outfit, shownPearls: Boolean(extras?.pearls), swapAt: -10,
+    colours, shownColours: undefined as Record<string, string> | undefined,
     action: null as Action | null, actionAt: 0, start: 0, look: [0, 0] as [number, number],
     bagUntil: 0, winkUntil: 0, surpriseUntil: 0, talkUntil: 0, thinking: false, nextHabit: 0,
   });
   const s0 = state.current;
-  s0.pose = pose; s0.prop = prop; s0.mood = mood; s0.muted = muted;
+  s0.pose = pose; s0.prop = prop; s0.mood = mood; s0.muted = muted; s0.colours = colours;
   if (s0.outfit !== outfit || s0.pearls !== Boolean(extras?.pearls)) {
     // Outfit change: a little twirl, and the new clothes appear halfway through it.
     s0.outfit = outfit;
@@ -219,7 +235,6 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     const umbrella = q<SVGGElement>("[data-umbrella]"), flower = q<SVGGElement>("[data-flower]"), bag = q<SVGGElement>("[data-bag]");
     const feet = [q<SVGGElement>("[data-foot-l]"), q<SVGGElement>("[data-foot-r]")];
     const khimar = q<SVGGElement>("[data-khimar]");
-    const handR = armR.querySelector<SVGCircleElement>("circle")!;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const s = state.current;
     s.start = performance.now() / 1000;
@@ -241,6 +256,15 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     const showOutfit = (o: RoseOutfit, pearls: boolean) => {
       box.dataset.outfit = o;
       box.dataset.pearls = pearls ? "true" : "false";
+      wearColours();
+    };
+    /** Her colours as asked (props.colours), when they are not on her yet. */
+    const wearColours = () => {
+      const next = s.colours, was = s.shownColours;
+      if (next === was) return;
+      s.shownColours = next;
+      if (was) for (const name in was) if (!next || !(name in next)) box.style.removeProperty(name);
+      if (next) for (const name in next) box.style.setProperty(name, next[name]);
     };
     showOutfit(s.shownOutfit, s.shownPearls);
 
@@ -269,7 +293,9 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       const k = act ? envelope(at, ACTION_LENGTH[act]) : 0;
 
       // Outfit twirl: squeeze to a sliver and back, swapping clothes in the middle.
-      const sw = now - s.swapAt;
+      // (A change asked for during this frame, by a scene's scroll, is stamped a little after the frame's own
+      // time: it starts its twirl now instead of skipping it.)
+      const sw = Math.max(0, now - s.swapAt);
       let twirl = 1;
       if (sw >= 0 && sw < 0.6) {
         twirl = Math.max(0.04, Math.abs(Math.cos((sw / 0.6) * Math.PI)));
@@ -282,6 +308,8 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
         s.shownOutfit = s.outfit; s.shownPearls = s.pearls;
         showOutfit(s.shownOutfit, s.shownPearls);
       }
+      // New colours with the same clothes: at once.
+      if (s.shownOutfit === s.outfit && s.shownPearls === s.pearls) wearColours();
 
       const bob = reduce ? 0 : stepping ? Math.abs(step) * -4 : Math.sin(t * 2.4);
       let jump = 0, squash = 1 + (stepping ? 0 : bob * 0.012), spin = 0;
@@ -300,7 +328,8 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       const cold = s.mood === "cold";
       const shiver = cold && !reduce ? Math.sin(now * 55) * 1.1 : 0;
       stage.setAttribute("transform", `translate(${f(walkX)} 0) translate(150 0) scale(${twirl.toFixed(3)} 1) translate(-150 0)`);
-      const charT = `translate(${f(shiver)} ${f((1 - enter) * -120 + jump + bob * 1.5)}) rotate(${f(spin)} 150 400) translate(150 400) scale(${(2 - squash).toFixed(3)} ${squash.toFixed(3)}) translate(-150 -400)`;
+      const lift = (1 - enter) * -120 + jump + bob * 1.5;
+      const charT = `translate(${f(shiver)} ${f(lift)}) rotate(${f(spin)} 150 400) translate(150 400) scale(${(2 - squash).toFixed(3)} ${squash.toFixed(3)}) translate(-150 -400)`;
       char.setAttribute("transform", charT);
       front.setAttribute("transform", charT);
       shadow.setAttribute("rx", f(70 + jump * 0.4 - bob * 1.5));
@@ -392,10 +421,22 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
 
       if (palm) {
         if (holding) {
-          const r = handR.getBoundingClientRect(), me = el.getBoundingClientRect();
-          const x = r.left + r.width / 2;
+          // The hand's place worked out from the transforms just written (her stage's, then her body's). Read
+          // from the page, it made the browser lay the page out again in the middle of every drawing: the
+          // heaviest script of the collection worlds on a phone.
+          const sx = 2 - squash, sy = squash;
+          let hx = 150 + sx * (rHand[0] - 150), hy = 400 + sy * (rHand[1] - 400);
+          if (spin) {
+            const a = (spin * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a), dx = hx - 150, dy = hy - 400;
+            hx = 150 + dx * c - dy * sn;
+            hy = 400 + dx * sn + dy * c;
+          }
+          hx = walkX + 150 + twirl * (hx + shiver - 150);
+          // Just above the top of the hand (radius 10), as the models sit on it.
+          hy += lift - 13 * sy;
+          const x = mirrored ? 300 - hx : hx;
           // dir: which side of her the palm is on, so held things lean away from her.
-          palm.current = { x, y: r.top - r.height * 0.15, dir: x >= me.left + me.width / 2 ? 1 : -1 };
+          palm.current = { x, y: hy, dir: x >= 150 ? 1 : -1, svg: el };
         } else palm.current = null;
       }
     };
@@ -513,203 +554,210 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
   }, [greeting, mirrored, palm, reactive, companion, ar, lang, uid, walkIn, idleHabits]);
 
   const g = (name: string) => `url(#${id(name)})`;
+  // Her drawing never changes through React (each frame is written straight into it), so it is made once: each
+  // re-render around her (a scene's new world and outfit, say) compared all of her ~250 parts for nothing.
+  const drawing = useMemo(() => (
+      <>
+          <defs>
+            <radialGradient id={id("cheek")} cx=".5" cy=".5" r=".5"><stop offset="0" stopColor="#f08aa0" stopOpacity=".55" /><stop offset="1" stopColor="#f08aa0" stopOpacity="0" /></radialGradient>
+            <radialGradient id={id("face")} cx=".45" cy=".35" r=".75">
+              <stop offset="0" className="m-stop-skin-light" /><stop offset=".75" className="m-stop-skin" /><stop offset="1" className="m-stop-skin-dark" />
+            </radialGradient>
+            <radialGradient id={id("iris")} cx=".5" cy=".62" r=".6">
+              <stop offset="0" stopColor="#8a5236" /><stop offset=".55" stopColor="#4b2618" /><stop offset="1" stopColor="#2a1219" />
+            </radialGradient>
+            <linearGradient id={id("dress")} x1="0" x2="1">
+              <stop offset="0" className="m-stop-dress-light" /><stop offset=".6" className="m-stop-dress" /><stop offset="1" className="m-stop-dress-dark" />
+            </linearGradient>
+            <linearGradient id={id("frock")} x1="0" x2="1">
+              <stop offset="0" className="m-stop-frock-light" /><stop offset=".6" className="m-stop-frock" /><stop offset="1" className="m-stop-frock-dark" />
+            </linearGradient>
+            <linearGradient id={id("coat")} x1="0" x2="1">
+              <stop offset="0" className="m-stop-coat-light" /><stop offset=".6" className="m-stop-coat" /><stop offset="1" className="m-stop-coat-dark" />
+            </linearGradient>
+            <linearGradient id={id("hijab")} x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" className="m-stop-hijab-light" /><stop offset=".55" className="m-stop-hijab" /><stop offset="1" className="m-stop-hijab-dark" />
+            </linearGradient>
+            <pattern id={id("flowers")} width="26" height="26" patternUnits="userSpaceOnUse">
+              <g transform="translate(7 8)" className="m-print"><circle cx="0" cy="-2.6" r="2.2" /><circle cx="2.5" cy="-.8" r="2.2" /><circle cx="1.5" cy="2.2" r="2.2" /><circle cx="-1.5" cy="2.2" r="2.2" /><circle cx="-2.5" cy="-.8" r="2.2" /></g>
+              <circle cx="7" cy="8" r="1.2" fill="#f2c14e" />
+              <circle cx="20" cy="20" r="1.6" className="m-print" />
+            </pattern>
+          </defs>
+
+          <ellipse data-shadow cx="150" cy="404" rx="70" ry="9" className="m-shadow" />
+
+          <g data-stage>
+            <g data-char>
+              <path data-tail className="m-hijab-dark m-tail" />
+
+              {/* feet (and the little trousers of the playful outfit) */}
+              <g data-foot-l>
+                <path className="m-o m-o-tunic m-pants" d="M124 356 L124 392 Q132 398 141 392 L142 356 Z" />
+                <ellipse cx="130" cy="396" rx="15" ry="8" className="m-shoe" />
+                <ellipse cx="125" cy="393" rx="5" ry="2.2" className="m-shoe-shine" />
+              </g>
+              <g data-foot-r>
+                <path className="m-o m-o-tunic m-pants" d="M158 356 L159 392 Q168 398 176 392 L176 356 Z" />
+                <ellipse cx="170" cy="396" rx="15" ry="8" className="m-shoe" />
+                <ellipse cx="165" cy="393" rx="5" ry="2.2" className="m-shoe-shine" />
+              </g>
+
+              <g data-body>
+                {/* abaya (also under the coat, khimar and Eid looks) */}
+                <g className="m-o m-o-abaya m-o-coat m-o-khimar m-o-eid">
+                  <path className="m-outline" fill={g("dress")} d="M120 252 C110 290 100 340 90 388 Q120 402 150 398 Q180 402 210 388 C200 340 190 290 180 252 Z" />
+                  <path className="m-side-shade" d="M180 252 C190 290 200 340 210 388 Q201 393 193 394 C187 340 177 292 170 256 Z" />
+                  <path className="m-dress-fold" d="M138 300 C134 330 130 360 126 390" />
+                  <path className="m-dress-fold" d="M162 300 C166 330 170 360 174 390" />
+                  <path className="m-placket" d="M150 296 L150 394" />
+                  <path className="m-hem" d="M94 380 Q122 394 150 390 Q178 394 206 380" />
+                  <path className="m-belt" d="M124 300 Q150 308 176 300 L177 309 Q150 317 123 309 Z" />
+                  <circle cx="150" cy="306" r="5.5" className="m-belt-pin" />
+                </g>
+                {/* Eid: gold embroidery */}
+                <g className="m-o m-o-eid">
+                  <path className="m-gold-line" d="M94 382 Q122 396 150 392 Q178 396 206 382" />
+                  <path className="m-gold-line m-thin" d="M98 370 Q124 382 150 378 Q176 382 202 370" />
+                  {[316, 330, 344, 358, 372].map((y) => <circle key={y} cx="150" cy={y} r="2.2" className="m-gold" />)}
+                  <path className="m-gold" d="M123 300 Q150 309 177 300 L177 305 Q150 314 123 305 Z" />
+                  <path className="m-gold" d="M238 120 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 Z" opacity=".8" />
+                  <path className="m-gold" d="M58 200 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z" opacity=".7" />
+                </g>
+                {/* dress: fitted top, full floral skirt with a scalloped hem */}
+                <g className="m-o m-o-dress">
+                  <path className="m-outline" fill={g("frock")} d="M122 252 C120 270 124 288 128 300 L172 300 C176 288 180 270 178 252 Z" />
+                  <path className="m-outline" fill={g("frock")} d="M128 300 C112 330 94 362 82 390 Q100 402 116 394 Q133 404 150 396 Q167 404 184 394 Q200 402 218 390 C206 362 188 330 172 300 Z" />
+                  <path fill={g("flowers")} d="M128 300 C112 330 94 362 82 390 Q100 402 116 394 Q133 404 150 396 Q167 404 184 394 Q200 402 218 390 C206 362 188 330 172 300 Z" opacity=".9" />
+                  <path className="m-dress-fold" d="M140 310 C132 340 120 370 112 394" />
+                  <path className="m-dress-fold" d="M160 310 C168 340 180 370 188 394" />
+                  <g transform="translate(150 300)" className="m-bow">
+                    <path d="M0 0 C-6 -8 -16 -8 -16 0 C-16 8 -6 8 0 0 Z" /><path d="M0 0 C6 -8 16 -8 16 0 C16 8 6 8 0 0 Z" /><circle r="3.4" />
+                  </g>
+                </g>
+                {/* winter coat over the abaya */}
+                <g className="m-o m-o-coat">
+                  <path className="m-outline" fill={g("coat")} d="M118 252 C108 292 100 336 94 372 Q122 380 150 377 Q178 380 206 372 C200 336 192 292 182 252 Z" />
+                  <path className="m-coat-seam" d="M150 290 L150 376" />
+                  {[304, 324, 344, 362].map((y) => <circle key={y} cx="142" cy={y} r="3.2" className="m-button" />)}
+                  {[304, 324, 344, 362].map((y) => <circle key={`r${y}`} cx="158" cy={y} r="3.2" className="m-button" />)}
+                  <path className="m-coat-seam" d="M112 340 Q122 344 132 340 M168 340 Q178 344 188 340" />
+                  <path className="m-belt" d="M121 312 Q150 320 179 312 L180 321 Q150 329 120 321 Z" />
+                </g>
+                {/* playful tunic */}
+                <g className="m-o m-o-tunic">
+                  <path className="m-outline" fill={g("frock")} d="M120 252 C112 290 104 330 100 360 Q125 370 150 366 Q175 370 200 360 C196 330 188 290 180 252 Z" />
+                  <path fill={g("flowers")} d="M120 252 C112 290 104 330 100 360 Q125 370 150 366 Q175 370 200 360 C196 330 188 290 180 252 Z" opacity=".75" />
+                  <path className="m-ruffle" d="M100 360 Q108 370 116 362 Q124 372 133 364 Q141 373 150 366 Q159 373 167 364 Q176 372 184 362 Q192 370 200 360" />
+                </g>
+              </g>
+
+              <g data-arm-l><path className="m-sleeve m-outline" /><path className="m-cuff" /><circle className="m-skin m-outline" r="10" /></g>
+              <g data-arm-r><path className="m-sleeve m-outline" /><path className="m-cuff" /><circle className="m-skin m-outline" r="10" /></g>
+
+              {/* the long khimar falls over the arms */}
+              <g data-khimar className="m-o m-o-khimar">
+                <path className="m-outline" fill={g("hijab")} d="M98 242 C88 270 88 300 96 330 Q110 342 123 336 Q136 348 150 342 Q164 348 177 336 Q190 342 204 330 C212 300 212 270 202 242 Z" />
+                <path className="m-hijab-fold" d="M122 292 C119 308 118 322 121 336 M178 292 C181 308 182 322 179 336 M150 300 L150 340" />
+              </g>
+
+              <g data-head>
+                <path className="m-outline" fill={g("hijab")} d="M150 52 C206 52 236 92 236 146 C236 186 222 214 204 230 C222 240 230 256 226 270 C206 284 178 290 150 290 C122 290 94 284 74 270 C70 256 78 240 96 230 C78 214 64 186 64 146 C64 92 94 52 150 52 Z" />
+                <path className="m-hijab-shadow" d="M100 228 Q150 256 200 228 Q150 244 100 228 Z" />
+                <ellipse cx="150" cy="160" rx="56" ry="58" fill={g("face")} />
+                {/* the hijab band framing her face, with a lighter underscarf */}
+                <path className="m-outline" fill={g("hijab")} fillRule="evenodd" d="M150 60 C200 60 228 96 228 146 C228 190 206 226 150 232 C94 226 72 190 72 146 C72 96 100 60 150 60 Z M150 104 C184 104 204 128 204 160 C204 196 180 218 150 218 C120 218 96 196 96 160 C96 128 116 104 150 104 Z" />
+                <path className="m-underscarf" d="M98 140 C108 116 128 106 150 106 C172 106 192 116 202 140 C190 124 170 116 150 116 C130 116 110 124 98 140 Z" />
+                <path className="m-hijab-shine" d="M92 112 C100 88 122 72 150 68" />
+                <path className="m-hijab-fold" d="M98 120 C112 96 132 86 150 86 C168 86 188 96 202 120" />
+                <path className="m-hijab-fold" d="M90 196 C104 222 126 236 150 238" />
+                <g transform="translate(205 132)" className="m-pin-flower">
+                  <g className="m-pin"><circle cx="0" cy="-6" r="4.6" /><circle cx="5.7" cy="-1.9" r="4.6" /><circle cx="3.5" cy="4.9" r="4.6" /><circle cx="-3.5" cy="4.9" r="4.6" /><circle cx="-5.7" cy="-1.9" r="4.6" /></g>
+                  <circle r="3.4" fill="#f2c14e" />
+                </g>
+                <g transform="translate(206 128)" className="m-o m-o-tunic m-bow">
+                  <path d="M0 0 C-7 -10 -18 -9 -18 0 C-18 9 -7 10 0 0 Z" /><path d="M0 0 C7 -10 18 -9 18 0 C18 9 7 10 0 0 Z" /><circle r="4" />
+                </g>
+
+                <g data-brows>
+                  <path className="m-line m-brow" d="M114 140 Q124 134 134 139" />
+                  <path className="m-line m-brow" d="M166 139 Q176 134 186 140" />
+                </g>
+                <g data-eye-l transform="translate(126 164)">
+                  <ellipse rx="9.5" ry="12" fill={g("iris")} />
+                  <path className="m-lid" d="M-10.5 -4 C-8 -12.5 8 -12.5 10.5 -4" />
+                  <circle cx="3" cy="-4" r="3.6" fill="#fff" /><circle cx="-3" cy="4" r="1.6" fill="#fff" opacity=".85" />
+                  <path className="m-line m-lash" d="M-10 -6 L-15 -10 M-7 -10 L-10 -14" />
+                </g>
+                <g data-eye-r transform="translate(174 164)">
+                  <ellipse rx="9.5" ry="12" fill={g("iris")} />
+                  <path className="m-lid" d="M-10.5 -4 C-8 -12.5 8 -12.5 10.5 -4" />
+                  <circle cx="3" cy="-4" r="3.6" fill="#fff" /><circle cx="-3" cy="4" r="1.6" fill="#fff" opacity=".85" />
+                  <path className="m-line m-lash" d="M10 -6 L15 -10 M7 -10 L10 -14" />
+                </g>
+                <g data-eyes-happy opacity="0">
+                  <path className="m-line m-thick" d="M116 166 Q126 156 136 166" />
+                  <path className="m-line m-thick" d="M164 166 Q174 156 184 166" />
+                </g>
+                <path data-eye-wink className="m-line m-thick" d="M164 164 Q174 158 184 164" opacity="0" />
+                <path className="m-nose" d="M147 181 Q150 184 153 181" />
+                <ellipse cx="112" cy="186" rx="14" ry="9" fill={g("cheek")} />
+                <ellipse cx="188" cy="186" rx="14" ry="9" fill={g("cheek")} />
+                <path data-mouth className="m-line" d={MOUTH.smile} />
+                <g data-mouth-open opacity="0">
+                  <path d="M139 190 Q150 208 161 190 Q150 194 139 190 Z" className="m-mouth-fill" />
+                  <path d="M144 200 Q150 204 156 200 Q150 197 144 200 Z" className="m-tongue" />
+                </g>
+                <ellipse data-mouth-o cx="150" cy="196" rx="5" ry="6.5" className="m-mouth-fill" opacity="0" />
+              </g>
+
+              {/* pearl necklace over the drape (accessories) */}
+              <g className="m-pearls">
+                {Array.from({ length: 11 }, (_, i) => {
+                  const a = Math.PI * (0.18 + (i / 10) * 0.64);
+                  return <circle key={i} cx={f(150 - Math.cos(a) * 46)} cy={f(258 + Math.sin(a) * 24)} r="4.2" className="m-pearl" />;
+                })}
+              </g>
+
+              <g data-umbrella style={{ display: "none" }}>
+                <path d="M0 0 C0 6 -8 8 -9 2" className="m-umbrella-handle" />
+                <line x1="0" y1="0" x2="20" y2="-196" className="m-umbrella-handle" />
+                <g transform="translate(20 -196) rotate(6)">
+                  <path d="M-118 26 C-110 -40 -40 -70 0 -70 C40 -70 110 -40 118 26 Q99 12 79 26 Q59 12 39 26 Q19 12 0 26 Q-19 12 -39 26 Q-59 12 -79 26 Q-99 12 -118 26 Z" className="m-umbrella" />
+                  <path d="M-39 26 C-36 -20 -18 -60 0 -70 M39 26 C36 -20 18 -60 0 -70 M0 26 L0 -70" className="m-umbrella-rib" />
+                  <circle cx="0" cy="-72" r="4" className="m-hijab-dark" />
+                </g>
+              </g>
+            </g>
+
+            <g data-front>
+              <g data-flower style={{ display: "none" }}>
+                <path d="M0 0 C-2 -14 2 -26 0 -40" className="m-stem" />
+                <path d="M0 -20 C8 -24 14 -20 14 -14 C8 -14 4 -16 0 -20 Z" className="m-leaf" />
+                <g transform="translate(0 -46)">
+                  <circle cx="0" cy="-8" r="7" className="m-petal" /><circle cx="7.6" cy="-2.5" r="7" className="m-petal" /><circle cx="4.7" cy="6.5" r="7" className="m-petal" />
+                  <circle cx="-4.7" cy="6.5" r="7" className="m-petal" /><circle cx="-7.6" cy="-2.5" r="7" className="m-petal" />
+                  <circle r="4.6" fill="#f2c14e" />
+                </g>
+              </g>
+              <g data-bag style={{ display: "none" }}>
+                <path d="M-9 4 C-9 -10 9 -10 9 4" className="m-bag-handle" />
+                <path d="M-17 2 L17 2 L20 40 L-20 40 Z" className="m-bag" />
+                <g transform="translate(0 21)">
+                  <circle cx="0" cy="-4.5" r="3.6" className="m-bag-flower" /><circle cx="4.3" cy="-1.4" r="3.6" className="m-bag-flower" /><circle cx="2.7" cy="3.7" r="3.6" className="m-bag-flower" />
+                  <circle cx="-2.7" cy="3.7" r="3.6" className="m-bag-flower" /><circle cx="-4.3" cy="-1.4" r="3.6" className="m-bag-flower" /><circle r="2.4" fill="#f2c14e" />
+                </g>
+              </g>
+            </g>
+          </g>
+          <g data-fx />
+      </>
+  ), [uid]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div ref={wrap} className={`rose-mascot${className ? ` ${className}` : ""}`} data-mirrored={mirrored ? "true" : undefined} data-part="mascot">
       <span ref={bubble} className="rose-mascot-bubble" aria-live="polite" />
       <svg ref={svg} viewBox="0 0 300 420" role="img" aria-label={label} onClick={() => { api.current.joy(); api.current.wink(); }}>
-        <defs>
-          <radialGradient id={id("cheek")} cx=".5" cy=".5" r=".5"><stop offset="0" stopColor="#f08aa0" stopOpacity=".55" /><stop offset="1" stopColor="#f08aa0" stopOpacity="0" /></radialGradient>
-          <radialGradient id={id("face")} cx=".45" cy=".35" r=".75">
-            <stop offset="0" className="m-stop-skin-light" /><stop offset=".75" className="m-stop-skin" /><stop offset="1" className="m-stop-skin-dark" />
-          </radialGradient>
-          <radialGradient id={id("iris")} cx=".5" cy=".62" r=".6">
-            <stop offset="0" stopColor="#8a5236" /><stop offset=".55" stopColor="#4b2618" /><stop offset="1" stopColor="#2a1219" />
-          </radialGradient>
-          <linearGradient id={id("dress")} x1="0" x2="1">
-            <stop offset="0" className="m-stop-dress-light" /><stop offset=".6" className="m-stop-dress" /><stop offset="1" className="m-stop-dress-dark" />
-          </linearGradient>
-          <linearGradient id={id("frock")} x1="0" x2="1">
-            <stop offset="0" className="m-stop-frock-light" /><stop offset=".6" className="m-stop-frock" /><stop offset="1" className="m-stop-frock-dark" />
-          </linearGradient>
-          <linearGradient id={id("coat")} x1="0" x2="1">
-            <stop offset="0" className="m-stop-coat-light" /><stop offset=".6" className="m-stop-coat" /><stop offset="1" className="m-stop-coat-dark" />
-          </linearGradient>
-          <linearGradient id={id("hijab")} x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0" className="m-stop-hijab-light" /><stop offset=".55" className="m-stop-hijab" /><stop offset="1" className="m-stop-hijab-dark" />
-          </linearGradient>
-          <pattern id={id("flowers")} width="26" height="26" patternUnits="userSpaceOnUse">
-            <g transform="translate(7 8)" className="m-print"><circle cx="0" cy="-2.6" r="2.2" /><circle cx="2.5" cy="-.8" r="2.2" /><circle cx="1.5" cy="2.2" r="2.2" /><circle cx="-1.5" cy="2.2" r="2.2" /><circle cx="-2.5" cy="-.8" r="2.2" /></g>
-            <circle cx="7" cy="8" r="1.2" fill="#f2c14e" />
-            <circle cx="20" cy="20" r="1.6" className="m-print" />
-          </pattern>
-        </defs>
-
-        <ellipse data-shadow cx="150" cy="404" rx="70" ry="9" className="m-shadow" />
-
-        <g data-stage>
-          <g data-char>
-            <path data-tail className="m-hijab-dark m-tail" />
-
-            {/* feet (and the little trousers of the playful outfit) */}
-            <g data-foot-l>
-              <path className="m-o m-o-tunic m-pants" d="M124 356 L124 392 Q132 398 141 392 L142 356 Z" />
-              <ellipse cx="130" cy="396" rx="15" ry="8" className="m-shoe" />
-              <ellipse cx="125" cy="393" rx="5" ry="2.2" className="m-shoe-shine" />
-            </g>
-            <g data-foot-r>
-              <path className="m-o m-o-tunic m-pants" d="M158 356 L159 392 Q168 398 176 392 L176 356 Z" />
-              <ellipse cx="170" cy="396" rx="15" ry="8" className="m-shoe" />
-              <ellipse cx="165" cy="393" rx="5" ry="2.2" className="m-shoe-shine" />
-            </g>
-
-            <g data-body>
-              {/* abaya (also under the coat, khimar and Eid looks) */}
-              <g className="m-o m-o-abaya m-o-coat m-o-khimar m-o-eid">
-                <path className="m-outline" fill={g("dress")} d="M120 252 C110 290 100 340 90 388 Q120 402 150 398 Q180 402 210 388 C200 340 190 290 180 252 Z" />
-                <path className="m-side-shade" d="M180 252 C190 290 200 340 210 388 Q201 393 193 394 C187 340 177 292 170 256 Z" />
-                <path className="m-dress-fold" d="M138 300 C134 330 130 360 126 390" />
-                <path className="m-dress-fold" d="M162 300 C166 330 170 360 174 390" />
-                <path className="m-placket" d="M150 296 L150 394" />
-                <path className="m-hem" d="M94 380 Q122 394 150 390 Q178 394 206 380" />
-                <path className="m-belt" d="M124 300 Q150 308 176 300 L177 309 Q150 317 123 309 Z" />
-                <circle cx="150" cy="306" r="5.5" className="m-belt-pin" />
-              </g>
-              {/* Eid: gold embroidery */}
-              <g className="m-o m-o-eid">
-                <path className="m-gold-line" d="M94 382 Q122 396 150 392 Q178 396 206 382" />
-                <path className="m-gold-line m-thin" d="M98 370 Q124 382 150 378 Q176 382 202 370" />
-                {[316, 330, 344, 358, 372].map((y) => <circle key={y} cx="150" cy={y} r="2.2" className="m-gold" />)}
-                <path className="m-gold" d="M123 300 Q150 309 177 300 L177 305 Q150 314 123 305 Z" />
-                <path className="m-gold" d="M238 120 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 Z" opacity=".8" />
-                <path className="m-gold" d="M58 200 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z" opacity=".7" />
-              </g>
-              {/* dress: fitted top, full floral skirt with a scalloped hem */}
-              <g className="m-o m-o-dress">
-                <path className="m-outline" fill={g("frock")} d="M122 252 C120 270 124 288 128 300 L172 300 C176 288 180 270 178 252 Z" />
-                <path className="m-outline" fill={g("frock")} d="M128 300 C112 330 94 362 82 390 Q100 402 116 394 Q133 404 150 396 Q167 404 184 394 Q200 402 218 390 C206 362 188 330 172 300 Z" />
-                <path fill={g("flowers")} d="M128 300 C112 330 94 362 82 390 Q100 402 116 394 Q133 404 150 396 Q167 404 184 394 Q200 402 218 390 C206 362 188 330 172 300 Z" opacity=".9" />
-                <path className="m-dress-fold" d="M140 310 C132 340 120 370 112 394" />
-                <path className="m-dress-fold" d="M160 310 C168 340 180 370 188 394" />
-                <g transform="translate(150 300)" className="m-bow">
-                  <path d="M0 0 C-6 -8 -16 -8 -16 0 C-16 8 -6 8 0 0 Z" /><path d="M0 0 C6 -8 16 -8 16 0 C16 8 6 8 0 0 Z" /><circle r="3.4" />
-                </g>
-              </g>
-              {/* winter coat over the abaya */}
-              <g className="m-o m-o-coat">
-                <path className="m-outline" fill={g("coat")} d="M118 252 C108 292 100 336 94 372 Q122 380 150 377 Q178 380 206 372 C200 336 192 292 182 252 Z" />
-                <path className="m-coat-seam" d="M150 290 L150 376" />
-                {[304, 324, 344, 362].map((y) => <circle key={y} cx="142" cy={y} r="3.2" className="m-button" />)}
-                {[304, 324, 344, 362].map((y) => <circle key={`r${y}`} cx="158" cy={y} r="3.2" className="m-button" />)}
-                <path className="m-coat-seam" d="M112 340 Q122 344 132 340 M168 340 Q178 344 188 340" />
-                <path className="m-belt" d="M121 312 Q150 320 179 312 L180 321 Q150 329 120 321 Z" />
-              </g>
-              {/* playful tunic */}
-              <g className="m-o m-o-tunic">
-                <path className="m-outline" fill={g("frock")} d="M120 252 C112 290 104 330 100 360 Q125 370 150 366 Q175 370 200 360 C196 330 188 290 180 252 Z" />
-                <path fill={g("flowers")} d="M120 252 C112 290 104 330 100 360 Q125 370 150 366 Q175 370 200 360 C196 330 188 290 180 252 Z" opacity=".75" />
-                <path className="m-ruffle" d="M100 360 Q108 370 116 362 Q124 372 133 364 Q141 373 150 366 Q159 373 167 364 Q176 372 184 362 Q192 370 200 360" />
-              </g>
-            </g>
-
-            <g data-arm-l><path className="m-sleeve m-outline" /><path className="m-cuff" /><circle className="m-skin m-outline" r="10" /></g>
-            <g data-arm-r><path className="m-sleeve m-outline" /><path className="m-cuff" /><circle className="m-skin m-outline" r="10" /></g>
-
-            {/* the long khimar falls over the arms */}
-            <g data-khimar className="m-o m-o-khimar">
-              <path className="m-outline" fill={g("hijab")} d="M98 242 C88 270 88 300 96 330 Q110 342 123 336 Q136 348 150 342 Q164 348 177 336 Q190 342 204 330 C212 300 212 270 202 242 Z" />
-              <path className="m-hijab-fold" d="M122 292 C119 308 118 322 121 336 M178 292 C181 308 182 322 179 336 M150 300 L150 340" />
-            </g>
-
-            <g data-head>
-              <path className="m-outline" fill={g("hijab")} d="M150 52 C206 52 236 92 236 146 C236 186 222 214 204 230 C222 240 230 256 226 270 C206 284 178 290 150 290 C122 290 94 284 74 270 C70 256 78 240 96 230 C78 214 64 186 64 146 C64 92 94 52 150 52 Z" />
-              <path className="m-hijab-shadow" d="M100 228 Q150 256 200 228 Q150 244 100 228 Z" />
-              <ellipse cx="150" cy="160" rx="56" ry="58" fill={g("face")} />
-              {/* the hijab band framing her face, with a lighter underscarf */}
-              <path className="m-outline" fill={g("hijab")} fillRule="evenodd" d="M150 60 C200 60 228 96 228 146 C228 190 206 226 150 232 C94 226 72 190 72 146 C72 96 100 60 150 60 Z M150 104 C184 104 204 128 204 160 C204 196 180 218 150 218 C120 218 96 196 96 160 C96 128 116 104 150 104 Z" />
-              <path className="m-underscarf" d="M98 140 C108 116 128 106 150 106 C172 106 192 116 202 140 C190 124 170 116 150 116 C130 116 110 124 98 140 Z" />
-              <path className="m-hijab-shine" d="M92 112 C100 88 122 72 150 68" />
-              <path className="m-hijab-fold" d="M98 120 C112 96 132 86 150 86 C168 86 188 96 202 120" />
-              <path className="m-hijab-fold" d="M90 196 C104 222 126 236 150 238" />
-              <g transform="translate(205 132)" className="m-pin-flower">
-                <g className="m-pin"><circle cx="0" cy="-6" r="4.6" /><circle cx="5.7" cy="-1.9" r="4.6" /><circle cx="3.5" cy="4.9" r="4.6" /><circle cx="-3.5" cy="4.9" r="4.6" /><circle cx="-5.7" cy="-1.9" r="4.6" /></g>
-                <circle r="3.4" fill="#f2c14e" />
-              </g>
-              <g transform="translate(206 128)" className="m-o m-o-tunic m-bow">
-                <path d="M0 0 C-7 -10 -18 -9 -18 0 C-18 9 -7 10 0 0 Z" /><path d="M0 0 C7 -10 18 -9 18 0 C18 9 7 10 0 0 Z" /><circle r="4" />
-              </g>
-
-              <g data-brows>
-                <path className="m-line m-brow" d="M114 140 Q124 134 134 139" />
-                <path className="m-line m-brow" d="M166 139 Q176 134 186 140" />
-              </g>
-              <g data-eye-l transform="translate(126 164)">
-                <ellipse rx="9.5" ry="12" fill={g("iris")} />
-                <path className="m-lid" d="M-10.5 -4 C-8 -12.5 8 -12.5 10.5 -4" />
-                <circle cx="3" cy="-4" r="3.6" fill="#fff" /><circle cx="-3" cy="4" r="1.6" fill="#fff" opacity=".85" />
-                <path className="m-line m-lash" d="M-10 -6 L-15 -10 M-7 -10 L-10 -14" />
-              </g>
-              <g data-eye-r transform="translate(174 164)">
-                <ellipse rx="9.5" ry="12" fill={g("iris")} />
-                <path className="m-lid" d="M-10.5 -4 C-8 -12.5 8 -12.5 10.5 -4" />
-                <circle cx="3" cy="-4" r="3.6" fill="#fff" /><circle cx="-3" cy="4" r="1.6" fill="#fff" opacity=".85" />
-                <path className="m-line m-lash" d="M10 -6 L15 -10 M7 -10 L10 -14" />
-              </g>
-              <g data-eyes-happy opacity="0">
-                <path className="m-line m-thick" d="M116 166 Q126 156 136 166" />
-                <path className="m-line m-thick" d="M164 166 Q174 156 184 166" />
-              </g>
-              <path data-eye-wink className="m-line m-thick" d="M164 164 Q174 158 184 164" opacity="0" />
-              <path className="m-nose" d="M147 181 Q150 184 153 181" />
-              <ellipse cx="112" cy="186" rx="14" ry="9" fill={g("cheek")} />
-              <ellipse cx="188" cy="186" rx="14" ry="9" fill={g("cheek")} />
-              <path data-mouth className="m-line" d={MOUTH.smile} />
-              <g data-mouth-open opacity="0">
-                <path d="M139 190 Q150 208 161 190 Q150 194 139 190 Z" className="m-mouth-fill" />
-                <path d="M144 200 Q150 204 156 200 Q150 197 144 200 Z" className="m-tongue" />
-              </g>
-              <ellipse data-mouth-o cx="150" cy="196" rx="5" ry="6.5" className="m-mouth-fill" opacity="0" />
-            </g>
-
-            {/* pearl necklace over the drape (accessories) */}
-            <g className="m-pearls">
-              {Array.from({ length: 11 }, (_, i) => {
-                const a = Math.PI * (0.18 + (i / 10) * 0.64);
-                return <circle key={i} cx={f(150 - Math.cos(a) * 46)} cy={f(258 + Math.sin(a) * 24)} r="4.2" className="m-pearl" />;
-              })}
-            </g>
-
-            <g data-umbrella style={{ display: "none" }}>
-              <path d="M0 0 C0 6 -8 8 -9 2" className="m-umbrella-handle" />
-              <line x1="0" y1="0" x2="20" y2="-196" className="m-umbrella-handle" />
-              <g transform="translate(20 -196) rotate(6)">
-                <path d="M-118 26 C-110 -40 -40 -70 0 -70 C40 -70 110 -40 118 26 Q99 12 79 26 Q59 12 39 26 Q19 12 0 26 Q-19 12 -39 26 Q-59 12 -79 26 Q-99 12 -118 26 Z" className="m-umbrella" />
-                <path d="M-39 26 C-36 -20 -18 -60 0 -70 M39 26 C36 -20 18 -60 0 -70 M0 26 L0 -70" className="m-umbrella-rib" />
-                <circle cx="0" cy="-72" r="4" className="m-hijab-dark" />
-              </g>
-            </g>
-          </g>
-
-          <g data-front>
-            <g data-flower style={{ display: "none" }}>
-              <path d="M0 0 C-2 -14 2 -26 0 -40" className="m-stem" />
-              <path d="M0 -20 C8 -24 14 -20 14 -14 C8 -14 4 -16 0 -20 Z" className="m-leaf" />
-              <g transform="translate(0 -46)">
-                <circle cx="0" cy="-8" r="7" className="m-petal" /><circle cx="7.6" cy="-2.5" r="7" className="m-petal" /><circle cx="4.7" cy="6.5" r="7" className="m-petal" />
-                <circle cx="-4.7" cy="6.5" r="7" className="m-petal" /><circle cx="-7.6" cy="-2.5" r="7" className="m-petal" />
-                <circle r="4.6" fill="#f2c14e" />
-              </g>
-            </g>
-            <g data-bag style={{ display: "none" }}>
-              <path d="M-9 4 C-9 -10 9 -10 9 4" className="m-bag-handle" />
-              <path d="M-17 2 L17 2 L20 40 L-20 40 Z" className="m-bag" />
-              <g transform="translate(0 21)">
-                <circle cx="0" cy="-4.5" r="3.6" className="m-bag-flower" /><circle cx="4.3" cy="-1.4" r="3.6" className="m-bag-flower" /><circle cx="2.7" cy="3.7" r="3.6" className="m-bag-flower" />
-                <circle cx="-2.7" cy="3.7" r="3.6" className="m-bag-flower" /><circle cx="-4.3" cy="-1.4" r="3.6" className="m-bag-flower" /><circle r="2.4" fill="#f2c14e" />
-              </g>
-            </g>
-          </g>
-        </g>
-        <g data-fx />
+        {drawing}
       </svg>
     </div>
   );

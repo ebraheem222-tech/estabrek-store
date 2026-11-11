@@ -81,7 +81,9 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
   const seedsRef = useRef(seeds);
   seedsRef.current = seeds;
   const wearRef = useRef<((seed: string) => void) | null>(null);
-  useEffect(() => { wearRef.current?.(seeds[lead] ?? seeds[0]); }, [seeds]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A photo's colour arriving while the section shows: the page and the 3D piece take it together (the piece
+  // used to wait for the next scroll, so they didn't match meanwhile).
+  useEffect(() => { const seed = seeds[lead] ?? seeds[0]; if (seed) tint.current = seed; wearRef.current?.(seed); }, [seeds]); // eslint-disable-line react-hooks/exhaustive-deps
   const weights = useRef<number[]>(keys.map((k) => (k === chapters[0]?.key ? 1 : 0)));
   const tint = useRef<string>(chapters[0]?.seed ?? "#d99fb6");
   const [lead, setLead] = useState(0);
