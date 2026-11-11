@@ -155,7 +155,7 @@ test("scrolling plays the campaign clip forwards and backwards, with no pause bu
   await expect.poll(() => section.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime)).toBeLessThan(2);
 });
 
-test("the campaign clip takes the picked colour, has no timeline bar, and the shop's colours return after a long break", async ({ page }) => {
+test("the campaign clip takes the picked colour, has no timeline bar, and an open page keeps it however long", async ({ page }) => {
   await page.clock.install();
   await page.goto("/");
   const section = page.locator(".rose-video");
@@ -176,12 +176,11 @@ test("the campaign clip takes the picked colour, has no timeline bar, and the sh
   await page.clock.fastForward(120_000);
   await expect(page.locator("html")).toHaveAttribute("data-storefront-color", "#2f3b57");
 
-  // Away for 3 minutes: back to the shop's own colours, and forgotten for the next visit.
+  // Away a long while: the open page keeps its colour (it used to fade back under her eyes; the next visit after
+  // such a break opens in the shop's own colours, see the test below).
   await page.clock.fastForward(185_000);
-  await expect(page.locator("html")).not.toHaveAttribute("data-storefront-color", /.+/);
-  await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
-  await expect(dye).not.toHaveAttribute("data-on", "true");
-  expect(await page.evaluate(() => localStorage.getItem("estabrek_theme_color"))).toBeNull();
+  await expect(page.locator("html")).toHaveAttribute("data-storefront-color", "#2f3b57");
+  await expect(dye).toHaveAttribute("data-on", "true");
 });
 
 test("a visit after a long break opens in the shop's own colours", async ({ page }) => {

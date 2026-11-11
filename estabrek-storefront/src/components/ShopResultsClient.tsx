@@ -49,6 +49,10 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   const items = useMemo(() => pages.flatMap((p) => p?.items ?? []), [pages]);
   useEffect(() => {
     if (appearance !== "rose" || !settings.scrollAnimationsEnabled || !resultsRoot.current) return;
+    // Browsers with scroll timelines rise the cards by CSS (rose-showcase.css, rose-card-in), played by the
+    // graphics card with the scroll. This script did it a second time on top, writing every card's transform
+    // on the main thread as the grid scrolled in.
+    if (typeof CSS !== "undefined" && CSS.supports?.("animation-timeline: view()")) return;
     gsap.registerPlugin(ScrollTrigger);
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {

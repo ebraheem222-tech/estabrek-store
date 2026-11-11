@@ -197,7 +197,9 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     const line = light ? "#cfa7bc" : "#ac6c8b";
     const values = [background, ink, muted, line, background, ink, muted, line, background, ink, muted, line];
     properties.forEach((name, i) => el.style.setProperty(name, values[i]));
-    el.dataset.roseTone = light ? "light" : "dark";
+    // Only when it changes: written again on each step of a scroll's palette, it restyled the page each time.
+    const tone = light ? "light" : "dark";
+    if (el.dataset.roseTone !== tone) el.dataset.roseTone = tone;
   }, []);
   const reset = useCallback(() => {
     if (root.current?.dataset.storefrontColor) return;

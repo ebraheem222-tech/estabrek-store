@@ -154,8 +154,11 @@
 .cinematic-interior-shell .rose-product-discount .rose-seal {
   display: block; position: absolute; inset: 0; width: 100%; height: 100%;
   fill: var(--selection-accent, #7d2448); filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--selection-ink, #4d2039) 30%, transparent));
-  animation: rose-seal-turn 22s linear infinite; z-index: 0;
+  z-index: 0;
 }
+/* The seal turns while the card is pointed at (turning on every card for ever, the window was redrawn at the
+   screen's rate the whole time a grid showed). */
+.cinematic-interior-shell .rose-product-tile:hover .rose-product-discount .rose-seal { animation: rose-seal-turn 22s linear infinite; }
 .cinematic-interior-shell .rose-product-discount > span { position: relative; z-index: 1; transform: rotate(-8deg); direction: ltr; unicode-bidi: isolate; }
 @keyframes rose-seal-turn { to { transform: rotate(360deg); } }
 .cinematic-interior-shell .rose-product-tile .rose-badge { top: 12px; inset-inline-start: 12px; z-index: 5; }
@@ -362,7 +365,7 @@
 }
 /* A category's photo in the arch breathes slowly (a slow push in and out). */
 @media (prefers-reduced-motion: no-preference) {
-  .cinematic-interior-shell .rose-stage-photo img { animation: rose-breathe 16s ease-in-out infinite alternate; }
+  .cinematic-interior-shell .rose-stage-photo img { animation: rose-breathe 16s ease-in-out 2 alternate; }
 }
 @keyframes rose-breathe { from { scale: 1.02; } to { scale: 1.14; translate: 0 -2%; } }
 /* A fine line drawn around the arch as the page opens. */
@@ -422,34 +425,37 @@
 
 /* ---------------------------------------------------------------- 5. motion on the other pages */
 
-/* The pictures of the category, About and Contact unveil from below and drift slowly while scrolling. */
+/* The pictures of the category, About and Contact unveil from below and drift slowly while scrolling.
+   Everything here moves by opacity and transforms on layers of their own, so the graphics card plays it with the
+   scroll: the unveil and the headings' line were clip-paths, which the page repainted whole (every element, the
+   size of the screen) on each frame of a scroll, on every inner page (Contact, About, a category, a product). */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .cinematic-interior-shell :is(.rose-category-intro .rose-shop-intro-image, .rose-about-portrait, .rose-about-fabric, .rose-contact-photo) {
-      animation: rose-unveil linear both; animation-timeline: view(); animation-range: entry 0% entry 85%;
+      animation: rose-unveil linear both; animation-timeline: view(); animation-range: entry 0% entry 85%; will-change: transform, opacity;
     }
     .cinematic-interior-shell :is(.rose-category-intro .rose-shop-intro-image, .rose-about-portrait, .rose-about-fabric, .rose-contact-photo) img {
-      animation: rose-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%;
+      animation: rose-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; will-change: transform;
     }
     /* The product's photo comes a little closer as it scrolls away. */
     .cinematic-interior-shell .rose-pdp-frame img {
-      animation: rose-closer linear both; animation-timeline: view(); animation-range: exit 0% exit 100%;
+      animation: rose-closer linear both; animation-timeline: view(); animation-range: exit 0% exit 100%; will-change: transform;
     }
-    /* Headings of the inner pages get a drawn line under them as they come into view. */
+    /* Headings of the inner pages get a drawn line under them as they come into view (it grows from its start). */
     .cinematic-interior-shell :is(.rose-pdp-related h2, .rose-about-story h2, .rose-contact-intro h1)::after {
-      animation: rose-flourish linear both; animation-timeline: view(); animation-range: entry 40% cover 45%;
+      animation: rose-flourish linear both; animation-timeline: view(); animation-range: entry 40% cover 45%; will-change: transform, opacity;
     }
     [dir="rtl"] .cinematic-interior-shell :is(.rose-pdp-related h2, .rose-about-story h2, .rose-contact-intro h1)::after,
-    .cinematic-interior-shell [dir="rtl"] :is(.rose-pdp-related h2, .rose-about-story h2, .rose-contact-intro h1)::after { animation-name: rose-flourish-rtl; }
+    .cinematic-interior-shell [dir="rtl"] :is(.rose-pdp-related h2, .rose-about-story h2, .rose-contact-intro h1)::after { animation-name: rose-flourish-rtl; transform-origin: 100% 50%; }
   }
 }
-@keyframes rose-unveil { from { clip-path: inset(16% 6% 0 6%); opacity: .3; } to { clip-path: inset(0); opacity: 1; } }
+@keyframes rose-unveil { from { opacity: .3; translate: 0 8%; scale: .94; } to { opacity: 1; translate: 0 0; scale: 1; } }
 @keyframes rose-drift { from { scale: 1.12; translate: 0 -4%; } to { scale: 1.12; translate: 0 4%; } }
 @keyframes rose-closer { to { scale: 1.08; } }
-@keyframes rose-flourish { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
-@keyframes rose-flourish-rtl { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0); } }
+@keyframes rose-flourish { from { opacity: 0; scale: .3 1; } to { opacity: 1; scale: 1 1; } }
+@keyframes rose-flourish-rtl { from { opacity: 0; scale: .3 1; } to { opacity: 1; scale: 1 1; } }
 .cinematic-interior-shell :is(.rose-pdp-related h2, .rose-about-story h2, .rose-contact-intro h1)::after {
-  content: ""; display: block; width: 132px; height: 14px; margin-top: 12px;
+  content: ""; display: block; width: 132px; height: 14px; margin-top: 12px; transform-origin: 0 50%;
   background: var(--selection-accent, #a43b64);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 14' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 8c14-8 26 6 40 0s26-8 40 0 26 6 40-1'/%3E%3Ccircle cx='128' cy='7' r='2.4' fill='black' stroke='none'/%3E%3C/svg%3E") 0 50% / 100% 100% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 14' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 8c14-8 26 6 40 0s26-8 40 0 26 6 40-1'/%3E%3Ccircle cx='128' cy='7' r='2.4' fill='black' stroke='none'/%3E%3C/svg%3E") 0 50% / 100% 100% no-repeat;
@@ -518,7 +524,7 @@
 @media (prefers-reduced-motion: no-preference) {
   /* Each drawing pops in (a little past its size and back), one after another, then floats. */
   .cinematic-interior-shell .rose-motif {
-    animation: rose-pop .7s cubic-bezier(.3, 1.6, .5, 1) var(--d) both, rose-float 7s ease-in-out calc(var(--d) + .7s) infinite alternate;
+    animation: rose-pop .7s cubic-bezier(.3, 1.6, .5, 1) var(--d) both, rose-float 7s ease-in-out calc(var(--d) + .7s) 2 alternate;
   }
 }
 @keyframes rose-pop { from { opacity: 0; scale: .2; } 60% { opacity: .62; scale: 1.15; } to { opacity: .5; scale: 1; } }
@@ -567,9 +573,8 @@
 .rose-wave-0 { opacity: .35; }
 .rose-wave-1 { opacity: .6; }
 @media (prefers-reduced-motion: no-preference) {
-  .rose-wave-0 { animation: rose-wave-flow 16s linear infinite; }
-  .rose-wave-1 { animation: rose-wave-flow 11s linear infinite reverse; }
-  .rose-wave-2 { animation: rose-wave-flow 21s linear infinite; }
+  /* The footer's waves stand still: flowing (even for one slow pass), they kept the whole window redrawn at the
+     screen's rate while the footer showed, and on a short page it shows most of the time. */
 }
 @keyframes rose-wave-flow { to { transform: translateX(-720px); } }
 
@@ -697,7 +702,7 @@ html.lenis, html.lenis body { height: auto; }
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--selection-seed, var(--mood)) 14%, transparent);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .cinematic-interior-shell .rose-pdp-grid > .rose-pdp-backdrop { animation: rose-breathe-light 12s ease-in-out infinite alternate; }
+  .cinematic-interior-shell .rose-pdp-grid > .rose-pdp-backdrop { animation: rose-breathe-light 12s ease-in-out 2 alternate; }
 }
 @keyframes rose-breathe-light { to { background-position: 30% 20%, 70% 80%, 0 0; } }
 @media (max-width: 900px) {
