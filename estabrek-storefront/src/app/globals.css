@@ -14061,28 +14061,29 @@ html {
   isolation: isolate;
 }
 
+/* A picture still loading: a soft light slides across it. The light moves by transform (the graphics card's
+   own work): sliding the background itself restyled and repainted every waiting picture on every frame, also
+   those far down the page, and most while scrolling. */
 .lqip-image-skeleton {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  background:
-    linear-gradient(
-      110deg,
-      color-mix(in srgb, var(--surface-2, #1f1f23) 94%, transparent) 8%,
-      color-mix(in srgb, var(--text, #ffffff) 8%, transparent) 26%,
-      color-mix(in srgb, var(--surface-2, #1f1f23) 94%, transparent) 42%
-    );
-  background-size: 220% 100%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-2, #1f1f23) 94%, transparent);
+}
+.lqip-image-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--text, #ffffff) 8%, transparent) 50%, transparent 70%);
+  translate: -100% 0;
   animation: lqip-image-shimmer 1.25s linear infinite;
 }
 
 @keyframes lqip-image-shimmer {
-  from {
-    background-position-x: 180%;
-  }
   to {
-    background-position-x: -60%;
+    translate: 100% 0;
   }
 }
 

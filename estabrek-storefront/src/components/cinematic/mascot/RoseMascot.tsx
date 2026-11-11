@@ -400,18 +400,18 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       }
     };
 
-    // ~30 frames a second is plenty for a 2D character and leaves the page's 3D scenes the rest.
-    // On a phone, while the page scrolls, ~15: each drawing restyles her whole SVG, and the
-    // scroll through the opening film already took the phone's whole frame. Her motion
-    // follows the clock, so she keeps her speed.
-    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    // ~30 frames a second is plenty for a 2D character and leaves the page's 3D scenes the rest; ~15 while the
+    // page scrolls (below). Her motion follows the clock, so she keeps her speed.
     let last = 0;
     // While the page rests (lib/pageIdle.ts) she stands still: her last drawing stays, and nothing is drawn
     // until someone touches the page again. Her idle breathing and swaying kept the processor busy for nobody.
     let sleeping = isPageIdle();
     const loop = (ms: number) => {
       frame = 0;
-      if (ms - last >= (coarse && pageScrolling() ? 64 : 32)) { last = ms; draw(ms); }
+      // While the page scrolls, ~15 a second on every screen: her small motions aren't seen mid-scroll, and each
+      // drawing restyles and repaints her whole SVG (measured on a computer: a quarter of the graphics work of a
+      // category page's scroll). ~30 otherwise.
+      if (ms - last >= (pageScrolling() ? 64 : 32)) { last = ms; draw(ms); }
       if (visible && !reduce && !sleeping) frame = requestAnimationFrame(loop);
     };
     const offIdle = onPageIdle((rest) => {

@@ -216,3 +216,10 @@
   .cinematic-interior-shell .rose-pdp-add { min-height: 54px !important; }
   .cinematic-interior-shell .rose-pdp-trust { grid-template-columns: repeat(3, 1fr); padding: 12px 6px; }
 }
+
+/* The small chips on cards and on the product's picture (badges, seals, the quick-add and preview buttons, the
+   heart and 360° pills) have no background blur: every one on screen was re-blurred on every frame of a scroll,
+   dozens on a category page, and their backgrounds are 88–96% opaque, so the look doesn't change. */
+:is(.rose-product-tile :is(.rose-badge, .rose-seal, .rose-product-preview, .rose-product-add > button), .rose-pdp-wish, .rose-pdp-spin, .rose-pdp-frame .rose-badge) {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}

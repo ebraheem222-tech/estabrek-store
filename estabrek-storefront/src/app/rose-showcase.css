@@ -735,6 +735,11 @@ html.lenis, html.lenis body { height: auto; }
 }
 [dir="rtl"] .rose-minibag-panel, :root[dir="rtl"] .rose-minibag-panel { --from: -1; }
 .rose-minibag[data-open] { pointer-events: auto; }
+/* Closed, the small bag is not drawn at all (after its closing glide): its full-screen scrim and its panel kept
+   their background blur on every page, so the graphics card re-blurred the whole screen on every frame of every
+   scroll (measured on the category page: half of its graphics work while scrolling). */
+.rose-minibag:not([data-open]) { visibility: hidden; transition: visibility 0s linear .4s; }
+.rose-minibag:not([data-open]) :is(.rose-minibag-scrim, .rose-minibag-panel) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 .rose-minibag[data-open] .rose-minibag-scrim { opacity: 1; }
 .rose-minibag[data-open] .rose-minibag-panel { translate: 0 0; }
 
