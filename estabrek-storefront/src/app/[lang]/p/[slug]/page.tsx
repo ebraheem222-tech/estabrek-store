@@ -160,6 +160,10 @@ const productLd: any = {
       : "https://schema.org/OutOfStock",
     url: new URL(`/p/${encodeURIComponent((product as any).slug ?? params.slug)}`, SITE).toString(),
   },
+  // Its approved reviews, for the stars in search results.
+  aggregateRating: (product as any).rating?.count
+    ? { "@type": "AggregateRating", ratingValue: (product as any).rating.average, reviewCount: (product as any).rating.count, bestRating: 5, worstRating: 1 }
+    : undefined,
 };
 
 

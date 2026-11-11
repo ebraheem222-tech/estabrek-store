@@ -45,6 +45,7 @@ import { useSiteFeatures } from "@/store/siteFeatures";
 import { RoseStockAlert } from "./RoseStockAlert";
 import { RoseRequestForm } from "./RoseRequestForm";
 import { RoseReviewSummary, RoseShopTheLook, RoseSizeAdvice } from "./RoseProductAi";
+import { RatingLink, RoseReviews } from "./RoseReviews";
 import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { translatedTypeLabel } from "@/lib/localize";
@@ -289,6 +290,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </Link>
           )}
           <h1 id="pdp-title">{product.title}</h1>
+          <RatingLink rating={product.rating} />
           <div className="rose-pdp-price">
             {price != null && price > 0 ? <strong>{formatMoney(price, currency)}</strong> : <strong>{tr(lang, "تواصلي معنا للسعر", "Ask us for the price")}</strong>}
             {discount && compareAt ? <s>{formatMoney(compareAt, currency)}</s> : null}
@@ -480,6 +482,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
       </div>
 
       {ai.shopTheLook ? <RoseShopTheLook productId={product.id} ar={ar} /> : null}
+
+      <RoseReviews productId={product.id} rating={product.rating} />
 
       {related.length > 0 && (
         <section className="rose-pdp-related" aria-labelledby="pdp-related">

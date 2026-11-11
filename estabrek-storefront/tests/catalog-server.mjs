@@ -1142,6 +1142,34 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       return;
     }
     if (pathname === "/__test/ai-log") return res.end(JSON.stringify(globalThis.aiLog ?? []));
+    // The product page's reviews (reviews.spec.ts): { rating: { count, average }, list: [...] } gives "coat"
+    // (/p/rose-dress) its reviews; {} takes them away. Every review sent is kept in /__test/review-log.
+    if (pathname === "/__test/reviews" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        globalThis.reviewsFixture = data.rating ? data : null;
+        globalThis.reviewLog = [];
+        res.end("{}");
+      });
+      return;
+    }
+    if (pathname === "/__test/review-log") return res.end(JSON.stringify(globalThis.reviewLog ?? []));
+    if (/^\/v1\/ugc\/products\/[^/]+\/reviews$/.test(pathname)) {
+      const id = decodeURIComponent(pathname.split("/").at(-2));
+      return res.end(JSON.stringify(id === "coat" ? globalThis.reviewsFixture?.list ?? [] : []));
+    }
+    if (/^\/v1\/catalog\/products\/[^/]+\/reviews$/.test(pathname) && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        (globalThis.reviewLog ??= []).push({ productId: decodeURIComponent(pathname.split("/").at(-2)), body: JSON.parse(body || "{}"), auth: req.headers.authorization ?? null });
+        res.statusCode = 201;
+        res.end(JSON.stringify({ id: "review-new", status: "PENDING" }));
+      });
+      return;
+    }
     if (pathname.startsWith("/v1/ai/")) {
       const ai = site.header.ai ?? {};
       const feature = pathname.startsWith("/v1/ai/search") ? "smartSearch" : pathname.startsWith("/v1/ai/look") ? "shopTheLook" : pathname.startsWith("/v1/ai/size") ? "sizeAdvice" : "reviewSummary";
@@ -1419,7 +1447,10 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
     }
     if (pathname.includes("/catalog/products/slug/")) {
       const slug = decodeURIComponent(pathname.split("/").at(-1));
-      return res.end(JSON.stringify([...products, ...handoverProducts].find(product => product.slug === slug) ?? null));
+      const found = [...products, ...handoverProducts].find(product => product.slug === slug) ?? null;
+      // Its reviews in short, when a test gave it some (/__test/reviews).
+      if (found?.id === "coat" && globalThis.reviewsFixture) return res.end(JSON.stringify({ ...found, rating: globalThis.reviewsFixture.rating }));
+      return res.end(JSON.stringify(found));
     }
     if (/\/catalog\/products\/[^/]+$/.test(pathname)) {
       const id = decodeURIComponent(pathname.split("/").at(-1));

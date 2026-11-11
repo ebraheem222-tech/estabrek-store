@@ -87,12 +87,16 @@ export function deleteComment(id: string) {
 }
 
 /* Optional: public helpers if you ever want standalone UGC fetchers */
-export function listApprovedReviewsByProduct(productId: string) {
-  return prisma.review.findMany({
+export async function listApprovedReviewsByProduct(productId: string) {
+  // Only what a product page shows. It used to include the whole account of whoever wrote it (email, phone,
+  // sizes, favourite colour) for anyone to read.
+  const rows = await prisma.review.findMany({
     where: { productId, status: "APPROVED" },
     orderBy: { createdAt: "desc" },
-    include: { user: true },
+    take: 50,
+    select: { id: true, rating: true, title: true, body: true, createdAt: true, user: { select: { name: true } } },
   });
+  return rows.map(({ user, ...review }) => ({ ...review, author: user?.name?.trim().split(/\s+/)[0] || null }));
 }
 export function listApprovedCommentsByProduct(productId: string) {
   return prisma.productComment.findMany({
