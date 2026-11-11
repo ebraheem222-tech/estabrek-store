@@ -446,12 +446,8 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       const now = performance.now() / 1000;
       // New colours with the same clothes: at once.
       if (s.shownOutfit === s.outfit && s.shownPearls === s.pearls) { wearColours(); return; }
-      // Asked for a while ago (she was out of sight, or the page rested): put on at once, no twirl.
-      if (now - s.swapAt > 0.6 && twirlFor !== s.swapAt) {
-        s.shownOutfit = s.outfit; s.shownPearls = s.pearls;
-        showOutfit(s.shownOutfit, s.shownPearls);
-        return;
-      }
+      // The twirl starts when she notices the change (a busy frame, or her coming back into view, may be a while
+      // after it was asked for: still a twirl, not a jump into the new clothes).
       if (twirlFor !== s.swapAt) {
         twirlFor = s.swapAt;
         twirlFrom = now;

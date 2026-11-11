@@ -4,12 +4,30 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 
 import { usePageIdle } from "@/lib/pageIdle";
+import { pageScrolling } from "@/lib/pageRest";
 import {
   onMotionLevel,
   sceneDpr,
   sceneFrameGap,
   watchSceneFrames,
 } from "@/lib/motionBudget";
+
+/**
+ * Full pace only while something moves a scene: the scroll (scenes follow it), or the pointer (models lean
+ * towards it). Otherwise a scene's own slow motion (a model turning, snow, smoke) is drawn 30 times a second.
+ * Drawn at the screen's 120–144 a second while nobody touched anything, the 3D kept a laptop's graphics card as
+ * busy as a game; a site's slow ambient motion looks the same at 30.
+ */
+const AMBIENT_GAP = 1000 / 30;
+let lastPointer = 0;
+let watchingPointer = false;
+function moving() {
+  if (!watchingPointer && typeof window !== "undefined") {
+    watchingPointer = true;
+    window.addEventListener("pointermove", () => { lastPointer = performance.now(); }, { passive: true, capture: true });
+  }
+  return pageScrolling(250) || performance.now() - lastPointer < 400;
+}
 
 /**
  * Adaptive 3D scene pacer.
@@ -124,8 +142,9 @@ export function ScenePacer({
         }
       }
 
-      const interval =
-        sceneFrameGap();
+      const interval = moving()
+        ? sceneFrameGap()
+        : Math.max(sceneFrameGap(), AMBIENT_GAP);
 
       /**
        * Small tolerance handles floating

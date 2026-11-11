@@ -49,7 +49,9 @@ export const MOTION_DEFAULTS: MotionSettings = {
   },
   keyframeSnap: true,
   maxStepMs: 250,
-  maxFps: 120,
+  // 60, not the screen's 120–144 (the backend's default too): a website's 3D at a game's frame rate kept
+  // laptops' graphics cards busy.
+  maxFps: 60,
   adaptive: true,
   liteMemoryGb: 2,
   liteOnSaveData: true,

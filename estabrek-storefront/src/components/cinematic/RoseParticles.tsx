@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cldUrl } from "@/lib/cloudinary";
 import { normalHex, sceneTheme, shiftHue } from "@/lib/sceneColour";
 import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
+import { pageScrolling } from "@/lib/pageRest";
 import { tr } from "@/lib/words";
 import { useLanguage } from "./Language";
 
@@ -112,6 +113,15 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     const px = new Float32Array(n), py = new Float32Array(n), vx = new Float32Array(n), vy = new Float32Array(n);
     const size = new Float32Array(n), tone = new Float32Array(n), seed = new Float32Array(n);
     for (let i = 0; i < n; i++) { size[i] = 0.6 + Math.random() * 1.6; tone[i] = Math.random(); seed[i] = Math.random() * Math.PI * 2; }
+    // The points are drawn in five batches (by colour and strength) instead of one by one: 1,700 single squares,
+    // each switching colour and strength, were ~100,000 drawing calls a second on a computer.
+    const BATCHES: Array<{ deep: boolean; alpha: number; upTo: number }> = [
+      { deep: false, alpha: 0.55 + 0.12 * 0.45, upTo: 0.24 }, { deep: false, alpha: 0.55 + 0.36 * 0.45, upTo: 0.48 },
+      { deep: false, alpha: 0.55 + 0.6 * 0.45, upTo: 0.72 }, { deep: true, alpha: 0.55 + 0.79 * 0.45, upTo: 0.86 },
+      { deep: true, alpha: 0.55 + 0.93 * 0.45, upTo: 1.01 },
+    ];
+    const batchOf = new Uint8Array(n);
+    for (let i = 0; i < n; i++) batchOf[i] = BATCHES.findIndex((b) => tone[i] < b.upTo);
     const pointer = { x: -9999, y: -9999 };
     // The chapters' colours, from the theme's (read again now and then: a colour picked meanwhile). Read on the
     // page's shell: this section itself wears the chapter's colour while it holds the screen.
@@ -131,8 +141,16 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     // While the section holds the screen the page (the header too) wears the chapter's colour.
     const theme = sceneTheme(el, "particles");
     let holding = false;
+    // Where the section is, read at most twice a second (read on every frame, it laid the page out again mid-frame).
+    let place = { top: 0, height: 0, at: -1e9 };
+    const box = () => {
+      const now = performance.now();
+      if (now - place.at > 500) { const r = el.getBoundingClientRect(); place = { top: r.top + window.scrollY, height: r.height, at: now }; }
+      const top = place.top - window.scrollY;
+      return { top, bottom: top + place.height, height: place.height };
+    };
     const hold = () => {
-      const r = el.getBoundingClientRect();
+      const r = box();
       const on = r.top < window.innerHeight * 0.55 && r.bottom > window.innerHeight * 0.45;
       if (on === holding) return;
       holding = on;
@@ -140,7 +158,7 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       else theme?.giveBack();
     };
     const resize = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const nw = cv.clientWidth, nh = cv.clientHeight;
       if (!nw || !nh || (nw === w && nh === h)) return;
       // A first real size: the points start as a cloud there.
@@ -173,18 +191,28 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
 
     // Where the scroll is in the section: 0 … chapters-1, with each shape held for a while.
     const position = () => {
-      const r = el.getBoundingClientRect();
+      const r = box();
       const span = Math.max(1, r.height - window.innerHeight);
       const p = Math.min(1, Math.max(0, -r.top / span));
       return p * (shapes.length - 1 || 2);
     };
     let last = performance.now();
+    // At most 60 drawings a second (the screen may run at 120–144), and 30 once the shape has formed and nothing
+    // moves it (no scroll, no pointer): the points' slow drift looks the same at 30.
+    let owed = 0, settled = false, pointerAt = 0;
+    const next = () => { if (visible && !reduced && !isPageIdle()) raf = requestAnimationFrame(frame); };
     const frame = (now: number) => {
       raf = 0;
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+      const elapsed = now - last;
       if (!shapes.length) return;
-      if (!w) { if (visible) raf = requestAnimationFrame(frame); return; }
+      if (!w) { last = now; next(); return; }
+      const calm = settled && !pageScrolling(250) && now - pointerAt > 400;
+      const gap = calm ? 1000 / 30 : 1000 / 60;
+      owed = Math.min(owed + Math.min(elapsed, 100), gap * 2);
+      last = now;
+      if (owed + 0.5 < gap && !reduced) { next(); return; }
+      owed = Math.max(0, owed - gap);
+      const dt = Math.min(0.05, Math.max(elapsed, gap) / 1000);
       const at = position();
       const a = Math.min(shapes.length - 1, Math.floor(at));
       const b = Math.min(shapes.length - 1, a + 1);
@@ -207,6 +235,9 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       const light = css(lightC), deep = css(deepC);
       const spark = css(mix(lightC, [255, 255, 255], 0.6));
       ctx.clearRect(0, 0, w, h);
+      const batches = BATCHES.map(() => new Path2D());
+      const sparks: Path2D[] = [new Path2D(), new Path2D(), new Path2D()];
+      let fastest = 0;
       // A glow of the chapter's colour behind the shape.
       const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.62);
       glow.addColorStop(0, css(glowC, 0.42));
@@ -227,25 +258,31 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
         vx[i] += (tx - px[i]) * (reduced ? 1 : 15) * dt;
         vy[i] += (ty - py[i]) * (reduced ? 1 : 15) * dt;
         vx[i] *= reduced ? 0 : 0.8; vy[i] *= reduced ? 0 : 0.8;
-        if (reduced) { px[i] = tx; py[i] = ty; } else { px[i] += vx[i] * dt * 10; py[i] += vy[i] * dt * 10; }
-        ctx.fillStyle = tone[i] > 0.72 ? deep : light;
-        ctx.globalAlpha = 0.55 + tone[i] * 0.45;
-        ctx.fillRect(px[i], py[i], size[i], size[i]);
-        // A few points sparkle now and then: a small four-pointed glint.
+        if (reduced) { px[i] = tx; py[i] = ty; } else {
+          const mx = vx[i] * dt * 10, my = vy[i] * dt * 10;
+          px[i] += mx; py[i] += my;
+          fastest = Math.max(fastest, Math.abs(mx) + Math.abs(my));
+        }
+        batches[batchOf[i]].rect(px[i], py[i], size[i], size[i]);
+        // A few points sparkle now and then: a small four-pointed glint (in three strengths).
         if (tone[i] > 0.965) {
           const flash = reduced ? 0.7 : Math.sin(time * (1.6 + seed[i]) + seed[i] * 7);
           if (flash > 0.6) {
             const k = (flash - 0.6) / 0.4, len = 1.5 + k * (phone ? 4 : 5);
-            ctx.globalAlpha = k * 0.85;
-            ctx.fillStyle = spark;
-            ctx.fillRect(px[i] - len, py[i] - 0.5, len * 2, 1);
-            ctx.fillRect(px[i] - 0.5, py[i] - len, 1, len * 2);
+            const glint = sparks[Math.min(2, Math.floor(k * 3))];
+            glint.rect(px[i] - len, py[i] - 0.5, len * 2, 1);
+            glint.rect(px[i] - 0.5, py[i] - len, 1, len * 2);
           }
         }
       }
+      BATCHES.forEach((b, k) => { ctx.globalAlpha = b.alpha; ctx.fillStyle = b.deep ? deep : light; ctx.fill(batches[k]); });
+      ctx.fillStyle = spark;
+      sparks.forEach((glint, k) => { ctx.globalAlpha = ((k + 0.5) / 3) * 0.85; ctx.fill(glint); });
       ctx.globalAlpha = 1;
+      // Formed: every point within half a pixel of its place a frame.
+      settled = fastest < 0.5;
       // At rest (lib/pageIdle.ts) the points hold where they are until the page is touched again.
-      if (visible && !reduced && !isPageIdle()) raf = requestAnimationFrame(frame);
+      next();
     };
     const offIdle = onPageIdle((rest) => { if (!rest && visible && !raf && shapes.length) { last = performance.now(); raf = requestAnimationFrame(frame); } });
     const io = new IntersectionObserver(([e]) => {
@@ -255,7 +292,7 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     io.observe(el);
     const onScroll = () => { hold(); if (reduced && visible) frame(performance.now()); };
     hold();
-    const onMove = (e: PointerEvent) => { const r = cv.getBoundingClientRect(); pointer.x = e.clientX - r.left; pointer.y = e.clientY - r.top; };
+    const onMove = (e: PointerEvent) => { const r = cv.getBoundingClientRect(); pointer.x = e.clientX - r.left; pointer.y = e.clientY - r.top; pointerAt = performance.now(); };
     const onLeave = () => { pointer.x = pointer.y = -9999; };
     const colours = window.setInterval(readColours, 900);
     window.addEventListener("scroll", onScroll, { passive: true });

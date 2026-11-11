@@ -29,7 +29,7 @@ test.describe("Motion settings: the values", () => {
     });
     expect(n.sections.hero).toEqual({ on: false, smoothMs: 30 });
     expect(n.sections.seasons).toEqual(MOTION_DEFAULTS.sections.seasons);
-    expect(n.maxFps).toBe(120);
+    expect(n.maxFps).toBe(60);
     expect(n.lazyPercent).toBe(400);
     expect(n.videoPreload).toBe("auto");
     expect(n.phoneGlass).toBe(false);
@@ -88,7 +88,7 @@ test.describe("Motion settings in the shop", () => {
     const draft = normalizeMotion({ maxFps: 45 });
     await page.goto(`/?motion-preview=${encodeMotionPreview(draft)}`);
     await expect(page.locator(".motion-preview-note")).toBeVisible();
-    expect(await page.evaluate(() => (window as unknown as { __estabrekMotion: { maxFps: number } }).__estabrekMotion.maxFps)).toBe(120); // the saved ones stay
+    expect(await page.evaluate(() => (window as unknown as { __estabrekMotion: { maxFps: number } }).__estabrekMotion.maxFps)).toBe(60); // the saved ones stay (the default, not the preview's 45)
     await page.goto("/shop");
     await expect(page.locator(".motion-preview-note")).toBeVisible();
     await page.getByRole("button", { name: "إنهاء المعاينة" }).click();

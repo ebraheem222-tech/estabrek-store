@@ -3086,12 +3086,13 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
 .rose-seasons[data-motion="false"] .sky-spring { opacity: 1; top: 50%; }
 .rose-seasons[data-motion="false"] .sky-winter { bottom: 50%; }
 .rose-seasons[data-motion="false"] .season-meter { display: none; }
-.rose-seasons:not([data-scene="ready"]) .season-static-snow {
-  display: block; opacity: calc(1 - var(--season-mix));
-  background-image: radial-gradient(circle, #fff 0 1.6px, transparent 2.4px), radial-gradient(circle, #fff 0 1.1px, transparent 1.8px);
-  background-size: 90px 110px, 53px 61px; background-position: 0 0, 26px 31px;
-  animation: season-snow 9s linear infinite;
-}
+.rose-seasons:not([data-scene="ready"]) .season-static-snow { display: block; opacity: calc(1 - var(--season-mix)); overflow: hidden; }
+/* Two snow layers falling by a transform (the graphics card plays it): moved by background-position, the whole
+   sky was repainted on every frame. */
+.rose-seasons:not([data-scene="ready"]) .season-static-snow::before,
+.rose-seasons:not([data-scene="ready"]) .season-static-snow::after { content: ""; position: absolute; inset: -440px 0 0; animation: season-snow 9s linear infinite; }
+.rose-seasons:not([data-scene="ready"]) .season-static-snow::before { background: radial-gradient(circle, #fff 0 1.6px, transparent 2.4px) 0 0 / 90px 110px; }
+.rose-seasons:not([data-scene="ready"]) .season-static-snow::after { background: radial-gradient(circle, #fff 0 1.1px, transparent 1.8px) 26px 31px / 53px 61px; animation-name: season-snow-fine; }
 .rose-seasons:not([data-scene="ready"]) .season-static-sun {
   display: block; opacity: var(--season-mix);
   background: radial-gradient(circle at 12% 14%, #ffd88a 0 70px, rgba(255, 207, 130, .45) 71px, transparent 210px);
@@ -3099,8 +3100,9 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
 [dir="ltr"] .rose-seasons:not([data-scene="ready"]) .season-static-sun { background: radial-gradient(circle at 88% 14%, #ffd88a 0 70px, rgba(255, 207, 130, .45) 71px, transparent 210px); }
 .rose-seasons[data-motion="false"] .season-static-snow { bottom: 50%; opacity: 1; }
 .rose-seasons[data-motion="false"] .season-static-sun { top: 50%; opacity: 1; }
-@keyframes season-snow { to { background-position: 0 440px, 26px 397px; } }
-@media (prefers-reduced-motion: reduce) { .season-static-snow { animation: none !important; } }
+@keyframes season-snow { to { transform: translateY(440px); } }
+@keyframes season-snow-fine { to { transform: translateY(427px); } }
+@media (prefers-reduced-motion: reduce) { .season-static-snow, .season-static-snow::before, .season-static-snow::after { animation: none !important; } }
 
 @media (max-width: 899px) {
   .rose-seasons { height: 300vh; }

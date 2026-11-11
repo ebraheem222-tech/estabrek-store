@@ -87,6 +87,32 @@ test("shop selection coordinates backgrounds, buttons, filters and footer withou
   expect(swatch).toBe("rgb(201, 119, 148)");
 });
 
+test("an open page keeps its colour however long it sits there (a product page its piece's)", async ({ page }) => {
+  // The page's own clock: five minutes pass in a moment (the colour used to fade back to the shop's after three).
+  await page.clock.install();
+  await page.goto("/p/rose-dress");
+  const shell = page.locator(".cinematic-shell");
+  await expect(shell).toHaveAttribute("data-color-selection-ready", "true");
+  await page.locator('button.color-swatch[title="Berry"]').first().click();
+  await expect(shell).toHaveAttribute("data-storefront-color", /^#/);
+  const colour = await shell.getAttribute("data-storefront-color");
+  const header = await page.locator(".atelier-header").evaluate((el) => getComputedStyle(el).backgroundColor);
+  await page.clock.fastForward("05:00");
+  // Away and back (the phone locked a while).
+  await page.evaluate(() => {
+    const set = (hidden: boolean) => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    set(true);
+    set(false);
+  });
+  await page.clock.fastForward("00:05");
+  await expect(shell).toHaveAttribute("data-storefront-color", colour!);
+  expect(await page.locator(".atelier-header").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(header);
+});
+
 test("product detail and quick view swatches both update the navbar", async ({ page }) => {
   await page.goto("/p/rose-dress");
   await page.waitForLoadState("networkidle");

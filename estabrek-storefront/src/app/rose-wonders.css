@@ -174,8 +174,10 @@
 .rose-world[data-dressed] .rose-world-wash { opacity: 1; }
 .rose-world-map { position: absolute; left: 0; top: 0; width: 1600px; height: 1000px; transform-origin: 0 0; will-change: transform; }
 .rose-world-frame:not([data-dragging]) .rose-world-map { transition: transform .7s cubic-bezier(.2, .8, .2, 1); }
-.rose-world-routes { position: absolute; inset: 0; width: 1600px; height: 1000px; overflow: visible; pointer-events: none; }
-.rose-world-routes path { fill: none; stroke: color-mix(in srgb, var(--selection-ink, #4d2039) 40%, transparent); stroke-width: 2.5; stroke-dasharray: 2 12; stroke-linecap: round; animation: rose-route 2.4s linear infinite; }
+/* The routes march in steps (10 a second) on a layer of their own: moved on every frame, their dashes had the
+   graphics card repaint the whole map, the islands' shadows with it (three quarters of its time, standing still). */
+.rose-world-routes { position: absolute; inset: 0; width: 1600px; height: 1000px; overflow: visible; pointer-events: none; will-change: transform; }
+.rose-world-routes path { fill: none; stroke: color-mix(in srgb, var(--selection-ink, #4d2039) 40%, transparent); stroke-width: 2.5; stroke-dasharray: 2 12; stroke-linecap: round; animation: rose-route 2.4s steps(24) infinite; }
 .rose-world-roads path { stroke: color-mix(in srgb, var(--selection-accent, #a43b64) 70%, transparent); stroke-width: 2; stroke-dasharray: 8 10; }
 @keyframes rose-route { to { stroke-dashoffset: -28; } }
 
@@ -200,11 +202,13 @@
 
 /* Clouds drifting over the world (a little behind the drag: parallax). */
 .rose-world-clouds { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* The clouds drift by a transform, played by the graphics card (by `left` they were laid out and repainted,
+   blur and all, on every frame). */
 .rose-world-clouds i { position: absolute; width: 340px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, .85), transparent); filter: blur(10px); translate: calc(var(--pan-x, 0px) * .15) calc(var(--pan-y, 0px) * .15); animation: rose-cloud 38s linear infinite; }
 .rose-world-clouds i:nth-child(1) { top: 10%; left: -20%; }
 .rose-world-clouds i:nth-child(2) { top: 55%; left: -40%; width: 420px; animation-duration: 52s; animation-delay: -18s; opacity: .7; }
 .rose-world-clouds i:nth-child(3) { top: 78%; left: -30%; width: 260px; animation-duration: 44s; animation-delay: -30s; opacity: .6; }
-@keyframes rose-cloud { to { left: 120%; } }
+@keyframes rose-cloud { from { transform: translateX(0); } to { transform: translateX(130vw); } }
 
 .rose-world-hint { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: grid; justify-items: center; gap: 6px; padding: 16px 20px; border-radius: 20px; background: rgba(255, 255, 255, .75); backdrop-filter: blur(8px); color: var(--selection-ink, #4d2039); font-size: 13px; font-weight: 600; pointer-events: none; }
 .rose-world-hint svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: rose-hint-drag 1.8s ease-in-out infinite; }
