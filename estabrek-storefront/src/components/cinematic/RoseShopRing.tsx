@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { createContext, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
+import { pageScrolling } from "@/lib/pageRest";
 
 export type RingPiece = { slug: string; title: string; image: string };
 
@@ -33,13 +34,18 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
     let visible = true;
     let drag: null | { id: number; x: number; angle: number; lastX: number; lastT: number; v: number } = null;
     const apply = () => el.style.setProperty("--ring-turn", `${angle.toFixed(2)}deg`);
+    // Its slow turn (6° a second) is written 20 times a second, and not while the page scrolls: written on every
+    // frame (165 a second on fast screens), each write restyled all its cards, and the whole window was redrawn at
+    // the screen's rate while the ring showed. A drag, or a throw's glide, keeps every frame.
+    let wrote = 0;
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!drag) {
         velocity += (pace - velocity) * Math.min(1, dt * 1.2);
         angle += velocity * dt;
-        apply();
+        const gliding = Math.abs(velocity - pace) > 1;
+        if (gliding || (now - wrote >= 50 && !pageScrolling(200))) { wrote = now; apply(); }
       }
       // It stops turning while the page rests (lib/pageIdle.ts): every turn restyled all its cards.
       raf = visible && !isPageIdle() && (!reduced || drag || Math.abs(velocity) > 0.05) ? requestAnimationFrame(frame) : 0;

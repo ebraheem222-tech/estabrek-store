@@ -194,7 +194,7 @@
 
 .rose-pin { position: absolute; translate: -50% -100%; display: grid; justify-items: center; gap: 4px; border: 0; background: none; padding: 0; cursor: pointer; }
 .rose-pin-dot { width: 18px; height: 18px; border-radius: 50% 50% 50% 0; rotate: -45deg; background: var(--selection-accent, #a43b64); border: 3px solid #fff; box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .5); order: 3; }
-.rose-pin[data-home] .rose-pin-dot { width: 26px; height: 26px; background: var(--selection-ink, #4d2039); animation: rose-pin-pulse 2s ease-out infinite; }
+.rose-pin[data-home] .rose-pin-dot { width: 26px; height: 26px; background: var(--selection-ink, #4d2039); animation: rose-pin-pulse 2s ease-out 4; }
 @keyframes rose-pin-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--selection-accent, #a43b64) 60%, transparent); } 100% { box-shadow: 0 0 0 22px transparent; } }
 .rose-pin-name { order: 1; font-size: 15px; font-weight: 700; color: var(--selection-ink, #4d2039); text-shadow: 0 1px 0 #fff, 0 0 8px #fff; white-space: nowrap; }
 .rose-pin-fee { order: 2; padding: 3px 10px; border-radius: 999px; background: #fff; color: var(--selection-accent, #7d2448); font-size: 13px; font-weight: 700; box-shadow: 0 6px 14px -10px rgba(0, 0, 0, .5); white-space: nowrap; }
@@ -204,14 +204,14 @@
 .rose-world-clouds { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 /* The clouds drift by a transform, played by the graphics card (by `left` they were laid out and repainted,
    blur and all, on every frame). */
-.rose-world-clouds i { position: absolute; width: 340px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, .85), transparent); filter: blur(10px); translate: calc(var(--pan-x, 0px) * .15) calc(var(--pan-y, 0px) * .15); animation: rose-cloud 38s linear infinite; }
+.rose-world-clouds i { position: absolute; width: 340px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, .85), transparent); filter: blur(10px); translate: calc(var(--pan-x, 0px) * .15) calc(var(--pan-y, 0px) * .15); animation: rose-cloud 38s linear 1 forwards; }
 .rose-world-clouds i:nth-child(1) { top: 10%; left: -20%; }
 .rose-world-clouds i:nth-child(2) { top: 55%; left: -40%; width: 420px; animation-duration: 52s; animation-delay: -18s; opacity: .7; }
 .rose-world-clouds i:nth-child(3) { top: 78%; left: -30%; width: 260px; animation-duration: 44s; animation-delay: -30s; opacity: .6; }
 @keyframes rose-cloud { from { transform: translateX(0); } to { transform: translateX(130vw); } }
 
 .rose-world-hint { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: grid; justify-items: center; gap: 6px; padding: 16px 20px; border-radius: 20px; background: rgba(255, 255, 255, .75); backdrop-filter: blur(8px); color: var(--selection-ink, #4d2039); font-size: 13px; font-weight: 600; pointer-events: none; }
-.rose-world-hint svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: rose-hint-drag 1.8s ease-in-out infinite; }
+.rose-world-hint svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: rose-hint-drag 1.8s ease-in-out 4; }
 @keyframes rose-hint-drag { 50% { translate: 22px 0; } }
 .rose-world-zoom { position: absolute; inset-inline-end: 14px; top: 14px; display: grid; gap: 6px; }
 .rose-world-zoom button { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--selection-line, #efdde5); background: rgba(255, 255, 255, .92); color: var(--selection-ink, #4d2039); font-size: 18px; font-weight: 700; box-shadow: 0 8px 18px -12px rgba(0, 0, 0, .4); }

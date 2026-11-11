@@ -757,7 +757,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
 .scroll-cue svg {
   width: 15px;
   height: 15px;
-  animation: rose-scroll 2s infinite;
+  animation: rose-scroll 2s 4; /* a few times, then still (see rose-badge) */
 }
 .hero-visual {
   position: relative;
@@ -3258,7 +3258,9 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
   border-radius: 20px !important; overflow: hidden; isolation: isolate;
   background: var(--selection-surface, #fff8f4) !important;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--selection-line, #efdde5) 80%, transparent), 0 10px 30px -18px color-mix(in srgb, var(--selection-ink, #4d2039) 30%, transparent);
-  transition: transform .45s cubic-bezier(.2,.7,.3,1), box-shadow .45s ease;
+  /* (Its shadow changes at once: a box-shadow can't be drawn by the graphics card alone, and gliding it repainted
+     the card on every frame, for each card the pointer passed over while scrolling.) */
+  transition: transform .45s cubic-bezier(.2,.7,.3,1);
 }
 .rose-product-tile .rose-product-image { border-radius: 0 !important; }
 .rose-product-tile .rose-product-meta { padding: 14px 16px 16px !important; }
@@ -3460,7 +3462,7 @@ html[data-cinematic-storefront="true"][data-ui-no-recent] .recent-activity-popup
 
 .rose-cart-empty, .rose-cart-done { display: grid; justify-items: center; text-align: center; gap: 14px; padding: 90px 6% 120px; max-width: 760px; margin: 0 auto; }
 .rose-cart-empty p, .rose-cart-done p { margin: 0; max-width: 520px; line-height: 2; color: var(--selection-muted, #8b6d7b); }
-.rose-cart-empty-icon, .rose-cart-done-mark { display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; background: color-mix(in srgb, var(--selection-accent, #7d2448) 10%, var(--selection-surface, #fff8f4)); color: var(--selection-accent, #7d2448); animation: rose-cart-float 4s ease-in-out infinite; }
+.rose-cart-empty-icon, .rose-cart-done-mark { display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; background: color-mix(in srgb, var(--selection-accent, #7d2448) 10%, var(--selection-surface, #fff8f4)); color: var(--selection-accent, #7d2448); animation: rose-cart-float 4s ease-in-out 3; }
 .rose-cart-empty-icon svg, .rose-cart-done-mark svg { width: 38px; height: 38px; }
 .rose-cart-empty-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px; margin-top: 10px; }
 .rose-cart-order-id { font-size: 14px; color: var(--selection-ink, #4d2039) !important; }
@@ -3895,7 +3897,9 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
   box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--selection-ink, #712744) 50%, transparent);
   font-size: 14px;
   pointer-events: none;
-  animation: rose-badge 2.6s ease-in-out infinite;
+  /* Two bounces, then still. Bouncing for ever, on every page, it had the graphics card redraw the whole window
+     at the screen's rate the whole time (one small badge: about 12% of a laptop's graphics while scrolling). */
+  animation: rose-badge 2.6s ease-in-out 2;
 }
 @keyframes rose-badge { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
 .rose-companion[data-side="right"] .rose-companion-badge { inset-inline-end: auto; inset-inline-start: -4px; }
@@ -4067,6 +4071,10 @@ html[data-cinematic-storefront="true"][data-ui-cover] .recent-activity-popup.ros
 [data-theme-gliding][data-theme-gliding][data-theme-gliding] *,
 [data-theme-gliding][data-theme-gliding][data-theme-gliding] *::before,
 [data-theme-gliding][data-theme-gliding][data-theme-gliding] *::after,
+[data-palette-moving][data-palette-moving][data-palette-moving],
+[data-palette-moving][data-palette-moving][data-palette-moving] *,
+[data-palette-moving][data-palette-moving][data-palette-moving] *::before,
+[data-palette-moving][data-palette-moving][data-palette-moving] *::after,
 html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *,
 html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *::before,
 html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *::after {
@@ -4151,7 +4159,7 @@ html[data-theme-crossfade]::view-transition-new(root) {
 .film-steps li[data-on] { background: var(--film-accent); }
 .film-steps li:last-child { width: 34px; }
 .film-cue { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 11px; letter-spacing: .04em; opacity: .7; transition: opacity .4s ease; }
-.film-cue svg { width: 14px; height: 14px; animation: film-cue 1.8s ease-in-out infinite; }
+.film-cue svg { width: 14px; height: 14px; animation: film-cue 1.8s ease-in-out 5; }
 /* The hint to scroll goes (and stops bouncing) once the scroll has started. */
 .rose-film[data-final] .film-cue, .film-cue[data-off] { opacity: 0; }
 .film-cue[data-off] svg { animation: none; }
@@ -4252,7 +4260,7 @@ html[data-theme-crossfade]::view-transition-new(root) {
 }
 .film-sparkles .film-spark-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* data-glint: the shopper stopped on the finished hijab (RoseHeroFilm). */
-.rose-film[data-glint] .film-sparkles .film-spark { animation: film-twinkle 2.2s calc(var(--d) * .6) ease-in-out infinite; }
+.rose-film[data-glint] .film-sparkles .film-spark { animation: film-twinkle 2.2s calc(var(--d) * .6) ease-in-out 3; }
 @keyframes film-twinkle {
   0%, 100% { opacity: 0; scale: 0; rotate: 0deg; }
   18% { opacity: 1; scale: 1; }
