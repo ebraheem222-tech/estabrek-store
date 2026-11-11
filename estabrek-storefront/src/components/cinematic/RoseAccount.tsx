@@ -1,4 +1,5 @@
 "use client";
+import { OrderTracker, type OrderStep } from "./OrderTracker";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
@@ -115,6 +116,7 @@ function SignIn() {
       <p>
         {tr(lang, "بدون كلمة مرور: بنبعتلكِ كود على إيميلكِ. بالحساب بتلاقي طلباتكِ ومفضّلتكِ على كل أجهزتكِ، وعنوانكِ جاهز للطلب الجاي.", "No password: we email you a code. Your orders and favourites follow you on every device, and your address is ready next time.")}
       </p>
+        <p className="rose-account-muted"><Link href="/track">{tr(lang, "طلبتي بدون حساب؟ تابعي طلبكِ من هون", "Ordered without an account? Track your order here")}</Link></p>
 
       {step === "email" ? (
         <form className="rose-cart-form rose-account-form" onSubmit={send} noValidate>
@@ -229,6 +231,9 @@ type Order = {
   total: number | null;
   currencyCode: string;
   paymentStatus: string | null;
+  city?: string | null;
+  /** Each status it reached and when (OrderTracker). */
+  steps?: OrderStep[];
   items: Array<{ id: string; productTitle: string; productSlug: string | null; colorName: string | null; sizeName: string | null; quantity: number; imageUrl: string | null }>;
 };
 
@@ -312,6 +317,7 @@ function Orders() {
             <span>{date(o.createdAt)}</span>
             <b>{money(o.total, o.currencyCode)}</b>
           </div>
+          {o.steps?.length ? <OrderTracker status={o.status} steps={o.steps} city={o.city} /> : null}
           <ul className="rose-account-order-items">
             {o.items.map((i) => (
               <li key={i.id}>
