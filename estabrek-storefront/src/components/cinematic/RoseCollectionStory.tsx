@@ -6,6 +6,7 @@ import { Component, useEffect, useRef, useState, type CSSProperties, type ReactN
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
+import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
 import { lazyMargin, prebuildNear, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
@@ -133,6 +134,10 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
   const palm: PalmRef = useRef(null);
   const rose = useRef<MascotHandle>(null);
   const [lead, setLead] = useState(0);
+  // The world Rose is in: she follows the scroll's world once the shopper pauses. At a hand-over her outfit,
+  // her colour, her place and her greeting all landed in the same half second as the scene's own hand-over,
+  // restyling her whole drawing mid-scroll: the frame drop phones showed as she jumped.
+  const [roseLead, setRoseLead] = useState(0);
   const [motion, setMotion] = useState(false);
   const [near, setNear] = useState(false);
   const [inView, setInView] = useState(false);
@@ -306,17 +311,31 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
     return () => mm.revert();
   }, [settings.scrollAnimationsEnabled, theme, chapters, seedKey]);
 
-  // Rose introduces each chapter as it takes the stage.
+  // Rose catches up with the world in the next pause of the scroll (at once without motion).
+  useEffect(() => {
+    if (roseLead === lead) return;
+    if (!motion) { setRoseLead(lead); return; }
+    return onPageRest(() => setRoseLead(lead), { quiet: 250 });
+  }, [lead, roseLead, motion]);
+  // Her hijab takes the world's colour then, not with the section's (it is her own variable, set on her).
+  const roseSeeds = seedKey.split(",");
+  const roseSeed = roseSeeds[roseLead] ?? roseSeeds[0];
+  useEffect(() => {
+    const mascot = root.current?.querySelector<HTMLElement>(".story-mascot");
+    if (mascot && roseSeed) mascot.style.setProperty("--m-hijab", roseSeed);
+  }, [roseSeed, near, motion]);
+
+  // Rose introduces each chapter as she reaches it.
   useEffect(() => {
     if (!motion || !inView) return;
-    const key = chapters[lead]?.key;
+    const key = chapters[roseLead]?.key;
     if (!key) return;
     const t = window.setTimeout(() => {
       rose.current?.say(ROSE_LINE[key][lang], 2600);
       rose.current?.joy();
     }, 350);
     return () => window.clearTimeout(t);
-  }, [lead, motion, inView, chapters, ar, lang]);
+  }, [roseLead, motion, inView, chapters, ar, lang]);
 
   // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
   useEffect(() => {
@@ -325,10 +344,10 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
   }, [motion, near]);
   useEffect(() => {
     if (!motion || !near) return;
-    // Re-measure once the new chapter's copy has settled into place.
+    // Re-measure once the new chapter's copy has settled into place (and Rose has reached it).
     const t = window.setTimeout(() => placeMascotOnPhone(root.current), 450);
     return () => window.clearTimeout(t);
-  }, [lead, motion, near]);
+  }, [roseLead, motion, near]);
 
   if (!chapters.length) return null;
   return (
@@ -370,8 +389,8 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
             ar={ar}
             reactive
             pose={sceneFailed ? "idle" : "hold"}
-            outfit={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].outfit}
-            extras={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].extras}
+            outfit={STORY_OUTFIT[chapters[roseLead]?.key ?? "accessories"].outfit}
+            extras={STORY_OUTFIT[chapters[roseLead]?.key ?? "accessories"].extras}
             mirrored={!isRtl(lang)}
             palm={palm}
             label={tr(lang, `${n.assistantFull} تعرض المجموعة`, "{0} presents the collection", [n.assistantFull])}

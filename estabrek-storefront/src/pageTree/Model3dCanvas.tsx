@@ -14,6 +14,7 @@ import { GameModel } from "@/storeThemes/three/models";
 import { GlbModel } from "@/storeThemes/three/GlbModel";
 import type { ModelColours } from "@/storeThemes/three/parts";
 import { model3dMoves, type Model3dSpec } from "./model3d";
+import { usePageIdle } from "@/lib/pageIdle";
 
 const FLOOR_Y = -1.45;
 
@@ -91,10 +92,12 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
 }) {
   const l = spec.lights;
   const moves = model3dMoves(spec) && !still;
+  // While the page rests (lib/pageIdle.ts) the model keeps its last frame instead of being drawn 60 times a second.
+  const resting = usePageIdle();
   return (
     <Canvas
       dpr={[1, 1.75]}
-      frameloop={active && moves ? "always" : "demand"}
+      frameloop={active && moves && !resting ? "always" : "demand"}
       camera={{ position: [0, spec.camera.height, spec.camera.distance], fov: spec.camera.fov }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >

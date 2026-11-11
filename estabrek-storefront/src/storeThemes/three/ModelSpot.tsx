@@ -6,6 +6,7 @@
  * for shoppers who ask for less motion. Loaded on its own (ThemeIntro), never on the server.
  */
 import { useEffect, useRef, useState } from "react";
+import { usePageIdle } from "@/lib/pageIdle";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type * as THREE from "three";
 import type { Palette } from "../colour";
@@ -30,6 +31,8 @@ function Turning({ kind, palette, finish, still }: { kind: ModelKind; palette: P
 }
 
 export default function ModelSpot({ kind, palette, finish, onReady }: { kind: ModelKind; palette: Palette; finish: ModelStyle; onReady?: () => void }) {
+  // While the page rests (lib/pageIdle.ts) it keeps its last frame.
+  const resting = usePageIdle();
   const box = useRef<HTMLDivElement>(null);
   const [seen, setSeen] = useState(false);
   const [still, setStill] = useState(false);
@@ -45,7 +48,7 @@ export default function ModelSpot({ kind, palette, finish, onReady }: { kind: Mo
     <div ref={box} className="th-model-spot" aria-hidden>
       <Canvas
         dpr={[1, 1.6]}
-        frameloop={seen && !still ? "always" : "demand"}
+        frameloop={seen && !still && !resting ? "always" : "demand"}
         camera={{ position: [0, 0.4, 6.2], fov: 34 }}
         gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
         onCreated={() => onReady?.()}

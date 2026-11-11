@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 
+import { usePageIdle } from "@/lib/pageIdle";
 import {
   onMotionLevel,
   sceneDpr,
@@ -26,10 +27,14 @@ import {
  * intermediate rates to divisors of 120.
  */
 export function ScenePacer({
-  active,
+  active: wanted,
 }: {
   active: boolean;
 }) {
+  // While the page rests (lib/pageIdle.ts) the scene keeps its last frame: its models turning on their own were
+  // drawn every frame for nobody. The first touch or scroll brings them back.
+  const resting = usePageIdle();
+  const active = wanted && !resting;
   const invalidate =
     useThree(
       (state) =>

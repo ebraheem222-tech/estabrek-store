@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cldUrl } from "@/lib/cloudinary";
 import { normalHex, sceneTheme, shiftHue } from "@/lib/sceneColour";
+import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
 import { tr } from "@/lib/words";
 import { useLanguage } from "./Language";
 
@@ -243,8 +244,10 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
         }
       }
       ctx.globalAlpha = 1;
-      if (visible && !reduced) raf = requestAnimationFrame(frame);
+      // At rest (lib/pageIdle.ts) the points hold where they are until the page is touched again.
+      if (visible && !reduced && !isPageIdle()) raf = requestAnimationFrame(frame);
     };
+    const offIdle = onPageIdle((rest) => { if (!rest && visible && !raf && shapes.length) { last = performance.now(); raf = requestAnimationFrame(frame); } });
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
       if (visible && !raf && shapes.length) { last = performance.now(); raf = requestAnimationFrame(frame); }
@@ -263,6 +266,7 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       io.disconnect();
       window.clearInterval(colours);
       sized.disconnect();
+      offIdle();
       window.removeEventListener("scroll", onScroll);
       cv.removeEventListener("pointermove", onMove);
       cv.removeEventListener("pointerleave", onLeave);
