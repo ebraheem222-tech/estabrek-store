@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { createContext, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
 
 export type RingPiece = { slug: string; title: string; image: string };
 
@@ -40,7 +41,8 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
         angle += velocity * dt;
         apply();
       }
-      raf = visible && (!reduced || drag || Math.abs(velocity) > 0.05) ? requestAnimationFrame(frame) : 0;
+      // It stops turning while the page rests (lib/pageIdle.ts): every turn restyled all its cards.
+      raf = visible && !isPageIdle() && (!reduced || drag || Math.abs(velocity) > 0.05) ? requestAnimationFrame(frame) : 0;
     };
     const wake = () => {
       if (raf) return;
@@ -52,6 +54,7 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
       if (visible) wake();
     });
     io.observe(el);
+    const offIdle = onPageIdle((rest) => { if (!rest && visible) wake(); });
 
     const down = (e: PointerEvent) => {
       if (e.button !== 0) return;
@@ -89,6 +92,7 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
     wake();
     return () => {
       io.disconnect();
+      offIdle();
       cancelAnimationFrame(raf);
       el.removeEventListener("pointerdown", down);
       el.removeEventListener("pointermove", move);

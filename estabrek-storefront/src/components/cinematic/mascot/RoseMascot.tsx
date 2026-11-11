@@ -12,6 +12,7 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useSyncExternalStore, type MutableRefObject } from "react";
 import { razanMaySpeak, razanNow, type SpeakKind } from "@/lib/razanRuntime";
 import { pageScrolling } from "@/lib/pageRest";
+import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
 import { ROSE_EVENT, ROSE_SAY_EVENT, roseLine, type RoseExtras, type RoseMoment, type RoseOutfit, type RoseSay } from "@/lib/roseEvents";
 import { fillAuto } from "@/lib/storeNames";
 import { useLanguage } from "../Language";
@@ -405,15 +406,24 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     // follows the clock, so she keeps her speed.
     const coarse = window.matchMedia("(pointer: coarse)").matches;
     let last = 0;
+    // While the page rests (lib/pageIdle.ts) she stands still: her last drawing stays, and nothing is drawn
+    // until someone touches the page again. Her idle breathing and swaying kept the processor busy for nobody.
+    let sleeping = isPageIdle();
     const loop = (ms: number) => {
+      frame = 0;
       if (ms - last >= (coarse && pageScrolling() ? 64 : 32)) { last = ms; draw(ms); }
-      if (visible && !reduce) frame = requestAnimationFrame(loop);
+      if (visible && !reduce && !sleeping) frame = requestAnimationFrame(loop);
     };
+    const offIdle = onPageIdle((rest) => {
+      sleeping = rest;
+      if (!rest && visible && !reduce && !frame) frame = requestAnimationFrame(loop);
+    });
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       if (!companion) setSceneOnScreen(uid, visible);
       cancelAnimationFrame(frame);
-      if (visible) frame = requestAnimationFrame(loop);
+      frame = 0;
+      if (visible && !sleeping) frame = requestAnimationFrame(loop);
     });
     io.observe(box);
     // Well off screen, her SVG is left out of style and layout (see cinematic.css). The
@@ -487,6 +497,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     }
     return () => {
       io.disconnect();
+      offIdle();
       cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener(ROSE_EVENT, onMoment);
