@@ -30,6 +30,18 @@ import {
 import { StoreIdentityCard } from "./StoreIdentityCard";
 import { StoreLanguagesCard } from "./StoreLanguagesCard";
 
+/** The scenes that can dress the page in their colour (the shop's SceneColourKey, lib/colourEngine.ts). */
+const COLOUR_SCENES = [
+  { key: "particles", label: "الحكاية (لوجو، حجاب، حقيبة)" },
+  { key: "seasons", label: "المواسم (شتا وربيع)" },
+  { key: "collections", label: "المجموعات" },
+  { key: "stories", label: "العوالم (إكسسوارات، أطفال، مباخر)" },
+  { key: "world", label: "الخريطة" },
+  { key: "rooms", label: "الغرف" },
+  { key: "product", label: "صفحة المنتج بتاخد لون القطعة" },
+] as const;
+type ColourSceneKey = (typeof COLOUR_SCENES)[number]["key"];
+
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
   sticky?: boolean;
@@ -425,6 +437,10 @@ type StorefrontConfig = {
   themeColorsEnabled: boolean;
   /** Where a colour the shopper picks shows: the whole store (bar, header, page, footer) or the product area only. */
   colorFollow: "everything" | "product";
+  /** Which scenes dress the page in their colour while they hold the screen (the shop's lib/colourEngine.ts). */
+  colorScenes: Record<ColourSceneKey, boolean>;
+  /** How strongly a colour tints the page's surfaces. */
+  colorStrength: "soft" | "normal" | "strong";
   /** The store's secret: holding the logo down on the shop opens a hidden coupon. */
   secretEnabled: boolean;
   secretCode: string;
@@ -538,6 +554,8 @@ function normalizeStorefront(v: any): StorefrontConfig {
     // Theme
     themeColorsEnabled: o.themeColorsEnabled !== false,
     colorFollow: o.colorFollow === "product" ? "product" : "everything",
+    colorScenes: Object.fromEntries(COLOUR_SCENES.map(({ key }) => [key, (o.colorScenes as Record<string, unknown> | undefined)?.[key] !== false])) as Record<ColourSceneKey, boolean>,
+    colorStrength: o.colorStrength === "soft" || o.colorStrength === "strong" ? o.colorStrength : "normal",
     secretEnabled: o.secretEnabled !== false,
     secretCode: typeof o.secretCode === "string" ? o.secretCode : "",
     secretText: typeof o.secretText === "string" ? o.secretText : "",
@@ -3026,6 +3044,33 @@ export default function SettingsPage() {
                         ]}
                         data-testid="settings-color-follow"
                       />
+                      <Select
+                        label="قوة اللون على الصفحة"
+                        value={storefrontCfg.colorStrength}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, colorStrength: v === "soft" || v === "strong" ? v : "normal" }))}
+                        options={[
+                          { value: "soft", label: "ناعم (لمسة خفيفة من اللون)" },
+                          { value: "normal", label: "عادي" },
+                          { value: "strong", label: "قوي (الصفحة بتلبس اللون أكتر)" },
+                        ]}
+                        data-testid="settings-color-strength"
+                      />
+                      <div className="md:col-span-2 grid gap-2" data-testid="settings-color-scenes">
+                        <div className="text-sm font-semibold">المشاهد اللي بتلبّس الصفحة لونها وهي عالشاشة</div>
+                        <div className="text-xs opacity-70">
+                          النصوص والأزرار بتضل مقروءة مع أي لون: المتجر بيظبّط التباين لحاله.
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {COLOUR_SCENES.map(({ key, label }) => (
+                            <Toggle
+                              key={key}
+                              label={label}
+                              checked={storefrontCfg.colorScenes[key]}
+                              onChange={(v) => setStorefrontCfg((p) => ({ ...p, colorScenes: { ...p.colorScenes, [key]: v } }))}
+                            />
+                          ))}
+                        </div>
+                      </div>
                       <Toggle
                         label="سرّ المتجر: كبسة طويلة على اللوجو بتفتح كوبون مخفي"
                         checked={storefrontCfg.secretEnabled}

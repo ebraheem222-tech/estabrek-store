@@ -692,6 +692,18 @@ http
       });
       return;
     }
+    // Admin → الإعدادات → الثيم والألوان: the colour engine ({ scenes?: { product: false, … }, strength?: "soft" }, or {}).
+    if (pathname === "/__test/color-engine" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (data.scenes) site.header.storefront.colorScenes = data.scenes; else delete site.header.storefront.colorScenes;
+        if (data.strength) site.header.storefront.colorStrength = data.strength; else delete site.header.storefront.colorStrength;
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname === "/__test/commerce" && req.method === "POST") {
       let body = "";
       req.on("data", c => { body += c; });

@@ -1,4 +1,5 @@
 "use client";
+import { readableOnLight } from "@/lib/colourEngine";
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { gsap } from "gsap";
@@ -49,7 +50,8 @@ const LINE_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
 /** Line i's colour: the admin's (roseFilmColors), else the shop's own. */
 const lineColour = (own: string[] | undefined, i: number) => {
   const c = own?.[i % LINE_COLORS.length];
-  return typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c) ? c : LINE_COLORS[i % LINE_COLORS.length];
+  // Kept readable on the light page, whatever colour was chosen (a pale yellow title vanished).
+  return readableOnLight(typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c) ? c : LINE_COLORS[i % LINE_COLORS.length]);
 };
 /** The film's share of the scroll that tells the lines; the rest holds the closing line. */
 const LINES_END = 0.84;

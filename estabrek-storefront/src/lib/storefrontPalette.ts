@@ -1,4 +1,5 @@
 import { mixHex } from "@/components/cinematic/roseDesign";
+import { STRENGTH_SCALE, colourStrength } from "./colourEngine";
 
 function luminance(hex: string) {
   const channels = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
@@ -22,12 +23,17 @@ export function isNearWhite(hex: string) {
   return luminance(hex) > 0.72 && Math.max(r, g, b) - Math.min(r, g, b) < 0.1;
 }
 
-/** Light fabric-inspired surfaces and readable controls for any catalog swatch. */
+/**
+ * Light fabric-inspired surfaces and readable controls for any catalog swatch. The surfaces lean to the colour as
+ * strongly as the owner chose (lib/colourEngine.ts: soft, normal, strong); text, lines and buttons are made
+ * readable on whatever surfaces come out.
+ */
 export function storefrontPalette(seed: string): Record<string, string> {
-  const page = mixHex("#fff8f4", seed, .14);
-  const surface = mixHex("#ffffff", seed, .06);
-  const soft = mixHex("#fff8f4", seed, .24);
-  const line = mixHex("#ffffff", seed, .38);
+  const k = STRENGTH_SCALE[colourStrength()];
+  const page = mixHex("#fff8f4", seed, Math.min(.5, .14 * k));
+  const surface = mixHex("#ffffff", seed, Math.min(.3, .06 * k));
+  const soft = mixHex("#fff8f4", seed, Math.min(.62, .24 * k));
+  const line = mixHex("#ffffff", seed, Math.min(.8, .38 * k));
   let controlLine = seed;
   for (let amount = .05; [page, surface, soft].some(background => contrast(controlLine, background) < 3) && amount <= 1; amount += .05) {
     controlLine = mixHex(seed, "#15131b", amount);
@@ -45,7 +51,7 @@ export function storefrontPalette(seed: string): Record<string, string> {
     "--selection-soft": soft, "--selection-line": line, "--selection-control-line": controlLine,
     "--selection-ink": ink, "--selection-muted": muted,
     "--selection-accent": accent, "--selection-dark": dark,
-    "--selection-decorative": mixHex("#ffffff", seed, .58),
+    "--selection-decorative": mixHex("#ffffff", seed, Math.min(.85, .58 * k)),
     // The raw swatch, for things that take the colour as-is (the hero campaign tint).
     "--selection-seed": seed,
     // What photos and films are dyed with: nothing for white and ivory (see isNearWhite).

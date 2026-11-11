@@ -1,4 +1,5 @@
 "use client";
+import { sceneColoursOn } from "@/lib/colourEngine";
 import { productItem, trackAddToCart, trackViewItem } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
@@ -145,7 +146,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
     const i = asked >= 0 ? asked : startColorIndex(items, current);
     setColorKey(catalogItemKey(items[i], i));
     const hex = itemHex(items[i]);
-    if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
+    // (Unless the owner switched it off: Admin → الثيم والألوان, the product page.)
+    if (hex && sceneColoursOn("product") && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 

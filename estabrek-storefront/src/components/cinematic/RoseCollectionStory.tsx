@@ -19,6 +19,7 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseBadge } from "./RoseBadge";
 import { useRoseTheme } from "./RoseThemeProvider";
+import { sceneColoursOn } from "@/lib/colourEngine";
 import { mixHex } from "./roseDesign";
 import { sceneField, sceneSeed, sceneWord } from "./sceneWords";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
@@ -194,6 +195,8 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
       const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow || document.documentElement.hasAttribute("data-visual-theme")) return;
+        // The owner switched the worlds' colours off (Admin → الثيم والألوان): the page keeps its own.
+        if (!sceneColoursOn("stories")) return;
         // The colour only moves during a hand-over between chapters: skip the other frames.
         if (saved && seed === lastSeed) return;
         lastSeed = seed;
