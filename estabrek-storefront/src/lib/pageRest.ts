@@ -58,6 +58,10 @@ export function onPageRest(fn: () => void, { quiet = 400, after = 0, idle: whenI
  * frame of the scroll (about 150 a second on the shop; 3% of a laptop's graphics with the pointer elsewhere, over
  * 20% over the cards). The wheel only: a scroll made by the page or a link (a card brought into view to be
  * clicked), the keys or a finger leave the cards as they are.
+ *
+ * Only a wheel that scrolls the page itself (2026-11-12): the layer over the page takes the next turns of the
+ * wheel, so a slider swiped sideways (a trackpad), or a drawer, a list or the chat scrolled under the pointer,
+ * stopped after the first turn and the page behind scrolled instead.
  */
 let flagWatching = false;
 export function watchScrollingFlag() {
@@ -65,9 +69,28 @@ export function watchScrollingFlag() {
   flagWatching = true;
   const root = document.documentElement;
   let timer = 0;
-  window.addEventListener("wheel", () => {
+  window.addEventListener("wheel", (e) => {
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || scrollsInside(e.target)) {
+      // Lifted at once if it was up: the next turns then reach what is under the pointer.
+      if ("scrolling" in root.dataset) { window.clearTimeout(timer); delete root.dataset.scrolling; }
+      return;
+    }
     if (!("scrolling" in root.dataset)) root.dataset.scrolling = "";
     window.clearTimeout(timer);
     timer = window.setTimeout(() => { delete root.dataset.scrolling; }, 300);
   }, { passive: true, capture: true });
+}
+
+/**
+ * Whether a wheel over `target` scrolls something inside the page (a box of its own that scrolls up and down)
+ * rather than the page. Asked only while the layer is down: once it is up, the wheel's target is the page.
+ */
+function scrollsInside(target: EventTarget | null) {
+  const top = document.documentElement, body = document.body;
+  for (let el = target instanceof Element ? target : null; el && el !== top && el !== body; el = el.parentElement) {
+    if (el.scrollHeight <= el.clientHeight + 1) continue;
+    const y = getComputedStyle(el).overflowY;
+    if (y === "auto" || y === "scroll" || y === "overlay") return true;
+  }
+  return false;
 }

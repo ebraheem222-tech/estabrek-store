@@ -5,6 +5,32 @@ test("90Hz displays respect the 60fps scene budget", () => {
   expect(sceneFrameGap()).toBeGreaterThan(1000 / 90);
 });
 
+// The layer that holds hover off while the wheel scrolls the page (lib/pageRest.ts watchScrollingFlag) comes up
+// for the page's own scroll only: a sideways swipe (a slider) and a box scrolled inside the page (a drawer, the
+// chat) keep every turn of their wheel.
+test("the wheel's hover layer: up for the page's scroll only", async ({ page }) => {
+  await page.goto("/shop");
+  const up = () => page.evaluate(() => "scrolling" in document.documentElement.dataset);
+  await page.mouse.move(640, 400);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(up).toBe(true);
+  await expect.poll(up).toBe(false);
+  await page.mouse.wheel(300, 0);
+  expect(await up()).toBe(false);
+  // A box under the layer (as a drawer is), scrolled by four turns.
+  await page.evaluate(() => {
+    const box = document.createElement("div");
+    box.id = "inner-box";
+    box.style.cssText = "position:fixed;left:20px;top:120px;width:300px;height:300px;overflow-y:auto;z-index:50;background:#fff";
+    box.innerHTML = '<div style="height:3000px"></div>';
+    document.body.append(box);
+  });
+  await page.mouse.move(150, 250);
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 120);
+  expect(await up()).toBe(false);
+  await expect.poll(() => page.locator("#inner-box").evaluate((el) => el.scrollTop)).toBeGreaterThan(400);
+});
+
 // A hover preview colours the hovered section and the header only (themePreview.ts):
 // the page shell is never written, so the rest of the page is not restyled.
 test("category hover changes the palette without animating every page element", async ({ page }) => {

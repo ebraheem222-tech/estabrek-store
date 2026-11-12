@@ -40,7 +40,7 @@ function beginGlide(seconds: number, targets: HTMLElement[]) {
   const end = () => {
     if (!open) return;
     open = false;
-    window.clearTimeout(safety);
+    clearTimeout(safety);
     targets.forEach((t) => {
       const left = (gliding.get(t) ?? 1) - 1;
       if (left > 0) gliding.set(t, left);
@@ -50,8 +50,9 @@ function beginGlide(seconds: number, targets: HTMLElement[]) {
       }
     });
   };
-  // A tween replaced by a newer one never completes: let go of it anyway.
-  const safety = window.setTimeout(end, seconds * 1000 + 400);
+  // A tween replaced by a newer one never completes: let go of it anyway. (The plain timer functions: a test run
+  // without a page, tests/scene-handover.unit.spec.ts, has no window left when this one fires.)
+  const safety = setTimeout(end, seconds * 1000 + 400);
   return end;
 }
 
