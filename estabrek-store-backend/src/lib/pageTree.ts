@@ -19,6 +19,7 @@
  * draws it on the server (estabrek-storefront src/pageTree) and checks every value
  * again before it becomes CSS.
  */
+import { CODE_LIMITS, cssProblem } from "./cssCode.js";
 import { TOKEN_REF } from "./designTokens.js";
 import { BIND_REF } from "./collectionTree.js";
 import { z } from "zod";
@@ -233,6 +234,26 @@ export const SizeConstraints = z.object({
   aspectRatio: z.number().finite().min(.01).max(100).optional(),
 });
 
+/**
+ * A shape by equations (docs/cms-big-engine-plan.ar.md G; the shop's shared/shapeForm.ts draws it): each corner
+ * square, round, a squircle, bevelled, notched, scooped or a free Bézier, of a size in px; each edge straight, one
+ * curve, an arc, a wave, a zigzag, scallops, a notch, or y = f(x) typed (x 0–1), cut in (depth > 0) or bulging out
+ * (< 0), waves flowing (`flow` seconds a round); or a whole shape: a superellipse, a polygon or star, a blob (it can
+ * breathe), or a polar curve r(a) typed. Typed equations: numbers, x (a, t), + - * / ^ %, brackets and a few
+ * functions only (the shop reads them with its own small parser, never eval).
+ */
+const EQUATION = z.string().trim().min(1).max(120).regex(/^[\d\s.+\-*/^%(),a-zA-Z_]*$/, "Numbers, x, + - * / ^ and functions only")
+  .refine((v) => (v.match(/[A-Za-z_]\w*/g) ?? []).every((w) => ["x", "a", "t", "pi", "PI", "e", "E", "sin", "cos", "tan", "abs", "sqrt", "exp", "log", "floor", "ceil", "round", "sign", "min", "max", "pow"].includes(w) || /^\d*e\d*$/.test(w)), "Unknown name in the equation");
+const FormCorner = z.object({ kind: z.enum(["square", "round", "squircle", "bevel", "notch", "scoop", "bezier"]), size: px(0, 400).optional(), k: z.number().finite().min(1).max(12).optional(), c: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1)]).optional() });
+const FormEdge = z.object({ kind: z.enum(["straight", "curve", "arc", "wave", "zigzag", "scallop", "notch", "fn"]), depth: z.number().finite().min(-200).max(200).optional(), count: z.number().finite().min(1).max(40).optional(), phase: z.number().min(0).max(1).optional(), flow: z.number().min(0.5).max(30).optional(), fn: EQUATION.optional() })
+  .refine((e) => e.kind !== "fn" || Boolean(e.fn), "Type the equation");
+export const NodeForm = z.object({
+  corners: z.object({ tl: FormCorner.optional(), tr: FormCorner.optional(), br: FormCorner.optional(), bl: FormCorner.optional() }).optional(),
+  edges: z.object({ top: FormEdge.optional(), right: FormEdge.optional(), bottom: FormEdge.optional(), left: FormEdge.optional() }).optional(),
+  whole: z.object({ kind: z.enum(["superellipse", "polygon", "blob", "polar"]), n: z.number().finite().min(2).max(24).optional(), inner: z.number().min(0.2).max(1).optional(), seed: z.number().int().min(0).max(9999).optional(), amount: z.number().min(0).max(0.6).optional(), flow: z.number().min(0.5).max(30).optional(), fn: EQUATION.optional() })
+    .refine((w) => w.kind !== "polar" || Boolean(w.fn), "Type the equation").optional(),
+});
+
 export const ScreenStyle = z.object({
   ...VISUAL,
   // Partial screen overrides inherit field-by-field; effective conflicts are solved by the editor.
@@ -279,6 +300,7 @@ export const ScreenStyle = z.object({
   focus: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
   shape: z.enum(SHAPES).optional(), // what clips it (a picture inside takes the shape)
+  form: NodeForm.optional(), // a shape by equations (it wins over `shape`)
   pattern: z.object({ kind: z.enum(PATTERNS), color, size: px(4, 200), opacity: z.number().min(0).max(1).optional() }).optional(),
   // A soft mesh of two to four colours fading from the corners over the background; `move` drifts it (an aurora).
   mesh: z.object({ colors: z.array(color).min(2).max(4), soft: z.number().min(20).max(100).optional(), move: z.boolean().optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
@@ -1011,6 +1033,16 @@ export const NodeBody = z.object({
   out: z.boolean().optional(),
 });
 
+/**
+ * An element's own CSS (C): Tailwind classes (`tw`) and written CSS (`css`) as typed, and `out` = the rules made from
+ * them for this element only (the editor builds them); `out` is checked (lib/cssCode.ts) before it's kept.
+ */
+export const NodeCode = z.object({
+  tw: z.string().max(CODE_LIMITS.tw).regex(/^[^<>{};]*$/, "Classes only").optional(),
+  css: z.string().max(CODE_LIMITS.css).optional(),
+  out: z.string().max(CODE_LIMITS.out).optional(),
+});
+
 /* ------------------------------------------------------------------ tree */
 
 export type TreeText = Partial<Record<(typeof LANGS)[number], string>>;
@@ -1124,6 +1156,17 @@ export function checkTree(input: unknown): TreeCheck {
       const perf = NodePerf.safeParse(perfRaw);
       if (!perf.success) for (const i of perf.error.issues) add(`${path}.props.perf${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
       else if (Object.keys(perf.data).length) node.props.perf = perf.data;
+    }
+    // Its own CSS: what the editor made from it must stay on this element (lib/cssCode.ts).
+    const codeRaw = isObject(raw.props) ? (raw.props as Record<string, unknown>).code : undefined;
+    if (codeRaw !== undefined && codeRaw !== null) {
+      const code = NodeCode.safeParse(codeRaw);
+      if (!code.success) for (const i of code.error.issues) add(`${path}.props.code${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
+      else {
+        const problem = code.data.out ? cssProblem(code.data.out, nodeId) : null;
+        if (problem) add(`${path}.props.code.out`, `The CSS can't be used (${problem})`);
+        else if (code.data.tw || code.data.css || code.data.out) node.props.code = code.data;
+      }
     }
     // Physics: a world on the kinds that hold others, and any element's settings as a body in one.
     const own = isObject(raw.props) ? (raw.props as Record<string, unknown>) : {};

@@ -55,6 +55,8 @@ export type ScreenStyle = {
   focus?: { x: number; y: number };
   aspect?: string;
   shape?: string; // rect, rounded, pill, arch, circle, or one of the masks (css.ts MASKS)
+  /** A shape by equations, corner by corner and edge by edge, or whole (shared/shapeForm.ts); it wins over `shape`. */
+  form?: unknown;
   pattern?: { kind: string; color: string; size: number; opacity?: number };
   /** A soft mesh of 2–4 colours from the corners (`soft` % of the way); `move` drifts it like an aurora. */
   mesh?: { colors: string[]; soft?: number; move?: boolean; speed?: number };

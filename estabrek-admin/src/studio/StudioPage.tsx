@@ -113,6 +113,7 @@ import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, t
 import { CurvePanel, SlidePanel } from "./focus/KindPanels";
 import { PageBudget, PerfPanel, type Sample } from "./focus/PerfPanel";
 import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from "./PhysicsPanels";
+import { CodePanel, FormPanel } from "./FormPanels";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -2806,6 +2807,8 @@ function StudioDocument() {
                 <OverflowPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {PATTERNED.has(selFree.type) ? <PatternPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                <FormPanel key={`form:${selFree.id}:${screen}`} node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                <CodePanel key={`code:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
             )}
