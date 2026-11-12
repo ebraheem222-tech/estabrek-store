@@ -196,6 +196,8 @@ async function act(a: TriggerActionSpec, { self, reduced, point, tryout }: Run) 
         link.href = a.href;
         link.download = a.name || "";
         link.rel = "noopener";
+        // A file on another site can't be forced to download: it opens beside the page, not instead of it.
+        if (new URL(a.href, window.location.href).origin !== window.location.origin) link.target = "_blank";
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -299,6 +301,8 @@ function holds(c: ConditionSpec, count: number, self: HTMLElement): boolean {
  * its `fail` steps (which can't fail in turn).
  */
 async function runRecipe(t: TriggerSpec, count: number, run: Run) {
+  // A condition on the bag waits for the shop's hands (they may still be loading right after the page opens).
+  if (t.if.some((c) => c.if === "bag")) await whenHands();
   const ok = t.if.every((c) => holds(c, count, run.self));
   try {
     await steps(ok ? t.do : t.else, run);
