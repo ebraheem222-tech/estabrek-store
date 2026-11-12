@@ -24,7 +24,7 @@ const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.
 const sel = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
 const EASES: Array<[string, () => string]> = [
   ["smooth", () => say("ناعم|Smooth|חלק")], ["soft", () => say("هادي|Gentle|עדין")], ["strong", () => say("قوي|Strong|חזק")], ["back", () => say("يرجع شوي|Overshoots|חורג וחוזר")],
-  ["elastic", () => say("مطاطي|Elastic|אלסטי")], ["bounce", () => say("ينط|Bouncy|קופצני")], ["linear", () => say("ثابت|Steady|אחיד")],
+  ["elastic", () => say("مطاطي|Elastic|אלסטי")], ["bounce", () => say("ينط|Bouncy|קופצני")], ["linear", () => say("ثابت|Steady|אחיד")], ["fall", () => say("بيتسارع|Speeds up|מאיץ")],
 ];
 const L = () => say("حركة بالمفاتيح|Keyframes|קיפריימים");
 

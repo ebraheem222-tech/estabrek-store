@@ -154,6 +154,7 @@ export type PageTree = { version: 1; root: TreeNode };
  */
 export type LookKind = "text" | "button" | "image" | "video" | "box";
 export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>>; motion?: unknown };
+import { WORLD_HOSTS, physicsOf, worldOf, type PhysicsSpec } from "./physics";
 import { perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
@@ -215,7 +216,8 @@ export const HOVER_KINDS = [
   "spotlight", "ripple", "spring", "jelly",
 ] as const;
 export const FX_KINDS = ["shine", "gradient", "grain"] as const;
-export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
+// "fall" speeds up as it goes (a fall), the rest slow down as they arrive or glide.
+export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear", "fall"] as const;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type TreeMotionSpec = {
   engine?: "gsap" | "anime";
@@ -228,6 +230,8 @@ export type TreeMotionSpec = {
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
   hover?: { kind: (typeof HOVER_KINDS)[number]; amount?: number; color?: string };
   fx?: { kind: (typeof FX_KINDS)[number]; speed?: number; color?: string; to?: string };
+  /** Its own physics (pageTree/physics.ts, TreePhysics). */
+  physics?: PhysicsSpec;
   phone?: "same" | "lite" | "off";
 };
 
@@ -266,6 +270,8 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   if (phone) out.phone = phone;
   const keys = keysSpecOf(m.keys);
   if (keys) out.keys = keys;
+  const physics = physicsOf(m.physics);
+  if (physics) out.physics = physics;
   const cue = cueOf(m.cue);
   if (cue) out.cue = cue;
   return Object.keys(out).length ? plain(out) : null;
@@ -278,20 +284,21 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
  */
 export const TREE_TRANSFORM =
   "translate(var(--pt-ax,0%),var(--pt-ay,0%)) perspective(var(--pt-p,1200px)) " +
-  "translate3d(calc(var(--pt-x,0px) + var(--pt-ex,0px) + var(--pt-mx,0px) + var(--pt-hx,0px) + var(--pt-kx,0px)),calc(var(--pt-y,0px) + var(--pt-ey,0px) + var(--pt-my,0px) + var(--pt-ly,0px) + var(--pt-hy,0px) + var(--pt-ky,0px)),0) " +
+  "translate3d(calc(var(--pt-x,0px) + var(--pt-ex,0px) + var(--pt-mx,0px) + var(--pt-hx,0px) + var(--pt-kx,0px) + var(--pt-qx,0px)),calc(var(--pt-y,0px) + var(--pt-ey,0px) + var(--pt-my,0px) + var(--pt-ly,0px) + var(--pt-hy,0px) + var(--pt-ky,0px) + var(--pt-qy,0px)),0) " +
   "translate(var(--pt-kxp,0%),var(--pt-kyp,0%)) " +
   "rotateX(calc(var(--pt-rx,0deg) + var(--pt-erx,0deg) + var(--pt-mrx,0deg) + var(--pt-hrx,0deg) + var(--pt-krx,0deg))) " +
   "rotateY(calc(var(--pt-ry,0deg) + var(--pt-ery,0deg) + var(--pt-mry,0deg) + var(--pt-hry,0deg) + var(--pt-kry,0deg))) " +
-  "rotate(calc(var(--pt-rz,0deg) + var(--pt-erz,0deg) + var(--pt-mrz,0deg) + var(--pt-lrz,0deg) + var(--pt-hrz,0deg) + var(--pt-krz,0deg))) " +
+  "rotate(calc(var(--pt-rz,0deg) + var(--pt-erz,0deg) + var(--pt-mrz,0deg) + var(--pt-lrz,0deg) + var(--pt-hrz,0deg) + var(--pt-krz,0deg) + var(--pt-qrz,0deg))) " +
   "scale(calc(var(--pt-s,1) * var(--pt-es,1) * var(--pt-ms,1) * var(--pt-ls,1) * var(--pt-hs,1) * var(--pt-ks,1))) " +
-  "scale(var(--pt-ksx,1),var(--pt-ksy,1)) skew(var(--pt-kkx,0deg),var(--pt-kky,0deg))";
+  "scale(calc(var(--pt-ksx,1) * var(--pt-qsx,1)),calc(var(--pt-ksy,1) * var(--pt-qsy,1))) skew(var(--pt-kkx,0deg),calc(var(--pt-kky,0deg) + var(--pt-qky,0deg)))";
 /** The variables at rest, written on each moving element so it never takes its parent's (custom properties inherit). */
 export const TREE_TRANSFORM_REST =
   "--pt-ax:0%;--pt-ay:0%;--pt-p:1200px;--pt-x:0px;--pt-y:0px;--pt-rx:0deg;--pt-ry:0deg;--pt-rz:0deg;--pt-s:1;" +
   "--pt-ex:0px;--pt-ey:0px;--pt-erx:0deg;--pt-ery:0deg;--pt-erz:0deg;--pt-es:1;" +
   "--pt-mx:0px;--pt-my:0px;--pt-mrx:0deg;--pt-mry:0deg;--pt-mrz:0deg;--pt-ms:1;" +
   "--pt-ly:0px;--pt-lrz:0deg;--pt-ls:1;--pt-hx:0px;--pt-hy:0px;--pt-hrx:0deg;--pt-hry:0deg;--pt-hrz:0deg;--pt-hs:1;" +
-  "--pt-kx:0px;--pt-ky:0px;--pt-kxp:0%;--pt-kyp:0%;--pt-krx:0deg;--pt-kry:0deg;--pt-krz:0deg;--pt-ks:1;--pt-ksx:1;--pt-ksy:1;--pt-kkx:0deg;--pt-kky:0deg";
+  "--pt-kx:0px;--pt-ky:0px;--pt-kxp:0%;--pt-kyp:0%;--pt-krx:0deg;--pt-kry:0deg;--pt-krz:0deg;--pt-ks:1;--pt-ksx:1;--pt-ksy:1;--pt-kkx:0deg;--pt-kky:0deg;" +
+  "--pt-qx:0px;--pt-qy:0px;--pt-qrz:0deg;--pt-qsx:1;--pt-qsy:1;--pt-qky:0deg";
 /** The look's own variables the editor may preview live in its frame (before saving). */
 export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s", "--pt-x", "--pt-y", "--pt-ovo"] as const;
 
@@ -392,7 +399,12 @@ export function treeNeeds(tree: PageTree) {
   eachNode(tree, (n) => {
     if (!perf && perfNeeded(n, motionOf(n))) perf = true;
   });
-  return { perf, products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
+  // Physics (TreePhysics): an element's own, or a world that isn't baked into keyframes.
+  let physics = false;
+  eachNode(tree, (n) => {
+    if (!physics && (motionOf(n)?.physics || (WORLD_HOSTS as readonly string[]).includes(n.type) && worldOf(n.props?.world) && !worldOf(n.props?.world)?.baked)) physics = true;
+  });
+  return { perf, physics, products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

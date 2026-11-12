@@ -10,7 +10,7 @@ import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { tr } from "../lib/words";
 import { styleOp } from "./columns";
 import {
-  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, WORDS_ONLY, WORDY, hasNumber,
+  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, PHYSICS_FEEL, PHYSICS_LABEL, WORDS_ONLY, WORDY, hasNumber,
   drawingHasLines, drawingMorphs, hasPreset, lookOf, motionOp, placedOn, presetsFor, previewOf, shownLook, togglePreset,
   type Motion, type MotionKeys,
 } from "./look";
@@ -259,6 +259,8 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
   const loop = m.loop;
   const hover = m.hover;
   const fx = m.fx;
+  const physics = m.physics;
+  const feel = physics ? PHYSICS_FEEL[physics.kind] ?? PHYSICS_FEEL.follow : null;
   const holds = HOLDS.has(node.type);
   // Kinds that suit the element, and whatever it already has (so the list always shows it).
   const enterKinds = Object.keys(ENTER_LABEL).filter((k) => k === m.enter?.kind || ((!WORDS_ONLY.has(k) || WORDY.has(node.type)) && (k !== "count" || hasNumber(node)) && (k !== "draw" || drawingHasLines(node))));
@@ -333,6 +335,27 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
         {hover && HOVER_STRENGTH.has(hover.kind) ? <Range label={hover.kind === "spotlight" ? tr("حجم الضو", "The light's size") : tr("قوّتها", "Its strength")} min={0.2} max={3} step={0.1} busy={busy} value={hover.amount ?? 1} onSave={(v) => part("hover", { ...hover, amount: v })} testId="studio-hover-amount" /> : null}
         {hover && HOVER_COLOUR.has(hover.kind) ? <ColourPick label={tr("اللون", "Colour")} value={hover.color ?? ""} busy={busy} onPick={(c) => part("hover", { ...hover, color: c ?? undefined })} testId="studio-hover-color" /> : null}
         {hover && !["glow", "zoom", "ripple"].includes(hover.kind) ? <p className="text-[10px] leading-4 text-white/35">{tr("بيشتغل مع الماوس بس (مش عالموبايل).", "Works with a mouse only (not on a phone).")}</p> : null}
+      </Part>
+
+      <Part title={tr("فيزياء", "Physics")} open={Boolean(physics)} testId="studio-physics">
+        <Pick label={tr("كيف بيتحرك", "How it moves")} value={physics?.kind ?? ""} busy={busy} options={[none, ...Object.keys(PHYSICS_LABEL).map((k): [string, string] => [k, PHYSICS_LABEL[k]()])]} onPick={(v) => part("physics", v ? { kind: v } : undefined)} testId="studio-physics-kind" />
+        {physics && feel ? (
+          <>
+            <Range label={physics.kind === "drop" ? tr("من أي علو", "From how high") : physics.kind === "magnet" ? tr("لأي بعد بيشد", "How far it pulls from") : tr("قوّتها", "Its strength")} min={0.2} max={3} step={0.1} busy={busy} value={physics.amount ?? 1} onSave={(v) => part("physics", { ...physics, amount: v })} testId="studio-physics-amount" />
+            {["drop", "throw"].includes(physics.kind) ? <Range label={tr("قديش بينط", "How bouncy")} min={0} max={0.95} step={0.05} busy={busy} value={physics.bounce ?? feel.bounce} onSave={(v) => part("physics", { ...physics, bounce: v })} testId="studio-physics-bounce" /> : null}
+            {["follow", "magnet", "throw", "float", "scroll"].includes(physics.kind) ? (
+              <>
+                <Range label={tr("شدّة الزنبرك", "The spring's pull")} min={20} max={600} step={10} busy={busy} value={physics.stiffness ?? feel.stiffness} onSave={(v) => part("physics", { ...physics, stiffness: v })} testId="studio-physics-stiffness" />
+                <Range label={tr("قديش بيهدى", "How quickly it calms")} min={1} max={60} step={1} busy={busy} value={physics.damping ?? feel.damping} onSave={(v) => part("physics", { ...physics, damping: v })} testId="studio-physics-damping" />
+                <Range label={tr("وزنه", "Its weight")} min={0.2} max={5} step={0.1} busy={busy} value={physics.mass ?? 1} onSave={(v) => part("physics", { ...physics, mass: v })} testId="studio-physics-mass" />
+              </>
+            ) : null}
+            {physics.kind === "throw" ? (
+              <Choice label={tr("بعد ما يوقف", "Once it stops")} value={physics.home ?? "back"} busy={busy} options={[["back", tr("بيرجع لمكانه", "Goes back to its place")], ["stay", tr("بيضل وين وقع", "Stays where it lands")]]} onPick={(v) => part("physics", { ...physics, home: v === "back" ? undefined : "stay" })} />
+            ) : null}
+            <p className="text-[10px] leading-4 text-white/35">{physics.kind === "drop" ? tr("بيوقع لما يبيّن عالشاشة.", "It falls once it shows on the screen.") : physics.kind === "scroll" ? tr("بيشتغل مع السكرول.", "Works with the scroll.") : tr("مع الماوس أو الإصبع.", "With the pointer or a finger.")}</p>
+          </>
+        ) : null}
       </Part>
 
       <Part title={tr("طبقة متحركة", "An animated layer")} open={Boolean(fx)}>

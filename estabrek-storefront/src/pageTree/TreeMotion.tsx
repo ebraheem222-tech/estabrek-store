@@ -35,7 +35,7 @@ const linesOf = (el: Element) => Array.from(el.querySelectorAll<SVGElement>(SHAP
 const fillsOf = (el: Element) => Array.from(el.querySelectorAll<SVGElement>(SHAPES)).filter((s) => getComputedStyle(s).fill !== "none");
 type Vars = Record<string, string | number>;
 
-export const MOTION_EASE: Record<string, string> = { smooth: "power2.out", soft: "sine.inOut", strong: "power4.out", back: "back.out(1.6)", elastic: "elastic.out(1, 0.5)", bounce: "bounce.out", linear: "none" };
+export const MOTION_EASE: Record<string, string> = { smooth: "power2.out", soft: "sine.inOut", strong: "power4.out", back: "back.out(1.6)", elastic: "elastic.out(1, 0.5)", bounce: "bounce.out", linear: "none", fall: "power2.in" };
 
 /** Where an element comes in from (the variables and values it starts at). */
 export function enterFrom(kind: string, distance: number, rtl: boolean): Vars {

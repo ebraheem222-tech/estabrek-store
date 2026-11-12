@@ -21,7 +21,25 @@ export type Motion = {
   loop?: { kind: string; duration?: number; amount?: number };
   hover?: { kind: string; amount?: number; color?: string };
   fx?: { kind: string; speed?: number; color?: string; to?: string };
+  /** Its own physics (the shop's pageTree/physics.ts). */
+  physics?: Physics;
   phone?: "same" | "lite" | "off";
+};
+export type Physics = { kind: string; stiffness?: number; damping?: number; mass?: number; amount?: number; bounce?: number; home?: "back" | "stay" };
+/** An element's own physics, each with what it does. */
+export const PHYSICS_LABEL: Record<string, () => string> = {
+  drop: () => tr("بيوقع لمكانه وبينط", "Falls into place and bounces"),
+  follow: () => tr("بيميل ورا الماوس", "Leans after the pointer"),
+  magnet: () => tr("مغناطيس لما يقرب الماوس", "Pulled to a nearby pointer"),
+  throw: () => tr("بينمسك وبينرمى", "Grab it and throw it"),
+  pendulum: () => tr("معلّق وبيتمرجح", "Hangs and swings"),
+  float: () => tr("طافي متل عالمي", "Floats as if on water"),
+  scroll: () => tr("بيتأخر ورا سرعة السكرول", "Lags behind the scroll's speed"),
+};
+/** Each kind's own feel when it's left as it comes (the shop's PHYSICS_FEEL). */
+export const PHYSICS_FEEL: Record<string, { stiffness: number; damping: number; bounce: number }> = {
+  follow: { stiffness: 120, damping: 14, bounce: 0 }, magnet: { stiffness: 170, damping: 15, bounce: 0 }, throw: { stiffness: 90, damping: 12, bounce: 0.55 },
+  drop: { stiffness: 0, damping: 0, bounce: 0.42 }, pendulum: { stiffness: 0, damping: 0.9, bounce: 0 }, float: { stiffness: 60, damping: 5, bounce: 0 }, scroll: { stiffness: 160, damping: 18, bounce: 0 },
 };
 
 export const lookOf = (n: PageTreeNode, screen: TreeScreen): Look => (((n.style ?? {}) as Record<string, Look | undefined>)[screen] ?? {});
@@ -161,6 +179,7 @@ export const EASE_LABEL: Record<string, () => string> = {
   elastic: () => tr("مطاطية", "Elastic"),
   bounce: () => tr("بتنط", "Bouncy"),
   linear: () => tr("ثابتة", "Even"),
+  fall: () => tr("بتتسارع (متل الوقعة)", "Speeds up (like a fall)"),
 };
 /** Words come in word by word only where there are words. */
 export const WORDY = new Set(["heading", "text", "button"]);
@@ -211,6 +230,9 @@ export const MOTION_PRESETS: MotionPreset[] = [
   { key: "pulse", label: () => tr("بينبض", "Pulses"), motion: { loop: { kind: "pulse", duration: 1.6 } } },
   { key: "tilt-hover", label: () => tr("بيميل مع الماوس", "Tilts with the mouse"), motion: { hover: { kind: "tilt" } } },
   { key: "magnetic", label: () => tr("مغناطيس", "Magnetic"), motion: { hover: { kind: "magnetic" } } },
+  { key: "physics-drop", label: () => tr("بيوقع وبينط", "Drops and bounces"), motion: { physics: { kind: "drop", bounce: 0.45 } } },
+  { key: "physics-throw", label: () => tr("انمسك وارميه", "Grab and throw"), motion: { physics: { kind: "throw" } } },
+  { key: "physics-pendulum", label: () => tr("بيتمرجح", "Swings"), motion: { physics: { kind: "pendulum" } } },
   { key: "ripple", label: () => tr("موجة لما ينضغط", "A ripple when pressed"), motion: { hover: { kind: "ripple" } }, only: new Set(["button", "cell", "image", "icon"]) },
   { key: "spotlight", label: () => tr("ضو بيلحق الماوس", "A light following the mouse"), motion: { hover: { kind: "spotlight" } }, only: HOLDS },
   { key: "jelly", label: () => tr("زنبرك", "Springy"), motion: { hover: { kind: "jelly" } } },

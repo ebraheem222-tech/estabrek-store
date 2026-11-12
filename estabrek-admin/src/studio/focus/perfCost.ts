@@ -49,6 +49,17 @@ export function costOf(node: PageTreeNode): Cost {
   if (m.fx) { endless = true; add("fx", 12, say("تأثير متحرك دايم.|An effect always moving.|אפקט שזז תמיד."), { phone: "light" }); }
   if (m.scroll) add("scroll", 6, say("حركة مع السكرول.|Motion with the scroll.|תנועה עם הגלילה."));
   if (m.keys) add("keys", 5, say("حركة بخطوات (keyframes).|Keyframed motion.|תנועה בפריימים."));
+  if (m.physics) {
+    const kind = obj(m.physics).kind;
+    if (kind === "float") endless = true;
+    add("physics", kind === "float" ? 8 : kind === "drop" ? 3 : 4, say("فيزياء خاصة فيه (زنبركات وجاذبية).|Its own physics (springs and gravity).|פיזיקה משלו."));
+  }
+  // A world: a physics engine runs while its bodies move (none when baked into keyframes).
+  if (["section", "grid", "stack", "columns", "cell", "popup"].includes(node.type) && p.world && !obj(p.world).baked) {
+    const w = obj(p.world);
+    if (Number(w.wind) || Number(w.again)) endless = true;
+    add("world", 14 + Math.round((node.children ?? []).length * 0.6), say("عالم فيزيائي: محرّك بيحسب كل جسم كل لحظة وهو عم يتحرك. «ثبّت» بيخليه حركة عادية أخف.|A physics world: an engine works out each body every moment while they move. «Bake» makes it plain, lighter motion.|עולם פיזיקלי: מנוע מחשב כל גוף בכל רגע."));
+  }
 
   switch (node.type) {
     case "model3d": {

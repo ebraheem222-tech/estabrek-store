@@ -114,7 +114,8 @@ const length = z.string().trim().regex(/^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|v
 const place = z.string().trim().regex(/^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/, "Like “1 / 3” or “span 2”");
 
 /** How a motion speeds up and slows down (also a state change's). */
-export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
+// "fall" speeds up as it goes (a fall; a world baked into keyframes uses it), the rest slow down as they arrive or glide.
+export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear", "fall"] as const;
 const seconds = (max: number) => z.number().finite().min(0).max(max);
 const turnAngle = (max: number) => z.number().finite().min(-max).max(max);
 const textShadow = z.object({ x: px(-100, 100), y: px(-100, 100), blur: px(0, 200), color });
@@ -396,6 +397,23 @@ export const NodeCue = z.object({
 }).refine((c) => c.to > c.from, "It ends after it starts");
 
 /**
+ * An element's own physics (the editor's physics, docs/cms-big-engine-plan.ar.md I1): it leans after the pointer
+ * (follow), is pulled to it when near (magnet), can be grabbed and thrown inside its box (throw), falls into its
+ * place and bounces (drop), hangs and swings (pendulum), floats as if on water (float), or lags behind the scroll's
+ * speed (scroll). A spring's pull and calm, its weight, how strong, how bouncy, and whether a throw goes back home.
+ */
+export const PHYSICS_KINDS = ["follow", "magnet", "throw", "drop", "pendulum", "float", "scroll"] as const;
+export const NodePhysics = z.object({
+  kind: z.enum(PHYSICS_KINDS),
+  stiffness: z.number().finite().min(20).max(600).optional(),
+  damping: z.number().finite().min(1).max(60).optional(),
+  mass: z.number().finite().min(0.2).max(5).optional(),
+  amount: z.number().finite().min(0.1).max(3).optional(),
+  bounce: z.number().finite().min(0).max(0.95).optional(),
+  home: z.enum(["back", "stay"]).optional(),
+});
+
+/**
  * How an element moves: comes in once when it's first seen (`enter`, `stagger` =
  * what it holds one after another), follows the scroll (`parallax`, or from → to
  * between two points of the screen, 0–100 % from the top), loops, answers the
@@ -414,6 +432,7 @@ export const NodeMotion = z.object({
   loop: z.object({ kind: z.enum(LOOP_KINDS), duration: z.number().min(0.2).max(20).optional(), amount: z.number().min(0.1).max(3).optional() }).optional(),
   hover: z.object({ kind: z.enum(HOVER_KINDS), amount: z.number().min(0.1).max(3).optional(), color: color.optional() }).optional(),
   fx: z.object({ kind: z.enum(FX_KINDS), speed: z.number().min(0.2).max(5).optional(), color: color.optional(), to: color.optional() }).optional(),
+  physics: NodePhysics.optional(),
   phone: z.enum(["same", "lite", "off"]).optional(),
 });
 
@@ -957,6 +976,41 @@ export const NodePerf = z.object({
   strong: z.boolean().optional(),
 });
 
+/**
+ * A world (props.world on a section, grid, stack, columns, cell or popup, I2): what it holds become bodies of a
+ * physics engine. When it starts (seen, at once, a click, the pointer over it), how (from where they are, dropped
+ * in, burst apart), gravity (sideways, down; the phone's tilt), its walls, bounce, friction, air, dragging and
+ * throwing, the pointer pushing or pulling, a wind, a click bursting or turning gravity over, starting again every
+ * so many seconds; `baked` = played as its bodies' keyframes, with no physics on the page.
+ */
+export const WORLD_HOSTS: ReadonlySet<string> = new Set(["section", "grid", "stack", "columns", "cell", "popup"]);
+export const NodeWorld = z.object({
+  on: z.enum(["view", "load", "click", "hover"]).optional(),
+  start: z.enum(["place", "drop", "burst"]).optional(),
+  gx: z.number().finite().min(-2).max(2).optional(),
+  gy: z.number().finite().min(-2).max(2).optional(),
+  tilt: z.boolean().optional(),
+  walls: z.enum(["box", "open", "floor", "none"]).optional(),
+  bounce: z.number().finite().min(0).max(0.95).optional(),
+  friction: z.number().finite().min(0).max(1).optional(),
+  air: z.number().finite().min(0).max(0.2).optional(),
+  drag: z.boolean().optional(),
+  pointer: z.enum(["none", "push", "pull"]).optional(),
+  wind: z.number().finite().min(-1).max(1).optional(),
+  click: z.enum(["none", "burst", "flip"]).optional(),
+  again: z.number().finite().min(0).max(60).optional(),
+  baked: z.boolean().optional(),
+});
+/** An element as a body in its world (props.body): round or a box, fixed in place, bouncier, heavier, hung from a rope or a spring, or left out. */
+export const NodeBody = z.object({
+  shape: z.enum(["auto", "box", "circle"]).optional(),
+  fixed: z.boolean().optional(),
+  bounce: z.number().finite().min(0).max(0.95).optional(),
+  mass: z.number().finite().min(0.2).max(5).optional(),
+  hang: z.enum(["none", "rope", "spring"]).optional(),
+  out: z.boolean().optional(),
+});
+
 /* ------------------------------------------------------------------ tree */
 
 export type TreeText = Partial<Record<(typeof LANGS)[number], string>>;
@@ -1070,6 +1124,16 @@ export function checkTree(input: unknown): TreeCheck {
       const perf = NodePerf.safeParse(perfRaw);
       if (!perf.success) for (const i of perf.error.issues) add(`${path}.props.perf${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
       else if (Object.keys(perf.data).length) node.props.perf = perf.data;
+    }
+    // Physics: a world on the kinds that hold others, and any element's settings as a body in one.
+    const own = isObject(raw.props) ? (raw.props as Record<string, unknown>) : {};
+    for (const [key, schema, allowed] of [["world", NodeWorld, WORLD_HOSTS.has(type)], ["body", NodeBody, true]] as const) {
+      const v = own[key];
+      if (v === undefined || v === null) continue;
+      if (!allowed) { add(`${path}.props.${key}`, `“${type}” can't hold a physics world`); continue; }
+      const r = schema.safeParse(v);
+      if (!r.success) for (const i of r.error.issues) add(`${path}.props.${key}${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
+      else node.props[key] = r.data;
     }
     if (type === "showcase" && props.success) node.props.initial = Math.min(Number(node.props.initial), (node.props.items as unknown[]).length - 1);
     if (type === "deck" && props.success) node.props.initial = Math.min(Number(node.props.initial) || 0, Math.max(0, (children?.length ?? 0) - 1));

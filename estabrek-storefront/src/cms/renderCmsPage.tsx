@@ -56,7 +56,7 @@ import { cursorOf } from "@/pageTree/pieces";
 import { color as treeColor } from "@/pageTree/css";
 import { TreeTriggers } from "@/pageTree/TreeTriggers";
 // Elements' own speed settings at work, a script of its own (lazyParts.tsx).
-import { TreePerf } from "@/pageTree/lazyParts";
+import { TreePerf, TreePhysics } from "@/pageTree/lazyParts";
 import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
 import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
 import { commerceNeeds, commercePageValid } from "@/pageTree/commerce";
@@ -543,6 +543,7 @@ export async function renderCmsPageBySlug(
   let treeScenes = false;
   let treeTriggers = false;
   let treePerf = false;
+  let treePhysics = false;
   let treeCovers = false;
   let treePaint = false;
   // The page's own cursor, as the page carries it (TreeCursor reads it from there).
@@ -584,6 +585,7 @@ export async function renderCmsPageBySlug(
     treeScenes = needs.scenes;
     treeTriggers = needs.triggers;
     treePerf = needs.perf;
+    treePhysics = needs.physics;
     treeCovers = needs.covers;
     treePaint = needs.paint;
     const cursor = needs.cursor ? cursorOf(tree.root.props?.cursor, treeColor) : null;
@@ -612,6 +614,7 @@ export async function renderCmsPageBySlug(
       {treeScenes && !independentDesign(settingsHeader) ? <TreeScenes /> : null}
       {treeTriggers && !independentDesign(settingsHeader) ? <TreeTriggers /> : null}
       {treePerf && !independentDesign(settingsHeader) ? <TreePerf revision={0} /> : null}
+      {treePhysics && !independentDesign(settingsHeader) ? <TreePhysics revision={0} /> : null}
       {treeCovers && !independentDesign(settingsHeader) ? <TreeCovers /> : null}
       {treePaint && !independentDesign(settingsHeader) ? <TreePaint /> : null}
       {treeCursor ? <span hidden aria-hidden="true" data-pt-cursor={treeCursor} /> : null}

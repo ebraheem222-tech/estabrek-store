@@ -5,6 +5,8 @@
  * so a bad saved value can't become CSS. Sides follow the text direction
  * (padding-inline-start…), so the same tree is right in Arabic, Hebrew and English.
  */
+import { endlessOf, perfOf } from "./perf";
+import { WORLD_HOSTS, worldOf } from "./physics";
 import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type SizeConstraints, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
 import { tokenVar } from "./designTokens";
@@ -706,8 +708,11 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
   // Whether a state glides a turn (typed turn values).
   let glides = false;
   let drawn = 0;
+  // Whether any element carries speed marks (perf.ts): its own settings, or motion without end.
+  let perfUsed = false;
   const walk = (n: TreeNode, parent: TreeNode | null) => {
     if (n.type !== "page" && n.type !== "legacy") drawn++;
+    if (!perfUsed && (perfOf(n.props?.perf) || endlessOf(n, motionOf(n)))) perfUsed = true;
     if (SAFE_ID.test(n.id ?? "")) {
       const sel = `.pt-${n.id}`;
       const screens = [n.style?.base, n.style?.tablet, n.style?.mobile];
@@ -715,7 +720,8 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       if (motion?.enter?.stagger) staggered.add(n.id);
       if (screens.some(glidesOn)) glides = true;
       const turns = screens.some(turnsOn);
-      if (motion || turns || (parent && staggered.has(parent.id))) turned.push(sel);
+      const inWorld = Boolean(parent && (WORLD_HOSTS as readonly string[]).includes(parent.type) && worldOf(parent.props?.world));
+      if (motion || turns || inWorld || (parent && staggered.has(parent.id))) turned.push(sel);
       const layered = screens.some(coveredOn);
       if (layered) ((MEDIA.has(n.type) && (n.type === "slider" || framed(n, motion))) ? over : under).push(sel);
       if (layered || motion?.fx) holders.push(sel);
@@ -825,6 +831,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
     fontFaceCss(treeFamilies(tree, site)),
     glides ? TURN_PROPERTIES : "",
     BASE_CSS,
+    perfUsed ? PERF_CSS : "",
     // Before each element's own rule, so its own values win.
     turned.length ? `${turned.join(",")}{${TREE_TRANSFORM_REST};transform:${TREE_TRANSFORM}}` : "",
     holders.length ? `${holders.join(",")}{position:relative;isolation:isolate}` : "",
@@ -843,6 +850,18 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
 }
 
 /** What every tree element starts from (theme colours, the direction-aware sides). */
+/**
+ * An element's own speed settings (perf.ts, TreePerf.tsx): light = no blur, shadows, filters or endless motion,
+ * inside it too; balanced = no frosted glass; off screen, endless motion rests. Only on a page that has them (the
+ * rules reach every element below a mark, so a page without any doesn't carry them).
+ */
+export const PERF_CSS = [
+  "[data-perf-tier=light],[data-perf-tier=light] *,[data-perf-light-now],[data-perf-light-now] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition-duration:0s!important;mix-blend-mode:normal!important}",
+  "[data-perf-tier=balanced],[data-perf-tier=balanced] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}",
+  "@media (max-width:767.98px){[data-perf-phone=light],[data-perf-phone=light] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;mix-blend-mode:normal!important}}",
+  "[data-perf-away],[data-perf-away] *{animation:none!important}",
+].join("");
+
 export const BASE_CSS = [
   // Headings take the store theme's display font when there is one.
   ":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}",
@@ -966,12 +985,6 @@ export const BASE_CSS = [
   ".pt-sparkles[data-when=hover] .pt-spark{animation:none}",
   ".pt-frame:hover>.pt-sparkles[data-when=hover] .pt-spark,.pt-frame:focus-within>.pt-sparkles[data-when=hover] .pt-spark{animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
   ".pt-sparkles[data-when=few] .pt-spark{animation-iteration-count:3}",
-  // An element's own speed settings (perf.ts, TreePerf.tsx): light = no blur, shadows, filters or endless motion,
-  // inside it too; balanced = no frosted glass; off screen, endless motion rests.
-  "[data-perf-tier=light],[data-perf-tier=light] *,[data-perf-light-now],[data-perf-light-now] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition-duration:0s!important;mix-blend-mode:normal!important}",
-  "[data-perf-tier=balanced],[data-perf-tier=balanced] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}",
-  "@media (max-width:767.98px){[data-perf-phone=light],[data-perf-phone=light] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;mix-blend-mode:normal!important}}",
-  "[data-perf-away],[data-perf-away] *{animation:none!important}",
   // Words along a curve (curvedWords.tsx): the element's own font, weight and colour.
   ".pt-curve{display:block;width:100%;height:auto;overflow:visible}",
   ".pt-curve text{font-family:inherit;font-weight:inherit;font-style:inherit}",
