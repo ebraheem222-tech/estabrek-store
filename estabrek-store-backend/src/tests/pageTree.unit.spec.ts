@@ -304,6 +304,23 @@ describe("checking a page tree", () => {
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
   });
 
+  test("a drawing's shapes turn into others: which shape, its target path, when and on what curve", () => {
+    const art = { viewBox: "0 0 100 100", nodes: [{ t: "path", a: { d: "M10 10 H90 V90 H10 Z" } }] };
+    const tree = (morph: unknown) => page([section("s", [{ id: "d", type: "svg", props: { art, morph } }])]);
+    const good = { on: "hover", duration: 0.6, ease: "spring(1,170,12)", stagger: 0.05, pairs: [{ part: "0", to: "M50 10 L90 90 L10 90 Z" }] };
+    const r = checkTree(tree(good));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props.morph).toEqual(good);
+    for (const ease of ["power2.out", "cubic-bezier(0.2,0.8,0.2,1)", "none"]) expect(checkTree(tree({ ...good, ease })).ok).toBe(true);
+    const bad = (morph: unknown) => issuesOf(tree(morph)).map((i) => i.message).join(" ");
+    expect(bad({ ...good, ease: "cubic-bezier(2,0,0,1)" })).toMatch(/motion curve/);
+    expect(bad({ ...good, ease: "url(x)" })).toMatch(/motion curve/);
+    expect(bad({ ...good, pairs: [{ part: "0", to: "M0 0 <script>" }] })).toMatch(/isn't a path/);
+    expect(bad({ ...good, pairs: [{ part: "../x", to: "M0 0" }] })).not.toBe("");
+    expect(bad({ ...good, on: "always" })).not.toBe("");
+    expect(bad({ ...good, pairs: [] })).not.toBe("");
+  });
+
   test("a section's edges, a pattern over the background, and the shapes that cut an element", () => {
     const wave = { viewBox: "0 0 1440 120", nodes: [{ t: "path", a: { d: "M0 60C480 0 960 120 1440 60V120H0Z", fill: "currentColor" } }] };
     const tree = (props: unknown, style?: unknown) => page([{ id: "s", type: "section", props, ...(style ? { style } : {}), children: [{ id: "c", type: "text", props: { text: { ar: "x" } }, style: { base: { shape: "heart" } } }] }]);

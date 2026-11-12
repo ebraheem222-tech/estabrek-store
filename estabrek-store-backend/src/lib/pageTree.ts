@@ -22,7 +22,8 @@
 import { TOKEN_REF } from "./designTokens.js";
 import { BIND_REF } from "./collectionTree.js";
 import { z } from "zod";
-import { checkArt, type Art } from "./svgArt.js";
+import { checkArt, isArtPath, type Art } from "./svgArt.js";
+import { isEase } from "./motionEase.js";
 import { InteractionPolicy, CardDesign } from "./visualControls.js";
 
 export const TREE_VERSION = 1;
@@ -658,6 +659,15 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     shape: z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/).optional(),
     knobs: z.record(z.string().regex(/^[a-z][a-zA-Z0-9]{0,20}$/), z.number().finite().min(-10000).max(10000)).refine((k) => Object.keys(k).length <= 12, "At most 12 knobs").optional(),
     label: local(120).optional(),
+    // Its shapes turning into others (the editor's focus mode): which shape (its place, "0.2.1") becomes which path,
+    // when (pointer over it, a click back and forth, a loop, with the scroll, once in view), how long and on what curve.
+    morph: z.object({
+      on: z.enum(["hover", "click", "loop", "scroll", "view"]),
+      duration: z.number().min(0.1).max(10).optional(),
+      ease: z.string().max(60).refine(isEase, "Not a motion curve").optional(),
+      stagger: z.number().min(0).max(2).optional(),
+      pairs: z.array(z.object({ part: z.string().regex(/^\d{1,3}(\.\d{1,3}){0,9}$/), to: z.string().refine(isArtPath, "The target isn't a path") })).min(1).max(20),
+    }).optional(),
   }),
   slider: z.object({
     slides: z

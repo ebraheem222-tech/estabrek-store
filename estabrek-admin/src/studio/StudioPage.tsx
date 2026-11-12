@@ -103,7 +103,10 @@ import { SvgPanel } from "./SvgPanel";
 import { canFocus, focusGroup, focusParts, focusTitle, focusTrail, type FocusPart } from "./focus/focusKinds";
 import { focusView, sameView, viewAt, type View } from "./focus/focusView";
 import { FocusBar, FocusMask, FocusParts, type Crumb } from "./focus/FocusChrome";
-import { SvgPartPanel } from "./focus/SvgPartPanel";
+import { MorphSettings, SvgPartPanel, type Morph } from "./focus/SvgPartPanel";
+import { PathHandles, compose } from "./focus/PathHandles";
+import { withArtAttrs } from "./focus/focusKinds";
+import type { Matrix } from "./focus/pathData";
 import { SectionObjectsPanel } from "./SectionObjectsPanel";
 import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, previewOf, shownLook, togglePreset, type Motion } from "./look";
@@ -299,6 +302,11 @@ function StudioDocument() {
   const [focus, setFocus] = useState<{ id: string; part: FocusPart | null; back: View } | null>(null);
   const [focusAll, setFocusAll] = useState(false);
   const glide = useRef(0);
+  // A drawing opened in focus mode: its shapes as the frame measured them (page box, the matrix from their own
+  // numbers to the page, their own box), and the shape a click asked the frame for.
+  const [artInfo, setArtInfo] = useState<{ nodeId: string; parts: Array<{ id: string; tag: string; rect: Box; ctm: Matrix | null; box: Box }> } | null>(null);
+  const artPick = useRef<{ requestId: string; done: (part: string | null) => void } | null>(null);
+  const artSeq = useRef(0);
   const history = useRef(new History());
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const latest = useRef<PagesAPI.PageDraft | null>(null);
@@ -389,6 +397,21 @@ function StudioDocument() {
       } else if (d.type === "pointPicked") {
         const value = d as unknown as { requestId?: unknown; candidates?: unknown };
         if (typeof value.requestId === "string" && Array.isArray(value.candidates)) pointSelection.current.resolve(value.requestId, value.candidates.filter((v): v is string => typeof v === "string").slice(0, 100));
+      } else if (d.type === "artParts") {
+        const m = d as unknown as { nodeId?: unknown; parts?: unknown };
+        if (typeof m.nodeId === "string" && Array.isArray(m.parts)) {
+          const parts = m.parts
+            .filter((x): x is { id: string; tag: string; rect: Box; ctm: Matrix | null; box: Box } => Boolean(x) && typeof (x as { id?: unknown }).id === "string" && typeof (x as { rect?: unknown }).rect === "object")
+            .slice(0, 200);
+          setArtInfo({ nodeId: m.nodeId, parts });
+        }
+      } else if (d.type === "artPicked") {
+        const m = d as unknown as { requestId?: unknown; part?: unknown };
+        const wait = artPick.current;
+        if (wait && m.requestId === wait.requestId) {
+          artPick.current = null;
+          wait.done(typeof m.part === "string" ? m.part : null);
+        }
       } else if (d.type === "viewUpdated") {
         pointSelection.current.cancel();
         const requestId = (d as unknown as { requestId?: unknown }).requestId;
@@ -795,6 +818,22 @@ function StudioDocument() {
     if (focus && e.button === 0 && !panMode && inFrame(p)) {
       const fb = shapeOf(focus.id)?.box;
       if (fb && (p.x < fb.x - 6 || p.x > fb.x + fb.w + 6 || p.y < fb.y - 6 || p.y > fb.y + fb.h + 6)) closeFocus();
+      else if (fb && focusArt && index) {
+        // Inside an open drawing a click picks its shape (the frame knows which is under the point).
+        const art = focusArt;
+        const requestId = `art${++artSeq.current}`;
+        artPick.current = {
+          requestId,
+          done: (pid) => {
+            const n = index.nodes.get(art)?.node;
+            const fp = pid && n ? focusParts(n, index).find((x) => x.id === pid) ?? null : null;
+            setFocus((f) => (f && f.id === art ? { ...f, part: fp } : f));
+          },
+        };
+        if (selected !== art) select(art);
+        send({ type: "artPick", requestId, nodeId: art, x: (p.x - pan.x) / zoom, y: (p.y - pan.y) / zoom });
+        return;
+      }
     }
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const panning = e.button === 1 || panMode || !inFrame(p);
@@ -1101,6 +1140,16 @@ function StudioDocument() {
       window.removeEventListener("blur", onBlur);
     };
   });
+
+  // A drawing open in focus mode: the frame measures its shapes (again whenever the page is measured).
+  const focusArt = focus && index?.nodes.get(focus.id)?.node.type === "svg" ? focus.id : null;
+  useEffect(() => {
+    if (!focusArt) {
+      setArtInfo(null);
+      return;
+    }
+    send({ type: "artParts", nodeId: focusArt });
+  }, [focusArt, layout, send]);
 
   // Focus mode ends when its element is gone (deleted, undone) or the screen changes (the view is fitted again).
   useEffect(() => {
@@ -2120,7 +2169,8 @@ function StudioDocument() {
     const inside = selected && selected !== focus.id && focusTrail(index, focus.id, selected) ? nodeOf(selected) : undefined;
     const target = inside ?? n;
     const g = focusGroup(target);
-    const part = target.id === focus.id ? focus.part : null;
+    // The part as the drawing has it now (a circle turned into a path is named a path).
+    const part = target.id === focus.id && focus.part ? focusParts(target, index).find((x) => x.id === focus.part!.id) ?? focus.part : null;
     const onOps = (l: string, ops: PagesAPI.PageDraftOp[]) => void change(l, ops);
     return (
       <div className="space-y-3" data-testid="studio-focus-panel" data-group={g} data-node={target.id}>
@@ -2128,7 +2178,20 @@ function StudioDocument() {
           <div className="text-[11px] text-white/45">{focusTitle(g)}</div>
           <div className="text-base font-semibold">{label(target.id)}</div>
         </div>
-        {part && g === "svg" ? <SvgPartPanel key={`${target.id}:${part.id}`} node={target} part={part} busy={busy} onOps={onOps} /> : null}
+        {part && g === "svg" ? (
+          <SvgPartPanel
+            key={`${target.id}:${part.id}`} node={target} part={part} busy={busy} onOps={onOps}
+            info={artInfo?.nodeId === target.id ? artInfo.parts.find((x) => x.id === part.id) : undefined}
+            onTry={() => send({ type: "motionMorph", nodeId: target.id })}
+          />
+        ) : null}
+        {g === "svg" && !part && (target.props as Record<string, unknown> | undefined)?.morph ? (
+          <MorphSettings
+            morph={(target.props as Record<string, unknown>).morph as Morph} busy={busy}
+            onTry={() => send({ type: "motionMorph", nodeId: target.id })}
+            onSave={(m) => onOps(say("التحوّل|The morph|ההתמרה"), [{ op: "setProps", nodeId: target.id, props: { ...(target.props ?? {}), morph: m ?? undefined } }])}
+          />
+        ) : null}
         {g === "svg" && !part ? <SvgPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
         {WRITABLE.has(target.type) ? (
           <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(target.id)} data-testid="studio-focus-write">
@@ -3284,12 +3347,44 @@ function StudioDocument() {
             </div>
           </div>
           {focus ? <FocusMask box={shapeOf(focus.id)?.box ?? null} area={canvas} /> : null}
+          {focusArt && artInfo?.nodeId === focusArt && layout ? (
+            <div className="pointer-events-none absolute overflow-hidden" style={{ left: frameBox.x, top: frameBox.y, width: frameBox.w, height: frameBox.h }} data-testid="studio-art-parts">
+              {artInfo.parts.filter((x) => x.tag !== "g").map((x) => {
+                const b = toScreen(x.rect, layout.scroll, pan, zoom);
+                const on = focus?.part?.id === x.id;
+                return <div key={x.id} className={`absolute rounded-sm ${on ? "border-2 border-sky-400" : "border border-dashed border-white/35"}`} style={rel(b)} data-testid="studio-art-part" data-part={x.id} data-on={on ? "1" : undefined} />;
+              })}
+            </div>
+          ) : null}
+          {(() => {
+            const part = focus?.part;
+            const n = focusArt ? nodeOf(focusArt) : undefined;
+            const art = (n?.props as Record<string, unknown> | undefined)?.art as { nodes: unknown } | undefined;
+            const info = part && artInfo?.nodeId === focusArt ? artInfo.parts.find((x) => x.id === part.id) : undefined;
+            const shapeNode = part && art ? (part.id.split(".").map(Number).reduce<{ t: string; a: Record<string, string>; c?: unknown[] } | undefined>((at, i, k) => (k === 0 ? (art.nodes as Array<{ t: string; a: Record<string, string>; c?: unknown[] }>)[i] : (at?.c as Array<{ t: string; a: Record<string, string>; c?: unknown[] }> | undefined)?.[i]), undefined)) : undefined;
+            if (!n || !part || !info?.ctm || !layout || shapeNode?.t !== "path" || !shapeNode.a.d) return null;
+            const toCanvas: Matrix = [zoom, 0, 0, zoom, pan.x - layout.scroll.x * zoom, pan.y - layout.scroll.y * zoom];
+            return (
+              <PathHandles
+                key={`${n.id}:${part.id}`}
+                d={shapeNode.a.d}
+                matrix={compose(toCanvas, info.ctm)}
+                area={canvas}
+                busy={busy}
+                onLive={(d) => send({ type: "artPreview", nodeId: n.id, part: part.id, d })}
+                onDone={(d) => {
+                  const props = (n.props ?? {}) as Record<string, unknown>;
+                  void change(say("نقاط المسار|The path's points|נקודות הנתיב"), [{ op: "setProps", nodeId: n.id, props: { ...props, art: withArtAttrs(props.art as Parameters<typeof withArtAttrs>[0], part.id, { d }) } }]);
+                }}
+              />
+            );
+          })()}
           {focus && index && nodeOf(focus.id) ? (
             <FocusBar
               group={focusGroup(nodeOf(focus.id)!)}
               crumbs={focusCrumbs()}
               current={selected}
-              part={focus.part}
+              part={focus.part ? focusParts(nodeOf(focus.id)!, index).find((x) => x.id === focus.part!.id) ?? focus.part : null}
               showAll={focusAll}
               onCrumb={(cid, inside) => {
                 if (inside) {

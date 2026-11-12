@@ -28,3 +28,4 @@ export const ComparisonView = early("./ReferenceDataViews", () => import("./Refe
 export const DeckView = early("./DeckView", () => import("./DeckView").then((m) => m.DeckView));
 export const ShowcaseView = early("./ShowcaseView", () => import("./ShowcaseView").then((m) => m.ShowcaseView));
 export const CommerceShop = early("./CommerceShop", () => import("./CommerceShop").then((m) => m.CommerceShop));
+export const ArtMorph = early("./ArtMorph", () => import("./ArtMorph").then((m) => m.ArtMorph));

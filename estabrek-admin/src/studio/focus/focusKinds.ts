@@ -90,22 +90,34 @@ export function artNodeAt(art: Art | undefined | null, id: string): ArtNode | nu
   return found;
 }
 
-/** The drawing with one shape's attributes changed (a value of null takes it away). Unchanged when not found. */
-export function withArtAttrs(art: Art, id: string, patch: Record<string, string | null>): Art {
+/** The drawing with one shape replaced by what `fn` makes of it. Unchanged when not found. */
+export function withArtNode(art: Art, id: string, fn: (n: ArtNode) => ArtNode): Art {
   if (!artNodeAt(art, id)) return art;
   const steps = id.split(".").map(Number);
   const change = (nodes: ArtNode[], depth: number): ArtNode[] =>
-    nodes.map((n, i) => {
-      if (i !== steps[depth]) return n;
-      if (depth < steps.length - 1) return { ...n, c: change(n.c ?? [], depth + 1) };
-      const a = { ...n.a };
-      for (const [k, v] of Object.entries(patch)) {
-        if (v === null) delete a[k];
-        else a[k] = v;
-      }
-      return { ...n, a };
-    });
+    nodes.map((n, i) => (i !== steps[depth] ? n : depth < steps.length - 1 ? { ...n, c: change(n.c ?? [], depth + 1) } : fn(n)));
   return { ...art, nodes: change(art.nodes, 0) };
+}
+
+/** The drawing with one shape's attributes changed (a value of null takes it away). Unchanged when not found. */
+export function withArtAttrs(art: Art, id: string, patch: Record<string, string | null>): Art {
+  return withArtNode(art, id, (n) => {
+    const a = { ...n.a };
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null) delete a[k];
+      else a[k] = v;
+    }
+    return { ...n, a };
+  });
+}
+
+/** The settings that place a circle, rectangle, line or polygon (a path's `d` replaces them all). */
+const GEOMETRY = ["cx", "cy", "r", "rx", "ry", "x", "y", "width", "height", "x1", "y1", "x2", "y2", "points"];
+/** One shape turned into a path that looks the same (its points can then be moved, it can morph). */
+export function asPathNode(n: ArtNode, d: string): ArtNode {
+  const a: Record<string, string> = { d };
+  for (const [k, v] of Object.entries(n.a)) if (!GEOMETRY.includes(k) && k !== "d") a[k] = v;
+  return { t: "path", a };
 }
 
 /* ------------------------------------------------------------------ the parts beside it */
