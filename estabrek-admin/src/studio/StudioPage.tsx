@@ -110,6 +110,7 @@ import { SparkleHandles } from "./focus/SparkleHandles";
 import { ImageEditPanel } from "./focus/ImageEditPanel";
 import { VideoEditor } from "./focus/VideoEditor";
 import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
+import { CurvePanel, SlidePanel } from "./focus/KindPanels";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -2293,6 +2294,10 @@ function StudioDocument() {
           </button>
         ) : null}
         {EDITABLE.has(target.type) ? <ElementPanel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {target.type === "heading" || target.type === "text" ? <CurvePanel node={target} busy={busy} onOps={onOps} /> : null}
+        {target.type === "slider" && part && /^slide-\d+$/.test(part.id) ? (
+          <SlidePanel key={`${target.id}:${part.id}`} node={target} index={Number(part.id.slice(6))} lang={shopLang} busy={busy} onOps={onOps} onShow={(i) => send({ type: "slideTo", nodeId: target.id, i })} />
+        ) : null}
         {target.type === "heading" || target.type === "text" ? <TextStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
         {target.type === "icon" ? <TextStylePanel node={target} screen={screen} busy={busy} onOps={onOps} only={["iconSize", "size", "color", "align"]} /> : null}
         {target.type === "button" ? <ButtonStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
@@ -2407,6 +2412,7 @@ function StudioDocument() {
           } else {
             if (selected !== focus.id) select(focus.id);
             setFocus({ ...focus, part: fp });
+            if (n.type === "slider" && /^slide-\d+$/.test(fp.id)) send({ type: "slideTo", nodeId: n.id, i: Number(fp.id.slice(6)) });
           }
         }}
         onOpen={(fp) => {
