@@ -32,6 +32,12 @@ api.defaults.baseURL = `${FIXTURE}/v1`;
 applySkin(readSkin());
 authStore.setAdmin({ id: "local-canvas-owner", email: "owner@example.test", role: "SUPERADMIN", owner: true } as never);
 
+// The editor's tests use the inspector docked with every setting listed (as they were written); ?beside turns on
+// what a new browser gets: the inspector beside the element, one section of settings at a time.
+const besideFixture = new URLSearchParams(location.search).has("beside");
+localStorage.setItem("estabrek.studio.dock", besideFixture ? "beside" : "side");
+localStorage.setItem("estabrek.studio.sections", besideFixture ? "sections" : "all");
+
 const text = (en: string, ar: string = en) => ({ en, ar, he: en });
 const savedTheme = new URLSearchParams(location.search).has("theme") ? { id: "circuit", mode: "dark", custom: { palette: { dark: { accent: "#22cc88" } } } } : undefined;
 const at = "2026-11-06T00:00:00.000Z";
