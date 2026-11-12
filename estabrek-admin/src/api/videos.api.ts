@@ -96,6 +96,11 @@ export async function getVideoLibrary() {
   return (await api.get(V.base)).data as VideoLibrary;
 }
 
+/** POST /admin/media/videos/edit { project } — a video made from the editor's project (Cloudinary). */
+export async function makeVideo(project: unknown) {
+  return (await api.post(V.edit, { project })).data as { url: string; poster: string | null; width: number; height: number; length: number };
+}
+
 export async function getVideo(id: string) {
   return (await api.get(V.one(id))).data as Video;
 }

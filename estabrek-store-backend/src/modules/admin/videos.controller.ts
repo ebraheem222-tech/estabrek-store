@@ -18,6 +18,7 @@ import {
   requestVideoStream,
   signVideoUpload,
   videoFrameUrl,
+  videoRenditionUrl,
 } from "../../lib/cloudinary.js";
 import {
   DEFAULT_STREAM,
@@ -41,6 +42,7 @@ import { MEDIA_LIMITS, MediaSettingsSchema, VIDEO_PRESETS, mediaSettings, mediaS
 import { readPerformance, savePerformance } from "../../lib/performanceSettings.js";
 import { IMAGES_DIR, findUsageByFilename, ingestImages, makePublicUrl } from "./uploads.controller.js";
 import { emitAutomation } from "../../lib/automations.js";
+import { Project as VideoProject, cloudinaryChain, frameSize, videoPublicId } from "../../lib/videoEdit.js";
 
 /**
  * /v1/admin/media/videos — the video library (admin → الوسائط → الفيديوهات) and
@@ -536,6 +538,35 @@ const RenditionBody = z
   })
   .strict()
   .refine((b) => b.preset !== "custom" || !!b.profile, { message: "A custom conversion needs its settings", path: ["profile"] });
+
+// POST /admin/media/videos/edit { project } → { url, poster, width, height, length } — a video made in the
+// editor's focus mode (lib/videoEdit.ts): its clips (videos of this store's Cloudinary library only) joined,
+// trimmed, sped, worded and with music, as one Cloudinary address prepared in the background.
+r.post(
+  "/edit",
+  asyncHandler(async (req, res) => {
+    const body = z.object({ project: VideoProject }).safeParse(req.body ?? {});
+    if (!body.success) return res.status(400).json({ error: "BAD_REQUEST", message: body.error.issues[0]?.message ?? "Send the video's project" });
+    const project = body.data.project;
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!isCloudinaryEnabled() || !cloud) return res.status(409).json({ error: "NEEDS_CLOUDINARY", message: "Making videos needs the store's Cloudinary" });
+    const assetOf = async (src: string) => {
+      const pid = videoPublicId(src, cloud);
+      return pid ? prisma.mediaAsset.findFirst({ where: { kind: "VIDEO", provider: "CLOUDINARY", providerId: pid } }) : null;
+    };
+    const clips = await Promise.all(project.clips.map((c) => assetOf(c.src)));
+    if (clips.some((a) => !a?.providerId)) return res.status(404).json({ error: "NOT_IN_LIBRARY", message: "Every clip has to be a video of the media library" });
+    const music = project.music ? await assetOf(project.music.src) : null;
+    if (project.music && !music?.providerId) return res.status(404).json({ error: "NOT_IN_LIBRARY", message: "The music has to be in the media library" });
+    const ids = clips.map((a) => a!.providerId!);
+    const size = frameSize(project.ratio, { w: clips[0]!.width ?? null, h: clips[0]!.height ?? null });
+    const chain = cloudinaryChain(project, ids, size, music?.providerId ?? null);
+    const url = await requestVideoRendition(ids[0], chain, "mp4");
+    const poster = videoRenditionUrl(ids[0], `so_${Math.round(project.clips[0].in * 100) / 100},c_fill,g_center,h_${size.h},w_${size.w}`, "webp");
+    const length = Math.round(project.clips.reduce((s, c) => s + (c.out - c.in) / (c.speed ?? 1), 0) * 100) / 100;
+    res.status(201).json({ url, poster, width: size.w, height: size.h, length });
+  }),
+);
 
 r.post(
   "/:id/renditions",
