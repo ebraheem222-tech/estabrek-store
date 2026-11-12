@@ -109,6 +109,7 @@ import { SparklePanel } from "./focus/SparklePanel";
 import { SparkleHandles } from "./focus/SparkleHandles";
 import { ImageEditPanel } from "./focus/ImageEditPanel";
 import { VideoEditor } from "./focus/VideoEditor";
+import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -319,6 +320,10 @@ function StudioDocument() {
   const [sparkleFinding, setSparkleFinding] = useState(false);
   const [sparkleNote, setSparkleNote] = useState<string | null>(null);
   const [sparklePen, setSparklePen] = useState(false);
+  // A 3D model in focus mode: its parts as the frame read them, the click asked about, and the points' pen.
+  const [modelInfo, setModelInfo] = useState<{ nodeId: string; parts: ModelPartInfo[]; ready: boolean } | null>(null);
+  const modelWait = useRef<{ requestId: string; done: (part: string | null, at: [number, number, number] | null) => void } | null>(null);
+  const [spotPen, setSpotPen] = useState(false);
   // The video editor (focus mode on a video): open or not.
   const [videoEditor, setVideoEditor] = useState(false);
   // A picture open in focus mode: its own size (from the frame), for the crop's ratios.
@@ -427,6 +432,16 @@ function StudioDocument() {
         if (wait && m.requestId === wait.requestId) {
           artPick.current = null;
           wait.done(typeof m.part === "string" ? m.part : null);
+        }
+      } else if (d.type === "modelParts") {
+        const m = d as unknown as { nodeId?: unknown; parts?: unknown; ready?: unknown };
+        if (typeof m.nodeId === "string" && Array.isArray(m.parts)) setModelInfo({ nodeId: m.nodeId, parts: (m.parts as ModelPartInfo[]).filter((x) => x && typeof x.key === "string").slice(0, 120), ready: m.ready === true });
+      } else if (d.type === "modelPicked") {
+        const m = d as unknown as { requestId?: unknown; part?: unknown; at?: unknown };
+        const wait = modelWait.current;
+        if (wait && m.requestId === wait.requestId) {
+          modelWait.current = null;
+          wait.done(typeof m.part === "string" ? m.part : null, Array.isArray(m.at) && m.at.length === 3 ? (m.at as [number, number, number]) : null);
         }
       } else if (d.type === "imageInfo") {
         const m = d as unknown as { nodeId?: unknown; w?: unknown; h?: unknown };
@@ -855,6 +870,27 @@ function StudioDocument() {
         }
         return;
       }
+      else if (fb && focusModel && index) {
+        const n = index.nodes.get(focusModel)!.node;
+        const requestId = `m${++artSeq.current}`;
+        modelWait.current = {
+          requestId,
+          done: (key, at) => {
+            if (spotPen) {
+              if (!at) return;
+              const props = (n.props ?? {}) as Record<string, unknown>;
+              const spots = (props.spots as Spot3d[] | undefined) ?? [];
+              if (spots.length < 12) void change(say("نقطة على المجسّم|A point on the model|נקודה על המודל"), [{ op: "setProps", nodeId: n.id, props: { ...props, spots: [...spots, { id: `p${Date.now().toString(36)}`, at }] } }]);
+              return;
+            }
+            const info = key ? modelInfo?.parts.find((x) => x.key === key) : undefined;
+            setFocus((f) => (f && f.id === n.id ? { ...f, part: key ? { id: key, label: info?.label || key, kind: "mesh", depth: 0 } : null } : f));
+          },
+        };
+        if (selected !== n.id) select(n.id);
+        send({ type: "modelPick", requestId, nodeId: n.id, x: (p.x - pan.x) / zoom, y: (p.y - pan.y) / zoom });
+        return;
+      }
       else if (fb && focusArt && index) {
         // Inside an open drawing a click picks its shape (the frame knows which is under the point).
         const art = focusArt;
@@ -1187,6 +1223,21 @@ function StudioDocument() {
     }
     send({ type: "artParts", nodeId: focusArt });
   }, [focusArt, layout, send]);
+
+  // A 3D model open in focus mode: the frame reads its parts (again as the page is measured, and while its file loads).
+  const focusModel = focus && index?.nodes.get(focus.id)?.node.type === "model3d" ? focus.id : null;
+  useEffect(() => {
+    if (!focusModel) {
+      setModelInfo(null);
+      return;
+    }
+    send({ type: "modelParts", nodeId: focusModel });
+  }, [focusModel, layout, send]);
+  useEffect(() => {
+    if (!focusModel || (modelInfo?.nodeId === focusModel && modelInfo.ready)) return;
+    const t = window.setTimeout(() => send({ type: "modelParts", nodeId: focusModel }), 900);
+    return () => window.clearTimeout(t);
+  }, [focusModel, modelInfo, send]);
 
   // A picture open in focus mode: the frame tells its own size (again when the page is measured anew).
   const focusImage = focus && index?.nodes.get(focus.id)?.node.type === "image" ? focus.id : null;
@@ -2305,7 +2356,12 @@ function StudioDocument() {
           </button>
         ) : null}
         {target.type === "video" ? <VideoOverlayPanel node={target} screen={screen} busy={busy} onOps={onOps} onPreview={(vars) => send({ type: "previewLook", nodeId: target.id, vars })} /> : null}
-        {target.type === "model3d" ? <Model3dPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {target.type === "model3d" && part && modelInfo?.nodeId === target.id && modelInfo.parts.find((x) => x.key === part.id) ? (
+          <ModelPartPanel key={`${target.id}:${part.id}`} node={target} part={modelInfo.parts.find((x) => x.key === part.id)!} busy={busy} onOps={onOps} />
+        ) : null}
+        {target.type === "model3d" ? <ModelViewsPanel key={`views:${target.id}`} node={target} busy={busy} onOps={onOps} onPreview={(view) => send({ type: "modelCamera", nodeId: target.id, view })} /> : null}
+        {target.type === "model3d" ? <ModelSpotsPanel node={target} lang={shopLang} busy={busy} onOps={onOps} pen={spotPen} onPen={setSpotPen} /> : null}
+        {target.type === "model3d" && !part ? <Model3dPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
         {target.type === "product360" ? <Product360Panel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
         {target.type === "section" ? <SectionPanel node={target} busy={busy} onOps={onOps} /> : null}
         {target.type === "columns" ? <ColumnsPanel node={target} screen={screen} busy={busy} ids={makeIds} onOps={onOps} /> : null}
@@ -2327,7 +2383,7 @@ function StudioDocument() {
   const FOCUS_EMPTY: Record<string, string> = {
     image: "لسا ما في نجوم: دوّر على أماكنها بالصورة، أو شغّل القلم وكبّس عليها.|No stars yet: find their places in the picture, or turn the pen on and click it.|אין עדיין כוכבים: מצא מקומות או הפעל את העט ולחץ.",
     video: "محرّر الفيديو الكامل جاي: مسار زمني وقص ونصوص.|The full video editor is coming: a timeline, cuts and words.|עורך הווידאו המלא בדרך: ציר זמן, חיתוכים ומילים.",
-    model: "أجزاء المجسّم وموادّه جاية.|The model's parts and materials are coming.|חלקי המודל והחומרים שלו בדרך.",
+    model: "عم نقرا أجزاء المجسّم…|Reading the model's parts…|קוראים את חלקי המודל…",
     text: "النص قطعة وحدة: اكتب عليه بالصفحة.|Text is one piece: write on it in the page.|טקסט הוא חלק אחד: כותבים עליו בעמוד.",
     svg: "الرسمة ما فيها أشكال.|The drawing has no shapes.|אין צורות בציור.",
     container: "فاضية.|Empty.|ריק.",
@@ -2338,10 +2394,11 @@ function StudioDocument() {
     const n = focus ? nodeOf(focus.id) : undefined;
     if (!focus || !n || !index) return null;
     const g = focusGroup(n);
+    const parts = n.type === "model3d" ? (modelInfo?.nodeId === n.id ? modelInfo.parts.map((x) => ({ id: x.key, label: x.label || x.key, kind: "mesh", depth: 0 })) : []) : focusParts(n, index);
     return (
       <FocusParts
         title={`${focusTitle(g)} · ${say("أجزاؤها|Its parts|חלקיו")}`}
-        parts={focusParts(n, index)}
+        parts={parts}
         chosen={focus.part?.id ?? (selected && selected !== focus.id ? selected : null)}
         onPick={(fp) => {
           if (fp.nodeId) {

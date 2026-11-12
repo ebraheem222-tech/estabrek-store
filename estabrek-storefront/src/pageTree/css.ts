@@ -966,6 +966,11 @@ export const BASE_CSS = [
   ".pt-sparkles[data-when=hover] .pt-spark{animation:none}",
   ".pt-frame:hover>.pt-sparkles[data-when=hover] .pt-spark,.pt-frame:focus-within>.pt-sparkles[data-when=hover] .pt-spark{animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
   ".pt-sparkles[data-when=few] .pt-spark{animation-iteration-count:3}",
+  // A 3D model's labelled points (Model3dCanvas): a dot, its words beside it on hover or focus.
+  ".pt-3d-spot{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;cursor:pointer;color:var(--text);font:600 12px/1.2 inherit;text-decoration:none}",
+  ".pt-3d-spot>span{width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 30%,transparent)}",
+  ".pt-3d-spot>b{opacity:0;translate:-4px 0;transition:opacity .2s,translate .2s;background:var(--surface,#fff);padding:3px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 4px 14px rgb(0 0 0/.12)}",
+  ".pt-3d-spot:hover>b,.pt-3d-spot:focus-visible>b{opacity:1;translate:0 0}",
   // A light that follows the mouse (under the words), and a ripple where it's pressed.
   ".pt-hv-spot,.pt-hv-ripple{position:relative;isolation:isolate}.pt-hv-ripple{overflow:hidden}",
   ".pt-spot{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s ease;background:radial-gradient(circle var(--pt-spr,220px) at var(--pt-sx,50%) var(--pt-sy,50%),var(--pt-spc,color-mix(in srgb,var(--accent) 30%,transparent)),transparent)}",

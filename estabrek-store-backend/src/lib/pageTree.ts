@@ -666,6 +666,16 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     tilt: z.boolean().optional(), // leans toward the mouse
     href: href.optional(), // the whole model is a link (then it isn't turned by hand)
     label: local(120).optional(),
+    // Focus mode (A5): its parts' own looks by name (a mesh's own name, else "part-<n>"), its saved views (an angle
+    // around it, a height, a distance; the camera goes to the next on a click, by itself or with the scroll), and
+    // its labelled points (in the model's own numbers, turning with it).
+    parts: z.record(
+      z.string().min(1).max(80).regex(/^[^\u0000-\u001f<>"'`\\]+$/),
+      z.object({ color: z.string().regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i).optional(), rough: z.number().min(0).max(1).optional(), metal: z.number().min(0).max(1).optional(), glow: z.string().regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i).optional(), hide: z.boolean().optional() }),
+    ).refine((p) => Object.keys(p).length <= 60, "At most 60 parts").optional(),
+    views: z.array(z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/), az: z.number().min(-180).max(180), el: z.number().min(-89).max(89), dist: z.number().min(2).max(20) })).max(8).optional(),
+    viewOn: z.enum(["click", "scroll", "auto"]).optional(),
+    spots: z.array(z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/), at: z.tuple([z.number().min(-50).max(50), z.number().min(-50).max(50), z.number().min(-50).max(50)]), label: local(80).optional(), href: href.optional() })).max(12).optional(),
   }),
   // A drawing: a shape from the editor's library (`shape` + `knobs` let it be changed again) or one's own SVG, as data.
   svg: z.object({

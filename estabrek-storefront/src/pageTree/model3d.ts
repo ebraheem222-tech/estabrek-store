@@ -5,6 +5,7 @@
  * its pose, motion, camera, light, floor, and how shoppers may move it. Anything unknown or
  * out of range falls back to its default. No 3D code here, so the server and tests load it.
  */
+import { partLooksOf, viewsOf, type PartLook, type Spot3d, type View3d } from "./model3dLive";
 import { ANIMS, FINISHES, MODEL_KNOBS, PARTS, TRIGGERS, glbUrl, isModelKind, type ModelKind, type StagePart } from "../storeThemes/three/kinds";
 
 export const LIGHT_PRESETS = ["studio", "soft", "sunset", "neon", "night", "warm"] as const;
@@ -21,6 +22,11 @@ export const LIGHTS: Record<(typeof LIGHT_PRESETS)[number], Lights> = {
 };
 
 export type Model3dSpec = {
+  /** Its parts' own looks, its saved views (and what moves between them), its labelled points (model3dLive.ts). */
+  parts: Record<string, PartLook>;
+  views: View3d[];
+  viewOn: "click" | "scroll" | "auto";
+  spots: Spot3d[];
   /** A built-in model, or the store's own file (the file wins). */
   model: ModelKind | null;
   file: { url: string; clip?: string } | null;
@@ -50,8 +56,11 @@ const colourOf = (v: unknown) => (typeof v === "string" && (TOKEN.test(v) || HEX
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const obj = (v: unknown): Record<string, any> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, any>) : {});
 
+/** A labelled point's words in the page's language (TreeNodeView hands its own reader). */
+type Say = (v: unknown) => string;
+
 /** The 3D model the shop may draw, or null when it has neither a model it knows nor a .glb. */
-export function model3dOf(raw: unknown): Model3dSpec | null {
+export function model3dOf(raw: unknown, say: Say = () => ""): Model3dSpec | null {
   const p = obj(raw);
   const f = obj(p.file);
   // The theme stage's rule for a file's address (https, the shop's own path, or a local one while developing).
@@ -73,7 +82,17 @@ export function model3dOf(raw: unknown): Model3dSpec | null {
   const preset = one(l.preset, LIGHT_PRESETS, "studio");
   const base = LIGHTS[preset];
   const lc = Array.isArray(l.colours) && l.colours.length === 2 && l.colours.every((c: unknown) => colourOf(c)) ? (l.colours as [string, string]) : base.colours;
+  const spots: Spot3d[] = (Array.isArray(p.spots) ? p.spots : []).slice(0, 12).flatMap((s: unknown) => {
+    const x = obj(s);
+    const at = Array.isArray(x.at) && x.at.length === 3 && x.at.every((v: unknown) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= 50) ? (x.at as [number, number, number]) : null;
+    const href = typeof x.href === "string" && /^(\/(?!\/)|#|https?:\/\/)[^\s<>"'`\\]*$/i.test(x.href) ? x.href : undefined;
+    return typeof x.id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(x.id) && at ? [{ id: x.id, at, text: say(x.label).slice(0, 80), ...(href ? { href } : {}) }] : [];
+  });
   return {
+    parts: partLooksOf(p.parts),
+    views: viewsOf(p.views),
+    viewOn: one(p.viewOn, ["click", "scroll", "auto"] as const, "click"),
+    spots,
     model,
     file: url ? { url, ...(typeof f.clip === "string" && f.clip.trim() && f.clip.length <= 100 ? { clip: f.clip.trim() } : {}) } : null,
     finish: one(p.finish, FINISHES, "metal"),
@@ -95,4 +114,4 @@ export function model3dOf(raw: unknown): Model3dSpec | null {
 }
 
 /** Whether it moves at all (else it's drawn once and again only when something changes). */
-export const model3dMoves = (s: Model3dSpec) => s.anim.type !== "none" || s.auto !== 0 || s.tilt || s.drag || Boolean(s.file?.clip);
+export const model3dMoves = (s: Model3dSpec) => s.anim.type !== "none" || s.auto !== 0 || s.tilt || s.drag || Boolean(s.file?.clip) || s.views.length > 0;

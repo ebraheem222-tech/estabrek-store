@@ -395,7 +395,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       return <BlockView node={node} className={cls(node)} mark={mark as Record<string, string>} say={say} link={link} lang={ctx.lang} />;
     case "model3d": {
       // A 3D model: its place is drawn here, its canvas only near the screen (Model3dSpot).
-      const spec = model3dOf(p);
+      const spec = model3dOf(p, say);
       if (!spec) return null;
       const to = link(p.href);
       return (
