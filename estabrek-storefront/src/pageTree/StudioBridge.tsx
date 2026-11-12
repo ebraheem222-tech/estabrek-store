@@ -669,6 +669,61 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         send({ type: "pointPicked", requestId: value.requestId, candidates: studioPickAt(value.x, value.y) });
         return;
       }
+      // Focus mode on a drawing: its shapes (data-art-part) with their boxes and the matrix from their own numbers to
+      // the page, the shape under a point, and a path or a turn shown while the editor's hand moves it.
+      if (d.type === "artParts" && e.source === window.parent) {
+        const id = typeof d.nodeId === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(d.nodeId) ? d.nodeId : null;
+        const host = id ? document.querySelector(`[data-tree-node="${id}"]`) : null;
+        const parts = host
+          ? [...host.querySelectorAll<SVGGraphicsElement>("[data-art-part]")].slice(0, 200).map((el) => {
+              const m = el.getScreenCTM();
+              let box = { x: 0, y: 0, w: 0, h: 0 };
+              try {
+                const b = el.getBBox();
+                box = { x: b.x, y: b.y, w: b.width, h: b.height };
+              } catch {
+                /* not drawn yet */
+              }
+              return { id: el.getAttribute("data-art-part"), tag: el.tagName, rect: rectOf(el), ctm: m ? [m.a, m.b, m.c, m.d, m.e + window.scrollX, m.f + window.scrollY] : null, box };
+            })
+          : [];
+        send({ type: "artParts", nodeId: id, parts });
+        return;
+      }
+      if (d.type === "artPick" && e.source === window.parent) {
+        const v = e.data as { requestId?: unknown; nodeId?: unknown; x?: unknown; y?: unknown };
+        if (typeof v.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.requestId) || typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId) || typeof v.x !== "number" || typeof v.y !== "number" || !Number.isFinite(v.x) || !Number.isFinite(v.y)) return;
+        const host = document.querySelector(`[data-tree-node="${v.nodeId}"]`);
+        // By the shapes' own geometry (drawings may take no pointer on the page): the top shape whose fill or line
+        // covers the point, else the smallest whose box holds it.
+        const shapes = host ? [...host.querySelectorAll<SVGGeometryElement>("[data-art-part]")].filter((el) => el.tagName !== "g").reverse() : [];
+        const covers = (el: SVGGeometryElement) => {
+          const m = el.getScreenCTM?.();
+          if (!m || typeof el.isPointInFill !== "function") return false;
+          const local = new DOMPoint(v.x as number, v.y as number).matrixTransform(m.inverse());
+          try {
+            return el.isPointInFill(local) || el.isPointInStroke(local);
+          } catch {
+            return false;
+          }
+        };
+        const inBox = (el: Element) => { const r = el.getBoundingClientRect(); return v.x as number >= r.left && (v.x as number) <= r.right && (v.y as number) >= r.top && (v.y as number) <= r.bottom ? r.width * r.height : Infinity; };
+        const hit = shapes.find(covers) ?? shapes.map((el) => [el, inBox(el)] as const).filter(([, a]) => a < Infinity).sort((a, b) => a[1] - b[1])[0]?.[0];
+        send({ type: "artPicked", requestId: v.requestId, part: hit?.getAttribute("data-art-part") ?? null });
+        return;
+      }
+      if (d.type === "artPreview" && e.source === window.parent) {
+        const v = e.data as { nodeId?: unknown; part?: unknown; d?: unknown; transform?: unknown };
+        if (typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId) || typeof v.part !== "string" || !/^\d{1,3}(\.\d{1,3}){0,9}$/.test(v.part)) return;
+        const el = document.querySelector(`[data-tree-node="${v.nodeId}"] [data-art-part="${v.part}"]`);
+        if (!el) return;
+        if (typeof v.d === "string" && v.d.length <= 20000 && /^[MmLlHhVvCcSsQqTtAaZz0-9eE\s,.+-]*$/.test(v.d) && el.tagName === "path") el.setAttribute("d", v.d);
+        if (typeof v.transform === "string" && v.transform.length <= 300 && /^(\s*(matrix|translate|scale|rotate|skewX|skewY)\(\s*[-+0-9eE.,\s]*\)\s*,?)*\s*$/.test(v.transform)) {
+          if (v.transform) el.setAttribute("transform", v.transform);
+          else el.removeAttribute("transform");
+        }
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);

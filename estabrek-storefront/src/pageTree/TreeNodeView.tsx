@@ -15,7 +15,7 @@ import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
 import { richNodes } from "./rich";
 import { TreeIcon } from "./icons";
-import { ArtView, safeArt } from "./svgArt";
+import { ArtView, safeArt, safeMorph } from "./svgArt";
 import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
@@ -38,7 +38,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ClockView, CommerceShop, ComparisonView, DeckView, InstrumentView, Model3dSpot, PopupView, ProductDetail, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, InstrumentView, Model3dSpot, PopupView, ProductDetail, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 
 export type TreeCtx = {
@@ -354,11 +354,14 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const art = safeArt(p.art);
       if (!art) return null;
       const label = say(p.label);
+      // Its shapes turning into others (focus mode's morph), played by a script of its own.
+      const morph = safeMorph(p.morph);
       const [, , width, height] = art.viewBox.trim().split(/[\s,]+/).map(Number);
       const aspect = Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 ? `${width}/${height}` : "1/1";
       return (
         <span className={cls(node)} style={{ "--pt-svg-aspect": aspect } as CSSProperties} {...mark} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
           <ArtView art={art} prefix={node.id} stretch />
+          {morph ? <ArtMorph nodeId={node.id} morph={morph} /> : null}
           {fx}
         </span>
       );

@@ -87,11 +87,19 @@ export function artHasLines(art: Art): boolean {
   return walk(art.nodes);
 }
 
-/** The drawing as SVG elements; `prefix` (the element's id) goes in front of every id. */
+/** The shapes a drawing's parts are (definitions, gradients and masks aren't): the editor picks them one by one. */
+const DRAWN = new Set(["g", "path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
+
+/**
+ * The drawing as SVG elements; `prefix` (the element's id) goes in front of every id. Each shape carries its place
+ * in the drawing (data-art-part="0.2.1", as the editor's focus mode names its parts, and its morphs find them).
+ */
 export function ArtView({ art, prefix, className, stretch }: { art: Art; prefix: string; className?: string; stretch?: boolean }): ReactNode {
   let morphed = false;
-  const draw = (n: ArtNode, i: number): ReactNode => {
+  const draw = (n: ArtNode, i: number, at: string): ReactNode => {
+    const place = at ? `${at}.${i}` : String(i);
     const props: Record<string, unknown> = { key: i };
+    if (DRAWN.has(n.t)) props["data-art-part"] = place;
     const style: Record<string, string> = {};
     for (const [k, v] of Object.entries(n.a)) {
       const name = REACT_NAME[k] ?? k;
@@ -106,11 +114,32 @@ export function ArtView({ art, prefix, className, stretch }: { art: Art; prefix:
       morphed = true;
       props["data-pt-morph"] = art.morph;
     }
-    return createElement(n.t, props, ...(n.c ?? []).map(draw));
+    return createElement(n.t, props, ...(n.c ?? []).map((c, j) => draw(c, j, place)));
   };
   return (
     <svg className={className} viewBox={art.viewBox} xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" {...(stretch ? { preserveAspectRatio: "none" } : {})}>
-      {art.nodes.map(draw)}
+      {art.nodes.map((n, i) => draw(n, i, ""))}
     </svg>
   );
+}
+
+/** A drawing's shapes turning into others (the backend's svg props `morph`): when, how long, on what curve. */
+export type ArtMorphData = { on: "hover" | "click" | "loop" | "scroll" | "view"; duration?: number; ease?: string; stagger?: number; pairs: Array<{ part: string; to: string }> };
+const MORPH_ON = new Set(["hover", "click", "loop", "scroll", "view"]);
+
+/** A saved morph the shop may play (checked again as the backend did; the curve is read when it plays), or null. */
+export function safeMorph(raw: unknown): ArtMorphData | null {
+  if (!isObject(raw) || typeof raw.on !== "string" || !MORPH_ON.has(raw.on) || !Array.isArray(raw.pairs)) return null;
+  const pairs = raw.pairs
+    .filter((p): p is { part: string; to: string } => isObject(p) && typeof p.part === "string" && /^\d{1,3}(\.\d{1,3}){0,9}$/.test(p.part) && typeof p.to === "string" && p.to.length > 0 && p.to.length <= ART_LIMITS.path && PATH.test(p.to))
+    .slice(0, 20)
+    .map((p) => ({ part: p.part, to: p.to }));
+  if (!pairs.length) return null;
+  const n = (v: unknown, lo: number, hi: number) => (typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : undefined);
+  const out: ArtMorphData = { on: raw.on as ArtMorphData["on"], pairs };
+  const duration = n(raw.duration, 0.1, 10), stagger = n(raw.stagger, 0, 2);
+  if (duration !== undefined) out.duration = duration;
+  if (stagger !== undefined) out.stagger = stagger;
+  if (typeof raw.ease === "string" && raw.ease.length <= 60) out.ease = raw.ease;
+  return out;
 }

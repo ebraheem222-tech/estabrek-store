@@ -16,6 +16,8 @@ export const ART_TOKENS = ["text", "muted", "accent", "accent-soft", "accent-con
 
 const NUM = /^-?(\d+\.?\d*|\.\d+)(e-?\d+)?(%|px)?$/i;
 const PATH = /^[MmLlHhVvCcSsQqTtAaZz0-9eE\s,.+-]*$/;
+/** A path's numbers and letters only, within the size a drawing's path may have (a morph's target shape too). */
+export const isArtPath = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length <= ART_LIMITS.path && PATH.test(v);
 const POINTS = /^[0-9eE\s,.+-]*$/;
 const TRANSFORM = /^(\s*(matrix|translate|scale|rotate|skewX|skewY)\(\s*[-+0-9eE.,\s]*\)\s*,?)*\s*$/;
 const ID = /^[A-Za-z][\w-]{0,40}$/;
