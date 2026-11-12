@@ -1148,6 +1148,19 @@ export const BASE_CSS = [
   ".pt-model3d-stage{position:absolute;inset:0;border-radius:inherit;overflow:hidden}.pt-model3d-stage canvas{display:block;touch-action:pan-y}",
   ".pt-model3d-poster{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;pointer-events:none}.pt-model3d-fallback{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;color:var(--muted);pointer-events:none}",
   ".pt-model3d-link{position:absolute;inset:0;z-index:1}",
+  // What's behind the model (plain CSS under its see-through canvas): a glow, a spotlight from above, a rising glow, rings.
+  ".pt-model3d-stage[data-backdrop]::before{content:\"\";position:absolute;inset:0;z-index:0;pointer-events:none}",
+  ".pt-model3d-stage[data-backdrop=glow]::before{background:radial-gradient(circle at 50% 54%,color-mix(in srgb,var(--pt-3d-bd) 90%,transparent) 0,color-mix(in srgb,var(--pt-3d-bd) 35%,transparent) 34%,transparent 66%)}",
+  ".pt-model3d-stage[data-backdrop=spot]::before{background:radial-gradient(ellipse 46% 13% at 50% 86%,color-mix(in srgb,var(--pt-3d-bd) 85%,transparent),transparent 72%),linear-gradient(to bottom,color-mix(in srgb,var(--pt-3d-bd) 75%,transparent),color-mix(in srgb,var(--pt-3d-bd) 18%,transparent) 78%,transparent 90%);-webkit-mask:conic-gradient(from 160deg at 50% -6%,#000 0 40deg,transparent 40deg) no-repeat,radial-gradient(ellipse 46% 13% at 50% 86%,#000 60%,transparent 72%) no-repeat;mask:conic-gradient(from 160deg at 50% -6%,#000 0 40deg,transparent 40deg) no-repeat,radial-gradient(ellipse 46% 13% at 50% 86%,#000 60%,transparent 72%) no-repeat}",
+  ".pt-model3d-stage[data-backdrop=sunrise]::before{background:radial-gradient(ellipse 62% 58% at 50% 100%,color-mix(in srgb,var(--pt-3d-bd) 95%,transparent) 0,color-mix(in srgb,var(--pt-3d-bd) 40%,transparent) 45%,transparent 72%)}",
+  ".pt-model3d-stage[data-backdrop=rings]::before{background:repeating-radial-gradient(circle at 50% 54%,transparent 0 9%,color-mix(in srgb,var(--pt-3d-bd) 75%,transparent) 9% 9.6%);-webkit-mask:radial-gradient(circle at 50% 54%,#000 18%,transparent 70%);mask:radial-gradient(circle at 50% 54%,#000 18%,transparent 70%)}",
+  // The model fades in once it's ready; while it loads, a small turning ring.
+  ".pt-model3d-stage>div:has(>canvas){z-index:1;opacity:0;transition:opacity .45s ease}.pt-model3d-stage[data-model-state=ready]>div:has(>canvas){opacity:1}",
+  ".pt-model3d-stage[data-model-state=loading] .pt-model3d-fallback::before{content:\"\";width:22px;height:22px;margin-inline-end:8px;border-radius:50%;border:2px solid color-mix(in srgb,var(--muted) 35%,transparent);border-top-color:var(--accent);animation:pt-3d-turn .8s linear infinite}",
+  "@keyframes pt-3d-turn{to{rotate:360deg}}@keyframes pt-3d-ping{from{scale:1;opacity:.7}to{scale:2.6;opacity:0}}",
+  // A labelled point beats softly, so shoppers see it can be pressed.
+  ".pt-3d-spot>span{position:relative}.pt-3d-spot>span::after{content:\"\";position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:pt-3d-ping 2.2s ease-out infinite}",
+  "@media (prefers-reduced-motion:reduce){.pt-model3d-stage>div:has(>canvas){transition:none}.pt-model3d-stage .pt-model3d-fallback::before,.pt-3d-spot>span::after{animation:none}}",
   ".pt-anim-canvas{display:block;width:100%;height:100%}",
   ".pt-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;color:var(--accent)}",
   ".pt-particles canvas{display:block;width:100%!important;height:100%!important}",

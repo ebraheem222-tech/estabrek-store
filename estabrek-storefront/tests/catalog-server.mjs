@@ -324,6 +324,21 @@ const speedDemo = (off) => ({ id: off ? "speed-off" : "speed-demo", slug: off ? 
     { id: "third", type: "section", props: {}, style: { base: { minHeight: "600px", overflow: "hidden" } }, children: [{ id: "later", type: "image", props: { src: "/templates/photo-1.svg", alt: { en: "Later" } } }] },
   ] },
 } });
+// A 3D model's stage (model-stage.spec.ts): a round stand with a glow behind, a ring of light with sparkles, a
+// spotlight with a drop-in, rings with a rise; the last turned by hand and going back.
+const stageModel = (id, props) => ({ id, type: "model3d", props, style: { base: { width: "300px", height: "300px" } } });
+const stageDemo = { id: "stage-demo", slug: "/stage-demo", name: "3D stage", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    { id: "stages", type: "section", props: { contained: true }, style: { base: { pad: [24, 24, 24, 24] } }, children: [
+      { id: "row", type: "grid", props: {}, style: { base: { columns: 4, gap: 16 } }, children: [
+        stageModel("m-stand", { model: "sneaker", floor: "pedestal", backdrop: { kind: "glow" }, intro: "pop", auto: 0.4 }),
+        stageModel("m-halo", { model: "perfume", finish: "glass", floor: "halo", lights: { preset: "soft" }, sparkles: { count: 40, color: "accent" }, backdrop: { kind: "sunrise", color: "#f3d9e4" } }),
+        stageModel("m-spot", { model: "watch", finish: "gold", floor: "shadow", backdrop: { kind: "spot", color: "#ffe9a8" }, intro: "drop" }),
+        stageModel("m-rings", { model: "handbag", floor: "shadow", backdrop: { kind: "rings" }, intro: "rise", drag: true, back: true }),
+      ] },
+    ] },
+  ] },
+} };
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
   sections: [{ id: "demo-faq", type: "FAQ", order: 0, isVisible: true, data: { title: "أسئلة القسم القديم", items: [{ question: "سؤال قديم؟", answer: "جواب قديم." }] } }],
@@ -1626,6 +1641,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/showcase-demo") return res.end(JSON.stringify(showcaseDemo));
       if (slug === "/motion-media-demo") return res.end(JSON.stringify(motionMediaDemo));
       if (slug === "/physics-demo") return res.end(JSON.stringify(physicsDemo));
+      if (slug === "/stage-demo") return res.end(JSON.stringify(stageDemo));
       if (slug === "/speed-demo" || slug === "/speed-off") return res.end(JSON.stringify(speedDemo(slug === "/speed-off")));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));

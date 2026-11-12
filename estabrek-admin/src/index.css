@@ -1139,3 +1139,13 @@
   }
 }
 
+/* The editor's inspector (studio/InspectorNav.tsx): a group's heading with nothing under it is hidden; while a
+   setting is looked for, the cards that don't mention it and the headings step aside. */
+.insp-group:has(+ .insp-group),
+.insp-group:last-child,
+[data-insp-finding] .insp-group {
+  display: none;
+}
+[data-insp-hidden] {
+  display: none !important;
+}

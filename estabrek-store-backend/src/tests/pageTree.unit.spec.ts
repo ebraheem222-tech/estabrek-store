@@ -382,6 +382,18 @@ describe("checking a page tree", () => {
     expect(issuesOf(tree({ kind: "arc", bend: 300 })).length).toBeGreaterThan(0);
   });
 
+  test("a 3D model's stage: a stand or a ring of light, what's behind it, its way in, sparkles, turning back", () => {
+    const stage = { model: "watch", floor: "pedestal", backdrop: { kind: "spot", color: "#ffe9a8" }, intro: "drop", sparkles: { count: 40, color: "accent", size: 2 }, drag: true, back: true };
+    const r = checkTree(page([section("s", [{ id: "m", type: "model3d", props: stage }])]));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props).toMatchObject(stage);
+    const bad = (props: unknown) => issuesOf(page([section("s", [{ id: "m", type: "model3d", props }])])).map((i) => i.path).join(" ");
+    expect(bad({ model: "watch", floor: "lava" })).toMatch(/props\.floor/);
+    expect(bad({ model: "watch", backdrop: { kind: "fireworks" } })).toMatch(/props\.backdrop\.kind/);
+    expect(bad({ model: "watch", intro: "explode" })).toMatch(/props\.intro/);
+    expect(bad({ model: "watch", sparkles: { count: 5000 } })).toMatch(/props\.sparkles\.count/);
+  });
+
   test("a 3D model's parts, views and labelled points", () => {
     const tree = (extra: Record<string, unknown>) => page([section("s", [{ id: "m", type: "model3d", props: { model: "sneaker", ...extra } }])]);
     const good = {

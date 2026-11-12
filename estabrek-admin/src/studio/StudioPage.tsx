@@ -117,6 +117,7 @@ import { lightenAll } from "./focus/perfCost";
 import * as SpeedAPI from "../api/speed.api";
 import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from "./PhysicsPanels";
 import { CodePanel, FormPanel } from "./FormPanels";
+import { InspectorGroup, InspectorJump } from "./InspectorNav";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -2526,7 +2527,7 @@ function StudioDocument() {
       <div className="flex gap-2">{(["x","y"] as const).map(axis=><button type="button" key={axis} disabled={busy} onClick={()=>applyFixedGap(axis)} className="rounded bg-white/[0.06] px-2 py-1 text-xs" data-testid={`studio-spacing-${axis}`}>{axis==="x"?tr("أفقي","Horizontal"):tr("رأسي","Vertical")}</button>)}</div>
     </div></>;
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-insp-list="">
         <nav className="flex flex-wrap items-center gap-1 text-[11px] text-white/50" aria-label={tr("المسار", "Path")} data-testid="studio-path">
           {selPath.map((pid, i) => (
             <span key={pid} className="flex items-center gap-1">
@@ -2587,26 +2588,6 @@ function StudioDocument() {
         </fieldset> : null}
         {selExtra?.kind === "detail" && !selectedRegion && !partContent && selExtra.lookKind === "text" ? <p className="text-xs leading-5 text-white/60" data-testid="studio-part-source">{nodeOf(selExtra.owner.slice(2))?.type === "countdown" ? tr("هذا رقم حي يحسبه العدّاد. لتغيير قيمته، افتح إعدادات العنصر الأصلي وعدّل موعد العدّ. يمكنك تغيير خطه وشكله هنا.", "This is a live countdown value. Open Owner settings to change the end time. Its type and appearance can be changed here.") : tr("محتوى هذا الجزء مرتبط ببيانات العنصر. افتح إعدادات العنصر الأصلي لتعديله؛ الشكل والخط قابلان للتعديل هنا.", "This content comes from the object's data. Open Owner settings to edit its source; its appearance and typography can be edited here.")}</p> : null}
 
-        {selNode && pageItemNode && ["section", "legacy", "roseBlock"].includes(pageItemNode.type) ? <SectionObjectsPanel
-          node={pageItemNode} selected={selected} busy={busy}
-          canAdd={kind => { const c = insertCtx((x) => `__${x}`); return Boolean(c && insertOps(c, pageItemNode.id, probe(kind), "inside")); }}
-          onAdd={kind => addKind(kind, undefined, "inside", pageItemNode.id)}
-          onSelect={nodeId => select(nodeId, true)}
-        /> : null}
-
-        {selFree&&!['page','section','cell','columns'].includes(selFree.type)?<>
-          <div className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-movement">
-            <div className="text-xs text-white/70">{tr("اتجاه التحريك داخل الحاوية","Movement within the container")}</div>
-            <div className="grid grid-cols-2 gap-1">{([['vertical',tr("رأسي فقط","Vertical only")],['horizontal',tr("أفقي فقط","Horizontal only")],['both',tr("المحوران داخل الحاوية","Both axes inside")],['free',tr("حر","Free")]] as const).map(([mode,label])=><button type="button" key={mode} disabled={busy} aria-pressed={movementOf(selFree,screen)===mode} className={`rounded px-2 py-1.5 text-xs ${movementOf(selFree,screen)===mode?'bg-accent-500/30':'bg-white/[0.06]'}`} data-testid={`studio-movement-${mode}`} onClick={()=>{setCanvasMode("free");saveCanvasMode("free");void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:mode})]);}}>{label}</button>)}</div>
-            {screen!=="base"?<button type="button" disabled={busy} className="text-[10px] text-white/50" data-testid="studio-movement-inherit" onClick={()=>void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:null})])}>{tr("اتبع الشاشة الأكبر","Follow the larger screen")}</button>:null}
-          </div>
-          <LayoutConstraintsPanel key={`${selFree.id}:${screen}`} value={((selFree.style as Record<string,{constraints?:SizeConstraints}>|undefined)?.[screen]?.constraints)??{}} busy={busy} onChange={value=>setSizeConstraints(selFree,value)} />
-        </>:null}
-
-        {selFree?.children?.length && !["page", "section", "cell", "columns"].includes(selFree.type) ? <label className="flex items-start gap-2 rounded-lg border border-white/10 p-2 text-xs">
-          <input type="checkbox" checked={scaleContents} disabled={busy} data-testid="studio-scale-contents" onChange={event => { const on = event.target.checked; setScaleContents(on); saveScaleContents(on); }} />
-          <span>{tr("تحجيم المحتوى مع الحاوية", "Scale contents with the container")}<span className="mt-1 block text-[11px] text-white/45">{tr("كل العناصر والنصوص بداخلها تكبر وتصغر بنفس النسبة. أطفئه لتغيير حدود الحاوية وحدها.", "All nested objects and text grow and shrink in proportion. Turn off to resize only the container frame.")}</span></span>
-        </label> : null}
 
         {selExtra?.kind === "slot" && selExtra.edit === "list" ? (
           <Field
@@ -2790,7 +2771,7 @@ function StudioDocument() {
 
         {pageQ.data?.kind === "component" && index ? <ComponentDocPanel variants={(index.nodes.get(index.root)?.children ?? []).map((x) => index.nodes.get(x)?.node).find((n) => n?.type === "section")?.children ?? []} busy={busy} onAddVariant={addVariant} /> : null}
         {selFree ? (
-          <div className="space-y-3">
+          <div className="space-y-3" data-insp-list="">
             <NodeActions
               canUp={selPos > 0}
               canDown={selPos >= 0 && selPos < selSiblings.length - 1}
@@ -2800,26 +2781,7 @@ function StudioDocument() {
               onCopy={selFree.type === "cell" ? undefined : copySelected}
               onDelete={selFree.type === "cell" ? undefined : () => setAsking({ kind: "delete", nodeId: selected, name: label(selected), tree: true })}
             />
-            {selFree.type === "columns" ? <ColumnsPanel node={selFree} screen={screen} busy={busy} ids={makeIds} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "cell" ? (
-              <CellPanel node={selFree} cols={nodeOf(selNode?.parentId) ?? null} busy={busy} onOps={(l, ops) => void change(l, ops, ops.some((o) => o.op === "remove" && o.nodeId === selected) ? selNode?.parentId ?? null : undefined)} />
-            ) : null}
-            {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <CoverPanel node={selFree} isLast={pageKids[pageKids.length - 1]?.id === selFree.id} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <PaintPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            <EdgesPanel key={`edges:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} />
-            {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type !== "page" ? <CursorTextPanel key={`cursor:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
-            {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
-            {selFree.type === "collectionList" ? <CollectionListPanel node={selFree} collections={collectionsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("قائمة المجموعة|Collection list|רשימת אוסף"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null}
-            {(() => { const c = index ? bindContext(index, selFree.id, { id, kind: pageQ.data?.kind }, collectionsQ.data) : null; return c ? <BindPanel key={`bind:${selFree.id}`} node={selFree} collection={c} lang={shopLang} busy={busy} onProps={(props) => void change(say("ربط بحقل|Connect to a field|חיבור לשדה"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null; })()}
-            {selFree.type === "component" ? <ComponentInstancePanel node={selFree} components={componentsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("نسخة المكوّن|Component instance|מופע רכיב"), [{ op: "setProps", nodeId: selFree.id, props }])} onEdit={(cid) => window.location.assign(`/studio/${encodeURIComponent(cid)}?from=${encodeURIComponent(id)}`)} onDetach={(variant) => detachInstance(selFree, variant)} /> : null}
-            {!["section", "cell", "columns", "page", "component", "popup"].includes(selFree.type) && pageQ.data?.kind !== "component" ? <MakeComponentPanel key={`make:${selFree.id}`} node={selFree} busy={busy} onMake={(name) => makeComponent(selFree, name)} /> : null}
-            {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
+            <InspectorGroup id="content" />
             {WRITABLE.has(selFree.type) ? (
               <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
                 {editing ? tr("عم تكتب بالصفحة… (Enter للحفظ، Esc للإلغاء)", "Writing in the page… (Enter saves, Esc cancels)") : tr("اكتب بالصفحة مع تنسيق (أو كبستين عليه)", "Write on the page with formatting (or double-click it)")}
@@ -2827,10 +2789,17 @@ function StudioDocument() {
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} lang={shopLang} onOps={(label, ops) => void change(label, ops)} /> : null}
-            <TriggersPanel key={`triggers:${selFree.id}`} node={selFree} lang={shopLang} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || typeLabel(x.node.type), type: x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={(i) => send({ type: "motionTriggerTest", nodeId: selFree.id, index: i })} />
-            <VisualControlsPanel key={`visual:${selFree.id}`} node={selFree} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", nodeId: selFree.id, event })} />
-            {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
-            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "columns" ? <ColumnsPanel node={selFree} screen={screen} busy={busy} ids={makeIds} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "cell" ? (
+              <CellPanel node={selFree} cols={nodeOf(selNode?.parentId) ?? null} busy={busy} onOps={(l, ops) => void change(l, ops, ops.some((o) => o.op === "remove" && o.nodeId === selected) ? selNode?.parentId ?? null : undefined)} />
+            ) : null}
+            {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
+            {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
+            {selFree.type === "collectionList" ? <CollectionListPanel node={selFree} collections={collectionsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("قائمة المجموعة|Collection list|רשימת אוסף"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null}
+            {(() => { const c = index ? bindContext(index, selFree.id, { id, kind: pageQ.data?.kind }, collectionsQ.data) : null; return c ? <BindPanel key={`bind:${selFree.id}`} node={selFree} collection={c} lang={shopLang} busy={busy} onProps={(props) => void change(say("ربط بحقل|Connect to a field|חיבור לשדה"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null; })()}
+            {selFree.type === "component" ? <ComponentInstancePanel node={selFree} components={componentsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("نسخة المكوّن|Component instance|מופע רכיב"), [{ op: "setProps", nodeId: selFree.id, props }])} onEdit={(cid) => window.location.assign(`/studio/${encodeURIComponent(cid)}?from=${encodeURIComponent(id)}`)} onDetach={(variant) => detachInstance(selFree, variant)} /> : null}
             {selFree.type === "svg" ? <SvgPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {(BLOCK_KINDS as readonly string[]).includes(selFree.type) ? <ContentBlocksPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
@@ -2839,6 +2808,8 @@ function StudioDocument() {
             {selFree.type === "clock" ? <ClockPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "model3d" ? <Model3dPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
+            <InspectorGroup id="look" />
             <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
             {styleState !== "normal" ? (
@@ -2865,6 +2836,7 @@ function StudioDocument() {
                 <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
             )}
+            <InspectorGroup id="motion" />
             <MotionPanel
               node={selFree}
               busy={busy}
@@ -2884,6 +2856,7 @@ function StudioDocument() {
               }}
               onPlay={() => send({ type: "motionPlay", nodeId: selected })}
             />
+            {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {WORLD_HOSTS.has(selFree.type) ? (
               <WorldPanel
                 key={`world:${selFree.id}`} node={selFree} busy={busy}
@@ -2899,6 +2872,19 @@ function StudioDocument() {
               />
             ) : null}
             {worldOfNode(index.nodes.get(index.nodes.get(selFree.id)?.parentId ?? "")?.node) ? <BodyPanel key={`body:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            <InspectorGroup id="decor" />
+            {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <CoverPanel node={selFree} isLast={pageKids[pageKids.length - 1]?.id === selFree.id} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <PaintPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            <EdgesPanel key={`edges:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+            {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            <InspectorGroup id="behaviour" />
+            <TriggersPanel key={`triggers:${selFree.id}`} node={selFree} lang={shopLang} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || typeLabel(x.node.type), type: x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={(i) => send({ type: "motionTriggerTest", nodeId: selFree.id, index: i })} />
+            <VisualControlsPanel key={`visual:${selFree.id}`} node={selFree} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", nodeId: selFree.id, event })} />
+            {selFree.type !== "page" ? <CursorTextPanel key={`cursor:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {!["section", "cell", "columns", "page", "component", "popup"].includes(selFree.type) && pageQ.data?.kind !== "component" ? <MakeComponentPanel key={`make:${selFree.id}`} node={selFree} busy={busy} onMake={(name) => makeComponent(selFree, name)} /> : null}
+            {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             <AddMenu
               kinds={ADDABLE.filter((k) => canAdd(k, "inside") || canAdd(k, "after"))}
               busy={busy}
@@ -2908,6 +2894,27 @@ function StudioDocument() {
             />
           </div>
         ) : null}
+        {selFree && selFree.type !== "page" ? <InspectorGroup id="layout" /> : null}
+        {selNode && pageItemNode && ["section", "legacy", "roseBlock"].includes(pageItemNode.type) ? <SectionObjectsPanel
+          node={pageItemNode} selected={selected} busy={busy}
+          canAdd={kind => { const c = insertCtx((x) => `__${x}`); return Boolean(c && insertOps(c, pageItemNode.id, probe(kind), "inside")); }}
+          onAdd={kind => addKind(kind, undefined, "inside", pageItemNode.id)}
+          onSelect={nodeId => select(nodeId, true)}
+        /> : null}
+
+        {selFree&&!['page','section','cell','columns'].includes(selFree.type)?<>
+          <div className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-movement">
+            <div className="text-xs text-white/70">{tr("اتجاه التحريك داخل الحاوية","Movement within the container")}</div>
+            <div className="grid grid-cols-2 gap-1">{([['vertical',tr("رأسي فقط","Vertical only")],['horizontal',tr("أفقي فقط","Horizontal only")],['both',tr("المحوران داخل الحاوية","Both axes inside")],['free',tr("حر","Free")]] as const).map(([mode,label])=><button type="button" key={mode} disabled={busy} aria-pressed={movementOf(selFree,screen)===mode} className={`rounded px-2 py-1.5 text-xs ${movementOf(selFree,screen)===mode?'bg-accent-500/30':'bg-white/[0.06]'}`} data-testid={`studio-movement-${mode}`} onClick={()=>{setCanvasMode("free");saveCanvasMode("free");void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:mode})]);}}>{label}</button>)}</div>
+            {screen!=="base"?<button type="button" disabled={busy} className="text-[10px] text-white/50" data-testid="studio-movement-inherit" onClick={()=>void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:null})])}>{tr("اتبع الشاشة الأكبر","Follow the larger screen")}</button>:null}
+          </div>
+          <LayoutConstraintsPanel key={`${selFree.id}:${screen}`} value={((selFree.style as Record<string,{constraints?:SizeConstraints}>|undefined)?.[screen]?.constraints)??{}} busy={busy} onChange={value=>setSizeConstraints(selFree,value)} />
+        </>:null}
+
+        {selFree?.children?.length && !["page", "section", "cell", "columns"].includes(selFree.type) ? <label className="flex items-start gap-2 rounded-lg border border-white/10 p-2 text-xs">
+          <input type="checkbox" checked={scaleContents} disabled={busy} data-testid="studio-scale-contents" onChange={event => { const on = event.target.checked; setScaleContents(on); saveScaleContents(on); }} />
+          <span>{tr("تحجيم المحتوى مع الحاوية", "Scale contents with the container")}<span className="mt-1 block text-[11px] text-white/45">{tr("كل العناصر والنصوص بداخلها تكبر وتصغر بنفس النسبة. أطفئه لتغيير حدود الحاوية وحدها.", "All nested objects and text grow and shrink in proportion. Turn off to resize only the container frame.")}</span></span>
+        </label> : null}
 
         {selected === index.root || pageItemOf({ index, up, extras, pageIndex: indexAt, ids: makeIds() }, selected) ? (
           <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-add-section">
@@ -3786,6 +3793,7 @@ function StudioDocument() {
         ) : null}
 
         <aside className="hidden w-64 shrink-0 overflow-y-auto border-s border-white/[0.08] p-3 text-sm lg:block" aria-label={tr("العنصر المحدد", "Selected element")} data-testid="studio-info">
+          <InspectorJump watch={`${selected ?? ""}:${focus?.id ?? ""}`} />
           {inspector()}
         </aside>
       </div>

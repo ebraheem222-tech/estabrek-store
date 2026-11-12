@@ -4,12 +4,14 @@
  * a built-in model (storeThemes/three/models.tsx) or the store's .glb (GlbModel, fitted the
  * same way), posed, moving its way (always, with the mouse over it, or with the scroll),
  * leaning toward the mouse, lit by one of the light setups (light shapes, no downloaded
- * images), on a soft shadow, a grid or a disc, turned by hand when the store lets shoppers.
+ * images), on a soft shadow, a grid, a disc, a round stand or a ring of light, turned by hand when the store lets
+ * shoppers (it glides to a stop, and can go back to its pose). It can come in the first time it's seen (rising,
+ * popping, spinning or dropping in) and carry sparkles floating around it.
  */
-import { Suspense, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, Html, Lightformer, OrbitControls } from "@react-three/drei";
-import { Vector3 } from "three";
+import { ContactShadows, Environment, Html, Lightformer, OrbitControls, Sparkles } from "@react-three/drei";
+import { Box3, Vector3 } from "three";
 import type * as THREE from "three";
 import { dressParts, live3d, viewPlace } from "./model3dLive";
 import { GameModel } from "@/storeThemes/three/models";
@@ -20,10 +22,23 @@ import { usePageIdle } from "@/lib/pageIdle";
 import { ScenePacer } from "@/components/cinematic/ScenePacer";
 
 const FLOOR_Y = -1.45;
+const outCubic = (u: number) => 1 - (1 - u) ** 3;
+const outBack = (u: number) => 1 + 2.70158 * (u - 1) ** 3 + 1.70158 * (u - 1) ** 2;
+function outBounce(u: number) {
+  const n = 7.5625, d = 2.75;
+  if (u < 1 / d) return n * u * u;
+  if (u < 2 / d) return n * (u -= 1.5 / d) * u + 0.75;
+  if (u < 2.5 / d) return n * (u -= 2.25 / d) * u + 0.9375;
+  return n * (u -= 2.625 / d) * u + 0.984375;
+}
 
-function Rig({ spec, colours, still, hovered, progress, inner, onReady, onError }: { spec: Model3dSpec; colours: ModelColours; still: boolean; hovered: MutableRefObject<boolean>; progress: MutableRefObject<number>; inner: MutableRefObject<THREE.Group | null>; onReady?: () => void; onError?: () => void }) {
+function Rig({ spec, colours, still, active, hovered, progress, inner, onReady, onError, onBase }: { spec: Model3dSpec; colours: ModelColours; still: boolean; active: boolean; hovered: MutableRefObject<boolean>; progress: MutableRefObject<number>; inner: MutableRefObject<THREE.Group | null>; onReady?: () => void; onError?: () => void; onBase?: (y: number) => void }) {
   const outer = useRef<THREE.Group>(null);
+  // Coming in the first time it's seen (its own group, so its pose and motion stay as they are).
+  const stage = useRef<THREE.Group>(null);
+  const intro = useRef(spec.intro && !still ? 0 : 1);
   const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => { if (active) invalidate(); }, [active, invalidate]);
   // Its parts dressed by their own looks (model3dLive.ts), again once a file has loaded.
   const [loaded, setLoaded] = useState(0);
   useEffect(() => { if (!spec.file) onReady?.(); }, [spec.file, onReady]);
@@ -31,11 +46,29 @@ function Rig({ spec, colours, still, hovered, progress, inner, onReady, onError 
     dressParts(inner.current, spec.parts);
     invalidate();
   }, [spec.parts, loaded, colours, inner, invalidate]);
+  // Where its lowest point rests (as posed, before any motion): a stand or a ring of light sits right under it.
+  useEffect(() => {
+    const o = outer.current;
+    if (!o || !onBase) return;
+    o.updateWorldMatrix(true, true);
+    const box = new Box3().setFromObject(o);
+    if (Number.isFinite(box.min.y)) onBase(box.min.y);
+  }, [loaded, spec.model, spec.size, spec.lift, spec.turn, spec.knobs, onBase]);
   // How far the motion has gone: it runs while it should and settles back otherwise.
   const play = useRef({ t: 0, weight: spec.anim.trigger === "always" ? 1 : 0 });
   useFrame(({ pointer }, dt) => {
     const o = outer.current;
     const g = inner.current;
+    const st = stage.current;
+    if (st && spec.intro) {
+      if (still) intro.current = 1;
+      else if (active && intro.current < 1) intro.current = Math.min(1, intro.current + Math.min(dt, 0.05) / (spec.intro === "drop" ? 1.1 : 0.9));
+      const u = intro.current;
+      st.position.y = spec.intro === "rise" ? -(1 - outCubic(u)) * 1.4 : spec.intro === "drop" ? (1 - outBounce(u)) * 3.2 : 0;
+      st.rotation.y = spec.intro === "spin" ? (1 - outCubic(u)) * Math.PI * 2 : 0;
+      st.scale.setScalar(spec.intro === "pop" ? Math.max(0.001, outBack(u)) : spec.intro === "rise" ? 0.6 + 0.4 * outCubic(u) : spec.intro === "spin" ? 0.3 + 0.7 * outCubic(u) : 1);
+      if (active && u < 1) invalidate();
+    }
     if (!o || !g || still) return;
     const { type, speed, amount, trigger } = spec.anim;
     const on = trigger === "always" || (trigger === "hover" && hovered.current) || trigger === "scroll";
@@ -60,6 +93,7 @@ function Rig({ spec, colours, still, hovered, progress, inner, onReady, onError 
     }
   });
   return (
+    <group ref={stage}>
     <group ref={outer} position={[0, spec.lift, 0]} rotation={spec.turn} scale={spec.size}>
       <group ref={inner}>
         {spec.file ? (
@@ -79,6 +113,38 @@ function Rig({ spec, colours, still, hovered, progress, inner, onReady, onError 
         ))}
       </group>
     </group>
+    </group>
+  );
+}
+
+/**
+ * Turned by hand: it glides to a stop; with "back" it returns to where the design put the camera once let go
+ * (not while it turns by itself or has saved views, which move the camera themselves).
+ */
+function Hands({ spec, still }: { spec: Model3dSpec; still: boolean }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const controls = useRef<any>(null);
+  const { camera, invalidate } = useThree();
+  const home = useRef<Vector3 | null>(null);
+  const returning = useRef(false);
+  const goesBack = spec.back && spec.auto === 0 && spec.views.length === 0;
+  useEffect(() => { home.current = camera.position.clone(); }, [camera]);
+  useFrame((_, dt) => {
+    if (!returning.current || !home.current) return;
+    camera.position.lerp(home.current, Math.min(1, Math.min(dt, 0.05) * 3.2));
+    camera.lookAt(0, 0, 0);
+    controls.current?.update();
+    if (camera.position.distanceTo(home.current) < 0.01) returning.current = false;
+    else invalidate();
+  });
+  return (
+    <OrbitControls
+      ref={controls} enabled={spec.drag} enablePan={false} enableZoom={spec.drag && spec.zoom} minDistance={2} maxDistance={20}
+      enableDamping dampingFactor={0.09}
+      autoRotate={spec.auto !== 0 && !still} autoRotateSpeed={spec.auto * 2} target={[0, 0, 0]}
+      onStart={() => { returning.current = false; }}
+      onEnd={() => { if (goesBack) { returning.current = true; invalidate(); } }}
+    />
   );
 }
 
@@ -133,7 +199,39 @@ function CameraViews({ spec, progress, inner }: { spec: Model3dSpec; progress: M
   return null;
 }
 
-function Floor({ spec, tint }: { spec: Model3dSpec; tint: string }) {
+function Floor({ spec, tint, glow, base }: { spec: Model3dSpec; tint: string; glow: string; base: number }) {
+  // A round stand it sits on, with a thin line of light around its top.
+  if (spec.floor === "pedestal") {
+    return (
+      <group position={[0, base, 0]}>
+        <mesh position={[0, -0.2, 0]}>
+          <cylinderGeometry args={[1.7, 1.86, 0.4, 72]} />
+          <meshStandardMaterial color={tint} roughness={0.5} metalness={0.1} />
+        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
+          <ringGeometry args={[1.56, 1.64, 96]} />
+          <meshBasicMaterial color={glow} toneMapped={false} />
+        </mesh>
+        <ContactShadows position={[0, 0.01, 0]} opacity={0.4} scale={3.3} blur={2.2} far={3.2} resolution={256} />
+      </group>
+    );
+  }
+  // A ring of light on the floor, with a soft pool of it inside and out.
+  if (spec.floor === "halo") {
+    return (
+      <group position={[0, base, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]}>
+          <ringGeometry args={[0.9, 2.4, 96]} />
+          <meshBasicMaterial color={glow} transparent opacity={0.1} toneMapped={false} depthWrite={false} />
+        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[1.56, 1.63, 128]} />
+          <meshBasicMaterial color={glow} toneMapped={false} />
+        </mesh>
+        <ContactShadows position={[0, 0.01, 0]} opacity={0.35} scale={8} blur={2.6} far={3.2} resolution={256} />
+      </group>
+    );
+  }
   if (spec.floor === "shadow") return <ContactShadows position={[0, FLOOR_Y, 0]} opacity={0.45} scale={8} blur={2.4} far={3.2} resolution={256} />;
   if (spec.floor === "grid") return <gridHelper args={[10, 20, tint, tint]} position={[0, FLOOR_Y, 0]} />;
   if (spec.floor === "disc") {
@@ -147,12 +245,16 @@ function Floor({ spec, tint }: { spec: Model3dSpec; tint: string }) {
   return null;
 }
 
-export default function Model3dCanvas({ spec, colours, rims, floorTint, active, still, hovered, progress, onReady, onError }: {
+export default function Model3dCanvas({ spec, colours, rims, floorTint, sparkle, halo, active, still, hovered, progress, onReady, onError }: {
   spec: Model3dSpec;
   colours: ModelColours;
   /** The two rim lights' colours (theme colours already read from the page). */
   rims: [string, string];
   floorTint: string;
+  /** The sparkles' colour (read from the page). */
+  sparkle?: string;
+  /** The colour of a stand's line of light and of a ring of light (the page's accent). */
+  halo?: string;
   active: boolean;
   still: boolean;
   hovered: MutableRefObject<boolean>;
@@ -165,6 +267,9 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
   // While the page rests (lib/pageIdle.ts) the model keeps its last frame instead of being drawn 60 times a second.
   const resting = usePageIdle();
   const inner = useRef<THREE.Group | null>(null);
+  // Under the model's lowest point (a little below, never above the usual floor's height by much).
+  const [base, setBase] = useState(FLOOR_Y);
+  const onBase = useCallback((y: number) => setBase(Math.max(FLOOR_Y, Math.min(0.4, y - 0.02))), []);
   return (
     <Canvas
       dpr={[1, 1.75]}
@@ -186,16 +291,13 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
         <Lightformer form="ring" intensity={1.5 * l.env} color={rims[1]} position={[0, -2, 4]} scale={2.5} />
       </Environment>
       <Suspense fallback={null}>
-        <Rig spec={spec} colours={colours} still={still} hovered={hovered} progress={progress} inner={inner} onReady={onReady} onError={onError} />
+        <Rig spec={spec} colours={colours} still={still} active={active} hovered={hovered} progress={progress} inner={inner} onReady={onReady} onError={onError} onBase={onBase} />
       </Suspense>
       <CameraViews spec={spec} progress={progress} inner={inner} />
-      <Floor spec={spec} tint={floorTint} />
-      {spec.drag || (spec.auto !== 0 && !still) ? (
-        <OrbitControls
-          enabled={spec.drag} enablePan={false} enableZoom={spec.drag && spec.zoom} minDistance={2} maxDistance={20}
-          autoRotate={spec.auto !== 0 && !still} autoRotateSpeed={spec.auto * 2} target={[0, 0, 0]}
-        />
-      ) : null}
+      <Floor spec={spec} tint={floorTint} glow={halo ?? rims[0]} base={base} />
+      {/* Sparkles floating around it (still for "reduce motion"). */}
+      {spec.sparkles ? <Sparkles count={spec.sparkles.count} size={spec.sparkles.size} speed={still ? 0 : 0.35} opacity={0.9} color={sparkle ?? "#ffffff"} scale={[4.4, 3.2, 4.4]} noise={1} /> : null}
+      {spec.drag || (spec.auto !== 0 && !still) ? <Hands spec={spec} still={still} /> : null}
     </Canvas>
   );
 }

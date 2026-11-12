@@ -18,6 +18,7 @@ import { Field } from "./StudioPanels";
 import { Choice, ColourPick } from "./StudioTreePanels";
 import { STAGE_ANIMS, STAGE_FINISHES, STAGE_PARTS, loadStoreThemes, type StageGlb, type StageModelInfo } from "./storeThemes";
 import { MODEL3D_LOOKS, lookOf3d, withLook } from "./model3dLooks";
+import { say } from "./say";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 // The model's settings are plain nested data the backend checks; read loosely here.
@@ -260,15 +261,37 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         <Range label={tr("الارتفاع", "Height")} min={-5} max={5} step={0.1} busy={busy} value={cam.height ?? 0.4} onSave={(v) => part("camera", { height: v })} />
         <Choice
           label={tr("الأرضية", "Floor")} value={p.floor ?? "shadow"} busy={busy} testId="model3d-floor"
-          options={[["shadow", tr("ظل ناعم", "Soft shadow")], ["disc", tr("قاعدة", "A base")], ["grid", tr("شبكة", "Grid")], ["none", tr("بلا", "None")]]}
+          options={[["shadow", tr("ظل ناعم", "Soft shadow")], ["pedestal", say("منصّة عرض|A display stand|מעמד תצוגה")], ["halo", say("حلقة ضو|A ring of light|טבעת אור")], ["disc", tr("قاعدة", "A base")], ["grid", tr("شبكة", "Grid")], ["none", tr("بلا", "None")]]}
           onPick={(v) => set(tr("الأرضية", "Floor"), { floor: v === "shadow" ? undefined : v })}
         />
         <ColourPick label={tr("الخلفية (فاضي = شفافة)", "Background (empty = see-through)")} value={p.bg ?? ""} busy={busy} onPick={(c) => set(tr("الخلفية", "Background"), { bg: c ?? undefined })} testId="model3d-bg" />
       </Fold>
 
+      <Fold title={say("المسرح: الخلفية، الدخلة واللمعة|The stage: what's behind it, its way in, sparkles|הבמה: רקע, כניסה ונצנוצים")} open={Boolean(p.backdrop || p.intro || p.sparkles)} testId="model3d-stage">
+        <Choice
+          label={say("ورا الموديل|Behind the model|מאחורי המודל")} value={isObj(p.backdrop) ? String(p.backdrop.kind) : "none"} busy={busy} testId="model3d-backdrop"
+          options={[["none", tr("بلا", "None")], ["glow", say("وهج ناعم|A soft glow|זוהר רך")], ["spot", say("ضو مسرح من فوق|A spotlight from above|זרקור מלמעלה")], ["sunrise", say("وهج طالع من تحت|A glow rising from below|זוהר עולה מלמטה")], ["rings", say("حلقات|Rings|טבעות")]]}
+          onPick={(v) => set(say("ورا الموديل|Behind the model|מאחורי המודל"), { backdrop: v === "none" ? undefined : { ...(isObj(p.backdrop) ? p.backdrop : {}), kind: v } })}
+        />
+        {isObj(p.backdrop) ? <ColourPick label={say("لونه (فاضي = لون المتجر الفاتح)|Its colour (empty = the store's light colour)|הצבע שלו")} value={p.backdrop.color ?? ""} busy={busy} onPick={(c) => part("backdrop", { color: c ?? undefined }, say("ورا الموديل|Behind the model|מאחורי המודל"))} testId="model3d-backdrop-colour" /> : null}
+        <Choice
+          label={say("كيف بيدخل أول مرة|How it comes in the first time|איך הוא נכנס בפעם הראשונה")} value={typeof p.intro === "string" ? p.intro : "none"} busy={busy} testId="model3d-intro"
+          options={[["none", tr("بلا", "None")], ["pop", say("بيفقع|Pops in|קופץ פנימה")], ["rise", say("بيطلع من تحت|Rises in|עולה")], ["drop", say("بيوقع وبينط|Drops and bounces|נופל וקופץ")], ["spin", say("بيلف ويكبر|Spins in|מסתובב פנימה")]]}
+          onPick={(v) => set(say("دخلة الموديل|The model's way in|כניסת המודל"), { intro: v === "none" ? undefined : v })}
+        />
+        <Range label={say("لمعات حواليه (0 = بلا)|Sparkles around it (0 = none)|נצנוצים סביבו")} min={0} max={120} step={5} busy={busy} value={isObj(p.sparkles) ? Number(p.sparkles.count) || 0 : 0} onSave={(v) => set(say("لمعات|Sparkles|נצנוצים"), { sparkles: v >= 1 ? { ...(isObj(p.sparkles) ? p.sparkles : {}), count: Math.round(v) } : undefined })} testId="model3d-sparkles" />
+        {isObj(p.sparkles) ? (
+          <>
+            <Range label={say("حجم اللمعة|A sparkle's size|גודל נצנוץ")} min={0.5} max={6} step={0.5} busy={busy} value={Number(p.sparkles.size) || 2} onSave={(v) => part("sparkles", { size: v }, say("لمعات|Sparkles|נצנוצים"))} testId="model3d-sparkles-size" />
+            <ColourPick label={say("لون اللمعات (فاضي = لون المتجر)|Their colour (empty = the store's colour)|צבע הנצנוצים")} value={p.sparkles.color ?? ""} busy={busy} onPick={(c) => part("sparkles", { color: c ?? undefined }, say("لمعات|Sparkles|נצנוצים"))} testId="model3d-sparkles-colour" />
+          </>
+        ) : null}
+      </Fold>
+
       <Fold title={tr("الزبون والموديل", "Shoppers and the model")} testId="model3d-shoppers">
         {toggle("drag", tr("بيقدر يلفّه بإيده", "Can turn it by hand"), "model3d-drag")}
         {p.drag ? toggle("zoom", tr("وبيقرّب ويبعّد", "And zoom in and out")) : null}
+        {p.drag ? toggle("back", say("وبيرجع لوضعه لما يتركه|And it turns back when let go|וחוזר למקומו כשמשחררים"), "model3d-back") : null}
         <Field label={tr("رابط لما يكبس عليه (بيلغي اللف باليد)", "A link when it's clicked (turning by hand goes)")} value={typeof p.href === "string" ? p.href : ""} onSave={(v) => set(tr("الرابط", "Link"), { href: /^(\/(?!\/)|#|https?:\/\/)/.test(v.trim()) ? v.trim() : undefined })} testId="model3d-href" />
       </Fold>
 

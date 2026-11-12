@@ -4,13 +4,19 @@
  * or its shape, so any model takes any look.
  */
 import { tr } from "../lib/words";
+import { say } from "./say";
 
 type Obj = Record<string, unknown>;
 export type Model3dLook = { key: string; name: () => string; set: Obj };
 /** What a look sets (the rest of the model's settings stay). */
-export const LOOK_KEYS = ["lights", "floor", "bg", "anim", "auto", "tilt", "drag", "zoom", "camera"] as const;
+export const LOOK_KEYS = ["lights", "floor", "bg", "anim", "auto", "tilt", "drag", "zoom", "camera", "backdrop", "intro", "sparkles", "back"] as const;
 
 export const MODEL3D_LOOKS: Model3dLook[] = [
+  // Whole stages: a stand or a ring of light, something behind it, a way in, sparkles.
+  { key: "stand", name: () => say("على منصّة عرض|On a display stand|על מעמד תצוגה"), set: { lights: { preset: "studio" }, floor: "pedestal", backdrop: { kind: "glow" }, intro: "pop", auto: 0.4 } },
+  { key: "jewel", name: () => say("بيلمع بحلقة ضو|Sparkling in a ring of light|נוצץ בטבעת אור"), set: { lights: { preset: "soft" }, floor: "halo", backdrop: { kind: "sunrise" }, sparkles: { count: 40 }, auto: 0.3 } },
+  { key: "spotlight", name: () => say("تحت ضو المسرح|Under a spotlight|תחת זרקור"), set: { lights: { preset: "warm" }, floor: "shadow", backdrop: { kind: "spot" }, intro: "drop", tilt: true } },
+  { key: "rings", name: () => say("حلقات، وبيرجع لمكانه|Rings, and it turns back|טבעות, וחוזר למקומו"), set: { lights: { preset: "studio" }, floor: "shadow", backdrop: { kind: "rings" }, intro: "rise", drag: true, back: true } },
   { key: "showcase", name: () => tr("عرض منتج", "Product showcase"), set: { lights: { preset: "studio" }, floor: "shadow", auto: 0.5, drag: true } },
   { key: "neon", name: () => tr("صالة نيون", "Neon showroom"), set: { lights: { preset: "neon" }, floor: "grid", bg: "#0b0b12", auto: 0.8 } },
   { key: "floating", name: () => tr("طافي بالهوا", "Floating"), set: { lights: { preset: "soft" }, floor: "none", anim: { type: "float", speed: 1, amount: 1.2, trigger: "always" }, tilt: true } },

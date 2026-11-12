@@ -186,7 +186,12 @@ export const SHAPES = [
 export const FINISHES_3D = ["neon", "metal", "toy", "voxel", "matte", "glass", "gold"] as const;
 export const ANIMS_3D = ["none", "spin", "float", "bounce", "pulse", "swing", "orbit"] as const;
 export const LIGHTS_3D = ["studio", "soft", "sunset", "neon", "night", "warm"] as const;
-export const FLOORS_3D = ["none", "shadow", "grid", "disc"] as const;
+// "pedestal" = a round stand it sits on; "halo" = a ring of light on the floor.
+export const FLOORS_3D = ["none", "shadow", "grid", "disc", "pedestal", "halo"] as const;
+/** What is drawn behind a 3D model (plain CSS, no extra 3D): a glow, a spotlight from above, a rising glow, rings. */
+export const BACKDROPS_3D = ["glow", "spot", "sunrise", "rings"] as const;
+/** How a 3D model comes in the first time it is seen. */
+export const INTROS_3D = ["rise", "pop", "spin", "drop"] as const;
 const degrees = z.number().finite().min(-180).max(180);
 /** A .glb's address: https or the shop's own path, and while developing a local server's (as the theme stage allows). */
 const glbSrc = z
@@ -710,6 +715,12 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     zoom: z.boolean().optional(),
     auto: z.number().min(-2).max(2).optional(), // turns by itself (minus = the other way)
     tilt: z.boolean().optional(), // leans toward the mouse
+    // Its stage: what's behind it, how it comes in, sparkles floating around it, and going back to its pose after
+    // a shopper turns it.
+    backdrop: z.object({ kind: z.enum(BACKDROPS_3D), color: color.optional() }).optional(),
+    intro: z.enum(INTROS_3D).optional(),
+    sparkles: z.object({ count: z.number().int().min(1).max(120), color: color.optional(), size: z.number().min(0.5).max(6).optional() }).optional(),
+    back: z.boolean().optional(),
     href: href.optional(), // the whole model is a link (then it isn't turned by hand)
     label: local(120).optional(),
     // Focus mode (A5): its parts' own looks by name (a mesh's own name, else "part-<n>"), its saved views (an angle
