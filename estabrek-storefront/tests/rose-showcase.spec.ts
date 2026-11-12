@@ -95,9 +95,19 @@ test("the shop's opening: the silk film in an arch and a 3D ring of the pieces t
   const ring = stage.locator(".rose-ring");
   if (!(await ring.count())) test.skip(true, "fewer than three pieces with a photo in this catalogue");
   const turn = () => ring.evaluate((el) => parseFloat((el as HTMLElement).style.getPropertyValue("--ring-turn") || "0"));
-  const a = await turn();
-  await page.waitForTimeout(600);
-  expect(await turn()).not.toBe(a);
+  // It turns as a CSS animation (the graphics card runs it at the screen's rate).
+  const spin = ring.locator(".rose-ring-spin");
+  expect(await spin.evaluate((el) => getComputedStyle(el).animationName)).toBe("rose-ring-spin");
+  const shown = () => spin.evaluate((el) => getComputedStyle(el).transform);
+  const a = await shown();
+  await expect.poll(shown).not.toBe(a);
+  // The scroll stills it; the pointer coming over it turns it again.
+  await page.mouse.move(5, 5);
+  await page.mouse.wheel(0, 30);
+  await expect(ring).toHaveAttribute("data-paused", /scroll/);
+  expect(await spin.evaluate((el) => el.getAnimations()[0]?.playState)).toBe("paused");
+  await stage.locator(".rose-stage-arch").hover();
+  await expect(ring).not.toHaveAttribute("data-paused", /scroll/);
   // Drag the front piece: the ring turns with the finger.
   const piece = ring.locator(".rose-ring-piece").first();
   const box = (await piece.boundingBox())!;

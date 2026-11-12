@@ -25,6 +25,16 @@ export function useStagedParts(total: number, onScreen: boolean) {
 }
 
 /**
+ * In the shop, three.js doesn't ask the graphics driver whether each shader built well: asking makes the page
+ * wait for the driver to finish it there and then (getProgramParameter / getProgramInfoLog), which showed as a
+ * stall in the middle of a scroll when a scene's shaders were being built (half a second on a phone). In
+ * development it still asks, to show shader errors.
+ */
+export function quietShaders(gl: THREE.WebGLRenderer) {
+  if (process.env.NODE_ENV === "production" && gl.debug) gl.debug.checkShaderErrors = false;
+}
+
+/**
  * Prepare every material of a scene up front.
  *
  * three.js builds a material's shader the first time the object is drawn.
@@ -35,6 +45,7 @@ export function useStagedParts(total: number, onScreen: boolean) {
  * compile call and hidden again, so the hand-over only draws.
  */
 export function warmScene(gl: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera): Promise<void> {
+  quietShaders(gl);
   const hidden: THREE.Object3D[] = [];
   scene.traverse((o) => {
     if (!o.visible) {
