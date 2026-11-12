@@ -314,7 +314,7 @@ function StudioDocument() {
   const [dragView, setDragView] = useState<{ pushed: Array<{ id: string; box: Box }>; touching: string[]; marks: Gap[]; into: { id: string; box: Box } | null } | null>(null);
   const [, setTick] = useState(0);
   // Focus mode (focus/): one element opened on its own, the part of it being edited, and the view to go back to.
-  const [focus, setFocus] = useState<{ id: string; part: FocusPart | null; back: View } | null>(null);
+  const [focus, setFocus] = useState<{ id: string; part: FocusPart | null; back: View; lite?: boolean } | null>(null);
   const [focusAll, setFocusAll] = useState(false);
   const glide = useRef(0);
   // A drawing opened in focus mode: its shapes as the frame measured them (page box, the matrix from their own
@@ -1132,10 +1132,13 @@ function StudioDocument() {
   const openFocus = (sid: string | null) => {
     const n = sid ? index?.nodes.get(sid)?.node : undefined;
     const s = shapeOf(sid);
-    if (!sid || !n || !canFocus(n) || !isFree(n.type) || !s || !canvas.w) return false;
+    if (!sid || !s || !canvas.w || s.box.w < 1 || s.box.h < 1) return false;
+    // An old section, a store scene, a saved block or a part inside one has no editor of its own: it still opens
+    // on its own (zoomed to, the rest dimmed), with its usual settings beside it.
+    const lite = !n || !canFocus(n) || !isFree(n.type);
     pointSelection.current.cancel();
     select(sid);
-    setFocus((f) => ({ id: sid, part: null, back: f?.back ?? { zoom, pan } }));
+    setFocus((f) => ({ id: sid, part: null, back: f?.back ?? { zoom, pan }, ...(lite ? { lite: true } : {}) }));
     glideTo(focusView(s.box, { zoom, pan }, canvas));
     return true;
   };
@@ -1320,8 +1323,8 @@ function StudioDocument() {
 
   // Focus mode ends when its element is gone (deleted, undone) or the screen changes (the view is fitted again).
   useEffect(() => {
-    if (focus && index && !index.nodes.has(focus.id)) setFocus(null);
-  }, [focus, index]);
+    if (focus && index && !index.nodes.has(focus.id) && !(focus.lite && shapes.some((x) => x.id === focus.id))) setFocus(null);
+  }, [focus, index, shapes]);
   useEffect(() => {
     setFocus(null);
     setFocusAll(false);
@@ -2539,7 +2542,7 @@ function StudioDocument() {
           <div className="mt-0.5 font-mono text-[11px] text-white/35" dir="ltr">{selExtra?.kind === "slot" ? selExtra.path : selected}</div>
         </div>
         {selFree && selFree.type !== "page" ? <PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-        {selFree && canFocus(selFree) && focus?.id !== selFree.id ? (
+        {selected && selected !== index.root && shapeOf(selected) && focus?.id !== selected ? (
           <button type="button" onClick={() => openFocus(selected)} className="w-full rounded-lg bg-accent-500/20 px-2 py-1.5 text-xs text-accent-100 hover:bg-accent-500/30" data-testid="studio-focus-enter">
             ✎ {say("افتحه لحاله (تركيز) · F أو كبستين|Open it on its own (focus) · F or double-click|פתיחה לבד (מיקוד) · F או לחיצה כפולה")}
           </button>
@@ -3440,8 +3443,12 @@ function StudioDocument() {
               const at = inFrame(p) ? pickAt(grid.near(p), p) : null;
               if (at) {
                 select(at.id);
-                // Words are written in place; anything else opens on its own (focus mode).
-                if (!startText(at.id) && index) openFocus([...pathTo(index, at.id, up)].reverse().find((x) => index.nodes.has(x)) ?? null);
+                // Words are written in place; anything else opens on its own (focus mode): the element itself, else
+                // the nearest one around it with an editor of its own, else whatever was clicked (zoomed to).
+                if (!startText(at.id) && index) {
+                  const own = [...pathTo(index, at.id, up)].reverse().find((x) => { const n = index.nodes.get(x)?.node; return Boolean(n && isFree(n.type)); });
+                  if (!openFocus(own ?? null)) openFocus(at.id);
+                }
               }
             }}
             onPointerMove={onPointerMove}
@@ -3688,7 +3695,14 @@ function StudioDocument() {
               />
             );
           })()}
-          {focus && index && nodeOf(focus.id) ? (
+          {focus?.lite ? (
+            <div className="pointer-events-auto absolute inset-x-3 top-2 z-[6] flex items-center gap-2 rounded-xl border border-white/[0.1] bg-surface-950/90 px-2 py-1.5 text-xs shadow-xl backdrop-blur" data-testid="studio-focus-bar" data-group="lite" onPointerDown={(e) => e.stopPropagation()}>
+              <span className="min-w-0 flex-1 truncate text-white/80">✎ {label(focus.id)}</span>
+              <span className="hidden text-white/35 sm:inline">{say("Esc للرجوع|Esc to go back|Esc לחזרה")}</span>
+              <button type="button" className="rounded-lg bg-white/[0.08] px-2 py-1 hover:bg-white/[0.14]" onClick={closeFocus} data-testid="studio-focus-exit">{say("رجوع|Back|חזרה")}</button>
+            </div>
+          ) : null}
+          {focus && !focus.lite && index && nodeOf(focus.id) ? (
             <FocusBar
               group={focusGroup(nodeOf(focus.id)!)}
               crumbs={focusCrumbs()}

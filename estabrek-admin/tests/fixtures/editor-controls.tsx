@@ -165,6 +165,15 @@ if (new URLSearchParams(location.search).has("padded")) {
   drawing.props.art = { viewBox: "0 0 200 100", nodes: [{ t: "rect", a: { width: "200", height: "100", fill: "#3366ff" } }] };
   drawing.style = { base: { width: "200px", pad: [20, 20, 20, 20], border: { width: 5, color: "#ff0000" } } };
 }
+// The test server's own home page (old sections and the rose scenes, like a converted store's home) for trying the
+// editor on what a real store has.
+if (new URLSearchParams(location.search).has("home")) {
+  const page = await fetch(`${FIXTURE}/v1/storefront/page?slug=${encodeURIComponent("/")}`).then((r) => r.json()).catch(() => null) as { sections?: Array<{ id: string; order?: number }> } | null;
+  if (page?.sections?.length) {
+    initial.sections = page.sections as never;
+    initial.tree.root.children = page.sections.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } }));
+  }
+}
 let draft = structuredClone(initial);
 const writes: Array<{ ops: PageDraftOp[]; rev: number }> = [];
 const requests: Array<{ method: string; path: string }> = [];
