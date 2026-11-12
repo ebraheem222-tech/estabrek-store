@@ -18,6 +18,7 @@ import { TreeIcon } from "./icons";
 import { ArtView, safeArt, safeMorph } from "./svgArt";
 import { SparkleLayer } from "./sparkles";
 import { CurvedWords } from "./curvedWords";
+import { endlessOf, perfMarks, perfOf } from "./perf";
 import { safeCurve } from "../../../shared/textCurve";
 import { safeSparkle } from "../../../shared/sparkle";
 import { color } from "./css";
@@ -103,7 +104,10 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const motion = motionOf(node);
   // Triggers go as data too, their links and words already in this page's language (TreeTriggers runs them).
   const triggers = triggersOf(p.triggers, link, say);
-  const mark = { "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
+  // Its own speed settings (perf.ts): light, balanced, a frame cap, resting off screen and while the page rests.
+  const perf = perfOf(p.perf);
+  const endless = endlessOf(node, motion);
+  const mark = { ...perfMarks(perf, endless), "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
   // Its two extra layers (behind its content, or in front), drawn when it has a look or keyframes for them.
   const layers = layersOf(p.layers);
   const piece = (part: "before" | "after") => (layers?.[part] || motion?.keys?.parts[part] ? <span className={`pt-pc pt-pc-${part}${layers?.[part]?.front ? " pt-pc-front" : ""}`} aria-hidden="true" /> : null);
@@ -273,10 +277,10 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
           src={src}
           poster={poster}
           aria-label={say(p.label) || undefined}
-          autoPlay={p.autoplay === true}
+          autoPlay={p.autoplay === true && perf?.tier !== "light"}
           muted={p.muted === true || p.autoplay === true}
           loop={p.loop === true}
-          controls={p.controls !== false && p.autoplay !== true}
+          controls={p.controls !== false && (p.autoplay !== true || perf?.tier === "light")}
           playsInline
           preload="metadata"
         />

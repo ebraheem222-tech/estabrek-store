@@ -174,7 +174,7 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
       camera={{ position: [0, spec.camera.height, spec.camera.distance], fov: spec.camera.fov }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >
-      <ScenePacer active={active && moves && !resting} />
+      <ScenePacer active={active && moves && !resting} maxFps={spec.fps} />
       {spec.bg ? <color attach="background" args={[spec.bg]} /> : null}
       <ambientLight intensity={l.ambient} />
       <directionalLight position={[3, 5, 4]} intensity={l.key} />

@@ -942,6 +942,21 @@ for (const t of NODE_TYPES) {
   NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ cursorText: local(24).optional(), bind: NodeBind.optional(), styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
 
+/**
+ * An element's own speed settings (the editor's speed per element, docs/cms-big-engine-plan.ar.md J), on any kind
+ * (props.perf): full, balanced (no frosted glass, canvases at 30 a second) or light (no blur, shadows, filters or
+ * endless motion; 3D drawn once; clips don't play by themselves); a cap on its canvases' frames; whether it keeps
+ * moving off screen or while the page rests; lighter on phones; only in full on strong devices.
+ */
+export const NodePerf = z.object({
+  tier: z.enum(["full", "balanced", "light"]).optional(),
+  fps: z.union([z.literal(24), z.literal(30), z.literal(60)]).optional(),
+  offscreen: z.enum(["pause", "keep"]).optional(),
+  rest: z.enum(["pause", "keep"]).optional(),
+  phone: z.enum(["same", "light"]).optional(),
+  strong: z.boolean().optional(),
+});
+
 /* ------------------------------------------------------------------ tree */
 
 export type TreeText = Partial<Record<(typeof LANGS)[number], string>>;
@@ -1049,6 +1064,13 @@ export function checkTree(input: unknown): TreeCheck {
       else children = raw.children.map((c, i) => walk(c, `${path}.children[${i}]`, depth + 1, type, columnsAbove + (type === "columns" ? 1 : 0))).filter((c): c is TreeNode => Boolean(c));
     }
     const node: TreeNode = { id: nodeId, type, props: props.success ? (props.data as Record<string, unknown>) : {} };
+    // Its speed settings, the same on every kind (each kind's own props leave them out).
+    const perfRaw = isObject(raw.props) ? (raw.props as Record<string, unknown>).perf : undefined;
+    if (perfRaw !== undefined && perfRaw !== null) {
+      const perf = NodePerf.safeParse(perfRaw);
+      if (!perf.success) for (const i of perf.error.issues) add(`${path}.props.perf${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
+      else if (Object.keys(perf.data).length) node.props.perf = perf.data;
+    }
     if (type === "showcase" && props.success) node.props.initial = Math.min(Number(node.props.initial), (node.props.items as unknown[]).length - 1);
     if (type === "deck" && props.success) node.props.initial = Math.min(Number(node.props.initial) || 0, Math.max(0, (children?.length ?? 0) - 1));
     if (typeof raw.name === "string" && raw.name.trim()) node.name = raw.name.trim().slice(0, 60);
