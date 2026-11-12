@@ -115,6 +115,10 @@ function restore(d: Drag) {
   else if (d.kind === "turn") d.callbacks.onTurnLive(d.base);
 }
 
+/** Under this many screen px across, an element's handles stand off it by HANDLE_OFF px. */
+export const SMALL_SIDE = 30;
+export const HANDLE_OFF = 9;
+
 export function SelectionHandles({ box, zoom, frame, geometry, proportional, ratioLimits, sides, turn, local, onSize, onSizeLive, onCancel, onReset, onTurnLive, onTurn }: SelectionHandlesProps) {
   const drag = useRef<Drag | null>(null);
   const [live, setLive] = useState<{ change?: ResizeChange; deg?: number } | null>(null);
@@ -242,8 +246,15 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
         </div>
       ) : null}
       {handles.map((h) => {
-        const at = shownPlane ? planarHandle(shownPlane, h) : handleAt(shown, h, shownFrame);
-        if (!at) return null;
+        const on = shownPlane ? planarHandle(shownPlane, h) : handleAt(shown, h, shownFrame);
+        if (!on) return null;
+        // A small element: the handles in the middle of a short side go, and the rest stand off it, so its middle
+        // stays free to press and move (they used to cover it whole).
+        if (sides === "all" && ((h === "n" || h === "s") ? shown.w < SMALL_SIDE : (h === "e" || h === "w") ? shown.h < SMALL_SIDE : false)) return null;
+        const off = Math.min(shown.w, shown.h) < SMALL_SIDE ? HANDLE_OFF : 0;
+        const from = { x: on.x - (shown.x + shown.w / 2), y: on.y - (shown.y + shown.h / 2) };
+        const far = Math.hypot(from.x, from.y);
+        const at = off && far > 0.01 ? { x: on.x + (from.x / far) * off, y: on.y + (from.y / far) * off } : on;
         return (
           <div
             key={h}
@@ -267,6 +278,7 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
             }}
             data-testid="studio-handle"
             data-handle={h}
+            data-off={off ? "1" : undefined}
           />
         );
       })}

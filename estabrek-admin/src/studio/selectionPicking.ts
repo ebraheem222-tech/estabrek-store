@@ -1,10 +1,12 @@
-import { shapeContains, type Pt, type Shape } from "./geometry";
+import { area, shapeContains, tinyNear, type Pt, type Shape } from "./geometry";
 import { pathTo, type TreeIndex } from "./treeIndex";
 export function candidateStack(shapes: Shape[], point: Pt, painted: string[], index: TreeIndex, up: ReadonlyMap<string, string | null>, locked: ReadonlySet<string>, deep: boolean): string[] {
   const allowed = new Map(shapes.filter(s => s.id !== index.root && (deep || !s.id.startsWith("detail:")) && !pathTo(index, s.id, up).some(id => locked.has(id))).map(s => [s.id, s]));
   const geometry = [...allowed.values()].filter(s => shapeContains(s, point)).sort((a, b) => b.depth - a.depth || a.box.w * a.box.h - b.box.w * b.box.h);
+  // A tiny element pressed just outside itself (geometry.ts tinyNear) comes first: it's what the click means.
+  const tiny = tinyNear([...allowed.values()], point, [...geometry].sort((a, b) => b.depth - a.depth || area(a.box) - area(b.box) || a.id.localeCompare(b.id))[0]);
   const resolve = (id: string) => id.startsWith("owner:s:") ? index.bySection.get(id.slice(8)) : id.startsWith("block:") && index.nodes.has(`rb-${id.slice(6)}`) ? `rb-${id.slice(6)}` : id;
-  return [...new Set([...painted.map(resolve).filter((id): id is string => !!id && allowed.has(id)), ...geometry.map(s => s.id)])].slice(0, 100);
+  return [...new Set([...(tiny ? [tiny.s.id] : []), ...painted.map(resolve).filter((id): id is string => !!id && allowed.has(id)), ...geometry.map(s => s.id)])].slice(0, 100);
 }
 export const cycleCandidate = (ids: string[], selected: string | null) => ids.length ? ids[(Math.max(-1, selected ? ids.indexOf(selected) : -1) + 1) % ids.length] : null;
 /** One pending pick; new gestures/panel selections invalidate old iframe replies. */
