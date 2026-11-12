@@ -32,6 +32,8 @@ import {
   quoteCart,
 } from "./catalog.service.js";
 import { completeTheLook } from "./look.service.js";
+import { mayTrack, trackOrder } from "./orderTrack.service.js";
+import { z } from "zod";
 
 const r = Router();
 
@@ -128,6 +130,16 @@ r.post("/products/:id/comments", validate({ body: CreateCommentBody }), asyncHan
 
 
 // quote (subtotal/discount/total) for checkout
+// «تابعي طلبكِ» without an account: the order number and the phone it was placed with (orderTrack.service.ts).
+const TrackBody = z.object({ order: z.string().trim().min(8).max(40), phone: z.string().trim().min(6).max(30) }).strict();
+r.post("/order-requests/track", validate({ body: TrackBody }), asyncHandler(async (req, res) => {
+  if (!mayTrack(String(req.ip ?? ""))) return res.status(429).json({ error: "TOO_MANY_TRIES" });
+  const found = await trackOrder(req.body.order, req.body.phone);
+  if (!found) return res.status(404).json({ error: "ORDER_NOT_FOUND" });
+  res.setHeader("Cache-Control", "no-store");
+  res.json(found);
+}));
+
 r.post("/quote", validate({ body: QuoteBody }), asyncHandler(async (req, res) => {
   const out = await quoteOrderRequest(req.body);
   res.json(out);

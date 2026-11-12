@@ -97,6 +97,27 @@ export type RoseCartProps = {
  * from the store's own price quote, and one clear way to order. Orders are
  * recorded in the store first, then the WhatsApp message opens ready to send.
  */
+type SavedAddress = { id: string; label?: string | null; fullName: string; phone: string; city: string; address: string; isDefault: boolean };
+type Remembered = { name: string; phone: string; email: string; city: string; address: string };
+const DETAILS_KEY = "estabrak_checkout_v1";
+/** Her details from last time on this device (only when she asked to be remembered). */
+function readRemembered(): Remembered | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(DETAILS_KEY) || "null");
+    return v && typeof v === "object" && typeof v.name === "string" ? { name: v.name, phone: String(v.phone ?? ""), email: String(v.email ?? ""), city: String(v.city ?? ""), address: String(v.address ?? "") } : null;
+  } catch {
+    return null;
+  }
+}
+function rememberDetails(d: Remembered | null) {
+  try {
+    if (d) localStorage.setItem(DETAILS_KEY, JSON.stringify(d));
+    else localStorage.removeItem(DETAILS_KEY);
+  } catch {
+    /* private mode: nothing kept */
+  }
+}
+
 export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmail, stripeEnabled, paypalEnabled, countryCode, delivery: deliveryRaw, renderLayout }: RoseCartProps) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
@@ -115,15 +136,32 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   // Signed in: her details (and default address) fill the form, and the order goes into her account.
   const account = useOptionalAccount();
   const signedIn = account?.status === "signedIn";
+  // Her saved addresses (signed in): one tap fills the form; a new one can be kept with the order.
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [keepAddress, setKeepAddress] = useState(true);
+  // Without an account: her details kept on this device for next time, only if she asks.
+  const [remember, setRemember] = useState(false);
+  useEffect(() => {
+    // Only once it's clear she isn't signed in (or the store has no accounts).
+    if (account && account.status !== "guest") return;
+    const saved = readRemembered();
+    if (!saved) return;
+    setRemember(true);
+    setForm((f) => ({ ...f, name: f.name || saved.name, phone: f.phone || saved.phone, email: f.email || saved.email, city: f.city || saved.city, address: f.address || saved.address }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.status]);
   useEffect(() => {
     if (!account || account.status !== "signedIn" || !account.user) return;
     const u = account.user;
     let cancelled = false;
     account
-      .api<{ addresses: Array<{ fullName: string; phone: string; city: string; address: string; isDefault: boolean }> }>("/customer/me/addresses")
+      .api<{ addresses: SavedAddress[] }>("/customer/me/addresses")
       .then(({ addresses }) => {
         if (cancelled) return;
+        setAddresses(addresses);
         const a = addresses.find((x) => x.isDefault) ?? addresses[0];
+        if (a) setPicked(a.id);
         setForm((f) => ({
           ...f,
           name: f.name || a?.fullName || u.name || "",
@@ -142,6 +180,24 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.status, account?.user?.id]);
   const [otherCity, setOtherCity] = useState(false);
+  // A saved address picked: it fills the form (its city from the list, or typed when it isn't one of the list's).
+  const pickAddress = (a: SavedAddress) => {
+    setPicked(a.id);
+    setForm((f) => ({ ...f, name: a.fullName || f.name, phone: a.phone || f.phone, city: a.city, address: a.address }));
+    setOtherCity(Boolean(a.city) && !deliveryCities(normalizeDelivery(deliveryRaw)).some((g) => g.cities.includes(a.city)));
+  };
+  // The address in the form isn't one she saved (with words in it): it can be kept with the order.
+  const newAddress = Boolean(form.city.trim() && form.address.trim()) && !addresses.some((a) => a.city.trim() === form.city.trim() && a.address.trim() === form.address.trim());
+  /** After the order went: a new address into her account, or her details on this device (or forgotten). */
+  const keepDetails = () => {
+    if (signedIn) {
+      if (!noShipping && newAddress && keepAddress && addresses.length < 10 && form.name.trim().length >= 2) {
+        void account?.api("/customer/me/addresses", { method: "POST", body: JSON.stringify({ fullName: form.name.trim(), phone: form.phone.trim(), city: form.city.trim(), address: form.address.trim() }) }).catch(() => undefined);
+      }
+      return;
+    }
+    rememberDetails(remember ? { name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(), city: form.city.trim(), address: form.address.trim() } : null);
+  };
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ orderId?: string; via: "whatsapp" | "direct" | "email"; handover?: string } | null>(null);
@@ -327,6 +383,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       } else if (via === "email" && ordersEmail) {
         window.location.href = `mailto:${ordersEmail}?subject=${encodeURIComponent(orderId ? `طلب جديد ${orderId}` : "طلب جديد")}&body=${encodeURIComponent(text)}`;
       }
+      keepDetails();
       setDone({ orderId, via, handover: hasDigital || hasBooking ? handover : undefined });
       clear();
       window.scrollTo({ top: 0 });
@@ -360,6 +417,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       const value = Number(grandTotal ?? quote?.total ?? 0) || 0;
       trackBeginCheckout(tracked, value, currency ?? undefined);
       rememberPurchase(tracked, value, currency ?? undefined);
+      keepDetails();
       window.location.href = data.redirectUrl;
     } catch (e: any) {
       setErr(e?.message || (tr(lang, "حدث خطأ", "Something went wrong")));
@@ -374,6 +432,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
         <span className="atelier-eyebrow">{tr(lang, "وصل طلبكِ", "ORDER RECEIVED")}</span>
         <h1>{tr(lang, "شكراً لكِ، طلبكِ عندنا.", "Thank you — we have your order.")}</h1>
         {done.orderId && <p className="rose-cart-order-id">{tr(lang, "رقم الطلب", "Order number")}: <b dir="ltr">{done.orderId}</b></p>}
+        {done.orderId && <p><Link href={`/track?o=${encodeURIComponent(done.orderId)}`} className="atelier-text-link" data-testid="cart-track">{tr(lang, "تابعي طلبكِ", "Track your order")}<Icon name="arrow" /></Link></p>}
         <p>
           {done.via === "whatsapp"
             ? tr(lang, "فتحنا لكِ محادثة واتساب فيها تفاصيل الطلب. أرسلي الرسالة لنؤكد معكِ التوصيل.", "We opened a WhatsApp chat with your order details. Send it and we'll confirm delivery with you.")
@@ -515,6 +574,20 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                 <small className="rose-cart-hint">{tr(lang, `عليه بيوصلكِ رابط ${handover} (اختياري — بنبعته كمان بالواتساب).`, "Where we send your {0} link (optional — we also send it on WhatsApp).", [handover])}</small>
               </label>
             ) : null}
+            {!noShipping && signedIn && addresses.length ? (
+              <div className="rose-cart-addresses" role="radiogroup" aria-label={tr(lang, "وين نوصّل؟", "Deliver where?")} data-testid="cart-addresses">
+                <span>{tr(lang, "وين نوصّل؟", "Deliver where?")}</span>
+                {addresses.map((a) => (
+                  <button key={a.id} type="button" role="radio" aria-checked={picked === a.id} onClick={() => pickAddress(a)}>
+                    <b>{a.label || a.city}</b>
+                    <small>{a.address}</small>
+                  </button>
+                ))}
+                <button type="button" role="radio" aria-checked={picked === "new"} onClick={() => { setPicked("new"); setOtherCity(false); setForm((f) => ({ ...f, city: "", address: "" })); }}>
+                  <b>{tr(lang, "عنوان جديد", "A new address")}</b>
+                </button>
+              </div>
+            ) : null}
             {noShipping ? null : priced && cityGroups.some((g) => g.cities.length) ? (
               <label>
                 <span>{tr(lang, "المدينة", "City")}</span>
@@ -548,12 +621,24 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             ) : null}
             {noShipping ? null : <label>
               <span>{tr(lang, "العنوان", "Address")}</span>
-              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} autoComplete="street-address" placeholder={priced ? (tr(lang, "الحي، الشارع، رقم البيت", "Area, street, house")) : tr(lang, "المدينة، الحي، الشارع", "City, area, street")} />
+              <input value={form.address} onChange={(e) => { setForm({ ...form, address: e.target.value }); if (picked && picked !== "new") setPicked("new"); }} autoComplete="street-address" placeholder={priced ? (tr(lang, "الحي، الشارع، رقم البيت", "Area, street, house")) : tr(lang, "المدينة، الحي، الشارع", "City, area, street")} />
             </label>}
             <label>
               <span>{tr(lang, "ملاحظات", "Notes")}</span>
               <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={noShipping ? (tr(lang, "أي تفصيلة بتحبي نعرفها", "Anything we should know")) : tr(lang, "وقت مناسب للتوصيل، أو أي تفصيلة", "A good delivery time, or any detail")} />
             </label>
+            {signedIn && !noShipping && newAddress ? (
+              <label className="rose-cart-check">
+                <input type="checkbox" checked={keepAddress} onChange={(e) => setKeepAddress(e.target.checked)} data-testid="cart-keep-address" />
+                <span>{tr(lang, "احفظي هالعنوان بحسابكِ للطلب الجاي", "Save this address to your account for next time")}</span>
+              </label>
+            ) : null}
+            {!signedIn ? (
+              <label className="rose-cart-check">
+                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} data-testid="cart-remember" />
+                <span>{tr(lang, "تذكّري بياناتي على هالجهاز", "Remember my details on this device")}</span>
+              </label>
+            ) : null}
           </div>
 
           {shortLines.length > 0 && (

@@ -1415,6 +1415,35 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       return res.end(JSON.stringify(o));
     }
     if (pathname === "/__test/downloads") return res.end(JSON.stringify({ downloads: globalThis.downloads }));
+    // «تابعي طلبكِ» (checkout-track.spec.ts): the orders placed here, found by number and phone.
+    if (pathname === "/v1/catalog/order-requests/track" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        const digits = (v) => String(v ?? "").replace(/\D/g, "").slice(-9);
+        const code = String(data.order ?? "").trim().replace(/^#/, "").toLowerCase();
+        const o = (globalThis.placedOrders ?? []).find((x) => x.id.toLowerCase() === code && digits(x.phone) === digits(data.phone));
+        if (!o) { res.statusCode = 404; return res.end(JSON.stringify({ error: "ORDER_NOT_FOUND" })); }
+        res.end(JSON.stringify({ order: o.id.slice(-8), status: o.status, createdAt: o.steps[0].at, steps: o.steps, city: o.city, total: o.total, currencyCode: "ILS", items: o.items }));
+      });
+      return;
+    }
+    // An order moves on (the admin's status change), for the tracker: { status }.
+    if (pathname === "/__test/order-status" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const { status } = JSON.parse(body || "{}");
+        const at = new Date().toISOString();
+        for (const o of [globalThis.placedOrders?.[0], customerState.orders[0]].filter(Boolean)) {
+          o.status = status;
+          if (!o.steps.some((x) => x.status === status)) o.steps.push({ status, at });
+        }
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname.endsWith("/catalog/cart-quote") || pathname.endsWith("/catalog/order-requests")) {
       let body = "";
       req.on("data", (c) => (body += c));
@@ -1438,11 +1467,13 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         if (pathname.endsWith("/order-requests") && short.length) { res.statusCode = 409; return res.end(JSON.stringify({ error: "OUT_OF_STOCK", details: { lines: short.map((l) => ({ variantId: l.variantId, productTitle: l.productTitle, colorName: l.colorName, sizeName: l.sizeName, requested: l.quantity, available: l.available })) } })); }
         if (pathname.endsWith("/order-requests")) {
           globalThis.lastOrder = data;
+          const placed = { id: "ORD-1042", phone: data.phone, city: data.city ?? null, status: "NEW", steps: [{ status: "NEW", at: new Date().toISOString() }], total: subtotal - off, items: lines.map((l) => ({ productTitle: l.productTitle, productSlug: l.productSlug, colorName: l.colorName, sizeName: l.sizeName, quantity: l.quantity, imageUrl: l.imageUrl })) };
+          globalThis.placedOrders = [placed];
           // Signed-in shopper: the order shows in her account.
           const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
           globalThis.lastOrderSignedIn = Boolean(bearer && customerState.tokens.has(bearer));
           if (globalThis.lastOrderSignedIn) {
-            customerState.orders.unshift({ id: "ORD-1042", status: "NEW", createdAt: new Date().toISOString(), total: subtotal - off, currencyCode: "ILS", paymentStatus: null, items: lines.map((l, i) => ({ id: `oi${i}`, productTitle: l.productTitle, productSlug: l.productSlug, colorName: l.colorName, sizeName: l.sizeName, quantity: l.quantity, imageUrl: l.imageUrl })) });
+            customerState.orders.unshift({ id: "ORD-1042", status: "NEW", city: data.city ?? null, steps: [{ status: "NEW", at: new Date().toISOString() }], createdAt: new Date().toISOString(), total: subtotal - off, currencyCode: "ILS", paymentStatus: null, items: lines.map((l, i) => ({ id: `oi${i}`, productTitle: l.productTitle, productSlug: l.productSlug, colorName: l.colorName, sizeName: l.sizeName, quantity: l.quantity, imageUrl: l.imageUrl })) });
           }
           return res.end(JSON.stringify({ id: "ORD-1042", status: "NEW" }));
         }

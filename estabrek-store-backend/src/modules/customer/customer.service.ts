@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
+import { orderSteps } from "../catalog/orderTrack.service.js";
 import argon2 from "argon2";
 import { prisma } from "../../lib/prisma.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
@@ -193,6 +194,8 @@ export async function myOrders(userId: string) {
       paymentStatus: true,
       city: true,
       address: true,
+      // Where the order is: each status it reached and when (the account's tracker).
+      history: { select: { toStatus: true, at: true } },
       items: {
         select: {
           id: true,
@@ -208,8 +211,9 @@ export async function myOrders(userId: string) {
       },
     },
   });
-  return rows.map((o) => ({
+  return rows.map(({ history, ...o }) => ({
     ...o,
+    steps: orderSteps(o.createdAt, history),
     subtotal: o.subtotal == null ? null : Number(o.subtotal),
     discountAmount: o.discountAmount == null ? null : Number(o.discountAmount),
     total: o.total == null ? null : Number(o.total),
