@@ -155,7 +155,9 @@ export default async function RootLayout({
   const navbarHeader = { ...(header ?? {}), sticky: true };
   // Admin → السرعة والكاش → الحركة والتحميل: read by the scroll scenes before they start.
   const motion = normalizeMotion((settings.site as any)?.performance);
-  const motionScript = `window.__estabrekMotion=${JSON.stringify(motion).replace(/</g, "\\u003c")};`;
+  // Signed in or not is marked on <html> before the page shows, so what a recipe keeps for customers (or for
+  // guests) never flashes (pageTree/css.ts, TreeTriggers).
+  const motionScript = `window.__estabrekMotion=${JSON.stringify(motion).replace(/</g, "\\u003c")};try{if(/(^|; ?)estabrek_signed_in=1(;|$)/.test(document.cookie))document.documentElement.setAttribute("data-pt-in","")}catch(e){}`;
   // Admin → تجارب A/B: this visit's sides are picked before the page shows.
   const abTestsNow = abTests((settings.site as any)?.experiments);
   const rawLoading = header?.ui?.loading ?? null;

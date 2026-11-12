@@ -179,7 +179,10 @@ export function layersOf(raw: unknown): LayersSpec | undefined {
 
 /* ------------------------------------------------------------- the triggers */
 
-export const TRIGGER_EVENTS = ["click", "dblclick", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer"] as const;
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key"] as const;
+/** The keys a "key" trigger listens for: these by name, or one letter or digit. */
+export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
+export const TRIGGER_KEY = /^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/;
 export const PLAY_PRESETS = ["bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop", "flash", "tada"] as const;
 export const BURSTS = ["confetti", "hearts", "stars", "sparkles", "snow", "bubbles"] as const;
 export const SOUNDS = ["click", "pop", "chime", "whoosh", "success"] as const;
@@ -196,92 +199,275 @@ export type TriggerActionSpec =
   | { act: "toast"; text: string }
   | { act: "sound"; kind: (typeof SOUNDS)[number]; volume: number }
   | { act: "vibrate" }
-  | { act: "wait"; seconds: number };
-export type TriggerSpec = { on: (typeof TRIGGER_EVENTS)[number]; at?: number; once: boolean; do: TriggerActionSpec[] };
+  | { act: "wait"; seconds: number }
+  // What a button does in a shop (phase D): `href` "" = this page, `phone` "" = the store's own number.
+  | { act: "back" }
+  | { act: "share"; title: string; href: string }
+  | { act: "call"; phone: string }
+  | { act: "whatsapp"; phone: string; text: string }
+  | { act: "download"; href: string; name: string }
+  | { act: "bag"; productId: string; quantity: number }
+  | { act: "wish"; productId: string; value: "add" | "remove" | "toggle" }
+  | { act: "confirm"; text: string; yes: string; no: string };
+/** The steps that can fail (a "no" to a question, a product that can't be bought): the recipe's `fail` steps run then. */
+export const CAN_FAIL: ReadonlyArray<TriggerActionSpec["act"]> = ["confirm", "bag", "wish"];
+
+/* Recipes (the backend's lib/pageTree.ts NodeTrigger): when → if → do, else; groups, variables. */
+export const VAR_NAME = /^[A-Za-z][A-Za-z0-9_]{0,23}$/;
+export const VAR_CMPS = ["eq", "ne", "gt", "lt", "gte", "lte", "set", "unset"] as const;
+export const COUNT_CMPS = ["eq", "gte", "lte", "every"] as const;
+export type VarValue = number | string | boolean;
+export type ConditionSpec =
+  | { if: "var"; name: string; cmp: (typeof VAR_CMPS)[number]; value?: VarValue }
+  | { if: "count"; cmp: (typeof COUNT_CMPS)[number]; value: number }
+  | { if: "device"; value: "phone" | "tablet" | "desktop" }
+  | { if: "time"; from: number; to: number }
+  | { if: "lang"; value: "ar" | "en" | "he" }
+  | { if: "signedIn"; value: boolean }
+  | { if: "bag"; cmp: "eq" | "gte" | "lte"; value: number };
+export type PlainStepSpec =
+  | TriggerActionSpec
+  | { act: "set"; name: string; op: "set" | "add" | "toggle"; value?: VarValue }
+  | { act: "waitUntil"; name: string; cmp: (typeof VAR_CMPS)[number]; value?: VarValue; seconds: number };
+export type StepSpec =
+  | PlainStepSpec
+  | { act: "together" | "random"; do: PlainStepSpec[] }
+  | { act: "repeat"; times: number; do: PlainStepSpec[] };
+/**
+ * `who`: who may run it (nothing = everyone); `deny`: what the others get: the element hidden, shown locked (with
+ * `note` when pressed) or sent to sign in (`signin`, the sign-in page in this page's language). `fail`: the steps
+ * that run when one of its steps fails.
+ */
+export type TriggerSpec = {
+  on: (typeof TRIGGER_EVENTS)[number]; at?: number; once: boolean; key?: string;
+  who?: "customer" | "guest"; deny?: "hide" | "lock" | "signin"; note?: string; signin?: string;
+  if: ConditionSpec[]; do: StepSpec[]; else: StepSpec[]; fail: StepSpec[];
+};
+
+type Readers = { link: (href: unknown) => string | null; say: (words: unknown) => string };
+const varValueOf = (v: unknown): VarValue | undefined =>
+  typeof v === "boolean" ? v : typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= 1e9 ? v : typeof v === "string" ? v.slice(0, 80) : undefined;
+const varNameOf = (v: unknown) => (typeof v === "string" && VAR_NAME.test(v) ? v : undefined);
+const phoneOf = (v: unknown) => (typeof v === "string" && /^\+?[0-9][0-9 ()-]{4,19}$/.test(v.trim()) ? v.trim() : undefined);
+const productOf = (v: unknown) => (typeof v === "string" && /^[\w-]{1,64}$/.test(v) ? v : undefined);
+/** A file to download: on this site or over https, never a script. */
+const fileOf = (v: unknown) => (typeof v === "string" && /^(https:\/\/|\/(?!\/))[^\s<>"'`\\]{1,500}$/.test(v) ? v : undefined);
+
+function actionOf(x: Record<string, unknown>, { link, say }: Readers): TriggerActionSpec | null {
+  const target = typeof x.target === "string" && ID.test(x.target) ? x.target : "self";
+  switch (x.act) {
+    case "play": {
+      const what = x.what === "keys" ? "keys" : inList(x.what, PLAY_PRESETS);
+      if (what) return ({ act: "play", target, what, mode: inList(x.mode, ["play", "reverse", "toggle", "restart"] as const) ?? "play" });
+      break;
+    }
+    case "visible": {
+      const value = inList(x.value, ["show", "hide", "toggle"] as const);
+      if (value) return ({ act: "visible", target, value });
+      break;
+    }
+    case "scrollTo":
+      return { act: "scrollTo", target, offset: within(x.offset, -400, 400) ?? 0 };
+    case "scene": {
+      const at = within(x.at, 0, 100);
+      if (at !== undefined) return ({ act: "scene", target, at });
+      break;
+    }
+    case "link": {
+      const href = link(x.href);
+      if (href) return ({ act: "link", href, newTab: x.newTab === true });
+      break;
+    }
+    case "popup": {
+      const value = inList(x.value, ["open", "close"] as const);
+      if (value) return ({ act: "popup", target, value });
+      break;
+    }
+    case "video": {
+      const value = inList(x.value, ["play", "pause", "toggle", "restart", "mute", "unmute"] as const);
+      if (value) return ({ act: "video", target, value });
+      break;
+    }
+    case "burst": {
+      const kind = inList(x.kind, BURSTS);
+      if (kind) return ({ act: "burst", kind, ...(isColor(x.color) ? { color: x.color } : {}), amount: Math.round(within(x.amount, 5, 200) ?? 60) });
+      break;
+    }
+    case "copy": {
+      const text = say(x.text).slice(0, 200);
+      if (text) return ({ act: "copy", text, note: say(x.note).slice(0, 120) });
+      break;
+    }
+    case "toast": {
+      const text = say(x.text).slice(0, 200);
+      if (text) return ({ act: "toast", text });
+      break;
+    }
+    case "sound": {
+      const kind = inList(x.kind, SOUNDS);
+      if (kind) return ({ act: "sound", kind, volume: within(x.volume, 0, 1) ?? 0.35 });
+      break;
+    }
+    case "vibrate":
+      return { act: "vibrate" };
+    case "wait": {
+      const seconds = within(x.seconds, 0, 30);
+      if (seconds !== undefined) return ({ act: "wait", seconds });
+      break;
+    }
+    case "back":
+      return { act: "back" };
+    case "share": {
+      const href = x.href === undefined || x.href === "" ? "" : link(x.href);
+      if (href !== null) return { act: "share", title: say(x.title).slice(0, 120), href };
+      break;
+    }
+    case "call": {
+      const phone = x.phone === undefined || x.phone === "" ? "" : phoneOf(x.phone);
+      if (phone !== undefined) return { act: "call", phone };
+      break;
+    }
+    case "whatsapp": {
+      const phone = x.phone === undefined || x.phone === "" ? "" : phoneOf(x.phone);
+      if (phone !== undefined) return { act: "whatsapp", phone, text: say(x.text).slice(0, 300) };
+      break;
+    }
+    case "download": {
+      const file = fileOf(x.href);
+      if (file) return { act: "download", href: file, name: typeof x.name === "string" ? x.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").trim().slice(0, 80) : "" };
+      break;
+    }
+    case "bag": {
+      const productId = productOf(x.productId);
+      if (productId) return { act: "bag", productId, quantity: Math.round(within(x.quantity, 1, 20) ?? 1) };
+      break;
+    }
+    case "wish": {
+      const productId = productOf(x.productId);
+      const value = inList(x.value, ["add", "remove", "toggle"] as const);
+      if (productId && value) return { act: "wish", productId, value };
+      break;
+    }
+    case "confirm": {
+      const text = say(x.text).slice(0, 200);
+      if (text) return { act: "confirm", text, yes: say(x.yes).slice(0, 24), no: say(x.no).slice(0, 24) };
+      break;
+    }
+    default:
+      break;
+  }
+  return null;
+}
+
+function plainStepOf(x: Record<string, unknown>, r: Readers): PlainStepSpec | null {
+  if (x.act === "set") {
+    const name = varNameOf(x.name);
+    const op = inList(x.op, ["set", "add", "toggle"] as const);
+    const value = varValueOf(x.value);
+    if (!name || !op || (op === "add" && typeof value !== "number")) return null;
+    return { act: "set", name, op, ...(value !== undefined && op !== "toggle" ? { value } : {}) };
+  }
+  if (x.act === "waitUntil") {
+    const name = varNameOf(x.name);
+    const cmp = inList(x.cmp, VAR_CMPS);
+    if (!name || !cmp) return null;
+    const value = varValueOf(x.value);
+    return { act: "waitUntil", name, cmp, ...(value !== undefined ? { value } : {}), seconds: within(x.seconds, 0, 60) ?? 10 };
+  }
+  return actionOf(x, r);
+}
+
+function stepsOf(raw: unknown, r: Readers, max: number, groups: boolean): StepSpec[] {
+  if (!Array.isArray(raw)) return [];
+  const out: StepSpec[] = [];
+  for (const a of raw.slice(0, max)) {
+    const x = obj(a);
+    if (!x) continue;
+    if (groups && (x.act === "together" || x.act === "random" || x.act === "repeat")) {
+      const inner = stepsOf(x.do, r, 8, false) as PlainStepSpec[];
+      if (!inner.length) continue;
+      if (x.act === "repeat") out.push({ act: "repeat", times: Math.round(within(x.times, 1, 20) ?? 2), do: inner });
+      else out.push({ act: x.act, do: inner });
+      continue;
+    }
+    const step = plainStepOf(x, r);
+    if (step) out.push(step);
+  }
+  return out;
+}
+
+function conditionOf(raw: unknown): ConditionSpec | null {
+  const c = obj(raw);
+  if (!c) return null;
+  switch (c.if) {
+    case "var": {
+      const name = varNameOf(c.name);
+      const cmp = inList(c.cmp, VAR_CMPS);
+      if (!name || !cmp) return null;
+      const value = varValueOf(c.value);
+      return { if: "var", name, cmp, ...(value !== undefined ? { value } : {}) };
+    }
+    case "count": {
+      const cmp = inList(c.cmp, COUNT_CMPS);
+      const value = within(c.value, 1, 1000);
+      return cmp && value !== undefined ? { if: "count", cmp, value: Math.round(value) } : null;
+    }
+    case "device": {
+      const value = inList(c.value, ["phone", "tablet", "desktop"] as const);
+      return value ? { if: "device", value } : null;
+    }
+    case "time": {
+      const from = within(c.from, 0, 23), to = within(c.to, 0, 23);
+      return from !== undefined && to !== undefined ? { if: "time", from: Math.round(from), to: Math.round(to) } : null;
+    }
+    case "lang": {
+      const value = inList(c.value, ["ar", "en", "he"] as const);
+      return value ? { if: "lang", value } : null;
+    }
+    case "signedIn":
+      return typeof c.value === "boolean" ? { if: "signedIn", value: c.value } : null;
+    case "bag": {
+      const cmp = inList(c.cmp, ["eq", "gte", "lte"] as const);
+      const value = within(c.value, 0, 999);
+      return cmp && value !== undefined ? { if: "bag", cmp, value: Math.round(value) } : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Who alone sees an element: one of its recipes is for customers (or guests) and hides it from the others. */
+export function hiddenFrom(list: TriggerSpec[]): "customer" | "guest" | undefined {
+  return list.find((t) => t.who && t.deny === "hide")?.who;
+}
 
 /**
- * An element's triggers for this page: unknown ones drop out, links get the page's language
+ * An element's recipes for this page: unknown ones drop out, links get the page's language
  * (`link`, null = not a safe link) and words the page's language (`say`).
  */
 export function triggersOf(raw: unknown, link: (href: unknown) => string | null, say: (words: unknown) => string): TriggerSpec[] {
   if (!Array.isArray(raw)) return [];
+  const r: Readers = { link, say };
   const out: TriggerSpec[] = [];
   for (const t of raw.slice(0, 8)) {
-    const r = obj(t);
-    const on = inList(r?.on, TRIGGER_EVENTS);
-    if (!r || !on || !Array.isArray(r.do)) continue;
-    const acts: TriggerActionSpec[] = [];
-    for (const a of r.do.slice(0, 8)) {
-      const x = obj(a);
-      if (!x) continue;
-      const target = typeof x.target === "string" && ID.test(x.target) ? x.target : "self";
-      switch (x.act) {
-        case "play": {
-          const what = x.what === "keys" ? "keys" : inList(x.what, PLAY_PRESETS);
-          if (what) acts.push({ act: "play", target, what, mode: inList(x.mode, ["play", "reverse", "toggle", "restart"] as const) ?? "play" });
-          break;
-        }
-        case "visible": {
-          const value = inList(x.value, ["show", "hide", "toggle"] as const);
-          if (value) acts.push({ act: "visible", target, value });
-          break;
-        }
-        case "scrollTo":
-          acts.push({ act: "scrollTo", target, offset: within(x.offset, -400, 400) ?? 0 });
-          break;
-        case "scene": {
-          const at = within(x.at, 0, 100);
-          if (at !== undefined) acts.push({ act: "scene", target, at });
-          break;
-        }
-        case "link": {
-          const href = link(x.href);
-          if (href) acts.push({ act: "link", href, newTab: x.newTab === true });
-          break;
-        }
-        case "popup": {
-          const value = inList(x.value, ["open", "close"] as const);
-          if (value) acts.push({ act: "popup", target, value });
-          break;
-        }
-        case "video": {
-          const value = inList(x.value, ["play", "pause", "toggle", "restart", "mute", "unmute"] as const);
-          if (value) acts.push({ act: "video", target, value });
-          break;
-        }
-        case "burst": {
-          const kind = inList(x.kind, BURSTS);
-          if (kind) acts.push({ act: "burst", kind, ...(isColor(x.color) ? { color: x.color } : {}), amount: Math.round(within(x.amount, 5, 200) ?? 60) });
-          break;
-        }
-        case "copy": {
-          const text = say(x.text).slice(0, 200);
-          if (text) acts.push({ act: "copy", text, note: say(x.note).slice(0, 120) });
-          break;
-        }
-        case "toast": {
-          const text = say(x.text).slice(0, 200);
-          if (text) acts.push({ act: "toast", text });
-          break;
-        }
-        case "sound": {
-          const kind = inList(x.kind, SOUNDS);
-          if (kind) acts.push({ act: "sound", kind, volume: within(x.volume, 0, 1) ?? 0.35 });
-          break;
-        }
-        case "vibrate":
-          acts.push({ act: "vibrate" });
-          break;
-        case "wait": {
-          const seconds = within(x.seconds, 0, 30);
-          if (seconds !== undefined) acts.push({ act: "wait", seconds });
-          break;
-        }
-        default:
-          break;
-      }
-    }
-    if (acts.length) out.push({ on, ...(within(r.at, 0, 600) !== undefined ? { at: within(r.at, 0, 600) } : {}), once: r.once === true, do: acts });
+    const x = obj(t);
+    const on = inList(x?.on, TRIGGER_EVENTS);
+    if (!x || !on) continue;
+    const steps = stepsOf(x.do, r, 16, true);
+    const otherwise = stepsOf(x.else, r, 16, true);
+    if (!steps.length && !otherwise.length) continue;
+    const conditions = Array.isArray(x.if) ? x.if.slice(0, 6).map(conditionOf).filter((c): c is ConditionSpec => Boolean(c)) : [];
+    // A key trigger without a key we know listens for nothing.
+    const key = on === "key" && typeof x.key === "string" && TRIGGER_KEY.test(x.key) ? x.key : undefined;
+    if (on === "key" && !key) continue;
+    const who = inList(x.who, ["customer", "guest"] as const);
+    const deny = who ? inList(x.deny, ["hide", "lock", "signin"] as const) ?? "lock" : undefined;
+    const note = who ? say(x.note).slice(0, 120) : "";
+    out.push({
+      on, ...(within(x.at, 0, 600) !== undefined ? { at: within(x.at, 0, 600) } : {}), once: x.once === true, ...(key ? { key } : {}),
+      ...(who ? { who, deny, ...(note ? { note } : {}), ...(deny === "signin" ? { signin: link("/account") ?? "/account" } : {}) } : {}),
+      if: conditions, do: steps, else: conditions.length ? otherwise : [], fail: stepsOf(x.fail, r, 8, true),
+    });
   }
   return out;
 }

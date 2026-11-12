@@ -508,8 +508,18 @@ const PieceLayer = z.object({
 });
 export const NodeLayers = z.object({ before: PieceLayer.optional(), after: PieceLayer.optional() });
 
-/** What starts a trigger: a click, a double click, the mouse coming or going, coming into or out of sight, the page opening, the page scrolled past `at` %, `at` seconds on the page. */
-export const TRIGGER_EVENTS = ["click", "dblclick", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer"] as const;
+/**
+ * What starts a trigger: a click, a double click, a long press, the mouse coming or going, coming into or out of
+ * sight, the page opening, the page scrolled past `at` %, `at` seconds on the page, a key of the keyboard (`key`).
+ */
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key"] as const;
+/** The keys a "key" trigger listens for: these by name, or one letter or digit. */
+export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
+const triggerKey = z.string().regex(/^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/, "A key by name, or one letter or digit");
+/** A product by its id. */
+const productRef = z.string().regex(/^[\w-]{1,64}$/, "A product's id");
+/** A phone number as people write it (digits, spaces, dashes, brackets, a leading +). */
+const phone = z.string().trim().regex(/^\+?[0-9][0-9 ()-]{4,19}$/, "A phone number");
 /** Short moves a trigger can play on any element. */
 export const PLAY_PRESETS = ["bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop", "flash", "tada"] as const;
 export const BURSTS = ["confetti", "hearts", "stars", "sparkles", "snow", "bubbles"] as const;
@@ -532,12 +542,79 @@ export const TriggerAction = z.discriminatedUnion("act", [
   z.object({ act: z.literal("sound"), kind: z.enum(SOUNDS), volume: z.number().min(0).max(1).optional() }),
   z.object({ act: z.literal("vibrate") }),
   z.object({ act: z.literal("wait"), seconds: seconds(30) }),
+  // Phase D of the engine plan: what a button does in a shop.
+  z.object({ act: z.literal("back") }), // the page before this one
+  z.object({ act: z.literal("share"), title: local(120).optional(), href: href.optional() }), // this page (or a link) through the phone's share sheet, else copied
+  z.object({ act: z.literal("call"), phone: phone.optional() }), // no phone = the store's own number
+  z.object({ act: z.literal("whatsapp"), phone: phone.optional(), text: local(300).optional() }), // no phone = the store's own number
+  z.object({ act: z.literal("download"), href, name: z.string().trim().max(80).optional() }),
+  // Into the bag: added when the product has one choice, else its quick view opens to choose. Fails when it can't be bought.
+  // (No product yet = not picked in the editor yet: the shop leaves the step out.)
+  z.object({ act: z.literal("bag"), productId: productRef.optional(), quantity: z.number().int().min(1).max(20).optional() }),
+  z.object({ act: z.literal("wish"), productId: productRef.optional(), value: z.enum(["add", "remove", "toggle"]) }),
+  // Asks first ("Sure?"): a "no" stops the recipe there and runs its `fail` steps.
+  z.object({ act: z.literal("confirm"), text: local(200), yes: local(24).optional(), no: local(24).optional() }),
+]);
+/*
+ * Recipes (phase 3 of the big plan, the interactions engine): a trigger is "when → if → do, else": the
+ * conditions must all hold for its steps to run, its `else` steps run when they don't. Beside the actions a
+ * step can be a group (several at once, repeated, or one picked at random), a wait until a variable holds, or
+ * a change to a variable. Variables last for the visit (all pages); a text shows one with {{name}} or
+ * {{name|what to show before it is set}}, a message with {{name}} too.
+ */
+/** A variable: a name of letters, digits and _ (starts with a letter). */
+export const VAR_NAME = /^[A-Za-z][A-Za-z0-9_]{0,23}$/;
+const varName = z.string().trim().regex(VAR_NAME, "A name of letters, digits and _");
+const varValue = z.union([z.number().finite().min(-1e9).max(1e9), z.string().max(80), z.boolean()]);
+/** How a variable is compared: equal, not, more, less, at least, at most, set at all, not set yet. */
+export const VAR_CMPS = ["eq", "ne", "gt", "lt", "gte", "lte", "set", "unset"] as const;
+/** How often this recipe ran (with this time): exactly, at least, at most, every Nth time. */
+export const COUNT_CMPS = ["eq", "gte", "lte", "every"] as const;
+export const TriggerCondition = z.discriminatedUnion("if", [
+  z.object({ if: z.literal("var"), name: varName, cmp: z.enum(VAR_CMPS), value: varValue.optional() }),
+  z.object({ if: z.literal("count"), cmp: z.enum(COUNT_CMPS), value: z.number().int().min(1).max(1000) }),
+  z.object({ if: z.literal("device"), value: z.enum(["phone", "tablet", "desktop"]) }),
+  // The shopper's own time of day, from one hour to another (over midnight when `from` is later).
+  z.object({ if: z.literal("time"), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }),
+  z.object({ if: z.literal("lang"), value: z.enum(LANGS) }),
+  // Signed in to the shop (or not), and how many pieces are in the bag.
+  z.object({ if: z.literal("signedIn"), value: z.boolean() }),
+  z.object({ if: z.literal("bag"), cmp: z.enum(["eq", "gte", "lte"]), value: z.number().int().min(0).max(999) }),
+]);
+/** Changes a variable: to a value, by adding (minus to take away), or flipping yes/no. */
+const SetVar = z.object({ act: z.literal("set"), name: varName, op: z.enum(["set", "add", "toggle"]), value: varValue.optional() });
+/** Waits until a variable holds (at most `seconds`, then goes on). */
+const WaitUntil = z.object({ act: z.literal("waitUntil"), name: varName, cmp: z.enum(VAR_CMPS), value: varValue.optional(), seconds: seconds(60).optional() });
+/** One step that isn't a group. */
+export const TriggerPlainStep = z.discriminatedUnion("act", [...TriggerAction.options, SetVar, WaitUntil]);
+/** A step: an action, or a group of them (at once, repeated, or one at random). */
+export const TriggerStep = z.discriminatedUnion("act", [
+  ...TriggerPlainStep.options,
+  z.object({ act: z.literal("together"), do: z.array(TriggerPlainStep).min(1).max(8) }),
+  z.object({ act: z.literal("repeat"), times: z.number().int().min(1).max(20), do: z.array(TriggerPlainStep).min(1).max(8) }),
+  z.object({ act: z.literal("random"), do: z.array(TriggerPlainStep).min(1).max(8) }),
 ]);
 export const NodeTrigger = z.object({
   on: z.enum(TRIGGER_EVENTS),
   at: z.number().finite().min(0).max(600).optional(),
   once: z.boolean().optional(),
-  do: z.array(TriggerAction).min(1).max(8),
+  /** The owner's own name for it ("Open the offer"). */
+  name: z.string().trim().max(40).optional(),
+  /** The key a "key" trigger waits for. */
+  key: triggerKey.optional(),
+  /**
+   * Who may run it: everyone (nothing here), signed-in customers, or guests. What the others get (`deny`): the
+   * element hidden, shown locked (with `note` when pressed), or sent to sign in. This is the shop's manners only:
+   * whatever changes the store's data is checked again on the server by what it calls.
+   */
+  who: z.enum(["customer", "guest"]).optional(),
+  deny: z.enum(["hide", "lock", "signin"]).optional(),
+  note: local(120).optional(),
+  if: z.array(TriggerCondition).max(6).optional(),
+  do: z.array(TriggerStep).min(1).max(16),
+  else: z.array(TriggerStep).max(16).optional(),
+  /** When a step fails (a "no" to a question, a product that can't be bought): these run instead of the rest. */
+  fail: z.array(TriggerStep).max(8).optional(),
 });
 export const NodeTriggers = z.array(NodeTrigger).max(8);
 

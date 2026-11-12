@@ -144,6 +144,85 @@ export function toast(text: string) {
   }, 2600));
 }
 
+/**
+ * A question over the page ("Sure?"): true for yes; false for no, Escape or a press outside it. The "no" button
+ * holds the focus, so Enter by habit doesn't agree. With `answer` it's shown, not asked (a try in the editor's
+ * preview, where presses select): its answer lights up and it closes by itself.
+ */
+export function ask(text: string, yes: string, no: string, rtl: boolean, answer?: boolean, from?: Element): Promise<boolean> {
+  return new Promise((done) => {
+    document.getElementById("pt-ask")?.remove();
+    const back = document.createElement("div");
+    back.id = "pt-ask";
+    back.dir = rtl ? "rtl" : "ltr";
+    back.setAttribute("role", "dialog");
+    back.setAttribute("aria-modal", "true");
+    back.setAttribute("aria-label", text);
+    back.style.cssText = "position:fixed;inset:0;z-index:2147483002;display:grid;place-items:center;padding:16px;background:rgba(10,10,14,.45);opacity:0;transition:opacity .18s";
+    // In the colours of where it was asked (the page's own, which may not reach the top of the document).
+    if (from) {
+      const look = getComputedStyle(from);
+      for (const name of ["--accent", "--accent-contrast", "--surface", "--text", "--border"]) {
+        const value = look.getPropertyValue(name).trim();
+        if (value) back.style.setProperty(name, value);
+      }
+    }
+    const card = document.createElement("div");
+    card.style.cssText = "width:min(92vw,380px);border-radius:20px;padding:22px 20px 16px;background:var(--surface,#fff);color:var(--text,#16161a);font:500 15px/1.5 system-ui,sans-serif;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3);scale:.96;transition:scale .18s";
+    const words = document.createElement("p");
+    words.textContent = text;
+    words.style.cssText = "margin:0 0 16px";
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:8px;justify-content:center";
+    const button = (label: string, main: boolean) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.style.cssText = `min-width:96px;padding:10px 16px;border-radius:999px;border:1px solid ${main ? "transparent" : "var(--border,rgba(0,0,0,.15))"};background:${main ? "var(--accent,#16161a)" : "transparent"};color:${main ? "var(--accent-contrast,#fff)" : "inherit"};font:600 14px/1 system-ui,sans-serif;cursor:pointer`;
+      return b;
+    };
+    const noButton = button(no, false);
+    const yesButton = button(yes, true);
+    noButton.dataset.ptAsk = "no";
+    yesButton.dataset.ptAsk = "yes";
+    row.append(noButton, yesButton);
+    card.append(words, row);
+    back.append(card);
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const finish = (answer: boolean) => {
+      window.removeEventListener("keydown", key, true);
+      back.remove();
+      before?.focus?.({ preventScroll: true });
+      done(answer);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        finish(false);
+      } else if (e.key === "Tab") {
+        // Two buttons: the focus stays between them.
+        e.preventDefault();
+        (document.activeElement === noButton ? yesButton : noButton).focus();
+      }
+    };
+    noButton.addEventListener("click", () => finish(false));
+    yesButton.addEventListener("click", () => finish(true));
+    back.addEventListener("click", (e) => { if (e.target === back) finish(false); });
+    window.addEventListener("keydown", key, true);
+    document.body.appendChild(back);
+    if (answer !== undefined) {
+      back.dataset.ptAskAnswer = answer ? "yes" : "no";
+      const chosen = answer ? yesButton : noButton;
+      window.setTimeout(() => { chosen.style.outline = "3px solid currentColor"; chosen.style.outlineOffset = "2px"; }, 900);
+      window.setTimeout(() => { if (back.isConnected) finish(answer); }, 1600);
+    } else noButton.focus({ preventScroll: true });
+    requestAnimationFrame(() => {
+      back.style.opacity = "1";
+      card.style.scale = "1";
+    });
+  });
+}
+
 let audio: AudioContext | null = null;
 /** A sound made on the spot (no files): a click, a pop, a chime, a whoosh, a little success tune. */
 export function sound(kind: "click" | "pop" | "chime" | "whoosh" | "success", volume: number) {

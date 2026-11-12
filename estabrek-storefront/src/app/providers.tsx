@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname } from "@/lib/shopPath";
 import dynamic from "next/dynamic";
 import { CartProvider } from "@/store/cart";
@@ -25,6 +25,20 @@ import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider"
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { RouteProgress } from "@/components/RouteProgress";
 import { VisualControlsProvider } from "@/components/VisualControlsProvider";
+import { HANDS_WANTED, handsWanted } from "@/pageTree/recipeHands";
+
+// The shop's hands for the pages' recipes (the bag, the wishlist, WhatsApp): loaded once a page with recipes asks.
+const RecipeHands = dynamic(() => import("@/components/RecipeHands").then((m) => m.RecipeHands), { ssr: false });
+function RecipeHandsGate() {
+  const [wanted, setWanted] = useState(false);
+  useEffect(() => {
+    const want = () => setWanted(true);
+    if (handsWanted()) want();
+    window.addEventListener(HANDS_WANTED, want);
+    return () => window.removeEventListener(HANDS_WANTED, want);
+  }, []);
+  return wanted ? <RecipeHands /> : null;
+}
 
 const QuickViewLayer = dynamic(
   () => import("@/components/QuickViewModal").then((m) => m.QuickViewLayer),
@@ -154,7 +168,7 @@ export default function Providers({
                   <StorefrontMotionProvider>
                     {/* Animation Effects (controlled by settings) */}
                     <AnimationEffectsProvider>
-                      <VisualControlsProvider value={visualControls}>{children}<QuickViewLayer /></VisualControlsProvider>
+                      <VisualControlsProvider value={visualControls}>{children}<QuickViewLayer /><RecipeHandsGate /></VisualControlsProvider>
                     </AnimationEffectsProvider>
                   </StorefrontMotionProvider>
                 </QuickViewProvider>

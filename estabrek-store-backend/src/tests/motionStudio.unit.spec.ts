@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { checkTree } from "../lib/pageTree.js";
 import { newScrollScene, readyScrollStory, readyScrollVideo, readyScrollZoom, atChapter } from "../../../estabrek-admin/src/studio/scrollScene";
 import { KEY_PRESETS, partsFor } from "../../../estabrek-admin/src/studio/keyframes";
-import { ACTS, newAction, TRIGGER_PRESETS } from "../../../estabrek-admin/src/studio/triggers";
+import { ACTS, CONDITIONS, FLOW_ACTS, GROUP_ACTS, newAction, newCondition, newStep, TRIGGER_PRESETS, triggersOp, type Trigger } from "../../../estabrek-admin/src/studio/triggers";
 
 type Node = { id: string; type: string; props: Record<string, unknown>; style?: Record<string, unknown>; motion?: Record<string, unknown>; children?: Node[] };
 const page = (...children: Node[]) => ({ version: 1, root: { id: "page", type: "page", props: {}, children } });
@@ -117,9 +117,47 @@ describe("triggers", () => {
   test("every ready trigger and every fresh action saves as it is", () => {
     for (const p of TRIGGER_PRESETS) expect(on([p.make("en")]), p.key).toEqual([]);
     for (const [act] of ACTS) expect(on([{ on: "click", do: [newAction(act, "ar")] }]), act).toEqual([]);
-    const node: Node = { id: "b", type: "button", props: { label: { en: "Go" }, href: "/shop", triggers: TRIGGER_PRESETS.map((p) => p.make("he")) } };
-    const r = checkTree(page(section(node)));
-    if (r.ok) expect(dropped(JSON.parse(JSON.stringify(node)), r.tree.root.children![0].children![0], "triggers")).toEqual([]);
+    // Eight at a time (an element holds at most eight): nothing of them is dropped.
+    for (let i = 0; i < TRIGGER_PRESETS.length; i += 8) {
+      const node: Node = { id: "b", type: "button", props: { label: { en: "Go" }, href: "/shop", triggers: TRIGGER_PRESETS.slice(i, i + 8).map((p) => p.make("he")) } };
+      const r = checkTree(page(section(node)));
+      expect(r.ok, `presets from ${i}`).toBe(true);
+      if (r.ok) expect(dropped(JSON.parse(JSON.stringify(node)), r.tree.root.children![0].children![0], "triggers")).toEqual([]);
+    }
+  });
+
+  test("recipes: every fresh condition, flow step and group saves; so do who may, a key and fail steps", () => {
+    for (const [kind] of CONDITIONS) expect(on([{ on: "click", if: [newCondition(kind)], do: [{ act: "vibrate" }], else: [{ act: "vibrate" }] }]), kind).toEqual([]);
+    for (const [kind] of [...FLOW_ACTS, ...GROUP_ACTS]) expect(on([{ on: "click", do: [newStep(kind, "en")] }]), kind).toEqual([]);
+    expect(on([{ on: "key", key: "Escape", do: [{ act: "vibrate" }] }, { on: "key", key: "k", do: [{ act: "vibrate" }] }, { on: "longpress", do: [{ act: "back" }] }])).toEqual([]);
+    expect(on([{ on: "click", who: "customer", deny: "lock", note: { ar: "سجّل دخولك أول" }, do: [{ act: "confirm", text: { ar: "متأكد؟" } }, { act: "bag", productId: "prod_1", quantity: 2 }], fail: [{ act: "toast", text: { ar: "تمام" } }] }])).toEqual([]);
+    expect(on([{ on: "click", do: [{ act: "call", phone: "+972 50-000 0000" }, { act: "whatsapp", phone: "0500000000", text: { en: "Hi" } }, { act: "share", href: "/shop", title: { en: "Look" } }, { act: "download", href: "/uploads/guide.pdf", name: "guide.pdf" }, { act: "wish", productId: "prod_1", value: "add" }] }])).toEqual([]);
+  });
+
+  test("recipes: what makes no sense is refused", () => {
+    const no = (t: unknown, why: string) => expect(on([t]).length, why).toBeGreaterThan(0);
+    no({ on: "key", key: "F13", do: [{ act: "vibrate" }] }, "a key we don't know");
+    no({ on: "click", who: "staff", do: [{ act: "vibrate" }] }, "someone the shop can't tell");
+    no({ on: "click", who: "customer", deny: "explode", do: [{ act: "vibrate" }] }, "an unknown answer to the others");
+    no({ on: "click", do: [{ act: "call", phone: "call me" }] }, "not a phone number");
+    no({ on: "click", do: [{ act: "bag", productId: "../../x" }] }, "not a product id");
+    no({ on: "click", do: [{ act: "bag", productId: "p", quantity: 500 }] }, "too many pieces");
+    no({ on: "click", do: [{ act: "download", href: "javascript:alert(1)" }] }, "a script as a file");
+    no({ on: "click", do: [{ act: "set", name: "1bad", op: "set", value: 1 }] }, "a bad variable name");
+    no({ on: "click", if: [{ if: "bag", cmp: "every", value: 2 }], do: [{ act: "vibrate" }] }, "a comparison the bag doesn't have");
+    no({ on: "click", do: [{ act: "together", do: [{ act: "repeat", times: 2, do: [{ act: "vibrate" }] }] }] }, "a group inside a group");
+    no({ on: "click", do: [{ act: "vibrate" }], fail: Array.from({ length: 9 }, () => ({ act: "vibrate" })) }, "too many fail steps");
+  });
+
+  test("the editor saves a recipe tidy: no key without a key event, no note unless locked, no fail steps when nothing can fail", () => {
+    const node = { id: "b", type: "button", props: {} };
+    const saved = (t: Trigger) => ((triggersOp(node as never, [t]) as unknown as { props: { triggers: Trigger[] } }).props.triggers[0]);
+    expect(saved({ on: "click", key: "Enter", do: [{ act: "vibrate" }], fail: [{ act: "vibrate" }], else: [{ act: "vibrate" }] })).toEqual({ on: "click", do: [{ act: "vibrate" }] });
+    expect(saved({ on: "key", do: [{ act: "vibrate" }] })).toEqual({ on: "key", key: "Enter", do: [{ act: "vibrate" }] });
+    expect(saved({ on: "click", who: "customer", deny: "hide", note: { en: "x" }, do: [{ act: "vibrate" }] })).toEqual({ on: "click", who: "customer", deny: "hide", do: [{ act: "vibrate" }] });
+    expect(saved({ on: "click", who: "guest", note: { en: "For guests" }, do: [{ act: "confirm", text: { en: "Sure?" } }], fail: [{ act: "vibrate" }] })).toEqual({ on: "click", who: "guest", deny: "lock", note: { en: "For guests" }, do: [{ act: "confirm", text: { en: "Sure?" } }], fail: [{ act: "vibrate" }] });
+    // What it saves passes the page check.
+    for (const t of [saved({ on: "key", do: [{ act: "vibrate" }] }), saved({ on: "click", who: "guest", note: { en: "For guests" }, do: [{ act: "confirm", text: { en: "Sure?" } }], fail: [{ act: "vibrate" }] })]) expect(on([t])).toEqual([]);
   });
 
   test("unknown events and actions, unsafe links and too many are refused", () => {
