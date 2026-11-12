@@ -99,6 +99,7 @@ export const ENDPOINTS = {
         settings: "/admin/media/videos/settings",
         sign: "/admin/media/videos/sign",
         local: "/admin/media/videos/local",
+        edit: "/admin/media/videos/edit",
         one: (id: string) => `/admin/media/videos/${id}`,
         usage: (id: string) => `/admin/media/videos/${id}/usage`,
         renditions: (id: string) => `/admin/media/videos/${id}/renditions`,

@@ -116,6 +116,10 @@ if (new URLSearchParams(location.search).has("objectEdges")) {
   ];
   initial.tree!.root.children![0].children = seeds.map(([type, props]) => ({ id: `edge-${type}`, type, props: { ...props, edges }, style: { base: { width: "240px", height: "140px" } } }));
 }
+// A real video (the shop's own campaign clip) for the video editor (focus mode, A4).
+if (new URLSearchParams(location.search).has("video")) {
+  initial.tree!.root.children![0].children!.unshift({ id: "clip", type: "video", name: "Clip", props: { src: "/editorial/rose-campaign-mobile.mp4", muted: true, controls: true }, style: { base: { width: "240px", height: "420px" } } });
+}
 // A real photo (the shop's own, so the frame can read its pixels) for the sparkling stars (focus mode, A3).
 if (new URLSearchParams(location.search).has("sparkle")) {
   initial.tree!.root.children![0].children!.unshift({ id: "photo", type: "image", name: "Photo", props: { src: "/editorial/scarves.webp", alt: text("Scarves") }, style: { base: { width: "360px", height: "260px" } } });
@@ -232,6 +236,8 @@ api.defaults.adapter = async (config) => {
   }
   if (path === "/admin/media/models/sign") throw new AxiosError("Local fixture upload", "409", config, undefined, { ...response(config, {}), status: 409 });
   if (method === "GET" && path === "/admin/media/models") return response(config, { items: [], maxBytes: 25_000_000, cloudinary: false });
+  // A video made in the editor (focus mode, A4): the same clip with a mark (the making is the backend's, tested there).
+  if (method === "POST" && path === "/admin/media/videos/edit") return response(config, { url: `/editorial/rose-campaign-mobile.mp4?made=${body.project.clips.length}`, poster: null, width: 720, height: 1280, length: 6 });
   // A picture's edit (focus mode): the copy is the same photo with a mark (the edit itself is the backend's, tested there).
   if (method === "POST" && path === "/admin/uploads/edit") {
     if (!String(body?.url ?? "").startsWith("/editorial/")) return Promise.reject(new AxiosError("The picture has to be in the media library to be edited", "404", config, null, { status: 404, statusText: "Not Found", headers: {}, config, data: { error: "NOT_IN_LIBRARY", message: "The picture has to be in the media library to be edited" } } as any));

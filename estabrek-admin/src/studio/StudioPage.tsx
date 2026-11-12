@@ -108,6 +108,8 @@ import { PathHandles, compose } from "./focus/PathHandles";
 import { SparklePanel } from "./focus/SparklePanel";
 import { SparkleHandles } from "./focus/SparkleHandles";
 import { ImageEditPanel } from "./focus/ImageEditPanel";
+import { VideoEditor } from "./focus/VideoEditor";
+import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
 import { withArtAttrs } from "./focus/focusKinds";
@@ -317,6 +319,8 @@ function StudioDocument() {
   const [sparkleFinding, setSparkleFinding] = useState(false);
   const [sparkleNote, setSparkleNote] = useState<string | null>(null);
   const [sparklePen, setSparklePen] = useState(false);
+  // The video editor (focus mode on a video): open or not.
+  const [videoEditor, setVideoEditor] = useState(false);
   // A picture open in focus mode: its own size (from the frame), for the crop's ratios.
   const [imgInfo, setImgInfo] = useState<{ nodeId: string; w: number; h: number } | null>(null);
   const history = useRef(new History());
@@ -2295,6 +2299,11 @@ function StudioDocument() {
           />
         ) : null}
         {target.type === "image" || target.type === "video" || target.type === "slider" ? <MediaStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
+        {target.type === "video" ? (
+          <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setVideoEditor(true)} data-testid="studio-video-open">
+            🎬 {say("افتح محرّر الفيديو (قص، ترتيب، سرعة، كلام، موسيقى)|Open the video editor (cut, order, speed, words, music)|פתח את עורך הווידאו")}
+          </button>
+        ) : null}
         {target.type === "video" ? <VideoOverlayPanel node={target} screen={screen} busy={busy} onOps={onOps} onPreview={(vars) => send({ type: "previewLook", nodeId: target.id, vars })} /> : null}
         {target.type === "model3d" ? <Model3dPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
         {target.type === "product360" ? <Product360Panel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
@@ -3439,6 +3448,26 @@ function StudioDocument() {
             </div>
           </div>
           {focus ? <FocusMask box={shapeOf(focus.id)?.box ?? null} area={canvas} /> : null}
+          {videoEditor && focus && nodeOf(focus.id)?.type === "video" ? (
+            <VideoEditor
+              key={focus.id}
+              node={nodeOf(focus.id)!}
+              busy={busy}
+              abs={(src) => (src.startsWith("/") ? new URL(src, origin).toString() : src)}
+              onClose={() => setVideoEditor(false)}
+              onSave={async (project) => {
+                const n = nodeOf(focus.id)!;
+                const props = (n.props ?? {}) as Record<string, unknown>;
+                try {
+                  const made = await makeVideo(project);
+                  await change(say("محرّر الفيديو|The video editor|עורך הווידאו"), [{ op: "setProps", nodeId: n.id, props: { ...props, src: made.url, ...(made.poster ? { poster: made.poster } : {}), edit: { project } } }]);
+                  return null;
+                } catch (e) {
+                  return getApiErrorMessage(e);
+                }
+              }}
+            />
+          ) : null}
           {(() => {
             const n = focus ? nodeOf(focus.id) : undefined;
             const sp = n?.type === "image" ? ((n.props as Record<string, unknown> | undefined)?.sparkle as Sparkle | undefined) : undefined;
