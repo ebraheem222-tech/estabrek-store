@@ -117,7 +117,9 @@ import { lightenAll } from "./focus/perfCost";
 import * as SpeedAPI from "../api/speed.api";
 import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from "./PhysicsPanels";
 import { CodePanel, FormPanel } from "./FormPanels";
-import { InspectorGroup, InspectorJump } from "./InspectorNav";
+import { InspectorGroup, InspectorJump, type InspectorGroupId } from "./InspectorNav";
+import { besidePlace, dockPref, frameFor, saveDock, saveSections, sectionsPref, sideOf } from "./beside";
+import { BesideStrips } from "./BesideStrips";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -241,6 +243,26 @@ function StudioDocument() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pt>({ x: 24, y: 24 });
   const [canvas, setCanvas] = useState({ w: 0, h: 0 });
+  // The inspector beside what's selected (beside.ts) or docked at the side; one section of settings at a time or
+  // all of them; the section open, the sections the selection has, and whether the floating panel is open.
+  const [dock, setDock] = useState<"beside" | "side">(dockPref);
+  const [sections, setSections] = useState<boolean>(sectionsPref);
+  const [inspGroup, setInspGroup] = useState<InspectorGroupId>("content");
+  const [inspGroups, setInspGroups] = useState<InspectorGroupId[]>([]);
+  const [inspOpen, setInspOpen] = useState(true);
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1024px)").matches === true);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const m = window.matchMedia("(min-width: 1024px)");
+    const on = () => setWide(m.matches === true);
+    m.addEventListener?.("change", on);
+    return () => m.removeEventListener?.("change", on);
+  }, []);
+  const beside = dock === "beside" && wide;
+  // The last press on the canvas: a drag, or a pick (a newly selected element is brought into view only after a pick).
+  const lastPress = useRef({ moved: false, at: 0 });
+  // The view to go back to when nothing is selected any more.
+  const homeView = useRef<View | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   // Other elements selected with it (Shift+click, a box dragged on the page): the tree's own elements only.
@@ -1021,6 +1043,7 @@ function StudioDocument() {
     const d = down.current;
     if (d && d.pointerId !== e.pointerId) return;
     down.current = null;
+    lastPress.current = { moved: Boolean(d?.moved), at: performance.now() };
     if (d?.partMove && d.moved) {
       const offset = movePart(d, local(e));
       if (offset) void run(tr("المكان", "Place"), [{ op: "setLookStyle", target: d.partMove.target, kind: d.partMove.kind, screen: d.partMove.screen, style: { ...d.partMove.style, ...(d.partMove.inlineBox ? { inlineBox: true } : {}), moveX: offset.x, moveY: offset.y } }]).finally(() => send({ type: "previewLook", target: d.partMove!.target, vars: null }));
@@ -1140,7 +1163,9 @@ function StudioDocument() {
     pointSelection.current.cancel();
     select(sid);
     setFocus((f) => ({ id: sid, part: null, back: f?.back ?? { zoom, pan }, ...(lite ? { lite: true } : {}) }));
-    glideTo(focusView(s.box, { zoom, pan }, canvas));
+    // Beside the element: it comes to the part of the canvas the floating inspector leaves free.
+    const to = beside ? frameFor(visiblePart(s.box, frameBox)?.box ?? s.box, { zoom, pan }, canvas, sideOf(inspGroup), { maxZoom: 4 }) : focusView(s.box, { zoom, pan }, canvas);
+    if (to) glideTo(to);
     return true;
   };
   const closeFocus = () => {
@@ -1336,6 +1361,44 @@ function StudioDocument() {
     if (!selected) return;
     document.querySelectorAll(`[data-testid="studio-layer"][data-node="${CSS.escape(selected)}"]`).forEach((el) => el.scrollIntoView({ block: "nearest" }));
   }, [selected]);
+
+  /* ------------------------------------------------- the inspector beside what's selected */
+  const besideShape = beside && selected && index && selected !== index.root ? shapeOf(selected) : null;
+  const canvasRect = beside ? canvasRef.current?.getBoundingClientRect() : undefined;
+  const besidePlaced = beside && canvasRect && canvasRect.width > 0
+    ? besidePlace(besideShape ? (visiblePart(besideShape.box, frameBox)?.box ?? besideShape.box) : null, { x: canvasRect.left, y: canvasRect.top, w: canvasRect.width, h: canvasRect.height }, besideShape && inspGroups.length ? sideOf(inspGroup) : "right")
+    : null;
+  // What a late timer needs as it is now (the view, the shapes), not as it was when the selection changed.
+  const besideNow = useRef({ zoom, pan, canvas, shapes, frameBox, group: inspGroup, glide: glideTo });
+  besideNow.current = { zoom, pan, canvas, shapes, frameBox, group: inspGroup, glide: glideTo };
+  // A newly picked element comes to a comfortable size where the panel leaves room (not while it's being dragged,
+  // and not in focus mode, which has its own way in); with nothing selected the canvas goes back to where it was.
+  useEffect(() => {
+    if (!beside) return;
+    if (!selected || selected === index?.root) {
+      if (homeView.current && !focus) { besideNow.current.glide(homeView.current); homeView.current = null; }
+      return;
+    }
+    setInspOpen(true);
+    if (focus) return;
+    const at = performance.now();
+    let tries = 0;
+    let timer = 0;
+    const run = () => {
+      if (down.current) { if (++tries < 14) timer = window.setTimeout(run, 150); return; }
+      if (lastPress.current.moved && lastPress.current.at >= at - 60) return;
+      const v = besideNow.current;
+      const s = v.shapes.find((x) => x.id === selected);
+      if (!s) { if (++tries < 14) timer = window.setTimeout(run, 150); return; }
+      const to = frameFor(visiblePart(s.box, v.frameBox)?.box ?? s.box, { zoom: v.zoom, pan: v.pan }, v.canvas, sideOf(v.group));
+      if (!to) return;
+      if (!homeView.current) homeView.current = { zoom: v.zoom, pan: v.pan };
+      v.glide(to);
+    };
+    timer = window.setTimeout(run, 160);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, beside]);
 
   /* ----------------------------------------------------------- drawing */
 
@@ -2558,7 +2621,7 @@ function StudioDocument() {
           <div className="text-base font-semibold">{label(selected)}</div>
           <div className="mt-0.5 font-mono text-[11px] text-white/35" dir="ltr">{selExtra?.kind === "slot" ? selExtra.path : selected}</div>
         </div>
-        {selFree && selFree.type !== "page" ? <PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+        {selFree && selFree.type !== "page" ? <div data-insp-as="behaviour"><PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /></div> : null}
         {selected && selected !== index.root && shapeOf(selected) && focus?.id !== selected ? (
           <button type="button" onClick={() => openFocus(selected)} className="w-full rounded-lg bg-accent-500/20 px-2 py-1.5 text-xs text-accent-100 hover:bg-accent-500/30" data-testid="studio-focus-enter">
             ✎ {say("افتحه لحاله (تركيز) · F أو كبستين|Open it on its own (focus) · F or double-click|פתיחה לבד (מיקוד) · F או לחיצה כפולה")}
@@ -3808,8 +3871,25 @@ function StudioDocument() {
           </div>
         ) : null}
 
-        <aside className="hidden w-64 shrink-0 overflow-y-auto border-s border-white/[0.08] p-3 text-sm lg:block" aria-label={tr("العنصر المحدد", "Selected element")} data-testid="studio-info">
-          <InspectorJump watch={`${selected ?? ""}:${focus?.id ?? ""}`} />
+        {besidePlaced && besideShape ? (
+          <BesideStrips
+            place={besidePlaced} groups={inspGroups} active={inspOpen ? inspGroup : null}
+            onPick={(g) => { if (g === inspGroup && inspOpen) setInspOpen(false); else { setInspGroup(g); setInspOpen(true); } }}
+            onAdd={() => setLeftTab("add")}
+          />
+        ) : null}
+        <aside
+          className={besidePlaced ? "fixed z-30 hidden w-72 overflow-y-auto rounded-2xl border border-white/[0.12] bg-surface-950/95 p-3 text-sm shadow-2xl backdrop-blur lg:block" : "hidden w-64 shrink-0 overflow-y-auto border-s border-white/[0.08] p-3 text-sm lg:block"}
+          style={besidePlaced ? { left: besidePlaced.panel.left, top: besidePlaced.panel.top, maxHeight: besidePlaced.panel.maxHeight, ...(inspOpen || !besideShape || !inspGroups.length ? {} : { display: "none" }) } : undefined}
+          aria-label={tr("العنصر المحدد", "Selected element")} data-testid="studio-info" data-dock={besidePlaced ? "beside" : "side"} data-side={besidePlaced?.side}
+          onPointerDown={besidePlaced ? (e) => e.stopPropagation() : undefined}
+        >
+          <InspectorJump
+            watch={`${selected ?? ""}:${focus?.id ?? ""}`}
+            sections={sections} tabs={!(besidePlaced && besideShape)} active={inspGroup} onActive={setInspGroup} onGroups={setInspGroups}
+            onSections={(on) => { setSections(on); saveSections(on); }}
+            dock={dock} onDock={wide ? (d) => { setDock(d); saveDock(d); } : undefined}
+          />
           {inspector()}
         </aside>
       </div>

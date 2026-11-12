@@ -1146,6 +1146,11 @@
 [data-insp-finding] .insp-group {
   display: none;
 }
-[data-insp-hidden] {
+[data-insp-hidden],
+[data-insp-off] {
   display: none !important;
+}
+/* One section at a time: the chips are tabs, so the headings aren't needed. */
+[data-insp-mode="sections"] .insp-group {
+  display: none;
 }
