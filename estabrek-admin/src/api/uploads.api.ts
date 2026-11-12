@@ -76,6 +76,15 @@ export async function uploadImages(files: File[], opts?: { folder?: string | nul
 }
 
 /**
+ * POST /v1/admin/uploads/edit { url, recipe } — a library picture edited for real (crop, turn, mirror, light,
+ * colour, warmth, sharpness: shared/imageEdit.ts) and saved as a new item; the original stays.
+ */
+export async function editImage(url: string, recipe: Record<string, unknown>) {
+  const res = await api.post(ENDPOINTS.admin.uploads.edit, { url, recipe });
+  return res.data as { file: { url: string; id?: string }; width: number; height: number };
+}
+
+/**
  * GET /v1/admin/uploads/images
  * Query: q, folder, tag, limit, cursor
  */

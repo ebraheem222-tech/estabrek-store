@@ -107,6 +107,8 @@ import { MorphSettings, SvgPartPanel, type Morph } from "./focus/SvgPartPanel";
 import { PathHandles, compose } from "./focus/PathHandles";
 import { SparklePanel } from "./focus/SparklePanel";
 import { SparkleHandles } from "./focus/SparkleHandles";
+import { ImageEditPanel } from "./focus/ImageEditPanel";
+import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
 import { withArtAttrs } from "./focus/focusKinds";
 import type { Matrix } from "./focus/pathData";
@@ -315,6 +317,8 @@ function StudioDocument() {
   const [sparkleFinding, setSparkleFinding] = useState(false);
   const [sparkleNote, setSparkleNote] = useState<string | null>(null);
   const [sparklePen, setSparklePen] = useState(false);
+  // A picture open in focus mode: its own size (from the frame), for the crop's ratios.
+  const [imgInfo, setImgInfo] = useState<{ nodeId: string; w: number; h: number } | null>(null);
   const history = useRef(new History());
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const latest = useRef<PagesAPI.PageDraft | null>(null);
@@ -420,6 +424,9 @@ function StudioDocument() {
           artPick.current = null;
           wait.done(typeof m.part === "string" ? m.part : null);
         }
+      } else if (d.type === "imageInfo") {
+        const m = d as unknown as { nodeId?: unknown; w?: unknown; h?: unknown };
+        if (typeof m.nodeId === "string" && typeof m.w === "number" && typeof m.h === "number") setImgInfo({ nodeId: m.nodeId, w: m.w, h: m.h });
       } else if (d.type === "sparkleFound") {
         const m = d as unknown as { requestId?: unknown; points?: unknown; problem?: unknown };
         const wait = sparkleWait.current;
@@ -1176,6 +1183,12 @@ function StudioDocument() {
     }
     send({ type: "artParts", nodeId: focusArt });
   }, [focusArt, layout, send]);
+
+  // A picture open in focus mode: the frame tells its own size (again when the page is measured anew).
+  const focusImage = focus && index?.nodes.get(focus.id)?.node.type === "image" ? focus.id : null;
+  useEffect(() => {
+    if (focusImage) send({ type: "imageInfo", nodeId: focusImage });
+  }, [focusImage, frameKey, send]);
 
   // Focus mode ends when its element is gone (deleted, undone) or the screen changes (the view is fitted again).
   useEffect(() => {
@@ -2253,6 +2266,31 @@ function StudioDocument() {
                 },
               };
               send({ type: "sparkleFind", requestId, nodeId: target.id, ...ask });
+            }}
+          />
+        ) : null}
+        {target.type === "image" ? (
+          <ImageEditPanel
+            key={`${target.id}:${String((target.props as Record<string, unknown> | undefined)?.src)}`}
+            node={target} busy={busy}
+            aspect={imgInfo?.nodeId === target.id && imgInfo.h ? imgInfo.w / imgInfo.h : null}
+            onPreview={(css) => send({ type: "previewEdit", nodeId: target.id, ...css })}
+            onApply={async (recipe) => {
+              const props = (target.props ?? {}) as Record<string, unknown>;
+              const from = String((props.edit as { from?: string } | undefined)?.from ?? props.src ?? "");
+              try {
+                const made = await editImage(from, recipe as Record<string, unknown>);
+                await change(say("تعديل الصورة|Edit the picture|עריכת התמונה"), [{ op: "setProps", nodeId: target.id, props: { ...props, src: made.file.url, edit: { from, recipe } } }]);
+                send({ type: "previewEdit", nodeId: target.id, filter: "", transform: "", viewBox: "" });
+                return null;
+              } catch (e) {
+                return getApiErrorMessage(e);
+              }
+            }}
+            onUndo={() => {
+              const props = (target.props ?? {}) as Record<string, unknown>;
+              const from = (props.edit as { from?: string } | undefined)?.from;
+              if (from) void change(say("الصورة الأصلية|The original picture|התמונה המקורית"), [{ op: "setProps", nodeId: target.id, props: { ...props, src: from, edit: undefined } }]);
             }}
           />
         ) : null}

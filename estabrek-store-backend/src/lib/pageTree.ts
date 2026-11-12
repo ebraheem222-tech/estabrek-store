@@ -24,6 +24,7 @@ import { BIND_REF } from "./collectionTree.js";
 import { z } from "zod";
 import { checkArt, isArtPath, type Art } from "./svgArt.js";
 import { isEase } from "./motionEase.js";
+import { Recipe as EditRecipe } from "./imageEdit.js";
 import { InteractionPolicy, CardDesign } from "./visualControls.js";
 
 export const TREE_VERSION = 1;
@@ -603,6 +604,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       when: z.enum(["always", "hover", "few"]).optional(),
       glow: z.boolean().optional(),
     }).optional(),
+    // The picture's edit (focus mode): the original it was made from and what was done to it, so the editor can
+    // change or undo it (`src` is the edited copy the shop shows).
+    edit: z.object({ from: src, recipe: EditRecipe }).optional(),
   }),
   button: z.object({ label: local(120), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional(), rich: z.boolean().optional() }),
   video: z.object({

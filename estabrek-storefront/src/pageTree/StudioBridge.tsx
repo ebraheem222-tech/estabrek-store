@@ -766,6 +766,27 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         })();
         return;
       }
+      // A picture's edit seen live while the editor changes it (focus mode): CSS on the picture until the real copy
+      // is made (shared/imageEdit.ts recipeCss); empty values take it off.
+      if (d.type === "imageInfo" && e.source === window.parent) {
+        const id = typeof d.nodeId === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(d.nodeId) ? d.nodeId : null;
+        const img = id ? document.querySelector<HTMLImageElement>(`img[data-tree-node="${id}"], [data-tree-node="${id}"] img`) : null;
+        const tell = () => send({ type: "imageInfo", nodeId: id, w: img?.naturalWidth ?? 0, h: img?.naturalHeight ?? 0 });
+        if (img && !img.complete) img.addEventListener("load", tell, { once: true });
+        else tell();
+        return;
+      }
+      if (d.type === "previewEdit" && e.source === window.parent) {
+        const v = e.data as { nodeId?: unknown; filter?: unknown; transform?: unknown; viewBox?: unknown };
+        if (typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId)) return;
+        const img = document.querySelector<HTMLImageElement>(`img[data-tree-node="${v.nodeId}"], [data-tree-node="${v.nodeId}"] img`);
+        if (!img) return;
+        const ok = (x: unknown, re: RegExp): x is string => typeof x === "string" && x.length <= 300 && re.test(x);
+        img.style.filter = ok(v.filter, /^[a-z0-9().,\s%-]*$/i) ? v.filter : "";
+        img.style.transform = ok(v.transform, /^[a-z0-9().,\s-]*$/i) ? v.transform : "";
+        img.style.setProperty("object-view-box", ok(v.viewBox, /^(inset\([0-9.%\s]+\))?$/) ? v.viewBox : "");
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);

@@ -15,6 +15,7 @@ import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
 import { computeDhashHex, hammingHex } from "../../lib/imageHash.js";
 import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
 import { mediaSettings, type MediaSettings } from "../../lib/mediaSettings.js";
+import { Recipe, applyRecipe } from "../../lib/imageEdit.js";
 
 const r = Router();
 
@@ -1121,6 +1122,45 @@ r.post("/background-removal", async (req, res) => {
   res.setHeader("Content-Type", "image/png");
   res.setHeader("Cache-Control", "no-store");
   return res.send(out.png);
+});
+
+// POST /admin/uploads/edit { url, recipe } → { file } — a picture of the library edited (the editor's focus mode:
+// crop, turn, mirror, light, colour, warmth, sharpness; lib/imageEdit.ts) and saved as a new item next to it. Only a
+// picture in the library (on the disk or this store's Cloudinary): nothing is fetched from elsewhere.
+const EditBody = z.object({ url: z.string().trim().min(1).max(2000), recipe: Recipe });
+r.post("/edit", async (req, res) => {
+  const body = EditBody.safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "BAD_REQUEST", message: body.error.issues[0]?.message ?? "Send the picture's url and the edit" });
+  let pathname = "";
+  try {
+    pathname = new URL(body.data.url, "http://local").pathname;
+  } catch {
+    return res.status(400).json({ error: "BAD_REQUEST", message: "Not an address" });
+  }
+  const onDisk = /\/uploads\/images\/([^/]+)$/.exec(pathname)?.[1];
+  const asset = onDisk
+    ? await prisma.mediaAsset.findUnique({ where: { filename: decodeURIComponent(onDisk) } })
+    : await prisma.mediaAsset.findFirst({ where: { url: body.data.url } });
+  if (!asset || (asset.kind && asset.kind !== "IMAGE")) {
+    return res.status(404).json({ error: "NOT_IN_LIBRARY", message: "The picture has to be in the media library to be edited" });
+  }
+  try {
+    let input: Buffer;
+    if (asset.provider === "CLOUDINARY" && asset.url) {
+      const got = await fetch(asset.url);
+      if (!got.ok) return res.status(502).json({ error: "SOURCE_UNREADABLE", message: "The picture couldn't be read from Cloudinary" });
+      input = Buffer.from(await got.arrayBuffer());
+    } else input = await fs.readFile(path.join(IMAGES_DIR, asset.filename));
+    const out = await applyRecipe(input, body.data.recipe);
+    const filename = `edit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+    await fs.writeFile(path.join(IMAGES_DIR, filename), out.buffer);
+    const base = (asset.displayName ?? asset.filename).replace(/\.[a-z0-9]+$/i, "");
+    const result = await ingestImages(req, [{ filename, originalname: `${base}-edit.webp`, mimetype: "image/webp", size: out.buffer.length }], { folder: asset.folder ?? null, tags: [...new Set([...(asset.tags ?? []), "edited"])], keepAsNew: true });
+    if ("error" in result) return res.status(result.status).json({ error: result.error, message: result.message });
+    return res.status(201).json({ file: result.files[0], width: out.width, height: out.height });
+  } catch (e: any) {
+    return res.status(500).json({ error: "EDIT_FAILED", message: e?.message ?? String(e) });
+  }
 });
 
 export default r;
