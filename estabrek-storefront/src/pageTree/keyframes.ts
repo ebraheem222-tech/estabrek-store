@@ -13,10 +13,10 @@
 export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click", "loop", "trigger"] as const;
 export const KEY_PARTS = ["self", "before", "after", "inner"] as const;
 export const KEY_ORIGINS = ["center", "top", "bottom", "start", "end", "top-start", "top-end", "bottom-start", "bottom-end"] as const;
-export const KEY_EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
+export const KEY_EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear", "fall"] as const;
 export const CUE_KINDS = ["fade", "up", "down", "start", "end", "zoom", "shrink", "blur", "turn", "flip", "wipe", "none"] as const;
 /** GSAP's eases for the editor's names (TreeMotion's too). */
-export const EASE_MAP: Record<string, string> = { smooth: "power2.out", soft: "sine.inOut", strong: "power4.out", back: "back.out(1.6)", elastic: "elastic.out(1, 0.5)", bounce: "bounce.out", linear: "none" };
+export const EASE_MAP: Record<string, string> = { smooth: "power2.out", soft: "sine.inOut", strong: "power4.out", back: "back.out(1.6)", elastic: "elastic.out(1, 0.5)", bounce: "bounce.out", linear: "none", fall: "power2.in" };
 
 export type KeyPart = (typeof KEY_PARTS)[number];
 export type KeyFrameSpec = {

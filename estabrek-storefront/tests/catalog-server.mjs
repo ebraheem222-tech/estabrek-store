@@ -299,6 +299,19 @@ const motionMediaDemo = { id: "motion-media-demo", slug: "/motion-media-demo", n
     ] },
   ] },
 } };
+// Physics (physics-page.spec.ts): a world whose bodies drop in once seen, a ball hung from a rope, a heading that
+// drops into place.
+const physicsDemo = { id: "physics-demo", slug: "/physics-demo", name: "Physics", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    { id: "own", type: "section", props: { contained: true }, children: [{ id: "falls", type: "heading", props: { level: 1, text: { en: "Falls in" } }, motion: { physics: { kind: "drop" } } }] },
+    { id: "gap", type: "section", props: {}, style: { base: { minHeight: "900px" } }, children: [] },
+    { id: "world", type: "section", props: { world: { start: "drop", walls: "open", bounce: 0.5 } }, style: { base: { minHeight: "460px" } }, children: [
+      { id: "ball", type: "button", props: { label: { en: "Ball" }, href: "/shop" }, style: { base: { width: "110px", height: "110px", radius: 999 } } },
+      { id: "card", type: "heading", props: { level: 3, text: { en: "Sale" } }, style: { base: { width: "200px" } } },
+      { id: "tag", type: "button", props: { label: { en: "Tag" }, href: "/shop", body: { hang: "rope" } }, style: { base: { width: "120px" } } },
+    ] },
+  ] },
+} };
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
   sections: [{ id: "demo-faq", type: "FAQ", order: 0, isVisible: true, data: { title: "أسئلة القسم القديم", items: [{ question: "سؤال قديم؟", answer: "جواب قديم." }] } }],
@@ -1600,6 +1613,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       }
       if (slug === "/showcase-demo") return res.end(JSON.stringify(showcaseDemo));
       if (slug === "/motion-media-demo") return res.end(JSON.stringify(motionMediaDemo));
+      if (slug === "/physics-demo") return res.end(JSON.stringify(physicsDemo));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
       if (slug === "/blocks-demo") return res.end(JSON.stringify(blocksDemo));

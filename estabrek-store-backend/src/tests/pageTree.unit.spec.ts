@@ -320,6 +320,25 @@ describe("checking a page tree", () => {
     expect(r.ok && r.tree.root.children![0].children![0].props.perf).toBeFalsy();
   });
 
+  test("physics: an element's own, a world on what holds others, its bodies' settings, and keyframes falling", () => {
+    const world = { on: "view", start: "drop", gx: 0, gy: 1, walls: "open", bounce: 0.5, drag: true, pointer: "push", wind: 0.3, click: "burst", again: 8 };
+    const body = { shape: "circle", bounce: 0.8, mass: 2, hang: "rope" };
+    const physics = { kind: "drop", amount: 1.4, bounce: 0.5 };
+    const keys = { on: "view", duration: 3, parts: { self: [{ at: 0, y: -300 }, { at: 40, y: 0, ease: "fall" }, { at: 100, y: 0 }] } };
+    const r = checkTree(page([{ ...section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, body }, motion: { physics, keys } }]), props: { world } }]));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tree.root.children![0].props.world).toEqual(world);
+      expect(r.tree.root.children![0].children![0].props.body).toEqual(body);
+      expect(r.tree.root.children![0].children![0].motion?.physics).toEqual(physics);
+    }
+    const bad = (t: unknown) => issuesOf(t).map((i) => i.path).join(" ");
+    expect(bad(page([{ ...section("s", []), props: { world: { gy: 9 } } }]))).toMatch(/props\.world\.gy/);
+    expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, world: {} } }])]))).toMatch(/props\.world/);
+    expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, body: { hang: "chain" } } }])]))).toMatch(/props\.body\.hang/);
+    expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" } }, motion: { physics: { kind: "fly" } } }])]))).toMatch(/motion\.physics\.kind/);
+  });
+
   test("a heading's or text's words along a curve", () => {
     const tree = (curve: unknown, type = "heading") => page([section("s", [{ id: "h", type, props: { text: { ar: "تخفيضات" }, curve } }])]);
     const r = checkTree(tree({ kind: "arc", bend: -40, size: 90, space: 6 }));

@@ -887,7 +887,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       }
       // A scroll scene's moment scrolls the frame itself: an earlier held scroll lets go first.
       if (d.type === "motionSceneSeek") letGo();
-      if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion"))) return studioLink.emit(d as Record<string, unknown>);
+      if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion") || d.type.startsWith("physics"))) return studioLink.emit(d as Record<string, unknown>);
       // A drag/resize draws only safe geometry over the element's existing rules.
       if (d.type === "previewGeometry") {
         letGo();
@@ -1019,6 +1019,8 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
 
     window.addEventListener("message", onMessage);
     window.addEventListener("studio-view-commit", viewCommitted);
+    // Something moved itself and came to rest (physics, TreePhysics): the editor's boxes measured again.
+    window.addEventListener("studio-remeasure", soon);
     window.addEventListener("scroll", now, { passive: true });
     window.addEventListener("resize", now);
     window.addEventListener("load", now);
@@ -1041,6 +1043,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       studioLink.open(null);
       document.getElementById("pt-geometry-preview")?.remove();
       window.removeEventListener("message", onMessage);
+      window.removeEventListener("studio-remeasure", soon);
       window.removeEventListener("studio-view-commit", viewCommitted);
       restoreLookPreviews(); restoreStylePreview();
       window.removeEventListener("keydown", keys);

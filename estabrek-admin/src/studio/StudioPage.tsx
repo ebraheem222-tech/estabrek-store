@@ -112,6 +112,7 @@ import { VideoEditor } from "./focus/VideoEditor";
 import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
 import { CurvePanel, SlidePanel } from "./focus/KindPanels";
 import { PageBudget, PerfPanel, type Sample } from "./focus/PerfPanel";
+import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from "./PhysicsPanels";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -328,6 +329,8 @@ function StudioDocument() {
   const [spotPen, setSpotPen] = useState(false);
   // The page measured in the frame (speed per element: the page's budget).
   const perfWait = useRef<{ requestId: string; done: (s: Sample | null) => void } | null>(null);
+  // A world being baked in the frame (physicsBake → physicsBaked).
+  const bakeWait = useRef<{ requestId: string; done: (k: BakedKeys | null) => void } | null>(null);
   // The video editor (focus mode on a video): open or not.
   const [videoEditor, setVideoEditor] = useState(false);
   // A picture open in focus mode: its own size (from the frame), for the crop's ratios.
@@ -436,6 +439,14 @@ function StudioDocument() {
         if (wait && m.requestId === wait.requestId) {
           artPick.current = null;
           wait.done(typeof m.part === "string" ? m.part : null);
+        }
+      } else if (d.type === "physicsBaked") {
+        const m = d as unknown as { requestId?: unknown; keys?: unknown };
+        const wait = bakeWait.current;
+        if (wait && m.requestId === wait.requestId) {
+          bakeWait.current = null;
+          const keys = m.keys && typeof m.keys === "object" && !Array.isArray(m.keys) ? (m.keys as BakedKeys) : null;
+          wait.done(keys ? Object.fromEntries(Object.entries(keys).filter(([k, v]) => /^[A-Za-z0-9_-]{1,64}$/.test(k) && Array.isArray(v)).map(([k, v]) => [k, v.slice(0, 16)])) : null);
         }
       } else if (d.type === "perfSampled") {
         const m = d as unknown as Sample & { requestId?: unknown };
@@ -2817,6 +2828,21 @@ function StudioDocument() {
               }}
               onPlay={() => send({ type: "motionPlay", nodeId: selected })}
             />
+            {WORLD_HOSTS.has(selFree.type) ? (
+              <WorldPanel
+                key={`world:${selFree.id}`} node={selFree} busy={busy}
+                onOps={(l, ops) => void change(l, ops)}
+                onPlay={() => send({ type: "physicsPlay", nodeId: selFree.id })}
+                onStop={() => send({ type: "physicsStop" })}
+                onBake={(seconds) => new Promise<BakedKeys | null>((resolve) => {
+                  const requestId = `bake${++artSeq.current}`;
+                  const timer = window.setTimeout(() => { if (bakeWait.current?.requestId === requestId) bakeWait.current = null; resolve(null); }, 15000);
+                  bakeWait.current = { requestId, done: (k) => { window.clearTimeout(timer); resolve(k); } };
+                  send({ type: "physicsBake", requestId, nodeId: selFree.id, seconds });
+                })}
+              />
+            ) : null}
+            {worldOfNode(index.nodes.get(index.nodes.get(selFree.id)?.parentId ?? "")?.node) ? <BodyPanel key={`body:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <AddMenu
               kinds={ADDABLE.filter((k) => canAdd(k, "inside") || canAdd(k, "after"))}
               busy={busy}

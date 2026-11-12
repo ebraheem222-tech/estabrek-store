@@ -127,6 +127,19 @@ if (new URLSearchParams(location.search).has("kinds")) {
     ] }, style: { base: { width: "420px", height: "260px" } } },
   );
 }
+// A physics world with three bodies (one hung from a rope), and a heading of its own physics (I1, I2, I4).
+if (new URLSearchParams(location.search).has("physics")) {
+  initial.tree!.root.children = [
+    { id: "world", type: "section", name: "World", props: { world: { start: "drop", walls: "open", bounce: 0.5, on: "view" } }, style: { base: { minHeight: "520px", pad: [24, 24, 24, 24] } }, children: [
+      { id: "ball", type: "button", name: "Ball", props: { label: text("Ball"), href: "/shop" }, style: { base: { width: "120px", height: "120px", radius: 999 } } },
+      { id: "card", type: "heading", name: "Card", props: { text: text("Sale"), level: 3 }, style: { base: { width: "200px" } } },
+      { id: "tag", type: "button", name: "Tag", props: { label: text("Tag"), href: "/shop", body: { hang: "rope" } }, style: { base: { width: "120px" } } },
+    ] },
+    { id: "own", type: "section", name: "Own", props: {}, style: { base: { pad: [24, 24, 24, 24] } }, children: [
+      { id: "falls", type: "heading", name: "Falls", props: { text: text("Falls in"), level: 2 }, style: { base: { width: "320px" } } },
+    ] },
+  ];
+}
 // A real video (the shop's own campaign clip) for the video editor (focus mode, A4).
 if (new URLSearchParams(location.search).has("video")) {
   initial.tree!.root.children![0].children!.unshift({ id: "clip", type: "video", name: "Clip", props: { src: "/editorial/rose-campaign-mobile.mp4", muted: true, controls: true }, style: { base: { width: "240px", height: "420px" } } });
