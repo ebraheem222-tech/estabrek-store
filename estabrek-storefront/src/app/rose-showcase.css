@@ -946,3 +946,47 @@ html.lenis, html.lenis body { height: auto; }
     -webkit-text-fill-color: transparent;
   }
 }
+
+
+/* A scene's own colour blended into the mix (the user's idea, 2026-11-12): with a mix on, a section that dresses
+   the page in its colour (a collection world in gold, winter in blue, spring in rose) doesn't wipe the gradient
+   out: its colour leads and the mix's colours flow through it, each turned to the scene colour's lightness
+   (lib/mixPaints.ts --mix-h/c/k; relative colours), so the words on it read as before. A browser without
+   relative colours keeps the plain scene colour (the declarations drop out). */
+.season-winter { --scene-fill: #3e4877; }
+.season-spring { --scene-fill: #b2485f; }
+.story-layer { --scene-fill: var(--story-accent); }
+/* The header: the scene's colour in the middle, the mix's colours pooling in from its ends. */
+.cinematic-shell[data-navbar-color][data-colour-mix][data-theme-held]:not([data-color-scope="product"]) .atelier-header {
+  background-image:
+    radial-gradient(ellipse 42% 170% at 0% 50%, oklch(from var(--navbar-bg) l max(calc(c * var(--mix-k1)), var(--mix-c1)) var(--mix-h1)) 0%, transparent 100%),
+    radial-gradient(ellipse 42% 170% at 100% 50%, oklch(from var(--navbar-bg) l max(calc(c * var(--mix-k2)), var(--mix-c2)) var(--mix-h2)) 0%, transparent 100%),
+    radial-gradient(ellipse 30% 120% at 50% 130%, oklch(from var(--navbar-bg) l max(calc(c * var(--mix-k3)), var(--mix-c3)) var(--mix-h3)) 0%, transparent 100%);
+}
+/* The scenes' buttons: from the scene's colour into the mix's. */
+.cinematic-shell[data-colour-mix]:not([data-color-scope="product"]) :is(.rose-seasons, .rose-stories) .button-dark {
+  background-image: linear-gradient(115deg,
+    var(--scene-fill, var(--selection-accent)) 12%,
+    oklch(from var(--scene-fill, var(--selection-accent)) l max(calc(c * var(--mix-k1)), var(--mix-c1)) var(--mix-h1)) 58%,
+    oklch(from var(--scene-fill, var(--selection-accent)) l max(calc(c * var(--mix-k2)), var(--mix-c2)) var(--mix-h2)) 96%);
+  background-origin: border-box; border-color: transparent;
+}
+/* The bag's count: the mix's paint on the page; in a scene, the scene's colour into the mix's. */
+.cinematic-shell[data-colour-mix]:not([data-color-scope="product"]) .atelier-header .atelier-cart-count { background-image: var(--mix-accent-paint, none); }
+.cinematic-shell[data-colour-mix][data-theme-held]:not([data-color-scope="product"]) .atelier-header .atelier-cart-count {
+  background-image: linear-gradient(135deg, var(--selection-accent) 25%, oklch(from var(--selection-accent) l max(calc(c * var(--mix-k1)), var(--mix-c1)) var(--mix-h1)) 75%, oklch(from var(--selection-accent) l max(calc(c * var(--mix-k2)), var(--mix-c2)) var(--mix-h2)));
+}
+/* The scenes' headings: written from their own colour into the mix's (only where the browser can make these
+   colours: elsewhere a clipped heading would lose its words). */
+@supports (color: oklch(from currentColor l c h)) {
+  @media not (forced-colors: active) {
+    .cinematic-shell[data-colour-mix]:not([data-color-scope="product"]) :is(.rose-seasons, .rose-stories) .season-copy h2 {
+      background-image: linear-gradient(170deg,
+        currentColor 15%,
+        oklch(from currentColor l max(calc(c * var(--mix-k1, 1)), var(--mix-c1, 0)) var(--mix-h1, h)) 60%,
+        oklch(from currentColor l max(calc(c * var(--mix-k2, 1)), var(--mix-c2, 0)) var(--mix-h2, h)) 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+}
