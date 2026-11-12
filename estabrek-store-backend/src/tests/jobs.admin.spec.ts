@@ -40,6 +40,7 @@ describe("Background jobs", () => {
       "cacheWarm",
       "cacheSweep",
       "rumSave",
+      "homeStatsSave",
       "abSave",
       "campaigns",
       "scheduled",

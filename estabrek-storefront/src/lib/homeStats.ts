@@ -6,7 +6,8 @@
  * tracked send nothing.
  *
  * Also the home order test (an A/B test of kind "homeOrder"): HOME_ORDER_SCRIPT, written right after the home's
- * sections, gives a visit on side B the new order before the page below the opening is seen.
+ * frame (beside it, not in it: inside, it became the frame's last part, which the page counts as its last
+ * section), gives a visit on side B the new order before the page below the opening is seen.
  */
 import { apiBaseClient } from "./apiClient";
 
@@ -119,4 +120,4 @@ export function watchHomeSections(frame: HTMLElement): () => void {
  * column), so nothing React made is moved; the pinned scenes keep their places (GSAP copies `order` onto its
  * pin wrappers). Kept for good, B is written into the page itself (backend experiments.controller.ts).
  */
-export const HOME_ORDER_SCRIPT = `(function(){try{var me=document.currentScript,f=me&&me.parentElement;if(!f)return;var c=window.__estabrekAb||[],t=null;for(var i=0;i<c.length;i++)if(c[i]&&c[i].kind==="homeOrder")t=c[i];if(!t||!Array.isArray(t.b))return;var s=JSON.parse(sessionStorage.getItem("estabrek_ab")||"{}");if(s[t.id]!=="B")return;var kids=f.children,slots=[],at={},css=[];for(var j=0;j<kids.length;j++){var k=kids[j].getAttribute("data-home-key");if(k){at[k]=j;if(t.b.indexOf(k)>=0)slots.push(j)}else css.push(".rose-home>:nth-child("+(j+1)+"){order:"+(j*10)+"}")}var list=t.b.filter(function(k){return k in at});if(list.length<2)return;var pos={};for(var k2 in at)pos[k2]=at[k2];list.forEach(function(k,q){pos[k]=slots[q]});for(var k3 in pos)css.push('.rose-home>[data-home-key="'+k3.replace(/[^A-Za-z0-9:_-]/g,"")+'"]{order:'+(pos[k3]*10)+"}");var st=document.createElement("style");st.setAttribute("data-home-order","B");st.textContent=".rose-home{display:flex;flex-direction:column}.rose-home>*{min-width:0}"+css.join("");document.head.appendChild(st);document.documentElement.setAttribute("data-home-order","B")}catch(e){}})();`;
+export const HOME_ORDER_SCRIPT = `(function(){try{var me=document.currentScript,f=me&&me.previousElementSibling;if(!f||!f.classList.contains("rose-home"))return;var c=window.__estabrekAb||[],t=null;for(var i=0;i<c.length;i++)if(c[i]&&c[i].kind==="homeOrder")t=c[i];if(!t||!Array.isArray(t.b))return;var s=JSON.parse(sessionStorage.getItem("estabrek_ab")||"{}");if(s[t.id]!=="B")return;var kids=f.children,slots=[],at={},css=[];for(var j=0;j<kids.length;j++){var k=kids[j].getAttribute("data-home-key");if(k){at[k]=j;if(t.b.indexOf(k)>=0)slots.push(j)}else css.push(".rose-home>:nth-child("+(j+1)+"){order:"+(j*10)+"}")}var list=t.b.filter(function(k){return k in at});if(list.length<2)return;var pos={};for(var k2 in at)pos[k2]=at[k2];list.forEach(function(k,q){pos[k]=slots[q]});for(var k3 in pos)css.push('.rose-home>[data-home-key="'+k3.replace(/[^A-Za-z0-9:_-]/g,"")+'"]{order:'+(pos[k3]*10)+"}");var st=document.createElement("style");st.setAttribute("data-home-order","B");st.textContent=".rose-home{display:flex;flex-direction:column}.rose-home>*{min-width:0}"+css.join("");document.head.appendChild(st);document.documentElement.setAttribute("data-home-order","B")}catch(e){}})();`;

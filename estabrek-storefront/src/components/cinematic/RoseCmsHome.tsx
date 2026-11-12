@@ -336,9 +336,10 @@ export function RoseCmsHome({
       <RoseHomeFrame>
         {nodes}
         <RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} />
-        {/* The home order test's side B (lib/homeStats.ts): before the page below the opening shows. */}
-        <script dangerouslySetInnerHTML={{ __html: HOME_ORDER_SCRIPT }} />
       </RoseHomeFrame>
+      {/* The home order test's side B (lib/homeStats.ts), right after the frame it orders: before the page below
+          the opening shows. */}
+      <script dangerouslySetInnerHTML={{ __html: HOME_ORDER_SCRIPT }} />
       <HomeSectionWatch />
       {/* The flying 3D silk only when the owner turns it on (off by default since 2026-11-10). */}
       <RosePageHero enabled={heroData.roseHeroObjectEnabled === true} />
