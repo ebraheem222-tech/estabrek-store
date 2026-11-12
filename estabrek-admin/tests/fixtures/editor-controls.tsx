@@ -116,6 +116,10 @@ if (new URLSearchParams(location.search).has("objectEdges")) {
   ];
   initial.tree!.root.children![0].children = seeds.map(([type, props]) => ({ id: `edge-${type}`, type, props: { ...props, edges }, style: { base: { width: "240px", height: "140px" } } }));
 }
+// A real photo (the shop's own, so the frame can read its pixels) for the sparkling stars (focus mode, A3).
+if (new URLSearchParams(location.search).has("sparkle")) {
+  initial.tree!.root.children![0].children!.unshift({ id: "photo", type: "image", name: "Photo", props: { src: "/editorial/scarves.webp", alt: text("Scarves") }, style: { base: { width: "360px", height: "260px" } } });
+}
 if (new URLSearchParams(location.search).has("narrow")) {
   initial.tree!.root.children![0].style = { base: { width: "160px", minHeight: "900px", pad: [0, 0, 0, 0] } };
 }

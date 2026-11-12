@@ -304,6 +304,21 @@ describe("checking a page tree", () => {
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
   });
 
+  test("a picture's sparkling stars: where, their drawing, colour, size, speed and when", () => {
+    const tree = (sparkle: unknown) => page([section("s", [{ id: "p", type: "image", props: { src: "/a.webp", sparkle } }])]);
+    const good = { points: [{ x: 0.25, y: 0.4, s: 1.3 }, { x: 0.8, y: 0.1 }], shape: "glint", color: "#ffd700", size: 18, speed: 1.6, when: "hover", glow: true };
+    const r = checkTree(tree(good));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props.sparkle).toEqual(good);
+    expect(checkTree(tree({ points: [{ x: 0.5, y: 0.5 }], color: "accent" })).ok).toBe(true);
+    const bad = (sparkle: unknown) => issuesOf(tree(sparkle)).length;
+    expect(bad({ points: [{ x: 1.5, y: 0 }] })).toBeGreaterThan(0);
+    expect(bad({ points: [] })).toBeGreaterThan(0);
+    expect(bad({ points: Array.from({ length: 81 }, () => ({ x: 0.1, y: 0.1 })) })).toBeGreaterThan(0);
+    expect(bad({ points: [{ x: 0.5, y: 0.5 }], color: "url(x)" })).toBeGreaterThan(0);
+    expect(bad({ points: [{ x: 0.5, y: 0.5 }], shape: "rocket" })).toBeGreaterThan(0);
+  });
+
   test("a drawing's shapes turn into others: which shape, its target path, when and on what curve", () => {
     const art = { viewBox: "0 0 100 100", nodes: [{ t: "path", a: { d: "M10 10 H90 V90 H10 Z" } }] };
     const tree = (morph: unknown) => page([section("s", [{ id: "d", type: "svg", props: { art, morph } }])]);

@@ -126,6 +126,11 @@ export function asPathNode(n: ArtNode, d: string): ArtNode {
 export function focusParts(node: PageTreeNode, index: TreeIndex | null): FocusPart[] {
   const group = focusGroup(node);
   if (group === "svg") return artParts((node.props as Record<string, unknown> | undefined)?.art as Art | undefined);
+  // A picture's parts are its sparkling stars ("s0", "s1"…).
+  if (node.type === "image") {
+    const points = ((node.props as Record<string, unknown> | undefined)?.sparkle as { points?: unknown[] } | undefined)?.points;
+    return (Array.isArray(points) ? points.slice(0, 80) : []).map((_, i) => ({ id: `s${i}`, kind: "star", depth: 0, label: `${say("نجمة|Star|כוכב")} ${i + 1}` }));
+  }
   const kids = index?.nodes.get(node.id)?.children ?? (node.children ?? []).map((c) => c.id);
   return kids
     .map((id) => index?.nodes.get(id)?.node ?? node.children?.find((c) => c.id === id))

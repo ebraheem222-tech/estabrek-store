@@ -957,6 +957,15 @@ export const BASE_CSS = [
   ".pt-hv-glow:hover{filter:drop-shadow(0 0 18px var(--accent))}",
   ".pt-hv-zoom>.pt-frame-media{transition:transform .7s cubic-bezier(.2,.7,.2,1)}",
   ".pt-hv-zoom:hover>.pt-frame-media{transform:scale(1.08)}",
+  // A picture's sparkling stars (sparkles.tsx): each twinkles at its own moment; size, turn and see-through only.
+  ".pt-sparkles{position:absolute;inset:0;z-index:2;pointer-events:none}",
+  ".pt-spark{position:absolute;width:calc(var(--sp-size,16px)*var(--s,1));height:calc(var(--sp-size,16px)*var(--s,1));translate:-50% -50%;color:var(--sp-color,#fff);opacity:0;will-change:transform,opacity;animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
+  ".pt-sparkles[data-glow] .pt-spark{filter:drop-shadow(0 0 3px currentColor)}",
+  "@keyframes pt-twinkle{0%,100%{opacity:0;transform:scale(.15) rotate(0deg)}45%{opacity:1;transform:scale(1) rotate(30deg)}60%{opacity:.85;transform:scale(.8) rotate(40deg)}}",
+  // While the pointer is on the picture only: no animation till then (the page's rest drives play states itself).
+  ".pt-sparkles[data-when=hover] .pt-spark{animation:none}",
+  ".pt-frame:hover>.pt-sparkles[data-when=hover] .pt-spark,.pt-frame:focus-within>.pt-sparkles[data-when=hover] .pt-spark{animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
+  ".pt-sparkles[data-when=few] .pt-spark{animation-iteration-count:3}",
   // A light that follows the mouse (under the words), and a ripple where it's pressed.
   ".pt-hv-spot,.pt-hv-ripple{position:relative;isolation:isolate}.pt-hv-ripple{overflow:hidden}",
   ".pt-spot{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s ease;background:radial-gradient(circle var(--pt-spr,220px) at var(--pt-sx,50%) var(--pt-sy,50%),var(--pt-spc,color-mix(in srgb,var(--accent) 30%,transparent)),transparent)}",
@@ -1144,5 +1153,5 @@ export const BASE_CSS = [
   ".pt-tile span{font-weight:600}",
   `@media (max-width:${TABLET_MAX}px){.pt-products-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.pt-section{padding-block:44px}}`,
   `@media (max-width:${PHONE_MAX}px){.pt-products-grid,.pt-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.pt-section{padding-block:32px}.pt-block-title{font-size:22px}}`,
-  "@media (prefers-reduced-motion:reduce){.pt-btn,.pt-slider-arrow,.pt-slider-dot::before,.pt-hv-glow,.pt-hv-zoom>.pt-frame-media{transition:none}.pt-slides{scroll-behavior:auto}.pt-fx,.pt-fx::before{animation:none}.pt-fx-shine,.pt-spot{display:none}}",
+  "@media (prefers-reduced-motion:reduce){.pt-btn,.pt-slider-arrow,.pt-slider-dot::before,.pt-hv-glow,.pt-hv-zoom>.pt-frame-media{transition:none}.pt-slides{scroll-behavior:auto}.pt-fx,.pt-fx::before{animation:none}.pt-fx-shine,.pt-spot{display:none}.pt-spark{animation:none!important;opacity:.85;transform:scale(.7)}}",
 ].join("");
