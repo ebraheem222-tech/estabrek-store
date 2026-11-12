@@ -140,3 +140,53 @@ export function pageBudget(root: PageTreeNode): Budget {
   if (b.glass > 4) b.warnings.push(say(`${b.glass} عناصر زجاج مغبّش.|${b.glass} frosted glass elements.|${b.glass} רכיבי זכוכית.`));
   return b;
 }
+
+/**
+ * What the shop lightens by itself on this page (J3; the shop's perf.ts autoNeeded, tree.ts leadImageOf, css.ts
+ * farSections), unless the page turns it off (root props.perfAuto false).
+ */
+export type Auto = { on: boolean; lead: string | null; far: number; glass: number; canvases: number; autoplay: number };
+export function autoOf(root: PageTreeNode): Auto {
+  const on = obj(root.props).perfAuto !== false;
+  let lead: string | null = null, glass = 0, canvases = 0, autoplay = 0;
+  const findLead = (n: PageTreeNode) => {
+    if (lead) return;
+    if (n.type === "image" && typeof obj(n.props).src === "string") { lead = n.name || n.id; return; }
+    for (const c of n.children ?? []) findLead(c);
+  };
+  for (const n of (root.children ?? []).slice(0, 2)) findLead(n);
+  const walk = (n: PageTreeNode) => {
+    const c = costOf({ ...n, children: [] });
+    if (c.reasons.some((r) => r.key === "glass")) glass++;
+    if (c.canvas) canvases++;
+    if (c.autoplay) autoplay++;
+    for (const ch of n.children ?? []) walk(ch);
+  };
+  for (const n of root.children ?? []) walk(n);
+  const busy = (n: PageTreeNode): boolean => {
+    const m = obj(n.motion), p = obj(n.props);
+    if (m.scroll || m.cue || m.physics || n.type === "scrollScene" || p.cover || p.world || p.scene || p.particles) return true;
+    if (Object.values(obj(n.style)).some((v) => obj(v).position === "sticky")) return true;
+    return (n.children ?? []).some(busy);
+  };
+  const far = (root.children ?? []).slice(2).filter((n) => n.type === "section" && ["hidden", "clip"].includes(String(obj(obj(n.style).base).overflow ?? "")) && !busy(n)).length;
+  return { on, lead, far, glass, canvases, autoplay };
+}
+
+/** One click for the whole page (J4): each heavy element's first speed setting that lightens it, as its props. */
+export function lightenAll(root: PageTreeNode): Array<{ id: string; props: Record<string, unknown> }> {
+  const out: Array<{ id: string; props: Record<string, unknown> }> = [];
+  const walk = (n: PageTreeNode) => {
+    if (n.type !== "page") {
+      const c = costOf({ ...n, children: [] });
+      if (c.level === "high") {
+        const perf = { ...(obj(obj(n.props).perf) as Perf) };
+        const fix = c.reasons.find((r) => r.fix && !Object.entries(r.fix).every(([k, v]) => (perf as Record<string, unknown>)[k] === v))?.fix;
+        if (fix) out.push({ id: n.id, props: { ...obj(n.props), perf: { ...perf, ...fix } } });
+      }
+    }
+    for (const ch of n.children ?? []) walk(ch);
+  };
+  walk(root);
+  return out;
+}

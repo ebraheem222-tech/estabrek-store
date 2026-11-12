@@ -44,7 +44,7 @@ import { bindStore, categoryValues, productValues } from "@/pageTree/storeBind";
 import type { CatalogProduct } from "@/lib/catalog";
 import { treeCss, treeFamilies } from "@/pageTree/css";
 import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
-import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
+import { leadImageOf, lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
 import { PageVisualScope } from "@/components/VisualControlsProvider";
 import { TreeMotion } from "@/pageTree/TreeMotion";
@@ -204,7 +204,8 @@ export async function renderCmsPageBySlug(
   if (tree && independentDesign(settingsHeader)) roseHome = false;
   const langCfg = langConfigOf((bootstrap.site as any)?.header);
   const commerce = tree ? commerceNeeds(tree) : null;
-  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg, commerce: { preview: options?.preview === true }, ...(storeProduct ? { product: storeProduct } : {}) } : null;
+  const lead = tree ? leadImageOf(tree) : undefined;
+  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg, commerce: { preview: options?.preview === true }, ...(storeProduct ? { product: storeProduct } : {}), ...(lead ? { lead } : {}) } : null;
   if (commerce?.shop && treeCtx?.commerce && !options?.preview) {
     const [initial, categories] = await Promise.all([listProducts({ lang, page: f.page ?? 1, pageSize: 24, sort: f.sort as any, q: f.q, inStock: f.inStock, categoryId: f.categoryId, colors: f.colors.length ? f.colors.join(",") : undefined, sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined, minPrice: f.minPrice, maxPrice: f.maxPrice, attrs: f.attrs, includeFacets: true, lite: true }), listCategories(lang)]);
     const basePath = lang === langCfg.default ? slug : `/${lang}${slug === "/" ? "" : slug}`;

@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
-import { RumBodySchema, bucketOf, experience, noteRum, pendingRumForTests, percentile, rating, resetRumForTests } from "../lib/rum.js";
+import { RumBodySchema, bucketOf, experience, noteRum, pendingRumForTests, percentile, rating, resetRumForTests, rumAlertsFrom, rumPageOf } from "../lib/rum.js";
 
 // Real shoppers' speed (تجربة الزباين): buckets, percentiles, ratings, and the
 // route the shop sends to. No database.
@@ -103,5 +103,26 @@ describe("The route", () => {
     expect([...pendingRumForTests().keys()].some((k) => k.endsWith("|home|desktop|windows|inp"))).toBe(true);
     await request(app).post("/v1/storefront/rum").set("Content-Type", "text/plain").send("{nope").expect(400);
     await request(app).post("/v1/storefront/rum").send({ r: [] }).expect(400);
+  });
+});
+
+describe("Slowdown alerts", () => {
+  test("what got worse lately, the worst first, with the pages published in those days for that kind of page", () => {
+    const items = [
+      { page: "home", device: "phone", visits: 900, worse: ["lcp" as const, "scrollFps" as const], trend: { lcp: { before: 2100, now: 4300 }, scrollFps: { before: 58, now: 41 } } },
+      { page: "shop", device: "desktop", visits: 2000, worse: ["inp" as const], trend: { inp: { before: 120, now: 190 } } },
+      { page: "product", device: "phone", visits: 3000, worse: [], trend: {} },
+    ];
+    const publishes = [
+      { pageId: "p1", name: "Home", slug: "/", kind: "page", at: "2026-11-11T10:00:00.000Z", revisionId: "r1", rumPage: rumPageOf({ slug: "/" }) },
+      { pageId: "p2", name: "About", slug: "/about", kind: "page", at: "2026-11-11T11:00:00.000Z", revisionId: "r2", rumPage: rumPageOf({ slug: "/about", kind: "page" }) },
+    ];
+    const r = rumAlertsFrom(items, publishes);
+    // The home page went poor (LCP over 4 s): first, though the shop has more visits.
+    expect(r.alerts.map((a) => a.page)).toEqual(["home", "shop"]);
+    expect(r.alerts[0].worse[0]).toEqual({ metric: "lcp", before: 2100, now: 4300, rating: "poor" });
+    // Only the home page's publish is a suspect (no page of kind "page" got slower).
+    expect(r.publishes.map((p) => p.revisionId)).toEqual(["r1"]);
+    expect(rumPageOf({ slug: "/__product-page", kind: "productTemplate" })).toBe("product");
   });
 });

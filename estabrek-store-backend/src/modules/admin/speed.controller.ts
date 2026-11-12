@@ -4,7 +4,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { readPerformance, savePerformance } from "../../lib/performanceSettings.js";
 import { monitorSnapshot, queriesForAdvice, resetMonitor } from "../../lib/observability.js";
 import { indexAdvice } from "../../lib/indexAdvice.js";
-import { RUM_DEVICES, RUM_OSES, rumReport } from "../../lib/rum.js";
+import { RUM_DEVICES, RUM_OSES, rumAlerts, rumReport } from "../../lib/rum.js";
 import {
   BUILT_IN_ROUTES,
   LANE_NAMES,
@@ -120,6 +120,14 @@ r.get(
   asyncHandler(async (req, res) => {
     const q = RumQuery.parse(req.query ?? {});
     res.json(await rumReport(q));
+  }),
+);
+
+/** Where shoppers' speed got worse lately, and the pages published in those days (each with its way back). */
+r.get(
+  "/rum-alerts",
+  asyncHandler(async (_req, res) => {
+    res.json(await rumAlerts());
   }),
 );
 

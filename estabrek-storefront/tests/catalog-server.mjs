@@ -312,6 +312,18 @@ const physicsDemo = { id: "physics-demo", slug: "/physics-demo", name: "Physics"
     ] },
   ] },
 } };
+// The shop's automatic lightening (auto-lighten.spec.ts): a first picture, frosted glass, a clip playing by itself,
+// a far section that cuts what sticks out; the same page with it turned off.
+const speedDemo = (off) => ({ id: off ? "speed-off" : "speed-demo", slug: off ? "/speed-off" : "/speed-demo", name: "Speed", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: off ? { perfAuto: false } : {}, children: [
+    { id: "first", type: "section", props: { contained: true }, children: [{ id: "lead", type: "image", props: { src: "/templates/electronics/hero.svg", alt: { en: "Lead" } } }] },
+    { id: "second", type: "section", props: { contained: true }, children: [
+      { id: "glass", type: "stack", props: {}, style: { base: { minHeight: "120px", backdrop: { blur: 18 }, bg: "surface" } }, children: [] },
+      { id: "clip", type: "video", props: { src: "/editorial/rose-campaign-mobile.mp4", autoplay: true, loop: true } },
+    ] },
+    { id: "third", type: "section", props: {}, style: { base: { minHeight: "600px", overflow: "hidden" } }, children: [{ id: "later", type: "image", props: { src: "/templates/photo-1.svg", alt: { en: "Later" } } }] },
+  ] },
+} });
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
   sections: [{ id: "demo-faq", type: "FAQ", order: 0, isVisible: true, data: { title: "أسئلة القسم القديم", items: [{ question: "سؤال قديم؟", answer: "جواب قديم." }] } }],
@@ -1614,6 +1626,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/showcase-demo") return res.end(JSON.stringify(showcaseDemo));
       if (slug === "/motion-media-demo") return res.end(JSON.stringify(motionMediaDemo));
       if (slug === "/physics-demo") return res.end(JSON.stringify(physicsDemo));
+      if (slug === "/speed-demo" || slug === "/speed-off") return res.end(JSON.stringify(speedDemo(slug === "/speed-off")));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
       if (slug === "/blocks-demo") return res.end(JSON.stringify(blocksDemo));

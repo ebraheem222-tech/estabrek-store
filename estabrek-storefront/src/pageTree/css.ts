@@ -5,7 +5,9 @@
  * so a bad saved value can't become CSS. Sides follow the text direction
  * (padding-inline-start…), so the same tree is right in Arabic, Hebrew and English.
  */
-import { endlessOf, perfOf } from "./perf";
+import { formFlows, formKeyframes, formPolygon, safeForm } from "../../../shared/shapeForm";
+import { cssProblem } from "../../../shared/cssCode";
+import { autoNeeded, endlessOf, perfOf } from "./perf";
 import { WORLD_HOSTS, worldOf } from "./physics";
 import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type SizeConstraints, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
@@ -382,7 +384,12 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   if (typeof s.aspect === "string" && /^\d{1,2}\s*\/\s*\d{1,2}$/.test(s.aspect)) d.push(`aspect-ratio:${s.aspect.replace(/\s+/g, "")}`);
   const shape = pick(s.shape, SHAPE_NAMES);
-  if (shape && SHAPES[shape]) d.push(...SHAPES[shape]);
+  // A shape by equations (shared/shapeForm.ts): its outline as a polygon whose corners keep their px.
+  const form = safeForm(s.form);
+  if (form) {
+    const poly = formPolygon(form);
+    d.push(`-webkit-clip-path:${poly}`, `clip-path:${poly}`);
+  } else if (shape && SHAPES[shape]) d.push(...SHAPES[shape]);
   else if (shape) {
     const m = maskUrl(MASKS[shape]);
     d.push(`-webkit-mask:${m} center/100% 100% no-repeat`, `mask:${m} center/100% 100% no-repeat`);
@@ -710,9 +717,14 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
   let drawn = 0;
   // Whether any element carries speed marks (perf.ts): its own settings, or motion without end.
   let perfUsed = false;
+  // The shop's automatic lightening (perf.ts autoNeeded), unless the page turns it off.
+  const auto = tree.root.props?.perfAuto !== false;
+  // Flowing shapes' @keyframes, and elements' own CSS (last, so it wins).
+  const formFrames: string[] = [];
+  const own: string[] = [];
   const walk = (n: TreeNode, parent: TreeNode | null) => {
     if (n.type !== "page" && n.type !== "legacy") drawn++;
-    if (!perfUsed && (perfOf(n.props?.perf) || endlessOf(n, motionOf(n)))) perfUsed = true;
+    if (!perfUsed && (perfOf(n.props?.perf) || endlessOf(n, motionOf(n)) || (auto && autoNeeded(n)))) perfUsed = true;
     if (SAFE_ID.test(n.id ?? "")) {
       const sel = `.pt-${n.id}`;
       const screens = [n.style?.base, n.style?.tablet, n.style?.mobile];
@@ -763,6 +775,18 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       b.push(...transitionDecls(n.style, "base", keys));
       const t = [...extra.tablet, ...screenDeclarations(n.style, "tablet", n.type), ...transitionDecls(n.style, "tablet", keys)];
       const p = [...extra.phone, ...screenDeclarations(n.style, "mobile", n.type), ...transitionDecls(n.style, "mobile", keys)];
+      // A shape that flows (its waves running, a blob breathing): its own @keyframes for each screen that has one.
+      for (const [screen, list] of [["base", b], ["tablet", t], ["mobile", p]] as const) {
+        const form = safeForm(n.style?.[screen]?.form);
+        const secs = form ? formFlows(form) : 0;
+        if (!form || !secs) continue;
+        const name = `pt-form-${n.id}-${screen}`;
+        formFrames.push(formKeyframes(form, name), `@media (prefers-reduced-motion:reduce){${sel}{animation:none!important}}`);
+        list.push(`animation:${name} ${secs}s linear infinite`);
+      }
+      // Its own CSS (Tailwind or written, shared/cssCode.ts), checked again: after everything, so it wins.
+      const code = (n.props?.code as { out?: unknown } | undefined)?.out;
+      if (typeof code === "string" && code && !cssProblem(code, n.id)) own.push(code);
       if (b.length) base.push(`${sel}{${b.join(";")}}`);
       if (t.length) tablet.push(`${sel}{${t.join(";")}}`);
       if (p.length) phone.push(`${sel}{${p.join(";")}}`);
@@ -832,6 +856,9 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
     glides ? TURN_PROPERTIES : "",
     BASE_CSS,
     perfUsed ? PERF_CSS : "",
+    perfUsed && auto ? AUTO_CSS : "",
+    auto ? "" : ":root{--pt-auto-off:1}",
+    auto ? farSections(tree) : "",
     // Before each element's own rule, so its own values win.
     turned.length ? `${turned.join(",")}{${TREE_TRANSFORM_REST};transform:${TREE_TRANSFORM}}` : "",
     holders.length ? `${holders.join(",")}{position:relative;isolation:isolate}` : "",
@@ -846,15 +873,35 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
     tablet.length ? `@media (max-width:${TABLET_MAX}px){${tablet.join("")}}` : "",
     phone.length ? `@media (max-width:${PHONE_MAX}px){${phone.join("")}}` : "",
     hidden.join(""),
+    formFrames.join(""),
+    own.join(""),
   ].join("");
 }
 
-/** What every tree element starts from (theme colours, the direction-aware sides). */
 /**
  * An element's own speed settings (perf.ts, TreePerf.tsx): light = no blur, shadows, filters or endless motion,
  * inside it too; balanced = no frosted glass; off screen, endless motion rests. Only on a page that has them (the
  * rules reach every element below a mark, so a page without any doesn't carry them).
  */
+/** The automatic lightening on a weak device: no frosted glass (TreePerf marks html[data-weak]). */
+export const AUTO_CSS = "html[data-weak] .pt,html[data-weak] .pt *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}";
+
+/**
+ * Far parts of the page drawn only near the screen (content-visibility): from the third on, only sections that
+ * already cut what sticks out of them (so nothing looks different) and with nothing that follows the scroll, holds,
+ * covers or moves in a world (those measure the page as it scrolls).
+ */
+export function farSections(tree: PageTree): string {
+  const busy = (n: TreeNode): boolean => {
+    const m = motionOf(n);
+    if (m?.scroll || m?.cue || m?.physics || n.type === "scrollScene" || n.props?.cover || n.props?.world || n.props?.scene || n.props?.particles) return true;
+    if (["base", "tablet", "mobile"].some((k) => (n.style as Record<string, { position?: unknown } | undefined> | undefined)?.[k]?.position === "sticky")) return true;
+    return (n.children ?? []).some(busy);
+  };
+  const far = (tree.root.children ?? []).slice(2).filter((n) => n.type === "section" && SAFE_ID.test(n.id) && ["hidden", "clip"].includes(String(n.style?.base?.overflow ?? "")) && !busy(n));
+  return far.length ? `${far.map((n) => `.pt-${n.id}`).join(",")}{content-visibility:auto;contain-intrinsic-size:auto 640px}` : "";
+}
+
 export const PERF_CSS = [
   "[data-perf-tier=light],[data-perf-tier=light] *,[data-perf-light-now],[data-perf-light-now] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition-duration:0s!important;mix-blend-mode:normal!important}",
   "[data-perf-tier=balanced],[data-perf-tier=balanced] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}",
@@ -862,6 +909,7 @@ export const PERF_CSS = [
   "[data-perf-away],[data-perf-away] *{animation:none!important}",
 ].join("");
 
+/** What every tree element starts from (theme colours, the direction-aware sides). */
 export const BASE_CSS = [
   // Headings take the store theme's display font when there is one.
   ":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}",

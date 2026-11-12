@@ -41,16 +41,41 @@ export function perfMarks(perf: Perf | null, endless: boolean): Record<string, s
 }
 
 /** Whether an element moves without end (a loop, an effect, sparkles, a looping morph, a clip playing by itself). */
-export function endlessOf(n: { type: string; props?: Record<string, unknown> }, motion: { loop?: unknown; fx?: unknown } | null | undefined): boolean {
+export function endlessOf(n: { type: string; props?: Record<string, unknown>; style?: unknown }, motion: { loop?: unknown; fx?: unknown } | null | undefined): boolean {
   const p = n.props ?? {};
-  return Boolean(motion?.loop || motion?.fx || (n.type === "image" && p.sparkle) || (n.type === "svg" && (p.morph as { on?: string } | undefined)?.on === "loop") || (n.type === "video" && p.autoplay === true));
+  return Boolean(motion?.loop || motion?.fx || (n.type === "image" && p.sparkle) || (n.type === "svg" && (p.morph as { on?: string } | undefined)?.on === "loop") || (n.type === "video" && p.autoplay === true) || formFlowsIn(n.style));
+}
+/** Whether a screen's shape by equations flows (its waves running, a blob breathing: shared/shapeForm.ts). */
+function formFlowsIn(style: unknown): boolean {
+  const st = (style && typeof style === "object" ? style : {}) as Record<string, { form?: { whole?: { flow?: unknown }; edges?: Record<string, { flow?: unknown } | undefined> } } | undefined>;
+  return ["base", "tablet", "mobile"].some((k) => {
+    const f = st[k]?.form;
+    return Boolean(f && (Number(f.whole?.flow) > 0 || Object.values(f.edges ?? {}).some((e) => Number(e?.flow) > 0)));
+  });
 }
 
 /** Whether a page needs its speed settings at work (TreePerf): an element light on phones or weak devices, or moving without end. */
-export function perfNeeded(n: { type: string; props?: Record<string, unknown> }, motion: { loop?: unknown; fx?: unknown } | null | undefined): boolean {
+export function perfNeeded(n: { type: string; props?: Record<string, unknown>; style?: unknown }, motion: { loop?: unknown; fx?: unknown } | null | undefined): boolean {
   const perf = perfOf(n.props?.perf);
   return Boolean(perf?.tier === "light" || perf?.phone === "light" || perf?.strong || (endlessOf(n, motion) && perf?.offscreen !== "keep"));
 }
+
+/**
+ * The shop's automatic lightening (J3), on unless the page turns it off (root props.perfAuto false): elements that
+ * weigh on a weak device on their own (frosted glass, a canvas drawn every moment, a clip playing by itself) bring
+ * TreePerf in, which marks a weak device (html[data-weak]: no frosted glass, canvases at 24–30 a second) and data
+ * saving (clips don't play by themselves). The page's first picture loads first; far sections that already cut what
+ * sticks out are drawn only near the screen (css.ts).
+ */
+export function autoNeeded(n: { type: string; props?: Record<string, unknown>; style?: unknown }): boolean {
+  const st = (n.style && typeof n.style === "object" ? n.style : {}) as Record<string, { backdrop?: { blur?: unknown } } | undefined>;
+  const glass = ["base", "tablet", "mobile"].some((k) => Number(st[k]?.backdrop?.blur) > 0);
+  const p = n.props ?? {};
+  const canvas = ["model3d", "scrollScene", "lottie", "rive"].includes(n.type) || (n.type === "section" && Boolean(p.particles || p.scene));
+  return glass || canvas || (n.type === "video" && p.autoplay === true);
+}
+/** Whether the page's automatic lightening is off (css.ts writes it as --pt-auto-off on the page). */
+export const autoOff = () => typeof document !== "undefined" && getComputedStyle(document.documentElement).getPropertyValue("--pt-auto-off").trim() === "1";
 
 /** Whether an element is to be light now (its own setting, or light on phones / weak devices as TreePerf marked). */
 export const lightNow = (el: Element | null) => Boolean(el?.closest("[data-perf-tier=light],[data-perf-light-now]"));

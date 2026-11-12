@@ -320,6 +320,39 @@ describe("checking a page tree", () => {
     expect(r.ok && r.tree.root.children![0].children![0].props.perf).toBeFalsy();
   });
 
+  test("a page can turn the shop's automatic lightening off", () => {
+    const r = checkTree({ version: 1, root: { id: "page", type: "page", props: { perfAuto: false }, children: [] } });
+    expect(r.ok && r.tree.root.props.perfAuto).toBe(false);
+    expect(issuesOf({ version: 1, root: { id: "page", type: "page", props: { perfAuto: "no" }, children: [] } }).map((i) => i.path).join(" ")).toMatch(/perfAuto/);
+  });
+
+  test("a shape by equations in a screen's look: corners, edges, a typed equation, a whole shape", () => {
+    const form = { corners: { tl: { kind: "squircle", size: 40, k: 5 }, br: { kind: "bezier", size: 30, c: [0, 0.5, 0.5, 0] } }, edges: { bottom: { kind: "wave", depth: 14, count: 6, flow: 4 }, top: { kind: "fn", depth: 20, fn: "0.5 + 0.5*sin(x*PI*4)" } } };
+    const r = checkTree(page([section("s", [{ id: "x", type: "image", props: { src: "/a.webp" }, style: { base: { form }, mobile: { form: { whole: { kind: "polygon", n: 6, inner: 0.6 } } } } }])]));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].style?.base?.form).toEqual(form);
+    const bad = (f: unknown) => issuesOf(page([section("s", [{ id: "x", type: "image", props: { src: "/a.webp" }, style: { base: { form: f } } }])])).map((i) => i.path).join(" ");
+    expect(bad({ edges: { top: { kind: "fn", fn: "alert(1)" } } })).toMatch(/form\.edges\.top\.fn/);
+    expect(bad({ edges: { top: { kind: "fn", fn: "x.constructor" } } })).toMatch(/form\.edges\.top\.fn/);
+    expect(bad({ corners: { tl: { kind: "round", size: 9999 } } })).toMatch(/form\.corners\.tl\.size/);
+    expect(bad({ whole: { kind: "polar" } })).toMatch(/form\.whole/);
+  });
+
+  test("an element's own CSS: kept when it stays on the element, refused when it reaches outside", () => {
+    const tree = (code: unknown) => page([section("s", [{ id: "btn", type: "button", props: { label: { en: "Go" }, href: "/shop", code } }])]);
+    const good = { tw: "rounded-xl hover:scale-105", css: "color: red;", out: ".pt-btn{border-radius:12px;color:red}.pt-btn:hover{scale:1.05}@media (min-width:768px){.pt-btn{padding:20px}}" };
+    const r = checkTree(tree(good));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props.code).toEqual(good);
+    const bad = (out: string) => issuesOf(tree({ out })).map((i) => `${i.path} ${i.message}`).join(" ");
+    expect(bad("body{display:none}")).toMatch(/props\.code\.out .*outside the element/);
+    expect(bad(".pt-btn{color:red}} body{display:none}{")).toMatch(/props\.code\.out/);
+    expect(bad(".pt-btn{background:url(https://tracker.example/x.png)}")).toMatch(/url/);
+    expect(bad("@import url(/x.css);.pt-btn{}")).toMatch(/not allowed/);
+    expect(bad(".pt-btn{content:\"</style><script>\"}")).toMatch(/not allowed/);
+    expect(bad(".pt-other{color:red}")).toMatch(/outside the element/);
+  });
+
   test("physics: an element's own, a world on what holds others, its bodies' settings, and keyframes falling", () => {
     const world = { on: "view", start: "drop", gx: 0, gy: 1, walls: "open", bounce: 0.5, drag: true, pointer: "push", wind: 0.3, click: "burst", again: 8 };
     const body = { shape: "circle", bounce: 0.8, mass: 2, hang: "rope" };

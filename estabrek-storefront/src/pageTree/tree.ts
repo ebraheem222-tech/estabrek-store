@@ -55,6 +55,8 @@ export type ScreenStyle = {
   focus?: { x: number; y: number };
   aspect?: string;
   shape?: string; // rect, rounded, pill, arch, circle, or one of the masks (css.ts MASKS)
+  /** A shape by equations, corner by corner and edge by edge, or whole (shared/shapeForm.ts); it wins over `shape`. */
+  form?: unknown;
   pattern?: { kind: string; color: string; size: number; opacity?: number };
   /** A soft mesh of 2–4 colours from the corners (`soft` % of the way); `move` drifts it like an aurora. */
   mesh?: { colors: string[]; soft?: number; move?: boolean; speed?: number };
@@ -155,7 +157,7 @@ export type PageTree = { version: 1; root: TreeNode };
 export type LookKind = "text" | "button" | "image" | "video" | "box";
 export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>>; motion?: unknown };
 import { WORLD_HOSTS, physicsOf, worldOf, type PhysicsSpec } from "./physics";
-import { perfNeeded } from "./perf";
+import { autoNeeded, perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
@@ -396,8 +398,9 @@ export function treeNeeds(tree: PageTree) {
   const cursor = Boolean(tree.root.props?.cursor && typeof tree.root.props.cursor === "object");
   // Elements' own speed settings at work (TreePerf): light on phones or weak devices, resting off screen.
   let perf = false;
+  const auto = tree.root.props?.perfAuto !== false;
   eachNode(tree, (n) => {
-    if (!perf && perfNeeded(n, motionOf(n))) perf = true;
+    if (!perf && (perfNeeded(n, motionOf(n)) || (auto && autoNeeded(n)))) perf = true;
   });
   // Physics (TreePhysics): an element's own, or a world that isn't baked into keyframes.
   let physics = false;
@@ -405,6 +408,23 @@ export function treeNeeds(tree: PageTree) {
     if (!physics && (motionOf(n)?.physics || (WORLD_HOSTS as readonly string[]).includes(n.type) && worldOf(n.props?.world) && !worldOf(n.props?.world)?.baked)) physics = true;
   });
   return { perf, physics, products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
+}
+
+/**
+ * The page's first picture (in its first two parts), loaded first and early (it's most likely what the shopper sees
+ * first: the largest thing drawn); every other one waits until it's near the screen. None when the page's automatic
+ * lightening is off.
+ */
+export function leadImageOf(tree: PageTree): string | undefined {
+  if (tree.root.props?.perfAuto === false) return undefined;
+  let found: string | undefined;
+  const walk = (n: TreeNode) => {
+    if (found) return;
+    if (n.type === "image" && typeof n.props?.src === "string") { found = n.id; return; }
+    for (const c of n.children ?? []) walk(c);
+  };
+  for (const n of (tree.root.children ?? []).slice(0, 2)) walk(n);
+  return found;
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

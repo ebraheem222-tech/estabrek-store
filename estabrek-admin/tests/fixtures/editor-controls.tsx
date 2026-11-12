@@ -127,6 +127,15 @@ if (new URLSearchParams(location.search).has("kinds")) {
     ] }, style: { base: { width: "420px", height: "260px" } } },
   );
 }
+// A card and a button for shapes by equations and an element's own CSS (G, C).
+if (new URLSearchParams(location.search).has("shapes")) {
+  initial.tree!.root.children = [
+    { id: "objects", type: "section", name: "Shapes", props: {}, style: { base: { pad: [32, 32, 32, 32] } }, children: [
+      { id: "card", type: "stack", name: "Card", props: {}, style: { base: { width: "320px", height: "200px", bg: "accent" } }, children: [] },
+      { id: "cta", type: "button", name: "Call", props: { label: text("Shop now"), href: "/shop" }, style: { base: { width: "200px" } } },
+    ] },
+  ];
+}
 // A physics world with three bodies (one hung from a rope), and a heading of its own physics (I1, I2, I4).
 if (new URLSearchParams(location.search).has("physics")) {
   initial.tree!.root.children = [

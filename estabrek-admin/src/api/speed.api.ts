@@ -141,6 +141,18 @@ export async function getRum(q: RumQuery) {
   return (await api.get(S.rum, { params })).data as RumReport;
 }
 
+/** Where shoppers' speed got worse lately (the last two days against the week before), and the pages published then. */
+export type RumAlerts = {
+  now: number;
+  alerts: Array<{ page: string; device: RumDevice; visits: number; worse: Array<{ metric: RumMetric; before: number; now: number; rating: "good" | "okay" | "poor" | null }> }>;
+  /** Each publish's revision is the page as it was just before it: the way back. */
+  publishes: Array<{ pageId: string; name: string; slug: string; kind: string; at: string; revisionId: string; rumPage: string }>;
+};
+
+export async function getRumAlerts() {
+  return (await api.get(S.rumAlerts)).data as RumAlerts;
+}
+
 export async function getSpeedPage() {
   return (await api.get(S.base)).data as SpeedPage;
 }

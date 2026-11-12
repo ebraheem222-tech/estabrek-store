@@ -383,9 +383,11 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       };
       send(msg);
     };
-    // Scrolling moves everything: measure on the next frame. Other changes settle first.
+    // Scrolling moves everything: measure on the next frame. Other changes settle first. Not while the page's speed
+    // is being checked (perfLab): the editor's own work would be counted as the page's.
+    let labbing = false;
     const now = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
+      if (!frame && !labbing) frame = requestAnimationFrame(measure);
     };
     const previewProperties = new Map<HTMLElement, Map<string, { value: string; priority: string }>>();
     const previewProperty = (el: HTMLElement, name: string, value: string) => {
@@ -870,6 +872,49 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
           });
         };
         requestAnimationFrame(tick);
+        return;
+      }
+      // The page checked before it's published (J5): everything moving, scrolled from top to bottom over 2.4 s;
+      // its frames a second, the frames that came late (> 33 ms), the time it was busy (long tasks) and how much it
+      // jumped (layout shifts). Then back where it was, and the editor's own motion setting asked for again.
+      if (d.type === "perfLab" && e.source === window.parent) {
+        const v = e.data as { requestId?: unknown };
+        if (typeof v.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.requestId)) return;
+        const requestId = v.requestId;
+        const from = window.scrollY;
+        const distance = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        labbing = true;
+        studioLink.emit({ type: "motionLive", on: true });
+        let busyMs = 0, shift = 0;
+        const observers: PerformanceObserver[] = [];
+        try { const po = new PerformanceObserver((l) => { for (const x of l.getEntries()) busyMs += x.duration; }); po.observe({ type: "longtask", buffered: false }); observers.push(po); } catch { /* not counted */ }
+        try { const po = new PerformanceObserver((l) => { for (const x of l.getEntries() as Array<PerformanceEntry & { value?: number; hadRecentInput?: boolean }>) if (!x.hadRecentInput) shift += x.value ?? 0; }); po.observe({ type: "layout-shift", buffered: false }); observers.push(po); } catch { /* not counted */ }
+        const gaps: number[] = [];
+        let t0 = 0, last = 0;
+        const DURATION = 2400;
+        const step = (ts: number) => {
+          if (!t0) { t0 = ts; last = ts; }
+          else { gaps.push(ts - last); last = ts; }
+          const p = Math.min(1, (ts - t0) / DURATION);
+          window.scrollTo({ top: distance * p, behavior: "instant" as ScrollBehavior });
+          if (p < 1) return void requestAnimationFrame(step);
+          observers.forEach((o) => o.disconnect());
+          window.scrollTo({ top: from, behavior: "instant" as ScrollBehavior });
+          labbing = false;
+          now();
+          studioLink.send({ type: "motionStateRequest" });
+          const ms = ts - t0;
+          send({
+            type: "perfLabbed", requestId,
+            fps: Math.round((gaps.length / Math.max(1, ms)) * 1000),
+            slow: gaps.length ? Math.round((gaps.filter((g) => g > 33.4).length / gaps.length) * 100) : 0,
+            longMs: Math.round(busyMs),
+            cls: Math.round(shift * 1000) / 1000,
+            ms: Math.round(ms),
+          });
+        };
+        // A moment for what the editor's play starts to come in.
+        window.setTimeout(() => requestAnimationFrame(step), 300);
         return;
       }
       if (d.type === "refreshView") {

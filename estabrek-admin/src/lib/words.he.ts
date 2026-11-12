@@ -5258,4 +5258,7 @@ export const HE: Record<string, string> = {
   "It falls once it shows on the screen.": "הוא נופל כשהוא מופיע במסך.",
   "Works with the scroll.": "עובד עם הגלילה.",
   "With the pointer or a finger.": "עם הסמן או האצבע.",
+  "Checking speed…": "בודקים מהירות…",
+  "The page went back to the version before": "העמוד חזר לגרסה הקודמת",
+  "The page didn't go back": "העמוד לא חזר",
 };
