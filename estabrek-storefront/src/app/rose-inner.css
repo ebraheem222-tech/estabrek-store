@@ -26,7 +26,7 @@
   --selection-page: initial !important; --selection-surface: initial !important; --selection-soft: initial !important; --selection-line: initial !important;
   --selection-control-line: initial !important; --selection-ink: initial !important; --selection-muted: initial !important; --selection-accent: initial !important;
   --selection-dark: initial !important; --selection-decorative: initial !important; --selection-seed: initial !important; --selection-dye: initial !important;
-  --navbar-bg: initial !important; --navbar-ink: initial !important;
+  --navbar-bg: initial !important; --navbar-ink: initial !important; --selection-dye-paint: initial !important; --navbar-mesh: initial !important;
 }
 /* What the shell starts from, read again there: the same declarations as .cinematic-shell in cinematic.css. */
 .cinematic-interior-shell[data-color-scope="product"][data-storefront-color] :is(.atelier-announcement, .atelier-header, .atelier-footer, .atelier-mobile-menu),

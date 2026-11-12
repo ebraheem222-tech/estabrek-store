@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { addToMix, blendColours, meshBackground, recencyWeights } from "../src/lib/colourMix";
+import { addToMix, blendColours, dyePaint, dyeStops, meshBackground, recencyWeights } from "../src/lib/colourMix";
 
 // Mixing the shopper's colours (lib/colourMix.ts): colours tapped on the shop's cards blend into the store's
 // theme, the header wearing them as a gradient mesh; the small bag wears the colours of what's in it.
@@ -24,6 +24,38 @@ test("blends look right: mauve from rose and lilac, the newest weighs most, one 
   // The mix: the newest last, once; three at most.
   expect(addToMix([ROSE, LILAC], ROSE)).toEqual([LILAC, ROSE]);
   expect(addToMix([ROSE, LILAC, BERRY], "#111111")).toEqual([LILAC, BERRY, "#111111"]);
+  // The dyes: three stops for the scarf (the last repeated), a flowing paint for the pictures (none for one colour).
+  expect(dyeStops([ROSE])).toEqual([ROSE, ROSE, ROSE]);
+  expect(dyeStops([ROSE, LILAC])).toEqual([ROSE, LILAC, LILAC]);
+  expect(dyePaint([ROSE])).toBe("none");
+  expect(dyePaint([ROSE, LILAC, BERRY])).toBe(`linear-gradient(115deg, ${ROSE} 8%, ${LILAC} 50%, ${BERRY} 92%)`);
+});
+
+test("the whole page wears the mix: its background, the campaign photo and the film, and steps aside for a scene", async ({ page }) => {
+  const mix = [ROSE, LILAC, BERRY];
+  await page.addInitScript(([m, blend]) => {
+    localStorage.setItem("estabrek_theme_mix", JSON.stringify(m));
+    localStorage.setItem("estabrek_theme_color", blend);
+    localStorage.setItem("estabrek_theme_seen", String(Date.now()));
+  }, [mix, blendColours(mix)] as const);
+  await page.goto("/");
+  const shell = page.locator(".cinematic-shell");
+  await expect(shell).toHaveAttribute("data-colour-mix", mix.join(" "));
+  await expect(page.locator("html")).toHaveAttribute("data-colour-mix", mix.join(" "));
+  // The page: a light mesh behind everything, its own colour clear above it.
+  const layer = () => shell.evaluate((el) => { const s = getComputedStyle(el, "::before"); return { image: s.backgroundImage, opacity: s.opacity, position: s.position, page: getComputedStyle(el).backgroundColor }; });
+  await expect.poll(async () => (await layer()).image).toContain("radial-gradient");
+  expect(await layer()).toMatchObject({ position: "fixed", opacity: "1", page: "rgba(0, 0, 0, 0)" });
+  // The campaign photo's dye flows through the colours.
+  expect(await page.locator(".hero-campaign-tint").first().evaluate((el) => getComputedStyle(el).backgroundImage)).toContain("linear-gradient");
+  // The campaign film too.
+  const film = page.locator(".rose-video-dye").first();
+  await film.scrollIntoViewIfNeeded();
+  await expect.poll(() => film.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain("linear-gradient");
+  // A scene holding the page's colours: the mesh steps aside, the page's colour comes back.
+  await shell.evaluate((el) => { el.dataset.themeHeld = "true"; });
+  await expect.poll(async () => (await layer()).opacity).toBe("0");
+  expect((await layer()).page).not.toBe("rgba(0, 0, 0, 0)");
 });
 
 test("colours tapped on the shop's cards blend; the header wears them as a mesh; a second tap keeps one", async ({ page }) => {
@@ -44,6 +76,12 @@ test("colours tapped on the shop's cards blend; the header wears them as a mesh;
   await expect(shell).toHaveAttribute("data-colour-mix", `${ROSE} ${LILAC}`);
   await expect(shell).toHaveAttribute("data-storefront-color", mauve);
   await expect.poll(() => headerImage(page)).toContain("radial-gradient");
+  // The dyes are told the colours the store now wears.
+  const told = page.evaluate(() => new Promise<string[]>((resolve) => window.addEventListener("storefront-colours", (e) => resolve((e as CustomEvent<{ colours: string[] }>).detail.colours), { once: true })));
+  await tile("Rose").click();
+  expect(await told).toEqual([LILAC, ROSE]);
+  await tile("Lilac").click();
+  await expect(shell).toHaveAttribute("data-colour-mix", `${ROSE} ${LILAC}`);
 
   // The next page opens in the mix.
   await page.reload();

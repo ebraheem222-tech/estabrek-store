@@ -1,4 +1,5 @@
 "use client";
+import { COLOURS_EVENT, currentColours } from "@/lib/colourMix";
 import { readableOnLight } from "@/lib/colourEngine";
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
@@ -336,7 +337,7 @@ export function RoseHeroFilm({
     if (!el || !out || cutout === "off") return;
     const film = startFilmCutout(el, out, () => setCutout("off"));
     if (!film) { setCutout("off"); return; }
-    film.setTint(document.documentElement.dataset.storefrontColor ?? null);
+    film.setTints(currentColours());
     filmRef.current = film;
     // iPhones load no video data until it plays: start it for a moment (muted), then the
     // scroll takes over. Tried soon after load and again on her first touch or scroll.
@@ -350,13 +351,17 @@ export function RoseHeroFilm({
     const firstTouch = ["touchstart", "pointerdown", "scroll"] as const;
     const onFirst = () => { prime(); firstTouch.forEach((e) => window.removeEventListener(e, onFirst)); };
     firstTouch.forEach((e) => window.addEventListener(e, onFirst, { passive: true }));
-    const pick = (e: Event) => film.setTint((e as CustomEvent<string>).detail);
+    // A colour tapped on a card may blend with the last ones: the store's colours come right after (COLOURS_EVENT).
+    const pick = (e: Event) => { if (!(e as Event & { mix?: boolean }).mix) film.setTint((e as CustomEvent<string>).detail); };
+    const colours = (e: Event) => film.setTints((e as CustomEvent<{ colours: string[] }>).detail?.colours ?? null);
     // After a long break the shop's own colours return (RoseThemeProvider): the scarf too.
     const unpick = () => film.setTint(null);
     window.addEventListener("storefront-color-selected", pick);
+    window.addEventListener(COLOURS_EVENT, colours);
     window.addEventListener("storefront-color-reset", unpick);
     return () => {
       window.removeEventListener("storefront-color-selected", pick);
+      window.removeEventListener(COLOURS_EVENT, colours);
       window.removeEventListener("storefront-color-reset", unpick);
       window.clearTimeout(primeTimer);
       firstTouch.forEach((e) => window.removeEventListener(e, onFirst));

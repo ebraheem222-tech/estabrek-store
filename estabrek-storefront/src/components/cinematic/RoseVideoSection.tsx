@@ -1,4 +1,5 @@
 "use client";
+import { COLOURS_EVENT, blendColours, currentColours, dyePaint } from "@/lib/colourMix";
 import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
@@ -55,7 +56,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   const [playback, setPlayback] = useState<Playback>("paused");
   // The fabric takes the shopper's colour (none picked: its own rose).
   // The last colour is kept while the dye fades out, so it does not jump to clear.
-  const [dye, setDye] = useState<{ color: string | null; on: boolean }>({ color: null, on: false });
+  const [dye, setDye] = useState<{ color: string | null; on: boolean; paint?: string }>({ color: null, on: false });
   const isDefault = data.url === defaultCampaignVideo.url;
   const poster = data.posterUrl || defaultCampaignVideo.posterUrl;
 
@@ -64,20 +65,31 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       const c = document.documentElement.dataset.storefrontColor;
       return c && HEX.test(c) && !isNearWhite(c) ? c : null;
     };
-    const now = read();
-    if (now) setDye({ color: now, on: true });
+    // A mix of colours (tapped on the shop's cards): the fabric is dyed in their flow, deepened as their blend.
+    const wear = (colours: string[]) => {
+      const dyed = colours.filter((c) => HEX.test(c) && !isNearWhite(c));
+      if (!dyed.length) { setDye((d) => ({ ...d, on: false })); return; }
+      const paint = dyePaint(dyed);
+      setDye({ color: dyed.length > 1 ? blendColours(dyed) : dyed[0], on: true, paint: paint === "none" ? undefined : paint });
+    };
+    const now = currentColours();
+    if (now.length) wear(now);
+    else if (read()) setDye({ color: read(), on: true });
     const pick = (e: Event) => {
       const c = (e as CustomEvent<string>).detail;
-      if (typeof c !== "string" || !HEX.test(c)) return;
+      if (typeof c !== "string" || !HEX.test(c) || (e as Event & { mix?: boolean }).mix) return;
       // White/ivory would only wash the fabric out to grey: it keeps its own rose.
       if (isNearWhite(c)) setDye((d) => ({ ...d, on: false }));
       else setDye({ color: c, on: true });
     };
+    const colours = (e: Event) => wear((e as CustomEvent<{ colours: string[] }>).detail?.colours ?? []);
     const reset = () => setDye((d) => ({ ...d, on: false }));
     window.addEventListener("storefront-color-selected", pick);
+    window.addEventListener(COLOURS_EVENT, colours);
     window.addEventListener("storefront-color-reset", reset);
     return () => {
       window.removeEventListener("storefront-color-selected", pick);
+      window.removeEventListener(COLOURS_EVENT, colours);
       window.removeEventListener("storefront-color-reset", reset);
     };
   }, []);
@@ -220,7 +232,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
               className={layer}
               aria-hidden="true"
               data-on={dye.on ? "true" : undefined}
-              style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": deepen(dye.color) } as CSSProperties) : undefined}
+              style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": deepen(dye.color), ...(dye.paint ? { "--video-dye-paint": dye.paint } : {}) } as CSSProperties) : undefined}
             />
           ))}
           {showButton && (

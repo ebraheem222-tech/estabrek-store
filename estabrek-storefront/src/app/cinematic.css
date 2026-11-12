@@ -789,6 +789,8 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   z-index: 1;
   pointer-events: none;
   background-color: var(--selection-dye, transparent);
+  /* A mix of colours flows across the photo (RoseThemeProvider's --selection-dye-paint). */
+  background-image: var(--selection-dye-paint, none);
   mix-blend-mode: color;
   opacity: .88;
   -webkit-mask: url("/editorial/hijab-campaign-tint-mask.png") center 8% / cover no-repeat;
@@ -3144,7 +3146,7 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
 .rose-video-media { isolation: isolate; }
 .rose-video-dye {
   position: absolute; inset: 0; pointer-events: none; /* above the video, below the play button (page order) */
-  background-color: var(--video-dye, transparent); mix-blend-mode: color;
+  background-color: var(--video-dye, transparent); background-image: var(--video-dye-paint, none); mix-blend-mode: color;
   opacity: 0; transition: opacity .9s ease, background-color .9s ease;
 }
 .rose-video-dye[data-on] { opacity: .85; }

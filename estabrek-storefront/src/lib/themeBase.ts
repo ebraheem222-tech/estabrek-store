@@ -28,6 +28,8 @@ export function claimTheme(shell: HTMLElement, owner: string, keys: string[]) {
   if (owner !== "preview" && state.owners.delete("preview")) delete shell.dataset.themePreview;
   state.owners.add(owner);
   state.restoring = false;
+  // CSS: the page's own colour layers (the mixed colours' mesh) step aside while a scene holds the colours.
+  shell.dataset.themeHeld = "true";
 }
 
 /** True while `owner` holds the colours of this shell. */
@@ -62,6 +64,7 @@ export function releaseTheme(
   const state = states.get(shell);
   if (!state || !state.owners.delete(owner)) return;
   if (state.owners.size) return; // another scene still has the stage; it will give the colours back
+  delete shell.dataset.themeHeld;
   if (shell.ownerDocument.documentElement.hasAttribute("data-visual-theme")) { state.restoring = false; onComplete?.(); return; }
   state.restoring = true;
   tweenThemeBack(shell, restingColours(shell, state.base), {
@@ -79,5 +82,8 @@ export function dropTheme(shell: HTMLElement, owner: string) {
   const state = states.get(shell);
   if (!state) return;
   state.owners.delete(owner);
-  if (!state.owners.size) state.restoring = false;
+  if (!state.owners.size) {
+    state.restoring = false;
+    delete shell.dataset.themeHeld;
+  }
 }
