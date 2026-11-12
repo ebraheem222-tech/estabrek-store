@@ -1,7 +1,11 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { RoseCart, type CartLayoutParts, type RoseCartProps } from "@/components/cinematic/RoseCart";
+import { earlyFrom } from "@/lib/earlyPart";
+import type { CartLayoutParts, RoseCartProps } from "@/components/cinematic/RoseCart";
+// The cart page itself, a script of its own: only a page with a cart loads it (this file is reached from every page;
+// homeScenes.tsx and lib/earlyPart.ts say why).
+const RoseCart = earlyFrom("pageTree/CommerceCart.tsx")("@/components/cinematic/RoseCart", () => import("@/components/cinematic/RoseCart").then((m) => m.RoseCart));
 import { tr } from "@/lib/words";
 import type { TreeLang } from "./tree";
 

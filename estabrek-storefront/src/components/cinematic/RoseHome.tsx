@@ -13,8 +13,8 @@ import {
   RoseCta,
   RoseInstagram,
 } from "./RoseSections";
-import { RoseSeasons } from "./RoseSeasons";
-import { RoseCollectionStory } from "./RoseCollectionStory";
+// The seasons and the collection worlds, scripts of their own (homeScenes.tsx says why).
+import { RoseCollectionStory, RoseSeasons } from "./homeScenes";
 import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
 import { RoseHomeStack } from "./RoseHomeStack";
 import { cldUrl } from "@/lib/cloudinary";

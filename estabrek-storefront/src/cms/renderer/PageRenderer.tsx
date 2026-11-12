@@ -1,9 +1,5 @@
 import React from "react";
-import HeroSlider from "./HeroSlider";
-import NewsletterForm from "@/components/NewsletterForm";
-import { FormSection } from "./sections/FormSection";
 import { ComponentsRenderer } from "./ComponentsRenderer";
-import { TypewriterText } from "@/components/effects/TypewriterText";
 import { LoadingImg } from "@/components/LoadingImg";
 import { baseUrl } from "@/lib/serverBaseUrl";
 import type { CmsSection, PageSectionType, ProductMini } from "../types";
@@ -35,16 +31,15 @@ import type {
 } from "../sectionTypes";
 import { SectionDecorations } from "@/cms/decorations/DecorationLayer";
 import { AnimatedShapeLayer } from "@/cms/animated-shapes/AnimatedShapeLayer";
-import { SpotlightContainer } from "@/cms/spotlight-themes";
 import type { DecorLayer, TwTokens } from "@/cms/style/tokens";
 import { DECOR_PRESETS } from "@/cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 import { getDividerById } from "@/cms/style/containerStyles";
 
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
-import { HeroRenderer, ContactFormRenderer, FeatureRenderer, PricingRenderer, SliderRenderer } from "./NativeThemeRenderers";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
-import { StreamVideo } from "@/components/StreamVideo";
+// The older sections' client parts, scripts of their own (lazySections.tsx says why).
+import { ContactFormRenderer, FeatureRenderer, FormSection, HeroRenderer, HeroSlider, NewsletterForm, PricingRenderer, SliderRenderer, SpotlightContainer, StreamVideo, TypewriterText } from "./lazySections";
 import { TreeNodeView } from "@/pageTree/TreeNodeView";
 import { OverlayLayer } from "@/pageTree/OverlayLayer";
 

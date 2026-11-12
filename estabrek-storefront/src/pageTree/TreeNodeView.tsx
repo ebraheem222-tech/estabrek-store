@@ -4,7 +4,6 @@
  * file only builds the markup. Links to the shop's own pages get the language
  * prefix; links and file addresses are checked again before they're used.
  */
-import ProductDetail from "@/components/ProductDetail";
 import type { CatalogProduct } from "@/lib/catalog";
 import { cloneElement, isValidElement, type CSSProperties, type ReactNode } from "react";
 import type { ProductMini } from "@/cms/types";
@@ -12,7 +11,6 @@ import type { CatalogCategory } from "@/lib/catalog";
 import { withLang, type LangConfig } from "@/lib/i18n";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
 import type { StoryChapter } from "@/lib/collectionStories";
-import dynamic from "next/dynamic";
 import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
 import { richNodes } from "./rich";
@@ -21,36 +19,27 @@ import { ArtView, safeArt } from "./svgArt";
 import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
-import { SceneView } from "./SceneView";
 import { model3dOf } from "./model3d";
-import { Model3dSpot } from "./Model3dSpot";
 import { BlockView, WORDS as BLOCK_WORDS } from "./blocks";
-import { PopupView } from "./Interactive";
-import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
-import { SliderControls, type SliderWords } from "./SliderControls";
+import type { SliderWords } from "./SliderControls";
 import { sliderSettings, sliderLooksOf } from "./sliderEffects";
-import { InstrumentView } from "./InstrumentView";
 import { instrumentOf } from "./instrument";
 import { ChartView } from "./ChartView";
-import { ClockView } from "./ClockView";
 import { FilterGalleryBlock } from "./FilterGalleryBlock";
-import { ScheduleView, ComparisonView } from "./ReferenceDataViews";
 import { scheduleOf, comparisonOf } from "./referenceData";
-import { DeckView } from "./DeckView";
 import { showcaseOf } from "./showcase";
-import { ShowcaseView } from "./ShowcaseView";
 import { StableWidgetView } from "./StableWidgetView";
 import { nodeEdges, withDecoration } from "./NodeDecorations";
 import { CommerceCartPart } from "./CommerceCart";
-import { CommerceShop, type CommerceShopData } from "./CommerceShop";
+import type { CommerceShopData } from "./CommerceShop";
 import { CardDesignScope } from "@/components/VisualControlsProvider";
 import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
-// The home's two scenes, scripts of their own loaded only where a page shows them (imported directly, every page
-// drawn from a tree loaded them, and Razan with them).
-const RoseSeasons = dynamic(() => import("@/components/cinematic/RoseSeasons").then((m) => m.RoseSeasons));
-const RoseCollectionStory = dynamic(() => import("@/components/cinematic/RoseCollectionStory").then((m) => m.RoseCollectionStory));
+// The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
+// them (lazyParts.tsx says why).
+import { ClockView, CommerceShop, ComparisonView, DeckView, InstrumentView, Model3dSpot, PopupView, ProductDetail, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
+import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 
 export type TreeCtx = {
   lang: TreeLang;

@@ -13,13 +13,13 @@ import { fontFaces, themePalette } from "../css";
 import { SIGNATURES } from "../dna/signatures";
 import type { StageOptions } from "../three/kinds";
 import type { StoreTheme } from "../types";
-import { ThemeHero } from "./heroes";
-import { DesignOpening, LEADS_WITH } from "./openings";
-import { DesignSignature } from "./signatures";
-import { StageHero } from "./StageHero";
+import { LEADS_WITH } from "./openingLeads";
+// Its client parts, scripts of their own (lazyHome.tsx says why).
+import { DesignOpening, DesignSignature, StageHero, ThemeHero } from "./lazyHome";
 import { OverlayLayer } from "@/pageTree/OverlayLayer";
 import { marqueeWords } from "../words";
-import { ThCollections, ThCta, ThDivider, ThFaq, ThMarquee, ThPanel, ThProducts, ThTestimonials, ThVideo, type ThProduct } from "./sections";
+import type { ThProduct } from "./sections";
+import { ThCollections, ThCta, ThDivider, ThFaq, ThMarquee, ThPanel, ThProducts, ThTestimonials, ThVideo } from "./lazyHome";
 
 const QUIET = new Set(["minimal", "story", "bento", "split", "recipe", "spec", "gallery"]);
 const PRODUCT_TYPES = ["NEW_ARRIVALS_SLIDER", "BEST_SELLERS_SLIDER", "FEATURED_PRODUCTS", "PRODUCTS_GRID", "PRODUCT_GRID", "PRODUCTS"];

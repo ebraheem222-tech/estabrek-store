@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import dynamic from "next/dynamic";
 import type { CmsSection, ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { CmsPageRenderer } from "@/cms";
@@ -27,19 +26,8 @@ import {
 } from "./RoseSections";
 import type { StoryChapter } from "@/lib/collectionStories";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
-/*
- * The home's scenes, each a script of its own that only the home loads (still drawn on the server). Imported
- * directly here, they went into every page drawn through renderCmsPage, the cart and a product page too: about
- * 650 KB of script (gzipped) on every page, measured 2026-11-12.
- */
-const RoseVideoSection = dynamic(() => import("./RoseVideoSection").then((m) => m.RoseVideoSection));
-const RoseParticles = dynamic(() => import("./RoseParticles").then((m) => m.RoseParticles));
-const RoseRooms = dynamic(() => import("./RoseRooms").then((m) => m.RoseRooms));
-const RoseWorld = dynamic(() => import("./RoseWorld").then((m) => m.RoseWorld));
-const RosePageHero = dynamic(() => import("./RosePageHero").then((m) => m.RosePageHero));
-const RoseStoryMode = dynamic(() => import("./RoseStoryMode").then((m) => m.RoseStoryMode));
-const RoseSeasons = dynamic(() => import("./RoseSeasons").then((m) => m.RoseSeasons));
-const RoseCollectionStory = dynamic(() => import("./RoseCollectionStory").then((m) => m.RoseCollectionStory));
+// The home's scenes, scripts of their own that only the home loads (homeScenes.tsx says why).
+import { RoseCollectionStory, RosePageHero, RoseParticles, RoseRooms, RoseSeasons, RoseStoryMode, RoseVideoSection, RoseWorld } from "./homeScenes";
 
 export function RoseCmsHome({
   sections,
