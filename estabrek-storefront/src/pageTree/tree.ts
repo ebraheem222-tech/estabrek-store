@@ -294,12 +294,12 @@ export const TREE_TRANSFORM_REST =
 /** The look's own variables the editor may preview live in its frame (before saving). */
 export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s", "--pt-x", "--pt-y", "--pt-ovo"] as const;
 
-/** Whether a picture or clip is drawn inside a frame (for a colour layer, an animated layer or a zoom on hover). */
+/** Whether a picture or clip is drawn inside a frame (for a colour layer, an animated layer, a zoom on hover or stars). */
 export function framed(n: TreeNode, motion = motionOf(n)): boolean {
   if (n.type !== "image" && n.type !== "video") return false;
   const s = n.style ?? {};
   const pieces = Boolean(n.props?.layers?.before || n.props?.layers?.after || motion?.keys?.parts.before || motion?.keys?.parts.after || motion?.keys?.parts.inner);
-  return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom" || pieces);
+  return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom" || pieces || (n.type === "image" && n.props?.sparkle?.points?.length));
 }
 
 const NO_ODD = /^[^\s<>"'`\\]+$/;

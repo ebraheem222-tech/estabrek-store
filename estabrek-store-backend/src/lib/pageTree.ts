@@ -590,7 +590,20 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `rich`: the words carry a little formatting ([b]…[/b], [link=/shop]…[/link]: the shop's pageTree/rich.ts).
   heading: z.object({ text: local(300), level: z.number().int().min(1).max(6).default(2), rich: z.boolean().optional() }),
   text: z.object({ text: local(5000), rich: z.boolean().optional() }),
-  image: z.object({ src, alt: local(200).optional(), href: href.optional() }),
+  image: z.object({
+    src, alt: local(200).optional(), href: href.optional(),
+    // Sparkling stars on it (the editor's focus mode finds the picture's corners, edges and highlights, or they're
+    // placed by hand): where (fractions of the picture), their drawing, colour, size, speed and when they twinkle.
+    sparkle: z.object({
+      points: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), s: z.number().min(0.2).max(3).optional() })).min(1).max(80),
+      shape: z.enum(["glint", "star", "flare", "cross"]).optional(),
+      color: z.union([z.string().regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i), z.enum(["accent", "accent-soft", "text", "white"])]).optional(),
+      size: z.number().min(4).max(64).optional(),
+      speed: z.number().min(0.3).max(6).optional(),
+      when: z.enum(["always", "hover", "few"]).optional(),
+      glow: z.boolean().optional(),
+    }).optional(),
+  }),
   button: z.object({ label: local(120), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional(), rich: z.boolean().optional() }),
   video: z.object({
     src,

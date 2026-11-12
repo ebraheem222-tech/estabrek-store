@@ -105,6 +105,9 @@ import { focusView, sameView, viewAt, type View } from "./focus/focusView";
 import { FocusBar, FocusMask, FocusParts, type Crumb } from "./focus/FocusChrome";
 import { MorphSettings, SvgPartPanel, type Morph } from "./focus/SvgPartPanel";
 import { PathHandles, compose } from "./focus/PathHandles";
+import { SparklePanel } from "./focus/SparklePanel";
+import { SparkleHandles } from "./focus/SparkleHandles";
+import type { Sparkle } from "../../../shared/sparkle";
 import { withArtAttrs } from "./focus/focusKinds";
 import type { Matrix } from "./focus/pathData";
 import { SectionObjectsPanel } from "./SectionObjectsPanel";
@@ -307,6 +310,11 @@ function StudioDocument() {
   const [artInfo, setArtInfo] = useState<{ nodeId: string; parts: Array<{ id: string; tag: string; rect: Box; ctm: Matrix | null; box: Box }> } | null>(null);
   const artPick = useRef<{ requestId: string; done: (part: string | null) => void } | null>(null);
   const artSeq = useRef(0);
+  // A picture's sparkling stars in focus mode: the frame's search for their places, what it said, and the pen.
+  const sparkleWait = useRef<{ requestId: string; done: (points: Array<{ x: number; y: number; s?: number }> | null, problem?: string) => void } | null>(null);
+  const [sparkleFinding, setSparkleFinding] = useState(false);
+  const [sparkleNote, setSparkleNote] = useState<string | null>(null);
+  const [sparklePen, setSparklePen] = useState(false);
   const history = useRef(new History());
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const latest = useRef<PagesAPI.PageDraft | null>(null);
@@ -411,6 +419,14 @@ function StudioDocument() {
         if (wait && m.requestId === wait.requestId) {
           artPick.current = null;
           wait.done(typeof m.part === "string" ? m.part : null);
+        }
+      } else if (d.type === "sparkleFound") {
+        const m = d as unknown as { requestId?: unknown; points?: unknown; problem?: unknown };
+        const wait = sparkleWait.current;
+        if (wait && m.requestId === wait.requestId) {
+          sparkleWait.current = null;
+          const points = Array.isArray(m.points) ? (m.points as Array<{ x: number; y: number; s?: number }>).filter((p) => p && typeof p.x === "number" && typeof p.y === "number").slice(0, 80) : null;
+          wait.done(points, typeof m.problem === "string" ? m.problem : undefined);
         }
       } else if (d.type === "viewUpdated") {
         pointSelection.current.cancel();
@@ -818,6 +834,16 @@ function StudioDocument() {
     if (focus && e.button === 0 && !panMode && inFrame(p)) {
       const fb = shapeOf(focus.id)?.box;
       if (fb && (p.x < fb.x - 6 || p.x > fb.x + fb.w + 6 || p.y < fb.y - 6 || p.y > fb.y + fb.h + 6)) closeFocus();
+      else if (fb && sparklePen && index?.nodes.get(focus.id)?.node.type === "image") {
+        const n = index.nodes.get(focus.id)!.node;
+        const props = (n.props ?? {}) as Record<string, unknown>;
+        const was = (props.sparkle as Sparkle | undefined) ?? { points: [] };
+        if (was.points.length < 80) {
+          const at = { x: Math.round(((p.x - fb.x) / fb.w) * 1000) / 1000, y: Math.round(((p.y - fb.y) / fb.h) * 1000) / 1000 };
+          if (at.x >= 0 && at.x <= 1 && at.y >= 0 && at.y <= 1) void change(say("نجمة جديدة|A new star|כוכב חדש"), [{ op: "setProps", nodeId: n.id, props: { ...props, sparkle: { ...was, points: [...was.points, at] } } }]);
+        }
+        return;
+      }
       else if (fb && focusArt && index) {
         // Inside an open drawing a click picks its shape (the frame knows which is under the point).
         const art = focusArt;
@@ -2202,6 +2228,34 @@ function StudioDocument() {
         {target.type === "heading" || target.type === "text" ? <TextStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
         {target.type === "icon" ? <TextStylePanel node={target} screen={screen} busy={busy} onOps={onOps} only={["iconSize", "size", "color", "align"]} /> : null}
         {target.type === "button" ? <ButtonStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
+        {target.type === "image" ? (
+          <SparklePanel
+            node={target} busy={busy} onOps={onOps} finding={sparkleFinding} note={sparkleNote} pen={sparklePen} onPen={setSparklePen}
+            chosen={target.id === focus.id ? focus.part?.id ?? null : null}
+            onFind={(ask) => {
+              const requestId = `sp${++artSeq.current}`;
+              setSparkleFinding(true);
+              setSparkleNote(null);
+              sparkleWait.current = {
+                requestId,
+                done: (points, problem) => {
+                  setSparkleFinding(false);
+                  if (!points) {
+                    setSparkleNote(problem === "unreadable"
+                      ? say("الصورة من مكان ما بيسمح نقرا ألوانها: حط النجوم بالكبس.|This picture comes from a place that doesn't let its colours be read: place the stars with clicks.|לא ניתן לקרוא את התמונה: הצב כוכבים בלחיצות.")
+                      : say("ما لقينا الصورة بالصفحة.|The picture wasn't found on the page.|התמונה לא נמצאה בעמוד."));
+                    return;
+                  }
+                  if (!points.length) return setSparkleNote(say("ما لقينا أماكن واضحة. جرّب «الكل» أو بعد أقل.|No clear places found. Try «All» or less space between them.|לא נמצאו מקומות ברורים."));
+                  setSparkleNote(`${say("لقينا|Found|נמצאו")} ${points.length}`);
+                  const props = (target.props ?? {}) as Record<string, unknown>;
+                  void change(say("نجوم براقة|Sparkling stars|כוכבים נוצצים"), [{ op: "setProps", nodeId: target.id, props: { ...props, sparkle: { ...((props.sparkle as Sparkle | undefined) ?? {}), points } } }]);
+                },
+              };
+              send({ type: "sparkleFind", requestId, nodeId: target.id, ...ask });
+            }}
+          />
+        ) : null}
         {target.type === "image" || target.type === "video" || target.type === "slider" ? <MediaStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
         {target.type === "video" ? <VideoOverlayPanel node={target} screen={screen} busy={busy} onOps={onOps} onPreview={(vars) => send({ type: "previewLook", nodeId: target.id, vars })} /> : null}
         {target.type === "model3d" ? <Model3dPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
@@ -2224,7 +2278,7 @@ function StudioDocument() {
     );
   };
   const FOCUS_EMPTY: Record<string, string> = {
-    image: "محرّر الصورة الكامل جاي: قص، ألوان، طبقات ونجوم براقة.|The full picture editor is coming: crop, colours, layers and sparkles.|עורך התמונה המלא בדרך: חיתוך, צבעים, שכבות ונצנוצים.",
+    image: "لسا ما في نجوم: دوّر على أماكنها بالصورة، أو شغّل القلم وكبّس عليها.|No stars yet: find their places in the picture, or turn the pen on and click it.|אין עדיין כוכבים: מצא מקומות או הפעל את העט ולחץ.",
     video: "محرّر الفيديو الكامل جاي: مسار زمني وقص ونصوص.|The full video editor is coming: a timeline, cuts and words.|עורך הווידאו המלא בדרך: ציר זמן, חיתוכים ומילים.",
     model: "أجزاء المجسّم وموادّه جاية.|The model's parts and materials are coming.|חלקי המודל והחומרים שלו בדרך.",
     text: "النص قطعة وحدة: اكتب عليه بالصفحة.|Text is one piece: write on it in the page.|טקסט הוא חלק אחד: כותבים עליו בעמוד.",
@@ -3347,6 +3401,26 @@ function StudioDocument() {
             </div>
           </div>
           {focus ? <FocusMask box={shapeOf(focus.id)?.box ?? null} area={canvas} /> : null}
+          {(() => {
+            const n = focus ? nodeOf(focus.id) : undefined;
+            const sp = n?.type === "image" ? ((n.props as Record<string, unknown> | undefined)?.sparkle as Sparkle | undefined) : undefined;
+            const fb = n ? shapeOf(n.id)?.box : undefined;
+            if (!n || !sp?.points?.length || !fb) return null;
+            const props = (n.props ?? {}) as Record<string, unknown>;
+            const chosenStar = focus?.part && /^s\d+$/.test(focus.part.id) ? Number(focus.part.id.slice(1)) : null;
+            return (
+              <SparkleHandles
+                box={fb} points={sp.points} chosen={chosenStar} busy={busy}
+                onPick={(i) => setFocus((f) => (f ? { ...f, part: { id: `s${i}`, kind: "star", depth: 0, label: `${say("نجمة|Star|כוכב")} ${i + 1}` } } : f))}
+                onMove={(i, at) => void change(say("تحريك نجمة|Move a star|הזזת כוכב"), [{ op: "setProps", nodeId: n.id, props: { ...props, sparkle: { ...sp, points: sp.points.map((x, j) => (j === i ? { ...x, ...at } : x)) } } }])}
+                onRemove={(i) => {
+                  const points = sp.points.filter((_, j) => j !== i);
+                  setFocus((f) => (f ? { ...f, part: null } : f));
+                  void change(say("شيل نجمة|Remove a star|הסרת כוכב"), [{ op: "setProps", nodeId: n.id, props: { ...props, sparkle: points.length ? { ...sp, points } : undefined } }]);
+                }}
+              />
+            );
+          })()}
           {focusArt && artInfo?.nodeId === focusArt && layout ? (
             <div className="pointer-events-none absolute overflow-hidden" style={{ left: frameBox.x, top: frameBox.y, width: frameBox.w, height: frameBox.h }} data-testid="studio-art-parts">
               {artInfo.parts.filter((x) => x.tag !== "g").map((x) => {

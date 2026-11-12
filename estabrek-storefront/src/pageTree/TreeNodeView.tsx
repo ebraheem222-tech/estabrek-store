@@ -16,6 +16,8 @@ import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSli
 import { richNodes } from "./rich";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt, safeMorph } from "./svgArt";
+import { SparkleLayer } from "./sparkles";
+import { safeSparkle } from "../../../shared/sparkle";
 import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
@@ -225,11 +227,14 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "image": {
       const src = safeSrc(p.src);
       if (!src) return null;
+      // Sparkling stars over it (focus mode, shared/sparkle.ts), drawn here and twinkling in CSS.
+      const sparkle = safeSparkle(p.sparkle);
       const img = framed(node, motion) ? (
         <span className={cls(node, "pt-frame")} {...mark}>
           {before}
           <img className="pt-frame-media" src={src} alt={say(p.alt)} loading="lazy" decoding="async" />
           {fx}
+          {sparkle ? <SparkleLayer sparkle={sparkle} /> : null}
           {after}
         </span>
       ) : (

@@ -724,6 +724,48 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         }
         return;
       }
+      // Sparkling stars (focus mode on a picture): the picture's pixels read here (same place as the page, so they can
+      // be read), its corners, edges or highlights found (shared/sparkle.ts, a script of its own), and moved to where
+      // the picture shows them in its box.
+      if (d.type === "sparkleFind" && e.source === window.parent) {
+        const v = e.data as { requestId?: unknown; nodeId?: unknown; mode?: unknown; count?: unknown; spread?: unknown; productOnly?: unknown };
+        if (typeof v.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.requestId) || typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId)) return;
+        const requestId = v.requestId;
+        const img = document.querySelector<HTMLImageElement>(`img[data-tree-node="${v.nodeId}"], [data-tree-node="${v.nodeId}"] img`);
+        if (!img) {
+          send({ type: "sparkleFound", requestId, points: null, problem: "noPicture" });
+          return;
+        }
+        void (async () => {
+          try {
+            const { findSparkles, toShownBox } = await import("../../../shared/sparkle");
+            const pic = new Image();
+            pic.crossOrigin = "anonymous";
+            pic.src = img.currentSrc || img.src;
+            await pic.decode();
+            const k = Math.min(1, 320 / Math.max(pic.naturalWidth, pic.naturalHeight));
+            const w = Math.max(3, Math.round(pic.naturalWidth * k)), h = Math.max(3, Math.round(pic.naturalHeight * k));
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const g = canvas.getContext("2d", { willReadFrequently: true });
+            if (!g) throw new Error("no canvas");
+            g.drawImage(pic, 0, 0, w, h);
+            const mode = ["corners", "edges", "highlights", "all"].includes(v.mode as string) ? (v.mode as "all") : "all";
+            const found = findSparkles(g.getImageData(0, 0, w, h).data, w, h, {
+              mode, count: typeof v.count === "number" ? v.count : 18, spread: typeof v.spread === "number" ? v.spread : 0.06, productOnly: v.productOnly === true,
+            });
+            const cs = getComputedStyle(img), r = img.getBoundingClientRect();
+            const pos = cs.objectPosition.split(/\s+/).map((x) => (x.endsWith("%") ? parseFloat(x) / 100 : 0.5));
+            const points = toShownBox(found, { w: pic.naturalWidth, h: pic.naturalHeight }, { w: r.width, h: r.height }, cs.objectFit, { x: pos[0] ?? 0.5, y: pos[1] ?? 0.5 });
+            send({ type: "sparkleFound", requestId, points });
+          } catch {
+            // A picture from elsewhere that doesn't let its pixels be read: the stars are placed by hand.
+            send({ type: "sparkleFound", requestId, points: null, problem: "unreadable" });
+          }
+        })();
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);
