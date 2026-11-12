@@ -1,5 +1,5 @@
 "use client";
-import { COLOURS_EVENT, blendColours, currentColours, dyePaint } from "@/lib/colourMix";
+import { COLOURS_EVENT, blendColours, currentColours, dyeDepth, dyePaint } from "@/lib/colourMix";
 import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
@@ -23,16 +23,6 @@ export const defaultCampaignVideo: VideoData = {
 
 type Playback = "paused" | "playing" | "blocked" | "error" | "scrubbing";
 const HEX = /^#[0-9a-f]{6}$/i;
-/**
- * How much to deepen the fabric for a dark colour: the "color" blend alone keeps
- * the rose fabric's brightness, so navy came out pale lavender. A dark pick also
- * gets a multiply layer, a light pick none.
- */
-function deepen(hex: string) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((n) => (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4));
-  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return Math.max(0, Math.min(0.6, ((0.55 - l) / 0.55) * 0.6)).toFixed(2);
-}
 
 /**
  * Campaign clip. With motion allowed, the section holds while scrolling and the
@@ -232,7 +222,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
               className={layer}
               aria-hidden="true"
               data-on={dye.on ? "true" : undefined}
-              style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": deepen(dye.color), ...(dye.paint ? { "--video-dye-paint": dye.paint } : {}) } as CSSProperties) : undefined}
+              style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": dyeDepth(dye.color), ...(dye.paint ? { "--video-dye-paint": dye.paint } : {}) } as CSSProperties) : undefined}
             />
           ))}
           {showButton && (

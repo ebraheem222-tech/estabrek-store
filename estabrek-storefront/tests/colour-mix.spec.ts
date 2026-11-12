@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import { addToMix, blendColours, dyePaint, dyeStops, meshBackground, recencyWeights } from "../src/lib/colourMix";
+import { addToMix, blendColours, deepInk, dyePaint, dyeStops, flowPaint, hexToOklab, meshBackground, recencyWeights } from "../src/lib/colourMix";
+import { mixPaints } from "../src/lib/mixPaints";
 
 // Mixing the shopper's colours (lib/colourMix.ts): colours tapped on the shop's cards blend into the store's
 // theme, the header wearing them as a gradient mesh; the small bag wears the colours of what's in it.
@@ -31,6 +32,32 @@ test("blends look right: mauve from rose and lilac, the newest weighs most, one 
   expect(dyePaint([ROSE, LILAC, BERRY])).toBe(`linear-gradient(115deg, ${ROSE} 8%, ${LILAC} 50%, ${BERRY} 92%)`);
 });
 
+test("every mix makes readable paints: buttons in each colour's button colour, headings in their deep versions", () => {
+  // Up to four colours flow, evenly; the same colour twice is one.
+  expect(flowPaint([ROSE, LILAC, BERRY, "#214364"], 170)).toBe(`linear-gradient(170deg, ${ROSE} 8%, ${LILAC} 36%, ${BERRY} 64%, #214364 92%)`);
+  expect(flowPaint([ROSE, ROSE])).toBe("none");
+  // Deep ink: a light pick goes deep enough to read, keeping its hue; dark ones stay themselves.
+  const luminance = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((n) => (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)).reduce((sum, n, i) => sum + n * [0.2126, 0.7152, 0.0722][i], 0);
+  for (const light of ["#f48b90", "#cbf0ff", "#ffffff", "#deceb2"]) {
+    const ink = deepInk(light);
+    expect(hexToOklab(ink).L).toBeLessThan(0.405); // 0.4, give or take the hex's rounding
+    // At least 6:1 on white.
+    expect(1.05 / (luminance(ink) + 0.05)).toBeGreaterThan(6);
+  }
+  expect(deepInk("#000000")).toBe("#000000");
+  expect(deepInk("#0a0e19")).toBe("#0a0e19");
+  const pinkHue = Math.atan2(hexToOklab("#f48b90").b, hexToOklab("#f48b90").a), deepHue = Math.atan2(hexToOklab(deepInk("#f48b90")).b, hexToOklab(deepInk("#f48b90")).a);
+  expect(Math.abs(pinkHue - deepHue)).toBeLessThan(0.15);
+  // The real store's colours, light and dark, two and three: all four paints.
+  for (const mix of [["#214364", "#4b1d2d"], ["#f48b90", "#cbf0ff"], ["#166353", "#b67d5a", "#450a21"], ["#deceb2", "#151515"], ["#000000", "#ffffff"]]) {
+    const paints = mixPaints(mix);
+    expect(Object.keys(paints).sort()).toEqual(["--mix-accent-paint", "--mix-decor-paint", "--mix-ink-paint", "--mix-soft-paint"]);
+    expect(paints["--mix-accent-paint"]).toMatch(/^linear-gradient\(115deg/);
+    expect(paints["--mix-ink-paint"]).toMatch(/^linear-gradient\(170deg/);
+    expect(paints["--mix-soft-paint"]).toContain("radial-gradient");
+  }
+});
+
 test("the whole page wears the mix: its background, the campaign photo and the film, and steps aside for a scene", async ({ page }) => {
   const mix = [ROSE, LILAC, BERRY];
   await page.addInitScript(([m, blend]) => {
@@ -52,10 +79,23 @@ test("the whole page wears the mix: its background, the campaign photo and the f
   const film = page.locator(".rose-video-dye").first();
   await film.scrollIntoViewIfNeeded();
   await expect.poll(() => film.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain("linear-gradient");
-  // A scene holding the page's colours: the mesh steps aside, the page's colour comes back.
+  // Buttons are filled with the colours flowing, big headings are written in them, the footer wears a soft mesh.
+  const button = page.locator(".cinematic-shell .atelier-button.button-dark").first();
+  const fill = () => button.evaluate((el) => getComputedStyle(el).backgroundImage);
+  await expect.poll(fill).toContain("linear-gradient(115deg");
+  const heading = page.locator(".rose-video-copy > h2").first();
+  expect(await heading.evaluate((el) => { const s = getComputedStyle(el); return { image: s.backgroundImage.slice(0, 22), clip: s.backgroundClip || s.getPropertyValue("-webkit-background-clip"), fill: s.webkitTextFillColor }; }))
+    .toEqual({ image: "linear-gradient(170deg", clip: "text", fill: "rgba(0, 0, 0, 0)" });
+  expect(await page.locator(".atelier-footer").evaluate((el) => getComputedStyle(el).backgroundImage)).toContain("radial-gradient");
+  // The floating buttons outside the shell too, and the paints are on the page for them.
+  expect(await page.locator("html").evaluate((el) => el.style.getPropertyValue("--mix-accent-paint"))).toContain("linear-gradient");
+  // A scene holding the page's colours: the mesh steps aside, the page's colour comes back, and so do the
+  // buttons' and headings' own colours.
   await shell.evaluate((el) => { el.dataset.themeHeld = "true"; });
   await expect.poll(async () => (await layer()).opacity).toBe("0");
   expect((await layer()).page).not.toBe("rgba(0, 0, 0, 0)");
+  expect(await fill()).toBe("none");
+  expect(await heading.evaluate((el) => getComputedStyle(el).webkitTextFillColor)).not.toBe("rgba(0, 0, 0, 0)");
 });
 
 test("colours tapped on the shop's cards blend; the header wears them as a mesh; a second tap keeps one", async ({ page }) => {
@@ -112,4 +152,42 @@ test("the small bag wears the colours of the pieces in it", async ({ page }) => 
   // Its head wears the mesh; its words stay readable on it.
   const head = await panel.locator(".rose-minibag-head").evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(head).toContain("radial-gradient");
+});
+
+test("the checkout wears the colours of what's in the bag, on that page only", async ({ page }) => {
+  const LILAC_PICK = LILAC;
+  await page.goto("/");
+  await page.evaluate((own) => {
+    localStorage.setItem("estabrak_cart_v1", JSON.stringify([{ variantId: "m", quantity: 1 }, { variantId: "berry-m", quantity: 2 }]));
+    localStorage.setItem("estabrek_theme_color", own);
+    localStorage.setItem("estabrek_theme_seen", String(Date.now()));
+    localStorage.removeItem("estabrek_theme_mix");
+  }, LILAC_PICK);
+  await page.goto("/cart");
+  // The most bought counts most (it goes last); the header, the page and the headings wear the mix.
+  await expect(page.locator("html")).toHaveAttribute("data-colour-mix", `${ROSE} ${BERRY}`);
+  await expect.poll(() => headerImage(page)).toContain("radial-gradient");
+  await expect.poll(() => page.locator(".rose-cart-head > h1").evaluate((el) => getComputedStyle(el).backgroundImage)).toContain("linear-gradient(170deg");
+  // Her own colour isn't touched: the next page wears it again.
+  expect(await page.evaluate(() => [localStorage.getItem("estabrek_theme_color"), localStorage.getItem("estabrek_theme_mix")])).toEqual([LILAC_PICK, null]);
+  await page.goto("/shop");
+  await expect(page.locator("html")).toHaveAttribute("data-storefront-color", LILAC_PICK);
+  await expect(page.locator("html")).not.toHaveAttribute("data-colour-mix", /./);
+});
+
+test("a scene's colours take the header over a mix (the seasons' winter blue, not the mix)", async ({ page }) => {
+  const mix = [ROSE, LILAC, BERRY];
+  await page.addInitScript(([m, blend]) => {
+    localStorage.setItem("estabrek_theme_mix", JSON.stringify(m));
+    localStorage.setItem("estabrek_theme_color", blend);
+    localStorage.setItem("estabrek_theme_seen", String(Date.now()));
+  }, [mix, blendColours(mix)] as const);
+  await page.goto("/");
+  const shell = page.locator(".cinematic-shell");
+  await expect(shell).toHaveAttribute("data-colour-mix", mix.join(" "));
+  await expect.poll(() => headerImage(page)).toContain("radial-gradient");
+  await shell.evaluate((el) => { el.dataset.themeHeld = "true"; });
+  await expect.poll(() => headerImage(page)).toBe("none");
+  await shell.evaluate((el) => { delete el.dataset.themeHeld; });
+  await expect.poll(() => headerImage(page)).toContain("radial-gradient");
 });

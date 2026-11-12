@@ -21,6 +21,8 @@ import type { Lang } from "@/lib/i18n";
 import { isRtl } from "@/lib/i18n";
 import { localizeCartLine } from "@/lib/localize";
 import { toneAr } from "@/lib/words";
+import { blendColours, isHex } from "@/lib/colourMix";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 type Line = {
   variantId: string;
@@ -32,6 +34,7 @@ type Line = {
   colorLabel?: string;
   productSlug?: string | null;
   colorName?: string | null;
+  colorHex?: string | null;
   boxLabel?: string | null;
   sizeName?: string | null;
   imageUrl?: string | null;
@@ -108,6 +111,25 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const quote = useMemo(() => (rawQuote ? { ...rawQuote, lines: rawQuote.lines?.map((l) => localizeCartLine(l, lang)) } : null), [rawQuote, lang]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // The page wears the colours of what's in the bag (lib/colourMix.ts), the most bought counting most: one piece
+  // its colour, several their mix (a gradient across the page, its buttons and headings). This page only; the
+  // shopper's own colour comes back on the next page.
+  const bagColours = useMemo(() => {
+    const weight = new Map<string, number>();
+    for (const line of rawQuote?.lines ?? []) {
+      if (!isHex(line.colorHex)) continue;
+      const hex = `#${line.colorHex.replace("#", "").toLowerCase()}`;
+      weight.set(hex, (weight.get(hex) ?? 0) + Math.max(1, line.quantity));
+    }
+    return [...weight.entries()].sort((a, b) => a[1] - b[1]).slice(-4);
+  }, [rawQuote]);
+  const bagKey = bagColours.map(([hex, w]) => `${hex}:${w}`).join(" ");
+  useEffect(() => {
+    if (!bagColours.length) return;
+    const hexes = bagColours.map(([hex]) => hex);
+    selectStorefrontColor(blendColours(hexes, bagColours.map(([, w]) => w)), { auto: true, colours: hexes });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bagKey]);
   const [coupon, setCoupon] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);

@@ -5,7 +5,8 @@ import { storefrontPalette } from "@/lib/storefrontPalette";
 import { crossfadeTheme, setThemeNow, tweenTheme } from "@/lib/themeTween";
 import { themeHeld } from "@/lib/themeBase";
 import { discardThemePreview, storeThemeOn } from "@/lib/themePreview";
-import { COLOURS_EVENT, addToMix, blendColours, dyePaint, meshBackground, readMix, saveMix } from "@/lib/colourMix";
+import { COLOURS_EVENT, addToMix, blendColours, dyeDepth, dyePaint, isHex, meshBackground, readMix, saveMix } from "@/lib/colourMix";
+import { MIX_PAINTS, mixPaints } from "@/lib/mixPaints";
 import { isNearWhite } from "@/lib/storefrontPalette";
 import { colourBlendOn } from "@/lib/colourEngine";
 
@@ -90,9 +91,15 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         mix = mixing && !again ? addToMix(mix, picked) : [picked.toLowerCase()];
         saveMix(mix);
       }
+      // A page's own colours (the checkout: the colours of what's in the bag, the most bought last): worn mixed
+      // on this page only, like a product page's own colour (not saved, her own mix stays as it was).
+      const ownRaw = (event as CustomEvent & { colours?: unknown }).colours;
+      const own = auto && Array.isArray(ownRaw) ? [...new Set(ownRaw.filter(isHex).map((c) => c.toLowerCase()))].slice(-4) : [];
+      const pageMix = own.length > 1 && colourBlendOn() ? own : null;
       // A colour carried over from the last page is the mix's blend when it was one.
-      const blended = mix.length > 1 ? blendColours(mix) : null;
-      const meshOn = Boolean(blended) && !auto && (restored ? blended === picked.toLowerCase() : mixing);
+      const blended = pageMix ? blendColours(pageMix) : mix.length > 1 ? blendColours(mix) : null;
+      const meshOn = pageMix ? true : Boolean(blended) && !auto && (restored ? blended === picked.toLowerCase() : mixing);
+      const worn = pageMix ?? mix;
       const color = meshOn ? blended! : picked;
       if (!restored) discardThemePreview();
       const palette = storefrontPalette(color);
@@ -108,22 +115,34 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         shell.dataset.navbarColor = color;
         shell.dataset.storefrontColor = color;
         document.documentElement.dataset.storefrontColor = color;
+        // How much the dyed pictures (the shop's silk film) also deepen: wine and navy, not their pastels.
+        shell.style.setProperty("--selection-dye-depth", isNearWhite(color) ? "0" : dyeDepth(color));
         // The mixed colours: the header wears them as a gradient mesh over their blend, the page as a light one
         // behind everything, and the dyes (the scarf, the films, the campaign photo) flow through them.
         if (meshOn) {
-          shell.style.setProperty("--navbar-mesh", meshBackground(mix));
-          shell.style.setProperty("--page-mesh", meshBackground(mix, { light: 0.86 }));
-          const dyed = mix.filter((c) => !isNearWhite(c));
+          shell.style.setProperty("--navbar-mesh", meshBackground(worn));
+          shell.style.setProperty("--page-mesh", meshBackground(worn, { light: 0.86 }));
+          const dyed = worn.filter((c) => !isNearWhite(c));
           if (dyed.length > 1) shell.style.setProperty("--selection-dye-paint", dyePaint(dyed));
           else shell.style.removeProperty("--selection-dye-paint");
-          shell.dataset.colourMix = mix.join(" ");
-          document.documentElement.dataset.colourMix = mix.join(" ");
+          // Buttons, headings, prices and the footer flow through the colours too (lib/mixPaints.ts); on the
+          // page (html) as well, for the floating buttons outside the shell.
+          const paints = mixPaints(worn);
+          for (const name of MIX_PAINTS) {
+            for (const el of [shell, document.documentElement]) {
+              if (paints[name]) el.style.setProperty(name, paints[name]!);
+              else el.style.removeProperty(name);
+            }
+          }
+          shell.dataset.colourMix = worn.join(" ");
+          document.documentElement.dataset.colourMix = worn.join(" ");
         } else {
-          for (const name of ["--navbar-mesh", "--page-mesh", "--selection-dye-paint"]) shell.style.removeProperty(name);
+          for (const name of ["--navbar-mesh", "--page-mesh", "--selection-dye-paint", ...MIX_PAINTS]) shell.style.removeProperty(name);
+          for (const name of MIX_PAINTS) document.documentElement.style.removeProperty(name);
           delete shell.dataset.colourMix;
           delete document.documentElement.dataset.colourMix;
         }
-        window.dispatchEvent(new CustomEvent(COLOURS_EVENT, { detail: { colours: meshOn ? [...mix] : [color] } }));
+        window.dispatchEvent(new CustomEvent(COLOURS_EVENT, { detail: { colours: meshOn ? [...worn] : [color] } }));
       };
       selected = true;
       const pick = ++picks;
@@ -174,7 +193,8 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
       pendingSync = false;
       const shell = root.current;
       const saved = restoreSelection ? readSavedColor() : null;
-      if (!shell || !saved || awayTooLong() || shell.querySelector(".rose-pdp")) return;
+      // A product page keeps the piece's colour, the checkout the bag's.
+      if (!shell || !saved || awayTooLong() || shell.querySelector(".rose-pdp, .rose-cart:not(.rose-cart-empty)")) return;
       if (shell.dataset.storefrontColor?.toLowerCase() === saved.toLowerCase()) return;
       window.dispatchEvent(Object.assign(new CustomEvent("storefront-color-selected", { detail: saved }), { restored: true }));
     };
@@ -206,6 +226,8 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
           ? document.documentElement.style.setProperty(property, previous)
           : document.documentElement.style.removeProperty(property));
         delete document.documentElement.dataset.storefrontColor;
+        delete document.documentElement.dataset.colourMix;
+        for (const name of MIX_PAINTS) document.documentElement.style.removeProperty(name);
       }
     };
   }, [restoreSelection]);
