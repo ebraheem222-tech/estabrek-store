@@ -100,6 +100,10 @@ import { styleNode, styleOf, withOps } from "./siteStyles";
 import { useAuth } from "../hooks/useAuth";
 import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
+import { canFocus, focusGroup, focusParts, focusTitle, focusTrail, type FocusPart } from "./focus/focusKinds";
+import { focusView, sameView, viewAt, type View } from "./focus/focusView";
+import { FocusBar, FocusMask, FocusParts, type Crumb } from "./focus/FocusChrome";
+import { SvgPartPanel } from "./focus/SvgPartPanel";
 import { SectionObjectsPanel } from "./SectionObjectsPanel";
 import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, previewOf, shownLook, togglePreset, type Motion } from "./look";
@@ -291,6 +295,10 @@ function StudioDocument() {
     });
   const [dragView, setDragView] = useState<{ pushed: Array<{ id: string; box: Box }>; touching: string[]; marks: Gap[]; into: { id: string; box: Box } | null } | null>(null);
   const [, setTick] = useState(0);
+  // Focus mode (focus/): one element opened on its own, the part of it being edited, and the view to go back to.
+  const [focus, setFocus] = useState<{ id: string; part: FocusPart | null; back: View } | null>(null);
+  const [focusAll, setFocusAll] = useState(false);
+  const glide = useRef(0);
   const history = useRef(new History());
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const latest = useRef<PagesAPI.PageDraft | null>(null);
@@ -784,6 +792,10 @@ function StudioDocument() {
     pointSelection.current.cancel();
     if (busy || editing || e.button > 1 || down.current && down.current.pointerId !== e.pointerId) return;
     const p = local(e);
+    if (focus && e.button === 0 && !panMode && inFrame(p)) {
+      const fb = shapeOf(focus.id)?.box;
+      if (fb && (p.x < fb.x - 6 || p.x > fb.x + fb.w + 6 || p.y < fb.y - 6 || p.y > fb.y + fb.h + 6)) closeFocus();
+    }
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const panning = e.button === 1 || panMode || !inFrame(p);
     const touch = e.pointerType === "touch";
@@ -880,6 +892,7 @@ function StudioDocument() {
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       pointSelection.current.cancel();
+      cancelAnimationFrame(glide.current);
       e.preventDefault();
       const r = el.getBoundingClientRect();
       const p = { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -906,21 +919,55 @@ function StudioDocument() {
     },
     [pan, zoom, canvas.w, canvas.h],
   );
+  /** Glides the canvas to a view (focus mode's way in and out, zoom to selection). */
+  const glideTo = (to: View, ms = 380) => {
+    cancelAnimationFrame(glide.current);
+    const from = { zoom, pan };
+    if (sameView(from, to) || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setZoom(to.zoom);
+      setPan(to.pan);
+      return;
+    }
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const v = viewAt(from, to, (now - t0) / ms);
+      setZoom(v.zoom);
+      setPan(v.pan);
+      if (now - t0 < ms) glide.current = requestAnimationFrame(step);
+    };
+    glide.current = requestAnimationFrame(step);
+  };
   const zoomToSelected = () => {
     pointSelection.current.cancel();
     const s = shapeOf(selected);
     if (!s || !canvas.w) return;
-    const z = Math.min(4, Math.max(0.1, zoom * Math.min((canvas.w * 0.6) / s.box.w, (canvas.h * 0.6) / s.box.h)));
-    const pageX = (s.box.x + s.box.w / 2 - pan.x) / zoom;
-    const pageY = (s.box.y + s.box.h / 2 - pan.y) / zoom;
-    setZoom(z);
-    setPan({ x: canvas.w / 2 - pageX * z, y: canvas.h / 2 - pageY * z });
+    glideTo(focusView(s.box, { zoom, pan }, canvas, 0.6, 0));
+  };
+  /** Opens an element on its own (focus mode): the canvas glides to it, the rest dims, its own editor opens. */
+  const openFocus = (sid: string | null) => {
+    const n = sid ? index?.nodes.get(sid)?.node : undefined;
+    const s = shapeOf(sid);
+    if (!sid || !n || !canFocus(n) || !isFree(n.type) || !s || !canvas.w) return false;
+    pointSelection.current.cancel();
+    select(sid);
+    setFocus((f) => ({ id: sid, part: null, back: f?.back ?? { zoom, pan } }));
+    glideTo(focusView(s.box, { zoom, pan }, canvas));
+    return true;
+  };
+  const closeFocus = () => {
+    if (!focus) return;
+    setFocus(null);
+    setFocusAll(false);
+    glideTo(focus.back);
   };
 
   useEffect(() => {
     const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
     const onDown = (e: KeyboardEvent) => {
-      if (typing(e.target) || !index) return;
+      // In focus mode Esc still steps out after a choice in a list or a tick (nothing is being written there).
+      const picked = e.key === "Escape" && focus && (e.target instanceof HTMLSelectElement || (e.target instanceof HTMLInputElement && ["checkbox", "radio", "range", "color", "button"].includes(e.target.type)));
+      if (picked) (e.target as HTMLElement).blur();
+      if ((typing(e.target) && !picked) || !index) return;
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
         e.preventDefault();
         if (e.key.toLowerCase() === "y" || e.shiftKey) void redoLast();
@@ -996,7 +1043,17 @@ function StudioDocument() {
         if ((down.current?.grab || down.current?.partMove) && down.current.moved) return cancelDrag();
         if (themeOpen) return setThemeOpen(false);
         if (more.length) return setMore([]);
+        // Focus mode: the part goes first, then what's chosen inside, then the mode itself.
+        if (focus) {
+          if (focus.part) return setFocus({ ...focus, part: null });
+          if (selected !== focus.id) return select(focus.id);
+          return closeFocus();
+        }
         setSelected((s) => parentOf(s));
+        return;
+      }
+      if (!mod && k === "f" && selected && !focus && !e.altKey && !e.shiftKey) {
+        if (openFocus(selected)) e.preventDefault();
         return;
       }
       if (e.key === "Enter" && selected) {
@@ -1044,6 +1101,15 @@ function StudioDocument() {
       window.removeEventListener("blur", onBlur);
     };
   });
+
+  // Focus mode ends when its element is gone (deleted, undone) or the screen changes (the view is fitted again).
+  useEffect(() => {
+    if (focus && index && !index.nodes.has(focus.id)) setFocus(null);
+  }, [focus, index]);
+  useEffect(() => {
+    setFocus(null);
+    setFocusAll(false);
+  }, [device]);
 
   // The layers list follows what's selected on the page.
   useEffect(() => {
@@ -2046,8 +2112,99 @@ function StudioDocument() {
       </div>
     );
   };
+  /** The opened element's own editor (focus mode), or that of what's chosen inside it. */
+  const focusInspector = () => {
+    if (!focus || !index) return null;
+    const n = nodeOf(focus.id);
+    if (!n) return null;
+    const inside = selected && selected !== focus.id && focusTrail(index, focus.id, selected) ? nodeOf(selected) : undefined;
+    const target = inside ?? n;
+    const g = focusGroup(target);
+    const part = target.id === focus.id ? focus.part : null;
+    const onOps = (l: string, ops: PagesAPI.PageDraftOp[]) => void change(l, ops);
+    return (
+      <div className="space-y-3" data-testid="studio-focus-panel" data-group={g} data-node={target.id}>
+        <div>
+          <div className="text-[11px] text-white/45">{focusTitle(g)}</div>
+          <div className="text-base font-semibold">{label(target.id)}</div>
+        </div>
+        {part && g === "svg" ? <SvgPartPanel key={`${target.id}:${part.id}`} node={target} part={part} busy={busy} onOps={onOps} /> : null}
+        {g === "svg" && !part ? <SvgPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {WRITABLE.has(target.type) ? (
+          <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(target.id)} data-testid="studio-focus-write">
+            {say("اكتب بالصفحة مع تنسيق|Write on the page with formatting|כתיבה בעמוד עם עיצוב")}
+          </button>
+        ) : null}
+        {EDITABLE.has(target.type) ? <ElementPanel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {target.type === "heading" || target.type === "text" ? <TextStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
+        {target.type === "icon" ? <TextStylePanel node={target} screen={screen} busy={busy} onOps={onOps} only={["iconSize", "size", "color", "align"]} /> : null}
+        {target.type === "button" ? <ButtonStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
+        {target.type === "image" || target.type === "video" || target.type === "slider" ? <MediaStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
+        {target.type === "video" ? <VideoOverlayPanel node={target} screen={screen} busy={busy} onOps={onOps} onPreview={(vars) => send({ type: "previewLook", nodeId: target.id, vars })} /> : null}
+        {target.type === "model3d" ? <Model3dPanel key={target.id} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {target.type === "product360" ? <Product360Panel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {target.type === "section" ? <SectionPanel node={target} busy={busy} onOps={onOps} /> : null}
+        {target.type === "columns" ? <ColumnsPanel node={target} screen={screen} busy={busy} ids={makeIds} onOps={onOps} /> : null}
+        {target.type === "cell" ? <CellPanel node={target} cols={nodeOf(index.nodes.get(target.id)?.parentId) ?? null} busy={busy} onOps={onOps} /> : null}
+        {!part ? <BoxPanel node={target} screen={screen} busy={busy} onOps={onOps} skip={target.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+        <MotionPanel
+          node={target}
+          busy={busy}
+          onOps={(l, ops) => {
+            playNext.current = target.id;
+            void change(l, ops);
+          }}
+          onPlay={() => send({ type: "motionPlay", nodeId: target.id })}
+        />
+        <p className="text-[10px] leading-4 text-white/35">{say("هون إعدادات هالعنصر بس. الباقي (الحركة بالسكرول، الأحداث، الحالات…) من «كل الإعدادات» فوق.|Only this element's own settings are here. The rest (scroll motion, events, states…) is under «All settings» at the top.|כאן רק ההגדרות של הרכיב. השאר (תנועה בגלילה, אירועים, מצבים…) תחת «כל ההגדרות» למעלה.")}</p>
+      </div>
+    );
+  };
+  const FOCUS_EMPTY: Record<string, string> = {
+    image: "محرّر الصورة الكامل جاي: قص، ألوان، طبقات ونجوم براقة.|The full picture editor is coming: crop, colours, layers and sparkles.|עורך התמונה המלא בדרך: חיתוך, צבעים, שכבות ונצנוצים.",
+    video: "محرّر الفيديو الكامل جاي: مسار زمني وقص ونصوص.|The full video editor is coming: a timeline, cuts and words.|עורך הווידאו המלא בדרך: ציר זמן, חיתוכים ומילים.",
+    model: "أجزاء المجسّم وموادّه جاية.|The model's parts and materials are coming.|חלקי המודל והחומרים שלו בדרך.",
+    text: "النص قطعة وحدة: اكتب عليه بالصفحة.|Text is one piece: write on it in the page.|טקסט הוא חלק אחד: כותבים עליו בעמוד.",
+    svg: "الرسمة ما فيها أشكال.|The drawing has no shapes.|אין צורות בציור.",
+    container: "فاضية.|Empty.|ריק.",
+    other: "ما إله أجزاء لحالها.|It has no parts of its own.|אין לו חלקים משלו.",
+  };
+  /** The opened element's parts, down the side (focus mode). */
+  const focusSide = () => {
+    const n = focus ? nodeOf(focus.id) : undefined;
+    if (!focus || !n || !index) return null;
+    const g = focusGroup(n);
+    return (
+      <FocusParts
+        title={`${focusTitle(g)} · ${say("أجزاؤها|Its parts|חלקיו")}`}
+        parts={focusParts(n, index)}
+        chosen={focus.part?.id ?? (selected && selected !== focus.id ? selected : null)}
+        onPick={(fp) => {
+          if (fp.nodeId) {
+            select(fp.nodeId);
+            setFocus({ ...focus, part: null });
+          } else {
+            if (selected !== focus.id) select(focus.id);
+            setFocus({ ...focus, part: fp });
+          }
+        }}
+        onOpen={(fp) => {
+          if (fp.nodeId) openFocus(fp.nodeId);
+        }}
+        empty={say(FOCUS_EMPTY[g])}
+      />
+    );
+  };
+  /** The path along the top in focus mode: from the page to what's chosen inside the opened element. */
+  const focusCrumbs = (): Crumb[] => {
+    if (!focus || !index) return [];
+    const ids = pathTo(index, selected && focusTrail(index, focus.id, selected) ? selected : focus.id, up).filter((x) => index.nodes.has(x));
+    const at = ids.indexOf(focus.id);
+    return ids.map((x, i) => ({ id: x, label: x === index.root ? say("الصفحة|Page|עמוד") : nodeOf(x)?.name || crumb(x), inside: i >= at }));
+  };
   const inspector = () => {
     if (leftTab === "styles" && siteOpen) return siteInspector();
+    if (focus && !focusAll && index && nodeOf(focus.id)) return focusInspector();
     if (themeOpen) {
       return <ThemePanel themes={withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} currentMode={savedTheme?.mode ?? null} original={settings.data?.header?.storeDesign?.mode !== "cms" && who.industry === "fashion" && who.audience === "women"} onPreview={(t) => { if (busy) return; setThemePreview(t); setThemeMode(undefined); }} onMode={(mode) => { if (!busy) setThemeMode(mode); }} saving={themeSaving || busy} onSave={() => setAsking({ kind: "theme" })} />;
     }
@@ -2081,6 +2238,11 @@ function StudioDocument() {
           <div className="text-base font-semibold">{label(selected)}</div>
           <div className="mt-0.5 font-mono text-[11px] text-white/35" dir="ltr">{selExtra?.kind === "slot" ? selExtra.path : selected}</div>
         </div>
+        {selFree && canFocus(selFree) && focus?.id !== selFree.id ? (
+          <button type="button" onClick={() => openFocus(selected)} className="w-full rounded-lg bg-accent-500/20 px-2 py-1.5 text-xs text-accent-100 hover:bg-accent-500/30" data-testid="studio-focus-enter">
+            ✎ {say("افتحه لحاله (تركيز) · F أو كبستين|Open it on its own (focus) · F or double-click|פתיחה לבד (מיקוד) · F או לחיצה כפולה")}
+          </button>
+        ) : null}
         <dl className="grid grid-cols-2 gap-2 text-xs">
           <dt className="text-white/45">{tr("الحجم", "Size")}</dt>
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
@@ -2902,6 +3064,10 @@ function StudioDocument() {
 
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : leftTab === "looks" ? tr("الأشكال", "Looks") : tr("الطبقات", "Layers")}>
+          {focus && index && nodeOf(focus.id) ? (
+            focusSide()
+          ) : (
+          <>
           {leftTabs}
           {leftTab === "add" ? (
             index ? addPanel() : null
@@ -2918,6 +3084,8 @@ function StudioDocument() {
               {index ? layersList((sid, add) => (add && isFree(nodeOf(sid)?.type) ? toggleChosen(sid) : select(sid, true))) : null}
               <p className="px-2 pt-2 text-[10px] leading-4 text-white/30">{tr("اسحب سطر لتغيير الترتيب، أو لجوّا خلية.", "Drag a row to change the order, or into a cell.")}</p>
             </>
+          )}
+          </>
           )}
         </aside>
 
@@ -2940,7 +3108,8 @@ function StudioDocument() {
               const at = inFrame(p) ? pickAt(grid.near(p), p) : null;
               if (at) {
                 select(at.id);
-                startText(at.id);
+                // Words are written in place; anything else opens on its own (focus mode).
+                if (!startText(at.id) && index) openFocus([...pathTo(index, at.id, up)].reverse().find((x) => index.nodes.has(x)) ?? null);
               }
             }}
             onPointerMove={onPointerMove}
@@ -3031,7 +3200,7 @@ function StudioDocument() {
                 </>
               ) : null}
               {/* A quick way to add before or after the selected page item, on its edges. */}
-              {!drop && !editing && selected && index && selected !== index.root
+              {!drop && !editing && !focus && selected && index && selected !== index.root
                 ? (() => {
                     const c = insertCtx((x) => `__${x}`);
                     const item = c ? pageItemOf(c, selected) : null;
@@ -3114,6 +3283,28 @@ function StudioDocument() {
               })}
             </div>
           </div>
+          {focus ? <FocusMask box={shapeOf(focus.id)?.box ?? null} area={canvas} /> : null}
+          {focus && index && nodeOf(focus.id) ? (
+            <FocusBar
+              group={focusGroup(nodeOf(focus.id)!)}
+              crumbs={focusCrumbs()}
+              current={selected}
+              part={focus.part}
+              showAll={focusAll}
+              onCrumb={(cid, inside) => {
+                if (inside) {
+                  select(cid);
+                  setFocus({ ...focus, part: null });
+                } else {
+                  closeFocus();
+                  select(cid, true);
+                }
+              }}
+              onPart={() => undefined}
+              onShowAll={setFocusAll}
+              onExit={closeFocus}
+            />
+          ) : null}
           {selFree && selShape && !editing && !directGeometrySafe(selFree.id) ? <div role="status" className="pointer-events-none absolute bottom-3 start-3 max-w-sm rounded bg-black/80 px-3 py-2 text-xs text-white/80">{tr("هذا التحويل غير قابل للتحرير المباشر حاليًا. استخدم إعدادات المكان والحجم من اللوحة.", "This transform currently needs the layout controls for position and size.")}</div> : null}
           {selFree && !multi && !editing && !placing && !drop && selShape && directGeometrySafe(selFree.id) && !["section", "cell", "columns", "page"].includes(selFree.type) ? (
             <SelectionHandles
