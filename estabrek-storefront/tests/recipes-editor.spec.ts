@@ -41,14 +41,23 @@ test("a recipe that asks first is built from a ready one, kept for customers, an
   await expect(button).toHaveAttribute("data-pt-who", "customer", { timeout: 20000 });
   await expect(button).toBeVisible();
 
-  // Tried from the panel (a click in the preview selects): the question shows over the page.
+  // Tried from the panel (a click in the preview selects): the question shows over the page and answers itself
+  // "yes"; the link is only said (the preview stays on its page).
   await panel.getByTestId("trigger-0-test").click();
   const ask = frame(page).locator("#pt-ask");
   await expect(ask).toBeVisible({ timeout: 20000 });
+  await expect(ask).toHaveAttribute("data-pt-ask-answer", "yes");
   await expect(ask.locator("[data-pt-ask]")).toHaveCount(2);
-  await ask.locator('[data-pt-ask="no"]').click();
-  await expect(ask).toHaveCount(0);
-  // The fail steps ran: their message shows; the link didn't open.
+  await page.screenshot({ path: testInfo.outputPath("recipe-try.png") });
+  await expect(ask).toHaveCount(0, { timeout: 10000 });
+  await expect(frame(page).locator("#pt-toast")).toHaveText(/In the shop|بالمتجر|בחנות/);
+  await expect(button).toBeVisible();
+
+  // The failure tried: the question answers "no", and the fail steps' message shows.
+  await panel.getByTestId("trigger-0-test-fail").click();
+  await expect(ask).toHaveAttribute("data-pt-ask-answer", "no", { timeout: 20000 });
+  await expect(ask).toHaveCount(0, { timeout: 10000 });
+  await expect(frame(page).locator("#pt-toast")).not.toHaveText(/In the shop|بالمتجر|בחנות/);
   await expect(frame(page).locator("#pt-toast")).toHaveText(/\S/);
   await expect(button).toBeVisible();
 

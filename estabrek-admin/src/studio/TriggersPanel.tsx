@@ -247,7 +247,7 @@ function StepList({ steps, lang, targets, busy, max, min = 0, groups, onSave, te
   );
 }
 
-export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { node: PageTreeNode; lang: string; targets: Target[]; busy: boolean; onOps: Ops; onTest: (index: number) => void }) {
+export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { node: PageTreeNode; lang: string; targets: Target[]; busy: boolean; onOps: Ops; onTest: (index: number, fail?: boolean) => void }) {
   const list = triggersOf(node);
   const save = (next: Trigger[]) => onOps(L(), [triggersOp(node, next)]);
   const setOne = (i: number, t: Trigger) => save(list.map((x, j) => (j === i ? t : x)));
@@ -322,13 +322,14 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
 
             <div className="flex flex-wrap gap-1 border-t border-white/[0.06] pt-2">
               <button type="button" className={btn} onClick={() => onTest(i)} data-testid={`trigger-${i}-test`}>▶ {say("جرّب بالمعاينة|Try in the preview|לנסות בתצוגה")}</button>
+              {fails ? <button type="button" className={btn} onClick={() => onTest(i, true)} data-testid={`trigger-${i}-test-fail`}>▶ {say("جرّب الفشل (قال «لا» / المنتج خلص)|Try the failure (a “no” / sold out)|לנסות כישלון («לא» / אזל)")}</button> : null}
               <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(list.filter((_, k) => k !== i))} data-testid={`trigger-${i}-remove`}>{say("شيل المشغّل|Remove the trigger|הסרת הטריגר")}</button>
             </div>
           </div>
         );
       })}
       <button type="button" className={btn} disabled={busy || list.length >= 8} onClick={() => save([...list, { on: "click", do: [newAction("play", lang)] }])} data-testid="trigger-add">+ {say("مشغّل جديد|New trigger|טריגר חדש")}</button>
-      <p className="text-[10px] leading-4 text-white/35">{say("بالمعاينة الكبسة بتختار العناصر، فجرّب من هون (التجربة بتشتغل لأي زائر كان). بالمتجر بتشتغل لحالها. متغيّر بيبين بأي نص هيك: {{اسمه}}.|In the preview a click selects, so try from here (a try runs whoever it is for). In the shop they run by themselves. A variable shows in any text like this: {{its name}}.|בתצוגה המקדימה לחיצה בוחרת, אז לנסות מכאן (ניסיון רץ לכל מבקר). בחנות הם פועלים לבד. משתנה מוצג בכל טקסט כך: {{השם שלו}}.")}</p>
+      <p className="text-[10px] leading-4 text-white/35">{say("بالمعاينة الكبسة بتختار العناصر، فجرّب من هون (التجربة بتشتغل لأي زائر كان؛ السؤال بيجاوب لحاله، واللي بيطلع من الصفحة أو بيغيّر السلة بينقال بس). بالمتجر بتشتغل لحالها. متغيّر بيبين بأي نص هيك: {{اسمه}}.|In the preview a click selects, so try from here (a try runs whoever it is for; a question answers itself, and what would leave the page or change the bag is only said). In the shop they run by themselves. A variable shows in any text like this: {{its name}}.|בתצוגה המקדימה לחיצה בוחרת, אז לנסות מכאן (ניסיון רץ לכל מבקר; שאלה עונה לעצמה, ומה שיוצא מהעמוד או משנה את הסל רק נאמר). בחנות הם פועלים לבד. משתנה מוצג בכל טקסט כך: {{השם שלו}}.")}</p>
     </div>
   );
 }

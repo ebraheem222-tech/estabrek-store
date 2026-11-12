@@ -100,8 +100,12 @@ describe("a recipe in the editor", () => {
   it("steps for a failure show once a step can fail, and go when none can", () => {
     open([{ on: "click", do: [{ act: "vibrate" }] }]);
     expect(screen.queryByTestId("trigger-0-fail-add")).toBeNull();
+    expect(screen.queryByTestId("trigger-0-test-fail")).toBeNull();
     pick("trigger-0-act-0", "confirm");
     expect(saved[0].do[0]).toEqual({ act: "confirm", text: { en: "Are you sure?" } });
+    // A second try, for what happens on a "no".
+    fireEvent.click(screen.getByTestId("trigger-0-test-fail"));
+    expect(tested).toHaveBeenLastCalledWith(0, true);
     fireEvent.click(screen.getByTestId("trigger-0-fail-add"));
     pick("trigger-0-fail-act-0", "toast");
     expect(saved[0].fail).toEqual([{ act: "toast", text: { en: "Welcome!" } }]);

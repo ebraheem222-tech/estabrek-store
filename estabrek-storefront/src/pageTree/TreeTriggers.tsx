@@ -47,7 +47,12 @@ function setVisible(el: HTMLElement, value: "show" | "hide" | "toggle", reduced:
   if (!reduced && el.animate) el.animate([{ opacity: 0, translate: "0 10px" }, { opacity: 1, translate: "0 0" }], { duration: 320, easing: "ease-out" });
 }
 
-type Run = { self: HTMLElement; reduced: boolean; point?: { x: number; y: number }; alive: () => boolean };
+/**
+ * `tryout`: the owner trying it from the editor (the preview takes no presses and mustn't leave its page): a
+ * question answers itself, the bag and the wishlist aren't touched, and what would leave the page is only said.
+ * With `fail`, the steps that can fail do.
+ */
+type Run = { self: HTMLElement; reduced: boolean; point?: { x: number; y: number }; alive: () => boolean; tryout?: { fail: boolean } };
 
 /** A step failed (a "no" to a question, a product that can't be bought): the recipe's `fail` steps run instead of the rest. */
 const FAIL = Symbol("fail");
@@ -55,9 +60,26 @@ const FAIL = Symbol("fail");
 const STOP = Symbol("stop");
 const langOf = (el: Element) => (el.closest("[lang]")?.getAttribute("lang") || document.documentElement.lang || "ar").slice(0, 2);
 const YES_NO: Record<string, [string, string]> = { ar: ["نعم", "لا"], he: ["כן", "לא"], en: ["Yes", "No"] };
+/** What a step would do in the shop, said instead of done when it's tried in the editor. */
+const IN_SHOP: Record<string, Record<string, string>> = {
+  link: { ar: "بالمتجر: بينفتح الرابط", he: "בחנות: הקישור נפתח", en: "In the shop: the link opens" },
+  back: { ar: "بالمتجر: بيرجع للصفحة اللي قبل", he: "בחנות: חוזרים לעמוד הקודם", en: "In the shop: goes back a page" },
+  share: { ar: "بالمتجر: بتنفتح المشاركة", he: "בחנות: נפתח שיתוף", en: "In the shop: sharing opens" },
+  call: { ar: "بالمتجر: بيبلّش اتصال", he: "בחנות: מתחילה שיחה", en: "In the shop: a call starts" },
+  whatsapp: { ar: "بالمتجر: بينفتح واتساب", he: "בחנות: נפתח וואטסאפ", en: "In the shop: WhatsApp opens" },
+  download: { ar: "بالمتجر: الملف بينزل", he: "בחנות: הקובץ יורד", en: "In the shop: the file downloads" },
+  bag: { ar: "بالمتجر: المنتج بينحط بالسلة", he: "בחנות: המוצר נכנס לסל", en: "In the shop: the product goes into the bag" },
+  wish: { ar: "بالمتجر: المنتج بينحفظ بالمفضلة", he: "בחנות: המוצר נשמר במועדפים", en: "In the shop: the product is saved to the wishlist" },
+};
 
 /** One action. */
-async function act(a: TriggerActionSpec, { self, reduced, point }: Run) {
+async function act(a: TriggerActionSpec, { self, reduced, point, tryout }: Run) {
+  if (tryout && IN_SHOP[a.act]) {
+    if (tryout.fail && (a.act === "bag" || a.act === "wish")) throw FAIL;
+    const lang = langOf(self);
+    toast((IN_SHOP[a.act][lang] ?? IN_SHOP[a.act].en));
+    return;
+  }
   {
     const at = () => {
       if (point) return point;
@@ -194,7 +216,7 @@ async function act(a: TriggerActionSpec, { self, reduced, point }: Run) {
       case "confirm": {
         const lang = langOf(self);
         const [yes, no] = YES_NO[lang] ?? YES_NO.en;
-        if (!(await ask(fillVars(a.text), a.yes || yes, a.no || no, lang === "ar" || lang === "he"))) throw FAIL;
+        if (!(await ask(fillVars(a.text), a.yes || yes, a.no || no, lang === "ar" || lang === "he", tryout ? !tryout.fail : undefined, self))) throw FAIL;
         break;
       }
     }
@@ -357,8 +379,8 @@ export function TreeTriggers({ revision = 0 }: { revision?: number }) {
       const t = el ? listOf(el)[index] : undefined;
       const key = `${msg.nodeId}:${index}`;
       tried.set(key, (tried.get(key) ?? 0) + 1);
-      // The owner tries it whoever it is for.
-      if (el && t) void runRecipe(t, tried.get(key)!, { self: el, reduced: reduced(), alive }).catch(() => {});
+      // The owner tries it whoever it is for; `fail` tries what happens when a step fails.
+      if (el && t) void runRecipe(t, tried.get(key)!, { self: el, reduced: reduced(), alive, tryout: { fail: msg.fail === true } }).catch(() => {});
     }));
     if (!studio) {
       for (const el of els) {

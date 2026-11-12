@@ -146,9 +146,10 @@ export function toast(text: string) {
 
 /**
  * A question over the page ("Sure?"): true for yes; false for no, Escape or a press outside it. The "no" button
- * holds the focus, so Enter by habit doesn't agree.
+ * holds the focus, so Enter by habit doesn't agree. With `answer` it's shown, not asked (a try in the editor's
+ * preview, where presses select): its answer lights up and it closes by itself.
  */
-export function ask(text: string, yes: string, no: string, rtl: boolean): Promise<boolean> {
+export function ask(text: string, yes: string, no: string, rtl: boolean, answer?: boolean, from?: Element): Promise<boolean> {
   return new Promise((done) => {
     document.getElementById("pt-ask")?.remove();
     const back = document.createElement("div");
@@ -158,6 +159,14 @@ export function ask(text: string, yes: string, no: string, rtl: boolean): Promis
     back.setAttribute("aria-modal", "true");
     back.setAttribute("aria-label", text);
     back.style.cssText = "position:fixed;inset:0;z-index:2147483002;display:grid;place-items:center;padding:16px;background:rgba(10,10,14,.45);opacity:0;transition:opacity .18s";
+    // In the colours of where it was asked (the page's own, which may not reach the top of the document).
+    if (from) {
+      const look = getComputedStyle(from);
+      for (const name of ["--accent", "--accent-contrast", "--surface", "--text", "--border"]) {
+        const value = look.getPropertyValue(name).trim();
+        if (value) back.style.setProperty(name, value);
+      }
+    }
     const card = document.createElement("div");
     card.style.cssText = "width:min(92vw,380px);border-radius:20px;padding:22px 20px 16px;background:var(--surface,#fff);color:var(--text,#16161a);font:500 15px/1.5 system-ui,sans-serif;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3);scale:.96;transition:scale .18s";
     const words = document.createElement("p");
@@ -201,7 +210,12 @@ export function ask(text: string, yes: string, no: string, rtl: boolean): Promis
     back.addEventListener("click", (e) => { if (e.target === back) finish(false); });
     window.addEventListener("keydown", key, true);
     document.body.appendChild(back);
-    noButton.focus({ preventScroll: true });
+    if (answer !== undefined) {
+      back.dataset.ptAskAnswer = answer ? "yes" : "no";
+      const chosen = answer ? yesButton : noButton;
+      window.setTimeout(() => { chosen.style.outline = "3px solid currentColor"; chosen.style.outlineOffset = "2px"; }, 900);
+      window.setTimeout(() => { if (back.isConnected) finish(answer); }, 1600);
+    } else noButton.focus({ preventScroll: true });
     requestAnimationFrame(() => {
       back.style.opacity = "1";
       card.style.scale = "1";
