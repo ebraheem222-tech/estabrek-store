@@ -84,6 +84,21 @@ export async function heroFilmSources(
  * naturally by FILM_FPS, while display refresh controls how frequently
  * we attempt to update it.
  */
+/**
+ * Played, not sought, going forward (`play`): the film runs to where the scroll is, as fast as it needs to (0.25×
+ * to 4×), and stops there. Playing decodes each frame once, in order, on the fast path; every seek had the decoder
+ * rebuild its frame from the last key frame, and a phone scrolling the opening spent most of its time on that
+ * (measured 2026-11-12: 18 → 53 frames a second without the seeks). Going back, or a jump of more than
+ * PLAY_REACH, still seeks. A browser that won't play it (no autoplay) seeks as before.
+ */
+const PLAY_REACH = 2;
+/** How far ahead the film aims to catch up in (s): the further behind, the faster it plays. */
+const PLAY_LEAD = 0.2;
+const MIN_RATE = 0.25;
+const MAX_RATE = 4;
+/** A little past the scroll (from playing on a frame) is left alone, not sought back (s). */
+const PLAY_SLACK = 0.12;
+
 export function createFilmScrubber(
   video: HTMLVideoElement,
   onFrame: (index: number) => void,
@@ -91,7 +106,15 @@ export function createFilmScrubber(
   fps = FILM_FPS,
   /** A key frame every this many frames (6 in the shop's own 120 fps films; 1 = unknown). */
   keyEvery = 1,
+  { play = false }: { play?: boolean } = {},
 ) {
+
+  /** Playing forward to the scroll now (see PLAY_REACH). */
+  let playing = false;
+  /** The browser refused to play it: seek only. */
+  let noPlay = false;
+  /** The scroll value it stopped at after playing (a frame or two past it is left alone). */
+  let settled: number | null = null;
 
   let progress = 0;
 
@@ -254,6 +277,45 @@ export function createFilmScrubber(
       return;
     }
 
+    /**
+     * Forward and near: play there (see PLAY_REACH). Arrived (or a frame past it): stop.
+     */
+    if (play && !noPlay) {
+      // Stopped a touch past the scroll after playing there: left as it is until the scroll moves.
+      if (settled !== null && settled === progress) return;
+      settled = null;
+      const frame = 1 / fps;
+      const target = Math.min(video.duration - 0.0001, progress * video.duration);
+      const ahead = target - video.currentTime;
+      if (ahead > frame * 1.5 && ahead < PLAY_REACH && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const rate = Math.min(MAX_RATE, Math.max(MIN_RATE, ahead / PLAY_LEAD));
+        if (Math.abs(video.playbackRate - rate) > rate * 0.1) video.playbackRate = rate;
+        if (!playing) {
+          playing = true;
+          const started = video.play();
+          if (started && typeof started.catch === "function") {
+            started.catch(() => {
+              playing = false;
+              noPlay = true;
+              schedule();
+            });
+          }
+        }
+        onFrame(getCurrentIndex());
+        schedule();
+        return;
+      }
+      if (playing) {
+        playing = false;
+        video.pause();
+        if (ahead > -PLAY_SLACK) {
+          settled = progress;
+          present();
+          return;
+        }
+      }
+    }
+
     const lastIndex = getLastIndex();
 
     /**
@@ -384,6 +446,10 @@ export function createFilmScrubber(
         cancelAnimationFrame(rafId);
         rafId = 0;
       }
+      if (playing) {
+        playing = false;
+        video.pause();
+      }
 
       return;
     }
@@ -452,6 +518,11 @@ export function createFilmScrubber(
       if (rafId !== 0) {
         cancelAnimationFrame(rafId);
         rafId = 0;
+      }
+
+      if (playing) {
+        playing = false;
+        video.pause();
       }
 
       video.removeEventListener(

@@ -3105,6 +3105,9 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
 .rose-seasons[data-motion="false"] .season-static-snow { bottom: 50%; opacity: 1; }
 .rose-seasons[data-motion="false"] .season-static-sun { top: 50%; opacity: 1; }
 @keyframes season-snow { to { transform: translateY(440px); } }
+/* Far from the screen the still snow doesn't fall (data-near, lib/watchNear.ts). */
+.rose-seasons:not([data-near]) .season-static-snow::before,
+.rose-seasons:not([data-near]) .season-static-snow::after { animation: none; }
 @keyframes season-snow-fine { to { transform: translateY(427px); } }
 @media (prefers-reduced-motion: reduce) { .season-static-snow, .season-static-snow::before, .season-static-snow::after { animation: none !important; } }
 
