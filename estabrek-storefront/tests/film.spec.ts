@@ -30,12 +30,15 @@ test.describe.serial("opening film", () => {
     await scrollTo(page, 0.45);
     await expect.poll(async () => Number(await frames.getAttribute("data-frame"))).toBeGreaterThan(80);
     await expect(on).not.toContainText("أناقة تشبهكِ");
-    // The decoded video follows scroll and stay still when the shopper stops (once the
-    // scroll motion has eased in, a few tenths of a second).
-    await page.waitForTimeout(900);
-    const paused = await frames.getAttribute("data-frame");
-    await page.waitForTimeout(250);
-    expect(await frames.getAttribute("data-frame")).toBe(paused);
+    // The decoded video follows scroll and stays still when the shopper stops: once it has caught up with the
+    // scroll (it plays there, slowing as it arrives: heroFilmPlayback.ts PLAY_REACH, about a second).
+    const still = async () => {
+      const at = await frames.getAttribute("data-frame");
+      await page.waitForTimeout(250);
+      return (await frames.getAttribute("data-frame")) === at;
+    };
+    await expect.poll(still, { timeout: 5000 }).toBe(true);
+    expect(await still()).toBe(true);
     await scrollTo(page, 0.97);
     await expect(film).toHaveAttribute("data-final", "true");
     await expect(page.locator(".film-closing")).toHaveAttribute("data-state", "on");
