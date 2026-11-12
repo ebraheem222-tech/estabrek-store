@@ -26,6 +26,10 @@ function pauseEndless(on: boolean) {
       // Scroll-driven ones follow the scroll and cost nothing at rest; one-off ones finish on their own.
       if (a.timeline && !(a.timeline instanceof DocumentTimeline)) continue;
       if (a.playState !== "running" || a.effect?.getComputedTiming().iterations !== Infinity) continue;
+      // One that pauses and plays itself (data-own-pause, the 3D ring): played again here, it turned while the
+      // page scrolled.
+      const target = (a.effect as KeyframeEffect | null)?.target;
+      if (target instanceof Element && target.closest("[data-own-pause]")) continue;
       a.pause();
       paused.push(a);
     }

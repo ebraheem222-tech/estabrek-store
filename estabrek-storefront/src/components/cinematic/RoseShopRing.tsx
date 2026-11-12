@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { createContext, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
-import { pageScrolling } from "@/lib/pageRest";
 
 export type RingPiece = { slug: string; title: string; image: string };
 
@@ -13,10 +12,22 @@ export function RingPiecesProvider({ pieces, children }: { pieces: RingPiece[]; 
   return <RingPiecesContext.Provider value={pieces}>{children}</RingPiecesContext.Provider>;
 }
 
+/** How long one turn takes (s). */
+const TURN_SECONDS = 16;
+/** How long the scroll must be still before the ring turns again by itself (ms). */
+const SCROLL_QUIET = 1400;
+
 /*
- * The shop's own pieces on a 3D ring turning slowly around the opening's arch (rose-showcase.css): drag it to
- * turn it faster or back, it settles to its own pace again; a tap opens the piece. It rests while it is off
- * screen, and stands still for shoppers who ask for less motion.
+ * The shop's own pieces on a 3D ring turning around the opening's arch (rose-showcase.css): drag it to turn it,
+ * a throw glides on; a tap opens the piece.
+ *
+ * It turns like a game draws: a CSS animation of the ring's turn, which the graphics card runs at the screen's
+ * own rate (60, 120 or 144 a second) with no work on the page at all. It was turned from script 20 times a
+ * second at 6° a second (a turn a minute: slow, in steps), each step restyling all its cards.
+ *
+ * While the page scrolls it stands still (the scroll gets the whole frame); it turns again when the pointer
+ * comes over it or a finger touches it, or once the scroll has rested a moment. Off screen, while the page
+ * rests (lib/pageIdle.ts) and for shoppers who ask for less motion it stands still.
  */
 export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: string }) {
   const ring = useRef<HTMLDivElement>(null);
@@ -25,46 +36,59 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
   useEffect(() => {
     const el = ring.current;
     if (!el || pieces.length < 3) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pace = reduced ? 0 : 6; // degrees a second
-    let angle = 0;
-    let velocity = pace;
-    let raf = 0;
-    let last = performance.now();
-    let visible = true;
-    let drag: null | { id: number; x: number; angle: number; lastX: number; lastT: number; v: number } = null;
-    const apply = () => el.style.setProperty("--ring-turn", `${angle.toFixed(2)}deg`);
-    // Its slow turn (6° a second) is written 20 times a second, and not while the page scrolls: written on every
-    // frame (165 a second on fast screens), each write restyled all its cards, and the whole window was redrawn at
-    // the screen's rate while the ring showed. A drag, or a throw's glide, keeps every frame.
-    let wrote = 0;
-    const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      if (!drag) {
-        velocity += (pace - velocity) * Math.min(1, dt * 1.2);
-        angle += velocity * dt;
-        const gliding = Math.abs(velocity - pace) > 1;
-        if (gliding || (now - wrote >= 50 && !pageScrolling(200))) { wrote = now; apply(); }
+    // Why it stands still now (none: it turns). Written on the ring only when that changes.
+    const reasons = new Set<string>();
+    let shown = "";
+    // Its turn is played and paused here, by its animation (the page's own rest pauses skip it: data-own-pause).
+    const spin = el.querySelector<HTMLElement>(".rose-ring-spin");
+    const show = () => {
+      const now = [...reasons].join(" ");
+      if (now === shown) return;
+      shown = now;
+      if (now) el.dataset.paused = now;
+      else delete el.dataset.paused;
+      for (const a of spin?.getAnimations() ?? []) {
+        if (now) a.pause();
+        else a.play();
       }
-      // It stops turning while the page rests (lib/pageIdle.ts): every turn restyled all its cards.
-      raf = visible && !isPageIdle() && (!reduced || drag || Math.abs(velocity) > 0.05) ? requestAnimationFrame(frame) : 0;
     };
-    const wake = () => {
-      if (raf) return;
-      last = performance.now();
-      raf = requestAnimationFrame(frame);
+    const hold = (why: string, on: boolean) => {
+      if (on) reasons.add(why);
+      else reasons.delete(why);
+      show();
     };
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible) wake();
-    });
-    io.observe(el);
-    const offIdle = onPageIdle((rest) => { if (!rest && visible) wake(); });
 
+    // Off screen, or the page at rest.
+    const io = new IntersectionObserver(([entry]) => hold("away", !entry.isIntersecting));
+    io.observe(el);
+    hold("rest", isPageIdle());
+    const offIdle = onPageIdle((rest) => hold("rest", rest));
+
+    // The scroll: still at once, turning again after a quiet moment or on the pointer / a touch.
+    let quiet = 0;
+    const scrolled = () => {
+      hold("scroll", true);
+      window.clearTimeout(quiet);
+      quiet = window.setTimeout(() => hold("scroll", false), SCROLL_QUIET);
+    };
+    const wakeUp = () => {
+      window.clearTimeout(quiet);
+      hold("scroll", false);
+    };
+    window.addEventListener("scroll", scrolled, { passive: true });
+    const area = el.parentElement ?? el;
+    area.addEventListener("pointerenter", wakeUp);
+    area.addEventListener("touchstart", wakeUp, { passive: true });
+
+    // A drag turns the ring itself (its turn stands still meanwhile); a throw glides on and slows down.
+    let turn = 0;
+    let glide = 0;
+    const apply = () => el.style.setProperty("--ring-turn", `${turn.toFixed(2)}deg`);
+    let drag: null | { id: number; x: number; turn: number; lastX: number; lastT: number; v: number } = null;
     const down = (e: PointerEvent) => {
       if (e.button !== 0) return;
-      drag = { id: e.pointerId, x: e.clientX, angle, lastX: e.clientX, lastT: performance.now(), v: 0 };
+      cancelAnimationFrame(glide);
+      drag = { id: e.pointerId, x: e.clientX, turn, lastX: e.clientX, lastT: performance.now(), v: 0 };
       moved.current = false;
     };
     const move = (e: PointerEvent) => {
@@ -74,32 +98,46 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
         moved.current = true;
         el.setPointerCapture?.(e.pointerId);
         el.dataset.dragging = "true";
+        hold("drag", true);
       }
       if (!moved.current) return;
       const now = performance.now();
-      angle = drag.angle + dx * 0.32;
+      turn = drag.turn + dx * 0.32;
       drag.v = ((e.clientX - drag.lastX) * 0.32) / Math.max(0.008, (now - drag.lastT) / 1000);
       drag.lastX = e.clientX;
       drag.lastT = now;
       apply();
-      wake();
     };
     const up = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
-      if (moved.current) velocity = Math.max(-240, Math.min(240, drag.v));
+      let v = moved.current ? Math.max(-240, Math.min(240, drag.v)) : 0;
       drag = null;
       delete el.dataset.dragging;
-      wake();
+      hold("drag", false);
+      if (Math.abs(v) < 4) return;
+      let last = performance.now();
+      const step = (now: number) => {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        turn += v * dt;
+        v *= Math.exp(-dt * 2.6);
+        apply();
+        glide = Math.abs(v) > 2 ? requestAnimationFrame(step) : 0;
+      };
+      glide = requestAnimationFrame(step);
     };
     el.addEventListener("pointerdown", down);
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
-    wake();
     return () => {
       io.disconnect();
       offIdle();
-      cancelAnimationFrame(raf);
+      window.clearTimeout(quiet);
+      cancelAnimationFrame(glide);
+      window.removeEventListener("scroll", scrolled);
+      area.removeEventListener("pointerenter", wakeUp);
+      area.removeEventListener("touchstart", wakeUp);
       el.removeEventListener("pointerdown", down);
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerup", up);
@@ -109,15 +147,17 @@ export function RoseShopRing({ pieces, label }: { pieces: RingPiece[]; label: st
 
   if (pieces.length < 3) return null;
   return (
-    <div className="rose-ring" ref={ring} role="group" aria-label={label} style={{ "--ring-n": pieces.length } as CSSProperties}
+    <div className="rose-ring" ref={ring} role="group" aria-label={label} data-own-pause="" style={{ "--ring-n": pieces.length, "--ring-period": `${TURN_SECONDS}s` } as CSSProperties}
       // A drag turns the ring; it doesn't open the piece under the finger.
       onClickCapture={(e) => { if (moved.current) { e.preventDefault(); e.stopPropagation(); moved.current = false; } }}>
-      {pieces.map((piece, i) => (
-        <Link key={piece.slug} href={`/p/${piece.slug}`} className="rose-ring-piece" style={{ "--i": i } as CSSProperties} draggable={false}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={piece.image} alt={piece.title} loading="lazy" draggable={false} />
-        </Link>
-      ))}
+      <div className="rose-ring-spin">
+        {pieces.map((piece, i) => (
+          <Link key={piece.slug} href={`/p/${piece.slug}`} className="rose-ring-piece" style={{ "--i": i } as CSSProperties} draggable={false}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={piece.image} alt={piece.title} loading="lazy" draggable={false} />
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 
 import { usePageIdle } from "@/lib/pageIdle";
+import { quietShaders } from "./warmScene";
 import { pageScrolling } from "@/lib/pageRest";
 import {
   onMotionLevel,
@@ -58,6 +59,9 @@ export function ScenePacer({
       (state) =>
         state.invalidate,
     );
+  // No shader checks that stall the page (warmScene.ts quietShaders).
+  const gl = useThree((state) => state.gl);
+  useEffect(() => quietShaders(gl), [gl]);
 
   const setDpr =
     useThree(
