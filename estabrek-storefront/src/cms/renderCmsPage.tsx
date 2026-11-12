@@ -30,8 +30,8 @@ import { ThemedHome } from "@/storeThemes/home/ThemedHome";
 import { stageOptionsOf } from "@/storeThemes/three/kinds";
 import { RoseCmsInterior } from "@/components/cinematic/RoseCmsInterior";
 import FallbackShop from "@/components/FallbackShop";
-import FallbackContact from "@/components/FallbackContact";
-import CartClient from "@/components/CartClient";
+// The cart and contact fallbacks, scripts of their own (lazyFallbacks.tsx says why).
+import { CartClient, FallbackContact } from "@/components/lazyFallbacks";
 import { normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { ProductMini } from "@/cms/types";
 import type { StorefrontPage } from "@/lib/types";

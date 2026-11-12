@@ -16,10 +16,8 @@ import { isNearWhite } from "@/lib/storefrontPalette";
 import { tr } from "@/lib/words";
 import { RingPiecesContext, RoseShopRing } from "./RoseShopRing";
 
-export const defaultCampaignVideo: VideoData = {
-  url: "/editorial/rose-campaign.mp4", posterUrl: "/editorial/rose-campaign-poster.webp",
-  provider: "MP4", autoplay: true, muted: true, loop: true,
-};
+import { defaultCampaignVideo } from "./campaignVideo";
+export { defaultCampaignVideo };
 
 type Playback = "paused" | "playing" | "blocked" | "error" | "scrubbing";
 const HEX = /^#[0-9a-f]{6}$/i;

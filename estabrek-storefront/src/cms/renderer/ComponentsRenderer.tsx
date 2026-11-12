@@ -7,7 +7,8 @@ import { SHAPES } from "@/cms/shapes/shapeRegistry";
 import { AnimatedShapeLayer } from "@/cms/animated-shapes/AnimatedShapeLayer";
 import ProductCard from "@/components/ProductCard";
 import { buildCanonicalQuery, type CatalogFilters } from "@/lib/filtersUrl";
-import { ProductFiltersBar } from "@/components/ProductFiltersBar";
+// The filters bar, a script of its own (lazySections.tsx says why).
+import { ProductFiltersBar } from "./lazySections";
 import { TypewriterText } from "@/components/effects/TypewriterText";
 import { LoadingImg } from "@/components/LoadingImg";
 

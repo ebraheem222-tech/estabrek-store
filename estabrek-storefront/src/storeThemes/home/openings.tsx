@@ -629,4 +629,4 @@ export function DesignOpening(input: OpeningInput & { archetype: string; lang: L
   return O ? <O {...input} /> : null;
 }
 /** Skeletons that bring one of the store's sections up right after the opening (the others show the products or categories in the opening itself). */
-export const LEADS_WITH: Record<string, "products" | "collections"> = { booking: "collections", map: "collections", gallery: "products", bento: "products", spec: "products", story: "collections", recipe: "products", magazine: "collections" };
+export { LEADS_WITH } from "./openingLeads";

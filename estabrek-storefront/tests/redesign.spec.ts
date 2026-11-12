@@ -150,7 +150,8 @@ test("scrolling plays the campaign clip forwards and backwards, with no pause bu
   await expect(section).toHaveAttribute("data-playback", "scrubbing");
   await scrollTo(0.7);
   await expect.poll(() => section.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(4);
-  expect(await section.locator("video").evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  // It plays the last stretch to the scroll and stops there (heroFilmPlayback.ts PLAY_REACH): no endless playing.
+  await expect.poll(() => section.locator("video").evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
   await scrollTo(0.05);
   await expect.poll(() => section.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime)).toBeLessThan(2);
 });
