@@ -366,6 +366,12 @@
   position: absolute; inset: 0; pointer-events: none;
   background: var(--selection-dye, transparent); background-image: var(--selection-dye-paint, none); mix-blend-mode: color; opacity: .9; transition: background-color .8s ease;
 }
+/* A dark colour also deepens the film (as the fabric video does): wine came out pink, navy lavender. */
+.cinematic-interior-shell .rose-stage-deepen {
+  position: absolute; inset: 0; pointer-events: none;
+  background: var(--selection-dye, transparent); background-image: var(--selection-dye-paint, none); mix-blend-mode: multiply;
+  opacity: var(--selection-dye-depth, 0); transition: opacity .8s ease, background-color .8s ease;
+}
 /* A category's photo in the arch breathes slowly (a slow push in and out). */
 @media (prefers-reduced-motion: no-preference) {
   .cinematic-interior-shell .rose-stage-photo img { animation: rose-breathe 16s ease-in-out 2 alternate; }
@@ -859,8 +865,10 @@ html.lenis, html.lenis body { height: auto; }
 /* ---------------------------------------------------------------- 18. mixed colours (lib/colourMix.ts) */
 
 /* The header wears the colours tapped on the shop's cards as a gradient mesh over their blend (RoseThemeProvider
-   sets --navbar-mesh with data-colour-mix). Only where the header follows the colour. */
-.cinematic-shell[data-navbar-color][data-colour-mix]:not([data-color-scope="product"]) .atelier-header { background-image: var(--navbar-mesh); }
+   sets --navbar-mesh with data-colour-mix). Only where the header follows the colour, and not while a scene holds
+   the page's colours: the seasons' winter blue, the worlds' and the story's colours take the header as they do
+   without a mix (the mesh lay over them, so the header stayed in the mix). */
+.cinematic-shell[data-navbar-color][data-colour-mix]:not([data-color-scope="product"], [data-theme-held]) .atelier-header { background-image: var(--navbar-mesh); }
 
 /* The small bag in the colours of what's in it: a pastel mesh of them on its head, their pools lighting its glass,
    and their dots by the count. */
@@ -889,3 +897,52 @@ html.lenis, html.lenis body { height: auto; }
 }
 .cinematic-shell[data-colour-mix][data-theme-held]::before { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .cinematic-shell[data-colour-mix]::before { transition: none; } }
+
+
+/* Everything else in the mixed colours (lib/mixPaints.ts; RoseThemeProvider writes the paints with
+   data-colour-mix): the buttons, the top bar and the active marks are filled with the colours flowing into each
+   other, the hero's words, the prices and the accents are written in them, the big headings in their deep
+   versions, the footer wears a soft mesh of them. Not on a product page whose colour stays in the product
+   (data-color-scope), not while a scene holds the page's colours, and not in the seasons and the collection
+   worlds, which always wear their own. A paint the mix can't make is missing: the one colour stays. */
+.cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) :is(
+  .button-dark, .collection-tab.active, .atelier-announcement, .film-glow, .film-steps li[data-on], .rose-badge-limited,
+  .study-progress .current i, .rose-cs-dots li[aria-current] a, .rose-product-add > button, .rose-shop-grid + div > button,
+  .rose-shop-categories button[aria-pressed="true"], .btn-primary, .rose-reviews-write, .rose-reviews-more, .rose-cart-free-bar i,
+  .rose-account-tabs button[aria-selected="true"], .rose-pdp-sizes button.active, .rose-attr-options button.active
+):not(:is(.rose-seasons, .rose-stories) *),
+.cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) .rose-cart-steps li[data-on]::before {
+  background-image: var(--mix-accent-paint, none) !important;
+  background-origin: border-box;
+  border-color: transparent !important;
+}
+.cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) .rose-cart-steps li[data-on]::before { color: #fff; }
+/* The floating buttons sit outside the page's shell. */
+:root[data-colour-mix] :is(.live-chat-button, .scroll-to-top, .scroll-progress-bar, .quick-view-add-btn, .rose-chat-form button) {
+  background-image: var(--mix-accent-paint, none) !important;
+}
+.cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) .atelier-footer { background-image: var(--mix-soft-paint, none); }
+/* Words written in the colours (clipped to the text; without the paint the text keeps its own colour: the
+   fallback paints it in that colour). Left alone where the system sets its own colours (forced colours). */
+@media not (forced-colors: active) {
+  .cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) :is(
+    .film-word, .product-price, h2 > em, .rose-cs-name > span, .atelier-footer .brand-arabic
+  ):not(:is(.rose-seasons, .rose-stories, .rose-particles, .atelier-header) *) {
+    background-image: var(--mix-accent-paint, linear-gradient(currentColor, currentColor));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) :is(
+    .rose-video-copy, .rose-editorial-copy, .study-chapter, .rose-cs-head, .instagram-copy, .rose-world-head, .rose-cta, .atelier-section-heading
+  ) > h2:not(:is(.rose-seasons, .rose-stories, .rose-particles) *),
+  .cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) :is(.rose-cart-head, .rose-cart-done, .rose-cart-empty) > h1 {
+    background-image: var(--mix-ink-paint, linear-gradient(currentColor, currentColor));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .cinematic-shell[data-colour-mix]:not([data-theme-held], [data-color-scope="product"]) .footer-wordmark {
+    background-image: var(--mix-decor-paint, linear-gradient(currentColor, currentColor));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}

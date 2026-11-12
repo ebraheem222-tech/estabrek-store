@@ -129,12 +129,44 @@ export function dyeStops(hexes: string[]): [string, string, string] | null {
   return [list[0], list[1], list[2]];
 }
 
+/**
+ * Colours flowing into each other across a box (2–4 of them, in their order), as a CSS paint: the buttons,
+ * headings and dyes of a mix. "none" when fewer than two different colours are left.
+ */
+export function flowPaint(hexes: string[], angle = 115): string {
+  const list = [...new Set(hexes.filter(isHex).map(norm))].slice(-4);
+  if (list.length < 2) return "none";
+  const from = list.length === 2 ? 15 : 8;
+  const at = (i: number) => Math.round(from + ((100 - 2 * from) * i) / (list.length - 1));
+  return `linear-gradient(${angle}deg, ${list.map((c, i) => `${c} ${at(i)}%`).join(", ")})`;
+}
+
 /** The dye as a CSS paint: the colours flowing across (for the photo and film tints over pictures). */
 export function dyePaint(hexes: string[]): string {
-  const list = [...new Set(hexes.filter(isHex).map(norm))].slice(-3);
-  if (list.length < 2) return "none";
-  const at = list.length === 2 ? ["15%", "85%"] : ["8%", "50%", "92%"];
-  return `linear-gradient(115deg, ${list.map((c, i) => `${c} ${at[i]}`).join(", ")})`;
+  return flowPaint([...new Set(hexes.filter(isHex).map(norm))].slice(-3));
+}
+
+/**
+ * How much a picture dyed in a colour is also deepened (0–0.6): the "color" blend alone keeps the fabric's own
+ * brightness, so navy came out pale lavender and wine pink. A dark colour adds a multiply layer, a light one none.
+ */
+export function dyeDepth(hex: string): string {
+  const n = parseInt(norm(hex).slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => toLinear(c / 255));
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return Math.max(0, Math.min(0.6, ((0.55 - l) / 0.55) * 0.6)).toFixed(2);
+}
+
+/**
+ * A colour deep enough for text on the page's light surfaces (no lighter than `L` in OKLab, about 6:1 on
+ * them), its colourfulness capped so a bright pick reads calm: pink → deep raspberry, sky → deep blue,
+ * black and navy stay themselves.
+ */
+export function deepInk(hex: string, L = 0.4, maxChroma = 0.13): string {
+  const c = hexToOklab(norm(hex));
+  const chroma = chromaOf(c);
+  const k = chroma > maxChroma ? maxChroma / chroma : 1;
+  return oklabToHex({ L: Math.min(c.L, L), a: c.a * k, b: c.b * k });
 }
 
 /** The colours the store wears now (the mix, or the one colour), from the page (RoseThemeProvider writes them). */

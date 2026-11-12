@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cldUrl } from "@/lib/cloudinary";
 import { normalHex, sceneTheme, shiftHue } from "@/lib/sceneColour";
+import { COLOURS_EVENT, blendColours, currentColours } from "@/lib/colourMix";
 import { isPageIdle, onPageIdle } from "@/lib/pageIdle";
 import { pageScrolling } from "@/lib/pageRest";
 import { tr } from "@/lib/words";
@@ -127,14 +128,24 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     // page's shell: this section itself wears the chapter's colour while it holds the screen.
     const shell = el.closest<HTMLElement>(".cinematic-shell");
     let base = "";
+    let worn = "";
     let seeds: string[] = [];
     let tones: Array<[Rgb, Rgb, Rgb]> = [];
     const readColours = () => {
       const cs = getComputedStyle(shell ?? document.documentElement);
       const now = normalHex(shell?.dataset.storefrontColor) ?? normalHex(cs.getPropertyValue("--selection-seed")) ?? normalHex(cs.getPropertyValue("--selection-accent")) ?? "#c97794";
-      if (now === base) return;
+      // A mix of colours (tapped on the shop's cards, lib/colourMix.ts): the chapters wear them in her order,
+      // the logo in the first and the bag in the last (two: the hijab in their blend between them).
+      const mixed = currentColours();
+      const key = mixed.length > 1 ? mixed.join(" ") : now;
+      if (key === worn) return;
+      worn = key;
       base = now;
-      seeds = CHAPTER_TURN.map((turn) => (turn ? shiftHue(base, turn) : base));
+      seeds = mixed.length > 2
+        ? CHAPTER_TURN.map((_, i) => mixed[i % mixed.length])
+        : mixed.length === 2
+          ? [mixed[0], blendColours(mixed, [0.5, 0.5]), mixed[1]]
+          : CHAPTER_TURN.map((turn) => (turn ? shiftHue(base, turn) : base));
       tones = seeds.map(tonesOf);
       if (holding && shown >= 0) theme?.wear(seeds[Math.min(seeds.length - 1, shown)], 0.8);
     };
@@ -295,6 +306,7 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
     const onMove = (e: PointerEvent) => { const r = cv.getBoundingClientRect(); pointer.x = e.clientX - r.left; pointer.y = e.clientY - r.top; pointerAt = performance.now(); };
     const onLeave = () => { pointer.x = pointer.y = -9999; };
     const colours = window.setInterval(readColours, 900);
+    window.addEventListener(COLOURS_EVENT, readColours);
     window.addEventListener("scroll", onScroll, { passive: true });
     cv.addEventListener("pointermove", onMove);
     cv.addEventListener("pointerleave", onLeave);
@@ -305,6 +317,7 @@ export function RoseParticles({ logoUrl, storeName }: { logoUrl?: string | null;
       sized.disconnect();
       offIdle();
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener(COLOURS_EVENT, readColours);
       cv.removeEventListener("pointermove", onMove);
       cv.removeEventListener("pointerleave", onLeave);
       theme?.giveBack(true);

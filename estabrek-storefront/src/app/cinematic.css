@@ -3153,6 +3153,8 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
 /* Dark colours also deepen the fabric (strength set from the colour's lightness). */
 .rose-video-deepen {
   position: absolute; inset: 0; pointer-events: none; background-color: var(--video-dye, transparent);
+  /* A mix deepens the fabric in its own flow too (one blended colour over it made the whole film that one colour). */
+  background-image: var(--video-dye-paint, none);
   mix-blend-mode: multiply; opacity: 0; transition: opacity .9s ease, background-color .9s ease;
 }
 .rose-video-deepen[data-on] { opacity: var(--video-deepen, 0); }
