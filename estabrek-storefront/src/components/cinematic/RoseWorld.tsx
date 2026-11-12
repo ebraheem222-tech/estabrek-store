@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { watchNear } from "@/lib/watchNear";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { moodOf, type Mood } from "@/lib/categoryMood";
 import { cityPoint, CITY_BOUNDS } from "@/lib/cityPoints";
@@ -90,7 +91,9 @@ export function RoseWorld({ collections, delivery, currencyCode, title }: { coll
     theme.current = sceneTheme(el, "world");
     const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.35 });
     io.observe(el);
-    return () => { io.disconnect(); theme.current?.giveBack(true); theme.current = null; };
+    // Its routes and clouds move only near the screen (lib/watchNear.ts).
+    const offNear = watchNear(el);
+    return () => { io.disconnect(); offNear(); theme.current?.giveBack(true); theme.current = null; };
   }, []);
   useEffect(() => {
     if (pickedColour && inView) theme.current?.wear(pickedColour, 0.8);

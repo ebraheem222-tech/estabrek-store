@@ -123,7 +123,8 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       // decoded frame was shown, on the clip's own frame grid: 120 a second for the
       // shop's clip; a video from the Admin is taken as up to 60 (a finer grid only
       // sends seeks that land inside the frame already shown).
-      const scrubber = createFilmScrubber(el, () => {}, isDefault ? 120 : 60, isDefault && motionSettings().keyframeSnap ? 6 : 1);
+      // Played to the scroll going forward, sought only going back (heroFilmPlayback.ts PLAY_REACH).
+      const scrubber = createFilmScrubber(el, () => {}, isDefault ? 120 : 60, isDefault && motionSettings().keyframeSnap ? 6 : 1, { play: true });
       const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); };
       el.addEventListener("loadedmetadata", ready);
       if (el.readyState >= 1) ready();

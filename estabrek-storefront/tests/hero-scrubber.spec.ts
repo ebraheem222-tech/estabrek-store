@@ -121,3 +121,84 @@ test("fast decoders get at most one seek per display frame on 90/120/144Hz displ
     }
   }
 });
+
+// The shop's own films are played forward to the scroll (decoded once, in order) and sought only going back
+// (heroFilmPlayback.ts PLAY_REACH).
+test("played to the scroll going forward, stopped there, sought going back; seeks when it may not play", async () => {
+  const originals = ["document", "requestAnimationFrame", "cancelAnimationFrame", "HTMLMediaElement"].map(key =>
+    [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const);
+  let pending: FrameRequestCallback | null = null;
+  try {
+    Object.defineProperty(globalThis, "document", { configurable: true, value: { hidden: false, documentElement: { dataset: {} }, addEventListener() {}, removeEventListener() {} } });
+    Object.defineProperty(globalThis, "requestAnimationFrame", { configurable: true, value: (callback: FrameRequestCallback) => { pending = callback; return 1; } });
+    Object.defineProperty(globalThis, "cancelAnimationFrame", { configurable: true, value: () => { pending = null; } });
+    Object.defineProperty(globalThis, "HTMLMediaElement", { configurable: true, value: { HAVE_METADATA: 1, HAVE_CURRENT_DATA: 2 } });
+    const beat = (time: number) => { const callback = pending; pending = null; callback?.(time); };
+    class PlayingVideo extends EventTarget {
+      readyState = 2;
+      duration = 10;
+      seeking = false;
+      paused = true;
+      playbackRate = 1;
+      plays = 0;
+      seeks: number[] = [];
+      refuse = false;
+      private time = 0;
+      get currentTime() { return this.time; }
+      set currentTime(value: number) { this.time = value; this.seeks.push(value); }
+      /** Moves the film as playback would over `seconds` of the page's time. */
+      run(seconds: number) { if (!this.paused) this.time = Math.min(this.duration, this.time + seconds * this.playbackRate); }
+      play() { this.plays++; if (this.refuse) return Promise.reject(new Error("not allowed")); this.paused = false; return Promise.resolve(); }
+      pause() { this.paused = true; }
+    }
+    const video = new PlayingVideo();
+    const shown: number[] = [];
+    const scrubber = createFilmScrubber(video as unknown as HTMLVideoElement, (i) => shown.push(i), 120, 6, { play: true });
+    try {
+      // Forward, half a second ahead: it plays there, fast (0.5 s / 0.2 s lead = 2.5×), no seek.
+      scrubber.update(0.05);
+      beat(1000);
+      expect(video.paused).toBe(false);
+      expect(video.playbackRate).toBeCloseTo(2.5, 1);
+      expect(video.seeks).toHaveLength(0);
+      // Playing on, it slows down as it gets close, and stops on arriving; a frame past is left alone.
+      for (let t = 1; t < 60 && !video.paused; t++) { video.run(1 / 60); beat(1000 + t * 16.7); }
+      expect(video.paused).toBe(true);
+      expect(Math.abs(video.currentTime - 0.5)).toBeLessThan(0.05);
+      beat(2000);
+      beat(2020);
+      expect(video.seeks).toHaveLength(0);
+      expect(shown.length).toBeGreaterThan(0);
+      // Back: sought (one seek), not played.
+      scrubber.update(0.01);
+      beat(2100);
+      expect(video.paused).toBe(true);
+      expect(video.seeks).toHaveLength(1);
+      expect(video.seeks[0]).toBeLessThan(0.2);
+      // A far jump forward (more than 2 s): sought too.
+      video.dispatchEvent(new Event("seeked"));
+      scrubber.update(0.9);
+      beat(2200);
+      expect(video.seeks).toHaveLength(2);
+      expect(video.paused).toBe(true);
+    } finally { scrubber.stop(); }
+
+    // A browser that won't play it: seeks, as before.
+    const strict = new PlayingVideo();
+    strict.refuse = true;
+    const seeking = createFilmScrubber(strict as unknown as HTMLVideoElement, () => {}, 120, 6, { play: true });
+    try {
+      seeking.update(0.05);
+      beat(3000);
+      expect(strict.plays).toBe(1);
+      await Promise.resolve(); await Promise.resolve();
+      beat(3016);
+      expect(strict.seeks).toHaveLength(1);
+    } finally { seeking.stop(); }
+  } finally {
+    for (const [key, descriptor] of originals) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
+    }
+  }
+});

@@ -209,6 +209,9 @@
 .rose-world-clouds i:nth-child(2) { top: 55%; left: -40%; width: 420px; animation-duration: 52s; animation-delay: -18s; opacity: .7; }
 .rose-world-clouds i:nth-child(3) { top: 78%; left: -30%; width: 260px; animation-duration: 44s; animation-delay: -30s; opacity: .6; }
 @keyframes rose-cloud { from { transform: translateX(0); } to { transform: translateX(130vw); } }
+/* Far from the screen they don't move at all (data-near, lib/watchNear.ts): the routes' dashes were worked out on
+   every frame of the page, wherever the shopper was. */
+.rose-world:not([data-near]) :is(.rose-world-routes path, .rose-world-clouds i) { animation: none; }
 
 .rose-world-hint { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: grid; justify-items: center; gap: 6px; padding: 16px 20px; border-radius: 20px; background: rgba(255, 255, 255, .75); backdrop-filter: blur(8px); color: var(--selection-ink, #4d2039); font-size: 13px; font-weight: 600; pointer-events: none; }
 .rose-world-hint svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: rose-hint-drag 1.8s ease-in-out 4; }

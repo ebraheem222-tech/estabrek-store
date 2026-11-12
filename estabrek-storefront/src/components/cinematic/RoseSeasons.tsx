@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { watchNear } from "@/lib/watchNear";
 import Image from "next/image";
 import Link from "next/link";
 import { Component, useEffect, useRef, useState, type ReactNode } from "react";
@@ -119,6 +120,8 @@ export function RoseSeasons({ seasons, words }: { seasons: SeasonEdit[]; words?:
   const settings = useStorefrontSettings();
   const theme = useRoseTheme();
   const root = useRef<HTMLElement>(null);
+  // Its still snow (before its 3D is ready) falls only near the screen (lib/watchNear.ts).
+  useEffect(() => (root.current ? watchNear(root.current) : undefined), []);
   const progress = useRef(0);
   const [motion, setMotion] = useState(false);
   const [near, setNear] = useState(false);

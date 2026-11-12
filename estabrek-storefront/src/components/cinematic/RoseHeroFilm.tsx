@@ -221,7 +221,8 @@ export function RoseHeroFilm({
       el.loop = false;
       // 120 fps with a key frame every 6 (see SOURCES). The frame on screen is noted on
       // the canvas (data-frame) for the checks; nothing styles it.
-      const scrubber = createFilmScrubber(el, (index) => canvas.current?.setAttribute("data-frame", String(index)), 120, motionSettings().keyframeSnap ? 6 : 1);
+      // Played to the scroll going forward, sought only going back (heroFilmPlayback.ts PLAY_REACH).
+      const scrubber = createFilmScrubber(el, (index) => canvas.current?.setAttribute("data-frame", String(index)), 120, motionSettings().keyframeSnap ? 6 : 1, { play: true });
       let shown = -1;
       let shownP = "";
       // The film's frame (video, cut-out canvas, halo) is the only part that follows the scroll value.
