@@ -16,6 +16,7 @@ import { warmNow } from "./lib/cacheWarm.js";
 import { conversionsWaiting } from "./lib/ffmpeg.js";
 import { runCampaigns } from "./modules/admin/campaigns.service.js";
 import { flushAb } from "./lib/experiments.js";
+import { flushHomeStats } from "./lib/homeStats.js";
 import { runScheduled } from "./modules/admin/schedule.service.js";
 import { runAutomations, setVideoChecker } from "./modules/admin/automations.service.js";
 import { checkProcessingVideos } from "./modules/admin/videos.controller.js";
@@ -142,6 +143,14 @@ export function registerBackgroundJobs() {
     everyMs: MIN,
     limits: { min: 15_000, max: 30 * MIN },
     run: async () => ({ rows: await flushRum() }),
+  });
+
+  registerJob({
+    name: "homeStatsSave",
+    group: "selling",
+    everyMs: MIN,
+    limits: { min: 15_000, max: 30 * MIN },
+    run: async () => ({ rows: await flushHomeStats() }),
   });
 
   registerJob({

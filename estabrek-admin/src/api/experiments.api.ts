@@ -3,7 +3,7 @@ import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
 import type { StorefrontMotion } from "./cache.api";
 
-export type ExperimentKind = "heroOpening" | "motion";
+export type ExperimentKind = "heroOpening" | "motion" | "homeOrder";
 export type ExperimentStatus = "draft" | "running" | "stopped";
 export type Verdict = "early" | "A" | "B" | "same";
 
@@ -56,6 +56,12 @@ export async function stopExperiment(id: string) {
 }
 export async function keepWinner(id: string, winner: "A" | "B") {
   return (await api.post(E.keep(id), { winner })).data as { experiment: Experiment };
+}
+/** أقسام الرئيسية بالأرقام (backend lib/homeStats.ts). */
+export type HomeSectionRow = { key: string; label: string; onPage: boolean; seen: number; taps: number; bags: number; tapRate: number; bagRate: number; score: number; enough: boolean };
+export type HomeSections = { days: number; minSeen: number; sections: HomeSectionRow[]; current: string[]; suggested: string[] | null };
+export async function getHomeSections(days = 30) {
+  return (await api.get(`${E.base}/home-sections`, { params: { days } })).data as HomeSections;
 }
 export async function deleteExperiment(id: string) {
   return (await api.delete(E.one(id))).data as { ok: true };

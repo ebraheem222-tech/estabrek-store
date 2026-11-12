@@ -12,7 +12,7 @@
  */
 import { apiBaseClient } from "./apiClient";
 
-export type AbKind = "heroOpening" | "motion";
+export type AbKind = "heroOpening" | "motion" | "homeOrder";
 export type AbTest = { id: string; kind: AbKind; field: string | null; a: unknown; b: unknown; split: number };
 export type AbSide = "A" | "B";
 type Event = { x: string; v: AbSide; k: "visit" | "bag" | "order"; a?: number };
@@ -30,7 +30,7 @@ export function abTests(raw: unknown = typeof window === "undefined" ? [] : (win
       !!t &&
       typeof t === "object" &&
       typeof (t as AbTest).id === "string" &&
-      ((t as AbTest).kind === "heroOpening" || (t as AbTest).kind === "motion") &&
+      ((t as AbTest).kind === "heroOpening" || (t as AbTest).kind === "motion" || (t as AbTest).kind === "homeOrder") &&
       Number.isFinite((t as AbTest).split),
   );
 }

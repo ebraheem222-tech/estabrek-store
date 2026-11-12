@@ -52,6 +52,11 @@ export const JOB_TEXT: Record<string, { label: string; what: string; link?: { to
     what: "تقارير سرعة الصفحات من أجهزة الزباين بتنحفظ كل شوي.",
     link: { to: "/admin/system/speed#shoppers", label: "تجربة الزباين" },
   },
+  homeStatsSave: {
+    label: "حفظ أرقام أقسام الرئيسية",
+    what: "كم زيارة شافت كل قسم بالرئيسية، وكم مرة انكبس فيه، وكم قطعة انضافت للسلة بعده، بتنحفظ كل دقيقة.",
+    link: { to: "/admin/discounts/ab", label: "تجارب A/B" },
+  },
   abSave: {
     label: "حفظ أرقام تجارب A/B",
     what: "الزيارات والإضافات للسلة والطلبات بكل جهة بتنحفظ كل شوي.",

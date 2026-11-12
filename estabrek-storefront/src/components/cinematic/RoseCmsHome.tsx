@@ -8,6 +8,8 @@ import { sectionPalette } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
 import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
 import { RoseHomeStack } from "./RoseHomeStack";
+import { HomeSectionWatch } from "./HomeSectionWatch";
+import { HOME_ORDER_SCRIPT } from "@/lib/homeStats";
 import { RoseParticles } from "./RoseParticles";
 import { RoseRooms, type RoomPiece } from "./RoseRooms";
 import { RoseWorld, type WorldCollection } from "./RoseWorld";
@@ -137,7 +139,7 @@ export function RoseCmsHome({
   })();
   const deliverySettings = delivery ? normalizeDelivery(delivery) : null;
   const block = (name: string, node: ReactNode) => (
-    <div key={`block-${name}`} data-rose-block={name} data-edit-section={hero?.id} data-hero-busy={["particles", "world", "rooms"].includes(name) || undefined}>
+    <div key={`block-${name}`} data-rose-block={name} data-home-key={`b:${name}`} data-edit-section={hero?.id} data-hero-busy={["particles", "world", "rooms"].includes(name) || undefined}>
       {node}
       <OverlayLayer over={overOf(name)} />
     </div>
@@ -157,7 +159,7 @@ export function RoseCmsHome({
   const flush = () => {
     if (!native.length) return;
     nodes.push(...native.map(section => (
-      <div key={`native-${section.id}`} data-cms-section={section.id} data-rose-palette={sectionPalette(section.type, (section.data as any)?.rosePresentation)} data-rose-explicit={(section.data as any)?.rosePresentation?.palette || undefined} data-rose-intensity={(section.data as any)?.rosePresentation?.motionIntensity || "cinematic"}>
+      <div key={`native-${section.id}`} data-cms-section={section.id} data-home-key={`s:${section.id}`} data-rose-palette={sectionPalette(section.type, (section.data as any)?.rosePresentation)} data-rose-explicit={(section.data as any)?.rosePresentation?.palette || undefined} data-rose-intensity={(section.data as any)?.rosePresentation?.motionIntensity || "cinematic"}>
       <RoseNativeSections>
         <CmsPageRenderer
           sections={[section]}
@@ -282,6 +284,7 @@ export function RoseCmsHome({
         <div
           key={section.id}
           data-cms-section={section.id}
+          data-home-key={`s:${section.id}`}
           data-rose-palette={sectionPalette(section.type, d.rosePresentation)}
           data-rose-explicit={d.rosePresentation?.palette || undefined}
           data-rose-intensity={d.rosePresentation?.motionIntensity || "cinematic"}
@@ -330,7 +333,14 @@ export function RoseCmsHome({
   // The two layers sit beside the frame (not in it: they are not sections).
   return (
     <RingPiecesProvider pieces={ring}>
-      <RoseHomeFrame>{nodes}<RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} /></RoseHomeFrame>
+      <RoseHomeFrame>
+        {nodes}
+        <RoseHomeStack enabled={(hero?.data as any)?.roseStackEnabled === true} />
+      </RoseHomeFrame>
+      {/* The home order test's side B (lib/homeStats.ts), right after the frame it orders: before the page below
+          the opening shows. */}
+      <script dangerouslySetInnerHTML={{ __html: HOME_ORDER_SCRIPT }} />
+      <HomeSectionWatch />
       {/* The flying 3D silk only when the owner turns it on (off by default since 2026-11-10). */}
       <RosePageHero enabled={heroData.roseHeroObjectEnabled === true} />
       <RoseStoryMode enabled={heroData.roseStoryModeEnabled !== false} />

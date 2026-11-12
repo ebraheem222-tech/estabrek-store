@@ -10,6 +10,7 @@ import { testResults } from "../../lib/abStats.js";
 import { readPerformance, savePerformance } from "../../lib/performanceSettings.js";
 import { triggerSettingsRevalidate } from "./settings.controller.js";
 import { capturePageRevision, triggerCmsRevalidate } from "./pages.controller.js";
+import { MIN_SEEN, homeSectionTotals, sectionScore, suggestOrder } from "../../lib/homeStats.js";
 
 /**
  * /v1/admin/experiments — تجارب A/B: make a test (draft), start it, see the
@@ -111,6 +112,51 @@ r.post(
   }),
 );
 
+/** The scenes the rose home places by itself, by name (their keys are "b:<name>"). */
+const SCENE_NAMES: Record<string, string> = {
+  particles: "الحكاية (لوجو، حجاب، حقيبة)", seasons: "المواسم", stories: "العوالم", instagram: "إنستغرام", rooms: "الغرف", world: "الخريطة", fabric: "دراسة القماش",
+};
+const TYPE_NAMES: Record<string, string> = {
+  HERO: "الافتتاحية", RICH_TEXT: "نص", CUSTOM_HTML: "كود خاص", GRID: "شبكة", FEATURES: "المميزات", STATS: "أرقام", TEAM: "الفريق",
+  PRICING: "الأسعار", CONTACT: "التواصل", BANNER: "بانر", FEATURED_CATEGORIES: "الأقسام", COLLECTIONS_GRID: "المجموعات",
+  BEST_SELLERS_SLIDER: "الأكثر مبيعاً", NEW_ARRIVALS_SLIDER: "وصل حديثاً", BRANDS_SLIDER: "الماركات", FEATURED_PRODUCTS: "منتجات مختارة",
+  IMAGE_GALLERY: "معرض صور", FAQ: "أسئلة", TESTIMONIALS: "آراء الزبائن", CTA: "دعوة", CARDS: "بطاقات", VIDEO: "فيديو", NEWSLETTER: "النشرة",
+};
+const textOf = (v: unknown): string => (typeof v === "string" ? v : v && typeof v === "object" ? String((v as Record<string, unknown>).ar ?? (v as Record<string, unknown>).en ?? "") : "");
+
+/**
+ * GET /v1/admin/experiments/home-sections?days=30 — the home page's sections in numbers: each one's visits
+ * that saw it, taps, bag adds and score, the order now and the order the numbers suggest (lib/homeStats.ts).
+ */
+r.get(
+  "/home-sections",
+  asyncHandler(async (req, res) => {
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+    const [totals, home] = await Promise.all([
+      homeSectionTotals(days),
+      prisma.page.findUnique({ where: { slug: "/" }, select: { sections: { where: { isVisible: true }, orderBy: { order: "asc" }, select: { id: true, type: true, data: true } } } }),
+    ]);
+    const sections = home?.sections ?? [];
+    const current = sections.map((s) => `s:${s.id}`);
+    const label = (key: string) => {
+      if (key.startsWith("b:")) return SCENE_NAMES[key.slice(2)] ?? key.slice(2);
+      const s = sections.find((x) => `s:${x.id}` === key);
+      if (!s) return null; // removed from the page since
+      const d = (s.data ?? {}) as Record<string, unknown>;
+      const own = textOf(d.title) || textOf(d.heading) || textOf((d.node as Record<string, unknown> | undefined)?.name);
+      return own ? `${TYPE_NAMES[s.type] ?? s.type} · ${own.slice(0, 60)}` : TYPE_NAMES[s.type] ?? s.type;
+    };
+    const keys = [...new Set([...current, ...totals.keys()])];
+    const rows = keys
+      .map((key) => {
+        const n = totals.get(key) ?? { seen: 0, taps: 0, bags: 0 };
+        return { key, label: label(key), onPage: current.includes(key), ...n, tapRate: n.seen ? n.taps / n.seen : 0, bagRate: n.seen ? n.bags / n.seen : 0, score: sectionScore(n), enough: n.seen >= MIN_SEEN };
+      })
+      .filter((row) => row.label !== null);
+    res.json({ days, minSeen: MIN_SEEN, sections: rows, current, suggested: suggestOrder(current, totals) });
+  }),
+);
+
 const KeepBody = z.object({ winner: z.enum(["A", "B"]) }).strict();
 
 /** Keeps one side for everyone: the test stops and its value becomes the shop's setting. */
@@ -122,7 +168,22 @@ r.post(
     if (e.status === "draft") throw new AppError(409, "EXPERIMENT_NOT_STARTED");
     const value = winner === "B" ? e.b : e.a;
     const kind = e.kind as ExperimentKind;
-    if (kind === "motion") {
+    if (kind === "homeOrder") {
+      // B kept: the published home takes the order (its sections in the places they held together).
+      if (winner === "B") {
+        if (!hasPermission(req, "pages:write")) throw new AppError(403, "PERMISSION_DENIED", "Changing the home page needs pages:write", { required: ["pages:write"] });
+        const home = await prisma.page.findUnique({ where: { slug: "/" }, select: { id: true, sections: { orderBy: { order: "asc" }, select: { id: true, order: true } } } });
+        const ids = (value as string[]).map((k) => k.slice(2));
+        const listed = home?.sections.filter((s) => ids.includes(s.id)) ?? [];
+        if (home && listed.length > 1) {
+          await capturePageRevision(home.id, `تجربة A/B: «${e.name}»`, req.user);
+          const places = listed.map((s) => s.order).sort((x, y) => x - y);
+          const inOrder = ids.filter((id) => listed.some((s) => s.id === id));
+          await prisma.$transaction(inOrder.map((id, i) => prisma.pageSection.update({ where: { id }, data: { order: places[i] } })));
+          triggerCmsRevalidate(["/"]);
+        }
+      }
+    } else if (kind === "motion") {
       if (!hasPermission(req, "system:write")) throw new AppError(403, "PERMISSION_DENIED", "Keeping a motion setting needs system:write", { required: ["system:write"] });
       const { storefront } = await readPerformance();
       await savePerformance(req, { storefront: { ...storefront, [e.field as string]: value } });

@@ -16,6 +16,7 @@ import * as AbAPI from "../../api/experiments.api";
 import type { Experiment, ExperimentInput, ExperimentsPage as Data } from "../../api/experiments.api";
 import { FIELD_INPUT, STATUS_TEXT, rateText, runningForText, splitText, startValues, valueText, verdictText, whatText } from "./abText";
 import { tr } from "@/lib/words";
+import { HomeSectionsCard } from "./HomeSectionsCard";
 
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
 const KEY = ["experiments"];
@@ -80,6 +81,15 @@ export default function ExperimentsPage() {
         }
       />
 
+      <HomeSectionsCard
+        canWrite={canWrite}
+        busy={save.isPending}
+        onTry={(order) => {
+          setEditing(null);
+          save.mutate({ name: tr("ترتيب الرئيسية حسب الأرقام", "Home order by the numbers"), kind: "homeOrder", field: null, a: "published", b: order, split: 50 });
+        }}
+      />
+
       {draft ? <ExperimentForm draft={draft} setDraft={setDraft} data={d} editing={!!editing} saving={save.isPending} onSave={() => save.mutate(draft)} onCancel={() => (setDraft(null), setEditing(null))} /> : null}
 
       {!d.experiments.length && !draft ? (
@@ -96,10 +106,14 @@ export default function ExperimentsPage() {
           canWrite={canWrite}
           busy={act.isPending && act.variables?.e.id === e.id}
           onStart={() => act.mutate({ e, what: "start" })}
-          onEdit={() => {
-            setEditing(e.id);
-            setDraft({ name: e.name, kind: e.kind, field: e.field, a: e.a, b: e.b, split: e.split });
-          }}
+          onEdit={
+            e.kind === "homeOrder"
+              ? undefined
+              : () => {
+                  setEditing(e.id);
+                  setDraft({ name: e.name, kind: e.kind, field: e.field, a: e.a, b: e.b, split: e.split });
+                }
+          }
           onConfirm={(what) => setConfirm({ e, what })}
         />
       ))}
@@ -127,7 +141,7 @@ export default function ExperimentsPage() {
                     "“{0}” becomes {1} for every customer, and the test stops.",
                     [whatText(confirm.e.kind, confirm.e.field), valueText(confirm.e.kind, confirm.e.field, confirm.what === "keepA" ? confirm.e.a : confirm.e.b)],
                   ) +
-                  (confirm.e.kind === "heroOpening"
+                  (confirm.e.kind === "heroOpening" || confirm.e.kind === "homeOrder"
                     ? tr(" (بيتغيّر بالصفحة الرئيسية، وبينحفظ بسجلها.)", " (It changes on the home page and is saved in its history.)")
                     : tr(" (بيتغيّر بالسرعة والكاش ← الحركة والتحميل.)", " (It changes in Speed and cache → Motion and loading.)"))
         }
@@ -157,7 +171,8 @@ function ExperimentCard({
   canWrite: boolean;
   busy: boolean;
   onStart: () => void;
-  onEdit: () => void;
+  /** None for a home order (made from the numbers, not typed in). */
+  onEdit?: () => void;
   onConfirm: (what: "stop" | "delete" | "keepA" | "keepB") => void;
 }) {
   const st = STATUS_TEXT[e.status];
@@ -188,9 +203,11 @@ function ExperimentCard({
                 <Button size="sm" variant="primary" onClick={onStart} isLoading={busy}>
                   {tr("بدء", "Start")}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={onEdit}>
-                  {tr("تعديل", "Edit")}
-                </Button>
+                {onEdit ? (
+                  <Button size="sm" variant="ghost" onClick={onEdit}>
+                    {tr("تعديل", "Edit")}
+                  </Button>
+                ) : null}
               </>
             ) : null}
             {e.status === "running" ? (

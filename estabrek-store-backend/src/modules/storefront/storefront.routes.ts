@@ -19,6 +19,7 @@ import recommend from "./recommend.routes.js";
 import { searchProductsByImageBuffer } from "./imageSearch.service.js";
 import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
+import { HomeStatsBody, noteHomeStats } from "../../lib/homeStats.js";
 import { searchProductIds } from "../catalog/catalog.service.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
 import { createCheckoutSession, verifyCheckoutSession } from "./checkout.service.js";
@@ -244,6 +245,25 @@ r.post("/ab", textBody({ type: "text/plain", limit: "4kb" }), asyncHandler(async
   if (!parsed.success) return res.status(400).json({ error: "BAD_AB" });
   await publicExperiments();
   noteAb(parsed.data.e, { ip: String(req.ip ?? ""), userAgent: req.get("user-agent") ?? "" });
+  res.status(204).end();
+}));
+
+/**
+ * POST /v1/storefront/home-stats — the home page's sections in numbers (lib/homeStats.ts): { e: [{ s, k }] },
+ * k = seen | tap | bag. text/plain like /signals and /ab (no preflight; sent as the page closes).
+ */
+r.post("/home-stats", textBody({ type: "text/plain", limit: "4kb" }), asyncHandler(async (req, res) => {
+  let raw: unknown = req.body;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return res.status(400).json({ error: "BAD_HOME_STATS" });
+    }
+  }
+  const parsed = HomeStatsBody.safeParse(raw);
+  if (!parsed.success) return res.status(400).json({ error: "BAD_HOME_STATS" });
+  noteHomeStats(parsed.data.e, { ip: String(req.ip ?? ""), userAgent: req.get("user-agent") ?? "" });
   res.status(204).end();
 }));
 
