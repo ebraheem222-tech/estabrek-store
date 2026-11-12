@@ -41,3 +41,30 @@ test("a pending colour cannot overwrite a newer prop or a busy save", () => {
   expect(screen.getByRole("combobox")).toBeDisabled();
   expect(onPick).not.toHaveBeenCalled();
 });
+
+test("«a colour of its own» opens the picker without turning it white; the colour is kept when the picker closes", () => {
+  const onPick = vi.fn();
+  render(<ColourPick label="Colour" value="accent" busy={false} onPick={onPick} testId="pick" />);
+  const select = screen.getByTestId("pick") as HTMLSelectElement;
+  const own = screen.getByTestId("pick-own") as HTMLInputElement;
+  own.showPicker = vi.fn();
+  fireEvent.change(select, { target: { value: "own" } });
+  expect(onPick).not.toHaveBeenCalled();
+  expect(own.showPicker).toHaveBeenCalled();
+  expect(select.value).toBe("own");
+  // Moving in the picker changes nothing yet; closing it (its own change event) keeps the colour.
+  fireEvent.input(own, { target: { value: "#22aa55" } });
+  expect(onPick).not.toHaveBeenCalled();
+  own.dispatchEvent(new Event("change", { bubbles: true }));
+  expect(onPick).toHaveBeenCalledExactlyOnceWith("#22aa55");
+  // A blur afterwards doesn't save it twice.
+  fireEvent.blur(own);
+  expect(onPick).toHaveBeenCalledTimes(1);
+});
+
+test("a named colour from the list is kept at once", () => {
+  const onPick = vi.fn();
+  render(<ColourPick label="Colour" value="" busy={false} onPick={onPick} testId="pick" />);
+  fireEvent.change(screen.getByTestId("pick"), { target: { value: "black" } });
+  expect(onPick).toHaveBeenCalledWith("black");
+});

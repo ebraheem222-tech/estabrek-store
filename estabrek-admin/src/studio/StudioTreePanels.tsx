@@ -6,7 +6,7 @@
  * slides), and the list of elements to add. Every change goes out as draft changes, so undo works
  * on all of it.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { VideoPickerModal } from "../components/media/VideoPickerModal";
@@ -106,25 +106,47 @@ export function ColourPick({ label, value, busy, onPick, testId }: { label: stri
   const [hex, setHex] = useState(six(own ?? "#ffffff"));
   const [was, setWas] = useState(value);
   const [dirty, setDirty] = useState(false);
+  // Choosing "a colour of its own" opens the picker without changing anything yet (it used to turn it white first).
+  const [choosing, setChoosing] = useState(false);
   if (was !== value) {
     setWas(value);
     setHex(six(own ?? "#ffffff"));
     setDirty(false);
+    setChoosing(false);
   }
+  const input = useRef<HTMLInputElement>(null);
+  const latest = useRef({ hex, dirty, busy, own, onPick });
+  latest.current = { hex, dirty, busy, own, onPick };
+  const commit = () => {
+    const l = latest.current;
+    if (!l.dirty || l.busy) return;
+    setDirty(false);
+    latest.current = { ...l, dirty: false };
+    if (!l.own || l.hex.toLowerCase() !== six(l.own).toLowerCase()) l.onPick(l.hex);
+  };
+  // The colour is kept as soon as the picker closes (its own "change"), not only when something else is clicked.
+  useEffect(() => {
+    const el = input.current;
+    if (!el) return;
+    const done = () => commit();
+    el.addEventListener("change", done);
+    return () => el.removeEventListener("change", done);
+  }, []);
+  const shown = variable ? String(value) : own || choosing ? "own" : typeof value === "string" ? value : "";
   return (
     <label className="block text-[11px] text-white/55">
       {label}
       <span className="flex items-center gap-1">
-        <select className={control} disabled={busy} value={variable ? String(value) : own ? "own" : typeof value === "string" ? value : ""} onChange={(e) => (e.target.value === "own" ? onPick(hex) : onPick(e.target.value || null))} data-testid={testId}>
+        <select className={control} disabled={busy} value={shown} onChange={(e) => {
+          if (e.target.value !== "own") { setChoosing(false); onPick(e.target.value || null); return; }
+          setChoosing(true);
+          try { input.current?.showPicker(); } catch { input.current?.click(); }
+        }} data-testid={testId}>
           {COLOURS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
           {tokens?.colors.length ? <optgroup label={say("المتغيرات|Variables|משתנים")}>{tokens.colors.map((t) => <option key={t.id} value={`$${t.id}`}>◆ {tokenName(t)}</option>)}</optgroup> : null}
           <option value="own">{tr("لون خاص", "A colour of its own")}</option>
         </select>
-        <input type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={six(hex)} onChange={(e) => { setHex(e.target.value); setDirty(true); }} onBlur={() => {
-          if (!dirty || busy) return;
-          setDirty(false);
-          if (!own || hex.toLowerCase() !== six(own).toLowerCase()) onPick(hex);
-        }} />
+        <input ref={input} type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={six(hex)} onChange={(e) => { setHex(e.target.value); setDirty(true); latest.current = { ...latest.current, hex: e.target.value, dirty: true }; }} onBlur={commit} data-testid={testId ? `${testId}-own` : undefined} />
       </span>
     </label>
   );
