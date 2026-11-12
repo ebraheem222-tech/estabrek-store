@@ -129,10 +129,11 @@ test.describe("recipes on a page", () => {
     await expect(toast(page)).toHaveText("a1 b2 n3");
   });
 
-  test("a question first: «no» runs the fail steps, «yes» goes on; it never runs over itself", async ({ page }) => {
+  test("a question first: «no» runs the fail steps, «yes» goes on; it never runs over itself", async ({ page }, testInfo) => {
     await el(page, "ask").click();
     const ask = page.locator("#pt-ask");
     await expect(ask).toContainText("Leave the page?");
+    await page.screenshot({ path: testInfo.outputPath("recipe-question.png") });
     // The "no" button holds the focus.
     await expect(ask.locator('[data-pt-ask="no"]')).toBeFocused();
     await ask.locator('[data-pt-ask="no"]').click();

@@ -3,10 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 // A recipe built in the editor (when → who → if → do, on fail) and tried in the preview: the question it asks shows
 // over the page, a "no" runs its fail steps; what a recipe keeps for customers still shows in the editor.
 
-const url = "http://127.0.0.1:5178/tests/fixtures/editor-controls.html?lang=en";
+const url = "http://127.0.0.1:5178/tests/fixtures/editor-controls.html?lang=en&shapes";
 const frame = (page: Page) => page.frameLocator('[data-testid="studio-frame"]');
 const readNode = (page: Page, id: string) => page.evaluate((nodeId) => (window as any).__canvasHarness.getNode(nodeId)?.node, id);
-const recipe = async (page: Page) => (await readNode(page, "action"))?.props?.triggers?.[0];
+const recipe = async (page: Page) => (await readNode(page, "cta"))?.props?.triggers?.[0];
 const pick = async (page: Page, id: string) => {
   await page.getByRole("tab", { name: "Layers", exact: true }).click();
   await page.locator(`[data-testid="studio-layer"][data-node="${id}"]`).click();
@@ -15,12 +15,12 @@ const pick = async (page: Page, id: string) => {
 /** The editor takes the next press once its last save is done. */
 const settled = (page: Page) => expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
 
-test("a recipe that asks first is built from a ready one, kept for customers, and tried in the preview", async ({ page }) => {
+test("a recipe that asks first is built from a ready one, kept for customers, and tried in the preview", async ({ page }, testInfo) => {
   test.setTimeout(180000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(url);
   await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
-  await pick(page, "action");
+  await pick(page, "cta");
   const panel = page.getByTestId("studio-triggers");
   await expect(panel).toBeVisible();
 
@@ -37,7 +37,7 @@ test("a recipe that asks first is built from a ready one, kept for customers, an
   await panel.getByTestId("trigger-0-deny").selectOption("hide");
   await expect.poll(async () => (await recipe(page))?.deny).toBe("hide");
   await settled(page);
-  const button = frame(page).locator('[data-tree-node="action"]');
+  const button = frame(page).locator('[data-tree-node="cta"]');
   await expect(button).toHaveAttribute("data-pt-who", "customer", { timeout: 20000 });
   await expect(button).toBeVisible();
 
@@ -61,4 +61,7 @@ test("a recipe that asks first is built from a ready one, kept for customers, an
   await settled(page);
   await panel.getByTestId("trigger-0-else-add").click();
   await expect.poll(async () => (await recipe(page))?.else?.length).toBe(1);
+  await settled(page);
+  await panel.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("recipe-panel.png") });
 });
