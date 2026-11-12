@@ -16,7 +16,7 @@ async function pointOf(page: Page, id: string) {
   return { x: box.x + rect.x * scale, y: box.y + rect.y * scale };
 }
 
-test("a heavy element is lightened from its reasons and its speed settings, honoured in the page; the page is budgeted and measured", async ({ page }) => {
+test("a heavy element is lightened from its reasons and its speed settings, honoured in the page; the page is budgeted and measured", async ({ page }, testInfo) => {
   test.setTimeout(150000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(url);
@@ -29,6 +29,7 @@ test("a heavy element is lightened from its reasons and its speed settings, hono
   const perf = page.getByTestId("studio-info").getByTestId("studio-perf");
   await expect(perf.getByTestId("studio-perf-badge")).toHaveAttribute("data-level", "high");
   await expect(perf).toHaveAttribute("open", "");
+  await page.screenshot({ path: testInfo.outputPath("perf-heavy.png") });
 
   // The 3D's reason, lightened: its frames capped, carried to the page.
   await perf.locator('[data-testid="studio-perf-fix"][data-key="3d"]').click();
@@ -52,4 +53,5 @@ test("a heavy element is lightened from its reasons and its speed settings, hono
   await page.getByTestId("studio-budget-measure").click();
   await expect(page.getByTestId("studio-budget-sample")).toBeVisible({ timeout: 15000 });
   expect(Number(await page.getByTestId("studio-budget-sample").getAttribute("data-fps"))).toBeGreaterThan(0);
+  await page.screenshot({ path: testInfo.outputPath("perf-budget.png") });
 });
