@@ -181,6 +181,7 @@ export const ENDPOINTS = {
       },
       uploads: {
         images: "/admin/uploads/images",
+        edit: "/admin/uploads/edit",
         imageById: (id: string) => `/admin/uploads/images/${id}`,
         imageUsage: (id: string) => `/admin/uploads/images/${id}/usage`,
         imagesBulk: "/admin/uploads/images/bulk",

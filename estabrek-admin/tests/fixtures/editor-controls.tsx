@@ -232,6 +232,11 @@ api.defaults.adapter = async (config) => {
   }
   if (path === "/admin/media/models/sign") throw new AxiosError("Local fixture upload", "409", config, undefined, { ...response(config, {}), status: 409 });
   if (method === "GET" && path === "/admin/media/models") return response(config, { items: [], maxBytes: 25_000_000, cloudinary: false });
+  // A picture's edit (focus mode): the copy is the same photo with a mark (the edit itself is the backend's, tested there).
+  if (method === "POST" && path === "/admin/uploads/edit") {
+    if (!String(body?.url ?? "").startsWith("/editorial/")) return Promise.reject(new AxiosError("The picture has to be in the media library to be edited", "404", config, null, { status: 404, statusText: "Not Found", headers: {}, config, data: { error: "NOT_IN_LIBRARY", message: "The picture has to be in the media library to be edited" } } as any));
+    return response(config, { file: { url: `/editorial/scarves.webp?edit=${encodeURIComponent(JSON.stringify(body.recipe)).length}` }, width: 640, height: 480 });
+  }
   if (method === "POST" && path === "/admin/media/models/local") {
     if (!(body instanceof FormData) || !(body.get("file") instanceof File)) throw new Error("Expected multipart GLB");
     return response(config, { id: "uploaded", url: "/templates/fixture.glb", displayName: "Uploaded model", size: 100, provider: "LOCAL", createdAt: at });
