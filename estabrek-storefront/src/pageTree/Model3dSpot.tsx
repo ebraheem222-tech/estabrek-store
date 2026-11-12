@@ -98,7 +98,10 @@ function Model3dInstance({ spec, label, href, poster }: SpotProps) {
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    // Drawn once for less motion, or when the element is light now (its speed settings: perf.ts, TreePerf).
+    const calm = () => setStill(window.matchMedia("(prefers-reduced-motion: reduce)").matches || Boolean(box.current?.closest("[data-perf-tier=light],[data-perf-light-now]")));
+    calm();
+    window.addEventListener("pt:perf", calm);
     setRead(readPage(el, spec));
     // Near (a screen away): it has a canvas. Seen: it moves.
     const nearBy = new IntersectionObserver(([e]) => setNear(e.isIntersecting), { rootMargin: "100% 0px" });
@@ -119,6 +122,7 @@ function Model3dInstance({ spec, label, href, poster }: SpotProps) {
       addEventListener("scroll", scrolled, { passive: true });
     }
     return () => {
+      window.removeEventListener("pt:perf", calm);
       release(me.current);
       nearBy.disconnect();
       inView.disconnect();

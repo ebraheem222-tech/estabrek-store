@@ -47,9 +47,13 @@ function moving() {
  */
 export function ScenePacer({
   active: wanted,
+  maxFps,
 }: {
   active: boolean;
+  /** An element's own cap on its frames a second (its speed settings, pageTree/perf.ts). */
+  maxFps?: number | null;
 }) {
+  const cap = maxFps && maxFps > 0 ? 1000 / maxFps : 0;
   // While the page rests (lib/pageIdle.ts) the scene keeps its last frame: its models turning on their own were
   // drawn every frame for nobody. The first touch or scroll brings them back.
   const resting = usePageIdle();
@@ -147,8 +151,8 @@ export function ScenePacer({
       }
 
       const interval = moving()
-        ? sceneFrameGap()
-        : Math.max(sceneFrameGap(), AMBIENT_GAP);
+        ? Math.max(sceneFrameGap(), cap)
+        : Math.max(sceneFrameGap(), AMBIENT_GAP, cap);
 
       /**
        * Small tolerance handles floating

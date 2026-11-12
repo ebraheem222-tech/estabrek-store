@@ -966,6 +966,12 @@ export const BASE_CSS = [
   ".pt-sparkles[data-when=hover] .pt-spark{animation:none}",
   ".pt-frame:hover>.pt-sparkles[data-when=hover] .pt-spark,.pt-frame:focus-within>.pt-sparkles[data-when=hover] .pt-spark{animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
   ".pt-sparkles[data-when=few] .pt-spark{animation-iteration-count:3}",
+  // An element's own speed settings (perf.ts, TreePerf.tsx): light = no blur, shadows, filters or endless motion,
+  // inside it too; balanced = no frosted glass; off screen, endless motion rests.
+  "[data-perf-tier=light],[data-perf-tier=light] *,[data-perf-light-now],[data-perf-light-now] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition-duration:0s!important;mix-blend-mode:normal!important}",
+  "[data-perf-tier=balanced],[data-perf-tier=balanced] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}",
+  "@media (max-width:767.98px){[data-perf-phone=light],[data-perf-phone=light] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;mix-blend-mode:normal!important}}",
+  "[data-perf-away],[data-perf-away] *{animation:none!important}",
   // Words along a curve (curvedWords.tsx): the element's own font, weight and colour.
   ".pt-curve{display:block;width:100%;height:auto;overflow:visible}",
   ".pt-curve text{font-family:inherit;font-weight:inherit;font-style:inherit}",

@@ -840,6 +840,38 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         if (row && slide) row.scrollTo({ left: slide.offsetLeft - row.offsetLeft, top: slide.offsetTop - row.offsetTop, behavior: "smooth" });
         return;
       }
+      // The page measured for the editor's speed budget: frames a second, the time it was busy (long tasks), the
+      // motions running, the canvases and clips playing, its elements, over a second and a half.
+      if (d.type === "perfSample" && e.source === window.parent) {
+        const v = e.data as { requestId?: unknown };
+        if (typeof v.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.requestId)) return;
+        const requestId = v.requestId;
+        let frames = 0, busyMs = 0;
+        const t0 = performance.now();
+        let po: PerformanceObserver | null = null;
+        try {
+          po = new PerformanceObserver((list) => { for (const entry of list.getEntries()) busyMs += entry.duration; });
+          po.observe({ type: "longtask", buffered: false });
+        } catch {
+          po = null;
+        }
+        const tick = () => {
+          frames++;
+          if (performance.now() - t0 < 1500) return void requestAnimationFrame(tick);
+          po?.disconnect();
+          const secs = (performance.now() - t0) / 1000;
+          send({
+            type: "perfSampled", requestId,
+            fps: Math.round(frames / secs), longMs: Math.round(busyMs),
+            animations: document.getAnimations().filter((a) => a.playState === "running").length,
+            canvases: document.querySelectorAll("canvas").length,
+            videos: [...document.querySelectorAll("video")].filter((x) => !x.paused).length,
+            nodes: document.getElementsByTagName("*").length,
+          });
+        };
+        requestAnimationFrame(tick);
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);

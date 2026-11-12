@@ -154,6 +154,7 @@ export type PageTree = { version: 1; root: TreeNode };
  */
 export type LookKind = "text" | "button" | "image" | "video" | "box";
 export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>>; motion?: unknown };
+import { perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
@@ -386,7 +387,12 @@ export function treeNeeds(tree: PageTree) {
   // Sections that colour the page (TreePaint), and the page's own cursor (TreeCursor).
   const paint = (tree.root.children ?? []).some((n) => n.type === "section" && typeof n.props?.paint === "string");
   const cursor = Boolean(tree.root.props?.cursor && typeof tree.root.props.cursor === "object");
-  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
+  // Elements' own speed settings at work (TreePerf): light on phones or weak devices, resting off screen.
+  let perf = false;
+  eachNode(tree, (n) => {
+    if (!perf && perfNeeded(n, motionOf(n))) perf = true;
+  });
+  return { perf, products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

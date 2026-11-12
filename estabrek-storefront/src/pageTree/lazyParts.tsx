@@ -29,3 +29,4 @@ export const DeckView = early("./DeckView", () => import("./DeckView").then((m) 
 export const ShowcaseView = early("./ShowcaseView", () => import("./ShowcaseView").then((m) => m.ShowcaseView));
 export const CommerceShop = early("./CommerceShop", () => import("./CommerceShop").then((m) => m.CommerceShop));
 export const ArtMorph = early("./ArtMorph", () => import("./ArtMorph").then((m) => m.ArtMorph));
+export const TreePerf = early("./TreePerf", () => import("./TreePerf").then((m) => m.TreePerf));

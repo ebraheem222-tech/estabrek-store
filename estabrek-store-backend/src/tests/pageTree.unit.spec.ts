@@ -304,6 +304,22 @@ describe("checking a page tree", () => {
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
   });
 
+  test("any element's speed settings are kept, checked the same on every kind", () => {
+    const perf = { tier: "light", fps: 30, offscreen: "pause", rest: "keep", phone: "light", strong: true };
+    const tree = (type: string, props: Record<string, unknown>) => page([section("s", [{ id: "x", type, props: { ...props, perf } }])]);
+    for (const [type, props] of [["image", { src: "/a.webp" }], ["model3d", { model: "sneaker" }], ["heading", { text: { ar: "x" } }]] as const) {
+      const r = checkTree(tree(type, props));
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.tree.root.children![0].children![0].props.perf).toEqual(perf);
+    }
+    const bad = (p: unknown) => issuesOf(page([section("s", [{ id: "x", type: "image", props: { src: "/a.webp", perf: p } }])])).map((i) => i.path).join(" ");
+    expect(bad({ fps: 144 })).toMatch(/props\.perf\.fps/);
+    expect(bad({ tier: "turbo" })).toMatch(/props\.perf\.tier/);
+    // An empty one is dropped.
+    const r = checkTree(page([section("s", [{ id: "x", type: "image", props: { src: "/a.webp", perf: {} } }])]));
+    expect(r.ok && r.tree.root.children![0].children![0].props.perf).toBeFalsy();
+  });
+
   test("a heading's or text's words along a curve", () => {
     const tree = (curve: unknown, type = "heading") => page([section("s", [{ id: "h", type, props: { text: { ar: "تخفيضات" }, curve } }])]);
     const r = checkTree(tree({ kind: "arc", bend: -40, size: 90, space: 6 }));

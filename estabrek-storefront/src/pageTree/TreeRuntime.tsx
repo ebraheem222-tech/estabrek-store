@@ -11,9 +11,11 @@ const TreeTriggers = dynamic(() => import("./TreeTriggers").then((m) => m.TreeTr
 const TreeCovers = dynamic(() => import("./TreeCovers").then((m) => m.TreeCovers), { ssr: false });
 const TreePaint = dynamic(() => import("./TreePage").then((m) => m.TreePaint), { ssr: false });
 const TreeCursor = dynamic(() => import("./TreePage").then((m) => m.TreeCursor), { ssr: false });
-const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers]", covers: "[data-pt-cover]", paint: "[data-pt-paint]", cursor: "[data-pt-cursor]" } as const;
+// Elements' own speed settings at work (perf.ts): light on phones and weak devices, resting off screen.
+const TreePerf = dynamic(() => import("./TreePerf").then((m) => m.TreePerf), { ssr: false });
+const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers]", covers: "[data-pt-cover]", paint: "[data-pt-paint]", cursor: "[data-pt-cursor]", perf: "[data-perf-watch],[data-perf-tier=light],[data-perf-phone],[data-perf-strong]" } as const;
 type Needs = Record<keyof typeof NEEDS, boolean>;
-const NONE: Needs = { scenes: false, triggers: false, covers: false, paint: false, cursor: false };
+const NONE: Needs = { scenes: false, triggers: false, covers: false, paint: false, cursor: false, perf: false };
 const needsOf = (): Needs => Object.fromEntries(Object.entries(NEEDS).map(([k, sel]) => [k, Boolean(document.querySelector(sel))])) as Needs;
 
 /** One runtime for all customer documents, including pages arriving after a loading boundary. */
@@ -52,6 +54,7 @@ export function TreeRuntime() {
       {needs.covers ? <TreeCovers revision={revision} /> : null}
       {needs.paint ? <TreePaint revision={revision} /> : null}
       {needs.cursor ? <TreeCursor revision={revision} /> : null}
+      {needs.perf ? <TreePerf revision={revision} /> : null}
     </>
   );
 }

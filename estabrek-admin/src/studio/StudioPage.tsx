@@ -111,6 +111,7 @@ import { ImageEditPanel } from "./focus/ImageEditPanel";
 import { VideoEditor } from "./focus/VideoEditor";
 import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
 import { CurvePanel, SlidePanel } from "./focus/KindPanels";
+import { PageBudget, PerfPanel, type Sample } from "./focus/PerfPanel";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
 import type { Sparkle } from "../../../shared/sparkle";
@@ -325,6 +326,8 @@ function StudioDocument() {
   const [modelInfo, setModelInfo] = useState<{ nodeId: string; parts: ModelPartInfo[]; ready: boolean } | null>(null);
   const modelWait = useRef<{ requestId: string; done: (part: string | null, at: [number, number, number] | null) => void } | null>(null);
   const [spotPen, setSpotPen] = useState(false);
+  // The page measured in the frame (speed per element: the page's budget).
+  const perfWait = useRef<{ requestId: string; done: (s: Sample | null) => void } | null>(null);
   // The video editor (focus mode on a video): open or not.
   const [videoEditor, setVideoEditor] = useState(false);
   // A picture open in focus mode: its own size (from the frame), for the crop's ratios.
@@ -433,6 +436,13 @@ function StudioDocument() {
         if (wait && m.requestId === wait.requestId) {
           artPick.current = null;
           wait.done(typeof m.part === "string" ? m.part : null);
+        }
+      } else if (d.type === "perfSampled") {
+        const m = d as unknown as Sample & { requestId?: unknown };
+        const wait = perfWait.current;
+        if (wait && m.requestId === wait.requestId) {
+          perfWait.current = null;
+          wait.done({ fps: Number(m.fps) || 0, longMs: Number(m.longMs) || 0, animations: Number(m.animations) || 0, canvases: Number(m.canvases) || 0, videos: Number(m.videos) || 0, nodes: Number(m.nodes) || 0 });
         }
       } else if (d.type === "modelParts") {
         const m = d as unknown as { nodeId?: unknown; parts?: unknown; ready?: unknown };
@@ -2273,6 +2283,7 @@ function StudioDocument() {
           <div className="text-[11px] text-white/45">{focusTitle(g)}</div>
           <div className="text-base font-semibold">{label(target.id)}</div>
         </div>
+        <PerfPanel key={`perf:${target.id}`} node={target} busy={busy} onOps={onOps} />
         {part && g === "svg" ? (
           <SvgPartPanel
             key={`${target.id}:${part.id}`} node={target} part={part} busy={busy} onOps={onOps}
@@ -2465,6 +2476,7 @@ function StudioDocument() {
           <div className="text-base font-semibold">{label(selected)}</div>
           <div className="mt-0.5 font-mono text-[11px] text-white/35" dir="ltr">{selExtra?.kind === "slot" ? selExtra.path : selected}</div>
         </div>
+        {selFree && selFree.type !== "page" ? <PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
         {selFree && canFocus(selFree) && focus?.id !== selFree.id ? (
           <button type="button" onClick={() => openFocus(selected)} className="w-full rounded-lg bg-accent-500/20 px-2 py-1.5 text-xs text-accent-100 hover:bg-accent-500/30" data-testid="studio-focus-enter">
             ✎ {say("افتحه لحاله (تركيز) · F أو كبستين|Open it on its own (focus) · F or double-click|פתיחה לבד (מיקוד) · F או לחיצה כפולה")}
@@ -2836,6 +2848,17 @@ function StudioDocument() {
             if (root) void change(tr("حركة عناصر الصفحة", "Page element motion"), pageMotionOps(root, pageMotion));
           }} data-testid="studio-page-motion-apply">{tr("تطبيق على الصفحة", "Apply to page")}</button>
         </div> : null}
+        {selected === index.root && index.nodes.get(index.root) ? (
+          <PageBudget
+            root={index.nodes.get(index.root)!.node} busy={busy} onPick={(sid) => select(sid, true)}
+            onMeasure={() => new Promise<Sample | null>((resolve) => {
+              const requestId = `perf${++artSeq.current}`;
+              const timer = window.setTimeout(() => { if (perfWait.current?.requestId === requestId) perfWait.current = null; resolve(null); }, 6000);
+              perfWait.current = { requestId, done: (s) => { window.clearTimeout(timer); resolve(s); } };
+              send({ type: "perfSample", requestId });
+            })}
+          />
+        ) : null}
         {selected === index.root && pageQ.data && (pageQ.data.kind ?? "page") === "page" ? <PageSettingsPanel key={pageQ.data.id} page={pageQ.data} langs={langs.enabled} /> : null}
         {selected === index.root && draft?.tree.root ? <VisualControlsPanel key={`visual:${index.root}`} node={draft.tree.root} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", event })} /> : null}
         {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} roseOf={roseOf} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}

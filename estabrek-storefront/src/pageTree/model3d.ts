@@ -24,6 +24,8 @@ export const LIGHTS: Record<(typeof LIGHT_PRESETS)[number], Lights> = {
 export type Model3dSpec = {
   /** Its parts' own looks, its saved views (and what moves between them), its labelled points (model3dLive.ts). */
   parts: Record<string, PartLook>;
+  /** The element's cap on its frames a second (its speed settings, perf.ts), or none. */
+  fps: number | null;
   views: View3d[];
   viewOn: "click" | "scroll" | "auto";
   spots: Spot3d[];
@@ -90,6 +92,7 @@ export function model3dOf(raw: unknown, say: Say = () => ""): Model3dSpec | null
   });
   return {
     parts: partLooksOf(p.parts),
+    fps: [24, 30, 60].includes(Number(obj(p.perf).fps)) ? Number(obj(p.perf).fps) : obj(p.perf).tier === "balanced" ? 30 : null,
     views: viewsOf(p.views),
     viewOn: one(p.viewOn, ["click", "scroll", "auto"] as const, "click"),
     spots,

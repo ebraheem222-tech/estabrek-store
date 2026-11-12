@@ -1309,7 +1309,10 @@ export function mountScene(canvas: HTMLCanvasElement, spec: SceneSpec): () => vo
   const paint = () => { if (ctx) drawScene(ctx, spec, width, height, elapsed, media?.matches ? null : pointer, primary, secondary); };
   // A background's slow motion, drawn 30 times a second (it was every frame: 120–144 on fast screens), and not at
   // all while the page rests (lib/pageIdle.ts): it carries on from where it was when the page is touched again.
-  const GAP = 1000 / 30;
+  // …or fewer for an element's own cap (its speed settings, perf.ts); none when it's light now.
+  const capEl = host.closest("[data-perf-fps]")?.getAttribute("data-perf-fps");
+  const GAP = 1000 / Math.min(30, Number(capEl) > 0 ? Number(capEl) : 30);
+  const light = () => Boolean(host.closest("[data-perf-tier=light],[data-perf-light-now]"));
   let owed = 0;
   const tick = (now: number) => {
     frame = 0;
@@ -1329,7 +1332,7 @@ export function mountScene(canvas: HTMLCanvasElement, spec: SceneSpec): () => vo
     if (!activated) { ctx = canvas.getContext("2d"); activated = true; measure(); }
     if (!ctx) { canvas.dataset.sceneState = "unsupported"; return; }
     paint();
-    canvas.dataset.sceneState = media?.matches || spec.speed === 0 ? "static" : "running";
+    canvas.dataset.sceneState = media?.matches || spec.speed === 0 || light() ? "static" : "running";
     if (canvas.dataset.sceneState === "running") frame = requestAnimationFrame(tick);
   };
   const onResize = () => { if (disposed || !activated) return; measure(); if (visible && !document.hidden) paint(); };
