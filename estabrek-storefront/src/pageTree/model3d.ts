@@ -9,7 +9,9 @@ import { partLooksOf, viewsOf, type PartLook, type Spot3d, type View3d } from ".
 import { ANIMS, FINISHES, MODEL_KNOBS, PARTS, TRIGGERS, glbUrl, isModelKind, type ModelKind, type StagePart } from "../storeThemes/three/kinds";
 
 export const LIGHT_PRESETS = ["studio", "soft", "sunset", "neon", "night", "warm"] as const;
-export const FLOORS = ["none", "shadow", "grid", "disc"] as const;
+export const FLOORS = ["none", "shadow", "grid", "disc", "pedestal", "halo"] as const;
+export const BACKDROPS = ["glow", "spot", "sunrise", "rings"] as const;
+export const INTROS = ["rise", "pop", "spin", "drop"] as const;
 type Lights = { ambient: number; key: number; env: number; rim: number; colours: [string, string] };
 /** Each light's own values (a theme colour like "accent" is read from the page). */
 export const LIGHTS: Record<(typeof LIGHT_PRESETS)[number], Lights> = {
@@ -48,6 +50,11 @@ export type Model3dSpec = {
   zoom: boolean;
   auto: number;
   tilt: boolean;
+  /** Its stage: what's behind it (CSS), how it comes in the first time it's seen, sparkles around it, and going back to its pose after it's turned by hand. */
+  backdrop: { kind: (typeof BACKDROPS)[number]; color: string } | null;
+  intro: (typeof INTROS)[number] | null;
+  sparkles: { count: number; color: string; size: number } | null;
+  back: boolean;
 };
 
 const num = (v: unknown, min: number, max: number, def: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : def);
@@ -113,8 +120,12 @@ export function model3dOf(raw: unknown, say: Say = () => ""): Model3dSpec | null
     zoom: p.zoom === true,
     auto: num(p.auto, -2, 2, 0),
     tilt: p.tilt === true,
+    backdrop: (BACKDROPS as readonly string[]).includes(obj(p.backdrop).kind) ? { kind: obj(p.backdrop).kind, color: colourOf(obj(p.backdrop).color) ?? "accent-soft" } : null,
+    intro: (INTROS as readonly string[]).includes(p.intro) ? p.intro : null,
+    sparkles: Number.isInteger(obj(p.sparkles).count) && obj(p.sparkles).count >= 1 && obj(p.sparkles).count <= 120 ? { count: obj(p.sparkles).count, color: colourOf(obj(p.sparkles).color) ?? "accent", size: num(obj(p.sparkles).size, 0.5, 6, 2) } : null,
+    back: p.back === true && p.drag === true && !p.href,
   };
 }
 
 /** Whether it moves at all (else it's drawn once and again only when something changes). */
-export const model3dMoves = (s: Model3dSpec) => s.anim.type !== "none" || s.auto !== 0 || s.tilt || s.drag || Boolean(s.file?.clip) || s.views.length > 0;
+export const model3dMoves = (s: Model3dSpec) => s.anim.type !== "none" || s.auto !== 0 || s.tilt || s.drag || Boolean(s.file?.clip) || s.views.length > 0 || Boolean(s.sparkles);

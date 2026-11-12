@@ -57,7 +57,9 @@ function readColour(probe: HTMLElement, value: string): string {
   return `#${m.slice(0, 3).map((n) => Math.round(Number(n)).toString(16).padStart(2, "0")).join("")}`;
 }
 
-type Read = { colours: ModelColours; rims: [string, string]; floor: string };
+type Read = { colours: ModelColours; rims: [string, string]; floor: string; sparkle: string; halo: string };
+/** A colour as CSS (a theme colour through its variable). */
+const cssColour = (v: string) => (/^#/.test(v) ? v : v === "white" ? "#ffffff" : v === "black" ? "#000000" : v === "transparent" ? "transparent" : `var(--${v})`);
 function readPage(el: HTMLElement, spec: Model3dSpec): Read {
   const probe = document.createElement("span");
   probe.style.display = "none";
@@ -66,7 +68,7 @@ function readPage(el: HTMLElement, spec: Model3dSpec): Read {
   // The page's colours as a palette, for the model's default colours in its finish.
   const palette: Palette = { bg: c("bg"), surface: c("surface"), soft: c("accent-soft"), line: c("border"), glow: c("accent-soft"), muted: c("muted"), accent: c("accent"), strong: c("accent"), ink: c("text"), onStrong: c("accent-contrast") };
   const own = Object.fromEntries(Object.entries(spec.colours).map(([k, v]) => [k, c(v)]));
-  const read: Read = { colours: { ...modelColours(palette, spec.finish), ...own }, rims: [c(spec.lights.colours[0]), c(spec.lights.colours[1])], floor: c(spec.floor === "grid" ? "border" : "accent-soft") };
+  const read: Read = { colours: { ...modelColours(palette, spec.finish), ...own }, rims: [c(spec.lights.colours[0]), c(spec.lights.colours[1])], floor: c(spec.floor === "grid" ? "border" : "accent-soft"), sparkle: c(spec.sparkles?.color ?? "accent"), halo: c("accent") };
   probe.remove();
   return read;
 }
@@ -148,11 +150,11 @@ function Model3dInstance({ spec, label, href, poster }: SpotProps) {
 
   const canvas = near && held && read && !failed ? (
     <NoWebGl key={key} onError={onError}>
-      <Canvas3d spec={spec} colours={read.colours} rims={read.rims} floorTint={read.floor} active={seen} still={still} hovered={hovered} progress={progress} onReady={onReady} onError={onError} />
+      <Canvas3d spec={spec} colours={read.colours} rims={read.rims} floorTint={read.floor} sparkle={read.sparkle} halo={read.halo} active={seen} still={still} hovered={hovered} progress={progress} onReady={onReady} onError={onError} />
     </NoWebGl>
   ) : null;
   return (
-    <div ref={box} className="pt-model3d-stage" data-near={near ? "" : undefined} data-model-state={failed ? "fallback" : ready ? "ready" : "loading"} aria-busy={!ready && !failed} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+    <div ref={box} className="pt-model3d-stage" data-near={near ? "" : undefined} data-backdrop={spec.backdrop?.kind} style={spec.backdrop ? ({ "--pt-3d-bd": cssColour(spec.backdrop.color) } as React.CSSProperties) : undefined} data-model-state={failed ? "fallback" : ready ? "ready" : "loading"} aria-busy={!ready && !failed} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
       {canvas}
       {!ready || failed ? poster ? <img className="pt-model3d-poster" src={poster} alt="" loading="lazy" /> : <span className="pt-model3d-fallback" aria-hidden="true">{label || "3D"}</span> : null}
       {href ? <a className="pt-model3d-link" href={href} aria-label={label || undefined} /> : null}
