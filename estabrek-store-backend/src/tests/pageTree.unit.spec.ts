@@ -304,6 +304,25 @@ describe("checking a page tree", () => {
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
   });
 
+  test("a 3D model's parts, views and labelled points", () => {
+    const tree = (extra: Record<string, unknown>) => page([section("s", [{ id: "m", type: "model3d", props: { model: "sneaker", ...extra } }])]);
+    const good = {
+      parts: { "part-0": { color: "#ff3366", rough: 0.3, metal: 0.8 }, Sole: { hide: true, glow: "#00ffcc" } },
+      views: [{ id: "front", az: 0, el: 10, dist: 6 }, { id: "side", az: 90, el: 0, dist: 5 }],
+      viewOn: "scroll",
+      spots: [{ id: "s1", at: [0.2, 0.5, -0.1], label: { ar: "جلد طبيعي" }, href: "/shop" }],
+    };
+    const r = checkTree(tree(good));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props).toMatchObject(good);
+    const bad = (extra: Record<string, unknown>) => issuesOf(tree(extra)).length;
+    expect(bad({ parts: { "<script>": { color: "#fff" } } })).toBeGreaterThan(0);
+    expect(bad({ parts: { a: { color: "red" } } })).toBeGreaterThan(0);
+    expect(bad({ views: [{ id: "x", az: 400, el: 0, dist: 5 }] })).toBeGreaterThan(0);
+    expect(bad({ spots: [{ id: "s", at: [0, 0, 99] }] })).toBeGreaterThan(0);
+    expect(bad({ viewOn: "hover" })).toBeGreaterThan(0);
+  });
+
   test("a picture's sparkling stars: where, their drawing, colour, size, speed and when", () => {
     const tree = (sparkle: unknown) => page([section("s", [{ id: "p", type: "image", props: { src: "/a.webp", sparkle } }])]);
     const good = { points: [{ x: 0.25, y: 0.4, s: 1.3 }, { x: 0.8, y: 0.1 }], shape: "glint", color: "#ffd700", size: 18, speed: 1.6, when: "hover", glow: true };

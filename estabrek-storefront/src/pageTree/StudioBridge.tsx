@@ -787,6 +787,50 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         img.style.setProperty("object-view-box", ok(v.viewBox, /^(inset\([0-9.%\s]+\))?$/) ? v.viewBox : "");
         return;
       }
+      // A 3D model in focus mode (model3dLive.ts): its parts with their looks now, the part (and the point on it, in
+      // the model's own numbers) under a point, and a view shown while the editor chooses it.
+      if ((d.type === "modelParts" || d.type === "modelPick" || d.type === "modelCamera") && e.source === window.parent) {
+        const v = e.data as { nodeId?: unknown; requestId?: unknown; x?: unknown; y?: unknown; view?: unknown };
+        if (typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId)) return;
+        const canvas = document.querySelector<HTMLCanvasElement>(`[data-tree-node="${v.nodeId}"] canvas`);
+        const nodeId = v.nodeId;
+        void import("./model3dLive").then(async ({ live3d, partsOf }) => {
+          const live = canvas ? live3d.get(canvas) : undefined;
+          if (d.type === "modelParts") {
+            const parts = live ? partsOf(live.root()).slice(0, 120).map(({ key, mesh }) => {
+              const m = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as { color?: { getHexString(): string }; roughness?: number; metalness?: number; name?: string };
+              return { key, label: mesh.name || m?.name || "", color: m?.color ? `#${m.color.getHexString()}` : null, rough: m?.roughness ?? null, metal: m?.metalness ?? null, hidden: !mesh.visible };
+            }) : [];
+            send({ type: "modelParts", nodeId, parts, ready: Boolean(live?.root()) });
+            return;
+          }
+          if (d.type === "modelCamera") {
+            const view = v.view as { az?: unknown; el?: unknown; dist?: unknown } | null;
+            if (live) {
+              live.preview = view && typeof view.az === "number" && typeof view.el === "number" && typeof view.dist === "number" ? { az: view.az, el: view.el, dist: view.dist } : null;
+              live.invalidate();
+            }
+            return;
+          }
+          if (typeof v.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.requestId) || typeof v.x !== "number" || typeof v.y !== "number") return;
+          let part: string | null = null, at: number[] | null = null;
+          const root = live?.root();
+          if (live && root && canvas) {
+            const { Raycaster, Vector2 } = await import("three");
+            const r = canvas.getBoundingClientRect();
+            const ray = new Raycaster();
+            ray.setFromCamera(new Vector2(((v.x - r.left) / r.width) * 2 - 1, -((v.y - r.top) / r.height) * 2 + 1), live.camera);
+            const hit = ray.intersectObject(root, true).find((h) => (h.object as { isMesh?: boolean }).isMesh && h.object.visible);
+            if (hit) {
+              part = partsOf(root).find((x) => x.mesh === hit.object)?.key ?? null;
+              const local = root.worldToLocal(hit.point.clone());
+              at = [local.x, local.y, local.z].map((n) => Math.round(n * 1000) / 1000);
+            }
+          }
+          send({ type: "modelPicked", requestId: v.requestId, part, at });
+        });
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);
