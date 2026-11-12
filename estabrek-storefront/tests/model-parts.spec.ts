@@ -58,6 +58,8 @@ test("a model's part is picked on the canvas and dressed; views and labelled poi
   // A labelled point where the model is clicked, drawn on it in the page.
   await page.getByTestId("studio-model-pen").check();
   await expect(page.getByTestId("studio-model-pen")).toBeChecked();
+  // The editor drops a click while it's still saving (the view setting above): wait until it's free.
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
   const again = await pointOf(page, '[data-tree-node="model"] canvas');
   await page.mouse.click(again.x, again.y);
   await expect.poll(async () => (await readNode(page, "model"))?.props?.spots?.length ?? 0, { timeout: 15000 }).toBe(1);
