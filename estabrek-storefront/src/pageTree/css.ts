@@ -966,6 +966,9 @@ export const BASE_CSS = [
   ".pt-sparkles[data-when=hover] .pt-spark{animation:none}",
   ".pt-frame:hover>.pt-sparkles[data-when=hover] .pt-spark,.pt-frame:focus-within>.pt-sparkles[data-when=hover] .pt-spark{animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
   ".pt-sparkles[data-when=few] .pt-spark{animation-iteration-count:3}",
+  // Words along a curve (curvedWords.tsx): the element's own font, weight and colour.
+  ".pt-curve{display:block;width:100%;height:auto;overflow:visible}",
+  ".pt-curve text{font-family:inherit;font-weight:inherit;font-style:inherit}",
   // A 3D model's labelled points (Model3dCanvas): a dot, its words beside it on hover or focus.
   ".pt-3d-spot{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;cursor:pointer;color:var(--text);font:600 12px/1.2 inherit;text-decoration:none}",
   ".pt-3d-spot>span{width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 30%,transparent)}",

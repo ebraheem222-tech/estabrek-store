@@ -831,6 +831,15 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         });
         return;
       }
+      // A slider's slide picked in focus mode: its row goes to it.
+      if (d.type === "slideTo" && e.source === window.parent) {
+        const v = e.data as { nodeId?: unknown; i?: unknown };
+        if (typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId) || typeof v.i !== "number") return;
+        const row = document.querySelector<HTMLElement>(`[data-tree-node="${v.nodeId}"] .pt-slides`);
+        const slide = row?.children[Math.max(0, Math.floor(v.i))] as HTMLElement | undefined;
+        if (row && slide) row.scrollTo({ left: slide.offsetLeft - row.offsetLeft, top: slide.offsetTop - row.offsetTop, behavior: "smooth" });
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);

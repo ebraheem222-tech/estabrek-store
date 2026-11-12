@@ -116,6 +116,17 @@ if (new URLSearchParams(location.search).has("objectEdges")) {
   ];
   initial.tree!.root.children![0].children = seeds.map(([type, props]) => ({ id: `edge-${type}`, type, props: { ...props, edges }, style: { base: { width: "240px", height: "140px" } } }));
 }
+// A heading for words on a curve, and a slider whose slides are its parts (focus mode, A6).
+if (new URLSearchParams(location.search).has("kinds")) {
+  initial.tree!.root.children![0].children!.unshift(
+    { id: "curved", type: "heading", name: "Curved heading", props: { text: text("Summer sale on every scarf"), level: 2 }, style: { base: { width: "520px" } } },
+    { id: "slides", type: "slider", name: "Slides", props: { slides: [
+      { src: "/editorial/scarves.webp", kind: "image", caption: { en: "Scarves" } },
+      { src: "/editorial/hijab-campaign.webp", kind: "image", caption: { en: "Hijabs" } },
+      { src: "/editorial/rose-campaign-poster.webp", kind: "image" },
+    ] }, style: { base: { width: "420px", height: "260px" } } },
+  );
+}
 // A real video (the shop's own campaign clip) for the video editor (focus mode, A4).
 if (new URLSearchParams(location.search).has("video")) {
   initial.tree!.root.children![0].children!.unshift({ id: "clip", type: "video", name: "Clip", props: { src: "/editorial/rose-campaign-mobile.mp4", muted: true, controls: true }, style: { base: { width: "240px", height: "420px" } } });

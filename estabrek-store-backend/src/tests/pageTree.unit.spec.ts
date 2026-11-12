@@ -304,6 +304,16 @@ describe("checking a page tree", () => {
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
   });
 
+  test("a heading's or text's words along a curve", () => {
+    const tree = (curve: unknown, type = "heading") => page([section("s", [{ id: "h", type, props: { text: { ar: "تخفيضات" }, curve } }])]);
+    const r = checkTree(tree({ kind: "arc", bend: -40, size: 90, space: 6 }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props.curve).toEqual({ kind: "arc", bend: -40, size: 90, space: 6 });
+    expect(checkTree(tree({ kind: "circle" }, "text")).ok).toBe(true);
+    expect(issuesOf(tree({ kind: "spiral" })).length).toBeGreaterThan(0);
+    expect(issuesOf(tree({ kind: "arc", bend: 300 })).length).toBeGreaterThan(0);
+  });
+
   test("a 3D model's parts, views and labelled points", () => {
     const tree = (extra: Record<string, unknown>) => page([section("s", [{ id: "m", type: "model3d", props: { model: "sneaker", ...extra } }])]);
     const good = {

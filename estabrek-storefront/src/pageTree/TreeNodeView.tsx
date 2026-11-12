@@ -17,6 +17,8 @@ import { richNodes } from "./rich";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt, safeMorph } from "./svgArt";
 import { SparkleLayer } from "./sparkles";
+import { CurvedWords } from "./curvedWords";
+import { safeCurve } from "../../../shared/textCurve";
 import { safeSparkle } from "../../../shared/sparkle";
 import { color } from "./css";
 import { particlesOf } from "./particles";
@@ -220,10 +222,14 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "heading": {
       const level = Math.min(6, Math.max(1, Number(p.level) || 2));
       const H = `h${level}` as "h2";
-      return <H className={cls(node)} {...mark}>{before}{inner(words(p.text))}{fx}{after}</H>;
+      // Words along a curve (focus mode, shared/textCurve.ts) instead of a straight line.
+      const curve = safeCurve(p.curve);
+      return <H className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(words(p.text))}{fx}{after}</H>;
     }
-    case "text":
-      return <p className={cls(node)} {...mark}>{before}{inner(words(p.text))}{fx}{after}</p>;
+    case "text": {
+      const curve = safeCurve(p.curve);
+      return <p className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(words(p.text))}{fx}{after}</p>;
+    }
     case "image": {
       const src = safeSrc(p.src);
       if (!src) return null;

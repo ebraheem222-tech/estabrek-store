@@ -522,6 +522,10 @@ export const SHOP_WORD_FIELDS = ["searchLabel", "categoriesLabel", "allLabel", "
 /** What a held section does while the next one covers it: darkens, shrinks back, blurs, moves up slowly, fades. */
 export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as const;
 
+// Words along a curve (the editor's focus mode; shared/textCurve.ts in the shop draws it): an arc, a wave or a circle,
+// how bent, the words' size and spacing in the curve's own box.
+const Curve = z.object({ kind: z.enum(["arc", "wave", "circle"]), bend: z.number().min(-100).max(100).optional(), size: z.number().min(20).max(240).optional(), space: z.number().min(-10).max(60).optional() });
+
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
   // `cursor`: a mark that follows the mouse (a dot, a ring, or one that turns what's under it around), with
@@ -589,8 +593,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   columns: z.object({ phone: z.enum(["stack", "reverse", "keep"]).optional() }),
   cell: none,
   // `rich`: the words carry a little formatting ([b]…[/b], [link=/shop]…[/link]: the shop's pageTree/rich.ts).
-  heading: z.object({ text: local(300), level: z.number().int().min(1).max(6).default(2), rich: z.boolean().optional() }),
-  text: z.object({ text: local(5000), rich: z.boolean().optional() }),
+  heading: z.object({ text: local(300), level: z.number().int().min(1).max(6).default(2), rich: z.boolean().optional(), curve: Curve.optional() }),
+  text: z.object({ text: local(5000), rich: z.boolean().optional(), curve: Curve.optional() }),
   image: z.object({
     src, alt: local(200).optional(), href: href.optional(),
     // Sparkling stars on it (the editor's focus mode finds the picture's corners, edges and highlights, or they're

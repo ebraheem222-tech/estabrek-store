@@ -126,6 +126,15 @@ export function asPathNode(n: ArtNode, d: string): ArtNode {
 export function focusParts(node: PageTreeNode, index: TreeIndex | null): FocusPart[] {
   const group = focusGroup(node);
   if (group === "svg") return artParts((node.props as Record<string, unknown> | undefined)?.art as Art | undefined);
+  // A slider's parts are its slides ("slide-0"…).
+  if (node.type === "slider") {
+    const slides = (node.props as Record<string, unknown> | undefined)?.slides;
+    return (Array.isArray(slides) ? slides.slice(0, 12) : []).map((sl, i) => {
+      const words = (sl as { caption?: Record<string, string>; title?: Record<string, string> }) ?? {};
+      const caption = Object.values(words.title ?? {}).find(Boolean) ?? Object.values(words.caption ?? {}).find(Boolean);
+      return { id: `slide-${i}`, kind: (sl as { kind?: string })?.kind ?? "image", depth: 0, label: `${say("شريحة|Slide|שקופית")} ${i + 1}${caption ? ` · ${caption}` : ""}` };
+    });
+  }
   // A picture's parts are its sparkling stars ("s0", "s1"…).
   if (node.type === "image") {
     const points = ((node.props as Record<string, unknown> | undefined)?.sparkle as { points?: unknown[] } | undefined)?.points;
