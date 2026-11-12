@@ -97,11 +97,20 @@ export type FollowerOptions = {
 };
 
 const followers = new Map<HTMLElement, Set<() => void>>();
+/**
+ * Which follower has each shared part (the header) now: the scene that took the colours last. A scene handing
+ * them back leaves a part another scene has taken (it neither glides it back nor clears it). Both used to write
+ * the header on every frame (one gliding to its colour, the other back to the page's) and the last to finish
+ * cleared it: entering the seasons or the worlds the header flickered between colours before it settled.
+ */
+const partOwner = new WeakMap<HTMLElement, object>();
 /** Suspend local scene overlays before explicit CMS theme actions take ownership. */
 export function suspendThemeFollowers(doc: Document) {
   for (const [el, stops] of followers) if (el.ownerDocument === doc) for (const stop of stops) stop();
 }
 export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
+  const me = {};
+  const mineNow = (part: HTMLElement) => { const o = partOwner.get(part); return !o || o === me; };
   const now = new Map<string, Rgb>();
   const target = new Map<string, Rgb>();
   /** What the shell has (or will get at the next flush, for values that aren't colours). */
@@ -127,6 +136,7 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
       return;
     }
     for (const part of parts) {
+      if (!mineNow(part)) continue; // another scene has it now
       let mine = localWritten.get(part);
       if (!mine) localWritten.set(part, (mine = new Map()));
       if (mine.get(name) !== value) { part.style.setProperty(name, value); mine.set(name, value); }
@@ -141,9 +151,13 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     });
     behind.clear();
   };
-  /** The local parts inherit from the shell again. */
+  /** The local parts inherit from the shell again (those another scene has taken keep its colours). */
   const dropLocal = () => {
-    localWritten.forEach((names, part) => names.forEach((_, name) => part.style.removeProperty(name)));
+    localWritten.forEach((names, part) => {
+      if (!mineNow(part)) return;
+      names.forEach((_, name) => part.style.removeProperty(name));
+      if (partOwner.get(part) === me) partOwner.delete(part);
+    });
     localWritten.clear();
   };
   /** The local parts reached the page's own colours: let go of them (the shell was never touched). */
@@ -195,13 +209,24 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     if (!parts.length) { flush(); settle(); }
   };
   return {
-    /** Glide towards `values`; `seconds` is roughly how long most of the change takes. */
-    to(values: Record<string, string>, seconds = 0.35) {
+    /**
+     * Glide towards `values`; `seconds` is roughly how long most of the change takes. The scene takes the shared
+     * parts (the header) from any other; `back`: it is handing the colours back, so it glides only the parts it
+     * still has.
+     */
+    to(values: Record<string, string>, seconds = 0.35, { back = false }: { back?: boolean } = {}) {
       if (visuallyOwned()) return;
       smooth = Math.max(0.02, seconds / 3);
       releasing = null; // taken again while handing back: carry on from where the colours are
       const fresh: string[] = [];
       const parts = locals();
+      if (!back) {
+        for (const part of parts) {
+          // Taken from another scene: what this one wrote there before is gone, write it all again.
+          if (partOwner.get(part) !== me) localWritten.delete(part);
+          partOwner.set(part, me);
+        }
+      }
       for (const [name, value] of Object.entries(values)) {
         const c = reduced() ? null : parseColor(value);
         if (!c) {
@@ -214,7 +239,10 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
       }
       if (fresh.length) {
         const computed = lazyComputed(el);
-        const read = (name: string) => parseColor(el.style.getPropertyValue(name).trim() || computed().getPropertyValue(name).trim());
+        // From what is on screen: the header may still show the last scene's colours (starting from the page's
+        // own, it flashed back to them for a frame).
+        const shown = parts.find((part) => mineNow(part));
+        const read = (name: string) => parseColor(shown?.style.getPropertyValue(name).trim() || el.style.getPropertyValue(name).trim() || computed().getPropertyValue(name).trim());
         fresh.forEach((name) => {
           // A property with no colour yet (the navbar before any pick) starts from
           // what is on screen in its place, so it glides in instead of jumping.
@@ -246,7 +274,9 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     release(seconds = 0.8, done?: () => void) {
       releasing = done ?? (() => {});
       if (visuallyOwned()) return letGo();
-      if (!localWritten.size || seconds <= 0 || reduced()) return letGo();
+      // Nothing left to glide back: another scene has taken every part.
+      const kept = [...localWritten.keys()].some((part) => mineNow(part));
+      if (!kept || seconds <= 0 || reduced()) return letGo();
       const computed = getComputedStyle(el);
       const read = (name: string) => parseColor(el.style.getPropertyValue(name).trim() || computed.getPropertyValue(name).trim());
       target.forEach((_, name) => {

@@ -109,7 +109,7 @@ export function sceneTheme(section: HTMLElement, owner: string) {
     const chosen = normalHex(shell.dataset.storefrontColor);
     const rest = chosen ? { ...home, ...storefrontPalette(chosen) } : home;
     if (!now && Object.keys(rest).length) {
-      follow.to(rest, 0.8);
+      follow.to(rest, 0.8, { back: true });
       backTimer = window.setTimeout(() => { if (!held) letGo(); }, 1300);
     } else letGo(now);
   };
