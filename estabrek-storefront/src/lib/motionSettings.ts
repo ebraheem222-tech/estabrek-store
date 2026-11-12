@@ -184,11 +184,12 @@ export function prebuildAfter(order: number) {
 }
 
 /**
- * Builds the n-th 3D scene ahead (prebuildAfter), but only once it is within two and a half screens of the
- * shopper, in a pause of her scroll: building every scene of the home in its first seconds, however far down,
- * blocked a mid-range phone for about three seconds (each scene's start-up is a long task). A scene near the
- * first screen still starts after prebuildAfter's wait; one reached later starts in the next pause. Returns a
- * cancel function; does nothing when building ahead is off.
+ * Builds the n-th 3D scene ahead (prebuildAfter), but only once it is within four screens of the shopper, in a
+ * pause of her scroll (a quarter of a second is enough): building every scene of the home in its first seconds,
+ * however far down, blocked a mid-range phone for about three seconds (each scene's start-up is a long task). A
+ * scene near the first screen still starts after prebuildAfter's wait; one reached later starts in the next
+ * pause. (Two and a half screens and 0.6 s still: a shopper scrolling on without stopping got there before it,
+ * and it started on her way in.) Returns a cancel function; does nothing when building ahead is off.
  */
 export function prebuildNear(el: Element, order: number, build: () => void) {
   const after = prebuildAfter(order);
@@ -198,10 +199,37 @@ export function prebuildNear(el: Element, order: number, build: () => void) {
   const io = new IntersectionObserver(([entry]) => {
     if (!entry.isIntersecting) return;
     io.disconnect();
-    rest = onPageRest(build, { after: Math.max(0, after - (performance.now() - born)), quiet: 600 });
-  }, { rootMargin: `${Math.round(window.innerHeight * 2.5)}px 0px` });
+    rest = onPageRest(build, { after: Math.max(0, after - (performance.now() - born)), quiet: 300 });
+  }, { rootMargin: `${Math.round(window.innerHeight * 4)}px 0px` });
   io.observe(el);
   return () => { io.disconnect(); rest?.(); };
+}
+
+/**
+ * Starts a scene once the shopper is close (`margin`, see lazyMargin), in the next short pause of her scroll, and
+ * at once only when it comes on screen. Started the moment she came within reach, mid-scroll, a scene's start-up
+ * (a WebGL context, its models, its shaders: 100–300 ms on a computer) stopped her scroll just before the seasons
+ * and the collection worlds. Returns a cancel function.
+ */
+export function buildWhenClose(el: Element, margin: string, build: () => void) {
+  if (typeof IntersectionObserver === "undefined") {
+    build();
+    return () => {};
+  }
+  let done = false;
+  let rest: (() => void) | null = null;
+  const stop = () => { close.disconnect(); seen.disconnect(); rest?.(); };
+  const go = () => {
+    if (done) return;
+    done = true;
+    stop();
+    build();
+  };
+  const close = new IntersectionObserver(([e]) => { if (e.isIntersecting && !rest && !done) rest = onPageRest(go, { quiet: 150, idle: false }); }, { rootMargin: margin });
+  const seen = new IntersectionObserver(([e]) => { if (e.isIntersecting) go(); });
+  close.observe(el);
+  seen.observe(el);
+  return stop;
 }
 
 /** Tests: read the settings again. */

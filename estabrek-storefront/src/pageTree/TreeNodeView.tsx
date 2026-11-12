@@ -12,8 +12,7 @@ import type { CatalogCategory } from "@/lib/catalog";
 import { withLang, type LangConfig } from "@/lib/i18n";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
 import type { StoryChapter } from "@/lib/collectionStories";
-import { RoseSeasons } from "@/components/cinematic/RoseSeasons";
-import { RoseCollectionStory } from "@/components/cinematic/RoseCollectionStory";
+import dynamic from "next/dynamic";
 import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
 import { richNodes } from "./rich";
@@ -48,6 +47,10 @@ import { CommerceShop, type CommerceShopData } from "./CommerceShop";
 import { CardDesignScope } from "@/components/VisualControlsProvider";
 import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
+// The home's two scenes, scripts of their own loaded only where a page shows them (imported directly, every page
+// drawn from a tree loaded them, and Razan with them).
+const RoseSeasons = dynamic(() => import("@/components/cinematic/RoseSeasons").then((m) => m.RoseSeasons));
+const RoseCollectionStory = dynamic(() => import("@/components/cinematic/RoseCollectionStory").then((m) => m.RoseCollectionStory));
 
 export type TreeCtx = {
   lang: TreeLang;

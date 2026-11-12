@@ -1,20 +1,18 @@
 import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 import type { CmsSection, ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { CmsPageRenderer } from "@/cms";
 import { OverlayLayer, type SectionOverlay } from "@/pageTree/OverlayLayer";
 import { RoseHomeFrame, RoseFabricStudy, RoseNativeSections } from "./RoseHome";
 import { sectionPalette } from "./roseDesign";
-import { RoseVideoSection } from "./RoseVideoSection";
+
 import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
 import { RoseHomeStack } from "./RoseHomeStack";
 import { HomeSectionWatch } from "./HomeSectionWatch";
 import { HOME_ORDER_SCRIPT } from "@/lib/homeStats";
-import { RoseParticles } from "./RoseParticles";
-import { RoseRooms, type RoomPiece } from "./RoseRooms";
-import { RoseWorld, type WorldCollection } from "./RoseWorld";
-import { RosePageHero } from "./RosePageHero";
-import { RoseStoryMode } from "./RoseStoryMode";
+import type { RoomPiece } from "./RoseRooms";
+import type { WorldCollection } from "./RoseWorld";
 import { normalizeDelivery } from "@/lib/delivery";
 import { cldUrl } from "@/lib/cloudinary";
 import {
@@ -27,10 +25,21 @@ import {
   RoseTestimonials,
   RoseInstagram,
 } from "./RoseSections";
-import { RoseSeasons } from "./RoseSeasons";
-import { RoseCollectionStory } from "./RoseCollectionStory";
 import type { StoryChapter } from "@/lib/collectionStories";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
+/*
+ * The home's scenes, each a script of its own that only the home loads (still drawn on the server). Imported
+ * directly here, they went into every page drawn through renderCmsPage, the cart and a product page too: about
+ * 650 KB of script (gzipped) on every page, measured 2026-11-12.
+ */
+const RoseVideoSection = dynamic(() => import("./RoseVideoSection").then((m) => m.RoseVideoSection));
+const RoseParticles = dynamic(() => import("./RoseParticles").then((m) => m.RoseParticles));
+const RoseRooms = dynamic(() => import("./RoseRooms").then((m) => m.RoseRooms));
+const RoseWorld = dynamic(() => import("./RoseWorld").then((m) => m.RoseWorld));
+const RosePageHero = dynamic(() => import("./RosePageHero").then((m) => m.RosePageHero));
+const RoseStoryMode = dynamic(() => import("./RoseStoryMode").then((m) => m.RoseStoryMode));
+const RoseSeasons = dynamic(() => import("./RoseSeasons").then((m) => m.RoseSeasons));
+const RoseCollectionStory = dynamic(() => import("./RoseCollectionStory").then((m) => m.RoseCollectionStory));
 
 export function RoseCmsHome({
   sections,

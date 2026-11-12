@@ -10,7 +10,7 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
 import { RoseRecentlyViewed } from "@/components/cinematic/RoseRecentlyViewed";
-import { RoseCompanion } from "@/components/cinematic/mascot/RoseCompanion";
+import dynamic from "next/dynamic";
 import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import { AccessibilityTools } from "@/components/AccessibilityTools";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
@@ -22,6 +22,9 @@ import {
   normalizeStorefrontSettings,
   type StorefrontSettings,
 } from "@/lib/storefrontSettings";
+// Razan the companion comes after the page is up (she was drawn only then anyway): her script (about 50 KB
+// gzipped) no longer holds up every page's first start.
+const RoseCompanion = dynamic(() => import("@/components/cinematic/mascot/RoseCompanion").then((m) => m.RoseCompanion), { ssr: false });
 
 export type { StorefrontSettings } from "@/lib/storefrontSettings";
 
