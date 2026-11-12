@@ -14,7 +14,7 @@ const TreeCursor = dynamic(() => import("./TreePage").then((m) => m.TreeCursor),
 // Elements' own speed settings at work (perf.ts): light on phones and weak devices, resting off screen.
 const TreePerf = dynamic(() => import("./TreePerf").then((m) => m.TreePerf), { ssr: false });
 const TreePhysics = dynamic(() => import("./TreePhysics").then((m) => m.TreePhysics), { ssr: false });
-const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers]", covers: "[data-pt-cover]", paint: "[data-pt-paint]", cursor: "[data-pt-cursor]", perf: "[data-perf-watch],[data-perf-tier=light],[data-perf-phone],[data-perf-strong]", physics: "[data-pt-physics],[data-pt-world]" } as const;
+const NEEDS = { scenes: "[data-pt-scroll-scene]", triggers: "[data-pt-triggers], [data-pt-var]", covers: "[data-pt-cover]", paint: "[data-pt-paint]", cursor: "[data-pt-cursor]", perf: "[data-perf-watch],[data-perf-tier=light],[data-perf-phone],[data-perf-strong]", physics: "[data-pt-physics],[data-pt-world]" } as const;
 type Needs = Record<keyof typeof NEEDS, boolean>;
 const NONE: Needs = { scenes: false, triggers: false, covers: false, paint: false, cursor: false, perf: false, physics: false };
 const needsOf = (): Needs => Object.fromEntries(Object.entries(NEEDS).map(([k, sel]) => [k, Boolean(document.querySelector(sel))])) as Needs;

@@ -533,11 +533,51 @@ export const TriggerAction = z.discriminatedUnion("act", [
   z.object({ act: z.literal("vibrate") }),
   z.object({ act: z.literal("wait"), seconds: seconds(30) }),
 ]);
+/*
+ * Recipes (phase 3 of the big plan, the interactions engine): a trigger is "when → if → do, else": the
+ * conditions must all hold for its steps to run, its `else` steps run when they don't. Beside the actions a
+ * step can be a group (several at once, repeated, or one picked at random), a wait until a variable holds, or
+ * a change to a variable. Variables last for the visit (all pages); a text shows one with {{name}} or
+ * {{name|what to show before it is set}}, a message with {{name}} too.
+ */
+/** A variable: a name of letters, digits and _ (starts with a letter). */
+export const VAR_NAME = /^[A-Za-z][A-Za-z0-9_]{0,23}$/;
+const varName = z.string().trim().regex(VAR_NAME, "A name of letters, digits and _");
+const varValue = z.union([z.number().finite().min(-1e9).max(1e9), z.string().max(80), z.boolean()]);
+/** How a variable is compared: equal, not, more, less, at least, at most, set at all, not set yet. */
+export const VAR_CMPS = ["eq", "ne", "gt", "lt", "gte", "lte", "set", "unset"] as const;
+/** How often this recipe ran (with this time): exactly, at least, at most, every Nth time. */
+export const COUNT_CMPS = ["eq", "gte", "lte", "every"] as const;
+export const TriggerCondition = z.discriminatedUnion("if", [
+  z.object({ if: z.literal("var"), name: varName, cmp: z.enum(VAR_CMPS), value: varValue.optional() }),
+  z.object({ if: z.literal("count"), cmp: z.enum(COUNT_CMPS), value: z.number().int().min(1).max(1000) }),
+  z.object({ if: z.literal("device"), value: z.enum(["phone", "tablet", "desktop"]) }),
+  // The shopper's own time of day, from one hour to another (over midnight when `from` is later).
+  z.object({ if: z.literal("time"), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }),
+  z.object({ if: z.literal("lang"), value: z.enum(LANGS) }),
+]);
+/** Changes a variable: to a value, by adding (minus to take away), or flipping yes/no. */
+const SetVar = z.object({ act: z.literal("set"), name: varName, op: z.enum(["set", "add", "toggle"]), value: varValue.optional() });
+/** Waits until a variable holds (at most `seconds`, then goes on). */
+const WaitUntil = z.object({ act: z.literal("waitUntil"), name: varName, cmp: z.enum(VAR_CMPS), value: varValue.optional(), seconds: seconds(60).optional() });
+/** One step that isn't a group. */
+export const TriggerPlainStep = z.discriminatedUnion("act", [...TriggerAction.options, SetVar, WaitUntil]);
+/** A step: an action, or a group of them (at once, repeated, or one at random). */
+export const TriggerStep = z.discriminatedUnion("act", [
+  ...TriggerPlainStep.options,
+  z.object({ act: z.literal("together"), do: z.array(TriggerPlainStep).min(1).max(8) }),
+  z.object({ act: z.literal("repeat"), times: z.number().int().min(1).max(20), do: z.array(TriggerPlainStep).min(1).max(8) }),
+  z.object({ act: z.literal("random"), do: z.array(TriggerPlainStep).min(1).max(8) }),
+]);
 export const NodeTrigger = z.object({
   on: z.enum(TRIGGER_EVENTS),
   at: z.number().finite().min(0).max(600).optional(),
   once: z.boolean().optional(),
-  do: z.array(TriggerAction).min(1).max(8),
+  /** The owner's own name for it ("Open the offer"). */
+  name: z.string().trim().max(40).optional(),
+  if: z.array(TriggerCondition).max(6).optional(),
+  do: z.array(TriggerStep).min(1).max(16),
+  else: z.array(TriggerStep).max(16).optional(),
 });
 export const NodeTriggers = z.array(NodeTrigger).max(8);
 

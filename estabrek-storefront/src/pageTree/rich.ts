@@ -57,9 +57,9 @@ export function parseRich(text: string): Array<Part | string> {
  * (null = not a safe one). Built with createElement (not JSX) so the Playwright tests,
  * which rewrite JSX in the files they load, can render it too.
  */
-export function richNodes(text: string, link: (href: string) => string | null): ReactNode[] {
+export function richNodes(text: string, link: (href: string) => string | null, leaf?: (words: string) => ReactNode): ReactNode[] {
   const draw = (k: Part | string, i: number): ReactNode => {
-    if (typeof k === "string") return k;
+    if (typeof k === "string") return leaf ? leaf(k) : k;
     const kids = k.kids.map(draw);
     switch (k.tag) {
       case "b":

@@ -14,6 +14,7 @@ import type { StoryChapter } from "@/lib/collectionStories";
 import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
 import { richNodes } from "./rich";
+import { varNodes } from "./recipeVars";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt, safeMorph } from "./svgArt";
 import { SparkleLayer } from "./sparkles";
@@ -102,7 +103,8 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     return v.startsWith("/") ? withLang(v, ctx.lang, ctx.cfg) : v;
   };
   // Words with formatting ([b]…[/b], links…) when the element says so; plain words otherwise.
-  const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link) : say(t));
+  // {{name}} in them shows one of the recipes' variables (recipeVars.ts).
+  const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link, varNodes) : varNodes(say(t)));
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
   // Triggers go as data too, their links and words already in this page's language (TreeTriggers runs them).
