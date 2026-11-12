@@ -15,6 +15,7 @@ import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
 import { richNodes } from "./rich";
 import { varNodes } from "./recipeVars";
+import { hiddenFrom } from "./pieces";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt, safeMorph } from "./svgArt";
 import { SparkleLayer } from "./sparkles";
@@ -116,7 +117,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const world = (WORLD_HOSTS as readonly string[]).includes(node.type) ? worldOf(p.world) : null;
   const body = bodyOf(p.body);
   const physicsMarks = { ...(motion?.physics ? { "data-pt-physics": "" } : {}), ...(world && !world.baked ? { "data-pt-world": JSON.stringify(world) } : {}), ...(body ? { "data-pt-body": JSON.stringify(body) } : {}) };
-  const mark = { ...perfMarks(perf, endless), ...physicsMarks, "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
+  const mark = { ...perfMarks(perf, endless), ...physicsMarks, "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
   // Its two extra layers (behind its content, or in front), drawn when it has a look or keyframes for them.
   const layers = layersOf(p.layers);
   const piece = (part: "before" | "after") => (layers?.[part] || motion?.keys?.parts[part] ? <span className={`pt-pc pt-pc-${part}${layers?.[part]?.front ? " pt-pc-front" : ""}`} aria-hidden="true" /> : null);

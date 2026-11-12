@@ -357,6 +357,8 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
   refresh.current = onRefresh;
   useEffect(() => {
     if (window.parent === window || !origins.length) return;
+    // In the editor everything shows, also what a recipe keeps for customers or for guests (css.ts).
+    document.documentElement.setAttribute("data-pt-all", "");
     const send = (msg: Record<string, unknown>) => {
       for (const o of origins) {
         try {

@@ -390,6 +390,8 @@ export function treeNeeds(tree: PageTree) {
   eachNode(tree, (n) => {
     if (n.type === "scrollScene") scenes = true;
     if (Array.isArray(n.props?.triggers) && n.props.triggers.length) triggers = true;
+    // Words that show one of the recipes' variables ({{name}}): the same runtime fills them in.
+    if (!triggers && [n.props?.text, n.props?.label].some((w) => (typeof w === "string" ? [w] : w && typeof w === "object" ? Object.values(w) : []).some((x) => typeof x === "string" && x.includes("{{")))) triggers = true;
   });
   // Sections held until the next one covers them (TreeCovers).
   const covers = (tree.root.children ?? []).some((n) => n.type === "section" && n.props?.cover && typeof n.props.cover === "object");

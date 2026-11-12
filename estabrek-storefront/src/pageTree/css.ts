@@ -916,6 +916,10 @@ export const BASE_CSS = [
   "[dir=rtl]{--pt-flip:-1}",
   // Until the motion engine is ready (at most 2.5 s), what comes in waits unseen.
   "html.pt-pending [data-pt-enter]{opacity:0}",
+  // Recipes with "who may" (TreeTriggers): what's only for customers hides from guests and the other way round
+  // (html[data-pt-in] = signed in, set before the page shows); a locked one dims; a running one waits.
+  "html:not([data-pt-in]):not([data-pt-all]) [data-pt-who=customer],html[data-pt-in]:not([data-pt-all]) [data-pt-who=guest]{display:none!important}",
+  "[data-pt-denied=lock]{opacity:.55;cursor:not-allowed}[data-pt-busy]{cursor:progress}",
   ".pt{box-sizing:border-box;min-width:0}",
   ".pt-section{position:relative;width:100%;padding-block:56px}",
   // Objects placed over an old section or a scene: a layer over it, in sight through a tall scene.

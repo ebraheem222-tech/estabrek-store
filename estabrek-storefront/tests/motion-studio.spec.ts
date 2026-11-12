@@ -44,7 +44,7 @@ test.describe("keyframes, cues and triggers as data", () => {
     expect(s.chapters).toBe(7);
     expect(layersOf({ before: { bg: "url(x)", at: "bottom", h: 2 } })).toEqual({ before: { at: "bottom", h: 2 } });
     const t = triggersOf([{ on: "click", do: [{ act: "link", href: "/shop" }, { act: "toast", text: { ar: "أهلا", en: "Hi" } }, { act: "explode" }, { act: "link", href: "javascript:alert(1)" }] }], (h) => (h === "/shop" ? "/en/shop" : null), (w) => (w as Record<string, string>).en);
-    expect(t).toEqual([{ on: "click", once: false, do: [{ act: "link", href: "/en/shop", newTab: false }, { act: "toast", text: "Hi" }] }]);
+    expect(t).toEqual([{ on: "click", once: false, if: [], do: [{ act: "link", href: "/en/shop", newTab: false }, { act: "toast", text: "Hi" }], else: [], fail: [] }]);
   });
 
   test("the CSS draws overflow, the layers' looks and where keyframes turn from", () => {
