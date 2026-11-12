@@ -4,6 +4,8 @@
  * elements easier to hit by itself.
  *
  * - Inside several nested elements: the deepest wins, then the smallest.
+ * - A tiny element (under 20 px on screen) can be hit a little outside itself, as if it were 20 px: it wins over
+ *   what it lies in or was placed over (its section, its card), never over a neighbour the pointer is really on.
  * - Inside none: the nearest within 8 px (point-to-box distance); a near tie goes
  *   to the box the pointer is heading for (a ray along its movement).
  * - A spatial grid of 64 px cells keeps this fast with thousands of elements.
@@ -18,6 +20,20 @@ export type Shape = { id: string; box: Box; depth: number; parentId: string | nu
 
 export const PICK_THRESHOLD = 8;
 export const EDGE_BAND = 4;
+/** A small element's hit area grows to this many screen px across, so tiny things can be picked and moved. */
+export const MIN_HIT = 20;
+/** How far outside itself a small element can still be hit (0 for anything MIN_HIT across or more). */
+export const tinyPad = (b: Box) => (b.w > 0 && b.h > 0 ? Math.max(0, Math.min(PICK_THRESHOLD, (MIN_HIT - Math.min(b.w, b.h)) / 2)) : 0);
+/** Whether an outline is just its box (not turned, skewed or tipped): then the box alone is drawn around it. */
+export function outlineIsBox(outline: Pt[] | undefined, b: Box): boolean {
+  if (!outline || outline.length !== 4) return !outline;
+  const near = (v: number, a: number, c: number) => Math.abs(v - a) <= 0.75 || Math.abs(v - c) <= 0.75;
+  return outline.every((p) => near(p.x, b.x, b.x + b.w) && near(p.y, b.y, b.y + b.h));
+}
+/** Under this many screen px across, a selected or hovered element gets a ring around it so it can be seen. */
+export const TINY_SEEN = 14;
+/** Whether a box lies in another (to half a pixel). */
+export const boxWithin = (inner: Box, outer: Box) => inner.x >= outer.x - 0.5 && inner.y >= outer.y - 0.5 && inner.x + inner.w <= outer.x + outer.w + 0.5 && inner.y + inner.h <= outer.y + outer.h + 0.5;
 export const ZOOM_MIN = 0.1;
 export const ZOOM_MAX = 4;
 
@@ -219,6 +235,27 @@ export class SpatialGrid {
 
 /* -------------------------------------------------------------- picking */
 
+/**
+ * The tiny element the pointer means though it's just outside it: the nearest (then deepest) small one within
+ * its own padding that lies in (or over) what the pointer is on: its section, its card, or a bigger thing it was
+ * placed on. One beside what the pointer is on is never taken instead of it. With the pointer on nothing, the
+ * nearest within 8 px is picked as before (pickAt).
+ */
+export function tinyNear(candidates: Shape[], p: Pt, direct: Shape | undefined): { s: Shape; d: number } | null {
+  if (!direct) return null;
+  let best: { s: Shape; d: number } | null = null;
+  for (const s of candidates) {
+    const pad = tinyPad(s.box);
+    if (!pad || s === direct) continue;
+    if (!boxWithin(s.box, direct.box)) continue;
+    if (shapeContains(s, p)) continue;
+    const d = shapeDistance(s, p);
+    if (d > pad) continue;
+    if (!best || d < best.d - 1e-9 || (Math.abs(d - best.d) <= 1e-9 && (s.depth > best.s.depth || (s.depth === best.s.depth && s.id.localeCompare(best.s.id) < 0)))) best = { s, d };
+  }
+  return best;
+}
+
 export type Pick = { id: string; inside: boolean; distance: number; nearEdge: boolean };
 
 /**
@@ -229,8 +266,11 @@ export function pickAt(candidates: Shape[], p: Pt, opts: { threshold?: number; e
   const threshold = opts.threshold ?? PICK_THRESHOLD;
   const edge = opts.edge ?? EDGE_BAND;
   const hits = candidates.filter((s) => shapeContains(s, p));
+  if (hits.length) hits.sort((a, b) => b.depth - a.depth || area(a.box) - area(b.box) || a.id.localeCompare(b.id));
+  // A tiny element hit just outside itself wins over what it lies in.
+  const tiny = tinyNear(candidates, p, hits[0]);
+  if (tiny) return { id: tiny.s.id, inside: true, distance: tiny.d, nearEdge: false };
   if (hits.length) {
-    hits.sort((a, b) => b.depth - a.depth || area(a.box) - area(b.box) || a.id.localeCompare(b.id));
     const best = hits[0];
     return { id: best.id, inside: true, distance: 0, nearEdge: shapeEdgeDistance(best, p) <= edge };
   }

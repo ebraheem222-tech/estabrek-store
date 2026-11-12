@@ -30,7 +30,7 @@
  * The shop's frame (studio-frame) opens the page's draft with a 30-minute ticket
  * and its bridge reports where every element is (pageTree/StudioBridge in the shop).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -148,7 +148,7 @@ import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
 import { tr } from "../lib/words";
-import { DIRECTIONS, HoverFilter, SpatialGrid, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
+import { DIRECTIONS, HoverFilter, SpatialGrid, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape, TINY_SEEN, outlineIsBox } from "./geometry";
 import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
@@ -1368,22 +1368,38 @@ function StudioDocument() {
     const seen = visiblePart(s.box, frameBox);
     if (!seen) return null;
     const style = { left: seen.box.x - frameBox.x, top: seen.box.y - frameBox.y, width: seen.box.w, height: seen.box.h };
-    const cls =
-      kind === "selected" ? "border-2 border-accent-400 bg-accent-400/[0.06]" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
+    // Turned, skewed or tipped: its real outline is drawn, and the box around it only hinted.
+    const quad = kind !== "parent" && s.outline && !outlineIsBox(s.outline, s.box) ? s.outline : null;
+    // Tiny on screen: a ring around it, so what's selected (or about to be) can be seen.
+    const tiny = kind !== "parent" && Math.min(s.box.w, s.box.h) < TINY_SEEN;
+    const ring = Math.max(s.box.w, s.box.h) + 14;
+    const cls = quad
+      ? (kind === "selected" ? "border border-dashed border-accent-400/40" : "border border-dashed border-accent-300/30")
+      : kind === "selected" ? "border-2 border-accent-400 bg-accent-400/[0.06]" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
     // Where it goes on past the frame, its side is dashed.
     const cut = { borderTopStyle: seen.above ? "dashed" : undefined, borderBottomStyle: seen.below ? "dashed" : undefined } as const;
     return (
-      <div key={`${kind}-${sid}`} className={`pointer-events-none absolute ${cls}`} style={{ ...style, ...cut }} data-testid={`studio-${kind}`} data-cut={seen.above || seen.below ? "1" : undefined}>
+      <Fragment key={`${kind}-${sid}`}>
+      {quad ? (
+        <svg className={`pointer-events-none absolute overflow-visible ${kind === "selected" ? "text-accent-400" : "text-accent-300"}`} style={{ left: 0, top: 0, width: 1, height: 1 }} aria-hidden="true" data-testid={`studio-${kind}-quad`}>
+          <polygon points={quad.map((pt) => `${pt.x - frameBox.x},${pt.y - frameBox.y}`).join(" ")} fill="currentColor" fillOpacity={kind === "selected" ? 0.06 : 0} stroke="currentColor" strokeWidth={kind === "selected" ? 2 : 1} strokeDasharray={kind === "selected" ? undefined : "4 3"} strokeLinejoin="round" />
+        </svg>
+      ) : null}
+      {tiny ? <div className={`pointer-events-none absolute rounded-full ${kind === "selected" ? "border-2 border-accent-400/80 bg-accent-400/[0.08]" : "border border-dashed border-accent-300/80"}`} style={{ left: s.box.x + s.box.w / 2 - frameBox.x - ring / 2, top: s.box.y + s.box.h / 2 - frameBox.y - ring / 2, width: ring, height: ring }} data-testid={`studio-${kind}-ring`} /> : null}
+      <div className={`pointer-events-none absolute ${cls}`} style={{ ...style, ...cut }} data-testid={`studio-${kind}`} data-cut={seen.above || seen.below ? "1" : undefined} data-quad={quad ? "1" : undefined}>
         {kind !== "parent" ? (
           // Above the box; inside it when the box touches the top of the frame (or goes on above it).
-          <span className={`absolute start-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${style.top < 24 || seen.above ? "top-0" : "-top-6"} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`}>
+          // A tiny one's name stands beside its ring, clear of its handles and its turning knob.
+          <span className={`absolute inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${tiny ? "start-full top-1/2 ms-5 -translate-y-1/2" : `start-0 ${style.top < 24 || seen.above ? "top-0" : "-top-6"}`} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`} data-testid={`studio-${kind}-name`}>
             {seen.above ? <span aria-hidden="true">↑</span> : null}
             <span>{label(sid!)}</span>
-            {kind === "selected" ? <span className="opacity-75" dir="ltr">{Math.round(s.box.w / zoom)}×{Math.round(s.box.h / zoom)}</span> : null}
+            {/* Its own size: along its real sides when it's turned, not the box around it. */}
+            {kind === "selected" ? <span className="opacity-75" dir="ltr" data-testid="studio-selected-size">{quad && quad.length === 4 ? `${Math.round(Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) / zoom)}×${Math.round(Math.hypot(quad[3].x - quad[0].x, quad[3].y - quad[0].y) / zoom)}` : `${Math.round(s.box.w / zoom)}×${Math.round(s.box.h / zoom)}`}</span> : null}
           </span>
         ) : null}
         {kind === "selected" && seen.below ? <span className="absolute bottom-1 start-1/2 -translate-x-1/2 rounded-full bg-accent-500 px-1.5 text-[11px] text-white" aria-hidden="true">↓</span> : null}
       </div>
+      </Fragment>
     );
   };
 

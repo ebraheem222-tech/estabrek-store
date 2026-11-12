@@ -127,6 +127,17 @@ if (new URLSearchParams(location.search).has("kinds")) {
     ] }, style: { base: { width: "420px", height: "260px" } } },
   );
 }
+// Tiny and turned things for the canvas's picking (smart-selection.spec.ts): an 8 px dot placed over a card, and a
+// box turned by 25°.
+if (new URLSearchParams(location.search).has("tiny")) {
+  initial.tree!.root.children = [
+    { id: "objects", type: "section", name: "Tiny things", props: {}, style: { base: { minHeight: "520px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "card", type: "stack", name: "Card", props: {}, style: { base: { width: "360px", height: "240px", bg: "surface", layer: { x: 6, y: 10, anchor: "top-start" } } }, children: [] },
+      { id: "dot", type: "svg", name: "Dot", props: { art: { viewBox: "0 0 10 10", nodes: [{ t: "circle", a: { cx: "5", cy: "5", r: "5", fill: "#e11d48" } }] } }, style: { base: { width: "8px", height: "8px", layer: { x: 18, y: 30, anchor: "top-start" } } } },
+      { id: "tilted", type: "stack", name: "Tilted", props: {}, style: { base: { width: "180px", height: "100px", bg: "accent", rotateZ: 25, layer: { x: 62, y: 34, anchor: "top-start" } } }, children: [] },
+    ] },
+  ];
+}
 // A card and a button for shapes by equations and an element's own CSS (G, C).
 if (new URLSearchParams(location.search).has("shapes")) {
   initial.tree!.root.children = [

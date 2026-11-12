@@ -46,9 +46,12 @@ for (const device of [
       return { decoded, interrupted, uploads };
     });
     await testInfo.attach("hero-frame-pacing", { body: JSON.stringify(result), contentType: "application/json" });
-    expect(result.decoded).toBeGreaterThan(10);
+    // What matters is that no frame was cut short by the next seek. How many frames a machine decodes in the three
+    // seconds depends on its speed (GitHub's machines gave 9–10 on the desktop case, a laptop 20–40), so the count
+    // only has to show that frames did decode and were drawn.
+    expect(result.decoded).toBeGreaterThanOrEqual(5);
     expect(result.interrupted).toBe(0);
-    expect(result.uploads).toBeGreaterThan(10);
+    expect(result.uploads).toBeGreaterThanOrEqual(5);
     await expect.poll(() => page.locator(".film-video").evaluate((v: HTMLVideoElement) => v.currentTime)).toBeLessThan(.05);
   } finally {
     await page.request.get("http://127.0.0.1:4100/__test/hero-film?on=0");
