@@ -11,7 +11,7 @@ import { collectionSeed } from "@/lib/collectionTheme";
 import { moodOf, type Mood } from "@/lib/categoryMood";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { collectionSeeds, normalHex, photoColour, sceneTheme } from "@/lib/sceneColour";
-import { lazyMargin } from "@/lib/motionSettings";
+import { buildWhenClose, lazyMargin } from "@/lib/motionSettings";
 import { motionLevel } from "@/lib/motionBudget";
 import { tr } from "@/lib/words";
 import type { ModelKey } from "./CollectionModelsScene";
@@ -98,15 +98,15 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
     const el = root.current;
     if (!el) return;
     setModels(motionLevel() !== "lite");
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: lazyMargin(700) });
+    // Close by: in the next pause of the scroll, or at once on screen (buildWhenClose).
+    const close = buildWhenClose(el, lazyMargin(700), () => setNear(true));
     const view = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
-    io.observe(el);
     view.observe(el);
     const mq = window.matchMedia("(max-width: 899px)");
     const sync = () => setCompact(mq.matches);
     sync();
     mq.addEventListener("change", sync);
-    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); };
+    return () => { close(); view.disconnect(); mq.removeEventListener("change", sync); };
   }, []);
 
   useEffect(() => {
