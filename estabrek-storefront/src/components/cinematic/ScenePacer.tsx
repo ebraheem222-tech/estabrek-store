@@ -150,9 +150,11 @@ export function ScenePacer({
         }
       }
 
+      // A weak device (TreePerf's automatic lightening): at most 30 a second.
+      const floor = document.documentElement.hasAttribute("data-weak") ? Math.max(cap, 1000 / 30) : cap;
       const interval = moving()
-        ? Math.max(sceneFrameGap(), cap)
-        : Math.max(sceneFrameGap(), AMBIENT_GAP, cap);
+        ? Math.max(sceneFrameGap(), floor)
+        : Math.max(sceneFrameGap(), AMBIENT_GAP, floor);
 
       /**
        * Small tolerance handles floating

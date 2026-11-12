@@ -66,6 +66,8 @@ export type TreeCtx = {
   inScene?: boolean;
   /** The product a product page's design is drawn for (pageTree/storeBind.ts). */
   product?: CatalogProduct;
+  /** The page's first picture, loaded first (tree.ts leadImageOf). */
+  lead?: string;
 };
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
@@ -244,16 +246,18 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!src) return null;
       // Sparkling stars over it (focus mode, shared/sparkle.ts), drawn here and twinkling in CSS.
       const sparkle = safeSparkle(p.sparkle);
+      // The page's first picture loads at once and first; the rest wait until they're near the screen.
+      const load = ctx.lead === node.id ? ({ loading: "eager", fetchPriority: "high" } as Record<string, string>) : ({ loading: "lazy" } as Record<string, string>);
       const img = framed(node, motion) ? (
         <span className={cls(node, "pt-frame")} {...mark}>
           {before}
-          <img className="pt-frame-media" src={src} alt={say(p.alt)} loading="lazy" decoding="async" />
+          <img className="pt-frame-media" src={src} alt={say(p.alt)} {...load} decoding="async" />
           {fx}
           {sparkle ? <SparkleLayer sparkle={sparkle} /> : null}
           {after}
         </span>
       ) : (
-        <img className={cls(node)} {...mark} src={src} alt={say(p.alt)} loading="lazy" decoding="async" />
+        <img className={cls(node)} {...mark} src={src} alt={say(p.alt)} {...load} decoding="async" />
       );
       const to = link(p.href);
       return to ? <a className="pt-image-link" href={to}>{img}</a> : img;

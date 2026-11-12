@@ -60,6 +60,23 @@ export function perfNeeded(n: { type: string; props?: Record<string, unknown>; s
   return Boolean(perf?.tier === "light" || perf?.phone === "light" || perf?.strong || (endlessOf(n, motion) && perf?.offscreen !== "keep"));
 }
 
+/**
+ * The shop's automatic lightening (J3), on unless the page turns it off (root props.perfAuto false): elements that
+ * weigh on a weak device on their own (frosted glass, a canvas drawn every moment, a clip playing by itself) bring
+ * TreePerf in, which marks a weak device (html[data-weak]: no frosted glass, canvases at 24–30 a second) and data
+ * saving (clips don't play by themselves). The page's first picture loads first; far sections that already cut what
+ * sticks out are drawn only near the screen (css.ts).
+ */
+export function autoNeeded(n: { type: string; props?: Record<string, unknown>; style?: unknown }): boolean {
+  const st = (n.style && typeof n.style === "object" ? n.style : {}) as Record<string, { backdrop?: { blur?: unknown } } | undefined>;
+  const glass = ["base", "tablet", "mobile"].some((k) => Number(st[k]?.backdrop?.blur) > 0);
+  const p = n.props ?? {};
+  const canvas = ["model3d", "scrollScene", "lottie", "rive"].includes(n.type) || (n.type === "section" && Boolean(p.particles || p.scene));
+  return glass || canvas || (n.type === "video" && p.autoplay === true);
+}
+/** Whether the page's automatic lightening is off (css.ts writes it as --pt-auto-off on the page). */
+export const autoOff = () => typeof document !== "undefined" && getComputedStyle(document.documentElement).getPropertyValue("--pt-auto-off").trim() === "1";
+
 /** Whether an element is to be light now (its own setting, or light on phones / weak devices as TreePerf marked). */
 export const lightNow = (el: Element | null) => Boolean(el?.closest("[data-perf-tier=light],[data-perf-light-now]"));
 /** The cap on an element's canvases' frames a second (none: Infinity). */

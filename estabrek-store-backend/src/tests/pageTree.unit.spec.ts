@@ -320,6 +320,12 @@ describe("checking a page tree", () => {
     expect(r.ok && r.tree.root.children![0].children![0].props.perf).toBeFalsy();
   });
 
+  test("a page can turn the shop's automatic lightening off", () => {
+    const r = checkTree({ version: 1, root: { id: "page", type: "page", props: { perfAuto: false }, children: [] } });
+    expect(r.ok && r.tree.root.props.perfAuto).toBe(false);
+    expect(issuesOf({ version: 1, root: { id: "page", type: "page", props: { perfAuto: "no" }, children: [] } }).map((i) => i.path).join(" ")).toMatch(/perfAuto/);
+  });
+
   test("a shape by equations in a screen's look: corners, edges, a typed equation, a whole shape", () => {
     const form = { corners: { tl: { kind: "squircle", size: 40, k: 5 }, br: { kind: "bezier", size: 30, c: [0, 0.5, 0.5, 0] } }, edges: { bottom: { kind: "wave", depth: 14, count: 6, flow: 4 }, top: { kind: "fn", depth: 20, fn: "0.5 + 0.5*sin(x*PI*4)" } } };
     const r = checkTree(page([section("s", [{ id: "x", type: "image", props: { src: "/a.webp" }, style: { base: { form }, mobile: { form: { whole: { kind: "polygon", n: 6, inner: 0.6 } } } } }])]));

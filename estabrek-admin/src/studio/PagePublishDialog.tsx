@@ -6,7 +6,7 @@ import type { Page, PublishChoices } from "../api/pages.api";
 
 type Props = { page: Page; force: boolean; busy: boolean; initialOptions?: Partial<PublishChoices>; onClose: () => void; onConfirm: (choices: PublishChoices) => void | Promise<void> };
 
-export function PagePublishDialog({ page, force, busy, initialOptions, onClose, onConfirm }: Props) {
+export function PagePublishDialog({ page, force, busy, initialOptions, onClose, onConfirm, extra }: Props & { extra?: React.ReactNode }) {
   const [mode, setMode] = useState<PublishChoices["mode"]>(initialOptions?.mode ?? "keep_schedule");
   const [republishArchived, setRepublishArchived] = useState(initialOptions?.republishArchived ?? false);
   const hasWindow = Boolean(page.publishAt || page.unpublishAt);
@@ -15,6 +15,7 @@ export function PagePublishDialog({ page, force, busy, initialOptions, onClose, 
       <p className="text-sm text-white/65">{force
         ? tr("النشر بيكتب المسودة فوق تغييرات المحتوى الأحدث، مع حفظ النسخة الحالية بالسجل. حالة النشر والمواعيد لازم تضل مطابقة للمراجعة.", "Publishing replaces newer content with this draft and keeps a revision. Publication status and dates must still match your review.")
         : tr("بتنحفظ نسخة بالسجل قبل النشر. ظهور الصفحة للزوار يعتمد على المواعيد وتحديث الموقع.", "A revision is kept before publishing. Public availability depends on the publication window and storefront refresh.")}</p>
+      {extra}
       {hasWindow ? <div className="space-y-2 rounded-xl border border-white/10 p-3 text-sm" data-testid="page-publish-window">
         <p>{tr("مواعيد النشر الحالية", "Current publication window")}</p>
         {page.publishAt ? <p className="text-xs text-white/60">{tr("تبدأ", "Starts")}: <time dateTime={page.publishAt}>{new Date(page.publishAt).toLocaleString()}</time></p> : null}

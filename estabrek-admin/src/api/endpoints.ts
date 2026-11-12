@@ -113,6 +113,7 @@ export const ENDPOINTS = {
         reset: "/admin/system/speed/reset",
         resetStats: "/admin/system/speed/reset-stats",
         rum: "/admin/system/speed/rum",
+        rumAlerts: "/admin/system/speed/rum-alerts",
         indexes: "/admin/system/speed/indexes",
       },
       // Background jobs (المهام بالخلفية)

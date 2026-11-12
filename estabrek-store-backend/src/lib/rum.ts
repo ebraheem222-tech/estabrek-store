@@ -244,13 +244,15 @@ export async function rumReport(opts: { days: number; device?: string | null; os
   const items = [...groups.values()]
     .map((g) => {
       const worse: RumMetric[] = [];
+      // What got worse: the last two days against the week before, before → now.
+      const trend: Partial<Record<RumMetric, { before: number; now: number }>> = {};
       for (const k of RUM_METRIC_NAMES) {
         const a = g.recent.get(k);
         const b = g.before.get(k);
         if (!a || !b || a.count < MIN_FOR_TREND || b.count < MIN_FOR_TREND) continue;
         const now_ = experience(k, a)!;
         const was = experience(k, b)!;
-        if (RUM_METRICS[k].better === "lower" ? now_ > was * 1.15 : now_ < was * 0.85) worse.push(k);
+        if (RUM_METRICS[k].better === "lower" ? now_ > was * 1.15 : now_ < was * 0.85) { worse.push(k); trend[k] = { before: was, now: now_ }; }
       }
       const visits = Math.max(0, ...[...g.metrics.values()].map((a) => a.count));
       return {
@@ -260,6 +262,7 @@ export async function rumReport(opts: { days: number; device?: string | null; os
         visits,
         metrics: summarize(g.metrics),
         worse,
+        trend,
         daily: dates.map((day) => {
           const d = g.daily.get(day);
           return {
@@ -281,6 +284,46 @@ export async function rumReport(opts: { days: number; device?: string | null; os
     collected: { ...counters, waiting: pending.size },
     thresholds: Object.fromEntries(RUM_METRIC_NAMES.map((k) => [k, { better: RUM_METRICS[k].better, good: RUM_METRICS[k].good, poor: RUM_METRICS[k].poor }])),
   };
+}
+
+/* ---------------- Slowdown alerts (docs/cms-big-engine-plan.ar.md J5) ---------------- */
+
+export type RumAlert = { page: string; device: string; visits: number; worse: Array<{ metric: RumMetric; before: number; now: number; rating: "good" | "okay" | "poor" | null }> };
+export type PagePublish = { pageId: string; name: string; slug: string; kind: string; at: string; revisionId: string; rumPage: string };
+/** Where a page's shoppers are counted (RUM_PAGES): the home page, a page, or a product's or category's design. */
+export const rumPageOf = (p: { slug: string; kind?: string | null }) => (p.slug === "/" ? "home" : p.kind === "productTemplate" ? "product" : p.kind === "categoryTemplate" ? "category" : "page");
+
+/**
+ * Where shoppers' speed got worse (the last two days against the week before: at least 15 % and enough visits), the
+ * worst first, each with the pages published in those days for that kind of page: the revision kept just before
+ * each publish is the way back.
+ */
+export function rumAlertsFrom(items: Array<{ page: string; device: string; visits: number; worse: RumMetric[]; trend?: Partial<Record<RumMetric, { before: number; now: number }>> }>, publishes: PagePublish[]) {
+  const alerts: RumAlert[] = items
+    .filter((i) => i.worse.length && i.trend)
+    .map((i) => ({
+      page: i.page,
+      device: i.device,
+      visits: i.visits,
+      worse: i.worse.filter((k) => i.trend![k]).map((k) => ({ metric: k, ...i.trend![k]!, rating: rating(k, i.trend![k]!.now) })),
+    }))
+    .filter((a) => a.worse.length)
+    .sort((a, b) => b.worse.filter((w) => w.rating === "poor").length - a.worse.filter((w) => w.rating === "poor").length || b.visits - a.visits);
+  const kinds = new Set(alerts.map((a) => a.page));
+  return { alerts, publishes: publishes.filter((p) => kinds.has(p.rumPage)) };
+}
+
+export async function rumAlerts(now = Date.now()) {
+  const report = await rumReport({ days: 9, split: "device" }, now);
+  const since = new Date(storeDay(now).getTime() - 2 * 86400_000);
+  const revisions = await prisma.pageRevision.findMany({
+    where: { reason: "Publish from the new editor", createdAt: { gte: since } },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: { id: true, createdAt: true, page: { select: { id: true, name: true, slug: true, kind: true } } },
+  });
+  const publishes: PagePublish[] = revisions.map((r) => ({ pageId: r.page.id, name: r.page.name, slug: r.page.slug, kind: r.page.kind, at: r.createdAt.toISOString(), revisionId: r.id, rumPage: rumPageOf(r.page) }));
+  return { now, ...rumAlertsFrom(report.items, publishes) };
 }
 
 /* ---------------- Tests ---------------- */

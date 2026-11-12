@@ -1311,7 +1311,8 @@ export function mountScene(canvas: HTMLCanvasElement, spec: SceneSpec): () => vo
   // all while the page rests (lib/pageIdle.ts): it carries on from where it was when the page is touched again.
   // …or fewer for an element's own cap (its speed settings, perf.ts); none when it's light now.
   const capEl = host.closest("[data-perf-fps]")?.getAttribute("data-perf-fps");
-  const GAP = 1000 / Math.min(30, Number(capEl) > 0 ? Number(capEl) : 30);
+  // A weak device (TreePerf's automatic lightening): 24 a second.
+  const GAP = 1000 / Math.min(document.documentElement.hasAttribute("data-weak") ? 24 : 30, Number(capEl) > 0 ? Number(capEl) : 30);
   const light = () => Boolean(host.closest("[data-perf-tier=light],[data-perf-light-now]"));
   let owed = 0;
   const tick = (now: number) => {

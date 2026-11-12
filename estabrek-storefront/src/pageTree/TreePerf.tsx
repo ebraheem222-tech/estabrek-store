@@ -10,6 +10,7 @@
  * Again whenever the page's elements change (a new page, or the editor's preview updating in place).
  */
 import { useEffect } from "react";
+import { autoOff } from "./perf";
 
 const WATCH = "[data-perf-watch]";
 const LIGHT_WHEN = "[data-perf-tier=light],[data-perf-phone=light],[data-perf-strong]";
@@ -21,8 +22,12 @@ export function weakDevice(): boolean {
 
 export function TreePerf({ revision }: { revision: number }) {
   useEffect(() => {
-    const weak = weakDevice();
+    // The automatic lightening (J3): a weak device and data saving marked on the page, unless the page turns it off.
+    const auto = !autoOff();
+    const weak = auto && weakDevice();
     document.documentElement.toggleAttribute("data-weak", weak);
+    const saving = auto && (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    document.documentElement.toggleAttribute("data-save-data", saving);
     const phone = matchMedia("(max-width: 767.98px)");
     const mark = () => {
       for (const el of document.querySelectorAll<HTMLElement>(LIGHT_WHEN)) {
@@ -30,6 +35,8 @@ export function TreePerf({ revision }: { revision: number }) {
         el.toggleAttribute("data-perf-light-now", light);
         if (light) for (const v of el.querySelectorAll("video")) if (v.autoplay) { v.autoplay = false; v.pause(); v.controls = true; }
       }
+      // Saving data: the page's clips don't play (or load) by themselves.
+      if (saving) for (const v of document.querySelectorAll<HTMLVideoElement>("[data-tree-node] video[autoplay], video[data-tree-node][autoplay]")) { v.autoplay = false; v.preload = "none"; v.pause(); v.controls = true; }
       // Marks left on elements that no longer ask for them.
       for (const el of document.querySelectorAll("[data-perf-light-now]")) if (!el.matches(LIGHT_WHEN)) el.removeAttribute("data-perf-light-now");
       window.dispatchEvent(new Event("pt:perf"));

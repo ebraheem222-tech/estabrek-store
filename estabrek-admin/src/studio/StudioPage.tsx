@@ -112,6 +112,9 @@ import { VideoEditor } from "./focus/VideoEditor";
 import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
 import { CurvePanel, SlidePanel } from "./focus/KindPanels";
 import { PageBudget, PerfPanel, type Sample } from "./focus/PerfPanel";
+import { SlowdownAlert, SpeedCheck, keepLab, type Lab } from "./focus/SpeedCheck";
+import { lightenAll } from "./focus/perfCost";
+import * as SpeedAPI from "../api/speed.api";
 import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from "./PhysicsPanels";
 import { CodePanel, FormPanel } from "./FormPanels";
 import { makeVideo } from "../api/videos.api";
@@ -330,6 +333,9 @@ function StudioDocument() {
   const [spotPen, setSpotPen] = useState(false);
   // The page measured in the frame (speed per element: the page's budget).
   const perfWait = useRef<{ requestId: string; done: (s: Sample | null) => void } | null>(null);
+  // The page's speed checked in the frame before publishing (perfLab → perfLabbed), and its last result.
+  const labWait = useRef<{ requestId: string; done: (l: Lab | null) => void } | null>(null);
+  const labResult = useRef<Lab | null>(null);
   // A world being baked in the frame (physicsBake → physicsBaked).
   const bakeWait = useRef<{ requestId: string; done: (k: BakedKeys | null) => void } | null>(null);
   // The video editor (focus mode on a video): open or not.
@@ -440,6 +446,13 @@ function StudioDocument() {
         if (wait && m.requestId === wait.requestId) {
           artPick.current = null;
           wait.done(typeof m.part === "string" ? m.part : null);
+        }
+      } else if (d.type === "perfLabbed") {
+        const m = d as unknown as Partial<Lab> & { requestId?: unknown };
+        const wait = labWait.current;
+        if (wait && m.requestId === wait.requestId) {
+          labWait.current = null;
+          wait.done({ fps: Number(m.fps) || 0, slow: Number(m.slow) || 0, longMs: Number(m.longMs) || 0, cls: Number(m.cls) || 0, ms: Number(m.ms) || 0 });
         }
       } else if (d.type === "physicsBaked") {
         const m = d as unknown as { requestId?: unknown; keys?: unknown };
@@ -784,6 +797,41 @@ function StudioDocument() {
       setThemeSaving(false);
     }
   };
+  /** The page scrolled top to bottom in the frame with everything moving, measured (StudioBridge perfLab). */
+  const runLab = useCallback(() => new Promise<Lab | null>((resolve) => {
+    const requestId = `lab${++artSeq.current}`;
+    const timer = window.setTimeout(() => { if (labWait.current?.requestId === requestId) labWait.current = null; resolve(null); }, 15000);
+    labWait.current = { requestId, done: (l) => { window.clearTimeout(timer); resolve(l); } };
+    send({ type: "perfLab", requestId });
+  }), [send]);
+  // Publishing: the speed is checked first (with nothing over the frame), then the dialog shows it.
+  const [labShown, setLabShown] = useState<Lab | null | "waiting">(null);
+  const askPublish = async () => {
+    // No page in the frame yet: nothing to check.
+    if (!frameReady) { labResult.current = null; setLabShown(null); setAsking({ kind: "publish", force: false }); return; }
+    setLabShown("waiting");
+    const l = await runLab();
+    labResult.current = l;
+    setLabShown(l);
+    setAsking({ kind: "publish", force: false });
+  };
+  // Real shoppers' speed lately (RUM), asked for when the page itself is picked.
+  const rumAlerts = useQuery({ queryKey: ["rum-alerts"], queryFn: SpeedAPI.getRumAlerts, enabled: Boolean(index) && selected === index?.root, staleTime: 10 * 60_000, retry: false });
+  /** Back to the page as it was before its last publish (its revision), after shoppers' speed got worse. */
+  const rollback = async (revisionId: string) => {
+    setBusy(true);
+    try {
+      await PagesAPI.restorePageRevision(id, revisionId, "Back after shoppers' speed got worse");
+      toast.success(tr("رجعت الصفحة للنسخة اللي قبل", "The page went back to the version before"));
+      await Promise.all([qc.invalidateQueries({ queryKey: ["pages", id] }), qc.invalidateQueries({ queryKey: ["rum-alerts"] })]);
+      reload();
+    } catch (e) {
+      toast.error(tr("ما رجعت الصفحة", "The page didn't go back"), { description: getApiErrorMessage(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const publish = async (force: boolean, options: PagesAPI.PublishPageOptions = {}) => {
     setBusy(true);
     try {
@@ -791,6 +839,8 @@ function StudioDocument() {
       if (!page) return;
       const result = await PagesAPI.publishPageDraft(id, force, { ...options, rev: draft?.rev, expectedPublication: { status: page.status, slug: page.slug, publishAt: page.publishAt ?? null, unpublishAt: page.unpublishAt ?? null } });
       setCommerceIssues([]);
+      // The speed checked before this publish is what the next one is compared with.
+      keepLab(id, labResult.current);
       history.current = new History();
       await Promise.all([qc.invalidateQueries({ queryKey: ["pages", id] }), qc.invalidateQueries({ queryKey: ["pages"] })]);
       setAsking(null);
@@ -2877,9 +2927,12 @@ function StudioDocument() {
             if (root) void change(tr("حركة عناصر الصفحة", "Page element motion"), pageMotionOps(root, pageMotion));
           }} data-testid="studio-page-motion-apply">{tr("تطبيق على الصفحة", "Apply to page")}</button>
         </div> : null}
+        {selected === index.root && rumAlerts.data && pageQ.data ? (
+          <SlowdownAlert alerts={rumAlerts.data} pageId={id} rumPage={pageQ.data.slug === "/" ? "home" : pageQ.data.kind === "productTemplate" ? "product" : pageQ.data.kind === "categoryTemplate" ? "category" : "page"} busy={busy} onRollback={(revisionId) => void rollback(revisionId)} />
+        ) : null}
         {selected === index.root && index.nodes.get(index.root) ? (
           <PageBudget
-            root={index.nodes.get(index.root)!.node} busy={busy} onPick={(sid) => select(sid, true)}
+            root={index.nodes.get(index.root)!.node} busy={busy} onPick={(sid) => select(sid, true)} onOps={(l, ops) => void change(l, ops)}
             onMeasure={() => new Promise<Sample | null>((resolve) => {
               const requestId = `perf${++artSeq.current}`;
               const timer = window.setTimeout(() => { if (perfWait.current?.requestId === requestId) perfWait.current = null; resolve(null); }, 6000);
@@ -3319,7 +3372,7 @@ function StudioDocument() {
           <button type="button" disabled={!layout} className="h-7 rounded-lg px-2 text-xs" data-testid="studio-pick-objects" onClick={event => { const p = last.current?.p ?? (selShape ? { x: selShape.box.x + selShape.box.w / 2, y: selShape.box.y + selShape.box.h / 2 } : { x: frameBox.x + frameBox.w / 2, y: frameBox.y + 60 }); const r = event.currentTarget.getBoundingClientRect(); pickPoint(p, candidates => setMenu({ x: r.left, y: r.bottom + 4, candidates })); }}>{tr("اختيار عنصر", "Choose object")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
-          <button type="button" onClick={() => setAsking({ kind: "publish", force: false })} disabled={!canPublish || !draft || busy} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{tr("نشر", "Publish")}</button>
+          <button type="button" onClick={() => void askPublish()} disabled={!canPublish || !draft || busy || labShown === "waiting"} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{labShown === "waiting" ? `⏱ ${tr("عم نفحص السرعة…", "Checking speed…")}` : tr("نشر", "Publish")}</button>
         </div>
         {origin && pageQ.data ? (
           <a href={`${origin}${shopLang === langs.default ? "" : `/${shopLang}`}${pageQ.data.slug === "/" && shopLang !== langs.default ? "" : pageQ.data.slug}`} target="_blank" rel="noreferrer" className="rounded-lg px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/10">
@@ -3781,7 +3834,15 @@ function StudioDocument() {
       ) : null}
 
       {menu ? <ContextMenu at={menu} items={menuItems()} onClose={() => setMenu(null)} /> : null}
-      {asking?.kind === "publish" && pageQ.data ? <PagePublishDialog key={`${id}:${asking.force}`} page={pageQ.data} force={asking.force} busy={busy} initialOptions={asking.options} onClose={() => setAsking(null)} onConfirm={(options) => publish(asking.force, options)} /> : null}
+      {asking?.kind === "publish" && pageQ.data ? <PagePublishDialog key={`${id}:${asking.force}`} page={pageQ.data} force={asking.force} busy={busy} initialOptions={asking.options} onClose={() => setAsking(null)} onConfirm={(options) => publish(asking.force, options)}
+        extra={draft?.tree.root ? (
+          <SpeedCheck
+            pageId={id} lab={labShown}
+            fixes={lightenAll(draft.tree.root).length}
+            onLighten={() => { const root = latest.current?.tree.root; setAsking(null); if (root) void change(say("خفّف الكل|Lighten them all|הקל על כולם"), lightenAll(root).map((f): PagesAPI.PageDraftOp => ({ op: "setProps", nodeId: f.id, props: f.props }))); }}
+          />
+        ) : null}
+      /> : null}
       <ConfirmDialog
         open={asking !== null && asking.kind !== "publish"}
         variant={asking?.kind === "delete" || asking?.kind === "deleteMany" || asking?.kind === "deleteBlock" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}

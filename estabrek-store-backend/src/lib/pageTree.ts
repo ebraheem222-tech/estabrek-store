@@ -571,7 +571,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
   // `cursor`: a mark that follows the mouse (a dot, a ring, or one that turns what's under it around), with
   // an element's `cursorText` in it while the mouse is over that element.
-  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), commerceVersion: z.literal(1).optional(), cursor: z.object({ kind: z.enum(["dot", "ring", "blend"]), color: color.optional(), size: px(8, 120).optional() }).optional() }),
+  // perfAuto: false = the shop's automatic lightening off for this page (pageTree/perf.ts autoOf).
+  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), perfAuto: z.boolean().optional(), commerceVersion: z.literal(1).optional(), cursor: z.object({ kind: z.enum(["dot", "ring", "blend"]), color: color.optional(), size: px(8, 120).optional() }).optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),

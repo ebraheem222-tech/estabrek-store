@@ -10,7 +10,7 @@
 import { useState } from "react";
 import type { PageDraftOp, PageTreeNode } from "../../api/pages.api";
 import { say } from "../say";
-import { costOf, pageBudget, type Level, type Perf } from "./perfCost";
+import { autoOf, costOf, lightenAll, pageBudget, type Level, type Perf } from "./perfCost";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const COLOUR: Record<Level, string> = { low: "bg-emerald-500/25 text-emerald-200 border-emerald-400/40", mid: "bg-amber-500/25 text-amber-100 border-amber-400/40", high: "bg-rose-500/25 text-rose-100 border-rose-400/50" };
@@ -81,8 +81,10 @@ export function PerfPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boo
 
 export type Sample = { fps: number; longMs: number; animations: number; canvases: number; videos: number; nodes: number };
 
-export function PageBudget({ root, busy, onPick, onMeasure }: { root: PageTreeNode; busy: boolean; onPick: (id: string) => void; onMeasure: () => Promise<Sample | null> }) {
+export function PageBudget({ root, busy, onPick, onMeasure, onOps }: { root: PageTreeNode; busy: boolean; onPick: (id: string) => void; onMeasure: () => Promise<Sample | null>; onOps?: Ops }) {
   const b = pageBudget(root);
+  const auto = autoOf(root);
+  const fixes = lightenAll(root);
   const [sample, setSample] = useState<Sample | null>(null);
   const [measuring, setMeasuring] = useState(false);
   return (
@@ -100,12 +102,37 @@ export function PageBudget({ root, busy, onPick, onMeasure }: { root: PageTreeNo
       {b.warnings.map((w, i) => <p key={i} className="text-[11px] leading-5 text-amber-200/80" data-testid="studio-budget-warning">⚠ {w}</p>)}
       {b.heavy.length ? (
         <div className="space-y-1">
-          <div className="text-[11px] text-white/45">{say("الأتقل|The heaviest|הכבדים ביותר")}</div>
+          <div className="flex items-center justify-between gap-2 text-[11px] text-white/45">
+            <span>{say("الأتقل|The heaviest|הכבדים ביותר")}</span>
+            {onOps && fixes.length ? (
+              <button type="button" className={btn} disabled={busy} onClick={() => onOps(say("خفّف الكل|Lighten them all|הקל על כולם"), fixes.map((f) => ({ op: "setProps", nodeId: f.id, props: f.props })))} data-testid="studio-budget-fix-all">
+                {say(`خفّف الكل (${fixes.length})|Lighten them all (${fixes.length})|הקל על כולם (${fixes.length})`)}
+              </button>
+            ) : null}
+          </div>
           {b.heavy.slice(0, 5).map((h) => (
             <button key={h.id} type="button" className={`${btn} flex w-full justify-between`} onClick={() => onPick(h.id)} data-testid="studio-budget-heavy" data-node={h.id}>
               <span className="truncate">{h.name}</span><span className="tabular-nums text-rose-200">{h.points}</span>
             </button>
           ))}
+        </div>
+      ) : null}
+      {onOps ? (
+        <div className="space-y-1 rounded-lg bg-white/[0.03] p-2" data-testid="studio-budget-auto" data-on={auto.on ? "" : undefined}>
+          <label className="flex items-center gap-2 text-[11px] text-white/70">
+            <input type="checkbox" checked={auto.on} disabled={busy} onChange={(e) => onOps(say("تخفيف تلقائي|Automatic lightening|הקלה אוטומטית"), [{ op: "setProps", nodeId: root.id, props: { ...(root.props ?? {}), perfAuto: e.target.checked ? undefined : false } }])} data-testid="studio-budget-auto-on" />
+            {say("المتجر بيخفّف لحاله|The shop lightens it by itself|החנות מקלה לבד")}
+          </label>
+          {auto.on ? (
+            <ul className="space-y-0.5 text-[10px] leading-4 text-white/45">
+              {auto.lead ? <li data-testid="studio-budget-auto-item" data-key="lead">• {say(`أول صورة («${auto.lead}») بتتحمّل أول وبسرعة؛ الباقي لما يقربوا.|The first picture («${auto.lead}») loads first and early; the rest when they come near.|התמונה הראשונה נטענת ראשונה.`)}</li> : null}
+              {auto.far ? <li data-testid="studio-budget-auto-item" data-key="far">• {say(`${auto.far} أقسام بعيدة بتترسم بس لما تقرب.|${auto.far} far sections drawn only when they come near.|${auto.far} חלקים רחוקים מצוירים רק כשמתקרבים.`)}</li> : null}
+              {auto.glass ? <li data-testid="studio-budget-auto-item" data-key="glass">• {say(`عالأجهزة الضعيفة: بلا زجاج مغبّش (${auto.glass}).|On weak devices: no frosted glass (${auto.glass}).|במכשירים חלשים: בלי זכוכית.`)}</li> : null}
+              {auto.canvases ? <li data-testid="studio-budget-auto-item" data-key="canvases">• {say(`عالأجهزة الضعيفة: الرسومات الحيّة بـ 24–30 إطار (${auto.canvases}).|On weak devices: live drawings at 24–30 frames (${auto.canvases}).|במכשירים חלשים: 24–30 פריימים.`)}</li> : null}
+              {auto.autoplay ? <li data-testid="studio-budget-auto-item" data-key="autoplay">• {say(`اللي موفّر داتا: الفيديو ما بيشتغل لحاله (${auto.autoplay}).|Saving data: clips don't play by themselves (${auto.autoplay}).|חיסכון בנתונים: סרטונים לא מתנגנים לבד.`)}</li> : null}
+              <li>• {say("الحركات اللي ما بتخلص بترتاح برّا الشاشة.|Endless motion rests off screen.|תנועה אינסופית נחה מחוץ למסך.")}</li>
+            </ul>
+          ) : null}
         </div>
       ) : null}
       <button type="button" className={`${btn} w-full`} disabled={busy || measuring} onClick={async () => { setMeasuring(true); setSample(await onMeasure()); setMeasuring(false); }} data-testid="studio-budget-measure">
