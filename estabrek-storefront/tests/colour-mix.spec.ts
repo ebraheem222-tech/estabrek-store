@@ -51,11 +51,19 @@ test("every mix makes readable paints: buttons in each colour's button colour, h
   // The real store's colours, light and dark, two and three: all four paints.
   for (const mix of [["#214364", "#4b1d2d"], ["#f48b90", "#cbf0ff"], ["#166353", "#b67d5a", "#450a21"], ["#deceb2", "#151515"], ["#000000", "#ffffff"]]) {
     const paints = mixPaints(mix);
-    expect(Object.keys(paints).sort()).toEqual(["--mix-accent-paint", "--mix-decor-paint", "--mix-ink-paint", "--mix-soft-paint"]);
+    expect(Object.keys(paints)).toEqual(expect.arrayContaining(["--mix-accent-paint", "--mix-decor-paint", "--mix-ink-paint", "--mix-soft-paint", "--mix-h1", "--mix-c3", "--mix-k2"]));
     expect(paints["--mix-accent-paint"]).toMatch(/^linear-gradient\(115deg/);
     expect(paints["--mix-ink-paint"]).toMatch(/^linear-gradient\(170deg/);
     expect(paints["--mix-soft-paint"]).toContain("radial-gradient");
   }
+  // The hues the scenes blend their own colour with: wine and petrol (red and blue), black colourless.
+  const wp = mixPaints(["#214364", "#4b1d2d"]);
+  expect(Number(wp["--mix-h1"])).toBeGreaterThan(220);
+  expect(Number(wp["--mix-h1"])).toBeLessThan(270);
+  expect(Number(wp["--mix-h2"])).toBeLessThan(20);
+  expect(wp["--mix-h3"]).toBe(wp["--mix-h2"]);
+  expect(mixPaints(["#000000", "#b67d5a"])["--mix-k1"]).toBe("0");
+  expect(mixPaints(["#000000", "#b67d5a"])["--mix-k2"]).toBe("1");
 });
 
 test("the whole page wears the mix: its background, the campaign photo and the film, and steps aside for a scene", async ({ page }) => {
@@ -175,7 +183,7 @@ test("the checkout wears the colours of what's in the bag, on that page only", a
   await expect(page.locator("html")).not.toHaveAttribute("data-colour-mix", /./);
 });
 
-test("a scene's colours take the header over a mix (the seasons' winter blue, not the mix)", async ({ page }) => {
+test("a scene's colour takes the header over a mix, blended with the mix's colours (winter blue with them)", async ({ page }) => {
   const mix = [ROSE, LILAC, BERRY];
   await page.addInitScript(([m, blend]) => {
     localStorage.setItem("estabrek_theme_mix", JSON.stringify(m));
@@ -186,8 +194,17 @@ test("a scene's colours take the header over a mix (the seasons' winter blue, no
   const shell = page.locator(".cinematic-shell");
   await expect(shell).toHaveAttribute("data-colour-mix", mix.join(" "));
   await expect.poll(() => headerImage(page)).toContain("radial-gradient");
+  // A scene dresses the header (as the seasons do): its colour leads, the mix's colours pool in at its lightness.
+  await page.locator(".atelier-header").evaluate((el) => el.style.setProperty("--navbar-bg", "#7d8ec4"));
   await shell.evaluate((el) => { el.dataset.themeHeld = "true"; });
-  await expect.poll(() => headerImage(page)).toBe("none");
+  await expect.poll(() => headerImage(page)).toContain("oklch(");
+  await expect.poll(() => page.locator(".atelier-header").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(125, 142, 196)");
+  // Each pool keeps the scene colour's lightness (its words read the same) and takes a mix colour's hue.
+  const pools = (await headerImage(page)).match(/oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)/g) ?? [];
+  expect(pools).toHaveLength(3);
+  const lightness = pools.map((p) => Number(p.match(/oklch\(([\d.]+)/)![1]));
+  expect(Math.max(...lightness) - Math.min(...lightness)).toBeLessThan(0.01);
   await shell.evaluate((el) => { delete el.dataset.themeHeld; });
+  await expect.poll(() => headerImage(page)).not.toContain("oklch(");
   await expect.poll(() => headerImage(page)).toContain("radial-gradient");
 });
