@@ -31,6 +31,7 @@ import models3d from "./models3d.controller.js";
 import scans from "./scans.controller.js";
 import speed from "./speed.controller.js";
 import jobs from "./jobs.controller.js";
+import deploy from "./deploy.controller.js";
 import insights from "./insights.controller.js";
 import selling from "./selling.controller.js";
 import experiments from "./experiments.controller.js";
@@ -169,6 +170,7 @@ r.use("/system/traffic", areaAccess({ read: "system:read", write: "system:write"
 r.use("/system/cache", areaAccess({ read: "system:read", write: "system:write" }), cache);
 r.use("/system/speed", areaAccess({ read: "system:read", write: "system:write" }), speed);
 r.use("/system/jobs", areaAccess({ read: "system:read", write: "system:write" }), jobs);
+r.use("/system/deploy", areaAccess({ read: "system:read", write: "system:write" }), deploy);
 r.use("/system/backups", areaAccess({ read: "system:read", write: "system:write" }), backups);
 r.use("/system", areaAccess({ read: "system:read", write: "system:write" }), system);
 r.use("/customers", areaAccess({ read: "customers:read", write: "customers:write" }), customers);

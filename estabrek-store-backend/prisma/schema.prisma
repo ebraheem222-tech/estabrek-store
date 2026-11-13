@@ -418,7 +418,7 @@ model ScheduledChange {
 model AutomationRule {
   id              String          @id @default(cuid())
   name            String
-  /// "order.created" | "stock.low" | "video.ready" | "product.viral" | "job.failing"
+  /// "order.created" | "stock.low" | "video.ready" | "product.viral" | "job.failing" | "deploy.failed"
   trigger         String
   /// What the trigger needs: { minTotal }, { threshold }, { minScore, factor }…
   conditions      Json

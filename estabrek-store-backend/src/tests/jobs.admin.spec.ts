@@ -45,6 +45,7 @@ describe("Background jobs", () => {
       "campaigns",
       "scheduled",
       "automations",
+      "deployWatch",
       "videoConvert",
     ]);
     const stock = out.body.jobs.find((j: any) => j.name === "stockAlerts");

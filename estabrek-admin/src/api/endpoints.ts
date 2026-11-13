@@ -121,6 +121,11 @@ export const ENDPOINTS = {
         base: "/admin/system/jobs",
         run: (name: string) => `/admin/system/jobs/${encodeURIComponent(name)}/run`,
       },
+      // Deploy watch (حالة السيرفر)
+      systemDeploy: {
+        base: "/admin/system/deploy",
+        check: "/admin/system/deploy/check",
+      },
       // Speed & cache (السرعة والكاش)
       systemCache: {
         base: "/admin/system/cache",

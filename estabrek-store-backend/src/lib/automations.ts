@@ -7,7 +7,7 @@
  */
 import { z } from "zod";
 
-export const TRIGGERS = ["order.created", "stock.low", "video.ready", "product.viral", "job.failing"] as const;
+export const TRIGGERS = ["order.created", "stock.low", "video.ready", "product.viral", "job.failing", "deploy.failed"] as const;
 export type Trigger = (typeof TRIGGERS)[number];
 export const ACTIONS = ["notify", "email", "whatsapp", "sms", "pinProduct"] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -19,6 +19,7 @@ export const CONDITIONS: Record<Trigger, z.ZodTypeAny> = {
   "video.ready": z.object({}).strict(),
   "product.viral": z.object({ minScore: z.number().min(1).max(100_000), factor: z.number().min(1.5).max(50) }).strict(),
   "job.failing": z.object({}).strict(),
+  "deploy.failed": z.object({}).strict(),
 };
 
 export const CONDITION_DEFAULTS: Record<Trigger, Record<string, number>> = {
@@ -27,6 +28,7 @@ export const CONDITION_DEFAULTS: Record<Trigger, Record<string, number>> = {
   "video.ready": {},
   "product.viral": { minScore: 20, factor: 3 },
   "job.failing": {},
+  "deploy.failed": {},
 };
 
 /** The words a message can use ({{name}}), with an example each (for "try it"). */
@@ -36,6 +38,7 @@ export const SAMPLES: Record<Trigger, Record<string, string | number>> = {
   "video.ready": { video: "فيلم الحملة", preset: "1080p", link: "/admin/media/videos" },
   "product.viral": { product: "فستان الورد", score: 64, before: 12, factor: 5.3, link: "/admin/system/cache#popular" },
   "job.failing": { job: "الرسايل", failures: 3, error: "SMTP timed out", link: "/admin/system/jobs" },
+  "deploy.failed": { commit: "33e9416", message: "Merge pull request #91", minutes: 12, live: "c3e9eb7", reason: "تأخّر", link: "/admin/system/server" },
 };
 
 export const DEFAULT_TEXT: Record<Trigger, string> = {
@@ -44,6 +47,7 @@ export const DEFAULT_TEXT: Record<Trigger, string> = {
   "video.ready": "الفيديو «{{video}}» جاهز ({{preset}}).",
   "product.viral": "«{{product}}» عم ينتشر: الشعبية صارت ×{{factor}} خلال ساعة.",
   "job.failing": "المهمة «{{job}}» فشلت {{failures}} مرات ورا بعض: {{error}}",
+  "deploy.failed": "النشر {{reason}}: التعديل {{commit}} ({{message}}) على الفرع من {{minutes}} دقيقة ولسا مش حي. السيرفر شغّال على {{live}}.",
 };
 
 /** Doing it to a product only makes sense when the trigger is about one. */
