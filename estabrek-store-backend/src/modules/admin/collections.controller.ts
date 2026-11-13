@@ -9,7 +9,7 @@
  * GET    /admin/collections/:id/items       — its items (newest first)
  * POST   /admin/collections/:id/items       { slug, data, status? }
  * PUT    /admin/collections/:id/items/:item { slug?, data?, status?, sort? }
- * DELETE /admin/collections/:id/items/:item
+ * DELETE /admin/collections/:id/items/:item — to the trash (a row already in the trash: for good)
  * POST   /admin/collections/:id/template    — its item page (made with every field connected), made once
  *
  * Any change refreshes the shop's pages (lists show items on any page).
@@ -31,8 +31,8 @@ const issues = (e: { issues: Array<{ path: PropertyKey[]; message: string }> }) 
 const taken = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 
 r.get("/", asyncHandler(async (_req, res) => {
-  const rows = await prisma.collection.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { items: true } } } });
-  const published = await prisma.collectionItem.groupBy({ by: ["collectionId"], where: { status: "PUBLISHED" }, _count: { _all: true } });
+  const rows = await prisma.collection.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { items: { where: { deletedAt: null } } } } } });
+  const published = await prisma.collectionItem.groupBy({ by: ["collectionId"], where: { status: "PUBLISHED", deletedAt: null }, _count: { _all: true } });
   res.json(rows.map(({ _count, ...c }) => ({ ...c, items: _count.items, published: published.find((p) => p.collectionId === c.id)?._count._all ?? 0 })));
 }));
 
@@ -97,7 +97,7 @@ r.delete("/:id", asyncHandler(async (req, res) => {
 }));
 
 r.get("/:id/items", asyncHandler(async (req, res) => {
-  const items = await prisma.collectionItem.findMany({ where: { collectionId: req.params.id }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.items });
+  const items = await prisma.collectionItem.findMany({ where: { collectionId: req.params.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.itemsList });
   res.json(items);
 }));
 
@@ -125,7 +125,7 @@ const itemBody = (fields: Field[], body: any, partial: boolean) => {
 };
 
 r.post("/:id/items", asyncHandler(async (req, res) => {
-  const c = await prisma.collection.findUnique({ where: { id: req.params.id }, include: { _count: { select: { items: true } } } });
+  const c = await prisma.collection.findUnique({ where: { id: req.params.id }, include: { _count: { select: { items: { where: { deletedAt: null } } } } } });
   if (!c) return res.status(404).json({ error: "NOT_FOUND" });
   if (c._count.items >= LIMITS.items) return res.status(400).json({ error: "TOO_MANY_ITEMS" });
   const b = itemBody(fieldsOf(c), req.body, false);
@@ -143,7 +143,7 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
 
 r.put("/:id/items/:item", asyncHandler(async (req, res) => {
   const c = await prisma.collection.findUnique({ where: { id: req.params.id } });
-  const was = await prisma.collectionItem.findFirst({ where: { id: req.params.item, collectionId: req.params.id } });
+  const was = await prisma.collectionItem.findFirst({ where: { id: req.params.item, collectionId: req.params.id, deletedAt: null } });
   if (!c || !was) return res.status(404).json({ error: "NOT_FOUND" });
   const b = itemBody(fieldsOf(c), req.body, true);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
@@ -158,7 +158,10 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
 }));
 
 r.delete("/:id/items/:item", asyncHandler(async (req, res) => {
-  const gone = await prisma.collectionItem.deleteMany({ where: { id: req.params.item, collectionId: req.params.id } });
+  // To the trash (the data grid restores from it; emptied after TRASH_DAYS). A row already there goes for good.
+  const where = { id: req.params.item, collectionId: req.params.id };
+  const moved = await prisma.collectionItem.updateMany({ where: { ...where, deletedAt: null }, data: { deletedAt: new Date() } });
+  const gone = moved.count ? moved : await prisma.collectionItem.deleteMany({ where });
   if (!gone.count) return res.status(404).json({ error: "NOT_FOUND" });
   refresh();
   res.json({ ok: true });

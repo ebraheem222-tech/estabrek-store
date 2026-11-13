@@ -16,7 +16,10 @@ export const COLLECTION_SLUG = /^[a-z0-9][a-z0-9-]{0,40}$/;
 export const ITEM_SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/;
 /** Addresses the shop already has: a collection can't take them. */
 export const RESERVED_SLUGS = new Set(["shop", "p", "c", "cart", "checkout", "account", "search", "about", "contact", "wishlist", "order", "policies", "request", "studio-frame", "design-frame", "stock-alert", "api", "admin", "ar", "en", "he", "__block", "__component", "__template", "__collection"]);
-export const LIMITS = { fields: 40, options: 30, items: 2000, listItems: 200 } as const;
+/** `items`: rows a table holds (the trash aside); `itemsList`: what the older list route returns at once. */
+export const LIMITS = { fields: 40, options: 30, items: 50_000, itemsList: 2000, listItems: 200 } as const;
+/** A deleted row waits this long in the trash. */
+export const TRASH_DAYS = 30;
 
 const local = (max: number) => z.object({ ar: z.string().trim().max(max).optional(), en: z.string().trim().max(max).optional(), he: z.string().trim().max(max).optional() }).strict();
 const safeHref = (v: string) => /^(\/(?!\/)|https:\/\/|mailto:|tel:)/i.test(v) && !/[\s<>"']/.test(v);
@@ -102,7 +105,7 @@ export async function loadListData(tree: PageTree | null | undefined, opts: { pr
   const ids = listIdsOf(tree as never);
   const out = new Map<string, { collection: CollectionLite; items: ItemLite[] }>();
   if (!ids.length) return out;
-  const rows = await db.collection.findMany({ where: { id: { in: ids } }, include: { items: { where: opts.preview ? { status: { not: "ARCHIVED" } } : { status: "PUBLISHED" }, orderBy: { createdAt: "desc" }, take: LIMITS.listItems } } });
+  const rows = await db.collection.findMany({ where: { id: { in: ids } }, include: { items: { where: opts.preview ? { status: { not: "ARCHIVED" }, deletedAt: null } : { status: "PUBLISHED", deletedAt: null }, orderBy: { createdAt: "desc" }, take: LIMITS.listItems } } });
   for (const c of rows) out.set(c.id, { collection: lite(c), items: c.items.map(itemLite) });
   return out;
 }
@@ -117,7 +120,7 @@ export async function withCollections<T extends PageTree | null | undefined>(tre
 export async function templateContext(pageId: string, db: Db = prisma) {
   const c = await db.collection.findFirst({ where: { templateId: pageId } });
   if (!c) return null;
-  const item = (await db.collectionItem.findFirst({ where: { collectionId: c.id, status: "PUBLISHED" }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }] })) ?? (await db.collectionItem.findFirst({ where: { collectionId: c.id }, orderBy: { createdAt: "desc" } }));
+  const item = (await db.collectionItem.findFirst({ where: { collectionId: c.id, status: "PUBLISHED", deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }] })) ?? (await db.collectionItem.findFirst({ where: { collectionId: c.id, deletedAt: null }, orderBy: { createdAt: "desc" } }));
   return { collection: lite(c), item: item ? itemLite(item) : null };
 }
 
@@ -131,7 +134,7 @@ export async function collectionItemPage(slug: string, db: Db = prisma) {
     db.collectionItem.findUnique({ where: { collectionId_slug: { collectionId: c.id, slug: at.item } } }),
     db.page.findFirst({ where: { id: c.templateId, kind: TEMPLATE_KIND, status: "PUBLISHED" } }),
   ]);
-  if (!item || item.status !== "PUBLISHED" || !template) return null;
+  if (!item || item.deletedAt || item.status !== "PUBLISHED" || !template) return null;
   const tree = storedTree(template.tree);
   if (!tree) return null;
   const collection = lite(c);
@@ -140,6 +143,12 @@ export async function collectionItemPage(slug: string, db: Db = prisma) {
   const summary = collection.fields.find((f) => f.type === "longText")?.id;
   const cover = collection.fields.find((f) => f.type === "image")?.id;
   return { template, tree: bindTree(tree, it, collection), item: it, collection, seo: { title: title ? (it.data[title] as Record<string, string> | undefined) : undefined, description: summary ? (it.data[summary] as Record<string, string> | undefined) : undefined, image: cover ? (it.data[cover] as string | undefined) : undefined } };
+}
+
+/** The trash, emptied of what has waited its days (the job "dataTrash"). */
+export async function purgeTrash(now = Date.now()) {
+  const gone = await prisma.collectionItem.deleteMany({ where: { deletedAt: { lt: new Date(now - TRASH_DAYS * 86_400_000) } } });
+  return { removed: gone.count };
 }
 
 /** A first design for an item's page: its picture, its title, its other words, a way back — each connected to its field. */

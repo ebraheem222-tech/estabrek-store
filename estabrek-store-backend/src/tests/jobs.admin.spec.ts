@@ -34,6 +34,7 @@ describe("Background jobs", () => {
       "stockAlerts",
       "backup",
       "requestPhotos",
+      "dataTrash",
       "popularitySave",
       "popularityHot",
       "popularityLoad",

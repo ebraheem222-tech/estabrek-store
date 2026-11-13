@@ -933,9 +933,12 @@ model CollectionItem {
   publishedAt  DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  /// In the trash since (the data grid restores from it; emptied after 30 days).
+  deletedAt    DateTime?
 
   @@unique([collectionId, slug])
   @@index([collectionId, status, sort])
+  @@index([collectionId, deletedAt, createdAt])
 }
 
 model PageRevision {
