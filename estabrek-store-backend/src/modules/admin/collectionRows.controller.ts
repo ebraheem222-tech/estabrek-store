@@ -116,13 +116,13 @@ async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], 
     const loose = looseData(table.fields, row.values, opts.lang);
     issues.push(...loose.issues);
     // A row being changed keeps the values of the columns the file doesn't have (a text field: its other languages).
-    // A new row starts from the fields' defaults.
-    const merged: Record<string, unknown> = was ? { ...((was.data ?? {}) as Record<string, unknown>) } : withDefaults(table.fields, {});
+    const merged: Record<string, unknown> = was ? { ...((was.data ?? {}) as Record<string, unknown>) } : {};
     for (const [id, v] of Object.entries(loose.data)) {
       const before = merged[id];
       merged[id] = v && typeof v === "object" && !Array.isArray(v) && before && typeof before === "object" && !Array.isArray(before) ? { ...(before as object), ...(v as object) } : v;
     }
-    const checked = checkItemData(table.fields, merged);
+    // A new row starts from the fields' defaults, where the file gave nothing for a field.
+    const checked = checkItemData(table.fields, was ? merged : withDefaults(table.fields, merged));
     if (!checked.ok) issues.push(...checked.issues);
     if (issues.length || !checked.ok) {
       rejected.push({ row: index, slug, issues });

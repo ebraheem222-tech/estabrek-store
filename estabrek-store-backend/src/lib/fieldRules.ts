@@ -123,6 +123,7 @@ export function rulesProblem(f: RuledField): string | null {
     if (f.min !== undefined && f.max !== undefined && (f.min as number) > (f.max as number)) return "The smallest is above the largest";
   }
   if (f.default !== undefined && !fit.default) return "This kind of field has no default";
+  if (f.default !== undefined && f.default !== null && f.default !== "" && f.unique) return "A field with no doubles can't start every new row from the same value";
   return null;
 }
 

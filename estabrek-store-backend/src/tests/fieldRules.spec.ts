@@ -15,6 +15,7 @@ const fields = [
   { id: "day", type: "date", min: "2026-01-01" },
   { id: "active", type: "boolean", default: true },
   { id: "note", type: "longText", max: 20 },
+  { id: "label", type: "text", default: { en: "Untitled" } },
 ];
 let id = "";
 const base = () => `/v1/admin/collections/${id}`;
@@ -56,7 +57,7 @@ describe("Saving the table", () => {
 describe("Writing rows", () => {
   test("a new row starts from the defaults; broken rules are named, in the owner's words when given", async () => {
     const made = await add({ code: "AB-100", email: "sara@example.test", serial: 1 }).expect(201);
-    expect(made.body.data).toEqual({ code: { en: "AB-100" }, email: { en: "sara@example.test" }, price: 10, serial: 1, active: true });
+    expect(made.body.data).toEqual({ code: { en: "AB-100" }, email: { en: "sara@example.test" }, price: 10, serial: 1, active: true, label: { en: "Untitled" } });
     const bad = await add({ code: "ab-1", email: "not an email", price: 5000, day: "2025-06-01", note: "a note that is far too long for it" }).expect(400);
     expect(issuesOf(bad.body)).toEqual([
       { field: "code", message: "Not the asked shape", say: { ar: "الكود متل AB-123", en: "A code looks like AB-123" } },
@@ -65,8 +66,9 @@ describe("Writing rows", () => {
       { field: "day", message: "Too early" },
       { field: "note", message: "Too long" },
     ]);
-    // A default never hides a given value, even an empty-looking one.
-    expect((await add({ code: "AB-101", price: 0, active: "no" }).expect(201)).body.data).toMatchObject({ price: 0, active: false });
+    // A default never hides a given value, even an empty-looking one; and it never mixes into words given in another language.
+    const given = await request(app).post(`${base()}/rows`).send({ values: { code: "AB-101", price: 0, active: "no", "label.ar": "عنوان" }, lang: "en" }).expect(201);
+    expect(given.body.data).toMatchObject({ price: 0, active: false, label: { ar: "عنوان" } });
   });
 
   test("the only value: refused when another row holds it, whatever its letters' case or its language", async () => {
@@ -154,7 +156,7 @@ describe("Writing rows", () => {
 
   test("the older item routes keep the same rules", async () => {
     const made = await request(app).post(`${base()}/items`).send({ slug: "old-way", data: { code: { en: "GH-400" } } }).expect(201);
-    expect(made.body.data).toEqual({ code: { en: "GH-400" }, price: 10, active: true });
+    expect(made.body.data).toEqual({ code: { en: "GH-400" }, price: 10, active: true, label: { en: "Untitled" } });
     const clash = await request(app).post(`${base()}/items`).send({ slug: "old-way-2", data: { code: { en: "gh-400" } } }).expect(400);
     expect(clash.body.issues[0].message).toBe("Not the asked shape");
     expect((await request(app).post(`${base()}/items`).send({ slug: "old-way-2", data: { code: { en: "GH-400" } } }).expect(400)).body.issues).toEqual([{ field: "code", message: "Already used", say: { ar: "الكود متل AB-123", en: "A code looks like AB-123" } }]);

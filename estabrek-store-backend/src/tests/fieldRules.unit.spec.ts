@@ -48,6 +48,7 @@ describe("A field's rules", () => {
     expect(rulesProblem(field({ id: "a", type: "date", min: "13/11/2026" }))).toContain("2026-11-13");
     expect(rulesProblem(field({ id: "a", type: "date", min: "2026-12-01", max: "2026-11-01" }))).toContain("after the last");
     expect(rulesProblem(field({ id: "a", type: "image", default: "/a.jpg" }))).toContain("no default");
+    expect(rulesProblem(field({ id: "a", type: "number", unique: true, default: 1 }))).toContain("same value");
     expect(rulesProblem(field({ id: "a", type: "text", unique: true, min: 2, max: 40, shape: "slug" }))).toBeNull();
     expect(rulesProblem(field({ id: "a", type: "date", min: "2026-01-01", max: "2026-12-31", unique: true }))).toBeNull();
   });
@@ -86,7 +87,8 @@ describe("A field's rules", () => {
 
 describe("Saving a table's fields", () => {
   test("rules are kept; a default is kept the way the field holds values; an empty one is no default", () => {
-    expect(save({ id: "price", type: "number", min: 0, max: 1000, default: 10, unique: true, message: { ar: "السعر بين 0 و 1000" }, help: { en: "In shekels" } })).toEqual({ id: "price", type: "number", min: 0, max: 1000, default: 10, unique: true, message: { ar: "السعر بين 0 و 1000" }, help: { en: "In shekels" } });
+    expect(save({ id: "price", type: "number", min: 0, max: 1000, default: 10, message: { ar: "السعر بين 0 و 1000" }, help: { en: "In shekels" } })).toEqual({ id: "price", type: "number", min: 0, max: 1000, default: 10, message: { ar: "السعر بين 0 و 1000" }, help: { en: "In shekels" } });
+    expect(save({ id: "serial", type: "number", unique: true })).toEqual({ id: "serial", type: "number", unique: true });
     expect(save({ id: "day", type: "date", default: "2026-11-13T10:00:00Z" })).toEqual({ id: "day", type: "date", default: "2026-11-13" });
     expect(save({ id: "title", type: "text", default: { en: "Untitled" }, max: 40 })).toEqual({ id: "title", type: "text", default: { en: "Untitled" }, max: 40 });
     expect(save({ id: "active", type: "boolean", default: false })).toEqual({ id: "active", type: "boolean", default: false });
