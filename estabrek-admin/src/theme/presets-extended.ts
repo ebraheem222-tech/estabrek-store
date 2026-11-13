@@ -578,6 +578,7 @@ export function getThemeById(id: string): ThemePreset | undefined {
 }
 
 export function getThemesByCategory(category: keyof typeof THEME_CATEGORIES): ThemePreset[] {
-  const ids = THEME_CATEGORIES[category];
-  return getAllThemes().filter(t => ids.includes(t.id as any));
+  // Each category lists its own ids, so the lists are read as plain strings to look any theme up in them.
+  const ids: readonly string[] = THEME_CATEGORIES[category];
+  return getAllThemes().filter(t => ids.includes(t.id));
 }

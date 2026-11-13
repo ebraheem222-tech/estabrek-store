@@ -313,14 +313,14 @@ export default function DashboardPage() {
     canReadUgc
       ? { label: tr("تقييمات معلقة", "Pending reviews"), value: counts.reviewsPending ?? 0, icon: Icons.reviews, color: counts.reviewsPending > 0 ? "accent" as const : "default" as const }
       : null,
-  ].filter(Boolean);
+  ].filter((stat) => stat !== null);
 
   const quickActions = [
     can("catalog:read") ? { label: tr("إدارة المنتجات", "Manage products"), to: "/admin/catalog/products" } : null,
     can("orders:read") ? { label: tr("عرض الطلبات", "See orders"), to: "/admin/orders" } : null,
     can("outbox:read") ? { label: tr("صندوق الرسائل", "Messages"), to: "/admin/outbox" } : null,
     can("settings:read") ? { label: tr("الإعدادات", "Settings"), to: "/admin/settings" } : null,
-  ].filter(Boolean);
+  ].filter((action) => action !== null);
 
   const taskCards = [
     can("orders:read")
@@ -399,7 +399,7 @@ export default function DashboardPage() {
           tone: paymentIssueCount > 0 ? "danger" as const : "success" as const,
         }
       : null,
-  ].filter(Boolean);
+  ].filter((task) => task !== null);
 
   return (
     <div className="space-y-6">
