@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { Collection } from "../../api/collections.api";
-import type { GridMeta, GridPage, GridRow } from "../../api/data.api";
+import type { GridMeta, GridPage, GridRow, GridTable } from "../../api/data.api";
 
 // الجداول: the grid over a stand-in API (the server's own work is tested with the database).
 const m = vi.hoisted(() => ({
@@ -16,10 +16,13 @@ const m = vi.hoisted(() => ({
   addRow: vi.fn(),
   importRows: vi.fn(),
   exportRows: vi.fn(),
+  storeTables: vi.fn(),
+  getStoreRows: vi.fn(),
+  exportStoreRows: vi.fn(),
 }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
 vi.mock("../../api/collections.api", () => ({ listCollections: m.listCollections }));
-vi.mock("../../api/data.api", () => ({ gridMeta: m.gridMeta, getRows: m.getRows, patchRow: m.patchRow, bulkRows: m.bulkRows, addRow: m.addRow, importRows: m.importRows, exportRows: m.exportRows }));
+vi.mock("../../api/data.api", () => ({ gridMeta: m.gridMeta, getRows: m.getRows, patchRow: m.patchRow, bulkRows: m.bulkRows, addRow: m.addRow, importRows: m.importRows, exportRows: m.exportRows, storeTables: m.storeTables, getStoreRows: m.getStoreRows, exportStoreRows: m.exportStoreRows }));
 vi.mock("../../lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock("../../components/media/MediaLibraryModal", () => ({ MediaLibraryModal: () => null }));
 
@@ -61,6 +64,25 @@ function show() {
     </QueryClientProvider>,
   );
 }
+const orders: GridTable = {
+  id: "$orders",
+  slug: "orders",
+  name: { en: "Orders" },
+  templateId: null,
+  items: 2,
+  published: 2,
+  createdAt: "",
+  updatedAt: "",
+  readOnly: true,
+  hasAddress: false,
+  fields: [
+    { id: "customer", type: "text", name: { en: "Customer" } },
+    { id: "total", type: "number", name: { en: "Total" } },
+    { id: "state", type: "select", name: { en: "State" }, options: [{ id: "NEW", name: { en: "New" } }, { id: "SHIPPED", name: { en: "Shipped" } }] },
+    { id: "pieces", type: "number", name: { en: "Pieces" }, computed: true },
+  ],
+};
+const orderRows = [row("or2", { customer: "Lina", total: 120, state: "SHIPPED", pieces: 1 }, { status: "PUBLISHED" }), row("or1", { customer: "Sara", total: 100, state: "NEW", pieces: 2 }, { status: "PUBLISHED" })];
 const lastQuery = () => m.getRows.mock.calls[m.getRows.mock.calls.length - 1][1];
 
 beforeEach(() => {
@@ -72,6 +94,8 @@ beforeEach(() => {
   m.getRows.mockImplementation(async () => page());
   m.patchRow.mockImplementation(async (_t: string, id: string, body: { values?: Record<string, unknown>; status?: string }) => ({ ...rows.find((r) => r.id === id)!, ...(body.status ? { status: body.status } : {}), data: { ...rows.find((r) => r.id === id)!.data, ...(body.values ?? {}), ...(body.values?.price ? { price: Number(body.values.price) } : {}) } }));
   m.bulkRows.mockResolvedValue({ changed: 2, counts: page().counts });
+  m.storeTables.mockResolvedValue([]);
+  m.getStoreRows.mockImplementation(async () => page({ rows: orderRows, total: 2, counts: { all: 2, draft: 0, published: 0, archived: 0, trash: 0 } }));
 });
 
 describe("The data grid", () => {
@@ -187,6 +211,35 @@ describe("The data grid", () => {
     fireEvent.click(screen.getByTestId("pick-summer"));
     expect((screen.getByTestId("bulk-publish") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("data-export")).toBeTruthy();
+  });
+
+  test("one of the store's own tables: looked at, filtered and sorted, never written", async () => {
+    m.storeTables.mockResolvedValue([orders]);
+    show();
+    fireEvent.click(await screen.findByTestId("store-table-orders"));
+    expect(await screen.findByTestId("row-or2")).toBeTruthy();
+    expect(m.getStoreRows).toHaveBeenLastCalledWith("orders", { page: 1, pageSize: 50, view: "all", lang: "en" });
+    // Its words are plain, its choices named, its id in the first column; no status column, no other tabs.
+    expect(screen.getByTestId("cell-or2-customer").textContent).toBe("Lina");
+    expect(screen.getByTestId("cell-or2-state").textContent).toBe("Shipped");
+    expect(screen.getByTestId("sort-$slug").textContent).toContain("ID");
+    expect(screen.queryByTestId("sort-$status")).toBeNull();
+    expect(screen.queryByTestId("view-trash")).toBeNull();
+    expect(screen.getByTestId("data-read-only")).toBeTruthy();
+    // Nothing to write with.
+    fireEvent.doubleClick(screen.getByTestId("cell-or2-customer"));
+    expect(screen.queryByTestId("cell-editor")).toBeNull();
+    expect(screen.queryByTestId("row-add")).toBeNull();
+    expect(screen.queryByTestId("data-import")).toBeNull();
+    expect(screen.queryByTestId("open-or2")).toBeNull();
+    // Sorted and filtered by the server; a worked-out column can't be asked.
+    fireEvent.click(screen.getByTestId("sort-total"));
+    await waitFor(() => expect(m.getStoreRows.mock.calls[m.getStoreRows.mock.calls.length - 1][1].sort).toEqual([{ field: "total", dir: "asc" }]));
+    expect((screen.getByTestId("sort-pieces") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId("filter-add"));
+    const offered = [...(screen.getByTestId("filter-0-field") as HTMLSelectElement).options].map((o) => o.value);
+    expect(offered).toEqual(["$slug", "customer", "total", "state", "$createdAt", "$updatedAt"]);
+    expect(m.getRows).toHaveBeenCalledTimes(1);
   });
 
   test("no tables yet: where to make the first", async () => {
