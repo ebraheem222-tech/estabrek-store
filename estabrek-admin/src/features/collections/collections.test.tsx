@@ -20,7 +20,12 @@ const api = vi.hoisted(() => ({
   deleteItem: vi.fn(),
   collectionTemplate: vi.fn(),
   storeTemplate: vi.fn(),
+  previewFields: vi.fn(async () => ({ changes: [], needsAccept: false })),
+  listVersions: vi.fn(async () => []),
+  previewVersion: vi.fn(),
+  restoreVersion: vi.fn(),
 }));
+vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: () => true }) }));
 vi.mock("../../api/collections.api", () => api);
 const pagesApi = vi.hoisted(() => ({ listPages: vi.fn(async () => []), updatePage: vi.fn(async () => ({})) }));
 vi.mock("../../api/pages.api", () => pagesApi);

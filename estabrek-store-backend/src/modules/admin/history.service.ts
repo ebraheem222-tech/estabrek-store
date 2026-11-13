@@ -9,6 +9,8 @@
  *   stock     InventoryAdjustment          one stock change (undone by the opposite one)
  *   prices    PriceAction                  a discount from البيع الذكي
  *   schedule  ScheduledChange              a change from الجدول الزمني
+ *   tables    StudioRevision               a table's fields before a change (gone back to from the
+ *                                          table itself, where what going back does is shown first)
  * A version ("before") goes back to how things were before that change (the
  * state now is kept first, so going back can be undone too); an action ("undo")
  * undoes that one change. Each needs the right of its part.
@@ -25,7 +27,7 @@ import { restoreProductRevision } from "./productRevisions.js";
 import { undoPriceAction } from "./selling.service.js";
 import { undoNow } from "./schedule.service.js";
 
-export const AREAS = ["settings", "speed", "security", "pages", "products", "stock", "prices", "schedule"] as const;
+export const AREAS = ["settings", "speed", "security", "pages", "products", "stock", "prices", "schedule", "tables"] as const;
 export type Area = (typeof AREAS)[number];
 
 const READ: Record<Area, string> = {
@@ -37,6 +39,7 @@ const READ: Record<Area, string> = {
   stock: "inventory:read",
   prices: "discounts:read",
   schedule: "system:read",
+  tables: "pages:read",
 };
 const WRITE: Record<Area, string> = {
   settings: "settings:write",
@@ -47,6 +50,7 @@ const WRITE: Record<Area, string> = {
   stock: "inventory:write",
   prices: "discounts:write",
   schedule: "system:write",
+  tables: "pages:write",
 };
 
 export type Entry = {
@@ -76,7 +80,7 @@ export async function listHistory(req: any, opts: { from: Date; to: Date; area?:
   const at = { gte: opts.from, lte: opts.to };
   const take = opts.take;
   const want = (a: Area) => areas.includes(a);
-  const [settings, speed, security, pages, products, stock, prices, schedule] = await Promise.all([
+  const [settings, speed, security, pages, products, stock, prices, schedule, tables] = await Promise.all([
     want("settings") ? prisma.settingsRevision.findMany({ where: { createdAt: at }, orderBy: { createdAt: "desc" }, take, select: { id: true, createdAt: true, changed: true, note: true, adminUserId: true } }) : [],
     want("speed") ? prisma.performanceSettingsRevision.findMany({ where: { createdAt: at }, orderBy: { createdAt: "desc" }, take, select: { id: true, createdAt: true, changed: true, adminUserId: true } }) : [],
     want("security") ? prisma.securityPolicyRevision.findMany({ where: { createdAt: at }, orderBy: { createdAt: "desc" }, take, select: { id: true, createdAt: true, changed: true, adminUserId: true } }) : [],
@@ -94,11 +98,14 @@ export async function listHistory(req: any, opts: { from: Date; to: Date; area?:
     want("schedule")
       ? prisma.scheduledChange.findMany({ where: { appliedAt: at }, orderBy: { appliedAt: "desc" }, take, select: { id: true, appliedAt: true, kind: true, title: true, status: true, createdById: true } })
       : [],
+    want("tables") ? prisma.studioRevision.findMany({ where: { kind: "table", createdAt: at }, orderBy: { createdAt: "desc" }, take, select: { id: true, createdAt: true, objectId: true, summary: true, adminUserId: true } }) : [],
   ]);
+  // The tables' names now (a version keeps the fields, the table keeps its name).
+  const tableNames = tables.length ? await prisma.collection.findMany({ where: { id: { in: [...new Set(tables.map((t) => t.objectId))] } }, select: { id: true, slug: true, name: true } }) : [];
 
   // Who: one look-up for everyone.
   const ids = new Set<string>();
-  for (const r of [...settings, ...speed, ...security, ...products, ...stock, ...prices]) if (r.adminUserId) ids.add(r.adminUserId);
+  for (const r of [...settings, ...speed, ...security, ...products, ...stock, ...prices, ...tables]) if (r.adminUserId) ids.add(r.adminUserId);
   for (const r of schedule) if (r.createdById) ids.add(r.createdById);
   const admins = ids.size ? await prisma.adminUser.findMany({ where: { id: { in: [...ids] } }, select: { id: true, name: true, email: true } }) : [];
   const nameOf = (id: string | null | undefined) => {
@@ -158,6 +165,25 @@ export async function listHistory(req: any, opts: { from: Date; to: Date; area?:
       done: r.status === "undone",
       link: "/admin/system/schedule",
     })),
+    ...tables.map((r) => {
+      const table = tableNames.find((t) => t.id === r.objectId);
+      const name = (table?.name ?? {}) as Record<string, string | undefined>;
+      const changes = Array.isArray(r.summary) ? (r.summary as Array<{ field?: unknown; change?: unknown; from?: unknown; to?: unknown }>) : [];
+      return {
+        area: "tables" as const,
+        id: r.id,
+        at: r.createdAt.toISOString(),
+        who: nameOf(r.adminUserId),
+        title: name.ar || name.en || name.he || table?.slug || null,
+        // "price:retyped:text:number", "note:removed": the admin puts them in words.
+        what: changes.filter((c) => typeof c.field === "string" && typeof c.change === "string").map((c) => [c.field, c.change, c.from, c.to].filter((x) => typeof x === "string").join(":")),
+        detail: { tableId: r.objectId, slug: table?.slug ?? null },
+        // Gone back to from the table's own versions, where what it does to the rows is shown first.
+        restore: null,
+        done: false,
+        link: table ? `/admin/collections` : null,
+      };
+    }),
   ];
   out.sort((a, b) => b.at.localeCompare(a.at));
   return { entries: out.slice(0, take), areas, from: opts.from.toISOString(), to: opts.to.toISOString(), canRestore: Object.fromEntries(areas.map((a) => [a, hasPermission(req, WRITE[a])])) };
@@ -212,6 +238,7 @@ export async function restoreEntry(req: any, area: Area, id: string) {
     const r = await undoPriceAction(id);
     return { ok: true, note: r.changedSince ? `${r.changedSince} مقاس تغيّر من بعدها، فضل متل ما هو.` : null };
   }
+  if (area === "tables") throw new AppError(409, "TABLE_VERSION_FROM_TABLE", "Go back from the table's own versions, where what it does to the rows is shown first");
   const c = await prisma.scheduledChange.findUnique({ where: { id } });
   if (!c) throw new AppError(404, "SCHEDULED_CHANGE_NOT_FOUND");
   if (c.status !== "applied" && !(c.status === "done" && c.kind !== "cachePurge")) throw new AppError(409, "SCHEDULED_CHANGE_NOT_APPLIED");

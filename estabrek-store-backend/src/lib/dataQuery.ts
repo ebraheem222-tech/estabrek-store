@@ -239,11 +239,12 @@ export function filterSql(fields: Field[], f: GridFilter): Prisma.Sql {
   return blind ? Prisma.sql`lower(COALESCE(${w}, '')) <> ${v.toLowerCase()}` : Prisma.sql`COALESCE(${w}, '') <> ${v}`;
 }
 
-/** The words to look for anywhere in a row: its address, or any of its values (never a field's name). */
-function searchSql(term: string): Prisma.Sql {
+/** The words to look for anywhere in a row: its address, or any value of the table's fields (never a field's name, never a value put aside by a change of fields). */
+function searchSql(term: string, fields: Field[]): Prisma.Sql {
   // A literal ("q"), case-blind ("i") match on every string value at any depth.
   const path = `$.** ? (@.type() == "string" && @ like_regex ${JSON.stringify(term)} flag "iq")`;
-  return Prisma.sql`(i."slug" ILIKE ${`%${like(term)}%`} OR jsonb_path_exists(i."data", ${path}::jsonpath))`;
+  const shown = Prisma.sql`(SELECT COALESCE(jsonb_object_agg(k, i."data"->k), '{}'::jsonb) FROM unnest(${fields.map((f) => f.id)}::text[]) AS k WHERE i."data"->k IS NOT NULL)`;
+  return Prisma.sql`(i."slug" ILIKE ${`%${like(term)}%`} OR jsonb_path_exists(${shown}, ${path}::jsonpath))`;
 }
 
 const VIEW_SQL: Record<View, Prisma.Sql> = {
@@ -257,7 +258,7 @@ const VIEW_SQL: Record<View, Prisma.Sql> = {
 /** Which rows: the table, the view (the trash is its own), the search and the filters. */
 export function gridWhere(collectionId: string, fields: Field[], q: Pick<GridQuery, "view" | "search" | "filters" | "match">): Prisma.Sql {
   const parts: Prisma.Sql[] = [Prisma.sql`i."collectionId" = ${collectionId}`, VIEW_SQL[q.view]];
-  if (q.search) parts.push(searchSql(q.search));
+  if (q.search) parts.push(searchSql(q.search, fields));
   if (q.filters.length) {
     const each = q.filters.map((f, index) => {
       try {

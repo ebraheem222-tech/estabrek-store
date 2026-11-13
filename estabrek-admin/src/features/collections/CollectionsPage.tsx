@@ -17,6 +17,10 @@ import { itemDataOut, LANGS, newField, slugOf, titleOf, WORD_TYPES, type Lang } 
 import { gridMeta } from "../../api/data.api";
 import { FieldRulesEditor } from "./FieldRulesEditor";
 import { fitRules, ruleCount, ruleParts } from "./fieldRules";
+import { ChangeDialog, VersionsPanel } from "./SchemaChange";
+import { retype, touchesRows } from "./schemaText";
+import { previewFields, type Impact } from "../../api/collections.api";
+import { useAuth } from "../../hooks/useAuth";
 import { ValueInput } from "../data/GridCells";
 import { KIND_NAME, draftFrom, valueFrom } from "../data/kinds";
 import { listPages, updatePage } from "../../api/pages.api";
@@ -291,11 +295,30 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
   const meta = useQuery({ queryKey: ["data", "meta"], queryFn: gridMeta, staleTime: Infinity });
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
   const changed = useMemo(() => JSON.stringify([fields, name, slug]) !== JSON.stringify([collection.fields, collection.name, collection.slug]), [fields, name, slug, collection]);
-  const save = async () => {
+  const { hasPermission } = useAuth();
+  /** What the change would do to the rows, waiting for a yes. */
+  const [asking, setAsking] = useState<Impact[] | null>(null);
+  const nameOf = (id: string) => words((fields.find((f) => f.id === id) ?? collection.fields.find((f) => f.id === id))?.name, lang) || id;
+  /** A change that touches the rows is shown first; `accepted` = it's been read and agreed to. */
+  const save = async (accepted = false) => {
     setSaving(true);
-    try { await updateCollection(collection.id, { slug, name, fields }); toast.success(say("انحفظت الحقول|The fields were saved|השדות נשמרו")); onSaved(); }
-    catch (e) { toast.error(say("ما انحفظ|Not saved|לא נשמר"), { description: getApiErrorMessage(e) }); }
-    finally { setSaving(false); }
+    try {
+      const body = { slug, name, fields };
+      if (!accepted) {
+        const look = await previewFields(collection.id, body);
+        if (touchesRows(look.changes)) { setAsking(look.changes); return; }
+      }
+      const saved = await updateCollection(collection.id, body, accepted);
+      setAsking(null);
+      setFields(structuredClone(saved.fields));
+      toast.success(say("انحفظت الحقول|The fields were saved|השדות נשמרו"));
+      onSaved();
+    } catch (e) {
+      // The rows changed meanwhile and the save now needs a yes: show what it would do.
+      const data = (e as { response?: { data?: { error?: string; changes?: Impact[] } } })?.response?.data;
+      if (data?.error === "SCHEMA_CHANGE_NEEDS_CONFIRM" && Array.isArray(data.changes)) setAsking(data.changes);
+      else toast.error(say("ما انحفظ|Not saved|לא נשמר"), { description: getApiErrorMessage(e) });
+    } finally { setSaving(false); }
   };
   const move = (i: number, d: number) => setFields((fs) => { const out = [...fs]; const j = i + d; if (j < 0 || j >= out.length) return fs; [out[i], out[j]] = [out[j], out[i]]; return out; });
   return (
@@ -320,7 +343,7 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
             <button type="button" className={btn} onClick={() => move(i, 1)} aria-label="↓">↓</button>
             <button type="button" className={`${btn} text-red-300`} disabled={fields.length <= 1} onClick={() => setFields((fs) => fs.filter((_, j) => j !== i))}>×</button>
             {rulesOpen !== f.id && ruleParts(f, lang).length ? <span className="w-full text-[11px] text-white/45" data-testid={`field-rules-summary-${f.id}`}>{ruleParts(f, lang).map((part) => say(part)).join(" · ")}</span> : null}
-            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type])} lang={lang} fit={meta.data.rules[f.type]} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} /> : null}
+            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type])} lang={lang} fit={meta.data.rules[f.type]} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} onRetype={(type) => setFields((fs) => fs.map((x, j) => (j === i ? retype(x, type, meta.data!.rules[type]) : x)))} /> : null}
           </li>
         ))}
       </ul>
@@ -330,8 +353,10 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={primary} disabled={!changed || saving} onClick={() => void save()} data-testid="fields-save">{say("احفظ الحقول|Save the fields|שמור את השדות")}</button>
+        {asking ? <ChangeDialog title={say("شو بيعمل هالتغيير بالسطور الموجودة|What this change does to the rows that are there|מה השינוי עושה לשורות הקיימות")} changes={asking} nameOf={nameOf} busy={saving} onAccept={() => void save(true)} onCancel={() => setAsking(null)} /> : null}
         <button type="button" className={`${btn} text-red-300`} onClick={async () => { if (!window.confirm(say("نحذف المجموعة مع كل عناصرها وصفحتها؟|Delete the collection with all its items and its page?|למחוק את האוסף עם כל הפריטים והדף?"))) return; await deleteCollection(collection.id); onDeleted(); }}>{say("احذف المجموعة|Delete the collection|מחק את האוסף")}</button>
       </div>
+      <VersionsPanel table={collection} lang={lang} canWrite={hasPermission("pages:write")} onRestored={(saved) => { setFields(structuredClone(saved.fields)); setName({ ...saved.name }); onSaved(); }} />
     </div>
   );
 }

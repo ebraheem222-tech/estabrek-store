@@ -24,6 +24,7 @@ import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { checkItemData, ITEM_SLUG, LIMITS, TRASH_DAYS, withDefaults } from "../../lib/collections.js";
 import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
 import { changedUnique, uniqueIssues, type Candidate } from "../../lib/uniqueValues.js";
+import { hiddenOf, shownRow } from "../../lib/schemaChange.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { GRID_LIMITS, OPS_BY_KIND, STATUSES, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQuery, queryRows, rowsSlice, viewCounts } from "../../lib/dataQuery.js";
 import { LANGS, coerceValue, csvLine, exportColumns, freeSlug, looseData, patchData, slugFrom, type Issue } from "../../lib/dataRows.js";
@@ -56,7 +57,7 @@ r.get(
     const q = parseGridQuery(one(req.query.q));
     const t0 = performance.now();
     const [page, counts] = await Promise.all([queryRows(prisma, table, q), viewCounts(prisma, table.id)]);
-    res.json({ ...page, page: q.page, pageSize: q.pageSize, counts, ms: Math.round(performance.now() - t0) });
+    res.json({ rows: page.rows.map((row) => shownRow(row, table.fields)), total: page.total, page: q.page, pageSize: q.pageSize, counts, ms: Math.round(performance.now() - t0) });
   }),
 );
 
@@ -130,7 +131,8 @@ async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], 
     }
     if (slug) seen.add(slug);
     const next = status?.success ? status.data : undefined;
-    if (was) updates.push({ row: index, slug: was.slug, id: was.id, data: checked.data, changed: changedUnique(table.fields, (was.data ?? {}) as Record<string, unknown>, checked.data), status: next, publish: next === "PUBLISHED" && !was.publishedAt });
+    // What a change of fields put aside in this row stays with it.
+    if (was) updates.push({ row: index, slug: was.slug, id: was.id, data: { ...hiddenOf(was.data, table.fields), ...checked.data }, changed: changedUnique(table.fields, (was.data ?? {}) as Record<string, unknown>, checked.data), status: next, publish: next === "PUBLISHED" && !was.publishedAt });
     else creates.push({ row: index, slug, data: checked.data, status: next ?? "DRAFT" });
   });
 
@@ -193,7 +195,7 @@ r.post(
     }
     if (out.rejected.length) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: out.rejected[0].issues });
     const row = await prisma.collectionItem.findUnique({ where: { collectionId_slug: { collectionId: table.id, slug: out.slugs[0] } } });
-    res.status(201).json(row);
+    res.status(201).json(row ? shownRow(row, table.fields) : row);
   }),
 );
 
@@ -231,7 +233,7 @@ r.patch(
     try {
       const saved = await prisma.collectionItem.update({ where: { id: was.id }, data });
       refresh();
-      res.json(saved);
+      res.json(shownRow(saved, table.fields));
     } catch (e) {
       if (taken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");
       throw e;

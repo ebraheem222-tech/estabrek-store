@@ -14,7 +14,10 @@ export const AREA_TEXT: Record<HistoryArea, string> = {
   stock: "المخزون",
   prices: "الأسعار",
   schedule: "الجدول الزمني",
+  tables: "الجداول",
 };
+
+const TABLE_CHANGE: Record<string, string> = { retyped: "تغيّر نوعه", removed: "انشال", added: "انضاف", ruled: "تغيّرت قواعده" };
 
 const SETTINGS_TEXT: Array<[RegExp, string]> = [
   [/^siteName$/, "اسم المتجر"],
@@ -89,6 +92,14 @@ export function entrySentence(e: HistoryEntry): string {
     const what = kind === "endDiscount" ? "وقف خصم" : kind === "campaign" ? "خصم موسم" : "خصم";
     return `${what} على ${sizes === 1 ? "مقاس واحد" : `${sizes} مقاسات`}`;
   }
+  if (e.area === "tables") {
+    // "price:retyped:text:number" → "price: تغيّر نوعه".
+    const parts = e.what.map((w) => {
+      const [field, change] = w.split(":");
+      return `${ltr(field)}: ${TABLE_CHANGE[change] ?? change}`;
+    });
+    return parts.length ? `حقول: ${parts.slice(0, 4).join("، ")}${parts.length > 4 ? ` و${parts.length - 4} كمان` : ""}` : "تعديل بأسماء الحقول أو إعداداتها";
+  }
   return KIND_TEXT[e.what[0] as keyof typeof KIND_TEXT]?.label ?? e.what[0] ?? "";
 }
 
@@ -105,6 +116,7 @@ export function noRestoreText(e: Pick<HistoryEntry, "area" | "restore" | "done">
   if (e.area === "stock") return "من طلب: بترجع من الطلب نفسه";
   if (e.area === "prices") return "من موسم: بترجع لما يخلص الموسم";
   if (e.area === "schedule") return "تفريغ كاش: ما في شي يرجع";
+  if (e.area === "tables") return "بترجع من «النسخ السابقة للحقول» بصفحة الجدول";
   return null;
 }
 

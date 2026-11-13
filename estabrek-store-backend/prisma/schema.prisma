@@ -941,6 +941,23 @@ model CollectionItem {
   @@index([collectionId, deletedAt, createdAt])
 }
 
+/// An earlier state of something made in the backend studio, to look at and go back to: a
+/// table's fields now; functions and endpoints later (one history for all of them).
+model StudioRevision {
+  id          String   @id @default(cuid())
+  /// "table"
+  kind        String
+  objectId    String
+  /// The thing as it was before the change: for a table { slug, name, fields }.
+  data        Json
+  /// What the change did to the rows, in short (lib/schemaChange.ts Impact[]).
+  summary     Json
+  adminUserId String?
+  createdAt   DateTime @default(now())
+
+  @@index([kind, objectId, createdAt])
+}
+
 model PageRevision {
   id        String @id @default(cuid())
   pageId    String

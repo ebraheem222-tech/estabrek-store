@@ -44,8 +44,47 @@ export async function collectionPresets() {
 export async function createCollection(body: { preset: string; slug?: string } | { slug: string; name: Local; fields: CollectionField[] }) {
   return (await api.post(base, body)).data as Collection;
 }
-export async function updateCollection(id: string, body: { slug: string; name: Local; fields: CollectionField[] }) {
-  return (await api.put(`${base}/${id}`, body)).data as Collection;
+/** What a change of fields does to the rows that are there, for one changed field (backend lib/schemaChange.ts). */
+export type Impact = {
+  field: string;
+  change: "removed" | "retyped" | "ruled" | "added";
+  from?: FieldType;
+  to?: FieldType;
+  /** Rows that hold a value there. */
+  rows: number;
+  converted: number;
+  /** Values that don't fit the new kind: put aside, hidden. */
+  lost: number;
+  /** A removed field's values: kept in the rows, hidden. */
+  hidden: number;
+  /** Values that don't pass the new rules or choices (left as they are). */
+  failing: number;
+  missing: number;
+  doubles: number;
+  samples: Array<{ slug: string; value: string; why: string }>;
+};
+export type SchemaPreview = { changes: Impact[]; needsAccept: boolean };
+/** A table's fields before one of its changes. */
+export type TableVersion = { id: string; createdAt: string; who: string | null; fields: Array<Pick<CollectionField, "id" | "type" | "name">>; changes: Impact[] };
+type TableBody = { slug: string; name: Local; fields: CollectionField[] };
+
+/** Saves the table. A change that would put values aside is refused (409, with what it would do) unless `accept`. */
+export async function updateCollection(id: string, body: TableBody, accept = false) {
+  return (await api.put(`${base}/${id}`, accept ? { ...body, accept: true } : body)).data as Collection & { changes?: Impact[] };
+}
+/** What saving these fields would do to the rows. Nothing is written. */
+export async function previewFields(id: string, body: TableBody) {
+  return (await api.post(`${base}/${id}/fields/preview`, body)).data as SchemaPreview;
+}
+export async function listVersions(id: string) {
+  const data = (await api.get(`${base}/${id}/revisions`)).data;
+  return (Array.isArray(data) ? data : []) as TableVersion[];
+}
+export async function previewVersion(id: string, version: string) {
+  return (await api.post(`${base}/${id}/revisions/${version}/preview`, {})).data as SchemaPreview;
+}
+export async function restoreVersion(id: string, version: string, accept = false) {
+  return (await api.post(`${base}/${id}/revisions/${version}/restore`, accept ? { accept: true } : {})).data as Collection & { changes?: Impact[] };
 }
 export async function deleteCollection(id: string) {
   await api.delete(`${base}/${id}`);
