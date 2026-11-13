@@ -2,7 +2,7 @@
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
 
-export type HistoryArea = "settings" | "speed" | "security" | "pages" | "products" | "stock" | "prices" | "schedule";
+export type HistoryArea = "settings" | "speed" | "security" | "pages" | "products" | "stock" | "prices" | "schedule" | "tables";
 
 export type HistoryEntry = {
   area: HistoryArea;

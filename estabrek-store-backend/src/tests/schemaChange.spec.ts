@@ -116,6 +116,22 @@ describe("A field's kind changes", () => {
   });
 });
 
+describe("The one history", () => {
+  test("a table's changes are listed with everything else; going back is done from the table, where it's shown first", async () => {
+    const out = await request(app).get("/v1/admin/history").query({ area: "tables" }).expect(200);
+    const mine = (out.body.entries as Array<{ id: string; area: string; title: string | null; what: string[]; detail: { tableId?: string }; restore: string | null; link: string | null }>).filter((e) => e.detail?.tableId === id);
+    expect(mine).toHaveLength(2);
+    expect(mine.every((e) => e.area === "tables" && e.title === "Schema spec" && e.restore === null && e.link === "/admin/collections")).toBe(true);
+    expect(mine.map((e) => e.what)).toEqual([["price:retyped:number:text"], ["price:retyped:text:number"]]);
+    expect(out.body.areas).toEqual(["tables"]);
+    const no = await request(app).post("/v1/admin/history/restore").send({ area: "tables", id: mine[0].id }).expect(409);
+    expect(no.body.error).toBe("TABLE_VERSION_FROM_TABLE");
+    // Listed among the other areas too.
+    const all = await request(app).get("/v1/admin/history").expect(200);
+    expect(all.body.areas).toContain("tables");
+  });
+});
+
 describe("A field goes, and comes back", () => {
   const without = fields.filter((f) => f.id !== "note");
 

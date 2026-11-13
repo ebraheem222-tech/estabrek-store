@@ -15,6 +15,9 @@ describe("History texts", () => {
     expect(entrySentence(e({ area: "stock", what: ["ORDER_ACCEPT:or1"], detail: { delta: -1, before: 7, after: 6 } }))).toBe(`${ltr("-1")} (من 7 لـ 6) · طلب انقبل`);
     expect(entrySentence(e({ area: "prices", what: ["discount", "unseen"], detail: { sizes: 3 } }))).toBe("خصم على 3 مقاسات");
     expect(entrySentence(e({ area: "schedule", what: ["maintenance"] }))).toBe("وضع الصيانة");
+    expect(entrySentence(e({ area: "tables", what: ["price:retyped:text:number", "note:removed"] }))).toBe(`حقول: ${ltr("price")}: تغيّر نوعه، ${ltr("note")}: انشال`);
+    expect(entrySentence(e({ area: "tables", what: [] }))).toBe("تعديل بأسماء الحقول أو إعداداتها");
+    expect(noRestoreText({ area: "tables", restore: null, done: false })).toContain("النسخ السابقة للحقول");
   });
 
   test("the button, or why there's none", () => {
