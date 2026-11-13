@@ -21,7 +21,7 @@ import { ImportDialog } from "./ImportDialog";
 import { parseCsv } from "./csv";
 import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
-import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterColumns, filterValue, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
+import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterColumns, filterValue, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03]";
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -31,10 +31,16 @@ const VIEWS: View[] = ["all", "draft", "published", "archived", "trash"];
 const PAGE_SIZES = [25, 50, 100, 200];
 const words = (v: Collection["name"] | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
+/** One refused value's reason: the field's own words when its owner wrote some, else the general ones. */
+export function issueText(issue: DataAPI.Issue): string {
+  const words = issueSay(issue, adminLang() as Lang);
+  return "own" in words ? words.own : say(words.general);
+}
+
 /** The refused values from the server, said in the admin's language. */
 export function problemText(e: unknown): string {
-  const issues = (e as { response?: { data?: { details?: { issues?: Array<{ field: string; message: string }> } } } })?.response?.data?.details?.issues;
-  if (Array.isArray(issues) && issues.length) return issues.map((i) => `${i.field}: ${say(issueWords(i.message))}`).join(" · ");
+  const issues = (e as { response?: { data?: { details?: { issues?: DataAPI.Issue[] } } } })?.response?.data?.details?.issues;
+  if (Array.isArray(issues) && issues.length) return issues.map((i) => `${i.field}: ${issueText(i)}`).join(" · ");
   return getApiErrorMessage(e);
 }
 

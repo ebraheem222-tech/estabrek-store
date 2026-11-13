@@ -2,7 +2,7 @@
 // a table's rows a page at a time, filtered, sorted and searched by the server, cells, many rows at
 // once, the trash, and CSV in and out. A table is a collection (collections.api.ts).
 import { api } from "./http";
-import type { Collection, CollectionField, CollectionItem, FieldType, ItemStatus } from "./collections.api";
+import type { Collection, CollectionField, CollectionItem, FieldType, ItemStatus, Local } from "./collections.api";
 
 export type Lang = "ar" | "en" | "he";
 export type Op = "contains" | "notContains" | "is" | "isNot" | "startsWith" | "endsWith" | "empty" | "notEmpty" | "gt" | "gte" | "lt" | "lte" | "between" | "anyOf" | "isTrue" | "isFalse";
@@ -29,8 +29,11 @@ export type GridMeta = {
   systemColumns: SystemColumn[];
   views: View[];
   limits: { pageSize: number; filters: number; sorts: number; search: number; value: number; anyOf: number; rows: number; importRows: number; bulkIds: number; trashDays: number };
+  /** Which rules fit which kind of field, and the ready shapes for short words. */
+  rules: Record<FieldType, { unique: boolean; limits: "number" | "length" | "date" | null; shape: boolean; default: boolean }>;
+  shapes: Array<NonNullable<CollectionField["shape"]>>;
 };
-export type Issue = { field: string; message: string };
+export type Issue = { field: string; message: string; /** The owner's own words for this field's rules. */ say?: Local };
 export type RowIn = { slug?: string; status?: string; values: Record<string, unknown> };
 export type ImportReport = { dryRun: boolean; created: number; updated: number; rejected: Array<{ row: number; slug: string | null; issues: Issue[] }> };
 export type BulkOp = "publish" | "draft" | "archive" | "trash" | "restore" | "purge" | "set";

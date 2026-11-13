@@ -3,7 +3,27 @@ import { api } from "./http";
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color";
-export type CollectionField = { id: string; type: FieldType; name?: Local; required?: boolean; options?: { id: string; name?: Local }[] };
+/** A field: its kind, its name, and its rules (backend lib/fieldRules.ts). */
+export type CollectionField = {
+  id: string;
+  type: FieldType;
+  name?: Local;
+  required?: boolean;
+  options?: { id: string; name?: Local }[];
+  /** No two rows with the same value. */
+  unique?: boolean;
+  /** A new row's value when none is written. */
+  default?: unknown;
+  /** Numbers: smallest and largest. Words: fewest and most letters. Dates: first and last day. */
+  min?: number | string;
+  max?: number | string;
+  shape?: "email" | "phone" | "url" | "letters" | "digits" | "slug";
+  pattern?: string;
+  /** Said when a value breaks the field's rules. */
+  message?: Local;
+  /** A hint under the field in forms. */
+  help?: Local;
+};
 export type Collection = { id: string; slug: string; name: Local; fields: CollectionField[]; templateId: string | null; items: number; published: number; createdAt: string; updatedAt: string };
 export type ItemStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type CollectionItem = { id: string; collectionId: string; slug: string; status: ItemStatus; data: Record<string, unknown>; sort: number; publishedAt: string | null; createdAt: string; updatedAt: string };

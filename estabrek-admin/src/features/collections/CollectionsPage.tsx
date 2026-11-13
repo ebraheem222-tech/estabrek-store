@@ -14,6 +14,9 @@ import { say } from "../../studio/say";
 import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { collectionPresets, collectionTemplate, storeTemplate, createCollection, createItem, deleteCollection, deleteItem, listCollections, listItems, updateCollection, updateItem, type Collection, type CollectionField, type CollectionItem, type FieldType, type ItemStatus, type Local } from "../../api/collections.api";
 import { itemDataOut, LANGS, newField, slugOf, titleOf, WORD_TYPES, type Lang } from "./collectionForms";
+import { gridMeta } from "../../api/data.api";
+import { FieldRulesEditor } from "./FieldRulesEditor";
+import { fitRules, ruleCount, ruleParts } from "./fieldRules";
 import { listPages, updatePage } from "../../api/pages.api";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
@@ -277,6 +280,9 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
   const [slug, setSlug] = useState(collection.slug);
   const [newType, setNewType] = useState<FieldType>("text");
   const [saving, setSaving] = useState(false);
+  // Which rules fit which kind of field (the server's own list), and the field whose rules are open.
+  const meta = useQuery({ queryKey: ["data", "meta"], queryFn: gridMeta, staleTime: Infinity });
+  const [rulesOpen, setRulesOpen] = useState<string | null>(null);
   const changed = useMemo(() => JSON.stringify([fields, name, slug]) !== JSON.stringify([collection.fields, collection.name, collection.slug]), [fields, name, slug, collection]);
   const save = async () => {
     setSaving(true);
@@ -298,9 +304,16 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
             <span className="text-xs text-white/40">{say(TYPE_NAME[f.type])}</span>
             <code className="text-[10px] text-white/30" dir="ltr">{f.id}</code>
             <label className="flex items-center gap-1 text-xs text-white/60"><input type="checkbox" checked={f.required === true} onChange={(e) => setFields((fs) => fs.map((x, j) => (j === i ? { ...x, required: e.target.checked || undefined } : x)))} />{say("لازم|Required|חובה")}</label>
+            {meta.data ? (
+              <button type="button" className={btn} aria-expanded={rulesOpen === f.id} onClick={() => setRulesOpen(rulesOpen === f.id ? null : f.id)} data-testid={`field-rules-${f.id}`}>
+                {say("قواعد|Rules|כללים")}{ruleCount(f) ? ` (${ruleCount(f)})` : ""}
+              </button>
+            ) : null}
             <button type="button" className={btn} onClick={() => move(i, -1)} aria-label="↑">↑</button>
             <button type="button" className={btn} onClick={() => move(i, 1)} aria-label="↓">↓</button>
             <button type="button" className={`${btn} text-red-300`} disabled={fields.length <= 1} onClick={() => setFields((fs) => fs.filter((_, j) => j !== i))}>×</button>
+            {rulesOpen !== f.id && ruleParts(f, lang).length ? <span className="w-full text-[11px] text-white/45" data-testid={`field-rules-summary-${f.id}`}>{ruleParts(f, lang).map((part) => say(part)).join(" · ")}</span> : null}
+            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type])} lang={lang} fit={meta.data.rules[f.type]} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} /> : null}
           </li>
         ))}
       </ul>

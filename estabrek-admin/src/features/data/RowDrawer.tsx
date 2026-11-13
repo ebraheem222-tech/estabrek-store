@@ -12,7 +12,7 @@ import type { Collection, ItemStatus } from "../../api/collections.api";
 import * as DataAPI from "../../api/data.api";
 import type { GridRow, Issue, Lang } from "../../api/data.api";
 import { ValueInput, input } from "./GridCells";
-import { LANGS, LANG_NAME, WORDS, issueWords } from "./dataText";
+import { LANGS, LANG_NAME, WORDS, issueSay } from "./dataText";
 
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
@@ -36,7 +36,14 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
   const [issues, setIssues] = useState<Issue[]>([]);
   const [picking, setPicking] = useState<string | null>(null);
   const set = (key: string, v: string) => setValues((was) => ({ ...was, [key]: v }));
-  const problem = (key: string) => issues.find((i) => i.field === key || i.field === key.split(".")[0])?.message;
+  const text = (i: Issue) => {
+    const words = issueSay(i, lang);
+    return "own" in words ? words.own : say(words.general);
+  };
+  const problem = (key: string) => {
+    const found = issues.find((i) => i.field === key || i.field === key.split(".")[0]);
+    return found ? text(found) : undefined;
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -61,7 +68,7 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
       const data = (e as { response?: { data?: { error?: string; details?: { issues?: Issue[] } } } })?.response?.data;
       const found = data?.details?.issues ?? (data?.error === "SLUG_TAKEN" ? [{ field: "slug", message: "This address is already used" }] : []);
       setIssues(found);
-      toast.error(say("في قيم مش مزبوطة|Some values are wrong|יש ערכים שגויים"), { description: found.map((i) => `${i.field}: ${say(issueWords(i.message))}`).join(" · ") || undefined });
+      toast.error(say("في قيم مش مزبوطة|Some values are wrong|יש ערכים שגויים"), { description: found.map((i) => `${i.field}: ${text(i)}`).join(" · ") || undefined });
     },
   });
 
@@ -84,7 +91,7 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
           <label className="block text-xs text-white/60">
             {say("العنوان بالرابط|Address|כתובת")}
             <input className={`${input} mt-1`} dir="ltr" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder={row ? undefined : say("بينعمل لحاله من الكلام|made from the words|נוצר מהטקסט")} data-testid="row-slug" />
-            {problem("slug") ? <span className="mt-1 block text-red-300">{say(issueWords(problem("slug")!))}</span> : null}
+            {problem("slug") ? <span className="mt-1 block text-red-300">{problem("slug")}</span> : null}
           </label>
           <label className="block text-xs text-white/60">
             {say("الحالة|Status|מצב")}
@@ -114,7 +121,8 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
                     </label>
                   ))}
                 </div>
-                {problem(f.id) ? <span className="mt-1 block text-red-300">{say(issueWords(problem(f.id)!))}</span> : null}
+                {name(f.help, lang) ? <span className="mt-1 block text-white/40">{name(f.help, lang)}</span> : null}
+                {problem(f.id) ? <span className="mt-1 block text-red-300">{problem(f.id)}</span> : null}
               </fieldset>
             );
           }
@@ -134,7 +142,8 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
                   </>
                 ) : null}
               </span>
-              {problem(f.id) ? <span className="mt-1 block text-red-300">{say(issueWords(problem(f.id)!))}</span> : null}
+              {name(f.help, lang) ? <span className="mt-1 block text-white/40">{name(f.help, lang)}</span> : null}
+              {problem(f.id) ? <span className="mt-1 block text-red-300">{problem(f.id)}</span> : null}
             </label>
           );
         })}

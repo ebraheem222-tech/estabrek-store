@@ -25,6 +25,8 @@ vi.mock("../../api/collections.api", () => api);
 const pagesApi = vi.hoisted(() => ({ listPages: vi.fn(async () => []), updatePage: vi.fn(async () => ({})) }));
 vi.mock("../../api/pages.api", () => pagesApi);
 vi.mock("../../components/media/MediaLibraryModal", () => ({ MediaLibraryModal: () => null }));
+// The fields editor asks which rules fit which kind of field (tested in fieldRules.test.tsx).
+vi.mock("../../api/data.api", () => ({ gridMeta: vi.fn(async () => ({ rules: {}, shapes: [] })) }));
 import CollectionsPage from "./CollectionsPage";
 
 afterEach(() => { cleanup(); setLangForTests("ar"); vi.clearAllMocks(); });
