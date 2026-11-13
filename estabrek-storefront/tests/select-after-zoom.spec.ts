@@ -141,6 +141,43 @@ test.describe("with the inspector beside the element", () => {
   });
 });
 
+test("showing an element from the layers never moves the canvas's own content: the settings stay around it and a click still lands", async ({ page }) => {
+  test.setTimeout(180000);
+  // One of every kind, the inspector beside the element: a small one comes closer, so the frame is bigger than
+  // the canvas; then another is shown from the layers (the frame scrolls its own page to it).
+  await open(page, "&everyKind&beside");
+  await page.getByTestId("studio-tab-layers").click();
+  const scrolled = () => page.getByTestId("studio-canvas").evaluate((el) => `${el.scrollLeft},${el.scrollTop}`);
+  const layer = (kind: string) => page.locator(`[data-testid="studio-layer"][data-node="kind-${kind}"]`).click();
+  await layer("icon");
+  await expect.poll(() => zoomNow(page), { timeout: 10000 }).toBeGreaterThan(120);
+  for (const kind of ["map", "button", "image"]) {
+    await layer(kind);
+    await expect(info(page)).toContainText(`kind-${kind}`);
+    await page.waitForTimeout(1500);
+    expect(await scrolled(), kind).toBe("0,0");
+    // The outline is where the element really is, and the two strips stand on its two sides.
+    const real = await canvasBox(page, `[data-tree-node="kind-${kind}"]`);
+    const outline = (await page.getByTestId("studio-selected").first().boundingBox())!;
+    expect(Math.abs(outline.x - real.x), kind).toBeLessThan(3);
+    const strips = await page.getByTestId("studio-beside-strip").evaluateAll((els) => Object.fromEntries(els.map((e) => { const b = e.getBoundingClientRect(); return [e.getAttribute("data-side"), { x: b.x, w: b.width }]; })));
+    expect(strips.left.x + strips.left.w, kind).toBeLessThanOrEqual(outline.x + 1);
+    expect(strips.right.x, kind).toBeGreaterThanOrEqual(outline.x + outline.width - 1);
+  }
+  // A click on the page still picks what's under the pointer.
+  const pic = await canvasBox(page, '[data-tree-node="kind-image"]');
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(800);
+  const again = await canvasBox(page, '[data-tree-node="kind-image"]');
+  expect(pic.w).toBeGreaterThan(0);
+  await rest(page, again.x + again.w / 2, again.y + Math.min(again.h / 2, 120));
+  await page.mouse.click(again.x + again.w / 2, again.y + Math.min(again.h / 2, 120));
+  await expect(info(page)).toContainText("kind-image");
+  expect(await scrolled()).toBe("0,0");
+});
+
 test("words and buttons the shop lets clicks through are picked themselves, not the picture behind them", async ({ page }) => {
   test.setTimeout(150000);
   // A converted store's home: the opening's words lie over its picture and take no pointer on the shop itself.

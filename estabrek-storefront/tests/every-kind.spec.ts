@@ -86,3 +86,40 @@ test("the ready looks fit every kind: a card around a block, a frame on what's s
     await expect(page.locator('[data-testid="studio-looks-kind"][data-kind="frame"]'), kind).toBeVisible();
   }
 });
+
+test("a products block shows a category's products or ones picked by hand; a categories block only the ones ticked", async ({ page }) => {
+  test.setTimeout(240000);
+  await open(page);
+  await pick(page, "products");
+  const cards = node(page, "products").locator('a[href*="/p/"]');
+  const slugs = async () => [...new Set(await cards.evaluateAll((els) => els.map((a) => (a.getAttribute("href") ?? "").split("/p/")[1])))].sort();
+  const source = (value: string) => info(page).locator(`[data-testid="studio-products-source"] [data-value="${value}"]`).click();
+
+  // Picked by hand: found by name, and only that one shows on the page.
+  await source("picked");
+  await info(page).getByTestId("studio-products-find").fill("hijab");
+  await info(page).getByTestId("studio-products-pick").click();
+  await expect.poll(async () => (await page.evaluate(() => (window as any).__canvasHarness.getNode("kind-products").node.props)).productIds).toEqual(["bag"]);
+  await expect.poll(slugs).toEqual(["rose-hijab"]);
+
+  // From a category: the store's categories are listed; the page shows that category's products.
+  await source("category");
+  await expect(info(page).getByTestId("studio-products-category")).toHaveValue("dresses");
+  await expect.poll(slugs).toContain("rose-dress");
+  await expect.poll(slugs).not.toContain("rose-hijab");
+  await info(page).getByTestId("studio-products-category").selectOption("hijabs");
+  await expect.poll(slugs).toContain("rose-hijab");
+  await expect.poll(slugs).not.toContain("rose-dress");
+
+  // A categories block: only the ones ticked.
+  await pick(page, "categories");
+  const tiles = node(page, "categories").locator(".pt-tile");
+  const all = await tiles.count();
+  expect(all).toBeGreaterThan(1);
+  await info(page).locator('[data-testid="studio-categories-which"] [data-value="some"]').click();
+  await info(page).locator('[data-testid="studio-categories-list"] [data-category="hijabs"]').check();
+  await expect.poll(async () => (await page.evaluate(() => (window as any).__canvasHarness.getNode("kind-categories").node.props)).ids).toEqual(["hijabs"]);
+  await expect(tiles).toHaveCount(1);
+  await info(page).locator('[data-testid="studio-categories-which"] [data-value="all"]').click();
+  await expect(tiles).toHaveCount(all);
+});

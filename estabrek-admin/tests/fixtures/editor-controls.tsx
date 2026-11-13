@@ -357,7 +357,11 @@ api.defaults.adapter = async (config) => {
   if (method === "GET" && path === `/admin/pages/${PAGE_ID}`) return response(config, { id: PAGE_ID, name: "Direct canvas local fixture", slug: publicationSlug, format: 2, status: publicationStatus, sections: [] });
   if (method === "GET" && path === "/admin/settings") return response(config, { id: "fixture", siteName: "Local canvas regression", header: { ...(new URLSearchParams(location.search).has("ownedRegions") ? { storeDesign: { mode: "cms", homeId: PAGE_ID, headerId: "owned-header", footerId: "owned-footer" } } : {}), storeTheme: savedTheme, languages: { enabled: ["en", "ar"], default: "ar" }, identity: { name: text("Canvas fixture"), industry: "fashion", audience: "all" }, storefront: { mobileBottomNavEnabled: false, liveChatEnabled: false } } });
   if (method === "GET" && path === "/admin/site-styles") return response(config, { styles: [], draft: null });
-  if (method === "GET" && ["/admin/pages/blocks", "/admin/pages/templates", "/admin/catalog/products", "/admin/catalog/categories"].includes(path)) return response(config, []);
+  // The store's catalog as the admin lists it (the test shop's own first category and products), for the pickers
+  // of a products block and a categories block.
+  if (method === "GET" && path === "/admin/catalog/categories") return response(config, [{ id: "dresses", name: "Dresses", slug: "dresses" }, { id: "hijabs", name: "Hijabs", slug: "hijabs" }]);
+  if (method === "GET" && path === "/admin/catalog/products") return response(config, [{ id: "coat", title: "Rose dress", slug: "rose-dress", isActive: true, categoryId: "dresses" }, { id: "bag", title: "Rose hijab", slug: "rose-hijab", isActive: true, categoryId: "hijabs" }]);
+  if (method === "GET" && ["/admin/pages/blocks", "/admin/pages/templates"].includes(path)) return response(config, []);
   throw new Error(`Unmocked admin request (blocked): ${method} ${path}`);
 };
 window.addEventListener("message", (event) => {

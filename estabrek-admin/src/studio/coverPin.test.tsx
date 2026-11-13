@@ -38,10 +38,10 @@ describe("held, then covered by the next section", () => {
     view.rerender(<CoverPanel node={node} isLast={false} busy={false} onOps={onOps} />);
     expect(screen.getByRole("button", { name: "Darkens" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Shrinks back" }));
-    expect((edits.at(-1) as { props: { cover: unknown } }).props.cover).toEqual({ hold: 1, under: "shrink", phone: true });
+    expect((edits.at(-1) as unknown as { props: { cover: unknown } }).props.cover).toEqual({ hold: 1, under: "shrink", phone: true });
     view.rerender(<CoverPanel node={node} isLast={false} busy={false} onOps={onOps} />);
     fireEvent.click(screen.getByTestId("studio-cover-phone"));
-    expect((edits.at(-1) as { props: { cover: unknown } }).props.cover).toEqual({ hold: 1, under: "shrink", phone: false });
+    expect((edits.at(-1) as unknown as { props: { cover: unknown } }).props.cover).toEqual({ hold: 1, under: "shrink", phone: false });
     view.rerender(<CoverPanel node={node} isLast busy={false} onOps={onOps} />);
     expect(screen.getByTestId("studio-cover-last").textContent).toMatch(/last section/);
     // Off again: nothing of it left on the section.
