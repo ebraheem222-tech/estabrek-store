@@ -18,6 +18,7 @@ import * as DataAPI from "../../api/data.api";
 import type { BulkOp, GridFilter, GridMeta, GridPage, GridQuery, GridRow, GridTable, Lang, View } from "../../api/data.api";
 import { CellEditor, CellView, ValueInput, field, input } from "./GridCells";
 import { ImportDialog } from "./ImportDialog";
+import { valueFrom } from "./kinds";
 import { parseCsv } from "./csv";
 import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
@@ -345,7 +346,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
               <span className="w-56">
                 <ValueInput kind={kindOf(setting.field, table.fields)!} field={table.fields.find((f) => f.id === setting.field)} lang={lang} value={setting.value} onChange={(value) => setSetting({ ...setting, value })} testId="bulk-set-value" />
               </span>
-              <button type="button" className={primary} disabled={bulk.isPending} onClick={() => bulk.mutate({ op: "set", field: setting.field, value: kindOf(setting.field, table.fields) === "boolean" ? (setting.value === "" ? null : setting.value === "true") : setting.value })} data-testid="bulk-set-apply">
+              <button type="button" className={primary} disabled={bulk.isPending} onClick={() => bulk.mutate({ op: "set", field: setting.field, value: valueFrom(table.fields.find((f) => f.id === setting.field)!, setting.value) ?? "" })} data-testid="bulk-set-apply">
                 {say("طبّق عالمحدّد|Apply to the chosen|החל על הנבחרים")}
               </button>
               <span className="text-white/45">{say("قيمة فاضية بتفضّي الخانة.|An empty value empties the cell.|ערך ריק מרוקן את התא.")}</span>
@@ -510,6 +511,8 @@ function FilterRow({ index, filter, columns, meta, lang, onChange }: { index: nu
   const column = all.find((c) => c.id === filter.field) ?? all[0];
   const ops = meta.ops[column.kind] ?? [];
   const needs = opNeeds(filter.op);
+  // A date with its time is asked about by its day.
+  const askKind = column.kind === "datetime" ? "date" : column.kind;
   const text = (v: unknown) => (v === undefined || v === null ? "" : String(v));
   const choices = column.kind === "$status" ? (["DRAFT", "PUBLISHED", "ARCHIVED"] as const).map((s) => ({ id: s, name: s as string })) : (column.field?.options ?? []).map((o) => ({ id: o.id, name: o.name?.[lang] || o.name?.ar || o.name?.en || o.id }));
   const listed = Array.isArray(filter.value) ? (filter.value as string[]) : [];
@@ -531,14 +534,14 @@ function FilterRow({ index, filter, columns, meta, lang, onChange }: { index: nu
       </select>
       {needs === "one" || needs === "two" ? (
         <span className="w-44">
-          <ValueInput kind={column.kind} field={column.field} lang={lang} value={text(filter.value)} onChange={(v) => onChange({ ...filter, value: filterValue(column.kind, v) })} testId={`filter-${index}-value`} />
+          <ValueInput kind={askKind} field={column.field} lang={lang} value={text(filter.value)} onChange={(v) => onChange({ ...filter, value: filterValue(column.kind, v) })} testId={`filter-${index}-value`} />
         </span>
       ) : null}
       {needs === "two" ? (
         <>
           <span className="text-xs text-white/45">{say("و|and|ו")}</span>
           <span className="w-44">
-            <ValueInput kind={column.kind} field={column.field} lang={lang} value={text(filter.value2)} onChange={(v) => onChange({ ...filter, value2: filterValue(column.kind, v) })} testId={`filter-${index}-value2`} />
+            <ValueInput kind={askKind} field={column.field} lang={lang} value={text(filter.value2)} onChange={(v) => onChange({ ...filter, value2: filterValue(column.kind, v) })} testId={`filter-${index}-value2`} />
           </span>
         </>
       ) : null}

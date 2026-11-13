@@ -33,6 +33,8 @@ describe("Columns and cells", () => {
     expect(editable(col("$updatedAt"))).toBe(false);
     expect(editable(col("$slug"))).toBe(true);
     expect(editable(col("price"))).toBe(true);
+    // JSON needs room: it's written in the row's window.
+    expect(editable({ id: "extra", kind: "json", name: "Extra" })).toBe(false);
   });
 
   test("one of the store's tables: its address or id, its columns (worked-out ones marked), when it was made", () => {
@@ -44,6 +46,22 @@ describe("Columns and cells", () => {
     expect(filterColumns(columns, false).map((c) => c.id).slice(-3)).toEqual(["$updatedAt", "$createdAt", "$publishedAt"]);
     // The store's words are plain.
     expect(cellText(store[1], row({ customer: "Lina" }), "ar")).toBe("Lina");
+  });
+
+  test("the newer kinds in a cell: shown as words, sent as what they are", () => {
+    const tags: CollectionField = { id: "tags", type: "multiSelect", options: [{ id: "new", name: { en: "New" } }, { id: "sale", name: { en: "On sale" } }] };
+    const more = columnsOf({ fields: [tags, { id: "price", type: "money", currency: "USD" }, { id: "place", type: "location" }, { id: "mail", type: "email" }] }, "en");
+    const c = (id: string) => more.find((x) => x.id === id)!;
+    const r = row({ tags: ["new", "sale"], price: 1250.5, place: { lat: 31.7, lng: 35.2, label: "Shop" }, mail: "sara@example.test" });
+    expect(cellText(c("tags"), r, "en")).toBe("New, On sale");
+    expect(cellText(c("price"), r, "en")).toBe("US$1,250.50");
+    expect(cellText(c("place"), r, "en")).toBe("Shop");
+    expect(cellPatch(c("tags"), r, "en", "sale")).toEqual({ values: { tags: ["sale"] } });
+    expect(cellPatch(c("tags"), r, "en", "")).toEqual({ values: { tags: null } });
+    expect(cellPatch(c("place"), r, "en", "32, 34.5, New shop")).toEqual({ values: { place: { lat: 32, lng: 34.5, label: "New shop" } } });
+    expect(cellPatch(c("price"), r, "en", "99")).toEqual({ values: { price: 99 } });
+    expect(filterValue("money", "50")).toBe(50);
+    expect(sheetCells([["slug", "price", "tags"], ["a", "1250.5", "new, sale"]], [{ id: "price", type: "money" }, tags])).toEqual([["slug", "price", "tags"], ["a", 1250.5, "new, sale"]]);
   });
 
   test("a cell as words", () => {
@@ -66,7 +84,9 @@ describe("Columns and cells", () => {
     expect(cellPatch(col("title"), r, "ar", "ربيع جديد")).toEqual({ values: { title: { en: "Spring", ar: "ربيع جديد" } } });
     expect(cellPatch(col("title"), r, "ar", "  ")).toEqual({ values: { title: { en: "Spring" } } });
     expect(cellPatch(col("body"), r, "ar", "")).toEqual({ values: { body: null } });
-    expect(cellPatch(col("price"), r, "ar", " 12.5 ")).toEqual({ values: { price: "12.5" } });
+    expect(cellPatch(col("price"), r, "ar", " 12.5 ")).toEqual({ values: { price: 12.5 } });
+    // What isn't a number goes as written, for the server to say (or to read, like "1,250").
+    expect(cellPatch(col("price"), r, "ar", "1,250")).toEqual({ values: { price: "1,250" } });
     expect(cellPatch(col("price"), r, "ar", "")).toEqual({ values: { price: null } });
     expect(cellPatch(col("active"), r, "ar", "true")).toEqual({ values: { active: true } });
     expect(cellPatch(col("active"), r, "ar", "")).toEqual({ values: { active: null } });

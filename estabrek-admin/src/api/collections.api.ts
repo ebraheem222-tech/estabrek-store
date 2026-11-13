@@ -2,7 +2,8 @@
 import { api } from "./http";
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
-export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color";
+/** The kinds of field (backend lib/collectionTree.ts FIELD_TYPES). */
+export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location";
 /** A field: its kind, its name, and its rules (backend lib/fieldRules.ts). */
 export type CollectionField = {
   id: string;
@@ -23,6 +24,8 @@ export type CollectionField = {
   message?: Local;
   /** A hint under the field in forms. */
   help?: Local;
+  /** Money: its currency, three letters (ILS when not said). */
+  currency?: string;
 };
 export type Collection = { id: string; slug: string; name: Local; fields: CollectionField[]; templateId: string | null; items: number; published: number; createdAt: string; updatedAt: string };
 export type ItemStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";

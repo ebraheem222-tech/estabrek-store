@@ -4,6 +4,7 @@
  * and read back as the field holds values, and a field's rules are said in a few words.
  */
 import type { CollectionField, FieldType, Local } from "../../api/collections.api";
+import { draftFrom, valueFrom } from "../data/kinds";
 
 export type Lang = "ar" | "en" | "he";
 export type Shape = NonNullable<CollectionField["shape"]>;
@@ -68,11 +69,10 @@ export function defaultDraft(field: CollectionField, lang: Lang): string {
   const v = field.default;
   if (v === undefined || v === null) return "";
   if (WORDS.includes(field.type)) return typeof v === "object" ? ((v as Local)[lang] ?? "") : "";
-  if (field.type === "boolean") return v === true ? "true" : v === false ? "false" : "";
-  return String(v);
+  return draftFrom(field, v);
 }
 
-/** The box's words as the default the field keeps (a number as a number, yes/no as yes/no, words under their language). */
+/** The box's words as the default the field keeps (a number as a number, yes/no as yes/no, several choices as a list, words under their language). */
 export function defaultFrom(field: CollectionField, lang: Lang, draft: string): unknown {
   if (WORDS.includes(field.type)) {
     const out: Local = { ...(field.default && typeof field.default === "object" ? (field.default as Local) : {}) };
@@ -80,10 +80,10 @@ export function defaultFrom(field: CollectionField, lang: Lang, draft: string): 
     else delete out[lang];
     return Object.keys(out).length ? out : undefined;
   }
-  if (draft.trim() === "") return undefined;
-  if (field.type === "number") return Number.isFinite(Number(draft)) ? Number(draft) : undefined;
-  if (field.type === "boolean") return draft === "true";
-  return draft.trim();
+  const v = valueFrom(field, draft);
+  // A number that isn't one is no default (a row's cell would send it on for the server to refuse; a field's default isn't sent half-written).
+  if (v === null || ((field.type === "number" || field.type === "money") && typeof v !== "number")) return undefined;
+  return v;
 }
 
 /** A limit's box as the limit the field keeps (a number, or a day). */
@@ -114,3 +114,50 @@ export function ruleParts(field: CollectionField, lang: Lang): string[] {
   }
   return out;
 }
+
+/* ---------------- A choice field's choices ---------------- */
+
+type Choice = NonNullable<CollectionField["options"]>[number];
+
+/** A new choice: its id from its name when that gives letters, else "choice", "choice2"… (never one that's taken). */
+export function addChoice(field: CollectionField, name: string, lang: Lang): CollectionField {
+  const taken = new Set((field.options ?? []).map((o) => o.id));
+  const words = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  let base = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join("").replace(/^[^a-z]+/, "").slice(0, 24) || "choice";
+  if (!/^[a-z]/.test(base)) base = "choice";
+  let id = base;
+  for (let n = 2; taken.has(id); n++) id = `${base}${n}`;
+  return { ...field, options: [...(field.options ?? []), { id, name: { [lang]: name.trim() || id } }] };
+}
+
+/** A choice's name in one language (its id never changes: rows keep it). */
+export function renameChoice(field: CollectionField, id: string, lang: Lang, name: string): CollectionField {
+  return { ...field, options: (field.options ?? []).map((o): Choice => (o.id === id ? { ...o, name: { ...o.name, [lang]: name } } : o)) };
+}
+
+/** Without one choice (the last one stays: a choice field needs its choices); a default that named it lets go of it. */
+export function removeChoice(field: CollectionField, id: string): CollectionField {
+  const options = (field.options ?? []).filter((o) => o.id !== id);
+  if (!options.length) return field;
+  const out: CollectionField = { ...field, options };
+  if (out.default === id) delete out.default;
+  if (Array.isArray(out.default)) {
+    const kept = out.default.filter((x) => x !== id);
+    if (kept.length) out.default = kept;
+    else delete out.default;
+  }
+  return out;
+}
+
+/** A choice up or down in the list (the order they're offered in). */
+export function moveChoice(field: CollectionField, id: string, by: -1 | 1): CollectionField {
+  const options = [...(field.options ?? [])];
+  const i = options.findIndex((o) => o.id === id);
+  const j = i + by;
+  if (i < 0 || j < 0 || j >= options.length) return field;
+  [options[i], options[j]] = [options[j], options[i]];
+  return { ...field, options };
+}
+
+/** The currencies offered for money (any three letters can still be written). */
+export const CURRENCIES = ["ILS", "USD", "EUR", "JOD", "GBP", "AED", "SAR", "EGP", "TRY"] as const;

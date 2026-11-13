@@ -5,6 +5,7 @@
  */
 import type { Collection, CollectionField, FieldType, ItemStatus, Local } from "../../api/collections.api";
 import type { ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
+import { shownText, valueFrom } from "./kinds";
 
 export const LANGS: Lang[] = ["ar", "en", "he"];
 export const LANG_NAME: Record<Lang, string> = { ar: "عربي", en: "English", he: "עברית" };
@@ -96,7 +97,7 @@ export function newFilter(column: string, kind: ColumnKind, ops: Record<ColumnKi
 
 /** The value as the server wants it for this kind of column (numbers as numbers). */
 export function filterValue(kind: ColumnKind, raw: string): unknown {
-  if (kind === "number") return raw.trim() === "" ? "" : Number(raw);
+  if (kind === "number" || kind === "money") return raw.trim() === "" ? "" : Number(raw);
   return raw;
 }
 
@@ -136,22 +137,9 @@ export function cellText(column: Column, row: Pick<GridRow, "slug" | "status" | 
   if (column.id === "$publishedAt") return dateText(row.publishedAt, lang);
   const v = row.data?.[column.id];
   if (v === undefined || v === null || v === "") return "";
-  switch (column.kind) {
-    case "text":
-    case "longText":
-      // The owner's tables hold words per language; the store's own hold them plain.
-      return typeof v === "object" ? local(v as Local, lang) : typeof v === "string" ? v : "";
-    case "number":
-      return typeof v === "number" ? v.toLocaleString("en") : "";
-    case "boolean":
-      return v === true ? "✓" : "";
-    case "select": {
-      const o = column.field?.options?.find((x) => x.id === v);
-      return o ? local(o.name, lang) || o.id : String(v);
-    }
-    default:
-      return String(v);
-  }
+  // The owner's tables hold words per language; the store's own hold them plain.
+  if (column.kind === "text" || column.kind === "longText") return typeof v === "object" ? local(v as Local, lang) : typeof v === "string" ? v : "";
+  return column.field ? shownText(column.field, v, lang) : String(v);
 }
 
 /** A text cell after its words in one language changed (an emptied language is left out; nothing left = null). */
@@ -270,13 +258,12 @@ export function cellPatch(column: Column, row: Pick<GridRow, "data">, lang: Lang
   if (column.id === "$slug") return { slug: draft.trim() };
   if (column.id === "$status") return { status: draft as ItemStatus };
   if (column.kind === "text" || column.kind === "longText") return { values: { [column.id]: withWords(row.data?.[column.id], lang, draft) } };
-  if (column.kind === "boolean") return { values: { [column.id]: draft === "" ? null : draft === "true" } };
-  // Numbers, dates and choices are turned by the server (the same way a file's cells are).
-  return { values: { [column.id]: draft.trim() === "" ? null : draft.trim() } };
+  // Each kind turns its box's words its own way (./kinds.ts); what it can't turn goes as written, for the server to say.
+  return { values: { [column.id]: column.field ? valueFrom(column.field, draft) : draft.trim() === "" ? null : draft.trim() } };
 }
 
-/** Which columns a cell can be written in (the dates are the server's own). */
-export const editable = (column: Column) => column.kind !== "$date";
+/** Which columns a cell can be written in: not the server's own dates, and not JSON (it needs room: the row's window). */
+export const editable = (column: Column) => column.kind !== "$date" && column.kind !== "json";
 
 /**
  * The export's lines (as the server's CSV gives them) as a sheet's cells: numbers as numbers and
@@ -293,7 +280,7 @@ export function sheetCells(lines: string[][], fields: Array<Pick<CollectionField
       head.map((_, i) => {
         const v = cells[i] ?? "";
         if (v === "") return null;
-        if (kinds[i] === "number") return Number.isFinite(Number(v)) ? Number(v) : v;
+        if (kinds[i] === "number" || kinds[i] === "money") return Number.isFinite(Number(v)) ? Number(v) : v;
         if (kinds[i] === "boolean") return v === "true" ? true : v === "false" ? false : v;
         return /^'[=+\-@\t\r]/.test(v) ? v.slice(1) : v;
       }),

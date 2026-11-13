@@ -24,7 +24,7 @@ export function fieldIdOf(name: string, taken: string[]): string {
   for (let i = 2; ; i++) if (!taken.includes(`${base}${i}`)) return `${base}${i}`;
 }
 
-export const newField = (type: FieldType, name: Local, taken: string[]): CollectionField => ({ id: fieldIdOf(name.en ?? name.ar ?? name.he ?? type, taken), type, name, ...(type === "select" ? { options: [{ id: "one", name: { ...name } }] } : {}) });
+export const newField = (type: FieldType, name: Local, taken: string[]): CollectionField => ({ id: fieldIdOf(name.en ?? name.ar ?? name.he ?? type, taken), type, name, ...(type === "select" || type === "multiSelect" ? { options: [{ id: "one", name: { ...name } }] } : {}) });
 
 /** What's sent for an item: empty words and values left out (the API checks the rest). */
 export function itemDataOut(fields: CollectionField[], values: Record<string, unknown>): Record<string, unknown> {
@@ -35,9 +35,14 @@ export function itemDataOut(fields: CollectionField[], values: Record<string, un
       const words: Local = {};
       for (const l of LANGS) { const w = (v as Local | undefined)?.[l]; if (typeof w === "string" && w.trim()) words[l] = w; }
       if (Object.keys(words).length) out[f.id] = words;
-    } else if (f.type === "number") {
+    } else if (f.type === "number" || f.type === "money") {
       const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
       if (Number.isFinite(n)) out[f.id] = n;
+    } else if (f.type === "multiSelect") {
+      if (Array.isArray(v) && v.length) out[f.id] = v;
+    } else if (f.type === "json" || f.type === "location") {
+      // Whole values (the server checks their shape).
+      if (v !== undefined && v !== null && v !== "") out[f.id] = v;
     } else if (f.type === "boolean") {
       if (typeof v === "boolean") out[f.id] = v;
     } else if (typeof v === "string" && v.trim()) out[f.id] = v.trim();
@@ -92,4 +97,9 @@ export const CATEGORY_COLLECTION: Collection = { id: "$category", slug: "c", nam
 
 /** What an element's props can take from a collection, by the fields that fit each. */
 export const BINDABLE: Record<string, string[]> = { heading: ["text"], text: ["text"], button: ["label", "href"], image: ["src", "alt", "href"], video: ["src"] };
-export const PROP_FIELDS: Record<string, FieldType[]> = { text: ["text", "longText", "number", "date", "select"], label: ["text", "longText", "number", "date", "select"], alt: ["text", "longText"], src: ["image"], href: ["link"] };
+const WORDS_LIKE: FieldType[] = ["text", "longText", "number", "date", "select", "email", "phone", "datetime", "money", "multiSelect", "location"];
+export const PROP_FIELDS: Record<string, FieldType[]> = { text: WORDS_LIKE, label: WORDS_LIKE, alt: ["text", "longText"], src: ["image"], href: ["link", "email", "phone", "file", "location"] };
+/** What some elements take beyond that: a video's source is a video field (or, as before, a picture field holding a video's address). */
+const ELEMENT_FIELDS: Record<string, Record<string, FieldType[]>> = { video: { src: ["video", "image"] } };
+/** The kinds of field an element's prop takes (the same list as the backend's lib/collectionTree.ts). */
+export const fieldsFor = (element: string | undefined, prop: string): FieldType[] => (element && ELEMENT_FIELDS[element]?.[prop]) || PROP_FIELDS[prop] || [];
