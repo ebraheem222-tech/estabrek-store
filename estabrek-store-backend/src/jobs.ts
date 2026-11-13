@@ -22,6 +22,7 @@ import { runAutomations, setVideoChecker } from "./modules/admin/automations.ser
 import { checkProcessingVideos } from "./modules/admin/videos.controller.js";
 import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
 import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
+import { purgeTrash } from "./lib/collections.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -85,6 +86,16 @@ export function registerBackgroundJobs() {
     firstMs: 2 * MIN,
     offReason: () => (env.NODE_ENV === "test" ? "NODE_ENV" : null),
     run: () => purgeOldPhotos(),
+  });
+
+  registerJob({
+    name: "dataTrash",
+    group: "data",
+    // Rows deleted from the tables wait 30 days in the trash, then go for good.
+    everyMs: 6 * HOUR,
+    limits: { min: HOUR, max: 48 * HOUR },
+    firstMs: 3 * MIN,
+    run: () => purgeTrash(),
   });
 
   registerJob({
