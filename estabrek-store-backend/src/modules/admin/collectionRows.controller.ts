@@ -24,6 +24,7 @@ import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { checkItemData, ITEM_SLUG, LIMITS, TRASH_DAYS, withDefaults } from "../../lib/collections.js";
 import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
 import { changedUnique, uniqueIssues, type Candidate } from "../../lib/uniqueValues.js";
+import { hiddenOf } from "../../lib/schemaChange.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { GRID_LIMITS, OPS_BY_KIND, STATUSES, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQuery, queryRows, rowsSlice, viewCounts } from "../../lib/dataQuery.js";
 import { LANGS, coerceValue, csvLine, exportColumns, freeSlug, looseData, patchData, slugFrom, type Issue } from "../../lib/dataRows.js";
@@ -130,7 +131,8 @@ async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], 
     }
     if (slug) seen.add(slug);
     const next = status?.success ? status.data : undefined;
-    if (was) updates.push({ row: index, slug: was.slug, id: was.id, data: checked.data, changed: changedUnique(table.fields, (was.data ?? {}) as Record<string, unknown>, checked.data), status: next, publish: next === "PUBLISHED" && !was.publishedAt });
+    // What a change of fields put aside in this row stays with it.
+    if (was) updates.push({ row: index, slug: was.slug, id: was.id, data: { ...hiddenOf(was.data, table.fields), ...checked.data }, changed: changedUnique(table.fields, (was.data ?? {}) as Record<string, unknown>, checked.data), status: next, publish: next === "PUBLISHED" && !was.publishedAt });
     else creates.push({ row: index, slug, data: checked.data, status: next ?? "DRAFT" });
   });
 
