@@ -69,3 +69,40 @@ test("? lists the editor's shortcuts", async ({ page }) => {
   await page.getByTestId("studio-shortcuts-open").click();
   await expect(page.getByTestId("studio-shortcuts")).toBeVisible();
 });
+
+test("an object as wide as its holder says why it won't go sideways; with \"inside\" off it does", async ({ page }) => {
+  test.setTimeout(150000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(url);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  // The menu of links fills its section's width.
+  const at = await canvasPoint(page, '[data-tree-node="links"]');
+  const was = (await frame(page).locator('[data-tree-node="links"]').boundingBox())!;
+  await page.mouse.move(at.x - 4, at.y);
+  await page.mouse.move(at.x, at.y, { steps: 3 });
+  await page.mouse.down();
+  await page.mouse.move(at.x + 60, at.y + 6, { steps: 8 });
+  await page.mouse.move(at.x + 120, at.y + 10, { steps: 8 });
+  await expect(page.getByTestId("studio-placing-held")).toHaveAttribute("data-axis", "x");
+  await expect(page.getByTestId("studio-placing-held")).toContainText("As wide as its holder");
+  await page.mouse.up();
+  await expect(page.getByTestId("studio-placing-held")).toHaveCount(0);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  const held = (await frame(page).locator('[data-tree-node="links"]').boundingBox())!;
+  expect(Math.abs(held.x - was.x)).toBeLessThan(40);
+
+  // "Stays inside its holder" turned off in the Dragging menu: it follows the pointer, and nothing is said.
+  await page.getByTestId("studio-drag-toggle").click();
+  await page.getByTestId("studio-drag-inside").uncheck();
+  await page.getByTestId("studio-drag-toggle").click();
+  const again = await canvasPoint(page, '[data-tree-node="links"]');
+  await page.mouse.move(again.x - 4, again.y);
+  await page.mouse.move(again.x, again.y, { steps: 3 });
+  await page.mouse.down();
+  await page.mouse.move(again.x + 60, again.y, { steps: 8 });
+  await page.mouse.move(again.x + 120, again.y, { steps: 8 });
+  await expect(page.getByTestId("studio-placing")).toBeVisible();
+  await expect(page.getByTestId("studio-placing-held")).toHaveCount(0);
+  await page.mouse.up();
+  await expect.poll(async () => (await frame(page).locator('[data-tree-node="links"]').boundingBox())!.x).toBeGreaterThan(held.x + 60);
+});
