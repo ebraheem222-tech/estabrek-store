@@ -6,7 +6,8 @@
 import { say } from "../../studio/say";
 import type { CollectionField } from "../../api/collections.api";
 import { ValueInput, field as fieldBox, input } from "../data/GridCells";
-import { LIMIT_NAME, SHAPE_NAME, defaultDraft, defaultFrom, limitFrom, setRules, type Lang, type RuleFit, type Shape } from "./fieldRules";
+import { useState } from "react";
+import { CURRENCIES, LIMIT_NAME, SHAPE_NAME, addChoice, defaultDraft, defaultFrom, limitFrom, moveChoice, removeChoice, renameChoice, setRules, type Lang, type RuleFit, type Shape } from "./fieldRules";
 
 const label = "block text-xs text-white/60";
 
@@ -14,8 +15,53 @@ export function FieldRulesEditor({ field, lang, fit, shapes, onChange }: { field
   const set = (patch: Parameters<typeof setRules>[1]) => onChange(setRules(field, patch));
   const limit = (v: number | string | undefined) => (v === undefined ? "" : String(v));
   const own = field.pattern !== undefined;
+  const [fresh, setFresh] = useState("");
+  const choices = field.type === "select" || field.type === "multiSelect";
+  const small = "rounded-lg bg-white/[0.07] px-2 py-1 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+  const add = () => {
+    if (!fresh.trim()) return;
+    onChange(addChoice(field, fresh, lang));
+    setFresh("");
+  };
   return (
     <div className="grid w-full gap-3 rounded-lg bg-white/[0.03] p-3 md:grid-cols-2" data-testid={`rules-${field.id}`}>
+      {choices ? (
+        <div className="space-y-2 md:col-span-2" data-testid={`choices-${field.id}`}>
+          <div className={label}>{say("الاختيارات (بالترتيب اللي بتنعرض فيه)|The choices (in the order they're offered)|האפשרויות (בסדר שבו הן מוצעות)")}</div>
+          <ul className="space-y-1">
+            {(field.options ?? []).map((o, i, all) => (
+              <li key={o.id} className="flex items-center gap-2" data-testid={`choice-${field.id}-${o.id}`}>
+                <input className={`${input} flex-1`} value={o.name?.[lang] ?? ""} placeholder={o.name?.ar || o.name?.en || o.name?.he || o.id} onChange={(e) => onChange(renameChoice(field, o.id, lang, e.target.value))} aria-label={say("إسم الاختيار|The choice's name|שם האפשרות")} data-testid={`choice-${field.id}-${o.id}-name`} />
+                <code className="text-[10px] text-white/30" dir="ltr">{o.id}</code>
+                <button type="button" className={small} disabled={i === 0} onClick={() => onChange(moveChoice(field, o.id, -1))} aria-label="↑">↑</button>
+                <button type="button" className={small} disabled={i === all.length - 1} onClick={() => onChange(moveChoice(field, o.id, 1))} aria-label="↓">↓</button>
+                <button type="button" className={`${small} text-red-300`} disabled={all.length <= 1} onClick={() => onChange(removeChoice(field, o.id))} aria-label={say("شيل الاختيار|Remove the choice|הסר אפשרות")} data-testid={`choice-${field.id}-${o.id}-remove`}>×</button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center gap-2">
+            <input className={`${input} flex-1`} value={fresh} placeholder={say("اختيار جديد…|A new choice…|אפשרות חדשה…")} onChange={(e) => setFresh(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} data-testid={`choices-${field.id}-new`} />
+            <button type="button" className={small} disabled={!fresh.trim() || (field.options?.length ?? 0) >= 30} onClick={add} data-testid={`choices-${field.id}-add`}>+ {say("ضيف|Add|הוסף")}</button>
+          </div>
+          <p className="text-[11px] text-white/40">{say("شيل اختيار ما بيمسحه من السطور اللي فيها: بتضل عليه لحد ما تتعدّل.|Removing a choice doesn't clear it from the rows that have it: they keep it until they're changed.|הסרת אפשרות לא מוחקת אותה מהשורות שמחזיקות בה.")}</p>
+        </div>
+      ) : null}
+      {field.type === "money" ? (
+        <label className={label}>
+          {say("العملة|Currency|מטבע")}
+          <span className="mt-1 flex items-center gap-2">
+            <select className={fieldBox} value={(CURRENCIES as readonly string[]).includes(field.currency ?? "ILS") ? (field.currency ?? "ILS") : "$other"} onChange={(e) => onChange(e.target.value === "$other" ? { ...field, currency: "" } : { ...field, currency: e.target.value })} data-testid={`rule-${field.id}-currency`}>
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              <option value="$other">{say("غيرها…|Another…|אחר…")}</option>
+            </select>
+            {!(CURRENCIES as readonly string[]).includes(field.currency ?? "ILS") ? <input className={`${fieldBox} w-20 font-mono uppercase`} dir="ltr" maxLength={3} value={field.currency ?? ""} placeholder="XXX" onChange={(e) => onChange({ ...field, currency: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })} data-testid={`rule-${field.id}-currency-own`} /> : null}
+          </span>
+        </label>
+      ) : null}
       {fit.unique ? (
         <label className="flex items-center gap-2 text-xs text-white/70 md:col-span-2">
           <input type="checkbox" checked={field.unique === true} onChange={(e) => set(e.target.checked ? { unique: true, default: undefined } : { unique: false })} data-testid={`rule-${field.id}-unique`} />

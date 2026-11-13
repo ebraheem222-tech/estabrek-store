@@ -5,6 +5,7 @@
  * up in the database by lib/uniqueValues.ts.
  */
 import type { FieldType } from "./collectionTree.js";
+import { dayOf } from "./storeTime.js";
 
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 /** The rule parts of a field (lib/collectionTree.ts carries them on Field). */
@@ -28,7 +29,7 @@ export const SHAPES = ["email", "phone", "url", "letters", "digits", "slug"] as 
 export type Shape = (typeof SHAPES)[number];
 const SHAPE_RE: Record<Shape, RegExp> = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
-  phone: /^\+?[0-9][0-9 ()-]{5,19}$/,
+  phone: /^\(?\+?[0-9][0-9 ()-]{5,19}$/,
   url: /^https:\/\/[^\s<>"']+$/i,
   letters: /^[\p{L}\p{M} '-]+$/u,
   digits: /^[0-9]+$/,
@@ -46,6 +47,16 @@ export const RULES_BY_TYPE: Record<FieldType, { unique: boolean; limits: "number
   select: { unique: false, limits: null, shape: false, default: true },
   color: { unique: false, limits: null, shape: false, default: true },
   image: { unique: false, limits: null, shape: false, default: false },
+  email: { unique: true, limits: null, shape: false, default: true },
+  phone: { unique: true, limits: null, shape: false, default: true },
+  datetime: { unique: false, limits: "date", shape: false, default: false },
+  money: { unique: false, limits: "number", shape: false, default: true },
+  multiSelect: { unique: false, limits: null, shape: false, default: true },
+  file: { unique: false, limits: null, shape: false, default: false },
+  video: { unique: false, limits: null, shape: false, default: false },
+  model3d: { unique: false, limits: null, shape: false, default: false },
+  json: { unique: false, limits: null, shape: false, default: false },
+  location: { unique: false, limits: null, shape: false, default: false },
 };
 
 export const PATTERN_MAX = 200;
@@ -135,8 +146,10 @@ export function ruleIssue(f: RuledField, value: unknown): string | null {
     if (typeof f.max === "number" && value > f.max) return "Too big";
   }
   if (fit.limits === "date" && typeof value === "string") {
-    if (typeof f.min === "string" && value < f.min) return "Too early";
-    if (typeof f.max === "string" && value > f.max) return "Too late";
+    // A date with its time is judged by the store day it falls on.
+    const day = f.type === "datetime" ? dayOf(value) : value.slice(0, 10);
+    if (typeof f.min === "string" && day < f.min) return "Too early";
+    if (typeof f.max === "string" && day > f.max) return "Too late";
   }
   if (f.type === "text" || f.type === "longText") {
     const all = value && typeof value === "object" ? Object.values(value as Record<string, unknown>).filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
@@ -161,5 +174,7 @@ export function uniqueKeys(f: Pick<RuledField, "type">, value: unknown): string[
           .map((x) => x.trim().toLowerCase())
       : [];
   }
+  // A phone number is the same number however it's spaced.
+  if (f.type === "phone") return [String(value).replace(/[^\d+]/g, "")];
   return [String(value)];
 }

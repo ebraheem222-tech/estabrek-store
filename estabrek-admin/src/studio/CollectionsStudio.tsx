@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { listCollections, type Collection, type Local } from "../api/collections.api";
 import type { PageTreeNode } from "../api/pages.api";
-import { BINDABLE, CATEGORY_COLLECTION, PRODUCT_COLLECTION, PROP_FIELDS } from "../features/collections/collectionForms";
+import { BINDABLE, CATEGORY_COLLECTION, PRODUCT_COLLECTION, fieldsFor } from "../features/collections/collectionForms";
 import type { Lang } from "../lib/lang";
 import { say } from "./say";
 import type { TreeIndex } from "./treeIndex";
@@ -80,7 +80,7 @@ export function BindPanel({ node, collection, lang, busy, onProps }: { node: Pag
     <div className={box} data-testid="bind-panel">
       <div className="text-xs font-medium text-white/85">◆ {say(`ربط بحقل من «${words(collection.name, lang) || collection.slug}»|Connect to a field of “${words(collection.name, lang) || collection.slug}”|חיבור לשדה של ״${words(collection.name, lang) || collection.slug}״`)}</div>
       {props.map((prop) => {
-        const fits = collection.fields.filter((f) => (PROP_FIELDS[prop] ?? []).includes(f.type));
+        const fits = collection.fields.filter((f) => fieldsFor(node.type, prop).includes(f.type));
         return (
           <label key={prop} className="block text-[11px] text-white/55">{say(PROP_NAME[prop])}
             <select className={control} disabled={busy} value={bind[prop] ?? ""} onChange={(e) => set(prop, e.target.value)} data-testid={`bind-${prop}`}>

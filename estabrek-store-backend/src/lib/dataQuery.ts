@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/httpError.js";
 import type { Field, FieldType } from "./collectionTree.js";
+import { dayStart, nextDay } from "./storeTime.js";
 
 export const OPS = ["contains", "notContains", "is", "isNot", "startsWith", "endsWith", "empty", "notEmpty", "gt", "gte", "lt", "lte", "between", "anyOf", "isTrue", "isFalse"] as const;
 export type Op = (typeof OPS)[number];
@@ -30,6 +31,16 @@ export const OPS_BY_KIND: Record<ColumnKind, readonly Op[]> = {
   image: ["empty", "notEmpty"],
   link: ["contains", "empty", "notEmpty"],
   color: ["is", "empty", "notEmpty"],
+  email: ["contains", "is", "isNot", "startsWith", "endsWith", "empty", "notEmpty"],
+  phone: ["contains", "is", "empty", "notEmpty"],
+  datetime: ["is", "gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
+  money: ["is", "isNot", "gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
+  multiSelect: ["anyOf", "empty", "notEmpty"],
+  file: ["contains", "empty", "notEmpty"],
+  video: ["empty", "notEmpty"],
+  model3d: ["empty", "notEmpty"],
+  json: ["empty", "notEmpty"],
+  location: ["empty", "notEmpty"],
   $slug: ["contains", "is", "startsWith"],
   $status: ["is", "isNot", "anyOf"],
   $date: ["gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
@@ -165,7 +176,7 @@ export function filterSql(fields: Field[], f: GridFilter): Prisma.Sql {
     const same = anyLang(id, Prisma.sql`lower(btrim(w.v)) = lower(${v})`);
     return f.op === "is" ? same : Prisma.sql`NOT ${same}`;
   }
-  if (kind === "number") {
+  if (kind === "number" || kind === "money") {
     const n = num(id);
     if (f.op === "empty") return Prisma.sql`${n} IS NULL`;
     if (f.op === "notEmpty") return Prisma.sql`${n} IS NOT NULL`;
@@ -182,10 +193,32 @@ export function filterSql(fields: Field[], f: GridFilter): Prisma.Sql {
     // Never ticked counts as "no".
     return f.op === "isTrue" ? Prisma.sql`${json(id)} = 'true'::jsonb` : Prisma.sql`${json(id)} IS DISTINCT FROM 'true'::jsonb`;
   }
-  // date, select, image, link, color: plain words.
+  // The rest are plain words (or, for JSON and places, a whole value that is there or isn't).
   const w = words(id);
   if (f.op === "empty") return Prisma.sql`COALESCE(${w}, '') = ''`;
   if (f.op === "notEmpty") return Prisma.sql`COALESCE(${w}, '') <> ''`;
+  if (kind === "datetime") {
+    // Kept as moments (ISO, UTC: they compare as words); a day asked about is the store's day.
+    const from = (day: string) => dayStart(day).toISOString();
+    const a = date(f.value, what);
+    if (f.op === "is") return Prisma.sql`(${w} >= ${from(a)} AND ${w} < ${from(nextDay(a))})`;
+    if (f.op === "gt") return Prisma.sql`${w} >= ${from(nextDay(a))}`;
+    if (f.op === "gte") return Prisma.sql`${w} >= ${from(a)}`;
+    if (f.op === "lt") return Prisma.sql`${w} < ${from(a)}`;
+    if (f.op === "lte") return Prisma.sql`${w} < ${from(nextDay(a))}`;
+    return Prisma.sql`(${w} >= ${from(a)} AND ${w} < ${from(nextDay(date(f.value2, what)))})`;
+  }
+  if (kind === "multiSelect") {
+    // Any of the asked choices among the row's own.
+    return Prisma.sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(CASE WHEN jsonb_typeof(${json(id)}) = 'array' THEN ${json(id)} ELSE '[]'::jsonb END) AS c(v) WHERE c.v IN (${Prisma.join(list(f.value, what))}))`;
+  }
+  if (kind === "phone") {
+    // A number is the same number however it's spaced.
+    const digits = str(f.value, what).replace(/[^\d+]/g, "");
+    if (!digits) throw bad(`${what}: digits are needed`);
+    const bare = Prisma.sql`regexp_replace(COALESCE(${w}, ''), '[^0-9+]', '', 'g')`;
+    return f.op === "is" ? Prisma.sql`${bare} = ${digits}` : Prisma.sql`${bare} LIKE ${`%${like(digits)}%`}`;
+  }
   if (kind === "date") {
     const a = date(f.value, what);
     if (f.op === "is") return Prisma.sql`${w} = ${a}`;
@@ -197,9 +230,13 @@ export function filterSql(fields: Field[], f: GridFilter): Prisma.Sql {
   }
   if (f.op === "anyOf") return Prisma.sql`${w} IN (${Prisma.join(list(f.value, what))})`;
   if (f.op === "contains") return Prisma.sql`${w} ILIKE ${`%${like(str(f.value, what))}%`}`;
+  if (f.op === "startsWith") return Prisma.sql`${w} ILIKE ${`${like(str(f.value, what))}%`}`;
+  if (f.op === "endsWith") return Prisma.sql`${w} ILIKE ${`%${like(str(f.value, what))}`}`;
   const v = str(f.value, what);
-  if (f.op === "is") return kind === "color" ? Prisma.sql`lower(${w}) = ${v.toLowerCase()}` : Prisma.sql`${w} = ${v}`;
-  return Prisma.sql`COALESCE(${w}, '') <> ${v}`;
+  // Colours and emails are the same whatever their letters' case.
+  const blind = kind === "color" || kind === "email";
+  if (f.op === "is") return blind ? Prisma.sql`lower(${w}) = ${v.toLowerCase()}` : Prisma.sql`${w} = ${v}`;
+  return blind ? Prisma.sql`lower(COALESCE(${w}, '')) <> ${v.toLowerCase()}` : Prisma.sql`COALESCE(${w}, '') <> ${v}`;
 }
 
 /** The words to look for anywhere in a row: its address, or any of its values (never a field's name). */
@@ -248,7 +285,7 @@ export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">):
           ? Prisma.raw(`i."status"::text`)
           : kind === "text" || kind === "longText"
             ? Prisma.sql`lower(left(COALESCE(NULLIF(${json(s.field)}->>${q.lang}::text, ''), NULLIF(${json(s.field)}->>'ar', ''), NULLIF(${json(s.field)}->>'en', ''), NULLIF(${json(s.field)}->>'he', '')), 200))`
-            : kind === "number"
+            : kind === "number" || kind === "money"
               ? num(s.field)
               : kind === "boolean"
                 ? Prisma.sql`(${json(s.field)} = 'true'::jsonb)`

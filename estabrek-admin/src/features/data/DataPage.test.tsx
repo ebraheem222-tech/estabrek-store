@@ -45,7 +45,7 @@ const table: Collection = {
   ],
 };
 const meta: GridMeta = {
-  ops: { text: ["contains", "is", "empty"], longText: ["contains"], number: ["is", "gt", "between", "empty"], date: ["is"], boolean: ["isTrue", "isFalse"], select: ["is", "anyOf"], image: ["empty"], link: ["contains"], color: ["is"], $slug: ["contains"], $status: ["is"], $date: ["gt"] },
+  ops: { text: ["contains", "is", "empty"], longText: ["contains"], number: ["is", "gt", "between", "empty"], date: ["is"], boolean: ["isTrue", "isFalse"], select: ["is", "anyOf"], image: ["empty"], link: ["contains"], color: ["is"], $slug: ["contains"], $status: ["is"], $date: ["gt"], datetime: ["is", "gte"], multiSelect: ["anyOf", "empty"], json: ["empty"] } as GridMeta["ops"],
   systemColumns: ["$slug", "$status", "$createdAt", "$updatedAt", "$publishedAt"],
   views: ["all", "draft", "published", "archived", "trash"],
   limits: { pageSize: 200, filters: 12, sorts: 3, search: 100, value: 200, anyOf: 30, rows: 50_000, importRows: 500, bulkIds: 500, trashDays: 30 },
@@ -147,7 +147,7 @@ describe("The data grid", () => {
     expect(editor.value).toBe("80");
     fireEvent.change(editor, { target: { value: "95" } });
     fireEvent.keyDown(editor, { key: "Enter" });
-    await waitFor(() => expect(m.patchRow).toHaveBeenCalledWith("c1", "id-summer", { values: { price: "95" }, lang: "en" }));
+    await waitFor(() => expect(m.patchRow).toHaveBeenCalledWith("c1", "id-summer", { values: { price: 95 }, lang: "en" }));
     await waitFor(() => expect(screen.getByTestId("cell-summer-price").textContent).toBe("95"));
     // Words: the other languages stay.
     fireEvent.doubleClick(screen.getByTestId("cell-winter-title"));
@@ -160,6 +160,44 @@ describe("The data grid", () => {
     fireEvent.doubleClick(screen.getByTestId("cell-winter-kind"));
     fireEvent.change(within(screen.getByTestId("cell-winter-kind")).getByTestId("cell-editor"), { target: { value: "sale" } });
     await waitFor(() => expect(m.patchRow).toHaveBeenLastCalledWith("c1", "id-winter", { values: { kind: "sale" }, lang: "en" }));
+  });
+
+  test("the newer kinds in the grid: several choices ticked in the cell, JSON only in the row's window, a date-and-time asked by its day", async () => {
+    const things = { ...table, id: "c3", slug: "things", fields: [
+      { id: "title", type: "text" as const, name: { en: "Title" } },
+      { id: "tags", type: "multiSelect" as const, name: { en: "Tags" }, options: [{ id: "new", name: { en: "New" } }, { id: "sale", name: { en: "On sale" } }, { id: "last", name: { en: "Last" } }] },
+      { id: "extra", type: "json" as const, name: { en: "Extra" } },
+      { id: "at", type: "datetime" as const, name: { en: "When" } },
+    ] };
+    const chair = row("chair", { title: { en: "Chair" }, tags: ["new"], extra: { a: 1 }, at: "2026-11-13T12:30:00.000Z" });
+    m.listCollections.mockResolvedValue([things]);
+    m.getRows.mockImplementation(async () => page({ rows: [chair], total: 1 }));
+    m.patchRow.mockImplementation(async (_t: string, _id: string, body: { values?: Record<string, unknown> }) => ({ ...chair, data: { ...chair.data, ...(body.values ?? {}) } }));
+    show();
+    const cell = await screen.findByTestId("cell-chair-tags");
+    expect(cell.textContent).toBe("New");
+    expect(screen.getByTestId("cell-chair-extra").textContent).toBe('{"a":1}');
+    // Several choices: tick, tick, then Enter saves them in the choices' own order.
+    fireEvent.doubleClick(cell);
+    fireEvent.click(within(cell).getByTestId("cell-editor-last"));
+    fireEvent.click(within(cell).getByTestId("cell-editor-sale"));
+    expect(m.patchRow).not.toHaveBeenCalled();
+    fireEvent.keyDown(within(cell).getByTestId("cell-editor-sale"), { key: "Enter" });
+    await waitFor(() => expect(m.patchRow).toHaveBeenCalledWith("c3", "id-chair", { values: { tags: ["new", "sale", "last"] }, lang: "en" }));
+    await waitFor(() => expect(screen.getByTestId("cell-chair-tags").textContent).toBe("NewOn saleLast"));
+    // JSON isn't written in the cell.
+    fireEvent.doubleClick(screen.getByTestId("cell-chair-extra"));
+    expect(screen.queryByTestId("cell-editor")).toBeNull();
+    // A date with its time is asked about by its day, and several choices by a list.
+    fireEvent.click(screen.getByTestId("filter-add"));
+    fireEvent.change(screen.getByTestId("filter-0-field"), { target: { value: "at" } });
+    fireEvent.change(screen.getByTestId("filter-0-op"), { target: { value: "gte" } });
+    expect((screen.getByTestId("filter-0-value") as HTMLInputElement).type).toBe("date");
+    fireEvent.change(screen.getByTestId("filter-0-value"), { target: { value: "2026-11-13" } });
+    await waitFor(() => expect(lastQuery().filters).toEqual([{ field: "at", op: "gte", value: "2026-11-13" }]));
+    fireEvent.change(screen.getByTestId("filter-0-field"), { target: { value: "tags" } });
+    fireEvent.click(within(screen.getByTestId("filter-0-list")).getByLabelText("On sale"));
+    await waitFor(() => expect(lastQuery().filters).toEqual([{ field: "tags", op: "anyOf", value: ["sale"] }]));
   });
 
   test("ticked rows change together; \"all in the result\" sends the question instead of ids", async () => {

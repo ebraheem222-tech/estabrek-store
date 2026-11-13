@@ -17,6 +17,8 @@ import { itemDataOut, LANGS, newField, slugOf, titleOf, WORD_TYPES, type Lang } 
 import { gridMeta } from "../../api/data.api";
 import { FieldRulesEditor } from "./FieldRulesEditor";
 import { fitRules, ruleCount, ruleParts } from "./fieldRules";
+import { ValueInput } from "../data/GridCells";
+import { KIND_NAME, draftFrom, valueFrom } from "../data/kinds";
 import { listPages, updatePage } from "../../api/pages.api";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
@@ -24,10 +26,7 @@ const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 const input = "w-full rounded-lg border border-white/15 bg-surface-925 px-2 py-1.5 text-sm";
 const PRESET_ICON: Record<string, string> = { blog: "✎", lookbook: "◐", branches: "⌂", faq: "?" };
-const TYPE_NAME: Record<FieldType, string> = {
-  text: "كلام قصير|Short words|טקסט קצר", longText: "نص طويل|Long text|טקסט ארוך", image: "صورة|Picture|תמונה", number: "رقم|Number|מספר", date: "تاريخ|Date|תאריך",
-  link: "رابط|Link|קישור", boolean: "نعم/لا|Yes/no|כן/לא", select: "اختيار|Choice|בחירה", color: "لون|Colour|צבע",
-};
+const TYPE_NAME = KIND_NAME;
 const STATUS_NAME: Record<ItemStatus, string> = { DRAFT: "مسودة|Draft|טיוטה", PUBLISHED: "منشور|Published|פורסם", ARCHIVED: "مؤرشف|Archived|בארכיון" };
 const words = (v: Local | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
@@ -271,7 +270,15 @@ function FieldInput({ field: f, lang, wordsLang, value, problem, onChange, onPic
   if (f.type === "link") return wrap(<input className={input} dir="ltr" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder="/shop or https://…" />);
   if (f.type === "boolean") return <label className="flex items-center gap-2 text-xs text-white/70" data-testid={`item-field-${f.id}`}><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} />{label}</label>;
   if (f.type === "select") return wrap(<select className={input} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}><option value="">—</option>{f.options?.map((o) => <option key={o.id} value={o.id}>{words(o.name, lang) || o.id}</option>)}</select>);
-  return wrap(<input type="color" className="h-9 w-16" value={typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : "#c86b98"} onChange={(e) => onChange(e.target.value)} />);
+  if (f.type === "color") return wrap(<input type="color" className="h-9 w-16" value={typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : "#c86b98"} onChange={(e) => onChange(e.target.value)} />);
+  // The newer kinds (an email, a date with its time, money, several choices, a place, JSON…): each through its own box.
+  return wrap(<KindBox field={f} lang={lang} value={value} onChange={onChange} />);
+}
+
+/** One of the newer kinds in the item form: the box keeps its own words while they're written, and hands the form the value they make. */
+function KindBox({ field: f, lang, value, onChange }: { field: CollectionField; lang: Lang; value: unknown; onChange: (v: unknown) => void }) {
+  const [draft, setDraft] = useState(() => draftFrom(f, value));
+  return <ValueInput kind={f.type} field={f} lang={lang} value={draft} big onChange={(d) => { setDraft(d); onChange(valueFrom(f, d)); }} testId={`item-box-${f.id}`} />;
 }
 
 function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collection; lang: Lang; onSaved: () => void; onDeleted: () => void }) {

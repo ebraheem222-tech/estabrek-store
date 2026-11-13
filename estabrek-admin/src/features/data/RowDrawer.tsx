@@ -13,6 +13,7 @@ import * as DataAPI from "../../api/data.api";
 import type { GridRow, Issue, Lang } from "../../api/data.api";
 import { ValueInput, input } from "./GridCells";
 import { LANGS, LANG_NAME, WORDS, issueSay } from "./dataText";
+import { draftFrom, draftProblem, valueFrom } from "./kinds";
 
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
@@ -24,7 +25,7 @@ function startValues(table: Collection, row: GridRow | null): Record<string, str
   for (const f of table.fields) {
     const v = row?.data?.[f.id];
     if (WORDS.includes(f.type)) for (const l of LANGS) out[`${f.id}.${l}`] = v && typeof v === "object" ? ((v as Record<string, string>)[l] ?? "") : "";
-    else out[f.id] = v === undefined || v === null ? "" : String(v);
+    else out[f.id] = draftFrom(f, v);
   }
   return out;
 }
@@ -47,17 +48,20 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!row) return DataAPI.addRow(table.id, { slug: slug.trim() || undefined, status, values, lang });
-      // Every field is sent as the form holds it: words whole (their three languages), the rest as written.
+      // Words that can't be sent as they are (JSON with a missing bracket) are said here, before anything goes.
+      const unsendable = table.fields.flatMap((f) => (WORDS.includes(f.type) ? [] : [[f.id, draftProblem(f, values[f.id] ?? "")] as const])).filter(([, why]) => why);
+      if (unsendable.length) throw { local: unsendable.map(([field, why]) => ({ field, message: why!, say: Object.fromEntries(why!.split("|").map((w, i) => [["ar", "en", "he"][i], w])) })) };
+      // Every field is sent as the form holds it: words whole (their three languages), each other kind turned its own way.
       const out: Record<string, unknown> = {};
       for (const f of table.fields) {
         if (WORDS.includes(f.type)) {
           const words: Record<string, string> = {};
           for (const l of LANGS) if (values[`${f.id}.${l}`]?.trim()) words[l] = values[`${f.id}.${l}`];
           out[f.id] = Object.keys(words).length ? words : null;
-        } else if (f.type === "boolean") out[f.id] = values[f.id] === "" ? null : values[f.id] === "true";
-        else out[f.id] = values[f.id].trim() === "" ? null : values[f.id].trim();
+        } else out[f.id] = valueFrom(f, values[f.id] ?? "");
       }
+      // A new row: only what was written (its fields' defaults fill the rest).
+      if (!row) return DataAPI.addRow(table.id, { slug: slug.trim() || undefined, status, values: Object.fromEntries(Object.entries(out).filter(([, v]) => v !== null)), lang });
       return DataAPI.patchRow(table.id, row.id, { ...(slug.trim() !== row.slug ? { slug: slug.trim() } : {}), ...(status !== row.status ? { status } : {}), values: out, lang });
     },
     onSuccess: () => {
@@ -66,7 +70,7 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
     },
     onError: (e) => {
       const data = (e as { response?: { data?: { error?: string; details?: { issues?: Issue[] } } } })?.response?.data;
-      const found = data?.details?.issues ?? (data?.error === "SLUG_TAKEN" ? [{ field: "slug", message: "This address is already used" }] : []);
+      const found = (e as { local?: Issue[] })?.local ?? data?.details?.issues ?? (data?.error === "SLUG_TAKEN" ? [{ field: "slug", message: "This address is already used" }] : []);
       setIssues(found);
       toast.error(say("في قيم مش مزبوطة|Some values are wrong|יש ערכים שגויים"), { description: found.map((i) => `${i.field}: ${text(i)}`).join(" · ") || undefined });
     },
@@ -131,7 +135,7 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
               {label}
               <span className="mt-1 flex items-center gap-2">
                 <span className="min-w-0 flex-1">
-                  <ValueInput kind={f.type} field={f} lang={lang} value={values[f.id] ?? ""} onChange={(v) => set(f.id, v)} testId={`row-${f.id}`} />
+                  <ValueInput kind={f.type} field={f} lang={lang} value={values[f.id] ?? ""} onChange={(v) => set(f.id, v)} testId={`row-${f.id}`} big />
                 </span>
                 {f.type === "image" ? (
                   <>

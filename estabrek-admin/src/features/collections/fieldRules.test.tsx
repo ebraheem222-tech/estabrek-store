@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import type { CollectionField } from "../../api/collections.api";
 import { setLangForTests } from "../../lib/lang";
 import { issueSay } from "../data/dataText";
-import { defaultDraft, defaultFrom, fitRules, limitFrom, ruleCount, ruleParts, setRules, type RuleFit } from "./fieldRules";
+import { addChoice, defaultDraft, defaultFrom, fitRules, limitFrom, moveChoice, removeChoice, renameChoice, ruleCount, ruleParts, setRules, type RuleFit } from "./fieldRules";
 
 // A field's rules in the fields editor (B2): the pure parts, then the editor itself over a stand-in API.
 
@@ -24,6 +24,8 @@ const RULES: Record<string, RuleFit> = {
   select: { unique: false, limits: null, shape: false, default: true },
   color: { unique: false, limits: null, shape: false, default: true },
   image: { unique: false, limits: null, shape: false, default: false },
+  money: { unique: false, limits: "number", shape: false, default: true },
+  multiSelect: { unique: false, limits: null, shape: false, default: true },
 };
 vi.mock("../../api/data.api", () => ({ gridMeta: vi.fn(async () => ({ rules: RULES, shapes: ["email", "phone", "url", "letters", "digits", "slug"] })) }));
 import CollectionsPage from "./CollectionsPage";
@@ -78,6 +80,29 @@ describe("A field's rules, the pure parts", () => {
     expect(ruleParts(f({ id: "c", type: "text", pattern: "^[A-Z]+$" }), "en")[0]).toContain("pattern: ^[A-Z]+$");
   });
 
+  test("a choice field's choices: added with an id of their own, renamed, moved, removed (the last one stays)", () => {
+    const tags = f({ id: "tags", type: "multiSelect", options: [{ id: "one", name: { en: "One" } }], default: ["one"] });
+    const two = addChoice(tags, "On sale", "en");
+    expect(two.options).toEqual([{ id: "one", name: { en: "One" } }, { id: "onSale", name: { en: "On sale" } }]);
+    // A name without latin letters gets "choice", then "choice2"; a taken id gets a number.
+    const three = addChoice(addChoice(two, "جديد", "ar"), "آخر القطع", "ar");
+    expect(three.options?.map((o) => o.id)).toEqual(["one", "onSale", "choice", "choice2"]);
+    expect(addChoice(two, "on sale", "en").options?.map((o) => o.id)).toEqual(["one", "onSale", "onSale2"]);
+    expect(renameChoice(two, "onSale", "ar", "تخفيض").options?.[1]).toEqual({ id: "onSale", name: { en: "On sale", ar: "تخفيض" } });
+    expect(moveChoice(two, "onSale", -1).options?.map((o) => o.id)).toEqual(["onSale", "one"]);
+    expect(moveChoice(two, "one", -1)).toBe(two);
+    // Removing a choice lets go of a default that named it; the last choice can't go.
+    expect(removeChoice(two, "one")).toEqual({ id: "tags", type: "multiSelect", options: [{ id: "onSale", name: { en: "On sale" } }] });
+    expect(removeChoice(tags, "one")).toBe(tags);
+    expect(removeChoice(f({ id: "kind", type: "select", options: [{ id: "a" }, { id: "b" }], default: "a" }), "a")).toEqual({ id: "kind", type: "select", options: [{ id: "b" }] });
+    // Defaults of the newer kinds, as the field keeps them.
+    expect(defaultFrom(two, "en", "onSale,one")).toEqual(["onSale", "one"]);
+    expect(defaultDraft({ ...two, default: ["one", "onSale"] }, "en")).toBe("one,onSale");
+    expect(defaultFrom(f({ id: "p", type: "money" }), "en", "12.5")).toBe(12.5);
+    expect(defaultFrom(f({ id: "p", type: "money" }), "en", "cheap")).toBeUndefined();
+    expect(defaultFrom(f({ id: "m", type: "email" }), "en", " a@b.co ")).toBe("a@b.co");
+  });
+
   test("a refused value is said in the owner's words when the field has them", () => {
     expect(issueSay({ message: "Too big", say: { ar: "السعر لحد 1000", en: "Up to 1000" } }, "en")).toEqual({ own: "Up to 1000" });
     expect(issueSay({ message: "Too big", say: { ar: "السعر لحد 1000" } }, "he")).toEqual({ own: "السعر لحد 1000" });
@@ -88,6 +113,47 @@ describe("A field's rules, the pure parts", () => {
 
 describe("The fields editor", () => {
   const table = { id: "c1", slug: "codes", name: { en: "Codes" }, templateId: null, items: 0, published: 0, createdAt: "", updatedAt: "", fields: [f({ id: "code", type: "text", name: { en: "Code" }, required: true }), f({ id: "price", type: "number", name: { en: "Price" }, max: 1000 }), f({ id: "cover", type: "image", name: { en: "Cover" } })] };
+
+  test("a new kind of field: several choices get their choices, money its currency", async () => {
+    setLangForTests("en");
+    api.listCollections.mockResolvedValue([table]);
+    api.collectionPresets.mockResolvedValue({});
+    api.listItems.mockResolvedValue([]);
+    api.updateCollection.mockResolvedValue(table);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <CollectionsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByText("Fields"));
+    const kinds = [...(screen.getByTestId("field-new-type") as HTMLSelectElement).options].map((o) => o.value);
+    expect(kinds).toHaveLength(19);
+    expect(kinds).toEqual(expect.arrayContaining(["email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location"]));
+    fireEvent.change(screen.getByTestId("field-new-type"), { target: { value: "multiSelect" } });
+    fireEvent.click(screen.getByTestId("field-add"));
+    fireEvent.change(screen.getByTestId("field-new-type"), { target: { value: "money" } });
+    fireEvent.click(screen.getByTestId("field-add"));
+    // The new choice field starts with one choice; more are added by name, and one can go.
+    fireEvent.click(await screen.findByTestId("field-rules-severalChoices"));
+    fireEvent.change(screen.getByTestId("choice-severalChoices-one-name"), { target: { value: "New" } });
+    fireEvent.change(screen.getByTestId("choices-severalChoices-new"), { target: { value: "On sale" } });
+    fireEvent.click(screen.getByTestId("choices-severalChoices-add"));
+    fireEvent.change(screen.getByTestId("choices-severalChoices-new"), { target: { value: "Last pieces" } });
+    fireEvent.keyDown(screen.getByTestId("choices-severalChoices-new"), { key: "Enter" });
+    fireEvent.click(screen.getByTestId("choice-severalChoices-onSale-remove"));
+    fireEvent.click(screen.getByTestId("rule-severalChoices-default-lastPieces"));
+    fireEvent.click(screen.getByTestId("field-rules-money"));
+    fireEvent.change(screen.getByTestId("rule-money-currency"), { target: { value: "USD" } });
+    fireEvent.change(screen.getByTestId("rule-money-min"), { target: { value: "0" } });
+    fireEvent.click(screen.getByTestId("fields-save"));
+    await waitFor(() => expect(api.updateCollection).toHaveBeenCalledTimes(1));
+    expect(api.updateCollection.mock.calls[0][1].fields.slice(3)).toEqual([
+      { id: "severalChoices", type: "multiSelect", name: { ar: "عدة اختيارات", en: "Several choices", he: "כמה בחירות" }, options: [{ id: "one", name: { ar: "عدة اختيارات", en: "New", he: "כמה בחירות" } }, { id: "lastPieces", name: { en: "Last pieces" } }], default: ["lastPieces"] },
+      { id: "money", type: "money", name: { ar: "مبلغ (عملة)", en: "Money", he: "סכום (מטבע)" }, currency: "USD", min: 0 },
+    ]);
+  });
 
   test("each field's rules open under it: only the ones that fit its kind, and they're saved with the fields", async () => {
     setLangForTests("en");
