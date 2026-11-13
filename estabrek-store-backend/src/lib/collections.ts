@@ -9,6 +9,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { storedTree, TREE_VERSION, type PageTree } from "./pageTree.js";
 import { FIELD_TYPES, bindTree, expandLists, itemAddress, listIdsOf, type CollectionLite, type Field, type ItemLite } from "./collectionTree.js";
+import { PATTERN_MAX, SHAPES, ruleIssue, rulesProblem } from "./fieldRules.js";
 
 export const TEMPLATE_KIND = "collectionTemplate";
 export const FIELD_ID = /^[a-z][a-zA-Z0-9]{0,30}$/;
@@ -25,13 +26,41 @@ const local = (max: number) => z.object({ ar: z.string().trim().max(max).optiona
 const safeHref = (v: string) => /^(\/(?!\/)|https:\/\/|mailto:|tel:)/i.test(v) && !/[\s<>"']/.test(v);
 const safeSrc = (v: string) => /^(\/(?!\/)|https:\/\/)/i.test(v) && !/[\s<>"']/.test(v);
 
-export const FieldSchema = z.object({
-  id: z.string().regex(FIELD_ID, "A field id is a word like title or coverImage"),
-  type: z.enum(FIELD_TYPES),
-  name: local(60).optional(),
-  required: z.boolean().optional(),
-  options: z.array(z.object({ id: z.string().regex(FIELD_ID), name: local(60).optional() }).strict()).max(LIMITS.options).optional(),
-}).strict().refine((f) => f.type !== "select" || (f.options?.length ?? 0) > 0, "A choice field needs its choices");
+export const FieldSchema = z
+  .object({
+    id: z.string().regex(FIELD_ID, "A field id is a word like title or coverImage"),
+    type: z.enum(FIELD_TYPES),
+    name: local(60).optional(),
+    required: z.boolean().optional(),
+    options: z.array(z.object({ id: z.string().regex(FIELD_ID), name: local(60).optional() }).strict()).max(LIMITS.options).optional(),
+    // Its rules (lib/fieldRules.ts).
+    unique: z.boolean().optional(),
+    default: z.unknown().optional(),
+    min: z.union([z.number(), z.string().max(10)]).optional(),
+    max: z.union([z.number(), z.string().max(10)]).optional(),
+    shape: z.enum(SHAPES).optional(),
+    pattern: z.string().max(PATTERN_MAX).optional(),
+    message: local(200).optional(),
+    help: local(200).optional(),
+  })
+  .strict()
+  .refine((f) => f.type !== "select" || (f.options?.length ?? 0) > 0, "A choice field needs its choices")
+  .superRefine((f, ctx) => {
+    const problem = rulesProblem(f as Field);
+    if (problem) return void ctx.addIssue({ code: "custom", message: problem });
+    // The default is a value like any other: it has to pass the field's own check.
+    if (f.default !== undefined && f.default !== null && f.default !== "") {
+      const checked = checkItemData([{ ...(f as Field), default: undefined, required: false }], { [f.id]: f.default });
+      if (!checked.ok || !(f.id in checked.data)) ctx.addIssue({ code: "custom", message: `The default doesn't pass the field's own rules${checked.ok ? "" : `: ${checked.issues[0]?.message}`}` });
+    }
+  })
+  .transform((f) => {
+    // Kept as the field holds values (a day as 2026-11-13, words per language); an empty one is no default.
+    const { default: raw, ...rest } = f;
+    if (raw === undefined || raw === null || raw === "") return rest;
+    const checked = checkItemData([{ ...(rest as Field), required: false }], { [f.id]: raw });
+    return checked.ok && f.id in checked.data ? { ...rest, default: checked.data[f.id] } : rest;
+  });
 
 export const CollectionBody = z.object({
   slug: z.string().trim().regex(COLLECTION_SLUG, "Small letters, digits and -").refine((s) => !RESERVED_SLUGS.has(s), "The shop already uses this address"),
@@ -40,11 +69,13 @@ export const CollectionBody = z.object({
 }).strict();
 export type CollectionBody = z.infer<typeof CollectionBody>;
 
-/** An item's values, checked against its collection's fields (unknown keys are dropped). */
-export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: Record<string, unknown> } | { ok: false; issues: { field: string; message: string }[] } {
+export type ItemIssue = { field: string; message: string; /** The owner's own words for this field's rules, when it has them. */ say?: Partial<Record<"ar" | "en" | "he", string>> };
+
+/** An item's values, checked against its collection's fields and their rules (unknown keys are dropped). "The only value" is asked of the database separately (lib/uniqueValues.ts). */
+export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: Record<string, unknown> } | { ok: false; issues: ItemIssue[] } {
   const src = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const data: Record<string, unknown> = {};
-  const issues: { field: string; message: string }[] = [];
+  const issues: ItemIssue[] = [];
   for (const f of fields) {
     const v = src[f.id];
     const empty = v === undefined || v === null || v === "" || (typeof v === "object" && v !== null && !Array.isArray(v) && !Object.values(v).some((x) => typeof x === "string" && x.trim()));
@@ -60,8 +91,23 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
       case "select": if (typeof v === "string" && f.options?.some((o) => o.id === v)) data[f.id] = v; else bad("One of its choices"); break;
       case "color": if (typeof v === "string" && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) data[f.id] = v; else bad("A colour like #c86b98"); break;
     }
+    // Its kind is right: now the field's own rules (limits, a shape), said in the owner's words when given.
+    if (f.id in data) {
+      const broken = ruleIssue(f, data[f.id]);
+      if (broken) {
+        issues.push({ field: f.id, message: broken, ...(f.message && Object.values(f.message).some(Boolean) ? { say: f.message } : {}) });
+        delete data[f.id];
+      }
+    }
   }
   return issues.length ? { ok: false, issues } : { ok: true, data };
+}
+
+/** A new row's values with each field's default where nothing was given. */
+export function withDefaults(fields: Field[], data: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...data };
+  for (const f of fields) if (f.default !== undefined && out[f.id] === undefined) out[f.id] = f.default;
+  return out;
 }
 
 const n = (ar: string, en: string, he: string) => ({ ar, en, he });

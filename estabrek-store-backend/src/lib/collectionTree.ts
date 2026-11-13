@@ -17,7 +17,22 @@ type Tree = { version: number; root: Node };
 
 export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
-export type Field = { id: string; type: FieldType; name?: Local; required?: boolean; options?: { id: string; name?: Local }[] };
+/** A field: its kind, its name, and its rules (lib/fieldRules.ts): the only value, limits, a shape, a default, the words said when a rule fails. */
+export type Field = {
+  id: string;
+  type: FieldType;
+  name?: Local;
+  required?: boolean;
+  options?: { id: string; name?: Local }[];
+  unique?: boolean;
+  default?: unknown;
+  min?: number | string;
+  max?: number | string;
+  shape?: "email" | "phone" | "url" | "letters" | "digits" | "slug";
+  pattern?: string;
+  message?: Local;
+  help?: Local;
+};
 export type CollectionLite = { id: string; slug: string; fields: Field[] };
 export type ItemLite = { id: string; slug: string; data: Record<string, unknown>; publishedAt?: string | Date | null; createdAt?: string | Date | null; sort?: number };
 

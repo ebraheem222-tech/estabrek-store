@@ -21,7 +21,9 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
-import { checkItemData, ITEM_SLUG, LIMITS, TRASH_DAYS } from "../../lib/collections.js";
+import { checkItemData, ITEM_SLUG, LIMITS, TRASH_DAYS, withDefaults } from "../../lib/collections.js";
+import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
+import { changedUnique, uniqueIssues, type Candidate } from "../../lib/uniqueValues.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { GRID_LIMITS, OPS_BY_KIND, STATUSES, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQuery, queryRows, rowsSlice, viewCounts } from "../../lib/dataQuery.js";
 import { LANGS, coerceValue, csvLine, exportColumns, freeSlug, looseData, patchData, slugFrom, type Issue } from "../../lib/dataRows.js";
@@ -44,7 +46,7 @@ const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 const taken = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 
 r.get("/grid-meta", (_req, res) => {
-  res.json({ ops: OPS_BY_KIND, systemColumns: SYSTEM_COLUMNS, views: VIEWS, limits: { ...GRID_LIMITS, rows: LIMITS.items, importRows: IMPORT_MAX, bulkIds: BULK_MAX, trashDays: TRASH_DAYS } });
+  res.json({ ops: OPS_BY_KIND, systemColumns: SYSTEM_COLUMNS, views: VIEWS, limits: { ...GRID_LIMITS, rows: LIMITS.items, importRows: IMPORT_MAX, bulkIds: BULK_MAX, trashDays: TRASH_DAYS }, rules: RULES_BY_TYPE, shapes: SHAPES });
 });
 
 r.get(
@@ -97,8 +99,8 @@ async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], 
     (await prisma.collectionItem.findMany({ where: { collectionId: table.id, slug: { in: given.filter((s): s is string => !!s) } }, select: { id: true, slug: true, data: true, deletedAt: true, publishedAt: true } })).map((x) => [x.slug, x]),
   );
   const seen = new Set<string>();
-  const creates: Array<{ row: number; slug: string | null; data: Record<string, unknown>; status: Status }> = [];
-  const updates: Array<{ id: string; data: Record<string, unknown>; status?: Status; publish: boolean }> = [];
+  let creates: Array<{ row: number; slug: string | null; data: Record<string, unknown>; status: Status }> = [];
+  let updates: Array<{ row: number; slug: string; id: string; data: Record<string, unknown>; changed: Set<string>; status?: Status; publish: boolean }> = [];
 
   rows.forEach((row, index) => {
     const slug = given[index];
@@ -114,7 +116,8 @@ async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], 
     const loose = looseData(table.fields, row.values, opts.lang);
     issues.push(...loose.issues);
     // A row being changed keeps the values of the columns the file doesn't have (a text field: its other languages).
-    const merged: Record<string, unknown> = was ? { ...((was.data ?? {}) as Record<string, unknown>) } : {};
+    // A new row starts from the fields' defaults.
+    const merged: Record<string, unknown> = was ? { ...((was.data ?? {}) as Record<string, unknown>) } : withDefaults(table.fields, {});
     for (const [id, v] of Object.entries(loose.data)) {
       const before = merged[id];
       merged[id] = v && typeof v === "object" && !Array.isArray(v) && before && typeof before === "object" && !Array.isArray(before) ? { ...(before as object), ...(v as object) } : v;
@@ -127,9 +130,23 @@ async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], 
     }
     if (slug) seen.add(slug);
     const next = status?.success ? status.data : undefined;
-    if (was) updates.push({ id: was.id, data: checked.data, status: next, publish: next === "PUBLISHED" && !was.publishedAt });
+    if (was) updates.push({ row: index, slug: was.slug, id: was.id, data: checked.data, changed: changedUnique(table.fields, (was.data ?? {}) as Record<string, unknown>, checked.data), status: next, publish: next === "PUBLISHED" && !was.publishedAt });
     else creates.push({ row: index, slug, data: checked.data, status: next ?? "DRAFT" });
   });
+
+  // "The only value": against the table and among the rows of this batch.
+  if (table.fields.some((f) => f.unique)) {
+    const candidates: Candidate[] = [...creates.map((c) => ({ data: c.data })), ...updates.map((u) => ({ id: u.id, data: u.data, changed: u.changed }))];
+    const taken = await uniqueIssues(prisma, table.id, table.fields, candidates);
+    if (taken.size) {
+      creates.forEach((c, k) => taken.has(k) && rejected.push({ row: c.row, slug: c.slug, issues: taken.get(k)! }));
+      updates.forEach((u, k) => taken.has(creates.length + k) && rejected.push({ row: u.row, slug: u.slug, issues: taken.get(creates.length + k)! }));
+      const n = creates.length;
+      creates = creates.filter((_, k) => !taken.has(k));
+      updates = updates.filter((_, k) => !taken.has(n + k));
+      rejected.sort((a, b) => a.row - b.row);
+    }
+  }
 
   // Rows without an address get one from their words; one the table already uses gets a few random letters after it.
   const auto = creates.filter((c) => !c.slug);
@@ -201,6 +218,9 @@ r.patch(
     if (body.values) {
       const next = patchData(table.fields, (was.data ?? {}) as Record<string, unknown>, body.values, body.lang);
       if (!next.ok) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: next.issues });
+      const before = (was.data ?? {}) as Record<string, unknown>;
+      const taken = await uniqueIssues(prisma, table.id, table.fields, [{ id: was.id, data: next.data, changed: changedUnique(table.fields, before, next.data) }]);
+      if (taken.size) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: taken.get(0) });
       data.data = next.data as Prisma.InputJsonValue;
     }
     if (body.status) {
@@ -260,6 +280,12 @@ r.post(
       if (!field) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: [{ field: String(body.field ?? ""), message: "No such column" }] });
       const checked = checkItemData([field], { [field.id]: coerceValue(field, body.value, body.lang) });
       if (!checked.ok) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: checked.issues });
+      if (field.unique && field.id in checked.data) {
+        // One value for many rows is the opposite of "the only value": one ticked row at most, and only if the value is free.
+        if (!body.ids || body.ids.length !== 1) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: [{ field: field.id, message: "Only one row can hold this value" }] });
+        const taken = await uniqueIssues(prisma, table.id, table.fields, [{ id: body.ids[0], data: { [field.id]: checked.data[field.id] }, changed: new Set([field.id]) }]);
+        if (taken.size) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: taken.get(0) });
+      }
       changed =
         field.id in checked.data
           ? await prisma.$executeRaw(Prisma.sql`UPDATE "CollectionItem" AS i SET "data" = jsonb_set(i."data", ARRAY[${field.id}]::text[], ${JSON.stringify(checked.data[field.id])}::jsonb, true), "updatedAt" = ${now} WHERE ${live}`)
