@@ -30,11 +30,22 @@ export class PointSelection {
  * inside an object its other parts are one click away; Ctrl/⌘ goes straight to the deepest; Alt
  * goes round everything under the pointer. Without deep selection, inner parts are never picked.
  * `ids` is the candidate stack, deepest first; `before` what was selected before the press.
+ *
+ * The object is what the topmost thing belongs to. Usually that is the first candidate that isn't an inner part;
+ * but when the pointer is on an inner part (a section's headline) that lies over another piece of the same owner
+ * (the section's picture behind it), the owner is the object, not the piece behind what was clicked.
  */
 export function clickPick(ids: string[], before: string | null, o: { deep: boolean; deepest: boolean; cycle: boolean; isPart: (id: string) => boolean; pathOf: (id: string) => string[] }): string | null {
   if (!ids.length) return null;
   if (o.cycle) return cycleCandidate(ids, before);
-  const object = ids.find(id => !o.isPart(id)) ?? null;
+  let object = ids.find(id => !o.isPart(id)) ?? null;
+  if (object && o.isPart(ids[0])) {
+    const path = o.pathOf(ids[0]);
+    if (!path.includes(object)) {
+      const owner = [...path].reverse().find(id => !o.isPart(id) && ids.includes(id));
+      if (owner && o.pathOf(object).includes(owner)) object = owner;
+    }
+  }
   if (!o.deep) return object;
   if (o.deepest || !object) return ids[0];
   if (!before) return object;

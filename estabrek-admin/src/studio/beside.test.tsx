@@ -45,32 +45,71 @@ describe("where the inspector floats", () => {
 describe("bringing a picked element into view", () => {
   const view = { zoom: 1, pan: { x: 0, y: 0 } };
   const size = { w: 1180, h: 760 };
+  // Where a page point stands on the canvas under a view.
+  const on = (v: { zoom: number; pan: { x: number; y: number } }, x: number, y: number) => ({ x: x * v.zoom + v.pan.x, y: y * v.zoom + v.pan.y });
 
-  it("a small one grows (not past one and a half times its size) and comes between the two sides' room", () => {
-    const to = frameFor({ x: 100, y: 500, w: 60, h: 24 }, view, size, "right")!;
+  it("a small one comes closer (not past one and a half times its size) around where it was clicked", () => {
+    const box = { x: 500, y: 500, w: 60, h: 24 };
+    const anchor = { x: 520, y: 510 };
+    const to = frameFor(box, view, size, "right", { anchor })!;
     expect(to.zoom).toBe(1.5);
-    // Its middle lands in the middle of the part both sides leave free.
-    const mid = (100 + 30) * to.zoom + to.pan.x;
-    expect(mid).toBeCloseTo(size.w / 2, 0);
+    // The point under the pointer is still under it: a second click or a double click lands on the same thing.
+    expect(on(to, 520, 510).x).toBeCloseTo(anchor.x, 3);
+    expect(on(to, 520, 510).y).toBeCloseTo(anchor.y, 3);
   });
 
-  it("a wide one keeps as much width as one side's room allows, away from the panel", () => {
-    const to = frameFor({ x: 0, y: 100, w: 1280, h: 400 }, view, size, "right")!;
-    expect(to.zoom).toBeLessThan(1);
-    expect(to.zoom).toBeGreaterThan(0.5);
-    // Its right edge stops before the panel's room.
-    expect(1280 * to.zoom + to.pan.x).toBeLessThanOrEqual(size.w - RESERVE + 1);
-    // On the other side the room is on the left.
-    const left = frameFor({ x: 0, y: 100, w: 1280, h: 400 }, view, size, "left")!;
-    expect(left.pan.x).toBeGreaterThanOrEqual(RESERVE - 1);
+  it("picked from the layers (no pointer on it), it grows around its own middle", () => {
+    const to = frameFor({ x: 500, y: 400, w: 60, h: 24 }, view, size, "right")!;
+    expect(to.zoom).toBe(1.5);
+    expect(on(to, 530, 412)).toEqual({ x: 530, y: 412 });
+  });
+
+  it("one under the panel's room is slid out of it by as little as that takes, at the same zoom", () => {
+    // A card of a good size whose right part would be under the panel on the right.
+    const to = frameFor({ x: 700, y: 220, w: 420, h: 300 }, view, size, "right")!;
+    expect(to.zoom).toBe(1);
+    // Its right edge now stops at the panel's room; it didn't go further (not to the middle).
+    expect(700 + 420 + to.pan.x).toBeCloseTo(size.w - RESERVE, 0);
+    expect(to.pan.y).toBe(0);
+    // With the panel on the left the same card needs no move at all.
+    expect(frameFor({ x: 700, y: 220, w: 420, h: 300 }, view, size, "left")).toBeNull();
+  });
+
+  it("one bigger than the free room never makes the page smaller: the canvas stays where it is", () => {
+    // An opening picture taller than the screen, a section as wide as the page.
+    expect(frameFor({ x: 0, y: 60, w: 1180, h: 1500 }, view, size, "right")).toBeNull();
+    expect(frameFor({ x: 0, y: 100, w: 1280, h: 400 }, view, size, "left")).toBeNull();
+    // Even one that is only partly on the canvas: it isn't shrunk or pulled about.
+    expect(frameFor({ x: -300, y: -200, w: 1800, h: 1200 }, { zoom: 1.4, pan: { x: -300, y: -200 } }, size, "right")).toBeNull();
+  });
+
+  it("after the canvas came closer for a small one, a big one takes it back to where it was", () => {
+    const home = { zoom: 0.9, pan: { x: 20, y: 30 } };
+    const close = { zoom: 1.5, pan: { x: -400, y: -300 } };
+    expect(frameFor({ x: -400, y: -300, w: 1920, h: 1200 }, close, size, "right", { home })).toEqual(home);
+    // Already back there: nothing to do.
+    expect(frameFor({ x: 20, y: 30, w: 1152, h: 720 }, home, size, "right", { home })).toBeNull();
+    // A middling one from there only goes as far out as it needs, never past the view it had.
+    const mid = frameFor({ x: 100, y: 60, w: 900, h: 420 }, close, size, "right", { home })!;
+    expect(mid.zoom).toBeLessThan(1.5);
+    expect(mid.zoom).toBeGreaterThanOrEqual(0.9);
   });
 
   it("one that already sits well isn't moved", () => {
     // A card that takes a good part of the free room at its own size stays where it is.
-    expect(frameFor({ x: 420, y: 220, w: 320, h: 240 }, view, size, "right")).toBeNull();
+    expect(frameFor({ x: 300, y: 220, w: 520, h: 300 }, view, size, "right")).toBeNull();
     // The same card zoomed far out is brought back.
     expect(frameFor({ x: 420, y: 220, w: 96, h: 72 }, { zoom: 0.3, pan: { x: 0, y: 0 } }, size, "right")?.zoom).toBeGreaterThan(1);
     expect(frameFor({ x: 0, y: 0, w: 0, h: 0 }, view, size, "right")).toBeNull();
+  });
+
+  it("focus mode keeps its own camera: the element in the middle, a bigger one fitted", () => {
+    const small = frameFor({ x: 100, y: 500, w: 60, h: 24 }, view, size, "right", { fit: true })!;
+    expect(small.zoom).toBe(1.5);
+    expect((100 + 30) * small.zoom + small.pan.x).toBeCloseTo(size.w / 2, 0);
+    const wide = frameFor({ x: 0, y: 100, w: 1280, h: 400 }, view, size, "right", { fit: true })!;
+    expect(wide.zoom).toBeLessThan(1);
+    expect(1280 * wide.zoom + wide.pan.x).toBeLessThanOrEqual(size.w - RESERVE + 1);
   });
 });
 

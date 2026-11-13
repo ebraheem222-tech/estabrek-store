@@ -32,6 +32,7 @@
  */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { flushSync } from "react-dom";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../api/pages.api";
@@ -119,6 +120,7 @@ import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from 
 import { CodePanel, FormPanel } from "./FormPanels";
 import { InspectorGroup, InspectorJump, type InspectorGroupId } from "./InspectorNav";
 import { besidePlace, dockPref, frameFor, saveDock, saveSections, sectionsPref, sideOf } from "./beside";
+import { wheelOver } from "./canvasWheel";
 import { BesideStrips } from "./BesideStrips";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
@@ -154,6 +156,9 @@ import { DIRECTIONS, HoverFilter, SpatialGrid, pickAt, queenStep, toScreen, visi
 import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
+/** How long the canvas stays still after a press before it comes closer to what was picked: longer than the gap
+ *  between the two clicks of a double click, so the second one lands where the first did. */
+const PICK_REST = 300;
 const DEVICES = {
   wide: { w: 1440, h: 900, label: () => tr("كمبيوتر 1440", "Computer 1440") },
   desktop: { w: 1280, h: 800, label: () => tr("كمبيوتر 1280", "Computer 1280") },
@@ -250,6 +255,8 @@ function StudioDocument() {
   const [inspGroup, setInspGroup] = useState<InspectorGroupId>("content");
   const [inspGroups, setInspGroups] = useState<InspectorGroupId[]>([]);
   const [inspOpen, setInspOpen] = useState(true);
+  // With nothing selected the floating panel stays off the page (it would cover its corner) until asked for.
+  const [idleOpen, setIdleOpen] = useState(false);
   const [wide, setWide] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1024px)").matches === true);
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -260,7 +267,7 @@ function StudioDocument() {
   }, []);
   const beside = dock === "beside" && wide;
   // The last press on the canvas: a drag, or a pick (a newly selected element is brought into view only after a pick).
-  const lastPress = useRef({ moved: false, at: 0 });
+  const lastPress = useRef<{ moved: boolean; at: number; p: Pt | null }>({ moved: false, at: 0, p: null });
   // The view to go back to when nothing is selected any more.
   const homeView = useRef<View | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -374,7 +381,7 @@ function StudioDocument() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const filter = useRef(new HoverFilter());
-  const last = useRef<{ p: Pt; t: number } | null>(null);
+  const last = useRef<{ p: Pt; t: number; gone?: boolean } | null>(null);
   const down = useRef<Down | null>(null);
   const held = useRef(new Set<string>());
 
@@ -581,6 +588,8 @@ function StudioDocument() {
   }, []);
   const fit = useCallback(() => {
     pointSelection.current.cancel();
+    cancelAnimationFrame(glide.current);
+    homeView.current = null;
     if (!canvas.w) return;
     const z = Math.min(1, (canvas.w - 48) / dev.w, (canvas.h - 48) / dev.h);
     setZoom(z);
@@ -598,6 +607,19 @@ function StudioDocument() {
   const grid = useMemo(() => new SpatialGrid(pickableShapes, 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [pickableShapes, canvas.w, canvas.h]);
   const shapeOf = (sid: string | null) => (sid ? shapes.find((s) => s.id === sid) ?? null : null);
   const frameBox: Box = { x: pan.x, y: pan.y, w: dev.w * zoom, h: dev.h * zoom };
+  // The page moved under a still pointer (the wheel, the canvas coming closer, a change): the highlight is what's
+  // under the pointer now, not what was there before; it's what a click would pick.
+  useEffect(() => {
+    // (Not once the pointer has left the canvas: its last place is only kept for "Choose object".)
+    const at = last.current && !last.current.gone ? last.current.p : null;
+    if (!at || down.current) return;
+    const inside = at.x >= pan.x && at.x <= pan.x + dev.w * zoom && at.y >= pan.y && at.y <= pan.y + dev.h * zoom;
+    const now = inside ? pickAt(grid.near(at), at) : null;
+    if ((now?.id ?? null) === filter.current.current) return;
+    filter.current.reset();
+    setHovered(filter.current.push(performance.now(), now?.id ?? null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grid]);
 
   const local = (e: { clientX: number; clientY: number }): Pt => {
     const r = canvasRef.current!.getBoundingClientRect();
@@ -930,6 +952,7 @@ function StudioDocument() {
         return;
       }
       if (d.panning) {
+        if (d.moved) homeView.current = null;
         setPan({ x: d.pan.x + p.x - d.p.x, y: d.pan.y + p.y - d.p.y });
         return;
       }
@@ -952,6 +975,9 @@ function StudioDocument() {
   const onPointerDown = (e: ReactPointerEvent) => {
     pointSelection.current.cancel();
     if (busy || editing || e.button > 1 || down.current && down.current.pointerId !== e.pointerId) return;
+    // The canvas stops where it is (it may be gliding to the last pick): what's pressed stays under the pointer,
+    // and the press isn't given up by the zoom changing under it.
+    cancelAnimationFrame(glide.current);
     const p = local(e);
     if (focus && e.button === 0 && !panMode && inFrame(p)) {
       const fb = shapeOf(focus.id)?.box;
@@ -1043,7 +1069,7 @@ function StudioDocument() {
     const d = down.current;
     if (d && d.pointerId !== e.pointerId) return;
     down.current = null;
-    lastPress.current = { moved: Boolean(d?.moved), at: performance.now() };
+    lastPress.current = { moved: Boolean(d?.moved), at: performance.now(), p: d ? local(e) : null };
     if (d?.partMove && d.moved) {
       const offset = movePart(d, local(e));
       if (offset) void run(tr("المكان", "Place"), [{ op: "setLookStyle", target: d.partMove.target, kind: d.partMove.kind, screen: d.partMove.screen, style: { ...d.partMove.style, ...(d.partMove.inlineBox ? { inlineBox: true } : {}), moveX: offset.x, moveY: offset.y } }]).finally(() => send({ type: "previewLook", target: d.partMove!.target, vars: null }));
@@ -1107,21 +1133,27 @@ function StudioDocument() {
       const p = { x: e.clientX - r.left, y: e.clientY - r.top };
       if (e.ctrlKey || e.metaKey) {
         const next = zoomAround(pan, zoom, p, zoom * Math.exp(-e.deltaY * 0.0015));
+        homeView.current = null;
         setZoom(next.zoom);
         setPan(next.pan);
       } else if (p.x >= pan.x && p.x <= pan.x + dev.w * zoom && p.y >= pan.y && p.y <= pan.y + dev.h * zoom) {
-        send({ type: "scrollBy", dx: e.deltaX / zoom, dy: e.deltaY / zoom });
+        // The page scrolls; where it ends, the canvas moves until the frame's hidden edge shows (canvasWheel.ts).
+        const step = wheelOver({ x: e.deltaX, y: e.deltaY }, { zoom, pan }, { w: dev.w, h: dev.h }, canvas, layout);
+        if (step.scroll.x || step.scroll.y) send({ type: "scrollBy", dx: step.scroll.x, dy: step.scroll.y });
+        if (step.pan.x || step.pan.y) setPan({ x: pan.x + step.pan.x, y: pan.y + step.pan.y });
       } else setPan({ x: pan.x - e.deltaX, y: pan.y - e.deltaY });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [pan, zoom, dev.w, dev.h, send]);
+  }, [pan, zoom, dev.w, dev.h, send, canvas, layout]);
 
   /* --------------------------------------------------------- keyboard */
 
   const zoomBy = useCallback(
     (k: number) => {
       pointSelection.current.cancel();
+      cancelAnimationFrame(glide.current);
+      homeView.current = null;
       const next = zoomAround(pan, zoom, { x: canvas.w / 2, y: canvas.h / 2 }, zoom * k);
       setZoom(next.zoom);
       setPan(next.pan);
@@ -1140,8 +1172,12 @@ function StudioDocument() {
     const t0 = performance.now();
     const step = (now: number) => {
       const v = viewAt(from, to, (now - t0) / ms);
-      setZoom(v.zoom);
-      setPan(v.pan);
+      // Drawn at once: a press that comes between two steps meets the canvas as it shows (never a step behind,
+      // which would give the press up when that step's zoom arrived after it).
+      flushSync(() => {
+        setZoom(v.zoom);
+        setPan(v.pan);
+      });
       if (now - t0 < ms) glide.current = requestAnimationFrame(step);
     };
     glide.current = requestAnimationFrame(step);
@@ -1164,7 +1200,7 @@ function StudioDocument() {
     select(sid);
     setFocus((f) => ({ id: sid, part: null, back: f?.back ?? { zoom, pan }, ...(lite ? { lite: true } : {}) }));
     // Beside the element: it comes to the part of the canvas the floating inspector leaves free.
-    const to = beside ? frameFor(visiblePart(s.box, frameBox)?.box ?? s.box, { zoom, pan }, canvas, sideOf(inspGroup), { maxZoom: 4 }) : focusView(s.box, { zoom, pan }, canvas);
+    const to = beside ? frameFor(visiblePart(s.box, frameBox)?.box ?? s.box, { zoom, pan }, canvas, sideOf(inspGroup), { maxZoom: 4, fit: true }) : focusView(s.box, { zoom, pan }, canvas);
     if (to) glideTo(to);
     return true;
   };
@@ -1368,37 +1404,64 @@ function StudioDocument() {
   const besidePlaced = beside && canvasRect && canvasRect.width > 0
     ? besidePlace(besideShape ? (visiblePart(besideShape.box, frameBox)?.box ?? besideShape.box) : null, { x: canvasRect.left, y: canvasRect.top, w: canvasRect.width, h: canvasRect.height }, besideShape && inspGroups.length ? sideOf(inspGroup) : "right")
     : null;
+  // Nothing selected: the panel waits behind its button. Something being dragged (moved, dropped in, a box drawn):
+  // the strips and the panel get out of the way, so where it goes shows.
+  const besideIdle = beside && !selected;
+  // No strips of tabs beside it (nothing selected, the page itself, or something with no sections of settings):
+  // the panel has a button of its own to show and hide it.
+  const besideLone = beside && !(besideShape && inspGroups.length);
+  const besideShown = besideIdle ? idleOpen : inspOpen;
+  const besideToggle = () => (besideIdle ? setIdleOpen((v) => !v) : setInspOpen((v) => !v));
+  const dragBusy = Boolean(placing || drop || dragView || marquee);
   // What a late timer needs as it is now (the view, the shapes), not as it was when the selection changed.
-  const besideNow = useRef({ zoom, pan, canvas, shapes, frameBox, group: inspGroup, glide: glideTo });
-  besideNow.current = { zoom, pan, canvas, shapes, frameBox, group: inspGroup, glide: glideTo };
-  // A newly picked element comes to a comfortable size where the panel leaves room (not while it's being dragged,
-  // and not in focus mode, which has its own way in); with nothing selected the canvas goes back to where it was.
+  const besideNow = useRef({ zoom, pan, canvas, shapes, frameBox, group: inspGroup, glide: glideTo, writing: Boolean(editing) });
+  besideNow.current = { zoom, pan, canvas, shapes, frameBox, group: inspGroup, glide: glideTo, writing: Boolean(editing) };
+  const besideSide = sideOf(inspGroup);
+  // A newly picked element comes closer where the panel leaves room, when it's small or under the panel (frameFor:
+  // the page is never made smaller for a pick, and moves as little as it can). Not while it's being dragged or
+  // written in, not between the clicks of a double click, not while the page is still scrolling to it, and not in
+  // focus mode, which has its own way in. With nothing selected the canvas goes back to where it was.
   useEffect(() => {
     if (!beside) return;
+    // Anything newly picked shows its settings again (the panel may have been closed for the last one).
+    if (selected) setInspOpen(true);
     if (!selected || selected === index?.root) {
       if (homeView.current && !focus) { besideNow.current.glide(homeView.current); homeView.current = null; }
       return;
     }
-    setInspOpen(true);
     if (focus) return;
     const at = performance.now();
     let tries = 0;
     let timer = 0;
+    let seen: Box | null = null;
+    const again = (ms: number) => { if (++tries < 24) timer = window.setTimeout(run, ms); };
     const run = () => {
-      if (down.current) { if (++tries < 14) timer = window.setTimeout(run, 150); return; }
-      if (lastPress.current.moved && lastPress.current.at >= at - 60) return;
       const v = besideNow.current;
       const s = v.shapes.find((x) => x.id === selected);
-      if (!s) { if (++tries < 14) timer = window.setTimeout(run, 150); return; }
-      const to = frameFor(visiblePart(s.box, v.frameBox)?.box ?? s.box, { zoom: v.zoom, pan: v.pan }, v.canvas, sideOf(v.group));
+      // Still on its way (the page is scrolling to it, or it has just been measured): wait until it rests.
+      const still = Boolean(s && seen && Math.abs(seen.x - s.box.x) < 0.5 && Math.abs(seen.y - s.box.y) < 0.5 && Math.abs(seen.w - s.box.w) < 0.5 && Math.abs(seen.h - s.box.h) < 0.5);
+      seen = s?.box ?? null;
+      // The view stays still under a press, and for a moment after one: a second click or a double click lands
+      // where the first one did.
+      if (down.current) return again(150);
+      const rest = performance.now() - lastPress.current.at;
+      if (rest < PICK_REST) return again(PICK_REST - rest + 10);
+      if (lastPress.current.moved && lastPress.current.at >= at - 60) return;
+      if (v.writing) return;
+      if (!s) return again(150);
+      if (!still) return again(90);
+      // Picked with the pointer: the zoom keeps that point still.
+      const anchor = lastPress.current.p && !lastPress.current.moved && performance.now() - lastPress.current.at < 2000 ? lastPress.current.p : null;
+      const to = frameFor(visiblePart(s.box, v.frameBox)?.box ?? s.box, { zoom: v.zoom, pan: v.pan }, v.canvas, sideOf(v.group), { anchor, home: homeView.current });
       if (!to) return;
-      if (!homeView.current) homeView.current = { zoom: v.zoom, pan: v.pan };
+      if (homeView.current && sameView(to, homeView.current)) homeView.current = null;
+      else if (!homeView.current) homeView.current = { zoom: v.zoom, pan: v.pan };
       v.glide(to);
     };
     timer = window.setTimeout(run, 160);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, beside]);
+  }, [selected, beside, besideSide]);
 
   /* ----------------------------------------------------------- drawing */
 
@@ -3542,7 +3605,7 @@ function StudioDocument() {
             onPointerUp={onPointerUp}
             onPointerCancel={(event) => { if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
             onLostPointerCapture={(event) => { if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
-            onPointerLeave={() => setHovered(filter.current.push(performance.now() + 1000, null))}
+            onPointerLeave={() => { last.current = last.current ? { ...last.current, gone: true } : null; setHovered(filter.current.push(performance.now() + 1000, null)); }}
             onContextMenu={(e) => {
               e.preventDefault();
               const p = local(e);
@@ -3871,16 +3934,32 @@ function StudioDocument() {
           </div>
         ) : null}
 
-        {besidePlaced && besideShape ? (
+        {besidePlaced && besideShape && !dragBusy ? (
           <BesideStrips
             place={besidePlaced} groups={inspGroups} active={inspOpen ? inspGroup : null}
             onPick={(g) => { if (g === inspGroup && inspOpen) setInspOpen(false); else { setInspGroup(g); setInspOpen(true); } }}
             onAdd={() => setLeftTab("add")}
           />
         ) : null}
+        {besidePlaced && besideLone && !dragBusy ? (
+          <button
+            type="button" onClick={besideToggle} aria-pressed={besideShown}
+            className={`fixed z-30 hidden h-8 w-8 place-items-center rounded-full border text-sm shadow-lg lg:grid ${besideShown ? "border-accent-400 bg-accent-500 text-white" : "border-white/[0.12] bg-surface-950/95 text-white/80 hover:bg-accent-500/30 hover:text-white"}`}
+            style={{ left: besidePlaced.panel.left + 288 - 32, top: besidePlaced.panel.top }}
+            title={say("لوحة الإعدادات|The settings panel|לוח ההגדרות")} aria-label={say("لوحة الإعدادات|The settings panel|לוח ההגדרות")} data-testid="studio-insp-show"
+          >
+            <span aria-hidden="true">⚙</span>
+          </button>
+        ) : null}
         <aside
           className={besidePlaced ? "fixed z-30 hidden w-72 overflow-y-auto rounded-2xl border border-white/[0.12] bg-surface-950/95 p-3 text-sm shadow-2xl backdrop-blur lg:block" : "hidden w-64 shrink-0 overflow-y-auto border-s border-white/[0.08] p-3 text-sm lg:block"}
-          style={besidePlaced ? { left: besidePlaced.panel.left, top: besidePlaced.panel.top, maxHeight: besidePlaced.panel.maxHeight, ...(inspOpen || !besideShape || !inspGroups.length ? {} : { display: "none" }) } : undefined}
+          style={besidePlaced ? {
+            left: besidePlaced.panel.left, top: besidePlaced.panel.top + (besideLone ? 40 : 0), maxHeight: besidePlaced.panel.maxHeight - (besideLone ? 40 : 0),
+            // Closed (from its tab, its ✕ or its button), or nothing selected and not asked for: off the page.
+            // During a drag: out of the way.
+            ...(besideShown ? {} : { display: "none" }),
+            ...(dragBusy ? { visibility: "hidden" as const } : {}),
+          } : undefined}
           aria-label={tr("العنصر المحدد", "Selected element")} data-testid="studio-info" data-dock={besidePlaced ? "beside" : "side"} data-side={besidePlaced?.side}
           onPointerDown={besidePlaced ? (e) => e.stopPropagation() : undefined}
         >
@@ -3889,6 +3968,7 @@ function StudioDocument() {
             sections={sections} tabs={!(besidePlaced && besideShape)} active={inspGroup} onActive={setInspGroup} onGroups={setInspGroups}
             onSections={(on) => { setSections(on); saveSections(on); }}
             dock={dock} onDock={wide ? (d) => { setDock(d); saveDock(d); } : undefined}
+            onHide={besidePlaced ? besideToggle : undefined}
           />
           {inspector()}
         </aside>

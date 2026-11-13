@@ -6,8 +6,8 @@
  *
  * Sides are of the screen: "left" and "right" as seen, whatever the page's direction.
  */
-import type { Box } from "./geometry";
-import type { View } from "./focus/focusView";
+import type { Box, Pt } from "./geometry";
+import { sameView, type View } from "./focus/focusView";
 
 export type Side = "left" | "right";
 /** The groups of settings on each side of the element (InspectorNav's groups). */
@@ -58,12 +58,24 @@ export function besidePlace(box: Box | null, canvas: Rect, side: Side, stripH = 
 }
 
 /**
- * The view that brings a newly selected element to a comfortable size, in the part of the canvas the panel and
- * strips leave free: room on both sides when the element still shows well that way (so the panel can change sides
- * without the canvas moving), else on the side away from the panel. Null when it already sits well (wholly in that
- * part, neither tiny nor cramped): then the canvas doesn't move.
+ * The view for a newly selected element, in the part of the canvas the panel and the strips leave free (the panel
+ * on `side`, a strip on the other). A pick never makes the page smaller and moves it as little as it can:
+ *
+ * - Something small comes closer (up to one and a half times its size), around `anchor` (where it was clicked), so
+ *   what the pointer is on stays under it: a second click, a double click and a drag still land on it.
+ * - Something that already has a good size keeps the zoom; it is only slid out from under the panel or back onto
+ *   the canvas, by as little as that takes.
+ * - Something bigger than the free part (a section, an opening picture) is left where it is: the page isn't
+ *   shrunk to fit it. Only when the canvas had come closer for an earlier pick does it go back to `home`, the view
+ *   it had before.
+ *
+ * Null when nothing needs to move. With `fit` it is the old camera, for focus mode: the element in the middle of
+ * the free part, bigger ones fitted into it.
  */
-export function frameFor(box: Box, view: View, canvas: { w: number; h: number }, side: Side, opts: { top?: number; maxZoom?: number; minZoom?: number } = {}): View | null {
+export function frameFor(
+  box: Box, view: View, canvas: { w: number; h: number }, side: Side,
+  opts: { top?: number; maxZoom?: number; minZoom?: number; fit?: boolean; anchor?: Pt | null; home?: View | null } = {},
+): View | null {
   if (!(box.w > 0 && box.h > 0) || canvas.w < 320 || canvas.h < 200) return null;
   const top = opts.top ?? 48, bottom = 16;
   const w = box.w / view.zoom, h = box.h / view.zoom;
@@ -77,15 +89,44 @@ export function frameFor(box: Box, view: View, canvas: { w: number; h: number },
     const z = fit * 0.9 <= 1 ? fit * 0.9 : Math.min(opts.maxZoom ?? 1.5, Math.max(1, fit * 0.6));
     return clamp(z, opts.minZoom ?? 0.1, 4);
   };
-  const area = both.w >= 240 && zoomIn(both) >= 0.75 * zoomIn(one) ? both : one;
+  if (opts.fit) {
+    const area = both.w >= 240 && zoomIn(both) >= 0.75 * zoomIn(one) ? both : one;
+    if (area.w < 120) return null;
+    const want = zoomIn(area);
+    // Already well placed: inside the free part, and close enough to the size it would be given.
+    const inside = box.x >= area.x - 8 && box.x + box.w <= area.x + area.w + 8 && box.y >= top - 8 && box.y + box.h <= canvas.h - bottom + 8;
+    if (inside && view.zoom >= want * 0.55 && view.zoom <= want * 1.3) return null;
+    const pageX = (box.x + box.w / 2 - view.pan.x) / view.zoom;
+    const pageY = (box.y + box.h / 2 - view.pan.y) / view.zoom;
+    return { zoom: want, pan: { x: area.x + area.w / 2 - pageX * want, y: top + areaH / 2 - pageY * want } };
+  }
+  const area = one;
   if (area.w < 120) return null;
-  const want = zoomIn(area);
-  // Already well placed: inside the free part, and close enough to the size it would be given.
-  const inside = box.x >= area.x - 8 && box.x + box.w <= area.x + area.w + 8 && box.y >= top - 8 && box.y + box.h <= canvas.h - bottom + 8;
-  if (inside && view.zoom >= want * 0.55 && view.zoom <= want * 1.3) return null;
-  const pageX = (box.x + box.w / 2 - view.pan.x) / view.zoom;
-  const pageY = (box.y + box.h / 2 - view.pan.y) / view.zoom;
-  return { zoom: want, pan: { x: area.x + area.w / 2 - pageX * want, y: top + areaH / 2 - pageY * want } };
+  // The size it'd be given is judged by the room both sides leave (so the panel can change sides without the
+  // zoom changing); where it stands only has to clear the side the panel is on.
+  const ideal = zoomIn(both.w >= 240 && zoomIn(both) >= 0.75 * zoomIn(one) ? both : one);
+  let zoom = view.zoom;
+  // Small on the screen: it comes closer. (Between these two bounds it has a good size and the zoom is kept.)
+  if (view.zoom < ideal * 0.75) zoom = ideal;
+  else if (view.zoom > ideal * 1.3) {
+    // Too big for the free part at this zoom. The page is never shrunk for a pick; a canvas that had come closer
+    // for an earlier one goes back to where it was.
+    const home = opts.home;
+    if (home && view.zoom > home.zoom + 1e-3) {
+      if (ideal <= home.zoom) return sameView(view, home) ? null : home;
+      zoom = ideal;
+    }
+  }
+  // Zooming keeps the anchor still (the pointer, when it's on the element; else the element's middle).
+  const a = opts.anchor && opts.anchor.x >= box.x && opts.anchor.x <= box.x + box.w && opts.anchor.y >= box.y && opts.anchor.y <= box.y + box.h ? opts.anchor : { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+  const k = zoom / view.zoom;
+  const next = { x: a.x - (a.x - box.x) * k, y: a.y - (a.y - box.y) * k, w: box.w * k, h: box.h * k };
+  // Then slid into the free part by as little as it takes; an axis it is bigger than is left alone.
+  const slide = (lo: number, size: number, from: number, room: number) => (size > room + 1 ? 0 : lo < from ? from - lo : lo + size > from + room ? from + room - (lo + size) : 0);
+  const dx = slide(next.x, next.w, area.x, area.w);
+  const dy = slide(next.y, next.h, top, areaH);
+  const to: View = { zoom, pan: { x: a.x - (a.x - view.pan.x) * k + dx, y: a.y - (a.y - view.pan.y) * k + dy } };
+  return sameView(view, to) ? null : to;
 }
 
 /* ------------------------------------------------------------------ preferences (this browser) */

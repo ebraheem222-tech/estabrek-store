@@ -34,6 +34,24 @@ describe("a click picks like a design tool", () => {
     expect(clickPick(under, "detail:reviews/name", opts())).toBe("detail:reviews/quote/b");
     expect(clickPick(["heading-2", "sec"], "detail:reviews/quote", opts())).toBe("heading-2");
   });
+  it("words of a section laid over its picture pick the section, not the picture behind them", () => {
+    // An opening section: its headline (an inner part) is drawn over its picture (a field of the same section).
+    const paths: Record<string, string[]> = {
+      "detail:hero/h1": ["page", "hero", "detail:hero/h1"],
+      "slot:hero:image": ["page", "hero", "slot:hero:image"],
+      hero: ["page", "hero"],
+      card: ["page", "card"],
+    };
+    const o = opts({ pathOf: (x: string) => paths[x] ?? [x] });
+    const onWords = ["detail:hero/h1", "slot:hero:image", "hero"];
+    expect(clickPick(onWords, null, o)).toBe("hero");
+    // A second click goes inside, to the headline itself.
+    expect(clickPick(onWords, "hero", o)).toBe("detail:hero/h1");
+    // Beside the words the picture is what's under the pointer, and is picked.
+    expect(clickPick(["slot:hero:image", "hero"], null, o)).toBe("slot:hero:image");
+    // Something else placed under a see-through part of a section is still the object (it isn't that section's).
+    expect(clickPick(["detail:hero/h1", "card", "hero"], null, o)).toBe("card");
+  });
   it("Ctrl/⌘ goes to the deepest at once; Alt goes round; without deep selection parts never come", () => {
     expect(clickPick(under, null, opts({ deepest: true }))).toBe("detail:reviews/quote/b");
     expect(clickPick(under, "detail:reviews/quote/b", opts({ cycle: true }))).toBe("detail:reviews/quote");

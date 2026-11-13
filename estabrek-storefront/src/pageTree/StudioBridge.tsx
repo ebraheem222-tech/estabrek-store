@@ -90,13 +90,52 @@ const ATOM_HOLDERS = "a, button, li, figure, picture, blockquote, h1, h2, h3, h4
 const MARKED = "[data-edit], [data-edit-media], [data-edit-box], [data-part]";
 const MAX_AUTOS = 400;
 let pickElements = new WeakMap<Element, string>();
+/** The measured elements, in the order they were measured (a WeakMap can't be gone through). */
+let pickList: Element[] = [];
+const markPick = (el: Element, id: string) => { pickElements.set(el, id); pickList.push(el); };
 const invisibleOverlay = (el: Element) => { const cs = getComputedStyle(el); return Number(cs.opacity) < 0.05 || cs.visibility === "hidden"; };
+/**
+ * The measured things under a point that the page lets clicks through (pointer-events: none): the browser's own
+ * hit test never names them though they're drawn, so words laid over a picture could never be picked, only the
+ * picture behind them. A layer with nothing of its own in it (a veil, a shine, a slider's handle line) or one that
+ * covers the thing it's in (a scene's canvas) isn't one of them: it stays see-through, as it is for the shop's
+ * visitor.
+ */
+const DRAWN = "img,video,canvas,svg,picture";
+const drawsSomething = (el: Element) => el.matches(DRAWN) || Boolean(el.textContent?.trim()) || Boolean(el.querySelector(DRAWN));
+function clickThroughAt(x: number, y: number): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  for (const el of pickList) {
+    if (!el.isConnected || !("style" in el)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0 || x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+    if (getComputedStyle(el).pointerEvents !== "none" || invisibleOverlay(el) || !drawsSomething(el)) continue;
+    let holder: Element | null = el.parentElement;
+    while (holder && !pickElements.has(holder)) holder = holder.parentElement;
+    const h = holder?.getBoundingClientRect();
+    if (h && h.width > 0 && h.height > 0 && r.width * r.height >= 0.9 * h.width * h.height) continue;
+    out.push(el as HTMLElement);
+  }
+  return out;
+}
 /** Actual paint order, followed by each visual object's measured ancestors. */
 export function studioPickAt(x: number, y: number): string[] {
   const ids = new Set<string>();
+  // What's drawn there but lets clicks through takes the pointer for this one look.
+  const lifted = clickThroughAt(x, y).map((el) => [el, el.style.getPropertyValue("pointer-events"), el.style.getPropertyPriority("pointer-events")] as const);
+  for (const [el] of lifted) el.style.setProperty("pointer-events", "auto", "important");
+  let stack: Element[] = [];
+  try {
+    stack = document.elementsFromPoint(x, y);
+  } finally {
+    for (const [el, value, priority] of lifted) {
+      if (value) el.style.setProperty("pointer-events", value, priority);
+      else el.style.removeProperty("pointer-events");
+    }
+  }
   // An invisible control laid over a widget (a before/after slider's range, a see-through link) is
   // seen through: what's drawn under it is picked first, its holder only after that.
-  const painted = document.elementsFromPoint(x, y).filter(el => pickElements.has(el) || !invisibleOverlay(el));
+  const painted = stack.filter(el => pickElements.has(el) || !invisibleOverlay(el));
   for (const el of painted) for (let at: Element | null = el; at; at = at.parentElement) { const id = pickElements.get(at); if (id) { ids.add(id); break; } }
   for (const el of painted) for (let at = el.parentElement; at; at = at.parentElement) { const id = pickElements.get(at); if (id) ids.add(id); }
   return [...ids].slice(0, 100);
@@ -125,6 +164,7 @@ const inTreeNode = (el: Element, owner: Owner) => {
 /** Where every tree element, old section, rose scene and what's inside them is, in page coordinates. */
 export function measureStudio(): StudioItem[] {
   pickElements = new WeakMap();
+  pickList = [];
   const items: StudioItem[] = [];
   const nativeOwners: PartOwner[] = [];
   const savedTargets = [...document.querySelectorAll("[data-pt-page-look-targets]")].flatMap(el => (el.getAttribute("data-pt-page-look-targets") ?? "").split("|"));
@@ -181,7 +221,7 @@ export function measureStudio(): StudioItem[] {
     if (region !== "header" && region !== "footer" || seen.has(`r:${region}`)) return;
     seen.add(`r:${region}`);
     regionOwners.push({ key: `r:${region}`, el });
-    pickElements.set(el, `region:${region}`);
+    markPick(el, `region:${region}`);
     items.push({ kind: "region", region, rect: rectOf(el) });
   });
   const inRegion = (el: Element) => Boolean(el.closest(regionSelector));
@@ -190,7 +230,7 @@ export function measureStudio(): StudioItem[] {
     const id = el.dataset.treeNode ?? "";
     if (!id || seen.has(`n:${id}`)) return;
     seen.add(`n:${id}`);
-    pickElements.set(el, id);
+    markPick(el, id);
     const type = [...el.classList].find(c => c.startsWith("pt-") && ATOMIC_OWNER.test(c.slice(3)));
     nativeOwners.push({ key: `n:${id}`, el, atomic: Boolean(type), semanticOnly: el.matches(".pt-shop,.pt-cartItems,.pt-cartSummary,.pt-cartCheckout"), retained: new Set([...retainedOf(`n:${id}`), ...(el.getAttribute("data-pt-part-targets") ?? "").split("|").slice(0, 300)]) });
     const holder = el.offsetParent && getComputedStyle(el).position === "absolute" ? paddingRect(el.offsetParent) : undefined;
@@ -207,7 +247,7 @@ export function measureStudio(): StudioItem[] {
     if (!sid || sid.startsWith("tree-") || seen.has(`s:${sid}`)) return;
     seen.add(`s:${sid}`);
     owners.push({ key: `s:${sid}`, el, section: sid, retained: retainedOf(`s:${sid}`) });
-    if (!pickElements.has(el)) pickElements.set(el, `owner:s:${sid}`);
+    if (!pickElements.has(el)) markPick(el, `owner:s:${sid}`);
     items.push({ kind: "legacy", sectionId: sid, rect: rectOf(el) });
   });
   document.querySelectorAll<HTMLElement>("[data-rose-block]").forEach((el) => {
@@ -216,7 +256,7 @@ export function measureStudio(): StudioItem[] {
     if (!PART.test(block) || seen.has(`b:${block}`)) return;
     seen.add(`b:${block}`);
     owners.push({ key: `b:${block}`, el, block, retained: retainedOf(`b:${block}`) });
-    if (!pickElements.has(el)) pickElements.set(el, `block:${block}`);
+    if (!pickElements.has(el)) markPick(el, `block:${block}`);
     items.push({ kind: "block", block, rect: rectOf(el) });
   });
 
@@ -269,7 +309,7 @@ export function measureStudio(): StudioItem[] {
     const rect = rectOf(f.box);
     if (!(rect.w > 0 && rect.h > 0) && !retained) continue;
     seen.add(`f:${f.owner.key}:${f.path}`);
-    pickElements.set(f.box, f.owner.key.startsWith("b:") ? `bslot:${f.owner.key.slice(2)}:${f.path}` : `slot:${f.owner.key.slice(2)}:${f.path}`);
+    markPick(f.box, f.owner.key.startsWith("b:") ? `bslot:${f.owner.key.slice(2)}:${f.path}` : `slot:${f.owner.key.slice(2)}:${f.path}`);
     const base = { kind: "slot" as const, owner: f.owner.key, sectionId: f.sectionId, ...(f.owner.block ? { block: f.owner.block } : {}), path: f.path, rect };
     const within = withinOf(f.box, f.owner);
     const link = f.box.getAttribute("data-edit-link");
@@ -288,7 +328,7 @@ export function measureStudio(): StudioItem[] {
     const rect = rectOf(p.el);
     if (!(rect.w > 0 && rect.h > 0) && !retained) continue;
     const within = withinOf(p.el, p.owner);
-    pickElements.set(p.el, `part:${p.owner.key}:${p.name}:${p.n}`);
+    markPick(p.el, `part:${p.owner.key}:${p.name}:${p.n}`);
     items.push({ kind: "part", owner: p.owner.key, name: p.name, n: p.n, count: partCount.get(`${p.owner.key}|${p.name}`) ?? 1, ...(within ? { within } : {}), rect });
   }
   // Everything else that shows: the outermost picture, words or link not already marked.
@@ -314,7 +354,7 @@ export function measureStudio(): StudioItem[] {
       const within = withinOf(el, owner);
       autos++;
       keyOf.set(el, `a:${i}`);
-      pickElements.set(el, `auto:${owner.key}:${i}`);
+      markPick(el, `auto:${owner.key}:${i}`);
       items.push({ kind: "auto", owner: owner.key, n: i, tag, ...(target ? { target } : {}), ...(label ? { label } : {}), ...(within ? { within } : {}), rect });
     }
   }
@@ -325,7 +365,7 @@ export function measureStudio(): StudioItem[] {
     const owner = ownersByKey.get(part.owner);
     const retained = owner?.retained?.has(part.target);
     if ((rect.w < 3 || rect.h < 3 || !shown(part.el, owner?.el ?? part.el)) && !retained) continue;
-    pickElements.set(part.el, partId(part.owner, part.key));
+    markPick(part.el, partId(part.owner, part.key));
     items.push({ kind: "detail", owner: part.owner, key: part.key, target: part.target, lookKind: part.kind, ...(part.propPath ? { propPath: part.propPath, ...(part.propLine !== undefined ? { propLine: part.propLine } : {}) } : {}), ...(part.text !== undefined ? { text: part.text } : {}), ...(part.label ? { label: part.label } : {}), ...(part.name ? { name: part.name } : {}), count: part.count, ...(part.within ? { within: part.within } : {}), rect, ...(part.el instanceof HTMLElement && rect.w > 0 && rect.h > 0 && rect.y < scrollY + innerHeight + 300 && rect.y + rect.h > scrollY - 300 ? { geometry: nodeGeometry(part.el, planes) } : {}) });
   }
   return items;
