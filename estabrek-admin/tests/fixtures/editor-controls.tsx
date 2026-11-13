@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import StudioPage from "../../src/studio/StudioPage";
+import { ADDABLE, newElement } from "../../src/studio/columns";
 import { simulate } from "../../src/studio/draft";
 import VisualControlsPage from "../../src/features/settings/VisualControlsPage";
 import type { PageDraft, PageDraftOp, PageTreeNode } from "../../src/api/pages.api";
@@ -25,7 +26,8 @@ import "../../src/theme/skins.css";
 
 const PAGE_ID = "editor-controls-fixture";
 const FIXTURE = "http://127.0.0.1:4100";
-const SHOP = "http://127.0.0.1:3000";
+// The shop's own address: :3000 unless this PC can't open it (VITE_FIXTURE_SHOP, e.g. http://127.0.0.1:3900).
+const SHOP = (import.meta.env.VITE_FIXTURE_SHOP as string | undefined) || "http://127.0.0.1:3000";
 env.VITE_API_BASE_URL = `${FIXTURE}/v1`;
 env.VITE_STOREFRONT_BASE_URL = SHOP;
 api.defaults.baseURL = `${FIXTURE}/v1`;
@@ -141,6 +143,30 @@ if (new URLSearchParams(location.search).has("tiny")) {
       { id: "card", type: "stack", name: "Card", props: {}, style: { base: { width: "360px", height: "240px", bg: "surface", layer: { x: 6, y: 10, anchor: "top-start" } } }, children: [] },
       { id: "dot", type: "svg", name: "Dot", props: { art: { viewBox: "0 0 10 10", nodes: [{ t: "circle", a: { cx: "5", cy: "5", r: "5", fill: "#e11d48" } }] } }, style: { base: { width: "8px", height: "8px", layer: { x: 18, y: 30, anchor: "top-start" } } } },
       { id: "tilted", type: "stack", name: "Tilted", props: {}, style: { base: { width: "180px", height: "100px", bg: "accent", rotateZ: 25, layer: { x: 62, y: 34, anchor: "top-start" } } }, children: [] },
+    ] },
+  ];
+}
+// One of every kind the Add panel makes, as it makes them (every-kind.spec.ts): what corners, a look and the other
+// settings do on each. `?everyKind=40` rounds every one's corners by that much.
+if (new URLSearchParams(location.search).has("everyKind")) {
+  const radius = Number(new URLSearchParams(location.search).get("everyKind")) || 0;
+  let n = 0;
+  const ids = (prefix: string) => `${prefix}-${++n}`;
+  const media: Record<string, string> = { image: "/templates/photo-1.svg", slider: "/templates/photo-1.svg", beforeAfter: "/templates/photo-1.svg", hotspots: "/templates/photo-1.svg", video: "/editorial/rose-campaign-mobile.mp4" };
+  const kinds = ADDABLE.filter((k) => !["popup", "scrollScene", "product360", "lottie", "rive", "shop", "cartItems", "cartSummary", "cartCheckout"].includes(k));
+  initial.tree!.root.children = [{ id: "objects", type: "section", name: "Every kind", props: {}, style: { base: { pad: [24, 24, 24, 24], gap: 24 } }, children: kinds.map((kind) => {
+    const node = newElement(kind, "en", ids, media[kind]);
+    const style = (node.style ?? {}) as Record<string, Record<string, unknown>>;
+    return { ...node, id: `kind-${kind}`, style: { ...style, base: { ...(style.base ?? {}), ...(radius ? { radius } : {}) } } } as PageTreeNode;
+  }) }];
+}
+// A small button in the middle of the page (so it needn't slide out from under the panel) and a headline, in a
+// section taller than the screen: picking and dragging while the canvas comes closer (select-after-zoom.spec.ts).
+if (new URLSearchParams(location.search).has("middle")) {
+  initial.tree!.root.children = [
+    { id: "objects", type: "section", name: "Middle", props: {}, style: { base: { minHeight: "1500px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "headline", type: "heading", props: { text: text("Editable headline"), level: 2 }, style: { base: { width: "400px" } } },
+      { id: "action", type: "button", props: { label: text("Shop now"), href: "/shop" }, style: { base: { width: "160px", layer: { x: 50, y: 20, anchor: "center" } } } },
     ] },
   ];
 }

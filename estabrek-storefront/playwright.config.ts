@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// The shop's port: 3000, or SHOP_PORT where this PC can't open it (Windows sometimes reserves a range over it).
+// The specs that go through the admin's editor page follow it; those that name :3000 themselves don't.
+const SHOP_PORT = process.env.SHOP_PORT || "3000";
+const SHOP = `http://127.0.0.1:${SHOP_PORT}`;
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -10,7 +15,7 @@ export default defineConfig({
   timeout: 60000,
   expect: { timeout: 15000 },
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: SHOP,
     channel: "chrome",
     trace: "retain-on-failure",
   },
@@ -22,8 +27,8 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: "npm run dev -- --hostname 127.0.0.1",
-      url: "http://127.0.0.1:3000",
+      command: `npm run dev -- --hostname 127.0.0.1 --port ${SHOP_PORT}`,
+      url: SHOP,
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
       env: {
@@ -40,6 +45,7 @@ export default defineConfig({
       command: "npx vite --port 5178 --strictPort --host 127.0.0.1",
       cwd: "../estabrek-admin",
       url: "http://127.0.0.1:5178/tests/fixtures/editor-controls.html",
+      env: { VITE_FIXTURE_SHOP: SHOP },
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },

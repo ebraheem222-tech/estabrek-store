@@ -66,7 +66,7 @@ export function cardsByGroup(root: Element): Array<{ card: HTMLElement; group: I
  * The bar at the top of the inspector. `watch` changes whenever what's selected does. With `sections`, `active` is
  * the group shown and `onActive` asks for another; `onGroups` tells which groups the selection has.
  */
-export function InspectorJump({ watch, sections = false, tabs = true, active, onActive, onGroups, onSections, dock, onDock }: {
+export function InspectorJump({ watch, sections = false, tabs = true, active, onActive, onGroups, onSections, dock, onDock, onHide }: {
   watch: unknown;
   sections?: boolean;
   /** False when the tabs stand elsewhere (the strips beside the element): the bar names the open section instead. */
@@ -77,6 +77,8 @@ export function InspectorJump({ watch, sections = false, tabs = true, active, on
   onSections?: (on: boolean) => void;
   dock?: "beside" | "side";
   onDock?: (dock: "beside" | "side") => void;
+  /** The floating panel's own close (what's under it on the page can then be reached). */
+  onHide?: () => void;
 }) {
   const bar = useRef<HTMLDivElement>(null);
   const [groups, setGroups] = useState<InspectorGroupId[]>([]);
@@ -140,6 +142,11 @@ export function InspectorJump({ watch, sections = false, tabs = true, active, on
         {onDock ? (
           <button type="button" aria-pressed={dock === "beside"} onClick={() => onDock(dock === "beside" ? "side" : "beside")} className={`h-7 shrink-0 rounded-lg px-1.5 text-[11px] ${dock === "beside" ? "bg-accent-500/25 text-white" : "bg-white/[0.06] text-white/60"}`} title={say("الإعدادات جنب العنصر، أو بلوح ثابت عالجنب|Settings beside the element, or in a fixed panel at the side|הגדרות ליד הרכיב, או בלוח קבוע בצד")} data-testid="studio-insp-dock">
             {dock === "beside" ? say("جنبه|Beside|לידו") : say("ثابت|Docked|קבוע")}
+          </button>
+        ) : null}
+        {onHide ? (
+          <button type="button" onClick={onHide} className="grid h-7 w-6 shrink-0 place-items-center rounded-lg bg-white/[0.06] text-[11px] text-white/60 hover:text-white" title={say("سكّر اللوحة (الصفحة تحتها بتبيّن)|Close the panel (the page under it shows)|סגירת הלוח")} aria-label={say("سكّر اللوحة|Close the panel|סגירת הלוח")} data-testid="studio-insp-hide">
+            <span aria-hidden="true">✕</span>
           </button>
         ) : null}
       </div>
