@@ -5,7 +5,7 @@
  * A table's fields and its item page are still made in المجموعات.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../lib/toast";
 import { getApiErrorMessage } from "../../api/http";
@@ -44,10 +44,12 @@ export default function DataPage() {
   const meta = useQuery({ queryKey: ["data", "meta"], queryFn: DataAPI.gridMeta, staleTime: Infinity });
   // The store's own tables (products, orders…), to look at: only the ones this member may see.
   const store = useQuery({ queryKey: ["data", "store"], queryFn: DataAPI.storeTables, retry: false });
-  const [open, setOpen] = useState<string | null>(null);
+  // The open table is in the address (?table=blog, or ?store=orders): a link can open one, and a reload keeps it.
+  const [params, setParams] = useSearchParams();
   const mine: GridTable[] = tables.data ?? [];
   const theirs: GridTable[] = store.data ?? [];
-  const table = [...mine, ...theirs].find((c) => c.id === open) ?? mine[0] ?? theirs[0] ?? null;
+  const table = (params.get("store") ? theirs.find((c) => c.slug === params.get("store")) : mine.find((c) => c.slug === params.get("table"))) ?? mine[0] ?? theirs[0] ?? null;
+  const setOpen = (c: GridTable) => setParams(c.readOnly ? { store: c.slug } : { table: c.slug }, { replace: true });
 
   return (
     <div className="space-y-4 p-4 md:p-6" data-testid="data-page">
@@ -87,7 +89,7 @@ export default function DataPage() {
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setOpen(c.id)}
+                      onClick={() => setOpen(c)}
                       aria-current={c.id === table.id}
                       data-testid={`${group.prefix}-${c.slug}`}
                       className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}

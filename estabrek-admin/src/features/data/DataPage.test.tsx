@@ -54,11 +54,11 @@ const row = (slug: string, data: Record<string, unknown>, over: Partial<GridRow>
 const rows = [row("spring", { title: { en: "Spring dress" }, price: 1200, kind: "new" }, { status: "PUBLISHED" }), row("summer", { title: { en: "Summer hat" }, price: 80 }), row("winter", { title: { en: "Winter scarf" } })];
 const page = (over: Partial<GridPage> = {}): GridPage => ({ rows, total: 3, page: 1, pageSize: 50, counts: { all: 3, draft: 2, published: 1, archived: 0, trash: 1 }, ms: 4, ...over });
 
-function show() {
+function show(at = "/admin/data") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[at]}>
         <DataPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -240,6 +240,19 @@ describe("The data grid", () => {
     const offered = [...(screen.getByTestId("filter-0-field") as HTMLSelectElement).options].map((o) => o.value);
     expect(offered).toEqual(["$slug", "customer", "total", "state", "$createdAt", "$updatedAt"]);
     expect(m.getRows).toHaveBeenCalledTimes(1);
+  });
+
+  test("the address says which table is open: a link from elsewhere lands on it", async () => {
+    const blog = { ...table, id: "c2", slug: "blog", name: { en: "Blog" } };
+    m.listCollections.mockResolvedValue([table, blog]);
+    m.storeTables.mockResolvedValue([orders]);
+    show("/admin/data?table=blog");
+    await waitFor(() => expect(m.getRows).toHaveBeenCalledWith("c2", expect.anything()));
+    expect(screen.getByTestId("data-table-blog").getAttribute("aria-current")).toBe("true");
+    expect(m.getRows).not.toHaveBeenCalledWith("c1", expect.anything());
+    fireEvent.click(await screen.findByTestId("store-table-orders"));
+    await waitFor(() => expect(m.getStoreRows).toHaveBeenCalledWith("orders", expect.anything()));
+    expect(screen.getByTestId("store-table-orders").getAttribute("aria-current")).toBe("true");
   });
 
   test("no tables yet: where to make the first", async () => {
