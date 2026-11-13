@@ -266,6 +266,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/nav", label: tr("القوائم", "Menus"), icon: Icons.nav, requirePermissions: ["nav:write"] },
   { to: "/admin/pages", label: tr("الصفحات", "Pages"), icon: Icons.pages, requirePermissions: ["pages:read"] },
   { to: "/admin/collections", label: say("المجموعات (مدونة، فروع…)|Collections (blog, branches…)|אוספים (בלוג, סניפים…)"), icon: Icons.pages, requirePermissions: ["pages:read"] },
+  { to: "/admin/data", label: say("الجداول (شبكة البيانات)|Tables (data grid)|טבלאות (רשת נתונים)"), icon: Icons.inventory, requirePermissions: ["pages:read"] },
   { to: "/admin/themes", label: tr("ثيمات المتجر", "Store themes"), icon: Icons.sun, requirePermissions: ["settings:read"] },
   { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
   { to: "/admin/ugc/comments", label: tr("التعليقات", "Comments"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
