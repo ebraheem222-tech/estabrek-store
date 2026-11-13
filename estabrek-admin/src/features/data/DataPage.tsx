@@ -18,8 +18,10 @@ import * as DataAPI from "../../api/data.api";
 import type { BulkOp, GridFilter, GridMeta, GridPage, GridQuery, GridRow, GridTable, Lang, View } from "../../api/data.api";
 import { CellEditor, CellView, ValueInput, field, input } from "./GridCells";
 import { ImportDialog } from "./ImportDialog";
+import { parseCsv } from "./csv";
+import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
-import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterColumns, filterValue, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, type Column } from "./dataText";
+import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterColumns, filterValue, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03]";
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -54,7 +56,7 @@ export default function DataPage() {
           <h1 className="text-xl font-semibold">{say("الجداول|Tables|טבלאות")}</h1>
           <p className="mt-1 max-w-2xl text-sm text-white/55">
             {say(
-              "كل جدول من بياناتك بشبكة وحدة: فلتر، رتّب، دوّر، عدّل بالخلية، غيّر كتير سطور مرة وحدة، واستورد وصدّر CSV.|Each of your tables in one grid: filter, sort, search, write in the cell, change many rows at once, and bring CSV in and out.|כל טבלה ברשת אחת: סינון, מיון, חיפוש, עריכה בתא, שינוי שורות רבות יחד וייבוא וייצוא CSV.",
+              "كل جدول من بياناتك بشبكة وحدة: فلتر، رتّب، دوّر، عدّل بالخلية، غيّر كتير سطور مرة وحدة، واستورد وصدّر Excel و CSV.|Each of your tables in one grid: filter, sort, search, write in the cell, change many rows at once, and bring Excel and CSV in and out.|כל טבלה ברשת אחת: סינון, מיון, חיפוש, עריכה בתא, שינוי שורות רבות יחד וייבוא וייצוא Excel ו־CSV.",
             )}
           </p>
         </div>
@@ -182,12 +184,18 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
     onError,
   });
   const download = useMutation({
-    mutationFn: () => (readOnly ? DataAPI.exportStoreRows(table.slug, { ...sent, page: 1 }) : DataAPI.exportRows(table.id, { ...sent, page: 1 })),
-    onSuccess: (blob) => {
+    // The server writes the asked rows as CSV; an Excel file is made from it here.
+    mutationFn: async (as: "csv" | "xlsx") => {
+      const csv = await (readOnly ? DataAPI.exportStoreRows(table.slug, { ...sent, page: 1 }) : DataAPI.exportRows(table.id, { ...sent, page: 1 }));
+      if (as === "csv") return { blob: csv, name: `${table.slug}.csv` };
+      const book = writeXlsx(sheetCells(parseCsv(await csv.text(), ","), table.fields), table.slug);
+      return { blob: new Blob([book as unknown as BlobPart], { type: XLSX_TYPE }), name: `${table.slug}.xlsx` };
+    },
+    onSuccess: ({ blob, name }) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${table.slug}.csv`;
+      a.download = name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     },
@@ -240,13 +248,16 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
           </label>
         )}
         <span className="ms-auto flex flex-wrap items-center gap-2">
-          <button type="button" className={btn} onClick={() => download.mutate()} disabled={download.isPending || !data?.total} data-testid="data-export">
+          <button type="button" className={btn} onClick={() => download.mutate("xlsx")} disabled={download.isPending || !data?.total} data-testid="data-export-xlsx">
+            {say("صدّر Excel|Export Excel|ייצוא Excel")}
+          </button>
+          <button type="button" className={btn} onClick={() => download.mutate("csv")} disabled={download.isPending || !data?.total} data-testid="data-export">
             {say("صدّر CSV|Export CSV|ייצוא CSV")}
           </button>
           {canWrite && !inTrash ? (
             <>
               <button type="button" className={btn} onClick={() => setImporting(true)} data-testid="data-import">
-                {say("استورد CSV|Import CSV|ייבוא CSV")}
+                {say("استورد Excel / CSV|Import Excel / CSV|ייבוא Excel / CSV")}
               </button>
               <button type="button" className={primary} onClick={() => setDrawer("new")} data-testid="row-add">
                 {say("＋ سطر|＋ Row|＋ שורה")}

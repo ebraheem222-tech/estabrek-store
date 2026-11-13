@@ -263,3 +263,26 @@ export function cellPatch(column: Column, row: Pick<GridRow, "data">, lang: Lang
 
 /** Which columns a cell can be written in (the dates are the server's own). */
 export const editable = (column: Column) => column.kind !== "$date";
+
+/**
+ * The export's lines (as the server's CSV gives them) as a sheet's cells: numbers as numbers and
+ * yes/no as yes/no, by each column's field; the quote that guards a formula in CSV comes off
+ * (a sheet's words are never worked out).
+ */
+export function sheetCells(lines: string[][], fields: Array<Pick<CollectionField, "id" | "type">>): Array<Array<string | number | boolean | null>> {
+  if (!lines.length) return [];
+  const [head, ...rest] = lines;
+  const kinds = head.map((h) => fields.find((f) => f.id === h.split(".")[0])?.type);
+  return [
+    head,
+    ...rest.map((cells) =>
+      head.map((_, i) => {
+        const v = cells[i] ?? "";
+        if (v === "") return null;
+        if (kinds[i] === "number") return Number.isFinite(Number(v)) ? Number(v) : v;
+        if (kinds[i] === "boolean") return v === "true" ? true : v === "false" ? false : v;
+        return /^'[=+\-@\t\r]/.test(v) ? v.slice(1) : v;
+      }),
+    ),
+  ];
+}

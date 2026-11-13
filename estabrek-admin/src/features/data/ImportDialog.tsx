@@ -12,6 +12,7 @@ import type { Collection } from "../../api/collections.api";
 import * as DataAPI from "../../api/data.api";
 import type { ImportReport, Lang } from "../../api/data.api";
 import { parseCsv } from "./csv";
+import { readXlsx } from "./xlsx";
 import { field, input } from "./GridCells";
 import { LANGS, LANG_NAME, doubledTargets, guessTarget, issueWords, rowsFromCsv, targetName, targetsOf, type Target } from "./dataText";
 
@@ -39,7 +40,15 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
     setChecked(null);
     if (!f) return;
     if (f.size > MAX_BYTES) return setProblem(say("الملف أكبر من 20 ميجا.|The file is over 20 MB.|הקובץ גדול מ־20MB."));
-    const all = parseCsv(await f.text());
+    let all: string[][];
+    if (/\.xls$/i.test(f.name)) return setProblem(say("ملفات ‎.xls القديمة ما بتنقرأ: احفظه ‎.xlsx أو CSV.|Old .xls files aren't read: save it as .xlsx or CSV.|קובצי ‎.xls ישנים לא נקראים: שמור כ־‎.xlsx או CSV."));
+    if (/\.xlsx$/i.test(f.name)) {
+      try {
+        all = await readXlsx(await f.arrayBuffer());
+      } catch {
+        return setProblem(say("ما قدرت أقرأ ملف الـ Excel (ممكن يكون مقفول بكلمة سر أو مش ‎.xlsx حقيقي).|The Excel file couldn't be read (it may be locked with a password, or not a real .xlsx).|לא ניתן לקרוא את קובץ ה־Excel (ייתכן שהוא נעול בסיסמה או אינו ‎.xlsx אמיתי)."));
+      }
+    } else all = parseCsv(await f.text());
     if (all.length < 2) return setProblem(say("الملف لازم يكون فيه سطر عناوين وسطر واحد عالأقل.|The file needs a heading line and at least one row.|הקובץ צריך שורת כותרות ולפחות שורה אחת."));
     const [head, ...lines] = all;
     setFile({ name: f.name, head, lines });
@@ -81,7 +90,7 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
       open
       onClose={busy ? () => undefined : onClose}
       disableBackdropClose
-      title={say("استيراد CSV|Import CSV|ייבוא CSV")}
+      title={say("استيراد Excel أو CSV|Import Excel or CSV|ייבוא Excel או CSV")}
       widthClassName="max-w-3xl"
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -97,8 +106,8 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
     >
       <div className="max-h-[65vh] space-y-4 overflow-y-auto pe-1 text-sm" data-testid="import-dialog">
         <label className="block">
-          <span className="text-xs text-white/60">{say("ملف CSV (من Excel: «حفظ باسم» ← CSV UTF-8)|A CSV file (from Excel: Save as → CSV UTF-8)|קובץ CSV (מ־Excel: שמירה בשם ← CSV UTF-8)")}</span>
-          <input type="file" accept=".csv,text/csv,text/plain" className="mt-1 block w-full text-xs" onChange={(e) => void read(e.target.files?.[0])} data-testid="import-file" />
+          <span className="text-xs text-white/60">{say("ملف Excel (‎.xlsx، أول ورقة) أو CSV. أول سطر هو العناوين.|An Excel file (.xlsx, its first sheet) or a CSV. The first line is the headings.|קובץ Excel (‎.xlsx, הגיליון הראשון) או CSV. השורה הראשונה היא הכותרות.")}</span>
+          <input type="file" accept=".xlsx,.csv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="mt-1 block w-full text-xs" onChange={(e) => void read(e.target.files?.[0])} data-testid="import-file" />
         </label>
         {problem ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 p-2 text-xs text-red-200" data-testid="import-problem">{problem}</p> : null}
 

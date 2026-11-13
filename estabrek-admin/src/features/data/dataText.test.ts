@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { CollectionField } from "../../api/collections.api";
 import type { ColumnKind, GridRow, Op } from "../../api/data.api";
 import { parseCsv, separatorOf } from "./csv";
-import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, targetName, targetsOf, withWords } from "./dataText";
+import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, sheetCells, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, targetName, targetsOf, withWords } from "./dataText";
 
 // The data grid's pure parts: columns, questions, cells, and a CSV file's columns matched to the table's.
 
@@ -159,6 +159,16 @@ describe("A CSV file", () => {
     expect(targetName("title.he", fields, "ar")).toBe("العنوان (עברית)");
     expect(targetName("price", fields, "en")).toBe("Price");
     expect(doubledTargets(["slug", "price", "", "price", ""])).toEqual(["price"]);
+  });
+
+  test("the export's lines as a sheet's cells: numbers and yes/no by their field; the formula guard comes off", () => {
+    expect(sheetCells([["slug", "status", "title.ar", "price", "active", "kind"], ["spring", "PUBLISHED", "'=SUM(A1)", "1250.5", "true", "new"], ["hat", "DRAFT", "", "", "false", ""], ["odd", "DRAFT", "'quoted", "cheap", "maybe"]], fields)).toEqual([
+      ["slug", "status", "title.ar", "price", "active", "kind"],
+      ["spring", "PUBLISHED", "=SUM(A1)", 1250.5, true, "new"],
+      ["hat", "DRAFT", null, null, false, null],
+      ["odd", "DRAFT", "'quoted", "cheap", "maybe", null],
+    ]);
+    expect(sheetCells([], fields)).toEqual([]);
   });
 
   test("lines become rows to send: empty cells and unmatched columns are left out", () => {
