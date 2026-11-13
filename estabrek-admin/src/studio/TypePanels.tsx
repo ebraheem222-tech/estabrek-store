@@ -348,6 +348,29 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
 
 /* --------------------------------------------------------------------- box */
 
+/**
+ * The kinds whose corners show by themselves: they have a surface of their own (a button, a picture, a clip, a
+ * notice, a search box), are cut to their corners (a drawing, a map, a before/after, a 3D stage), or draw cards,
+ * tiles and panels inside that take the element's corners (the shop's CORNER_PARTS in pageTree/css.ts: keep the
+ * two lists the same, cornerKinds.test.ts checks it). Anything else shows its corners once it has a background or a
+ * frame.
+ */
+export const CORNER_PART_KINDS = ["accordion", "testimonials", "pricing", "team", "tabs", "countdown", "categories", "products", "shop", "form", "chart", "instrument", "filterGallery", "showcase", "menu"] as const;
+const CORNER_OWN_KINDS = ["button", "image", "video", "slider", "alert", "search", "svg", "model3d", "product360", "map", "beforeAfter", "hotspots"] as const;
+const SURFACE_KEYS = ["bg", "gradient", "mesh", "pattern", "border", "backdrop", "overlay"] as const;
+/** A look some kinds only draw boxes in (a list of lines has no card to round). */
+const BOXED_LOOKS: Record<string, readonly string[]> = { accordion: ["cards"], menu: ["pills", "buttons"] };
+/** Whether rounding this element's corners changes what's seen, as it is now. */
+export function cornersShow(node: PageTreeNode, screen: TreeScreen): boolean {
+  const boxed = BOXED_LOOKS[node.type];
+  if (boxed ? boxed.includes(String((node.props as Obj | undefined)?.look ?? "")) : (CORNER_PART_KINDS as readonly string[]).includes(node.type)) return true;
+  if ((CORNER_OWN_KINDS as readonly string[]).includes(node.type)) return true;
+  if (SURFACE_KEYS.some((k) => shownLook(node, screen, k) != null)) return true;
+  return ["hidden", "clip"].includes(String(shownLook(node, screen, "overflow") ?? ""));
+}
+/** What the box panel leaves out for a kind: a button's own panel has its colour, frame and corners; a line has no corners. */
+export const boxSkip = (type: string): Array<"bg" | "border" | "radius"> | undefined => (type === "button" ? ["bg", "border", "radius"] : type === "divider" ? ["radius"] : undefined);
+
 /** The box: colour, gradient, frosted glass, frame, corners, a ready shadow (`skip`: what a button's own panel already has). */
 export function BoxPanel({ node, screen, busy, onOps, skip = [] }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; skip?: Array<"bg" | "border" | "radius"> }) {
   const tokens = useTokens();
@@ -390,6 +413,7 @@ export function BoxPanel({ node, screen, busy, onOps, skip = [] }: { node: PageT
       ) : null}
       {skip.includes("radius") ? null : <Range label={tr("استدارة الزوايا", "Corner rounding")} min={0} max={120} unit="px" busy={busy} value={typeof v("radius") === "number" ? (v("radius") as number) : 0} onSave={(n) => save(tr("الزوايا", "Corners"), { radius: n || null })} testId="studio-box-radius" />}
       {skip.includes("radius") ? null : <TokenSelect group="radii" value={v("radius")} busy={busy} label={say("زوايا من المتغيرات|Corners from the variables|פינות מהמשתנים")} onPick={(t) => save(tr("الزوايا", "Corners"), { radius: t })} testId="studio-box-radius-variable" />}
+      {skip.includes("radius") || cornersShow(node, screen) ? null : <p className="text-[10px] leading-4 text-amber-200/75" data-testid="studio-box-radius-needs">{say("ما إله سطح تبيّن عليه الزوايا: حطّي لون خلفية أو إطار فوق، وبتبيّن.|It has no surface for corners to show on: give it a background colour or a frame above, and they will.|אין לו משטח שעליו הפינות נראות: הוסיפו צבע רקע או מסגרת למעלה, והן יופיעו.")}</p>}
       <Choice
         label={tr("ظل جاهز", "A ready shadow")} value={String(v("shadow") ?? "")} busy={busy} testId="studio-box-shadow"
         options={[["", tr("متل التصميم", "As designed")], ["none", tr("بلا", "None")], ["sm", tr("خفيف", "Light")], ["md", tr("وسط", "Medium")], ["lg", tr("قوي", "Strong")], ...(tokens?.shadows ?? []).map((t) => [`$${t.id}`, `◆ ${tokenName(t)}`] as [string, string])]}

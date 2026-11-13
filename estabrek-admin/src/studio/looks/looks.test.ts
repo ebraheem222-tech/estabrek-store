@@ -60,6 +60,15 @@ describe("the ready looks", () => {
     expect(kindsFor("image")).toContain("frame");
     expect(kindsFor("section")).toEqual(expect.arrayContaining(["card", "background", "edge"]));
     expect(kindsFor("image")).not.toContain("button");
+    // Every kind that draws a box takes a card and a background; every kind shown like a picture takes a frame.
+    for (const type of ["testimonials", "pricing", "accordion", "countdown", "chart", "products", "tabs", "menu", "alert", "deck", "form"]) {
+      expect(kindsFor(type), type).toEqual(expect.arrayContaining(["card", "background", "shadow", "hover", "entrance"]));
+      expect(kindsFor(type), type).not.toContain("edge");
+    }
+    for (const type of ["svg", "model3d", "map", "beforeAfter", "hotspots", "video", "slider"]) expect(kindsFor(type), type).toContain("frame");
+    // Words keep their own kinds; a line or a gap has no box to dress.
+    expect(kindsFor("heading")).not.toContain("card");
+    expect(kindsFor("divider")).not.toContain("card");
     expect(looksFor("heading", "entrance", null).some((r) => r.motion?.enter?.kind === "letters")).toBe(true);
     expect(looksFor("image", "entrance", null).some((r) => r.motion?.enter?.kind === "letters")).toBe(false);
     expect(looksFor("button", "button", "neon").length).toBe(12);
