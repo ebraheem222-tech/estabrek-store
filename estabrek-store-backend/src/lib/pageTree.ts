@@ -721,6 +721,10 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   text: z.object({ text: local(5000), rich: z.boolean().optional(), curve: Curve.optional() }),
   image: z.object({
     src, alt: local(200).optional(), href: href.optional(),
+    // Its link opens in a new tab; it loads at once and first (a picture at the top of the page) instead of waiting
+    // until it's near the screen.
+    newTab: z.boolean().optional(),
+    priority: z.boolean().optional(),
     // Sparkling stars on it (the editor's focus mode finds the picture's corners, edges and highlights, or they're
     // placed by hand): where (fractions of the picture), their drawing, colour, size, speed and when they twinkle.
     sparkle: z.object({
@@ -745,6 +749,15 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     loop: z.boolean().optional(),
     muted: z.boolean().optional(),
     controls: z.boolean().optional(),
+    // When it plays without being pressed (and without sound, as a browser asks): once it's seen, resting while
+    // it's out of sight, or while the pointer is over it. `autoplay` (at once) wins over it.
+    playOn: z.enum(["view", "hover"]).optional(),
+    // How fast it plays (1 = as it was filmed).
+    speed: z.number().finite().min(0.25).max(3).optional(),
+    // What's fetched before it's played: nothing, its first picture and length (the usual), or the whole clip.
+    preload: z.enum(["none", "metadata", "auto"]).optional(),
+    // The player's own download button is hidden.
+    noDownload: z.boolean().optional(),
   }),
   // A picture or an MP4 clip on each slide, with its words and an optional link. No autoplay = it waits to be turned.
   // A product's 360° view (a scan linked to it, lib/productSpins.ts): that colour's, else the one for every colour.

@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { particleOptions, type ParticleSpec } from "./particles";
 import { ViewRuntimeRegistry, viewTargets } from "./viewRuntime";
+import type { VideoLive } from "./videoPlay";
 
 type Stop = () => void;
 /** Whether this page's run is still on (a player loaded after it ended is never started). */
@@ -120,6 +121,47 @@ async function rives(els: HTMLCanvasElement[], still: boolean, stops: Stop[], li
   }
 }
 
+/**
+ * A clip that plays without being pressed (videoPlay.ts): its speed, and playing once it's seen (resting while
+ * it's out of sight) or while the pointer is over it. "Reduce motion" leaves it to be played by hand.
+ */
+function videos(video: HTMLVideoElement, still: boolean, stops: Stop[]) {
+  const s = read<VideoLive>(video, "ptVideo");
+  if (!s) return;
+  if (s.speed) {
+    video.defaultPlaybackRate = s.speed;
+    video.playbackRate = s.speed;
+    stops.push(() => {
+      video.defaultPlaybackRate = 1;
+      video.playbackRate = 1;
+    });
+  }
+  if (!s.on || still) return;
+  // A browser lets a clip start by itself only without sound.
+  video.muted = true;
+  // An element that is light right now (its own speed settings on this device) or a visitor saving data: the clip
+  // waits to be pressed, with the player's buttons to press.
+  const waits = () => Boolean(video.closest("[data-perf-light-now]")) || document.documentElement.hasAttribute("data-save-data");
+  const play = () => {
+    if (waits()) video.controls = true;
+    else void video.play().catch(() => undefined);
+  };
+  const host = video.closest(".pt-frame") ?? video;
+  if (s.on === "view") {
+    watchSight(host, (seen) => (seen ? play() : video.pause()), stops);
+    stops.push(() => video.pause());
+  } else {
+    const off = () => video.pause();
+    host.addEventListener("pointerenter", play);
+    host.addEventListener("pointerleave", off);
+    stops.push(() => {
+      host.removeEventListener("pointerenter", play);
+      host.removeEventListener("pointerleave", off);
+      video.pause();
+    });
+  }
+}
+
 async function particles(els: HTMLElement[], stops: Stop[], live: Live) {
   const [{ tsParticles }, { loadSlim }] = await Promise.all([import("@tsparticles/engine"), import("@tsparticles/slim")]);
   await loadSlim(tsParticles);
@@ -147,12 +189,14 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
       const playerStops: Stop[] = [];
       let active = true;
       const playerLive = () => !dead && active && node.isConnected;
-      if (node.matches("canvas[data-pt-lottie]")) keep(lotties([node as HTMLCanvasElement], still, playerStops, playerLive));
+      if (node.matches("video[data-pt-video]")) videos(node as HTMLVideoElement, still, playerStops);
+      else if (node.matches("canvas[data-pt-lottie]")) keep(lotties([node as HTMLCanvasElement], still, playerStops, playerLive));
       else if (node.matches("canvas[data-pt-rive]")) keep(rives([node as HTMLCanvasElement], still, playerStops, playerLive));
       else keep(particles([node as HTMLElement], playerStops, playerLive));
       return () => { active = false; playerStops.splice(0).forEach(stop => stop()); };
     });
     const reconcile = () => players.reconcile([
+      ...viewTargets(document, "video[data-pt-video]", ["data-pt-video"]),
       ...viewTargets(document, "canvas[data-pt-lottie]", ["data-pt-lottie"]),
       ...viewTargets(document, "canvas[data-pt-rive]", ["data-pt-rive"]),
       ...(still ? [] : viewTargets(document, "[data-pt-particles]", ["data-pt-particles", "$color"])),

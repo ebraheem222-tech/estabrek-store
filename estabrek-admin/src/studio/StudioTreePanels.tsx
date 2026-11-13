@@ -529,7 +529,6 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
 export const EDITABLE = new Set(["heading", "text", "button", "image", "video", "slider", "icon", "spacer", "products", "categories", "form", "lottie", "rive"]);
 
 export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
-  const [media, setMedia] = useState(false);
   const p = (node.props ?? {}) as Record<string, unknown>;
   const setProps = (patch: Record<string, unknown>) => onOps(tr("تعديل", "Edit"), [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const words = (key: string, label: string, multiline = false) => (
@@ -568,28 +567,7 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             {toggle("newTab", tr("بيفتح بصفحة جديدة", "Opens in a new tab"))}
           </>
         );
-      case "image":
-        return (
-          <>
-            {typeof p.src === "string" ? <img src={p.src} alt="" className="h-28 w-full rounded-lg object-cover" /> : null}
-            <button type="button" className={btn} disabled={busy} onClick={() => setMedia(true)} data-testid="studio-pick-image">{tr("تغيير الصورة", "Change the picture")}</button>
-            {words("alt", tr("وصف الصورة (لقارئ الشاشة)", "Picture description (for screen readers)"))}
-            {link("href", tr("رابط عند الكبس (اختياري)", "Link when tapped (optional)"))}
-            <MediaLibraryModal open={media} onClose={() => setMedia(false)} title={tr("صورة", "Picture")} onSelect={(u) => { setMedia(false); setProps({ src: u }); }} />
-          </>
-        );
-      case "video":
-        return (
-          <>
-            <Field label={tr("رابط الفيديو (MP4، من مكتبة الفيديوهات أو أي رابط https)", "Video link (MP4, from the video library or any https link)")} value={typeof p.src === "string" ? p.src : ""} testId="studio-prop-src" onSave={(v) => SAFE_FILE.test(v.trim()) && setProps({ src: v.trim() })} />
-            <button type="button" className={btn} disabled={busy} onClick={() => setMedia(true)} data-testid="studio-pick-video">{tr("من مكتبة الفيديوهات", "From the video library")}</button>
-            {words("label", tr("وصف الفيديو لقارئ الشاشة", "Video description for screen readers"))}
-            <VideoPickerModal open={media} onClose={() => setMedia(false)} onPick={({ url, posterUrl }) => { setMedia(false); setProps({ src: url, ...(posterUrl ? { poster: posterUrl } : {}) }); }} />
-            {toggle("autoplay", tr("بيشتغل لحاله (بلا صوت)", "Plays by itself (muted)"))}
-            {toggle("loop", tr("بيعيد من الأول", "Loops"))}
-            {toggle("controls", tr("أزرار التشغيل", "Play controls"), true)}
-          </>
-        );
+      // A picture's and a clip's settings are their own cards (MediaPanels.tsx).
       case "slider":
         return <SliderFields node={node} lang={lang} busy={busy} setProps={setProps} />;
       case "icon":

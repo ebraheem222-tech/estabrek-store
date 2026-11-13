@@ -121,6 +121,7 @@ import { CodePanel, FormPanel } from "./FormPanels";
 import { InspectorGroup, InspectorJump, type InspectorGroupId } from "./InspectorNav";
 import { besidePlace, dockPref, frameFor, saveDock, saveSections, sectionsPref, sideOf } from "./beside";
 import { wheelOver } from "./canvasWheel";
+import { ContentPanel } from "./MediaPanels";
 import { BesideStrips } from "./BesideStrips";
 import { makeVideo } from "../api/videos.api";
 import { editImage } from "../api/uploads.api";
@@ -2512,7 +2513,7 @@ function StudioDocument() {
             {say("اكتب بالصفحة مع تنسيق|Write on the page with formatting|כתיבה בעמוד עם עיצוב")}
           </button>
         ) : null}
-        {EDITABLE.has(target.type) ? <ElementPanel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {EDITABLE.has(target.type) ? <ContentPanel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
         {target.type === "heading" || target.type === "text" ? <CurvePanel node={target} busy={busy} onOps={onOps} /> : null}
         {target.type === "slider" && part && /^slide-\d+$/.test(part.id) ? (
           <SlidePanel key={`${target.id}:${part.id}`} node={target} index={Number(part.id.slice(6))} lang={shopLang} busy={busy} onOps={onOps} onShow={(i) => send({ type: "slideTo", nodeId: target.id, i })} />
@@ -2929,7 +2930,7 @@ function StudioDocument() {
                 {editing ? tr("عم تكتب بالصفحة… (Enter للحفظ، Esc للإلغاء)", "Writing in the page… (Enter saves, Esc cancels)") : tr("اكتب بالصفحة مع تنسيق (أو كبستين عليه)", "Write on the page with formatting (or double-click it)")}
               </button>
             ) : null}
-            {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {EDITABLE.has(selFree.type) ? <ContentPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} lang={shopLang} onOps={(label, ops) => void change(label, ops)} /> : null}
             {selFree.type === "columns" ? <ColumnsPanel node={selFree} screen={screen} busy={busy} ids={makeIds} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "cell" ? (
@@ -2950,7 +2951,7 @@ function StudioDocument() {
             {selFree.type === "clock" ? <ClockPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "model3d" ? <Model3dPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
+            {selFree.type === "video" ? <div data-insp-as="look"><VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /></div> : null}
             <InspectorGroup id="look" />
             <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
