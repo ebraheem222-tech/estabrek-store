@@ -145,7 +145,7 @@ import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
 import { decorArt } from "./decor";
-import { around, moveAllOps, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
+import { around, moveAllOps, readDragPrefs, saveDragPrefs, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
@@ -331,7 +331,7 @@ function StudioDocument() {
   const liveRef = useRef(false);
   liveRef.current = motionLive;
   const playNext = useRef<string | null>(null);
-  const [placing, setPlacing] = useState<{ id: string; box: Box; x: number; y: number } | null>(null);
+  const [placing, setPlacing] = useState<{ id: string; box: Box; x: number; y: number; held?: "x" | "y" } | null>(null);
   // A free drag (phase 9): how it behaves (kept in this browser), what it pushes, touches and lines up with, the place it'd go into.
   const [dragPrefs, setDragPrefs] = useState<DragPrefs>(readDragPrefs);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>(readCanvasMode);
@@ -2326,7 +2326,9 @@ function StudioDocument() {
     d.into = into;
     const lead = { ...start, x: start.x + by.x, y: start.y + by.y };
     const box = f.ids.length > 1 ? { ...f.start, x: f.start.x + by.x, y: f.start.y + by.y } : lead;
-    setPlacing({ id: n.id, box, ...placeFor(placeBoxOf(n.id, lead), into?.box ?? f.holder, placedOn(n, screen)?.anchor ?? "center", rtl) });
+    // Asked to go a way it can't, because it fills its holder and is kept inside it: said beside it (not a silent stop).
+    const held = into ? null : heldAxis(f, { x: p.x - d.p.x, y: p.y - d.p.y }, by, dragPrefs);
+    setPlacing({ id: n.id, box, ...placeFor(placeBoxOf(n.id, lead), into?.box ?? f.holder, placedOn(n, screen)?.anchor ?? "center", rtl), ...(held ? { held } : {}) });
     const preview: PagesAPI.PageDraftOp[] = [];
     for (const x of f.ids) {
       const moving = nodeOf(x), startBox = d.starts.get(x), measured = sizeOf(x);
@@ -3677,6 +3679,13 @@ function StudioDocument() {
               {placing ? (
                 <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-sky-400 bg-sky-400/10" style={rel(placing.box)} data-testid="studio-placing">
                   <span className="absolute start-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr">{placing.x}% · {placing.y}%</span>
+                  {placing.held ? (
+                    <span className="absolute start-0 top-full mt-1 max-w-[20rem] rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] leading-4 text-black" data-testid="studio-placing-held" data-axis={placing.held}>
+                      {placing.held === "x"
+                        ? say("بعرض حاويته: صغّري عرضه ليتحرّك عالجنبين، أو طفّي «بيضل جوّا الحاوية تبعه» من قائمة السحب.|As wide as its holder: make it narrower to move it sideways, or turn off “Stays inside its holder” in Dragging.|ברוחב המכל שלו: הקטינו את הרוחב כדי להזיז לצדדים, או כבו «נשאר בתוך המכל» בתפריט הגרירה.")
+                        : say("بطول حاويته: صغّري ارتفاعه ليتحرّك فوق وتحت، أو طفّي «بيضل جوّا الحاوية تبعه» من قائمة السحب.|As tall as its holder: make it shorter to move it up and down, or turn off “Stays inside its holder” in Dragging.|בגובה המכל שלו: הקטינו את הגובה כדי להזיז למעלה ולמטה, או כבו «נשאר בתוך המכל» בתפריט הגרירה.")}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
               {dragView?.pushed.map((x) => (

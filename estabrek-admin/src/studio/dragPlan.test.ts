@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRAG_DEFAULTS, around, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type Beside, type DragPrefs } from "./dragPlan";
+import { DRAG_DEFAULTS, around, heldAxis, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type Beside, type DragPrefs } from "./dragPlan";
 import { boxBody } from "./space";
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -107,6 +107,33 @@ describe("what a drag on the canvas does", () => {
     // What it starts over doesn't stop it.
     const under = stepFreeDrag(startFreeDrag(["a"], start, boxBody(start), holder, [beside("u", box(10, 10, 20, 20))]), { x: 200, y: 0 }, keys, prefs({ mode: "block" }));
     expect(under.box.x).toBe(200);
+  });
+
+  it("says which way a drag is held because what's dragged fills its holder", () => {
+    const holder = { x: 0, y: 0, w: 600, h: 400 };
+    const prefs = { ...DRAG_DEFAULTS, inside: true };
+    // A heading as wide as its section: the pointer goes sideways, the heading can't.
+    const wide = startFreeDrag(["h"], { x: 0, y: 40, w: 600, h: 30 }, boxBody({ x: 0, y: 40, w: 600, h: 30 }), holder, []);
+    const step = stepFreeDrag(wide, { x: 80, y: 10 }, { straight: false, loose: true }, prefs);
+    expect(step.d.x).toBe(0);
+    expect(heldAxis(wide, { x: 80, y: 10 }, step.d, prefs)).toBe("x");
+    // A small move isn't worth a word, and with "inside" off it isn't held at all.
+    expect(heldAxis(wide, { x: 10, y: 0 }, { x: 0, y: 0 }, prefs)).toBeNull();
+    expect(heldAxis(wide, { x: 80, y: 10 }, { x: 80, y: 10 }, { ...prefs, inside: false })).toBeNull();
+    // Something narrower that stops at its holder's edge has room behind it: not held by its size.
+    const small = startFreeDrag(["b"], { x: 500, y: 40, w: 80, h: 30 }, boxBody({ x: 500, y: 40, w: 80, h: 30 }), holder, []);
+    const edge = stepFreeDrag(small, { x: 120, y: 0 }, { straight: false, loose: true }, prefs);
+    expect(edge.d.x).toBe(20);
+    expect(heldAxis(small, { x: 120, y: 0 }, edge.d, prefs)).toBeNull();
+    // A menu a little narrower than its padded section: it follows as far as the padding lets it, then is held.
+    const padded = startFreeDrag(["m"], { x: 30, y: 40, w: 540, h: 30 }, boxBody({ x: 30, y: 40, w: 540, h: 30 }), holder, []);
+    const some = stepFreeDrag(padded, { x: 120, y: 0 }, { straight: false, loose: true }, prefs);
+    expect(some.d.x).toBe(30);
+    expect(heldAxis(padded, { x: 120, y: 0 }, some.d, prefs)).toBe("x");
+    expect(heldAxis(padded, { x: 40, y: 0 }, { x: 30, y: 0 }, prefs)).toBeNull();
+    // As tall as its holder: held up and down.
+    const tall = startFreeDrag(["t"], { x: 10, y: 0, w: 100, h: 400 }, boxBody({ x: 10, y: 0, w: 100, h: 400 }), holder, []);
+    expect(heldAxis(tall, { x: 5, y: 60 }, { x: 5, y: 0 }, prefs)).toBe("y");
   });
 
   it("places by the element's own box: its middle less its move, its size before the turn", () => {

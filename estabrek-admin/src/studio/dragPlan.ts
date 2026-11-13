@@ -147,6 +147,23 @@ export function stepFreeDrag(drag: FreeDrag, want: Pt, keys: { straight: boolean
   };
 }
 
+/**
+ * The way a drag is asked to go but can't, because what's dragged is (nearly) as wide or as tall as its holder and
+ * is kept inside it: the pointer has gone well further that way than the element could follow. The editor then
+ * says why (a full-width heading only moves up and down until it's made narrower, or "inside" is turned off).
+ * A smaller thing that just stops at its holder's edge has room behind it: that isn't one.
+ */
+export function heldAxis(drag: FreeDrag, want: Pt, moved: Pt, prefs: DragPrefs, far = 24): "x" | "y" | null {
+  if (!prefs.inside) return null;
+  // Little play that way: less than a fifth of its own size (and at least what a section's padding leaves).
+  const tight = (room: number, size: number) => room < Math.max(64, size * 0.2);
+  const short = (asked: number, got: number) => Math.abs(asked) - Math.abs(got) >= far;
+  const x = tight(drag.holder.w - drag.start.w, drag.start.w) && short(want.x, moved.x);
+  const y = tight(drag.holder.h - drag.start.h, drag.start.h) && short(want.y, moved.y);
+  // The way the pointer has gone most.
+  return x && (!y || Math.abs(want.x) >= Math.abs(want.y)) ? "x" : y ? "y" : null;
+}
+
 /** The box around several boxes. */
 export function around(boxes: Box[]): Box {
   const x = Math.min(...boxes.map((b) => b.x));
