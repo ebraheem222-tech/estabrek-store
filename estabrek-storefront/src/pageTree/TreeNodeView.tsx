@@ -4,6 +4,7 @@
  * file only builds the markup. Links to the shop's own pages get the language
  * prefix; links and file addresses are checked again before they're used.
  */
+import { videoPlay } from "./videoPlay";
 import type { CatalogProduct } from "@/lib/catalog";
 import { cloneElement, isValidElement, type CSSProperties, type ReactNode } from "react";
 import type { ProductMini } from "@/cms/types";
@@ -250,7 +251,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // Sparkling stars over it (focus mode, shared/sparkle.ts), drawn here and twinkling in CSS.
       const sparkle = safeSparkle(p.sparkle);
       // The page's first picture loads at once and first; the rest wait until they're near the screen.
-      const load = ctx.lead === node.id ? ({ loading: "eager", fetchPriority: "high" } as Record<string, string>) : ({ loading: "lazy" } as Record<string, string>);
+      const load = ctx.lead === node.id || p.priority === true ? ({ loading: "eager", fetchPriority: "high" } as Record<string, string>) : ({ loading: "lazy" } as Record<string, string>);
       const img = framed(node, motion) ? (
         <span className={cls(node, "pt-frame")} {...mark}>
           {before}
@@ -263,7 +264,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
         <img className={cls(node)} {...mark} src={src} alt={say(p.alt)} {...load} decoding="async" />
       );
       const to = link(p.href);
-      return to ? <a className="pt-image-link" href={to}>{img}</a> : img;
+      return to ? <a className="pt-image-link" href={to} {...(p.newTab === true ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{img}</a> : img;
     }
     case "button": {
       const to = link(p.href);
@@ -282,6 +283,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!src) return null;
       const poster = safeSrc(p.poster) ?? undefined;
       const inFrame = framed(node, motion);
+      // How it plays (videoPlay.ts): at once, once it's seen or under the pointer (those without sound, and without
+      // the player's buttons; a light element waits to be pressed), its speed, what loads before it's played.
+      const play = videoPlay(p, perf?.tier === "light");
       const clip = (
         <video
           className={inFrame ? "pt-frame-media" : cls(node)}
@@ -289,12 +293,14 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
           src={src}
           poster={poster}
           aria-label={say(p.label) || undefined}
-          autoPlay={p.autoplay === true && perf?.tier !== "light"}
-          muted={p.muted === true || p.autoplay === true}
+          autoPlay={play.autoPlay}
+          muted={play.muted}
           loop={p.loop === true}
-          controls={p.controls !== false && (p.autoplay !== true || perf?.tier === "light")}
+          controls={play.controls}
           playsInline
-          preload="metadata"
+          preload={play.preload}
+          {...(play.noDownload ? { controlsList: "nodownload" } : {})}
+          {...(play.live ? { "data-pt-video": JSON.stringify(play.live) } : {})}
         />
       );
       return inFrame ? (

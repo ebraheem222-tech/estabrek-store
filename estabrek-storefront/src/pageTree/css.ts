@@ -1054,6 +1054,9 @@ export const BASE_CSS = [
   ".pt-image{display:block;max-width:100%;height:auto}",
   ".pt-image-link{display:block}",
   ".pt-video{display:block;width:100%;height:auto}",
+  // A picture or a clip given a width and a height of its own fills that box, cut at its edges (never stretched,
+  // never with empty bands): what the editor shows as its fill until another is picked.
+  ".pt-image,.pt-video{object-fit:var(--pt-fit,cover);object-position:var(--pt-focus,50% 50%)}",
   // A picture or clip in a frame: the frame carries the look, the layers and the zoom.
   ".pt-frame{position:relative;display:block;max-width:100%;overflow:hidden}",
   // A framed picture keeps its own size by default; a width it was given wins.

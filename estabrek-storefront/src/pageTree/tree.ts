@@ -159,6 +159,7 @@ export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>
 import { WORLD_HOSTS, physicsOf, worldOf, type PhysicsSpec } from "./physics";
 import { autoNeeded, perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
+import { videoPlay } from "./videoPlay";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
 
@@ -378,10 +379,12 @@ export function treeNeeds(tree: PageTree) {
     if (!motion && n === tree.root) motion = looksOf(tree).some(([t, l]) => Boolean(motionOf(lookNode(t, l))));
     if (n.type === "product360" && typeof n.props?.productId === "string" && /^[\w-]{1,64}$/.test(n.props.productId)) spinProducts.add(n.props.productId);
   });
-  // Animated media (Lottie, Rive, particles) and smooth scrolling, each player loaded only then (TreeMedia).
+  // Animated media (Lottie, Rive, particles), a clip the page plays or speeds up itself, and smooth scrolling, each
+  // player loaded only then (TreeMedia).
   let media = false;
   eachNode(tree, (n) => {
     if (((n.type === "lottie" || n.type === "rive") && typeof n.props?.src === "string") || (n.type === "section" && n.props?.particles)) media = true;
+    if (n.type === "video" && typeof n.props?.src === "string" && videoPlay(n.props).live) media = true;
   });
   const smooth = tree.root.props?.smooth === true;
   // Scroll scenes (TreeScenes) and triggers (TreeTriggers), each runtime loaded only then.

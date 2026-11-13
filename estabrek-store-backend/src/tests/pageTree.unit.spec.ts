@@ -169,6 +169,19 @@ describe("checking a page tree", () => {
     expect(where(page([section("s", [{ ...slider({}), children: [{ id: "t", type: "text", props: { text: { ar: "x" } } }] }])]))[0]).toMatch(/can't hold other elements/);
   });
 
+  test("a clip's playing and a picture's link and loading: known values only", () => {
+    const vid = (props: Record<string, unknown>) => page([section("s", [{ id: "v", type: "video", props: { src: "/clips/a.mp4", ...props } }])]);
+    const img = (props: Record<string, unknown>) => page([section("s", [{ id: "i", type: "image", props: { src: "/a.jpg", ...props } }])]);
+    const clip = checkTree(vid({ poster: "/a.jpg", muted: true, loop: true, playOn: "view", speed: 1.5, preload: "none", noDownload: true }));
+    expect(clip.ok).toBe(true);
+    if (clip.ok) expect(clip.tree.root.children![0].children![0].props).toEqual({ src: "/clips/a.mp4", poster: "/a.jpg", muted: true, loop: true, playOn: "view", speed: 1.5, preload: "none", noDownload: true });
+    for (const bad of [{ playOn: "always" }, { speed: 0.1 }, { speed: 9 }, { preload: "all" }, { noDownload: "yes" }]) expect(issuesOf(vid(bad)).length, JSON.stringify(bad)).toBeGreaterThan(0);
+    const pic = checkTree(img({ href: "/shop", newTab: true, priority: true }));
+    expect(pic.ok).toBe(true);
+    if (pic.ok) expect(pic.tree.root.children![0].children![0].props).toEqual({ src: "/a.jpg", href: "/shop", newTab: true, priority: true });
+    for (const bad of [{ newTab: 1 }, { priority: "high" }]) expect(issuesOf(img(bad)).length, JSON.stringify(bad)).toBeGreaterThan(0);
+  });
+
   test("any element can be turned, moved, covered, shadowed, placed over its container and set to move", () => {
     const vid = (style: unknown, motion?: unknown) => page([section("s", [{ id: "v", type: "video", props: { src: "/clips/a.mp4" }, style, ...(motion ? { motion } : {}) }])]);
     const look = {

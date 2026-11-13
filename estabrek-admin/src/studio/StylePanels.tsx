@@ -12,6 +12,7 @@ import { Range } from "./LookPanels";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
 import { FontPicker, useTreeFonts } from "./TypePanels";
 import { ShapePicker } from "./ShapePanels";
+import { say } from "./say";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
@@ -127,7 +128,7 @@ export function MediaStylePanel({ node, screen, busy, onOps }: { node: PageTreeN
   return (
     <div className={box} data-testid="studio-media-style">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium text-white/70">{tr("الصورة بإطارها", "The picture in its frame")}</div>
+        <div className="text-xs font-medium text-white/70">{node.type === "video" ? say("الفيديو بإطاره|The clip in its frame|הסרטון במסגרת שלו") : node.type === "slider" ? say("الشرائح بإطارها|The slides in their frame|השקופיות במסגרת שלהן") : tr("الصورة بإطارها", "The picture in its frame")}</div>
         <span className="text-[10px] text-white/40">{SCREEN_LABEL[screen]()}</span>
       </div>
       <Choice
@@ -136,6 +137,15 @@ export function MediaStylePanel({ node, screen, busy, onOps }: { node: PageTreeN
         onPick={(f) => save(tr("تعبئة الإطار", "Fill"), { fit: f === "cover" ? null : f })}
       />
       <ShapePicker value={v("shape")} busy={busy} onPick={(k) => save(tr("الشكل", "Shape"), { shape: k, radius: null })} testId="studio-media-shape" />
+      {node.type === "slider" ? null : (
+        // Its frame's proportions (a slider has its own, with its slides). A height of its own would win over them,
+        // so picking one lets the height follow the width.
+        <Choice
+          label={say("نسبة الإطار (العرض للارتفاع)|The frame's proportions (width to height)|יחס המסגרת (רוחב לגובה)")} value={typeof v("aspect") === "string" ? String(v("aspect")).replace(/\s+/g, "") : ""} busy={busy} testId="studio-media-aspect"
+          options={[["", say("متل ما هي|As it is|כמו שהיא")], ["1/1", "1:1"], ["4/3", "4:3"], ["3/2", "3:2"], ["16/9", "16:9"], ["21/9", "21:9"], ["3/4", "3:4"], ["2/3", "2:3"], ["9/16", "9:16"]]}
+          onPick={(a) => save(say("نسبة الإطار|The frame's proportions|יחס המסגרת"), a ? { aspect: a, height: null } : { aspect: null })}
+        />
+      )}
       <div className="text-[11px] text-white/55">
         {tr("النقطة اللي بتضل ظاهرة", "The point that stays in sight")}
         <div className="mt-1 flex items-start gap-3">
