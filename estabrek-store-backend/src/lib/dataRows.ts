@@ -4,13 +4,13 @@
  * written as one CSV line. Pure: no database here (the controller reads and writes).
  */
 import { randomBytes } from "node:crypto";
-import { checkItemData, ITEM_SLUG } from "./collections.js";
+import { checkItemData, ITEM_SLUG, type ItemIssue } from "./collections.js";
 import type { Field } from "./collectionTree.js";
 import type { GridRow } from "./dataQuery.js";
 
 export const LANGS = ["ar", "en", "he"] as const;
 export type Lang = (typeof LANGS)[number];
-export type Issue = { field: string; message: string };
+export type Issue = ItemIssue;
 
 const TRUE = new Set(["true", "1", "yes", "y", "نعم", "اه", "כן"]);
 const FALSE = new Set(["false", "0", "no", "n", "لا", "לא"]);
@@ -108,12 +108,28 @@ export function patchData(fields: Field[], was: Record<string, unknown>, patch: 
       issues.push({ field: id, message: "No such column" });
       continue;
     }
-    const checked = checkItemData([field], { [id]: coerceValue(field, raw, lang) });
+    const value = coerceValue(field, raw, lang);
+    // Sent back as it was (a whole row's form sends every field): not checked again, so an older value
+    // that a newer rule wouldn't take doesn't hold up the rest.
+    if (same(value, was[id])) continue;
+    const checked = checkItemData([field], { [id]: value });
     if (!checked.ok) issues.push(...checked.issues);
     else if (id in checked.data) data[id] = checked.data[id];
     else delete data[id];
   }
   return issues.length ? { ok: false, issues } : { ok: true, data };
+}
+
+/** The same value? (Words per language compare whatever their order; nothing and "" are the same nothing.) */
+export function same(a: unknown, b: unknown): boolean {
+  const empty = (v: unknown) => v === undefined || v === null || v === "";
+  if (empty(a) || empty(b)) return empty(a) && empty(b);
+  if (typeof a === "object" && typeof b === "object") {
+    const [x, y] = [a as Record<string, unknown>, b as Record<string, unknown>];
+    const keys = new Set([...Object.keys(x), ...Object.keys(y)]);
+    return [...keys].every((k) => same(x[k], y[k]));
+  }
+  return a === b;
 }
 
 /** A row's address from its words ("Spring Sale" → spring-sale); other scripts get a short random one. */

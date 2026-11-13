@@ -14,7 +14,7 @@ import type { ImportReport, Lang } from "../../api/data.api";
 import { parseCsv } from "./csv";
 import { readXlsx } from "./xlsx";
 import { field, input } from "./GridCells";
-import { LANGS, LANG_NAME, doubledTargets, guessTarget, issueWords, rowsFromCsv, targetName, targetsOf, type Target } from "./dataText";
+import { LANGS, LANG_NAME, doubledTargets, guessTarget, issueSay, rowsFromCsv, targetName, targetsOf, type Target } from "./dataText";
 
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
@@ -189,7 +189,12 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
                 {checked.rejected.slice(0, SHOW_REJECTED).map((r) => (
                   <li key={r.line} data-testid="import-rejected">
                     <span className="text-white/45">{`${say("سطر|line|שורה")} ${r.line}${r.slug ? ` (${r.slug})` : ""}: `}</span>
-                    {r.issues.map((i) => `${i.field}: ${say(issueWords(i.message))}`).join(" · ")}
+                    {r.issues
+                      .map((i) => {
+                        const words = issueSay(i, lang);
+                        return `${i.field}: ${"own" in words ? words.own : say(words.general)}`;
+                      })
+                      .join(" · ")}
                   </li>
                 ))}
                 {checked.rejected.length > SHOW_REJECTED ? <li className="text-white/45">{say(`و${checked.rejected.length - SHOW_REJECTED} غيرهم…|and ${checked.rejected.length - SHOW_REJECTED} more…|ועוד ${checked.rejected.length - SHOW_REJECTED}…`)}</li> : null}

@@ -21,7 +21,8 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { checkTree, PAGE_FORMAT } from "../../lib/pageTree.js";
-import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, ITEM_SLUG, LIMITS, PRESETS, STORE_TEMPLATES, TEMPLATE_KIND, type StoreTemplateKind } from "../../lib/collections.js";
+import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, ITEM_SLUG, LIMITS, PRESETS, STORE_TEMPLATES, TEMPLATE_KIND, withDefaults, type StoreTemplateKind } from "../../lib/collections.js";
+import { changedUnique, uniqueIssues } from "../../lib/uniqueValues.js";
 import type { Field } from "../../lib/collectionTree.js";
 
 const r = Router();
@@ -101,6 +102,13 @@ r.get("/:id/items", asyncHandler(async (req, res) => {
   res.json(items);
 }));
 
+/** 400 with the fields whose value another row holds, or null when every "only value" is free. */
+async function takenValues(collectionId: string, fields: Field[], data: Record<string, unknown> | undefined, was?: { id: string; data: unknown }) {
+  if (!data || !fields.some((f) => f.unique)) return null;
+  const taken = await uniqueIssues(prisma, collectionId, fields, [was ? { id: was.id, data, changed: changedUnique(fields, (was.data ?? {}) as Record<string, unknown>, data) } : { data }]);
+  return taken.size ? { error: "ITEM_INVALID", field: "data", message: "Some values are wrong", issues: taken.get(0) } : null;
+}
+
 const itemBody = (fields: Field[], body: any, partial: boolean) => {
   const out: { slug?: string; data?: Record<string, unknown>; status?: "DRAFT" | "PUBLISHED" | "ARCHIVED"; sort?: number } = {};
   if (body?.slug !== undefined || !partial) {
@@ -109,7 +117,8 @@ const itemBody = (fields: Field[], body: any, partial: boolean) => {
     out.slug = slug;
   }
   if (body?.data !== undefined || !partial) {
-    const checked = checkItemData(fields, body?.data);
+    // A new item starts from the fields' defaults.
+    const checked = checkItemData(fields, partial ? body?.data : withDefaults(fields, body?.data && typeof body.data === "object" ? body.data : {}));
     if (!checked.ok) return { error: { field: "data", message: "Some values are wrong", issues: checked.issues } };
     out.data = checked.data;
   }
@@ -130,6 +139,8 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
   if (c._count.items >= LIMITS.items) return res.status(400).json({ error: "TOO_MANY_ITEMS" });
   const b = itemBody(fieldsOf(c), req.body, false);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
+  const doubled = await takenValues(c.id, fieldsOf(c), b.out.data);
+  if (doubled) return res.status(400).json(doubled);
   try {
     const status = b.out.status ?? "DRAFT";
     const made = await prisma.collectionItem.create({ data: { collectionId: c.id, slug: b.out.slug!, data: b.out.data as any, status, sort: b.out.sort ?? 0, publishedAt: status === "PUBLISHED" ? new Date() : null } });
@@ -147,6 +158,8 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
   if (!c || !was) return res.status(404).json({ error: "NOT_FOUND" });
   const b = itemBody(fieldsOf(c), req.body, true);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
+  const doubled = await takenValues(c.id, fieldsOf(c), b.out.data, was);
+  if (doubled) return res.status(400).json(doubled);
   try {
     const saved = await prisma.collectionItem.update({ where: { id: was.id }, data: { ...b.out, data: b.out.data as any, ...(b.out.status === "PUBLISHED" && !was.publishedAt ? { publishedAt: new Date() } : {}) } });
     refresh();

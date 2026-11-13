@@ -49,6 +49,8 @@ const meta: GridMeta = {
   systemColumns: ["$slug", "$status", "$createdAt", "$updatedAt", "$publishedAt"],
   views: ["all", "draft", "published", "archived", "trash"],
   limits: { pageSize: 200, filters: 12, sorts: 3, search: 100, value: 200, anyOf: 30, rows: 50_000, importRows: 500, bulkIds: 500, trashDays: 30 },
+  rules: {} as GridMeta["rules"],
+  shapes: [],
 };
 const row = (slug: string, data: Record<string, unknown>, over: Partial<GridRow> = {}): GridRow => ({ id: `id-${slug}`, collectionId: "c1", slug, status: "DRAFT", data, sort: 0, publishedAt: null, createdAt: "2026-11-01T10:00:00Z", updatedAt: "2026-11-13T10:00:00Z", deletedAt: null, ...over });
 const rows = [row("spring", { title: { en: "Spring dress" }, price: 1200, kind: "new" }, { status: "PUBLISHED" }), row("summer", { title: { en: "Summer hat" }, price: 80 }), row("winter", { title: { en: "Winter scarf" } })];

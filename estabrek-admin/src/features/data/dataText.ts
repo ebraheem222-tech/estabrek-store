@@ -186,8 +186,22 @@ const ISSUE_WORDS: Record<string, string> = {
   "This address is already used": "العنوان مستعمل|This address is already used|הכתובת כבר בשימוש",
   "This address is in the trash": "العنوان موجود بسلة المحذوفات|This address is in the trash|הכתובת נמצאת באשפה",
   "DRAFT, PUBLISHED or ARCHIVED": "الحالة: DRAFT أو PUBLISHED أو ARCHIVED|DRAFT, PUBLISHED or ARCHIVED|DRAFT, PUBLISHED או ARCHIVED",
+  "Too small": "أصغر من المسموح|Too small|קטן מדי",
+  "Too big": "أكبر من المسموح|Too big|גדול מדי",
+  "Too short": "أقصر من المسموح|Too short|קצר מדי",
+  "Too long": "أطول من المسموح|Too long|ארוך מדי",
+  "Too early": "قبل أول يوم مسموح|Before the first day allowed|לפני היום הראשון המותר",
+  "Too late": "بعد آخر يوم مسموح|After the last day allowed|אחרי היום האחרון המותר",
+  "Not the asked shape": "مش بالشكل المطلوب|Not the asked shape|לא בצורה הנדרשת",
+  "Already used": "القيمة مستعملة بسطر تاني|Another row already has this value|שורה אחרת כבר מחזיקה בערך הזה",
+  "Only one row can hold this value": "هالعمود ما بيتكرر: سطر واحد بس بياخد القيمة|This column takes no doubles: only one row can hold the value|עמודה ללא כפילויות: רק שורה אחת יכולה להחזיק בערך",
 };
 export const issueWords = (message: string) => ISSUE_WORDS[message] ?? message;
+/** A refused value's reason: the owner's own words for that field (in this language, else another), else the general ones (to be said). */
+export function issueSay(issue: { message: string; say?: Local }, lang: Lang): { own: string } | { general: string } {
+  const own = issue.say?.[lang] || issue.say?.ar || issue.say?.en || issue.say?.he;
+  return own ? { own } : { general: issueWords(issue.message) };
+}
 
 /* ---------------- A CSV file's columns and the table's ---------------- */
 
