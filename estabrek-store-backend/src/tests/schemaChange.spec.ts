@@ -76,6 +76,13 @@ describe("A field's kind changes", () => {
     const csv = (await request(app).get(`${base()}/rows/export`).expect(200)).text;
     expect(csv).not.toContain("cheap");
     expect(csv).not.toContain("$was");
+    // …nor answered by the routes: a row's values are its fields' values.
+    const answered = (await request(app).get(`${base()}/rows`).expect(200)).body.rows as Array<{ slug: string; data: Record<string, unknown> }>;
+    expect(answered.find((r) => r.slug === "a")!.data).toEqual({ title: { en: "A" }, price: 120, kind: "new", note: { en: "first" } });
+    expect(JSON.stringify(answered)).not.toContain("$was");
+    expect(JSON.stringify((await request(app).get(`${base()}/items`).expect(200)).body)).not.toContain("$was");
+    const c = await prisma.collectionItem.findFirstOrThrow({ where: { collectionId: id, slug: "c" } });
+    expect((await request(app).patch(`${base()}/rows/${c.id}`).send({ values: { note: "third" }, lang: "en" }).expect(200)).body.data).toEqual({ title: { en: "C" }, kind: "sale", note: { en: "third" } });
   });
 
   test("a row written again keeps what was put aside, whichever way it's written", async () => {

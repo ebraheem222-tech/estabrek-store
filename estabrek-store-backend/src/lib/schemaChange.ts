@@ -254,6 +254,14 @@ export async function applySchemaChange(db: Db, collectionId: string, before: Fi
   return { rows: changed };
 }
 
+/** A row as the routes answer it: only the values of the table's own fields (what was put aside stays in the database). */
+export function shownRow<T extends { data: unknown }>(row: T, fields: Field[]): T {
+  const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
+  const out: Record<string, unknown> = {};
+  for (const f of fields) if (f.id in data) out[f.id] = data[f.id];
+  return { ...row, data: out };
+}
+
 /** A row's values that no field of the table shows (kept from removed fields and changed kinds): carried over when the row is rewritten whole. */
 export function hiddenOf(data: unknown, fields: Field[]): Record<string, unknown> {
   const known = new Set(fields.map((f) => f.id));

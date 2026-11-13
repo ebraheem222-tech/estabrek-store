@@ -4,14 +4,15 @@
  * field's kind are offered (the server says which).
  */
 import { say } from "../../studio/say";
-import type { CollectionField } from "../../api/collections.api";
+import type { CollectionField, FieldType } from "../../api/collections.api";
+import { KIND_NAME } from "../data/kinds";
 import { ValueInput, field as fieldBox, input } from "../data/GridCells";
 import { useState } from "react";
 import { CURRENCIES, LIMIT_NAME, SHAPE_NAME, addChoice, defaultDraft, defaultFrom, limitFrom, moveChoice, removeChoice, renameChoice, setRules, type Lang, type RuleFit, type Shape } from "./fieldRules";
 
 const label = "block text-xs text-white/60";
 
-export function FieldRulesEditor({ field, lang, fit, shapes, onChange }: { field: CollectionField; lang: Lang; fit: RuleFit; shapes: Shape[]; onChange: (next: CollectionField) => void }) {
+export function FieldRulesEditor({ field, lang, fit, shapes, onChange, onRetype }: { field: CollectionField; lang: Lang; fit: RuleFit; shapes: Shape[]; onChange: (next: CollectionField) => void; /** Another kind for the field (what it does to the rows is shown before the save). */ onRetype?: (type: FieldType) => void }) {
   const set = (patch: Parameters<typeof setRules>[1]) => onChange(setRules(field, patch));
   const limit = (v: number | string | undefined) => (v === undefined ? "" : String(v));
   const own = field.pattern !== undefined;
@@ -25,6 +26,21 @@ export function FieldRulesEditor({ field, lang, fit, shapes, onChange }: { field
   };
   return (
     <div className="grid w-full gap-3 rounded-lg bg-white/[0.03] p-3 md:grid-cols-2" data-testid={`rules-${field.id}`}>
+      {onRetype ? (
+        <label className={`${label} md:col-span-2`}>
+          {say("نوع الحقل|The field's kind|סוג השדה")}
+          <span className="mt-1 flex flex-wrap items-center gap-2">
+            <select className={fieldBox} value={field.type} onChange={(e) => onRetype(e.target.value as FieldType)} data-testid={`rule-${field.id}-kind`}>
+              {(Object.keys(KIND_NAME) as FieldType[]).map((t) => (
+                <option key={t} value={t}>
+                  {say(KIND_NAME[t])}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-white/40">{say("قبل الحفظ بتشوف شو بيصير بالقيم الموجودة.|Before the save you see what happens to the values that are there.|לפני השמירה תראה מה קורה לערכים הקיימים.")}</span>
+          </span>
+        </label>
+      ) : null}
       {choices ? (
         <div className="space-y-2 md:col-span-2" data-testid={`choices-${field.id}`}>
           <div className={label}>{say("الاختيارات (بالترتيب اللي بتنعرض فيه)|The choices (in the order they're offered)|האפשרויות (בסדר שבו הן מוצעות)")}</div>

@@ -27,7 +27,7 @@ import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { checkTree, PAGE_FORMAT } from "../../lib/pageTree.js";
 import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, ITEM_SLUG, LIMITS, PRESETS, STORE_TEMPLATES, TEMPLATE_KIND, withDefaults, type StoreTemplateKind } from "../../lib/collections.js";
 import { changedUnique, uniqueIssues } from "../../lib/uniqueValues.js";
-import { applySchemaChange, hiddenOf, needsAccept, planChange, previewSchemaChange, type Impact } from "../../lib/schemaChange.js";
+import { applySchemaChange, hiddenOf, needsAccept, planChange, previewSchemaChange, shownRow, type Impact } from "../../lib/schemaChange.js";
 import type { Field } from "../../lib/collectionTree.js";
 
 const r = Router();
@@ -188,8 +188,11 @@ r.delete("/:id", asyncHandler(async (req, res) => {
 }));
 
 r.get("/:id/items", asyncHandler(async (req, res) => {
-  const items = await prisma.collectionItem.findMany({ where: { collectionId: req.params.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.itemsList });
-  res.json(items);
+  const [c, items] = await Promise.all([
+    prisma.collection.findUnique({ where: { id: req.params.id }, select: { fields: true } }),
+    prisma.collectionItem.findMany({ where: { collectionId: req.params.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.itemsList }),
+  ]);
+  res.json(c ? items.map((item) => shownRow(item, fieldsOf(c))) : items);
 }));
 
 /** 400 with the fields whose value another row holds, or null when every "only value" is free. */

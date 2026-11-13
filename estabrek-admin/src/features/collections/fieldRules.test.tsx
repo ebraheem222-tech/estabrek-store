@@ -1,16 +1,20 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { CollectionField } from "../../api/collections.api";
 import { setLangForTests } from "../../lib/lang";
 import { issueSay } from "../data/dataText";
 import { addChoice, defaultDraft, defaultFrom, fitRules, limitFrom, moveChoice, removeChoice, renameChoice, ruleCount, ruleParts, setRules, type RuleFit } from "./fieldRules";
+import { impactText, retype, touchesRows, versionLine } from "./schemaText";
+import type { Impact } from "../../api/collections.api";
 
 // A field's rules in the fields editor (B2): the pure parts, then the editor itself over a stand-in API.
 
-const api = vi.hoisted(() => ({ listCollections: vi.fn(), collectionPresets: vi.fn(), createCollection: vi.fn(), listItems: vi.fn(), createItem: vi.fn(), updateItem: vi.fn(), updateCollection: vi.fn(), deleteCollection: vi.fn(), deleteItem: vi.fn(), collectionTemplate: vi.fn(), storeTemplate: vi.fn() }));
+const api = vi.hoisted(() => ({ listCollections: vi.fn(), collectionPresets: vi.fn(), createCollection: vi.fn(), listItems: vi.fn(), createItem: vi.fn(), updateItem: vi.fn(), updateCollection: vi.fn(), deleteCollection: vi.fn(), deleteItem: vi.fn(), collectionTemplate: vi.fn(), storeTemplate: vi.fn(), previewFields: vi.fn(), listVersions: vi.fn(), previewVersion: vi.fn(), restoreVersion: vi.fn() }));
+vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: () => true }) }));
+vi.mock("../../lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock("../../api/collections.api", () => api);
 vi.mock("../../api/pages.api", () => ({ listPages: vi.fn(async () => []), updatePage: vi.fn(async () => ({})) }));
 vi.mock("../../components/media/MediaLibraryModal", () => ({ MediaLibraryModal: () => null }));
@@ -35,6 +39,12 @@ afterEach(() => {
   setLangForTests("ar");
   vi.clearAllMocks();
 });
+beforeEach(() => {
+  // A save looks at what it would do first; by default it touches no row, and there are no earlier versions.
+  api.previewFields.mockResolvedValue({ changes: [], needsAccept: false });
+  api.listVersions.mockResolvedValue([]);
+});
+const impact = (over: Partial<Impact> & { field: string; change: Impact["change"] }): Impact => ({ rows: 0, converted: 0, lost: 0, hidden: 0, failing: 0, missing: 0, doubles: 0, samples: [], ...over });
 
 const f = (over: Partial<CollectionField> & { id: string; type: CollectionField["type"] }): CollectionField => ({ ...over });
 
@@ -103,6 +113,36 @@ describe("A field's rules, the pure parts", () => {
     expect(defaultFrom(f({ id: "m", type: "email" }), "en", " a@b.co ")).toBe("a@b.co");
   });
 
+  test("a change of fields in words: what turns, what's put aside, what no longer passes", () => {
+    const en = (c: Impact, name = "Price") => impactText(c, name).split("|")[1];
+    expect(en(impact({ field: "price", change: "retyped", from: "text", to: "number", rows: 3, converted: 2, lost: 1 }))).toBe("“Price”: from Short words to Number. 2 values turn into the new kind. 1 values can't turn: they're put aside, and come back as they were if the kind is changed back.");
+    expect(en(impact({ field: "price", change: "retyped", from: "text", to: "number" }))).toContain("No row holds a value there yet.");
+    expect(en(impact({ field: "note", change: "removed", from: "text", rows: 1200, hidden: 1200 }), "Note")).toBe("“Note” goes. Its 1,200 values stay kept, hidden, and show again if the field comes back.");
+    expect(en(impact({ field: "note", change: "removed" }), "Note")).toContain("It held no values.");
+    expect(en(impact({ field: "note", change: "added", to: "number", rows: 3, converted: 1, lost: 2, missing: 5 }), "Note")).toBe("“Note”: a new field. 1 earlier values under this id show again. 2 earlier values don't fit its kind: they stay put aside. 5 rows hold nothing there, and it's required.");
+    expect(en(impact({ field: "kind", change: "ruled", rows: 4, failing: 2, doubles: 2 }), "Kind")).toBe("“Kind”: new rules or choices. 2 values don't pass them: they stay as they are, and are refused when next changed. 2 rows share a value with another, and the field takes no doubles.");
+    expect(impactText(impact({ field: "price", change: "retyped", from: "text", to: "number", rows: 1, converted: 1 }), "السعر").split("|")[0]).toBe("«السعر»: من «كلام قصير» لـ «رقم». 1 قيمة بتتحوّل.");
+    // Only a change that touches some row is shown before the save.
+    expect(touchesRows([])).toBe(false);
+    expect(touchesRows([impact({ field: "a", change: "ruled", rows: 9 })])).toBe(false);
+    expect(touchesRows([impact({ field: "a", change: "ruled", rows: 9, failing: 1 })])).toBe(true);
+    expect(touchesRows([impact({ field: "a", change: "retyped", rows: 9, converted: 9 })])).toBe(true);
+    expect(versionLine([impact({ field: "price", change: "retyped", from: "text", to: "number" }), impact({ field: "note", change: "removed" })], "en")).toBe("price: Short words ← Number · note: removed");
+    expect(versionLine([], "ar")).toBe("تعديل بالأسماء أو الإعدادات");
+  });
+
+  test("a field given another kind: what the new kind can't have comes off; a choice kind gets a first choice", () => {
+    const price = f({ id: "price", type: "number", name: { en: "Price" }, min: 0, max: 10, default: 5, unique: true, help: { en: "In shekels" } });
+    expect(retype(price, "text", RULES.text)).toEqual({ id: "price", type: "text", name: { en: "Price" }, min: 0, max: 10, unique: true, help: { en: "In shekels" } });
+    expect(retype(price, "boolean", RULES.boolean)).toEqual({ id: "price", type: "boolean", name: { en: "Price" }, help: { en: "In shekels" } });
+    expect(retype(price, "select", RULES.select)).toEqual({ id: "price", type: "select", name: { en: "Price" }, help: { en: "In shekels" }, options: [{ id: "one", name: { en: "Price" } }] });
+    const kind = f({ id: "kind", type: "select", options: [{ id: "a" }, { id: "b" }], default: "a" });
+    expect(retype(kind, "multiSelect", RULES.multiSelect)).toEqual({ id: "kind", type: "multiSelect", options: [{ id: "a" }, { id: "b" }] });
+    expect(retype(kind, "text", RULES.text)).toEqual({ id: "kind", type: "text" });
+    expect(retype(f({ id: "p", type: "money", currency: "USD" }), "number", RULES.number)).toEqual({ id: "p", type: "number" });
+    expect(retype(price, "number", RULES.number)).toBe(price);
+  });
+
   test("a refused value is said in the owner's words when the field has them", () => {
     expect(issueSay({ message: "Too big", say: { ar: "السعر لحد 1000", en: "Up to 1000" } }, "en")).toEqual({ own: "Up to 1000" });
     expect(issueSay({ message: "Too big", say: { ar: "السعر لحد 1000" } }, "he")).toEqual({ own: "السعر لحد 1000" });
@@ -114,12 +154,72 @@ describe("A field's rules, the pure parts", () => {
 describe("The fields editor", () => {
   const table = { id: "c1", slug: "codes", name: { en: "Codes" }, templateId: null, items: 0, published: 0, createdAt: "", updatedAt: "", fields: [f({ id: "code", type: "text", name: { en: "Code" }, required: true }), f({ id: "price", type: "number", name: { en: "Price" }, max: 1000 }), f({ id: "cover", type: "image", name: { en: "Cover" } })] };
 
+  test("a change that touches the rows is shown first; nothing is saved until it's agreed to", async () => {
+    setLangForTests("en");
+    api.listCollections.mockResolvedValue([table]);
+    api.collectionPresets.mockResolvedValue({});
+    api.listItems.mockResolvedValue([]);
+    const changes = [impact({ field: "price", change: "retyped", from: "number", to: "text", rows: 3, converted: 3 }), impact({ field: "cover", change: "removed", from: "image", rows: 2, hidden: 2 }), impact({ field: "code", change: "ruled", rows: 3, failing: 1, samples: [{ slug: "c", value: '{"en":"x"}', why: "Too short" }] })];
+    api.previewFields.mockResolvedValue({ changes, needsAccept: true });
+    api.updateCollection.mockImplementation(async (_id: string, body: { fields: CollectionField[] }) => ({ ...table, fields: body.fields, changes }));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <CollectionsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByText("Fields"));
+    // The price becomes words (its number limits come off with the kind), the picture goes.
+    fireEvent.click(await screen.findByTestId("field-rules-price"));
+    fireEvent.change(screen.getByTestId("rule-price-kind"), { target: { value: "text" } });
+    fireEvent.click(within(screen.getAllByTestId("field-row")[2]).getByText("×"));
+    fireEvent.click(screen.getByTestId("fields-save"));
+    expect((await screen.findByTestId("schema-change-price")).textContent).toContain("3 values turn into the new kind.");
+    expect(screen.getByTestId("schema-change-cover").textContent).toContain("Its 2 values stay kept, hidden");
+    expect(screen.getByTestId("schema-change-code").textContent).toContain("c: {\"en\":\"x\"} (Too short)");
+    expect(api.previewFields.mock.calls[0][1].fields).toEqual([table.fields[0], { id: "price", type: "text", name: { en: "Price" }, max: 1000 }]);
+    expect(api.updateCollection).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("schema-accept"));
+    await waitFor(() => expect(api.updateCollection).toHaveBeenCalledWith("c1", expect.objectContaining({ fields: [table.fields[0], { id: "price", type: "text", name: { en: "Price" }, max: 1000 }] }), true));
+    await waitFor(() => expect(screen.queryByTestId("schema-changes")).toBeNull());
+  });
+
+  test("earlier versions: what going back would do is shown, then the fields are back as they were", async () => {
+    setLangForTests("en");
+    api.listCollections.mockResolvedValue([table]);
+    api.collectionPresets.mockResolvedValue({});
+    api.listItems.mockResolvedValue([]);
+    api.listVersions.mockResolvedValue([{ id: "v1", createdAt: "2026-11-13T10:00:00Z", who: "Sara", fields: [{ id: "code", type: "text" }, { id: "price", type: "text" }], changes: [impact({ field: "price", change: "retyped", from: "text", to: "number", rows: 3, converted: 2, lost: 1 })] }]);
+    api.previewVersion.mockResolvedValue({ changes: [impact({ field: "price", change: "retyped", from: "number", to: "text", rows: 3, converted: 3 })], needsAccept: false });
+    const older = [{ id: "code", type: "text" as const, name: { en: "Code" } }, { id: "price", type: "text" as const, name: { en: "Price" } }];
+    api.restoreVersion.mockResolvedValue({ ...table, fields: older });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <CollectionsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByText("Fields"));
+    fireEvent.click(await screen.findByTestId("versions-toggle"));
+    expect(screen.getByTestId("version-row").textContent).toContain("Sara");
+    expect(screen.getByTestId("version-row").textContent).toContain("price: Short words ← Number");
+    fireEvent.click(screen.getByTestId("version-restore-v1"));
+    expect((await screen.findByTestId("schema-change-price")).textContent).toContain("from Number to Short words. 3 values turn into the new kind.");
+    expect(api.restoreVersion).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("schema-accept"));
+    await waitFor(() => expect(api.restoreVersion).toHaveBeenCalledWith("c1", "v1", true));
+    // The editor shows the fields that came back.
+    await waitFor(() => expect(screen.getAllByTestId("field-row").map((r) => r.getAttribute("data-field"))).toEqual(["code", "price"]));
+  });
+
   test("a new kind of field: several choices get their choices, money its currency", async () => {
     setLangForTests("en");
     api.listCollections.mockResolvedValue([table]);
     api.collectionPresets.mockResolvedValue({});
     api.listItems.mockResolvedValue([]);
-    api.updateCollection.mockResolvedValue(table);
+    api.updateCollection.mockImplementation(async (_id: string, body: { fields: CollectionField[] }) => ({ ...table, fields: body.fields }));
     render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter>
@@ -160,7 +260,7 @@ describe("The fields editor", () => {
     api.listCollections.mockResolvedValue([table]);
     api.collectionPresets.mockResolvedValue({});
     api.listItems.mockResolvedValue([]);
-    api.updateCollection.mockResolvedValue(table);
+    api.updateCollection.mockImplementation(async (_id: string, body: { fields: CollectionField[] }) => ({ ...table, fields: body.fields }));
     render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter>
