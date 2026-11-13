@@ -98,7 +98,7 @@ export const ruleCount = (field: CollectionField) => RULE_KEYS.filter((k) => fie
 
 /** A field's rules in a few words ("فريد · 0–1000 · بيبدأ بـ 10"), each part written in the three languages. */
 export function ruleParts(field: CollectionField, lang: Lang): string[] {
-  const out: string[] = [];
+  const out: string[] = [...linkParts(field)];
   if (field.unique) out.push("ما بتتكرر|no doubles|ללא כפילויות");
   if (field.min !== undefined || field.max !== undefined) {
     const range = `${field.min ?? "…"}–${field.max ?? "…"}`;
@@ -161,3 +161,50 @@ export function moveChoice(field: CollectionField, id: string, by: -1 | 1): Coll
 
 /** The currencies offered for money (any three letters can still be written). */
 export const CURRENCIES = ["ILS", "USD", "EUR", "JOD", "GBP", "AED", "SAR", "EGP", "TRY"] as const;
+
+/* ---------------- A relation's settings (B3) ---------------- */
+
+type OnDelete = NonNullable<CollectionField["onDelete"]>;
+/** How rows here and rows there pair up: by how many a row here links, and how many may link a row there. */
+export const LINK_KINDS = ["manyToOne", "oneToOne", "manyToMany", "oneToMany"] as const;
+export type LinkKind = (typeof LINK_KINDS)[number];
+export const LINK_KIND_NAME: Record<LinkKind, string> = {
+  manyToOne: "كل سطر هون بيرتبط بسطر واحد هناك (كثير لواحد)|Each row here links one row there (many to one)|כל שורה כאן מקשרת שורה אחת שם (רבים לאחד)",
+  oneToOne: "كل سطر هون بسطر واحد هناك، وما بيرتبط فيه غيره (واحد لواحد)|Each row here links one row there, and no other row links that one (one to one)|כל שורה כאן מקשרת שורה אחת שם, ואף שורה אחרת לא מקשרת אותה (אחד לאחד)",
+  manyToMany: "كل سطر هون بيرتبط بعدة سطور هناك (كثير لكثير)|Each row here links several rows there (many to many)|כל שורה כאן מקשרת כמה שורות שם (רבים לרבים)",
+  oneToMany: "كل سطر هون بعدة سطور هناك، وكل سطر هناك إله سطر واحد هون (واحد لكثير)|Each row here links several rows there, and each row there belongs to one row here (one to many)|כל שורה כאן מקשרת כמה שורות שם, וכל שורה שם שייכת לשורה אחת כאן (אחד לרבים)",
+};
+const LINK_KIND_SHORT: Record<LinkKind, string> = { manyToOne: "كثير لواحد|many to one|רבים לאחד", oneToOne: "واحد لواحد|one to one|אחד לאחד", manyToMany: "كثير لكثير|many to many|רבים לרבים", oneToMany: "واحد لكثير|one to many|אחד לרבים" };
+export const linkKind = (f: Pick<CollectionField, "many" | "exclusive">): LinkKind => (f.many ? (f.exclusive ? "oneToMany" : "manyToMany") : f.exclusive ? "oneToOne" : "manyToOne");
+/** The relation paired another way (what isn't asked is taken off, so an untouched field is saved as it was). */
+export function setLinkKind(field: CollectionField, kind: LinkKind): CollectionField {
+  const out = { ...field };
+  if (kind === "manyToMany" || kind === "oneToMany") out.many = true;
+  else delete out.many;
+  if (kind === "oneToOne" || kind === "oneToMany") out.exclusive = true;
+  else delete out.exclusive;
+  return out;
+}
+
+export const ON_DELETE: OnDelete[] = ["unlink", "cascade", "restrict"];
+export const ON_DELETE_NAME: Record<OnDelete, string> = {
+  unlink: "بينفك الربط، والسطور اللي كانت مربوطة فيه بتضل|The link is dropped; the rows that linked it stay|הקישור מתבטל; השורות שקישרו אותה נשארות",
+  cascade: "السطور المربوطة فيه بتنحذف معه (وبترجع معه من السلة)|The rows linking it are deleted with it (and come back with it from the trash)|השורות המקשרות אותה נמחקות יחד איתה (וחוזרות איתה מהאשפה)",
+  restrict: "ما بينحذف طول ما في سطور مربوطة فيه|It can't be deleted while rows link it|אי אפשר למחוק אותה כל עוד שורות מקשרות אותה",
+};
+/** What deleting a linked row does (the usual, unlinking, isn't written on the field). */
+export function setOnDelete(field: CollectionField, to: OnDelete): CollectionField {
+  const out = { ...field };
+  if (to === "unlink") delete out.onDelete;
+  else out.onDelete = to;
+  return out;
+}
+
+/** A relation in a few words ("كثير لواحد · الحذف ممنوع إذا مربوط"), each part in the three languages. */
+export function linkParts(field: CollectionField): string[] {
+  if (field.type !== "relation") return [];
+  const out = [LINK_KIND_SHORT[linkKind(field)]];
+  if (field.onDelete === "cascade") out.push("حذفه بياخد المربوطين فيه|deleting it takes the rows linking it|מחיקתה לוקחת את המקשרות אותה");
+  if (field.onDelete === "restrict") out.push("ما بينحذف وهو مربوط|can't be deleted while linked|לא נמחקת כשהיא מקושרת");
+  return out;
+}

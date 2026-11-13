@@ -62,7 +62,7 @@ describe("Each kind's values", () => {
       expect(OPS_BY_KIND[t]?.length, t).toBeGreaterThan(0);
       expect(RULES_BY_TYPE[t], t).toBeTruthy();
     }
-    expect(FIELD_TYPES).toHaveLength(19);
+    expect(FIELD_TYPES).toHaveLength(20);
   });
 
   test("what each takes, and how it's kept", () => {

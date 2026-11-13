@@ -4,7 +4,7 @@
  * Words are written in the three languages side by side ("عربي|English|עברית"); the page says them.
  */
 import type { Collection, CollectionField, FieldType, ItemStatus, Local } from "../../api/collections.api";
-import type { ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
+import type { Blocker, ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
 import { shownText, valueFrom } from "./kinds";
 
 export const LANGS: Lang[] = ["ar", "en", "he"];
@@ -73,8 +73,10 @@ const OP_WORDS: Record<Op, string> = {
   isFalse: "لا|no|לא",
 };
 const DATE_WORDS: Partial<Record<Op, string>> = { is: "يوم|on|ב", gt: "بعد|after|אחרי", gte: "من|from|מ", lt: "قبل|before|לפני", lte: "لحد|up to|עד" };
+/** A relation is asked about its links. */
+const LINK_WORDS: Partial<Record<Op, string>> = { anyOf: "مربوط بواحد من|linked to any of|מקושר לאחד מ", empty: "مش مربوط بشي|linked to nothing|לא מקושר", notEmpty: "مربوط بشي|linked to something|מקושר" };
 export function opName(op: Op, kind: ColumnKind): string {
-  return ((kind === "date" || kind === "$date") && DATE_WORDS[op]) || OP_WORDS[op];
+  return ((kind === "date" || kind === "$date") && DATE_WORDS[op]) || (kind === "relation" && LINK_WORDS[op]) || OP_WORDS[op];
 }
 
 /** What a question needs beside the column: nothing, one value, two (between) or a list. */
@@ -183,12 +185,37 @@ const ISSUE_WORDS: Record<string, string> = {
   "Not the asked shape": "مش بالشكل المطلوب|Not the asked shape|לא בצורה הנדרשת",
   "Already used": "القيمة مستعملة بسطر تاني|Another row already has this value|שורה אחרת כבר מחזיקה בערך הזה",
   "Only one row can hold this value": "هالعمود ما بيتكرر: سطر واحد بس بياخد القيمة|This column takes no doubles: only one row can hold the value|עמודה ללא כפילויות: רק שורה אחת יכולה להחזיק בערך",
+  // A relation's rows (backend lib/links.ts).
+  "No such row": "ما في سطر بهالعنوان بالجدول المربوط|No such row in the linked table|אין שורה כזו בטבלה המקושרת",
+  "One row only": "هالحقل بيرتبط بسطر واحد بس|This field links one row only|השדה מקשר שורה אחת בלבד",
+  "A row can't link itself": "السطر ما بيرتبط بحاله|A row can't link itself|שורה לא יכולה לקשר את עצמה",
+  "Already linked from another row": "هالسطر مربوط من سطر تاني، وما بينربط إلا من واحد|Another row already links it, and it takes one only|שורה אחרת כבר מקשרת אותה, והיא מקבלת אחת בלבד",
+  "Rows by their id or address": "لازم سطور (بعناوينها)|Rows are needed (by their addresses)|נדרשות שורות (לפי הכתובות שלהן)",
+  "Too many linked rows": "سطور مربوطة أكتر من المسموح|More linked rows than a row can hold|יותר מדי שורות מקושרות",
+  "Only one row can link this row": "هالسطر بينربط من سطر واحد بس: حدّد سطر واحد|It takes one linking row only: choose one row|היא מקבלת שורה מקשרת אחת בלבד: בחר שורה אחת",
 };
 export const issueWords = (message: string) => ISSUE_WORDS[message] ?? message;
 /** A refused value's reason: the owner's own words for that field (in this language, else another), else the general ones (to be said). */
 export function issueSay(issue: { message: string; say?: Local }, lang: Lang): { own: string } | { general: string } {
   const own = issue.say?.[lang] || issue.say?.ar || issue.say?.en || issue.say?.he;
   return own ? { own } : { general: issueWords(issue.message) };
+}
+/** The value a reason is about, to say after it (" «zz»"), when the server named one. */
+export const issueAbout = (issue: { value?: string }) => (issue.value ? ` «${issue.value}»` : "");
+
+/**
+ * Why rows couldn't be deleted: other rows link them through a relation that forbids it. One
+ * sentence per holder ("عربي|English|עברית").
+ */
+export function blockersText(blockers: Blocker[], lang: Lang): string {
+  const each = blockers.map((b) => {
+    const table = local(b.name ?? undefined, lang) || b.slug;
+    const n = b.rows.toLocaleString("en");
+    const field = local(b.fieldName ?? undefined, lang) || b.field;
+    return `${n} سطر بجدول «${table}» مربوطين فيهم (حقل ${field}، متل ${b.sample}) ومانعين حذفهم.|${n} rows of “${table}” link them (field ${field}, like ${b.sample}) and don't let them be deleted.|${n} שורות בטבלה ״${table}״ מקשרות אותן (שדה ${field}, למשל ${b.sample}) ואינן מאפשרות למחוק.`;
+  });
+  const tail = "فك الربط من هالسطور أول، أو غيّر «عند الحذف» بقواعد الحقل.|Unlink them from those rows first, or change “when deleted” in the field's rules.|בטל קודם את הקישור מהשורות האלה, או שנה את ״בעת מחיקה״ בכללי השדה.";
+  return [0, 1, 2].map((i) => [...each, tail].map((p) => p.split("|")[i]).join(" ")).join("|");
 }
 
 /* ---------------- A CSV file's columns and the table's ---------------- */

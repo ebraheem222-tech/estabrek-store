@@ -204,6 +204,8 @@ export function csvLine(fields: Field[], row: Pick<GridRow, "slug" | "status" | 
       const o = v && typeof v === "object" ? (v as Record<string, unknown>) : {};
       for (const l of LANGS) cells.push(csvCell(typeof o[l] === "string" ? o[l] : "", true));
     } else if (f.type === "multiSelect") cells.push(csvCell(Array.isArray(v) ? v.join(", ") : ""));
+    // Linked rows by their addresses (a file read back finds them by these).
+    else if (f.type === "relation") cells.push(csvCell(Array.isArray(v) ? v.map((x) => (x && typeof x === "object" ? String((x as { slug?: unknown }).slug ?? "") : "")).filter(Boolean).join(", ") : ""));
     else if (f.type === "location") {
       const at = v && typeof v === "object" ? (v as { lat?: unknown; lng?: unknown; label?: unknown }) : null;
       cells.push(csvCell(at && typeof at.lat === "number" && typeof at.lng === "number" ? [at.lat, at.lng, ...(typeof at.label === "string" && at.label ? [at.label] : [])].join(", ") : "", true));

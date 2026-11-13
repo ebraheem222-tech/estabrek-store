@@ -18,9 +18,11 @@ type Tree = { version: number; root: Node };
 /**
  * The kinds of field. The first nine are the original ones; then (B2): an email, a phone number,
  * a date with its time, money (a number in the field's currency), several choices, a file, a
- * video, a 3D model (addresses), any JSON, and a place (latitude, longitude, a label).
+ * video, a 3D model (addresses), any JSON, and a place (latitude, longitude, a label). Then (B3) a
+ * relation: links to rows of a table, kept in a table of their own (lib/links.ts), never among
+ * the row's values.
  */
-export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location"] as const;
+export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location", "relation"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 /** A field: its kind, its name, and its rules (lib/fieldRules.ts): the only value, limits, a shape, a default, the words said when a rule fails. */
 export type Field = {
@@ -39,6 +41,14 @@ export type Field = {
   help?: Local;
   /** Money: its currency (ILS when not said). */
   currency?: string;
+  /** A relation: the table whose rows it links (that table's id; it may be its own). */
+  to?: string;
+  /** A relation: a row may link several rows (else one). */
+  many?: boolean;
+  /** A relation: a row there is linked from one row at most (one-to-one, one-to-many). */
+  exclusive?: boolean;
+  /** A relation: when a linked row is deleted, the rows linking it lose the link (the default), are deleted with it, or forbid it. */
+  onDelete?: "unlink" | "cascade" | "restrict";
 };
 export type CollectionLite = { id: string; slug: string; fields: Field[] };
 export type ItemLite = { id: string; slug: string; data: Record<string, unknown>; publishedAt?: string | Date | null; createdAt?: string | Date | null; sort?: number };

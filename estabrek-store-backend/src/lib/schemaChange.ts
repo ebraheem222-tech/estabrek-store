@@ -12,12 +12,18 @@
  *
  * Nothing is deleted by a change of fields. Hidden values aren't shown, searched, exported or
  * counted for "the only value".
+ *
+ * A relation's rows are links in a table of their own (lib/links.ts): a change never rewrites
+ * them. A relation removed, turned into another kind, or pointed at another table leaves its
+ * links where they are, hidden (counted like hidden values: the change needs a yes); they show
+ * again when the field comes back.
  */
 import { Prisma } from "@prisma/client";
 import { checkItemData } from "./collections.js";
 import type { Field, FieldType } from "./collectionTree.js";
 import { coerceValue, same, type Lang } from "./dataRows.js";
 import { uniqueKeys } from "./fieldRules.js";
+import { isRelation, linkCounts } from "./links.js";
 import { dayOf } from "./storeTime.js";
 
 export type Change = "removed" | "retyped" | "ruled" | "added";
@@ -48,7 +54,8 @@ export type Impact = {
 /** The hidden place a value is kept in when its field's kind changes. */
 export const wasKey = (id: string) => `${id}$was`;
 const WORDS = new Set<FieldType>(["text", "longText"]);
-const RULES = ["unique", "min", "max", "shape", "pattern", "required"] as const;
+// A relation's table and how many rows it links are rules too (what deleting does isn't: it touches no row).
+const RULES = ["unique", "min", "max", "shape", "pattern", "required", "to", "many", "exclusive"] as const;
 
 /** What changed between two lists of fields, as far as the rows care (names, hints and messages don't count). */
 export function planChange(before: Field[], after: Field[]): FieldPlan[] {
@@ -124,6 +131,8 @@ export function convertValue(from: Field, to: Field, v: unknown, lang: Lang): un
 
 /** Does the value pass the field's kind and rules (required and "the only value" aside)? Its kept form, or why not. */
 function fits(field: Field, v: unknown): { ok: true; value: unknown } | { ok: false; why: string } {
+  // A relation holds links to rows, never a written value: what was written is put aside.
+  if (field.type === "relation") return { ok: false, why: "Links to rows, not a written value" };
   const checked = checkItemData([{ ...field, required: false }], { [field.id]: v });
   if (!checked.ok) return { ok: false, why: checked.issues[0]?.message ?? "Doesn't fit" };
   return field.id in checked.data ? { ok: true, value: checked.data[field.id] } : { ok: false, why: "Nothing left" };
@@ -222,6 +231,29 @@ export async function previewSchemaChange(db: Pick<Db, "$queryRaw">, collectionI
   for (const [id, counts] of seen) impacts.get(id)!.doubles = [...counts.values()].filter((n) => n > 1).reduce((sum, n) => sum + n, 0);
   // A required field without a default, added to a table that has rows: every row lacks it.
   for (const plan of newlyRequired) if (plan.change === "added" && plan.to?.default === undefined) impacts.get(plan.id)!.missing = Math.max(impacts.get(plan.id)!.missing, total);
+  // A relation's rows are links, counted in their own table: a change never rewrites them, it shows or hides them.
+  for (const plan of plans) {
+    const was = isRelation(plan.from) ? plan.from : null;
+    const now = isRelation(plan.to) ? plan.to : null;
+    if (!was && !now) continue;
+    const impact = impacts.get(plan.id)!;
+    const moved = !was || !now || was.to !== now.to;
+    const before = was ? await linkCounts(db, collectionId, plan.id, was.to) : null;
+    const after = now ? (moved ? await linkCounts(db, collectionId, plan.id, now.to) : before!) : null;
+    // Removed, another kind now, or pointed at another table: its links stay where they are, hidden.
+    if (before && moved) {
+      impact.hidden += before.rows;
+      impact.rows += before.rows;
+    }
+    if (now && after) {
+      impact.rows += after.rows;
+      // Links left from before (the field was here once, or pointed here) show again.
+      if (moved) impact.converted += after.rows;
+      if (!now.many) impact.failing += after.several;
+      if (now.exclusive) impact.doubles += after.shared;
+      if (newlyRequired.includes(plan)) impact.missing = Math.max(0, total - after.rows);
+    }
+  }
   return [...impacts.values()].filter((i) => i.change !== "added" || i.rows > 0 || i.missing > 0);
 }
 
@@ -258,7 +290,8 @@ export async function applySchemaChange(db: Db, collectionId: string, before: Fi
 export function shownRow<T extends { data: unknown }>(row: T, fields: Field[]): T {
   const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
   const out: Record<string, unknown> = {};
-  for (const f of fields) if (f.id in data) out[f.id] = data[f.id];
+  // A relation's rows aren't among the values (lib/links.ts withLinks adds them to the answer).
+  for (const f of fields) if (f.type !== "relation" && f.id in data) out[f.id] = data[f.id];
   return { ...row, data: out };
 }
 

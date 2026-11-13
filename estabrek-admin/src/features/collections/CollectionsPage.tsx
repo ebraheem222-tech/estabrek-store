@@ -13,12 +13,14 @@ import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { collectionPresets, collectionTemplate, storeTemplate, createCollection, createItem, deleteCollection, deleteItem, listCollections, listItems, updateCollection, updateItem, type Collection, type CollectionField, type CollectionItem, type FieldType, type ItemStatus, type Local } from "../../api/collections.api";
-import { itemDataOut, LANGS, newField, slugOf, titleOf, WORD_TYPES, type Lang } from "./collectionForms";
+import { fieldIdOf, firstLinkable, itemDataOut, LANGS, newField, slugOf, titleOf, WORD_TYPES, type Lang } from "./collectionForms";
 import { gridMeta } from "../../api/data.api";
 import { FieldRulesEditor } from "./FieldRulesEditor";
 import { fitRules, ruleCount, ruleParts } from "./fieldRules";
 import { ChangeDialog, VersionsPanel } from "./SchemaChange";
 import { retype, touchesRows } from "./schemaText";
+import { blockersText } from "../data/dataText";
+import type { Blocker } from "../../api/data.api";
 import { previewFields, type Impact } from "../../api/collections.api";
 import { useAuth } from "../../hooks/useAuth";
 import { ValueInput } from "../data/GridCells";
@@ -31,6 +33,8 @@ const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-w
 const input = "w-full rounded-lg border border-white/15 bg-surface-925 px-2 py-1.5 text-sm";
 const PRESET_ICON: Record<string, string> = { blog: "✎", lookbook: "◐", branches: "⌂", faq: "?" };
 const TYPE_NAME = KIND_NAME;
+/** A kind the server hasn't said rules for (an older server while a newer admin is out): none fit. */
+const NO_RULES = { unique: false, limits: null, shape: false, default: false } as const;
 const STATUS_NAME: Record<ItemStatus, string> = { DRAFT: "مسودة|Draft|טיוטה", PUBLISHED: "منشور|Published|פורסם", ARCHIVED: "مؤرشف|Archived|בארכיון" };
 const words = (v: Local | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
@@ -192,7 +196,15 @@ function Items({ collection, lang, onChanged }: { collection: Collection; lang: 
     onSuccess: reload,
     onError: (e) => toast.error(say("ما انحفظ|Not saved|לא נשמר"), { description: getApiErrorMessage(e) }),
   });
-  const remove = useMutation({ mutationFn: (item: CollectionItem) => deleteItem(collection.id, item.id), onSuccess: reload });
+  const remove = useMutation({
+    mutationFn: (item: CollectionItem) => deleteItem(collection.id, item.id),
+    onSuccess: reload,
+    // Rows of another table link it through a relation that forbids deleting it.
+    onError: (e) => {
+      const blockers = (e as { response?: { data?: { blockers?: Blocker[] } } })?.response?.data?.blockers;
+      toast.error(say("ما انحذف|Not deleted|לא נמחק"), { description: Array.isArray(blockers) && blockers.length ? say(blockersText(blockers, lang)) : getApiErrorMessage(e) });
+    },
+  });
   if (editing) return <ItemForm collection={collection} lang={lang} item={editing === "new" ? null : editing} onDone={() => { setEditing(null); reload(); }} onCancel={() => setEditing(null)} />;
   return (
     <div className="space-y-2" data-testid="collection-items">
@@ -263,6 +275,8 @@ function ItemForm({ collection, lang, item, onDone, onCancel }: { collection: Co
 function FieldInput({ field: f, lang, wordsLang, value, problem, onChange, onPick }: { field: CollectionField; lang: Lang; wordsLang: Lang; value: unknown; problem?: string; onChange: (v: unknown) => void; onPick: () => void }) {
   const label = <span className="flex items-center gap-1">{words(f.name, lang) || f.id}{f.required ? <span className="text-red-300">*</span> : null}<span className="text-white/30">· {say(TYPE_NAME[f.type])}</span></span>;
   const wrap = (el: ReactNode) => <label className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}{el}{problem ? <span className="text-red-300">{problem}</span> : null}</label>;
+  // A relation's box holds buttons (its chips, the rows to pick): a label around it would press the first one on any click.
+  if (f.type === "relation") return <div className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}<KindBox field={f} lang={lang} value={value} onChange={onChange} />{problem ? <span className="text-red-300">{problem}</span> : null}</div>;
   if (WORD_TYPES.includes(f.type)) {
     const v = (value ?? {}) as Local;
     const put = (w: string) => onChange({ ...v, [wordsLang]: w });
@@ -294,6 +308,10 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
   // Which rules fit which kind of field (the server's own list), and the field whose rules are open.
   const meta = useQuery({ queryKey: ["data", "meta"], queryFn: gridMeta, staleTime: Infinity });
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
+  // The tables a relation can link (this one too), by their names.
+  const all = useQuery({ queryKey: ["collections"], queryFn: listCollections });
+  const tables = useMemo(() => (all.data ?? [collection]).map((c) => ({ id: c.id, name: c.id === collection.id ? `${words(c.name, lang) || c.slug} (${say("هالجدول نفسه|this table|הטבלה הזו")})` : words(c.name, lang) || c.slug })), [all.data, collection, lang]);
+  const linkTo = firstLinkable(tables, collection.id);
   const changed = useMemo(() => JSON.stringify([fields, name, slug]) !== JSON.stringify([collection.fields, collection.name, collection.slug]), [fields, name, slug, collection]);
   const { hasPermission } = useAuth();
   /** What the change would do to the rows, waiting for a yes. */
@@ -343,18 +361,29 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
             <button type="button" className={btn} onClick={() => move(i, 1)} aria-label="↓">↓</button>
             <button type="button" className={`${btn} text-red-300`} disabled={fields.length <= 1} onClick={() => setFields((fs) => fs.filter((_, j) => j !== i))}>×</button>
             {rulesOpen !== f.id && ruleParts(f, lang).length ? <span className="w-full text-[11px] text-white/45" data-testid={`field-rules-summary-${f.id}`}>{ruleParts(f, lang).map((part) => say(part)).join(" · ")}</span> : null}
-            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type])} lang={lang} fit={meta.data.rules[f.type]} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} onRetype={(type) => setFields((fs) => fs.map((x, j) => (j === i ? retype(x, type, meta.data!.rules[type]) : x)))} /> : null}
+            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type] ?? NO_RULES)} lang={lang} fit={meta.data.rules[f.type] ?? NO_RULES} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} onRetype={(type) => setFields((fs) => fs.map((x, j) => (j === i ? retype(x, type, meta.data!.rules[type], linkTo) : x)))} tables={tables} /> : null}
           </li>
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-2">
         <select className={`${input} w-44`} value={newType} onChange={(e) => setNewType(e.target.value as FieldType)} data-testid="field-new-type">{(Object.keys(TYPE_NAME) as FieldType[]).map((t) => <option key={t} value={t}>{say(TYPE_NAME[t])}</option>)}</select>
-        <button type="button" className={btn} onClick={() => { const [ar, en, he] = TYPE_NAME[newType].split("|"); setFields((fs) => [...fs, newField(newType, { ar, en, he }, fs.map((x) => x.id))]); }} data-testid="field-add">+ {say("حقل|Field|שדה")}</button>
+        <button type="button" className={btn} onClick={() => { const [ar, en, he] = TYPE_NAME[newType].split("|"); setFields((fs) => [...fs, newField(newType, { ar, en, he }, fs.map((x) => x.id), linkTo)]); if (newType === "relation") setRulesOpen(fieldIdOf(en, fields.map((x) => x.id))); }} data-testid="field-add">+ {say("حقل|Field|שדה")}</button>
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={primary} disabled={!changed || saving} onClick={() => void save()} data-testid="fields-save">{say("احفظ الحقول|Save the fields|שמור את השדות")}</button>
         {asking ? <ChangeDialog title={say("شو بيعمل هالتغيير بالسطور الموجودة|What this change does to the rows that are there|מה השינוי עושה לשורות הקיימות")} changes={asking} nameOf={nameOf} busy={saving} onAccept={() => void save(true)} onCancel={() => setAsking(null)} /> : null}
-        <button type="button" className={`${btn} text-red-300`} onClick={async () => { if (!window.confirm(say("نحذف المجموعة مع كل عناصرها وصفحتها؟|Delete the collection with all its items and its page?|למחוק את האוסף עם כל הפריטים והדף?"))) return; await deleteCollection(collection.id); onDeleted(); }}>{say("احذف المجموعة|Delete the collection|מחק את האוסף")}</button>
+        <button type="button" className={`${btn} text-red-300`} onClick={async () => {
+          if (!window.confirm(say("نحذف المجموعة مع كل عناصرها وصفحتها؟|Delete the collection with all its items and its page?|למחוק את האוסף עם כל הפריטים והדף?"))) return;
+          try {
+            await deleteCollection(collection.id);
+            onDeleted();
+          } catch (e) {
+            // Other tables link this one: their relations have to go first.
+            const linking = (e as { response?: { data?: { error?: string; tables?: Array<{ slug: string; name: Local | null; field: string }> } } })?.response?.data;
+            const who = (linking?.tables ?? []).map((t) => `«${words(t.name ?? undefined, lang) || t.slug}» (${t.field})`).join("، ");
+            toast.error(say("ما انحذفت المجموعة|The collection wasn't deleted|האוסף לא נמחק"), { description: linking?.error === "TABLE_LINKED" && who ? say(`جداول تانية مربوطة فيها: ${who}. شيل حقول الربط هاي أول.|Other tables link it: ${who}. Remove those relations first.|טבלאות אחרות מקשרות אותו: ${who}. הסר קודם את הקישורים האלה.`) : getApiErrorMessage(e) });
+          }
+        }}>{say("احذف المجموعة|Delete the collection|מחק את האוסף")}</button>
       </div>
       <VersionsPanel table={collection} lang={lang} canWrite={hasPermission("pages:write")} onRestored={(saved) => { setFields(structuredClone(saved.fields)); setName({ ...saved.name }); onSaved(); }} />
     </div>

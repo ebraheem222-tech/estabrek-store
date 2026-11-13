@@ -28,6 +28,8 @@ import { checkTree, PAGE_FORMAT } from "../../lib/pageTree.js";
 import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, ITEM_SLUG, LIMITS, PRESETS, STORE_TEMPLATES, TEMPLATE_KIND, withDefaults, type StoreTemplateKind } from "../../lib/collections.js";
 import { changedUnique, uniqueIssues } from "../../lib/uniqueValues.js";
 import { applySchemaChange, hiddenOf, needsAccept, planChange, previewSchemaChange, shownRow, type Impact } from "../../lib/schemaChange.js";
+import { checkLinks, linkGone, relationProblem, saveLinks, splitLinks, tablesLinking, trashRows, withLinks } from "../../lib/links.js";
+import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 
 const r = Router();
@@ -68,6 +70,8 @@ r.post("/", asyncHandler(async (req, res) => {
   const preset = typeof req.body?.preset === "string" ? PRESETS[req.body.preset] : undefined;
   const parsed = CollectionBody.safeParse(preset ? { slug: req.body?.slug ?? preset.slug, name: preset.name, fields: preset.fields } : req.body);
   if (!parsed.success) return res.status(400).json({ error: "COLLECTION_INVALID", issues: issues(parsed.error) });
+  const unlinked = await relationProblem(prisma, parsed.data.fields as Field[]);
+  if (unlinked) return res.status(400).json({ error: "COLLECTION_INVALID", issues: [unlinked] });
   try {
     const made = await prisma.collection.create({ data: { slug: parsed.data.slug, name: parsed.data.name as any, fields: parsed.data.fields as any } });
     res.status(201).json({ ...made, items: 0, published: 0 });
@@ -90,6 +94,9 @@ const langOf = (req: any) => (["ar", "en", "he"].includes(String(req.query?.lang
 async function saveTable(req: any, id: string, next: { slug: string; name: unknown; fields: Field[] }, accept: boolean) {
   const was = await prisma.collection.findUnique({ where: { id } });
   if (!was) return { status: 404 as const, body: { error: "NOT_FOUND" } };
+  // A relation links a table that is there (its own counts).
+  const unlinked = await relationProblem(prisma, next.fields, id);
+  if (unlinked) return { status: 400 as const, body: { error: "COLLECTION_INVALID", issues: [unlinked] } };
   const before = fieldsOf(was);
   const lang = langOf(req);
   const changed = planChange(before, next.fields).length > 0 || JSON.stringify(before) !== JSON.stringify(next.fields);
@@ -178,6 +185,9 @@ r.post("/:id/revisions/:rev/restore", asyncHandler(async (req, res) => {
 r.delete("/:id", asyncHandler(async (req, res) => {
   const c = await prisma.collection.findUnique({ where: { id: req.params.id } });
   if (!c) return res.status(404).json({ error: "NOT_FOUND" });
+  // A table other tables link stays until their relations let go of it (its rows' links go with them: the database does that).
+  const linking = await tablesLinking(prisma, c.id);
+  if (linking.length) return res.status(409).json({ error: "TABLE_LINKED", message: "Other tables link this one: remove their relations first", tables: linking });
   await prisma.$transaction([
     prisma.studioRevision.deleteMany({ where: { kind: "table", objectId: c.id } }),
     prisma.collection.delete({ where: { id: c.id } }),
@@ -192,8 +202,17 @@ r.get("/:id/items", asyncHandler(async (req, res) => {
     prisma.collection.findUnique({ where: { id: req.params.id }, select: { fields: true } }),
     prisma.collectionItem.findMany({ where: { collectionId: req.params.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.itemsList }),
   ]);
-  res.json(c ? items.map((item) => shownRow(item, fieldsOf(c))) : items);
+  res.json(c ? await withLinks(prisma, { id: req.params.id, fields: fieldsOf(c) }, items.map((item) => shownRow(item, fieldsOf(c)))) : items);
 }));
+
+/** An item's relations, taken out of its data and checked (lib/links.ts): the rows to link, or a 400's body. */
+async function itemLinks(table: { id: string; fields: Field[] }, body: any, was?: { id: string }) {
+  const split = splitLinks(table.fields, body?.data, true);
+  const check = split.issues.length ? null : await checkLinks(prisma, table, [{ id: was?.id, asked: split.asked }]);
+  const wrong = split.issues.length ? split.issues : check?.issues.get(0);
+  if (wrong) return { error: { error: "ITEM_INVALID", field: "data", message: "Some values are wrong", issues: wrong } };
+  return { body: body?.data === undefined ? body : { ...body, data: split.rest }, links: check!.ready[0] };
+}
 
 /** 400 with the fields whose value another row holds, or null when every "only value" is free. */
 async function takenValues(collectionId: string, fields: Field[], data: Record<string, unknown> | undefined, was?: { id: string; data: unknown }) {
@@ -230,17 +249,25 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
   const c = await prisma.collection.findUnique({ where: { id: req.params.id }, include: { _count: { select: { items: { where: { deletedAt: null } } } } } });
   if (!c) return res.status(404).json({ error: "NOT_FOUND" });
   if (c._count.items >= LIMITS.items) return res.status(400).json({ error: "TOO_MANY_ITEMS" });
-  const b = itemBody(fieldsOf(c), req.body, false);
+  const table = { id: c.id, fields: fieldsOf(c) };
+  const linked = await itemLinks(table, req.body);
+  if ("error" in linked) return res.status(400).json(linked.error);
+  const b = itemBody(table.fields, linked.body, false);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
-  const doubled = await takenValues(c.id, fieldsOf(c), b.out.data);
+  const doubled = await takenValues(c.id, table.fields, b.out.data);
   if (doubled) return res.status(400).json(doubled);
   try {
     const status = b.out.status ?? "DRAFT";
-    const made = await prisma.collectionItem.create({ data: { collectionId: c.id, slug: b.out.slug!, data: b.out.data as any, status, sort: b.out.sort ?? 0, publishedAt: status === "PUBLISHED" ? new Date() : null } });
+    const made = await prisma.$transaction(async (tx) => {
+      const row = await tx.collectionItem.create({ data: { collectionId: c.id, slug: b.out.slug!, data: b.out.data as any, status, sort: b.out.sort ?? 0, publishedAt: status === "PUBLISHED" ? new Date() : null } });
+      await saveLinks(tx, table, [{ id: row.id, links: linked.links }]);
+      return row;
+    });
     refresh();
-    res.status(201).json(made);
+    res.status(201).json((await withLinks(prisma, table, [made]))[0]);
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
+    if (linkGone(e)) return res.status(409).json({ error: "LINK_GONE" });
     throw e;
   }
 }));
@@ -249,28 +276,44 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
   const c = await prisma.collection.findUnique({ where: { id: req.params.id } });
   const was = await prisma.collectionItem.findFirst({ where: { id: req.params.item, collectionId: req.params.id, deletedAt: null } });
   if (!c || !was) return res.status(404).json({ error: "NOT_FOUND" });
-  const b = itemBody(fieldsOf(c), req.body, true);
+  const table = { id: c.id, fields: fieldsOf(c) };
+  const linked = await itemLinks(table, req.body, was);
+  if ("error" in linked) return res.status(400).json(linked.error);
+  const b = itemBody(table.fields, linked.body, true);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
-  const doubled = await takenValues(c.id, fieldsOf(c), b.out.data, was);
+  const doubled = await takenValues(c.id, table.fields, b.out.data, was);
   if (doubled) return res.status(400).json(doubled);
   try {
-    const saved = await prisma.collectionItem.update({ where: { id: was.id }, data: { ...b.out, data: (b.out.data ? { ...hiddenOf(was.data, fieldsOf(c)), ...b.out.data } : undefined) as any, ...(b.out.status === "PUBLISHED" && !was.publishedAt ? { publishedAt: new Date() } : {}) } });
+    const saved = await prisma.$transaction(async (tx) => {
+      const row = await tx.collectionItem.update({ where: { id: was.id }, data: { ...b.out, data: (b.out.data ? { ...hiddenOf(was.data, table.fields), ...b.out.data } : undefined) as any, ...(b.out.status === "PUBLISHED" && !was.publishedAt ? { publishedAt: new Date() } : {}), ...(linked.links.size ? { updatedAt: new Date() } : {}) } });
+      await saveLinks(tx, table, [{ id: was.id, links: linked.links }]);
+      return row;
+    });
     refresh();
-    res.json(saved);
+    res.json((await withLinks(prisma, table, [saved]))[0]);
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
+    if (linkGone(e)) return res.status(409).json({ error: "LINK_GONE" });
     throw e;
   }
 }));
 
 r.delete("/:id/items/:item", asyncHandler(async (req, res) => {
-  // To the trash (the data grid restores from it; emptied after TRASH_DAYS). A row already there goes for good.
+  // To the trash (the data grid restores from it; emptied after TRASH_DAYS), the way the relations
+  // linking it chose (lib/links.ts): one that forbids it answers 409. A row already there goes for good.
   const where = { id: req.params.item, collectionId: req.params.id };
-  const moved = await prisma.collectionItem.updateMany({ where: { ...where, deletedAt: null }, data: { deletedAt: new Date() } });
-  const gone = moved.count ? moved : await prisma.collectionItem.deleteMany({ where });
-  if (!gone.count) return res.status(404).json({ error: "NOT_FOUND" });
+  const which = Prisma.sql`i."id" = ${where.id} AND i."collectionId" = ${where.collectionId}`;
+  let moved: { changed: number; withThem: number };
+  try {
+    moved = await prisma.$transaction((tx) => trashRows(tx, which, new Date()));
+  } catch (e) {
+    if (e instanceof AppError && e.code === "ROWS_LINKED") return res.status(409).json({ error: e.code, message: e.message, ...(e.details as object) });
+    throw e;
+  }
+  const gone = moved.changed || (await prisma.collectionItem.deleteMany({ where })).count;
+  if (!gone) return res.status(404).json({ error: "NOT_FOUND" });
   refresh();
-  res.json({ ok: true });
+  res.json({ ok: true, ...(moved.withThem ? { withThem: moved.withThem } : {}) });
 }));
 
 r.post("/:id/template", asyncHandler(async (req, res) => {

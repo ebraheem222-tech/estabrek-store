@@ -935,10 +935,34 @@ model CollectionItem {
   updatedAt    DateTime   @updatedAt
   /// In the trash since (the data grid restores from it; emptied after 30 days).
   deletedAt    DateTime?
+  /// The rows it links (its relation fields), and the rows that link it.
+  linksOut     CollectionLink[] @relation("linkFrom")
+  linksIn      CollectionLink[] @relation("linkTo")
 
   @@unique([collectionId, slug])
   @@index([collectionId, status, sort])
   @@index([collectionId, deletedAt, createdAt])
+}
+
+/// One link between two rows (B3, src/lib/links.ts): the row `fromId`, in its relation field
+/// `fieldId` (of the table `collectionId`), holds the row `toId` of the table `toTable`. One table
+/// for every relation, read both ways. A row deleted for good takes its links with it, whichever
+/// end of them it is.
+model CollectionLink {
+  collectionId String
+  fieldId      String
+  fromId       String
+  from         CollectionItem @relation("linkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toTable      String
+  toId         String
+  to           CollectionItem @relation("linkTo", fields: [toId], references: [id], onDelete: Cascade)
+  /// The order the row holds them in.
+  position     Int            @default(0)
+  createdAt    DateTime       @default(now())
+
+  @@id([collectionId, fieldId, fromId, toId])
+  @@index([toId, collectionId, fieldId])
+  @@index([fromId])
 }
 
 /// An earlier state of something made in the backend studio, to look at and go back to: a

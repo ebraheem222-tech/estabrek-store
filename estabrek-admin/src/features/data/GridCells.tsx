@@ -8,7 +8,8 @@ import { say } from "../../studio/say";
 import type { CollectionField } from "../../api/collections.api";
 import type { ColumnKind, GridRow, Lang } from "../../api/data.api";
 import { STATUS_NAME, cellText, type Column } from "./dataText";
-import { choiceName, draftFrom, mapLink, placeJoin, placeParts } from "./kinds";
+import { choiceName, draftFrom, linkedName, linkedOf, mapLink, placeJoin, placeParts } from "./kinds";
+import { RelationInput } from "./RelationInput";
 
 /** A field as wide as its words (a small select beside others), and one that fills its place. */
 export const field = "rounded-lg border border-white/15 bg-surface-925 px-2 py-1 text-sm";
@@ -47,6 +48,17 @@ export function CellView({ column, row, lang }: { column: Column; row: GridRow; 
       );
     case "select":
       return <span className={chip}>{text}</span>;
+    case "relation":
+      // The linked rows, each by its name.
+      return (
+        <span className="flex max-w-[22rem] flex-wrap gap-1">
+          {linkedOf(v).map((r) => (
+            <span key={r.id} className={`${chip} bg-accent-500/15`} title={r.slug}>
+              <bdi>{linkedName(r, lang)}</bdi>
+            </span>
+          ))}
+        </span>
+      );
     case "email":
       return (
         <a href={`mailto:${String(v)}`} className="underline decoration-white/25 underline-offset-2" dir="ltr">
@@ -199,6 +211,8 @@ export function ValueInput({
         </span>
       );
     }
+    case "relation":
+      return f ? <RelationInput field={f} value={value} onChange={onChange} lang={lang} autoFocus={autoFocus} onKeyDown={onKeyDown} testId={testId} /> : null;
     case "json":
       return <textarea {...common} rows={big ? 6 : 3} dir="ltr" spellCheck={false} className={`${input} font-mono text-xs`} value={value} placeholder='{ "key": "value" }' onChange={(e) => onChange(e.target.value)} />;
     case "longText":
@@ -238,14 +252,14 @@ export function CellEditor({ column, row, lang, onSave, onCancel }: { column: Co
     else onCancel();
   };
   // One choice is made with one press: saved as soon as it changes.
-  const pick = column.kind === "select" || column.kind === "boolean" || column.kind === "$status";
+  const pick = column.kind === "select" || column.kind === "boolean" || column.kind === "$status" || (column.kind === "relation" && !column.field?.many);
   useEffect(() => {
     if (pick && draft !== first.current) finish(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
   const long = column.kind === "longText";
   // Several boxes in one cell (choices, a place): leaving the cell saves, moving between its boxes doesn't.
-  const many = column.kind === "multiSelect" || column.kind === "location";
+  const many = column.kind === "multiSelect" || column.kind === "location" || column.kind === "relation";
   return (
     <div
       className={long || many ? "min-w-[18rem]" : "min-w-[9rem]"}
