@@ -49,7 +49,7 @@ test("a world: switched on, gravity turned over, tried, baked into each body's k
 });
 
 test("baking keeps a body's other motion; making it live again takes the keyframes off", () => {
-  const world = { start: "burst", again: 6 };
+  const world = { start: "burst" as const, again: 6 };
   const ops = bakeOps(host(world), world, { b: [{ at: 0, y: 0 }, { at: 100, y: 40 }] }, 3);
   expect(ops[0]).toMatchObject({ nodeId: "b", motion: { hover: { kind: "lift" }, keys: { repeat: -1, duration: 3 } } });
   const baked = { ...host({ ...world, baked: true }), children: [kids[0], { ...kids[1], motion: (ops[0] as { motion: object }).motion } as PageTreeNode] };

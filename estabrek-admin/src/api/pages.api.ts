@@ -59,7 +59,7 @@ export type PageDraftOp =
   | { op: "remove"; nodeId: string }
   | { op: "restore"; sectionId: string }
   | { op: "setVisible"; sectionId: string; visible: boolean }
-  | { op: "placeBlock"; block: "seasons" | "stories" | "instagram"; index: number | null }
+  | { op: "placeBlock"; block: "seasons" | "stories" | "instagram" | "particles" | "world" | "rooms"; index: number | null }
   | { op: "insert"; parentId: string; index: number; node: PageTreeNode }
   | { op: "setProps"; nodeId: string; props: Record<string, unknown>; controls?: true }
   | { op: "setName"; nodeId: string; name: string | null }

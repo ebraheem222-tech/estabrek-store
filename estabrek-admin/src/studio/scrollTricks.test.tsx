@@ -35,7 +35,7 @@ describe("scroll tricks in the editor", () => {
     const r = recorder();
     render(<CoverPanel node={node} isLast={false} busy={false} onOps={r.onOps} />);
     fireEvent.click(screen.getByRole("button", { name: "An arch that flattens" }));
-    expect((r.edits.at(-1) as { props: { cover: unknown } }).props.cover).toEqual({ hold: 1, under: "dim", phone: true, enter: "arch" });
+    expect((r.edits.at(-1) as unknown as { props: { cover: unknown } }).props.cover).toEqual({ hold: 1, under: "dim", phone: true, enter: "arch" });
     cleanup();
     const p = recorder();
     render(<PaintPanel node={{ id: "night", type: "section", props: { contained: true } }} busy={false} onOps={p.onOps} />);

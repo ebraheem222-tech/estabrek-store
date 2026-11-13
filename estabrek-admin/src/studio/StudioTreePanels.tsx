@@ -14,6 +14,7 @@ import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { MAX_CELLS, MAX_SLIDES, PRESETS, addSlides, changeSlide, dropCellOps, layoutOps, moveSlide, reduceWidths, sameWidths, shownWidths, slidesOf, styleOp, type NewKind, type Slide } from "./columns";
 import { Field } from "./StudioPanels";
+import { CategoriesPickFields, ProductsSourceFields } from "./CatalogPickers";
 import { ShapePicker } from "./ShapePanels";
 import { IconGlyph, IconPicker } from "./IconPicker";
 import { iconLineOf, iconShown, withIconLine } from "./iconLibrary";
@@ -553,7 +554,7 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         return (
           <>
             {words("text", tr("العنوان", "Heading"), true)}
-            <Choice label={tr("الحجم", "Size")} value={String(p.level ?? 2)} busy={busy} options={[["1", "H1"], ["2", "H2"], ["3", "H3"], ["4", "H4"]]} onPick={(v) => setProps({ level: Number(v) })} />
+            <Choice label={tr("الحجم", "Size")} value={String(p.level ?? 2)} busy={busy} options={[["1", "H1"], ["2", "H2"], ["3", "H3"], ["4", "H4"], ["5", "H5"], ["6", "H6"]]} onPick={(v) => setProps({ level: Number(v) })} />
           </>
         );
       case "text":
@@ -630,11 +631,7 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         return (
           <>
             {words("title", tr("العنوان (اختياري)", "Title (optional)"))}
-            <Choice
-              label={tr("أي منتجات", "Which products")} value={String(p.source ?? "new")} busy={busy} testId="studio-products-source"
-              options={[["new", tr("الأحدث", "Newest")], ["best", tr("الأكثر مبيعاً", "Best sellers")]]}
-              onPick={(v) => setProps({ source: v })}
-            />
+            <ProductsSourceFields p={p} busy={busy} setProps={setProps} />
             <NumberField label={tr("كم منتج", "How many")} value={typeof p.limit === "number" ? p.limit : 8} min={1} max={48} onSave={(v) => setProps({ limit: v ?? 8 })} />
             <Choice label={tr("الترتيب", "Layout")} value={String(p.layout ?? "grid")} busy={busy} options={[["grid", tr("شبكة", "Grid")], ["row", tr("صف بيتمرّر", "A scrolling row")]]} onPick={(v) => setProps({ layout: v })} />
             <Choice
@@ -649,6 +646,7 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         return (
           <>
             {words("title", tr("العنوان (اختياري)", "Title (optional)"))}
+            <CategoriesPickFields p={p} busy={busy} setProps={setProps} />
             <NumberField label={tr("كم قسم", "How many")} value={typeof p.limit === "number" ? p.limit : 6} min={1} max={24} onSave={(v) => setProps({ limit: v ?? 6 })} />
             <Choice
               label={tr("شكل الكروت", "Card look")} value={String(p.look ?? "tall")} busy={busy} testId="studio-categories-look"

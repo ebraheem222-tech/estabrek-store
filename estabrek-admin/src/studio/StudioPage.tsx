@@ -587,6 +587,23 @@ function StudioDocument() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  // The canvas itself never scrolls: its view is the pan and the zoom. A browser still scrolls a box that cuts
+  // what sticks out of it when something inside is brought into sight (a frame bigger than the canvas showing
+  // one of its elements, the words being written); the pointer would then be off by that much, so it's put back.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const still = () => {
+      for (let box: HTMLElement | null = el; box && box !== document.body; box = box.parentElement) {
+        if (!box.scrollLeft && !box.scrollTop) continue;
+        const cs = getComputedStyle(box);
+        if (box === el || cs.overflowX === "hidden" || cs.overflowX === "clip") box.scrollLeft = 0;
+        if (box === el || cs.overflowY === "hidden" || cs.overflowY === "clip") box.scrollTop = 0;
+      }
+    };
+    document.addEventListener("scroll", still, true);
+    return () => document.removeEventListener("scroll", still, true);
+  }, []);
   const fit = useCallback(() => {
     pointSelection.current.cancel();
     cancelAnimationFrame(glide.current);
