@@ -81,6 +81,36 @@ const paddingRect = (el: Element): StudioRect => {
   return { x: round(rect.x + el.clientLeft * sx), y: round(rect.y + el.clientTop * sy), w: round(el.clientWidth * sx), h: round(el.clientHeight * sy) };
 };
 
+/**
+ * Brings an element to the middle of this frame's own window (and into sight in anything that scrolls around it
+ * on the page). Not scrollIntoView: a browser then also scrolls whatever holds the frame, and when the editor has
+ * zoomed in (the frame bigger than its canvas) that moved the canvas's own content sideways under the pointer, so
+ * clicks picked something else and the settings stood over the element.
+ */
+export function focusInFrame(el: HTMLElement) {
+  el.focus({ preventScroll: true });
+  const r = el.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) showInFrame(el);
+}
+export function showInFrame(el: Element) {
+  // What scrolls around it on the page (a row of cards, a panel): only as far as brings it into that box.
+  for (let box = el.parentElement; box && box !== document.body && box !== document.documentElement; box = box.parentElement) {
+    const cs = getComputedStyle(box);
+    const scrollsY = /auto|scroll/.test(cs.overflowY) && box.scrollHeight > box.clientHeight + 1;
+    const scrollsX = /auto|scroll/.test(cs.overflowX) && box.scrollWidth > box.clientWidth + 1;
+    if (!scrollsX && !scrollsY) continue;
+    const r = el.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    if (scrollsY) box.scrollTop += r.top < b.top ? r.top - b.top : r.bottom > b.bottom ? Math.min(r.top - b.top, r.bottom - b.bottom) : 0;
+    if (scrollsX) box.scrollLeft += r.left < b.left ? r.left - b.left : r.right > b.right ? Math.min(r.left - b.left, r.right - b.right) : 0;
+  }
+  const r = el.getBoundingClientRect();
+  // Its middle at the window's middle; sideways only when it's out of sight that way.
+  const top = r.top + r.height / 2 - window.innerHeight / 2;
+  const left = r.left < 0 ? r.left : r.right > window.innerWidth ? Math.min(r.left, r.right - window.innerWidth) : 0;
+  window.scrollBy({ top, left, behavior: "instant" as ScrollBehavior });
+}
+
 const PATH = /^[A-Za-z0-9_.]{1,120}$/;
 const PART = /^[a-z0-9-]{1,40}$/;
 const OWNERS = "[data-cms-section], [data-rose-block]";
@@ -578,7 +608,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       el.style.outlineOffset = "4px";
       el.setAttribute("contenteditable", "plaintext-only");
       if (el.contentEditable !== "plaintext-only") el.setAttribute("contenteditable", "true");
-      el.focus();
+      focusInFrame(el);
       const range = document.createRange();
       range.selectNodeContents(el);
       const sel = window.getSelection();
@@ -645,7 +675,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         b.addEventListener("mousedown", (m) => m.preventDefault());
         b.addEventListener("click", () => {
           run();
-          el.focus();
+          el.focus({ preventScroll: true });
         });
         bar.appendChild(b);
       };
@@ -683,7 +713,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       el.style.outline = "2px solid #a43b64";
       el.style.outlineOffset = "4px";
       el.setAttribute("contenteditable", "true");
-      el.focus();
+      focusInFrame(el);
       const range = document.createRange();
       range.selectNodeContents(el);
       const sel = window.getSelection();
@@ -1104,7 +1134,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
               : d.sectionId
                 ? document.querySelector(`[data-cms-section="${CSS.escape(d.sectionId)}"]`)
                 : null;
-        if (el) hold(() => el.isConnected && el.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior }));
+        if (el) hold(() => el.isConnected && showInFrame(el));
       } else if (d.type === "measure") now();
     };
     // The editor only looks: links and forms stay on the page.
