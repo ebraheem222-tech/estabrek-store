@@ -470,8 +470,17 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
     // held (pinned) section is taken out of its holder and put back each time the scroll effects measure
     // again, which takes the focus away. Focus lost without a press anywhere or a Tab comes straight back,
     // the caret where it was; a press elsewhere (or Tab) still ends the writing.
+    //
+    // Where it was is read at the moment the focus goes, not kept from the browser's last "selectionchange":
+    // that one comes a moment after the key that moved the caret, and a page measuring again in between left
+    // the caret of a few keys ago, so the next letters were written in the middle of the word ("Genetl") or
+    // over all of it ("tle"). When the focus is taken the element is still in its place and the selection
+    // still its own, so that is where the last key left it.
     const stayFocused = (el: HTMLElement, live: () => boolean, leave: () => void) => {
-      let caret: { start: number; end: number } | null = null;
+      // The selection's own nodes and offsets: the page moves the element whole, so they are the same nodes
+      // after (a caret after a line break or inside bold words is one place only this way); and as offsets in
+      // the plain words, for when the nodes were replaced meanwhile.
+      let caret: { anchor: Node; anchorAt: number; focus: Node; focusAt: number; start: number; end: number } | null = null;
       let pressed = 0;
       const offsetIn = (node: Node, offset: number) => {
         const r = document.createRange();
@@ -481,13 +490,15 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       };
       const remember = () => {
         const sel = window.getSelection();
-        if (!sel || !sel.rangeCount || !el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) return;
+        if (!sel || !sel.rangeCount || !sel.anchorNode || !sel.focusNode || !el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) return;
         const r = sel.getRangeAt(0);
-        caret = { start: offsetIn(r.startContainer, r.startOffset), end: offsetIn(r.endContainer, r.endOffset) };
+        caret = { anchor: sel.anchorNode, anchorAt: sel.anchorOffset, focus: sel.focusNode, focusAt: sel.focusOffset, start: offsetIn(r.startContainer, r.startOffset), end: offsetIn(r.endContainer, r.endOffset) };
       };
+      const holds = (node: Node, at: number) => el.contains(node) && at <= (node instanceof CharacterData ? node.length : node.childNodes.length);
       const restore = () => {
         el.focus({ preventScroll: true });
         if (!caret) return;
+        if (holds(caret.anchor, caret.anchorAt) && holds(caret.focus, caret.focusAt)) return void window.getSelection()?.setBaseAndExtent(caret.anchor, caret.anchorAt, caret.focus, caret.focusAt);
         const at = (n: number) => {
           const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
           let left = n;
@@ -508,23 +519,30 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       };
       const press = () => void (pressed = performance.now());
       const tab = (k: KeyboardEvent) => void (k.key === "Tab" && (pressed = performance.now()));
-      // Right after the event (before any next key arrives), once the page has put the element back.
-      const blur = () => queueMicrotask(() => {
-        if (!live() || el.contains(document.activeElement)) return;
-        // Moved by the page (nothing pressed): back to writing.
-        if (el.isConnected && performance.now() - pressed > 400 && (!document.activeElement || document.activeElement === document.body)) return restore();
-        stop();
-        leave();
-      });
+      const blur = () => {
+        // Now, while the selection is still in the element (see above).
+        remember();
+        // Right after the event (before any next key arrives), once the page has put the element back.
+        queueMicrotask(() => {
+          if (!live() || el.contains(document.activeElement)) return;
+          // Moved by the page (nothing pressed): back to writing.
+          if (el.isConnected && performance.now() - pressed > 400 && (!document.activeElement || document.activeElement === document.body)) return restore();
+          stop();
+          leave();
+        });
+      };
       const stop = () => {
         document.removeEventListener("selectionchange", remember);
         document.removeEventListener("pointerdown", press, true);
         el.removeEventListener("keydown", tab);
+        el.removeEventListener("input", remember);
         el.removeEventListener("blur", blur);
       };
       document.addEventListener("selectionchange", remember);
       document.addEventListener("pointerdown", press, true);
       el.addEventListener("keydown", tab);
+      // Each letter as it's written, for a browser that takes the selection away before it tells of the focus.
+      el.addEventListener("input", remember);
       el.addEventListener("blur", blur);
       remember();
       return stop;
