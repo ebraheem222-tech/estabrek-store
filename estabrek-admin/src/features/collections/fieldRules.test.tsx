@@ -112,7 +112,8 @@ describe("The fields editor", () => {
     fireEvent.change(screen.getByTestId("rule-code-shape"), { target: { value: "$own" } });
     fireEvent.change(screen.getByTestId("rule-code-pattern"), { target: { value: "^[A-Z]{2}-\\d{3}$" } });
     fireEvent.change(screen.getByTestId("rule-code-message"), { target: { value: "A code looks like AB-123" } });
-    fireEvent.change(screen.getByTestId("rule-code-default"), { target: { value: "AB-000" } });
+    // A field with no doubles can't start every new row from one value: its default box is gone.
+    expect(screen.queryByTestId("rule-code-default")).toBeNull();
     // A picture has no doubles rule, no limits, no shape and no default: only its words.
     fireEvent.click(screen.getByTestId("field-rules-cover"));
     expect(screen.queryByTestId("rule-cover-unique")).toBeNull();
@@ -126,7 +127,7 @@ describe("The fields editor", () => {
     fireEvent.click(screen.getByTestId("fields-save"));
     await waitFor(() => expect(api.updateCollection).toHaveBeenCalledTimes(1));
     expect(api.updateCollection.mock.calls[0][1].fields).toEqual([
-      { id: "code", type: "text", name: { en: "Code" }, required: true, unique: true, min: 6, pattern: "^[A-Z]{2}-\\d{3}$", message: { en: "A code looks like AB-123" }, default: { en: "AB-000" } },
+      { id: "code", type: "text", name: { en: "Code" }, required: true, unique: true, min: 6, pattern: "^[A-Z]{2}-\\d{3}$", message: { en: "A code looks like AB-123" } },
       { id: "price", type: "number", name: { en: "Price" }, max: 1000, min: 0, default: 10 },
       { id: "cover", type: "image", name: { en: "Cover" }, help: { en: "A wide picture" } },
     ]);

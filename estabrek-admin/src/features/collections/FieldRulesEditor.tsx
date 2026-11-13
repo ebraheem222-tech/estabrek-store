@@ -18,7 +18,7 @@ export function FieldRulesEditor({ field, lang, fit, shapes, onChange }: { field
     <div className="grid w-full gap-3 rounded-lg bg-white/[0.03] p-3 md:grid-cols-2" data-testid={`rules-${field.id}`}>
       {fit.unique ? (
         <label className="flex items-center gap-2 text-xs text-white/70 md:col-span-2">
-          <input type="checkbox" checked={field.unique === true} onChange={(e) => set({ unique: e.target.checked })} data-testid={`rule-${field.id}-unique`} />
+          <input type="checkbox" checked={field.unique === true} onChange={(e) => set(e.target.checked ? { unique: true, default: undefined } : { unique: false })} data-testid={`rule-${field.id}-unique`} />
           {say("ما بتتكرر: ما في سطرين بنفس القيمة|No doubles: no two rows with the same value|ללא כפילויות: אין שתי שורות עם אותו ערך")}
         </label>
       ) : null}
@@ -61,7 +61,8 @@ export function FieldRulesEditor({ field, lang, fit, shapes, onChange }: { field
           </span>
         </label>
       ) : null}
-      {fit.default ? (
+      {/* One value for every new row is the opposite of "no doubles": such a field has no default. */}
+      {fit.default && !field.unique ? (
         <label className={label}>
           {say("قيمة السطر الجديد (لما ما تنكتب)|A new row's value (when none is written)|ערך שורה חדשה (כשלא נכתב)")}
           <span className="mt-1 block">
