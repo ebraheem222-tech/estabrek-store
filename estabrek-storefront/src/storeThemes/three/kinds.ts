@@ -3,7 +3,9 @@
  * page's picker use this; models.tsx draws them). Each knows the words that find its
  * category in a store (a store's own link wins: Admin → ثيمات المتجر → الموديلات).
  */
-import type { Words } from "../types";
+/** A name in the three languages. Kept here, not taken from ../types: that file reaches the whole theme (packs, the page tree),
+ *  and this list must stay readable alone (the admin reads it by path, where the shop's "@/" means something else). */
+type Words = { ar: string; en: string; he: string };
 
 export const MODEL_KINDS = ["controller", "headset", "console", "handheld", "keyboard", "mouse", "arcade", "vr", "wheel", "dice", "trophy", "coin", "sword", "shield", "potion", "rocket", "helmet", "tv", "chair", "cartridge",
   // Products of every other kind of store.

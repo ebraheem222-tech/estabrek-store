@@ -82,7 +82,8 @@ jobs:
       - run: npm ci
       - name: Install the shop (some admin tests use its packages, e.g. gsap's SplitText)
         run: npm ci --prefix ../estabrek-storefront --ignore-scripts
+      # The admin's tsconfig.json lists no files (it only points at the two below), so "-p ." checks nothing.
       - name: Typecheck
-        run: npx tsc --noEmit -p .
+        run: npx tsc --noEmit -p tsconfig.app.json
       - name: Tests
         run: npx vitest run

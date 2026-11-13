@@ -4,8 +4,7 @@
       "src/tests/**",
       "**/*.spec.ts",
       "vitest.config.ts",
-      "**/*.tsx",
-      "src/components/**"
+      "**/*.tsx"
     ]
   }
   

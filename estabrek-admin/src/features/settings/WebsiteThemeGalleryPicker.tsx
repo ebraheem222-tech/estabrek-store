@@ -18,15 +18,16 @@ type GalleryVisualTheme = {
   render?: () => React.ReactNode;
 };
 
-const GALLERY_VISUALS_BY_THEME_ID = new Map(
+// Keyed by the website theme id, which the rest of this file holds as a plain string.
+const GALLERY_VISUALS_BY_THEME_ID = new Map<string, GalleryVisualTheme>(
   (Array.isArray(CMS_THEME_GALLERY_THEMES) ? CMS_THEME_GALLERY_THEMES : [])
-    .map((theme) => {
+    .map((theme): readonly [string, GalleryVisualTheme] | null => {
       const raw = theme as GalleryVisualTheme;
       const id = Number.parseInt(String(raw.id ?? ""), 10);
       if (!Number.isFinite(id) || id <= 0 || typeof raw.render !== "function") return null;
-      return [`theme-gallery-${String(id).padStart(2, "0")}`, raw] as const;
+      return [`theme-gallery-${String(id).padStart(2, "0")}`, raw];
     })
-    .filter((entry): entry is readonly [string, GalleryVisualTheme] => Boolean(entry))
+    .filter((entry) => entry !== null)
 );
 
 function radiusFromToken(token?: string) {
