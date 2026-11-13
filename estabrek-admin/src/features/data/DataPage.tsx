@@ -22,7 +22,9 @@ import { valueFrom } from "./kinds";
 import { parseCsv } from "./csv";
 import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
-import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterColumns, filterValue, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
+import { LANGS, LANG_NAME, VIEW_NAME, blockersText, cellPatch, columnsOf, editable, filterColumns, filterValue, issueAbout, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
+import { RelationInput } from "./RelationInput";
+import { draftLinks } from "./kinds";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03]";
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -35,13 +37,15 @@ const words = (v: Collection["name"] | undefined, lang: Lang) => v?.[lang] || v?
 /** One refused value's reason: the field's own words when its owner wrote some, else the general ones. */
 export function issueText(issue: DataAPI.Issue): string {
   const words = issueSay(issue, adminLang() as Lang);
-  return "own" in words ? words.own : say(words.general);
+  return `${"own" in words ? words.own : say(words.general)}${issueAbout(issue)}`;
 }
 
 /** The refused values from the server, said in the admin's language. */
 export function problemText(e: unknown): string {
-  const issues = (e as { response?: { data?: { details?: { issues?: DataAPI.Issue[] } } } })?.response?.data?.details?.issues;
-  if (Array.isArray(issues) && issues.length) return issues.map((i) => `${i.field}: ${issueText(i)}`).join(" · ");
+  const details = (e as { response?: { data?: { details?: { issues?: DataAPI.Issue[]; blockers?: DataAPI.Blocker[] } } } })?.response?.data?.details;
+  if (Array.isArray(details?.issues) && details.issues.length) return details.issues.map((i) => `${i.field}: ${issueText(i)}`).join(" · ");
+  // Rows that other rows link through a relation that forbids deleting them.
+  if (Array.isArray(details?.blockers) && details.blockers.length) return say(blockersText(details.blockers, adminLang() as Lang));
   return getApiErrorMessage(e);
 }
 
@@ -180,6 +184,9 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
       setSetting(null);
       setConfirmPurge(false);
       const n = out.changed.toLocaleString("en");
+      // Rows of other tables that went (or came back) with them: a relation that says "deleted with it".
+      const m = (out.withThem ?? 0).toLocaleString("en");
+      const also = out.withThem ? { description: v.op === "restore" ? say(`ومعهم ${m} سطر كانوا انحذفوا معهم.|And ${m} rows that had gone with them.|ועמן ${m} שורות שנמחקו יחד איתן.`) : say(`ومعهم ${m} سطر مربوطين فيهم (بينحذفوا معهم).|And ${m} rows linking them went too (they're deleted with them).|ועמן ${m} שורות המקושרות אליהן (נמחקות יחד איתן).`) } : undefined;
       toast.success(
         v.op === "trash"
           ? say(`${n} سطر راحوا لسلة المحذوفات|${n} rows moved to the trash|${n} שורות עברו לאשפה`)
@@ -188,6 +195,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
             : v.op === "purge"
               ? say(`${n} سطر انحذفوا نهائياً|${n} rows deleted for good|${n} שורות נמחקו לצמיתות`)
               : say(`${n} سطر تغيّروا|${n} rows changed|${n} שורות שונו`),
+        also,
       );
     },
     onError,
@@ -343,7 +351,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                   </option>
                 ))}
               </select>
-              <span className="w-56">
+              <span className={kindOf(setting.field, table.fields) === "relation" ? "w-72" : "w-56"}>
                 <ValueInput kind={kindOf(setting.field, table.fields)!} field={table.fields.find((f) => f.id === setting.field)} lang={lang} value={setting.value} onChange={(value) => setSetting({ ...setting, value })} testId="bulk-set-value" />
               </span>
               <button type="button" className={primary} disabled={bulk.isPending} onClick={() => bulk.mutate({ op: "set", field: setting.field, value: valueFrom(table.fields.find((f) => f.id === setting.field)!, setting.value) ?? "" })} data-testid="bulk-set-apply">
@@ -505,6 +513,25 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
   );
 }
 
+/** A relation's filter: the rows to be linked to, picked from the linked table (the box keeps their names; the filter takes their ids). */
+function LinkFilter({ field: f, lang, testId, onChange }: { field: NonNullable<Column["field"]>; lang: Lang; testId: string; onChange: (ids: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  return (
+    <span className="w-72">
+      <RelationInput
+        field={{ to: f.to, many: true }}
+        lang={lang}
+        value={draft}
+        testId={testId}
+        onChange={(next) => {
+          setDraft(next);
+          onChange(draftLinks(next).map((r) => r.id));
+        }}
+      />
+    </span>
+  );
+}
+
 /** One filter: the column, what is asked of it, and the value (or two, or a few choices). */
 function FilterRow({ index, filter, columns, meta, lang, onChange }: { index: number; filter: GridFilter; columns: Column[]; meta: GridMeta; lang: Lang; onChange: (next: GridFilter | null) => void }) {
   const all = columns;
@@ -545,7 +572,10 @@ function FilterRow({ index, filter, columns, meta, lang, onChange }: { index: nu
           </span>
         </>
       ) : null}
-      {needs === "list" ? (
+      {needs === "list" && column.kind === "relation" && column.field ? (
+        <LinkFilter key={column.id} field={column.field} lang={lang} testId={`filter-${index}-links`} onChange={(ids) => onChange({ ...filter, value: ids })} />
+      ) : null}
+      {needs === "list" && column.kind !== "relation" ? (
         <span className="flex flex-wrap gap-2" data-testid={`filter-${index}-list`}>
           {choices.map((o) => (
             <label key={o.id} className="flex items-center gap-1 text-xs">

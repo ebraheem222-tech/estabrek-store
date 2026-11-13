@@ -24,7 +24,11 @@ export function fieldIdOf(name: string, taken: string[]): string {
   for (let i = 2; ; i++) if (!taken.includes(`${base}${i}`)) return `${base}${i}`;
 }
 
-export const newField = (type: FieldType, name: Local, taken: string[]): CollectionField => ({ id: fieldIdOf(name.en ?? name.ar ?? name.he ?? type, taken), type, name, ...(type === "select" || type === "multiSelect" ? { options: [{ id: "one", name: { ...name } }] } : {}) });
+/** A new field of a kind (a choice kind with its first choice; a relation with the table it links, `to`). */
+export const newField = (type: FieldType, name: Local, taken: string[], to?: string): CollectionField => ({ id: fieldIdOf(name.en ?? name.ar ?? name.he ?? type, taken), type, name, ...(type === "select" || type === "multiSelect" ? { options: [{ id: "one", name: { ...name } }] } : {}), ...(type === "relation" && to ? { to } : {}) });
+
+/** The table a new relation links to begin with: another table when there is one, else this one. */
+export const firstLinkable = (tables: Array<{ id: string }>, self: string): string => (tables.find((t) => t.id !== self) ?? tables[0])?.id ?? self;
 
 /** What's sent for an item: empty words and values left out (the API checks the rest). */
 export function itemDataOut(fields: CollectionField[], values: Record<string, unknown>): Record<string, unknown> {
@@ -40,6 +44,9 @@ export function itemDataOut(fields: CollectionField[], values: Record<string, un
       if (Number.isFinite(n)) out[f.id] = n;
     } else if (f.type === "multiSelect") {
       if (Array.isArray(v) && v.length) out[f.id] = v;
+    } else if (f.type === "relation") {
+      // The linked rows by id (as read: rows; as picked: ids); none unlinks, so it's always sent.
+      out[f.id] = Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : (x as { id?: string } | null)?.id)).filter((x): x is string => typeof x === "string" && x !== "") : [];
     } else if (f.type === "json" || f.type === "location") {
       // Whole values (the server checks their shape).
       if (v !== undefined && v !== null && v !== "") out[f.id] = v;

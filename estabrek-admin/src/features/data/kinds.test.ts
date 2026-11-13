@@ -9,7 +9,7 @@ const tags = f("multiSelect", { options: [{ id: "new", name: { en: "New", ar: "Ø
 
 describe("A value and the words in its box", () => {
   test("every kind has a name", () => {
-    expect(Object.keys(KIND_NAME)).toHaveLength(19);
+    expect(Object.keys(KIND_NAME)).toHaveLength(20);
     for (const name of Object.values(KIND_NAME)) expect(name.split("|")).toHaveLength(3);
   });
 

@@ -2,7 +2,7 @@
 // a table's rows a page at a time, filtered, sorted and searched by the server, cells, many rows at
 // once, the trash, and CSV in and out. A table is a collection (collections.api.ts).
 import { api } from "./http";
-import type { Collection, CollectionField, CollectionItem, FieldType, ItemStatus, Local } from "./collections.api";
+import type { Collection, CollectionField, CollectionItem, FieldType, ItemStatus, Linked, Local } from "./collections.api";
 
 export type Lang = "ar" | "en" | "he";
 export type Op = "contains" | "notContains" | "is" | "isNot" | "startsWith" | "endsWith" | "empty" | "notEmpty" | "gt" | "gte" | "lt" | "lte" | "between" | "anyOf" | "isTrue" | "isFalse";
@@ -28,12 +28,14 @@ export type GridMeta = {
   ops: Record<ColumnKind, Op[]>;
   systemColumns: SystemColumn[];
   views: View[];
-  limits: { pageSize: number; filters: number; sorts: number; search: number; value: number; anyOf: number; rows: number; importRows: number; bulkIds: number; trashDays: number };
+  limits: { pageSize: number; filters: number; sorts: number; search: number; value: number; anyOf: number; rows: number; importRows: number; bulkIds: number; trashDays: number; /** Rows one row links in one relation. */ links?: number };
   /** Which rules fit which kind of field, and the ready shapes for short words. */
   rules: Record<FieldType, { unique: boolean; limits: "number" | "length" | "date" | null; shape: boolean; default: boolean }>;
   shapes: Array<NonNullable<CollectionField["shape"]>>;
 };
-export type Issue = { field: string; message: string; /** The owner's own words for this field's rules. */ say?: Local };
+export type Issue = { field: string; message: string; /** The owner's own words for this field's rules. */ say?: Local; /** The value the message is about (a row that isn't there). */ value?: string };
+/** Who holds rows that were asked to go: a table, its relation, how many of its rows, one of them (409 ROWS_LINKED). */
+export type Blocker = { table: string; slug: string; name: Local | null; field: string; fieldName?: Local | null; rows: number; sample: string };
 export type RowIn = { slug?: string; status?: string; values: Record<string, unknown> };
 export type ImportReport = { dryRun: boolean; created: number; updated: number; rejected: Array<{ row: number; slug: string | null; issues: Issue[] }> };
 export type BulkOp = "publish" | "draft" | "archive" | "trash" | "restore" | "purge" | "set";
@@ -55,7 +57,11 @@ export async function patchRow(id: string, rowId: string, body: { slug?: string;
   return (await api.patch(`${base}/${id}/rows/${rowId}`, body)).data as GridRow;
 }
 export async function bulkRows(id: string, body: BulkBody) {
-  return (await api.post(`${base}/${id}/rows/bulk`, body)).data as { changed: number; counts: Record<View, number> };
+  return (await api.post(`${base}/${id}/rows/bulk`, body)).data as { changed: number; /** Rows that went to the trash (or came back) with them, through a "deleted with it" relation. */ withThem?: number; counts: Record<View, number> };
+}
+/** A few of a table's rows to pick from when linking (a relation's picker), found by their words or address. */
+export async function lookupRows(id: string, search: string) {
+  return (await api.get(`${base}/${id}/rows/lookup`, { params: search.trim() ? { search: search.trim() } : {} })).data as { rows: Linked[]; total: number };
 }
 export async function importRows(id: string, body: { rows: RowIn[]; mode: "create" | "upsert"; lang: Lang; dryRun: boolean }) {
   return (await api.post(`${base}/${id}/rows/import`, body)).data as ImportReport;

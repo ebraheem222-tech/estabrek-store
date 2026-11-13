@@ -19,6 +19,8 @@ export const touchesRows = (changes: Impact[]) => changes.some((c) => c.lost + c
 export function impactText(c: Impact, name: string): string {
   const out: string[] = [];
   const kind = (t: FieldType | undefined) => (t ? KIND_NAME[t] : "?|?|?");
+  // A relation's rows are links, kept in a table of their own: a change shows or hides them, never rewrites them.
+  if (c.from === "relation" || c.to === "relation") return join(linkImpact(c, name, kind));
   if (c.change === "retyped") {
     out.push(`«${name}»: من «${part(kind(c.from), 0)}» لـ «${part(kind(c.to), 0)}».|“${name}”: from ${part(kind(c.from), 1)} to ${part(kind(c.to), 1)}.|״${name}״: מ״${part(kind(c.from), 2)}״ ל״${part(kind(c.to), 2)}״.`);
     if (c.converted) out.push(`${n(c.converted)} قيمة بتتحوّل.|${n(c.converted)} values turn into the new kind.|${n(c.converted)} ערכים מומרים.`);
@@ -40,6 +42,40 @@ export function impactText(c: Impact, name: string): string {
   return join(out);
 }
 
+/** The same for a relation: its links stay where they are; the change shows or hides them. */
+function linkImpact(c: Impact, name: string, kind: (t: FieldType | undefined) => string): string[] {
+  const out: string[] = [];
+  const hidden = `روابط ${n(c.hidden)} سطر بتتخبّى (ما بتنحذف)، وبترجع إذا رجّعته متل ما كان.|The links of ${n(c.hidden)} rows are hidden (not deleted), and show again if it's put back as it was.|הקישורים של ${n(c.hidden)} שורות יוסתרו (לא יימחקו) ויחזרו אם יוחזר כפי שהיה.`;
+  const back = `روابط ${n(c.converted)} سطر محفوظة من قبل بترجع تبيّن.|The links of ${n(c.converted)} rows, kept from before, show again.|הקישורים של ${n(c.converted)} שורות, שנשמרו מקודם, יוצגו שוב.`;
+  if (c.change === "removed") {
+    out.push(`«${name}»: رح ينشال.|“${name}” goes.|״${name}״ יוסר.`);
+    out.push(c.hidden ? hidden : "ما كان فيه روابط.|It held no links.|לא היו בו קישורים.");
+  } else if (c.change === "retyped") {
+    out.push(`«${name}»: من «${part(kind(c.from), 0)}» لـ «${part(kind(c.to), 0)}».|“${name}”: from ${part(kind(c.from), 1)} to ${part(kind(c.to), 1)}.|״${name}״: מ״${part(kind(c.from), 2)}״ ל״${part(kind(c.to), 2)}״.`);
+    if (c.to === "relation") {
+      // Written values can't be links: put aside. Links kept from an earlier time show again.
+      if (c.lost) out.push(`${n(c.lost)} قيمة مكتوبة بتتخبّى (الربط بيصير باختيار سطور، مش بالكتابة)، وبترجع إذا رجّعت النوع.|${n(c.lost)} written values are put aside (rows are linked by picking them, not by writing), and come back if the kind is changed back.|${n(c.lost)} ערכים כתובים יוסתרו (קישור נעשה בבחירת שורות, לא בכתיבה) ויחזרו אם הסוג יוחזר.`);
+      if (c.converted) out.push(back);
+    } else {
+      if (c.hidden) out.push(hidden);
+      if (c.converted) out.push(`${n(c.converted)} قيمة مكتوبة محفوظة من قبل بترجع.|${n(c.converted)} written values, kept from before, come back.|${n(c.converted)} ערכים כתובים שנשמרו מקודם יחזרו.`);
+    }
+    if (!c.rows && !c.lost) out.push("ما في قيم ولا روابط بهالحقل لسا.|No row holds anything there yet.|אין עדיין ערכים או קישורים בשדה.");
+  } else if (c.change === "added") {
+    out.push(`«${name}»: حقل ربط جديد.|“${name}”: a new relation.|״${name}״: קישור חדש.`);
+    if (c.converted) out.push(back);
+    if (c.lost) out.push(`${n(c.lost)} قيمة قديمة مكتوبة تحت هالإسم بتضل مخبّاة.|${n(c.lost)} earlier written values under this id stay put aside.|${n(c.lost)} ערכים כתובים קודמים יישארו מוסתרים.`);
+  } else {
+    out.push(`«${name}»: إعدادات ربط جديدة.|“${name}”: new relation settings.|״${name}״: הגדרות קישור חדשות.`);
+    if (c.hidden) out.push(`صار بيرتبط بجدول تاني: روابط ${n(c.hidden)} سطر للجدول الأول بتتخبّى (ما بتنحذف)، وبترجع إذا رجّعته عليه.|It links another table now: the links of ${n(c.hidden)} rows to the first one are hidden (not deleted), and show again if it's pointed back.|כעת הוא מקשר טבלה אחרת: הקישורים של ${n(c.hidden)} שורות לטבלה הראשונה יוסתרו (לא יימחקו) ויחזרו אם יוחזר אליה.`);
+    if (c.converted) out.push(back);
+    if (c.failing) out.push(`${n(c.failing)} سطر مربوط بأكتر من سطر: بيضلوا متل ما هم لحد ما يتعدّلوا.|${n(c.failing)} rows link more than one row: they stay as they are until they're changed.|${n(c.failing)} שורות מקשרות יותר משורה אחת: יישארו כפי שהן עד שיעודכנו.`);
+  }
+  if (c.missing) out.push(`${n(c.missing)} سطر مش مربوط بشي والحقل إجباري.|${n(c.missing)} rows link nothing, and it's required.|${n(c.missing)} שורות ללא קישור בשדה חובה.`);
+  if (c.doubles) out.push(`${n(c.doubles)} سطر مربوطين بسطر مربوط من غيرهم كمان، والمفروض واحد بس.|${n(c.doubles)} rows link a row that another row links too, where only one may.|${n(c.doubles)} שורות מקשרות שורה שגם אחרת מקשרת, כשרק אחת רשאית.`);
+  return out;
+}
+
 /** A short line for a version in the list: what that change did ("price: نص ← رقم"). */
 export function versionLine(changes: Impact[], lang: Lang): string {
   const i = lang === "ar" ? 0 : lang === "en" ? 1 : 2;
@@ -53,12 +89,12 @@ export function versionLine(changes: Impact[], lang: Lang): string {
     .join(" · ");
 }
 
-/** A field given another kind in the editor: what the new kind can't have comes off, a choice kind gets its first choice. */
-export function retype(field: CollectionField, type: FieldType, fit: RuleFit | undefined): CollectionField {
+/** A field given another kind in the editor: what the new kind can't have comes off, a choice kind gets its first choice, a relation the table it links (`to`). */
+export function retype(field: CollectionField, type: FieldType, fit: RuleFit | undefined, to?: string): CollectionField {
   if (type === field.type) return field;
-  const { default: _default, currency: _currency, ...rest } = field;
+  const { default: _default, currency: _currency, to: _to, many: _many, exclusive: _exclusive, onDelete: _onDelete, ...rest } = field;
   const choices = type === "select" || type === "multiSelect";
-  const next: CollectionField = { ...rest, type };
+  const next: CollectionField = { ...rest, type, ...(type === "relation" && to ? { to } : {}) };
   if (choices && !next.options?.length) next.options = [{ id: "one", name: { ...field.name } }];
   if (!choices) delete next.options;
   return fitRules(next, fit);

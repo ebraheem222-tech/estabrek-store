@@ -8,11 +8,29 @@ import type { CollectionField, FieldType } from "../../api/collections.api";
 import { KIND_NAME } from "../data/kinds";
 import { ValueInput, field as fieldBox, input } from "../data/GridCells";
 import { useState } from "react";
-import { CURRENCIES, LIMIT_NAME, SHAPE_NAME, addChoice, defaultDraft, defaultFrom, limitFrom, moveChoice, removeChoice, renameChoice, setRules, type Lang, type RuleFit, type Shape } from "./fieldRules";
+import { CURRENCIES, LIMIT_NAME, LINK_KINDS, LINK_KIND_NAME, ON_DELETE, ON_DELETE_NAME, SHAPE_NAME, addChoice, defaultDraft, defaultFrom, limitFrom, linkKind, moveChoice, removeChoice, renameChoice, setLinkKind, setOnDelete, setRules, type Lang, type LinkKind, type RuleFit, type Shape } from "./fieldRules";
 
 const label = "block text-xs text-white/60";
 
-export function FieldRulesEditor({ field, lang, fit, shapes, onChange, onRetype }: { field: CollectionField; lang: Lang; fit: RuleFit; shapes: Shape[]; onChange: (next: CollectionField) => void; /** Another kind for the field (what it does to the rows is shown before the save). */ onRetype?: (type: FieldType) => void }) {
+export function FieldRulesEditor({
+  field,
+  lang,
+  fit,
+  shapes,
+  onChange,
+  onRetype,
+  tables,
+}: {
+  field: CollectionField;
+  lang: Lang;
+  fit: RuleFit;
+  shapes: Shape[];
+  onChange: (next: CollectionField) => void;
+  /** Another kind for the field (what it does to the rows is shown before the save). */
+  onRetype?: (type: FieldType) => void;
+  /** The tables a relation can link (this one too), each by its name. */
+  tables?: Array<{ id: string; name: string }>;
+}) {
   const set = (patch: Parameters<typeof setRules>[1]) => onChange(setRules(field, patch));
   const limit = (v: number | string | undefined) => (v === undefined ? "" : String(v));
   const own = field.pattern !== undefined;
@@ -60,6 +78,47 @@ export function FieldRulesEditor({ field, lang, fit, shapes, onChange, onRetype 
             <button type="button" className={small} disabled={!fresh.trim() || (field.options?.length ?? 0) >= 30} onClick={add} data-testid={`choices-${field.id}-add`}>+ {say("ضيف|Add|הוסף")}</button>
           </div>
           <p className="text-[11px] text-white/40">{say("شيل اختيار ما بيمسحه من السطور اللي فيها: بتضل عليه لحد ما تتعدّل.|Removing a choice doesn't clear it from the rows that have it: they keep it until they're changed.|הסרת אפשרות לא מוחקת אותה מהשורות שמחזיקות בה.")}</p>
+        </div>
+      ) : null}
+      {field.type === "relation" ? (
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-2" data-testid={`relation-${field.id}`}>
+          <label className={label}>
+            {say("الجدول اللي بيرتبط فيه|The table it links|הטבלה המקושרת")}
+            <select className={`${input} mt-1`} value={field.to ?? ""} onChange={(e) => onChange({ ...field, to: e.target.value })} data-testid={`rule-${field.id}-to`}>
+              {/* A table that's gone (or not chosen yet) is said, not hidden behind the first one in the list. */}
+              {!(tables ?? []).some((t) => t.id === field.to) ? <option value={field.to ?? ""}>{field.to ? say("جدول مش موجود|A table that isn't there|טבלה שאינה קיימת") : "—"}</option> : null}
+              {(tables ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={label}>
+            {say("لما ينحذف السطر المربوط|When the linked row is deleted|כשהשורה המקושרת נמחקת")}
+            <select className={`${input} mt-1`} value={field.onDelete ?? "unlink"} onChange={(e) => onChange(setOnDelete(field, e.target.value as (typeof ON_DELETE)[number]))} data-testid={`rule-${field.id}-ondelete`}>
+              {ON_DELETE.map((v) => (
+                <option key={v} value={v}>
+                  {say(ON_DELETE_NAME[v])}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={`${label} md:col-span-2`}>
+            {say("كيف بيرتبطوا|How they pair up|איך הן מתקשרות")}
+            <select className={`${input} mt-1`} value={linkKind(field)} onChange={(e) => onChange(setLinkKind(field, e.target.value as LinkKind))} data-testid={`rule-${field.id}-pairing`}>
+              {LINK_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {say(LINK_KIND_NAME[k])}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-[11px] text-white/40 md:col-span-2">
+            {say(
+              "الروابط بتنحفظ بجدول لحالها: تغيير هالإعدادات ما بيمسح ولا رابط، وإذا شلت الحقل ورجّعته بترجع روابطه.|The links are kept in a table of their own: changing these settings deletes none of them, and a field removed and put back gets its links back.|הקישורים נשמרים בטבלה משלהם: שינוי ההגדרות אינו מוחק אף קישור, ושדה שהוסר והוחזר מקבל את קישוריו בחזרה.",
+            )}
+          </p>
         </div>
       ) : null}
       {field.type === "money" ? (

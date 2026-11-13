@@ -57,6 +57,7 @@ export const RULES_BY_TYPE: Record<FieldType, { unique: boolean; limits: "number
   model3d: { unique: false, limits: null, shape: false, default: false },
   json: { unique: false, limits: null, shape: false, default: false },
   location: { unique: false, limits: null, shape: false, default: false },
+  relation: { unique: false, limits: null, shape: false, default: false },
 };
 
 export const PATTERN_MAX = 200;

@@ -18,7 +18,9 @@ export const ITEM_SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/;
 /** Addresses the shop already has: a collection can't take them. */
 export const RESERVED_SLUGS = new Set(["shop", "p", "c", "cart", "checkout", "account", "search", "about", "contact", "wishlist", "order", "policies", "request", "studio-frame", "design-frame", "stock-alert", "api", "admin", "ar", "en", "he", "__block", "__component", "__template", "__collection"]);
 /** `items`: rows a table holds (the trash aside); `itemsList`: what the older list route returns at once. */
-export const LIMITS = { fields: 40, options: 30, items: 50_000, itemsList: 2000, listItems: 200 } as const;
+export const LIMITS = { fields: 40, options: 30, items: 50_000, itemsList: 2000, listItems: 200, /** Rows one row links in one relation field. */ links: 200 } as const;
+/** What happens to the rows that link a row when it is deleted (lib/links.ts). */
+export const ON_DELETE = ["unlink", "cascade", "restrict"] as const;
 /** A deleted row waits this long in the trash. */
 export const TRASH_DAYS = 30;
 
@@ -44,8 +46,16 @@ export const FieldSchema = z
     pattern: z.string().max(PATTERN_MAX).optional(),
     message: local(200).optional(),
     help: local(200).optional(),
+    // A relation (lib/links.ts): the table it links, how many, and what deleting a linked row does.
+    to: z.string().min(1).max(64).optional(),
+    many: z.boolean().optional(),
+    exclusive: z.boolean().optional(),
+    onDelete: z.enum(ON_DELETE).optional(),
   })
   .strict()
+  .refine((f) => f.type !== "relation" || !!f.to, "A relation needs the table it links")
+  .refine((f) => f.type === "relation" || (f.to === undefined && f.many === undefined && f.exclusive === undefined && f.onDelete === undefined), "Only a relation links a table")
+  .refine((f) => f.type !== "relation" || f.options === undefined, "A relation has no choices of its own")
   .refine((f) => (f.type !== "select" && f.type !== "multiSelect") || (f.options?.length ?? 0) > 0, "A choice field needs its choices")
   .refine((f) => !f.options || new Set(f.options.map((o) => o.id)).size === f.options.length, "Two choices with one id")
   .refine((f) => f.currency === undefined || f.type === "money", "Only money has a currency")
@@ -73,7 +83,7 @@ export const CollectionBody = z.object({
 }).strict();
 export type CollectionBody = z.infer<typeof CollectionBody>;
 
-export type ItemIssue = { field: string; message: string; /** The owner's own words for this field's rules, when it has them. */ say?: Partial<Record<"ar" | "en" | "he", string>> };
+export type ItemIssue = { field: string; message: string; /** The owner's own words for this field's rules, when it has them. */ say?: Partial<Record<"ar" | "en" | "he", string>>; /** The value the message is about, when naming it helps (a row that isn't there). */ value?: string };
 
 export const JSON_MAX = 20_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -95,6 +105,8 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
   const data: Record<string, unknown> = {};
   const issues: ItemIssue[] = [];
   for (const f of fields) {
+    // A relation's rows are links, kept and checked apart (lib/links.ts): never a value here.
+    if (f.type === "relation") continue;
     const v = src[f.id];
     if (emptyValue(f, v)) { if (f.required) issues.push({ field: f.id, message: "Required" }); continue; }
     const bad = (message: string) => issues.push({ field: f.id, message });

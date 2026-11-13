@@ -5,7 +5,7 @@
  *
  * Words per language (text, long text) are not here: their boxes are one per language.
  */
-import type { CollectionField, FieldType, Local } from "../../api/collections.api";
+import type { CollectionField, FieldType, Linked, Local } from "../../api/collections.api";
 
 export type Lang = "ar" | "en" | "he";
 export const WORD_KINDS: FieldType[] = ["text", "longText"];
@@ -30,7 +30,29 @@ export const KIND_NAME: Record<FieldType, string> = {
   model3d: "موديل 3D|3D model|מודל תלת־ממד",
   json: "JSON|JSON|JSON",
   location: "موقع (خريطة)|A place (map)|מיקום (מפה)",
+  relation: "ربط بجدول|Link to a table|קישור לטבלה",
 };
+
+/* ---------------- A relation: the rows a row links ---------------- */
+
+/** The linked rows in a relation's value (as the routes answer it, or as its box holds it). */
+export function linkedOf(v: unknown): Linked[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((x) => (x && typeof x === "object" && typeof (x as Linked).id === "string" ? [{ id: (x as Linked).id, slug: String((x as Linked).slug ?? ""), title: (x as Linked).title && typeof (x as Linked).title === "object" ? (x as Linked).title : null }] : []));
+}
+/** What a linked row is called: its first words, else its address. */
+export const linkedName = (row: Pick<Linked, "slug" | "title">, lang: Lang) => row.title?.[lang] || row.title?.ar || row.title?.en || row.title?.he || row.slug;
+/** A relation's box: the rows it links, as words the box can keep and compare (JSON: id, address, first words). */
+export const linksDraft = (rows: Linked[]) => (rows.length ? JSON.stringify(rows.map((r) => ({ id: r.id, slug: r.slug, title: r.title }))) : "");
+/** The rows in a relation's box. */
+export function draftLinks(draft: string): Linked[] {
+  if (!draft.trim()) return [];
+  try {
+    return linkedOf(JSON.parse(draft));
+  } catch {
+    return [];
+  }
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 /** A moment as a date-and-time box holds it (this browser's own clock): "2026-11-13T14:30". */
@@ -67,6 +89,8 @@ export function draftFrom(field: Pick<CollectionField, "type">, v: unknown): str
       return JSON.stringify(v, null, 2);
     case "location":
       return placeDraft(v);
+    case "relation":
+      return linksDraft(linkedOf(v));
     default:
       return typeof v === "object" ? "" : String(v);
   }
@@ -119,6 +143,11 @@ export function valueFrom(field: Pick<CollectionField, "type">, draft: string): 
       const [lat, lng] = [Number(p.lat), Number(p.lng)];
       return p.lat !== "" && p.lng !== "" && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng, ...(p.label ? { label: p.label } : {}) } : s;
     }
+    case "relation": {
+      // The linked rows by id, in the box's order; none unlinks.
+      const ids = draftLinks(s).map((r) => r.id);
+      return ids.length ? ids : null;
+    }
     default:
       return s;
   }
@@ -166,6 +195,8 @@ export function shownText(field: Pick<CollectionField, "type" | "options" | "cur
       const at = v as { lat?: unknown; lng?: unknown; label?: unknown };
       return typeof at.label === "string" && at.label ? at.label : typeof at.lat === "number" && typeof at.lng === "number" ? `${at.lat}, ${at.lng}` : "";
     }
+    case "relation":
+      return linkedOf(v).map((r) => linkedName(r, lang)).join(lang === "ar" ? "، " : ", ");
     case "file":
     case "video":
     case "model3d": {

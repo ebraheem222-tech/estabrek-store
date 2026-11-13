@@ -12,7 +12,7 @@ import type { Collection, ItemStatus } from "../../api/collections.api";
 import * as DataAPI from "../../api/data.api";
 import type { GridRow, Issue, Lang } from "../../api/data.api";
 import { ValueInput, input } from "./GridCells";
-import { LANGS, LANG_NAME, WORDS, issueSay } from "./dataText";
+import { LANGS, LANG_NAME, WORDS, issueAbout, issueSay } from "./dataText";
 import { draftFrom, draftProblem, valueFrom } from "./kinds";
 
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -39,7 +39,7 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
   const set = (key: string, v: string) => setValues((was) => ({ ...was, [key]: v }));
   const text = (i: Issue) => {
     const words = issueSay(i, lang);
-    return "own" in words ? words.own : say(words.general);
+    return `${"own" in words ? words.own : say(words.general)}${issueAbout(i)}`;
   };
   const problem = (key: string) => {
     const found = issues.find((i) => i.field === key || i.field === key.split(".")[0]);
@@ -130,8 +130,10 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
               </fieldset>
             );
           }
+          // A relation's box holds buttons (its chips, the rows to pick): a label around it would press the first one on any click.
+          const Box = f.type === "relation" ? "div" : "label";
           return (
-            <label key={f.id} className="block text-xs text-white/60" data-testid={`row-field-${f.id}`}>
+            <Box key={f.id} className="block text-xs text-white/60" data-testid={`row-field-${f.id}`}>
               {label}
               <span className="mt-1 flex items-center gap-2">
                 <span className="min-w-0 flex-1">
@@ -148,7 +150,7 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
               </span>
               {name(f.help, lang) ? <span className="mt-1 block text-white/40">{name(f.help, lang)}</span> : null}
               {problem(f.id) ? <span className="mt-1 block text-red-300">{problem(f.id)}</span> : null}
-            </label>
+            </Box>
           );
         })}
       </div>

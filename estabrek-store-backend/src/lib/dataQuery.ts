@@ -41,6 +41,8 @@ export const OPS_BY_KIND: Record<ColumnKind, readonly Op[]> = {
   model3d: ["empty", "notEmpty"],
   json: ["empty", "notEmpty"],
   location: ["empty", "notEmpty"],
+  // Linked to any of these rows (by id), to none, to some.
+  relation: ["anyOf", "empty", "notEmpty"],
   $slug: ["contains", "is", "startsWith"],
   $status: ["is", "isNot", "anyOf"],
   $date: ["gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
@@ -92,6 +94,13 @@ export function columnKind(fields: Field[], column: string): ColumnKind | null {
 }
 
 /* ---------------- Pieces of SQL (the rows' table is always "i") ---------------- */
+
+/**
+ * A moment as the tables keep it (a timestamp without a zone, in UTC). Written bare into SQL, a
+ * moment is turned by the database into its own clock's zone first: right on a database that runs
+ * in UTC, hours off on any other.
+ */
+export const utc = (at: Date) => Prisma.sql`(${at}::timestamptz AT TIME ZONE 'UTC')`;
 
 const SYSTEM_SQL: Record<string, Prisma.Sql> = {
   $slug: Prisma.raw(`i."slug"`),
@@ -188,6 +197,15 @@ export function filterSql(fields: Field[], f: GridFilter): Prisma.Sql {
     if (f.op === "lt") return Prisma.sql`${n} < ${a}`;
     if (f.op === "lte") return Prisma.sql`${n} <= ${a}`;
     return Prisma.sql`${n} BETWEEN ${a} AND ${number(f.value2, what)}`;
+  }
+  if (kind === "relation") {
+    // Its rows are links (lib/links.ts); a linked row in the trash doesn't count.
+    const to = fields.find((x) => x.id === id)?.to ?? "";
+    const linked = (more: Prisma.Sql) =>
+      Prisma.sql`EXISTS (SELECT 1 FROM "CollectionLink" lk JOIN "CollectionItem" lt ON lt."id" = lk."toId" AND lt."deletedAt" IS NULL WHERE lk."collectionId" = i."collectionId" AND lk."fieldId" = ${id} AND lk."toTable" = ${to} AND lk."fromId" = i."id"${more})`;
+    if (f.op === "empty") return Prisma.sql`NOT ${linked(Prisma.empty)}`;
+    if (f.op === "notEmpty") return linked(Prisma.empty);
+    return linked(Prisma.sql` AND lk."toId" IN (${Prisma.join(list(f.value, what))})`);
   }
   if (kind === "boolean") {
     // Never ticked counts as "no".
@@ -290,7 +308,10 @@ export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">):
               ? num(s.field)
               : kind === "boolean"
                 ? Prisma.sql`(${json(s.field)} = 'true'::jsonb)`
-                : Prisma.sql`NULLIF(${words(s.field)}, '')`;
+                : kind === "relation"
+                  ? // By how many rows it links (none last).
+                    Prisma.sql`NULLIF((SELECT count(*) FROM "CollectionLink" lk JOIN "CollectionItem" lt ON lt."id" = lk."toId" AND lt."deletedAt" IS NULL WHERE lk."collectionId" = i."collectionId" AND lk."fieldId" = ${s.field} AND lk."toTable" = ${fields.find((x) => x.id === s.field)?.to ?? ""} AND lk."fromId" = i."id"), 0)`
+                  : Prisma.sql`NULLIF(${words(s.field)}, '')`;
     parts.push(Prisma.sql`${expr} ${Prisma.raw(s.dir === "desc" ? "DESC" : "ASC")} NULLS LAST`);
   }
   if (!parts.length) parts.push(Prisma.raw(`i."sort" ASC`));

@@ -231,6 +231,9 @@ describe("Changing rows", () => {
     // The scarf has no price now: the question didn't match it.
     expect((await row("winter")).status).toBe("DRAFT");
     expect((await request(app).post(`${base()}/rows/bulk`).send({ ids: [winter.id], op: "publish" }).expect(200)).body).toMatchObject({ changed: 1, counts: { published: 5, draft: 2 } });
+    // The moment it was published is now, whatever zone the database's own clock is told in.
+    const stamped = await prisma.collectionItem.findUniqueOrThrow({ where: { id: winter.id } });
+    for (const at of [stamped.publishedAt, stamped.updatedAt]) expect(Math.abs((at?.getTime() ?? 0) - Date.now())).toBeLessThan(60_000);
     // Already published: nothing to change.
     expect((await request(app).post(`${base()}/rows/bulk`).send({ ids: [winter.id], op: "publish" }).expect(200)).body.changed).toBe(0);
     // One value for all of them.

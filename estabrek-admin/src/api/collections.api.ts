@@ -3,7 +3,11 @@ import { api } from "./http";
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
 /** The kinds of field (backend lib/collectionTree.ts FIELD_TYPES). */
-export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location";
+export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location" | "relation";
+/** What happens to the rows that link a row when it is deleted (backend lib/links.ts). */
+export type OnDelete = "unlink" | "cascade" | "restrict";
+/** A linked row as the routes answer it under a relation field. */
+export type Linked = { id: string; slug: string; status?: ItemStatus; title: Local | null };
 /** A field: its kind, its name, and its rules (backend lib/fieldRules.ts). */
 export type CollectionField = {
   id: string;
@@ -26,6 +30,14 @@ export type CollectionField = {
   help?: Local;
   /** Money: its currency, three letters (ILS when not said). */
   currency?: string;
+  /** A relation: the table whose rows it links (that table's id; it may be its own). */
+  to?: string;
+  /** A relation: a row may link several rows (else one). */
+  many?: boolean;
+  /** A relation: a row there is linked from one row at most. */
+  exclusive?: boolean;
+  /** A relation: what deleting a linked row does to the rows linking it (unlink when not said). */
+  onDelete?: OnDelete;
 };
 export type Collection = { id: string; slug: string; name: Local; fields: CollectionField[]; templateId: string | null; items: number; published: number; createdAt: string; updatedAt: string };
 export type ItemStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";

@@ -229,7 +229,7 @@ describe("The fields editor", () => {
     );
     fireEvent.click(await screen.findByText("Fields"));
     const kinds = [...(screen.getByTestId("field-new-type") as HTMLSelectElement).options].map((o) => o.value);
-    expect(kinds).toHaveLength(19);
+    expect(kinds).toHaveLength(20);
     expect(kinds).toEqual(expect.arrayContaining(["email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location"]));
     fireEvent.change(screen.getByTestId("field-new-type"), { target: { value: "multiSelect" } });
     fireEvent.click(screen.getByTestId("field-add"));
