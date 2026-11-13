@@ -5,7 +5,7 @@
  * them (a "Collection list" in the editor's Add panel).
  */
 import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../lib/toast";
 import { getApiErrorMessage } from "../../api/http";
@@ -190,7 +190,10 @@ function Items({ collection, lang, onChanged }: { collection: Collection; lang: 
   if (editing) return <ItemForm collection={collection} lang={lang} item={editing === "new" ? null : editing} onDone={() => { setEditing(null); reload(); }} onCancel={() => setEditing(null)} />;
   return (
     <div className="space-y-2" data-testid="collection-items">
-      <button type="button" className={primary} onClick={() => setEditing("new")} data-testid="item-new">+ {say("عنصر جديد|New item|פריט חדש")}</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={primary} onClick={() => setEditing("new")} data-testid="item-new">+ {say("عنصر جديد|New item|פריט חדש")}</button>
+        <Link to={`/admin/data?table=${encodeURIComponent(collection.slug)}`} className={btn} data-testid="items-as-grid">{say("افتحها كجدول: فلترة، تعديل جماعي، Excel|Open as a table: filters, many at once, Excel|פתח כטבלה: סינון, שינוי קבוצתי, Excel")}</Link>
+      </div>
       {items.data?.length ? (
         <ul className="divide-y divide-white/[0.06]">
           {items.data.map((it) => (

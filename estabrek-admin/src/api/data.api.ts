@@ -2,7 +2,7 @@
 // a table's rows a page at a time, filtered, sorted and searched by the server, cells, many rows at
 // once, the trash, and CSV in and out. A table is a collection (collections.api.ts).
 import { api } from "./http";
-import type { CollectionItem, FieldType, ItemStatus } from "./collections.api";
+import type { Collection, CollectionField, CollectionItem, FieldType, ItemStatus } from "./collections.api";
 
 export type Lang = "ar" | "en" | "he";
 export type Op = "contains" | "notContains" | "is" | "isNot" | "startsWith" | "endsWith" | "empty" | "notEmpty" | "gt" | "gte" | "lt" | "lte" | "between" | "anyOf" | "isTrue" | "isFalse";
@@ -10,6 +10,15 @@ export type View = "all" | "draft" | "published" | "archived" | "trash";
 /** A row's own columns, beside its fields. */
 export type SystemColumn = "$slug" | "$status" | "$createdAt" | "$updatedAt" | "$publishedAt";
 export type ColumnKind = FieldType | "$slug" | "$status" | "$date";
+/** A table in the grid: one of the owner's (a collection), or one of the store's own, to look at. */
+export type GridTable = Omit<Collection, "fields"> & {
+  /** One of the store's own tables (products, orders…): nothing is written from the grid. */
+  readOnly?: boolean;
+  /** Its rows have an address (a slug); else the first column is their id. */
+  hasAddress?: boolean;
+  /** `computed`: worked out per page (shown, never filtered or sorted by). */
+  fields: Array<CollectionField & { computed?: boolean }>;
+};
 export type GridFilter = { field: string; op: Op; value?: unknown; value2?: unknown };
 export type GridSort = { field: string; dir: "asc" | "desc" };
 export type GridQuery = { page?: number; pageSize?: number; search?: string; lang?: Lang; view?: View; sort?: GridSort[]; filters?: GridFilter[]; match?: "all" | "any" };
@@ -47,6 +56,17 @@ export async function bulkRows(id: string, body: BulkBody) {
 }
 export async function importRows(id: string, body: { rows: RowIn[]; mode: "create" | "upsert"; lang: Lang; dryRun: boolean }) {
   return (await api.post(`${base}/${id}/rows/import`, body)).data as ImportReport;
+}
+/** The store's own tables this member may see (products, categories, orders, customers), read only. */
+export async function storeTables() {
+  const data = (await api.get("/admin/data/store")).data;
+  return (Array.isArray(data) ? data : []) as GridTable[];
+}
+export async function getStoreRows(table: string, query: GridQuery) {
+  return (await api.get(`/admin/data/store/${table}/rows`, q(query))).data as GridPage;
+}
+export async function exportStoreRows(table: string, query: GridQuery) {
+  return (await api.get(`/admin/data/store/${table}/rows/export`, { ...q(query), responseType: "blob" })).data as Blob;
 }
 /** The asked rows (every page of them) as a CSV file. */
 export async function exportRows(id: string, query: GridQuery) {

@@ -5,7 +5,7 @@
  * A table's fields and its item page are still made in المجموعات.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../../lib/toast";
 import { getApiErrorMessage } from "../../api/http";
@@ -15,11 +15,13 @@ import { say } from "../../studio/say";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { listCollections, type Collection } from "../../api/collections.api";
 import * as DataAPI from "../../api/data.api";
-import type { BulkOp, GridFilter, GridMeta, GridPage, GridQuery, GridRow, Lang, View } from "../../api/data.api";
+import type { BulkOp, GridFilter, GridMeta, GridPage, GridQuery, GridRow, GridTable, Lang, View } from "../../api/data.api";
 import { CellEditor, CellView, ValueInput, field, input } from "./GridCells";
 import { ImportDialog } from "./ImportDialog";
+import { parseCsv } from "./csv";
+import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
-import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterValue, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, type Column } from "./dataText";
+import { LANGS, LANG_NAME, VIEW_NAME, cellPatch, columnsOf, editable, filterColumns, filterValue, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03]";
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -40,8 +42,14 @@ export default function DataPage() {
   const lang = adminLang() as Lang;
   const tables = useQuery({ queryKey: ["collections"], queryFn: listCollections });
   const meta = useQuery({ queryKey: ["data", "meta"], queryFn: DataAPI.gridMeta, staleTime: Infinity });
-  const [open, setOpen] = useState<string | null>(null);
-  const table = tables.data?.find((c) => c.id === open) ?? tables.data?.[0] ?? null;
+  // The store's own tables (products, orders…), to look at: only the ones this member may see.
+  const store = useQuery({ queryKey: ["data", "store"], queryFn: DataAPI.storeTables, retry: false });
+  // The open table is in the address (?table=blog, or ?store=orders): a link can open one, and a reload keeps it.
+  const [params, setParams] = useSearchParams();
+  const mine: GridTable[] = tables.data ?? [];
+  const theirs: GridTable[] = store.data ?? [];
+  const table = (params.get("store") ? theirs.find((c) => c.slug === params.get("store")) : mine.find((c) => c.slug === params.get("table"))) ?? mine[0] ?? theirs[0] ?? null;
+  const setOpen = (c: GridTable) => setParams(c.readOnly ? { store: c.slug } : { table: c.slug }, { replace: true });
 
   return (
     <div className="space-y-4 p-4 md:p-6" data-testid="data-page">
@@ -50,7 +58,7 @@ export default function DataPage() {
           <h1 className="text-xl font-semibold">{say("الجداول|Tables|טבלאות")}</h1>
           <p className="mt-1 max-w-2xl text-sm text-white/55">
             {say(
-              "كل جدول من بياناتك بشبكة وحدة: فلتر، رتّب، دوّر، عدّل بالخلية، غيّر كتير سطور مرة وحدة، واستورد وصدّر CSV.|Each of your tables in one grid: filter, sort, search, write in the cell, change many rows at once, and bring CSV in and out.|כל טבלה ברשת אחת: סינון, מיון, חיפוש, עריכה בתא, שינוי שורות רבות יחד וייבוא וייצוא CSV.",
+              "كل جدول من بياناتك بشبكة وحدة: فلتر، رتّب، دوّر، عدّل بالخلية، غيّر كتير سطور مرة وحدة، واستورد وصدّر Excel و CSV.|Each of your tables in one grid: filter, sort, search, write in the cell, change many rows at once, and bring Excel and CSV in and out.|כל טבלה ברשת אחת: סינון, מיון, חיפוש, עריכה בתא, שינוי שורות רבות יחד וייבוא וייצוא Excel ו־CSV.",
             )}
           </p>
         </div>
@@ -62,7 +70,7 @@ export default function DataPage() {
       {tables.isLoading ? <div className="text-sm text-white/50">…</div> : null}
       {tables.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(tables.error)}</div> : null}
       {tables.data && !tables.data.length ? (
-        <div className={`${card} p-6 text-sm text-white/60`} data-testid="data-empty">
+        <div className={`${card} p-4 text-sm text-white/60`} data-testid="data-empty">
           {say("ما في جداول لسا. اعمل أول جدول من «المجموعات» (مدونة، فروع، أو حقولك الخاصة).|No tables yet. Make the first one in Collections (a blog, branches, or your own fields).|אין עדיין טבלאות. צור את הראשונה ב״אוספים״.")}
         </div>
       ) : null}
@@ -70,19 +78,29 @@ export default function DataPage() {
       {table ? (
         <div className="flex flex-col gap-4 lg:flex-row">
           <nav className="flex shrink-0 gap-2 overflow-x-auto lg:w-52 lg:flex-col" aria-label={say("الجداول|Tables|טבלאות")} data-testid="data-tables">
-            {tables.data!.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setOpen(c.id)}
-                aria-current={c.id === table.id}
-                data-testid={`data-table-${c.slug}`}
-                className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}
-              >
-                <span className="block truncate font-medium">{words(c.name, lang) || c.slug}</span>
-                <span className="block text-xs text-white/50">{`${c.items.toLocaleString("en")} ${say("سطر|rows|שורות")}`}</span>
-              </button>
-            ))}
+            {[
+              { title: "جداولك|Your tables|הטבלאות שלך", list: mine, prefix: "data-table" },
+              { title: "جداول المتجر (للعرض)|The store's tables (to look at)|טבלאות החנות (לצפייה)", list: theirs, prefix: "store-table" },
+            ].map((group) =>
+              group.list.length ? (
+                <div key={group.prefix} className="flex shrink-0 gap-2 lg:flex-col">
+                  <div className="hidden px-1 pt-1 text-xs text-white/45 lg:block">{say(group.title)}</div>
+                  {group.list.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setOpen(c)}
+                      aria-current={c.id === table.id}
+                      data-testid={`${group.prefix}-${c.slug}`}
+                      className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}
+                    >
+                      <span className="block truncate font-medium">{words(c.name, lang) || c.slug}</span>
+                      <span className="block text-xs text-white/50">{`${c.items.toLocaleString("en")} ${say("سطر|rows|שורות")}`}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null,
+            )}
           </nav>
           <div className="min-w-0 flex-1">{meta.data ? <TableGrid key={table.id} table={table} meta={meta.data} lang={lang} /> : null}</div>
         </div>
@@ -91,10 +109,12 @@ export default function DataPage() {
   );
 }
 
-function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; lang: Lang }) {
+function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; lang: Lang }) {
   const qc = useQueryClient();
   const { hasPermission } = useAuth();
-  const canWrite = hasPermission("pages:write");
+  /** One of the store's own tables: looked at here, changed from its own page. */
+  const readOnly = !!table.readOnly;
+  const canWrite = !readOnly && hasPermission("pages:write");
   /** The language the words columns show and are written in. */
   const [wordsLang, setWordsLang] = useState<Lang>(lang);
   const [query, setQuery] = useState<GridQuery>({ page: 1, pageSize: 50, view: "all", filters: [], sort: [], match: "all" });
@@ -117,7 +137,7 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
   const columns = useMemo(() => columnsOf(table, lang), [table, lang]);
   const sent = useMemo(() => queryOut({ ...query, lang: wordsLang }), [query, wordsLang]);
   const key = ["data", "rows", table.id, sent];
-  const rows = useQuery({ queryKey: key, queryFn: () => DataAPI.getRows(table.id, sent), placeholderData: (prev: GridPage | undefined) => prev });
+  const rows = useQuery({ queryKey: key, queryFn: () => (readOnly ? DataAPI.getStoreRows(table.slug, sent) : DataAPI.getRows(table.id, sent)), placeholderData: (prev: GridPage | undefined) => prev });
   const data = rows.data;
   const view = query.view ?? "all";
   const inTrash = view === "trash";
@@ -166,12 +186,18 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
     onError,
   });
   const download = useMutation({
-    mutationFn: () => DataAPI.exportRows(table.id, { ...sent, page: 1 }),
-    onSuccess: (blob) => {
+    // The server writes the asked rows as CSV; an Excel file is made from it here.
+    mutationFn: async (as: "csv" | "xlsx") => {
+      const csv = await (readOnly ? DataAPI.exportStoreRows(table.slug, { ...sent, page: 1 }) : DataAPI.exportRows(table.id, { ...sent, page: 1 }));
+      if (as === "csv") return { blob: csv, name: `${table.slug}.csv` };
+      const book = writeXlsx(sheetCells(parseCsv(await csv.text(), ","), table.fields), table.slug);
+      return { blob: new Blob([book as unknown as BlobPart], { type: XLSX_TYPE }), name: `${table.slug}.xlsx` };
+    },
+    onSuccess: ({ blob, name }) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${table.slug}.csv`;
+      a.download = name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     },
@@ -185,12 +211,14 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
   const filters = query.filters ?? [];
   const setFilter = (i: number, next: GridFilter | null) => change({ filters: next ? filters.map((f, k) => (k === i ? next : f)) : filters.filter((_, k) => k !== i) });
   const fieldColumns = columns.filter((c) => c.field);
+  const askable = useMemo(() => filterColumns(columns, readOnly), [columns, readOnly]);
+  const firstAsk = askable.find((c) => c.field) ?? askable[0];
 
   return (
     <section className={`${card} overflow-hidden`} data-testid="data-grid" data-table={table.slug}>
       {/* The tabs: each view with how many rows it holds. */}
       <div className="flex flex-wrap items-center gap-1 border-b border-white/10 px-3 pt-3" role="tablist">
-        {VIEWS.map((v) => (
+        {(readOnly ? VIEWS.slice(0, 1) : VIEWS).map((v) => (
           <button key={v} type="button" role="tab" aria-selected={v === view} data-testid={`view-${v}`} onClick={() => change({ view: v })} className={`rounded-t-lg px-3 py-2 text-xs ${v === view ? "bg-white/10 font-medium text-white" : "text-white/55 hover:text-white"}`}>
             {say(VIEW_NAME[v])}
             <span className="ms-1.5 tabular-nums text-white/45" data-testid={`count-${v}`}>
@@ -202,27 +230,36 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
 
       <div className="flex flex-wrap items-center gap-2 px-3 py-3">
         <input className={`${input} max-w-xs`} type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={say("دوّر بكل القيم…|Search every value…|חיפוש בכל הערכים…")} data-testid="data-search" aria-label={say("بحث|Search|חיפוש")} />
-        <button type="button" className={btn} data-testid="filter-add" disabled={filters.length >= meta.limits.filters} onClick={() => change({ filters: [...filters, newFilter(columns[2]?.id ?? "$slug", columns[2]?.kind ?? "$slug", meta.ops)] })}>
+        <button type="button" className={btn} data-testid="filter-add" disabled={filters.length >= meta.limits.filters} onClick={() => change({ filters: [...filters, newFilter(firstAsk.id, firstAsk.kind, meta.ops)] })}>
           {say("＋ فلتر|＋ Filter|＋ סינון")}
         </button>
-        <label className="flex items-center gap-1 whitespace-nowrap text-xs text-white/55">
-          {say("لغة الكلام|Words in|שפת הטקסט")}
-          <select className={field} value={wordsLang} onChange={(e) => setWordsLang(e.target.value as Lang)} data-testid="words-lang">
-            {LANGS.map((l) => (
-              <option key={l} value={l}>
-                {LANG_NAME[l]}
-              </option>
-            ))}
-          </select>
-        </label>
+        {readOnly ? (
+          <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-white/55" data-testid="data-read-only">
+            {say("للعرض بس: التعديل من صفحته|To look at: it's changed from its own page|לצפייה בלבד: העריכה מהדף שלו")}
+          </span>
+        ) : (
+          <label className="flex items-center gap-1 whitespace-nowrap text-xs text-white/55">
+            {say("لغة الكلام|Words in|שפת הטקסט")}
+            <select className={field} value={wordsLang} onChange={(e) => setWordsLang(e.target.value as Lang)} data-testid="words-lang">
+              {LANGS.map((l) => (
+                <option key={l} value={l}>
+                  {LANG_NAME[l]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <span className="ms-auto flex flex-wrap items-center gap-2">
-          <button type="button" className={btn} onClick={() => download.mutate()} disabled={download.isPending || !data?.total} data-testid="data-export">
+          <button type="button" className={btn} onClick={() => download.mutate("xlsx")} disabled={download.isPending || !data?.total} data-testid="data-export-xlsx">
+            {say("صدّر Excel|Export Excel|ייצוא Excel")}
+          </button>
+          <button type="button" className={btn} onClick={() => download.mutate("csv")} disabled={download.isPending || !data?.total} data-testid="data-export">
             {say("صدّر CSV|Export CSV|ייצוא CSV")}
           </button>
           {canWrite && !inTrash ? (
             <>
               <button type="button" className={btn} onClick={() => setImporting(true)} data-testid="data-import">
-                {say("استورد CSV|Import CSV|ייבוא CSV")}
+                {say("استورد Excel / CSV|Import Excel / CSV|ייבוא Excel / CSV")}
               </button>
               <button type="button" className={primary} onClick={() => setDrawer("new")} data-testid="row-add">
                 {say("＋ سطر|＋ Row|＋ שורה")}
@@ -235,7 +272,7 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
       {filters.length ? (
         <div className="space-y-2 border-t border-white/10 px-3 py-3" data-testid="data-filters">
           {filters.map((f, i) => (
-            <FilterRow key={i} index={i} filter={f} columns={columns} meta={meta} lang={lang} onChange={(next) => setFilter(i, next)} />
+            <FilterRow key={i} index={i} filter={f} columns={askable} meta={meta} lang={lang} onChange={(next) => setFilter(i, next)} />
           ))}
           {filters.length > 1 ? (
             <label className="flex items-center gap-2 text-xs text-white/55">
@@ -315,7 +352,7 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
         <table className="w-full min-w-max text-sm" data-testid="data-table">
           <thead className="bg-white/[0.04] text-xs text-white/60">
             <tr>
-              <th className="w-9 px-3 py-2">
+              <th className={`w-9 px-3 py-2 ${readOnly ? "hidden" : ""}`}>
                 <input
                   type="checkbox"
                   checked={allOnPage}
@@ -331,7 +368,7 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
                 const s = query.sort?.find((x) => x.field === c.id);
                 return (
                   <th key={c.id} className="whitespace-nowrap px-3 py-2 text-start font-medium" aria-sort={s ? (s.dir === "asc" ? "ascending" : "descending") : "none"}>
-                    <button type="button" className="inline-flex items-center gap-1 hover:text-white" onClick={() => change({ sort: nextSort(query.sort, c.id) })} data-testid={`sort-${c.id}`}>
+                    <button type="button" className="inline-flex items-center gap-1 hover:text-white disabled:cursor-default disabled:hover:text-inherit" disabled={c.computed} title={c.computed ? say("بينحسب لكل صفحة: ما بيترتّب فيه|Worked out per page: it can't be sorted by|מחושב לכל עמוד: אי אפשר למיין לפיו") : undefined} onClick={() => change({ sort: nextSort(query.sort, c.id) })} data-testid={`sort-${c.id}`}>
                       {c.id.startsWith("$") ? say(c.name) : c.name}
                       {c.field?.required ? <span className="text-red-300">*</span> : null}
                       <span className="text-accent-300">{s ? (s.dir === "asc" ? "▲" : "▼") : ""}</span>
@@ -345,7 +382,7 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
           <tbody>
             {pageRows.map((row) => (
               <tr key={row.id} className={`border-t border-white/[0.06] ${picked.has(row.id) || allMatching ? "bg-accent-500/[0.06]" : "hover:bg-white/[0.03]"}`} data-testid={`row-${row.slug}`}>
-                <td className="px-3 py-1.5">
+                <td className={`px-3 py-1.5 ${readOnly ? "hidden" : ""}`}>
                   <input
                     type="checkbox"
                     checked={allMatching || picked.has(row.id)}
@@ -397,7 +434,7 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
                   );
                 })}
                 <td className="px-2 py-1.5 text-end">
-                  {!inTrash ? (
+                  {!inTrash && !readOnly ? (
                     <button type="button" className="rounded px-1.5 text-white/50 hover:bg-white/10 hover:text-white" onClick={() => setDrawer(row)} aria-label={say("افتح السطر|Open the row|פתח שורה")} data-testid={`open-${row.slug}`}>
                       ⤢
                     </button>
@@ -455,15 +492,15 @@ function TableGrid({ table, meta, lang }: { table: Collection; meta: GridMeta; l
         onConfirm={() => bulk.mutate({ op: "purge" })}
         onCancel={() => setConfirmPurge(false)}
       />
-      {drawer ? <RowDrawer table={table} row={drawer === "new" ? null : drawer} lang={lang} canWrite={canWrite} onClose={() => setDrawer(null)} onSaved={() => { setDrawer(null); refresh(); }} /> : null}
-      {importing ? <ImportDialog table={table} lang={lang} wordsLang={wordsLang} batch={meta.limits.importRows} onClose={() => setImporting(false)} onDone={() => { setImporting(false); refresh(); }} /> : null}
+      {drawer && !readOnly ? <RowDrawer table={table} row={drawer === "new" ? null : drawer} lang={lang} canWrite={canWrite} onClose={() => setDrawer(null)} onSaved={() => { setDrawer(null); refresh(); }} /> : null}
+      {importing && !readOnly ? <ImportDialog table={table} lang={lang} wordsLang={wordsLang} batch={meta.limits.importRows} onClose={() => setImporting(false)} onDone={() => { setImporting(false); refresh(); }} /> : null}
     </section>
   );
 }
 
 /** One filter: the column, what is asked of it, and the value (or two, or a few choices). */
 function FilterRow({ index, filter, columns, meta, lang, onChange }: { index: number; filter: GridFilter; columns: Column[]; meta: GridMeta; lang: Lang; onChange: (next: GridFilter | null) => void }) {
-  const all: Column[] = [...columns, { id: "$createdAt", kind: "$date", name: "انعمل|Created|נוצר" }, { id: "$publishedAt", kind: "$date", name: "انتشر|Published on|פורסם ב" }];
+  const all = columns;
   const column = all.find((c) => c.id === filter.field) ?? all[0];
   const ops = meta.ops[column.kind] ?? [];
   const needs = opNeeds(filter.op);

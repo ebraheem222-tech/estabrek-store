@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { CollectionField } from "../../api/collections.api";
 import type { ColumnKind, GridRow, Op } from "../../api/data.api";
 import { parseCsv, separatorOf } from "./csv";
-import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterReady, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, targetName, targetsOf, withWords } from "./dataText";
+import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, sheetCells, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, targetName, targetsOf, withWords } from "./dataText";
 
 // The data grid's pure parts: columns, questions, cells, and a CSV file's columns matched to the table's.
 
@@ -33,6 +33,17 @@ describe("Columns and cells", () => {
     expect(editable(col("$updatedAt"))).toBe(false);
     expect(editable(col("$slug"))).toBe(true);
     expect(editable(col("price"))).toBe(true);
+  });
+
+  test("one of the store's tables: its address or id, its columns (worked-out ones marked), when it was made", () => {
+    const store = columnsOf({ readOnly: true, hasAddress: false, fields: [{ id: "customer", type: "text", name: { en: "Customer" } }, { id: "pieces", type: "number", computed: true }] }, "en");
+    expect(store.map((c) => `${c.id}${c.computed ? ":worked-out" : ""}`)).toEqual(["$slug", "customer", "pieces:worked-out", "$createdAt"]);
+    expect(store[0].name).toContain("ID");
+    expect(columnsOf({ readOnly: true, hasAddress: true, fields: [] }, "en")[0].name).toContain("Address");
+    expect(filterColumns(store, true).map((c) => c.id)).toEqual(["$slug", "customer", "$createdAt", "$updatedAt"]);
+    expect(filterColumns(columns, false).map((c) => c.id).slice(-3)).toEqual(["$updatedAt", "$createdAt", "$publishedAt"]);
+    // The store's words are plain.
+    expect(cellText(store[1], row({ customer: "Lina" }), "ar")).toBe("Lina");
   });
 
   test("a cell as words", () => {
@@ -148,6 +159,16 @@ describe("A CSV file", () => {
     expect(targetName("title.he", fields, "ar")).toBe("العنوان (עברית)");
     expect(targetName("price", fields, "en")).toBe("Price");
     expect(doubledTargets(["slug", "price", "", "price", ""])).toEqual(["price"]);
+  });
+
+  test("the export's lines as a sheet's cells: numbers and yes/no by their field; the formula guard comes off", () => {
+    expect(sheetCells([["slug", "status", "title.ar", "price", "active", "kind"], ["spring", "PUBLISHED", "'=SUM(A1)", "1250.5", "true", "new"], ["hat", "DRAFT", "", "", "false", ""], ["odd", "DRAFT", "'quoted", "cheap", "maybe"]], fields)).toEqual([
+      ["slug", "status", "title.ar", "price", "active", "kind"],
+      ["spring", "PUBLISHED", "=SUM(A1)", 1250.5, true, "new"],
+      ["hat", "DRAFT", null, null, false, null],
+      ["odd", "DRAFT", "'quoted", "cheap", "maybe", null],
+    ]);
+    expect(sheetCells([], fields)).toEqual([]);
   });
 
   test("lines become rows to send: empty cells and unmatched columns are left out", () => {

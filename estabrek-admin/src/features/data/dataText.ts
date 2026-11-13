@@ -4,7 +4,7 @@
  * Words are written in the three languages side by side ("عربي|English|עברית"); the page says them.
  */
 import type { Collection, CollectionField, FieldType, ItemStatus, Local } from "../../api/collections.api";
-import type { ColumnKind, GridFilter, GridQuery, GridRow, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
+import type { ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
 
 export const LANGS: Lang[] = ["ar", "en", "he"];
 export const LANG_NAME: Record<Lang, string> = { ar: "عربي", en: "English", he: "עברית" };
@@ -26,7 +26,7 @@ export const SYSTEM_NAME: Record<SystemColumn, string> = {
   $publishedAt: "انتشر|Published on|פורסם ב",
 };
 
-export type Column = { id: string; kind: ColumnKind; field?: CollectionField; name: string };
+export type Column = { id: string; kind: ColumnKind; field?: CollectionField; name: string; /** Worked out per page: shown, never filtered or sorted by. */ computed?: boolean };
 
 const local = (v: Local | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
@@ -36,10 +36,20 @@ export function kindOf(column: string, fields: CollectionField[]): ColumnKind | 
   return fields.find((f) => f.id === column)?.type ?? null;
 }
 
-/** The grid's columns: the address, the status, each field, then when it changed. */
-export function columnsOf(table: Pick<Collection, "fields">, lang: Lang): Column[] {
+/** The grid's columns: the address, the status, each field, then when it changed. One of the store's tables: its address (or id), its columns, when it was made. */
+export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress">, lang: Lang): Column[] {
   const system = (id: SystemColumn): Column => ({ id, kind: kindOf(id, [])!, name: SYSTEM_NAME[id] });
-  return [system("$slug"), system("$status"), ...table.fields.map((f) => ({ id: f.id, kind: f.type as ColumnKind, field: f, name: local(f.name, lang) || f.id })), system("$updatedAt")];
+  const fields = table.fields.map((f): Column => ({ id: f.id, kind: f.type as ColumnKind, field: f, name: local(f.name, lang) || f.id, ...(f.computed ? { computed: true } : {}) }));
+  if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, system("$createdAt")];
+  return [system("$slug"), system("$status"), ...fields, system("$updatedAt")];
+}
+
+/** The columns a filter can be asked of: the shown ones that aren't worked out, and the row's dates. */
+export function filterColumns(columns: Column[], readOnly: boolean): Column[] {
+  const date = (id: SystemColumn): Column => ({ id, kind: "$date", name: SYSTEM_NAME[id] });
+  const have = new Set(columns.map((c) => c.id));
+  const extra = (readOnly ? (["$createdAt", "$updatedAt"] as const) : (["$createdAt", "$publishedAt"] as const)).filter((id) => !have.has(id)).map(date);
+  return [...columns.filter((c) => !c.computed), ...extra];
 }
 
 /** How each question reads, by the kind of column it's asked of. */
@@ -129,7 +139,8 @@ export function cellText(column: Column, row: Pick<GridRow, "slug" | "status" | 
   switch (column.kind) {
     case "text":
     case "longText":
-      return typeof v === "object" ? local(v as Local, lang) : "";
+      // The owner's tables hold words per language; the store's own hold them plain.
+      return typeof v === "object" ? local(v as Local, lang) : typeof v === "string" ? v : "";
     case "number":
       return typeof v === "number" ? v.toLocaleString("en") : "";
     case "boolean":
@@ -252,3 +263,26 @@ export function cellPatch(column: Column, row: Pick<GridRow, "data">, lang: Lang
 
 /** Which columns a cell can be written in (the dates are the server's own). */
 export const editable = (column: Column) => column.kind !== "$date";
+
+/**
+ * The export's lines (as the server's CSV gives them) as a sheet's cells: numbers as numbers and
+ * yes/no as yes/no, by each column's field; the quote that guards a formula in CSV comes off
+ * (a sheet's words are never worked out).
+ */
+export function sheetCells(lines: string[][], fields: Array<Pick<CollectionField, "id" | "type">>): Array<Array<string | number | boolean | null>> {
+  if (!lines.length) return [];
+  const [head, ...rest] = lines;
+  const kinds = head.map((h) => fields.find((f) => f.id === h.split(".")[0])?.type);
+  return [
+    head,
+    ...rest.map((cells) =>
+      head.map((_, i) => {
+        const v = cells[i] ?? "";
+        if (v === "") return null;
+        if (kinds[i] === "number") return Number.isFinite(Number(v)) ? Number(v) : v;
+        if (kinds[i] === "boolean") return v === "true" ? true : v === "false" ? false : v;
+        return /^'[=+\-@\t\r]/.test(v) ? v.slice(1) : v;
+      }),
+    ),
+  ];
+}
