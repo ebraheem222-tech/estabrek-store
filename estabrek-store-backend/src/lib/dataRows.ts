@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { checkItemData, ITEM_SLUG, type ItemIssue } from "./collections.js";
 import type { Field } from "./collectionTree.js";
 import type { GridRow } from "./dataQuery.js";
+import { momentOf } from "./storeTime.js";
 
 export const LANGS = ["ar", "en", "he"] as const;
 export type Lang = (typeof LANGS)[number];
@@ -25,6 +26,12 @@ function dateOf(v: string): string {
   if (!dmy) return s;
   const [, d, m, y] = dmy;
   return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/** A choice by its id or its name in any language (letter case aside); what isn't one comes back as written. */
+function choiceOf(field: Field, written: string): string {
+  const k = written.toLowerCase();
+  return field.options?.find((o) => o.id === written || o.id.toLowerCase() === k || LANGS.some((l) => o.name?.[l]?.trim().toLowerCase() === k))?.id ?? written;
 }
 
 /** One value as its field holds it; what can't be turned is left for the check to refuse. */
@@ -47,9 +54,31 @@ export function coerceValue(field: Field, raw: unknown, lang: Lang): unknown {
       }
       case "date":
         return dateOf(s);
-      case "select": {
-        const k = s.toLowerCase();
-        return field.options?.find((o) => o.id === s || o.id.toLowerCase() === k || LANGS.some((l) => o.name?.[l]?.trim().toLowerCase() === k))?.id ?? s;
+      case "select":
+        return choiceOf(field, s);
+      case "multiSelect":
+        // "new, sale" (or with ; | ،): each by its id or its name; what isn't a choice stays, for the check to refuse.
+        return s.split(/[,;|،]/).map((part) => part.trim()).filter(Boolean).map((part) => choiceOf(field, part));
+      case "money": {
+        // "₪1,200.50", "1200 ILS": the number without its currency's sign.
+        const n = Number(s.replace(/^[^\d.-]+|[^\d.]+$/g, "").replace(/[\s,٬]/g, "").replace(/٫/g, "."));
+        return Number.isFinite(n) && /\d/.test(s) ? n : s;
+      }
+      case "datetime":
+        // Without a zone it's the store's wall clock; what can't be read stays, for the check to refuse.
+        return momentOf(s) ?? s;
+      case "json":
+        try {
+          return JSON.parse(s);
+        } catch {
+          // Not JSON: plain words are a JSON value too.
+          return s;
+        }
+      case "location": {
+        // "31.77, 35.21" or "31.77, 35.21, The old city".
+        const [lat, lng, ...label] = s.split(",").map((part) => part.trim());
+        const at = { lat: Number(lat), lng: Number(lng) };
+        return lat !== "" && lng !== undefined && lng !== "" && Number.isFinite(at.lat) && Number.isFinite(at.lng) ? { ...at, ...(label.join(", ") ? { label: label.join(", ") } : {}) } : s;
       }
       default:
         return s;
@@ -174,7 +203,12 @@ export function csvLine(fields: Field[], row: Pick<GridRow, "slug" | "status" | 
     if (f.type === "text" || f.type === "longText") {
       const o = v && typeof v === "object" ? (v as Record<string, unknown>) : {};
       for (const l of LANGS) cells.push(csvCell(typeof o[l] === "string" ? o[l] : "", true));
-    } else cells.push(csvCell(v, typeof v === "string" && f.type !== "date"));
+    } else if (f.type === "multiSelect") cells.push(csvCell(Array.isArray(v) ? v.join(", ") : ""));
+    else if (f.type === "location") {
+      const at = v && typeof v === "object" ? (v as { lat?: unknown; lng?: unknown; label?: unknown }) : null;
+      cells.push(csvCell(at && typeof at.lat === "number" && typeof at.lng === "number" ? [at.lat, at.lng, ...(typeof at.label === "string" && at.label ? [at.label] : [])].join(", ") : "", true));
+    } else if (f.type === "json") cells.push(csvCell(v === undefined || v === null ? "" : JSON.stringify(v), true));
+    else cells.push(csvCell(v, typeof v === "string" && f.type !== "date" && f.type !== "datetime"));
   }
   return cells.join(",");
 }

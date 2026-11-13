@@ -33,6 +33,8 @@ export const FieldSchema = z
     name: local(60).optional(),
     required: z.boolean().optional(),
     options: z.array(z.object({ id: z.string().regex(FIELD_ID), name: local(60).optional() }).strict()).max(LIMITS.options).optional(),
+    /** Money: its currency, three letters like ILS. */
+    currency: z.string().regex(/^[A-Z]{3}$/, "A currency is three letters like ILS").optional(),
     // Its rules (lib/fieldRules.ts).
     unique: z.boolean().optional(),
     default: z.unknown().optional(),
@@ -44,7 +46,9 @@ export const FieldSchema = z
     help: local(200).optional(),
   })
   .strict()
-  .refine((f) => f.type !== "select" || (f.options?.length ?? 0) > 0, "A choice field needs its choices")
+  .refine((f) => (f.type !== "select" && f.type !== "multiSelect") || (f.options?.length ?? 0) > 0, "A choice field needs its choices")
+  .refine((f) => !f.options || new Set(f.options.map((o) => o.id)).size === f.options.length, "Two choices with one id")
+  .refine((f) => f.currency === undefined || f.type === "money", "Only money has a currency")
   .superRefine((f, ctx) => {
     const problem = rulesProblem(f as Field);
     if (problem) return void ctx.addIssue({ code: "custom", message: problem });
@@ -71,6 +75,20 @@ export type CollectionBody = z.infer<typeof CollectionBody>;
 
 export type ItemIssue = { field: string; message: string; /** The owner's own words for this field's rules, when it has them. */ say?: Partial<Record<"ar" | "en" | "he", string>> };
 
+export const JSON_MAX = 20_000;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/** Digits with the usual spacing: "+970 599-000 001", "(02) 123 4567". */
+const PHONE = /^\(?\+?[0-9][0-9 ()-]{5,19}$/;
+const WORD_KINDS = new Set<Field["type"]>(["text", "longText"]);
+
+/** Is there nothing in this value, for this kind of field? */
+function emptyValue(f: Field, v: unknown): boolean {
+  if (v === undefined || v === null || v === "") return true;
+  if (WORD_KINDS.has(f.type)) return typeof v !== "object" || Array.isArray(v) ? typeof v !== "string" || !v.trim() : !Object.values(v as object).some((x) => typeof x === "string" && x.trim());
+  if (f.type === "multiSelect") return Array.isArray(v) && v.length === 0;
+  return false;
+}
+
 /** An item's values, checked against its collection's fields and their rules (unknown keys are dropped). "The only value" is asked of the database separately (lib/uniqueValues.ts). */
 export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: Record<string, unknown> } | { ok: false; issues: ItemIssue[] } {
   const src = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
@@ -78,18 +96,45 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
   const issues: ItemIssue[] = [];
   for (const f of fields) {
     const v = src[f.id];
-    const empty = v === undefined || v === null || v === "" || (typeof v === "object" && v !== null && !Array.isArray(v) && !Object.values(v).some((x) => typeof x === "string" && x.trim()));
-    if (empty) { if (f.required) issues.push({ field: f.id, message: "Required" }); continue; }
+    if (emptyValue(f, v)) { if (f.required) issues.push({ field: f.id, message: "Required" }); continue; }
     const bad = (message: string) => issues.push({ field: f.id, message });
     switch (f.type) {
       case "text": case "longText": { const r = local(f.type === "text" ? 300 : 20000).safeParse(v); if (r.success) data[f.id] = r.data; else bad("Words in ar/en/he"); break; }
       case "image": if (typeof v === "string" && safeSrc(v.trim())) data[f.id] = v.trim(); else bad("A picture address"); break;
       case "link": if (typeof v === "string" && safeHref(v.trim())) data[f.id] = v.trim(); else bad("A link like /shop or https://…"); break;
-      case "number": if (typeof v === "number" && Number.isFinite(v)) data[f.id] = v; else bad("A number"); break;
+      case "number": case "money": if (typeof v === "number" && Number.isFinite(v)) data[f.id] = v; else bad("A number"); break;
       case "date": if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && !Number.isNaN(new Date(v).getTime())) data[f.id] = v.slice(0, 10); else bad("A date"); break;
       case "boolean": if (typeof v === "boolean") data[f.id] = v; else bad("Yes or no"); break;
       case "select": if (typeof v === "string" && f.options?.some((o) => o.id === v)) data[f.id] = v; else bad("One of its choices"); break;
       case "color": if (typeof v === "string" && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) data[f.id] = v; else bad("A colour like #c86b98"); break;
+      case "email": if (typeof v === "string" && v.trim().length <= 200 && EMAIL.test(v.trim())) data[f.id] = v.trim().toLowerCase(); else bad("An email address"); break;
+      case "phone": if (typeof v === "string" && PHONE.test(v.trim())) data[f.id] = v.trim(); else bad("A phone number"); break;
+      case "datetime": {
+        // Kept as one moment in time (UTC); told in the store's own zone wherever it shows.
+        const d = typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? new Date(v) : null;
+        if (d && !Number.isNaN(d.getTime())) data[f.id] = d.toISOString(); else bad("A date and time");
+        break;
+      }
+      case "multiSelect": {
+        const all = Array.isArray(v) && v.every((x) => typeof x === "string" && f.options?.some((o) => o.id === x));
+        // In the choices' own order, each once.
+        if (all) data[f.id] = (f.options ?? []).map((o) => o.id).filter((id) => (v as string[]).includes(id)); else bad("Some of its choices");
+        break;
+      }
+      case "file": case "video": if (typeof v === "string" && safeSrc(v.trim())) data[f.id] = v.trim(); else bad("A file's address"); break;
+      case "model3d": if (typeof v === "string" && safeSrc(v.trim()) && /\.(glb|gltf)(\?[^#]*)?$/i.test(v.trim())) data[f.id] = v.trim(); else bad("A 3D model's address (.glb or .gltf)"); break;
+      case "json": {
+        let size = Infinity;
+        try { size = JSON.stringify(v)?.length ?? Infinity; } catch { /* not JSON at all */ }
+        if (size <= JSON_MAX) data[f.id] = v; else bad("JSON, up to 20,000 characters");
+        break;
+      }
+      case "location": {
+        const at = v && typeof v === "object" && !Array.isArray(v) ? (v as { lat?: unknown; lng?: unknown; label?: unknown }) : {};
+        const ok = typeof at.lat === "number" && typeof at.lng === "number" && Math.abs(at.lat) <= 90 && Math.abs(at.lng) <= 180 && (at.label === undefined || at.label === null || (typeof at.label === "string" && at.label.length <= 200));
+        if (ok) data[f.id] = { lat: at.lat, lng: at.lng, ...(typeof at.label === "string" && at.label.trim() ? { label: at.label.trim() } : {}) }; else bad("A place: latitude and longitude");
+        break;
+      }
     }
     // Its kind is right: now the field's own rules (limits, a shape), said in the owner's words when given.
     if (f.id in data) {
@@ -209,7 +254,7 @@ export function defaultTemplate(c: { slug: string; fields: Field[] }) {
   if (title) kids.push({ id: id("h"), type: "heading", props: { level: 1, text: title.name ?? n("العنوان", "Title", "כותרת"), bind: { text: title.id } } });
   for (const f of c.fields) {
     if (f === title || f === image) continue;
-    if (["text", "longText", "number", "date", "select"].includes(f.type)) kids.push({ id: id("t"), type: "text", props: { text: f.name ?? n(f.id, f.id, f.id), bind: { text: f.id } }, style: { base: f.type === "longText" ? { lineHeight: 1.8 } : { color: "muted" } } });
+    if (["text", "longText", "number", "date", "select", "email", "phone", "datetime", "money", "multiSelect", "location"].includes(f.type)) kids.push({ id: id("t"), type: "text", props: { text: f.name ?? n(f.id, f.id, f.id), bind: { text: f.id } }, style: { base: f.type === "longText" ? { lineHeight: 1.8 } : { color: "muted" } } });
     if (f.type === "link") kids.push({ id: id("b"), type: "button", props: { label: f.name ?? n("الرابط", "Link", "קישור"), href: "/", variant: "outline", bind: { href: f.id } } });
   }
   kids.push({ id: id("b"), type: "button", props: { label: n("رجوع للمتجر", "Back to the shop", "חזרה לחנות"), href: "/shop", variant: "link" } });

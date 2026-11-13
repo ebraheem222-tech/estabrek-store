@@ -44,7 +44,12 @@ export async function uniqueIssues(db: Db, collectionId: string, fields: Field[]
         ? await db.$queryRaw<Array<{ id: string; v: string }>>(
             Prisma.sql`SELECT i."id", lower(btrim(w.v)) AS v FROM "CollectionItem" i, jsonb_each_text(CASE WHEN jsonb_typeof(i."data"->${f.id}::text) = 'object' THEN i."data"->${f.id}::text ELSE '{}'::jsonb END) AS w(k, v) WHERE i."collectionId" = ${collectionId} AND lower(btrim(w.v)) IN (${Prisma.join(keys)})`,
           )
-        : await db.$queryRaw<Array<{ id: string; v: string }>>(Prisma.sql`SELECT i."id", i."data"->>${f.id}::text AS v FROM "CollectionItem" i WHERE i."collectionId" = ${collectionId} AND i."data"->>${f.id}::text IN (${Prisma.join(keys)})`);
+        : f.type === "phone"
+          ? // A phone number is the same number however it's spaced (as lib/fieldRules.ts uniqueKeys says).
+            await db.$queryRaw<Array<{ id: string; v: string }>>(
+              Prisma.sql`SELECT i."id", regexp_replace(COALESCE(i."data"->>${f.id}::text, ''), '[^0-9+]', '', 'g') AS v FROM "CollectionItem" i WHERE i."collectionId" = ${collectionId} AND regexp_replace(COALESCE(i."data"->>${f.id}::text, ''), '[^0-9+]', '', 'g') IN (${Prisma.join(keys)})`,
+            )
+          : await db.$queryRaw<Array<{ id: string; v: string }>>(Prisma.sql`SELECT i."id", i."data"->>${f.id}::text AS v FROM "CollectionItem" i WHERE i."collectionId" = ${collectionId} AND i."data"->>${f.id}::text IN (${Prisma.join(keys)})`);
     for (const row of held) for (const index of wanted.get(row.v) ?? []) if (candidates[index].id !== row.id) add(index, f);
   }
   return out;

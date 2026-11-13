@@ -15,7 +15,12 @@ type Local = Partial<Record<"ar" | "en" | "he", string>>;
 type Node = { id: string; type: string; name?: string; props: Record<string, unknown>; style?: Record<string, Record<string, unknown> | undefined>; motion?: unknown; children?: Node[] };
 type Tree = { version: number; root: Node };
 
-export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color"] as const;
+/**
+ * The kinds of field. The first nine are the original ones; then (B2): an email, a phone number,
+ * a date with its time, money (a number in the field's currency), several choices, a file, a
+ * video, a 3D model (addresses), any JSON, and a place (latitude, longitude, a label).
+ */
+export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 /** A field: its kind, its name, and its rules (lib/fieldRules.ts): the only value, limits, a shape, a default, the words said when a rule fails. */
 export type Field = {
@@ -32,14 +37,22 @@ export type Field = {
   pattern?: string;
   message?: Local;
   help?: Local;
+  /** Money: its currency (ILS when not said). */
+  currency?: string;
 };
 export type CollectionLite = { id: string; slug: string; fields: Field[] };
 export type ItemLite = { id: string; slug: string; data: Record<string, unknown>; publishedAt?: string | Date | null; createdAt?: string | Date | null; sort?: number };
 
 /** The element props that take a field, and which fields each takes. */
 export const BINDABLE: Record<string, string[]> = { heading: ["text"], text: ["text"], button: ["label", "href"], image: ["src", "alt", "href"], video: ["src"] };
-const WORDS = new Set<FieldType>(["text", "longText", "number", "date", "select"]);
-export const PROP_FIELDS: Record<string, readonly FieldType[]> = { text: [...WORDS], label: [...WORDS], alt: ["text", "longText"], src: ["image"], href: ["link"] };
+const WORDS = new Set<FieldType>(["text", "longText", "number", "date", "select", "email", "phone", "datetime", "money", "multiSelect", "location"]);
+export const PROP_FIELDS: Record<string, readonly FieldType[]> = { text: [...WORDS], label: [...WORDS], alt: ["text", "longText"], src: ["image"], href: ["link", "email", "phone", "file", "location"] };
+/** What some elements take beyond that: a video's source is a video field (or, as before, a picture field holding a video's address). */
+const ELEMENT_FIELDS: Record<string, Record<string, readonly FieldType[]>> = { video: { src: ["video", "image"] } };
+/** The kinds of field an element's prop takes. */
+export const fieldsFor = (element: string | undefined, prop: string): readonly FieldType[] => (element && ELEMENT_FIELDS[element]?.[prop]) || PROP_FIELDS[prop] || [];
+/** Where a date's time is told (the store's own zone; this file has no imports, so it reads the setting itself). */
+const STORE_ZONE = (typeof process !== "undefined" && process.env && process.env.STORE_TIMEZONE) || "Asia/Jerusalem";
 export const BIND_REF = /^(\$url|\$slug|[a-z][a-zA-Z0-9]{0,30})$/;
 const LANGS = ["ar", "en", "he"] as const;
 const LOCALE: Record<(typeof LANGS)[number], string> = { ar: "ar", en: "en-GB", he: "he-IL" };
@@ -51,12 +64,12 @@ const each = (f: (lang: (typeof LANGS)[number]) => string | undefined): Local =>
 };
 
 /** What a field gives one of an element's props (undefined: nothing, the element keeps its own). */
-export function boundValue(prop: string, ref: string, item: ItemLite, collection: CollectionLite): unknown {
+export function boundValue(prop: string, ref: string, item: ItemLite, collection: CollectionLite, element?: string): unknown {
   if (ref === "$url") return prop === "href" ? `/${collection.slug}/${item.slug}` : undefined;
   if (ref === "$slug") return prop === "href" ? undefined : each(() => item.slug);
   const field = collection.fields.find((f) => f.id === ref);
   const v = item.data?.[ref];
-  if (!field || v === undefined || v === null || v === "" || !(PROP_FIELDS[prop] ?? []).includes(field.type)) return undefined;
+  if (!field || v === undefined || v === null || v === "" || !fieldsFor(element, prop).includes(field.type)) return undefined;
   switch (field.type) {
     case "text":
     case "longText": return v && typeof v === "object" ? v : undefined;
@@ -67,14 +80,42 @@ export function boundValue(prop: string, ref: string, item: ItemLite, collection
     }
     case "select": { const o = field.options?.find((x) => x.id === v); return o?.name ? { ...o.name } : undefined; }
     case "image":
-    case "link": return typeof v === "string" ? v : undefined;
+    case "link":
+    case "file":
+    case "video": return typeof v === "string" ? v : undefined;
+    case "email": return typeof v !== "string" ? undefined : prop === "href" ? `mailto:${v}` : each(() => v);
+    case "phone": return typeof v !== "string" ? undefined : prop === "href" ? `tel:${v.replace(/[^\d+]/g, "")}` : each(() => v);
+    case "datetime": {
+      const d = new Date(String(v));
+      return Number.isNaN(d.getTime()) ? undefined : each((l) => d.toLocaleString(LOCALE[l], { dateStyle: "long", timeStyle: "short", timeZone: STORE_ZONE }));
+    }
+    case "money": {
+      if (typeof v !== "number") return undefined;
+      return each((l) => {
+        // A currency the browser or server doesn't know: the number alone.
+        try { return v.toLocaleString(LOCALE[l], { style: "currency", currency: field.currency ?? "ILS", maximumFractionDigits: 2 }); }
+        catch { return v.toLocaleString(LOCALE[l]); }
+      });
+    }
+    case "multiSelect": {
+      if (!Array.isArray(v)) return undefined;
+      const picked = v.map((id) => field.options?.find((o) => o.id === id)).filter((o): o is NonNullable<typeof o> => Boolean(o));
+      return picked.length ? each((l) => picked.map((o) => o.name?.[l] ?? o.name?.ar ?? o.name?.en ?? o.name?.he ?? o.id).join(l === "ar" ? "، " : ", ")) : undefined;
+    }
+    case "location": {
+      const at = v as { lat?: unknown; lng?: unknown; label?: unknown };
+      if (typeof at.lat !== "number" || typeof at.lng !== "number") return undefined;
+      if (prop === "href") return `https://www.google.com/maps/search/?api=1&query=${at.lat},${at.lng}`;
+      const words = typeof at.label === "string" && at.label.trim() ? at.label.trim() : `${at.lat}, ${at.lng}`;
+      return each(() => words);
+    }
     default: return undefined;
   }
 }
 
 const WORDS_PROPS = new Set(["text", "label", "alt"]);
 /** Whether a field of the collection fits an element prop (its kind is one the prop takes). */
-const fits = (prop: string, ref: string, collection: CollectionLite) => { const f = collection.fields.find((x) => x.id === ref); return Boolean(f && (PROP_FIELDS[prop] ?? []).includes(f.type)); };
+const fits = (prop: string, ref: string, collection: CollectionLite, element?: string) => { const f = collection.fields.find((x) => x.id === ref); return Boolean(f && fieldsFor(element, prop).includes(f.type)); };
 
 /** One element (and what it holds) with its connected props filled from the item; `bind` itself goes. */
 export function bindNode(node: Node, item: ItemLite | null, collection: CollectionLite | null): Node {
@@ -85,10 +126,10 @@ export function bindNode(node: Node, item: ItemLite | null, collection: Collecti
     props = rest;
     if (item && collection) for (const [prop, ref] of Object.entries(bind)) {
       if (!(BINDABLE[node.type] ?? []).includes(prop) || !BIND_REF.test(ref)) continue;
-      const v = boundValue(prop, ref, item, collection);
+      const v = boundValue(prop, ref, item, collection, node.type);
       if (v !== undefined) props = { ...props, [prop]: v };
       // A fitting field this item left empty: no words (the design's sample words never show as its own).
-      else if (WORDS_PROPS.has(prop) && fits(prop, ref, collection)) props = { ...props, [prop]: {} };
+      else if (WORDS_PROPS.has(prop) && fits(prop, ref, collection, node.type)) props = { ...props, [prop]: {} };
     }
   }
   const children = node.children?.map((c) => (c.type === "collectionList" ? c : bindNode(c, item, collection)));
