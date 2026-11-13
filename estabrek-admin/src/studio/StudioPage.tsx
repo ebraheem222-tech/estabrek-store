@@ -81,7 +81,7 @@ import { AddPanel } from "./AddPanel";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { LookPanel, MotionPanel, VideoOverlayPanel } from "./LookPanels";
-import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
+import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel, boxSkip } from "./TypePanels";
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
 import { ComponentDocPanel, ComponentInstancePanel, detached, MakeComponentPanel, newInstance, placeOnly, useComponents } from "./ComponentsPanel";
@@ -1583,7 +1583,7 @@ function StudioDocument() {
         {node.type === "button" ? <ButtonStylePanel node={view} screen={screen} busy={busy} onOps={put} inState /> : null}
         {wordy || node.type === "button" || node.type === "icon" ? <TextStylePanel node={view} screen={screen} busy={busy} onOps={put} only={node.type === "button" ? ["weight", "letters"] : node.type === "icon" ? ["color"] : ["weight", "color", "letters"]} /> : null}
         {wordy ? <TypeMorePanel node={view} screen={screen} busy={busy} onOps={put} inState /> : null}
-        <BoxPanel node={view} screen={screen} busy={busy} onOps={put} skip={node.type === "button" ? ["bg", "border", "radius"] : undefined} />
+        <BoxPanel node={view} screen={screen} busy={busy} onOps={put} skip={boxSkip(node.type)} />
         <FiltersPanel node={view} screen={screen} busy={busy} onOps={put} />
         <LookPanel node={view} screen={screen} busy={busy} onOps={put} onPreview={() => undefined} limited={node.id.startsWith("look:")} inState />
         <TransitionPanel node={node} screen={screen} busy={busy} onOps={onOps} />
@@ -2465,7 +2465,7 @@ function StudioDocument() {
                 <TextStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} only={["font", "size", "weight", "letters"]} />
               </>
             ) : null}
-            <BoxPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} skip={vnode.type === "button" ? ["bg", "border", "radius"] : undefined} />
+            <BoxPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} skip={boxSkip(vnode.type)} />
             {vnode.type === "section" ? <PadPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
             <FiltersPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} />
             <LookPanel node={vnode} screen={screen} busy={ss.busy} limited onOps={onOps} onPreview={() => undefined} />
@@ -2590,7 +2590,7 @@ function StudioDocument() {
         {target.type === "section" ? <SectionPanel node={target} busy={busy} onOps={onOps} /> : null}
         {target.type === "columns" ? <ColumnsPanel node={target} screen={screen} busy={busy} ids={makeIds} onOps={onOps} /> : null}
         {target.type === "cell" ? <CellPanel node={target} cols={nodeOf(index.nodes.get(target.id)?.parentId) ?? null} busy={busy} onOps={onOps} /> : null}
-        {!part ? <BoxPanel node={target} screen={screen} busy={busy} onOps={onOps} skip={target.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+        {!part ? <BoxPanel node={target} screen={screen} busy={busy} onOps={onOps} skip={boxSkip(target.type)} /> : null}
         <MotionPanel
           node={target}
           busy={busy}
@@ -2968,7 +2968,7 @@ function StudioDocument() {
                   </>
                 ) : null}
                 {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={selFree.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+                {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={boxSkip(selFree.type)} /> : null}
                 <StickyPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 <OverflowPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {PATTERNED.has(selFree.type) ? <PatternPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}

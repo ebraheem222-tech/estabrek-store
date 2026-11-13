@@ -194,6 +194,31 @@ const TURN_PROPERTIES =
   '@property --pt-rz{syntax:"<angle>";inherits:false;initial-value:0deg}@property --pt-s{syntax:"<number>";inherits:false;initial-value:1}';
 /** A colour layer goes over these (a picture, a clip, slides) and under the words of anything else. */
 const MEDIA = new Set(["image", "video", "slider"]);
+/**
+ * What takes an element's corners inside it, by kind: the cards, tiles, panels and pictures it draws itself. The
+ * element's own box takes them too, but most of these have no surface of their own there, so rounding only the box
+ * showed nothing. Each is added to the element's own selector (" .x" = something inside it, ".x" = the element
+ * when it has that class, ">x" = its direct child).
+ */
+export const CORNER_PARTS: Record<string, readonly string[]> = {
+  accordion: [".pt-acc-cards .pt-acc-item"],
+  testimonials: [" .pt-tst-card"],
+  pricing: [" .pt-plan"],
+  team: [" .pt-member img"],
+  tabs: [" .pt-tab-panel", " .pt-tab-panel img"],
+  countdown: [" .pt-count-part"],
+  categories: [" .pt-tile img", " .pt-tile-blank", " .pt-tiles-overlay .pt-tile"],
+  products: [" .product-card-3d"],
+  shop: [" .product-card-3d"],
+  form: [" section"],
+  chart: [" figure"],
+  instrument: [">div"],
+  filterGallery: [" .pt-fg-media", " .pt-fg-preview"],
+  showcase: [" .pt-showcase-panel"],
+  menu: [" .pt-menu-list a"],
+};
+/** A screen's corners as CSS (a number of px, or a variable of the design), if it sets any. */
+const radiusCss = (s: ScreenStyle | undefined) => (s ? tokenVar(s.radius, "radii") ?? (num(s.radius, 0, 999) !== undefined ? `${s.radius}px` : undefined) : undefined);
 
 const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : undefined);
 /** A theme colour or a hex one, as CSS (anything else: undefined). */
@@ -328,7 +353,11 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
     }
   }
   push("color", color(s.color));
-  push("border-radius", tokenVar(s.radius, "radii") ?? (num(s.radius, 0, 999) !== undefined ? `${s.radius}px` : undefined));
+  const radius = radiusCss(s);
+  push("border-radius", radius);
+  // A drawing is cut to its corners (it has no surface of its own to round); a way of showing what sticks out
+  // that the element sets itself comes later and wins.
+  if (radius && type === "svg") d.push("overflow:hidden");
   if (s.border && typeof s.border === "object") {
     const w = num(s.border.width, 0, 20);
     const c = color(s.border.color);
@@ -790,6 +819,12 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       if (b.length) base.push(`${sel}{${b.join(";")}}`);
       if (t.length) tablet.push(`${sel}{${t.join(";")}}`);
       if (p.length) phone.push(`${sel}{${p.join(";")}}`);
+      // Its corners reach what it draws inside itself (CORNER_PARTS), on each screen that sets them.
+      const parts = CORNER_PARTS[n.type];
+      if (parts) for (const [screen, list] of [["base", base], ["tablet", tablet], ["mobile", phone]] as const) {
+        const r = radiusCss(n.style?.[screen]);
+        if (r) list.push(`${parts.map((part) => `${sel}.pt${part}`).join(",")}{border-radius:${r}}`);
+      }
       base.push(...stateRules(sel, n.style?.base, n.type));
       tablet.push(...stateRules(sel, n.style?.tablet, n.type));
       phone.push(...stateRules(sel, n.style?.mobile, n.type));

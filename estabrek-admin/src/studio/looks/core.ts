@@ -14,9 +14,16 @@ export type ReadyKind = "button" | "card" | "type" | "paint" | "frame" | "backgr
 /** A ready look: its kind, its group in the gallery, its name, what it sets; `for` = only these elements. */
 export type Ready = { id: string; kind: ReadyKind; group: string; name: () => string; style?: Style; motion?: Motion; edge?: string; for?: readonly string[] };
 
-const BOXES = ["stack", "cell", "grid", "columns", "section", "popup", "form"] as const;
+/** What holds other things, and the blocks that draw their own content: a card or a background goes around any of them. */
+const BOXES = [
+  "stack", "cell", "grid", "columns", "section", "popup", "form",
+  "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown",
+  "search", "menu", "showcase", "products", "categories", "chart", "clock", "instrument", "filterGallery", "deck",
+  "collectionList", "shop", "cartItems", "cartSummary", "cartCheckout", "productDetail",
+] as const;
 const WORDS = ["heading", "text", "button"] as const;
-const PICTURES = ["image", "video", "slider", "product360"] as const;
+/** Pictures and clips, and what's shown in a frame like one (a drawing, a 3D model, a map, a before/after). */
+const PICTURES = ["image", "video", "slider", "product360", "svg", "model3d", "lottie", "rive", "beforeAfter", "hotspots", "map"] as const;
 /** What each kind of look is called, the elements it fits ("*" = any), and the style and motion keys it owns. */
 export const KINDS: Record<ReadyKind, { name: () => string; types: readonly string[]; owns: readonly string[]; moves?: ReadonlyArray<keyof Motion> }> = {
   button: {
