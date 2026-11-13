@@ -33,6 +33,7 @@ export const OFF_TEXT: Record<string, string> = {
   STOCK_ALERT_INTERVAL_MS: "مطفي من السيرفر (STOCK_ALERT_INTERVAL_MS=0 على Railway).",
   BACKUP_CHECK_MS: "مطفي من السيرفر (BACKUP_CHECK_MS=0 على Railway).",
   NODE_ENV: "مطفي بوضع التجربة.",
+  RAILWAY_GIT_COMMIT_SHA: "مطفي: هالسيرفر ما بيعرف أي تعديل شغّال عليه (Railway بيعطيه لحاله).",
 };
 
 /** What pausing costs, for the confirm box (jobs not listed pause without asking). */
@@ -44,6 +45,7 @@ export const PAUSE_WARNING: Record<string, string> = {
   popularitySave: "الشعبية بتضل بذاكرة السيرفر وبتضيع إذا عمل إعادة تشغيل.",
   rumSave: "تقارير سرعة الزباين بتضل بالذاكرة وبتضيع إذا السيرفر عمل إعادة تشغيل.",
   cacheSweep: "الأجوبة المنتهية بتضل بالذاكرة لحتى تمتلي.",
+  deployWatch: "إذا تعديل ما صار حي على السيرفر ما رح يوصلك تنبيه لحتى تكمّل.",
 };
 
 const COUNT_TEXT: Record<string, string> = {
@@ -100,6 +102,7 @@ export function runSummary(name: string, run: Pick<JobRun, "ok" | "counts" | "er
   const c = run.counts;
   if (!c) return "تمام";
   if (name === "backup" && !c.made) return "مش وقت النسخة";
+  if (name === "deployWatch") return c.unreachable ? "ما وصل لـ GitHub" : c.told ? "تعديل ما صار حي: انبعت تنبيه" : c.behind ? "في تعديل لسا مش حي" : c.checked ? "آخر نسخة حية" : "السيرفر ما بيعرف نسخته";
   const parts = Object.entries(c)
     .filter(([k, v]) => v > 0 && k !== "checked")
     .map(([k, v]) => (k === "bytes" ? formatBytes(v) : `${v.toLocaleString("en")} ${COUNT_TEXT[k] ?? k}`));

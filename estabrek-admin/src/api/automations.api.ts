@@ -2,7 +2,7 @@
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
 
-export type Trigger = "order.created" | "stock.low" | "video.ready" | "product.viral" | "job.failing";
+export type Trigger = "order.created" | "stock.low" | "video.ready" | "product.viral" | "job.failing" | "deploy.failed";
 export type Action = "notify" | "email" | "whatsapp" | "sms" | "pinProduct";
 
 export type AutomationRule = {

@@ -8,6 +8,7 @@ export const TRIGGER_TEXT: Record<Trigger, { label: string; when: string }> = {
   "video.ready": { label: "فيديو جاهز", when: "لما يجهز تحويل فيديو" },
   "product.viral": { label: "منتج عم ينتشر", when: "لما منتج تزيد شعبيته فجأة" },
   "job.failing": { label: "مهمة عم تفشل", when: "لما مهمة بالخلفية تفشل 3 مرات ورا بعض" },
+  "deploy.failed": { label: "النشر ما صار حي", when: "لما تعديل ينزل على الفرع وما يصير حي على السيرفر (فشل أو تأخّر)" },
 };
 
 export const ACTION_TEXT: Record<Action, string> = {
@@ -40,6 +41,11 @@ export const WORD_TEXT: Record<string, string> = {
   job: "المهمة",
   failures: "مرات الفشل",
   error: "الخطأ",
+  commit: "رقم التعديل",
+  message: "وصف التعديل",
+  minutes: "من كم دقيقة",
+  live: "النسخة الشغّالة",
+  reason: "فشل أو تأخّر",
 };
 
 /** A phone number or an email kept left-to-right inside an Arabic sentence (the "+" stays in front). */
@@ -97,7 +103,7 @@ export function cooldownText(min: number): string {
 
 /** A new rule for a trigger: a sensible action and how often. */
 export function newRule(trigger: Trigger, conditions: Record<string, number>): Omit<AutomationRule, "id" | "lastFiredAt" | "fired" | "createdAt"> {
-  const action: Action = trigger === "order.created" ? "whatsapp" : trigger === "stock.low" ? "email" : trigger === "product.viral" ? "pinProduct" : "notify";
-  const cooldownMinutes = trigger === "product.viral" ? 24 * 60 : trigger === "job.failing" ? 6 * 60 : 0;
+  const action: Action = trigger === "order.created" ? "whatsapp" : trigger === "stock.low" ? "email" : trigger === "product.viral" ? "pinProduct" : trigger === "deploy.failed" ? "email" : "notify";
+  const cooldownMinutes = trigger === "product.viral" ? 24 * 60 : trigger === "job.failing" ? 6 * 60 : trigger === "deploy.failed" ? 60 : 0;
   return { name: TRIGGER_TEXT[trigger].label, trigger, conditions: { ...conditions }, action, config: action === "pinProduct" ? { hours: 48 } : {}, enabled: true, cooldownMinutes };
 }

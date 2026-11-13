@@ -427,6 +427,7 @@ export const HE: Record<string, string> = {
   "Back to the theme's stage": "חזרה לבמה של ערכת העיצוב",
   "Background": "רקע",
   "Background jobs": "משימות ברקע",
+  "Server state": "מצב השרת",
   "Backups": "גיבויים",
   "Badge": "תג",
   "Bag": "תיק",

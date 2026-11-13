@@ -6,6 +6,7 @@ import morgan from "morgan";
 import path from "path";
 
 import { corsOrigins, env } from "./config/env.js";
+import { healthVersion } from "./lib/deployWatch.js";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.js";
 import { requestId } from "./middleware/requestId.js";
@@ -72,7 +73,7 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(cacheControl);
 
 // health + root
-app.get("/health", (_req, res) => res.json({ ok: true, name: "estabrak-store" }));
+app.get("/health", (_req, res) => res.json({ ok: true, name: "estabrak-store", ...healthVersion() }));
 app.get("/", (_req, res) => res.json({ ok: true, api: "/v1" }));
 // versioned routes
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));

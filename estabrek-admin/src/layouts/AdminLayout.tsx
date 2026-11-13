@@ -158,6 +158,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/system/traffic", tr("حماية الضغط والصيانة", "Traffic & maintenance")],
   ["/system/cache", tr("السرعة والكاش", "Speed & cache")],
   ["/system/speed", tr("مراقبة السرعة والأولوية", "Speed monitor")],
+  ["/system/server", tr("حالة السيرفر", "Server state")],
   ["/system/jobs", tr("المهام بالخلفية", "Background jobs")],
   ["/system/vault", tr("الخزنة والبرنامج", "Vault & launcher")],
   ["/system/schedule", tr("الجدول الزمني", "Schedule")],

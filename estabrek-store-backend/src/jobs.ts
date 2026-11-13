@@ -21,6 +21,7 @@ import { runScheduled } from "./modules/admin/schedule.service.js";
 import { runAutomations, setVideoChecker } from "./modules/admin/automations.service.js";
 import { checkProcessingVideos } from "./modules/admin/videos.controller.js";
 import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
+import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -191,6 +192,18 @@ export function registerBackgroundJobs() {
     limits: { min: MIN, max: 30 * MIN },
     firstMs: 30_000,
     run: () => runAutomations(),
+  });
+
+  registerJob({
+    name: "deployWatch",
+    group: "control",
+    // Is the code running here the branch's last commit? (admin → حالة السيرفر)
+    everyMs: MIN,
+    limits: { min: 30_000, max: 15 * MIN },
+    firstMs: 20_000,
+    // Only where the host says which commit runs (Railway).
+    offReason: () => deployWatchOff(),
+    run: () => checkDeploy(),
   });
 
   registerJob({
