@@ -1016,8 +1016,11 @@ export const BASE_CSS = [
   `@media (max-width:${PHONE_MAX}px){.pt-section.pt-cover.pt-cover-desk:not([data-pt-cover-off]):has(+.pt-cover-room){position:relative;top:auto}.pt-cover-desk+.pt-cover-room{display:none}}`,
   "@media (prefers-reduced-motion:reduce){.pt-cover-shade{display:none}.pt-cover-shrink,.pt-cover-slow{scale:none;translate:none;clip-path:none!important}}",
   // What travels around a circle, an arc or a wave with the scroll (motion.scroll "orbit"): each thing from the
-  // box's middle, where TreeMotion puts it; the box is as tall as their way needs.
-  "[data-pt-orbit]{position:relative!important;display:block!important}[data-pt-orbit]>[data-tree-node],[data-pt-orbit]>.pt-inner>[data-tree-node]{position:absolute!important;left:50%;top:50%;margin:0!important;translate:-50% -50%;will-change:translate,scale}[data-pt-orbit]>.pt-inner{position:absolute;inset:0;max-width:none}",
+  // box's middle, where TreeMotion puts it; the box is as tall as their way needs. The box stays in the page's
+  // flow whatever its own settings say (stuck, a layer), except while it is held: GSAP holds it by writing
+  // position:fixed on the element itself, which an !important here would undo (the ring then scrolled away
+  // through the room left for its turn).
+  "[data-pt-orbit]{display:block!important}[data-pt-orbit]:not([style*=\"position: fixed\"],[style*=\"position:fixed\"]){position:relative!important}[data-pt-orbit]>[data-tree-node],[data-pt-orbit]>.pt-inner>[data-tree-node]{position:absolute!important;left:50%;top:50%;margin:0!important;translate:-50% -50%;will-change:translate,scale}[data-pt-orbit]>.pt-inner{position:absolute;inset:0;max-width:none}",
   // The page's colour from the section in the middle of the screen (section paint, TreePaint): the page and the
   // boxes that draw its background glide to it, and back.
   "html[data-pt-paints] body,html[data-pt-paints] :is([data-gallery-theme-active],[data-page-tree-root],.rose-page-frame,.cinematic-shell,[data-cms-sections]){transition:background-color .8s ease}",
