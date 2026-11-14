@@ -182,6 +182,11 @@ describe("what a drag on the canvas does", () => {
     expect(boxMovable(1, false, { ...room, h: 0 })).toBe(false);
     expect(boxMovable(1, false, { ...room, w: 1 })).toBe(false);
     expect(boxMovable(1, false, null)).toBe(false);
+    // Drawn at the size its known scales give it (160 wide, in a holder at half size, itself at 1.5): trusted.
+    expect(boxMovable(0.5, false, room, { seen: 120, own: 160, scale: 1.5 })).toBe(true);
+    expect(boxMovable(1, false, room, { seen: 160.8, own: 160, scale: 1 })).toBe(true);
+    // Drawn bigger than that (something above it zooms it): a move by its box would land wrong.
+    expect(boxMovable(1, false, room, { seen: 200, own: 160, scale: 1 })).toBe(false);
   });
 
   it("says which way a drag is held because what's dragged fills its holder", () => {

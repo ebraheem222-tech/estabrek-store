@@ -2187,7 +2187,10 @@ function StudioDocument() {
   /** Still movable by its plain box (dragPlan.ts boxMovable): flat, under holders the shop knows the scale of. */
   const movableByBox = (sid: string) => {
     const n = nodeOf(sid), parentId = index?.nodes.get(sid)?.parentId;
-    return Boolean(n && boxMovable(itemOf(sid)?.parentScale, Boolean(Number(shownLook(n, screen, "rotateX") ?? 0) || Number(shownLook(n, screen, "rotateY") ?? 0)), holderOf(sid) ?? (parentId ? holdsOf(parentId) : null)));
+    const it = itemOf(sid);
+    // Not turned: its width on the page must be what its own width and the known scales give.
+    const drawn = n && it?.size && !Number(shownLook(n, screen, "rotateZ") ?? 0) ? { seen: it.rect.w, own: it.size.w, scale: Number(shownLook(n, screen, "scale") ?? 1) } : null;
+    return Boolean(n && boxMovable(it?.parentScale, Boolean(Number(shownLook(n, screen, "rotateX") ?? 0) || Number(shownLook(n, screen, "rotateY") ?? 0)), holderOf(sid) ?? (parentId ? holdsOf(parentId) : null), drawn));
   };
   const directGeometrySafe = (sid: string) => {
     const n = nodeOf(sid);

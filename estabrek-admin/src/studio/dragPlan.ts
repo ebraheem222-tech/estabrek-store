@@ -126,9 +126,14 @@ export function planeTroubleOf(geometry: { unsupported?: boolean; why?: string }
  * is turned or unevenly stretched (the shop knows its holder's scale), it isn't turned into depth itself, and what
  * holds it has room in both directions (a place is a share of that room). A flat element under a holder with a
  * perspective of its own, or one caught while something was still moving, is such a case.
+ * `drawn` (when the element isn't turned) checks that it really is drawn at the size those scales give it: its
+ * width on the page against its own width times the scales. Something else stretching it (a zoom above it) would
+ * make a move by its box land in the wrong place, so then it is not trusted.
  */
-export function boxMovable(parentScale: number | null | undefined, turnedIntoDepth: boolean, holder: Box | null): boolean {
-  return parentScale !== null && parentScale !== undefined && parentScale > 0 && !turnedIntoDepth && Boolean(holder && holder.w > 1 && holder.h > 1);
+export function boxMovable(parentScale: number | null | undefined, turnedIntoDepth: boolean, holder: Box | null, drawn?: { seen: number; own: number; scale: number } | null): boolean {
+  if (parentScale === null || parentScale === undefined || !(parentScale > 0) || turnedIntoDepth) return false;
+  if (!holder || !(holder.w > 1) || !(holder.h > 1)) return false;
+  return !drawn || Math.abs(drawn.seen - drawn.own * parentScale * drawn.scale) <= 1.5;
 }
 
 export type FreeStep = { d: Pt; box: Box; guides: Guide[]; marks: Gap[]; pushed: Map<string, Pt>; touching: string[] };
