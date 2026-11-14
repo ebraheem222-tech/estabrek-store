@@ -2,7 +2,8 @@
 /**
  * Triggers (pageTree/pieces.ts triggersOf, written by TreeNodeView into data-pt-triggers): when
  * something happens to an element — a click, a double click, the mouse coming or going, coming
- * into or out of sight, the page opening, the page scrolled past a point, a time on the page —
+ * into or out of sight, the page opening, the page scrolled past a point, a time on the page, its
+ * body hitting something in a physics world —
  * its actions run one after another (`wait` pauses between them): play keyframes or a short move
  * on any element, show or hide one, scroll to one or to a scroll scene's moment, open a link or a
  * popup, play or pause a clip, burst confetti, copy a code, say something, make a sound, buzz.
@@ -25,6 +26,7 @@ import { ask, burst, playMove, sound, toast } from "./triggerEffects";
 import { changeVar, compareVar, fillVars, getVar, showVars, VARS_EVENT } from "./recipeVars";
 import { getHands, mayRun, signedIn, wantHands, whenHands, WHO_EVENT } from "./recipeHands";
 import { useStudioViewRevision } from "./useStudioViewRevision";
+import { HIT_EVENT, hitMatches, type HitDetail } from "./physics";
 
 const sleep = (s: number) => new Promise<void>((r) => window.setTimeout(r, s * 1000));
 
@@ -462,6 +464,14 @@ export function TreeTriggers({ revision = 0 }: { revision?: number }) {
               }, window);
               break;
             }
+            case "hit":
+              // Its body in a physics world met something (physicsWorld.ts says so on the element): what this
+              // recipe waits for, or not. Where they met is the recipe's point (a burst goes off there).
+              on(HIT_EVENT, (e) => {
+                const d = (e as CustomEvent<HitDetail>).detail;
+                if (d && hitMatches(t.hit, d.with)) fire(d.at);
+              });
+              break;
             case "hover":
               on("pointerenter", () => fire());
               break;

@@ -95,3 +95,28 @@ test("a body is linked to another one of its world from its panel; tried, the li
   await expect(host.locator('svg line[data-pt-link="rod"]')).toHaveCount(1);
   await expect(host.locator("svg line")).toHaveCount(2);
 });
+
+test("a recipe waits for its element to hit another one of its world, chosen by name", async ({ page }) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(url);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await pick(page, "ball");
+  const panel = page.getByTestId("studio-triggers");
+  await panel.scrollIntoViewIfNeeded();
+  // A ready recipe to start from, then its "when" becomes a hit.
+  await panel.locator('[data-trigger-preset="counter"]').click();
+  await expect.poll(async () => (await readNode(page, "ball")).props.triggers?.[0]?.on).toBe("click");
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
+  await panel.getByTestId("trigger-0-on").selectOption("hit");
+  await expect.poll(async () => (await readNode(page, "ball")).props.triggers?.[0]?.on).toBe("hit");
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
+  // What it hits: anything to start with; the world's other elements are offered by name.
+  const hit = panel.getByTestId("trigger-0-hit");
+  await expect(hit).toHaveValue("any");
+  await hit.selectOption("card");
+  await expect.poll(async () => (await readNode(page, "ball")).props.triggers?.[0]?.hit).toBe("card");
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
+  // The page carries it on the element, for its world to answer.
+  await expect(frame(page).locator('[data-tree-node="ball"]')).toHaveAttribute("data-pt-triggers", /"on":"hit"[^\]]*"hit":"card"/, { timeout: 20000 });
+});

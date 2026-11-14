@@ -189,6 +189,13 @@ describe("triggers", () => {
     const saved = (t: Trigger) => ((triggersOp(node as never, [t]) as unknown as { props: { triggers: Trigger[] } }).props.triggers[0]);
     expect(saved({ on: "click", key: "Enter", do: [{ act: "vibrate" }], fail: [{ act: "vibrate" }], else: [{ act: "vibrate" }] })).toEqual({ on: "click", do: [{ act: "vibrate" }] });
     expect(saved({ on: "key", do: [{ act: "vibrate" }] })).toEqual({ on: "key", key: "Enter", do: [{ act: "vibrate" }] });
+    // What it hits is kept only for a hit, and "anything" is said by saying nothing.
+    expect(saved({ on: "click", hit: "wall", do: [{ act: "vibrate" }] })).toEqual({ on: "click", do: [{ act: "vibrate" }] });
+    expect(saved({ on: "hit", hit: "any", do: [{ act: "vibrate" }] })).toEqual({ on: "hit", do: [{ act: "vibrate" }] });
+    expect(saved({ on: "hit", hit: "wall", do: [{ act: "vibrate" }] })).toEqual({ on: "hit", hit: "wall", do: [{ act: "vibrate" }] });
+    for (const t of [saved({ on: "hit", do: [{ act: "vibrate" }] }), saved({ on: "hit", hit: "body", do: [{ act: "vibrate" }] }), saved({ on: "hit", hit: "other-element_1", do: [{ act: "vibrate" }] })]) expect(on([t])).toEqual([]);
+    // Not something to hit: refused by the page check.
+    expect(on([{ on: "hit", hit: "the floor!", do: [{ act: "vibrate" }] }]).join(" ")).toMatch(/triggers\W{1,2}0\W{1,2}hit/);
     expect(saved({ on: "click", who: "customer", deny: "hide", note: { en: "x" }, do: [{ act: "vibrate" }] })).toEqual({ on: "click", who: "customer", deny: "hide", do: [{ act: "vibrate" }] });
     expect(saved({ on: "click", who: "guest", note: { en: "For guests" }, do: [{ act: "confirm", text: { en: "Sure?" } }], fail: [{ act: "vibrate" }] })).toEqual({ on: "click", who: "guest", deny: "lock", note: { en: "For guests" }, do: [{ act: "confirm", text: { en: "Sure?" } }], fail: [{ act: "vibrate" }] });
     // What it saves passes the page check.

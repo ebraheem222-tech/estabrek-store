@@ -16,7 +16,7 @@
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { say } from "./say";
 
-export type TriggerEvent = "click" | "dblclick" | "longpress" | "hover" | "leave" | "view" | "leaveView" | "load" | "scrolled" | "timer" | "key";
+export type TriggerEvent = "click" | "dblclick" | "longpress" | "hover" | "leave" | "view" | "leaveView" | "load" | "scrolled" | "timer" | "key" | "hit";
 export type Words = Record<string, string>;
 export type Action =
   | { act: "play"; target: string; what: string; mode?: "play" | "reverse" | "toggle" | "restart" }
@@ -60,7 +60,7 @@ export type GroupStep = { act: "together" | "random"; do: PlainStep[] } | { act:
 export type Step = PlainStep | GroupStep;
 export type Who = "customer" | "guest";
 export type Deny = "hide" | "lock" | "signin";
-export type Trigger = { on: TriggerEvent; at?: number; once?: boolean; name?: string; key?: string; who?: Who; deny?: Deny; note?: Words; if?: Condition[]; do: Step[]; else?: Step[]; fail?: Step[] };
+export type Trigger = { on: TriggerEvent; at?: number; once?: boolean; name?: string; key?: string; /** What a "hit" waits for: any (unsaid), body, wall, or an element's id. */ hit?: string; who?: Who; deny?: Deny; note?: Words; if?: Condition[]; do: Step[]; else?: Step[]; fail?: Step[] };
 export type ActKind = Action["act"];
 export type PlainKind = PlainStep["act"];
 export type StepKind = Step["act"];
@@ -86,6 +86,13 @@ export const EVENTS: Array<[TriggerEvent, () => string]> = [
   ["scrolled", () => say("الصفحة انمرّرت لـ %|Page scrolled to %|העמוד נגלל ל־%")],
   ["timer", () => say("بعد وقت على الصفحة|After time on the page|אחרי זמן בעמוד")],
   ["key", () => say("زر بالكيبورد|A key of the keyboard|מקש במקלדת")],
+  ["hit", () => say("بيصطدم بشي (بعالم فيزيائي)|It hits something (in a physics world)|מתנגש במשהו (בעולם פיזיקלי)")],
+];
+/** What a "hit" recipe waits for its element to meet (beside one element picked by name). */
+export const HITS: Array<[string, () => string]> = [
+  ["any", () => say("أي شي|Anything|כל דבר")],
+  ["body", () => say("عنصر تاني|Another element|אלמנט אחר")],
+  ["wall", () => say("الأرض أو الحيط|The floor or a wall|הרצפה או קיר")],
 ];
 /** The keys a "key" recipe can wait for (beside one letter or digit). */
 export const KEYS: Array<[string, () => string]> = [
@@ -273,6 +280,8 @@ export const TRIGGER_PRESETS: TriggerPreset[] = [
   { key: "whatsapp", name: () => say("كبسة ← واتساب المتجر مع رسالة|Click → the store's WhatsApp with a message|לחיצה ← הוואטסאפ של החנות עם הודעה"), make: (lang) => ({ on: "click", do: [newAction("whatsapp", lang)] }) },
   { key: "share", name: () => say("كبسة ← مشاركة الصفحة|Click → share the page|לחיצה ← שיתוף העמוד"), make: () => ({ on: "click", do: [{ act: "share" }] }) },
   { key: "secret", name: () => say("ضغطة مطوّلة ← كوبون سرّي|Long press → a secret coupon|לחיצה ארוכה ← קופון סודי"), make: (lang) => ({ on: "longpress", do: [{ act: "copy", text: { [lang]: "SECRET15" }, note: { [lang]: say("لقيت السر! انسخ الكود|You found the secret! Code copied|מצאת את הסוד! הקוד הועתק") } }, { act: "burst", kind: "stars", amount: 60 }, { act: "vibrate" }] }) },
+  // In a physics world: sparks and a pop where the element hits something.
+  { key: "hit-spark", name: () => say("اصطدام ← شرار وصوت بمكان الخبطة|A hit → sparks and a pop where it lands|התנגשות ← ניצוצות וצליל במקום הפגיעה"), make: () => ({ on: "hit", do: [{ act: "burst", kind: "sparkles", amount: 30 }, { act: "sound", kind: "pop" }] }) },
   { key: "empty-bag", name: () => say("السلة فاضية ← رسالة تشجيع، وإلا روح للسلة|Empty bag → a nudge, else go to the bag|סל ריק ← עידוד, אחרת לסל"), make: (lang) => ({ on: "click", if: [{ if: "bag", cmp: "eq", value: 0 }], do: [{ act: "toast", text: { [lang]: say("سلتك لسا فاضية|Your bag is still empty|הסל שלך עדיין ריק") } }], else: [{ act: "link", href: "/cart" }] }) },
   { key: "phone-buzz", name: () => say("عالموبايل بس ← هزّة مع الكبسة|On phones only → a buzz with the click|רק בטלפון ← רטט עם הלחיצה"), make: () => ({ on: "click", if: [{ if: "device", value: "phone" }], do: [{ act: "vibrate" }, { act: "play", target: "self", what: "rubber", mode: "play" }] }) },
 ];
@@ -285,6 +294,8 @@ function clean(t: Trigger): Trigger {
   if (!out.name?.trim()) delete out.name;
   if (out.on !== "key") delete out.key;
   else if (!out.key || !KEY_OK.test(out.key)) out.key = "Enter";
+  // What it hits is kept only for a hit, and only when it isn't "anything".
+  if (out.on !== "hit" || !out.hit || out.hit === "any") delete out.hit;
   // Who may: everyone = nothing kept; a note only for the locked kind.
   if (!out.who) { delete out.who; delete out.deny; delete out.note; }
   else {
