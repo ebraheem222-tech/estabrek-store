@@ -372,7 +372,10 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   if (typeof s.italic === "boolean") d.push(`font-style:${s.italic ? "italic" : "normal"}`);
   const size = num(s.size, 8, 200);
   const sizeMin = num(s.sizeMin, 8, 200);
-  if (size !== undefined && sizeMin !== undefined && sizeMin < size) d.push(`font-size:${fluidSize(sizeMin, size)}`);
+  // A size from the variables ("$h1") is that variable; a number may shrink towards its smallest on a phone.
+  const named = tokenVar(s.size, "sizes");
+  if (named) d.push(`font-size:${named}`);
+  else if (size !== undefined && sizeMin !== undefined && sizeMin < size) d.push(`font-size:${fluidSize(sizeMin, size)}`);
   else push("font-size", size, "px");
   push("--pt-isz", num(s.iconSize, 8, 400), "px");
   const w = num(s.weight, 100, 900);

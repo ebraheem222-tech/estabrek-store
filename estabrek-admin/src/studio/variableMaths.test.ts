@@ -1,8 +1,9 @@
 import { expect, test } from "vitest";
-import { contrast, hexToLch } from "../../../shared/colour";
+import { contrast, hexToLch, modularScale } from "../../../shared/colour";
+import { tokensToSend, wholeTokens } from "../api/designTokens.api";
 import type { DesignTokens } from "./designTokens";
 import { starterTokens } from "./tokenSets";
-import { grounds, matesToAdd, readings, spacesOnScale, tonesToAdd, VARIABLE_LIMITS, weakGrounds } from "./variableMaths";
+import { grounds, matesToAdd, readings, sizesOnScale, spacesOnScale, STARTER_SIZES, tonesToAdd, VARIABLE_LIMITS, weakGrounds } from "./variableMaths";
 
 // What the Variables panel works out with the colour and scale maths (variableMaths.ts).
 
@@ -74,4 +75,38 @@ test("the spaces go on a scale in their order; a store without any gets six", ()
   // A scale that runs past the most a space can be before the last one: not applied.
   expect(spacesOnScale(tokens, 100, 2)).toBeNull();
   expect(spacesOnScale(tokens, 0, 2)).toBeNull();
+});
+
+test("the font sizes go on a scale in their order; a store without any gets seven", () => {
+  // The ready set is itself a scale: 13 px times 1.25, in whole pixels.
+  expect(tokens.sizes.map((z) => z.id)).toEqual([...STARTER_SIZES]);
+  expect(tokens.sizes.map((z) => z.value)).toEqual(modularScale(13, 1.25, 7));
+  expect(sizesOnScale(tokens, 13, 1.25)!.sizes).toEqual(tokens.sizes);
+  // Another ratio: ids and names stay, the numbers change, and nothing else does.
+  const fourth = sizesOnScale(tokens, 14, 4 / 3)!;
+  expect(fourth.sizes.map((z) => [z.id, z.value])).toEqual([["small", 14], ["body", 19], ["lead", 25], ["h3", 33], ["h2", 44], ["h1", 59], ["display", 79]]);
+  expect(fourth.sizes[5].name).toEqual(tokens.sizes[5].name);
+  expect(fourth.spaces).toBe(tokens.spaces);
+  // A store with its own three sizes keeps three.
+  const three = { ...tokens, sizes: [{ id: "note", value: 11 }, { id: "text", value: 15 }, { id: "title", value: 60 }] };
+  expect(sizesOnScale(three, 12, 2)!.sizes).toEqual([{ id: "note", value: 12 }, { id: "text", value: 24 }, { id: "title", value: 48 }]);
+  // None yet: seven, by the ready ids.
+  expect(sizesOnScale({ ...tokens, sizes: [] }, 12, 1.5)!.sizes).toEqual([{ id: "small", value: 12 }, { id: "body", value: 18 }, { id: "lead", value: 27 }, { id: "h3", value: 41 }, { id: "h2", value: 61 }, { id: "h1", value: 91 }, { id: "display", value: 137 }]);
+  // ...and with the ready set's names when they are given.
+  expect(sizesOnScale({ ...tokens, sizes: [] }, 12, 1.5, tokens.sizes)!.sizes[5]).toEqual({ id: "h1", name: tokens.sizes[5].name, value: 91 });
+  expect(sizesOnScale(three, 12, 2, tokens.sizes)!.sizes[0]).toEqual({ id: "note", value: 12 });
+  // A scale that passes the biggest a size can be (200) before the last one, or starts under the smallest (8): not applied.
+  expect(sizesOnScale(tokens, 12, 2)).toBeNull();
+  expect(sizesOnScale(tokens, 6, 1.25)).toBeNull();
+  expect(VARIABLE_LIMITS.sizes).toBe(20);
+});
+
+test("an API from before font sizes: its answer reads with none, and none are sent to it", () => {
+  const { sizes: _sizes, ...old } = tokens;
+  void _sizes;
+  expect(wholeTokens(old as DesignTokens).sizes).toEqual([]);
+  expect(wholeTokens(tokens)).toBe(tokens);
+  expect(tokensToSend({ ...tokens, sizes: [] })).toEqual(old);
+  expect("sizes" in tokensToSend({ ...tokens, sizes: [] })).toBe(false);
+  expect(tokensToSend(tokens)).toBe(tokens);
 });

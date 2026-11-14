@@ -14,13 +14,14 @@ import { adminLang } from "../lib/lang";
 import { say } from "./say";
 
 export type { DesignTokens, TokenGroup };
-export const EMPTY_TOKENS: DesignTokens = { version: 1, colors: [], fonts: [], spaces: [], radii: [], shadows: [] };
+export const EMPTY_TOKENS: DesignTokens = { version: 1, colors: [], fonts: [], spaces: [], radii: [], shadows: [], sizes: [] };
 export const TOKEN_GROUP_NAMES: Record<TokenGroup, string> = {
   colors: "الألوان|Colours|צבעים",
   fonts: "الخطوط|Fonts|גופנים",
   spaces: "المسافات|Spaces|מרווחים",
   radii: "الزوايا|Corners|פינות",
   shadows: "الظلال|Shadows|צללים",
+  sizes: "أحجام الخط|Font sizes|גדלי גופן",
 };
 
 /** What every picker sees: the variables being changed (the draft), else the published ones. */
@@ -37,7 +38,7 @@ export function tokenOf(tokens: DesignTokens | null, group: TokenGroup, value: u
 }
 /** A new variable's id: the name's latin letters, else the group's word and a number, never taken. */
 export function newTokenId(tokens: DesignTokens, group: TokenGroup, name: string): string {
-  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/^[^a-z]+/, "").slice(0, 24) || { colors: "colour", fonts: "font", spaces: "space", radii: "corner", shadows: "shadow" }[group];
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/^[^a-z]+/, "").slice(0, 24) || { colors: "colour", fonts: "font", spaces: "space", radii: "corner", shadows: "shadow", sizes: "size" }[group];
   const taken = new Set((tokens[group] as Item[]).map((t) => t.id));
   if (!taken.has(base)) return base;
   for (let i = 2; ; i++) if (!taken.has(`${base}-${i}`)) return `${base}-${i}`;
