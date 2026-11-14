@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PageTreeNode } from "../api/pages.api";
 import { setLangForTests } from "../lib/lang";
 import { contrast, hexToLch } from "../../../shared/colour";
-import { dominantColours, paletteRoles, subjectPoint } from "../../../shared/pictureSense";
+import { backdropOf, dominantColours, paletteRoles, subjectPoint } from "../../../shared/pictureSense";
 import { PictureColoursCard } from "./PictureColours";
 import { MediaStylePanel } from "./StylePanels";
 import { starterTokens } from "./tokenSets";
@@ -28,6 +28,8 @@ function picture(w: number, h: number, paint: Paint) {
   return px;
 }
 const WHITE: [number, number, number] = [255, 255, 255], NAVY: [number, number, number] = [27, 42, 92], ORANGE: [number, number, number] = [242, 140, 40], RED: [number, number, number] = [200, 40, 40];
+/** White, navy and orange as a picture's colours. */
+const pictureOf3 = () => [{ hex: "#ffffff", share: 0.6 }, { hex: "#1b2a5c", share: 0.3 }, { hex: "#f28c28", share: 0.1 }];
 /** How far apart two colours look (OKLCH lightness, and both chroma and hue through a and b). */
 const apart = (a: string, b: string) => {
   const [p, q] = [hexToLch(a)!, hexToLch(b)!];
@@ -82,6 +84,22 @@ test("a page's ground, ink and accent are made of the picture's colours", () => 
   expect(one.ground).toBe("#336699");
   expect(contrast(one.ink, one.ground)!).toBeGreaterThanOrEqual(4.5);
   expect(paletteRoles([])).toBeNull();
+  // A soft backdrop. A light picture: its light ground, with its other colours over it and its own ink.
+  const light = paletteRoles(pictureOf3())!;
+  expect(backdropOf(pictureOf3(), light)).toEqual({ bg: light.ground, ink: light.ink, mesh: ["#1b2a5c", "#f28c28"] });
+  // A picture that is mostly a deep colour: that colour is the ground, the others glow over it (four at most),
+  // and the words are what reads on it.
+  const six = [{ hex: "#814a47", share: 0.26 }, { hex: "#e5bba9", share: 0.18 }, { hex: "#c89d8f", share: 0.15 }, { hex: "#9f655f", share: 0.12 }, { hex: "#b68079", share: 0.12 }, { hex: "#f0d6c5", share: 0.07 }];
+  expect(paletteRoles(six)!.ground).toBe("#f0d6c5");
+  const deep = backdropOf(six, paletteRoles(six))!;
+  expect(deep).toEqual({ bg: "#814a47", ink: "#ffffff", mesh: ["#e5bba9", "#c89d8f", "#9f655f", "#b68079"] });
+  expect(contrast(deep.ink, deep.bg)!).toBeGreaterThanOrEqual(4.5);
+  // Three colours, mostly deep: the light one is one of the glows.
+  expect(backdropOf([{ hex: "#20242c", share: 0.7 }, { hex: "#e8e2d6", share: 0.2 }, { hex: "#c0392b", share: 0.1 }], { ground: "#e8e2d6", ink: "#20242c", accent: "#c0392b" })).toEqual({ bg: "#20242c", ink: "#ffffff", mesh: ["#c0392b", "#e8e2d6"] });
+  // Too few colours besides the ground, or none read: no backdrop.
+  expect(backdropOf([{ hex: "#fafafa", share: 0.7 }, { hex: "#d9c7c2", share: 0.3 }], pale)).toBeNull();
+  expect(backdropOf(pictureOf3(), null)).toBeNull();
+  expect(backdropOf([], null)).toBeNull();
 });
 
 test("a picture's subject is found where it stands out from its surround", () => {
@@ -134,6 +152,12 @@ test("the card shows the colours and what a page makes of them, and passes on wh
   fireEvent.click(screen.getByTestId("studio-picture-dress"));
   fireEvent.click(screen.getByTestId("studio-picture-close"));
   expect([onAdd, onDress, onClose].map((f) => f.mock.calls.length)).toEqual([1, 1, 1]);
+  // A moving backdrop is offered when there is one to make.
+  expect(screen.queryByTestId("studio-picture-backdrop")).toBeNull();
+  const onBackdrop = vi.fn();
+  view.rerender(<PictureColoursCard look={look} busy={false} room={2} partName="Hero part" onAdd={onAdd} onDress={onDress} onBackdrop={onBackdrop} onClose={onClose} />);
+  fireEvent.click(screen.getByTestId("studio-picture-backdrop"));
+  expect(onBackdrop).toHaveBeenCalledTimes(1);
   // Nothing new to add: the button waits and the card says why; no part, no roles: nothing to dress.
   view.rerender(<PictureColoursCard look={{ ...look, roles: null }} busy={false} room={0} onAdd={onAdd} onDress={onDress} onClose={onClose} />);
   expect((screen.getByTestId("studio-picture-add") as HTMLButtonElement).disabled).toBe(true);

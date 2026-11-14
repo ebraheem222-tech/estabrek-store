@@ -50,7 +50,7 @@ import { coloursToAdd } from "./variableMaths";
 import { PictureColoursCard, type PictureLook } from "./PictureColours";
 import { AiWordsCard, plainWords, type AiWordsKind } from "./AiWordsCard";
 import { pageWords, pagesAiStatus, pictureAlt } from "../api/ai.api";
-import type { PictureColour, PicturePoint, PictureRoles } from "../../../shared/pictureSense";
+import { backdropOf, type PictureColour, type PicturePoint, type PictureRoles } from "../../../shared/pictureSense";
 import { VariablesPanel } from "./VariablesPanel";
 import { say } from "./say";
 import { partDragOffset } from "./partDrag";
@@ -2948,6 +2948,7 @@ function StudioDocument() {
         {pictureLook && selFree && pictureLook.nodeId === selFree.id && !focus ? (() => {
           const fresh = coloursToAdd(dt.tokens, pictureLook.colours.map((c) => c.hex), (i) => ({ [adminLang()]: `${say("من الصورة|From the picture|מהתמונה")} ${i + 1}` }));
           const part = partOf(selFree.id);
+          const backdrop = backdropOf(pictureLook.colours, pictureLook.roles);
           return (
             <PictureColoursCard
               look={pictureLook} busy={busy || dt.busy} room={fresh.length} partName={part ? label(part.id) : undefined}
@@ -2959,6 +2960,7 @@ function StudioDocument() {
                 });
               }}
               onDress={() => { if (part && pictureLook.roles) void change(say("ألوان القسم من الصورة|The part's colours from the picture|צבעי החלק מהתמונה"), [styleOp(part, "base", { bg: pictureLook.roles.ground, color: pictureLook.roles.ink })]); }}
+              onBackdrop={backdrop && part ? () => void change(say("خلفية متحرّكة من الصورة|A moving backdrop from the picture|רקע נע מהתמונה"), [styleOp(part, "base", { bg: backdrop.bg, color: backdrop.ink, mesh: { colors: backdrop.mesh, soft: 65, move: true, speed: 0.8 } })]) : undefined}
               onClose={() => setPictureLook(null)}
             />
           );

@@ -63,6 +63,14 @@ test("a picture's colours are read, become variables and dress its part; its foc
   const drawn = await frame(page).locator('[data-tree-node="objects"]').evaluate((el) => { const cs = getComputedStyle(el); return { bg: cs.backgroundColor, color: cs.color }; });
   expect(near(drawn.bg, ground)).toBeLessThanOrEqual(1);
   expect(near(drawn.color, ink)).toBeLessThanOrEqual(1);
+  // A moving backdrop of its colours: the two that aren't the ground, fading from the part's corners.
+  await card.getByTestId("studio-picture-backdrop").click();
+  await ready(page);
+  const dressed = await styleOf(page, "objects");
+  expect(dressed.mesh).toEqual({ colors: [found[1].hex, found[2].hex], soft: 65, move: true, speed: 0.8 });
+  expect(dressed.bg).toBe(ground);
+  const layers = await frame(page).locator('[data-tree-node="objects"]').evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(layers.match(/radial-gradient/g) ?? []).toHaveLength(2);
   await card.getByTestId("studio-picture-close").click();
   await expect(card).toHaveCount(0);
 

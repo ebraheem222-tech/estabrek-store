@@ -121,6 +121,23 @@ export function paletteRoles(colours: PictureColour[]): PictureRoles | null {
   return { ground: ground.hex, ink, accent: vivid.hex };
 }
 
+export type PictureBackdrop = { bg: string; ink: string; mesh: string[] };
+/**
+ * A soft backdrop for a part of the page made of a picture's colours (the shop's `mesh` style: two to four
+ * colours, each fading from its own corner over the part's ground). A light picture keeps its light ground with
+ * its other colours over it; a picture that is mostly a deep colour gets that colour as the ground, the others
+ * glowing over it, and words that read on it. Null when the picture has fewer than two colours besides its ground.
+ */
+export function backdropOf(colours: PictureColour[], roles: PictureRoles | null): PictureBackdrop | null {
+  if (!roles) return null;
+  const rest = colours.filter((c) => c.hex !== roles.ground);
+  if (rest.length < 2) return null;
+  const lead = rest[0], groundShare = colours.find((c) => c.hex === roles.ground)?.share ?? 0;
+  const deep = lead.share > groundShare && (hexToLch(lead.hex)?.L ?? 1) < 0.62;
+  if (!deep) return { bg: roles.ground, ink: roles.ink, mesh: rest.slice(0, 4).map((c) => c.hex) };
+  return { bg: lead.hex, ink: readableOn(lead.hex), mesh: [...rest.slice(1).map((c) => c.hex), roles.ground].slice(0, 4) };
+}
+
 /**
  * Where the picture's subject is, in % of its width and height (for object-position), or null when nothing
  * stands out (a pattern, a flat colour, a scene that fills the frame).

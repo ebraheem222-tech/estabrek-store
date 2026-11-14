@@ -1,7 +1,8 @@
 /**
  * A picture's own colours, read from its pixels (shared/pictureSense.ts, in the shop's frame): shown as swatches
  * with each one's share of the picture, with what a page can make of them (a ground, ink that reads on it, an
- * accent). From here they become colour variables, or dress the part of the page the picture is in.
+ * accent). From here they become colour variables, or dress the part of the page the picture is in: in its ground
+ * and ink, or with a soft backdrop of its colours that drifts (the shop's mesh).
  */
 import type { PictureColour, PictureRoles } from "../../../shared/pictureSense";
 import { say } from "./say";
@@ -9,7 +10,7 @@ import { say } from "./say";
 export type PictureLook = { nodeId: string; colours: PictureColour[]; roles: PictureRoles | null };
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
 
-export function PictureColoursCard({ look, busy, room, partName, onAdd, onDress, onClose }: {
+export function PictureColoursCard({ look, busy, room, partName, onAdd, onDress, onBackdrop, onClose }: {
   look: PictureLook;
   busy: boolean;
   /** How many of these colours would be new variables (0: they are all there, or there is no room). */
@@ -18,6 +19,8 @@ export function PictureColoursCard({ look, busy, room, partName, onAdd, onDress,
   partName?: string;
   onAdd: () => void;
   onDress: () => void;
+  /** The part gets a soft backdrop of the picture's colours that drifts (none when the picture has too few). */
+  onBackdrop?: () => void;
   onClose: () => void;
 }) {
   const { colours, roles } = look;
@@ -50,6 +53,11 @@ export function PictureColoursCard({ look, busy, room, partName, onAdd, onDress,
         {roles && partName ? (
           <button type="button" className={btn} disabled={busy} onClick={onDress} title={say("أرضية القسم ولون كلامه من ألوان الصورة|The part's ground and its words' colour from the picture's colours|רקע החלק וצבע המילים שלו מצבעי התמונה")} data-testid="studio-picture-dress">
             {say("لبّس|Dress|הלבש")} «{partName}»
+          </button>
+        ) : null}
+        {roles && partName && onBackdrop ? (
+          <button type="button" className={btn} disabled={busy} onClick={onBackdrop} title={say("خلفية ناعمة للقسم من ألوان الصورة، بتتحرك على مهلها (واقفة للي طالب حركة أقل)|A soft backdrop for the part made of the picture's colours, drifting slowly (still for whoever asked for less motion)|רקע רך לחלק מצבעי התמונה, נע לאט")} data-testid="studio-picture-backdrop">
+            🌈 {say("خلفية متحرّكة من ألوانها|A moving backdrop of its colours|רקע נע מצבעיה")}
           </button>
         ) : null}
       </div>
