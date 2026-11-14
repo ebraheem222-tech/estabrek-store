@@ -48,6 +48,22 @@ test("a world: switched on, gravity turned over, tried, baked into each body's k
   expect(ops.some((o: { nodeId: string }) => o.nodeId === "b")).toBe(false);
 });
 
+test("a world's field of force: picked, its power and point set, and taken off whole", () => {
+  const onOps = vi.fn();
+  const panel = (world: Record<string, unknown>) => <WorldPanel node={host(world)} busy={false} onOps={onOps} onPlay={() => {}} onStop={() => {}} onBake={async () => null} />;
+  const { rerender } = render(panel({ start: "place", gy: 0 }));
+  // No field: its settings don't show.
+  expect(screen.queryByTestId("studio-world-field-power")).toBeNull();
+  fireEvent.change(screen.getByTestId("studio-world-field"), { target: { value: "orbit" } });
+  expect(onOps.mock.lastCall![1][0].props.world).toEqual({ start: "place", gy: 0, field: "orbit" });
+  rerender(panel({ start: "place", gy: 0, field: "orbit" }));
+  for (const id of ["studio-world-field-power", "studio-world-field-x", "studio-world-field-y"]) expect(screen.getByTestId(id)).toBeTruthy();
+  // Taken off: the point and the power go with it.
+  rerender(panel({ start: "place", gy: 0, field: "orbit", fieldX: 20, fieldY: 80, fieldPower: 1 }));
+  fireEvent.change(screen.getByTestId("studio-world-field"), { target: { value: "none" } });
+  expect(onOps.mock.lastCall![1][0].props.world).toEqual({ start: "place", gy: 0 });
+});
+
 test("baking keeps a body's other motion; making it live again takes the keyframes off", () => {
   const world = { start: "burst" as const, again: 6 };
   const ops = bakeOps(host(world), world, { b: [{ at: 0, y: 0 }, { at: 100, y: 40 }] }, 3);

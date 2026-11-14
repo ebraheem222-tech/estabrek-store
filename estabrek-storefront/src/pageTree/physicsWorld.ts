@@ -13,7 +13,7 @@
  */
 import type * as MatterTypes from "matter-js";
 import type { KeyFrameSpec } from "./keyframes";
-import { bakeFrames, bodyOf, seeded, type BodySpec, type Sample, type WorldSpec } from "./physics";
+import { bakeFrames, bodyOf, seeded, type BodySpec, type Sample, type WorldSpec, fieldForce } from "./physics";
 
 type M = typeof MatterTypes;
 type Body = MatterTypes.Body;
@@ -120,12 +120,17 @@ function burst(Matter: M, b: Built, at: { x: number; y: number }, reach: number,
   }
 }
 
-/** One steady step's own pushes: the wind's gusts and the pointer pushing or pulling. */
+/** One steady step's own pushes: the wind's gusts, the world's field of force and the pointer pushing or pulling. */
 function forces(Matter: M, b: Built, spec: WorldSpec, t: number, pointer: { x: number; y: number } | null) {
   for (let i = 0; i < b.items.length; i++) {
     const body = b.items[i].body;
     if (body.isStatic || b.items[i].gone) continue;
     if (spec.wind) Matter.Body.applyForce(body, body.position, { x: spec.wind * body.mass * 0.00028 * (0.55 + 0.45 * Math.sin(t / 650 + i * 1.7)), y: 0 });
+    // The field round its point: a body that has come to rest (asleep) is left to rest.
+    if (spec.field !== "none" && spec.fieldPower > 0 && !body.isSleeping) {
+      const f = fieldForce(spec.field, spec.fieldPower, body.position.x - (b.w * spec.fieldX) / 100, body.position.y - (b.h * spec.fieldY) / 100, body.mass, Math.max(b.w, b.h));
+      if (f.x || f.y) Matter.Body.applyForce(body, body.position, f);
+    }
     if (pointer && spec.pointer !== "none") {
       const dx = body.position.x - pointer.x, dy = body.position.y - pointer.y;
       const d = Math.hypot(dx, dy) || 1;

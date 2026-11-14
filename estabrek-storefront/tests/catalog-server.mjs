@@ -312,6 +312,26 @@ const physicsDemo = { id: "physics-demo", slug: "/physics-demo", name: "Physics"
     ] },
   ] },
 } };
+// A world's field of force (physics-field.spec.ts): no gravity; one world pulls its bodies to a point at its right,
+// the same world without a field stays still, a third pushes its body from a point at its corner, and in two more
+// (no walls) a body goes round the point in the middle: in a ring, and whirled outwards.
+const fieldWorld = (id, field) => ({ id, type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 0, walls: "box", drag: false, air: 0.03, field, fieldX: 90, fieldY: 50, fieldPower: 1 } }, style: { base: { minHeight: "320px" } }, children: [
+  { id: `${id}-a`, type: "button", props: { label: { en: "A" }, href: "/shop" }, style: { base: { width: "90px", height: "60px" } } },
+  { id: `${id}-b`, type: "heading", props: { level: 3, text: { en: "B" } }, style: { base: { width: "120px" } } },
+] });
+const physicsFieldDemo = { id: "physics-field", slug: "/physics-field", name: "Field of force", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [fieldWorld("pulls", "pull"), fieldWorld("still", "none"),
+    { id: "rounds", type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 0, walls: "none", drag: false, air: 0.02, field: "orbit", fieldX: 50, fieldY: 50, fieldPower: 1 } }, style: { base: { minHeight: "700px" } }, children: [
+      { id: "rounds-a", type: "button", props: { label: { en: "Moon" }, href: "/shop" }, style: { base: { width: "70px", height: "70px", radius: 999 } } },
+    ] },
+    { id: "pushes", type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 0, walls: "box", drag: false, air: 0.03, field: "push", fieldX: 2, fieldY: 10, fieldPower: 1 } }, style: { base: { minHeight: "320px" } }, children: [
+      { id: "pushes-a", type: "button", props: { label: { en: "A" }, href: "/shop" }, style: { base: { width: "90px", height: "60px" } } },
+    ] },
+    { id: "whirls", type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 0, walls: "none", drag: false, air: 0.02, field: "swirl", fieldX: 50, fieldY: 50, fieldPower: 1 } }, style: { base: { minHeight: "700px" } }, children: [
+      { id: "whirls-a", type: "button", props: { label: { en: "Leaf" }, href: "/shop" }, style: { base: { width: "70px", height: "70px", radius: 999 } } },
+    ] },
+  ] },
+} };
 // The shop's automatic lightening (auto-lighten.spec.ts): a first picture, frosted glass, a clip playing by itself,
 // a far section that cuts what sticks out; the same page with it turned off.
 const speedDemo = (off) => ({ id: off ? "speed-off" : "speed-demo", slug: off ? "/speed-off" : "/speed-demo", name: "Speed", status: "PUBLISHED", format: 2, sections: [], tree: {
@@ -1643,6 +1663,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/showcase-demo") return res.end(JSON.stringify(showcaseDemo));
       if (slug === "/motion-media-demo") return res.end(JSON.stringify(motionMediaDemo));
       if (slug === "/physics-demo") return res.end(JSON.stringify(physicsDemo));
+      if (slug === "/physics-field") return res.end(JSON.stringify(physicsFieldDemo));
       if (slug === "/stage-demo") return res.end(JSON.stringify(stageDemo));
       if (slug === "/speed-demo" || slug === "/speed-off") return res.end(JSON.stringify(speedDemo(slug === "/speed-off")));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));

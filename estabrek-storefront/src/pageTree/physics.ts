@@ -36,6 +36,8 @@ export const WORLD_START = ["place", "drop", "burst"] as const;
 export const WORLD_WALLS = ["box", "open", "floor", "none"] as const;
 export const WORLD_POINTER = ["none", "push", "pull"] as const;
 export const WORLD_CLICK = ["none", "burst", "flip"] as const;
+export const WORLD_FIELD = ["none", "pull", "push", "orbit", "swirl"] as const;
+export type WorldField = (typeof WORLD_FIELD)[number];
 export type WorldSpec = {
   /** When it starts: once seen, at once, on a click in it, with the pointer over it. */
   on: (typeof WORLD_ON)[number];
@@ -54,12 +56,18 @@ export type WorldSpec = {
   /** A wind sideways, in gusts (−1…1). */
   wind: number;
   click: (typeof WORLD_CLICK)[number];
+  /**
+   * A field of force round a point in it: bodies fall towards the point (like a planet), are pushed from it, go
+   * round it, or are whirled round it and outwards (stirred: the world's walls keep them in). The point is in percent of the world's box (50, 50 = its middle); the power is 0–1.
+   */
+  field: WorldField;
+  fieldX: number; fieldY: number; fieldPower: number;
   /** Back in place and again every so many seconds (0 = never). */
   again: number;
   /** Baked into its bodies' keyframes: it runs no physics. */
   baked?: boolean;
 };
-export const WORLD_DEFAULTS: WorldSpec = { on: "view", start: "drop", gx: 0, gy: 1, tilt: false, walls: "open", bounce: 0.4, friction: 0.1, air: 0.01, drag: true, pointer: "none", wind: 0, click: "none", again: 0 };
+export const WORLD_DEFAULTS: WorldSpec = { on: "view", start: "drop", gx: 0, gy: 1, tilt: false, walls: "open", bounce: 0.4, friction: 0.1, air: 0.01, drag: true, pointer: "none", wind: 0, click: "none", field: "none", fieldX: 50, fieldY: 50, fieldPower: 0.5, again: 0 };
 
 export const BODY_SHAPES = ["auto", "box", "circle"] as const;
 export const BODY_HANG = ["none", "rope", "spring"] as const;
@@ -97,9 +105,38 @@ export function worldOf(raw: unknown): WorldSpec | null {
     pointer: inList(r.pointer, WORLD_POINTER) ?? d.pointer,
     wind: within(r.wind, -1, 1) ?? d.wind,
     click: inList(r.click, WORLD_CLICK) ?? d.click,
+    field: inList(r.field, WORLD_FIELD) ?? d.field,
+    fieldX: within(r.fieldX, 0, 100) ?? d.fieldX,
+    fieldY: within(r.fieldY, 0, 100) ?? d.fieldY,
+    fieldPower: within(r.fieldPower, 0, 1) ?? d.fieldPower,
     again: within(r.again, 0, 60) ?? d.again,
     ...(r.baked === true ? { baked: true } : {}),
   };
+}
+
+/**
+ * A field's force on a body of `mass` standing (dx, dy) from the field's point, in a world `reach` pixels across
+ * (Matter's units: gravity on earth is 0.001 × mass):
+ *  - its size falls with the square of the distance, like gravity, softened so it stays finite at the point:
+ *    power × mass × 0.002 × s² / (r² + s²), with s = 0.3 × reach (half its most at s, a tenth at 3 s);
+ *  - "pull" turns it towards the point, "push" away from it;
+ *  - "orbit" is a pull with a third of it sideways, which keeps bodies going round the point;
+ *  - "swirl" is mostly sideways with a quarter of it inwards: too little pull to hold what the sideways push
+ *    speeds up, so bodies go round the point and further out each turn, like something stirred. Walls keep them
+ *    in; without walls they leave.
+ * Sideways is a quarter turn from the way to the point (the same way round for every body). At the point itself
+ * there is no way to push: no force.
+ */
+export function fieldForce(kind: WorldField, power: number, dx: number, dy: number, mass: number, reach: number): { x: number; y: number } {
+  const r = Math.hypot(dx, dy);
+  if (kind === "none" || !(power > 0) || !(reach > 0) || r < 1e-6) return { x: 0, y: 0 };
+  const soft = 0.3 * reach;
+  const size = power * mass * 0.002 * (soft * soft) / (r * r + soft * soft);
+  // Towards the point, and a quarter turn from that.
+  const ux = -dx / r, uy = -dy / r;
+  const tx = -uy, ty = ux;
+  const [inward, sideways] = kind === "pull" ? [1, 0] : kind === "push" ? [-1, 0] : kind === "orbit" ? [1, 0.35] : [0.25, 1];
+  return { x: size * (ux * inward + tx * sideways), y: size * (uy * inward + ty * sideways) };
 }
 
 /** A body's own settings in a world, or null when it has none. */
