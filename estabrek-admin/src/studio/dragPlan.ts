@@ -105,6 +105,27 @@ export function edgeScroll(y: number, top: number, bottom: number, zone = 56, fa
   return 0;
 }
 
+/**
+ * Why an element can't be moved by its measured plane, in a word (null = it can): the shop couldn't measure it
+ * (`why` is the shop's own word: "size", "own", "ancestor", "measure"), or what holds it couldn't be measured.
+ */
+export function planeTroubleOf(geometry: { unsupported?: boolean; why?: string } | undefined, hasPlane: boolean, hasHolder: boolean): string | null {
+  if (!geometry) return null;
+  if (geometry.unsupported) return geometry.why ?? "measure";
+  if (!hasPlane) return "measure";
+  return hasHolder ? null : "holder";
+}
+
+/**
+ * Whether an element can still be moved and sized by its plain box when its plane can't be used: nothing above it
+ * is turned or unevenly stretched (the shop knows its holder's scale), it isn't turned into depth itself, and what
+ * holds it has room in both directions (a place is a share of that room). A flat element under a holder with a
+ * perspective of its own, or one caught while something was still moving, is such a case.
+ */
+export function boxMovable(parentScale: number | null | undefined, turnedIntoDepth: boolean, holder: Box | null): boolean {
+  return parentScale !== null && parentScale !== undefined && parentScale > 0 && !turnedIntoDepth && Boolean(holder && holder.w > 1 && holder.h > 1);
+}
+
 export type FreeStep = { d: Pt; box: Box; guides: Guide[]; marks: Gap[]; pushed: Map<string, Pt>; touching: string[] };
 
 /**

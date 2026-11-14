@@ -10,7 +10,7 @@ import { tr } from "../lib/words";
 import { toScreen, type Box, type Pt, type Shape } from "./geometry";
 import type { Plane } from "../../../shared/geometry/plane";
 
-export type BridgeGeometry = { plane?:Plane&{quad:Pt[];kind?:string};parentPlane?:Plane;inline?:boolean;partMoveSafe?:boolean;holderPlane?:Plane;innerPlane?:Plane;holderScroll?:Pt;clips?:Pt[][];unsupported?:boolean };
+export type BridgeGeometry = { plane?:Plane&{quad:Pt[];kind?:string};parentPlane?:Plane;inline?:boolean;partMoveSafe?:boolean;holderPlane?:Plane;innerPlane?:Plane;holderScroll?:Pt;clips?:Pt[][];unsupported?:boolean;why?:string };
 
 export type IndexedNode = { node: PageTreeNode; parentId: string | null; depth: number; children: string[] };
 export type TreeIndex = { root: string; nodes: Map<string, IndexedNode>; bySection: Map<string, string> };

@@ -2,7 +2,10 @@
 import { boundsOfQuad, embedPlane, isAffineXY, inverse3, multiply3, planeQuad, type Mat3, type Mat4, type Plane, type Point } from "../../../shared/geometry/plane";
 
 export type MeasuredPlane = Plane & { quad: Point[]; matrix4: Mat4; kind: "affine" | "projective" };
-export type NodeGeometry = { plane?: MeasuredPlane; parentPlane?: MeasuredPlane; inline?: boolean; partMoveSafe?: boolean; holderPlane?: MeasuredPlane; innerPlane?: MeasuredPlane; holderScroll?:Point;clips?: Point[][]; unsupported?: boolean };
+export type NodeGeometry = { plane?: MeasuredPlane; parentPlane?: MeasuredPlane; inline?: boolean; partMoveSafe?: boolean; holderPlane?: MeasuredPlane; innerPlane?: MeasuredPlane; holderScroll?:Point;clips?: Point[][]; unsupported?: boolean;
+  /** Why it is unsupported, for the editor to say: it has no size, it is turned into depth itself, something above it is, or its box couldn't be matched. */
+  why?: PlaneTrouble };
+export type PlaneTrouble = "size" | "own" | "ancestor" | "measure";
 const ID: Mat3 = [1,0,0,0,1,0,0,0,1];
 const shift = (x:number,y:number):Mat3 => [1,0,x,0,1,y,0,0,1];
 const number = (value:string|null|undefined) => Number.parseFloat(value || "") || 0;
@@ -143,8 +146,17 @@ function layoutPlane(el:HTMLElement,cache:Map<Element,MeasuredPlane|null>):Measu
   const viewport=paddingPlane(el,cache);return viewport?measured(multiply3(viewport.matrix,shift(-el.scrollLeft,-el.scrollTop)),viewport.w,viewport.h):null;
 }
 
+/** Why an element's plane can't be measured (measurePlane gave nothing), by the first rule it breaks. */
+export function planeTrouble(el:HTMLElement):PlaneTrouble {
+  const {w,h}=sizeOf(el);
+  if(!(w>0&&h>0))return "size";
+  if(!ownPlane(el,w,h))return "own";
+  for(let at:Element|null=el.parentElement;at;at=at.parentElement)if(!transform(at))return "ancestor";
+  return "measure";
+}
+
 export function nodeGeometry(el:HTMLElement,cache:Map<Element,MeasuredPlane|null>):NodeGeometry {
-  const plane=measurePlane(el,cache);if(!plane)return {unsupported:true};
+  const plane=measurePlane(el,cache);if(!plane)return {unsupported:true,why:planeTrouble(el)};
   const holder=getComputedStyle(el).position==="absolute"?el.offsetParent as HTMLElement|null:el.parentElement?.closest<HTMLElement>(".pt-inner,.pt-stack,.pt-grid,.pt-cell,.pt-popup,.pt-columns,.pt-section")??null;
   const inner=el.matches(".pt-section,.pt-stack,.pt-grid,.pt-cell,.pt-popup,.pt-columns")?(el.matches(".pt-section")?el.querySelector<HTMLElement>(":scope > .pt-inner")??el:el):null;
   const holderFrame=holder?layoutPlane(holder,cache):null,innerFrame=inner?layoutPlane(inner,cache):null;
