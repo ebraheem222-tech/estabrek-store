@@ -109,6 +109,9 @@ import { PathHandles, compose } from "./focus/PathHandles";
 import { SparklePanel } from "./focus/SparklePanel";
 import { SparkleHandles } from "./focus/SparkleHandles";
 import { ImageEditPanel } from "./focus/ImageEditPanel";
+import { elementTools, type ElementTool } from "./elementTools";
+import { ElementToolsCard, ToolsGuide } from "./ElementToolsCard";
+import { sceneFromVideo } from "./scrollScene";
 import { VideoEditor } from "./focus/VideoEditor";
 import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
 import { CurvePanel, SlidePanel } from "./focus/KindPanels";
@@ -116,7 +119,7 @@ import { PageBudget, PerfPanel, type Sample } from "./focus/PerfPanel";
 import { SlowdownAlert, SpeedCheck, keepLab, type Lab } from "./focus/SpeedCheck";
 import { lightenAll } from "./focus/perfCost";
 import * as SpeedAPI from "../api/speed.api";
-import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, type BakedKeys } from "./PhysicsPanels";
+import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, worldOnOps, type BakedKeys } from "./PhysicsPanels";
 import { CodePanel, FormPanel } from "./FormPanels";
 import { InspectorGroup, InspectorJump, type InspectorGroupId } from "./InspectorNav";
 import { besidePlace, dockPref, frameFor, saveDock, saveSections, sectionsPref, sideOf } from "./beside";
@@ -2753,9 +2756,45 @@ function StudioDocument() {
       </div>
     );
   };
+  /** Brings a card of the inspector into view once it is drawn (after a group opens, or an element's own editor). */
+  const showCard = (card?: string) => {
+    if (card) window.setTimeout(() => document.querySelector(`[data-testid="${card}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 350);
+  };
+  /** Opens a group of the inspector (its tab when one section shows at a time, its heading in the long list). */
+  const goGroup = (g: InspectorGroupId, card?: string) => {
+    setInspGroup(g);
+    setInspOpen(true);
+    if (card) showCard(card);
+    else window.setTimeout(() => document.querySelector(`[data-insp-group="${g}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" }), 150);
+  };
+  /** One of the selected element's tools (elementTools.ts): goes where it lives, or makes what it promises. */
+  const runTool = (tool: ElementTool) => {
+    if (!selFree || !index) return;
+    const go = tool.go;
+    if (go.kind === "focus") {
+      if (openFocus(selFree.id)) showCard(go.card);
+    } else if (go.kind === "videoEditor") {
+      if (openFocus(selFree.id)) setVideoEditor(true);
+    } else if (go.kind === "group") {
+      goGroup(go.group, go.card);
+    } else if (go.kind === "variables") {
+      setLeftTab("styles");
+      showCard("studio-variables");
+    } else if (go.kind === "worldOn") {
+      const host = nodeOf(go.hostId);
+      if (host) void change(say("عالم فيزيائي|Physics world|עולם פיזיקלי"), worldOnOps(host)).then(() => goGroup("motion", go.card));
+    } else if (go.kind === "sceneFromVideo") {
+      // After the part of the page that holds the video, across the whole width.
+      let top = selFree.id;
+      for (let up = index.nodes.get(top)?.parentId; up && up !== index.root; up = index.nodes.get(up)?.parentId) top = up;
+      const at = (index.nodes.get(index.root)?.children ?? []).indexOf(top) + 1;
+      const part = sceneFromVideo(shopLang, makeIds(), selFree);
+      void change(say("مشهد تمرير من الفيديو|A scroll scene from the video|סצנת גלילה מהווידאו"), [{ op: "insert", parentId: index.root, index: at, node: part }], part.children![0].id).then(() => goGroup("content", "studio-scroll-scene"));
+    }
+  };
   const FOCUS_EMPTY: Record<string, string> = {
     image: "لسا ما في نجوم: دوّر على أماكنها بالصورة، أو شغّل القلم وكبّس عليها.|No stars yet: find their places in the picture, or turn the pen on and click it.|אין עדיין כוכבים: מצא מקומות או הפעל את העט ולחץ.",
-    video: "محرّر الفيديو الكامل جاي: مسار زمني وقص ونصوص.|The full video editor is coming: a timeline, cuts and words.|עורך הווידאו המלא בדרך: ציר זמן, חיתוכים ומילים.",
+    video: "الفيديو قطعة وحدة. للقص والترتيب والكلام والموسيقى: «افتح محرّر الفيديو» بإعداداته.|A video is one piece. To cut, order, add words and music: «Open the video editor» in its settings.|וידאו הוא חלק אחד. לחיתוך, סדר, מילים ומוזיקה: «פתח את עורך הווידאו» בהגדרות שלו.",
     model: "عم نقرا أجزاء المجسّم…|Reading the model's parts…|קוראים את חלקי המודל…",
     text: "النص قطعة وحدة: اكتب عليه بالصفحة.|Text is one piece: write on it in the page.|טקסט הוא חלק אחד: כותבים עליו בעמוד.",
     svg: "الرسمة ما فيها أشكال.|The drawing has no shapes.|אין צורות בציור.",
@@ -2805,12 +2844,15 @@ function StudioDocument() {
     }
     if (!selected || !index) {
       return (
-        <p className="text-xs leading-6 text-white/45">
+        <>
+          <p className="text-xs leading-6 text-white/45">
           {tr(
             "كبسة بتختار أعمق عنصر ظاهر. Alt مع الكبسة بتتنقل بين العناصر المتراكبة، و«اختيار عنصر» بعرضها بقائمة. كبستين على نص بتكتب مكانه. الأسهم بتنقل بين العناصر، وEsc للأب، وEnter لأول ابن أو لكتابة النص. Ctrl+Z للتراجع. Ctrl مع عجلة الماوس للتكبير، والمسطرة مع السحب للتحريك.",
             "Click to select the deepest visible object. Alt+click cycles overlapping objects; Choose object lists them. Double-click text to write in place. Arrows move between elements, Esc goes to the parent, Enter to the first child or to write the text. Ctrl+Z undoes. Ctrl+wheel zooms, Space+drag moves the canvas.",
           )}
-        </p>
+          </p>
+          <ToolsGuide />
+        </>
       );
     }
     if (multi) return <><MultiPanel names={chosen.map(label)} busy={busy} actions={multiActions} /><div className="mt-3 space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-fixed-spacing">
@@ -2834,11 +2876,14 @@ function StudioDocument() {
           <div className="mt-0.5 font-mono text-[11px] text-white/35" dir="ltr">{selExtra?.kind === "slot" ? selExtra.path : selected}</div>
         </div>
         {selFree && selFree.type !== "page" ? <div data-insp-as="behaviour"><PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /></div> : null}
-        {selected && selected !== index.root && shapeOf(selected) && focus?.id !== selected ? (
-          <button type="button" onClick={() => openFocus(selected)} className="w-full rounded-lg bg-accent-500/20 px-2 py-1.5 text-xs text-accent-100 hover:bg-accent-500/30" data-testid="studio-focus-enter">
-            ✎ {say("افتحه لحاله (تركيز) · F أو كبستين|Open it on its own (focus) · F or double-click|פתיחה לבד (מיקוד) · F או לחיצה כפולה")}
-          </button>
-        ) : null}
+        {/* One small row: the element opened on its own, then its tools by name (elementTools.ts). */}
+        <ElementToolsCard tools={selFree && selFree.type !== "page" && !focus ? elementTools(selFree, nodeOf(selNode?.parentId), selNode?.parentId && selNode.parentId !== index.root ? label(selNode.parentId) : "") : []} busy={busy} onGo={runTool}>
+          {selected && selected !== index.root && shapeOf(selected) && focus?.id !== selected ? (
+            <button type="button" onClick={() => openFocus(selected)} title={say("تركيز: العنصر لحاله مع أجزائه ومحرّره · F أو كبستين|Focus: the element on its own with its parts and its editor · F or double-click|מיקוד: הרכיב לבד עם חלקיו והעורך שלו · F או לחיצה כפולה")} className="rounded-full bg-accent-500/20 px-2 py-1 text-[11px] font-medium text-accent-100 hover:bg-accent-500/30" data-testid="studio-focus-enter">
+              ✎ {say("افتحه لحاله · F|Open it on its own · F|פתיחה לבד · F")}
+            </button>
+          ) : null}
+        </ElementToolsCard>
         <dl className="grid grid-cols-2 gap-2 text-xs">
           <dt className="text-white/45">{tr("الحجم", "Size")}</dt>
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
