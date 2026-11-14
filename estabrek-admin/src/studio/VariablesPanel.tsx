@@ -9,16 +9,33 @@ import { say } from "./say";
 import { useTreeFonts } from "./TypePanels";
 import { newTokenId, TOKEN_GROUP_NAMES, tokenName, withGroup, type DesignTokens, type TokenGroup } from "./designTokens";
 import { starterTokens } from "./tokenSets";
+import { HARMONIES, harmony, SCALE_RATIOS, type ContrastGrade, type Harmony } from "../../../shared/colour";
+import { matesToAdd, readings, spacesOnScale, tonesToAdd, weakGrounds } from "./variableMaths";
 export { starterTokens };
 
 type Api = { tokens: DesignTokens; hasDraft: boolean; busy: boolean; save: (t: DesignTokens) => Promise<boolean>; publish: () => Promise<boolean>; drop: () => Promise<boolean> };
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
 const input = "w-full min-w-0 rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
 const GROUPS: TokenGroup[] = ["colors", "fonts", "spaces", "radii", "shadows"];
+/** What a contrast is good for, in words (shared/colour.ts contrastGrade). */
+const GRADE_NAMES: Record<ContrastGrade, string> = {
+  AAA: "ممتاز لأي نص|Excellent for any text|מצוין לכל טקסט",
+  AA: "منيح للنص|Good for text|טוב לטקסט",
+  large: "للخط الكبير والحدود بس|Big text and edges only|לטקסט גדול ולקווים בלבד",
+  fail: "ما بينقرأ|Doesn't read|לא קריא",
+};
+const HARMONY_NAMES: Record<Harmony, string> = {
+  complement: "اللون المقابل|Its opposite|הצבע הנגדי",
+  neighbours: "جيرانه|Its neighbours|השכנים שלו",
+  triad: "ثلاثي|A triad|שלישייה",
+  split: "مقابل مقسوم|Split opposite|נגדי מפוצל",
+};
 
 export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: boolean }) {
   const fonts = useTreeFonts();
   const [open, setOpen] = useState<TokenGroup>("colors");
+  // The scale the spaces can be put on: the smallest one, and what each next one is multiplied by.
+  const [scale, setScale] = useState({ base: 4, ratio: 1.5 });
   const t = api.tokens;
   const lang = adminLang();
   const empty = GROUPS.every((g) => !t[g].length);
@@ -44,6 +61,27 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
         {GROUPS.map((g) => <button key={g} type="button" role="tab" aria-selected={open === g} className={`rounded-md px-2 py-1 text-[11px] ${open === g ? "bg-accent-500/20 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} onClick={() => setOpen(g)} data-testid={`variables-tab-${g}`}>{say(TOKEN_GROUP_NAMES[g])} <span className="text-white/35">{t[g].length}</span></button>)}
       </div>
       <div className="space-y-1.5" data-testid={`variables-${open}`}>
+        {open === "colors" && t.colors.length && weakGrounds(t) !== null ? (
+          <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] leading-5 text-amber-100" data-testid="variables-weak">
+            {say("لون الحبر على لون الورق بينقرأ بصعوبة|Your ink hardly reads on your paper|הדיו שלך כמעט לא נקרא על הנייר שלך")} (<span dir="ltr">{weakGrounds(t)!.toFixed(1)}</span>): {say("النص بدو 4.5 وطالع|text needs 4.5 or more|טקסט צריך 4.5 ומעלה")}
+          </p>
+        ) : null}
+        {open === "spaces" ? (() => {
+          const next = spacesOnScale(t, scale.base, scale.ratio);
+          return (
+            <div className="space-y-1 rounded-lg border border-white/[0.06] p-1.5" data-testid="variables-scale">
+              <div className="text-[11px] leading-5 text-white/60">{say("سلّم مسافات: كل مسافة قد اللي قبلها مضروبة بنسبة ثابتة|A scale of spaces: each one is the one before it times a fixed ratio|סולם מרווחים: כל מרווח הוא הקודם כפול יחס קבוע")}</div>
+              <div className="flex gap-1">
+                <input type="number" className={input} min={1} max={64} value={scale.base} aria-label={say("أصغر مسافة|The smallest space|המרווח הקטן ביותר")} title={say("أصغر مسافة|The smallest space|המרווח הקטן ביותר")} onChange={(e) => { const v = num(e.target.value, 1, 64); if (v !== null) setScale({ ...scale, base: v }); }} data-testid="variables-scale-base" />
+                <select className={input} value={scale.ratio} aria-label={say("النسبة|The ratio|היחס")} onChange={(e) => setScale({ ...scale, ratio: Number(e.target.value) })} data-testid="variables-scale-ratio">
+                  {SCALE_RATIOS.map((r) => <option key={r.id} value={r.ratio}>× {Math.round(r.ratio * 1000) / 1000}{r.id === "golden" ? ` · ${say("النسبة الذهبية|Golden ratio|יחס הזהב")}` : ""}</option>)}
+                </select>
+              </div>
+              <div className="text-[10px] text-white/45" data-testid="variables-scale-preview">{next ? <span dir="ltr">{next.spaces.map((x) => x.value).join(" · ")}</span> : say("هالنسبة بتطلع فوق 400 قبل آخر مسافة: صغّر النسبة أو أصغر مسافة|This ratio passes 400 before the last space: lower the ratio or the smallest space|היחס הזה עובר 400 לפני המרווח האחרון: הקטן את היחס או את המרווח הקטן ביותר")}</div>
+              <button type="button" className={`${btn} w-full`} disabled={api.busy || !next} onClick={() => { if (next) void api.save(next); }} data-testid="variables-scale-apply">{say("حط المسافات على هالسلّم|Put the spaces on this scale|שים את המרווחים על הסולם הזה")}</button>
+            </div>
+          );
+        })() : null}
         {(t[open] as Item[]).map((x, i) => (
           <div key={x.id} className="space-y-1 rounded-lg border border-white/[0.06] p-1.5" data-token={x.id}>
             <div className="flex items-center gap-1">
@@ -52,8 +90,40 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
               <button type="button" className="shrink-0 px-1 text-red-300/80 hover:text-red-300" disabled={api.busy} aria-label={say("احذف|Delete|מחק")} onClick={() => drop(open, i)} data-testid="variable-delete">×</button>
             </div>
             {open === "colors" ? <input type="color" className="h-7 w-full cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={api.busy} defaultValue={(x as DesignTokens["colors"][number]).value.slice(0, 7)} onBlur={(e) => set(open, i, { value: e.target.value } as never)} data-testid="variable-colour" /> : null}
+            {open === "colors" ? (() => {
+              const c = x as DesignTokens["colors"][number];
+              const tones = tonesToAdd(t, c, (step) => ({ [lang]: `${tokenName(c)} ${step}`.slice(0, 60) }));
+              return (
+                <div className="space-y-1" data-testid="variable-maths">
+                  <div className="flex flex-wrap items-center gap-1 text-[10px] text-white/60">
+                    {readings(t, c.value).map((r) => (
+                      <span key={r.on} className={`inline-flex items-center gap-1 rounded-md border px-1 py-0.5 ${r.grade === "fail" ? "border-amber-400/40 text-amber-200/90" : "border-white/[0.08]"}`}
+                        title={`${r.on === "paper" ? say("مع لون الورق|With the paper colour|עם צבע הנייר") : say("مع لون الحبر|With the ink colour|עם צבע הדיו")}: ${say(GRADE_NAMES[r.grade])}`} data-testid="variable-reading" data-on={r.on} data-grade={r.grade} data-best={r.best ? "1" : undefined}>
+                        <span className="rounded px-1 font-semibold" style={{ background: r.ground, color: c.value.slice(0, 7) }}>Aa</span>
+                        <span dir="ltr">{r.ratio.toFixed(1)}</span>
+                        <span>{say(GRADE_NAMES[r.grade])}</span>
+                        {r.best ? <span aria-hidden>✓</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    <button type="button" className={`${btn} flex-1`} disabled={api.busy || !tones.length} title={say("بيزيد درجات هاللون من الفاتح للغامق كمتغيرات|Adds this colour's tones, light to dark, as variables|מוסיף את גווני הצבע, מבהיר לכהה, כמשתנים")}
+                      onClick={() => void api.save(withGroup(t, "colors", [...t.colors, ...tones]))} data-testid="variable-tones">✦ {say("درجاته|Its tones|הגוונים שלו")}{tones.length ? ` +${tones.length}` : ""}</button>
+                    <select className={`${input} flex-1`} disabled={api.busy || !harmony(c.value, "complement").length} value="" aria-label={say("ألوان بتلبق معه|Colours that go with it|צבעים שמתאימים לו")}
+                      onChange={(e) => {
+                        const kind = e.target.value as Harmony;
+                        const mates = matesToAdd(t, c, kind, (n) => ({ [lang]: `${tokenName(c)} · ${say(HARMONY_NAMES[kind])}${n ? ` ${n + 1}` : ""}`.slice(0, 60) }));
+                        if (mates.length) void api.save(withGroup(t, "colors", [...t.colors, ...mates]));
+                      }} data-testid="variable-mates">
+                      <option value="">{say("بيلبق معه…|Goes with…|מתאים לו…")}</option>
+                      {HARMONIES.map((k) => <option key={k} value={k}>{say(HARMONY_NAMES[k])}</option>)}
+                    </select>
+                  </div>
+                </div>
+              );
+            })() : null}
             {open === "fonts" ? <select className={input} disabled={api.busy} value={(x as DesignTokens["fonts"][number]).family} onChange={(e) => set(open, i, { family: e.target.value } as never)} data-testid="variable-font">{[...new Set([(x as DesignTokens["fonts"][number]).family, ...fonts.map((f) => f.slug)])].map((slug) => <option key={slug} value={slug}>{fonts.find((f) => f.slug === slug)?.name ?? slug}</option>)}</select> : null}
-            {open === "spaces" || open === "radii" ? <input type="number" className={input} disabled={api.busy} min={0} max={open === "spaces" ? 400 : 999} defaultValue={(x as DesignTokens["spaces"][number]).value} onBlur={(e) => { const v = num(e.target.value, 0, open === "spaces" ? 400 : 999); if (v !== null) set(open, i, { value: v } as never); }} data-testid="variable-number" /> : null}
+            {open === "spaces" || open === "radii" ? <input key={`${x.id}:${(x as DesignTokens["spaces"][number]).value}`} type="number" className={input} disabled={api.busy} min={0} max={open === "spaces" ? 400 : 999} defaultValue={(x as DesignTokens["spaces"][number]).value} onBlur={(e) => { const v = num(e.target.value, 0, open === "spaces" ? 400 : 999); if (v !== null) set(open, i, { value: v } as never); }} data-testid="variable-number" /> : null}
             {open === "shadows" ? (() => {
               const s = x as DesignTokens["shadows"][number];
               return (

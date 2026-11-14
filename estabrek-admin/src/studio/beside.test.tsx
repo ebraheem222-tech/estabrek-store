@@ -111,6 +111,22 @@ describe("bringing a picked element into view", () => {
     expect(wide.zoom).toBeLessThan(1);
     expect(1280 * wide.zoom + wide.pan.x).toBeLessThanOrEqual(size.w - RESERVE + 1);
   });
+
+  it("that camera leaves alone what already sits well, unless it is asked for anyway", () => {
+    // A tray in the free part of the canvas, at a zoom near enough the one it would be given.
+    const far = { zoom: 0.9, pan: { x: 0, y: 0 } };
+    const tray = { x: 420, y: 260, w: 288, h: 198 };
+    expect(frameFor(tray, far, size, "right", { fit: true, maxZoom: 1.5 })).toBeNull();
+    // Asked for anyway (after something was dragged into it): the tray in the middle, closer than it was.
+    const to = frameFor(tray, far, size, "right", { fit: true, maxZoom: 1.5, always: true })!;
+    expect(to.zoom).toBeGreaterThan(far.zoom * 1.15);
+    expect(to.zoom).toBeLessThanOrEqual(1.5);
+    const middle = on(to, (tray.x + tray.w / 2) / far.zoom, (tray.y + tray.h / 2) / far.zoom);
+    expect(middle.x).toBeGreaterThan(RESERVE);
+    expect(middle.x).toBeLessThan(size.w - RESERVE + 200);
+    expect(middle.y).toBeGreaterThan(48);
+    expect(middle.y).toBeLessThan(size.h - 16);
+  });
 });
 
 describe("this browser's choices", () => {

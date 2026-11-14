@@ -5,6 +5,7 @@
  */
 import { useState } from "react";
 import { tr } from "../lib/words";
+import { say } from "./say";
 import { GRID_STEPS, type DragPrefs } from "./dragPlan";
 import type { CollideMode } from "./space";
 
@@ -52,6 +53,14 @@ export function DragSettings({ prefs, onChange }: { prefs: DragPrefs; onChange: 
           <label className="flex items-center justify-between gap-2">
             {tr("مسافات متساوية مع اللي جنبه", "Equal gaps with those beside it")}
             <input type="checkbox" checked={prefs.gaps} onChange={(e) => onChange({ gaps: e.target.checked })} data-testid="studio-drag-gaps" />
+          </label>
+          <label className="flex items-center justify-between gap-2">
+            {say("بيّن حدود كل الأجزاء (دايماً، مش بس وقت السحب)|Show every part's boundaries (always, not only while dragging)|הצגת גבולות כל החלקים (תמיד, לא רק בזמן גרירה)")}
+            <input type="checkbox" checked={prefs.bounds} onChange={(e) => onChange({ bounds: e.target.checked })} data-testid="studio-drag-bounds" />
+          </label>
+          <label className="flex items-center justify-between gap-2">
+            {say("لما ينتقل لجزء تاني، الكاميرا بتروح عليه|When it moves into another part, the view goes to it|כשהוא עובר לחלק אחר, התצוגה עוברת אליו")}
+            <input type="checkbox" checked={prefs.follow} onChange={(e) => onChange({ follow: e.target.checked })} data-testid="studio-drag-follow" />
           </label>
           <label className="flex items-center justify-between gap-2">
             {tr("شبكة", "Grid")}
