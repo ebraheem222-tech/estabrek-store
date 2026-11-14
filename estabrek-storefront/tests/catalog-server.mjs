@@ -332,6 +332,36 @@ const physicsFieldDemo = { id: "physics-field", slug: "/physics-field", name: "F
     ] },
   ] },
 } };
+// Bodies by their real outline, and bodies linked to each other (physics-shapes.spec.ts). One world each, so that
+// nothing meets anything else: a triangle put upright, a diamond dropped as it looks and one dropped as a box, a
+// leaf (a curved outline) and a three-cornered shape by equations (a polygon clip), a button hung from a fixed one
+// by a rope and one by a spring, and a loose one with nothing holding it. In the last two, gravity pulls sideways,
+// towards the fixed one, across a gap (an element left out of the world): a rope lets the other come, a rod doesn't.
+const shapeWorld = (id, start, children) => ({ id, type: "section", props: { world: { on: "load", start, gx: 0, gy: 1, walls: "box", drag: false, bounce: 0.1 } }, style: { base: { minHeight: "420px" } }, children });
+const cutBody = (id, shape, body) => ({ id, type: "stack", props: body ? { body } : {}, style: { base: { width: "120px", height: "120px", bg: "#c86b98", shape } }, children: [] });
+const hung = (id, kind) => [
+  { id: `${id}-peg`, type: "button", props: { label: { en: "Peg" }, href: "/shop", body: { fixed: true } }, style: { base: { width: "120px" } } },
+  { id: `${id}-bob`, type: "button", props: { label: { en: "Bob" }, href: "/shop", body: { link: `${id}-peg`, ...(kind ? { linkKind: kind } : {}) } }, style: { base: { width: "120px" } } },
+];
+const pulledIn = (id, kind) => ({ id, type: "section", props: { world: { on: "load", start: "place", gx: -1, gy: 0, walls: "box", drag: false, bounce: 0 } }, style: { base: { minHeight: "200px" } }, children: [
+  { id: `${id}-peg`, type: "button", props: { label: { en: "Peg" }, href: "/shop", body: { fixed: true } }, style: { base: { width: "120px" } } },
+  { id: `${id}-gap`, type: "button", props: { label: { en: "Gap" }, href: "/shop", body: { out: true } }, style: { base: { width: "120px", opacity: 0.2 } } },
+  { id: `${id}-bob`, type: "button", props: { label: { en: "Bob" }, href: "/shop", body: { link: `${id}-peg`, linkKind: kind } }, style: { base: { width: "120px" } } },
+] });
+const physicsShapesDemo = { id: "physics-shapes", slug: "/physics-shapes", name: "Shapes and links", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    shapeWorld("stands", "place", [cutBody("tri", "triangle")]),
+    shapeWorld("tips", "drop", [cutBody("gem", "diamond")]),
+    shapeWorld("flat", "drop", [cutBody("crate", "diamond", { shape: "box" })]),
+    shapeWorld("lies", "drop", [cutBody("leaf", "leaf")]),
+    shapeWorld("cuts", "drop", [{ id: "wedge", type: "stack", props: {}, style: { base: { width: "120px", height: "120px", bg: "#c86b98", form: { whole: { kind: "polygon", n: 3 } } } }, children: [] }]),
+    shapeWorld("ropes", "place", hung("rope")),
+    shapeWorld("springs", "place", hung("spring", "spring")),
+    shapeWorld("falls", "place", [{ id: "loose", type: "button", props: { label: { en: "Loose" }, href: "/shop" }, style: { base: { width: "120px" } } }]),
+    pulledIn("slack", "rope"),
+    pulledIn("stiff", "rod"),
+  ] },
+} };
 // The shop's automatic lightening (auto-lighten.spec.ts): a first picture, frosted glass, a clip playing by itself,
 // a far section that cuts what sticks out; the same page with it turned off.
 const speedDemo = (off) => ({ id: off ? "speed-off" : "speed-demo", slug: off ? "/speed-off" : "/speed-demo", name: "Speed", status: "PUBLISHED", format: 2, sections: [], tree: {
@@ -1664,6 +1694,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/motion-media-demo") return res.end(JSON.stringify(motionMediaDemo));
       if (slug === "/physics-demo") return res.end(JSON.stringify(physicsDemo));
       if (slug === "/physics-field") return res.end(JSON.stringify(physicsFieldDemo));
+      if (slug === "/physics-shapes") return res.end(JSON.stringify(physicsShapesDemo));
       if (slug === "/stage-demo") return res.end(JSON.stringify(stageDemo));
       if (slug === "/speed-demo" || slug === "/speed-off") return res.end(JSON.stringify(speedDemo(slug === "/speed-off")));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));

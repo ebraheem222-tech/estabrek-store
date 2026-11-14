@@ -70,3 +70,28 @@ test("a world tried, put back, baked into keyframes and made live again; an elem
   await expect.poll(async () => Math.abs(parseFloat(await varOf(page, "falls", "--pt-qy"))), { timeout: 15000 }).toBeLessThan(1);
   await page.screenshot({ path: testInfo.outputPath("physics-panel.png") });
 });
+
+test("a body is linked to another one of its world from its panel; tried, the link is drawn between them", async ({ page }) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(url);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await pick(page, "card");
+  const link = page.getByTestId("studio-body-link");
+  await link.scrollIntoViewIfNeeded();
+  // The world's other bodies are offered by name.
+  await expect(link.locator("option")).toHaveText(["No", /Ball/, /Tag/]);
+  await link.selectOption("ball");
+  await expect.poll(async () => (await readNode(page, "card")).props.body).toEqual({ link: "ball" });
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
+  await page.getByTestId("studio-body-link-kind").selectOption("rod");
+  await expect.poll(async () => (await readNode(page, "card")).props.body).toEqual({ link: "ball", linkKind: "rod" });
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 30000 });
+  // Tried: the rod is drawn between the two, beside the tag's rope.
+  await pick(page, "world");
+  await page.getByTestId("studio-world-play").click();
+  const host = frame(page).locator('[data-tree-node="world"]');
+  await expect(host).toHaveAttribute("data-pt-world-on", "", { timeout: 20000 });
+  await expect(host.locator('svg line[data-pt-link="rod"]')).toHaveCount(1);
+  await expect(host.locator("svg line")).toHaveCount(2);
+});

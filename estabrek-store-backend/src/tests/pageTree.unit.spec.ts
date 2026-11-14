@@ -368,7 +368,7 @@ describe("checking a page tree", () => {
 
   test("physics: an element's own, a world on what holds others, its bodies' settings, and keyframes falling", () => {
     const world = { on: "view", start: "drop", gx: 0, gy: 1, walls: "open", bounce: 0.5, drag: true, pointer: "push", wind: 0.3, click: "burst", again: 8, field: "orbit", fieldX: 20, fieldY: 80, fieldPower: 0.7 };
-    const body = { shape: "circle", bounce: 0.8, mass: 2, hang: "rope" };
+    const body = { shape: "circle", bounce: 0.8, mass: 2, hang: "rope", link: "other-body", linkKind: "rod" };
     const physics = { kind: "drop", amount: 1.4, bounce: 0.5 };
     const keys = { on: "view", duration: 3, parts: { self: [{ at: 0, y: -300 }, { at: 40, y: 0, ease: "fall" }, { at: 100, y: 0 }] } };
     const r = checkTree(page([{ ...section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, body }, motion: { physics, keys } }]), props: { world } }]));
@@ -386,6 +386,9 @@ describe("checking a page tree", () => {
     expect(bad(page([{ ...section("s", []), props: { world: { field: "pull", fieldPower: 3 } } }]))).toMatch(/props\.world\.fieldPower/);
     expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, world: {} } }])]))).toMatch(/props\.world/);
     expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, body: { hang: "chain" } } }])]))).toMatch(/props\.body\.hang/);
+    // A link to another body: an element's id, and a rope, a spring or a rod.
+    expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, body: { link: "y", linkKind: "chain" } } }])]))).toMatch(/props\.body\.linkKind/);
+    expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" }, body: { link: "not an id!" } } }])]))).toMatch(/props\.body\.link/);
     expect(bad(page([section("s", [{ id: "x", type: "heading", props: { text: { ar: "x" } }, motion: { physics: { kind: "fly" } } }])]))).toMatch(/motion\.physics\.kind/);
   });
 

@@ -89,3 +89,29 @@ test("a body: hung from a rope, fixed, left out; a world costs the device until 
   expect(costOf(host({ start: "drop", baked: true })).reasons.map((r) => r.key)).not.toContain("world");
   expect(costOf({ id: "f", type: "image", props: {}, motion: { physics: { kind: "float" } } } as PageTreeNode).endless).toBe(true);
 });
+
+test("a body's link: another body of its world picked, what links them chosen, and both taken off together", () => {
+  const onOps = vi.fn();
+  const others = [{ id: "b", name: "Button B" }];
+  const panel = (body?: Record<string, unknown>) => <BodyPanel node={{ ...kids[0], props: { ...kids[0].props, ...(body ? { body } : {}) } } as PageTreeNode} busy={false} onOps={onOps} others={others} />;
+  const { rerender } = render(panel());
+  // Nothing linked: what links them isn't asked.
+  expect(screen.queryByTestId("studio-body-link-kind")).toBeNull();
+  fireEvent.change(screen.getByTestId("studio-body-link"), { target: { value: "b" } });
+  expect(onOps.mock.lastCall![1][0].props.body).toEqual({ link: "b" });
+  rerender(panel({ link: "b" }));
+  fireEvent.change(screen.getByTestId("studio-body-link-kind"), { target: { value: "rod" } });
+  expect(onOps.mock.lastCall![1][0].props.body).toEqual({ link: "b", linkKind: "rod" });
+  // Taken off: its kind goes with it.
+  rerender(panel({ link: "b", linkKind: "rod" }));
+  fireEvent.change(screen.getByTestId("studio-body-link"), { target: { value: "" } });
+  expect(onOps.mock.lastCall![1][0].props.body).toBeUndefined();
+  // A link to something no longer in the world shows as none.
+  rerender(panel({ link: "gone", linkKind: "spring" }));
+  expect((screen.getByTestId("studio-body-link") as HTMLSelectElement).value).toBe("");
+  expect(screen.queryByTestId("studio-body-link-kind")).toBeNull();
+  // Without other bodies in the world there is nothing to link to.
+  cleanup();
+  render(<BodyPanel node={kids[0]} busy={false} onOps={onOps} />);
+  expect(screen.queryByTestId("studio-body-link")).toBeNull();
+});

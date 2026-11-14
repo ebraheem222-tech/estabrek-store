@@ -1154,7 +1154,10 @@ export const NodeWorld = z.object({
   again: z.number().finite().min(0).max(60).optional(),
   baked: z.boolean().optional(),
 });
-/** An element as a body in its world (props.body): round or a box, fixed in place, bouncier, heavier, hung from a rope or a spring, or left out. */
+/**
+ * An element as a body in its world (props.body): round or a box, fixed in place, bouncier, heavier, hung from a rope
+ * or a spring, left out, or linked to another body of the same world (that element's id) by a rope, a spring or a rod.
+ */
 export const NodeBody = z.object({
   shape: z.enum(["auto", "box", "circle"]).optional(),
   fixed: z.boolean().optional(),
@@ -1162,6 +1165,8 @@ export const NodeBody = z.object({
   mass: z.number().finite().min(0.2).max(5).optional(),
   hang: z.enum(["none", "rope", "spring"]).optional(),
   out: z.boolean().optional(),
+  link: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/).optional(),
+  linkKind: z.enum(["rope", "spring", "rod"]).optional(),
 });
 
 /**

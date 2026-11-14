@@ -8,20 +8,32 @@
  *  - Bodies are grabbed with the pointer (a finger after a short hold, so a swipe still scrolls) and thrown; the
  *    pointer can push or pull them; a click bursts them apart or turns gravity over; a phone's tilt moves
  *    gravity; a wind blows in gusts. Ropes and springs are drawn as thin lines.
+ *  - A body takes its element's real outline (physicsShape.ts): what a mask or a polygon cuts it to, as the hull
+ *    round it, with its weight at the hull's centre. A round one is a circle, anything else its box.
+ *  - Two bodies can be linked (props.body.link): by a rope that only pulls once it is taut, a spring, or a rod.
  *  - Steady steps (60 a second) whatever the screen's rate; resting when every body sleeps, when off screen.
  * bakeWorld runs the same world without drawing and gives each body's run as keyframes (physics.ts bakeFrames).
  */
 import type * as MatterTypes from "matter-js";
 import type { KeyFrameSpec } from "./keyframes";
-import { bakeFrames, bodyOf, seeded, type BodySpec, type Sample, type WorldSpec, fieldForce } from "./physics";
+import { bakeFrames, bodyOf, seeded, type BodyLink, type BodySpec, type Sample, type WorldSpec, fieldForce } from "./physics";
+import { bodyOutline, centroid, maskPath, middleOf, polygonCorners, ropeTaut, straightPath, type P } from "./physicsShape";
 
 type M = typeof MatterTypes;
 type Body = MatterTypes.Body;
 type Constraint = MatterTypes.Constraint;
 type Engine = MatterTypes.Engine;
 
-export type Item = { el: HTMLElement; id: string; body: Body; rest: { x: number; y: number }; w: number; h: number; spec: BodySpec | null; hang: Constraint | null; line: SVGLineElement | null; gone: boolean };
-type Built = { engine: Engine; items: Item[]; w: number; h: number; top: Body | null };
+/**
+ * A body and its element. `rest` is where the element's middle is on the page; `off` is how far the body's own
+ * centre (its outline's centre of area) is from that middle, which is nothing for a box or a circle.
+ */
+export type Item = { el: HTMLElement; id: string; body: Body; rest: { x: number; y: number }; off: P; w: number; h: number; spec: BodySpec | null; hang: Constraint | null; line: SVGLineElement | null; gone: boolean };
+/** Two bodies linked by a rope, a spring or a rod, and the line drawn between them. */
+type Link = { c: Constraint; kind: BodyLink; a: Item; b: Item; line: SVGLineElement | null; gone: boolean };
+type Built = { engine: Engine; items: Item[]; links: Link[]; w: number; h: number; top: Body | null };
+/** A link's hold on its two bodies: firm for a rod and a taut rope, soft for a spring. */
+const LINK_HOLD: Record<BodyLink, { stiffness: number; damping: number }> = { rope: { stiffness: 0.9, damping: 0.02 }, spring: { stiffness: 0.014, damping: 0.04 }, rod: { stiffness: 0.9, damping: 0.02 } };
 const STEP = 1000 / 60;
 const VARS = ["--pt-qx", "--pt-qy", "--pt-qrz"] as const;
 
@@ -54,6 +66,42 @@ function roundingOf(el: HTMLElement, w: number, h: number) {
   return r.trim().endsWith("%") ? (v / 100) * Math.min(w, h) : v;
 }
 
+/** A curved path's outline: points along it on its 100 × 100 square (the browser measures the path). */
+function samplePath(d: string): P[] | null {
+  try {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("style", "position:absolute;width:0;height:0;visibility:hidden;pointer-events:none");
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+    document.body.appendChild(svg);
+    const total = path.getTotalLength();
+    const out: P[] = [];
+    if (total > 0) for (let i = 0; i < 48; i++) { const q = path.getPointAtLength((total * i) / 48); out.push({ x: q.x, y: q.y }); }
+    svg.remove();
+    return out.length >= 3 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What cuts an element on the page, as the outline its body takes (px on its own box): a polygon clip (a shape by
+ * equations), or one of the shop's masks (a hexagon, a star, a heart…). Null for a plain box.
+ */
+function outlineOf(el: HTMLElement, w: number, h: number): P[] | null {
+  const cs = getComputedStyle(el);
+  const clip = cs.clipPath || cs.getPropertyValue("-webkit-clip-path");
+  let pts = clip && clip.startsWith("polygon(") ? polygonCorners(clip, w, h) : null;
+  if (!pts) {
+    const d = maskPath(cs.getPropertyValue("mask-image") || cs.getPropertyValue("-webkit-mask-image"));
+    const unit = d ? straightPath(d) ?? samplePath(d) : null;
+    pts = unit ? unit.map((q) => ({ x: (q.x / 100) * w, y: (q.y / 100) * h })) : null;
+  }
+  return bodyOutline(pts, w, h);
+}
+
 function build(Matter: M, host: HTMLElement, spec: WorldSpec, rnd: () => number, limit: number): Built {
   const { Bodies, Body, Composite, Constraint, Engine } = Matter;
   const kids = worldChildren(host).slice(0, limit);
@@ -80,30 +128,45 @@ function build(Matter: M, host: HTMLElement, spec: WorldSpec, rnd: () => number,
     const round = roundingOf(k.el, w, h);
     const shape = k.spec?.shape ?? "auto";
     const circle = shape === "circle" || (shape === "auto" && Math.abs(w - h) < 0.12 * Math.max(w, h) && round >= 0.45 * Math.min(w, h));
-    const opts: MatterTypes.IChamferableBodyDefinition = {
+    const plain: MatterTypes.IChamferableBodyDefinition = {
       restitution: k.spec?.bounce ?? spec.bounce,
       friction: spec.friction,
       frictionAir: spec.air,
       density: 0.001 * (k.spec?.mass ?? 1),
       isStatic: k.spec?.fixed === true,
       sleepThreshold: 50,
-      ...(!circle && round > 1 ? { chamfer: { radius: Math.min(round, Math.min(w, h) / 2 - 1) } } : {}),
     };
-    const body = circle ? Bodies.circle(x, y, Math.min(w, h) / 2, opts) : Bodies.rectangle(x, y, w, h, opts);
+    const opts: MatterTypes.IChamferableBodyDefinition = { ...plain, ...(!circle && round > 1 ? { chamfer: { radius: Math.min(round, Math.min(w, h) / 2 - 1) } } : {}) };
+    // As it looks: the outline that cuts it, when it has one (its weight at the outline's centre, not the box's).
+    const outline = shape === "auto" && !circle ? outlineOf(k.el, w, h) : null;
+    const centre = outline ? centroid(outline) : null;
+    let off: P = centre ? { x: centre.x - w / 2, y: centre.y - h / 2 } : { x: 0, y: 0 };
+    let body = outline ? Bodies.fromVertices(x + off.x, y + off.y, [outline], plain) : circle ? Bodies.circle(x, y, Math.min(w, h) / 2, opts) : Bodies.rectangle(x, y, w, h, opts);
+    if (!body) { off = { x: 0, y: 0 }; body = Bodies.rectangle(x, y, w, h, opts); }
     let hang: Constraint | null = null;
     if (k.spec?.hang && k.spec.hang !== "none" && !k.spec.fixed) {
       const rope = k.spec.hang === "rope";
-      hang = Constraint.create({ pointA: { x, y: 0 }, bodyB: body, pointB: { x: 0, y: -h / 2 }, length: Math.max(8, y - h / 2), stiffness: rope ? 0.9 : 0.014, damping: rope ? 0.02 : 0.04 });
+      hang = Constraint.create({ pointA: { x, y: 0 }, bodyB: body, pointB: { x: -off.x, y: -h / 2 - off.y }, length: Math.max(8, y - h / 2), stiffness: rope ? 0.9 : 0.014, damping: rope ? 0.02 : 0.04 });
     } else if (spec.start === "drop" && !k.spec?.fixed) {
-      Body.setPosition(body, { x: x + (rnd() - 0.5) * 24, y: -h / 2 - 24 - rnd() * H * 0.9 });
+      Body.setPosition(body, { x: x + off.x + (rnd() - 0.5) * 24, y: -h / 2 - 24 - rnd() * H * 0.9 });
       Body.setAngle(body, (rnd() - 0.5) * 0.7);
     }
-    items.push({ el: k.el, id: k.id, body, rest: { x, y }, w, h, spec: k.spec, hang, line: null, gone: false });
+    items.push({ el: k.el, id: k.id, body, rest: { x, y }, off, w, h, spec: k.spec, hang, line: null, gone: false });
   }
   Composite.add(engine.world, items.map((i) => i.body));
   const ropes = items.map((i) => i.hang).filter((c): c is Constraint => Boolean(c));
   if (ropes.length) Composite.add(engine.world, ropes);
-  return { engine, items, w: W, h: H, top };
+  // Links between two bodies of this world, as long as the design put them apart (one link for a pair).
+  const links: Link[] = [];
+  for (const a of items) {
+    const b = a.spec?.link ? items.find((o) => o !== a && o.id === a.spec!.link) : undefined;
+    if (!b || (a.body.isStatic && b.body.isStatic) || links.some((l) => l.a === b && l.b === a)) continue;
+    const kind = a.spec?.linkKind ?? "rope";
+    const length = Math.max(8, Math.hypot(b.rest.x + b.off.x - a.rest.x - a.off.x, b.rest.y + b.off.y - a.rest.y - a.off.y));
+    links.push({ c: Constraint.create({ bodyA: a.body, bodyB: b.body, length, ...LINK_HOLD[kind] }), kind, a, b, line: null, gone: false });
+  }
+  if (links.length) Composite.add(engine.world, links.map((l) => l.c));
+  return { engine, items, links, w: W, h: H, top };
 }
 
 /** Bursting apart from a point (the middle when started that way): each body pushed away, nearer ones harder. */
@@ -122,6 +185,13 @@ function burst(Matter: M, b: Built, at: { x: number; y: number }, reach: number,
 
 /** One steady step's own pushes: the wind's gusts, the world's field of force and the pointer pushing or pulling. */
 function forces(Matter: M, b: Built, spec: WorldSpec, t: number, pointer: { x: number; y: number } | null) {
+  // A rope only pulls: while its two ends are nearer than its length it holds nothing.
+  for (const l of b.links) {
+    if (l.gone || l.kind !== "rope") continue;
+    const taut = ropeTaut(Math.hypot(l.b.body.position.x - l.a.body.position.x, l.b.body.position.y - l.a.body.position.y), l.c.length);
+    l.c.stiffness = taut ? LINK_HOLD.rope.stiffness : 1e-9;
+    l.c.damping = taut ? LINK_HOLD.rope.damping : 0;
+  }
   for (let i = 0; i < b.items.length; i++) {
     const body = b.items[i].body;
     if (body.isStatic || b.items[i].gone) continue;
@@ -144,6 +214,12 @@ function forces(Matter: M, b: Built, spec: WorldSpec, t: number, pointer: { x: n
   }
 }
 
+/** How far a body has carried its element from where the design put it (the element's middle, not the body's centre). */
+function shiftOf(it: Item): P {
+  const mid = middleOf(it.body.position, it.body.angle, it.off);
+  return { x: mid.x - it.rest.x, y: mid.y - it.rest.y };
+}
+
 /** Where each body is, carried to its element; bodies far out of an open box leave the world. */
 function draw(Matter: M, b: Built) {
   for (const it of b.items) {
@@ -153,10 +229,13 @@ function draw(Matter: M, b: Built) {
       it.gone = true;
       Matter.Composite.remove(b.engine.world, it.body);
       it.el.style.setProperty("visibility", "hidden");
+      // What it was linked to is let go.
+      for (const l of b.links) if (!l.gone && (l.a === it || l.b === it)) { l.gone = true; Matter.Composite.remove(b.engine.world, l.c); l.line?.remove(); }
       continue;
     }
-    it.el.style.setProperty("--pt-qx", `${(x - it.rest.x).toFixed(1)}px`);
-    it.el.style.setProperty("--pt-qy", `${(y - it.rest.y).toFixed(1)}px`);
+    const moved = shiftOf(it);
+    it.el.style.setProperty("--pt-qx", `${moved.x.toFixed(1)}px`);
+    it.el.style.setProperty("--pt-qy", `${moved.y.toFixed(1)}px`);
     it.el.style.setProperty("--pt-qrz", `${((it.body.angle * 180) / Math.PI).toFixed(2)}deg`);
     if (it.line && it.hang) {
       const a = it.body.angle, p = it.hang.pointB ?? { x: 0, y: 0 };
@@ -165,6 +244,13 @@ function draw(Matter: M, b: Built) {
       it.line.setAttribute("x2", String(x + p.x * Math.cos(a) - p.y * Math.sin(a)));
       it.line.setAttribute("y2", String(y + p.x * Math.sin(a) + p.y * Math.cos(a)));
     }
+  }
+  for (const l of b.links) {
+    if (l.gone || !l.line) continue;
+    l.line.setAttribute("x1", String(l.a.body.position.x));
+    l.line.setAttribute("y1", String(l.a.body.position.y));
+    l.line.setAttribute("x2", String(l.b.body.position.x));
+    l.line.setAttribute("y2", String(l.b.body.position.y));
   }
 }
 
@@ -186,7 +272,7 @@ export function startWorld(Matter: M, host: HTMLElement, spec: WorldSpec, opts: 
   const lines = () => {
     svg?.remove();
     svg = null;
-    if (!b.items.some((i) => i.hang)) return;
+    if (!b.items.some((i) => i.hang) && !b.links.length) return;
     svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("style", "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:0");
@@ -199,6 +285,16 @@ export function startWorld(Matter: M, host: HTMLElement, spec: WorldSpec, opts: 
       if (it.spec?.hang === "spring") line.setAttribute("stroke-dasharray", "3 3");
       svg.appendChild(line);
       it.line = line;
+    }
+    for (const l of b.links) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("stroke", "currentColor");
+      line.setAttribute("stroke-opacity", "0.45");
+      line.setAttribute("stroke-width", l.kind === "rope" ? "1" : l.kind === "rod" ? "2" : "1.5");
+      if (l.kind === "spring") line.setAttribute("stroke-dasharray", "3 3");
+      line.setAttribute("data-pt-link", l.kind);
+      svg.appendChild(line);
+      l.line = line;
     }
     host.prepend(svg);
   };
@@ -405,7 +501,8 @@ export function bakeWorld(Matter: M, host: HTMLElement, spec: WorldSpec, seconds
   const sample = (t: number) => {
     for (const it of b.items) {
       if (it.gone || it.body.isStatic) continue;
-      runs.get(it)!.push({ t: t / 1000, x: it.body.position.x - it.rest.x, y: it.body.position.y - it.rest.y, a: (it.body.angle * 180) / Math.PI });
+      const moved = shiftOf(it);
+      runs.get(it)!.push({ t: t / 1000, x: moved.x, y: moved.y, a: (it.body.angle * 180) / Math.PI });
     }
   };
   sample(0);
