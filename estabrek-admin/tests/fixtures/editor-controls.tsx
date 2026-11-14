@@ -206,6 +206,20 @@ if (new URLSearchParams(location.search).has("stuck")) {
     ] },
   ];
 }
+// Words on their grounds, for the contrast note (contrast-note.spec.ts): pale words and dark words on a light part,
+// a button, and pale words inside a dark card (its own ground, not the part's).
+if (new URLSearchParams(location.search).has("contrast")) {
+  initial.tree!.root.children = [
+    { id: "light", type: "section", name: "Light part", props: {}, style: { base: { minHeight: "520px", pad: [30, 30, 30, 30], bg: "#fbf7f4" } }, children: [
+      { id: "faint", type: "heading", name: "Faint words", props: { text: text("Pale words on a light ground"), level: 3 }, style: { base: { width: "460px", color: "#e8b7cf", size: 16 } } },
+      { id: "clear", type: "heading", name: "Clear words", props: { text: text("Dark words on a light ground"), level: 3 }, style: { base: { width: "460px", color: "#1d1a1f", size: 16 } } },
+      { id: "cta", type: "button", name: "Call", props: { label: text("Shop now"), href: "/shop" }, style: { base: { width: "200px" } } },
+      { id: "card", type: "stack", name: "Dark card", props: {}, style: { base: { width: "460px", pad: [20, 20, 20, 20], bg: "#1d1a1f" } }, children: [
+        { id: "carded", type: "text", name: "Words on the card", props: { text: text("Pale words on a dark card") }, style: { base: { color: "#e8b7cf", size: 16 } } },
+      ] },
+    ] },
+  ];
+}
 // A card and a button for shapes by equations and an element's own CSS (G, C).
 if (new URLSearchParams(location.search).has("shapes")) {
   initial.tree!.root.children = [

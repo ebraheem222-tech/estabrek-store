@@ -100,6 +100,41 @@ export function readableOn(bg: string, light = "#ffffff", dark = "#111111"): str
   return (contrast(bg, light) ?? 0) >= (contrast(bg, dark) ?? 0) ? light : dark;
 }
 
+/**
+ * The contrast some words need to read on their ground (WCAG 2, level AA): 3 for big words (24 px and up, or
+ * 18.66 px and up when bold), 4.5 for the rest.
+ */
+export const neededContrast = (sizePx: number, bold: boolean): number => (sizePx >= 24 || (bold && sizePx >= 18.66) ? 3 : 4.5);
+
+/**
+ * The nearest colour of the same hue that reads on a ground: its lightness is moved a step at a time, towards
+ * black and towards white, until the contrast reaches `need`; the smaller of the two moves wins. The colour
+ * itself when it already reads; null when it isn't a colour or nothing of that hue gets there (no ground leaves
+ * both black and white under 4.5, so for text that doesn't happen).
+ */
+export function readableColour(hex: string, ground: string, need: number): string | null {
+  const base = hexToLch(hex);
+  const now = contrast(hex, ground);
+  if (!base || now === null) return null;
+  if (now >= need) return hex.length === 4 ? lchToHex(base) : hex.slice(0, 7).toLowerCase();
+  const reach = (way: 1 | -1): { hex: string; moved: number } | null => {
+    for (let i = 1; i <= 100; i++) {
+      const L = base.L + (way * i) / 100;
+      if (L < 0 || L > 1) {
+        // The very end of that way (black or white) is tried too.
+        const end = way > 0 ? "#ffffff" : "#000000";
+        return (contrast(end, ground) ?? 0) >= need ? { hex: end, moved: Math.abs((way > 0 ? 1 : 0) - base.L) } : null;
+      }
+      const at = lchToHex({ L, C: base.C, h: base.h });
+      if ((contrast(at, ground) ?? 0) >= need) return { hex: at, moved: i / 100 };
+    }
+    return null;
+  };
+  const darker = reach(-1), lighter = reach(1);
+  if (darker && lighter) return darker.moved <= lighter.moved ? darker.hex : lighter.hex;
+  return (darker ?? lighter)?.hex ?? null;
+}
+
 /** The steps of a tonal scale and the lightness each one aims at. */
 export const TONES: ReadonlyArray<readonly [number, number]> = [[50, 0.97], [100, 0.93], [200, 0.87], [300, 0.79], [400, 0.7], [500, 0.61], [600, 0.52], [700, 0.43], [800, 0.34], [900, 0.25]];
 export type Tone = { step: number; value: string; own: boolean };

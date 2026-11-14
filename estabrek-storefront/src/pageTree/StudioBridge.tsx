@@ -18,6 +18,7 @@ import { htmlToRich } from "./rich";
 import { INTERACTION_EVENTS } from "@/lib/visualControls";
 import { emitVisualInteraction } from "@/lib/visualInteractions";
 import { collectSelectionParts, domPartPath, partId, SELECTION_HELPERS, type PartKind, type PartOwner } from "./selectionParts";
+import { inkOf } from "./studioInk";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -738,6 +739,13 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       if (!origins.includes(e.origin)) return;
       const d = e.data as { source?: string; type?: string; requestId?: string; dx?: number; dy?: number; y?: number; nodeId?: string; sectionId?: string; path?: string; value?: string; block?: string; owner?: string; part?: string; n?: number } | null;
       if (!d || d.source !== STUDIO_SOURCE) return;
+      // The editor asks what an element's words are drawn in and on (its contrast note).
+      if (d.type === "inkOf" && e.source === window.parent) {
+        const nodeId = typeof d.nodeId === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(d.nodeId) ? d.nodeId : null;
+        const el = nodeId ? document.querySelector<HTMLElement>(`[data-tree-node="${nodeId}"]`) : null;
+        if (nodeId) send({ type: "inkOf", nodeId, ink: el ? inkOf(el) : null });
+        return;
+      }
       if (d.type === "pickPoint" && e.source === window.parent) {
         const value = e.data as { requestId?: unknown; x?: unknown; y?: unknown };
         if (typeof value.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.requestId) || typeof value.x !== "number" || typeof value.y !== "number" || !Number.isFinite(value.x) || !Number.isFinite(value.y) || value.x < 0 || value.y < 0 || value.x > innerWidth || value.y > innerHeight) return;
