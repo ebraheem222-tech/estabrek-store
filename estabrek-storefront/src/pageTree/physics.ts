@@ -71,7 +71,15 @@ export const WORLD_DEFAULTS: WorldSpec = { on: "view", start: "drop", gx: 0, gy:
 
 export const BODY_SHAPES = ["auto", "box", "circle"] as const;
 export const BODY_HANG = ["none", "rope", "spring"] as const;
-export type BodySpec = { shape?: (typeof BODY_SHAPES)[number]; fixed?: boolean; bounce?: number; mass?: number; hang?: (typeof BODY_HANG)[number]; out?: boolean };
+/** What links a body to another one of its world: a rope (it only pulls, once taut), a spring, a rod (a fixed distance). */
+export const BODY_LINKS = ["rope", "spring", "rod"] as const;
+export type BodyLink = (typeof BODY_LINKS)[number];
+const BODY_ID = /^[A-Za-z0-9_-]{1,40}$/;
+export type BodySpec = {
+  shape?: (typeof BODY_SHAPES)[number]; fixed?: boolean; bounce?: number; mass?: number; hang?: (typeof BODY_HANG)[number]; out?: boolean;
+  /** The other body of the same world it is linked to (that element's id), and by what (a rope unless said). */
+  link?: string; linkKind?: BodyLink;
+};
 
 const obj = (v: unknown): Record<string, unknown> | undefined => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
 const within = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : undefined);
@@ -143,7 +151,8 @@ export function fieldForce(kind: WorldField, power: number, dx: number, dy: numb
 export function bodyOf(raw: unknown): BodySpec | null {
   const r = obj(raw);
   if (!r) return null;
-  const b = drop({ shape: inList(r.shape, BODY_SHAPES), fixed: r.fixed === true ? true : undefined, bounce: within(r.bounce, 0, 0.95), mass: within(r.mass, 0.2, 5), hang: inList(r.hang, BODY_HANG), out: r.out === true ? true : undefined });
+  const link = typeof r.link === "string" && BODY_ID.test(r.link) ? r.link : undefined;
+  const b = drop({ shape: inList(r.shape, BODY_SHAPES), fixed: r.fixed === true ? true : undefined, bounce: within(r.bounce, 0, 0.95), mass: within(r.mass, 0.2, 5), hang: inList(r.hang, BODY_HANG), out: r.out === true ? true : undefined, link, linkKind: link ? inList(r.linkKind, BODY_LINKS) : undefined });
   return Object.keys(b).length ? b : null;
 }
 

@@ -3107,7 +3107,8 @@ function StudioDocument() {
                 })}
               />
             ) : null}
-            {worldOfNode(index.nodes.get(index.nodes.get(selFree.id)?.parentId ?? "")?.node) ? <BodyPanel key={`body:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {worldOfNode(index.nodes.get(index.nodes.get(selFree.id)?.parentId ?? "")?.node) ? <BodyPanel key={`body:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)}
+              others={(index.nodes.get(index.nodes.get(selFree.id)?.parentId ?? "")?.children ?? []).filter((c) => c !== selFree.id && !((index.nodes.get(c)?.node.props as { body?: { out?: boolean } } | undefined)?.body?.out)).map((c) => ({ id: c, name: label(c) }))} /> : null}
             <InspectorGroup id="decor" />
             {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <CoverPanel node={selFree} isLast={pageKids[pageKids.length - 1]?.id === selFree.id} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {canCover(selFree) && pageKids.some((n) => n.id === selFree.id) ? <PaintPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}

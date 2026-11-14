@@ -22,7 +22,11 @@ export type World = {
   /** A field of force round a point (percent of the world's box). */
   field?: "none" | "pull" | "push" | "orbit" | "swirl"; fieldX?: number; fieldY?: number; fieldPower?: number;
 };
-export type Body = { shape?: "auto" | "box" | "circle"; fixed?: boolean; bounce?: number; mass?: number; hang?: "none" | "rope" | "spring"; out?: boolean };
+export type Body = {
+  shape?: "auto" | "box" | "circle"; fixed?: boolean; bounce?: number; mass?: number; hang?: "none" | "rope" | "spring"; out?: boolean;
+  /** The other body of the same world it is linked to (its id), and by what. */
+  link?: string; linkKind?: "rope" | "spring" | "rod";
+};
 export type BakedKeys = Record<string, Array<Record<string, unknown>>>;
 /** The kinds that can hold a world (the shop's WORLD_HOSTS). */
 export const WORLD_HOSTS = new Set(["section", "grid", "stack", "columns", "cell", "popup"]);
@@ -191,12 +195,14 @@ export function WorldPanel({ node, busy, onOps, onPlay, onStop, onBake }: {
   );
 }
 
-export function BodyPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: Ops }) {
+export function BodyPanel({ node, busy, onOps, others = [] }: { node: PageTreeNode; busy: boolean; onOps: Ops; others?: Array<{ id: string; name: string }> }) {
   const props = (node.props ?? {}) as Record<string, unknown>;
   const body = ((props.body as Body | undefined) ?? {}) as Body;
   const save = (patch: Partial<Body>) => {
     const next: Record<string, unknown> = { ...body, ...patch };
     for (const [k, v] of Object.entries(next)) if (v === undefined || v === false || (k === "shape" && v === "auto") || (k === "hang" && v === "none")) delete next[k];
+    // A link's kind means nothing without the link.
+    if (!next.link) delete next.linkKind;
     onOps(say("الجسم|The body|הגוף"), [{ op: "setProps", nodeId: node.id, props: { ...props, body: Object.keys(next).length ? next : undefined } }]);
   };
   return (
@@ -206,8 +212,20 @@ export function BodyPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boo
       {body.out ? null : (
         <>
           <Select label={say("شكله|Its shape|צורתו")} value={body.shape ?? "auto"} busy={busy} onPick={(shape) => save({ shape })} testId="studio-body-shape" options={[
-            ["auto", say("حسب شكله|As it looks|לפי המראה")], ["box", say("مربع|A box|קופסה")], ["circle", say("دائرة (بتتدحرج)|A circle (it rolls)|עיגול")],
+            ["auto", say("حسب شكله الحقيقي (نجمة، قلب، سداسي…)|As it really looks (a star, a heart, a hexagon…)|לפי צורתו האמיתית (כוכב, לב, משושה…)")], ["box", say("مربع|A box|קופסה")], ["circle", say("دائرة (بتتدحرج)|A circle (it rolls)|עיגול")],
           ]} />
+          {others.length ? (
+            <>
+              <Select label={say("مربوط بعنصر تاني|Linked to another element|מחובר לאלמנט אחר")} value={body.link && others.some((o) => o.id === body.link) ? body.link : ""} busy={busy} onPick={(link) => save({ link: link || undefined })} testId="studio-body-link" options={[
+                ["", say("لا|No|לא")], ...others.map((o): [string, string] => [o.id, o.name]),
+              ]} />
+              {body.link && others.some((o) => o.id === body.link) ? (
+                <Select label={say("بشو مربوط|Linked by|מחובר באמצעות")} value={body.linkKind ?? "rope"} busy={busy} onPick={(linkKind) => save({ linkKind: linkKind === "rope" ? undefined : linkKind })} testId="studio-body-link-kind" options={[
+                  ["rope", say("حبل (بيشدّ بس لما ينشدّ)|A rope (pulls only when taut)|חבל (מושך רק כשהוא מתוח)")], ["spring", say("زنبرك|A spring|קפיץ")], ["rod", say("عصاية (مسافة ثابتة)|A rod (a fixed distance)|מוט (מרחק קבוע)")],
+                ]} />
+              ) : null}
+            </>
+          ) : null}
           <Check label={say("ثابت بمكانه (الباقي بيصطدم فيه)|Fixed in place (the rest hit it)|קבוע במקום")} on={body.fixed === true} busy={busy} onSet={(v) => save({ fixed: v || undefined })} testId="studio-body-fixed" />
           {body.fixed ? null : (
             <>
