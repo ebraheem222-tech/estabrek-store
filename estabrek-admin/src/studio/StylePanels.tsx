@@ -13,6 +13,7 @@ import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanel
 import { FontPicker, useTreeFonts } from "./TypePanels";
 import { ShapePicker } from "./ShapePanels";
 import { say } from "./say";
+import { TokenSelect } from "./designTokens";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
@@ -53,6 +54,7 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
       {only?.includes("iconSize") ? <Range label={tr("حجم الأيقونة", "Icon size")} min={12} max={200} unit="px" busy={busy} value={typeof v("iconSize") === "number" ? (v("iconSize") as number) : 24} onSave={(n) => save(tr("حجم الأيقونة", "Icon size"), { iconSize: n === 24 ? null : n })} testId="studio-icon-size" /> : null}
       {has("font") ? <FontPicker node={node} screen={screen} busy={busy} onOps={onOps} /> : null}
       {has("size") ? <NumberField label={tr("حجم الخط (فاضي = متل التصميم)", "Font size (empty = as designed)")} suffix="px" value={typeof v("size") === "number" ? (v("size") as number) : undefined} min={8} max={200} onSave={(n) => save(tr("حجم الخط", "Font size"), { size: n })} testId="studio-style-size" /> : null}
+      {has("size") ? <TokenSelect group="sizes" value={v("size")} busy={busy} label={say("حجم من المتغيرات (بيتغيّر بكل الصفحات سوا)|A size from the variables (it changes on every page at once)|גודל מהמשתנים (משתנה בכל הדפים יחד)")} onPick={(ref) => save(tr("حجم الخط", "Font size"), { size: ref })} testId="studio-style-size-variable" /> : null}
       {has("weight") ? (
         <label className="block text-[11px] text-white/55">
           {tr("سماكة الخط", "Weight")}

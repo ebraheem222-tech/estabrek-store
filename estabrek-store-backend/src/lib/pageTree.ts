@@ -297,7 +297,7 @@ export const ScreenStyle = z.object({
   // A family from the shop's fonts library by its name ("cairo"); it wins over `font`. The shop skips one it doesn't have.
   family: z.union([z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/), tokenRef]).optional(),
   italic: z.boolean().optional(),
-  size: px(8, 200).optional(),
+  size: z.union([px(8, 200), tokenRef]).optional(),
   iconSize: px(8, 400).optional(), // an icon's drawing (its words keep `size`)
   // Fluid: the words grow from this size on a phone to `size` on a computer.
   sizeMin: px(8, 200).optional(),

@@ -20,6 +20,16 @@ export function starterTokens(fonts: string[]): DesignTokens {
       { id: "soft", name: n("ظل خفيف", "Soft", "רך"), x: 0, y: 8, blur: 24, spread: -8, color: "#00000033" },
       { id: "lift", name: n("ظل مرفوع", "Lifted", "מורם"), x: 0, y: 20, blur: 44, spread: -12, color: "#00000055" },
     ],
+    // A scale of font sizes: 13 px times 1.25 (a major third) at each step, in whole pixels.
+    sizes: [
+      { id: "small", name: n("صغير", "Small", "קטן"), value: 13 },
+      { id: "body", name: n("نص عادي", "Body", "טקסט רגיל"), value: 16 },
+      { id: "lead", name: n("نص بارز", "Lead", "טקסט מוביל"), value: 20 },
+      { id: "h3", name: n("عنوان صغير", "Small heading", "כותרת קטנה"), value: 25 },
+      { id: "h2", name: n("عنوان", "Heading", "כותרת"), value: 32 },
+      { id: "h1", name: n("عنوان كبير", "Big heading", "כותרת גדולה"), value: 40 },
+      { id: "display", name: n("عنوان عرض", "Display", "כותרת תצוגה"), value: 50 },
+    ],
   };
 }
 

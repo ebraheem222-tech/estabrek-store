@@ -9,7 +9,10 @@ import type { DesignTokens } from "./designTokens";
 type Colour = DesignTokens["colors"][number];
 type Name = NonNullable<Colour["name"]>;
 /** The most variables a group holds (the API's lib/designTokens.ts TOKEN_LIMITS). */
-export const VARIABLE_LIMITS = { colors: 40, spaces: 20 } as const;
+export const VARIABLE_LIMITS = { colors: 40, spaces: 20, sizes: 20 } as const;
+/** The smallest and the biggest a font size can be (the range an element's own size has). */
+export const SIZE_MIN = 8;
+export const SIZE_MAX = 200;
 export const SPACE_MAX = 400;
 /** An id made of a variable's id and a tail, inside the 31 characters an id may have. */
 const idFor = (base: string, tail: string) => `${base.slice(0, 31 - tail.length - 1).replace(/-+$/, "")}-${tail}`;
@@ -74,4 +77,20 @@ export function spacesOnScale(tokens: DesignTokens, base: number, ratio: number)
   const values = modularScale(base, ratio, ids.length, { max: SPACE_MAX });
   if (values.length !== ids.length) return null;
   return { ...tokens, spaces: ids.map((id, i) => ({ ...(tokens.spaces[i] ?? { id }), value: values[i] })) };
+}
+
+/** The ids of the font sizes a store without any starts with, smallest first. */
+export const STARTER_SIZES = ["small", "body", "lead", "h3", "h2", "h1", "display"] as const;
+/**
+ * The font sizes on a scale: each one `ratio` times the one before, from `base` (the smallest, 8 px at least), in
+ * their order; a store without any gets seven, named as in `ready` (the ready set's sizes) when it is given. Null
+ * when the scale can't give every size its own value under the biggest a size can be.
+ */
+export function sizesOnScale(tokens: DesignTokens, base: number, ratio: number, ready: DesignTokens["sizes"] = []): DesignTokens | null {
+  if (!(base >= SIZE_MIN)) return null;
+  const ids: string[] = tokens.sizes.length ? tokens.sizes.map((z) => z.id) : [...STARTER_SIZES];
+  const values = modularScale(base, ratio, ids.length, { max: SIZE_MAX });
+  if (values.length !== ids.length) return null;
+  const fresh = (id: string) => ready.find((z) => z.id === id) ?? { id };
+  return { ...tokens, sizes: ids.map((id, i) => ({ ...(tokens.sizes[i] ?? fresh(id)), value: values[i] })) };
 }

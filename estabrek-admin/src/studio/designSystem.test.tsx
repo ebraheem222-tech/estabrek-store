@@ -9,6 +9,7 @@ import { EMPTY_TOKENS, newTokenId, TokenSelect, TokensContext } from "./designTo
 import { starterTokens } from "./tokenSets";
 import { VariablesPanel } from "./VariablesPanel";
 import { ColourPick } from "./StudioTreePanels";
+import { TextStylePanel } from "./StylePanels";
 
 afterEach(() => {
   cleanup();
@@ -112,6 +113,91 @@ describe("design variables in the editor", () => {
     view.rerender(wrap({ ...api, tokens: { ...tokens, colors: tokens.colors.map((c) => (c.id === "ink" ? { ...c, value: "#9a9a9a" } : c)) } }));
     fireEvent.click(screen.getByTestId("variables-tab-colors"));
     expect(screen.getByTestId("variables-weak").textContent).toContain("2.6");
+  });
+
+  it("font sizes: each shown at its size, kept between 8 and 200, and put on a scale of their own", () => {
+    setLangForTests("en");
+    const save = vi.fn(async () => true);
+    const tokens = starterTokens([]);
+    const api = { tokens, hasDraft: false, busy: false, save, publish: vi.fn(), drop: vi.fn() };
+    const wrap = (a: typeof api) => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { enabled: false } } })}><VariablesPanel api={a as never} canPublish /></QueryClientProvider>;
+    const view = render(wrap(api));
+    const saved = () => (save.mock.calls.at(-1) as unknown as [{ sizes: Array<{ id: string; value: number; name?: Record<string, string> }> }])[0].sizes;
+    fireEvent.click(screen.getByTestId("variables-tab-sizes"));
+    expect(screen.getByTestId("variables-tab-sizes").textContent).toContain("Font sizes");
+    expect(screen.getAllByTestId("variable-number").map((el) => (el as HTMLInputElement).value)).toEqual(["13", "16", "20", "25", "32", "40", "50"]);
+    // A sample of each at its size (a very big one is drawn no bigger than the panel takes).
+    expect(screen.getAllByTestId("variable-size-sample").map((el) => el.style.fontSize)).toEqual(["13px", "16px", "20px", "25px", "32px", "40px", "44px"]);
+    // A size under the smallest is brought up to it.
+    const first = screen.getAllByTestId("variable-number")[0] as HTMLInputElement;
+    fireEvent.change(first, { target: { value: "4" } });
+    fireEvent.blur(first);
+    expect(saved()[0]).toMatchObject({ id: "small", value: 8 });
+    // The scale: seen first, then applied; ids and names stay.
+    expect(screen.getByTestId("variables-size-scale-preview").textContent).toBe("13 · 16 · 20 · 25 · 32 · 40 · 50");
+    fireEvent.change(screen.getByTestId("variables-size-scale-ratio"), { target: { value: "1.5" } });
+    fireEvent.change(screen.getByTestId("variables-size-scale-base"), { target: { value: "12" } });
+    expect(screen.getByTestId("variables-size-scale-preview").textContent).toBe("12 · 18 · 27 · 41 · 61 · 91 · 137");
+    fireEvent.click(screen.getByTestId("variables-size-scale-apply"));
+    expect(saved().map((x) => [x.id, x.value])).toEqual([["small", 12], ["body", 18], ["lead", 27], ["h3", 41], ["h2", 61], ["h1", 91], ["display", 137]]);
+    expect(saved()[5].name).toEqual(tokens.sizes[5].name);
+    view.rerender(wrap({ ...api, tokens: { ...tokens, sizes: saved() as never } }));
+    expect(screen.getAllByTestId("variable-number").map((el) => (el as HTMLInputElement).value)).toEqual(["12", "18", "27", "41", "61", "91", "137"]);
+    // A ratio that passes 200 before the last size isn't applied.
+    fireEvent.change(screen.getByTestId("variables-size-scale-ratio"), { target: { value: "2" } });
+    expect((screen.getByTestId("variables-size-scale-apply") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("variables-size-scale-preview").textContent).toContain("200");
+    // One more size, by hand.
+    fireEvent.click(screen.getByTestId("variables-add-sizes"));
+    expect(saved()).toHaveLength(8);
+    expect(saved().at(-1)).toMatchObject({ id: "size", value: 16, name: { en: "New font size" } });
+    // A store with variables but no sizes yet: the scale gives it the seven, with their names.
+    view.rerender(wrap({ ...api, tokens: { ...tokens, sizes: [] } }));
+    expect(screen.queryAllByTestId("variable-number")).toHaveLength(0);
+    fireEvent.change(screen.getByTestId("variables-size-scale-ratio"), { target: { value: "1.25" } });
+    fireEvent.change(screen.getByTestId("variables-size-scale-base"), { target: { value: "13" } });
+    fireEvent.click(screen.getByTestId("variables-size-scale-apply"));
+    expect(saved()).toEqual(tokens.sizes);
+  });
+
+  it("words take a font size from the variables by name, and go back to a number or to none", () => {
+    setLangForTests("en");
+    const edits: unknown[] = [];
+    const panel = (base: Record<string, unknown>) => (
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { enabled: false } } })}>
+        <TokensContext.Provider value={starterTokens([])}>
+          <TextStylePanel node={{ id: "h", type: "heading", props: { text: { en: "Hello" } }, style: { base } } as PageTreeNode} screen="base" busy={false} onOps={(_l, ops) => edits.push(ops[0])} only={["size"]} />
+        </TokensContext.Provider>
+      </QueryClientProvider>
+    );
+    const view = render(panel({ size: 30, color: "#111111" }));
+    const select = () => screen.getByTestId("studio-style-size-variable") as HTMLSelectElement;
+    // A number: no variable is picked, and the seven sizes are offered by name.
+    expect(select().value).toBe("");
+    expect([...select().options].map((o) => o.value)).toEqual(["", "$small", "$body", "$lead", "$h3", "$h2", "$h1", "$display"]);
+    expect((screen.getByTestId("studio-style-size") as HTMLInputElement).value).toBe("30");
+    fireEvent.change(select(), { target: { value: "$h1" } });
+    expect(edits.at(-1)).toEqual({ op: "setStyle", nodeId: "h", screen: "base", style: { size: "$h1", color: "#111111" } });
+    // By name: the picker shows it, and the number field is empty.
+    view.rerender(panel({ size: "$h1", color: "#111111" }));
+    expect(select().value).toBe("$h1");
+    expect((screen.getByTestId("studio-style-size") as HTMLInputElement).value).toBe("");
+    // "None" takes the size off (as designed).
+    fireEvent.change(select(), { target: { value: "" } });
+    expect(edits.at(-1)).toEqual({ op: "setStyle", nodeId: "h", screen: "base", style: { color: "#111111" } });
+  });
+
+  it("a store without font sizes offers no size picker", () => {
+    setLangForTests("en");
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { enabled: false } } })}>
+        <TokensContext.Provider value={EMPTY_TOKENS}>
+          <TextStylePanel node={{ id: "h", type: "heading", props: { text: { en: "Hello" } } } as PageTreeNode} screen="base" busy={false} onOps={() => {}} only={["size"]} />
+        </TokensContext.Provider>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("studio-style-size")).toBeTruthy();
+    expect(screen.queryByTestId("studio-style-size-variable")).toBeNull();
   });
 
   it("pickers offer the variables by name and write $id", () => {

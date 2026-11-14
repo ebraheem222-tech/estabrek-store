@@ -1,5 +1,5 @@
 /**
- * The Variables panel (Styles tab): the store's colours, fonts, spaces, corners and shadows by
+ * The Variables panel (Styles tab): the store's colours, fonts, font sizes, spaces, corners and shadows by
  * name. An element takes one by name ("$brand"), so changing it here changes every page once it's
  * published. Changes are a draft the editor's preview shows first.
  */
@@ -10,13 +10,15 @@ import { useTreeFonts } from "./TypePanels";
 import { newTokenId, TOKEN_GROUP_NAMES, tokenName, withGroup, type DesignTokens, type TokenGroup } from "./designTokens";
 import { starterTokens } from "./tokenSets";
 import { HARMONIES, harmony, SCALE_RATIOS, type ContrastGrade, type Harmony } from "../../../shared/colour";
-import { matesToAdd, readings, spacesOnScale, tonesToAdd, weakGrounds } from "./variableMaths";
+import { matesToAdd, readings, SIZE_MAX, SIZE_MIN, sizesOnScale, spacesOnScale, tonesToAdd, weakGrounds } from "./variableMaths";
 export { starterTokens };
 
 type Api = { tokens: DesignTokens; hasDraft: boolean; busy: boolean; save: (t: DesignTokens) => Promise<boolean>; publish: () => Promise<boolean>; drop: () => Promise<boolean> };
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
 const input = "w-full min-w-0 rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
-const GROUPS: TokenGroup[] = ["colors", "fonts", "spaces", "radii", "shadows"];
+const GROUPS: TokenGroup[] = ["colors", "fonts", "sizes", "spaces", "radii", "shadows"];
+/** The ready set's font sizes: a store that has variables but no sizes yet gets these names with its scale. */
+const READY_SIZES = starterTokens([]).sizes;
 /** What a contrast is good for, in words (shared/colour.ts contrastGrade). */
 const GRADE_NAMES: Record<ContrastGrade, string> = {
   AAA: "ممتاز لأي نص|Excellent for any text|מצוין לכל טקסט",
@@ -36,6 +38,8 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
   const [open, setOpen] = useState<TokenGroup>("colors");
   // The scale the spaces can be put on: the smallest one, and what each next one is multiplied by.
   const [scale, setScale] = useState({ base: 4, ratio: 1.5 });
+  // The scale the font sizes can be put on: the smallest size, and what each next one is multiplied by.
+  const [sizeScale, setSizeScale] = useState({ base: 13, ratio: 1.25 });
   const t = api.tokens;
   const lang = adminLang();
   const empty = GROUPS.every((g) => !t[g].length);
@@ -43,9 +47,9 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
   const set = (group: TokenGroup, i: number, patch: Partial<Item>) => void api.save(withGroup(t, group, (t[group] as Item[]).map((x, j) => (j === i ? { ...x, ...patch } : x)) as never));
   const drop = (group: TokenGroup, i: number) => void api.save(withGroup(t, group, (t[group] as Item[]).filter((_, j) => j !== i) as never));
   const add = (group: TokenGroup) => {
-    const name = say({ colors: "لون جديد|New colour|צבע חדש", fonts: "خط جديد|New font|גופן חדש", spaces: "مسافة جديدة|New space|מרווח חדש", radii: "زاوية جديدة|New corner|פינה חדשה", shadows: "ظل جديد|New shadow|צל חדש" }[group]);
-    const id = newTokenId(t, group, { colors: "colour", fonts: "font", spaces: "space", radii: "corner", shadows: "shadow" }[group]);
-    const item = { colors: { id, name: { [lang]: name }, value: "#c86b98" }, fonts: { id, name: { [lang]: name }, family: fonts[0]?.slug ?? "inter" }, spaces: { id, name: { [lang]: name }, value: 24 }, radii: { id, name: { [lang]: name }, value: 16 }, shadows: { id, name: { [lang]: name }, x: 0, y: 10, blur: 30, spread: -10, color: "#00000040" } }[group];
+    const name = say({ colors: "لون جديد|New colour|צבע חדש", fonts: "خط جديد|New font|גופן חדש", spaces: "مسافة جديدة|New space|מרווח חדש", radii: "زاوية جديدة|New corner|פינה חדשה", shadows: "ظل جديد|New shadow|צל חדש", sizes: "حجم خط جديد|New font size|גודל גופן חדש" }[group]);
+    const id = newTokenId(t, group, { colors: "colour", fonts: "font", spaces: "space", radii: "corner", shadows: "shadow", sizes: "size" }[group]);
+    const item = { colors: { id, name: { [lang]: name }, value: "#c86b98" }, fonts: { id, name: { [lang]: name }, family: fonts[0]?.slug ?? "inter" }, spaces: { id, name: { [lang]: name }, value: 24 }, radii: { id, name: { [lang]: name }, value: 16 }, shadows: { id, name: { [lang]: name }, x: 0, y: 10, blur: 30, spread: -10, color: "#00000040" }, sizes: { id, name: { [lang]: name }, value: 16 } }[group];
     void api.save(withGroup(t, group, [...(t[group] as Item[]), item] as never));
   };
   const num = (v: string, min: number, max: number) => { const x = Number(v); return Number.isFinite(x) ? Math.max(min, Math.min(max, x)) : null; };
@@ -66,6 +70,22 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
             {say("لون الحبر على لون الورق بينقرأ بصعوبة|Your ink hardly reads on your paper|הדיו שלך כמעט לא נקרא על הנייר שלך")} (<span dir="ltr">{weakGrounds(t)!.toFixed(1)}</span>): {say("النص بدو 4.5 وطالع|text needs 4.5 or more|טקסט צריך 4.5 ומעלה")}
           </p>
         ) : null}
+        {open === "sizes" ? (() => {
+          const next = sizesOnScale(t, sizeScale.base, sizeScale.ratio, READY_SIZES);
+          return (
+            <div className="space-y-1 rounded-lg border border-white/[0.06] p-1.5" data-testid="variables-size-scale">
+              <div className="text-[11px] leading-5 text-white/60">{say("سلّم أحجام: كل حجم قد اللي قبله مضروب بنسبة ثابتة، من الأصغر للأكبر|A scale of sizes: each one is the one before it times a fixed ratio, smallest first|סולם גדלים: כל גודל הוא הקודם כפול יחס קבוע, מהקטן לגדול")}</div>
+              <div className="flex gap-1">
+                <input type="number" className={input} min={SIZE_MIN} max={40} value={sizeScale.base} aria-label={say("أصغر حجم|The smallest size|הגודל הקטן ביותר")} title={say("أصغر حجم|The smallest size|הגודל הקטן ביותר")} onChange={(e) => { const v = num(e.target.value, SIZE_MIN, 40); if (v !== null) setSizeScale({ ...sizeScale, base: v }); }} data-testid="variables-size-scale-base" />
+                <select className={input} value={sizeScale.ratio} aria-label={say("النسبة|The ratio|היחס")} onChange={(e) => setSizeScale({ ...sizeScale, ratio: Number(e.target.value) })} data-testid="variables-size-scale-ratio">
+                  {SCALE_RATIOS.map((r) => <option key={r.id} value={r.ratio}>× {Math.round(r.ratio * 1000) / 1000}{r.id === "golden" ? ` · ${say("النسبة الذهبية|Golden ratio|יחס הזהב")}` : ""}</option>)}
+                </select>
+              </div>
+              <div className="text-[10px] text-white/45" data-testid="variables-size-scale-preview">{next ? <span dir="ltr">{next.sizes.map((x) => x.value).join(" · ")}</span> : say("هالنسبة بتطلع فوق 200 قبل آخر حجم: صغّر النسبة أو أصغر حجم|This ratio passes 200 before the last size: lower the ratio or the smallest size|היחס הזה עובר 200 לפני הגודל האחרון: הקטן את היחס או את הגודל הקטן ביותר")}</div>
+              <button type="button" className={`${btn} w-full`} disabled={api.busy || !next} onClick={() => { if (next) void api.save(next); }} data-testid="variables-size-scale-apply">{say("حط الأحجام على هالسلّم|Put the sizes on this scale|שים את הגדלים על הסולם הזה")}</button>
+            </div>
+          );
+        })() : null}
         {open === "spaces" ? (() => {
           const next = spacesOnScale(t, scale.base, scale.ratio);
           return (
@@ -123,7 +143,8 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
               );
             })() : null}
             {open === "fonts" ? <select className={input} disabled={api.busy} value={(x as DesignTokens["fonts"][number]).family} onChange={(e) => set(open, i, { family: e.target.value } as never)} data-testid="variable-font">{[...new Set([(x as DesignTokens["fonts"][number]).family, ...fonts.map((f) => f.slug)])].map((slug) => <option key={slug} value={slug}>{fonts.find((f) => f.slug === slug)?.name ?? slug}</option>)}</select> : null}
-            {open === "spaces" || open === "radii" ? <input key={`${x.id}:${(x as DesignTokens["spaces"][number]).value}`} type="number" className={input} disabled={api.busy} min={0} max={open === "spaces" ? 400 : 999} defaultValue={(x as DesignTokens["spaces"][number]).value} onBlur={(e) => { const v = num(e.target.value, 0, open === "spaces" ? 400 : 999); if (v !== null) set(open, i, { value: v } as never); }} data-testid="variable-number" /> : null}
+            {open === "spaces" || open === "radii" || open === "sizes" ? <input key={`${x.id}:${(x as DesignTokens["spaces"][number]).value}`} type="number" className={input} disabled={api.busy} min={open === "sizes" ? SIZE_MIN : 0} max={open === "spaces" ? 400 : open === "sizes" ? SIZE_MAX : 999} defaultValue={(x as DesignTokens["spaces"][number]).value} onBlur={(e) => { const v = num(e.target.value, open === "sizes" ? SIZE_MIN : 0, open === "spaces" ? 400 : open === "sizes" ? SIZE_MAX : 999); if (v !== null) set(open, i, { value: v } as never); }} data-testid="variable-number" /> : null}
+            {open === "sizes" ? <div className="truncate leading-tight text-white/80" style={{ fontSize: Math.min((x as DesignTokens["sizes"][number]).value, 44) }} title={`${(x as DesignTokens["sizes"][number]).value}px`} data-testid="variable-size-sample">{say("أبجد هوّز|Aa Bb Cc|אבג דהו")}</div> : null}
             {open === "shadows" ? (() => {
               const s = x as DesignTokens["shadows"][number];
               return (
