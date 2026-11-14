@@ -87,7 +87,7 @@ test("keyframes take a free curve for the whole animation", () => {
   const node: PageTreeNode = { id: "h", type: "heading", props: { text: { en: "Hello" } }, motion: { keys: { on: "view", duration: 1, parts: { self: [{ at: 0, opacity: 0 }, { at: 100, opacity: 1 }] } } } };
   render(<KeyframesPanel node={node} busy={false} onOps={(_label, ops) => edits.push(ops)} onPlay={() => {}} />);
   fireEvent.change(screen.getByTestId("keys-ease"), { target: { value: "__free" } });
-  const op = edits.at(-1)![0] as { op: string; motion: { keys: { ease: string } } };
+  const op = edits.at(-1)![0] as unknown as { op: string; motion: { keys: { ease: string } } };
   expect(op.op).toBe("setMotion");
   expect(op.motion.keys.ease).toBe(FREE_CURVE);
 });
