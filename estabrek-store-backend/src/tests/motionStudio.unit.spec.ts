@@ -128,6 +128,13 @@ describe("free curves and the order of a stagger", () => {
     expect(issues(withKeys({ ease: "wild" })).length).toBeGreaterThan(0);
   });
 
+  test("keyframes can carry a path: a known shape, its size in range, where its place is and whether it turns", () => {
+    const withPath = (path: Record<string, unknown>) => withKeys({ path });
+    for (const kind of ["arc", "wave", "s", "zigzag", "loop", "eight", "spiral"]) expect(issues(withPath({ kind, w: 160, h: 60 })), kind).toEqual([]);
+    expect(issues(withPath({ kind: "wave", w: 300, h: -40, turns: 2.5, rest: "start", turn: true }))).toEqual([]);
+    for (const bad of [{ kind: "square", w: 100, h: 50 }, { kind: "arc", w: 5000, h: 50 }, { kind: "arc", w: 100 }, { kind: "arc", w: 100, h: 50, turns: 40 }, { kind: "arc", w: 100, h: 50, rest: "middle" }]) expect(issues(withPath(bad)).length, JSON.stringify(bad)).toBeGreaterThan(0);
+  });
+
   test("a stagger's order is one of five", () => {
     for (const order of ["first", "last", "center", "edges", "random"]) expect(issues(withEnter({ stagger: 0.1, order })), order).toEqual([]);
     expect(issues(withEnter({ stagger: 0.1, order: "spiral" })).length).toBeGreaterThan(0);

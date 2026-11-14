@@ -11,6 +11,7 @@
  * Plain data in, plain data out: no DOM and no "@/" imports, so tests load this file directly.
  */
 import { easeText } from "./motionCurve";
+import { pathOf, type PathSpec } from "./motionPath";
 
 export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click", "loop", "trigger"] as const;
 export const KEY_PARTS = ["self", "before", "after", "inner"] as const;
@@ -36,6 +37,8 @@ export type KeysSpec = {
   duration?: number; delay?: number; ease?: string; repeat?: number; yoyo?: boolean;
   start?: number; end?: number; scrub?: number;
   origin?: (typeof KEY_ORIGINS)[number];
+  /** A path it travels over the animation's time (motionPath.ts): it owns where the element stands, and its turn when it turns with the path. */
+  path?: PathSpec;
   parts: Partial<Record<KeyPart, KeyFrameSpec[]>>;
 };
 export type CueSpec = { from: number; to: number; in?: (typeof CUE_KINDS)[number]; out?: (typeof CUE_KINDS)[number] | "stay"; soft?: number };
@@ -103,6 +106,7 @@ export function keysSpecOf(raw: unknown): KeysSpec | undefined {
     end: within(r.end, 0, 100),
     scrub: within(r.scrub, 0, 3),
     origin: inList(r.origin, KEY_ORIGINS),
+    path: pathOf(r.path),
   });
 }
 

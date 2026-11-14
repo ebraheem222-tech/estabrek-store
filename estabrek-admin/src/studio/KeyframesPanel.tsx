@@ -14,6 +14,7 @@ import { Range } from "./LookPanels";
 import { ColourPick, SCREEN_LABEL } from "./StudioTreePanels";
 import { say } from "./say";
 import { EaseChoice } from "./EaseChoice";
+import { PathFields } from "./PathFields";
 import {
   addFrame, dropFrame, FIELD_REST, FRAME_FIELDS, keysOf, keysOp, layersOf, layersOp, ORIGIN_NAME, PART_NAME, partsFor, PRESET_GROUPS, presetOps, presetsFor, setFrame, starterKeys, TRIGGER_NAME,
   type KeyFrame, type KeyPart, type Keys, type KeyTrigger, type Layer,
@@ -195,6 +196,7 @@ export function KeyframesPanel({ node, busy, onOps, onPlay }: { node: PageTreeNo
           ) : null}
           {keys.on === "scene" ? <p className="text-[10px] text-white/40">{say("بيمشي مع لحظة مشهد التمرير اللي هو فيه (أو لحظته هو إذا إلها وقت).|It follows the scroll scene it's in (or its own moment there, if it has one).|הוא עוקב אחרי סצנת הגלילה שהוא בה (או הרגע שלו שם, אם יש).")}</p> : null}
           <Select label={say("بيلف ويكبر من|Turns and grows from|מסתובב וגדל מ־")} value={keys.origin ?? "center"} busy={busy} onPick={(origin) => set({ origin: origin === "center" ? undefined : origin })} options={ORIGIN_NAME} />
+          <PathFields path={keys.path} busy={busy} onSave={(path) => set({ path })} />
 
           <div className="flex flex-wrap gap-1" role="tablist" aria-label={say("القطع|Pieces|חלקים")}>
             {parts.map((pt) => (

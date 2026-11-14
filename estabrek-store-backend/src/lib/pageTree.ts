@@ -406,6 +406,20 @@ export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click"
 export const KEY_PARTS = ["self", "before", "after", "inner"] as const;
 const Frames = z.array(KeyFrame).min(2).max(16);
 export const KEY_ORIGINS = ["center", "top", "bottom", "start", "end", "top-start", "top-end", "bottom-start", "bottom-end"] as const;
+/**
+ * A path the element travels over its keyframes' time (the shop's pageTree/motionPath.ts draws each shape by its
+ * equation): `w` px across and `h` px up, going round or up and down `turns` times; its own place is the path's end
+ * (it arrives) or its start (it leaves); `turn` = it turns to face the way it goes.
+ */
+export const PATH_KINDS = ["arc", "wave", "s", "zigzag", "loop", "eight", "spiral"] as const;
+const KeyPath = z.object({
+  kind: z.enum(PATH_KINDS),
+  w: px(0, 2000),
+  h: px(-1000, 1000),
+  turns: z.number().finite().min(0.5).max(8).optional(),
+  rest: z.enum(["end", "start"]).optional(),
+  turn: z.boolean().optional(),
+});
 export const NodeKeys = z.object({
   on: z.enum(KEY_TRIGGERS),
   duration: z.number().finite().min(0.05).max(60).optional(),
@@ -417,6 +431,7 @@ export const NodeKeys = z.object({
   end: pct.optional(), // …to this %
   scrub: z.number().min(0).max(3).optional(), // with the scroll: seconds to catch up (0 = at once)
   origin: z.enum(KEY_ORIGINS).optional(),
+  path: KeyPath.optional(),
   parts: z.object({ self: Frames.optional(), before: Frames.optional(), after: Frames.optional(), inner: Frames.optional() }).refine((p) => Object.values(p).some(Boolean), "Keyframes for at least one piece"),
 });
 /** How something comes into and leaves a scroll scene. */
