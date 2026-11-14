@@ -21,6 +21,10 @@ export function ScheduleView({spec, lang, main}: { spec: ScheduleSpec; lang: Tre
   const days = scheduleDays(spec.items, say);
   const activeDay = spec.filterDays && selectedDay !== null && days.includes(selectedDay) ? selectedDay : null;
   const visible = filterScheduleItems(spec.items, activeDay, say);
+  // A column for who speaks, and one for where, only when an item says so (opening hours have neither): judged on every
+  // item, not only the day shown, so the table keeps its columns from day to day.
+  const speakers = spec.items.some(item => Boolean(say(item.speaker)));
+  const places = spec.showLocation && spec.items.some(item => Boolean(say(item.location)));
   const base = useId();
   const title = (item: typeof spec.items[number]) => item.href ? <a href={item.href} data-pt-field={at(item, "title")}>{say(item.title)}</a> : say(item.title);
   return <div className={styles.schedule} data-schedule-layout={spec.layout}>
@@ -29,8 +33,8 @@ export function ScheduleView({spec, lang, main}: { spec: ScheduleSpec; lang: Tre
     </div> : null}
     <div id={`${base}-sessions`}>
       {!visible.length ? <p role="status">{words.empty}</p> : spec.layout === "table" ? <div className={styles.scroll} role="region" aria-label={label} tabIndex={0}>
-        <table className={styles.table} aria-label={label}><caption data-pt-field={own(spec.label, lang, main, "label")}>{label}</caption><thead><tr><th scope="col">{words.day}</th><th scope="col">{words.time}</th><th scope="col">{words.session}</th><th scope="col">{words.speaker}</th>{spec.showLocation ? <th scope="col">{words.location}</th> : null}</tr></thead>
-          <tbody>{visible.map((item,index) => <tr key={index}><td data-pt-field={at(item, "day")}>{say(item.day)}</td><td className={styles.time}>{item.time}</td><th scope="row"><div data-pt-field={item.href ? undefined : at(item, "title")}>{title(item)}</div>{say(item.text) ? <p data-pt-field={at(item, "text")}>{say(item.text)}</p> : null}</th><td data-pt-field={at(item, "speaker")}>{say(item.speaker)}</td>{spec.showLocation ? <td data-pt-field={at(item, "location")}>{say(item.location)}</td> : null}</tr>)}</tbody>
+        <table className={styles.table} aria-label={label}><caption data-pt-field={own(spec.label, lang, main, "label")}>{label}</caption><thead><tr><th scope="col">{words.day}</th><th scope="col">{words.time}</th><th scope="col">{words.session}</th>{speakers ? <th scope="col">{words.speaker}</th> : null}{places ? <th scope="col">{words.location}</th> : null}</tr></thead>
+          <tbody>{visible.map((item,index) => <tr key={index}><td data-pt-field={at(item, "day")}>{say(item.day)}</td><td className={styles.time}>{item.time}</td><th scope="row"><div data-pt-field={item.href ? undefined : at(item, "title")}>{title(item)}</div>{say(item.text) ? <p data-pt-field={at(item, "text")}>{say(item.text)}</p> : null}</th>{speakers ? <td data-pt-field={at(item, "speaker")}>{say(item.speaker)}</td> : null}{places ? <td data-pt-field={at(item, "location")}>{say(item.location)}</td> : null}</tr>)}</tbody>
         </table>
       </div> : <ol className={spec.layout === "timeline" ? styles.timeline : styles.cards} aria-label={label}>
         {visible.map((item,index) => <li key={index}><div className={styles.eventMeta}><span data-pt-field={at(item, "day")}>{say(item.day)}</span><span className={styles.time}>{item.time}</span></div><h3 data-pt-field={item.href ? undefined : at(item, "title")}>{title(item)}</h3>{say(item.text) ? <p data-pt-field={at(item, "text")}>{say(item.text)}</p> : null}{say(item.speaker) ? <p data-pt-field={at(item, "speaker")}>{say(item.speaker)}</p> : null}{spec.showLocation && say(item.location) ? <p data-pt-field={at(item, "location")}>{say(item.location)}</p> : null}</li>)}

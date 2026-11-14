@@ -1116,6 +1116,8 @@ export const BASE_CSS = [
   ".pt-member-name{font-weight:700}.pt-member-role{color:var(--muted);font-size:.9em}",
   ".pt-logos{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:28px 44px}.pt-logos img{display:block;height:40px;width:auto;max-width:160px;object-fit:contain}",
   ".pt-logos-gray img{filter:grayscale(1);opacity:.65;transition:filter .3s ease,opacity .3s ease}.pt-logos-gray :is(a,span):hover img{filter:none;opacity:1}",
+  // On a phone they are smaller and closer: at a computer's size and gap each logo took a row of its own.
+  `@media (max-width:${PHONE_MAX}px){.pt-logos{gap:20px 28px}.pt-logos img{height:32px;max-width:120px}}`,
   ".pt-alert{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid}.pt-alert[hidden]{display:none}",
   ".pt-alert-icon{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;font-size:12px;font-weight:700}",
   ".pt-alert-title{display:block;margin-bottom:2px}.pt-alert-close{margin-inline-start:auto;flex:none;border:0;background:none;color:inherit;font-size:20px;line-height:1;cursor:pointer;padding:0 4px}",
