@@ -2943,7 +2943,13 @@ function StudioDocument() {
           return (
             <PictureColoursCard
               look={pictureLook} busy={busy || dt.busy} room={fresh.length} partName={part ? label(part.id) : undefined}
-              onAdd={() => { if (fresh.length) void dt.save(withGroup(dt.tokens, "colors", [...dt.tokens.colors, ...fresh])); }}
+              onAdd={() => {
+                if (!fresh.length) return;
+                // The variables are a draft until they are published (Styles → Variables): said, so they aren't left there.
+                void dt.save(withGroup(dt.tokens, "colors", [...dt.tokens.colors, ...fresh])).then((ok) => {
+                  if (ok) toast.success(say("انزادوا لألوان المتغيرات|Added to the colour variables|נוספו למשתני הצבע"), { description: say("هلأ بتختارهم بالإسم بأي عنصر. ليوصلوا للمتجر: الستايلات ← المتغيرات ← انشر.|Any element can take them by name now. To reach the shop: Styles → Variables → Publish.|כל רכיב יכול לקחת אותם בשם. כדי שיגיעו לחנות: סגנונות ← משתנים ← פרסם.") });
+                });
+              }}
               onDress={() => { if (part && pictureLook.roles) void change(say("ألوان القسم من الصورة|The part's colours from the picture|צבעי החלק מהתמונה"), [styleOp(part, "base", { bg: pictureLook.roles.ground, color: pictureLook.roles.ink })]); }}
               onClose={() => setPictureLook(null)}
             />
