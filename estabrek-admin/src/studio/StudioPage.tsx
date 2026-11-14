@@ -135,6 +135,7 @@ import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./Mul
 import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange, distancesAround } from "./handles";
 import { pickCanvasContainer } from "./canvasContainers";
+import { BOUND_TAG, partBounds } from "./canvasBounds";
 import { effectiveLook, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
 import { canvasPlane,effectiveConstraints,movementOf,validResponsiveConstraints,planeMoveLocalPatch,planeNudgePatch,planeResizePatch } from "./engineGeometry";
 import { constrainSize,spaceBoxes,type SizeConstraints } from "./layoutConstraints";
@@ -145,7 +146,7 @@ import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
 import { decorArt } from "./decor";
-import { around, moveAllOps, readDragPrefs, saveDragPrefs, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
+import { around, edgeScroll, moveAllOps, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
@@ -209,7 +210,7 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
 /** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
 type PlaneItem={id:string;frame:Plane;look:Record<string,unknown>;parentId:string;free:boolean};
 type PartMove = { vars: Record<string, string | number>; inlineBox?: boolean; target: string; kind: PagesAPI.LookKind; parent: Plane; start: Pt; screen: PagesAPI.TreeScreen; style: Record<string, unknown> };
-type Down = { partMove?: PartMove; before?: string | null; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
+type Down = { scroll?: Pt; at?: Pt; keys?: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }; edge?: number; partMove?: PartMove; before?: string | null; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
 /** What a freely placed element can be dragged into. */
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
@@ -962,6 +963,12 @@ function StudioDocument() {
       if (Math.hypot(p.x - d.p.x, p.y - d.p.y) > 4) d.moved = true;
       if (d.partMove && d.moved) { movePart(d, p); return; }
       if (d.grab && d.moved) {
+        // Carried to the top or the bottom of what shows of the frame, the page scrolls by itself: a part out of
+        // sight can be reached without letting go (only the way the pointer went since the press).
+        d.at = p; d.keys = { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey };
+        const edge = d.analytic ? 0 : edgeScroll(p.y, Math.max(frameBox.y, 0), Math.min(frameBox.y + frameBox.h, canvas.h));
+        d.edge = edge > 0 && p.y > d.p.y + 4 || edge < 0 && p.y < d.p.y - 4 ? edge : 0;
+        if (d.edge) edgeScrolling();
         // Placed freely: it moves over its holder, meets what's beside it, or goes into another place.
         if (d.free) return moveFree(d, p, e);
         const n = nodeOf(d.grab);
@@ -1080,7 +1087,7 @@ function StudioDocument() {
         if (motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
       }
     }
-    down.current = { pointerId: e.pointerId, before: selected, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove };
+    down.current = { pointerId: e.pointerId, before: selected, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove, scroll: layout ? { ...layout.scroll } : undefined };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
@@ -1205,6 +1212,36 @@ function StudioDocument() {
     const s = shapeOf(selected);
     if (!s || !canvas.w) return;
     glideTo(focusView(s.box, { zoom, pan }, canvas, 0.6, 0));
+  };
+  /**
+   * The view comes to a part of the page, the whole of it in the free part of the canvas (after an element was
+   * dragged into it): once it has been measured again and rests, and not under a new press.
+   */
+  const frameOnPart = (sid: string) => {
+    let tries = 0;
+    let seen: Box | null = null;
+    const again = (ms: number) => { if (++tries < 30) window.setTimeout(run, ms); };
+    const run = () => {
+      const v = besideNow.current;
+      const s = v.shapes.find((x) => x.id === sid);
+      const still = Boolean(s && seen && Math.abs(seen.x - s.box.x) < 0.5 && Math.abs(seen.y - s.box.y) < 0.5 && Math.abs(seen.w - s.box.w) < 0.5 && Math.abs(seen.h - s.box.h) < 0.5);
+      seen = s?.box ?? null;
+      if (down.current || v.writing) return;
+      if (!s || !still) return again(120);
+      // Out of the free part of the canvas, or far too small or too big on it: the part is framed. Already in
+      // sight: the view still comes closer when the part is small on the screen (never further away).
+      const box = visiblePart(s.box, v.frameBox)?.box ?? s.box, view = { zoom: v.zoom, pan: v.pan };
+      let to = frameFor(box, view, v.canvas, sideOf(v.group), { maxZoom: 1.5, fit: true });
+      if (!to) {
+        const nearer = frameFor(box, view, v.canvas, sideOf(v.group), { maxZoom: 1.5, fit: true, always: true });
+        to = nearer && nearer.zoom >= v.zoom * 1.15 ? nearer : null;
+      }
+      if (!to) return;
+      // A view of its own choosing: the next pick doesn't glide "back" to where the drag began.
+      homeView.current = null;
+      v.glide(to);
+    };
+    window.setTimeout(run, 200);
   };
   /** Opens an element on its own (focus mode): the canvas glides to it, the rest dims, its own editor opens. */
   const openFocus = (sid: string | null) => {
@@ -2363,6 +2400,37 @@ function StudioDocument() {
     window.dispatchEvent(new Event("studio-cancel-geometry"));
     if(!down.current?.panning)cancelDrag();
   },[device,src,zoom]);
+  /** While something is held at the frame's top or bottom edge, the page scrolls by itself (it stops by itself too). */
+  const edgeTimer = useRef(0);
+  const edgeScrolling = () => {
+    if (edgeTimer.current) return;
+    edgeTimer.current = window.setInterval(() => {
+      const d = down.current;
+      if (!d?.grab || !d.moved || !d.edge) { window.clearInterval(edgeTimer.current); edgeTimer.current = 0; return; }
+      send({ type: "scrollBy", dx: 0, dy: d.edge });
+    }, 24);
+  };
+  useEffect(() => () => window.clearInterval(edgeTimer.current), []);
+  // The page scrolled under a drag (the wheel, or the edge above): the drag goes with the page, so the element
+  // stays under the pointer, and where it would land is worked out again from where the pointer is.
+  const scrolledX = layout?.scroll.x, scrolledY = layout?.scroll.y;
+  useEffect(() => {
+    const d = down.current;
+    if (!d?.scroll || scrolledX === undefined || scrolledY === undefined) return;
+    const by = { x: (d.scroll.x - scrolledX) * zoom, y: (d.scroll.y - scrolledY) * zoom };
+    if (!by.x && !by.y) return;
+    d.scroll = { x: scrolledX, y: scrolledY };
+    if (!d.grab || !d.moved || d.analytic || d.partMove) return;
+    d.p = { x: d.p.x + by.x, y: d.p.y + by.y };
+    if (d.free) {
+      d.starts = new Map([...d.starts].map(([id, b]) => [id, { ...b, x: b.x + by.x, y: b.y + by.y }]));
+      shiftFreeDrag(d.free, by);
+      if (d.at) moveFree(d, d.at, d.keys ?? { shiftKey: false, ctrlKey: false, metaKey: false });
+    } else if (d.at) {
+      const n = nodeOf(d.grab);
+      setDrop(n ? dropAt(d.at, n, d.group) : null);
+    }
+  }, [scrolledX, scrolledY]);
   useEffect(()=>()=>{
     const queued=nudging.current;
     if(queued.planes){window.clearTimeout(queued.timer);nudging.current={dx:0,dy:0,timer:0};clearGeometry();}
@@ -2433,7 +2501,11 @@ function StudioDocument() {
         ops.push(styleOp(n, screen, { layer: { ...was, ...placeFor(placeBoxOf(x, { ...b, x: b.x + v.x, y: b.y + v.y }), f.holder, was.anchor ?? "center", rtl) } }));
       }
     if (!ops.length) { clearGeometry(); return unpreview(d); }
-    void change(copy ? tr("نسخة", "Copy") : into ? tr("نقل لجوّا", "Move into") : tr("المكان", "Place"), ops, first ?? undefined).finally(() => { unpreview(d); clearGeometry(); });
+    void change(copy ? tr("نسخة", "Copy") : into ? tr("نقل لجوّا", "Move into") : tr("المكان", "Place"), ops, first ?? undefined).finally(() => {
+      unpreview(d); clearGeometry();
+      // Into another part: the view comes to that part, so where it landed is in sight.
+      if (into && dragPrefs.follow) frameOnPart(into.id);
+    });
   };
   /** Lets go in the flow: what's dragged (with what's selected with it) goes to the place shown, or a copy of it with `copy`. */
   const dropFlow = (d: Down, t: Drop, copy: boolean) => {
@@ -2450,6 +2522,8 @@ function StudioDocument() {
       const copies = moving.map((x) => copyOf(nodeOf(x)!, ids));
       return void change(tr("نسخة", "Copy"), copies.map((node, i) => ({ op: "insert" as const, parentId: t.parentId, index: at + i, node })), copies[0].id);
     }
+    // Into another part: the view comes to that part (as when it is placed freely).
+    if (dragPrefs.follow && t.parentId !== index.root && moving.some((x) => index.nodes.get(x)?.parentId !== t.parentId)) frameOnPart(t.parentId);
     if (moving.length === 1) return moveTo(moving[0], t);
     const ops = moveAllOps((x) => index.nodes.get(x)?.children ?? [], (x) => index.nodes.get(x)?.parentId ?? null, moving, t);
     if (ops.length) void change(tr("نقل", "Move"), ops, d.grab);
@@ -3671,6 +3745,17 @@ function StudioDocument() {
             data-editing={editing ? "1" : undefined}
           >
             <div className="pointer-events-none absolute overflow-hidden" style={{ left: frameBox.x, top: frameBox.y, width: frameBox.w, height: frameBox.h }}>
+              {(dragPrefs.bounds || dragView || placing) && index ? partBounds(index, shapes, frameBox).map((b) => (
+                <div key={`bound-${b.id}`} className={`pointer-events-none absolute border border-dashed ${b.section ? "border-sky-300/70" : "border-white/30"}`} style={{ left: b.box.x - frameBox.x, top: b.box.y - frameBox.y, width: b.box.w, height: b.box.h }} data-testid="studio-bound" data-node={b.id} data-section={b.section ? "1" : undefined}>
+                  {b.named ? (
+                    <button type="button" tabIndex={-1} disabled={Boolean(dragView || placing) || busy}
+                      className={`absolute start-0 max-w-full truncate rounded-ee-md px-1 text-[9px] leading-4 ${dragView || placing ? "pointer-events-none" : "pointer-events-auto cursor-pointer hover:brightness-125"} ${b.id === selected ? "bg-violet-500 text-white" : b.section ? "bg-sky-500/70 text-white" : "bg-black/55 text-white/80"}`}
+                      style={{ top: b.row * BOUND_TAG }} title={say("حدّد هالجزء|Select this part|בחירת החלק הזה")}
+                      onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(b.id); }}
+                      data-testid="studio-bound-name" data-node={b.id}>{label(b.id)}</button>
+                  ) : null}
+                </div>
+              )) : null}
               {selNode?.parentId ? outline(selNode.parentId, "parent") : null}
               {hovered && hovered !== selected ? outline(hovered, "hover") : null}
               {outline(selected, "selected")}

@@ -12,9 +12,13 @@ import { stableSnapBox, type SnapMemory } from "./stableSnap";
 
 /* ---------------------------------------------------------------- settings */
 
-/** How dragging behaves, kept in this browser: what it does with what it meets, inside its holder, a grid, equal gaps. */
-export type DragPrefs = { mode: CollideMode; inside: boolean; grid: number; gaps: boolean };
-export const DRAG_DEFAULTS: DragPrefs = { mode: "overlap", inside: true, grid: 0, gaps: true };
+/**
+ * How dragging behaves, kept in this browser: what it does with what it meets, inside its holder, a grid, equal
+ * gaps; `bounds` = every part's boundaries are drawn all the time (they always are while something is dragged);
+ * `follow` = the view comes to the part an element was dragged into.
+ */
+export type DragPrefs = { mode: CollideMode; inside: boolean; grid: number; gaps: boolean; bounds: boolean; follow: boolean };
+export const DRAG_DEFAULTS: DragPrefs = { mode: "overlap", inside: true, grid: 0, gaps: true, bounds: false, follow: true };
 export const GRID_STEPS = [0, 4, 8, 16, 24] as const;
 const KEY = "studio-drag";
 
@@ -27,6 +31,8 @@ export function readDragPrefs(): DragPrefs {
       inside: typeof v.inside === "boolean" ? v.inside : DRAG_DEFAULTS.inside,
       grid: (GRID_STEPS as readonly number[]).includes(Number(v.grid)) ? Number(v.grid) : DRAG_DEFAULTS.grid,
       gaps: typeof v.gaps === "boolean" ? v.gaps : DRAG_DEFAULTS.gaps,
+      bounds: typeof v.bounds === "boolean" ? v.bounds : DRAG_DEFAULTS.bounds,
+      follow: typeof v.follow === "boolean" ? v.follow : DRAG_DEFAULTS.follow,
     };
   } catch {
     return DRAG_DEFAULTS;
@@ -63,6 +69,40 @@ export type FreeDrag = {
 export function startFreeDrag(ids: string[], start: Box, body: Body, holder: Box, beside: Beside[]): FreeDrag {
   const obstacles = clearOf(body, beside.map((b) => ({ id: b.id, body: b.body, push: b.push })));
   return { ids, start, body, holder, beside, obstacles, last: { x: 0, y: 0 }, pushed: new Map(), snapMemory: {} };
+}
+
+const shiftBox = (b: Box, by: Pt): Box => ({ ...b, x: b.x + by.x, y: b.y + by.y });
+const shiftBody = (b: Body, by: Pt): Body => b.kind === "circle" ? { ...b, c: { x: b.c.x + by.x, y: b.c.y + by.y } } : { ...b, pts: b.pts.map((q) => ({ x: q.x + by.x, y: q.y + by.y })) };
+
+/**
+ * The page moved under a drag by `by` screen pixels (it was scrolled with the wheel, or scrolled by itself at the
+ * frame's edge): everything the drag remembers from its start goes with the page, so the element stays under the
+ * pointer and still meets, snaps to and stays inside what it did. How far it has gone over the page (`last`) and
+ * what it pushed are kept: over the page nothing moved but the pointer.
+ */
+export function shiftFreeDrag(drag: FreeDrag, by: Pt): void {
+  if (!by.x && !by.y) return;
+  drag.start = shiftBox(drag.start, by);
+  drag.body = shiftBody(drag.body, by);
+  drag.holder = shiftBox(drag.holder, by);
+  drag.beside = drag.beside.map((b) => ({ ...b, box: shiftBox(b.box, by), body: shiftBody(b.body, by) }));
+  drag.obstacles = drag.obstacles.map((o) => ({ ...o, body: shiftBody(o.body, by) }));
+  // What it had snapped to was remembered in screen pixels.
+  drag.snapMemory = {};
+}
+
+/**
+ * How fast the page scrolls by itself while something is dragged near the top or the bottom of what shows of the
+ * frame, in page pixels a tick (below zero = up, 0 = away from both edges): it eases in with the square of how far
+ * into the edge's zone the pointer is, and is at its fastest at the edge and past it. A frame too short to have a
+ * middle between the two zones doesn't scroll.
+ */
+export function edgeScroll(y: number, top: number, bottom: number, zone = 56, fastest = 20): number {
+  if (!(bottom - top >= zone * 3)) return 0;
+  const speed = (into: number) => Math.max(1, Math.round(fastest * Math.min(1, into / zone) ** 2));
+  if (y > bottom - zone) return speed(y - (bottom - zone));
+  if (y < top + zone) return -speed(top + zone - y);
+  return 0;
 }
 
 export type FreeStep = { d: Pt; box: Box; guides: Guide[]; marks: Gap[]; pushed: Map<string, Pt>; touching: string[] };

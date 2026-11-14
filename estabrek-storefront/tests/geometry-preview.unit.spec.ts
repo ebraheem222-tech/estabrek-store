@@ -250,6 +250,16 @@ test("geometry carries cumulative DOM ancestor scale and marks rotated holders e
     let items = measureStudio();
     expect(items.find(item => item.kind === "node" && item.id === "card")).toMatchObject({ parentScale: 1.25, innerScale: 2.5 });
     expect(items.find(item => item.kind === "node" && item.id === "child")).toMatchObject({ parentScale: 2.5 });
+    // Placed from its middle: the translate comes before the perspective, which fills the Z column. Still flat,
+    // only moved: its scale is known (something can be dragged into it).
+    card.style.transform = "matrix3d(1,0,0,0,0,1,0,0,0.133333,0.0916667,1,-0.000833333,-160,-110,0,1)";
+    items = measureStudio();
+    expect(items.find(item => item.kind === "node" && item.id === "card")).toMatchObject({ parentScale: 1.25, innerScale: 1.25 });
+    expect(items.find(item => item.kind === "node" && item.id === "child")).toMatchObject({ parentScale: 1.25 });
+    // Tilted back (its Y axis reaches into the depth): not a flat scale any more.
+    card.style.transform = "matrix3d(1,0,0,0,0,0.866,0.5,-0.0004,0,-0.5,0.866,-0.0007,0,0,0,1)";
+    items = measureStudio();
+    expect(items.find(item => item.kind === "node" && item.id === "card")).toMatchObject({ innerScale: null });
     card.style.transform = "matrix(0,1,-1,0,0,0)";
     items = measureStudio();
     expect(items.find(item => item.kind === "node" && item.id === "card")).toMatchObject({ parentScale: 1.25, innerScale: null });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRAG_DEFAULTS, around, heldAxis, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type Beside, type DragPrefs } from "./dragPlan";
+import { DRAG_DEFAULTS, around, edgeScroll, heldAxis, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, stepFreeDrag, type Beside, type DragPrefs } from "./dragPlan";
 import { boxBody } from "./space";
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -12,8 +12,13 @@ describe("what a drag on the canvas does", () => {
   it("keeps its settings in this browser, and falls back on odd ones", () => {
     localStorage.removeItem("studio-drag");
     expect(readDragPrefs()).toEqual(DRAG_DEFAULTS);
-    saveDragPrefs({ mode: "push", inside: false, grid: 8, gaps: false });
-    expect(readDragPrefs()).toEqual({ mode: "push", inside: false, grid: 8, gaps: false });
+    // Boundaries are drawn only while dragging unless asked for; the view follows a move into another part.
+    expect(DRAG_DEFAULTS).toMatchObject({ bounds: false, follow: true });
+    saveDragPrefs({ mode: "push", inside: false, grid: 8, gaps: false, bounds: true, follow: false });
+    expect(readDragPrefs()).toEqual({ mode: "push", inside: false, grid: 8, gaps: false, bounds: true, follow: false });
+    // Settings saved before those two existed keep theirs and take the usual two.
+    localStorage.setItem("studio-drag", JSON.stringify({ mode: "push", inside: false, grid: 8, gaps: false }));
+    expect(readDragPrefs()).toEqual({ mode: "push", inside: false, grid: 8, gaps: false, bounds: false, follow: true });
     localStorage.setItem("studio-drag", JSON.stringify({ mode: "fly", grid: 7, inside: "yes" }));
     expect(readDragPrefs()).toEqual(DRAG_DEFAULTS);
     localStorage.setItem("studio-drag", "{");
@@ -107,6 +112,48 @@ describe("what a drag on the canvas does", () => {
     // What it starts over doesn't stop it.
     const under = stepFreeDrag(startFreeDrag(["a"], start, boxBody(start), holder, [beside("u", box(10, 10, 20, 20))]), { x: 200, y: 0 }, keys, prefs({ mode: "block" }));
     expect(under.box.x).toBe(200);
+  });
+
+  it("goes with the page when it scrolls under the drag: the same stops and edges, where they now are", () => {
+    const start = box(0, 0, 50, 50);
+    const wall = [beside("w", box(100, 0, 20, 50))];
+    const drag = startFreeDrag(["a"], start, boxBody(start), holder, wall);
+    stepFreeDrag(drag, { x: 20, y: 0 }, keys, prefs({ mode: "block" }));
+    const gone = { ...drag.last };
+    // The page scrolled 120 down: everything is 120 higher on the screen.
+    shiftFreeDrag(drag, { x: 0, y: -120 });
+    expect(drag.start).toEqual(box(0, -120, 50, 50));
+    expect(drag.holder).toEqual(box(0, -120, 600, 400));
+    expect(drag.beside[0].box).toEqual(box(100, -120, 20, 50));
+    expect(drag.body).toEqual(boxBody(box(0, -120, 50, 50)));
+    // How far it has gone over the page is kept: over the page only the pointer moved.
+    expect(drag.last).toEqual(gone);
+    // It still stops at the wall, which is 120 higher too.
+    const after = stepFreeDrag(drag, { x: 90, y: 0 }, keys, prefs({ mode: "block" }));
+    expect([Math.round(after.box.x), Math.round(after.box.y)]).toEqual([50, -120]);
+    expect(after.touching).toEqual(["w"]);
+    // And stays inside its holder where the holder now is.
+    const free = startFreeDrag(["a"], start, boxBody(start), holder, []);
+    shiftFreeDrag(free, { x: 0, y: -120 });
+    expect(stepFreeDrag(free, { x: 0, y: 900 }, keys, prefs()).box.y).toBe(230);
+    // No scroll: nothing changes.
+    const same = startFreeDrag(["a"], start, boxBody(start), holder, wall);
+    shiftFreeDrag(same, { x: 0, y: 0 });
+    expect(same.start).toBe(start);
+  });
+
+  it("scrolls the page by itself at the frame's top and bottom, faster the nearer the edge", () => {
+    // What shows of the frame runs from 100 to 700: the last 56 pixels at each end are the edges.
+    expect(edgeScroll(400, 100, 700)).toBe(0);
+    expect(edgeScroll(644, 100, 700)).toBe(0);
+    expect(edgeScroll(645, 100, 700)).toBe(1);
+    expect(edgeScroll(672, 100, 700)).toBe(5);
+    expect(edgeScroll(700, 100, 700)).toBe(20);
+    expect(edgeScroll(900, 100, 700)).toBe(20);
+    expect(edgeScroll(128, 100, 700)).toBe(-5);
+    expect(edgeScroll(40, 100, 700)).toBe(-20);
+    // Too short a frame to have a middle between the two edges: it doesn't scroll.
+    expect(edgeScroll(150, 100, 200)).toBe(0);
   });
 
   it("says which way a drag is held because what's dragged fills its holder", () => {

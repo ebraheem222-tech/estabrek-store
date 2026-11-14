@@ -170,6 +170,26 @@ if (new URLSearchParams(location.search).has("middle")) {
     ] },
   ];
 }
+// Two tall parts, the second out of sight at first, each with a small place to drop into: every part's boundaries,
+// dragging into another part (the page scrolls by itself at the frame's edge) and the view coming to that part
+// (canvas-bounds.spec.ts).
+if (new URLSearchParams(location.search).has("twoParts")) {
+  initial.tree!.root.children = [
+    { id: "first", type: "section", name: "First part", props: {}, style: { base: { minHeight: "1100px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "headline", type: "heading", props: { text: text("First headline"), level: 2 }, style: { base: { width: "400px" } } },
+      { id: "action", type: "button", props: { label: text("Carry me"), href: "/shop" }, style: { base: { width: "160px", layer: { x: 30, y: 30, anchor: "center" } } } },
+      { id: "tray", type: "stack", name: "Tray", props: {}, style: { base: { width: "320px", minHeight: "220px", pad: [16, 16, 16, 16], bg: "#e8eefc", layer: { x: 70, y: 30, anchor: "center" } } }, children: [
+        { id: "tray-text", type: "text", props: { text: text("On the tray") } },
+      ] },
+    ] },
+    { id: "second", type: "section", name: "Second part", props: {}, style: { base: { minHeight: "900px", pad: [30, 30, 30, 30], bg: "#f3f0ff" } }, children: [
+      { id: "second-headline", type: "heading", props: { text: text("Second headline"), level: 2 }, style: { base: { width: "400px" } } },
+      { id: "shelf", type: "stack", name: "Shelf", props: {}, style: { base: { width: "320px", minHeight: "220px", pad: [16, 16, 16, 16], bg: "#ffffff" } }, children: [
+        { id: "shelf-text", type: "text", props: { text: text("On the shelf") } },
+      ] },
+    ] },
+  ];
+}
 // A card and a button for shapes by equations and an element's own CSS (G, C).
 if (new URLSearchParams(location.search).has("shapes")) {
   initial.tree!.root.children = [
