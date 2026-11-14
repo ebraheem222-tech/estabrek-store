@@ -69,6 +69,51 @@ describe("design variables in the editor", () => {
     expect(screen.getByTestId("variables-publish")).toBeTruthy();
   });
 
+  it("says how a colour reads, adds its tones and its mates, and puts the spaces on a scale", () => {
+    setLangForTests("en");
+    const save = vi.fn(async () => true);
+    const tokens = starterTokens([]);
+    const api = { tokens, hasDraft: false, busy: false, save, publish: vi.fn(), drop: vi.fn() };
+    const wrap = (a: typeof api) => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { enabled: false } } })}><VariablesPanel api={a as never} canPublish /></QueryClientProvider>;
+    const view = render(wrap(api));
+    // Each colour against the paper and the ink: the rose is an edge on the paper, and takes dark words.
+    const read = screen.getAllByTestId("variable-reading");
+    expect(read).toHaveLength(10);
+    expect([read[0].dataset.on, read[0].dataset.grade, read[0].dataset.best]).toEqual(["paper", "large", undefined]);
+    expect([read[1].dataset.on, read[1].dataset.grade, read[1].dataset.best]).toEqual(["ink", "AA", "1"]);
+    expect(read[1].textContent).toContain("Good for text");
+    expect(screen.queryByTestId("variables-weak")).toBeNull();
+    // Its tones: nine more colours by its id.
+    const tones = screen.getAllByTestId("variable-tones")[0];
+    expect(tones.textContent).toContain("+9");
+    fireEvent.click(tones);
+    const withTones = (save.mock.calls.at(-1) as unknown as [{ colors: Array<{ id: string; name?: { en?: string } }> }])[0].colors;
+    expect(withTones).toHaveLength(14);
+    expect(withTones.at(-1)).toMatchObject({ id: "brand-900", name: { en: "Brand 900" } });
+    // What goes with it: its opposite.
+    fireEvent.change(screen.getAllByTestId("variable-mates")[0], { target: { value: "complement" } });
+    const withMate = (save.mock.calls.at(-1) as unknown as [{ colors: Array<{ id: string; name?: { en?: string } }> }])[0].colors;
+    expect(withMate.at(-1)).toMatchObject({ id: "brand-opposite", name: { en: "Brand · Its opposite" } });
+    // The spaces on a scale: seen before it is applied, then saved.
+    fireEvent.click(screen.getByTestId("variables-tab-spaces"));
+    expect(screen.getByTestId("variables-scale-preview").textContent).toBe("4 · 6 · 9 · 14 · 20");
+    fireEvent.change(screen.getByTestId("variables-scale-ratio"), { target: { value: "2" } });
+    expect(screen.getByTestId("variables-scale-preview").textContent).toBe("4 · 8 · 16 · 32 · 64");
+    fireEvent.click(screen.getByTestId("variables-scale-apply"));
+    const spaced = (save.mock.calls.at(-1) as unknown as [{ spaces: Array<{ id: string; value: number }> }])[0].spaces;
+    expect(spaced.map((x) => [x.id, x.value])).toEqual([["xs", 4], ["sm", 8], ["md", 16], ["lg", 32], ["xl", 64]]);
+    // The numbers shown follow the new values.
+    view.rerender(wrap({ ...api, tokens: { ...tokens, spaces: spaced } }));
+    expect(screen.getAllByTestId("variable-number").map((el) => (el as HTMLInputElement).value)).toEqual(["4", "8", "16", "32", "64"]);
+    // A scale that passes the most a space can be isn't applied.
+    fireEvent.change(screen.getByTestId("variables-scale-base"), { target: { value: "64" } });
+    expect((screen.getByTestId("variables-scale-apply") as HTMLButtonElement).disabled).toBe(true);
+    // Ink that hardly reads on the paper is said.
+    view.rerender(wrap({ ...api, tokens: { ...tokens, colors: tokens.colors.map((c) => (c.id === "ink" ? { ...c, value: "#9a9a9a" } : c)) } }));
+    fireEvent.click(screen.getByTestId("variables-tab-colors"));
+    expect(screen.getByTestId("variables-weak").textContent).toContain("2.6");
+  });
+
   it("pickers offer the variables by name and write $id", () => {
     setLangForTests("en");
     const picks: Array<string | null> = [];
