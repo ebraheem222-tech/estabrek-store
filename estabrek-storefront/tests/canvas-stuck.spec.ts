@@ -7,7 +7,10 @@ import { expect, test, type Page } from "@playwright/test";
 //    out: back in its rows, measure again, pick what holds it;
 //  - pan mode (Space) can't stay on: not with the Windows key (the keyboard's language switch), not after its
 //    key-up was missed, not after the window lost the keyboard;
-//  - zoomed in, a drag held at the canvas's right edge moves the canvas until the page's hidden side shows.
+//  - zoomed in, a drag held at the canvas's right edge moves the canvas until the page's hidden side shows;
+//  - writing in an element that the page redraws under is over, even with the keyboard in the editor: the canvas
+//    answers the mouse again (this already held; it is checked here because a canvas left waiting for writing
+//    answers nothing).
 
 const base = "http://127.0.0.1:5178/tests/fixtures/editor-controls.html?lang=en";
 const frame = (page: Page) => page.frameLocator('[data-testid="studio-frame"]');
@@ -187,4 +190,31 @@ test("zoomed in, a drag held at the canvas's right edge brings the page's hidden
   // Let go: it is saved at the right of its part.
   await page.mouse.up();
   await expect.poll(async () => (await styleOf(page, "action")).layer?.x).toBeGreaterThan(Math.max(85, was.x + 30));
+});
+
+test("writing that the page redrew under is over: the canvas answers the mouse again", async ({ page }) => {
+  test.setTimeout(150000);
+  await open(page, "twoParts");
+  await pick(page, "headline");
+  await page.getByTestId("studio-edit-node").click();
+  const written = frame(page).locator('[data-tree-node="headline"][contenteditable="true"]');
+  await expect(written).toBeVisible();
+  // While words are written the canvas leaves the mouse to the page.
+  const overlay = page.getByTestId("studio-overlay");
+  await expect(overlay).toHaveAttribute("data-editing", "1");
+  // The keyboard goes to the editor (a press on one of its own controls): the writing is kept open for the way back.
+  await page.getByTestId("studio-zoom").focus();
+  await page.waitForTimeout(400);
+  await expect(overlay).toHaveAttribute("data-editing", "1");
+  // The page redraws that element (as a change's redraw does): a new one stands in its place, not open for writing.
+  await frame(page).locator('[data-tree-node="headline"]').evaluate((el) => { const fresh = el.cloneNode(true) as HTMLElement; fresh.removeAttribute("contenteditable"); el.replaceWith(fresh); });
+  // The page tells the editor the writing is over, and its canvas takes the mouse again.
+  await expect(overlay).not.toHaveAttribute("data-editing", "1", { timeout: 10000 });
+  const at = await canvasPoint(page, '[data-tree-node="action"]');
+  await page.mouse.click(at.x, at.y);
+  await expect(page.getByTestId("studio-info")).toContainText("action");
+  // And it can be moved.
+  const was = (await styleOf(page, "action")).layer;
+  await carry(page, '[data-tree-node="action"]', 110, 0);
+  await expect.poll(async () => (await styleOf(page, "action")).layer?.x).toBeGreaterThan(was.x + 6);
 });
