@@ -117,6 +117,13 @@ const place = z.string().trim().regex(/^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|sp
 /** How a motion speeds up and slows down (also a state change's). */
 // "fall" speeds up as it goes (a fall; a world baked into keyframes uses it), the rest slow down as they arrive or glide.
 export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear", "fall"] as const;
+/**
+ * A motion's curve: one of the editor's names above, or a free one as text (lib/motionEase.ts: a GSAP name such as
+ * "power3.out", "cubic-bezier(x1,y1,x2,y2)" drawn with two handles, or "spring(mass,stiffness,damping)").
+ */
+const MotionEase = z.union([z.enum(EASES), z.string().max(60).refine(isEase, "Not a motion curve")]);
+/** Which of the things that come in one after another goes first: the first, the last, the middle one, the two ends, or mixed. */
+export const STAGGER_ORDERS = ["first", "last", "center", "edges", "random"] as const;
 const seconds = (max: number) => z.number().finite().min(0).max(max);
 const turnAngle = (max: number) => z.number().finite().min(-max).max(max);
 const textShadow = z.object({ x: px(-100, 100), y: px(-100, 100), blur: px(0, 200), color });
@@ -391,7 +398,7 @@ export const KeyFrame = z.object({
   bg: color.optional(),
   radius: px(0, 999).optional(),
   clip: z.tuple([pct, pct, pct, pct]).optional(),
-  ease: z.enum(EASES).optional(),
+  ease: MotionEase.optional(),
 });
 /** When keyframes play: on arrival, once seen, with the scroll, with its scroll scene, while the mouse is over it, on a click (again = back), again and again, or only when a trigger asks. */
 export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click", "loop", "trigger"] as const;
@@ -403,7 +410,7 @@ export const NodeKeys = z.object({
   on: z.enum(KEY_TRIGGERS),
   duration: z.number().finite().min(0.05).max(60).optional(),
   delay: seconds(20).optional(),
-  ease: z.enum(EASES).optional(),
+  ease: MotionEase.optional(),
   repeat: z.number().int().min(-1).max(50).optional(), // -1 = for ever
   yoyo: z.boolean().optional(),
   start: pct.optional(), // with the scroll: from when its top is this % down the screen…
@@ -452,7 +459,7 @@ export const NodeMotion = z.object({
   keys: NodeKeys.optional(),
   cue: NodeCue.optional(),
   engine: z.enum(["gsap", "anime"]).optional(),
-  enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: z.enum(EASES).optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional() }).optional(),
+  enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: MotionEase.optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional(), order: z.enum(STAGGER_ORDERS).optional() }).optional(),
   scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional(),
     // "orbit": its shape, how big (% of its width) and how many turns the scroll gives it (minus = the other way).
     orbit: z.object({ shape: z.enum(ORBIT_SHAPES), radius: z.number().min(10).max(100).optional(), turn: z.number().min(-2).max(2).optional() }).optional() }).optional(),

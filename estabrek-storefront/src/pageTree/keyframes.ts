@@ -10,6 +10,8 @@
  *
  * Plain data in, plain data out: no DOM and no "@/" imports, so tests load this file directly.
  */
+import { easeText } from "./motionCurve";
+
 export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click", "loop", "trigger"] as const;
 export const KEY_PARTS = ["self", "before", "after", "inner"] as const;
 export const KEY_ORIGINS = ["center", "top", "bottom", "start", "end", "top-start", "top-end", "bottom-start", "bottom-end"] as const;
@@ -65,7 +67,8 @@ function frameOf(raw: unknown): KeyFrameSpec | undefined {
   if (isColor(r.color)) f.color = r.color;
   if (isColor(r.bg)) f.bg = r.bg;
   if (Array.isArray(r.clip) && r.clip.length === 4 && r.clip.every((v) => within(v, 0, 100) !== undefined)) f.clip = r.clip.slice() as KeyFrameSpec["clip"];
-  const ease = inList(r.ease, KEY_EASES);
+  // Its own curve getting here: an own name or a free curve's text (motionCurve.ts).
+  const ease = easeText(r.ease, KEY_EASES);
   if (ease) f.ease = ease;
   return f;
 }
@@ -93,7 +96,7 @@ export function keysSpecOf(raw: unknown): KeysSpec | undefined {
     on, parts,
     duration: within(r.duration, 0.05, 60),
     delay: within(r.delay, 0, 20),
-    ease: inList(r.ease, KEY_EASES),
+    ease: easeText(r.ease, KEY_EASES),
     repeat: typeof r.repeat === "number" && Number.isInteger(r.repeat) && r.repeat >= -1 && r.repeat <= 50 ? r.repeat : undefined,
     yoyo: typeof r.yoyo === "boolean" ? r.yoyo : undefined,
     start: within(r.start, 0, 100),

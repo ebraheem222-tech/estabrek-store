@@ -61,7 +61,8 @@ export function createAnimeMotionEngine(gsap: Gsap, ScrollTrigger?: ST): { engin
     }
     const duration = (to.duration ?? 0.5) * 1000;
     params.duration = duration;
-    params.delay = to.stagger ? (_: unknown, i: number) => ((to.delay ?? 0) + i * to.stagger) * 1000 : (to.delay ?? 0) * 1000;
+    // A stagger is the seconds between one and the next, or (an order of its own, stagger.ts) a function giving each one's wait.
+    params.delay = to.stagger ? (target: unknown, i: number, targets: ArrayLike<unknown>) => ((to.delay ?? 0) + (typeof to.stagger === "function" ? to.stagger(i, target, targets) : i * to.stagger)) * 1000 : (to.delay ?? 0) * 1000;
     params.ease = eases[to.ease] ?? to.ease ?? "outCubic";
     params.loop = to.repeat === -1 ? true : to.repeat ?? 0;
     params.alternate = to.yoyo === true;

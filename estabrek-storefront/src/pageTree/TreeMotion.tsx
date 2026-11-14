@@ -23,6 +23,8 @@ import { ARABIC, countUpText, scrambleChars } from "./textMotion";
 import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { EASE_MAP, keySteps, originCss, type KeysSpec } from "./keyframes";
+import { playEase } from "./motionCurve";
+import { staggerOf } from "./stagger";
 import { keyPlayers } from "./motionPlayers";
 import { orbitHeight, orbitSpot } from "./orbit";
 
@@ -149,7 +151,9 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     const duration = e.duration ?? 0.8;
     const delay = e.delay ?? 0;
     enterEnds = delay + duration;
-    const vars = { duration, delay, ease: MOTION_EASE[e.ease ?? "smooth"] ?? "power2.out" };
+    const vars = { duration, delay, ease: playEase(e.ease ?? "smooth", MOTION_EASE, "power2.out") };
+    // One after another every `each` seconds, in the entrance's order (the first, the last, the middle, the ends, mixed).
+    const wait = (each: number) => staggerOf(each, e.order);
     const sight = env.only === id ? undefined : { trigger: el, start: "top 90%", toggleActions: "play none none none" };
     if (e.kind === "draw") {
       // Its lines draw themselves, then what's filled comes in.
@@ -158,17 +162,17 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       // Their own strength, read before the start hides them.
       const ends = fills.map((f) => getComputedStyle(f).fillOpacity);
       const tl = gsap.timeline({ delay, scrollTrigger: sight });
-      if (lines.length) tl.fromTo(lines, { drawSVG: "0%" }, { drawSVG: "100%", duration, ease: vars.ease, stagger: e.stagger ?? 0.08 });
+      if (lines.length) tl.fromTo(lines, { drawSVG: "0%" }, { drawSVG: "100%", duration, ease: vars.ease, stagger: wait(e.stagger ?? 0.08) });
       if (fills.length) tl.fromTo(fills, { fillOpacity: 0 }, { fillOpacity: (i: number) => ends[i], duration: duration * 0.6, ease: "power1.out" }, lines.length ? `-=${duration * 0.4}` : 0);
     } else if (e.kind === "words") {
       const split = SplitText.create(textTarget(), { type: "words", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
-      gsap.fromTo(split.words, { y: (e.distance ?? 24), autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: e.stagger || 0.06, ...vars, scrollTrigger: sight });
+      gsap.fromTo(split.words, { y: (e.distance ?? 24), autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: wait(e.stagger || 0.06), ...vars, scrollTrigger: sight });
     } else if (e.kind === "letters" || e.kind === "typewriter") {
       const joined = ARABIC.test(el.textContent ?? "");
       const target = textTarget();
       const split = SplitText.create(target, { type: joined ? "words" : "words,chars", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
       const parts = joined ? split.words : split.chars;
-      if (e.kind === "letters") gsap.fromTo(parts, { y: e.distance ?? 18, autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: e.stagger || (joined ? 0.06 : 0.025), ...vars, scrollTrigger: sight });
+      if (e.kind === "letters") gsap.fromTo(parts, { y: e.distance ?? 18, autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: wait(e.stagger || (joined ? 0.06 : 0.025)), ...vars, scrollTrigger: sight });
       else {
         // Typed one by one over its duration, a caret after it until the last one.
         let caretTimer: ReturnType<typeof setTimeout> | undefined;
@@ -182,7 +186,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       }
     } else if (e.kind === "lines") {
       const split = SplitText.create(textTarget(), { type: "lines", mask: "lines", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
-      gsap.fromTo(split.lines, { yPercent: 110 }, { yPercent: 0, stagger: e.stagger || 0.12, ...vars, scrollTrigger: sight });
+      gsap.fromTo(split.lines, { yPercent: 110 }, { yPercent: 0, stagger: wait(e.stagger || 0.12), ...vars, scrollTrigger: sight });
     } else if (e.kind === "scramble") {
       // Only words alone (no formatting inside) can be scrambled; others just fade in.
       const target = textTarget();
@@ -210,7 +214,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       const targets = kids.length ? kids : [el];
       const from = enterFrom(e.kind, e.distance ?? 40, env.rtl);
       const to = enterTo(from, Number(getComputedStyle(targets[0]).opacity) || 1);
-      gsap.fromTo(targets, from, { ...to, ...vars, stagger: kids.length ? e.stagger : 0, clearProps: "clipPath,filter", scrollTrigger: sight });
+      gsap.fromTo(targets, from, { ...to, ...vars, stagger: kids.length ? wait(e.stagger ?? 0) : 0, clearProps: "clipPath,filter", scrollTrigger: sight });
     }
   }
 
@@ -465,7 +469,7 @@ function playKeys(gsap: Gsap, ScrollTrigger: ST, el: HTMLElement, k: KeysSpec, e
   const total = k.duration ?? 1;
   const resolve = (c: string) => colourOf(el, c);
   const restOpacity = Number(getComputedStyle(el).opacity) || 1;
-  const tl = gsap.timeline({ paused: true, defaults: { ease: EASE_MAP[k.ease ?? "smooth"] ?? "power2.out" } });
+  const tl = gsap.timeline({ paused: true, defaults: { ease: playEase(k.ease ?? "smooth", EASE_MAP, "power2.out") } });
   for (const part of ["self", "before", "after", "inner"] as const) {
     const frames = k.parts[part];
     const target = pieces[part];
@@ -476,7 +480,7 @@ function playKeys(gsap: Gsap, ScrollTrigger: ST, el: HTMLElement, k: KeysSpec, e
     tl.set(target, steps[0].vars, 0);
     for (let i = 1; i < steps.length; i++) {
       const from = steps[i - 1].at;
-      tl.to(target, { ...steps[i].vars, duration: Math.max(0.0001, ((steps[i].at - from) / 100) * total), ...(steps[i].ease ? { ease: EASE_MAP[steps[i].ease!] ?? "power2.out" } : {}) }, (from / 100) * total);
+      tl.to(target, { ...steps[i].vars, duration: Math.max(0.0001, ((steps[i].at - from) / 100) * total), ...(steps[i].ease ? { ease: playEase(steps[i].ease, EASE_MAP, "power2.out") } : {}) }, (from / 100) * total);
     }
   }
   tl.call(() => {}, [], total);

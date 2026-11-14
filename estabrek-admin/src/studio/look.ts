@@ -12,7 +12,8 @@ export type Look = Record<string, unknown>;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type Motion = {
   engine?: "gsap" | "anime";
-  enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
+  // `ease`: an own name (EASE_LABEL) or a free curve's text; `order`: which goes first in a stagger (EaseChoice.tsx).
+  enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number; order?: string };
   scroll?: { kind: "parallax" | "keys" | "words" | "pin" | "sideways" | "count" | "orbit" | "draw"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: "circle" | "arc" | "wave"; radius?: number; turn?: number } };
   /** Its own keyframes, 0–100 %, for itself and its pieces (keyframes.ts). */
   keys?: Record<string, unknown>;
