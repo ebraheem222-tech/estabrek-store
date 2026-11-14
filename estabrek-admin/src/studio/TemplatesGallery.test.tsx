@@ -53,3 +53,26 @@ test("a full template's page content can be inserted with fresh IDs and preserve
   expect(deck.children[0].children[0].props.text).toEqual(words("Own store"));
   expect(getStoreTemplateImport).toHaveBeenCalledWith(template.id, {});
 });
+test("a section design has one card, and its colours are picked in the preview", async () => {
+  const { onUse } = mount();
+  fireEvent.click(await screen.findByTestId("studio-tpl-tab-sections"));
+  // One card for each design, not one for each of its colours.
+  const cards = screen.getAllByTestId("studio-tpl-card");
+  const designs = cards.map(card => card.getAttribute("data-id")!.split(":")[1]);
+  expect(new Set(designs).size).toBe(designs.length);
+  const card = cards.find(c => c.getAttribute("data-id")!.startsWith("s:hero-center:"))!;
+  expect(card.textContent).toContain("4");
+  fireEvent.click(card);
+  // Its colours, in the preview: the first is on; another is picked and that one is added.
+  const skins = screen.getAllByTestId("studio-tpl-skin");
+  expect(skins.map(b => b.getAttribute("data-skin"))).toEqual(["plain", "soft", "bold", "dark"]);
+  expect(skins[0]).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(skins[3]);
+  expect(screen.getAllByTestId("studio-tpl-skin")[3]).toHaveAttribute("aria-pressed", "true");
+  // The card stays the chosen one whatever colour is on.
+  expect(card).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByTestId("studio-tpl-end"));
+  await waitFor(() => expect(onUse).toHaveBeenCalledTimes(1));
+  const [nodes] = onUse.mock.calls[0];
+  expect(nodes[0].style.base.bg).toBe("text");
+});
