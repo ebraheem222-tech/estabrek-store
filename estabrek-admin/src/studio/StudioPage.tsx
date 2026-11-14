@@ -48,6 +48,8 @@ import { ShortcutsDialog } from "./ShortcutsDialog";
 import { TokensContext, useDesignTokens, withGroup } from "./designTokens";
 import { coloursToAdd } from "./variableMaths";
 import { PictureColoursCard, type PictureLook } from "./PictureColours";
+import { AiWordsCard, plainWords, type AiWordsKind } from "./AiWordsCard";
+import { pageWords, pagesAiStatus, pictureAlt } from "../api/ai.api";
 import type { PictureColour, PicturePoint, PictureRoles } from "../../../shared/pictureSense";
 import { VariablesPanel } from "./VariablesPanel";
 import { say } from "./say";
@@ -369,6 +371,9 @@ function StudioDocument() {
   type PictureSensed = { colours: PictureColour[]; roles: PictureRoles | null; subject: PicturePoint | null };
   const senseWait = useRef<{ requestId: string; done: (r: PictureSensed | null) => void } | null>(null);
   const [pictureLook, setPictureLook] = useState<PictureLook | null>(null);
+  // The words helper (AiWordsCard.tsx): the element it is open for; whether the store's switch is on is asked then.
+  const [aiFor, setAiFor] = useState<string | null>(null);
+  const aiStatusQ = useQuery({ queryKey: ["ai-pages-status"], queryFn: pagesAiStatus, enabled: aiFor !== null, staleTime: 60_000, retry: false });
   // A picture's sparkling stars in focus mode: the frame's search for their places, what it said, and the pen.
   const sparkleWait = useRef<{ requestId: string; done: (points: Array<{ x: number; y: number; s?: number }> | null, problem?: string) => void } | null>(null);
   const [sparkleFinding, setSparkleFinding] = useState(false);
@@ -2829,6 +2834,9 @@ function StudioDocument() {
     } else if (go.kind === "worldOn") {
       const host = nodeOf(go.hostId);
       if (host) void change(say("عالم فيزيائي|Physics world|עולם פיזיקלי"), worldOnOps(host)).then(() => goGroup("motion", go.card));
+    } else if (go.kind === "aiWords") {
+      setAiFor(selFree.id);
+      showCard("studio-ai-words");
     } else if (go.kind === "pictureColours") {
       const nodeId = selFree.id;
       void askPicture(nodeId).then((r) => {
@@ -2952,6 +2960,34 @@ function StudioDocument() {
               }}
               onDress={() => { if (part && pictureLook.roles) void change(say("ألوان القسم من الصورة|The part's colours from the picture|צבעי החלק מהתמונה"), [styleOp(part, "base", { bg: pictureLook.roles.ground, color: pictureLook.roles.ink })]); }}
               onClose={() => setPictureLook(null)}
+            />
+          );
+        })() : null}
+        {aiFor && selFree && aiFor === selFree.id && !focus ? (() => {
+          const kind: AiWordsKind | null = selFree.type === "image" ? "picture" : selFree.type === "heading" || selFree.type === "text" || selFree.type === "button" ? selFree.type : null;
+          if (!kind) return null;
+          // Its words in the language being edited: a picture's description, a button's label, the text of the rest.
+          const p = (selFree.props ?? {}) as Record<string, unknown>;
+          const key = kind === "picture" ? "alt" : kind === "button" ? "label" : "text";
+          const held = p[key];
+          const words: Record<string, string> = held && typeof held === "object" ? (held as Record<string, string>) : typeof held === "string" && held ? { [shopLang]: held } : {};
+          const src = typeof p.src === "string" ? p.src : "";
+          return (
+            <AiWordsCard
+              key={`ai:${selFree.id}`}
+              kind={kind} lang={shopLang} others={(langs.enabled as Lang[]).filter((l) => l !== shopLang)} text={words[shopLang] ?? ""}
+              status={aiStatusQ.isSuccess ? (aiStatusQ.data.pageWriter ? "on" : "off") : aiStatusQ.isError ? "off" : "wait"}
+              busy={busy}
+              ask={async (action, more) => {
+                try {
+                  if (action === "describe") return [(await pictureAlt({ imageUrl: src.startsWith("/") && origin ? new URL(src, origin).toString() : src, lang: shopLang })).alt];
+                  return (await pageWords({ action, kind: kind as "heading" | "text" | "button", lang: shopLang, to: more.to, about: more.about, text: plainWords(words[shopLang] ?? "") || undefined })).options;
+                } catch (e) {
+                  throw new Error(getApiErrorMessage(e));
+                }
+              }}
+              onPick={(picked, to) => void change(kind === "picture" ? say("وصف الصورة|The picture's description|תיאור התמונה") : say("كلام بالذكاء|Words with AI|מילים עם AI"), [{ op: "setProps", nodeId: selFree.id, props: { ...p, [key]: { ...words, [to]: picked } } }])}
+              onClose={() => setAiFor(null)}
             />
           );
         })() : null}

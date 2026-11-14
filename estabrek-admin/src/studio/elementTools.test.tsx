@@ -22,14 +22,19 @@ const makeIds = () => { let n = 0; return (p: string) => `${p}-${n++}`; };
 
 test("a picture, a video, a 3D model and words say where their own editors are", () => {
   setLangForTests("en");
-  expect(ids(elementTools(node("image")))).toEqual(["image-edit", "image-colours", "image-sparkle", ...every]);
+  expect(ids(elementTools(node("image")))).toEqual(["image-edit", "image-colours", "ai-alt", "image-sparkle", ...every]);
   expect(ids(elementTools(node("video")))).toEqual(["video-editor", "video-scenes", ...every]);
   expect(ids(elementTools(node("model3d")))).toEqual(["model-stage", "model-views", "model-spots", "model-parts", ...every]);
-  expect(ids(elementTools(node("heading")))).toEqual(["text-curve", ...every]);
+  expect(ids(elementTools(node("heading")))).toEqual(["ai-words", "text-curve", ...every]);
+  expect(ids(elementTools(node("text")))).toEqual(["ai-words", "text-curve", ...every]);
   expect(ids(elementTools(node("svg")))).toEqual(["svg-parts", ...every]);
   expect(ids(elementTools(node("slider")))).toEqual(["slider-slides", ...every]);
   expect(ids(elementTools(node("scrollScene")))).toEqual(["scene-chapters", ...every]);
-  expect(ids(elementTools(node("button")))).toEqual(every);
+  expect(ids(elementTools(node("button")))).toEqual(["ai-words", ...every]);
+  expect(ids(elementTools(node("icon")))).toEqual(every);
+  // The words helper is the same card for words and for a picture's description.
+  expect(elementTools(node("button"))[0].go).toEqual({ kind: "aiWords" });
+  expect(elementTools(node("image")).find((t) => t.id === "ai-alt")!.go).toEqual({ kind: "aiWords" });
   // The page itself has none.
   expect(elementTools(node("page"))).toEqual([]);
   // Where each one goes: an editor inside the element opened on its own, the video editor, a new scene.
@@ -40,7 +45,7 @@ test("a picture, a video, a 3D model and words say where their own editors are",
   expect(elementTools(node("image"))[0]).toMatchObject({ label: "Edit the picture", go: { kind: "focus", card: "studio-image-edit" } });
   expect(elementTools(node("model3d")).find((t) => t.id === "model-views")!.go).toEqual({ kind: "focus", card: "studio-model-views" });
   // What every element has is small, and goes to a group of the inspector or to the variables.
-  const small = elementTools(node("button"));
+  const small = elementTools(node("icon"));
   expect(small.every((t) => t.small)).toBe(true);
   expect(small.map((t) => t.go)).toEqual([{ kind: "group", group: "motion" }, { kind: "group", group: "behaviour", card: "studio-triggers" }, { kind: "variables" }]);
 });
@@ -56,7 +61,7 @@ test("physics is offered on what holds others and on what they hold", () => {
   const lone = elementTools(node("heading"), part, "Hero part").find((t) => t.id === "body-on")!;
   expect(lone.go).toEqual({ kind: "worldOn", hostId: "section", card: "studio-body" });
   expect(lone.hint).toContain("«Hero part»");
-  expect(ids(elementTools(node("heading"), part))).toEqual(["text-curve", "body-on", ...every]);
+  expect(ids(elementTools(node("heading"), part))).toEqual(["ai-words", "text-curve", "body-on", ...every]);
   expect(elementTools(node("heading"), world).find((t) => t.id === "body")!.go).toEqual({ kind: "group", group: "motion", card: "studio-body" });
   // A holder inside a holder: its own world first; a body only when what holds it is already a world.
   expect(ids(elementTools(node("stack"), part))).toEqual(["world-on", ...every]);
@@ -65,7 +70,7 @@ test("physics is offered on what holds others and on what they hold", () => {
   expect(ids(elementTools(node("scrollScene"), part))).toEqual(["scene-chapters", ...every]);
   expect(ids(elementTools(node("popup"), world))).toEqual(["world-on", ...every]);
   // What can't hold a world offers nothing for what it holds.
-  expect(ids(elementTools(node("button"), node("slider")))).toEqual(["motion", "recipes", "maths"]);
+  expect(ids(elementTools(node("icon"), node("slider")))).toEqual(["motion", "recipes", "maths"]);
 
   // The change itself: the holder's other settings stay, and each world is its own copy.
   const ops = worldOnOps(node("section", { contained: false }));

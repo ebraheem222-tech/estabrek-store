@@ -4,6 +4,7 @@
  *   /v1/admin/ai-catalog  product writer, photo studio (catalog area)
  *   /v1/admin/ai-orders   WhatsApp reply ideas, order flags (orders area)
  *   /v1/admin/ai-ask      questions about the shop in plain words (dashboard)
+ *   /v1/admin/ai-pages    the page editor's words helper: options for an element's words, a picture's description
  */
 import { Router } from "express";
 import { z } from "zod";
@@ -16,7 +17,8 @@ import { AppError } from "../../utils/httpError.js";
 import { AI_DEFAULTS, AI_FEATURES, AiSchema, NO_KEY_NEEDED, aiOf } from "../ai/ai.settings.js";
 import { aiKeyReady, aiUsage } from "../ai/ai.client.js";
 import { needFeature } from "../ai/ai.guard.js";
-import { askShop, orderFlags, photoStudio, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
+import { askShop, orderFlags, pageWords, photoStudio, pictureAlt, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
+import { PAGE_WORD_ACTIONS, PAGE_WORD_KINDS } from "../ai/pageWords.js";
 import { CONTENT_LANGS } from "../../lib/translations.js";
 import { adminIdOf, changedKeys, getOrCreateSettings, keepRevision, triggerSettingsRevalidate } from "./settings.controller.js";
 
@@ -112,6 +114,45 @@ aiCatalogAdmin.get(
     const ai = aiOf(s.header);
     const key = aiKeyReady();
     res.json({ productWriter: ai.productWriter && key, photoStudio: ai.photoStudio && key && isCloudinaryEnabled(), translate: ai.translate && key });
+  }),
+);
+
+/** The page editor (pages area): words for an element and a picture's description. Nothing is saved by these. */
+export const aiPagesAdmin = Router();
+
+aiPagesAdmin.post(
+  "/words",
+  validate({
+    body: z.object({
+      action: z.enum(PAGE_WORD_ACTIONS),
+      kind: z.enum(PAGE_WORD_KINDS),
+      lang: z.enum(CONTENT_LANGS),
+      to: z.enum(CONTENT_LANGS).optional(),
+      text: z.string().max(4000).optional(),
+      about: z.string().max(400).optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    await needFeature("pageWriter");
+    res.json(await pageWords(req.body));
+  }),
+);
+
+aiPagesAdmin.post(
+  "/alt",
+  validate({ body: z.object({ imageUrl: z.string().url().max(1000).regex(/^https:\/\//, "An https address"), lang: z.enum(CONTENT_LANGS) }) }),
+  asyncHandler(async (req, res) => {
+    await needFeature("pageWriter");
+    res.json(await pictureAlt(req.body));
+  }),
+);
+
+/** What the editor may offer (page editors may not read the settings). */
+aiPagesAdmin.get(
+  "/status",
+  asyncHandler(async (_req, res) => {
+    const s = await getOrCreateSettings();
+    res.json({ pageWriter: aiOf(s.header).pageWriter && aiKeyReady() });
   }),
 );
 

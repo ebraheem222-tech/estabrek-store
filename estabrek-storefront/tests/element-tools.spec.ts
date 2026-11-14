@@ -120,7 +120,7 @@ test("with nothing selected the inspector says where the bigger tools are", asyn
   await expect(guide).toBeVisible();
   await expect(guide).toContainText("The video editor");
   await expect(guide).toContainText("Physics");
-  await expect(guide.locator("li")).toHaveCount(9);
+  await expect(guide.locator("li")).toHaveCount(10);
   // Once something is picked, its own tools take the guide's place.
   await page.getByTestId("studio-tab-layers").click();
   await page.locator('[data-testid="studio-layer"][data-node="model"]').click();

@@ -52,6 +52,47 @@ beforeEach(async () => {
 afterAll(() => setAiProvider(null));
 
 describe("AI features", () => {
+  test("the page editor's words: options for a heading, a translation, a picture's description; off until switched on", async () => {
+    const words = (body: Record<string, unknown>) => request(app).post("/v1/admin/ai-pages/words").send(body);
+    expect((await words({ action: "write", kind: "heading", lang: "ar", about: "تخفيضات الصيف" }).expect(404)).body.error).toBe("FEATURE_OFF");
+    expect((await request(app).get("/v1/admin/ai-pages/status").expect(200)).body).toEqual({ pageWriter: false });
+    setAiProvider(fake);
+    await setAi({ pageWriter: true }).expect(200);
+    expect((await request(app).get("/v1/admin/ai-pages/status").expect(200)).body).toEqual({ pageWriter: true });
+
+    // New words about something: three options, cleaned.
+    answer = () => ({ options: ['"صيفك أحلى معنا."', "- تخفيضات الصيف بلّشت", "تخفيضات الصيف بلّشت", 7, "خصومات لآخر الموسم"] });
+    const made = await words({ action: "write", kind: "heading", lang: "ar", about: "تخفيضات الصيف" }).expect(200);
+    expect(made.body).toEqual({ options: ["صيفك أحلى معنا", "تخفيضات الصيف بلّشت", "خصومات لآخر الموسم"] });
+    expect(seen.at(-1)!.system).toContain("Modern Standard Arabic");
+    expect(seen.at(-1)!.system).toContain("a heading");
+    expect(seen.at(-1)!.user).toContain("تخفيضات الصيف");
+
+    // The rest need words to work on; a translation is one option, written in the language it goes to.
+    expect((await words({ action: "improve", kind: "text", lang: "ar" }).expect(400)).body.error).toBe("NOTHING_TO_WRITE");
+    answer = () => ({ options: ["Shop now", "A second one"] });
+    expect((await words({ action: "translate", kind: "button", lang: "ar", to: "en", text: "تسوّقي الآن" }).expect(200)).body).toEqual({ options: ["Shop now"] });
+    expect(seen.at(-1)!.system).toContain("warm English");
+    // Nothing usable back: said, never empty words.
+    answer = () => ({ options: [] });
+    expect((await words({ action: "shorter", kind: "text", lang: "ar", text: "نص طويل شوي" }).expect(502)).body.error).toBe("AI_EMPTY");
+    // What isn't one of the actions or the kinds is refused before any call.
+    const calls = seen.length;
+    await words({ action: "sing", kind: "heading", lang: "ar", about: "x" }).expect(400);
+    await words({ action: "write", kind: "page", lang: "ar", about: "x" }).expect(400);
+    expect(seen.length).toBe(calls);
+
+    // A picture's description, from the picture (an https address the provider can open).
+    answer = () => ({ alt: '"حجاب شيفون خمري على طاولة خشب"' });
+    const alt = await request(app).post("/v1/admin/ai-pages/alt").send({ imageUrl: "https://img.test/caihijab001.jpg", lang: "ar" }).expect(200);
+    expect(alt.body).toEqual({ alt: "حجاب شيفون خمري على طاولة خشب" });
+    expect(seen.at(-1)!.images).toEqual(["https://img.test/caihijab001.jpg"]);
+    await request(app).post("/v1/admin/ai-pages/alt").send({ imageUrl: "http://img.test/x.jpg", lang: "ar" }).expect(400);
+
+    // Every call is counted for the owner.
+    expect((await request(app).get("/v1/admin/ai").expect(200)).body.usage30.pageWriter).toBe(4);
+  });
+
   test("off without the key: can't be switched on; everything says FEATURE_OFF", async () => {
     expect((await setAi({ smartSearch: true }).expect(400)).body.error).toBe("AI_KEY_MISSING");
     expect((await request(app).get("/v1/admin/ai").expect(200)).body).toMatchObject({ keyReady: false, settings: { smartSearch: false } });

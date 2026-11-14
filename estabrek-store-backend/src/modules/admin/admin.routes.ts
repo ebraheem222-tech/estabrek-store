@@ -51,7 +51,7 @@ import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
-import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiSettingsAdmin } from "./ai.controller.js";
+import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiPagesAdmin, aiSettingsAdmin } from "./ai.controller.js";
 import { kickStockAlerts } from "../stockAlerts/stockAlerts.service.js";
 import { kickDeliveryEmails } from "../fulfillment/fulfillment.service.js";
 
@@ -137,6 +137,7 @@ r.use("/requests", areaAccess({ read: "orders:read", write: "orders:write" }), r
 r.use("/quiz", areaAccess({ read: "settings:read", write: "settings:write" }), quizAdmin);
 r.use("/ai-catalog", areaAccess({ read: "catalog:read", write: "catalog:write" }), aiCatalogAdmin);
 r.use("/ai-orders", areaAccess({ read: "orders:read", write: "orders:write" }), aiOrdersAdmin);
+r.use("/ai-pages", areaAccess({ read: "pages:read", write: "pages:write" }), aiPagesAdmin);
 r.use("/ai-ask", areaAccess({ read: "dashboard:read", write: "dashboard:read" }), aiAskAdmin);
 r.use("/ai", areaAccess({ read: "settings:read", write: "settings:write" }), aiSettingsAdmin);
 r.use("/ugc", areaAccess({ read: "ugc:read", write: "ugc:write" }), ugc);

@@ -27,7 +27,9 @@ export type ToolGo =
   /** The Styles tab's variables (colour maths, the scales of spaces and font sizes). */
   | { kind: "variables" }
   /** Read the picture's pixels and show its main colours (to add to the variables, or to dress its part in). */
-  | { kind: "pictureColours" };
+  | { kind: "pictureColours" }
+  /** The words helper (AiWordsCard.tsx): options for the element's words, or a picture's description. */
+  | { kind: "aiWords" };
 export type ElementTool = { id: string; icon: string; label: string; hint: string; go: ToolGo; small?: boolean };
 
 /** What is never offered as a body: a scroll scene holds the screen still, a popup sits over the page. */
@@ -42,6 +44,7 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
   if (node.type === "image") {
     add("image-edit", "✂", "عدّل الصورة|Edit the picture|ערוך את התמונה", "قص، تدوير، قلب، إضاءة وألوان، أبيض وأسود|Crop, turn, flip, light and colours, black and white|חיתוך, סיבוב, היפוך, אור וצבעים, שחור־לבן", { kind: "focus", card: "studio-image-edit" });
     add("image-colours", "🎨", "ألوان من الصورة|Colours from the picture|צבעים מהתמונה", "بنقرا الصورة وبنطلّع ألوانها الأساسية مع نسبة كل لون: زيدهم للمتغيرات أو لبّس القسم فيهم|The picture is read and its main colours found, each with its share: add them to the variables or dress the part in them|קוראים את התמונה ומוצאים את צבעיה העיקריים: הוסף למשתנים או הלבש את החלק", { kind: "pictureColours" });
+    add("ai-alt", "🤖", "وصف الصورة بالذكاء|Describe it with AI|תיאור עם AI", "بيشوف الصورة وبيكتب وصفها (للي ما بيشوفوها، ولمحركات البحث). إنت بتوافق قبل ما ينحط|It looks at the picture and writes its description (for people who can't see it, and for search engines). You approve before it is put|מסתכל על התמונה וכותב את התיאור שלה. אתה מאשר לפני שהוא נכנס", { kind: "aiWords" });
     add("image-sparkle", "✨", "نجوم براقة على الصورة|Sparkling stars on the picture|כוכבים נוצצים על התמונה", "لمعات بتتحرك على أماكن بتختارها من الصورة|Glints that move on places you choose in the picture|נצנוצים שזזים על מקומות שבחרת בתמונה", { kind: "focus", card: "studio-sparkle" });
   }
   if (node.type === "video") {
@@ -62,6 +65,9 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
   }
   if (node.type === "slider") {
     add("slider-slides", "🖼", "شرائح السلايدر|The slider's slides|שקופיות הסליידר", "رتّب الشرائح واكتب على كل وحدة|Order the slides and write on each|סדר את השקופיות וכתוב על כל אחת", { kind: "focus" });
+  }
+  if (node.type === "heading" || node.type === "text" || node.type === "button") {
+    add("ai-words", "🤖", "كتابة بالذكاء|Write with AI|כתיבה עם AI", "اقتراحات لكلام هالعنصر: كتابة عن موضوع، تحسين، تقصير، تطويل، أو ترجمة للغة تانية من لغات المتجر. إنت بتختار واحد|Options for this element's words: about a subject, better, shorter, longer, or into another of the shop's languages. You pick one|הצעות למילים של הרכיב: על נושא, טוב יותר, קצר, ארוך, או בשפה אחרת של החנות. אתה בוחר", { kind: "aiWords" });
   }
   if (node.type === "heading" || node.type === "text") {
     add("text-curve", "⌒", "كلام على قوس أو موجة|Words on an arc or a wave|מילים על קשת או גל", "الكلام بيمشي على قوس، دائرة أو موجة|The words run along an arc, a circle or a wave|המילים רצות לאורך קשת, עיגול או גל", { kind: "focus", card: "studio-curve" });
@@ -90,6 +96,7 @@ export const TOOL_GUIDE: Array<[icon: string, what: string, where: string]> = [
   ["🎨", "ألوان من صورة، وتركيزها على موضوعها|Colours from a picture, and its focus on its subject|צבעים מתמונה, ומיקוד בנושא שלה", "اختار صورة ← «ألوان من الصورة»؛ والتركيز من الشكل ← «لاقي الموضوع لحالك»|Pick a picture → «Colours from the picture»; the focus under Look → «Find the subject»|בחר תמונה ← «צבעים מהתמונה»; המיקוד תחת מראה ← «מצא את הנושא»"],
   ["🎬", "محرّر الفيديو|The video editor|עורך הווידאו", "اختار فيديو ← «محرّر الفيديو»|Pick a video → «The video editor»|בחר וידאו ← «עורך הווידאו»"],
   ["⏯", "فيديو بمشاهد مع السكرول|A video in scenes that follow the scroll|וידאו בסצנות עם הגלילה", "اختار فيديو ← «قسّمه لمشاهد»، أو + إضافة ← مشهد تمرير|Pick a video → «Split it into scenes», or + Add → Scroll scene|בחר וידאו ← «חלק אותו לסצנות», או + הוספה ← סצנת גלילה"],
+  ["🤖", "كتابة بالذكاء، ووصف الصور|Writing with AI, and pictures' descriptions|כתיבה עם AI, ותיאורי תמונות", "اختار عنوان أو نص أو زر ← «كتابة بالذكاء»؛ صورة ← «وصف الصورة بالذكاء»|Pick a heading, a text or a button → «Write with AI»; a picture → «Describe it with AI»|בחר כותרת, טקסט או כפתור ← «כתיבה עם AI»; תמונה ← «תיאור עם AI»"],
   ["🧲", "الفيزياء|Physics|פיזיקה", "اختار قسم أو أي عنصر ← «فيزياء»|Pick a part or any element → «Physics»|בחר חלק או רכיב ← «פיזיקה»"],
   ["🧊", "مجسّم ثلاثي الأبعاد|A 3D model|מודל תלת־ממדי", "+ إضافة ← مجسّم 3D، وبعدها اختاره: المنصّة، الزوايا، النقاط، الأجزاء|+ Add → 3D model, then pick it: stage, views, spots, parts|+ הוספה ← מודל תלת־ממדי, ואז בחר אותו"],
   ["🎞", "الحركة والسكرول|Motion and scroll|תנועה וגלילה", "اختار أي عنصر ← «الحركة»|Pick any element → «Motion»|בחר רכיב ← «תנועה»"],
