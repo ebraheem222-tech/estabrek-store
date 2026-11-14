@@ -146,7 +146,7 @@ import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
 import { decorArt } from "./decor";
-import { around, edgeScroll, moveAllOps, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
+import { EDGE_FASTEST, around, boxMovable, edgeScroll, moveAllOps, planeTroubleOf, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
@@ -210,7 +210,7 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
 /** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
 type PlaneItem={id:string;frame:Plane;look:Record<string,unknown>;parentId:string;free:boolean};
 type PartMove = { vars: Record<string, string | number>; inlineBox?: boolean; target: string; kind: PagesAPI.LookKind; parent: Plane; start: Pt; screen: PagesAPI.TreeScreen; style: Record<string, unknown> };
-type Down = { scroll?: Pt; at?: Pt; keys?: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }; edge?: number; partMove?: PartMove; before?: string | null; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
+type Down = { scroll?: Pt; panAt?: Pt; at?: Pt; keys?: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }; edge?: Pt; partMove?: PartMove; before?: string | null; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
 /** What a freely placed element can be dragged into. */
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
@@ -295,6 +295,8 @@ function StudioDocument() {
   // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
   const [styleState, setStyleState] = useState<StateChoice>("normal");
   const [panMode, setPanMode] = useState(false);
+  /** When Space last spoke (a held key repeats): pan mode is believed only while it does. */
+  const spaceAt = useRef(0);
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
   const [busy, setBusy] = useState(false);
   const [frameKey, setFrameKey] = useState(0);
@@ -733,7 +735,11 @@ function StudioDocument() {
         await draftQ.refetch();
         await reload();
         toast.error(tr("المسودة تغيّرت من شاشة ثانية: رجعنا حمّلناها", "The draft changed in another window: it was loaded again"));
-      } else toast.error(tr("ما انحفظ التغيير", "The change wasn't saved"), { description: getApiErrorMessage(e) });
+      } else {
+        // The API never answered (it was restarting, the connection stalled): said as it is, and the editor is free again.
+        const timedOut = (e as { code?: string } | null)?.code === "ECONNABORTED";
+        toast.error(tr("ما انحفظ التغيير", "The change wasn't saved"), { description: timedOut ? say("الخادم تأخّر كتير بالرد. جرّب كمان مرة.|The server took too long to answer. Try again.|השרת התעכב מדי בתשובה. נסה שוב.") : getApiErrorMessage(e) });
+      }
       return false;
     } finally {
       setBusy(false);
@@ -966,9 +972,12 @@ function StudioDocument() {
         // Carried to the top or the bottom of what shows of the frame, the page scrolls by itself: a part out of
         // sight can be reached without letting go (only the way the pointer went since the press).
         d.at = p; d.keys = { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey };
-        const edge = d.analytic ? 0 : edgeScroll(p.y, Math.max(frameBox.y, 0), Math.min(frameBox.y + frameBox.h, canvas.h));
-        d.edge = edge > 0 && p.y > d.p.y + 4 || edge < 0 && p.y < d.p.y - 4 ? edge : 0;
-        if (d.edge) edgeScrolling();
+        // Sideways too: a frame wider than the canvas (zoomed in) has a part out of sight, and the canvas moves.
+        // The speed is in screen pixels (EDGE_FASTEST a tick at most), so it feels the same at any zoom.
+        const ex = d.analytic ? 0 : edgeScroll(p.x, Math.max(frameBox.x, 0), Math.min(frameBox.x + frameBox.w, canvas.w), 56, EDGE_FASTEST);
+        const ey = d.analytic ? 0 : edgeScroll(p.y, Math.max(frameBox.y, 0), Math.min(frameBox.y + frameBox.h, canvas.h), 56, EDGE_FASTEST);
+        d.edge = { x: ex > 0 && p.x > d.p.x + 4 || ex < 0 && p.x < d.p.x - 4 ? ex : 0, y: ey > 0 && p.y > d.p.y + 4 || ey < 0 && p.y < d.p.y - 4 ? ey : 0 };
+        if (d.edge.x || d.edge.y) edgeScrolling();
         // Placed freely: it moves over its holder, meets what's beside it, or goes into another place.
         if (d.free) return moveFree(d, p, e);
         const n = nodeOf(d.grab);
@@ -1056,7 +1065,10 @@ function StudioDocument() {
       }
     }
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    const panning = e.button === 1 || panMode || !inFrame(p);
+    // Pan mode with no word from Space for a while (a held key repeats): its key-up was missed, and it is over.
+    const panOn = panMode && performance.now() - spaceAt.current < 1500;
+    if (panMode && !panOn) setPanMode(false);
+    const panning = e.button === 1 || panOn || !inFrame(p);
     const touch = e.pointerType === "touch";
     // Dragging a selected element (or from inside it) moves it, and the others selected with it; sections move in the layers. With Shift a box is drawn instead.
     const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && !["section", "cell", "columns", "page"].includes(nodeOf(x)?.type ?? "") && !lockedIn.has(x) && (directGeometrySafe(x) || canvasMode === "flow" && !placedOn(nodeOf(x)!, screen)));
@@ -1087,7 +1099,7 @@ function StudioDocument() {
         if (motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
       }
     }
-    down.current = { pointerId: e.pointerId, before: selected, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove, scroll: layout ? { ...layout.scroll } : undefined };
+    down.current = { pointerId: e.pointerId, before: selected, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove, scroll: layout ? { ...layout.scroll } : undefined, panAt: { ...pan } };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
@@ -1288,7 +1300,10 @@ function StudioDocument() {
         setKeysOpen(false);
         return;
       }
-      if (e.key === " ") {
+      // Space by itself moves the canvas. With Win, Ctrl or Alt it is the system's (the keyboard's language, a
+      // window's menu): the page never hears that key come up again, and pan mode would stay on.
+      if (e.key === " " && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        spaceAt.current = performance.now();
         setPanMode(true);
         e.preventDefault();
         return;
@@ -1395,8 +1410,8 @@ function StudioDocument() {
       if (e.key === "Alt") setAltHeld(false);
       held.current.delete(e.key);
     };
-    // Leaving the window with Alt down (Alt+Tab) never sends its key up.
-    const onBlur = () => setAltHeld(false);
+    // Leaving the window with Alt or Space down (Alt+Tab, the language switcher) never sends its key up.
+    const onBlur = () => { setAltHeld(false); setPanMode(false); };
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
     window.addEventListener("blur", onBlur);
@@ -2157,21 +2172,39 @@ function StudioDocument() {
   const parentScaleOf = (sid: string) => itemOf(sid)?.parentScale ?? 1;
   const planeOf=(sid:string)=>{const p=itemOf(sid)?.geometry?.plane;return p&&layout?canvasPlane(p,layout.scroll,pan,zoom):null;};
   const parentPlaneOf=(sid:string)=>{const p=itemOf(sid)?.geometry?.holderPlane;return p&&layout?canvasPlane(p,layout.scroll,pan,zoom):null;};
-  const needsPlaneMove=(sid:string)=>{const n=nodeOf(sid),scroll=itemOf(sid)?.geometry?.holderScroll;return Boolean(n&&(itemOf(sid)?.parentScale===null||Number(shownLook(n,screen,"rotateX")??0)||Number(shownLook(n,screen,"rotateY")??0)||movementOf(n,screen)!=="free"||scroll?.x||scroll?.y));};
+  const needsPlaneMove=(sid:string)=>{const n=nodeOf(sid),scroll=itemOf(sid)?.geometry?.holderScroll;if(n&&itemOf(sid)?.geometry&&planeTrouble(sid)!==null&&movableByBox(sid))return false;return Boolean(n&&(itemOf(sid)?.parentScale===null||Number(shownLook(n,screen,"rotateX")??0)||Number(shownLook(n,screen,"rotateY")??0)||movementOf(n,screen)!=="free"||scroll?.x||scroll?.y));};
   const needsPlane=(sid:string)=>needsPlaneMove(sid)||Boolean(nodeOf(sid)&&Object.keys(effectiveConstraints(nodeOf(sid)!,screen)).length);
   const holderScaleOf = (sid: string) => {
     const it = itemOf(sid);
     if (it?.innerScale === null || it?.parentScale === null) return null;
     return it?.innerScale ?? parentScaleOf(sid) * Number(shownLook(nodeOf(sid)!, screen, "scale") ?? 1);
   };
+  /** Why an element's measured plane can't be used to move it (null = it can). */
+  const planeTrouble = (sid: string): string | null => {
+    const frame = planeOf(sid), holder = parentPlaneOf(sid);
+    return planeTroubleOf(itemOf(sid)?.geometry, Boolean(frame && inverse3(frame.matrix)), Boolean(holder && inverse3(holder.matrix)));
+  };
+  /** Still movable by its plain box (dragPlan.ts boxMovable): flat, under holders the shop knows the scale of. */
+  const movableByBox = (sid: string) => {
+    const n = nodeOf(sid), parentId = index?.nodes.get(sid)?.parentId;
+    const it = itemOf(sid);
+    // Not turned: its width on the page must be what its own width and the known scales give.
+    const drawn = n && it?.size && !Number(shownLook(n, screen, "rotateZ") ?? 0) ? { seen: it.rect.w, own: it.size.w, scale: Number(shownLook(n, screen, "scale") ?? 1) } : null;
+    return Boolean(n && boxMovable(it?.parentScale, Boolean(Number(shownLook(n, screen, "rotateX") ?? 0) || Number(shownLook(n, screen, "rotateY") ?? 0)), holderOf(sid) ?? (parentId ? holdsOf(parentId) : null), drawn));
+  };
   const directGeometrySafe = (sid: string) => {
     const n = nodeOf(sid);
-    const geometry=itemOf(sid)?.geometry;
-    if(geometry){
-      const frame=planeOf(sid),holder=parentPlaneOf(sid);
-      return Boolean(n&&!geometry.unsupported&&frame&&holder&&inverse3(frame.matrix)&&inverse3(holder.matrix));
-    }
+    // Measured as a plane: moved by it. Not measurable (something was still moving, a holder with a perspective
+    // of its own…): it is still moved by its plain box when that is right for it, so it is never just stuck.
+    if (itemOf(sid)?.geometry) return Boolean(n) && (planeTrouble(sid) === null || movableByBox(sid));
     return Boolean(n && itemOf(sid)?.parentScale !== null && !Number(shownLook(n, screen, "rotateX") ?? 0) && !Number(shownLook(n, screen, "rotateY") ?? 0));
+  };
+  /** Puts an element that can't be moved back in its rows: its free place, its moves and its turns taken off, on every screen. */
+  const backInRows = (node: PagesAPI.PageTreeNode) => {
+    const styles = (node.style ?? {}) as Record<string, Record<string, unknown> | undefined>;
+    const keys = ["layer", "moveX", "moveY", "rotateX", "rotateY", "rotateZ", "scale"];
+    const ops = (Object.keys(styles) as PagesAPI.TreeScreen[]).filter((sc) => keys.some((k) => styles[sc]?.[k] !== undefined)).map((sc) => styleOp(node, sc, Object.fromEntries(keys.map((k) => [k, null]))));
+    if (ops.length) void change(say("رجّعه لمكانه بالصف|Back in its rows|חזרה לשורות"), ops);
   };
   const handleGeometry=(node:PagesAPI.PageTreeNode)=>{
     if(!needsPlane(node.id))return undefined;
@@ -2402,24 +2435,33 @@ function StudioDocument() {
   },[device,src,zoom]);
   /** While something is held at the frame's top or bottom edge, the page scrolls by itself (it stops by itself too). */
   const edgeTimer = useRef(0);
+  const edgeNow = useRef({ zoom, pan, canvas, layout, frame: { w: dev.w, h: dev.h } });
+  edgeNow.current = { zoom, pan, canvas, layout, frame: { w: dev.w, h: dev.h } };
   const edgeScrolling = () => {
     if (edgeTimer.current) return;
     edgeTimer.current = window.setInterval(() => {
       const d = down.current;
-      if (!d?.grab || !d.moved || !d.edge) { window.clearInterval(edgeTimer.current); edgeTimer.current = 0; return; }
-      send({ type: "scrollBy", dx: 0, dy: d.edge });
+      if (!d?.grab || !d.moved || !d.edge || (!d.edge.x && !d.edge.y)) { window.clearInterval(edgeTimer.current); edgeTimer.current = 0; return; }
+      // As the wheel does: the page scrolls as far as it goes, then the canvas moves until the frame's hidden
+      // edge on that side shows. Sideways the page doesn't scroll, so it is the canvas that moves.
+      const v = edgeNow.current;
+      const step = wheelOver(d.edge, { zoom: v.zoom, pan: v.pan }, v.frame, v.canvas, v.layout);
+      if (step.scroll.x || step.scroll.y) send({ type: "scrollBy", dx: step.scroll.x, dy: step.scroll.y });
+      if (step.pan.x || step.pan.y) { homeView.current = null; setPan((was) => ({ x: was.x + step.pan.x, y: was.y + step.pan.y })); }
     }, 24);
   };
   useEffect(() => () => window.clearInterval(edgeTimer.current), []);
-  // The page scrolled under a drag (the wheel, or the edge above): the drag goes with the page, so the element
-  // stays under the pointer, and where it would land is worked out again from where the pointer is.
+  // The page scrolled or the canvas moved under a drag (the wheel, or the edge above): the drag goes with what
+  // it is over, so the element stays under the pointer, and where it would land is worked out again from where
+  // the pointer is.
   const scrolledX = layout?.scroll.x, scrolledY = layout?.scroll.y;
   useEffect(() => {
     const d = down.current;
-    if (!d?.scroll || scrolledX === undefined || scrolledY === undefined) return;
-    const by = { x: (d.scroll.x - scrolledX) * zoom, y: (d.scroll.y - scrolledY) * zoom };
+    if (!d?.scroll || !d.panAt || scrolledX === undefined || scrolledY === undefined) return;
+    const by = { x: (d.scroll.x - scrolledX) * zoom + pan.x - d.panAt.x, y: (d.scroll.y - scrolledY) * zoom + pan.y - d.panAt.y };
     if (!by.x && !by.y) return;
     d.scroll = { x: scrolledX, y: scrolledY };
+    d.panAt = { ...pan };
     if (!d.grab || !d.moved || d.analytic || d.partMove) return;
     d.p = { x: d.p.x + by.x, y: d.p.y + by.y };
     if (d.free) {
@@ -2430,7 +2472,7 @@ function StudioDocument() {
       const n = nodeOf(d.grab);
       setDrop(n ? dropAt(d.at, n, d.group) : null);
     }
-  }, [scrolledX, scrolledY]);
+  }, [scrolledX, scrolledY, pan.x, pan.y]);
   useEffect(()=>()=>{
     const queued=nudging.current;
     if(queued.planes){window.clearTimeout(queued.timer);nudging.current={dx:0,dy:0,timer:0};clearGeometry();}
@@ -3985,7 +4027,27 @@ function StudioDocument() {
               onExit={closeFocus}
             />
           ) : null}
-          {selFree && selShape && !editing && !directGeometrySafe(selFree.id) ? <div role="status" className="pointer-events-none absolute bottom-3 start-3 max-w-sm rounded bg-black/80 px-3 py-2 text-xs text-white/80">{tr("هذا التحويل غير قابل للتحرير المباشر حاليًا. استخدم إعدادات المكان والحجم من اللوحة.", "This transform currently needs the layout controls for position and size.")}</div> : null}
+          {selFree && selShape && !editing && !directGeometrySafe(selFree.id) ? (() => {
+            const why = planeTrouble(selFree.id) ?? "own";
+            const reasons: Record<string, string> = {
+              size: "هالعنصر ما إله عرض أو طول هلأ، فما في شي ينمسك.|This element has no width or height right now, so there is nothing to hold.|לאלמנט הזה אין כרגע רוחב או גובה, אז אין במה לאחוז.",
+              own: "هالعنصر مدوّر بالعمق (ثلاثي أبعاد)، فما بينسحب بالماوس.|This element is turned into depth (3D), so it can't be dragged by hand.|האלמנט הזה מסובב לעומק (תלת־ממד), ולכן אי אפשר לגרור אותו ביד.",
+              ancestor: "الجزء اللي حاوي هالعنصر مدوّر بالعمق أو مكبّر بطريقة خاصة، فما بينسحب بالماوس.|The part that holds this element is turned into depth or scaled in a special way, so it can't be dragged by hand.|החלק שמכיל את האלמנט מסובב לעומק או מוגדל באופן מיוחד, ולכן אי אפשר לגרור אותו ביד.",
+              holder: "الجزء اللي حاوي هالعنصر ما إله مساحة (طوله أو عرضه صفر)، فما في محل ينحط فيه.|The part that holds this element has no room (its height or width is nothing), so there is nowhere to place it.|לחלק שמכיל את האלמנט אין מקום (הגובה או הרוחב שלו אפס), ולכן אין היכן למקם אותו.",
+              measure: "ما قدرنا نقيس مكان هالعنصر هلأ (في شي لسا عم يتحرك، أو ترتيب غير عادي).|This element's place couldn't be measured just now (something is still moving, or an unusual layout).|לא הצלחנו למדוד את מיקום האלמנט כרגע (משהו עדיין זז, או פריסה חריגה).",
+            };
+            return (
+              <div role="status" className="pointer-events-auto absolute bottom-3 start-3 max-w-sm space-y-2 rounded-lg bg-black/85 px-3 py-2 text-xs leading-5 text-white/85 shadow-lg" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} data-testid="studio-stuck" data-why={why}>
+                <div>{say(reasons[why] ?? reasons.measure)}</div>
+                <div className="text-white/60">{say("فيك تغيّر مكانه وحجمه من لوحة «المكان والحجم»، أو ترجّعه لمكانه الطبيعي بين العناصر وبعدها بينسحب عادي.|You can change its place and size in the “Place and size” panel, or put it back in its rows, where it drags as usual.|אפשר לשנות את המיקום והגודל בלוח ״מיקום וגודל״, או להחזיר אותו לשורות, ושם הוא נגרר כרגיל.")}</div>
+                <div className="flex flex-wrap gap-1">
+                  <button type="button" className="rounded-md bg-white/15 px-2 py-1 text-white hover:bg-white/25 disabled:opacity-40" disabled={busy} onClick={() => backInRows(selFree)} data-testid="studio-stuck-reset">{say("رجّعه لمكانه بالصف|Put it back in its rows|החזר אותו לשורות")}</button>
+                  <button type="button" className="rounded-md bg-white/10 px-2 py-1 text-white/85 hover:bg-white/20 disabled:opacity-40" disabled={busy} onClick={() => void reload()} data-testid="studio-stuck-measure">{say("قيس من جديد|Measure again|מדוד שוב")}</button>
+                  {index?.nodes.get(selFree.id)?.parentId && index.nodes.get(selFree.id)!.parentId !== index.root ? <button type="button" className="rounded-md bg-white/10 px-2 py-1 text-white/85 hover:bg-white/20" onClick={() => select(index.nodes.get(selFree.id)!.parentId!)} data-testid="studio-stuck-holder">{say("حدّد الجزء اللي حاويه|Pick the part that holds it|בחר את החלק שמכיל אותו")}</button> : null}
+                </div>
+              </div>
+            );
+          })() : null}
           {selFree && !multi && !editing && !placing && !drop && selShape && directGeometrySafe(selFree.id) && !["section", "cell", "columns", "page"].includes(selFree.type) ? (
             <SelectionHandles
               key={`${selFree.id}:${screen}`}

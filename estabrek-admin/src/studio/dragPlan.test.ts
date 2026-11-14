@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRAG_DEFAULTS, around, edgeScroll, heldAxis, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, stepFreeDrag, type Beside, type DragPrefs } from "./dragPlan";
+import { DRAG_DEFAULTS, around, boxMovable, edgeScroll, planeTroubleOf, heldAxis, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, stepFreeDrag, type Beside, type DragPrefs } from "./dragPlan";
 import { boxBody } from "./space";
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -154,6 +154,39 @@ describe("what a drag on the canvas does", () => {
     expect(edgeScroll(40, 100, 700)).toBe(-20);
     // Too short a frame to have a middle between the two edges: it doesn't scroll.
     expect(edgeScroll(150, 100, 200)).toBe(0);
+  });
+
+  it("says why an element can't be moved by its measured plane, and when its plain box will still do", () => {
+    // Not measured at all (an older shop): nothing to say, it goes the old way.
+    expect(planeTroubleOf(undefined, false, false)).toBeNull();
+    // Measured, with what holds it: it can.
+    expect(planeTroubleOf({}, true, true)).toBeNull();
+    // The shop couldn't measure it and says why; an older shop that doesn't say is taken as "measure".
+    expect(planeTroubleOf({ unsupported: true, why: "ancestor" }, false, false)).toBe("ancestor");
+    expect(planeTroubleOf({ unsupported: true }, false, false)).toBe("measure");
+    // Its own plane is there but what holds it isn't (a holder with no height: the shop marks that unsupported
+    // without a word); or its plane can't be turned back.
+    expect(planeTroubleOf({}, true, false)).toBe("holder");
+    expect(planeTroubleOf({ unsupported: true }, true, false)).toBe("holder");
+    expect(planeTroubleOf({}, false, true)).toBe("measure");
+    expect(planeTroubleOf({ unsupported: true }, true, true)).toBe("measure");
+
+    const room = { x: 0, y: 0, w: 600, h: 400 };
+    // Flat, under holders whose scale is known, with room to be placed in: its box will do.
+    expect(boxMovable(1, false, room)).toBe(true);
+    expect(boxMovable(0.5, false, room)).toBe(true);
+    // Something above it is turned (the scale isn't known), it is turned into depth itself, or there is no room.
+    expect(boxMovable(null, false, room)).toBe(false);
+    expect(boxMovable(undefined, false, room)).toBe(false);
+    expect(boxMovable(1, true, room)).toBe(false);
+    expect(boxMovable(1, false, { ...room, h: 0 })).toBe(false);
+    expect(boxMovable(1, false, { ...room, w: 1 })).toBe(false);
+    expect(boxMovable(1, false, null)).toBe(false);
+    // Drawn at the size its known scales give it (160 wide, in a holder at half size, itself at 1.5): trusted.
+    expect(boxMovable(0.5, false, room, { seen: 120, own: 160, scale: 1.5 })).toBe(true);
+    expect(boxMovable(1, false, room, { seen: 160.8, own: 160, scale: 1 })).toBe(true);
+    // Drawn bigger than that (something above it zooms it): a move by its box would land wrong.
+    expect(boxMovable(1, false, room, { seen: 200, own: 160, scale: 1 })).toBe(false);
   });
 
   it("says which way a drag is held because what's dragged fills its holder", () => {

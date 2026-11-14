@@ -91,9 +91,12 @@ export function shiftFreeDrag(drag: FreeDrag, by: Pt): void {
   drag.snapMemory = {};
 }
 
+/** The most the view moves in one tick (24 ms) while something is held at an edge, in screen pixels. */
+export const EDGE_FASTEST = 14;
+
 /**
- * How fast the page scrolls by itself while something is dragged near the top or the bottom of what shows of the
- * frame, in page pixels a tick (below zero = up, 0 = away from both edges): it eases in with the square of how far
+ * How fast the view moves by itself while something is dragged near an edge of what shows of the frame (its top
+ * and bottom, or its two sides), in pixels a tick (below zero = up or left, 0 = away from both edges): it eases in with the square of how far
  * into the edge's zone the pointer is, and is at its fastest at the edge and past it. A frame too short to have a
  * middle between the two zones doesn't scroll.
  */
@@ -103,6 +106,34 @@ export function edgeScroll(y: number, top: number, bottom: number, zone = 56, fa
   if (y > bottom - zone) return speed(y - (bottom - zone));
   if (y < top + zone) return -speed(top + zone - y);
   return 0;
+}
+
+/**
+ * Why an element can't be moved by its measured plane, in a word (null = it can): the shop couldn't measure it
+ * (`why` is the shop's own word: "size", "own", "ancestor", "measure"), or what holds it couldn't be measured.
+ */
+export function planeTroubleOf(geometry: { unsupported?: boolean; why?: string } | undefined, hasPlane: boolean, hasHolder: boolean): string | null {
+  if (!geometry) return null;
+  if (geometry.unsupported && geometry.why) return geometry.why;
+  if (!hasPlane) return "measure";
+  // Measured itself, but not what holds it (the shop marks that unsupported too, without a word).
+  if (!hasHolder) return "holder";
+  return geometry.unsupported ? "measure" : null;
+}
+
+/**
+ * Whether an element can still be moved and sized by its plain box when its plane can't be used: nothing above it
+ * is turned or unevenly stretched (the shop knows its holder's scale), it isn't turned into depth itself, and what
+ * holds it has room in both directions (a place is a share of that room). A flat element under a holder with a
+ * perspective of its own, or one caught while something was still moving, is such a case.
+ * `drawn` (when the element isn't turned) checks that it really is drawn at the size those scales give it: its
+ * width on the page against its own width times the scales. Something else stretching it (a zoom above it) would
+ * make a move by its box land in the wrong place, so then it is not trusted.
+ */
+export function boxMovable(parentScale: number | null | undefined, turnedIntoDepth: boolean, holder: Box | null, drawn?: { seen: number; own: number; scale: number } | null): boolean {
+  if (parentScale === null || parentScale === undefined || !(parentScale > 0) || turnedIntoDepth) return false;
+  if (!holder || !(holder.w > 1) || !(holder.h > 1)) return false;
+  return !drawn || Math.abs(drawn.seen - drawn.own * parentScale * drawn.scale) <= 1.5;
 }
 
 export type FreeStep = { d: Pt; box: Box; guides: Guide[]; marks: Gap[]; pushed: Map<string, Pt>; touching: string[] };
