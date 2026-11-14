@@ -1,5 +1,5 @@
 /**
- * Whole pages: a home for each kind of store in three styles, the inner pages every store
+ * Whole pages: a home for each kind of store in six styles, the inner pages every store
  * needs (about, contact, questions, delivery, sizes, gifts, brand story, 404), landing
  * pages, and a page for each campaign. A page is a list of sections from the library
  * (sections.ts), each in its skin, so the page's colours take turns.
@@ -7,6 +7,7 @@
 import { B, CARD, COLS, GRID, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type Ctx, type N, type Skin } from "./build";
 import { RECIPES, campaignHero, campaignOffer, campaignStrip } from "./sections";
 import { BUDGETS, C, CAMPAIGNS, FAMILIES, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, MEASURE, PACKS, SIZE_TABS, w, type Campaign, type Family, type W } from "./words";
+import { X } from "./wordsMore";
 
 export const PAGE_KINDS = ["home", "shop", "cart", "about", "contact", "faq", "policy", "gifts", "journal", "services", "thanks", "track", "landing", "soon", "notfound", "campaign"] as const;
 export type PageKind = (typeof PAGE_KINDS)[number];
@@ -75,13 +76,16 @@ const STYLES: Array<[string, W]> = [
   ["classic", w("كلاسيكي", "Classic", "קלאסי")],
   ["editorial", w("مجلّة", "Editorial", "מגזיני")],
   ["bold", w("جريء", "Bold", "נועז")],
+  ["boutique", w("بوتيك", "Boutique", "בוטיק")],
+  ["showcase", w("معرض", "Showcase", "תצוגה")],
+  ["live", w("حيّ", "Live", "חי")],
 ];
 /** Each kind of store's special section, for each style. */
-const SPECIAL: Record<string, [Part, Part, Part]> = {
-  model: [S("m3d-split", "plain"), S("m3d-trio", "plain"), S("m3d-neon", "dark")],
-  lookbook: [S("look-points", "plain"), S("look-tabs", "soft"), S("look-split", "surface")],
-  steps: [S("steps-row", "soft"), S("steps-split", "plain"), S("steps-cards", "dark")],
-  quotes: [S("tst-single", "soft"), S("tst-photo", "plain"), S("tst-row", "surface")],
+const SPECIAL: Record<string, [Part, Part, Part, Part, Part, Part]> = {
+  model: [S("m3d-split", "plain"), S("m3d-trio", "plain"), S("m3d-neon", "dark"), S("m3d-stage", "plain"), S("m3d-finishes", "surface"), S("m3d-banner", "bold")],
+  lookbook: [S("look-points", "plain"), S("look-tabs", "soft"), S("look-split", "surface"), S("look-list", "plain"), S("look-two", "surface"), S("look-slides", "dark")],
+  steps: [S("steps-row", "soft"), S("steps-split", "plain"), S("steps-cards", "dark"), S("steps-four", "soft"), S("steps-zigzag", "plain"), S("steps-outline", "dark")],
+  quotes: [S("tst-single", "soft"), S("tst-photo", "plain"), S("tst-row", "surface"), S("tst-big", "soft"), S("tst-photos", "plain"), S("tst-picture-side", "surface")],
 };
 function homeOf(fam: Family, style: number): Part[] {
   const pack = PACKS[fam];
@@ -89,6 +93,11 @@ function homeOf(fam: Family, style: number): Part[] {
   const reviews = pack.special === "quotes" ? S("feat-icons", "soft") : S("tst-grid", "soft");
   if (style === 0) return [S("hero-split", "plain"), S("bar-perks", "surface"), S("cats-circles", "plain"), S("prod-grid", "plain"), special, reviews, S("news-center", "plain")];
   if (style === 1) return [S("hero-cover", "plain"), S("bar-big", "plain"), S("split-arch", "plain"), S("prod-row", "soft"), special, S("story-center", "plain"), S("gal-social", "plain")];
+  // A kind of store whose special section is reviews takes perks where the others take reviews.
+  const quotes = pack.special === "quotes";
+  if (style === 3) return [S("hero-collage", "plain"), S("bar-two", "surface"), S("cats-squares", "plain"), S("banner-two", "plain"), S("prod-tabs", "plain"), special, quotes ? S("feat-big-icons", "soft") : S("tst-wall", "soft"), S("trust-badges", "surface"), S("news-perks", "plain")];
+  if (style === 4) return [S("hero-panels", "plain"), S("bar-steps", "surface"), S("prod-two-rows", "plain"), S("banner-mosaic", "plain"), S("feat-bento", "soft"), special, quotes ? S("feat-list", "plain") : S("tst-score", "plain"), S("faq-help", "soft"), S("cta-box", "plain")];
+  if (style === 5) return [pack.special === "model" ? S("hero-stage", "dark") : S("hero-scene", "dark"), S("bar-code", "bold"), S("cats-two-big", "plain"), S("prod-spotlight", "soft"), S("prod-running", "plain"), special, S("stats-giant", "bold"), quotes ? S("feat-two-rows", "plain") : S("tst-running", "plain"), S("news-scene", "dark")];
   const hero = pack.special === "model" ? S("hero-model", "dark") : pack.particles ? S("hero-particles", "dark") : S("hero-type", "dark");
   return [hero, S("bar-marquee", "bold"), S("cats-overlay", "plain"), S("prod-lift", "surface"), special, S("stats-row", "bold"), S("faq-lines", "plain"), S("news-center", "dark")];
 }
@@ -180,6 +189,44 @@ PAGES.push(
   p("thanks-dark", "thanks", w("شكراً: غامقة", "Thanks: dark", "תודה: כהה"), [thanksHead("dark"), S("steps-row", "plain"), S("contact-cards", "surface")]),
   p("track-order", "track", w("تتبّع الطلب", "Track an order", "מעקב הזמנה"), [pageHead(w("وين طلبي؟", "Where's my order?", "איפה ההזמנה שלי?"), w("ابعتلنا رقم الطلب ومنرد عليك بسرعة.", "Send us your order number and we'll reply quickly.", "שלחו לנו את מספר ההזמנה ונחזור מהר.")), S("steps-cards", "plain"), S("contact-form", "surface"), S("faq-lines", "plain")]),
   p("lookbook", "landing", w("صفحة إطلالات", "Lookbook page", "דף לוקבוק"), [S("hero-slider", "plain"), S("look-points", "plain"), S("gal-mosaic", "plain"), S("look-tabs", "soft"), S("cta-big", "dark")]),
+);
+
+/* More pages, from the library's newer sections (sectionsStore.ts, sectionsTrust.ts). */
+const SHOP = w("المتجر", "Shop", "חנות");
+const CART = w("سلة المشتريات", "Shopping cart", "סל הקניות");
+PAGES.push(
+  p("about-letter", "about", w("من نحن: رسالة وفريق", "About: a letter and the team", "אודות: מכתב וצוות"), [S("story-letter", "soft"), S("story-numbers", "plain"), S("team-photos", "plain"), S("trust-badges", "surface"), S("cta-box", "plain")]),
+  p("about-founder", "about", w("من نحن: المؤسِّسة ومشوارها", "About: the founder and her journey", "אודות: המייסדת והמסע שלה"), [S("story-wide", "plain"), S("team-founder", "plain"), S("story-cards", "soft"), S("team-cards", "plain"), S("tst-big", "soft"), S("news-strip", "bold")]),
+  p("contact-hours", "contact", w("تواصل: ساعات الدوام", "Contact: opening hours", "צור קשר: שעות פתיחה"), [pageHead(C.contactUs, C.writeSub), S("contact-hours", "plain"), S("contact-clock", "soft"), S("faq-help", "plain")]),
+  p("contact-branches", "contact", w("تواصل: فروعنا", "Contact: our branches", "צור קשר: הסניפים שלנו"), [pageHead(X.branches, C.hours, "bold"), S("contact-branches", "plain"), S("contact-wide", "plain"), S("contact-panel", "surface")]),
+  p("contact-whatsapp", "contact", w("تواصل: واتساب أولاً", "Contact: WhatsApp first", "צור קשר: קודם וואטסאפ"), [S("contact-whatsapp", "soft"), S("contact-cards", "plain"), S("faq-two", "plain")]),
+  p("faq-subjects", "faq", w("أسئلة حسب الموضوع", "Questions by subject", "שאלות לפי נושא"), [pageHead(C.questions, C.writeSub), S("faq-tabs", "plain"), S("contact-whatsapp", "soft")]),
+  p("faq-full", "faq", w("أسئلة، مساعدة وضمان", "Questions, help and a promise", "שאלות, עזרה והבטחה"), [pageHead(C.questions, C.shippingSub, "plain"), S("faq-two", "plain"), S("faq-help", "soft"), S("trust-guarantee", "plain")]),
+  p("promise", "policy", w("الضمان والإرجاع", "Our promise and returns", "ההבטחה שלנו והחזרות"), [S("trust-guarantee", "soft"), S("steps-four", "plain"), S("ba-table", "surface"), S("faq-two", "plain")]),
+  p("payments", "policy", w("الدفع والأمان", "Paying and safety", "תשלום ואבטחה"), [pageHead(X.payTitle, X.secure), S("trust-badges", "surface"), S("faq-tabs", "plain"), S("contact-whatsapp", "soft")]),
+  p("gift-ideas", "gifts", w("أفكار هدايا", "Gift ideas", "רעיונות למתנות"), [pageHead(C.gifts, C.giftsSub), S("banner-three", "plain"), S("prod-tabs", "plain"), S("offer-three", "soft"), S("news-perks", "plain")]),
+  p("journal-gallery", "journal", w("المدوّنة: معرض بفلاتر", "Journal: a gallery with filters", "בלוג: גלריה עם סינון"), [pageHead(X.gallery, X.gallerySub), S("gal-filter", "plain"), S("tst-running", "plain"), S("news-strip", "bold")]),
+  p("journal-magazine", "journal", w("المدوّنة: مجلّة", "Journal: a magazine", "בלוג: מגזין"), [S("hero-quiet", "plain"), S("gal-captions", "plain"), S("split-zigzag", "surface"), S("story-wide", "plain"), S("news-perks", "soft")]),
+  p("services-programme", "services", w("خدمات: برنامج الأسبوع", "Services: the week's programme", "שירותים: התכנית השבועית"), [pageHead(X.programme, X.programmeSub), S("data-programme", "plain"), S("steps-four", "soft"), S("price-club", "plain"), S("contact-whatsapp", "soft")]),
+  p("services-compare", "services", w("خدمات: مقارنة وباقات", "Services: a comparison and bundles", "שירותים: השוואה וחבילות"), [S("hero-signup", "soft"), S("feat-bento", "plain"), S("data-versus", "surface"), S("price-table", "plain"), S("faq-help", "plain")]),
+  p("thanks-next", "thanks", w("شكراً: شو بيصير بعدين", "Thanks: what happens next", "תודה: מה קורה עכשיו"), [S("thanks-steps", "plain"), S("prod-five", "surface"), S("trust-badges", "plain")]),
+  p("track-help", "track", w("تتبّع الطلب: مع مساعدة", "Track an order: with help", "מעקב הזמנה: עם עזרה"), [pageHead(w("وين طلبي؟", "Where's my order?", "איפה ההזמנה שלי?"), X.needHelpSub), S("steps-four", "plain"), S("contact-clock", "soft"), S("faq-two", "plain")]),
+  p("landing-showcase", "landing", w("صفحة عرض تفاعلي", "A showcase page", "דף תצוגה"), [S("hero-panels", "dark"), S("show-side-tabs", "plain"), S("prod-spotlight", "soft"), S("tst-wall", "plain"), S("cta-scene", "dark")]),
+  p("landing-offer", "landing", w("صفحة عرض وكود", "An offer page with a code", "דף מבצע עם קוד"), [S("hero-sale", "bold"), S("offer-three", "plain"), S("offer-products", "soft"), S("offer-steps", "plain"), S("faq-help", "plain"), S("cta-box", "plain")]),
+  p("landing-brand", "landing", w("صفحة الماركة", "A brand page", "דף מותג"), [S("hero-fan", "plain"), S("trust-press", "soft"), S("story-two-pics", "plain"), S("stats-ring", "surface"), S("gal-bento", "plain"), S("cta-mesh", "plain")]),
+  p("landing-3d", "landing", w("صفحة منتج 3D", "A 3D product page", "דף מוצר בתלת־ממד"), [S("hero-stage", "dark"), S("m3d-finishes", "plain"), S("m3d-steps", "soft"), S("details-specs", "plain"), S("tst-score", "surface"), S("cta-scene", "dark")]),
+  p("landing-looks", "landing", w("صفحة إطلالات ومعرض", "A page of looks and a gallery", "דף לוקים וגלריה"), [S("banner-offer", "plain"), S("look-two", "plain"), S("gal-masonry", "plain"), S("look-list", "soft"), S("cta-picture-over", "plain")]),
+  p("landing-numbers", "landing", w("المتجر بالأرقام", "The store in numbers", "החנות במספרים"), [S("stats-giant", "bold"), S("data-charts", "plain"), S("stats-line", "soft"), S("ba-table", "plain"), S("cta-rating", "soft")]),
+  p("landing-club", "landing", w("عضويات النادي", "Club memberships", "מנויי המועדון"), [S("hero-signup", "soft"), S("price-club", "plain"), S("feat-around", "plain"), S("tst-photos", "soft"), S("faq-tabs", "plain")]),
+  p("landing-brands", "landing", w("ماركاتنا", "Our brands", "המותגים שלנו"), [pageHead(C.brands, X.brandsSub), S("trust-logos", "plain"), S("banner-three", "plain"), S("prod-two-rows", "plain"), S("trust-both", "surface")]),
+  p("maintenance", "soon", w("صيانة: راجعين بعد شوي", "Maintenance: back in a while", "תחזוקה: חוזרים עוד מעט"), [S("maintenance", "soft"), S("contact-clock", "plain")]),
+  p("soon-live", "soon", w("قريباً بخلفية حيّة", "Coming soon on a live background", "בקרוב על רקע חי"), [S("soon", "dark"), S("trust-badges", "plain"), S("news-scene", "dark")]),
+  p("notfound-search", "notfound", w("404 ببحث", "404 with a search", "404 עם חיפוש"), [S("notfound-search", "plain"), S("prod-five", "surface")]),
+  p("shop-wide-banner", "shop", w("المتجر: ببانر عريض", "Shop: with a wide banner", "חנות: עם באנר רחב"), [S("banner-wide", "plain"), shopPart({ columns: 4 }), S("trust-badges", "surface")]),
+  p("shop-deals", "shop", w("المتجر: مع العروض", "Shop: with offers", "חנות: עם מבצעים"), [S("bar-code", "bold"), shopPart(), S("offer-three", "soft")]),
+  p("shop-reviews", "shop", w("المتجر: مع الآراء", "Shop: with reviews", "חנות: עם ביקורות"), [pageHead(SHOP, C.giftsSub, "plain"), shopPart(), S("tst-wall", "soft"), S("faq-help", "plain")]),
+  p("cart-promise", "cart", w("السلة: مع الضمان", "Cart: with our promise", "סל: עם ההבטחה שלנו"), [pageHead(CART, X.secure), cartPart("split"), S("trust-guarantee", "soft")]),
+  p("cart-deals", "cart", w("السلة: مع عروض واقتراحات", "Cart: with offers and suggestions", "סל: עם מבצעים והצעות"), [S("bar-code", "bold"), cartPart("split"), S("prod-five", "surface"), S("trust-badges", "plain")]),
 );
 
 for (const cp of CAMPAIGNS) {

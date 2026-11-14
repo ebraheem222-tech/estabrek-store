@@ -108,5 +108,11 @@ export function readFile(text: string): ReadFile {
 
 /** A copy with new ids all the way down (so it can go on a page next to itself). */
 export function freshIds(node: N, ids: Ids): N {
-  return { ...structuredClone(node), id: ids(node.type.slice(0, 4)), ...(node.children ? { children: node.children.map((c) => freshIds(c, ids)) } : {}) };
+  const copy: N = { ...structuredClone(node), id: ids(node.type.slice(0, 4)), ...(node.children ? { children: node.children.map((c) => freshIds(c, ids)) } : {}) };
+  // A presentation names its panels by their ids: the names go with the panels to their new ids.
+  if (node.type === "deck" && node.children && isObj(node.props.labels)) {
+    const labels = node.props.labels;
+    copy.props.labels = Object.fromEntries(node.children.flatMap((child, i) => (labels[child.id] !== undefined ? [[copy.children![i].id, structuredClone(labels[child.id])]] : [])));
+  }
+  return copy;
 }

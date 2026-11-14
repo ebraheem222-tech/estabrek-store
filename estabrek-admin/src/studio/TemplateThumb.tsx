@@ -22,8 +22,11 @@ const len = (v: unknown) => (typeof v !== "string" ? undefined : v.endsWith("vh"
 const JUSTIFY: Obj = { start: "flex-start", center: "center", end: "flex-end", between: "space-between", around: "space-around" };
 const ALIGN: Obj = { start: "flex-start", center: "center", end: "flex-end", stretch: "stretch" };
 const SHAPES: Obj = { circle: "50%", pill: "999px", arch: "999px 999px 12px 12px", blob: "42% 58% 55% 45% / 48% 40% 60% 52%", rounded: "28px" };
+/** The point of a placed element that sits at its x/y, as % of its own size (the shop's pageTree/css.ts ANCHORS). */
+const ANCHORS: Record<string, [number, number]> = { "top-start": [0, 0], top: [50, 0], "top-end": [100, 0], start: [0, 50], center: [50, 50], end: [100, 50], "bottom-start": [0, 100], bottom: [50, 100], "bottom-end": [100, 100] };
+const SHADOWS: Obj = { sm: "0 2px 8px rgba(0,0,0,.10)", md: "0 8px 24px rgba(0,0,0,.14)", lg: "0 18px 44px rgba(0,0,0,.20)" };
 
-function css(n: PageTreeNode, c: ThumbColours): CSSProperties {
+function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
   const s = obj(obj(n.style).base);
   const paint = (v: unknown): string | undefined => (typeof v !== "string" ? undefined : v.startsWith("#") ? v : v === "white" ? "#ffffff" : v === "black" ? "#000000" : v === "transparent" ? "transparent" : c[v as keyof ThumbColours]);
   const out: CSSProperties = {};
@@ -60,9 +63,19 @@ function css(n: PageTreeNode, c: ThumbColours): CSSProperties {
     out.backgroundImage = `radial-gradient(${paint(pattern.color)} 2px, transparent 2.5px)`;
     out.backgroundSize = `${num(pattern.size) ?? 20}px ${num(pattern.size) ?? 20}px`;
   }
+  if (typeof s.shadow === "string" && SHADOWS[s.shadow]) out.boxShadow = SHADOWS[s.shadow] as string;
+  if (s.overflow === "hidden" || s.overflow === "clip") out.overflow = "hidden";
+  // Where it sits and how it's turned, in one transform: placed by its anchor (the start side follows the language).
+  const moves: string[] = [];
   const layer = obj(s.layer);
-  if (num(layer.x) !== undefined) Object.assign(out, { position: "absolute", insetInlineStart: `${layer.x}%`, top: `${layer.y}%`, transform: "translate(-50%, -50%)", zIndex: 2 });
-  if (num(s.moveY)) out.transform = `translateY(${num(s.moveY)}px)`;
+  if (num(layer.x) !== undefined) {
+    const [ax, ay] = ANCHORS[String(layer.anchor ?? "center")] ?? ANCHORS.center;
+    Object.assign(out, { position: "absolute", insetInlineStart: `${layer.x}%`, top: `${layer.y}%`, zIndex: 2 });
+    moves.push(`translate(${rtl ? ax : -ax}%, ${-ay}%)`);
+  }
+  if (num(s.moveY)) moves.push(`translateY(${num(s.moveY)}px)`);
+  if (num(s.rotateZ)) moves.push(`rotate(${num(s.rotateZ)}deg)`);
+  if (moves.length) out.transform = moves.join(" ");
   return out;
 }
 
@@ -77,7 +90,7 @@ const line = (c: ThumbColours, w = "70%") => <div style={{ height: 12, width: w,
 
 function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }): ReactNode {
   const p = obj(n.props);
-  const s = css(n, c);
+  const s = css(n, c, lang !== "en");
   const kids = () => (n.children ?? []).map((k) => <Node key={k.id} n={k} c={c} lang={lang} />);
   const list = (v: unknown) => (Array.isArray(v) ? v.map(obj) : []);
   switch (n.type) {
@@ -100,8 +113,20 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
       return <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16, minWidth: 0, ...s }}>{kids()}</div>;
     case "grid":
       return <div style={{ display: "grid", gridTemplateColumns: `repeat(${num(obj(obj(n.style).base).columns) ?? 1}, minmax(0, 1fr))`, gap: 24, ...s }}>{kids()}</div>;
+    case "deck": {
+      // A presentation: its panels' names as tabs (down the side or along the top), and the first panel.
+      const panels = (n.children ?? []).filter((k) => k.type === "stack");
+      const labels = obj(p.labels);
+      const side = p.presentation === "vertical-tabs";
+      const tabs = panels.map((k, i) => <span key={k.id} style={{ padding: "8px 18px", borderRadius: 999, whiteSpace: "nowrap", background: i === 0 ? c.accent : c.surface, color: i === 0 ? c["accent-contrast"] : c.text, border: `1px solid ${c.border}` }}>{say(labels[k.id], lang) || i + 1}</span>);
+      return (
+        <div style={{ display: "flex", flexDirection: side ? "row" : "column", gap: 20, width: "100%", ...s }}>
+          {p.presentation === "tabs" || side ? <div style={{ display: "flex", flexDirection: side ? "column" : "row", gap: 10, justifyContent: side ? "flex-start" : "center", flex: "none" }}>{tabs}</div> : null}
+          <div style={{ flex: 1, minWidth: 0 }}>{panels[0] ? <Node n={panels[0]} c={c} lang={lang} /> : null}</div>
+        </div>
+      );
+    }
     case "stack":
-    case "deck":
     case "scrollScene":
       return <div style={{ display: "flex", flexDirection: "column", gap: 16, position: s.position ?? "relative", ...s }}>{kids()}</div>;
     case "heading":
@@ -138,6 +163,44 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
       return <div style={{ padding: 24 }}>{(Array.isArray(p.items) ? p.items : []).map((row: any, index: number) => <div key={index} style={{ marginBottom: 10, height: 14, width: `${Math.max(5, Math.min(100, Number(row.value) || 5))}%`, background: "currentColor", opacity: .6 }} />)}</div>;
     case "filterGallery":
       return <div style={{ display: "grid", gridTemplateColumns: `repeat(${Number(p.columns) || 3},minmax(0,1fr))`, gap: 12 }}>{(Array.isArray(p.items) ? p.items : []).slice(0, 6).map((row: any, index: number) => <div key={index} style={{ minHeight: 140, padding: 16, border: "1px solid currentColor", opacity: .65 }}>{say(row.title, lang)}</div>)}</div>;
+    case "schedule": {
+      // A programme: a line for each item (its day, its time, what it is).
+      const items = list(p.items).slice(0, 6);
+      const cards = p.layout === "cards";
+      return (
+        <div style={{ display: cards ? "grid" : "flex", gridTemplateColumns: cards ? "repeat(2, minmax(0, 1fr))" : undefined, flexDirection: "column", gap: cards ? 16 : 0, width: "100%", ...s }}>
+          {items.map((it, i) => (
+            <div key={i} style={{ display: "flex", gap: 20, alignItems: "baseline", padding: cards ? 20 : "14px 0", borderRadius: cards ? 16 : 0, border: cards ? `1px solid ${c.border}` : undefined, borderBottom: `1px solid ${c.border}`, ...(p.layout === "timeline" ? { borderInlineStart: `3px solid ${c.accent}`, paddingInlineStart: 20, borderBottom: "none" } : {}) }}>
+              <span style={{ color: c.accent, fontWeight: 700, whiteSpace: "nowrap" }}>{say(it.day, lang)}</span>
+              <span style={{ color: c.muted, whiteSpace: "nowrap" }}>{String(it.time ?? "")}</span>
+              <b style={{ minWidth: 0 }}>{say(it.title, lang)}</b>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    case "comparison": {
+      // A table: what is compared along the top, a line for each row, a tick or a dash in each cell.
+      const columns = list(p.columns);
+      const cols = `1.4fr ${columns.map(() => "1fr").join(" ")}`;
+      const cell = (v: Obj) => (v.state === "yes" ? "✓" : v.state === "no" ? "–" : say(v.text, lang));
+      return (
+        <div style={{ width: "100%", border: `1px solid ${c.border}`, borderRadius: 16, overflow: "hidden", ...s }}>
+          <div style={{ display: "grid", gridTemplateColumns: cols, background: c.surface, fontWeight: 700 }}>
+            <span />
+            {columns.map((col, i) => <span key={i} style={{ padding: "14px 12px", textAlign: "center", color: col.highlight ? c.accent : c.text }}>{say(col.title, lang)}</span>)}
+          </div>
+          {list(p.rows).slice(0, 6).map((row, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: `1px solid ${c.border}` }}>
+              <span style={{ padding: "12px 16px" }}>{say(row.label, lang)}</span>
+              {list(row.values).map((v, j) => <span key={j} style={{ padding: "12px", textAlign: "center", color: v.state === "yes" ? c.accent : c.muted }}>{cell(v)}</span>)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    case "logos":
+      return <div style={{ display: "flex", flexWrap: p.moving === true ? "nowrap" : "wrap", justifyContent: "center", gap: "28px 44px", width: "100%", overflow: "hidden", ...s }}>{list(p.items).map((_, i) => <span key={i} style={{ width: 130, height: 40, borderRadius: 10, background: c.border, flex: "none" }} />)}</div>;
     case "accordion":
       return <div style={{ width: "100%", maxWidth: 820, ...s }}>{list(p.items).map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "16px 0", borderBottom: `1px solid ${c.border}`, fontWeight: 600 }}><span>{say(it.q, lang)}</span><span>+</span></div>)}</div>;
     case "showcase": {
