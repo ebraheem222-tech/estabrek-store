@@ -735,7 +735,11 @@ function StudioDocument() {
         await draftQ.refetch();
         await reload();
         toast.error(tr("المسودة تغيّرت من شاشة ثانية: رجعنا حمّلناها", "The draft changed in another window: it was loaded again"));
-      } else toast.error(tr("ما انحفظ التغيير", "The change wasn't saved"), { description: getApiErrorMessage(e) });
+      } else {
+        // The API never answered (it was restarting, the connection stalled): said as it is, and the editor is free again.
+        const timedOut = (e as { code?: string } | null)?.code === "ECONNABORTED";
+        toast.error(tr("ما انحفظ التغيير", "The change wasn't saved"), { description: timedOut ? say("الخادم تأخّر كتير بالرد. جرّب كمان مرة.|The server took too long to answer. Try again.|השרת התעכב מדי בתשובה. נסה שוב.") : getApiErrorMessage(e) });
+      }
       return false;
     } finally {
       setBusy(false);

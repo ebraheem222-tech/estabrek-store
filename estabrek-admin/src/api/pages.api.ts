@@ -247,14 +247,21 @@ export async function getPreviewTicket(id: string) {
   return res.data as { token: string; expiresAt: string };
 }
 
+/**
+ * How long the editor waits for a draft request before giving up. With no limit, a request the API never answered
+ * (it was restarting, the connection stalled) left the editor busy for good: nothing could be moved or changed
+ * until the page was loaded again.
+ */
+export const DRAFT_TIMEOUT_MS = 25_000;
+
 export async function getPageDraft(id: string) {
-  const res = await api.get(ENDPOINTS.admin.pages.draft(id));
+  const res = await api.get(ENDPOINTS.admin.pages.draft(id), { timeout: DRAFT_TIMEOUT_MS });
   return res.data as { draft: PageDraft | null; main: "ar" | "en" | "he" };
 }
 
 /** Changes the draft (starting one from the page when there's none). */
 export async function changePageDraft(id: string, ops: PageDraftOp[], rev?: number) {
-  const res = await api.post(ENDPOINTS.admin.pages.draftOps(id), { ops, rev });
+  const res = await api.post(ENDPOINTS.admin.pages.draftOps(id), { ops, rev }, { timeout: DRAFT_TIMEOUT_MS });
   return res.data as { draft: PageDraft };
 }
 
