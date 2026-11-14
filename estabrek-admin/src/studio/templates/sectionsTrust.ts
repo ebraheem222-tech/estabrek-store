@@ -121,7 +121,7 @@ export const TRUST_RECIPES: SectionRecipe[] = [
   r("news-perks", "newsletter", w("نموذج وشو بتاخدوا", "A form and what you get", "טופס ומה מקבלים"), ["plain", "soft", "surface"], (c) =>
     sec(c, [COLS(c, [1, 1], [[IMG(c, C.join, { aspect: "1 / 1", radius: 999 })], [eyebrow(c, X.whatYouGet), H(c, C.join, 2), ticks(c, X.gets), form(c, "newsletter")]], { gap: 56, align: "center" })], C.join)),
   r("news-scene", "newsletter", w("بالنص على خلفية حيّة", "Centred on a live background", "במרכז על רקע חי"), ["dark", "soft"], (c) =>
-    sec(c, [head(c, [ICON(c, "mail", { size: 40 }), H(c, C.join, 2), P(c, C.joinSub, { style: { maxWidth: "520px" } }), form(c, "newsletter")], true, 0)], C.join, { pad: [110, 24, 110, 24], props: scene(c, c.skin === "dark" ? "bokeh" : "bubbles") })),
+    sec(c, [head(c, [ICON(c, "mail", { size: 40 }), H(c, C.join, 2), P(c, C.joinSub, { style: { maxWidth: "520px" } }), form(c, "newsletter", true)], true, 0)], C.join, { pad: [110, 24, 110, 24], props: scene(c, c.skin === "dark" ? "bokeh" : "bubbles") })),
 
   /* offers */
   r("offer-ticket", "offer", w("كوبون", "A coupon", "קופון"), ["plain", "soft", "surface"], (c) => {
