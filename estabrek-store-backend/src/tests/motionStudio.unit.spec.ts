@@ -112,6 +112,28 @@ describe("keyframes, layers and overflow", () => {
   });
 });
 
+describe("free curves and the order of a stagger", () => {
+  const withEnter = (enter: Record<string, unknown>) => page(section({ id: "h", type: "heading", props: { text: { en: "Hi" }, level: 2 }, motion: { enter: { kind: "up", ...enter } } }));
+  const withKeys = (keys: Record<string, unknown>) => page(section({ id: "h", type: "heading", props: { text: { en: "Hi" }, level: 2 }, motion: { keys: { on: "view", parts: { self: [{ at: 0, opacity: 0 }, { at: 100, opacity: 1 }] }, ...keys } } }));
+
+  test("an entrance's curve is a name of the editor's, a GSAP name, a cubic-bezier or a spring", () => {
+    for (const ease of ["smooth", "bounce", "power3.out", "back.inOut", "cubic-bezier(0.2,0.8,0.2,1)", "cubic-bezier(0.3, -0.4, 0.7, 1.6)", "spring(1,120,14)"]) expect(issues(withEnter({ ease })), ease).toEqual([]);
+    // Nothing but those: a made-up name, a handle outside 0–1, a spring out of range, CSS that isn't a curve.
+    for (const ease of ["wild", "power9.out", "cubic-bezier(1.4,0,0.2,1)", "spring(0,120,14)", "steps(4)", "cubic-bezier(0,0,1,1); color: red"]) expect(issues(withEnter({ ease })).length, ease).toBeGreaterThan(0);
+  });
+
+  test("keyframes take a free curve too, for the whole animation and for one moment", () => {
+    expect(issues(withKeys({ ease: "spring(1,90,8)" }))).toEqual([]);
+    expect(issues(withKeys({ parts: { self: [{ at: 0, opacity: 0 }, { at: 100, opacity: 1, ease: "cubic-bezier(0.6,0,0.4,1)" }] } }))).toEqual([]);
+    expect(issues(withKeys({ ease: "wild" })).length).toBeGreaterThan(0);
+  });
+
+  test("a stagger's order is one of five", () => {
+    for (const order of ["first", "last", "center", "edges", "random"]) expect(issues(withEnter({ stagger: 0.1, order })), order).toEqual([]);
+    expect(issues(withEnter({ stagger: 0.1, order: "spiral" })).length).toBeGreaterThan(0);
+  });
+});
+
 describe("triggers", () => {
   const on = (triggers: unknown) => issues(page(section({ id: "b", type: "button", props: { label: { en: "Go" }, href: "/shop", triggers } })));
   test("every ready trigger and every fresh action saves as it is", () => {

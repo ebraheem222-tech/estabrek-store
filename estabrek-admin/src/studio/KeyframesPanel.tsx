@@ -13,6 +13,7 @@ import { shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { ColourPick, SCREEN_LABEL } from "./StudioTreePanels";
 import { say } from "./say";
+import { EaseChoice } from "./EaseChoice";
 import {
   addFrame, dropFrame, FIELD_REST, FRAME_FIELDS, keysOf, keysOp, layersOf, layersOp, ORIGIN_NAME, PART_NAME, partsFor, PRESET_GROUPS, presetOps, presetsFor, setFrame, starterKeys, TRIGGER_NAME,
   type KeyFrame, type KeyPart, type Keys, type KeyTrigger, type Layer,
@@ -86,7 +87,7 @@ function FrameEditor({ frame, busy, onSave, onDrop, canDrop }: { frame: KeyFrame
     <div className="space-y-1.5 rounded-lg bg-white/[0.03] p-2" data-testid="key-frame">
       <div className="grid grid-cols-2 gap-2">
         <Range label={say("الوقت|Time|זמן")} min={0} max={100} unit="%" busy={busy} value={frame.at} onSave={(at) => onSave({ at })} testId="key-frame-at" />
-        <Select label={say("الوصول لهون|Getting here|ההגעה לכאן")} value={frame.ease ?? ""} busy={busy} onPick={(ease) => onSave({ ease: ease || undefined })} options={[["", () => say("حسب الكل|As the whole|כמו הכלל")], ...EASES]} />
+        <EaseChoice label={say("الوصول لهون|Getting here|ההגעה לכאן")} value={frame.ease} none={say("حسب الكل|As the whole|כמו הכלל")} names={EASES.map(([k, name]): [string, string] => [k, name()])} busy={busy} onPick={(ease) => onSave({ ease })} testId="key-frame-ease" />
       </div>
       {FRAME_FIELDS.map(([k, name, min, max, step, unit]) => {
         const v = frame[k] as number | undefined;
@@ -175,7 +176,7 @@ export function KeyframesPanel({ node, busy, onOps, onPlay }: { node: PageTreeNo
         <>
           <div className="grid grid-cols-2 gap-2">
             <Select label={say("إمتى بتشتغل|When it plays|מתי הוא מתנגן")} value={keys.on} busy={busy} onPick={(on) => set({ on: on as KeyTrigger })} options={Object.entries(TRIGGER_NAME) as Array<[string, () => string]>} testId="keys-on" />
-            <Select label={say("السلاسة|Easing|האטה")} value={keys.ease ?? "smooth"} busy={busy} onPick={(ease) => set({ ease })} options={EASES} />
+            <EaseChoice label={say("السلاسة|Easing|האטה")} value={keys.ease ?? "smooth"} names={EASES.map(([k, name]): [string, string] => [k, name()])} busy={busy} onPick={(ease) => set({ ease })} testId="keys-ease" />
           </div>
           {keys.on !== "scroll" && keys.on !== "scene" ? (
             <div className="grid grid-cols-2 gap-x-2">
