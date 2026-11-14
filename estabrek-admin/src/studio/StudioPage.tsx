@@ -136,6 +136,7 @@ import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange, distancesAround } from "./handles";
 import { pickCanvasContainer } from "./canvasContainers";
 import { BOUND_TAG, partBounds } from "./canvasBounds";
+import { ContrastNote, type InkReading } from "./ContrastNote";
 import { effectiveLook, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
 import { canvasPlane,effectiveConstraints,movementOf,validResponsiveConstraints,planeMoveLocalPatch,planeNudgePatch,planeResizePatch } from "./engineGeometry";
 import { constrainSize,spaceBoxes,type SizeConstraints } from "./layoutConstraints";
@@ -295,6 +296,8 @@ function StudioDocument() {
   // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
   const [styleState, setStyleState] = useState<StateChoice>("normal");
   const [panMode, setPanMode] = useState(false);
+  /** What the shop says of the selected element's words (their colour over their ground), for its contrast note. */
+  const [ink, setInk] = useState<{ nodeId: string; ink: InkReading | null } | null>(null);
   /** When Space last spoke (a held key repeats): pan mode is believed only while it does. */
   const spaceAt = useRef(0);
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
@@ -466,6 +469,9 @@ function StudioDocument() {
       } else if (d.type === "pointPicked") {
         const value = d as unknown as { requestId?: unknown; candidates?: unknown };
         if (typeof value.requestId === "string" && Array.isArray(value.candidates)) pointSelection.current.resolve(value.requestId, value.candidates.filter((v): v is string => typeof v === "string").slice(0, 100));
+      } else if (d.type === "inkOf") {
+        const m = d as unknown as { nodeId?: unknown; ink?: unknown };
+        if (typeof m.nodeId === "string") setInk({ nodeId: m.nodeId, ink: m.ink && typeof m.ink === "object" ? (m.ink as InkReading) : null });
       } else if (d.type === "artParts") {
         const m = d as unknown as { nodeId?: unknown; parts?: unknown };
         if (typeof m.nodeId === "string" && Array.isArray(m.parts)) {
@@ -2433,6 +2439,13 @@ function StudioDocument() {
     window.dispatchEvent(new Event("studio-cancel-geometry"));
     if(!down.current?.panning)cancelDrag();
   },[device,src,zoom]);
+  // An element with words: the shop is asked what they are drawn in and on, when it is picked and again after
+  // each change the page shows (its contrast note is about the page as it is now).
+  const inkFor = selected && WRITABLE.has(nodeOf(selected)?.type ?? "") ? selected : null;
+  useEffect(() => {
+    if (!inkFor) { setInk(null); return; }
+    send({ type: "inkOf", nodeId: inkFor });
+  }, [inkFor, send, layout?.viewVersion, draftQ.data?.draft?.rev, screen]);
   /** While something is held at the frame's top or bottom edge, the page scrolls by itself (it stops by itself too). */
   const edgeTimer = useRef(0);
   const edgeNow = useRef({ zoom, pan, canvas, layout, frame: { w: dev.w, h: dev.h } });
@@ -3094,6 +3107,7 @@ function StudioDocument() {
               stateLooks(selFree, styleState, (l, ops) => void change(l, ops), WORDY_TYPES.has(selFree.type))
             ) : (
               <>
+                {WRITABLE.has(selFree.type) && ink?.nodeId === selFree.id ? <ContrastNote ink={ink.ink} busy={busy} onFix={WORDY_TYPES.has(selFree.type) ? (hex) => void change(say("لون الكلام|Text colour|צבע הטקסט"), [styleOp(selFree, screen, { color: hex })]) : undefined} /> : null}
                 {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "heading" || selFree.type === "text" ? <TypeMorePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["iconSize", "size", "color", "align"]} /> : null}
