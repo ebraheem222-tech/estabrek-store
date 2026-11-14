@@ -3,13 +3,17 @@
  * offers, headers, footers, popups, campaigns…), each in the skins that suit it. A
  * template is a recipe and a skin; it's built for the store's kind, language and motion
  * when it's used (build.ts), so every theme and every kind of store gets its own words.
+ * More recipes live in sectionsStore.ts (the store's front) and sectionsTrust.ts (what wins a customer over).
  */
-import { inAWeek } from "../blockDefaults";
-import { B, CARD, COLS, EL, GRID, H, ICON, IMG, MODEL, P, SEC, STACK, edge, eyebrow, mo, patternOf, pic, pop, say, type Ctx, type N, type SecOpts, type Skin } from "./build";
-import { C, CAMPAIGNS, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, PERKS, RUNNING, SHIPPING_QA, STATS, STEPS, VALUES, w, type Campaign, type Family, type W } from "./words";
+import { B, CARD, COLS, EL, GRID, H, ICON, IMG, MODEL, P, STACK, edge, eyebrow, mo, patternOf, pic, pop, say, type Ctx, type N, type Skin } from "./build";
+import { C, CAMPAIGNS, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, PERKS, RUNNING, SHIPPING_QA, STATS, STEPS, VALUES, w, type Campaign, type W } from "./words";
+import { TIMELINE, OFFER, DETAIL_TABS, BUNDLES, PEOPLE, RIGHTS, WHATSAPP, OUT_OF, QUESTIONS, TRIOS, row, ctas, head, items, sec, strip, products, categories, accordion, quotes, countdown, form, marquee, menu, perk, stat, step, looks, storeName } from "./parts";
+import { popup } from "./partsMore";
+import { STORE_RECIPES } from "./sectionsStore";
+import { TRUST_RECIPES } from "./sectionsTrust";
 
 export const SECTION_CATS = [
-  "hero", "announce", "categories", "products", "model", "features", "story", "split", "gallery", "lookbook", "testimonials", "stats",
+  "hero", "announce", "categories", "products", "banner", "model", "showcase", "features", "story", "split", "gallery", "lookbook", "testimonials", "trust", "stats", "data",
   "steps", "faq", "cta", "newsletter", "offer", "pricing", "team", "compare", "details", "contact", "header", "footer", "notice", "popup", "campaign",
 ] as const;
 export type SectionCat = (typeof SECTION_CATS)[number];
@@ -19,6 +23,10 @@ export const CAT_NAMES: Record<SectionCat, W> = {
   announce: w("شرائط إعلان", "Announcement bars", "פסי הודעות"),
   categories: w("الأقسام", "Categories", "קטגוריות"),
   products: w("منتجات", "Products", "מוצרים"),
+  banner: w("بانرات", "Banners", "באנרים"),
+  showcase: w("عروض تفاعلية", "Showcases", "תצוגות"),
+  trust: w("ثقة وضمانات", "Trust and promises", "אמון והבטחות"),
+  data: w("جداول ومعلومات", "Tables and information", "טבלאות ומידע"),
   model: w("عرض 3D", "3D showcase", "תצוגת תלת־ממד"),
   features: w("مميزات", "Perks", "יתרונות"),
   story: w("قصتنا", "Our story", "הסיפור שלנו"),
@@ -45,92 +53,6 @@ export const CAT_NAMES: Record<SectionCat, W> = {
 };
 
 export type SectionRecipe = { key: string; cat: SectionCat; name: W; skins: Skin[]; build: (c: Ctx) => N; campaign?: Campaign };
-
-/* ------------------------------------------------------------- the words */
-
-const QUOTES: Array<{ quote: W; name: W }> = [
-  { quote: w("وصل بسرعة وطلع متل الصور بالزبط.", "Arrived fast and exactly like the photos.", "הגיע מהר ובדיוק כמו בתמונות."), name: w("سارة م.", "Sarah M.", "שרה מ.") },
-  { quote: w("ردّوا عليّ عالواتساب بدقايق وساعدوني أختار.", "They answered on WhatsApp in minutes and helped me choose.", "ענו לי בוואטסאפ תוך דקות ועזרו לי לבחור."), name: w("أحمد ك.", "Ahmad K.", "אחמד כ.") },
-  { quote: w("تالت طلب إلي، وأكيد مش الأخير.", "My third order, and surely not the last.", "ההזמנה השלישית שלי, ובטוח לא האחרונה."), name: w("ليلى ن.", "Layla N.", "ליילה נ.") },
-];
-const TIMELINE: Array<[W, W]> = [
-  [w("2018", "2018", "2018"), w("بلّشنا من غرفة صغيرة وحلم كبير.", "We started in a small room with a big dream.", "התחלנו בחדר קטן עם חלום גדול.")],
-  [w("2020", "2020", "2020"), w("فتحنا المتجر أونلاين ووصلنا لكل البلاد.", "We opened online and reached the whole country.", "פתחנו אונליין והגענו לכל הארץ.")],
-  [w("2023", "2023", "2023"), w("صرنا فريق من 12 شخص.", "We became a team of twelve.", "הפכנו לצוות של שנים-עשר.")],
-  [w("اليوم", "Today", "היום"), w("أكتر من 12,000 زبون مبسوط.", "More than 12,000 happy customers.", "יותר מ-12,000 לקוחות מרוצים.")],
-];
-const OFFER = {
-  title: w("خصم 20٪ على كل المتجر", "20% off the whole store", "20% הנחה על כל החנות"),
-  code: w("SAVE20", "SAVE20", "SAVE20"),
-  use: w("استعملوا الكود عند الدفع، لحد آخر الأسبوع.", "Use the code at checkout, until the end of the week.", "השתמשו בקוד בתשלום, עד סוף השבוע."),
-};
-const DETAIL_TABS: Array<[W, W]> = [
-  [w("شو فيه", "What's inside", "מה בפנים"), w("كل التفاصيل والمواد مكتوبة بصفحة كل منتج.", "Every detail and material is listed on each product's page.", "כל הפרטים והחומרים מופיעים בדף של כל מוצר.")],
-  [w("التوصيل", "Delivery", "משלוח"), w("2–4 أيام عمل، ومجاني فوق ₪200.", "2–4 working days, free over ₪200.", "2–4 ימי עסקים, חינם מעל ₪200.")],
-  [w("الإرجاع", "Returns", "החזרות"), w("14 يوم للإرجاع أو التبديل.", "14 days to return or exchange.", "14 יום להחזרה או להחלפה.")],
-];
-const BUNDLES: Array<{ name: W; price: string; features: W; featured?: boolean }> = [
-  { name: w("باقة صغيرة", "Small bundle", "חבילה קטנה"), price: "₪99", features: w("قطعتين\nتوصيل عادي", "Two pieces\nStandard delivery", "שני פריטים\nמשלוח רגיל") },
-  { name: w("باقة العيلة", "Family bundle", "חבילה משפחתית"), price: "₪199", features: w("4 قطع\nتوصيل سريع\nتغليف هدية", "Four pieces\nFast delivery\nGift wrapping", "ארבעה פריטים\nמשלוח מהיר\nאריזת מתנה"), featured: true },
-  { name: w("باقة كبيرة", "Big bundle", "חבילה גדולה"), price: "₪349", features: w("8 قطع\nتوصيل مجاني\nتغليف هدية\nإرجاع مجاني", "Eight pieces\nFree delivery\nGift wrapping\nFree returns", "שמונה פריטים\nמשלוח חינם\nאריזת מתנה\nהחזרה חינם") },
-];
-const PEOPLE: Array<[W, W]> = [
-  [w("ليلى", "Layla", "ליילה"), w("المؤسِّسة", "Founder", "מייסדת")],
-  [w("عمر", "Omar", "עומר"), w("المشتريات", "Buying", "רכש")],
-  [w("دانا", "Dana", "דנה"), w("خدمة الزباين", "Customer care", "שירות לקוחות")],
-];
-const RIGHTS = w("© كل الحقوق محفوظة", "© All rights reserved", "© כל הזכויות שמורות");
-const WHATSAPP = "https://wa.me/972500000000";
-const SEE = w("شوفوا التفاصيل", "See the details", "לפרטים");
-const OUT_OF = w("4.9 من 5 من أكتر من 2,000 تقييم", "4.9 out of 5 from over 2,000 reviews", "4.9 מתוך 5 מיותר מ-2,000 ביקורות");
-const QUESTIONS: Array<[W, W]> = [
-  ...SHIPPING_QA.slice(0, 3),
-  [w("المنتجات أصلية؟", "Are the products genuine?", "המוצרים מקוריים?"), w("أكيد، كل إشي منجيبه من مصادر رسمية وموثوقة.", "Yes, everything comes from official, trusted sources.", "בוודאי, הכול מגיע ממקורות רשמיים ואמינים.")],
-];
-/** Three models of each kind of store (the shop's built-in ones). */
-export const TRIOS: Record<Family, [string, string, string]> = {
-  fashion: ["hanger", "handbag", "sneaker"], shoes: ["sneaker", "handbag", "hanger"], electronics: ["phone", "laptop", "headset"], gaming: ["controller", "headset", "console"],
-  beauty: ["perfume", "lipstick", "jar"], jewelry: ["ring", "gem", "watch"], books: ["book", "mug", "lamp"], art: ["frame", "easel", "palette"],
-  home: ["lamp", "vase", "mug"], food: ["cake", "mug", "jar"], kids: ["teddy", "blocks", "ball"], sports: ["dumbbell", "ball", "racket"],
-  pets: ["bone", "ball", "teddy"], flowers: ["vase", "plant", "mug"], music: ["guitar", "vinyl", "speaker"], general: ["handbag", "mug", "gem"],
-};
-
-/* ------------------------------------------------------------ small parts */
-
-const row = (c: Ctx, kids: N[], center = false) => STACK(c, kids, { direction: "row", gap: 12, wrap: true, align: "center", ...(center ? { justify: "center" } : {}) });
-const ctas = (c: Ctx, center = false, second: [W, string] = [C.more, "/about"]) => row(c, [B(c, c.pack.cta, "/shop"), B(c, second[0], second[1], "outline", { delay: 0.3 })], center);
-/** A heading group: centred (a stack keeping its words in the middle) or along the line's start; space under it. */
-const head = (c: Ctx, kids: N[], center = true, space = 40) => STACK(c, kids, { gap: 14, margin: [0, 0, space, 0], ...(center ? { align: "center", textAlign: "center" } : {}) });
-const items = <T,>(list: T[], n: number) => Array.from({ length: n }, (_, i) => list[i % list.length]);
-const sec = (c: Ctx, kids: N[], name: W, o?: SecOpts) => SEC(c, kids, { name, ...o });
-const strip = (c: Ctx, kids: N[], name: W, o?: SecOpts) => SEC(c, kids, { name, pad: [12, 16, 12, 16], phone: { pad: [10, 12, 10, 12] }, ...o });
-
-const products = (c: Ctx, props: Record<string, unknown>) => EL(c, "products", { source: "new", limit: 8, layout: "grid", ...props }, { style: { self: "stretch" } });
-const categories = (c: Ctx, props: Record<string, unknown>) => EL(c, "categories", { limit: 6, ...props }, { style: { self: "stretch" } });
-const accordion = (c: Ctx, list: Array<[W, W]>, look: string, single = false) => EL(c, "accordion", { items: list.map(([q, a]) => ({ q: say(c, q), a: say(c, a) })), look, ...(single ? { single: true } : {}) }, { style: { self: "stretch", maxWidth: "820px" } });
-const quotes = (c: Ctx, layout: string, n = 3) => EL(c, "testimonials", { items: items(QUOTES, n).map((q) => ({ quote: say(c, q.quote), name: say(c, q.name), stars: 5 })), layout }, { style: { self: "stretch" } });
-const countdown = (c: Ctx, look: "boxes" | "plain" = "boxes") => EL(c, "countdown", { until: inAWeek(), look, done: say(c, C.started) });
-const form = (c: Ctx, kind: "newsletter" | "contact") => EL(c, "form", { kind }, { style: { self: "stretch", maxWidth: "520px" } });
-const marquee = (c: Ctx, list: W[], size?: number) => EL(c, "marquee", { items: list.map((t) => say(c, t)), speed: 30, pause: true, separator: "✦" }, size ? { style: { size, weight: 800 } } : undefined);
-const menu = (c: Ctx, links: Array<[W, string]>, o: Record<string, unknown> = {}) => EL(c, "menu", { items: links.map(([t, href]) => ({ label: say(c, t), href })), layout: "row", ...o });
-const perk = (c: Ctx, p: (typeof PERKS)[number], o: { center?: boolean; card?: boolean; small?: boolean } = {}) => {
-  const kids = [ICON(c, p.icon, { size: o.small ? 28 : 40 }), H(c, p.title, o.small ? 5 : 4, { motion: false }), P(c, p.text, { motion: false, style: { size: o.small ? 14 : 16 } })];
-  return o.card ? CARD(c, kids, o.center ? { align: "center", textAlign: "center" } : undefined) : STACK(c, kids, { gap: 10, ...(o.center ? { align: "center", textAlign: "center" } : {}) });
-};
-const stat = (c: Ctx, s: (typeof STATS)[number], card = false) => {
-  const kids = [H(c, s.n, 2, { motion: mo.num(c), style: { size: 48, color: pop(c) } }), P(c, s.label, { motion: false })];
-  return card ? CARD(c, kids, { align: "center", textAlign: "center" }) : STACK(c, kids, { gap: 4, align: "center", textAlign: "center" });
-};
-const step = (c: Ctx, s: (typeof STEPS)[number], i: number, card = false) => {
-  const kids = [H(c, w(String(i + 1), String(i + 1), String(i + 1)), 2, { motion: false, style: { size: card ? 56 : 40, color: pop(c), weight: 800 } }), H(c, s.title, 4, { motion: false }), P(c, s.text, { motion: false })];
-  return card ? CARD(c, kids) : STACK(c, kids, { gap: 8 });
-};
-const looks = (c: Ctx) => [
-  { x: 32, y: 38, title: say(c, c.pack.product), text: say(c, SEE), href: "/shop" },
-  { x: 68, y: 60, title: say(c, c.pack.collection), href: "/shop" },
-  { x: 48, y: 84, title: say(c, C.newIn), href: "/shop?sort=new" },
-];
-const storeName = (c: Ctx, size = 24) => H(c, C.storeName, 3, { motion: false, style: { size, weight: 800 } });
 
 /* ---------------------------------------------------------------- recipes */
 
@@ -406,9 +328,7 @@ export const RECIPES: SectionRecipe[] = [
     popup(c, { trigger: "load", delay: 5, often: "visit", size: "l" }, [COLS(c, [1, 1], [[IMG(c, OFFER.title, { aspect: "1 / 1", motion: false })], [H(c, OFFER.title, 2, { motion: false }), H(c, OFFER.code, 3, { motion: false, style: { color: pop(c), letterSpacing: 4 } }), P(c, OFFER.use, { motion: false }), B(c, C.shop, "/shop", "solid", { motion: false })]], { gap: 24, align: "center" })])),
 ];
 
-function popup(c: Ctx, props: Record<string, unknown>, children: N[]): N {
-  return { id: c.ids("pop"), type: "popup", props: { place: "center", ...props, label: say(c, C.welcome) }, children };
-}
+RECIPES.push(...STORE_RECIPES, ...TRUST_RECIPES);
 
 /* -------------------------------------------------------------- campaigns */
 

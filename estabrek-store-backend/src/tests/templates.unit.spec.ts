@@ -41,8 +41,8 @@ function problem(id: string, o: Record<string, unknown>): string | null {
 describe("the editor's templates", () => {
   test("shop and cart templates hold their store parts once each, ready for /shop and /cart", () => {
     const shops = cat.PAGE_TEMPLATES.filter((t) => t.group === "shop"), carts = cat.PAGE_TEMPLATES.filter((t) => t.group === "cart");
-    expect(shops.length).toBeGreaterThanOrEqual(8);
-    expect(carts.length).toBeGreaterThanOrEqual(6);
+    expect(shops.length).toBeGreaterThanOrEqual(11);
+    expect(carts.length).toBeGreaterThanOrEqual(8);
     for (const [list, slug] of [[shops, "/shop"], [carts, "/cart"]] as const) for (const t of list) for (const lang of LANGS) {
       const built = cat.buildTemplate(t.id, { ids: idMaker(), fam: "fashion", lang })!;
       const root = { id: "page", type: "page", props: {}, children: built };
@@ -51,9 +51,9 @@ describe("the editor's templates", () => {
     }
   });
 
-  test("there are hundreds of sections and over a hundred pages", () => {
-    expect(cat.SECTION_TEMPLATES.length).toBeGreaterThanOrEqual(300);
-    expect(cat.PAGE_TEMPLATES.length).toBeGreaterThanOrEqual(100);
+  test("there are over seven hundred sections and over two hundred pages", () => {
+    expect(cat.SECTION_TEMPLATES.length).toBeGreaterThanOrEqual(700);
+    expect(cat.PAGE_TEMPLATES.length).toBeGreaterThanOrEqual(200);
     expect(new Set([...cat.SECTION_TEMPLATES, ...cat.PAGE_TEMPLATES].map((t) => t.id)).size).toBe(cat.SECTION_TEMPLATES.length + cat.PAGE_TEMPLATES.length);
   });
 

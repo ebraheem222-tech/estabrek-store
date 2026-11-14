@@ -31,9 +31,9 @@ describe("the template catalog", () => {
     for (const c of CAMPAIGNS) for (const k of ["name", "title", "sub", "strip"] as const) expect(full(c[k]), `${c.key}.${k}`).toBe(true);
   });
 
-  it("has every category filled, three homes for each kind of store and a page for each campaign", () => {
+  it("has every category filled, six homes for each kind of store and a page for each campaign", () => {
     for (const cat of SECTION_CATS) expect(SECTION_TEMPLATES.filter((t) => t.group === cat).length, cat).toBeGreaterThanOrEqual(2);
-    for (const f of FAMILIES) expect(PAGE_TEMPLATES.filter((t) => t.group === "home" && t.fam === f)).toHaveLength(3);
+    for (const f of FAMILIES) expect(PAGE_TEMPLATES.filter((t) => t.group === "home" && t.fam === f)).toHaveLength(6);
     expect(PAGE_TEMPLATES.filter((t) => t.group === "campaign")).toHaveLength(CAMPAIGNS.length);
   });
 
@@ -128,5 +128,16 @@ describe("template files", () => {
     const copy = freshIds(sec, (p) => `new-${p}-${Math.random().toString(36).slice(2, 7)}`);
     walk([copy], (n) => expect(before.has(n.id)).toBe(false));
     expect(JSON.stringify(copy).length).toBeGreaterThan(JSON.stringify(sec).length - 1);
+  });
+
+  it("copies a presentation with its panels' names on their new ids", () => {
+    const [sec] = buildTemplate("s:prod-tabs:plain", { ids: ids(), fam: "pets", lang: "en" })!;
+    const deckOf = (n: PageTreeNode): PageTreeNode | undefined => (n.type === "deck" ? n : (n.children ?? []).map(deckOf).find(Boolean));
+    const before = deckOf(sec)!;
+    const after = deckOf(freshIds(sec, (p) => `new-${p}-${Math.random().toString(36).slice(2, 7)}`))!;
+    const names = (d: PageTreeNode) => d.children!.map((panel) => (d.props.labels as Record<string, { en: string }>)[panel.id]?.en);
+    expect(names(before)).toEqual(["New in", "Best sellers"]);
+    expect(names(after)).toEqual(names(before));
+    expect(Object.keys(after.props.labels as object).sort()).toEqual(after.children!.map((panel) => panel.id).sort());
   });
 });
