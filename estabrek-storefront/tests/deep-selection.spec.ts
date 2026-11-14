@@ -229,6 +229,11 @@ test("rich native headings and buttons can actually be typed, saved and undone f
     await expect(frame(page).locator(`[data-tree-node="${id}"]`)).toHaveText(value);
     await page.getByTestId("studio-undo").click();
     await expect.poll(() => page.evaluate(({ id, field }) => (window as any).__canvasHarness.getNode(id).node.props[field].en, { id, field })).toContain("[b]");
+    // The undo redraws the page: the next element is opened for writing only once that has settled. On CI the
+    // second element was sometimes never opened for writing; a redraw landing after the writing began is the
+    // likely cause (it passes here either way).
+    await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+    await expect(frame(page).locator(`[data-tree-node="${id}"] ${selector}`)).toBeVisible();
   }
 });
 test("an explicitly selected native widget can be dragged from its internal text", async ({ page }) => {

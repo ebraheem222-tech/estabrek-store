@@ -47,7 +47,11 @@ test("a tiny dot is picked, seen and moved from just outside it; a turned box is
   await page.mouse.click(dot.x - 24, beside.y);
   await expect(info(page)).toContainText("card");
 
-  // Dragged from just outside it, the dot moves (not the card).
+  // Dragged from just outside it, the dot moves (not the card). It lands inside the card: the view would come to
+  // the card then (canvas-bounds.spec.ts), so that is turned off here, where places on the screen are compared.
+  await page.getByTestId("studio-drag-toggle").click();
+  await page.getByTestId("studio-drag-follow").uncheck();
+  await page.getByTestId("studio-drag-toggle").click();
   const cardBefore = await canvasBox(page, "card");
   await page.mouse.move(beside.x, beside.y);
   await page.mouse.down();
