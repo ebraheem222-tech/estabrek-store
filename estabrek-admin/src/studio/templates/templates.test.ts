@@ -94,6 +94,19 @@ describe("the template catalog", () => {
     expect(kinds("rich")).toEqual(expect.arrayContaining(["letters", "hover:magnetic"]));
   });
 
+  it("puts a centred section's form and questions in the middle, and a column's at its start", () => {
+    const styleOf = (id: string, type: string) => {
+      let found: Record<string, unknown> | undefined;
+      walk(buildTemplate(id, { ids: ids(), fam: "fashion", lang: "en" })!, (n) => { if (n.type === type) found = (n.style as { base: Record<string, unknown> }).base; });
+      return found!;
+    };
+    // Stretched and capped in width it stood at the line's start, under a centred title.
+    for (const id of ["s:news-center:soft", "s:news-card:surface", "s:soon:dark", "s:news-scene:dark"]) expect(styleOf(id, "form"), id).toMatchObject({ self: "center", width: "100%", maxWidth: "520px" });
+    for (const id of ["s:faq-lines:plain", "s:faq-plus:plain"]) expect(styleOf(id, "accordion"), id).toMatchObject({ self: "center", width: "100%", maxWidth: "820px" });
+    expect(styleOf("s:news-split:surface", "form")).toMatchObject({ self: "stretch", maxWidth: "520px" });
+    expect(styleOf("s:faq-split:plain", "accordion")).toMatchObject({ self: "stretch", maxWidth: "820px" });
+  });
+
   it("finds templates by words in any language", () => {
     const hero = templateById("s:hero-center:dark")!;
     expect(matches(hero, "")).toBe(true);

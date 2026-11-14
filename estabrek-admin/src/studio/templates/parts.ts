@@ -69,10 +69,12 @@ export const strip = (c: Ctx, kids: N[], name: W, o?: SecOpts) => SEC(c, kids, {
 
 export const products = (c: Ctx, props: Record<string, unknown>) => EL(c, "products", { source: "new", limit: 8, layout: "grid", ...props }, { style: { self: "stretch" } });
 export const categories = (c: Ctx, props: Record<string, unknown>) => EL(c, "categories", { limit: 6, ...props }, { style: { self: "stretch" } });
-export const accordion = (c: Ctx, list: Array<[W, W]>, look: string, single = false) => EL(c, "accordion", { items: list.map(([q, a]) => ({ q: say(c, q), a: say(c, a) })), look, ...(single ? { single: true } : {}) }, { style: { self: "stretch", maxWidth: "820px" } });
+/** As wide as its place up to `max`: at the line's start, or (`center`) in the middle of a centred group. */
+const capped = (max: string, center: boolean) => (center ? { self: "center", width: "100%", maxWidth: max } : { self: "stretch", maxWidth: max });
+export const accordion = (c: Ctx, list: Array<[W, W]>, look: string, single = false, center = false) => EL(c, "accordion", { items: list.map(([q, a]) => ({ q: say(c, q), a: say(c, a) })), look, ...(single ? { single: true } : {}) }, { style: capped("820px", center) });
 export const quotes = (c: Ctx, layout: string, n = 3) => EL(c, "testimonials", { items: items(QUOTES, n).map((q) => ({ quote: say(c, q.quote), name: say(c, q.name), stars: 5 })), layout }, { style: { self: "stretch" } });
 export const countdown = (c: Ctx, look: "boxes" | "plain" = "boxes") => EL(c, "countdown", { until: inAWeek(), look, done: say(c, C.started) });
-export const form = (c: Ctx, kind: "newsletter" | "contact") => EL(c, "form", { kind }, { style: { self: "stretch", maxWidth: "520px" } });
+export const form = (c: Ctx, kind: "newsletter" | "contact", center = false) => EL(c, "form", { kind }, { style: capped("520px", center) });
 export const marquee = (c: Ctx, list: W[], size?: number) => EL(c, "marquee", { items: list.map((t) => say(c, t)), speed: 30, pause: true, separator: "✦" }, size ? { style: { size, weight: 800 } } : undefined);
 export const menu = (c: Ctx, links: Array<[W, string]>, o: Record<string, unknown> = {}) => EL(c, "menu", { items: links.map(([t, href]) => ({ label: say(c, t), href })), layout: "row", ...o });
 export const perk = (c: Ctx, p: (typeof PERKS)[number], o: { center?: boolean; card?: boolean; small?: boolean } = {}) => {

@@ -224,10 +224,10 @@ export const RECIPES: SectionRecipe[] = [
     sec(c, [COLS(c, [1, 1], [[IMG(c, C.howItWorks, { aspect: "4 / 5" })], [H(c, C.howItWorks, 2), STACK(c, STEPS.map((s, i) => step(c, s, i)), { gap: 24 }, mo.group(c)), B(c, C.shop, "/shop")]], { gap: 56, align: "center" })], C.howItWorks)),
 
   /* questions */
-  r("faq-lines", "faq", w("أسئلة بخطوط", "Questions in lines", "שאלות בשורות"), ["plain", "surface", "soft"], (c) => sec(c, [head(c, [H(c, C.questions, 2)]), head(c, [accordion(c, QUESTIONS, "lines")], true, 0)], C.questions)),
+  r("faq-lines", "faq", w("أسئلة بخطوط", "Questions in lines", "שאלות בשורות"), ["plain", "surface", "soft"], (c) => sec(c, [head(c, [H(c, C.questions, 2)]), head(c, [accordion(c, QUESTIONS, "lines", false, true)], true, 0)], C.questions)),
   r("faq-split", "faq", w("كلام وأسئلة", "Words and questions", "מילים ושאלות"), ["plain", "soft"], (c) =>
     sec(c, [COLS(c, [1, 2], [[H(c, C.questions, 2), P(c, C.writeSub), B(c, C.contactUs, "/contact", "outline")], [accordion(c, QUESTIONS, "cards")]], { gap: 48 })], C.questions)),
-  r("faq-plus", "faq", w("أسئلة بإشارة +", "Questions with a +", "שאלות עם +"), ["plain", "dark"], (c) => sec(c, [head(c, [eyebrow(c, C.shipping), H(c, C.questions, 2)]), head(c, [accordion(c, SHIPPING_QA, "plus", true)], true, 0)], C.questions)),
+  r("faq-plus", "faq", w("أسئلة بإشارة +", "Questions with a +", "שאלות עם +"), ["plain", "dark"], (c) => sec(c, [head(c, [eyebrow(c, C.shipping), H(c, C.questions, 2)]), head(c, [accordion(c, SHIPPING_QA, "plus", true, true)], true, 0)], C.questions)),
 
   /* calls to action */
   r("cta-center", "cta", w("بالنص", "Centred", "במרכז"), ["bold", "dark", "soft"], (c) => sec(c, [head(c, [H(c, c.pack.title, 2), P(c, c.pack.sub, { style: { maxWidth: "560px" } }), row(c, [B(c, c.pack.cta, "/shop")], true)], true, 0)], C.shop)),
@@ -243,10 +243,10 @@ export const RECIPES: SectionRecipe[] = [
     sec(c, [head(c, [H(c, c.pack.cta, 1, { style: { size: 96, sizeMin: 44, weight: 800 } }), B(c, C.shop, "/shop")], true, 0)], C.shop, { pad: [100, 24, 100, 24] })),
 
   /* newsletter */
-  r("news-center", "newsletter", w("بالنص", "Centred", "במרכז"), ["soft", "plain", "dark", "bold"], (c) => sec(c, [head(c, [ICON(c, "mail", { size: 36 }), H(c, C.join, 2), P(c, C.joinSub, { style: { maxWidth: "520px" } }), form(c, "newsletter")], true, 0)], C.join)),
+  r("news-center", "newsletter", w("بالنص", "Centred", "במרכז"), ["soft", "plain", "dark", "bold"], (c) => sec(c, [head(c, [ICON(c, "mail", { size: 36 }), H(c, C.join, 2), P(c, C.joinSub, { style: { maxWidth: "520px" } }), form(c, "newsletter", true)], true, 0)], C.join)),
   r("news-split", "newsletter", w("كلام ونموذج", "Words and a form", "מילים וטופס"), ["surface", "plain"], (c) => sec(c, [COLS(c, [1, 1], [[H(c, C.join, 2), P(c, C.joinSub)], [form(c, "newsletter")]], { gap: 40, align: "center" })], C.join, { pad: [64, 24, 64, 24] })),
   r("news-picture", "newsletter", w("صورة ونموذج", "A picture and a form", "תמונה וטופס"), ["plain", "soft"], (c) => sec(c, [COLS(c, [1, 1], [[IMG(c, C.join, { aspect: "4 / 3" })], [H(c, C.join, 2), P(c, C.joinSub), form(c, "newsletter")]], { gap: 48, align: "center" })], C.join)),
-  r("news-card", "newsletter", w("كرت بالنص", "A centred card", "כרטיס במרכז"), ["surface", "soft"], (c) => sec(c, [head(c, [CARD(c, [H(c, C.join, 3, { motion: false }), P(c, C.joinSub, { motion: false }), form(c, "newsletter")], { align: "center", textAlign: "center", maxWidth: "640px", self: "stretch", pad: [40, 32, 40, 32] })], true, 0)], C.join)),
+  r("news-card", "newsletter", w("كرت بالنص", "A centred card", "כרטיס במרכז"), ["surface", "soft"], (c) => sec(c, [head(c, [CARD(c, [H(c, C.join, 3, { motion: false }), P(c, C.joinSub, { motion: false }), form(c, "newsletter", true)], { align: "center", textAlign: "center", maxWidth: "640px", self: "center", width: "100%", pad: [40, 32, 40, 32] })], true, 0)], C.join)),
 
   /* offers */
   r("offer-countdown", "offer", w("عرض بعدّاد", "An offer with a countdown", "מבצע עם ספירה לאחור"), ["bold", "dark", "soft"], (c) => sec(c, [head(c, [eyebrow(c, C.ends), H(c, OFFER.title, 2), countdown(c), B(c, C.shop, "/shop")], true, 0)], OFFER.title)),
@@ -316,7 +316,7 @@ export const RECIPES: SectionRecipe[] = [
   r("notfound-model", "notice", w("404 بموديل 3D", "A 404 with a 3D model", "404 עם מודל תלת־ממד"), ["plain", "dark"], (c) =>
     sec(c, [COLS(c, [1, 1], [[MODEL(c, { props: { anim: { type: "bounce", speed: 1 } } })], [H(c, w("404", "404", "404"), 1, { style: { size: 96, color: pop(c) } }), H(c, C.notFound, 2), P(c, C.notFoundSub), B(c, C.home, "/")]], { gap: 40, align: "center" })], C.notFound)),
   r("soon", "notice", w("قريباً بعدّاد", "Coming soon with a countdown", "בקרוב עם ספירה לאחור"), ["dark", "bold", "soft"], (c) =>
-    sec(c, [head(c, [eyebrow(c, C.storeName), H(c, C.soon, 1), P(c, C.soonSub, { style: { maxWidth: "560px" } }), countdown(c), form(c, "newsletter")], true, 0)], C.soon, { pad: [120, 24, 120, 24] })),
+    sec(c, [head(c, [eyebrow(c, C.storeName), H(c, C.soon, 1), P(c, C.soonSub, { style: { maxWidth: "560px" } }), countdown(c), form(c, "newsletter", true)], true, 0)], C.soon, { pad: [120, 24, 120, 24] })),
   r("soon-stars", "notice", w("قريباً بنجوم", "Coming soon with stars", "בקרוב עם כוכבים"), ["dark", "bold"], (c) =>
     sec(c, [head(c, [H(c, C.soon, 1, { style: { size: 80, sizeMin: 40 } }), P(c, C.soonSub, { style: { maxWidth: "560px" } }), countdown(c)], true, 0)], C.soon, { pad: [150, 24, 150, 24], props: { particles: { kind: "stars", color: pop(c), amount: 1.4 } } })),
 
