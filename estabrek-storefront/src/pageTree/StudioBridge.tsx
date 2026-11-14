@@ -850,6 +850,45 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         })();
         return;
       }
+      // What a picture's pixels say (shared/pictureSense.ts): its main colours, what a page can make of them, and
+      // where its subject is. Read here, small, because the picture is drawn here.
+      if (d.type === "pictureSense" && e.source === window.parent) {
+        const v = e.data as { requestId?: unknown; nodeId?: unknown };
+        if (typeof v.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.requestId) || typeof v.nodeId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(v.nodeId)) return;
+        const requestId = v.requestId;
+        const img = document.querySelector<HTMLImageElement>(`img[data-tree-node="${v.nodeId}"], [data-tree-node="${v.nodeId}"] img`);
+        if (!img) {
+          send({ type: "pictureSensed", requestId, problem: "noPicture" });
+          return;
+        }
+        void (async () => {
+          try {
+            const { dominantColours, paletteRoles, subjectPoint, PICTURE_SENSE_SIDE } = await import("../../../shared/pictureSense");
+            const pic = new Image();
+            pic.crossOrigin = "anonymous";
+            pic.src = img.currentSrc || img.src;
+            await pic.decode();
+            // A drawing without a size of its own (an SVG) is read at the size it is shown.
+            const nw = pic.naturalWidth || img.clientWidth, nh = pic.naturalHeight || img.clientHeight;
+            if (!nw || !nh) throw new Error("no size");
+            const k = Math.min(1, PICTURE_SENSE_SIDE / Math.max(nw, nh));
+            const w = Math.max(8, Math.round(nw * k)), h = Math.max(8, Math.round(nh * k));
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const g = canvas.getContext("2d", { willReadFrequently: true });
+            if (!g) throw new Error("no canvas");
+            g.drawImage(pic, 0, 0, w, h);
+            const data = g.getImageData(0, 0, w, h).data;
+            const colours = dominantColours(data, w, h, 6);
+            send({ type: "pictureSensed", requestId, colours, roles: paletteRoles(colours), subject: subjectPoint(data, w, h) });
+          } catch {
+            // A picture from elsewhere that doesn't let its pixels be read.
+            send({ type: "pictureSensed", requestId, problem: "unreadable" });
+          }
+        })();
+        return;
+      }
       // A picture's edit seen live while the editor changes it (focus mode): CSS on the picture until the real copy
       // is made (shared/imageEdit.ts recipeCss); empty values take it off.
       if (d.type === "imageInfo" && e.source === window.parent) {

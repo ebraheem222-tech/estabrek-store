@@ -123,7 +123,11 @@ export function ButtonStylePanel({ node, screen, busy, onOps, inState = false }:
 const SPOTS: Array<[number, number]> = [[0, 0], [50, 0], [100, 0], [0, 50], [50, 50], [100, 50], [0, 100], [50, 100], [100, 100]];
 
 /** A picture or clip: how it fills its frame, which point stays in sight, its corners, see-through. */
-export function MediaStylePanel({ node, screen, busy, onOps }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops }) {
+export function MediaStylePanel({ node, screen, busy, onOps, onFindSubject }: {
+  node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops;
+  /** A picture: finds its subject from its pixels and puts the point there (the studio asks the shop's frame). */
+  onFindSubject?: () => void;
+}) {
   const v = (k: string) => shownLook(node, screen, k);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
   const focus = (v("focus") as { x: number; y: number } | undefined) ?? { x: 50, y: 50 };
@@ -150,6 +154,11 @@ export function MediaStylePanel({ node, screen, busy, onOps }: { node: PageTreeN
       )}
       <div className="text-[11px] text-white/55">
         {tr("النقطة اللي بتضل ظاهرة", "The point that stays in sight")}
+        {onFindSubject ? (
+          <button type="button" className={`${btn} ms-2`} disabled={busy} onClick={onFindSubject} title={say("بنقرا الصورة وبنحط النقطة على موضوعها، حتى القص ما يطيّره|The picture is read and the point put on its subject, so a crop keeps it|קוראים את התמונה ושמים את הנקודה על הנושא שלה")} data-testid="studio-media-find-subject">
+            🎯 {say("لاقي الموضوع لحالك|Find the subject|מצא את הנושא")}
+          </button>
+        ) : null}
         <div className="mt-1 flex items-start gap-3">
           <div className="grid w-20 shrink-0 grid-cols-3 gap-1" role="group" aria-label={tr("النقطة اللي بتضل ظاهرة", "The point that stays in sight")} data-testid="studio-media-focus">
             {SPOTS.map(([x, y]) => (
