@@ -312,14 +312,18 @@ const physicsDemo = { id: "physics-demo", slug: "/physics-demo", name: "Physics"
     ] },
   ] },
 } };
-// A world's field of force (physics-field.spec.ts): no gravity, a closed box; one world pulls its bodies to a point
-// at its right, the other pushes them from a point at its right.
+// A world's field of force (physics-field.spec.ts): no gravity; one world pulls its bodies to a point at its right,
+// the same world without a field stays still, and in a third (no walls) a body goes round the point in its middle.
 const fieldWorld = (id, field) => ({ id, type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 0, walls: "box", drag: false, air: 0.03, field, fieldX: 90, fieldY: 50, fieldPower: 1 } }, style: { base: { minHeight: "320px" } }, children: [
   { id: `${id}-a`, type: "button", props: { label: { en: "A" }, href: "/shop" }, style: { base: { width: "90px", height: "60px" } } },
   { id: `${id}-b`, type: "heading", props: { level: 3, text: { en: "B" } }, style: { base: { width: "120px" } } },
 ] });
 const physicsFieldDemo = { id: "physics-field", slug: "/physics-field", name: "Field of force", status: "PUBLISHED", format: 2, sections: [], tree: {
-  version: 1, root: { id: "page", type: "page", props: {}, children: [fieldWorld("pulls", "pull"), fieldWorld("still", "none")] },
+  version: 1, root: { id: "page", type: "page", props: {}, children: [fieldWorld("pulls", "pull"), fieldWorld("still", "none"),
+    { id: "rounds", type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 0, walls: "none", drag: false, air: 0.02, field: "orbit", fieldX: 50, fieldY: 50, fieldPower: 1 } }, style: { base: { minHeight: "700px" } }, children: [
+      { id: "rounds-a", type: "button", props: { label: { en: "Moon" }, href: "/shop" }, style: { base: { width: "70px", height: "70px", radius: 999 } } },
+    ] },
+  ] },
 } };
 // The shop's automatic lightening (auto-lighten.spec.ts): a first picture, frosted glass, a clip playing by itself,
 // a far section that cuts what sticks out; the same page with it turned off.
