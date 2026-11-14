@@ -8,15 +8,28 @@ export type DesignTokensState = { tokens: DesignTokens; draft: DesignTokens | nu
 
 const pages = ENDPOINTS.admin.pages;
 
+/**
+ * An API from before font sizes answers without them, and refuses a word it doesn't know. So the editor reads
+ * every group as a list, and sends the sizes only when there are some (the API takes none as an empty list).
+ */
+export const wholeTokens = (t: DesignTokens): DesignTokens => (Array.isArray(t.sizes) ? t : { ...t, sizes: [] });
+export function tokensToSend(t: DesignTokens): Partial<DesignTokens> {
+  if (t.sizes.length) return t;
+  const rest: Partial<DesignTokens> = { ...t };
+  delete rest.sizes;
+  return rest;
+}
+const whole = (s: DesignTokensState): DesignTokensState => ({ tokens: wholeTokens(s.tokens), draft: s.draft ? wholeTokens(s.draft) : null });
+
 export async function getDesignTokens() {
-  return (await api.get(pages.designTokens)).data as DesignTokensState;
+  return whole((await api.get(pages.designTokens)).data as DesignTokensState);
 }
 export async function saveDesignTokensDraft(tokens: DesignTokens) {
-  return (await api.put(pages.designTokensDraft, { tokens })).data as DesignTokensState;
+  return whole((await api.put(pages.designTokensDraft, { tokens: tokensToSend(tokens) })).data as DesignTokensState);
 }
 export async function dropDesignTokensDraft() {
-  return (await api.delete(pages.designTokensDraft)).data as DesignTokensState;
+  return whole((await api.delete(pages.designTokensDraft)).data as DesignTokensState);
 }
 export async function publishDesignTokens() {
-  return (await api.post(pages.designTokensPublish)).data as DesignTokensState;
+  return whole((await api.post(pages.designTokensPublish)).data as DesignTokensState);
 }

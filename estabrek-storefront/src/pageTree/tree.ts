@@ -44,7 +44,7 @@ export type ScreenStyle = {
   shadow?: "none" | "sm" | "md" | "lg" | string;
   opacity?: number;
   font?: "heading" | "body" | "serif" | "sans" | "mono";
-  size?: number;
+  size?: number | string;
   iconSize?: number; // an icon's drawing (its words keep `size`)
   weight?: number;
   lineHeight?: number;

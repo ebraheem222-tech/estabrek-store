@@ -1,7 +1,7 @@
 /**
  * The store's design variables (the API's lib/designTokens.ts): named colours, fonts, spaces,
  * corners and shadows an element takes by name ("$brand"). Drawn once as CSS variables on :root
- * (--tk-c-<id>, --tk-f-<id>, --tk-s-<id>, --tk-r-<id>, --tk-sh-<id>), so changing one changes every
+ * (--tk-c-<id>, --tk-f-<id>, --tk-s-<id>, --tk-r-<id>, --tk-sh-<id>, --tk-z-<id> for a font size), so changing one changes every
  * page; css.ts writes `$id` in a style as var(--tk-…-id). Pure.
  */
 import { fontFaceCss, fontStack } from "./fonts";
@@ -14,11 +14,13 @@ export type DesignTokens = {
   spaces: { id: string; name?: TokenName; value: number }[];
   radii: { id: string; name?: TokenName; value: number }[];
   shadows: { id: string; name?: TokenName; x: number; y: number; blur: number; spread?: number; color: string }[];
+  /** Font sizes by name (px). */
+  sizes: { id: string; name?: TokenName; value: number }[];
 };
-export const TOKEN_GROUPS = ["colors", "fonts", "spaces", "radii", "shadows"] as const;
+export const TOKEN_GROUPS = ["colors", "fonts", "spaces", "radii", "shadows", "sizes"] as const;
 export type TokenGroup = (typeof TOKEN_GROUPS)[number];
 /** Each group's CSS variable prefix. */
-export const TOKEN_PREFIX: Record<TokenGroup, string> = { colors: "c", fonts: "f", spaces: "s", radii: "r", shadows: "sh" };
+export const TOKEN_PREFIX: Record<TokenGroup, string> = { colors: "c", fonts: "f", spaces: "s", radii: "r", shadows: "sh", sizes: "z" };
 
 const ID = /^[a-z][a-z0-9-]{0,30}$/;
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
@@ -45,6 +47,7 @@ export function designTokensOf(raw: unknown): DesignTokens | null {
     shadows: list(r.shadows, 20)
       .filter((t) => num(t.x, -100, 100) !== undefined && num(t.y, -100, 100) !== undefined && num(t.blur, 0, 200) !== undefined && HEX.test(String(t.color)))
       .map((t) => ({ id: t.id, name: nameOf(t.name), x: t.x, y: t.y, blur: t.blur, spread: num(t.spread, -100, 100), color: String(t.color) })),
+    sizes: list(r.sizes, 20).filter((t) => num(t.value, 8, 200) !== undefined).map((t) => ({ id: t.id, name: nameOf(t.name), value: t.value })),
   };
 }
 
@@ -57,6 +60,7 @@ export function tokensCss(t: DesignTokens | null | undefined): string {
   for (const s of t.spaces) d.push(`--tk-s-${s.id}:${s.value}px`);
   for (const r of t.radii) d.push(`--tk-r-${r.id}:${r.value}px`);
   for (const s of t.shadows) d.push(`--tk-sh-${s.id}:${s.x}px ${s.y}px ${s.blur}px ${s.spread ?? 0}px ${s.color}`);
+  for (const z of t.sizes) d.push(`--tk-z-${z.id}:${z.value}px`);
   // The theme families its fonts name are fetched like the page's own.
   return d.length ? `${fontFaceCss(t.fonts.map((f) => f.family))}:root{${d.join(";")}}` : "";
 }
