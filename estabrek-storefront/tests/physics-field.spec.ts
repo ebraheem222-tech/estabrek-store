@@ -47,3 +47,40 @@ test("going round: a body circles the point in the world's middle, always the sa
   }, { timeout: 40000, intervals: [150] }).toBeGreaterThan(Math.PI);
   expect(back).toBe(0);
 });
+
+test("a push sends a body away from its point; a whirl takes one round its point and further out", async ({ page }) => {
+  test.setTimeout(150000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/en/physics-field");
+  // The point is at the world's top left corner, beside the body: it goes right and down, away from it.
+  const pushes = page.locator('[data-tree-node="pushes"]');
+  await pushes.scrollIntoViewIfNeeded();
+  await expect(pushes).toHaveAttribute("data-pt-world-on", "", { timeout: 20000 });
+  await expect.poll(() => varOf(page, "pushes-a", "--pt-qx"), { timeout: 30000 }).toBeGreaterThan(120);
+  expect(await varOf(page, "pushes-a", "--pt-qy")).toBeGreaterThan(40);
+
+  const world = page.locator('[data-tree-node="whirls"]');
+  await world.scrollIntoViewIfNeeded();
+  await expect(world).toHaveAttribute("data-pt-world-on", "", { timeout: 20000 });
+  // Where the body is, seen from the world's middle: its angle and how far out it is.
+  const polar = () => page.evaluate(() => {
+    const w = document.querySelector('[data-tree-node="whirls"]')!.getBoundingClientRect(), b = document.querySelector('[data-tree-node="whirls-a"]')!.getBoundingClientRect();
+    const dx = b.x + b.width / 2 - (w.x + w.width / 2), dy = b.y + b.height / 2 - (w.y + w.height / 2);
+    return { a: Math.atan2(dy, dx), r: Math.hypot(dx, dy) };
+  });
+  const first = await polar();
+  let last = first.a, total = 0, far = first.r;
+  await expect.poll(async () => {
+    const now = await polar();
+    let d = now.a - last;
+    if (d > Math.PI) d -= 2 * Math.PI;
+    if (d < -Math.PI) d += 2 * Math.PI;
+    total += d;
+    last = now.a;
+    far = Math.max(far, now.r);
+    return Math.abs(total);
+  }, { timeout: 40000, intervals: [200] }).toBeGreaterThan(Math.PI * 0.75);
+  // Stirred, not drawn in: it ends further from the point than it began.
+  expect(far).toBeGreaterThan(first.r + 60);
+});

@@ -160,14 +160,14 @@ export function WorldPanel({ node, busy, onOps, onPlay, onStop, onBake }: {
           <Check label={say("الزبون بيقدر يمسكهم ويرميهم|Shoppers can grab and throw them|הקונה יכול לתפוס ולזרוק")} on={world.drag !== false} busy={busy} onSet={(v) => set({ drag: v })} testId="studio-world-drag" />
           <Select label={say("حقل قوة|A field of force|שדה כוח")} value={world.field ?? "none"} busy={busy} onPick={(field) => set(field === "none" ? { field: undefined, fieldX: undefined, fieldY: undefined, fieldPower: undefined } : { field })} testId="studio-world-field" options={[
             ["none", say("بلا|None|בלי")], ["pull", say("جذب لنقطة (متل كوكب)|Pulls to a point (like a planet)|משיכה לנקודה (כמו כוכב לכת)")], ["push", say("دفش من نقطة|Pushes from a point|דחיפה מנקודה")],
-            ["orbit", say("دوران حول نقطة|Round a point|סיבוב סביב נקודה")], ["swirl", say("دوّامة|A whirl|מערבולת")],
+            ["orbit", say("دوران حول نقطة|Round a point|סיבוב סביב נקודה")], ["swirl", say("دوّامة (بتلفّهم وبتبعدهم)|A whirl (stirs them outwards)|מערבולת (מערבבת החוצה)")],
           ]} />
           {world.field && world.field !== "none" ? (
             <>
               <Range label={say("قوة الحقل|The field's power|עוצמת השדה")} min={0.05} max={1} step={0.05} busy={busy} value={world.fieldPower ?? 0.5} onSave={(v) => set({ fieldPower: v })} testId="studio-world-field-power" />
               <Range label={say("مكان النقطة بالعرض ٪|The point, across %|מיקום הנקודה לרוחב %")} min={0} max={100} step={1} busy={busy} value={world.fieldX ?? 50} onSave={(v) => set({ fieldX: v })} testId="studio-world-field-x" />
               <Range label={say("مكان النقطة بالطول ٪|The point, down %|מיקום הנקודה לאורך %")} min={0} max={100} step={1} busy={busy} value={world.fieldY ?? 50} onSave={(v) => set({ fieldY: v })} testId="studio-world-field-y" />
-              <p className="text-[11px] leading-5 text-white/45">{say("للجذب والدوران خلّي الجاذبية صفر (فوق) لحتى يبين الحقل لحاله.|For a pull or going round, set gravity to none (above) so the field shows by itself.|למשיכה או סיבוב, קבע כבידה לאפס (למעלה) כדי שהשדה ייראה לבדו.")}</p>
+              <p className="text-[11px] leading-5 text-white/45">{say("للجذب والدوران خلّي الجاذبية صفر (فوق) لحتى يبين الحقل لحاله. الدوّامة بتبعد الأجسام لبرّا: خلّي الحيطان مسكّرة.|For a pull or going round, set gravity to none (above) so the field shows by itself. A whirl throws the bodies outwards: keep the walls closed.|למשיכה או סיבוב, קבע כבידה לאפס (למעלה) כדי שהשדה ייראה לבדו. מערבולת זורקת את הגופים החוצה: השאר את הקירות סגורים.")}</p>
             </>
           ) : null}
           <Select label={say("الماوس|The pointer|העכבר")} value={world.pointer ?? "none"} busy={busy} onPick={(pointer) => set({ pointer: pointer === "none" ? undefined : pointer })} testId="studio-world-pointer" options={[

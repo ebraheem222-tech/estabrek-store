@@ -58,7 +58,7 @@ export type WorldSpec = {
   click: (typeof WORLD_CLICK)[number];
   /**
    * A field of force round a point in it: bodies fall towards the point (like a planet), are pushed from it, go
-   * round it, or whirl into it. The point is in percent of the world's box (50, 50 = its middle); the power is 0–1.
+   * round it, or are whirled round it and outwards (stirred: the world's walls keep them in). The point is in percent of the world's box (50, 50 = its middle); the power is 0–1.
    */
   field: WorldField;
   fieldX: number; fieldY: number; fieldPower: number;
@@ -121,7 +121,9 @@ export function worldOf(raw: unknown): WorldSpec | null {
  *    power × mass × 0.002 × s² / (r² + s²), with s = 0.3 × reach (half its most at s, a tenth at 3 s);
  *  - "pull" turns it towards the point, "push" away from it;
  *  - "orbit" is a pull with a third of it sideways, which keeps bodies going round the point;
- *  - "swirl" is mostly sideways with a quarter of it inwards: a whirl that draws them in slowly.
+ *  - "swirl" is mostly sideways with a quarter of it inwards: too little pull to hold what the sideways push
+ *    speeds up, so bodies go round the point and further out each turn, like something stirred. Walls keep them
+ *    in; without walls they leave.
  * Sideways is a quarter turn from the way to the point (the same way round for every body). At the point itself
  * there is no way to push: no force.
  */
