@@ -146,7 +146,7 @@ import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
 import { decorArt } from "./decor";
-import { around, boxMovable, edgeScroll, moveAllOps, planeTroubleOf, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
+import { EDGE_FASTEST, around, boxMovable, edgeScroll, moveAllOps, planeTroubleOf, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
@@ -969,8 +969,9 @@ function StudioDocument() {
         // sight can be reached without letting go (only the way the pointer went since the press).
         d.at = p; d.keys = { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey };
         // Sideways too: a frame wider than the canvas (zoomed in) has a part out of sight, and the canvas moves.
-        const ex = d.analytic ? 0 : edgeScroll(p.x, Math.max(frameBox.x, 0), Math.min(frameBox.x + frameBox.w, canvas.w));
-        const ey = d.analytic ? 0 : edgeScroll(p.y, Math.max(frameBox.y, 0), Math.min(frameBox.y + frameBox.h, canvas.h));
+        // The speed is in screen pixels (EDGE_FASTEST a tick at most), so it feels the same at any zoom.
+        const ex = d.analytic ? 0 : edgeScroll(p.x, Math.max(frameBox.x, 0), Math.min(frameBox.x + frameBox.w, canvas.w), 56, EDGE_FASTEST);
+        const ey = d.analytic ? 0 : edgeScroll(p.y, Math.max(frameBox.y, 0), Math.min(frameBox.y + frameBox.h, canvas.h), 56, EDGE_FASTEST);
         d.edge = { x: ex > 0 && p.x > d.p.x + 4 || ex < 0 && p.x < d.p.x - 4 ? ex : 0, y: ey > 0 && p.y > d.p.y + 4 || ey < 0 && p.y < d.p.y - 4 ? ey : 0 };
         if (d.edge.x || d.edge.y) edgeScrolling();
         // Placed freely: it moves over its holder, meets what's beside it, or goes into another place.
@@ -4035,6 +4036,7 @@ function StudioDocument() {
                 <div className="flex flex-wrap gap-1">
                   <button type="button" className="rounded-md bg-white/15 px-2 py-1 text-white hover:bg-white/25 disabled:opacity-40" disabled={busy} onClick={() => backInRows(selFree)} data-testid="studio-stuck-reset">{say("رجّعه لمكانه بالصف|Put it back in its rows|החזר אותו לשורות")}</button>
                   <button type="button" className="rounded-md bg-white/10 px-2 py-1 text-white/85 hover:bg-white/20 disabled:opacity-40" disabled={busy} onClick={() => void reload()} data-testid="studio-stuck-measure">{say("قيس من جديد|Measure again|מדוד שוב")}</button>
+                  {index?.nodes.get(selFree.id)?.parentId && index.nodes.get(selFree.id)!.parentId !== index.root ? <button type="button" className="rounded-md bg-white/10 px-2 py-1 text-white/85 hover:bg-white/20" onClick={() => select(index.nodes.get(selFree.id)!.parentId!)} data-testid="studio-stuck-holder">{say("حدّد الجزء اللي حاويه|Pick the part that holds it|בחר את החלק שמכיל אותו")}</button> : null}
                 </div>
               </div>
             );

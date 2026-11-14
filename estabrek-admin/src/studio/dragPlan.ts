@@ -91,9 +91,12 @@ export function shiftFreeDrag(drag: FreeDrag, by: Pt): void {
   drag.snapMemory = {};
 }
 
+/** The most the view moves in one tick (24 ms) while something is held at an edge, in screen pixels. */
+export const EDGE_FASTEST = 14;
+
 /**
- * How fast the page scrolls by itself while something is dragged near the top or the bottom of what shows of the
- * frame, in page pixels a tick (below zero = up, 0 = away from both edges): it eases in with the square of how far
+ * How fast the view moves by itself while something is dragged near an edge of what shows of the frame (its top
+ * and bottom, or its two sides), in pixels a tick (below zero = up or left, 0 = away from both edges): it eases in with the square of how far
  * into the edge's zone the pointer is, and is at its fastest at the edge and past it. A frame too short to have a
  * middle between the two zones doesn't scroll.
  */
@@ -111,9 +114,11 @@ export function edgeScroll(y: number, top: number, bottom: number, zone = 56, fa
  */
 export function planeTroubleOf(geometry: { unsupported?: boolean; why?: string } | undefined, hasPlane: boolean, hasHolder: boolean): string | null {
   if (!geometry) return null;
-  if (geometry.unsupported) return geometry.why ?? "measure";
+  if (geometry.unsupported && geometry.why) return geometry.why;
   if (!hasPlane) return "measure";
-  return hasHolder ? null : "holder";
+  // Measured itself, but not what holds it (the shop marks that unsupported too, without a word).
+  if (!hasHolder) return "holder";
+  return geometry.unsupported ? "measure" : null;
 }
 
 /**

@@ -190,6 +190,22 @@ if (new URLSearchParams(location.search).has("twoParts")) {
     ] },
   ];
 }
+// Places that used to leave an element unmovable (canvas-stuck.spec.ts): a part with a perspective of its own (its
+// own CSS) holding a button placed freely and one turned into depth, and a holder with no height holding a button.
+if (new URLSearchParams(location.search).has("stuck")) {
+  initial.tree!.root.children = [
+    { id: "deep", type: "section", name: "Deep part", props: { code: { css: "perspective: 900px;", out: ".pt-deep{perspective: 900px;}" } }, style: { base: { minHeight: "420px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "flat", type: "button", name: "Flat button", props: { label: text("Flat"), href: "/shop" }, style: { base: { width: "160px", layer: { x: 30, y: 30, anchor: "center" } } } },
+      { id: "tipped", type: "button", name: "Tipped button", props: { label: text("Tipped"), href: "/shop" }, style: { base: { width: "160px", rotateX: 35, layer: { x: 70, y: 60, anchor: "center" } } } },
+    ] },
+    { id: "plain", type: "section", name: "Plain part", props: {}, style: { base: { minHeight: "320px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "thin", type: "stack", name: "Thin holder", props: {}, style: { base: { width: "400px", height: "0px" } }, children: [
+        { id: "lost", type: "button", name: "Lost button", props: { label: text("Lost"), href: "/shop" }, style: { base: { width: "160px", layer: { x: 20, y: 0, anchor: "top-start" } } } },
+      ] },
+      { id: "free", type: "button", name: "Free button", props: { label: text("Free"), href: "/shop" }, style: { base: { width: "160px", layer: { x: 50, y: 60, anchor: "center" } } } },
+    ] },
+  ];
+}
 // A card and a button for shapes by equations and an element's own CSS (G, C).
 if (new URLSearchParams(location.search).has("shapes")) {
   initial.tree!.root.children = [
