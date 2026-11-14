@@ -7,7 +7,9 @@ import { expect, test, type Page } from "@playwright/test";
 //    the same diamond told to be a box keeps a box's height; a leaf (a curved outline the browser measures) and a
 //    three-cornered shape by equations (a polygon clip) rest lower than a box could, too;
 //  - a button linked by a rope to a fixed one swings down and hangs right under it, a rope's length away; one on a
-//    spring hangs there too; a loose one falls to the floor.
+//    spring hangs there too; a loose one falls to the floor;
+//  - pulled sideways towards the fixed one it is linked to, across a gap: on a rope it comes (a slack rope holds
+//    nothing), on a rod it stays where it was.
 
 const varOf = (page: Page, id: string, name: string) => page.locator(`[data-tree-node="${id}"]`).evaluate((el, n) => parseFloat((el as HTMLElement).style.getPropertyValue(n)) || 0, name);
 /** The world is running and its body has stopped moving. */
@@ -98,4 +100,31 @@ test("two bodies are linked: one hangs from the other by a rope or a spring; a l
   await rested(page, "falls", "loose");
   expect(Math.abs((await placeOf(page, "falls", "loose")).under)).toBeLessThan(3);
   await expect(page.locator('[data-tree-node="falls"] svg line')).toHaveCount(0);
+});
+
+test("a rope holds nothing while it is slack; a rod keeps its two ends apart", async ({ page }) => {
+  test.setTimeout(150000);
+  await open(page);
+  /** How far apart two elements' middles are. */
+  const apart = (a: string, b: string) => page.evaluate(([x, y]) => {
+    const A = document.querySelector(`[data-tree-node="${x}"]`)!.getBoundingClientRect(), B = document.querySelector(`[data-tree-node="${y}"]`)!.getBoundingClientRect();
+    return Math.hypot(B.left + B.width / 2 - A.left - A.width / 2, B.top + B.height / 2 - A.top - A.height / 2);
+  }, [a, b]);
+  const start = async (world: string) => {
+    const w = page.locator(`[data-tree-node="${world}"]`);
+    await w.scrollIntoViewIfNeeded();
+    await expect(w).toHaveAttribute("data-pt-world-on", "", { timeout: 20000 });
+  };
+  // Gravity pulls to the left, towards the fixed button; the linked one starts 240 px from it (a gap between them).
+  // On a rope it comes: the two get much nearer than the rope is long.
+  await start("slack");
+  await expect.poll(() => apart("slack-peg", "slack-bob"), { timeout: 20000, intervals: [120] }).toBeLessThan(190);
+  await expect(page.locator('[data-tree-node="slack"] svg line[data-pt-link="rope"]')).toHaveCount(1);
+
+  // On a rod it can't: for four seconds the two stay a rod's length apart, wherever the rod swings.
+  await start("stiff");
+  for (let i = 0; i < 10; i++) {
+    expect(Math.abs((await apart("stiff-peg", "stiff-bob")) - 240)).toBeLessThan(10);
+    await page.waitForTimeout(400);
+  }
 });
