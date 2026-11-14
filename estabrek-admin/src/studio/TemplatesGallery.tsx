@@ -14,6 +14,7 @@ import { getApiErrorMessage } from "../api/http";
 import { Modal } from "../components/ui/Modal";
 import { adminLang, type Lang } from "../lib/lang";
 import { tr } from "../lib/words";
+import { say } from "./say";
 import { TemplateThumb } from "./TemplateThumb";
 import type { ThumbColours } from "./templates/colours";
 import type { TemplateKit } from "./packs";
@@ -36,6 +37,11 @@ const btn = "rounded-lg bg-white/[0.06] px-2.5 py-1.5 text-xs text-white/80 hove
 const main = "rounded-lg bg-accent-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-accent-400 disabled:opacity-40";
 const control = "rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
 const nameOf = (w: W) => w[adminLang()];
+/** A section's design, whatever its colours ("s:hero-center:dark" → "hero-center"); a page is its own. */
+const designOf = (t: Template) => (t.kind === "section" ? t.id.split(":")[1] : t.id);
+/** Every colour a section design comes in, in its own order. */
+const COLOURS_OF = new Map<string, Template[]>();
+for (const t of SECTION_TEMPLATES) COLOURS_OF.set(designOf(t), [...(COLOURS_OF.get(designOf(t)) ?? []), t]);
 
 /** Counted ids for drawings (the page's own ids are made when something is added). */
 const drawIds = (): Ids => {
@@ -101,10 +107,14 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const list = useMemo(() => {
     const source = tab === "sections" ? SECTION_TEMPLATES : tab === "pages" ? PAGE_TEMPLATES : [];
     // A kind's homes show for that kind only.
-    return source.filter((t) => (group === "all" || t.group === group) && (!t.fam || t.fam === fam) && matches(t, q));
+    const found = source.filter((t) => (group === "all" || t.group === group) && (!t.fam || t.fam === fam) && matches(t, q));
+    // One card for each design: its colours are picked in the preview. The card shows the first colour that
+    // matches what's looked for (looking for "inverted" shows the designs that have it, inverted).
+    const seen = new Set<string>();
+    return found.filter((t) => !seen.has(designOf(t)) && Boolean(seen.add(designOf(t))));
   }, [tab, group, fam, q]);
   const groups = tab === "sections" ? SECTION_CATS : tab === "pages" ? PAGE_KINDS : [];
-  const count = (g: string) => (tab === "sections" ? SECTION_TEMPLATES : PAGE_TEMPLATES).filter((t) => t.group === g && (!t.fam || t.fam === fam)).length;
+  const count = (g: string) => new Set((tab === "sections" ? SECTION_TEMPLATES : PAGE_TEMPLATES).filter((t) => t.group === g && (!t.fam || t.fam === fam)).map(designOf)).size;
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -285,13 +295,14 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
               <>
                 <ul className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                   {list.slice(0, limit).map((t) => {
-                    const on = shown?.kind === "library" && shown.t.id === t.id;
+                    const on = shown?.kind === "library" && designOf(shown.t) === designOf(t);
+                    const colours_ = t.kind === "section" ? COLOURS_OF.get(designOf(t))?.length ?? 1 : 0;
                     return (
                       <li key={t.id}>
                         <button type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/[0.08] hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
                           <TemplateThumb key={`${t.id}:${fam}:${motion}:${all}`} build={thumbOf(t)} colours={colours} lang={lang} width={220} height={tab === "pages" ? 190 : 130} />
                           <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{nameOf(t.name)}</span>
-                          <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{t.skin ? nameOf(SKIN_NAMES[t.skin]) : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
+                          <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{t.kind === "section" ? (colours_ > 1 ? say(`${colours_} ألوان|${colours_} colours|${colours_} צבעים`) : t.skin ? nameOf(SKIN_NAMES[t.skin]) : "") : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
                         </button>
                       </li>
                     );
@@ -320,9 +331,19 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
             ) : shown ? (
               <>
                 <div className="min-h-0 flex-1 overflow-y-auto rounded-lg">
-                  <TemplateThumb key={`${shownName}:${fam}:${motion}:${all}:${shown.kind}`} build={() => shownNodes(drawIds())} colours={colours} lang={lang} width={300} />
+                  <TemplateThumb key={`${shown.kind === "library" ? shown.t.id : shownName}:${fam}:${motion}:${all}:${shown.kind}`} build={() => shownNodes(drawIds())} colours={colours} lang={lang} width={300} />
                 </div>
                 <div className="truncate text-xs text-white/85" data-testid="studio-tpl-shown-name">{shownName}</div>
+                {/* A section design's colours: the same design in each of the skins it comes in. */}
+                {shown.kind === "library" && shown.t.kind === "section" && (COLOURS_OF.get(designOf(shown.t))?.length ?? 0) > 1 ? (
+                  <div className="flex flex-wrap items-center gap-1" role="group" aria-label={say("ألوان التصميم|The design's colours|צבעי העיצוב")} data-testid="studio-tpl-skins">
+                    {COLOURS_OF.get(designOf(shown.t))!.map((v) => (
+                      <button key={v.id} type="button" onClick={() => setShown({ kind: "library", t: v })} aria-pressed={v.id === shown.t.id} className={`rounded-full border px-2 py-0.5 text-[11px] ${v.id === shown.t.id ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/[0.12] text-white/65 hover:text-white"}`} data-testid="studio-tpl-skin" data-skin={v.skin}>
+                        {v.skin ? nameOf(SKIN_NAMES[v.skin]) : ""}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-1">
                   <button type="button" className={main} disabled={busy || !here} onClick={() => use("here")} title={here ? tr(`بعد: ${here}`, "After: {0}", [here]) : undefined} data-testid="studio-tpl-here">{tr("ضيفه بعد المحدد", "Add after the selection")}</button>
                   <button type="button" className={btn} disabled={busy} onClick={() => use("end")} data-testid="studio-tpl-end">{tr("ضيفه بآخر الصفحة", "Add at the page's end")}</button>
