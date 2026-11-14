@@ -218,8 +218,10 @@ export function measureStudio(): StudioItem[] {
       const zero = (n: number) => Math.abs(n) < 0.00001;
       if (!m || !m.every(Number.isFinite) || (match?.[1] ? m.length !== 16 : m.length !== 6)) own = NaN;
       else if (match?.[1]) {
-        // Perspective along Z is inert on an unrotated, flattened XY plane.
-        if (![1, 2, 3, 4, 6, 7, 8, 9, 14].every(i => zero(m[i])) || !zero(m[0] - m[5]) || !zero(m[15] - 1)) own = NaN;
+        // Perspective along Z is inert on an unrotated, flattened XY plane: the whole Z column (8-11) only moves
+        // points that have a depth, and a flat element's have none. It is not all zeros on an element placed from
+        // its middle or its end (its translate comes before the perspective), which is still only moved and scaled.
+        if (![1, 2, 3, 4, 6, 7, 14].every(i => zero(m[i])) || !zero(m[0] - m[5]) || !zero(m[15] - 1)) own = NaN;
         else own = m[0];
       } else if (!zero(m[1]) || !zero(m[2]) || !zero(m[0] - m[3])) own = NaN;
       else own = m[0];

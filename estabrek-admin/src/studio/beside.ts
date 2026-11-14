@@ -70,11 +70,12 @@ export function besidePlace(box: Box | null, canvas: Rect, side: Side, stripH = 
  *   it had before.
  *
  * Null when nothing needs to move. With `fit` it is the old camera, for focus mode: the element in the middle of
- * the free part, bigger ones fitted into it.
+ * the free part, bigger ones fitted into it; with `always` too, that camera is given even when the element already
+ * sits well (the caller decides whether it is worth going there).
  */
 export function frameFor(
   box: Box, view: View, canvas: { w: number; h: number }, side: Side,
-  opts: { top?: number; maxZoom?: number; minZoom?: number; fit?: boolean; anchor?: Pt | null; home?: View | null } = {},
+  opts: { top?: number; maxZoom?: number; minZoom?: number; fit?: boolean; always?: boolean; anchor?: Pt | null; home?: View | null } = {},
 ): View | null {
   if (!(box.w > 0 && box.h > 0) || canvas.w < 320 || canvas.h < 200) return null;
   const top = opts.top ?? 48, bottom = 16;
@@ -95,7 +96,7 @@ export function frameFor(
     const want = zoomIn(area);
     // Already well placed: inside the free part, and close enough to the size it would be given.
     const inside = box.x >= area.x - 8 && box.x + box.w <= area.x + area.w + 8 && box.y >= top - 8 && box.y + box.h <= canvas.h - bottom + 8;
-    if (inside && view.zoom >= want * 0.55 && view.zoom <= want * 1.3) return null;
+    if (!opts.always && inside && view.zoom >= want * 0.55 && view.zoom <= want * 1.3) return null;
     const pageX = (box.x + box.w / 2 - view.pan.x) / view.zoom;
     const pageY = (box.y + box.h / 2 - view.pan.y) / view.zoom;
     return { zoom: want, pan: { x: area.x + area.w / 2 - pageX * want, y: top + areaH / 2 - pageY * want } };
