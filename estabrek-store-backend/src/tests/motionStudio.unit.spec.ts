@@ -135,6 +135,12 @@ describe("free curves and the order of a stagger", () => {
     for (const bad of [{ kind: "square", w: 100, h: 50 }, { kind: "arc", w: 5000, h: 50 }, { kind: "arc", w: 100 }, { kind: "arc", w: 100, h: 50, turns: 40 }, { kind: "arc", w: 100, h: 50, rest: "middle" }]) expect(issues(withPath(bad)).length, JSON.stringify(bad)).toBeGreaterThan(0);
   });
 
+  test("keyframes can be smooth: yes or no, nothing else", () => {
+    expect(issues(withKeys({ smooth: true }))).toEqual([]);
+    expect(issues(withKeys({ smooth: false }))).toEqual([]);
+    expect(issues(withKeys({ smooth: "very" })).length).toBeGreaterThan(0);
+  });
+
   test("a stagger's order is one of five", () => {
     for (const order of ["first", "last", "center", "edges", "random"]) expect(issues(withEnter({ stagger: 0.1, order })), order).toEqual([]);
     expect(issues(withEnter({ stagger: 0.1, order: "spiral" })).length).toBeGreaterThan(0);

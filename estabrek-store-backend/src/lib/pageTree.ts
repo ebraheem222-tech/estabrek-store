@@ -432,6 +432,8 @@ export const NodeKeys = z.object({
   scrub: z.number().min(0).max(3).optional(), // with the scroll: seconds to catch up (0 = at once)
   origin: z.enum(KEY_ORIGINS).optional(),
   path: KeyPath.optional(),
+  // The element glides through its moments' places along one smooth curve, instead of straight from one to the next.
+  smooth: z.boolean().optional(),
   parts: z.object({ self: Frames.optional(), before: Frames.optional(), after: Frames.optional(), inner: Frames.optional() }).refine((p) => Object.values(p).some(Boolean), "Keyframes for at least one piece"),
 });
 /** How something comes into and leaves a scroll scene. */
