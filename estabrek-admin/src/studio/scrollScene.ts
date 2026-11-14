@@ -91,6 +91,19 @@ export function newScrollScene(lang: Lang, ids: Ids, src?: string, kind: "video"
 /** A section across the whole width with no padding: the home of a scroll scene. */
 const fullSection = (ids: Ids, child: PageTreeNode): PageTreeNode => ({ id: ids("sec"), type: "section", props: { contained: false }, style: { base: { pad: [0, 0, 0, 0] } }, children: [child] });
 
+/**
+ * A scroll scene made of a video that is already on the page: the same clip (and its poster) in a part of its
+ * own, with the ten chapters and the three things a new scene starts with. The video itself stays as it is.
+ */
+export function sceneFromVideo(lang: Lang, ids: Ids, video: PageTreeNode): PageTreeNode {
+  const p = (video.props ?? {}) as Record<string, unknown>;
+  const src = typeof p.src === "string" && p.src.trim() ? p.src.trim() : undefined;
+  const section = fullSection(ids, newScrollScene(lang, ids, src, "video"));
+  const scene = section.children![0];
+  if (src && typeof p.poster === "string" && p.poster) scene.props = { ...scene.props, media: { ...(scene.props.media as Record<string, unknown>), poster: p.poster } };
+  return section;
+}
+
 /** Ready: a scroll video with its chapters. */
 export const readyScrollVideo = (lang: Lang, ids: Ids, src?: string) => fullSection(ids, newScrollScene(lang, ids, src, "video"));
 

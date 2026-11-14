@@ -34,6 +34,10 @@ export const worldOfNode = (n: PageTreeNode | null | undefined): World | null =>
   const w = (n?.props as Record<string, unknown> | undefined)?.world;
   return n && WORLD_HOSTS.has(n.type) && w && typeof w === "object" ? (w as World) : null;
 };
+/** A world as it starts when a holder is first made one: what it holds drops, on a floor, and can be thrown. */
+export const NEW_WORLD: World = { start: "drop", walls: "open", bounce: 0.4, drag: true };
+/** The change that makes a holder a physics world (what it holds become its bodies). */
+export const worldOnOps = (node: PageTreeNode): PageDraftOp[] => [{ op: "setProps", nodeId: node.id, props: { ...((node.props ?? {}) as Record<string, unknown>), world: { ...NEW_WORLD } } }];
 
 const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
@@ -106,7 +110,7 @@ export function WorldPanel({ node, busy, onOps, onPlay, onStop, onBake }: {
   if (!world) {
     return (
       <div className={box} data-testid="studio-world">
-        <Check label={say("خلّي اللي جوّاه أجسام فيزيائية (جاذبية، تصادم، رمي…)|Make what it holds physical bodies (gravity, collisions, throwing…)|הפוך את מה שבתוכו לגופים פיזיקליים")} on={false} busy={busy} onSet={() => save({ start: "drop", walls: "open", bounce: 0.4, drag: true })} testId="studio-world-on" />
+        <Check label={say("خلّي اللي جوّاه أجسام فيزيائية (جاذبية، تصادم، رمي…)|Make what it holds physical bodies (gravity, collisions, throwing…)|הפוך את מה שבתוכו לגופים פיזיקליים")} on={false} busy={busy} onSet={() => save({ ...NEW_WORLD })} testId="studio-world-on" />
       </div>
     );
   }
