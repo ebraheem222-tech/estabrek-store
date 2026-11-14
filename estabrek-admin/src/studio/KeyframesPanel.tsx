@@ -196,6 +196,10 @@ export function KeyframesPanel({ node, busy, onOps, onPlay }: { node: PageTreeNo
           ) : null}
           {keys.on === "scene" ? <p className="text-[10px] text-white/40">{say("بيمشي مع لحظة مشهد التمرير اللي هو فيه (أو لحظته هو إذا إلها وقت).|It follows the scroll scene it's in (or its own moment there, if it has one).|הוא עוקב אחרי סצנת הגלילה שהוא בה (או הרגע שלו שם, אם יש).")}</p> : null}
           <Select label={say("بيلف ويكبر من|Turns and grows from|מסתובב וגדל מ־")} value={keys.origin ?? "center"} busy={busy} onPick={(origin) => set({ origin: origin === "center" ? undefined : origin })} options={ORIGIN_NAME} />
+          <label className="flex items-start gap-2 text-[11px] leading-4 text-white/70">
+            <input type="checkbox" className="mt-0.5" checked={keys.smooth === true} disabled={busy} onChange={(e) => set({ smooth: e.target.checked || undefined })} data-testid="keys-smooth" />
+            <span>{say("طريق ناعم بين اللحظات: بيمرّ بمكان كل لحظة بمنحنى واحد، مش بخطوط مستقيمة.|A smooth way between the moments: it passes each moment's place along one curve, not in straight lines.|דרך חלקה בין הרגעים: עובר במקום של כל רגע בעקומה אחת, לא בקווים ישרים.")}</span>
+          </label>
           <PathFields path={keys.path} busy={busy} onSave={(path) => set({ path })} />
 
           <div className="flex flex-wrap gap-1" role="tablist" aria-label={say("القطع|Pieces|חלקים")}>

@@ -22,7 +22,7 @@ import { studioLink } from "./studioLink";
 import { ARABIC, countUpText, scrambleChars } from "./textMotion";
 import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
 import { useStudioViewRevision } from "./useStudioViewRevision";
-import { EASE_MAP, keySteps, originCss, type KeysSpec } from "./keyframes";
+import { EASE_MAP, keyGlide, keySteps, originCss, type KeysSpec } from "./keyframes";
 import { playEase } from "./motionCurve";
 import { pathTrack } from "./motionPath";
 import { staggerOf } from "./stagger";
@@ -475,13 +475,26 @@ function playKeys(gsap: Gsap, ScrollTrigger: ST, el: HTMLElement, k: KeysSpec, e
     const frames = k.parts[part];
     const target = pieces[part];
     if (!frames || !target) continue;
-    const steps = keySteps(frames, { self: part === "self", rtl: env.rtl, resolve, restOpacity: part === "self" ? restOpacity : 1 });
+    // Smooth keyframes: the element's own place glides through its moments (below), so the steps leave it out.
+    const glide = part === "self" && k.smooth ? keyGlide(frames, env.rtl) : null;
+    const steps = keySteps(frames, { self: part === "self", rtl: env.rtl, resolve, restOpacity: part === "self" ? restOpacity : 1, glide: Boolean(glide) });
     if (steps.length < 2) continue;
     if (part !== "self" && k.origin) gsap.set(target, { transformOrigin: originCss(k.origin, env.rtl) });
     tl.set(target, steps[0].vars, 0);
     for (let i = 1; i < steps.length; i++) {
       const from = steps[i - 1].at;
       tl.to(target, { ...steps[i].vars, duration: Math.max(0.0001, ((steps[i].at - from) / 100) * total), ...(steps[i].ease ? { ease: playEase(steps[i].ease, EASE_MAP, "power2.out") } : {}) }, (from / 100) * total);
+    }
+    if (glide) {
+      // In even time, so it is at each moment's place at that moment; the curve itself starts and ends gently.
+      const travel = { t: 0 };
+      const place = () => {
+        const at = glide(travel.t);
+        if (at.x !== undefined) el.style.setProperty("--pt-kx", `${at.x}px`);
+        if (at.y !== undefined) el.style.setProperty("--pt-ky", `${at.y}px`);
+      };
+      tl.fromTo(travel, { t: 0 }, { t: 1, duration: total, ease: "none", onUpdate: place }, 0);
+      off.push(() => { for (const name of ["--pt-kx", "--pt-ky"]) el.style.removeProperty(name); });
     }
   }
   // Along a path (keys.path): where it stands, and how it's turned, at each moment of the whole run. Written to the

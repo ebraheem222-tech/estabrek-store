@@ -31,6 +31,8 @@ export type Keys = {
   parts: Partial<Record<KeyPart, KeyFrame[]>>;
   /** A path it travels over the animation's time (the shop's pageTree/motionPath.ts). */
   path?: PathSpec;
+  /** It glides through its moments' places along one smooth curve, not straight from one to the next. */
+  smooth?: boolean;
 };
 export type Layer = {
   bg?: string; to?: string; angle?: number; radial?: boolean;
@@ -175,7 +177,7 @@ export const KEY_PRESETS: KeyPreset[] = [
   P("path-wave", "self", "بيمشي بموجة مع التمرير|Rides a wave with the scroll|גולש על גל עם הגלילה", K("scroll", { self: [{ at: 0 }, { at: 100 }] }, { ease: "linear", path: { kind: "wave", w: 240, h: 30, turns: 2, turn: true } })),
   // The whole element.
   P("float-path", "self", "يطفو بمسار|Floats along a path|מרחף במסלול", K("loop", { self: [{ at: 0, y: 0, rz: 0 }, { at: 50, y: -18, rz: 3 }, { at: 100, y: 0, rz: 0 }] }, { duration: 3.2, ease: "soft" })),
-  P("orbit", "self", "يدور بدائرة|Orbits|מקיף במעגל", K("loop", { self: [{ at: 0, x: 0, y: 0 }, { at: 25, x: 22, y: -22 }, { at: 50, x: 0, y: -44 }, { at: 75, x: -22, y: -22 }, { at: 100, x: 0, y: 0 }] }, { duration: 4, ease: "linear" })),
+  P("orbit", "self", "يدور بدائرة|Orbits|מקיף במעגל", K("loop", { self: [{ at: 0, x: 0, y: 0 }, { at: 25, x: 22, y: -22 }, { at: 50, x: 0, y: -44 }, { at: 75, x: -22, y: -22 }, { at: 100, x: 0, y: 0 }] }, { duration: 4, ease: "linear", smooth: true })),
   P("pendulum", "self", "بندول|Pendulum|מטוטלת", K("loop", { self: [{ at: 0, rz: -12 }, { at: 50, rz: 12 }, { at: 100, rz: -12 }] }, { duration: 2.4, ease: "soft", origin: "top" })),
   P("breathe-glow", "self", "يتنفس ويضوي|Breathes and glows|נושם וזוהר", K("loop", { self: [{ at: 0, scale: 1, bright: 1 }, { at: 50, scale: 1.05, bright: 1.18 }, { at: 100, scale: 1, bright: 1 }] }, { duration: 2.6, ease: "soft" })),
   P("heartbeat-pro", "self", "نبضة قلب|Heartbeat|דופק", K("loop", { self: [{ at: 0, scale: 1 }, { at: 14, scale: 1.15 }, { at: 28, scale: 1 }, { at: 42, scale: 1.15 }, { at: 70, scale: 1 }, { at: 100, scale: 1 }] }, { duration: 1.3, ease: "soft" })),

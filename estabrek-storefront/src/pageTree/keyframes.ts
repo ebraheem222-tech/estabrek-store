@@ -12,6 +12,7 @@
  */
 import { easeText } from "./motionCurve";
 import { pathOf, type PathSpec } from "./motionPath";
+import { glideTrack } from "./spline";
 
 export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click", "loop", "trigger"] as const;
 export const KEY_PARTS = ["self", "before", "after", "inner"] as const;
@@ -39,6 +40,8 @@ export type KeysSpec = {
   origin?: (typeof KEY_ORIGINS)[number];
   /** A path it travels over the animation's time (motionPath.ts): it owns where the element stands, and its turn when it turns with the path. */
   path?: PathSpec;
+  /** The element glides through its moments' places along one smooth curve (keyGlide), not straight from one to the next. */
+  smooth?: boolean;
   parts: Partial<Record<KeyPart, KeyFrameSpec[]>>;
 };
 export type CueSpec = { from: number; to: number; in?: (typeof CUE_KINDS)[number]; out?: (typeof CUE_KINDS)[number] | "stay"; soft?: number };
@@ -107,6 +110,7 @@ export function keysSpecOf(raw: unknown): KeysSpec | undefined {
     scrub: within(r.scrub, 0, 3),
     origin: inList(r.origin, KEY_ORIGINS),
     path: pathOf(r.path),
+    smooth: r.smooth === true ? true : undefined,
   });
 }
 
@@ -131,6 +135,8 @@ export type StepEnv = {
   resolve: (color: string) => string;
   /** Its own opacity at rest (a moment without one goes back to it). */
   restOpacity?: number;
+  /** The element's place (x, y) is left out of the steps: it glides through its moments instead (keyGlide). */
+  glide?: boolean;
 };
 
 const round = (v: number) => Math.round(v * 1000) / 1000;
@@ -199,6 +205,7 @@ export function keySteps(frames: KeyFrameSpec[], env: StepEnv): KeyStep[] {
     for (const k of MOVES) {
       const n = values[k]?.[i];
       if (n === undefined) continue;
+      if (env.self && env.glide && (k === "x" || k === "y")) continue;
       if (joinScale && (k === "scale" || k === "sx" || k === "sy")) continue;
       const value = k === "x" || k === "xp" ? n * flip : n;
       if (env.self) v[SELF_VAR[k][0]] = `${round(value)}${SELF_VAR[k][1]}`;
@@ -227,6 +234,22 @@ export function keySteps(frames: KeyFrameSpec[], env: StepEnv): KeyStep[] {
     });
   }
   return frames.map((f, i) => ({ at: f.at, vars: vars[i], ...(f.ease ? { ease: f.ease } : {}) }));
+}
+
+/**
+ * Smooth keyframes: where the element itself stands at `t` (0–1 of the whole run), gliding through its moments'
+ * places along one curve (spline.ts) instead of straight from one to the next. Each of x and y is there only when
+ * a moment names it (x toward the reading direction's end, as in the steps). Nothing when no moment names a place.
+ */
+export function keyGlide(frames: KeyFrameSpec[], rtl: boolean): ((t: number) => { x?: number; y?: number }) | null {
+  if (frames.length < 2) return null;
+  const named = (k: string) => frames.some((f) => (f as Record<string, unknown>)[k] !== undefined);
+  if (!named("x") && !named("y")) return null;
+  const times = frames.map((f) => f.at / 100);
+  const flip = rtl ? -1 : 1;
+  const x = named("x") ? glideTrack(times, track(frames, "x", 0).map((v) => (v ?? 0) * flip)) : null;
+  const y = named("y") ? glideTrack(times, track(frames, "y", 0).map((v) => v ?? 0)) : null;
+  return (t: number) => ({ ...(x ? { x: round(x(t)) } : {}), ...(y ? { y: round(y(t)) } : {}) });
 }
 
 /** Where a piece turns and grows from, in CSS, for the reading direction. */
