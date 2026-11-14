@@ -66,6 +66,28 @@ export function matesToAdd(tokens: DesignTokens, colour: Colour, kind: Harmony, 
   return all.length <= room ? all : [];
 }
 
+/**
+ * A picture's colours as colour variables to add: the ones the store doesn't have yet (by their value), in their
+ * order, as many as there is room for, by the ids "photo", "photo-2"…
+ */
+export function coloursToAdd(tokens: DesignTokens, hexes: string[], name: (i: number) => Name): Colour[] {
+  const room = VARIABLE_LIMITS.colors - tokens.colors.length;
+  const values = new Set(tokens.colors.map((c) => c.value.slice(0, 7).toLowerCase()));
+  const ids = new Set(tokens.colors.map((c) => c.id));
+  const out: Colour[] = [];
+  for (const hex of hexes) {
+    if (out.length >= room) break;
+    const value = String(hex).slice(0, 7).toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(value) || values.has(value)) continue;
+    let n = 1, id = "photo";
+    while (ids.has(id)) id = `photo-${++n}`;
+    ids.add(id);
+    values.add(value);
+    out.push({ id, name: name(out.length), value });
+  }
+  return out;
+}
+
 /** The ids a store without spaces starts with, smallest first. */
 export const STARTER_SPACES = ["xs", "sm", "md", "lg", "xl", "xxl"] as const;
 /**

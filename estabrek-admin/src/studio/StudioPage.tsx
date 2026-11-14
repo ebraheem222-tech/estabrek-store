@@ -45,7 +45,10 @@ import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { VisualControlsPanel } from "./VisualControlsPanel";
 import { candidateStack, clickPick, PointSelection } from "./selectionPicking";
 import { ShortcutsDialog } from "./ShortcutsDialog";
-import { TokensContext, useDesignTokens } from "./designTokens";
+import { TokensContext, useDesignTokens, withGroup } from "./designTokens";
+import { coloursToAdd } from "./variableMaths";
+import { PictureColoursCard, type PictureLook } from "./PictureColours";
+import type { PictureColour, PicturePoint, PictureRoles } from "../../../shared/pictureSense";
 import { VariablesPanel } from "./VariablesPanel";
 import { say } from "./say";
 import { partDragOffset } from "./partDrag";
@@ -362,6 +365,10 @@ function StudioDocument() {
   const [artInfo, setArtInfo] = useState<{ nodeId: string; parts: Array<{ id: string; tag: string; rect: Box; ctm: Matrix | null; box: Box }> } | null>(null);
   const artPick = useRef<{ requestId: string; done: (part: string | null) => void } | null>(null);
   const artSeq = useRef(0);
+  // What a picture's pixels say (shared/pictureSense.ts), asked of the shop's frame; and its colours while they show.
+  type PictureSensed = { colours: PictureColour[]; roles: PictureRoles | null; subject: PicturePoint | null };
+  const senseWait = useRef<{ requestId: string; done: (r: PictureSensed | null) => void } | null>(null);
+  const [pictureLook, setPictureLook] = useState<PictureLook | null>(null);
   // A picture's sparkling stars in focus mode: the frame's search for their places, what it said, and the pen.
   const sparkleWait = useRef<{ requestId: string; done: (points: Array<{ x: number; y: number; s?: number }> | null, problem?: string) => void } | null>(null);
   const [sparkleFinding, setSparkleFinding] = useState(false);
@@ -532,6 +539,20 @@ function StudioDocument() {
           sparkleWait.current = null;
           const points = Array.isArray(m.points) ? (m.points as Array<{ x: number; y: number; s?: number }>).filter((p) => p && typeof p.x === "number" && typeof p.y === "number").slice(0, 80) : null;
           wait.done(points, typeof m.problem === "string" ? m.problem : undefined);
+        }
+      } else if (d.type === "pictureSensed") {
+        const m = d as unknown as { requestId?: unknown; colours?: unknown; roles?: unknown; subject?: unknown };
+        const wait = senseWait.current;
+        if (wait && m.requestId === wait.requestId) {
+          senseWait.current = null;
+          const hex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+          const colours = Array.isArray(m.colours) ? (m.colours as PictureColour[]).filter((c) => c && hex(c.hex) && typeof c.share === "number").slice(0, 8) : null;
+          const r = m.roles as PictureRoles | null | undefined, at = m.subject as PicturePoint | null | undefined;
+          wait.done(colours ? {
+            colours,
+            roles: r && hex(r.ground) && hex(r.ink) && hex(r.accent) ? { ground: r.ground, ink: r.ink, accent: r.accent } : null,
+            subject: at && typeof at.x === "number" && typeof at.y === "number" ? { x: Math.max(0, Math.min(100, Math.round(at.x))), y: Math.max(0, Math.min(100, Math.round(at.y))) } : null,
+          } : null);
         }
       } else if (d.type === "viewUpdated") {
         pointSelection.current.cancel();
@@ -2725,7 +2746,7 @@ function StudioDocument() {
             }}
           />
         ) : null}
-        {target.type === "image" || target.type === "video" || target.type === "slider" ? <MediaStylePanel node={target} screen={screen} busy={busy} onOps={onOps} /> : null}
+        {target.type === "image" || target.type === "video" || target.type === "slider" ? <MediaStylePanel node={target} screen={screen} busy={busy} onOps={onOps} onFindSubject={target.type === "image" ? () => findSubject(target) : undefined} /> : null}
         {target.type === "video" ? (
           <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setVideoEditor(true)} data-testid="studio-video-open">
             🎬 {say("افتح محرّر الفيديو (قص، ترتيب، سرعة، كلام، موسيقى)|Open the video editor (cut, order, speed, words, music)|פתח את עורך הווידאו")}
@@ -2767,6 +2788,31 @@ function StudioDocument() {
     if (card) showCard(card);
     else window.setTimeout(() => document.querySelector(`[data-insp-group="${g}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" }), 150);
   };
+  /** Asks the shop's frame what a picture's pixels say; null when they can't be read (or no answer comes). */
+  const askPicture = (nodeId: string) => new Promise<PictureSensed | null>((resolve) => {
+    const requestId = `ps${++artSeq.current}`;
+    const timer = window.setTimeout(() => {
+      if (senseWait.current?.requestId === requestId) senseWait.current = null;
+      resolve(null);
+    }, 10000);
+    senseWait.current = { requestId, done: (r) => { window.clearTimeout(timer); resolve(r); } };
+    send({ type: "pictureSense", requestId, nodeId });
+  });
+  const unreadable = () => toast.info(say("ما قدرنا نقرا هالصورة|This picture couldn't be read|לא ניתן לקרוא את התמונה"), { description: say("جاية من مكان ما بيسمح نقرا ألوانها، أو لسا ما حمّلت.|It comes from a place that doesn't let its colours be read, or hasn't loaded yet.|היא ממקום שלא מאפשר לקרוא את צבעיה, או שעוד לא נטענה.") });
+  /** A picture's focus point put on its subject, found from its pixels. */
+  const findSubject = (node: PagesAPI.PageTreeNode) => void askPicture(node.id).then((r) => {
+    if (!r) return void unreadable();
+    if (!r.subject) return void toast.info(say("ما في موضوع واضح بهالصورة|No clear subject in this picture|אין נושא ברור בתמונה"), { description: say("خلّيناها متل ما هي: حدّد النقطة بإيدك.|It was left as it is: set the point by hand.|הושארה כמו שהיא: קבע את הנקודה ביד.") });
+    void change(say("نقطة التركيز|Focus point|נקודת המיקוד"), [styleOp(node, screen, { focus: r.subject })]);
+  });
+  /** The part of the page (a section) an element is in. */
+  const partOf = (sid: string) => {
+    for (let up = index?.nodes.get(sid)?.parentId; up; up = index?.nodes.get(up)?.parentId) {
+      const n = nodeOf(up);
+      if (n?.type === "section") return n;
+    }
+    return undefined;
+  };
   /** One of the selected element's tools (elementTools.ts): goes where it lives, or makes what it promises. */
   const runTool = (tool: ElementTool) => {
     if (!selFree || !index) return;
@@ -2783,6 +2829,13 @@ function StudioDocument() {
     } else if (go.kind === "worldOn") {
       const host = nodeOf(go.hostId);
       if (host) void change(say("عالم فيزيائي|Physics world|עולם פיזיקלי"), worldOnOps(host)).then(() => goGroup("motion", go.card));
+    } else if (go.kind === "pictureColours") {
+      const nodeId = selFree.id;
+      void askPicture(nodeId).then((r) => {
+        if (!r || !r.colours.length) return void unreadable();
+        setPictureLook({ nodeId, colours: r.colours, roles: r.roles });
+        showCard("studio-picture-colours");
+      });
     } else if (go.kind === "sceneFromVideo") {
       // After the part of the page that holds the video, across the whole width.
       let top = selFree.id;
@@ -2884,6 +2937,24 @@ function StudioDocument() {
             </button>
           ) : null}
         </ElementToolsCard>
+        {pictureLook && selFree && pictureLook.nodeId === selFree.id && !focus ? (() => {
+          const fresh = coloursToAdd(dt.tokens, pictureLook.colours.map((c) => c.hex), (i) => ({ [adminLang()]: `${say("من الصورة|From the picture|מהתמונה")} ${i + 1}` }));
+          const part = partOf(selFree.id);
+          return (
+            <PictureColoursCard
+              look={pictureLook} busy={busy || dt.busy} room={fresh.length} partName={part ? label(part.id) : undefined}
+              onAdd={() => {
+                if (!fresh.length) return;
+                // The variables are a draft until they are published (Styles → Variables): said, so they aren't left there.
+                void dt.save(withGroup(dt.tokens, "colors", [...dt.tokens.colors, ...fresh])).then((ok) => {
+                  if (ok) toast.success(say("انزادوا لألوان المتغيرات|Added to the colour variables|נוספו למשתני הצבע"), { description: say("هلأ بتختارهم بالإسم بأي عنصر. ليوصلوا للمتجر: الستايلات ← المتغيرات ← انشر.|Any element can take them by name now. To reach the shop: Styles → Variables → Publish.|כל רכיב יכול לקחת אותם בשם. כדי שיגיעו לחנות: סגנונות ← משתנים ← פרסם.") });
+                });
+              }}
+              onDress={() => { if (part && pictureLook.roles) void change(say("ألوان القسم من الصورة|The part's colours from the picture|צבעי החלק מהתמונה"), [styleOp(part, "base", { bg: pictureLook.roles.ground, color: pictureLook.roles.ink })]); }}
+              onClose={() => setPictureLook(null)}
+            />
+          );
+        })() : null}
         <dl className="grid grid-cols-2 gap-2 text-xs">
           <dt className="text-white/45">{tr("الحجم", "Size")}</dt>
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
@@ -3162,7 +3233,7 @@ function StudioDocument() {
                     <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
                   </>
                 ) : null}
-                {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onFindSubject={selFree.type === "image" ? () => findSubject(selFree) : undefined} /> : null}
                 {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={boxSkip(selFree.type)} /> : null}
                 <StickyPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 <OverflowPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />

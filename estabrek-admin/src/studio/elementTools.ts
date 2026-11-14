@@ -25,7 +25,9 @@ export type ToolGo =
   /** Make a holder a physics world, then show the card that follows from it. */
   | { kind: "worldOn"; hostId: string; card: string }
   /** The Styles tab's variables (colour maths, the scales of spaces and font sizes). */
-  | { kind: "variables" };
+  | { kind: "variables" }
+  /** Read the picture's pixels and show its main colours (to add to the variables, or to dress its part in). */
+  | { kind: "pictureColours" };
 export type ElementTool = { id: string; icon: string; label: string; hint: string; go: ToolGo; small?: boolean };
 
 /** What is never offered as a body: a scroll scene holds the screen still, a popup sits over the page. */
@@ -39,6 +41,7 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
 
   if (node.type === "image") {
     add("image-edit", "✂", "عدّل الصورة|Edit the picture|ערוך את התמונה", "قص، تدوير، قلب، إضاءة وألوان، أبيض وأسود|Crop, turn, flip, light and colours, black and white|חיתוך, סיבוב, היפוך, אור וצבעים, שחור־לבן", { kind: "focus", card: "studio-image-edit" });
+    add("image-colours", "🎨", "ألوان من الصورة|Colours from the picture|צבעים מהתמונה", "بنقرا الصورة وبنطلّع ألوانها الأساسية مع نسبة كل لون: زيدهم للمتغيرات أو لبّس القسم فيهم|The picture is read and its main colours found, each with its share: add them to the variables or dress the part in them|קוראים את התמונה ומוצאים את צבעיה העיקריים: הוסף למשתנים או הלבש את החלק", { kind: "pictureColours" });
     add("image-sparkle", "✨", "نجوم براقة على الصورة|Sparkling stars on the picture|כוכבים נוצצים על התמונה", "لمعات بتتحرك على أماكن بتختارها من الصورة|Glints that move on places you choose in the picture|נצנוצים שזזים על מקומות שבחרת בתמונה", { kind: "focus", card: "studio-sparkle" });
   }
   if (node.type === "video") {
@@ -84,6 +87,7 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
 /** Where the bigger tools are, for the inspector with nothing selected: what it is, and the way to it. */
 export const TOOL_GUIDE: Array<[icon: string, what: string, where: string]> = [
   ["✂", "تعديل الصور|Editing pictures|עריכת תמונות", "اختار صورة ← «عدّل الصورة»|Pick a picture → «Edit the picture»|בחר תמונה ← «ערוך את התמונה»"],
+  ["🎨", "ألوان من صورة، وتركيزها على موضوعها|Colours from a picture, and its focus on its subject|צבעים מתמונה, ומיקוד בנושא שלה", "اختار صورة ← «ألوان من الصورة»؛ والتركيز من الشكل ← «لاقي الموضوع لحالك»|Pick a picture → «Colours from the picture»; the focus under Look → «Find the subject»|בחר תמונה ← «צבעים מהתמונה»; המיקוד תחת מראה ← «מצא את הנושא»"],
   ["🎬", "محرّر الفيديو|The video editor|עורך הווידאו", "اختار فيديو ← «محرّر الفيديو»|Pick a video → «The video editor»|בחר וידאו ← «עורך הווידאו»"],
   ["⏯", "فيديو بمشاهد مع السكرول|A video in scenes that follow the scroll|וידאו בסצנות עם הגלילה", "اختار فيديو ← «قسّمه لمشاهد»، أو + إضافة ← مشهد تمرير|Pick a video → «Split it into scenes», or + Add → Scroll scene|בחר וידאו ← «חלק אותו לסצנות», או + הוספה ← סצנת גלילה"],
   ["🧲", "الفيزياء|Physics|פיזיקה", "اختار قسم أو أي عنصر ← «فيزياء»|Pick a part or any element → «Physics»|בחר חלק או רכיב ← «פיזיקה»"],

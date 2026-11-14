@@ -250,6 +250,11 @@ if (new URLSearchParams(location.search).has("video")) {
 if (new URLSearchParams(location.search).has("sparkle")) {
   initial.tree!.root.children![0].children!.unshift({ id: "photo", type: "image", name: "Photo", props: { src: "/editorial/scarves.webp", alt: text("Scarves") }, style: { base: { width: "360px", height: "260px" } } });
 }
+// A drawn picture whose subject is off the middle (a red disc and a navy one, bottom right, on a pale ground):
+// its colours and its subject are known, for what the editor reads from a picture's pixels.
+if (new URLSearchParams(location.search).has("subject")) {
+  initial.tree!.root.children![0].children!.unshift({ id: "target", type: "image", name: "Target", props: { src: "/templates/fixture-subject.svg", alt: text("A red disc") }, style: { base: { width: "360px", height: "270px" } } });
+}
 if (new URLSearchParams(location.search).has("narrow")) {
   initial.tree!.root.children![0].style = { base: { width: "160px", minHeight: "900px", pad: [0, 0, 0, 0] } };
 }

@@ -22,7 +22,7 @@ const makeIds = () => { let n = 0; return (p: string) => `${p}-${n++}`; };
 
 test("a picture, a video, a 3D model and words say where their own editors are", () => {
   setLangForTests("en");
-  expect(ids(elementTools(node("image")))).toEqual(["image-edit", "image-sparkle", ...every]);
+  expect(ids(elementTools(node("image")))).toEqual(["image-edit", "image-colours", "image-sparkle", ...every]);
   expect(ids(elementTools(node("video")))).toEqual(["video-editor", "video-scenes", ...every]);
   expect(ids(elementTools(node("model3d")))).toEqual(["model-stage", "model-views", "model-spots", "model-parts", ...every]);
   expect(ids(elementTools(node("heading")))).toEqual(["text-curve", ...every]);
