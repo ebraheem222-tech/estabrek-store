@@ -155,3 +155,32 @@ test("the wheel turned while something is carried keeps it under the pointer", a
   }).toBeLessThan(14);
   expect(await parentOf(page, "action")).toBe("first");
 });
+
+test("in the flow layout too: boundaries while it is carried, the page scrolls at the edge, and the view comes to the part", async ({ page }) => {
+  test.setTimeout(180000);
+  await open(page);
+  await page.getByRole("button", { name: "Flow layout", exact: true }).click();
+  const before = await zoomNow(page);
+  // The headline is in the rows of the first part.
+  const at = await canvasPoint(page, '[data-tree-node="headline"]');
+  await page.mouse.move(at.x - 4, at.y);
+  await page.mouse.move(at.x, at.y, { steps: 3 });
+  await page.mouse.down();
+  await page.mouse.move(at.x + 12, at.y + 12, { steps: 4 });
+  await expect(page.getByTestId("studio-drop")).toHaveCount(1);
+  await expect(bound(page, "first")).toBeVisible();
+  const box = (await page.getByTestId("studio-frame").boundingBox())!;
+  const bottom = Math.min(box.y + box.height, 900) - 8;
+  await page.mouse.move(at.x, bottom, { steps: 16 });
+  await expect.poll(() => scrolled(page), { timeout: 30000 }).toBeGreaterThan(900);
+  await page.mouse.move(at.x, bottom - 200, { steps: 6 });
+  let stopped = -1;
+  await expect.poll(async () => { const was = stopped; stopped = await scrolled(page); return stopped === was; }, { intervals: [300] }).toBe(true);
+  const shelf = await canvasPoint(page, '[data-tree-node="shelf"]');
+  await page.mouse.move(shelf.x, shelf.y + 40, { steps: 14 });
+  await expect(page.getByTestId("studio-drop")).toHaveCount(1);
+  await page.mouse.up();
+  await expect.poll(() => parentOf(page, "headline"), { timeout: 20000 }).toBe("shelf");
+  await expect(page.getByTestId("studio-bound")).toHaveCount(0);
+  await expect.poll(() => zoomNow(page), { timeout: 15000 }).toBeGreaterThan(before + 10);
+});

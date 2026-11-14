@@ -3745,11 +3745,11 @@ function StudioDocument() {
             data-editing={editing ? "1" : undefined}
           >
             <div className="pointer-events-none absolute overflow-hidden" style={{ left: frameBox.x, top: frameBox.y, width: frameBox.w, height: frameBox.h }}>
-              {(dragPrefs.bounds || dragView || placing) && index ? partBounds(index, shapes, frameBox).map((b) => (
+              {(dragPrefs.bounds || dragView || placing || drop) && index ? partBounds(index, shapes, frameBox).map((b) => (
                 <div key={`bound-${b.id}`} className={`pointer-events-none absolute border border-dashed ${b.section ? "border-sky-500/80" : "border-violet-500/70"}`} style={{ left: b.box.x - frameBox.x, top: b.box.y - frameBox.y, width: b.box.w, height: b.box.h }} data-testid="studio-bound" data-node={b.id} data-section={b.section ? "1" : undefined}>
                   {b.named ? (
-                    <button type="button" tabIndex={-1} disabled={Boolean(dragView || placing) || busy}
-                      className={`absolute start-0 max-w-full truncate rounded-ee-md px-1 text-[9px] leading-4 ${dragView || placing ? "pointer-events-none" : "pointer-events-auto cursor-pointer hover:brightness-125"} ${b.id === selected ? "bg-fuchsia-600 text-white" : b.section ? "bg-sky-600/85 text-white" : "bg-violet-600/80 text-white"}`}
+                    <button type="button" tabIndex={-1} disabled={Boolean(dragView || placing || drop) || busy}
+                      className={`absolute start-0 max-w-full truncate rounded-ee-md px-1 text-[9px] leading-4 ${dragView || placing || drop ? "pointer-events-none" : "pointer-events-auto cursor-pointer hover:brightness-125"} ${b.id === selected ? "bg-fuchsia-600 text-white" : b.section ? "bg-sky-600/85 text-white" : "bg-violet-600/80 text-white"}`}
                       style={{ top: b.row * BOUND_TAG }} title={say("حدّد هالجزء|Select this part|בחירת החלק הזה")}
                       onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(b.id); }}
                       data-testid="studio-bound-name" data-node={b.id}>{label(b.id)}</button>
