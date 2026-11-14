@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { bakeFrames, bodyOf, fallStep, fitEase, keepSamples, pendulumStep, physicsOf, seeded, springRests, springStep, worldOf, WORLD_DEFAULTS, type Sample } from "../src/pageTree/physics";
+import { bakeFrames, bodyOf, fallStep, fieldForce, fitEase, keepSamples, pendulumStep, physicsOf, seeded, springRests, springStep, worldOf, WORLD_DEFAULTS, type Sample } from "../src/pageTree/physics";
 import { motionOf, treeNeeds, TREE_TRANSFORM, TREE_TRANSFORM_REST, type PageTree } from "../src/pageTree/tree";
 import { treeCss } from "../src/pageTree/css";
 
@@ -15,6 +15,46 @@ test("an element's physics, a world and a body: known values only, a world's def
   expect(worldOf(null)).toBeNull();
   expect(bodyOf({ shape: "circle", hang: "rope", fixed: false })).toEqual({ shape: "circle", hang: "rope" });
   expect(bodyOf({})).toBeNull();
+});
+
+test("a world's field of force: read with its point and power, pulling like gravity, pushing, going round, whirling", () => {
+  expect(worldOf({ field: "orbit", fieldX: 20, fieldY: 80, fieldPower: 1 })).toMatchObject({ field: "orbit", fieldX: 20, fieldY: 80, fieldPower: 1 });
+  expect(worldOf({ field: "black-hole", fieldX: 140, fieldPower: 3 })).toMatchObject({ field: "none", fieldX: 50, fieldY: 50, fieldPower: 0.5 });
+  expect(WORLD_DEFAULTS.field).toBe("none");
+
+  const reach = 1000, mass = 2;
+  // A body 100 to the right of the point is pulled left, pushed right, by the same amount.
+  const pull = fieldForce("pull", 1, 100, 0, mass, reach), push = fieldForce("push", 1, 100, 0, mass, reach);
+  expect(pull.x).toBeLessThan(0);
+  expect(pull.y).toBeCloseTo(0, 12);
+  expect(push.x).toBeCloseTo(-pull.x, 12);
+  // Its size: power × mass × 0.002 × s² / (r² + s²), s = 0.3 × reach; half its most at r = s.
+  const size = (f: { x: number; y: number }) => Math.hypot(f.x, f.y);
+  expect(size(pull)).toBeCloseTo(1 * mass * 0.002 * (300 * 300) / (100 * 100 + 300 * 300), 12);
+  expect(size(fieldForce("pull", 1, 300, 0, mass, reach))).toBeCloseTo(mass * 0.002 / 2, 12);
+  // Weaker further away, and in proportion to the power and the mass.
+  const far = [50, 150, 300, 600, 900].map((r) => size(fieldForce("pull", 1, 0, r, mass, reach)));
+  for (let i = 1; i < far.length; i++) expect(far[i]).toBeLessThan(far[i - 1]);
+  expect(size(fieldForce("pull", 0.5, 100, 0, mass, reach))).toBeCloseTo(size(pull) / 2, 12);
+  expect(size(fieldForce("pull", 1, 100, 0, mass * 3, reach))).toBeCloseTo(size(pull) * 3, 12);
+  // Towards the point from anywhere: the force and the way to the point agree.
+  for (const [dx, dy] of [[70, 70], [-120, 40], [0, -300], [-5, -5]]) {
+    const f = fieldForce("pull", 1, dx, dy, mass, reach);
+    expect(f.x * -dx + f.y * -dy).toBeGreaterThan(0);
+    expect(Math.abs(f.x * dy - f.y * dx)).toBeLessThan(1e-12);
+  }
+  // Going round: a pull with a part sideways, the same way round on both sides of the point.
+  const right = fieldForce("orbit", 1, 100, 0, mass, reach), left = fieldForce("orbit", 1, -100, 0, mass, reach);
+  expect(right.x).toBeLessThan(0);
+  expect(Math.abs(right.y)).toBeGreaterThan(0);
+  expect(Math.sign(left.y)).toBe(-Math.sign(right.y));
+  expect(Math.abs(right.y / right.x)).toBeCloseTo(0.35, 6);
+  // A whirl: mostly sideways, a little inwards.
+  const whirl = fieldForce("swirl", 1, 100, 0, mass, reach);
+  expect(whirl.x).toBeLessThan(0);
+  expect(Math.abs(whirl.y)).toBeGreaterThan(Math.abs(whirl.x) * 3);
+  // Nothing at the point itself, with no power, or with no field.
+  for (const f of [fieldForce("pull", 1, 0, 0, mass, reach), fieldForce("pull", 0, 100, 0, mass, reach), fieldForce("none", 1, 100, 0, mass, reach), fieldForce("pull", 1, 100, 0, mass, 0)]) expect(f).toEqual({ x: 0, y: 0 });
 });
 
 test("a spring settles at its target; a fall bounces lower each time and rests; a pendulum swings back and slows", () => {

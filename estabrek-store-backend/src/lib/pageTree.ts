@@ -1146,6 +1146,11 @@ export const NodeWorld = z.object({
   pointer: z.enum(["none", "push", "pull"]).optional(),
   wind: z.number().finite().min(-1).max(1).optional(),
   click: z.enum(["none", "burst", "flip"]).optional(),
+  // A field of force round a point (percent of the world's box): pulls, pushes, makes bodies go round, whirls.
+  field: z.enum(["none", "pull", "push", "orbit", "swirl"]).optional(),
+  fieldX: z.number().finite().min(0).max(100).optional(),
+  fieldY: z.number().finite().min(0).max(100).optional(),
+  fieldPower: z.number().finite().min(0).max(1).optional(),
   again: z.number().finite().min(0).max(60).optional(),
   baked: z.boolean().optional(),
 });
