@@ -24,6 +24,7 @@ import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { EASE_MAP, keySteps, originCss, type KeysSpec } from "./keyframes";
 import { playEase } from "./motionCurve";
+import { pathTrack } from "./motionPath";
 import { staggerOf } from "./stagger";
 import { keyPlayers } from "./motionPlayers";
 import { orbitHeight, orbitSpot } from "./orbit";
@@ -482,6 +483,22 @@ function playKeys(gsap: Gsap, ScrollTrigger: ST, el: HTMLElement, k: KeysSpec, e
       const from = steps[i - 1].at;
       tl.to(target, { ...steps[i].vars, duration: Math.max(0.0001, ((steps[i].at - from) / 100) * total), ...(steps[i].ease ? { ease: playEase(steps[i].ease, EASE_MAP, "power2.out") } : {}) }, (from / 100) * total);
     }
+  }
+  // Along a path (keys.path): where it stands, and how it's turned, at each moment of the whole run. Written to the
+  // same variables the moments use (after them, so the path wins where both name a place).
+  if (k.path) {
+    const track = pathTrack(k.path, env.rtl);
+    const turns = k.path.turn === true;
+    const travel = { t: 0 };
+    const px = (v: number) => `${Math.round(v * 100) / 100}px`;
+    const place = () => {
+      const at = track(travel.t);
+      el.style.setProperty("--pt-kx", px(at.x));
+      el.style.setProperty("--pt-ky", px(at.y));
+      if (turns) el.style.setProperty("--pt-krz", `${Math.round(at.angle * 100) / 100}deg`);
+    };
+    tl.fromTo(travel, { t: 0 }, { t: 1, duration: total, onUpdate: place }, 0);
+    off.push(() => { for (const name of ["--pt-kx", "--pt-ky", "--pt-krz"]) el.style.removeProperty(name); });
   }
   tl.call(() => {}, [], total);
   // Every step learns where it starts, and the first moment shows at once.

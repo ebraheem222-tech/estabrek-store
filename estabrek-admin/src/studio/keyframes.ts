@@ -6,6 +6,7 @@
  * the changes that add, move and remove moments, and ready animations (some bring their layers
  * and an overflow with them, like a button filling from one side).
  */
+import type { PathSpec } from "../../../estabrek-storefront/src/pageTree/motionPath";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { motionOp, type Motion } from "./look";
 import { styleOp } from "./columns";
@@ -28,6 +29,8 @@ export type Keys = {
   duration?: number; delay?: number; ease?: string; repeat?: number; yoyo?: boolean;
   start?: number; end?: number; scrub?: number; origin?: string;
   parts: Partial<Record<KeyPart, KeyFrame[]>>;
+  /** A path it travels over the animation's time (the shop's pageTree/motionPath.ts). */
+  path?: PathSpec;
 };
 export type Layer = {
   bg?: string; to?: string; angle?: number; radial?: boolean;
@@ -165,6 +168,11 @@ const K = (on: KeyTrigger, parts: Keys["parts"], more: Partial<Keys> = {}): Keys
 const P = (key: string, group: KeyPreset["group"], name: string, keys: Keys, extra: Partial<KeyPreset> = {}): KeyPreset => ({ key, group, name: () => say(name), keys, ...extra });
 
 export const KEY_PRESETS: KeyPreset[] = [
+  // The whole element, along a path.
+  P("path-arc", "self", "يوصل بقوس|Arrives on an arc|מגיע בקשת", K("view", { self: [{ at: 0, opacity: 0 }, { at: 30, opacity: 1 }, { at: 100, opacity: 1 }] }, { duration: 1.2, ease: "smooth", path: { kind: "arc", w: 160, h: 60 } })),
+  P("path-spiral", "self", "بيدخل بلولب|Spirals in|נכנס בספירלה", K("view", { self: [{ at: 0, opacity: 0, scale: 0.6 }, { at: 100, opacity: 1, scale: 1 }] }, { duration: 1.4, ease: "strong", path: { kind: "spiral", w: 160, h: 160, turns: 1.5 } })),
+  P("path-eight", "self", "يرسم ثمانية|Draws a figure of eight|מצייר שמונה", K("loop", { self: [{ at: 0 }, { at: 100 }] }, { duration: 6, ease: "linear", path: { kind: "eight", w: 80, h: 40 } })),
+  P("path-wave", "self", "بيمشي بموجة مع التمرير|Rides a wave with the scroll|גולש על גל עם הגלילה", K("scroll", { self: [{ at: 0 }, { at: 100 }] }, { ease: "linear", path: { kind: "wave", w: 240, h: 30, turns: 2, turn: true } })),
   // The whole element.
   P("float-path", "self", "يطفو بمسار|Floats along a path|מרחף במסלול", K("loop", { self: [{ at: 0, y: 0, rz: 0 }, { at: 50, y: -18, rz: 3 }, { at: 100, y: 0, rz: 0 }] }, { duration: 3.2, ease: "soft" })),
   P("orbit", "self", "يدور بدائرة|Orbits|מקיף במעגל", K("loop", { self: [{ at: 0, x: 0, y: 0 }, { at: 25, x: 22, y: -22 }, { at: 50, x: 0, y: -44 }, { at: 75, x: -22, y: -22 }, { at: 100, x: 0, y: 0 }] }, { duration: 4, ease: "linear" })),
