@@ -536,7 +536,7 @@ export const NodeLayers = z.object({ before: PieceLayer.optional(), after: Piece
  * What starts a trigger: a click, a double click, a long press, the mouse coming or going, coming into or out of
  * sight, the page opening, the page scrolled past `at` %, `at` seconds on the page, a key of the keyboard (`key`).
  */
-export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key"] as const;
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit"] as const;
 /** The keys a "key" trigger listens for: these by name, or one letter or digit. */
 export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const triggerKey = z.string().regex(/^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/, "A key by name, or one letter or digit");
@@ -626,6 +626,8 @@ export const NodeTrigger = z.object({
   name: z.string().trim().max(40).optional(),
   /** The key a "key" trigger waits for. */
   key: triggerKey.optional(),
+  /** What a "hit" trigger waits for its body to meet in a physics world: anything, another body, the floor or a wall, or one element by its id. */
+  hit: z.string().regex(/^(any|body|wall|[A-Za-z0-9_-]{1,40})$/, "any, body, wall, or an element's id").optional(),
   /**
    * Who may run it: everyone (nothing here), signed-in customers, or guests. What the others get (`deny`): the
    * element hidden, shown locked (with `note` when pressed), or sent to sign in. This is the shop's manners only:

@@ -127,6 +127,27 @@ describe("a recipe in the editor", () => {
     expect(saved[0]).toEqual({ on: "longpress", do: [{ act: "vibrate" }] });
   });
 
+  it("a hit: anything to start with, another element, the floor, or one element by its name", () => {
+    open([{ on: "click", do: [{ act: "vibrate" }] }]);
+    // What it hits isn't asked until the recipe waits for a hit.
+    expect(screen.queryByTestId("trigger-0-hit")).toBeNull();
+    pick("trigger-0-on", "hit");
+    expect(saved[0]).toEqual({ on: "hit", do: [{ act: "vibrate" }] });
+    expect((screen.getByTestId("trigger-0-hit") as HTMLSelectElement).value).toBe("any");
+    pick("trigger-0-hit", "wall");
+    expect(saved[0].hit).toBe("wall");
+    // One element of the page, by its name.
+    expect([...(screen.getByTestId("trigger-0-hit") as HTMLSelectElement).options].map((o) => o.textContent)).toContain("Offer");
+    pick("trigger-0-hit", "pop");
+    expect(saved[0].hit).toBe("pop");
+    pick("trigger-0-hit", "any");
+    expect(saved[0]).toEqual({ on: "hit", do: [{ act: "vibrate" }] });
+    // Another event: what it hit goes with the hit.
+    pick("trigger-0-hit", "body");
+    pick("trigger-0-on", "click");
+    expect(saved[0]).toEqual({ on: "click", do: [{ act: "vibrate" }] });
+  });
+
   it("a product for the bag is found by its name; a name and a try", async () => {
     open([{ on: "click", do: [{ act: "vibrate" }] }]);
     pick("trigger-0-act-0", "bag");

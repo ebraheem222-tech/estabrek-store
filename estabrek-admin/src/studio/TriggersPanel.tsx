@@ -16,7 +16,7 @@ import { Range } from "./LookPanels";
 import { ColourPick } from "./StudioTreePanels";
 import { say } from "./say";
 import {
-  ACTS, BURSTS, CONDITIONS, COUNT_CMPS, DENY, EVENTS, FLOW_ACTS, GROUP_ACTS, KEYS, KEY_OK, MAX_FAIL, MAX_GROUP, MAX_IF, MAX_STEPS, PHONE_OK, PLAY_WHAT, SOUNDS,
+  ACTS, BURSTS, CONDITIONS, COUNT_CMPS, DENY, EVENTS, HITS, FLOW_ACTS, GROUP_ACTS, KEYS, KEY_OK, MAX_FAIL, MAX_GROUP, MAX_IF, MAX_STEPS, PHONE_OK, PLAY_WHAT, SOUNDS,
   TRIGGER_PRESETS, VAR_CMPS, VAR_NAME, VAR_OPS, WHO, canFail, isGroup, newAction, newCondition, newStep, triggersOf, triggersOp, valueOf,
   type Action, type Condition, type ConditionKind, type Deny, type PlainStep, type Step, type StepKind, type Trigger, type TriggerEvent, type VarValue, type Who, type Words,
 } from "./triggers";
@@ -277,6 +277,12 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
             </div>
             {t.on === "scrolled" ? <Range label={say("لما الصفحة تنزل لـ|When the page reaches|כשהעמוד מגיע ל־")} min={0} max={100} unit="%" busy={busy} value={t.at ?? 50} onSave={(at) => setOne(i, { ...t, at })} /> : null}
             {t.on === "timer" || t.on === "load" ? <Range label={say("بعد|After|אחרי")} min={0} max={120} unit="s" busy={busy} value={t.at ?? (t.on === "timer" ? 5 : 0)} onSave={(at) => setOne(i, { ...t, at })} /> : null}
+            {t.on === "hit" ? (
+              <>
+                <Pick label={say("بشو بيصطدم|What it hits|במה הוא מתנגש")} value={t.hit ?? "any"} options={[...named(HITS), ...others.map((o): [string, string] => [o.id, o.label])]} busy={busy} onPick={(hit) => setOne(i, { ...t, hit: hit === "any" ? undefined : hit })} testId={`trigger-${i}-hit`} />
+                <p className="text-[10px] leading-4 text-white/40">{say("بيشتغل لما هالعنصر يكون جسم بعالم فيزيائي شغّال (مش مخبوز لحركة جاهزة)، وكل ما يصطدم. علّم «مرة وحدة بس» إذا بدك ياه مرة.|It runs while this element is a body in a running physics world (not one baked into keyframes), each time it hits. Tick “Only once” to have it once.|פועל כשהאלמנט הוא גוף בעולם פיזיקלי פעיל (לא אפוי לתנועה מוכנה), בכל התנגשות. סמן ״רק פעם אחת״ כדי שיקרה פעם אחת.")}</p>
+              </>
+            ) : null}
             {t.on === "key" ? (
               <div className="grid grid-cols-2 gap-2">
                 <Pick label={say("أي زر|Which key|איזה מקש")} value={letter ? "letter" : t.key ?? "Enter"} options={[...named(KEYS), ["letter", say("حرف أو رقم…|A letter or digit…|אות או ספרה…")]]} busy={busy} onPick={(key) => setOne(i, { ...t, key: key === "letter" ? "a" : key })} testId={`trigger-${i}-key`} />

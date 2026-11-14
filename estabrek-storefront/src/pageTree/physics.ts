@@ -147,6 +147,26 @@ export function fieldForce(kind: WorldField, power: number, dx: number, dy: numb
   return { x: size * (ux * inward + tx * sideways), y: size * (uy * inward + ty * sideways) };
 }
 
+/**
+ * A hit: a body of a running world met something. The world says so on the body's element (HIT_EVENT), and a
+ * "hit" trigger on that element starts its recipe (TreeTriggers.tsx).
+ *  - `with` is the other body's element id, or null when it was the world's floor or a wall;
+ *  - `speed` is how fast the two came together (px a step); a touch slower than HIT_MIN_SPEED isn't a hit (bodies
+ *    resting on each other touch all the time);
+ *  - `at` is where they met, on the screen.
+ */
+export const HIT_EVENT = "pt:hit";
+export const HIT_MIN_SPEED = 1.5;
+export type HitDetail = { with: string | null; speed: number; at: { x: number; y: number } };
+/** What a "hit" trigger waits for: anything, another body, the floor or a wall, or one element by its id. */
+export const HIT_WITH = /^(any|body|wall|[A-Za-z0-9_-]{1,40})$/;
+export function hitMatches(want: string | undefined, met: string | null): boolean {
+  if (!want || want === "any") return true;
+  if (want === "body") return met !== null;
+  if (want === "wall") return met === null;
+  return met === want;
+}
+
 /** A body's own settings in a world, or null when it has none. */
 export function bodyOf(raw: unknown): BodySpec | null {
   const r = obj(raw);

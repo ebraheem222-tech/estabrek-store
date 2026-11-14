@@ -362,6 +362,23 @@ const physicsShapesDemo = { id: "physics-shapes", slug: "/physics-shapes", name:
     pulledIn("stiff", "rod"),
   ] },
 } };
+// Hits that start recipes (physics-hits.spec.ts). A ball alone in its world falls to the floor: its recipe for
+// the floor counts each landing, its recipe for another body never runs. In the second world gravity pulls a
+// puck sideways into a fixed block across a gap: the puck's recipe for that block runs once, the block's own
+// recipe says what struck it, and the puck's recipe for a wall never runs.
+const counts = (name) => [{ act: "set", name, op: "add", value: 1 }];
+const physicsHitsDemo = { id: "physics-hits", slug: "/physics-hits", name: "Hits", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    { id: "drops", type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 1, walls: "box", drag: false, bounce: 0.5 } }, style: { base: { minHeight: "420px" } }, children: [
+      { id: "ball", type: "button", props: { label: { en: "Ball" }, href: "/shop", triggers: [{ on: "hit", hit: "wall", do: counts("floor") }, { on: "hit", hit: "body", do: counts("wrong") }] }, style: { base: { width: "110px", height: "110px", radius: 999 } } },
+    ] },
+    { id: "meets", type: "section", props: { world: { on: "load", start: "place", gx: 1, gy: 0, walls: "box", drag: false, bounce: 0 } }, style: { base: { minHeight: "200px" } }, children: [
+      { id: "puck", type: "button", props: { label: { en: "Puck" }, href: "/shop", triggers: [{ on: "hit", hit: "block", once: true, do: counts("met") }, { on: "hit", hit: "wall", do: counts("puckWall") }] }, style: { base: { width: "120px" } } },
+      { id: "between", type: "button", props: { label: { en: "Gap" }, href: "/shop", body: { out: true } }, style: { base: { width: "240px", opacity: 0.2 } } },
+      { id: "block", type: "button", props: { label: { en: "Block" }, href: "/shop", body: { fixed: true }, triggers: [{ on: "hit", once: true, do: [{ act: "set", name: "struck", op: "set", value: "yes" }] }] }, style: { base: { width: "120px" } } },
+    ] },
+  ] },
+} };
 // The shop's automatic lightening (auto-lighten.spec.ts): a first picture, frosted glass, a clip playing by itself,
 // a far section that cuts what sticks out; the same page with it turned off.
 const speedDemo = (off) => ({ id: off ? "speed-off" : "speed-demo", slug: off ? "/speed-off" : "/speed-demo", name: "Speed", status: "PUBLISHED", format: 2, sections: [], tree: {
@@ -1695,6 +1712,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/physics-demo") return res.end(JSON.stringify(physicsDemo));
       if (slug === "/physics-field") return res.end(JSON.stringify(physicsFieldDemo));
       if (slug === "/physics-shapes") return res.end(JSON.stringify(physicsShapesDemo));
+      if (slug === "/physics-hits") return res.end(JSON.stringify(physicsHitsDemo));
       if (slug === "/stage-demo") return res.end(JSON.stringify(stageDemo));
       if (slug === "/speed-demo" || slug === "/speed-off") return res.end(JSON.stringify(speedDemo(slug === "/speed-off")));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));

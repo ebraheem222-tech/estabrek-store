@@ -11,12 +11,14 @@
  *  - A body takes its element's real outline (physicsShape.ts): what a mask or a polygon cuts it to, as the hull
  *    round it, with its weight at the hull's centre. A round one is a circle, anything else its box.
  *  - Two bodies can be linked (props.body.link): by a rope that only pulls once it is taut, a spring, or a rod.
+ *  - A body that meets another body, the floor or a wall says so on its element (physics.ts HIT_EVENT), which is
+ *    what a "hit" trigger waits for. A world baked into keyframes runs no physics, so it has no hits.
  *  - Steady steps (60 a second) whatever the screen's rate; resting when every body sleeps, when off screen.
  * bakeWorld runs the same world without drawing and gives each body's run as keyframes (physics.ts bakeFrames).
  */
 import type * as MatterTypes from "matter-js";
 import type { KeyFrameSpec } from "./keyframes";
-import { bakeFrames, bodyOf, seeded, type BodyLink, type BodySpec, type Sample, type WorldSpec, fieldForce } from "./physics";
+import { HIT_EVENT, HIT_MIN_SPEED, type HitDetail, bakeFrames, bodyOf, seeded, type BodyLink, type BodySpec, type Sample, type WorldSpec, fieldForce } from "./physics";
 import { bodyOutline, centroid, maskPath, middleOf, polygonCorners, ropeTaut, straightPath, type P } from "./physicsShape";
 
 type M = typeof MatterTypes;
@@ -254,6 +256,35 @@ function draw(Matter: M, b: Built) {
   }
 }
 
+/**
+ * Says each hit on the element of the body it happened to: two bodies meeting (each is told of the other), or a
+ * body meeting the floor or a wall. Not a touch too slow to be a hit, and not the same pair again within a moment
+ * (a body rattling on another counts once).
+ */
+function tellHits(Matter: M, b: Built, host: HTMLElement) {
+  const owner = new Map<Body, Item>(b.items.map((i) => [i.body, i]));
+  const last = new Map<string, number>();
+  Matter.Events.on(b.engine, "collisionStart", (ev) => {
+    const box = host.getBoundingClientRect();
+    for (const pair of ev.pairs) {
+      const one = owner.get(pair.bodyA.parent ?? pair.bodyA) ?? null, two = owner.get(pair.bodyB.parent ?? pair.bodyB) ?? null;
+      if (!one && !two) continue;
+      const speed = Math.hypot(pair.bodyA.velocity.x - pair.bodyB.velocity.x, pair.bodyA.velocity.y - pair.bodyB.velocity.y);
+      if (speed < HIT_MIN_SPEED) continue;
+      const met = pair.collision.supports[0] ?? pair.bodyA.position;
+      const at = { x: box.left + met.x, y: box.top + met.y };
+      for (const [me, other] of [[one, two], [two, one]] as const) {
+        if (!me || me.gone) continue;
+        const key = `${me.id}>${other ? other.id : ""}`, now = performance.now();
+        if (now - (last.get(key) ?? -1e9) < 150) continue;
+        last.set(key, now);
+        const detail: HitDetail = { with: other ? other.id : null, speed, at };
+        me.el.dispatchEvent(new CustomEvent(HIT_EVENT, { detail }));
+      }
+    }
+  });
+}
+
 export type WorldRun = { begin(): void; stop(): void };
 
 /**
@@ -263,6 +294,7 @@ export type WorldRun = { begin(): void; stop(): void };
 export function startWorld(Matter: M, host: HTMLElement, spec: WorldSpec, opts: { phone: boolean; onRest?: () => void }): WorldRun {
   const id = host.dataset.treeNode ?? "w";
   let b = build(Matter, host, spec, seeded(idSeed(id)), opts.phone ? 24 : 60);
+  tellHits(Matter, b, host);
   const before = { overflow: host.style.overflow, position: host.style.position };
   host.style.overflow = typeof CSS !== "undefined" && CSS.supports?.("overflow", "clip") ? "clip" : "hidden";
   if (getComputedStyle(host).position === "static") host.style.position = "relative";
@@ -345,6 +377,7 @@ export function startWorld(Matter: M, host: HTMLElement, spec: WorldSpec, opts: 
     if (dead) return;
     Matter.Engine.clear(b.engine);
     b = build(Matter, host, spec, seeded(idSeed(id)), opts.phone ? 24 : 60);
+    tellHits(Matter, b, host);
     b.engine.gravity.x = g.x;
     b.engine.gravity.y = g.y;
     t = 0;
