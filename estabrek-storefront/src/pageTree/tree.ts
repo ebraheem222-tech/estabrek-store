@@ -157,6 +157,8 @@ export type PageTree = { version: 1; root: TreeNode };
 export type LookKind = "text" | "button" | "image" | "video" | "box";
 export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>>; motion?: unknown };
 import { WORLD_HOSTS, physicsOf, worldOf, type PhysicsSpec } from "./physics";
+import { easeText } from "./motionCurve";
+import { STAGGER_ORDERS, type StaggerOrder } from "./stagger";
 import { autoNeeded, perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 import { videoPlay } from "./videoPlay";
@@ -228,7 +230,8 @@ export type TreeMotionSpec = {
   keys?: KeysSpec;
   /** When it shows inside a scroll scene (pageTree/scrollScene.ts). */
   cue?: CueSpec;
-  enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
+  // `ease`: an own name (EASES) or a free curve's text (motionCurve.ts); `order`: which goes first in a stagger.
+  enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number; order?: StaggerOrder };
   scroll?: { kind: (typeof SCROLL_KINDS)[number]; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: (typeof ORBIT_SHAPES)[number]; radius: number; turn: number } };
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
   hover?: { kind: (typeof HOVER_KINDS)[number]; amount?: number; color?: string };
@@ -256,7 +259,7 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   const engine = inList(m.engine, ["gsap", "anime"] as const);
   if (engine) out.engine = engine;
   const enter = inList(m.enter?.kind, ENTER_KINDS);
-  if (enter) out.enter = { kind: enter, duration: within(m.enter.duration, 0, 6), delay: within(m.enter.delay, 0, 6), ease: inList(m.enter.ease, EASES), distance: within(m.enter.distance, 0, 400), stagger: within(m.enter.stagger, 0, 1) };
+  if (enter) out.enter = { kind: enter, duration: within(m.enter.duration, 0, 6), delay: within(m.enter.delay, 0, 6), ease: easeText(m.enter.ease, EASES), distance: within(m.enter.distance, 0, 400), stagger: within(m.enter.stagger, 0, 1), order: inList(m.enter.order, STAGGER_ORDERS) };
   const scroll = inList(m.scroll?.kind, SCROLL_KINDS);
   if (scroll) {
     const o = m.scroll.orbit && typeof m.scroll.orbit === "object" ? m.scroll.orbit : null;

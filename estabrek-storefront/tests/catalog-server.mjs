@@ -943,7 +943,7 @@ http
           if (data.kind !== "product" && data.kind !== "category") throw new Error("kind is product or category");
           globalThis.storeTemplates ??= Object.create(null);
           globalThis.storeTemplates[data.kind] = data.page ?? null;
-          await fetch("http://127.0.0.1:3000/api/revalidate", { method: "POST", headers: { "content-type": "application/json", "x-revalidate-secret": "fixture-publishing-only" }, body: JSON.stringify({ tags: ["cms", "cms:pages"] }) }).catch(() => null);
+          await fetch(`http://127.0.0.1:${process.env.SHOP_PORT || 3000}/api/revalidate`, { method: "POST", headers: { "content-type": "application/json", "x-revalidate-secret": "fixture-publishing-only" }, body: JSON.stringify({ tags: ["cms", "cms:pages"] }) }).catch(() => null);
           res.end(JSON.stringify({ ok: true }));
         } catch (error) {
           res.statusCode = 400;
@@ -967,7 +967,7 @@ http
           if (!/^\/publication-fixture-(en|ar)$/.test(data.slug)) throw new Error("Only the local publishing fixture slug is allowed");
           globalThis.publishedCmsPages ??= Object.create(null);
           globalThis.publishedCmsPages[data.slug] = data.page ?? null;
-          const refresh = await fetch("http://127.0.0.1:3000/api/revalidate", { method: "POST", headers: { "content-type": "application/json", "x-revalidate-secret": "fixture-publishing-only" }, body: JSON.stringify({ tags: ["cms", "cms:pages"], paths: [data.slug] }) });
+          const refresh = await fetch(`http://127.0.0.1:${process.env.SHOP_PORT || 3000}/api/revalidate`, { method: "POST", headers: { "content-type": "application/json", "x-revalidate-secret": "fixture-publishing-only" }, body: JSON.stringify({ tags: ["cms", "cms:pages"], paths: [data.slug] }) });
           if (!refresh.ok) throw new Error(`Local refresh failed: ${refresh.status}`);
           res.end("{}");
         } catch (error) { res.statusCode = 500; res.end(JSON.stringify({ error: String(error) })); }
@@ -1076,9 +1076,11 @@ http
     if (pathname === "/__studio-harness") {
       const src = new URL(req.url, "http://localhost").searchParams.get("src") || "/studio-frame?token=good";
       res.setHeader("content-type", "text/html; charset=utf-8");
-      return res.end(`<!doctype html><html><body style="margin:0"><iframe id="f" src="http://127.0.0.1:3000${src}" style="width:1280px;height:900px;border:0"></iframe><script>
+      // The shop's own address: port 3000, or SHOP_PORT where a PC can't open it (playwright.config.ts).
+      const shop = `http://127.0.0.1:${process.env.SHOP_PORT || 3000}`;
+      return res.end(`<!doctype html><html><body style="margin:0"><iframe id="f" src="${shop}${src}" style="width:1280px;height:900px;border:0"></iframe><script>
 window.__msgs=[];addEventListener("message",function(e){if(e.data&&e.data.source==="estabrek-studio")window.__msgs.push({origin:e.origin,data:e.data})});
-window.send=function(m){document.getElementById("f").contentWindow.postMessage(Object.assign({source:"estabrek-studio"},m),"http://127.0.0.1:3000")};
+window.send=function(m){document.getElementById("f").contentWindow.postMessage(Object.assign({source:"estabrek-studio"},m),"${shop}")};
 </script></body></html>`);
     }
     if (pathname === "/__test/page-tree" && req.method === "POST") {

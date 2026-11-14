@@ -8,6 +8,7 @@
 import { useState } from "react";
 import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { tr } from "../lib/words";
+import { EaseChoice, staggerOrderNames } from "./EaseChoice";
 import { styleOp } from "./columns";
 import {
   ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, PHYSICS_FEEL, PHYSICS_LABEL, WORDS_ONLY, WORDY, hasNumber,
@@ -291,8 +292,10 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
             <Range label={tr("المدة", "Duration")} min={0.2} max={3} step={0.1} unit="s" busy={busy} value={enter.duration ?? 0.8} onSave={(v) => part("enter", { ...enter, duration: v })} />
             <Range label={tr("بيستنى قبل", "Waits first")} min={0} max={3} step={0.1} unit="s" busy={busy} value={enter.delay ?? 0} onSave={(v) => part("enter", { ...enter, delay: v || undefined })} />
             {["up", "down", "start", "end"].includes(enter.kind) ? <Range label={tr("المسافة", "Distance")} min={0} max={200} unit="px" busy={busy} value={enter.distance ?? 40} onSave={(v) => part("enter", { ...enter, distance: v })} /> : null}
-            {holds || ["words", "letters", "lines"].includes(enter.kind) ? <Range label={tr("واحد ورا التاني كل", "One after another every")} min={0} max={0.5} step={0.02} unit="s" busy={busy} value={enter.stagger ?? 0} onSave={(v) => part("enter", { ...enter, stagger: v || undefined })} /> : null}
-            <Pick label={tr("نوع الحركة", "Kind of motion")} value={enter.ease ?? "smooth"} busy={busy} options={Object.keys(EASE_LABEL).map((k): [string, string] => [k, EASE_LABEL[k]()])} onPick={(v) => part("enter", { ...enter, ease: v })} />
+            {holds || ["words", "letters", "lines"].includes(enter.kind) ? <Range label={tr("واحد ورا التاني كل", "One after another every")} min={0} max={0.5} step={0.02} unit="s" busy={busy} value={enter.stagger ?? 0} onSave={(v) => part("enter", { ...enter, stagger: v || undefined, ...(v ? {} : { order: undefined }) })} testId="studio-enter-stagger" /> : null}
+            {/* Which goes first, once they come in one after another. */}
+            {enter.stagger && (holds || ["words", "letters", "lines"].includes(enter.kind)) ? <Pick label={staggerOrderNames.label()} value={enter.order ?? "first"} busy={busy} options={staggerOrderNames()} onPick={(v) => part("enter", { ...enter, order: v === "first" ? undefined : v })} testId="studio-enter-order" /> : null}
+            <EaseChoice label={tr("نوع الحركة", "Kind of motion")} value={enter.ease ?? "smooth"} busy={busy} names={Object.keys(EASE_LABEL).map((k): [string, string] => [k, EASE_LABEL[k]()])} onPick={(v) => part("enter", { ...enter, ease: v })} testId="studio-enter-ease" />
           </>
         ) : null}
       </Part>
