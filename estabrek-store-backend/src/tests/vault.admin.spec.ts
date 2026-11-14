@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, beforeEach, afterAll } from "vitest";
+import { describe, test, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -56,7 +56,21 @@ async function order(qty = 1) {
 }
 const tokenOf = async (id: string) => (await prisma.orderRequest.findUniqueOrThrow({ where: { id }, select: { accessToken: true } })).accessToken!;
 const page = async (id: string) => (await request(app).get(`/v1/orders/access/${await tokenOf(id)}`).expect(200)).body;
-const openSession = () => request(app).post("/v1/admin/vault/session").send({ password: PASSWORD, code: authenticator.generate(TOTP) });
+/**
+ * The owner opens her vault session. A one-time code is good for its own
+ * 30-second step only, and the server reads the clock again when it checks the
+ * code, after its database reads and the password hash. A code made in a step's
+ * last moments was checked in the next one and refused (401), now and then. So
+ * the clock stands still from making the code until the answer is back.
+ */
+async function openSession() {
+  vi.useFakeTimers({ toFake: ["Date"], now: Date.now() });
+  try {
+    return await request(app).post("/v1/admin/vault/session").send({ password: PASSWORD, code: authenticator.generate(TOTP) }).expect(200);
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 beforeAll(async () => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), "estb-vault-db-"));
@@ -100,7 +114,7 @@ describe("The vault session", () => {
     await request(app).post("/v1/admin/vault/session").send({ password: "wrong-password", code: authenticator.generate(TOTP) }).expect(401);
     await request(app).post("/v1/admin/vault/session").send({ password: PASSWORD, code: "000000" }).expect(401);
     expect(await prisma.adminSecurityEvent.count({ where: { adminUserId: "test-superadmin", type: "VAULT_SESSION_DENIED" } })).toBeGreaterThanOrEqual(2);
-    const s = await openSession().expect(200);
+    const s = await openSession();
     expect((Date.parse(s.body.expiresAt) - Date.now()) / 60_000).toBeLessThanOrEqual(20);
     expect(await prisma.adminSecurityEvent.count({ where: { adminUserId: "test-superadmin", type: "VAULT_SESSION_OPENED" } })).toBeGreaterThanOrEqual(1);
 
@@ -131,7 +145,7 @@ describe("The vault session", () => {
     await request(app).post(base).attach("file", Buffer.from("echo old\n"), "old.sh").expect(201);
     useVault(true);
     expect((await prisma.protectedFile.findFirstOrThrow()).dataEnc).not.toBeNull();
-    await openSession().expect(200);
+    await openSession();
     expect((await request(app).post("/v1/admin/vault/move-in").expect(200)).body).toEqual({ moved: 1 });
     const row = await prisma.protectedFile.findFirstOrThrow();
     expect(row).toMatchObject({ dataEnc: null });
@@ -143,7 +157,7 @@ describe("The vault session", () => {
 
 describe("Activations on PCs", () => {
   async function sold() {
-    await openSession().expect(200);
+    await openSession();
     await request(app).post(base).attach("file", Buffer.from("print(1)\n"), "tool.py").expect(201);
     const id = await order();
     await releaseOrder(id, "paid");
