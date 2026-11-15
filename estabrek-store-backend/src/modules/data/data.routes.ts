@@ -7,6 +7,7 @@
  * A key goes in `X-Api-Key: ek_…` (or `Authorization: Bearer ek_…`), never in the address.
  *
  * GET    /v1/data                      — the tables this caller reaches, their fields, what it may do
+ * GET    /v1/data/openapi.json         — the same as an OpenAPI document (lib/apiDocs.ts): only what this caller could call
  * GET    /v1/data/:table               — a page of rows: ?page ?pageSize ?sort=-price,title ?search ?lang
  *                                        ?status ?fields ?expand, filters as field[question]=value, ?match=any
  * GET    /v1/data/:table/:row          — one row, by id or address
@@ -24,9 +25,9 @@ import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
 import { normalizeIp } from "../../utils/ip.js";
 import { COLLECTION_SLUG } from "../../lib/collections.js";
-import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, KEY_MARK, findKey, keyState, looksLikeKey, touchKey, type Act, type KeyLite } from "../../lib/apiKeys.js";
-import { API_LIMITS, accessOf, allow, apiRow, fieldView, isOpen, listAsk, shapeAsk, type ApiRow, type As, type LinkModes, type ListAsk, type TableAccess } from "../../lib/dataApi.js";
+import { openApi } from "../../lib/apiDocs.js";
+import { API_LIMITS, DATA_API_BASE, allow, apiRow, docTables, fieldView, isOpen, listAsk, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
 import { LANGS } from "../../lib/dataRows.js";
 import { hit } from "../../lib/hitLimit.js";
@@ -60,6 +61,8 @@ r.use(
   asyncHandler(async (req: Request, res: Response, next: () => void) => {
     // Rows change under the same address: nothing here is kept by a cache on the way.
     res.setHeader("Cache-Control", "no-store");
+    // A page on another address (the admin's try-it panel, the shop) may read these.
+    res.setHeader("Access-Control-Expose-Headers", "X-RateLimit-Key-Limit, X-RateLimit-Key-Remaining, X-RateLimit-Key-Reset, Retry-After");
     const sent = sentKey(req);
     if (!sent) {
       req.apiKey = null;
@@ -87,9 +90,8 @@ r.use(
 
 /* ---------------- The table, and whether this caller gets in ---------------- */
 
-type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess };
 const TABLE = { id: true, slug: true, name: true, fields: true, api: true } as const;
-const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api) });
+const everyTable = async () => (await prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: TABLE })).map(tableFrom);
 
 async function enter(req: Request, act: Act): Promise<{ table: ApiTable; as: As }> {
   const slug = String(req.params.table ?? "").toLowerCase();
@@ -156,12 +158,19 @@ r.get(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
     const key = req.apiKey ?? null;
-    const all = await prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: TABLE });
-    const tables = all.map(tableFrom).flatMap((table) => {
+    const tables = (await everyTable()).flatMap((table) => {
       const acts = Object.fromEntries(ACTS.map((act) => [act, "as" in allow(table.access, act, key, table.id)])) as Record<Act, boolean>;
       return ACTS.some((act) => acts[act]) ? [{ table: table.slug, name: table.name, acts, fields: table.fields.map(fieldView) }] : [];
     });
     res.json({ tables, limits: { pageSize: API_LIMITS.pageSize } });
+  }),
+);
+
+// Before "/:table": a table's address never has a dot, so this name is no table's.
+r.get(
+  "/openapi.json",
+  asyncHandler(async (req: Request, res: Response) => {
+    res.json(openApi(docTables(await everyTable(), req.apiKey ?? null), { server: DATA_API_BASE }));
   }),
 );
 

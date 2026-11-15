@@ -4,6 +4,7 @@
  * Needs api:read to look and api:write to change (mounted with them in admin.routes.ts).
  *
  * GET    /admin/api                  — every table with its access, the keys, the limits
+ * GET    /admin/api/docs             — the open tables described: an OpenAPI document and TypeScript types (lib/apiDocs.ts)
  * PUT    /admin/api/tables/:id       { read, create, update, delete } — each "off" | "key" | "public" (update and delete: never "public")
  * POST   /admin/api/keys             { name, scopes: { tables: "*" | [ids], acts }, perMinute?, expiresAt? } — answers the key itself, once
  * PATCH  /admin/api/keys/:id         { name?, scopes?, perMinute?, expiresAt? }
@@ -17,11 +18,11 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
-import { ACTS, KEY_LIMITS, ScopesSchema, forgetKeys, keyView, newSecret } from "../../lib/apiKeys.js";
-import { API_LIMITS, AccessSchema, WHO, accessOf, fieldView, isOpen } from "../../lib/dataApi.js";
+import { ACTS, KEY_LIMITS, ScopesSchema, forgetKeys, keyView, newSecret, type KeyLite } from "../../lib/apiKeys.js";
+import { openApi, typesText } from "../../lib/apiDocs.js";
+import { API_LIMITS, AccessSchema, DATA_API_BASE, WHO, accessOf, docTables, fieldView, isOpen, tableFrom } from "../../lib/dataApi.js";
 
 const r = Router();
-export const DATA_API_BASE = "/v1/data";
 
 const tableView = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }) => {
   const access = accessOf(c.api);
@@ -38,6 +39,17 @@ r.get(
     ]);
     const now = Date.now();
     res.json({ base: DATA_API_BASE, who: WHO, acts: ACTS, limits: { ...KEY_LIMITS, pageSize: API_LIMITS.pageSize, publicWritesPerMinute: API_LIMITS.publicWritesPerMinute }, tables: tables.map(tableView), keys: keys.map((k) => keyView(k, now)), now });
+  }),
+);
+
+/** The documents as a key that reaches everything would get them: all that is open, and how each act is entered. */
+const WHOLE: KeyLite = { id: "docs", name: "docs", prefix: "", scopes: { tables: "*", acts: [...ACTS] }, perMinute: 0, revokedAt: null, expiresAt: null };
+
+r.get(
+  "/docs",
+  asyncHandler(async (_req, res) => {
+    const tables = docTables((await prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: TABLE })).map(tableFrom), WHOLE);
+    res.json({ tables: tables.length, openapi: openApi(tables, { server: DATA_API_BASE }), types: typesText(tables, { server: DATA_API_BASE }), openapiPath: `${DATA_API_BASE}/openapi.json` });
   }),
 );
 

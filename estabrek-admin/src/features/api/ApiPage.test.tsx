@@ -8,9 +8,9 @@ import type { ApiKey, ApiPage as Page, ApiTable, TableAccess } from "../../api/d
 // الـ API والمفاتيح: the page over a stand-in API. Tables are opened act by act, a new key is
 // shown once, and what the member may not change is not offered.
 
-const m = vi.hoisted(() => ({ page: null as unknown, may: new Set<string>(), getApi: vi.fn(), setAccess: vi.fn(), createKey: vi.fn(), updateKey: vi.fn(), revokeKey: vi.fn(), deleteKey: vi.fn(), copied: [] as string[] }));
+const m = vi.hoisted(() => ({ page: null as unknown, may: new Set<string>(), getApi: vi.fn(), getDocs: vi.fn(), setAccess: vi.fn(), createKey: vi.fn(), updateKey: vi.fn(), revokeKey: vi.fn(), deleteKey: vi.fn(), copied: [] as string[] }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
-vi.mock("../../api/dataApi.api", () => ({ getApi: m.getApi, setAccess: m.setAccess, createKey: m.createKey, updateKey: m.updateKey, revokeKey: m.revokeKey, deleteKey: m.deleteKey }));
+vi.mock("../../api/dataApi.api", () => ({ getApi: m.getApi, getDocs: m.getDocs, setAccess: m.setAccess, createKey: m.createKey, updateKey: m.updateKey, revokeKey: m.revokeKey, deleteKey: m.deleteKey }));
 vi.mock("../../lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock("../../config/env", () => ({ env: { VITE_API_BASE_URL: "https://api.shop.test/v1" } }));
 
@@ -48,6 +48,7 @@ beforeEach(() => {
   m.may = new Set(["api:read", "api:write"]);
   m.page = page();
   m.getApi.mockImplementation(async () => m.page);
+  m.getDocs.mockResolvedValue({ tables: 1, openapi: { openapi: "3.1.0" }, types: "export type Lang = string;\n", openapiPath: "/v1/data/openapi.json" });
   m.setAccess.mockImplementation(async (id: string, access: TableAccess) => ({ ...(id === "t1" ? posts : notes), access, open: Object.values(access).some((w) => w !== "off") }));
   m.copied = [];
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (t: string) => void m.copied.push(t) } });
@@ -81,6 +82,8 @@ describe("The API page", () => {
     fireEvent.change(await screen.findByTestId("access-notes-create"), { target: { value: "public" } });
     await waitFor(() => expect(m.setAccess).toHaveBeenCalledWith("t2", { read: "off", create: "public", update: "off", delete: "off" }));
     await waitFor(() => expect(screen.getByTestId("table-open-notes").textContent).toBe("Open"));
+    // What is open changed: the documents are asked for again.
+    await waitFor(() => expect(m.getDocs).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId("table-warning-notes").textContent).toContain("Anyone can add rows without a key");
     // Its examples are there now, with no key in them (it is open to everyone).
     fireEvent.click(screen.getByTestId("examples-notes"));
