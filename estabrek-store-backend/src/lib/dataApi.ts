@@ -28,6 +28,13 @@ export function accessOf(raw: unknown): TableAccess {
 }
 export const isOpen = (access: TableAccess) => ACTS.some((act) => access[act] !== "off");
 
+/** Where the routes start on the server. */
+export const DATA_API_BASE = "/v1/data";
+
+/** A table as the API knows it: its address, its fields, and who reaches it. */
+export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess };
+export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api) });
+
 /** How a request gets in: through its key (every row), or as anyone (published rows). */
 export type As = "key" | "public";
 export type Verdict = { as: As } | { no: "closed" | "keyNeeded" | "keyLacks" };
@@ -38,6 +45,27 @@ export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableI
   if (key && keyCovers(key.scopes, tableId, act)) return { as: "key" };
   if (who === "public") return { as: "public" };
   return { no: key ? "keyLacks" : "keyNeeded" };
+}
+
+/**
+ * A table as the documents describe it to one caller (lib/apiDocs.ts): how each act it may do is
+ * entered ("key" or "public"; null = not for this caller), and which of its relations it sees.
+ */
+export type DocTable = { slug: string; name: unknown; fields: Field[]; acts: Record<Act, "key" | "public" | null>; links: Set<string> };
+
+/** The tables a caller reaches, as the documents describe them; a table it can do nothing with is left out. */
+export function docTables(all: ApiTable[], key: KeyLite | null): DocTable[] {
+  const byId = new Map(all.map((t) => [t.id, t]));
+  return all.flatMap((t) => {
+    const acts = Object.fromEntries(ACTS.map((act) => [act, "as" in allow(t.access, act, key, t.id) ? (t.access[act] === "public" ? "public" : "key") : null])) as DocTable["acts"];
+    if (!ACTS.some((act) => acts[act])) return [];
+    const links = new Set<string>();
+    for (const f of t.fields) {
+      const target = f.type === "relation" && f.to ? byId.get(f.to) : undefined;
+      if (target && "as" in allow(target.access, "read", key, target.id)) links.add(f.id);
+    }
+    return [{ slug: t.slug, name: t.name, fields: t.fields, acts, links }];
+  });
 }
 
 /* ---------------- A list's question, from the address ---------------- */

@@ -40,11 +40,16 @@ export type ApiPage = {
   now: number;
 };
 export type KeyBody = { name: string; scopes: Scopes; perMinute?: number; /** A day (2026-12-31) or null = never. */ expiresAt?: string | null };
+/** The open tables described by the server: an OpenAPI document and TypeScript types, made from their fields. */
+export type ApiDocs = { /** How many tables are open. */ tables: number; openapi: Record<string, unknown>; types: string; /** Where anyone fetches the document ("/v1/data/openapi.json"). */ openapiPath: string };
 
 const base = "/admin/api";
 
 export async function getApi() {
   return (await api.get(base)).data as ApiPage;
+}
+export async function getDocs() {
+  return (await api.get(`${base}/docs`)).data as ApiDocs;
 }
 export async function setAccess(tableId: string, access: TableAccess) {
   return (await api.put(`${base}/tables/${tableId}`, access)).data as ApiTable;

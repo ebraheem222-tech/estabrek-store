@@ -19,6 +19,8 @@ import * as API from "../../api/dataApi.api";
 import type { Act, ApiKey, ApiPage as Page, ApiTable, TableAccess, Who } from "../../api/dataApi.api";
 import { ACTS, ACT_NAME, ACT_RIGHT, STATE, WHO_NAME, accessLine, accessWarnings, agoWords, draftBody, draftOf, draftProblem, examples, fullUrl, nameOf, newDraft, scopesLine, whoChoices, type KeyDraft } from "./apiText";
 import { dateText } from "../data/dataText";
+import { ApiDocs, DOCS_KEY } from "./ApiDocs";
+import { ApiPlayground } from "./ApiPlayground";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const KEY = ["data-api"];
@@ -50,6 +52,8 @@ export default function ApiPage() {
     mutationFn: (v: { id: string; access: TableAccess }) => API.setAccess(v.id, v.access),
     onSuccess: (table) => {
       patch((page) => ({ ...page, tables: page.tables.map((t) => (t.id === table.id ? table : t)) }));
+      // What is open changed: so did the documents.
+      void qc.invalidateQueries({ queryKey: DOCS_KEY });
       toast.success(say("انحفظ|Saved|נשמר"), { description: accessLine(table.access, lang) });
     },
     onError,
@@ -173,6 +177,9 @@ export default function ApiPage() {
           </p>
         )}
       </section>
+
+      <ApiPlayground tables={d.tables} url={url} />
+      <ApiDocs url={url} />
 
       {editing ? (
         <KeyDialog
