@@ -451,6 +451,38 @@ model AutomationRun {
   @@index([at])
 }
 
+/// One time the server did something on its own (E0.2, src/lib/runs.ts; admin → سجل التشغيل): a
+/// background job's run, an automation's action, a webhook taken in; later a queued task, a
+/// function. Kept through restarts. A job's timer runs of one hour that went fine are one row (`times`).
+model Run {
+  id        String    @id @default(cuid())
+  /// "job" | "automation" | "webhook" | "task" | "function"
+  kind      String
+  /// Which one: the job's name, the rule's name, the webhook's address.
+  name      String
+  /// Its id, when the name may change (a rule's).
+  ref       String?
+  /// What started it: "start" | "schedule" | "event" | "admin" | "test", a rule's trigger, a request's method.
+  trigger   String?
+  /// What it was about (an order, a size…).
+  subject   String?
+  startedAt DateTime
+  /// A folded row: when the last of its runs started.
+  lastAt    DateTime?
+  /// How many runs this row stands for (a job's timer runs of one hour that went fine are folded into one).
+  times     Int       @default(1)
+  /// How long it took (a folded row: all its runs together).
+  ms        Int       @default(0)
+  ok        Boolean
+  /// What it did: counts ({ sent: 3 }; a folded row: its runs' counts added up) or a few words ({ did: "…" }).
+  result    Json?
+  error     String?
+
+  @@index([startedAt])
+  @@index([kind, name, startedAt])
+  @@index([ok, startedAt])
+}
+
 /// What a rule remembers per thing: when it last fired, "still low" for stock (it
 /// fires again only after the stock went back up), when to unpin a pinned product.
 model AutomationState {

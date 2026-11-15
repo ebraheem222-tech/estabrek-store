@@ -35,6 +35,7 @@ describe("Background jobs", () => {
       "backup",
       "requestPhotos",
       "dataTrash",
+      "runsClean",
       "popularitySave",
       "popularityHot",
       "popularityLoad",

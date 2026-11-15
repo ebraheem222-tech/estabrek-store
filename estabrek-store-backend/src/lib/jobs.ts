@@ -7,14 +7,16 @@
  * Each job registers once (src/jobs.ts) and runs here: on its timer (the next run
  * is set when the last one ends, so two runs of one job never overlap), on an
  * event (stock changed, the catalog changed…) or when the admin asks. Every run
- * is kept (the last 20 per job, since the server started): when, how long, what
- * it did, the error. From the admin a job can be paused and its timer changed;
+ * is kept: the last 20 per job here, since the server started (the jobs page),
+ * and all of them in the run log (lib/runs.ts), which a restart doesn't wipe:
+ * when, how long, what it did, the error. From the admin a job can be paused and its timer changed;
  * that is saved with the performance settings (PerformanceSettings.data.jobs)
  * and survives restarts. A job the server's settings (env) turn off stays off.
  */
 import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { emitAutomation } from "./automations.js";
+import { flushRuns, recordRun } from "./runs.js";
 
 export type JobTrigger = "start" | "schedule" | "event" | "admin";
 export type JobGroup = "messages" | "data" | "cache" | "media" | "selling" | "control";
@@ -190,6 +192,7 @@ function runOnce(s: State, trigger: JobTrigger, work: JobDef["run"] = s.def.run)
       const ms = Date.now() - t0;
       s.runs.unshift({ at: new Date(t0).toISOString(), ms, ok, trigger, counts, error });
       s.runs.length = Math.min(s.runs.length, KEEP_RUNS);
+      recordRun({ kind: "job", name: s.def.name, trigger, startedAt: t0, ms, ok, result: counts, error });
       s.total.runs += 1;
       s.total.ms += ms;
       if (ok) {
@@ -319,6 +322,8 @@ export async function stopJobs(waitMs = 5_000) {
     if (s.running) going.push(s.running.catch(() => undefined));
   }
   if (going.length) await Promise.race([Promise.all(going), new Promise((r) => setTimeout(r, waitMs).unref?.())]);
+  // The quiet runs folded since the last minute go to the run log before the server stops.
+  await Promise.race([flushRuns(), new Promise((r) => setTimeout(r, 2_000).unref?.())]);
 }
 
 /* ---------------- For the admin ---------------- */

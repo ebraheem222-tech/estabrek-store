@@ -20,6 +20,7 @@ import { readPerformance, savePerformance } from "../../lib/performanceSettings.
 import { rankedProducts } from "../../lib/popularity.js";
 import { DEFAULT_TEXT, conditionsMet, render, setAutomationHandler, type ActionConfig, type Trigger } from "../../lib/automations.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
+import { recordRun } from "../../lib/runs.js";
 import { getOrCreateSettings } from "./settings.controller.js";
 
 const KEEP_RUNS = 500;
@@ -85,7 +86,12 @@ async function runAction(rule: Pick<AutomationRule, "id" | "name" | "trigger" | 
   return "مثبّت أصلاً";
 }
 
+/** The one log of everything the server did by itself (admin → سجل التشغيل), beside the rule's own list. */
+const toRunLog = (rule: AutomationRule, subject: string, ok: boolean, detail: string, now: number, test = false) =>
+  recordRun({ kind: "automation", name: rule.name, ref: rule.id, trigger: test ? "test" : rule.trigger, subject: test ? null : subject, startedAt: now, ms: Date.now() - now, ok, result: ok ? { did: detail.slice(0, 300) } : null, error: ok ? null : detail });
+
 async function record(rule: AutomationRule, subject: string, ok: boolean, detail: string, now: number) {
+  toRunLog(rule, subject, ok, detail, now);
   await prisma.automationRun.create({ data: { ruleId: rule.id, subject, ok, detail: detail.slice(0, 300), at: new Date(now) } });
   await prisma.automationRule.update({ where: { id: rule.id }, data: { lastFiredAt: new Date(now), fired: { increment: 1 } } });
   // Only the latest runs are kept.
@@ -130,6 +136,7 @@ export async function testRule(rule: AutomationRule, sample: Record<string, unkn
     ok = false;
     detail = e instanceof Error ? e.message : String(e);
   }
+  toRunLog(rule, "test", ok, detail, now, true);
   await prisma.automationRun.create({ data: { ruleId: rule.id, subject: "test", ok, detail: `تجربة: ${detail}`.slice(0, 300), at: new Date(now) } });
   return { ok, detail };
 }
