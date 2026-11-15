@@ -15,6 +15,7 @@ import razanPublic from "../modules/razan/razan.routes.js";
 import requestsPublic from "../modules/requests/requests.routes.js";
 import quizPublic from "../modules/quiz/quiz.routes.js";
 import aiPublic from "../modules/ai/ai.routes.js";
+import data from "../modules/data/data.routes.js";
 const r = Router();
 r.use("/admin", admin);
 r.use("/catalog", catalog);
@@ -31,5 +32,6 @@ r.use("/razan", razanPublic); // the storefront guide: usage counts and the owne
 r.use("/requests", requestsPublic); // «اطلبي قطعتكِ» and «بدي حدا يحكيني»
 r.use("/quiz", quizPublic); // «سؤال وجواب» (a coupon prize)
 r.use("/ai", aiPublic); // AI for shoppers (off until OPENAI_API_KEY + the admin switch)
+r.use("/data", data); // the automatic API: the tables the owner opened, to a key or to everyone
 
 export default r;

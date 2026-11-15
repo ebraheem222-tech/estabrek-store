@@ -916,6 +916,9 @@ model Collection {
   fields     Json
   /// The page (kind "collectionTemplate") each item is shown on.
   templateId String?
+  /// Who reaches the table through the automatic API (B4, src/lib/dataApi.ts):
+  /// { read, create, update, delete }, each "off" | "key" | "public". Nothing = closed.
+  api        Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   items      CollectionItem[]
@@ -980,6 +983,28 @@ model StudioRevision {
   createdAt   DateTime @default(now())
 
   @@index([kind, objectId, createdAt])
+}
+
+/// A key for the automatic API (B4, src/lib/apiKeys.ts). The key itself is never kept: only its
+/// SHA-256, and its first letters to tell one key from another.
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  /// What the admin shows of it: "ek_" and a few letters.
+  prefix      String
+  hash        String    @unique
+  /// { tables: "*" | [table ids], acts: ["read", "create", "update", "delete"] }
+  scopes      Json
+  /// Requests a minute.
+  perMinute   Int       @default(60)
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  /// Who made it (the member's email as it was then).
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model PageRevision {
