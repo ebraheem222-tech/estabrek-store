@@ -23,7 +23,7 @@ const postFields: Field[] = [
   { id: "author", type: "relation", to: "t-authors" },
   { id: "secret", type: "relation", to: "t-vault", many: true },
 ];
-const table = (id: string, slug: string, fields: Field[], access: Record<string, string>, name: unknown = { en: slug }): ApiTable => ({ id, slug, name, fields, access: accessOf({ read: "off", create: "off", update: "off", delete: "off", ...access }) });
+const table = (id: string, slug: string, fields: Field[], access: Record<string, string>, name: unknown = { en: slug }, hidden: string[] = []): ApiTable => ({ id, slug, name, fields, access: accessOf({ read: "off", create: "off", update: "off", delete: "off", ...access }), private: hidden });
 const all = [
   table("t-posts", "demo-posts", postFields, { read: "public", create: "key", update: "key", delete: "key" }, { ar: "المقالات", en: "Posts" }),
   table("t-authors", "authors", [{ id: "name", type: "text", required: true }], { read: "key" }),
@@ -97,7 +97,9 @@ describe("The OpenAPI document", () => {
 
   test("a list's questions: its parameters, and a table of what each column can be asked", () => {
     const list = doc(whole).paths["/demo-posts"].get;
-    expect(list.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).toEqual(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match"]);
+    // Everyone reads this table: a signed-in shopper may ask for their own rows of it.
+    expect(list.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).toEqual(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match", "mine"]);
+    expect(doc(whole).paths["/authors"].get.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).not.toContain("mine");
     // A table with no relation the caller sees has nothing to expand.
     expect(doc(null).paths["/demo-posts"].get.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).not.toContain("expand");
     expect(list.description).toContain("| `price` | is, isNot, gt, gte, lt, lte, between, empty, notEmpty |");
@@ -217,5 +219,56 @@ describe("The TypeScript types", () => {
     const text = typesText([odd], { server: "/v1/data" });
     expect(text).toContain("/** a * / b: /v1/data/odd */");
     expect(text.match(/\*\//g)).toHaveLength((text.match(/\/\*\*/g) ?? []).length);
+  });
+});
+
+describe("A shopper's own rows, and fields that are a key's alone", () => {
+  const fields: Field[] = [
+    { id: "title", type: "text", required: true },
+    { id: "details", type: "longText" },
+    { id: "staffNote", type: "text", required: true },
+  ];
+  const tables = [
+    table("t-req", "requests", fields, { read: "customer", create: "customer", update: "customer", delete: "customer" }, { en: "Requests" }, ["staffNote"]),
+    table("t-rev", "reviews", fields, { read: "public", create: "customer" }, { en: "Reviews" }, ["staffNote"]),
+  ];
+  const ids = (t: DocTable) => ({ read: t.fields.map((f) => f.id), write: (t.writeFields ?? t.fields).map((f) => f.id) });
+
+  test("anyone sees only what everyone reads; a shopper also what is theirs; a key everything", () => {
+    const anyone = docTables(tables, null);
+    expect(anyone.map((t) => t.slug)).toEqual(["reviews"]);
+    expect(anyone[0].acts).toEqual({ read: "public", create: null, update: null, delete: null });
+    const shopper = docTables(tables, null, "u1");
+    expect(shopper.map((t) => t.slug)).toEqual(["requests", "reviews"]);
+    expect(shopper[0].acts).toEqual({ read: "customer", create: "customer", update: "customer", delete: "customer" });
+    expect(shopper[1].acts).toEqual({ read: "public", create: "customer", update: null, delete: null });
+    // The private field isn't a shopper's to see or to write; a key has it both ways.
+    expect(ids(shopper[0])).toEqual({ read: ["title", "details"], write: ["title", "details"] });
+    expect(ids(docTables(tables, whole)[0])).toEqual({ read: ["title", "details", "staffNote"], write: ["title", "details", "staffNote"] });
+    // A key that only adds reviews: it writes the private field, and is answered as anyone is.
+    const adder = docTables(tables, key(["t-rev"], ["create"]))[0];
+    expect(adder.acts).toEqual({ read: "public", create: "customer", update: null, delete: null });
+    expect(ids(adder)).toEqual({ read: ["title", "details"], write: ["title", "details", "staffNote"] });
+  });
+
+  test("the document says a shopper's token gets in, and keeps the private field out of a shopper's shapes", () => {
+    const mine = openApi(docTables(tables, null, "u1"), { server: "/v1/data" }) as Doc;
+    expect(mine.components.securitySchemes.shopper).toMatchObject({ type: "http", scheme: "bearer" });
+    expect(mine.paths["/requests"].get.security).toEqual([{ shopper: [] }, { apiKey: [] }]);
+    expect(mine.paths["/requests/{row}"].patch.security).toEqual([{ shopper: [] }, { apiKey: [] }]);
+    expect(mine.paths["/requests"].get.description).toContain("their own rows only");
+    expect(mine.paths["/reviews"].get.security).toEqual([{}, { apiKey: [] }]);
+    expect(Object.keys(mine.components.schemas.RequestsValues.properties)).toEqual(["title", "details"]);
+    expect(Object.keys(mine.components.schemas.RequestsCreate.properties.values.properties)).toEqual(["title", "details"]);
+    // Its required private field isn't asked of a shopper (the row gets the field's default, or the owner fills it).
+    expect(mine.components.schemas.RequestsCreate.properties.values.required).toEqual(["title"]);
+    expect(JSON.stringify(mine)).not.toContain("staffNote");
+    const full = openApi(docTables(tables, whole), { server: "/v1/data" }) as Doc;
+    expect(Object.keys(full.components.schemas.RequestsValues.properties)).toEqual(["title", "details", "staffNote"]);
+    expect(full.components.schemas.RequestsCreate.properties.values.required).toEqual(["title", "staffNote"]);
+    const types = typesText(docTables(tables, null, "u1"), { server: "/v1/data" });
+    expect(types).toContain("export type RequestsInput = {\n  title: string | Words;\n  details?: string | Words | null;\n};");
+    expect(types).not.toContain("staffNote");
+    expect(typesText(docTables(tables, whole), { server: "/v1/data" })).toContain("  staffNote: string | Words;");
   });
 });

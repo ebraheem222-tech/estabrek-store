@@ -27,7 +27,14 @@ export type GridTable = Omit<Collection, "fields"> & {
 export type GridFilter = { field: string; op: Op; value?: unknown; value2?: unknown };
 export type GridSort = { field: string; dir: "asc" | "desc" };
 export type GridQuery = { page?: number; pageSize?: number; search?: string; lang?: Lang; view?: View; sort?: GridSort[]; filters?: GridFilter[]; match?: "all" | "any" };
-export type GridRow = CollectionItem & { deletedAt: string | null; /** Who links it, by the linked-from column's id. */ from?: Record<string, LinkedFrom> };
+export type GridRow = CollectionItem & {
+  deletedAt: string | null;
+  /** Who links it, by the linked-from column's id. */
+  from?: Record<string, LinkedFrom>;
+  /** The shopper whose row it is (added through the API); by name only for members who may see the customers. */
+  ownerId?: string | null;
+  owner?: { id: string; name?: string; email?: string };
+};
 export type GridPage = { rows: GridRow[]; total: number; page: number; pageSize: number; counts: Record<View, number>; ms: number; /** The relations that link this table. */ incoming?: Incoming[] };
 export type GridMeta = {
   ops: Record<ColumnKind, Op[]>;

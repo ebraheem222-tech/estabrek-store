@@ -11,15 +11,16 @@ const fields: ApiField[] = [
   { id: "tag", type: "select", name: null, required: true, options: [{ id: "new", name: null }] },
   { id: "author", type: "relation", name: null, required: false, many: false },
 ];
-const table = (access: Partial<TableAccess> = {}, over: Partial<ApiTable> = {}): ApiTable => ({ id: "t1", slug: "posts", name: { en: "Posts", ar: "المقالات" }, access: { ...closed, ...access }, open: Object.values({ ...closed, ...access }).some((w) => w !== "off"), fields, ...over });
-const limits = { name: 80, tables: 200, keys: 100, perMinute: { min: 1, max: 1000, default: 60 }, pageSize: 100, publicWritesPerMinute: 10 };
+const table = (access: Partial<TableAccess> = {}, over: Partial<ApiTable> = {}): ApiTable => ({ id: "t1", slug: "posts", name: { en: "Posts", ar: "المقالات" }, access: { ...closed, ...access }, open: Object.values({ ...closed, ...access }).some((w) => w !== "off"), private: [], fields, ...over });
+const limits = { name: 80, tables: 200, keys: 100, perMinute: { min: 1, max: 1000, default: 60 }, pageSize: 100, publicWritesPerMinute: 10, customerWritesPerMinute: 30 };
 
 describe("A table's access, in words", () => {
   test("changing and deleting are never offered to everyone", () => {
-    expect(whoChoices("read")).toEqual(["off", "key", "public"]);
-    expect(whoChoices("create")).toEqual(["off", "key", "public"]);
-    expect(whoChoices("update")).toEqual(["off", "key"]);
-    expect(whoChoices("delete")).toEqual(["off", "key"]);
+    expect(whoChoices("read")).toEqual(["off", "key", "customer", "public"]);
+    expect(whoChoices("create")).toEqual(["off", "key", "customer", "public"]);
+    // A shopper may change and delete their own rows; everyone never.
+    expect(whoChoices("update")).toEqual(["off", "key", "customer"]);
+    expect(whoChoices("delete")).toEqual(["off", "key", "customer"]);
   });
 
   test("one line says what the outside can do, in the three languages", () => {
@@ -127,5 +128,32 @@ describe("How to call a table", () => {
     expect(of("relation")).toEqual(["row-address"]);
     expect(of("location")).toEqual({ lat: 31.77, lng: 35.21 });
     expect(of("image")).toBe("https://example.com/file");
+  });
+});
+
+describe("A table open to the shopper, and private fields", () => {
+  const theirs: TableAccess = { read: "customer", create: "customer", update: "customer", delete: "off" };
+
+  test("the line says whose it is; with shopper accounts off it says nobody can be one", () => {
+    expect(accessLine(theirs, "en")).toBe("Reading: The shopper (own rows) · Adding: The shopper (own rows) · Changing: The shopper (own rows)");
+    expect(accessLine({ ...closed, read: "customer" }, "ar")).toBe("القراءة: للزبون (سطوره بس)");
+    expect(accessWarnings(theirs, limits, "en", { customerAccounts: true })).toEqual([]);
+    expect(accessWarnings(theirs, limits, "en", { customerAccounts: false })).toEqual(["Shopper accounts are switched off, so nobody can get in as a shopper: turn them on in Settings."]);
+    // Not a shopper's table: nothing to say about their accounts.
+    expect(accessWarnings({ ...closed, read: "key" }, limits, "en", { customerAccounts: false })).toEqual([]);
+  });
+
+  test("what everyone reads is said with the private fields counted out", () => {
+    expect(accessWarnings({ ...closed, read: "public" }, limits, "en", { private: 0 })).toEqual(["Anyone can read every field of this table's published rows, without a key."]);
+    expect(accessWarnings({ ...closed, read: "public" }, limits, "en", { private: 2 })).toEqual(["Anyone can read this table's published rows without a key: every field but the 2 kept private."]);
+    expect(accessWarnings({ ...closed, read: "public" }, limits, "ar", { private: 2 })[0]).toContain("غير الـ 2 المخبّاة");
+  });
+
+  test("its ready requests carry a shopper's token, where a key's would carry the key", () => {
+    const list = examples(table(theirs), "https://api.shop.test/v1/data", "en");
+    expect(list.map((e) => e.id)).toEqual(["read", "one", "create", "update"]);
+    expect(list[0].code).toBe('curl "https://api.shop.test/v1/data/posts?pageSize=10&sort=-createdAt&title[notEmpty]=1" -H "Authorization: Bearer SHOPPER_TOKEN"');
+    expect(list[2].code).toContain('-H "Content-Type: application/json" -H "Authorization: Bearer SHOPPER_TOKEN" -d ');
+    expect(list.every((e) => !e.code.includes("X-Api-Key"))).toBe(true);
   });
 });

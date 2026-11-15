@@ -16,7 +16,7 @@ import { ApiDocs } from "./ApiDocs";
 import { ApiPlayground } from "./ApiPlayground";
 
 const closed: TableAccess = { read: "off", create: "off", update: "off", delete: "off" };
-const table = (slug: string, access: Partial<TableAccess>): ApiTable => ({ id: `t-${slug}`, slug, name: { en: slug }, access: { ...closed, ...access }, open: Object.values({ ...closed, ...access }).some((w) => w !== "off"), fields: [{ id: "title", type: "text", name: null, required: true }, { id: "price", type: "number", name: null, required: false }] });
+const table = (slug: string, access: Partial<TableAccess>): ApiTable => ({ id: `t-${slug}`, slug, name: { en: slug }, access: { ...closed, ...access }, open: Object.values({ ...closed, ...access }).some((w) => w !== "off"), private: [], fields: [{ id: "title", type: "text", name: null, required: true }, { id: "price", type: "number", name: null, required: false }] });
 const posts = table("posts", { read: "public", create: "key", update: "key", delete: "key" });
 const notes = table("notes", { create: "public" });
 const hidden = table("hidden", {});
@@ -110,6 +110,23 @@ describe("Try a request", () => {
     expect((await screen.findByTestId("play-status")).textContent).toBe("400");
     expect(screen.getByTestId("play-status-words").textContent).toBe("The request or its values are wrong");
     expect(screen.getByTestId("play-answer").textContent).toContain('"field": "title"');
+  });
+
+  test("a shopper's table can be tried as a shopper: their token goes in its own header, and is never written on the page", async () => {
+    const requests = table("requests", { read: "customer", create: "customer" });
+    render(<ApiPlayground tables={[posts, requests]} url={url} />);
+    // Nothing of the posts is a shopper's: no token is asked for there.
+    expect(screen.queryByTestId("play-token")).toBeNull();
+    fireEvent.change(screen.getByTestId("play-table"), { target: { value: "t-requests" } });
+    fireEvent.click(screen.getByTestId("play-send"));
+    expect(screen.getByTestId("play-problem").textContent).toBe("This is a signed-in shopper's: paste a shopper's token, or a key");
+    expect(fetched).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId("play-token"), { target: { value: "the.real.shopper.token" } });
+    fireEvent.click(screen.getByTestId("play-send"));
+    await waitFor(() => expect(fetched).toHaveBeenCalledWith(`${url}/requests?pageSize=5&sort=-createdAt`, { method: "GET", headers: { Authorization: "Bearer the.real.shopper.token" }, body: undefined, credentials: "omit" }));
+    expect((await screen.findByTestId("play-curl")).textContent).toBe(`curl "${url}/requests?pageSize=5&sort=-createdAt" -H "Authorization: Bearer SHOPPER_TOKEN"`);
+    expect((screen.getByTestId("play-token") as HTMLInputElement).type).toBe("password");
+    expect(screen.getByTestId("api-play").textContent).not.toContain("real.shopper");
   });
 
   test("a request that never reached the server says so", async () => {

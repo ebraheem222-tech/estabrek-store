@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Field } from "../lib/collectionTree.js";
 import { hashKey, keyCovers, keyState, keyView, looksLikeKey, newSecret, scopesOf, ScopesSchema, type KeyLite } from "../lib/apiKeys.js";
-import { AccessSchema, CLOSED, accessOf, allow, apiRow, columnOf, fieldView, isOpen, listAsk, shapeAsk, wordsIn, type LinkModes } from "../lib/dataApi.js";
+import { AccessSchema, CLOSED, accessOf, allow, apiRow, columnOf, fieldView, isOpen, listAsk, mineAsked, privateOf, seenFields, shapeAsk, wordsIn, type LinkModes } from "../lib/dataApi.js";
 
 // The automatic API (B4) without a database: a key and what is kept of it, who gets into a table
 // and as what, a list's question read from an address, and a row as it is answered.
@@ -202,5 +202,57 @@ describe("A row, as answered", () => {
     expect(fieldView({ id: "tags", type: "multiSelect", name: { en: "Tags" }, options: [{ id: "new", name: { en: "New" } }], unique: true, pattern: "x" } as Field)).toEqual({ id: "tags", type: "multiSelect", name: { en: "Tags" }, required: false, options: [{ id: "new", name: { en: "New" } }] });
     expect(fieldView({ id: "author", type: "relation", to: "t-authors", many: true, required: true })).toEqual({ id: "author", type: "relation", name: null, required: true, many: true });
     expect(fieldView({ id: "price", type: "money", currency: "ILS" })).toEqual({ id: "price", type: "money", name: null, required: false, currency: "ILS" });
+  });
+});
+
+describe("A signed-in shopper, and fields that are a key's alone", () => {
+  const key = (tables: "*" | string[], acts: KeyLite["scopes"]["acts"]): KeyLite => ({ id: "k", name: "k", prefix: "ek_x", scopes: { tables, acts }, perMinute: 60, revokedAt: null, expiresAt: null });
+  const theirs = accessOf({ read: "customer", create: "customer", update: "customer", delete: "off" });
+
+  test("every act can be the shopper's; changing and deleting still never everyone's", () => {
+    expect(theirs).toEqual({ read: "customer", create: "customer", update: "customer", delete: "off" });
+    expect(AccessSchema.safeParse({ read: "customer", create: "public", update: "customer", delete: "customer" }).success).toBe(true);
+    expect(AccessSchema.safeParse({ read: "customer", create: "customer", update: "public", delete: "off" }).success).toBe(false);
+    expect(isOpen(theirs)).toBe(true);
+  });
+
+  test("who gets in: the shopper as themself, a key as a key, nobody else", () => {
+    expect(allow(theirs, "read", null, "t1", "u1")).toEqual({ as: "customer" });
+    // Not signed in: asked to; a key that doesn't reach the table: told so.
+    expect(allow(theirs, "read", null, "t1")).toEqual({ no: "signInNeeded" });
+    expect(allow(theirs, "read", key(["t2"], ["read"]), "t1")).toEqual({ no: "keyLacks" });
+    expect(allow(theirs, "update", key("*", ["update"]), "t1", "u1")).toEqual({ as: "key" });
+    expect(allow(theirs, "delete", null, "t1", "u1")).toEqual({ no: "closed" });
+    // Where everyone reads, a shopper reads as everyone does; a key-only act isn't a shopper's.
+    expect(allow(accessOf({ read: "public", create: "key", update: "off", delete: "off" }), "read", null, "t1", "u1")).toEqual({ as: "public" });
+    expect(allow(accessOf({ read: "public", create: "key", update: "off", delete: "off" }), "create", null, "t1", "u1")).toEqual({ no: "keyNeeded" });
+  });
+
+  test("private fields are kept with the table's access, and seen through a key only", () => {
+    const kept = { read: "public", create: "off", update: "off", delete: "off", private: ["staffNote", "cost", "cost"] };
+    expect(accessOf(kept)).toEqual({ read: "public", create: "off", update: "off", delete: "off" });
+    expect(privateOf(kept)).toEqual(["staffNote", "cost"]);
+    // What #138 kept (no list at all) is as before; nonsense is closed with nothing private.
+    expect(privateOf({ read: "public", create: "off", update: "off", delete: "off" })).toEqual([]);
+    expect(privateOf({ ...kept, private: "all" })).toEqual([]);
+    expect(accessOf({ ...kept, private: "all" })).toEqual(CLOSED);
+    const table = { fields: [{ id: "title", type: "text" as const }, { id: "cost", type: "number" as const }, { id: "staffNote", type: "text" as const }], private: ["staffNote", "cost"] };
+    expect(seenFields(table, "key").map((f) => f.id)).toEqual(["title", "cost", "staffNote"]);
+    expect(seenFields(table, "public").map((f) => f.id)).toEqual(["title"]);
+    expect(seenFields(table, "customer").map((f) => f.id)).toEqual(["title"]);
+    expect(seenFields({ ...table, private: [] }, "public")).toBe(table.fields);
+  });
+
+  test("a shopper's list: their rows whatever their status; `mine` asks for them where everyone reads", () => {
+    const fields: Field[] = [{ id: "title", type: "text" }];
+    expect(listAsk(fields, {}, "customer").q.view).toBe("all");
+    expect(listAsk(fields, { status: "draft", mine: "1" }, "customer").q.view).toBe("draft");
+    expect(mineAsked({})).toBe(false);
+    expect(mineAsked({ mine: "0" })).toBe(false);
+    expect(mineAsked({ mine: "1" })).toBe(true);
+    expect(mineAsked({ mine: "true" })).toBe(true);
+    expect(refused(() => mineAsked({ mine: "yes" }))).toBe("BAD_QUERY: mine: 1 for the signed-in shopper's own rows");
+    // A private field isn't one of a shopper's columns: asked about, it is a column that isn't there.
+    expect(refused(() => listAsk(fields, { "staffNote[contains]": "x" }, "customer"))).toBe('BAD_QUERY: No column "staffNote" in this table');
   });
 });

@@ -3,9 +3,10 @@
  * from outside and for what, a list's question read from the address, and a row as it is
  * answered. Pure: no database here.
  *
- * A table is closed until its owner opens it, act by act: reading and adding can be for a key or
- * for everyone; changing and deleting only ever for a key. Everyone sees published rows only; a
- * key sees every row that isn't in the trash.
+ * A table is closed until its owner opens it, act by act: for a key, for a signed-in shopper (their
+ * own rows only), or (reading and adding) for everyone; changing and deleting are never for
+ * everyone. Everyone sees published rows only; a shopper sees their own; a key sees every row that
+ * isn't in the trash. Fields marked private are a key's alone.
  */
 import { z } from "zod";
 import { AppError } from "../utils/httpError.js";
@@ -14,66 +15,95 @@ import { ACTS, keyCovers, type Act, type KeyLite } from "./apiKeys.js";
 import { GRID_LIMITS, GridQuerySchema, OPS, type GridFilter, type GridQuery, type Op, type View } from "./dataQuery.js";
 import { LANGS, type Lang } from "./dataRows.js";
 
-export const WHO = ["off", "key", "public"] as const;
+export const WHO = ["off", "key", "customer", "public"] as const;
 export type Who = (typeof WHO)[number];
 export type TableAccess = Record<Act, Who>;
 export const CLOSED: TableAccess = { read: "off", create: "off", update: "off", delete: "off" };
-/** Changing and deleting are never for everyone. */
-export const AccessSchema = z.object({ read: z.enum(WHO), create: z.enum(WHO), update: z.enum(["off", "key"]), delete: z.enum(["off", "key"]) }).strict();
+/** Changing and deleting are never for everyone: a key's, or a shopper's on their own rows. */
+const OWNED = ["off", "key", "customer"] as const;
+const ACT_WHO = { read: z.enum(WHO), create: z.enum(WHO), update: z.enum(OWNED), delete: z.enum(OWNED) };
+export const AccessSchema = z.object(ACT_WHO).strict();
+export const PRIVATE_MAX = 40;
+/** As kept on the table: who may do what, and the fields only a key sees or writes. */
+export const SettingsSchema = z.object({ ...ACT_WHO, private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).default([]) }).strict();
 
 /** A table's access as kept; anything that isn't one is closed. */
 export function accessOf(raw: unknown): TableAccess {
-  const parsed = AccessSchema.safeParse(raw);
-  return parsed.success ? parsed.data : { ...CLOSED };
+  const parsed = SettingsSchema.safeParse(raw);
+  return parsed.success ? { read: parsed.data.read, create: parsed.data.create, update: parsed.data.update, delete: parsed.data.delete } : { ...CLOSED };
+}
+/** The fields only a key sees, as kept. */
+export function privateOf(raw: unknown): string[] {
+  const parsed = SettingsSchema.safeParse(raw);
+  return parsed.success ? [...new Set(parsed.data.private)] : [];
 }
 export const isOpen = (access: TableAccess) => ACTS.some((act) => access[act] !== "off");
 
 /** Where the routes start on the server. */
 export const DATA_API_BASE = "/v1/data";
 
-/** A table as the API knows it: its address, its fields, and who reaches it. */
-export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess };
-export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api) });
+/** A table as the API knows it: its address, its fields, who reaches it, and the fields only a key sees. */
+export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess; private: string[] };
+export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api), private: privateOf(c.api) });
 
-/** How a request gets in: through its key (every row), or as anyone (published rows). */
-export type As = "key" | "public";
-export type Verdict = { as: As } | { no: "closed" | "keyNeeded" | "keyLacks" };
+/** How a request gets in: through its key (every row), as a signed-in shopper (their own rows), or as anyone (published rows). */
+export type As = "key" | "customer" | "public";
+export type Verdict = { as: As } | { no: "closed" | "keyNeeded" | "keyLacks" | "signInNeeded" };
 
-export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableId: string): Verdict {
+/** `customer`: the signed-in shopper's id, when the request is one's. */
+export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableId: string, customer: string | null = null): Verdict {
   const who = access[act];
   if (who === "off") return { no: "closed" };
   if (key && keyCovers(key.scopes, tableId, act)) return { as: "key" };
   if (who === "public") return { as: "public" };
-  return { no: key ? "keyLacks" : "keyNeeded" };
+  if (who === "customer" && customer) return { as: "customer" };
+  if (key) return { no: "keyLacks" };
+  return { no: who === "customer" ? "signInNeeded" : "keyNeeded" };
+}
+
+/** The fields a caller sees and may write: all of them through a key, the rest without the private ones. */
+export function seenFields(table: Pick<ApiTable, "fields" | "private">, as: As): Field[] {
+  return as === "key" || !table.private.length ? table.fields : table.fields.filter((f) => !table.private.includes(f.id));
 }
 
 /**
  * A table as the documents describe it to one caller (lib/apiDocs.ts): how each act it may do is
- * entered ("key" or "public"; null = not for this caller), and which of its relations it sees.
+ * entered ("key", "customer" or "public"; null = not for this caller), the fields it is answered
+ * (`fields`) and may write (`writeFields`, when they differ), and which of its relations it sees.
  */
-export type DocTable = { slug: string; name: unknown; fields: Field[]; acts: Record<Act, "key" | "public" | null>; links: Set<string> };
+export type DocTable = { slug: string; name: unknown; fields: Field[]; writeFields?: Field[]; acts: Record<Act, Exclude<Who, "off"> | null>; links: Set<string> };
 
 /** The tables a caller reaches, as the documents describe them; a table it can do nothing with is left out. */
-export function docTables(all: ApiTable[], key: KeyLite | null): DocTable[] {
+export function docTables(all: ApiTable[], key: KeyLite | null, customer: string | null = null): DocTable[] {
   const byId = new Map(all.map((t) => [t.id, t]));
   return all.flatMap((t) => {
-    const acts = Object.fromEntries(ACTS.map((act) => [act, "as" in allow(t.access, act, key, t.id) ? (t.access[act] === "public" ? "public" : "key") : null])) as DocTable["acts"];
-    if (!ACTS.some((act) => acts[act])) return [];
+    const how = new Map<Act, As>();
+    for (const act of ACTS) {
+      const verdict = allow(t.access, act, key, t.id, customer);
+      if ("as" in verdict) how.set(act, verdict.as);
+    }
+    if (!how.size) return [];
+    const acts = Object.fromEntries(ACTS.map((act) => [act, how.has(act) ? t.access[act] : null])) as DocTable["acts"];
+    // Answered as the caller reads (or, for a table it only writes, as it writes); written as its widest write.
+    const fields = seenFields(t, how.get("read") ?? [...how.values()][0]);
+    const writes = [how.get("create"), how.get("update")].filter((x): x is As => !!x);
+    const writeFields = writes.length ? seenFields(t, writes.includes("key") ? "key" : writes[0]) : undefined;
+    // A relation shows when its table is open to everyone or to the caller's key (a shopper's own rows aren't followed through a link).
     const links = new Set<string>();
-    for (const f of t.fields) {
+    for (const f of [...fields, ...(writeFields ?? [])]) {
       const target = f.type === "relation" && f.to ? byId.get(f.to) : undefined;
       if (target && "as" in allow(target.access, "read", key, target.id)) links.add(f.id);
     }
-    return [{ slug: t.slug, name: t.name, fields: t.fields, acts, links }];
+    return [{ slug: t.slug, name: t.name, fields, ...(writeFields && writeFields.length !== fields.length ? { writeFields } : {}), acts, links }];
   });
 }
 
 /* ---------------- A list's question, from the address ---------------- */
 
-export const API_LIMITS = { pageSize: 100, pageSizeDefault: 25, expand: 5, publicWritesPerMinute: 10 } as const;
+export const API_LIMITS = { pageSize: 100, pageSizeDefault: 25, expand: 5, publicWritesPerMinute: 10, /** A signed-in shopper's writes to one table. */ customerWritesPerMinute: 30 } as const;
 /** A row's own columns by the names the API uses (the grid's "$" names work too). */
 const OWN: Record<string, string> = { slug: "$slug", status: "$status", createdAt: "$createdAt", updatedAt: "$updatedAt", publishedAt: "$publishedAt" };
-const PLAIN = new Set(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match"]);
+const PLAIN = new Set(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match", "mine"]);
 const NO_VALUE = new Set<Op>(["empty", "notEmpty", "isTrue", "isFalse"]);
 const STATUS_VIEW: Record<string, View> = { all: "all", draft: "draft", published: "published", archived: "archived" };
 
@@ -93,6 +123,14 @@ function whole(v: string | undefined, what: string, min: number, max: number, ot
   const n = Number(v);
   if (!Number.isInteger(n) || n < min || n > max) throw bad(`${what}: a whole number from ${min} to ${max}`);
   return n;
+}
+
+/** `mine=1`: a signed-in shopper asking for their own rows (whatever their status) of a table everyone reads. */
+export function mineAsked(query: Record<string, unknown>): boolean {
+  const raw = first(query.mine);
+  if (raw === undefined || raw === "" || raw === "0" || raw === "false") return false;
+  if (raw === "1" || raw === "true") return true;
+  throw bad("mine: 1 for the signed-in shopper's own rows");
 }
 
 export type ListAsk = { q: GridQuery; /** Words answered in this language as plain strings; null = every language. */ lang: Lang | null; /** Only these fields; null = all. */ pick: string[] | null; expand: string[] };

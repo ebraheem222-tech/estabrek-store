@@ -39,6 +39,8 @@ export function docName(name: unknown, fallback: string): string {
 
 /** The fields a caller sees: every field but the relations to tables it can't read. */
 export const shownFields = (table: DocTable) => table.fields.filter((f) => f.type !== "relation" || table.links.has(f.id));
+/** The fields a caller may write (a key writes the private ones too). */
+export const writtenFields = (table: DocTable) => (table.writeFields ?? table.fields).filter((f) => f.type !== "relation" || table.links.has(f.id));
 
 const choices = (f: Field) => (f.options?.length ? { enum: f.options.map((o) => o.id) } : {});
 const limits = (f: Field) => ({ ...(typeof f.min === "number" ? { minimum: f.min } : {}), ...(typeof f.max === "number" ? { maximum: f.max } : {}) });
@@ -114,8 +116,12 @@ function filterTable(table: DocTable): string {
   ].join("\n");
 }
 
-const SECURITY = { key: [{ apiKey: [] }], public: [{}, { apiKey: [] }] } as const;
-const WHO_SAYS = { key: "Needs an API key.", public: "Open to everyone; a key sees more (every row outside the trash)." } as const;
+const SECURITY = { key: [{ apiKey: [] }], customer: [{ shopper: [] }, { apiKey: [] }], public: [{}, { apiKey: [] }] } as const;
+const WHO_SAYS = {
+  key: "Needs an API key.",
+  customer: "For a signed-in shopper, on their own rows only (their token in `Authorization: Bearer`); a key reaches every row.",
+  public: "Open to everyone; a key sees more (every row outside the trash).",
+} as const;
 
 /** The whole document for these tables. `server` is where the routes start ("/v1/data"). */
 export function openApi(tables: DocTable[], opts: { server: string; title?: string }): Json {
@@ -154,8 +160,9 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
     schemas[`${T}Row`] = { type: "object", required: ["id", "slug", "status", "values", "createdAt", "updatedAt", "publishedAt"], properties: { id: { type: "string" }, slug: { type: "string", description: "The row's address." }, status: ref("Status"), values: ref(`${T}Values`), createdAt: { type: "string", format: "date-time" }, updatedAt: { type: "string", format: "date-time" }, publishedAt: orNull({ type: "string", format: "date-time" }) } };
     if (act("read")) schemas[`${T}Page`] = { type: "object", required: ["data", "page", "pageSize", "total", "pages"], properties: { data: { type: "array", items: ref(`${T}Row`) }, page: { type: "integer" }, pageSize: { type: "integer" }, total: { type: "integer", description: "Every row the question matches." }, pages: { type: "integer" } } };
     if (act("create") || act("update")) {
-      const required = fields.filter((f) => f.required).map((f) => f.id);
-      const input = Object.fromEntries(fields.map((f) => [f.id, inputSchema(f)]));
+      const written = writtenFields(table);
+      const required = written.filter((f) => f.required).map((f) => f.id);
+      const input = Object.fromEntries(written.map((f) => [f.id, inputSchema(f)]));
       const own = { slug: { type: "string", description: "The row's address (made from its words when not given). Set with a key only." }, status: { ...ref("Status"), description: "Set with a key only; a row from anyone is a draft." }, lang: { type: "string", enum: ["ar", "en", "he"], description: "The language plain words go to." } };
       if (act("create")) schemas[`${T}Create`] = { type: "object", required: ["values"], properties: { values: { type: "object", properties: input, ...(required.length ? { required } : {}), additionalProperties: false }, ...own }, additionalProperties: false };
       if (act("update")) schemas[`${T}Change`] = { type: "object", description: "Only what is sent changes; the rest of the row stays.", properties: { values: { type: "object", properties: input, additionalProperties: false }, ...own }, additionalProperties: false };
@@ -168,7 +175,7 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
         summary: `A page of "${title}"`,
         description: `${says("read", "Rows filtered, sorted and searched from the address.")} Without a key only published rows are seen.\n\n${filterTable(table)}`,
         ...who("read"),
-        parameters: [param("page"), param("pageSize"), param("sort"), param("search"), param("lang"), param("status"), param("fields"), ...(table.links.size ? [param("expand")] : []), param("match")],
+        parameters: [param("page"), param("pageSize"), param("sort"), param("search"), param("lang"), param("status"), param("fields"), ...(table.links.size ? [param("expand")] : []), param("match"), ...(act("read") === "public" ? [param("mine")] : [])],
         responses: { "200": { description: "A page of rows", content: { "application/json": { schema: ref(`${T}Page`) } } }, "400": answer("BadRequest"), "401": answer("Unauthorized"), "403": answer("Forbidden"), "404": answer("NotFound"), "429": answer("TooMany") },
       };
     if (act("create"))
@@ -220,13 +227,16 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
     info: {
       title: opts.title ?? "Data API",
       version: "1",
-      description: "Made from the store's own tables: each table its owner opens has these routes. A key goes in the `X-Api-Key` header, never in the address. Without a key only published rows are seen.",
+      description: "Made from the store's own tables: each table its owner opens has these routes. A key goes in the `X-Api-Key` header, never in the address. Without a key only published rows are seen; a signed-in shopper also reaches their own rows where a table lets them.",
     },
     servers: [{ url: opts.server }],
     tags: tables.map((t) => ({ name: t.slug, description: docName(t.name, t.slug) })),
     paths,
     components: {
-      securitySchemes: { apiKey: { type: "apiKey", in: "header", name: "X-Api-Key", description: "Made in the admin (API & keys). Also accepted as `Authorization: Bearer <key>`." } },
+      securitySchemes: {
+        apiKey: { type: "apiKey", in: "header", name: "X-Api-Key", description: "Made in the admin (API & keys). Also accepted as `Authorization: Bearer <key>`." },
+        shopper: { type: "http", scheme: "bearer", description: "A signed-in shopper's own token (the store's sign-in gives it). It reaches that shopper's rows only." },
+      },
       parameters: {
         row: { name: "row", in: "path", required: true, schema: { type: "string" }, description: "The row's id or its address." },
         page: { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
@@ -238,6 +248,7 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
         fields: { name: "fields", in: "query", schema: { type: "string" }, description: "Only these fields, separated by commas." },
         expand: { name: "expand", in: "query", schema: { type: "string" }, description: `Relations to answer as the linked rows themselves, separated by commas (up to ${API_LIMITS.expand}).` },
         match: { name: "match", in: "query", schema: { type: "string", enum: ["all", "any"], default: "all" }, description: "Every filter, or any of them." },
+        mine: { name: "mine", in: "query", schema: { type: "string", enum: ["1"] }, description: "With a shopper's token: only that shopper's own rows, whatever their status." },
       },
       responses: {
         BadRequest: fail("The question or the values are wrong (BAD_QUERY, ROW_INVALID, VALIDATION_ERROR): `message` and `details` say what."),
@@ -333,7 +344,8 @@ export function typesText(tables: DocTable[], opts: { server: string }): string 
     out.push(`/** ${T}Row is what the API answers; ${T}Row<string> when ?lang is asked. */`, `export type ${T}Row<T = Words> = Row<${T}Values<T>>;`);
     if (table.acts.create || table.acts.update) {
       // Required fields first, as a new row needs them; a change takes any of them.
-      const sorted = [...fields.filter((f) => f.required), ...fields.filter((f) => !f.required)];
+      const written = writtenFields(table);
+      const sorted = [...written.filter((f) => f.required), ...written.filter((f) => !f.required)];
       out.push(`/** The values a new row takes (a change takes Partial<${T}Input>). */`, `export type ${T}Input = {`, ...sorted.map((f) => `  ${f.id}${f.required ? "" : "?"}: ${inputType(f)}${f.required ? "" : " | null"};`), "};");
     }
   }

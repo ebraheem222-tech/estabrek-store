@@ -32,6 +32,10 @@ export const playTables = (tables: ApiTable[]) => tables.filter((t) => t.open);
 export const playActs = (table: Pick<ApiTable, "access">): PlayAct[] => PLAY_ACTS.filter((act) => table.access[ACT_OF[act]] !== "off");
 /** Does this need a key, for this table? */
 export const keyNeeded = (table: Pick<ApiTable, "access">, act: PlayAct) => table.access[ACT_OF[act]] === "key";
+/** Is this a signed-in shopper's, for this table (their token gets in, or a key)? */
+export const shopperNeeded = (table: Pick<ApiTable, "access">, act: PlayAct) => table.access[ACT_OF[act]] === "customer";
+/** Has the table an act that is a shopper's (so trying it as one says something)? */
+export const shopperMatters = (table: Pick<ApiTable, "access">) => Object.values(table.access).includes("customer");
 
 /** A body to start from: the fields a row needs (or the first two), with a value of each one's kind. */
 export function sampleBody(table: Pick<ApiTable, "fields">): string {
@@ -40,13 +44,15 @@ export function sampleBody(table: Pick<ApiTable, "fields">): string {
   return JSON.stringify({ values: Object.fromEntries(shown.map((f) => [f.id, sampleValue(f)])) }, null, 2);
 }
 
-export type PlayDraft = { act: PlayAct; /** A row's id or address. */ row: string; /** What comes after "?" in a list's address. */ query: string; /** JSON. */ body: string; key: string };
+export type PlayDraft = { act: PlayAct; /** A row's id or address. */ row: string; /** What comes after "?" in a list's address. */ query: string; /** JSON. */ body: string; key: string; /** A signed-in shopper's token, to try as one. */ token?: string };
 export type PlayRequest = { method: string; url: string; headers: Record<string, string>; body?: string };
 
 /** The request the form describes, or what's missing from it. */
 export function playRequest(table: Pick<ApiTable, "slug" | "access">, draft: PlayDraft, url: string, lang: Lang): { request: PlayRequest } | { problem: string } {
   const key = draft.key.trim();
+  const token = (draft.token ?? "").trim();
   if (keyNeeded(table, draft.act) && !key) return { problem: part("هالطلب بدو مفتاح: الصق مفتاح من مفاتيحك|This needs a key: paste one of your keys|לבקשה הזו נדרש מפתח: הדביקו אחד מהמפתחות", lang) };
+  if (shopperNeeded(table, draft.act) && !key && !token) return { problem: part("هالطلب للزبون المسجّل دخوله: الصق توكن زبون، أو مفتاح|This is a signed-in shopper's: paste a shopper's token, or a key|הבקשה הזו של לקוח מחובר: הדביקו אסימון לקוח, או מפתח", lang) };
   const row = draft.row.trim();
   if (needsRow(draft.act) && !row) return { problem: part("اكتب عنوان السطر أو رقمه|Write the row's address or id|כתבו את כתובת השורה או המזהה", lang) };
   let body: string | undefined;
@@ -61,12 +67,12 @@ export function playRequest(table: Pick<ApiTable, "slug" | "access">, draft: Pla
   }
   const query = draft.act === "list" ? draft.query.trim().replace(/^\?/, "") : "";
   const at = `${url}/${table.slug}${needsRow(draft.act) ? `/${encodeURIComponent(row)}` : ""}${query ? `?${query}` : ""}`;
-  return { request: { method: METHOD[draft.act], url: at, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(key ? { "X-Api-Key": key } : {}) }, ...(body ? { body } : {}) } };
+  return { request: { method: METHOD[draft.act], url: at, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(key ? { "X-Api-Key": key } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body } : {}) } };
 }
 
-/** The same request for a terminal; the key is never written out. */
+/** The same request for a terminal; neither the key nor a shopper's token is written out. */
 export function curlOf(request: PlayRequest): string {
-  const headers = Object.entries(request.headers).map(([name, value]) => ` -H "${name}: ${name === "X-Api-Key" ? "ek_…" : value}"`);
+  const headers = Object.entries(request.headers).map(([name, value]) => ` -H "${name}: ${name === "X-Api-Key" ? "ek_…" : name === "Authorization" ? "Bearer SHOPPER_TOKEN" : value}"`);
   return `curl${request.method === "GET" ? "" : ` -X ${request.method}`} "${request.url}"${headers.join("")}${request.body ? ` -d '${request.body.replace(/'/g, "'\\''")}'` : ""}`;
 }
 
@@ -83,7 +89,7 @@ export function prettyBody(text: string): string {
 export function statusWords(status: number, lang: Lang): string {
   if (status >= 200 && status < 300) return part("تمام|OK|תקין", lang);
   if (status === 400) return part("الطلب أو القيم فيها غلط|The request or its values are wrong|הבקשה או הערכים שגויים", lang);
-  if (status === 401) return part("بدو مفتاح، أو المفتاح ما بيشتغل|A key is needed, or this one doesn't work|נדרש מפתח, או שהמפתח לא עובד", lang);
+  if (status === 401) return part("بدو مفتاح أو دخول زبون، أو اللي انبعت ما بيشتغل|A key or a signed-in shopper is needed, or what was sent doesn't work|נדרש מפתח או לקוח מחובר, או שמה שנשלח לא עובד", lang);
   if (status === 403) return part("مش مسموح: الجدول مش مفتوح لهالشي أو المفتاح ما بيوصله|Not allowed: the table isn't open for this, or the key doesn't reach it|אסור: הטבלה לא פתוחה לזה או שהמפתח לא מגיע אליה", lang);
   if (status === 404) return part("ما في جدول أو سطر هيك|No such table or row|אין טבלה או שורה כזו", lang);
   if (status === 409) return part("العنوان مستعمل، أو في سطور ماسكة هالسطر|The address is taken, or other rows hold this one|הכתובת תפוסה, או ששורות אחרות מחזיקות בשורה", lang);

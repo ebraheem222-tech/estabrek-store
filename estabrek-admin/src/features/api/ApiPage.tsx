@@ -49,7 +49,8 @@ export default function ApiPage() {
   const putKey = (key: ApiKey) => patch((page) => ({ ...page, keys: page.keys.some((k) => k.id === key.id) ? page.keys.map((k) => (k.id === key.id ? key : k)) : [key, ...page.keys] }));
 
   const access = useMutation({
-    mutationFn: (v: { id: string; access: TableAccess }) => API.setAccess(v.id, v.access),
+    // The private fields go with the request only when they are what changed (else the server keeps them).
+    mutationFn: (v: { id: string; access: TableAccess; hidden?: string[] }) => (v.hidden ? API.setAccess(v.id, v.access, v.hidden) : API.setAccess(v.id, v.access)),
     onSuccess: (table) => {
       patch((page) => ({ ...page, tables: page.tables.map((t) => (t.id === table.id ? table : t)) }));
       // What is open changed: so did the documents.
@@ -112,7 +113,17 @@ export default function ApiPage() {
         {d.tables.length ? (
           <ul className="mt-3 space-y-3">
             {d.tables.map((t) => (
-              <TableCard key={t.id} table={t} url={url} limits={d.limits} canWrite={canWrite} busy={access.isPending && access.variables?.id === t.id} onChange={(next) => access.mutate({ id: t.id, access: next })} />
+              <TableCard
+                key={t.id}
+                table={t}
+                url={url}
+                limits={d.limits}
+                customerAccounts={d.customerAccounts}
+                canWrite={canWrite}
+                busy={access.isPending && access.variables?.id === t.id}
+                onChange={(next) => access.mutate({ id: t.id, access: next })}
+                onPrivate={(hidden) => access.mutate({ id: t.id, access: t.access, hidden })}
+              />
             ))}
           </ul>
         ) : (
@@ -228,10 +239,10 @@ export default function ApiPage() {
   );
 }
 
-function TableCard({ table, url, limits, canWrite, busy, onChange }: { table: ApiTable; url: string; limits: Page["limits"]; canWrite: boolean; busy: boolean; onChange: (next: TableAccess) => void }) {
+function TableCard({ table, url, limits, customerAccounts, canWrite, busy, onChange, onPrivate }: { table: ApiTable; url: string; limits: Page["limits"]; customerAccounts: boolean; canWrite: boolean; busy: boolean; onChange: (next: TableAccess) => void; onPrivate: (hidden: string[]) => void }) {
   const lang = adminLang();
   const [open, setOpen] = useState(false);
-  const warnings = accessWarnings(table.access, limits, lang);
+  const warnings = accessWarnings(table.access, limits, lang, { private: table.private.length, customerAccounts });
   const list = examples(table, url, lang);
   return (
     <li className="rounded-xl border border-white/10 p-4" data-testid={`table-${table.slug}`}>
@@ -269,6 +280,26 @@ function TableCard({ table, url, limits, canWrite, busy, onChange }: { table: Ap
           {w}
         </p>
       ))}
+      {table.open ? (
+        <fieldset className="mt-3 text-xs text-white/60" data-testid={`private-${table.slug}`}>
+          <legend>{say("حقول للمفتاح بس: ما بتطلع ولا بتنكتب بدونه (لا للجميع ولا للزبون)|Fields for a key only: not answered or written without one (not to everyone, not to a shopper)|שדות למפתח בלבד: לא נענים ולא נכתבים בלעדיו (לא לכולם ולא ללקוח)")}</legend>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {table.fields.map((f) => (
+              <label key={f.id} className="flex items-center gap-1.5 text-white/80">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-current"
+                  checked={table.private.includes(f.id)}
+                  disabled={!canWrite || busy}
+                  onChange={(e) => onPrivate(e.target.checked ? [...table.private, f.id] : table.private.filter((id) => id !== f.id))}
+                  data-testid={`private-${table.slug}-${f.id}`}
+                />
+                {nameOf(f.name, f.id, lang)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
       {table.open ? (
         <div className="mt-3">
           <button type="button" className="text-xs text-white/70 underline" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid={`examples-${table.slug}`}>

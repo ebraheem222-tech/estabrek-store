@@ -18,14 +18,15 @@ import { setLangForTests } from "../../lib/lang";
 import ApiPage from "./ApiPage";
 
 const closed: TableAccess = { read: "off", create: "off", update: "off", delete: "off" };
-const posts: ApiTable = { id: "t1", slug: "posts", name: { en: "Posts" }, access: { ...closed, read: "public" }, open: true, fields: [{ id: "title", type: "text", name: null, required: true }, { id: "price", type: "number", name: null, required: false }] };
-const notes: ApiTable = { id: "t2", slug: "notes", name: { en: "Notes" }, access: closed, open: false, fields: [{ id: "title", type: "text", name: null, required: true }] };
+const posts: ApiTable = { id: "t1", slug: "posts", name: { en: "Posts" }, access: { ...closed, read: "public" }, open: true, private: [], fields: [{ id: "title", type: "text", name: null, required: true }, { id: "price", type: "number", name: null, required: false }] };
+const notes: ApiTable = { id: "t2", slug: "notes", name: { en: "Notes" }, access: closed, open: false, private: [], fields: [{ id: "title", type: "text", name: null, required: true }] };
 const key = (over: Partial<ApiKey> = {}): ApiKey => ({ id: "k1", name: "ERP sync", prefix: "ek_Ab12c", scopes: { tables: "*", acts: ["read", "create"] }, perMinute: 60, expiresAt: null, revokedAt: null, lastUsedAt: "2026-11-15T11:40:00Z", lastUsedIp: "10.0.0.1", createdBy: "owner@shop.test", createdAt: "2026-11-01T10:00:00Z", updatedAt: "2026-11-01T10:00:00Z", state: "active", ...over });
 const page = (over: Partial<Page> = {}): Page => ({
   base: "/v1/data",
   who: ["off", "key", "public"],
   acts: ["read", "create", "update", "delete"],
-  limits: { name: 80, tables: 200, keys: 100, perMinute: { min: 1, max: 1000, default: 60 }, pageSize: 100, publicWritesPerMinute: 10 },
+  limits: { name: 80, tables: 200, keys: 100, perMinute: { min: 1, max: 1000, default: 60 }, pageSize: 100, publicWritesPerMinute: 10, customerWritesPerMinute: 30 },
+  customerAccounts: true,
   tables: [posts, notes],
   keys: [key(), key({ id: "k2", name: "Old one", prefix: "ek_Zz99y", state: "revoked", revokedAt: "2026-11-10T10:00:00Z", scopes: { tables: ["t2"], acts: ["read"] } })],
   now: Date.parse("2026-11-15T12:00:00Z"),
@@ -49,7 +50,10 @@ beforeEach(() => {
   m.page = page();
   m.getApi.mockImplementation(async () => m.page);
   m.getDocs.mockResolvedValue({ tables: 1, openapi: { openapi: "3.1.0" }, types: "export type Lang = string;\n", openapiPath: "/v1/data/openapi.json" });
-  m.setAccess.mockImplementation(async (id: string, access: TableAccess) => ({ ...(id === "t1" ? posts : notes), access, open: Object.values(access).some((w) => w !== "off") }));
+  m.setAccess.mockImplementation(async (id: string, access: TableAccess, hidden?: string[]) => {
+    const was = (m.page as Page).tables.find((t) => t.id === id) ?? (id === "t1" ? posts : notes);
+    return { ...was, access, open: Object.values(access).some((w) => w !== "off"), private: hidden ?? was.private };
+  });
   m.copied = [];
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (t: string) => void m.copied.push(t) } });
 });
@@ -67,10 +71,13 @@ describe("The API page", () => {
     expect((screen.getByTestId("access-posts-read") as HTMLSelectElement).value).toBe("public");
     // Reading and adding can be for everyone; changing and deleting can't.
     const choices = (id: string) => [...screen.getByTestId(id).querySelectorAll("option")].map((o) => o.textContent);
-    expect(choices("access-notes-read")).toEqual(["Closed", "With a key", "Everyone"]);
-    expect(choices("access-notes-create")).toEqual(["Closed", "With a key", "Everyone"]);
-    expect(choices("access-notes-update")).toEqual(["Closed", "With a key"]);
-    expect(choices("access-notes-delete")).toEqual(["Closed", "With a key"]);
+    expect(choices("access-notes-read")).toEqual(["Closed", "With a key", "The shopper (own rows)", "Everyone"]);
+    expect(choices("access-notes-create")).toEqual(["Closed", "With a key", "The shopper (own rows)", "Everyone"]);
+    expect(choices("access-notes-update")).toEqual(["Closed", "With a key", "The shopper (own rows)"]);
+    expect(choices("access-notes-delete")).toEqual(["Closed", "With a key", "The shopper (own rows)"]);
+    // Private fields are chosen where a table is open; a closed one has nobody to hide them from.
+    expect(screen.getByTestId("private-posts")).toBeTruthy();
+    expect(screen.queryByTestId("private-notes")).toBeNull();
     // What is open to everyone is said; a closed table has no examples to show.
     expect(screen.getByTestId("table-warning-posts").textContent).toContain("Anyone can read every field");
     expect(screen.queryByTestId("table-warning-notes")).toBeNull();
@@ -172,6 +179,30 @@ describe("The API page", () => {
     expect((screen.getByTestId("key-edit-k1") as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId("key-revoke-k1") as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId("key-delete-k2") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  test("a field is made private with a tick, saved at once with the table's access as it is", async () => {
+    show();
+    const price = (await screen.findByTestId("private-posts-price")) as HTMLInputElement;
+    expect(price.checked).toBe(false);
+    fireEvent.click(price);
+    await waitFor(() => expect(m.setAccess).toHaveBeenCalledWith("t1", { read: "public", create: "off", update: "off", delete: "off" }, ["price"]));
+    await waitFor(() => expect((screen.getByTestId("private-posts-price") as HTMLInputElement).checked).toBe(true));
+    // What everyone reads is said with it counted out.
+    expect(screen.getByTestId("table-warning-posts").textContent).toBe("Anyone can read this table's published rows without a key: every field but the 1 kept private.");
+    // And taken back the same way.
+    fireEvent.click(screen.getByTestId("private-posts-price"));
+    await waitFor(() => expect(m.setAccess).toHaveBeenLastCalledWith("t1", { read: "public", create: "off", update: "off", delete: "off" }, []));
+    // An act chosen says nothing of the private fields: the server keeps them.
+    fireEvent.change(screen.getByTestId("access-posts-create"), { target: { value: "customer" } });
+    await waitFor(() => expect(m.setAccess).toHaveBeenLastCalledWith("t1", { read: "public", create: "customer", update: "off", delete: "off" }));
+  });
+
+  test("a table open to the shopper while shopper accounts are off says so", async () => {
+    m.page = page({ customerAccounts: false, tables: [{ ...notes, access: { ...closed, read: "customer", create: "customer" }, open: true }] });
+    show();
+    expect((await screen.findByTestId("table-warning-notes")).textContent).toContain("Shopper accounts are switched off");
+    expect((screen.getByTestId("access-notes-read") as HTMLSelectElement).value).toBe("customer");
   });
 
   test("no tables and no keys yet: it says what to do", async () => {
