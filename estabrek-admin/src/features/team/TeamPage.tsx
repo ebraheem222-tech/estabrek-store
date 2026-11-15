@@ -12,7 +12,9 @@ import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import * as StaffAPI from "../../api/staff.api";
-import type { MemberLink, PermissionGroup, StaffRole, TeamMember } from "../../api/staff.api";
+import type { MemberLink, PermissionGroup, RoleTable, StaffRole, TeamMember } from "../../api/staff.api";
+import { adminLang } from "../../lib/lang";
+import { RoleTables } from "./RoleTables";
 import {
   STATUS_TEXT,
   describeActivity,
@@ -20,6 +22,7 @@ import {
   groupCount,
   memberLinkUrl,
   relativeTime,
+  roleSummary,
   shareMessage,
   togglePermission,
   whatsappUrl,
@@ -502,6 +505,8 @@ function RolesTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const roles = useQuery({ queryKey: ["staff", "roles"], queryFn: StaffAPI.listRoles });
   const groups = useQuery({ queryKey: ["staff", "permissions"], queryFn: StaffAPI.getPermissionGroups, staleTime: Infinity });
+  // The tables a role can be given one by one (asked again each time the tab opens: tables come and go).
+  const tables = useQuery({ queryKey: ["staff", "tables"], queryFn: StaffAPI.getRoleTables });
   const [editing, setEditing] = useState<StaffRole | "new" | null>(null);
   const [deleting, setDeleting] = useState<StaffRole | null>(null);
   const del = useMutation({
@@ -541,7 +546,7 @@ function RolesTab({ canWrite }: { canWrite: boolean }) {
                 <Badge size="sm">{r.members ? `${r.members} عضو` : "بدون أعضاء"}</Badge>
               </div>
               <div className="mt-3 text-xs text-white/60">
-                {r.permissions.length} من {total || "…"} صلاحية
+                {roleSummary(r.permissions, total, adminLang())}
               </div>
               {canWrite ? (
                 <div className="mt-3 flex gap-2">
@@ -558,7 +563,7 @@ function RolesTab({ canWrite }: { canWrite: boolean }) {
         </div>
       )}
 
-      <RoleEditor value={editing} groups={groups.data ?? []} onClose={() => setEditing(null)} />
+      <RoleEditor value={editing} groups={groups.data ?? []} tables={tables.data ?? []} onClose={() => setEditing(null)} />
       <ConfirmDialog
         open={!!deleting}
         title="حذف الدور"
@@ -574,9 +579,9 @@ function RolesTab({ canWrite }: { canWrite: boolean }) {
   );
 }
 
-function RoleEditor({ value, groups, onClose }: { value: StaffRole | "new" | null; groups: PermissionGroup[]; onClose: () => void }) {
+function RoleEditor({ value, groups, tables, onClose }: { value: StaffRole | "new" | null; groups: PermissionGroup[]; tables: RoleTable[]; onClose: () => void }) {
   const qc = useQueryClient();
-  const { hasPermission, isSuperAdmin } = useAuth();
+  const { hasPermission, isSuperAdmin, admin } = useAuth();
   const owner = isSuperAdmin();
   const editing = value && value !== "new" ? value : null;
   const [name, setName] = useState("");
@@ -609,6 +614,8 @@ function RoleEditor({ value, groups, onClose }: { value: StaffRole | "new" | nul
   });
 
   const canGive = (p: string) => owner || hasPermission(p as any);
+  // A single table is given by whoever holds it, or holds every table through the pages permission.
+  const canGiveTable = (p: string) => owner || hasPermission(p.endsWith(":write") ? "pages:write" : "pages:read") || Boolean(admin?.permissions?.includes(p)) || (p.endsWith(":read") && Boolean(admin?.permissions?.includes(p.replace(/:read$/, ":write"))));
 
   return (
     <Modal
@@ -671,6 +678,7 @@ function RoleEditor({ value, groups, onClose }: { value: StaffRole | "new" | nul
             );
           })}
         </div>
+        <RoleTables tables={tables} selected={selected} onChange={setSelected} canGive={canGiveTable} />
         {editing && editing.members ? (
           <p className="text-xs text-white/60">التغيير بيوصل للـ {editing.members} عضو على هالدور خلال ثواني.</p>
         ) : null}

@@ -4,7 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
 import { invalidateAccess } from "../../middleware/access.js";
 import type { AdminAccess } from "../../types/auth.js";
-import { ALL_PERMISSIONS, cleanPermissions } from "./permissions.js";
+import { TABLE_PERMISSION, cleanPermissions, isTablePermission, tableRight } from "./permissions.js";
 import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
 import { adminPasswordLink } from "../outbox/sender/links.js";
 
@@ -28,13 +28,20 @@ function b64url(buf: Buffer) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+/** Has the actor this permission? One table's is also had through every table's (pages:read / pages:write). */
+function holds(actor: AdminAccess, permission: string) {
+  if (actor.permissions.has(permission)) return true;
+  const table = TABLE_PERMISSION.exec(permission);
+  return !!table && tableRight((p) => actor.permissions.has(p), table[1], table[2] as "read" | "write");
+}
+
 function holdsAll(actor: AdminAccess, permissions: string[]) {
-  return actor.owner || permissions.every((p) => actor.permissions.has(p));
+  return actor.owner || permissions.every((p) => holds(actor, p));
 }
 
 function ensureCanGrant(actor: AdminAccess, permissions: string[]) {
   if (!holdsAll(actor, permissions)) {
-    const missing = permissions.filter((p) => !actor.permissions.has(p));
+    const missing = permissions.filter((p) => !holds(actor, p));
     throw new AppError(403, "CANNOT_GRANT", "You can only give permissions you have yourself", { missing });
   }
 }
@@ -142,6 +149,11 @@ async function emailLink(to: { email: string; name: string }, token: string, kin
 
 /* ============================== Roles ============================== */
 
+/** The owner's tables, for the role editor to give one by one. */
+export async function listRoleTables() {
+  return prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, slug: true, name: true } });
+}
+
 export async function listRoles() {
   const roles = await prisma.staffRole.findMany({
     orderBy: { createdAt: "asc" },
@@ -191,7 +203,7 @@ export async function updateRole(
     // Adding needs the actor to hold it; removing something the actor lacks is blocked too
     // (otherwise a member could strip a stronger role they can't see into).
     const before = new Set(cleanPermissions(role.permissions));
-    const touched = ALL_PERMISSIONS.filter((p) => before.has(p) !== next.includes(p));
+    const touched = [...new Set([...before, ...next])].filter((p) => before.has(p) !== next.includes(p));
     ensureCanGrant(actor, touched);
     data.permissions = next;
   }

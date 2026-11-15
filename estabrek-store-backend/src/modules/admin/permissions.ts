@@ -143,10 +143,29 @@ export function isPermission(value: unknown): value is Permission {
   return typeof value === "string" && PERMISSION_SET.has(value);
 }
 
-/** Known keys only, without repeats, in catalogue order. */
-export function cleanPermissions(values: unknown): Permission[] {
-  const wanted = new Set(Array.isArray(values) ? values.filter(isPermission) : []);
-  return ALL_PERMISSIONS.filter((p) => wanted.has(p));
+/**
+ * One of the owner's tables given to a role by itself (E0.5): "data:<table id>:read" lets its
+ * members see that table's rows in the data grid, "data:<table id>:write" change them too. A role
+ * with pages:read / pages:write has every table, as before; a table's fields and its API stay
+ * with those (and with api:write).
+ */
+export const TABLE_PERMISSION = /^data:([a-z0-9]{8,40}):(read|write)$/;
+export const TABLE_PERMISSIONS_MAX = 200;
+export const isTablePermission = (value: unknown): value is string => typeof value === "string" && TABLE_PERMISSION.test(value);
+export const tablePermission = (tableId: string, what: "read" | "write") => `data:${tableId}:${what}`;
+
+/** May the holder of these permissions see (or change) one table's rows? Changing a table includes seeing it. */
+export function tableRight(has: (permission: string) => boolean, tableId: string, what: "read" | "write"): boolean {
+  if (what === "write") return has("pages:write") || has(tablePermission(tableId, "write"));
+  return has("pages:read") || has(tablePermission(tableId, "read")) || has(tablePermission(tableId, "write"));
+}
+
+/** Known keys only, without repeats, in catalogue order; then the tables given one by one. */
+export function cleanPermissions(values: unknown): string[] {
+  const list = Array.isArray(values) ? values : [];
+  const wanted = new Set(list.filter(isPermission));
+  const tables = [...new Set(list.filter(isTablePermission))].sort().slice(0, TABLE_PERMISSIONS_MAX * 2);
+  return [...ALL_PERMISSIONS.filter((p) => wanted.has(p)), ...tables];
 }
 
 /**

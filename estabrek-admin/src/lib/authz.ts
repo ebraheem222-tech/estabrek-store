@@ -39,7 +39,9 @@ export type AdminPermission =
   | "customers:read"
   | "customers:write"
   | "api:read"
-  | "api:write";
+  | "api:write"
+  /** Not one of the server's: "may open the data grid" (every table through pages:read, or tables given one by one). */
+  | "data:tables";
 
 const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "dashboard:read",
@@ -81,6 +83,7 @@ const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "customers:write",
   "api:read",
   "api:write",
+  "data:tables",
 ];
 
 /** Every signed-in member can manage their own account. */
@@ -175,10 +178,23 @@ export function permissionsOf(
 ): AdminPermission[] {
   if (!admin) return [];
   if (admin.owner || admin.role === "SUPERADMIN") return [...ALL_PERMISSIONS];
+  // The data grid opens for whoever has every table, or was given some one by one.
+  const withGrid = (list: AdminPermission[], given: boolean) => (list.includes("pages:read") || given ? Array.from(new Set<AdminPermission>([...list, "data:tables"])) : list.filter((p) => p !== "data:tables"));
   if (Array.isArray(admin.permissions)) {
-    return Array.from(new Set(admin.permissions.filter((p): p is AdminPermission => KNOWN.has(p))));
+    return withGrid(Array.from(new Set(admin.permissions.filter((p): p is AdminPermission => KNOWN.has(p)))), admin.permissions.some((p) => TABLE_PERMISSION.test(p)));
   }
-  return getPermissionsForRole(admin.role ?? null);
+  return withGrid(getPermissionsForRole(admin.role ?? null), false);
+}
+
+/** One of the owner's tables given to a role by itself: "data:<table id>:read" (see its rows) or ":write" (change them too). */
+const TABLE_PERMISSION = /^data:[a-z0-9]{8,40}:(read|write)$/;
+
+/** May this member change one table's rows? Every table through pages:write, or that table given to their role. */
+export function mayWriteTable(admin: { role?: Role | null; owner?: boolean; permissions?: string[] | null } | null | undefined, tableId: string | null | undefined): boolean {
+  if (!admin || !tableId) return false;
+  if (admin.owner || admin.role === "SUPERADMIN") return true;
+  const list = admin.permissions ?? [];
+  return list.includes("pages:write") || list.includes(`data:${tableId}:write`);
 }
 
 export const ALL_ADMIN_PERMISSIONS = ALL_PERMISSIONS;
