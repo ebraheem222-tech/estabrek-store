@@ -162,6 +162,7 @@ import { STAGGER_ORDERS, type StaggerOrder } from "./stagger";
 import { autoNeeded, perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 import { videoPlay } from "./videoPlay";
+import { pictureFxOf } from "../../../shared/pictureFx";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
 
@@ -308,9 +309,11 @@ export const TREE_TRANSFORM_REST =
 /** The look's own variables the editor may preview live in its frame (before saving). */
 export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s", "--pt-x", "--pt-y", "--pt-ovo"] as const;
 
-/** Whether a picture or clip is drawn inside a frame (for a colour layer, an animated layer, a zoom on hover or stars). */
+/** Whether a picture or clip is drawn inside a frame (for a colour layer, an animated layer, a zoom on hover, stars or a live effect). */
 export function framed(n: TreeNode, motion = motionOf(n)): boolean {
   if (n.type !== "image" && n.type !== "video") return false;
+  // A picture's live effect is a canvas over it (pictureFxRun.ts): it needs the frame to sit in.
+  if (n.type === "image" && pictureFxOf(n.props?.glfx)) return true;
   const s = n.style ?? {};
   const pieces = Boolean(n.props?.layers?.before || n.props?.layers?.after || motion?.keys?.parts.before || motion?.keys?.parts.after || motion?.keys?.parts.inner);
   return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom" || pieces || (n.type === "image" && n.props?.sparkle?.points?.length));
@@ -388,6 +391,7 @@ export function treeNeeds(tree: PageTree) {
   eachNode(tree, (n) => {
     if (((n.type === "lottie" || n.type === "rive") && typeof n.props?.src === "string") || (n.type === "section" && n.props?.particles)) media = true;
     if (n.type === "video" && typeof n.props?.src === "string" && videoPlay(n.props).live) media = true;
+    if (n.type === "image" && pictureFxOf(n.props?.glfx)) media = true;
   });
   const smooth = tree.root.props?.smooth === true;
   // Scroll scenes (TreeScenes) and triggers (TreeTriggers), each runtime loaded only then.
