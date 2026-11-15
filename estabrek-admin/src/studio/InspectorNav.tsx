@@ -125,8 +125,10 @@ export function InspectorJump({ watch, sections = false, tabs = true, active, on
   };
   const tools = onSections || onDock;
   if (!groups.length && !query && !tools) return <div ref={bar} hidden data-testid="studio-insp-jump" />;
+  // -top-3: a stuck bar is measured from inside its list's padding (12px), so top-0 left a strip above it where
+  // the cards scrolled by; this puts it flush with the list's top edge.
   return (
-    <div ref={bar} className="sticky top-0 z-[5] -mx-3 -mt-3 mb-3 space-y-1.5 border-b border-white/[0.08] bg-surface-950/95 px-3 py-2 backdrop-blur" data-testid="studio-insp-jump" data-sections={sections ? "" : undefined}>
+    <div ref={bar} className="sticky -top-3 z-[5] -mx-3 -mt-3 mb-3 space-y-1.5 border-b border-white/[0.08] bg-surface-950/95 px-3 py-2 backdrop-blur" data-testid="studio-insp-jump" data-sections={sections ? "" : undefined}>
       <div className="flex items-center gap-1">
         <input
           type="search" value={query} onChange={(e) => setQuery(e.target.value)}

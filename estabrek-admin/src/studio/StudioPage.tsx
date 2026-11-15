@@ -128,6 +128,7 @@ import * as SpeedAPI from "../api/speed.api";
 import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, worldOnOps, type BakedKeys } from "./PhysicsPanels";
 import { CodePanel, FormPanel } from "./FormPanels";
 import { InspectorGroup, InspectorJump, type InspectorGroupId } from "./InspectorNav";
+import { PHONE_QUERY, PHONE_TABS, SHEET_ICON, SHEET_WORD, phoneFrame, phoneSheetTop, pinchStep, type SheetView } from "./phone";
 import { besidePlace, dockPref, frameFor, saveDock, saveSections, sectionsPref, sideOf } from "./beside";
 import { wheelOver } from "./canvasWheel";
 import { ContentPanel } from "./MediaPanels";
@@ -278,6 +279,15 @@ function StudioDocument() {
     return () => m.removeEventListener?.("change", on);
   }, []);
   const beside = dock === "beside" && wide;
+  // A phone (phone.ts): one bar on top, one at the bottom, and a sheet that shows one job at a time.
+  const [phone, setPhone] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches === true);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const m = window.matchMedia(PHONE_QUERY);
+    const on = () => setPhone(m.matches === true);
+    m.addEventListener?.("change", on);
+    return () => m.removeEventListener?.("change", on);
+  }, []);
   // The last press on the canvas: a drag, or a pick (a newly selected element is brought into view only after a pick).
   const lastPress = useRef<{ moved: boolean; at: number; p: Pt | null }>({ moved: false, at: 0, p: null });
   // The view to go back to when nothing is selected any more.
@@ -310,6 +320,9 @@ function StudioDocument() {
   /** When Space last spoke (a held key repeats): pan mode is believed only while it does. */
   const spaceAt = useRef(0);
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
+  // A phone's sheet: which job it shows, and whether it is pulled up to nearly the whole screen.
+  const [sheetView, setSheetView] = useState<SheetView>("layers");
+  const [sheetTall, setSheetTall] = useState(false);
   const [busy, setBusy] = useState(false);
   const [frameKey, setFrameKey] = useState(0);
   const liveView = useRef(false);
@@ -327,6 +340,21 @@ function StudioDocument() {
   const adding = useRef<AddKind | null>(null);
   // The left column: the Add panel or the layers; where a click on the Add panel adds.
   const [leftTab, setLeftTab] = useState<"add" | "layers" | "styles" | "looks">("add");
+  /** A phone's sheet opens on one job. The side tabs follow it: what the inspector shows depends on them. */
+  const openSheet = (view: SheetView) => {
+    if (view === "add" || view === "layers" || view === "looks" || view === "styles") setLeftTab(view);
+    else if (view === "settings" && leftTab === "add") setLeftTab("layers");
+    setSheetView(view);
+    setSheet(true);
+    // What is selected stays in sight above the sheet: when the sheet would cover it, the page scrolls it up,
+    // to a little under the middle of what the sheet leaves (clear of a header the shop keeps at its top).
+    const box = (view === "settings" || view === "looks") && selected && layout ? shapeOf(selected)?.box : null;
+    if (box) {
+      const free = phoneSheetTop(window.innerHeight) - (canvasRef.current?.getBoundingClientRect().top ?? 0);
+      const dy = (box.y - frameBox.y - Math.min(120, free * 0.45)) / zoom;
+      if (box.y + Math.min(box.h, 96) > free && dy > 1) send({ type: "scrollBy", dx: 0, dy });
+    }
+  };
   // The ready look last put on the selected element from the Looks tab (marked there).
   const [lastLook, setLastLook] = useState<{ node: string; id: string } | null>(null);
   // The shared style open in the styles tab (its panels show beside the page instead of an element's).
@@ -431,7 +459,10 @@ function StudioDocument() {
   const sectionOf = (sid: string) => working?.sections.find((s) => s.id === sid);
   const heroSection = working?.sections.find((s) => s.type === "HERO" && s.isVisible) ?? working?.sections.find((s) => s.type === "HERO");
   const sectionTypes = useMemo(() => new Map((pageQ.data?.sections ?? []).map((s) => [s.id, String(s.type)])), [pageQ.data]);
-  const dev = DEVICES[device];
+  // On a phone the phone frame is fitted to the canvas by its width, and is as tall as the canvas shows: the page
+  // scrolls inside it and none of it hides under the bars (phone.ts).
+  const phoneFit = phone && device === "phone" ? phoneFrame(canvas, DEVICES.phone.w) : null;
+  const dev: { w: number; h: number } = phoneFit ? { w: DEVICES.phone.w, h: phoneFit.h } : DEVICES[device];
   const origin = shopOrigin();
 
   // A ticket for the shop's frame (again when the language changes after it got old).
@@ -648,10 +679,16 @@ function StudioDocument() {
     cancelAnimationFrame(glide.current);
     homeView.current = null;
     if (!canvas.w) return;
+    if (phoneFit) {
+      setZoom(phoneFit.zoom);
+      setPan({ x: Math.round((canvas.w - dev.w * phoneFit.zoom) / 2), y: 8 });
+      return;
+    }
     const z = Math.min(1, (canvas.w - 48) / dev.w, (canvas.h - 48) / dev.h);
     setZoom(z);
     setPan({ x: Math.round((canvas.w - dev.w * z) / 2), y: Math.round(Math.max(24, (canvas.h - dev.h * z) / 2)) });
-  }, [canvas.w, canvas.h, dev.w, dev.h]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvas.w, canvas.h, dev.w, dev.h, phoneFit?.zoom]);
   useEffect(() => fit(), [fit]);
 
   const measured = useMemo(() => (index && layout ? shapesOf(index, layout, pan, zoom) : { shapes: [] as Shape[], extras: new Map<string, Extra>(), up: new Map<string, string | null>() }), [index, layout, pan, zoom]);
@@ -1192,6 +1229,60 @@ function StudioDocument() {
       if (shift && target && isFree(index.nodes.get(target)?.node.type)) return toggleChosen(target);
       select(target);
     });
+  };
+
+  // Two fingers on the canvas zoom it and move it (phone.ts pinchStep). The first finger's press is given up as
+  // the second comes down, and nothing is picked when they lift.
+  const fingers = useRef(new Map<number, Pt>());
+  const pinching = useRef(false);
+  const viewNow = useRef({ zoom, pan });
+  viewNow.current = { zoom, pan };
+  const fingerDown = (e: ReactPointerEvent) => {
+    if (e.pointerType === "touch") {
+      // The first finger down starts afresh: a lift that never arrived can't leave the canvas thinking it is held.
+      if (e.isPrimary) { fingers.current.clear(); pinching.current = false; }
+      fingers.current.set(e.pointerId, local(e));
+      if (fingers.current.size >= 2) {
+        if (!pinching.current) {
+          pinching.current = true;
+          pointSelection.current.cancel();
+          cancelAnimationFrame(glide.current);
+          homeView.current = null;
+          if (down.current) cancelDrag();
+        }
+        return;
+      }
+    }
+    onPointerDown(e);
+  };
+  const fingerMove = (e: ReactPointerEvent) => {
+    if (e.pointerType === "touch" && fingers.current.has(e.pointerId)) {
+      const ids = [...fingers.current.keys()].slice(0, 2);
+      if (pinching.current && ids.length === 2 && ids.includes(e.pointerId)) {
+        const was = [fingers.current.get(ids[0])!, fingers.current.get(ids[1])!] as const;
+        fingers.current.set(e.pointerId, local(e));
+        const step = pinchStep(was, [fingers.current.get(ids[0])!, fingers.current.get(ids[1])!]);
+        const v = viewNow.current;
+        const next = zoomAround({ x: v.pan.x + step.move.x, y: v.pan.y + step.move.y }, v.zoom, step.at, v.zoom * step.scale);
+        // Two moves can come between two draws (one a finger): each starts from the last one's view.
+        viewNow.current = next;
+        setZoom(next.zoom);
+        setPan(next.pan);
+        return;
+      }
+      fingers.current.set(e.pointerId, local(e));
+      // One finger left of the two: it does nothing more until it lifts.
+      if (pinching.current) return;
+    }
+    onPointerMove(e);
+  };
+  /** A finger lifted (or lost): true when it was part of a pinch, which ends when the last one lifts. */
+  const fingerGone = (e: ReactPointerEvent) => {
+    if (e.pointerType !== "touch") return false;
+    fingers.current.delete(e.pointerId);
+    if (!pinching.current) return false;
+    if (!fingers.current.size) pinching.current = false;
+    return true;
   };
 
   // Ctrl/⌘ + wheel zooms around the cursor; the wheel alone scrolls the shop (or moves the canvas outside the frame).
@@ -1748,6 +1839,8 @@ function StudioDocument() {
     if (!(await run(label, ops)) || then === undefined) return;
     setSelected(then);
     setMore([]);
+    // On a phone, what was just added is selected: the Add sheet gets out of its way, so it shows.
+    if (phone && then && sheetView === "add") setSheet(false);
     revealNext.current = then;
     if (then) send({ type: "reveal", nodeId: then });
   };
@@ -3738,6 +3831,191 @@ function StudioDocument() {
     </div>
   );
 
+  /* ------------------------------------------------- a phone (phone.ts): one bar on top, one below, one sheet per job */
+  const toggleDeep = () => {
+    pointSelection.current.cancel();
+    const next = !deepSelection;
+    setDeepSelection(next);
+    try { localStorage.setItem("studio.deepSelection", next ? "on" : "off"); } catch {}
+    if (!next && selExtra?.kind === "detail") select(selExtra.owner.startsWith("r:") ? `region:${selExtra.owner.slice(2)}` : selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? null);
+  };
+  const openPageMotion = () => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); };
+  const phoneHead = () => (
+    <header className="flex items-center gap-1 border-b border-white/[0.08] px-1.5 py-1" data-testid="studio-phone-head">
+      <Link to="/admin/pages" className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-base text-white/70 hover:bg-white/[0.06]" aria-label={tr("الصفحات", "Pages")}>
+        <span className="inline-block ltr:-scale-x-100">→</span>
+      </Link>
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate text-sm font-semibold">{pageQ.data?.name ?? "…"}</h1>
+        <span className={`block truncate text-[10px] leading-4 ${draft ? "text-amber-200" : "text-white/40"}`} data-testid="studio-draft-state">
+          {busy ? tr("عم نحفظ…", "Saving…") : draft ? tr("مسودة محفوظة، مش منشورة", "Draft saved, not published") : tr("متل المنشور", "Same as published")}
+        </span>
+      </div>
+      {editing ? (
+        // Words are being written in the page: this keeps them and ends the writing (the page is told to, as it is
+        // when something else is picked). A phone has no Esc or Enter to count on, and its keyboard may cover
+        // the bar at the bottom.
+        <button type="button" onClick={() => send({ type: "stopEdit" })} className="h-10 shrink-0 rounded-lg bg-accent-500 px-4 text-sm font-medium text-white" data-testid="studio-write-done">✓ {say("تم|Done|סיום")}</button>
+      ) : (
+      <>
+      <button type="button" onClick={() => void undoLast()} disabled={!canUndo || busy} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-lg text-white/80 hover:bg-white/[0.06] disabled:opacity-30" aria-label={tr("تراجع", "Undo")} data-testid="studio-undo">↶</button>
+      <button type="button" onClick={() => void redoLast()} disabled={!canRedo || busy} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-lg text-white/80 hover:bg-white/[0.06] disabled:opacity-30" aria-label={tr("إعادة", "Redo")} data-testid="studio-redo">↷</button>
+      <button type="button" onClick={() => void askPublish()} disabled={!canPublish || !draft || busy || labShown === "waiting"} className="h-10 shrink-0 rounded-lg bg-accent-500 px-3 text-sm font-medium text-white disabled:opacity-30" data-testid="studio-publish">{labShown === "waiting" ? "⏱" : tr("نشر", "Publish")}</button>
+      <button type="button" onClick={() => (sheet && sheetView === "more" ? setSheet(false) : openSheet("more"))} aria-expanded={sheet && sheetView === "more"} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-xl text-white/80 hover:bg-white/[0.06]" aria-label={say(SHEET_WORD.more)} data-testid="studio-more-toggle">⋯</button>
+      </>
+      )}
+    </header>
+  );
+  const moreRow = "flex flex-wrap items-center gap-1.5";
+  const moreBtn = (on = false) => `min-h-[2.5rem] rounded-lg px-3 text-sm ${on ? "bg-accent-500/25 text-white" : "bg-white/[0.06] text-white/80"} disabled:opacity-30`;
+  const moreTitle = (words: string) => <h3 className="mb-1.5 text-[11px] font-semibold text-white/45">{words}</h3>;
+  /** What the top bar has on a computer and a phone has no room for. */
+  const moreSheet = () => (
+    <div className="space-y-4" data-testid="studio-more">
+      {pageQ.data && pageQ.data.kind !== "block" ? <div className="-mx-3 -mt-3 border-b border-white/[0.08]"><PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /></div> : null}
+      {pageQ.data?.kind === "block" ? (
+        <p className="rounded-lg bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100" data-testid="studio-block-banner">
+          ⧉ {tr("عم تعدّل بلوك محفوظ: نشره بيغيّر كل صفحة مربوط فيها.", "Editing a saved block: publishing it changes every page that links it.")}
+          {fromPage ? <> <a href={`/studio/${encodeURIComponent(fromPage)}`} className="text-accent-300 underline">{tr("رجوع للصفحة", "Back to the page")}</a></> : null}
+        </p>
+      ) : null}
+      {ownedDesign?.mode === "cms" ? (
+        <section>
+          {moreTitle(tr("أجزاء التصميم", "Design documents"))}
+          <nav className={moreRow} aria-label={tr("أجزاء التصميم", "Design documents")}>
+            {([["homeId", tr("الصفحة الرئيسية", "Home page")], ["headerId", tr("الهيدر", "Header")], ["footerId", tr("الفوتر", "Footer")]] as const).map(([key, name]) => ownedDesign[key] ? <Link key={key} to={`/studio/${ownedDesign[key]}`} aria-current={id === ownedDesign[key] ? "page" : undefined} className={`grid place-items-center ${moreBtn(id === ownedDesign[key])}`}>{name}</Link> : null)}
+            <Link to="/setup" className={`grid place-items-center ${moreBtn()}`}>{tr("اختيار قالب آخر", "Choose another template")}</Link>
+          </nav>
+        </section>
+      ) : null}
+      <section>
+        {moreTitle(tr("حجم الشاشة", "Screen size"))}
+        <div className={moreRow} role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
+          {(Object.keys(DEVICES) as Device[]).map((k) => <button key={k} type="button" disabled={busy} onClick={() => setDevice(k)} aria-pressed={device === k} className={moreBtn(device === k)} data-testid="studio-device" data-device={k}>{DEVICES[k].label()}</button>)}
+        </div>
+      </section>
+      {langs.enabled.length > 1 ? (
+        <section>
+          {moreTitle(tr("لغة الصفحة", "Page language"))}
+          <div className={moreRow} role="group" aria-label={tr("لغة الصفحة", "Page language")}>
+            {langs.enabled.map((l) => <button key={l} type="button" disabled={busy} onClick={() => setLang(l)} aria-pressed={shopLang === l} className={moreBtn(shopLang === l)}>{LANG_NAME[l]}</button>)}
+          </div>
+        </section>
+      ) : null}
+      <section>
+        {moreTitle(say("العرض (وبإصبعين عالصفحة: تكبير وتحريك)|The view (two fingers on the page zoom and move it)|התצוגה (שתי אצבעות על הדף: זום והזזה)"))}
+        <div className={moreRow} dir="ltr">
+          <button type="button" disabled={busy || !layout} onClick={() => void reload()} className={moreBtn()} aria-label={tr("تحديث المعاينة", "Refresh preview")} data-testid="studio-refresh-view">↻</button>
+          <button type="button" onClick={() => zoomBy(1 / 1.25)} className={moreBtn()} aria-label={tr("تصغير", "Zoom out")}>−</button>
+          <button type="button" onClick={fit} className={moreBtn()} data-testid="studio-zoom">{Math.round(zoom * 100)}% · {say("ملاءمة|Fit|התאמה")}</button>
+          <button type="button" onClick={() => zoomBy(1.25)} className={moreBtn()} aria-label={tr("تكبير", "Zoom in")}>+</button>
+        </div>
+      </section>
+      <section>
+        {moreTitle(tr("طريقة التحريك", "Positioning mode"))}
+        <div className={moreRow}>
+          {([["free", tr("تحريك حر", "Free move")], ["flow", tr("ترتيب", "Flow layout")]] as const).map(([mode, name]) => <button key={mode} type="button" disabled={busy} aria-pressed={canvasMode === mode} className={moreBtn(canvasMode === mode)} data-testid={`studio-canvas-mode-${mode}`} onClick={() => { cancelDrag(); setCanvasMode(mode); saveCanvasMode(mode); }}>{name}</button>)}
+          <DragSettings prefs={dragPrefs} onChange={changeDragPrefs} />
+        </div>
+      </section>
+      <section>
+        {moreTitle(say("الصفحة|The page|הדף"))}
+        <div className={moreRow}>
+          <button type="button" onClick={toggleLive} aria-pressed={motionLive} className={moreBtn(motionLive)} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
+          <button type="button" disabled={!index} onClick={() => { openPageMotion(); openSheet("settings"); }} className={moreBtn()} data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
+          <button type="button" onClick={() => { setThemeOpen((v) => !v); openSheet("settings"); }} aria-pressed={themeOpen} className={moreBtn(themeOpen)} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
+          <button type="button" aria-pressed={deepSelection} className={moreBtn(deepSelection)} data-testid="studio-deep-selection" onClick={toggleDeep}>{tr("تحديد داخلي", "Deep selection")}</button>
+          <div className="relative">
+            <button type="button" onClick={() => setHistoryOpen((v) => !v)} disabled={(!canUndo && !canRedo) || busy} aria-expanded={historyOpen} className={moreBtn(historyOpen)} data-testid="studio-history-toggle">☰ {tr("السجل", "History")}</button>
+            {historyOpen ? <HistoryList done={history.current.done.map((x) => x.label)} undone={history.current.undone.map((x) => x.label)} busy={busy} onBack={(n) => void stepHistory(-n)} onForward={(n) => void stepHistory(n)} onClose={() => setHistoryOpen(false)} /> : null}
+          </div>
+        </div>
+      </section>
+      <section>
+        {moreTitle(say("المسودة والمتجر|The draft and the store|הטיוטה והחנות"))}
+        <div className={moreRow}>
+          {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className={moreBtn()} data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
+          {origin && pageQ.data ? <a href={`${origin}${shopLang === langs.default ? "" : `/${shopLang}`}${pageQ.data.slug === "/" && shopLang !== langs.default ? "" : pageQ.data.slug}`} target="_blank" rel="noreferrer" className={`grid place-items-center text-accent-300 ${moreBtn()}`}>{tr("فتح بالمتجر", "Open in the store")} ↗</a> : null}
+        </div>
+      </section>
+    </div>
+  );
+  /** The sheet over the canvas's lower part: one job at a time, above the bottom bar (which stays in reach). */
+  const phoneSheet = () => {
+    if (!sheet || !index) return null;
+    return (
+      <div
+        className="fixed inset-x-0 z-50 flex flex-col rounded-t-2xl border-t border-white/[0.1] bg-surface-950 shadow-2xl"
+        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))", height: sheetTall ? "calc(100dvh - 7.25rem - env(safe-area-inset-bottom, 0px))" : "56dvh" }}
+        data-testid="studio-sheet" data-view={sheetView} data-tall={sheetTall ? "" : undefined}
+      >
+        <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.08] ps-3 pe-1">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold" data-testid="studio-sheet-title"><span aria-hidden="true">{SHEET_ICON[sheetView]}</span> {say(SHEET_WORD[sheetView])}</span>
+          <button type="button" onClick={() => setSheetTall((v) => !v)} aria-pressed={sheetTall} className="grid h-11 w-11 place-items-center rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={sheetTall ? say("صغّر اللوحة|Make the sheet smaller|הקטנת הלוח") : say("كبّر اللوحة|Make the sheet bigger|הגדלת הלוח")} data-testid="studio-sheet-size">{sheetTall ? "▾" : "▴"}</button>
+          <button type="button" onClick={() => setSheet(false)} className="grid h-11 w-11 place-items-center rounded-lg text-xl text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
+        </div>
+        {/* Keyed by the job: each one starts from its top. */}
+        <div key={sheetView} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 text-sm" data-testid="studio-sheet-body">
+          {sheetView === "settings" ? (
+            <>
+              <InspectorJump watch={`${selected ?? ""}:${focus?.id ?? ""}`} sections tabs active={inspGroup} onActive={setInspGroup} onGroups={setInspGroups} />
+              {inspector()}
+            </>
+          ) : sheetView === "add" ? (
+            addPanel()
+          ) : sheetView === "looks" ? (
+            looksPanel()
+          ) : sheetView === "styles" ? (
+            <>
+              {siteOpen ? <div className="mb-3 border-b border-white/[0.08] pb-3">{siteInspector()}</div> : null}
+              <VariablesPanel api={dt} canPublish={canPublish} />
+              <div className="my-3 border-t border-white/[0.08]" />
+              <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
+            </>
+          ) : sheetView === "more" ? (
+            moreSheet()
+          ) : focus && nodeOf(focus.id) ? (
+            focusSide()
+          ) : (
+            layersList((sid) => {
+              select(sid, true);
+              setSheet(false);
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
+  /** Under the canvas: what is selected (or how to select), and the five jobs. Its height never changes, so the frame above it doesn't either. */
+  const phoneBar = () => (
+    <nav className="shrink-0 border-t border-white/[0.08] bg-surface-950 pb-[env(safe-area-inset-bottom)]" aria-label={say(SHEET_WORD.more)} data-testid="studio-phone-bar">
+      <div className="flex h-11 items-center gap-1.5 px-2 text-xs" data-testid="studio-bar">
+        {selected && index ? (
+          <>
+            <span className="min-w-0 flex-1 truncate font-medium" data-testid="studio-bar-name">{label(selected)}</span>
+            {/* Whatever has words written in place (a finger has no double-click to count on): a heading, a text, a button, an inner part's words, an old section's field. */}
+            {partContentOf(selected) || WRITABLE.has(index.nodes.get(selected)?.node.type ?? "") || (selExtra?.kind === "slot" && selExtra.edit !== "media" && selExtra.edit !== "list") ? <button type="button" onClick={() => startText(selected)} className="h-9 shrink-0 rounded-lg bg-accent-500 px-3 text-white" data-testid="studio-bar-edit">{tr("كتابة", "Write")}</button> : null}
+            {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="h-9 shrink-0 rounded-lg bg-white/[0.06] px-3" data-testid="studio-bar-parent">↑ {say("الأب|Parent|הורה")}</button> : null}
+            <button type="button" onClick={() => select(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/[0.06]" aria-label={say("إلغاء التحديد|Deselect|ביטול הבחירה")} data-testid="studio-bar-clear">✕</button>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-white/45" data-testid="studio-bar-hint">{say("اكبس على أي شي بالصفحة لتختاره. إصبع واحد بيحرّك الصفحة، وإصبعين بيكبّروها.|Tap anything on the page to select it. One finger scrolls the page, two zoom it.|הקישו על כל דבר בדף כדי לבחור. אצבע אחת גוללת, שתיים מגדילות.")}</span>
+        )}
+      </div>
+      <div className="grid grid-cols-5">
+        {PHONE_TABS.map((v) => {
+          const on = sheet && sheetView === v;
+          return (
+            <button key={v} type="button" aria-pressed={on} onClick={() => (on ? setSheet(false) : openSheet(v))} className={`flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${on ? "text-white" : "text-white/65"}`} data-testid={`studio-phone-tab-${v}`}>
+              <span className={`grid h-7 w-12 place-items-center rounded-full text-base ${on ? "bg-accent-500/30" : ""}`} aria-hidden="true">{SHEET_ICON[v]}</span>
+              {say(SHEET_WORD[v])}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+
   if (treeQ.isError || pageQ.isError) {
     return <Shell><p className="p-8 text-sm text-red-300">{tr("ما انفتحت الصفحة", "The page didn't open")}: {getApiErrorMessage(treeQ.error ?? pageQ.error)}</p></Shell>;
   }
@@ -3745,6 +4023,7 @@ function StudioDocument() {
   return (
     <StoreKitContext.Provider value={storeKit}><TokensContext.Provider value={dt.tokens}>
     <Shell busy={busy}>
+      {phone ? phoneHead() : (
       <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
         <Link to="/admin/pages" className="rounded-lg px-2 py-1 text-xs text-white/60 hover:bg-white/[0.06] hover:text-white">
           <span className="inline-block ltr:-scale-x-100">→</span> {tr("الصفحات", "Pages")}
@@ -3825,8 +4104,8 @@ function StudioDocument() {
             ) : null}
           </div>
           <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
-          <button type="button" disabled={!index} onClick={() => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); }} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
-          <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={() => { pointSelection.current.cancel(); const next = !deepSelection; setDeepSelection(next); try { localStorage.setItem("studio.deepSelection", next ? "on" : "off"); } catch {} if (!next && selExtra?.kind === "detail") select(selExtra.owner.startsWith("r:") ? `region:${selExtra.owner.slice(2)}` : selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? null); }}>{tr("تحديد داخلي", "Deep selection")}</button>
+          <button type="button" disabled={!index} onClick={openPageMotion} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
+          <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={toggleDeep}>{tr("تحديد داخلي", "Deep selection")}</button>
           <button type="button" className="h-7 rounded-lg px-2 text-xs hover:bg-white/[0.08]" title={say("اختصارات المحرر (?)|Editor shortcuts (?)|קיצורי העורך (?)")} aria-label={say("اختصارات المحرر|Editor shortcuts|קיצורי העורך")} onClick={() => setKeysOpen(true)} data-testid="studio-shortcuts-open">⌨</button>
           <button type="button" disabled={!layout} className="h-7 rounded-lg px-2 text-xs" data-testid="studio-pick-objects" onClick={event => { const p = last.current?.p ?? (selShape ? { x: selShape.box.x + selShape.box.w / 2, y: selShape.box.y + selShape.box.h / 2 } : { x: frameBox.x + frameBox.w / 2, y: frameBox.y + 60 }); const r = event.currentTarget.getBoundingClientRect(); pickPoint(p, candidates => setMenu({ x: r.left, y: r.bottom + 4, candidates })); }}>{tr("اختيار عنصر", "Choose object")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
@@ -3839,8 +4118,9 @@ function StudioDocument() {
           </a>
         ) : null}
       </header>
+      )}
 
-      {pageQ.data ? <PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /> : null}
+      {pageQ.data && !phone ? <PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /> : null}
       {commerceIssues.length ? <div role="alert" className="shrink-0 border-b border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100" data-testid="studio-commerce-issues">
         <p>{tr("الصفحة بتحتاج العناصر الأساسية ظاهرة على كل أحجام الشاشات، ومرة واحدة لكل عنصر.", "Required commerce objects must be visible at every screen size, once each.")}</p>
         <ul>{commerceIssues.map((issue, index) => <li key={index}>{typeLabel(issue.nodeType)}: {issue.code === "DUPLICATE_COMMERCE_OBJECT" ? tr("مكرر؛ احذف النسخة الإضافية", "Duplicated; remove the extra copy") : tr("أضفه أو أظهره من قائمة الإضافة وإعدادات الظهور", "Add it from Add, or make it visible in display settings")}</li>)}</ul>
@@ -3854,6 +4134,7 @@ function StudioDocument() {
       ) : null}
 
       <div className="flex min-h-0 flex-1">
+        {phone ? null : (
         <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : leftTab === "looks" ? tr("الأشكال", "Looks") : tr("الطبقات", "Layers")}>
           {focus && index && nodeOf(focus.id) ? (
             focusSide()
@@ -3879,13 +4160,14 @@ function StudioDocument() {
           </>
           )}
         </aside>
+        )}
 
         <main
           ref={canvasRef}
           tabIndex={-1}
           className="relative outline-none min-w-0 flex-1 touch-none select-none overflow-hidden bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:16px_16px]"
           style={{ cursor: panMode ? "grab" : "default" }}
-          data-testid="studio-canvas"
+          data-testid="studio-canvas" data-zoom={Math.round(zoom * 100)}
         >
           <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, width: dev.w, height: dev.h }}>
             {src ? (
@@ -3907,11 +4189,11 @@ function StudioDocument() {
                 }
               }
             }}
-            onPointerMove={onPointerMove}
-            onPointerDown={onPointerDown}
-            onPointerUp={onPointerUp}
-            onPointerCancel={(event) => { if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
-            onLostPointerCapture={(event) => { if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
+            onPointerMove={fingerMove}
+            onPointerDown={fingerDown}
+            onPointerUp={(event) => { if (!fingerGone(event)) onPointerUp(event); }}
+            onPointerCancel={(event) => { fingerGone(event); if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
+            onLostPointerCapture={(event) => { fingerGone(event); if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
             onPointerLeave={() => { last.current = last.current ? { ...last.current, gone: true } : null; setHovered(filter.current.push(performance.now() + 1000, null)); }}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -4031,8 +4313,8 @@ function StudioDocument() {
                           onClick={() => {
                             select(item);
                             setAddWhere(where);
-                            setLeftTab("add");
-                            if (window.matchMedia("(max-width: 767.98px)").matches) setSheet(true);
+                            if (phone) openSheet("add");
+                            else setLeftTab("add");
                           }}
                           data-testid={`studio-add-${where}`}
                         >
@@ -4258,8 +4540,8 @@ function StudioDocument() {
           ) : null}
         </main>
 
-        {sheet && index ? (
-          // Phones: the layers and what's selected; tablets: what's selected (the layers have their own column).
+        {phone ? phoneSheet() : sheet && index ? (
+          // Tablets: what's selected (the layers have their own column). A phone has its own sheet (phoneSheet).
           <div className="fixed inset-x-0 bottom-0 z-50 max-h-[55vh] overflow-y-auto rounded-t-2xl border-t border-white/[0.1] bg-surface-950 p-2 shadow-2xl lg:hidden" data-testid="studio-sheet">
             <div className="flex justify-end">
               <button type="button" onClick={() => setSheet(false)} className="h-7 w-7 rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
@@ -4296,6 +4578,7 @@ function StudioDocument() {
             <span aria-hidden="true">⚙</span>
           </button>
         ) : null}
+        {phone ? null : (
         <aside
           className={besidePlaced ? "fixed z-30 hidden w-72 overflow-y-auto rounded-2xl border border-white/[0.12] bg-surface-950/95 p-3 text-sm shadow-2xl backdrop-blur lg:block" : "hidden w-64 shrink-0 overflow-y-auto border-s border-white/[0.08] p-3 text-sm lg:block"}
           style={besidePlaced ? {
@@ -4317,10 +4600,11 @@ function StudioDocument() {
           />
           {inspector()}
         </aside>
+        )}
       </div>
 
-      {/* Smaller screens: what's selected, under the canvas. */}
-      {selected && index ? (
+      {/* Smaller screens: what's selected, under the canvas (a phone: its own bar, with the five jobs). */}
+      {phone ? phoneBar() : selected && index ? (
         <div className="flex items-center gap-2 border-t border-white/[0.08] px-3 py-2 text-xs lg:hidden" data-testid="studio-bar">
           <span className="min-w-0 flex-1 truncate">{label(selected)}</span>
           {selExtra?.kind === "slot" && selExtra.edit !== "media" ? <button type="button" onClick={() => startText(selected)} className="rounded-lg bg-accent-500 px-2 py-1 text-white" data-testid="studio-bar-edit">{tr("كتابة", "Write")}</button> : null}
