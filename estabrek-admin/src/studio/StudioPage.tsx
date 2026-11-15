@@ -2919,11 +2919,14 @@ function StudioDocument() {
     if (go.kind === "focus") {
       if (openFocus(selFree.id)) showCard(go.card);
     } else if (go.kind === "videoEditor") {
-      if (openFocus(selFree.id)) setVideoEditor(true);
+      // The video editor takes the whole window: on a phone the sheet it was opened from gets out of its way.
+      if (openFocus(selFree.id)) { setVideoEditor(true); if (phone) setSheet(false); }
     } else if (go.kind === "group") {
       goGroup(go.group, go.card);
     } else if (go.kind === "variables") {
-      setLeftTab("styles");
+      // On a phone the styles are a sheet of their own.
+      if (phone) openSheet("styles");
+      else setLeftTab("styles");
       showCard("studio-variables");
     } else if (go.kind === "worldOn") {
       const host = nodeOf(go.hostId);

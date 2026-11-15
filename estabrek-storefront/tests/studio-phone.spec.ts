@@ -263,3 +263,21 @@ test("a phone held sideways gets the phone's layout too, and a pull at the page'
   expect(sheet.y + sheet.height).toBeLessThanOrEqual((await rect(page, "studio-phone-tab-layers")).y + 1);
   await context.close();
 });
+
+test("a tool that takes the whole window (the video editor) is not left under the sheet it was opened from", async ({ browser }) => {
+  test.setTimeout(180000);
+  const context = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto(url("&video"));
+  await expect(page.getByTestId("studio-phone-bar")).toBeVisible({ timeout: 90000 });
+  await expect(page.getByTestId("studio-waiting")).toHaveCount(0, { timeout: 90000 });
+  await page.getByTestId("studio-phone-tab-layers").tap();
+  await page.locator('[data-testid="studio-layer"][data-node="clip"]').tap();
+  await page.getByTestId("studio-phone-tab-settings").tap();
+  const tool = page.locator('[data-testid="studio-tool"][data-tool="video-editor"]');
+  await expect(tool).toBeVisible();
+  await tool.tap();
+  await expect(page.getByTestId("studio-video-editor")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId("studio-sheet")).toHaveCount(0);
+  await context.close();
+});
