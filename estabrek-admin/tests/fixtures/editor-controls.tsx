@@ -357,6 +357,20 @@ api.defaults.adapter = async (config) => {
     }
     throw new Error(`Unexpected shared-document request: ${method} ${path}`);
   }
+  // The words helper: the store's switch (off with ?aiOff), and answers made of what was asked (kept for the specs).
+  if (path === "/admin/ai-pages/status" && method === "GET") return response(config, { pageWriter: !new URLSearchParams(location.search).has("aiOff") });
+  if (path === "/admin/ai-pages/words" && method === "POST") {
+    ((window as unknown as { __aiAsked?: unknown[] }).__aiAsked ??= []).push(clone(body));
+    const said = String(body.text ?? "");
+    const options = body.action === "write" ? [`${body.about}: made for you`, `Meet ${body.about}`, `${body.about}, your way`]
+      : body.action === "translate" ? [`[${body.to}] ${said}`]
+        : [`${said} (${body.action} 1)`, `${said} (${body.action} 2)`, `${said} (${body.action} 3)`];
+    return response(config, { options });
+  }
+  if (path === "/admin/ai-pages/alt" && method === "POST") {
+    ((window as unknown as { __aiAsked?: unknown[] }).__aiAsked ??= []).push(clone(body));
+    return response(config, { alt: "A red disc beside a navy one on a pale ground" });
+  }
   // The design variables: the draft lives here, and the preview gets it like the API sends it.
   if (path === "/admin/collections" && method === "GET") return response(config, fixtureCollections);
   if (path === "/admin/pages/components" && method === "GET") return response(config, components.map(componentInfo));

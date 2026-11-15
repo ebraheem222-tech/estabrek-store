@@ -13,6 +13,7 @@ import { aiEditImage, aiJson, cacheKey, cached, clip } from "./ai.client.js";
 import { stylePieces } from "../razan/styleQuiz.service.js";
 import { identityOf, storeBrief, storeName, type Audience, type Industry } from "../identity/identity.js";
 import { mainLanguage, type ContentLang } from "../../lib/translations.js";
+import { cleanAlt, cleanOptions, pageWordsProblem, pageWordsPrompt, pictureAltPrompt, type PageWordsInput } from "./pageWords.js";
 
 const money = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100;
 
@@ -439,4 +440,27 @@ JSON: {"texts": {"<same key>": "<translation>"}}`,
     texts[k] = t.slice(0, Math.max(60, v.length * 3));
   }
   return { texts };
+}
+
+/* ---------------- The page editor's words (pageWords.ts) ---------------- */
+
+/** A few options for an element's words in the page editor; the owner picks one there, nothing is saved here. */
+export async function pageWords(input: PageWordsInput): Promise<{ options: string[] }> {
+  const problem = pageWordsProblem(input);
+  if (problem) throw new AppError(400, "NOTHING_TO_WRITE", problem);
+  const { brief, audience } = await shop();
+  const lang = input.action === "translate" ? input.to ?? input.lang : input.lang;
+  const raw = await aiJson<unknown>("pageWriter", pageWordsPrompt(input, brief, lang === "en" ? "" : addressing(audience)));
+  const options = cleanOptions(raw, input);
+  if (!options.length) throw new AppError(502, "AI_EMPTY", "The AI gave no words, try again");
+  return { options };
+}
+
+/** A picture's description for its alt text, from the picture itself (an address the provider can open). */
+export async function pictureAlt(input: { imageUrl: string; lang: ContentLang }): Promise<{ alt: string }> {
+  const { brief } = await shop();
+  const raw = await aiJson<unknown>("pageWriter", { ...pictureAltPrompt(input.lang, brief), images: [input.imageUrl] });
+  const alt = cleanAlt(raw);
+  if (!alt) throw new AppError(502, "AI_EMPTY", "The AI gave no description, try again");
+  return { alt };
 }

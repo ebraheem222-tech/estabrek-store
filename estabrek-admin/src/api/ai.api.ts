@@ -1,7 +1,7 @@
 // AI features (off until OPENAI_API_KEY is on the server; each has its own switch).
 import { api } from "./http";
 
-export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "adminAsk", "replySuggest", "photoStudio", "orderFlags", "translate"] as const;
+export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "adminAsk", "replySuggest", "photoStudio", "orderFlags", "translate", "pageWriter"] as const;
 export type AiFeature = (typeof AI_FEATURE_KEYS)[number];
 export type AiSettings = Record<AiFeature, boolean> & { dailyLimit: number };
 
@@ -37,4 +37,19 @@ export async function replyIdeas(orderId: string, message?: string) {
 }
 export async function askShop(question: string) {
   return (await api.post("/admin/ai-ask", { question }, { timeout: 60_000 })).data as { answer: string; figures: Array<{ label: string; value: string | number }> };
+}
+
+/* The page editor's words helper (the store's "page writer" switch): nothing is saved by these. */
+type ShopLang = "ar" | "en" | "he";
+/** What the page editor may offer. */
+export async function pagesAiStatus() {
+  return (await api.get("/admin/ai-pages/status")).data as { pageWriter: boolean };
+}
+/** A few options for an element's words: new ones about something, or the ones there changed. */
+export async function pageWords(body: { action: "write" | "improve" | "shorter" | "longer" | "translate"; kind: "heading" | "text" | "button"; lang: ShopLang; to?: ShopLang; text?: string; about?: string }) {
+  return (await api.post("/admin/ai-pages/words", body, { timeout: 60_000 })).data as { options: string[] };
+}
+/** A picture's description, from the picture (an https address). */
+export async function pictureAlt(body: { imageUrl: string; lang: ShopLang }) {
+  return (await api.post("/admin/ai-pages/alt", body, { timeout: 60_000 })).data as { alt: string };
 }

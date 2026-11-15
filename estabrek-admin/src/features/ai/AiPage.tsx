@@ -47,6 +47,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
   });
   const groups: Array<{ title: string; keys: AiFeature[] }> = [
     { title: "للمنتجات", keys: ["productWriter", "photoStudio", "translate"] },
+    { title: "لصفحات المتجر", keys: ["pageWriter"] },
     { title: "للزبونات بالمتجر", keys: ["smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary"] },
     { title: "إلك", keys: ["adminAsk", "replySuggest", "orderFlags"] },
   ];
