@@ -382,3 +382,27 @@ test("a tablet gets the touch layout too, with its own frame fitted; a computer'
   await expect(wide.getByTestId("studio-info")).toHaveCount(1);
   await desk.close();
 });
+
+test("an element opened on its own from the sheet comes to the part of the canvas the sheet leaves", async ({ browser }) => {
+  test.setTimeout(180000);
+  const { context, page } = await phone(browser);
+  await pick(page, "Editable drawing");
+  await page.getByTestId("studio-phone-tab-settings").tap();
+  const sheet = page.getByTestId("studio-sheet");
+  await expect(sheet).toHaveAttribute("data-view", "settings");
+  await sheet.getByTestId("studio-focus-enter").tap();
+  await expect(page.getByTestId("studio-focus-exit")).toBeVisible({ timeout: 20000 });
+  // The sheet is still open (its editor is in it), and the whole element is in sight between the top bar and the sheet.
+  await expect(sheet).toHaveCount(1);
+  const top = (await sheet.boundingBox())!.y, canvas = await rect(page, "studio-canvas");
+  await expect.poll(async () => {
+    const spots = await page.locator("[data-studio-handle]").evaluateAll((els) => els.map((el) => { const b = el.getBoundingClientRect(); return b.y + b.height / 2; }));
+    // (The turning knob stands above the box: the box's own handles are the rest.)
+    const ys = spots.sort((a, b) => a - b).slice(1);
+    return ys.length >= 8 && ys[0] >= canvas.y && ys[ys.length - 1] <= top;
+  }, { timeout: 15000 }).toBe(true);
+  // Leaving puts the view back.
+  await page.getByTestId("studio-focus-exit").tap();
+  await expect(page.getByTestId("studio-focus-exit")).toHaveCount(0);
+  await context.close();
+});

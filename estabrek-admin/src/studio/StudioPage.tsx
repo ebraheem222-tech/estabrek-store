@@ -1402,7 +1402,10 @@ function StudioDocument() {
     select(sid);
     setFocus((f) => ({ id: sid, part: null, back: f?.back ?? { zoom, pan }, ...(lite ? { lite: true } : {}) }));
     // Beside the element: it comes to the part of the canvas the floating inspector leaves free.
-    const to = beside ? frameFor(visiblePart(s.box, frameBox)?.box ?? s.box, { zoom, pan }, canvas, sideOf(inspGroup), { maxZoom: 4, fit: true }) : focusView(s.box, { zoom, pan }, canvas);
+    // On a phone with a sheet open (the element is usually opened from its tools there), it comes to the part of the
+    // canvas the sheet leaves, not to the middle of the whole canvas, half of which the sheet covers.
+    const room = phone && sheet ? { ...canvas, h: Math.max(160, phoneSheetTop(window.innerHeight) - (canvasRef.current?.getBoundingClientRect().top ?? 0)) } : canvas;
+    const to = beside ? frameFor(visiblePart(s.box, frameBox)?.box ?? s.box, { zoom, pan }, canvas, sideOf(inspGroup), { maxZoom: 4, fit: true }) : focusView(s.box, { zoom, pan }, room);
     if (to) glideTo(to);
     return true;
   };
