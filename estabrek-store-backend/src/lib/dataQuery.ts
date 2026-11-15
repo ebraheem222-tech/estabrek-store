@@ -336,14 +336,15 @@ export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">, 
   return Prisma.join(parts, ", ");
 }
 
-export type GridRow = { id: string; collectionId: string; slug: string; status: (typeof STATUSES)[number]; data: Record<string, unknown>; sort: number; publishedAt: Date | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null };
-const ROW = Prisma.raw(`i."id", i."collectionId", i."slug", i."status"::text AS "status", i."data", i."sort", i."publishedAt", i."createdAt", i."updatedAt", i."deletedAt"`);
+export type GridRow = { id: string; collectionId: string; slug: string; status: (typeof STATUSES)[number]; data: Record<string, unknown>; sort: number; publishedAt: Date | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null; /** The shopper whose row it is, when one added it through the API. */ ownerId: string | null };
+const ROW = Prisma.raw(`i."id", i."collectionId", i."slug", i."status"::text AS "status", i."data", i."sort", i."publishedAt", i."createdAt", i."updatedAt", i."deletedAt", i."ownerId"`);
 
 type Db = { $queryRaw: <T = unknown>(query: Prisma.Sql) => Promise<T> };
 
-/** One page of rows and how many there are in all. */
-export async function queryRows(db: Db, table: { id: string; fields: Field[]; incoming?: Incoming[] }, q: GridQuery): Promise<{ rows: GridRow[]; total: number }> {
-  const where = gridWhere(table.id, table.fields, q, table.incoming);
+/** One page of rows and how many there are in all. `only`: one more condition every row has to meet (a shopper's own rows). */
+export async function queryRows(db: Db, table: { id: string; fields: Field[]; incoming?: Incoming[] }, q: GridQuery, only?: Prisma.Sql): Promise<{ rows: GridRow[]; total: number }> {
+  const asked = gridWhere(table.id, table.fields, q, table.incoming);
+  const where = only ? Prisma.sql`${asked} AND ${only}` : asked;
   const order = gridOrder(table.fields, q, table.incoming);
   const [rows, count] = await Promise.all([
     db.$queryRaw<GridRow[]>(Prisma.sql`SELECT ${ROW} FROM "CollectionItem" i WHERE ${where} ORDER BY ${order} LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}`),

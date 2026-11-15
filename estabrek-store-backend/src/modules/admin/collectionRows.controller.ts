@@ -21,6 +21,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
+import { hasPermission } from "../../middleware/access.js";
 import { AppError } from "../../utils/httpError.js";
 import { checkItemData, LIMITS, TRASH_DAYS } from "../../lib/collections.js";
 import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
@@ -36,6 +37,8 @@ export const BULK_MAX = 500;
 
 const Lang = z.enum(LANGS).default("ar");
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
+/** A row's owner by name and email for members who may see the customers; for the others, only that it has one. */
+const owners = (req: Parameters<typeof hasPermission>[0]) => ({ owners: hasPermission(req, "customers:read") ? ("full" as const) : ("id" as const) });
 
 r.get("/grid-meta", (_req, res) => {
   res.json({ ops: OPS_BY_KIND, systemColumns: SYSTEM_COLUMNS, views: VIEWS, limits: { ...GRID_LIMITS, rows: LIMITS.items, importRows: IMPORT_MAX, bulkIds: BULK_MAX, trashDays: TRASH_DAYS, links: LIMITS.links }, rules: RULES_BY_TYPE, shapes: SHAPES });
@@ -48,7 +51,7 @@ r.get(
     const q = parseGridQuery(one(req.query.q));
     const t0 = performance.now();
     const [page, counts] = await Promise.all([queryRows(prisma, table, q), viewCounts(prisma, table.id)]);
-    res.json({ rows: await answer(table, page.rows), total: page.total, page: q.page, pageSize: q.pageSize, counts, incoming: table.incoming, ms: Math.round(performance.now() - t0) });
+    res.json({ rows: await answer(table, page.rows, owners(req)), total: page.total, page: q.page, pageSize: q.pageSize, counts, incoming: table.incoming, ms: Math.round(performance.now() - t0) });
   }),
 );
 
@@ -100,7 +103,7 @@ r.post(
     const table = await tableOf(String(req.params.id));
     const body = RowBody.parse(req.body ?? {});
     const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values }, body.lang);
-    res.status(201).json(row ? (await answer(table, [row]))[0] : row);
+    res.status(201).json(row ? (await answer(table, [row], owners(req)))[0] : row);
   }),
 );
 
@@ -116,7 +119,7 @@ r.patch(
     const was = await prisma.collectionItem.findFirst({ where: { id: String(req.params.row), collectionId: table.id } });
     if (!was) throw new AppError(404, "NOT_FOUND", "No such row");
     if (was.deletedAt) throw new AppError(409, "ROW_IN_TRASH", "Take the row out of the trash first");
-    res.json((await answer(table, [await changeRow(table, was, body)]))[0]);
+    res.json((await answer(table, [await changeRow(table, was, body)], owners(req)))[0]);
   }),
 );
 

@@ -938,6 +938,10 @@ model CollectionItem {
   updatedAt    DateTime   @updatedAt
   /// In the trash since (the data grid restores from it; emptied after 30 days).
   deletedAt    DateTime?
+  /// The shopper whose row this is, when one added it through the API (B4, src/lib/dataApi.ts):
+  /// a table open "to the shopper" shows each one their own rows only.
+  ownerId      String?
+  owner        User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   /// The rows it links (its relation fields), and the rows that link it.
   linksOut     CollectionLink[] @relation("linkFrom")
   linksIn      CollectionLink[] @relation("linkTo")
@@ -945,6 +949,7 @@ model CollectionItem {
   @@unique([collectionId, slug])
   @@index([collectionId, status, sort])
   @@index([collectionId, deletedAt, createdAt])
+  @@index([collectionId, ownerId])
 }
 
 /// One link between two rows (B3, src/lib/links.ts): the row `fromId`, in its relation field
@@ -1148,6 +1153,8 @@ model User {
   wishlist  WishlistItem[]
   addresses Address[]
   orders    OrderRequest[]
+  /// Rows of the owner's tables this shopper added through the API.
+  rows      CollectionItem[]
 }
 
 enum UserStatus {

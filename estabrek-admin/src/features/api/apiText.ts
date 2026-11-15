@@ -8,7 +8,7 @@ export const ACTS: Act[] = ["read", "create", "update", "delete"];
 export const ACT_NAME: Record<Act, string> = { read: "القراءة|Reading|קריאה", create: "الإضافة|Adding|הוספה", update: "التعديل|Changing|עריכה", delete: "الحذف|Deleting|מחיקה" };
 /** The same acts as a key's rights ("may read"). */
 export const ACT_RIGHT: Record<Act, string> = { read: "يقرأ|read|לקרוא", create: "يضيف|add|להוסיף", update: "يعدّل|change|לערוך", delete: "يحذف|delete|למחוק" };
-export const WHO_NAME: Record<Who, string> = { off: "مسكّر|Closed|סגור", key: "بمفتاح|With a key|עם מפתח", public: "للجميع|Everyone|לכולם" };
+export const WHO_NAME: Record<Who, string> = { off: "مسكّر|Closed|סגור", key: "بمفتاح|With a key|עם מפתח", customer: "للزبون (سطوره بس)|The shopper (own rows)|ללקוח (השורות שלו)", public: "للجميع|Everyone|לכולם" };
 export const STATE: Record<KeyState, { name: string; variant: "success" | "danger" | "warning" }> = {
   active: { name: "شغّال|Active|פעיל", variant: "success" },
   revoked: { name: "ملغي|Revoked|בוטל", variant: "danger" },
@@ -21,7 +21,7 @@ const part = (words: string, lang: Lang) => {
 };
 
 /** Who can be chosen for an act: changing and deleting are never for everyone. */
-export const whoChoices = (act: Act): Who[] => (act === "read" || act === "create" ? ["off", "key", "public"] : ["off", "key"]);
+export const whoChoices = (act: Act): Who[] => (act === "read" || act === "create" ? ["off", "key", "customer", "public"] : ["off", "key", "customer"]);
 
 export const nameOf = (name: Local | null | undefined, fallback: string, lang: Lang): string => name?.[lang]?.trim() || name?.ar?.trim() || name?.en?.trim() || name?.he?.trim() || fallback;
 
@@ -32,10 +32,20 @@ export function accessLine(access: TableAccess, lang: Lang): string {
   return open.map((act) => `${part(ACT_NAME[act], lang)}: ${part(WHO_NAME[access[act]], lang)}`).join(" · ");
 }
 
-/** What the owner should know before leaving a table like this. */
-export function accessWarnings(access: TableAccess, limits: { publicWritesPerMinute: number }, lang: Lang): string[] {
+/**
+ * What the owner should know before leaving a table like this. `more`: how many of its fields are
+ * private (a key's alone), and whether shopper accounts are switched on.
+ */
+export function accessWarnings(access: TableAccess, limits: { publicWritesPerMinute: number }, lang: Lang, more: { private?: number; customerAccounts?: boolean } = {}): string[] {
   const out: string[] = [];
-  if (access.read === "public") out.push(part("أي حدا بيقدر يقرأ كل حقول السطور المنشورة بهالجدول، بدون مفتاح.|Anyone can read every field of this table's published rows, without a key.|כל אחד יכול לקרוא את כל השדות של השורות שפורסמו בטבלה, בלי מפתח.", lang));
+  if (access.read === "public")
+    out.push(
+      more.private
+        ? part("أي حدا بيقدر يقرأ السطور المنشورة بهالجدول بدون مفتاح: كل الحقول غير الـ {n} المخبّاة.|Anyone can read this table's published rows without a key: every field but the {n} kept private.|כל אחד יכול לקרוא את השורות שפורסמו בטבלה בלי מפתח: כל השדות חוץ מ-{n} הפרטיים.", lang).replace("{n}", String(more.private))
+        : part("أي حدا بيقدر يقرأ كل حقول السطور المنشورة بهالجدول، بدون مفتاح.|Anyone can read every field of this table's published rows, without a key.|כל אחד יכול לקרוא את כל השדות של השורות שפורסמו בטבלה, בלי מפתח.", lang),
+    );
+  if (more.customerAccounts === false && ACTS.some((act) => access[act] === "customer"))
+    out.push(part("حسابات الزبائن موقّفة هلأ، فما حدا بيقدر يدخل كزبون: شغّلها من «الإعدادات».|Shopper accounts are switched off, so nobody can get in as a shopper: turn them on in Settings.|חשבונות הלקוחות כבויים, ולכן אף אחד לא יכול להיכנס כלקוח: הפעילו אותם ב«הגדרות».", lang));
   if (access.create === "public")
     out.push(
       part("أي حدا بيقدر يضيف سطور بدون مفتاح. بتنزل مسودات، ولحد {n} بالدقيقة من نفس المكان.|Anyone can add rows without a key. They arrive as drafts, up to {n} a minute from one place.|כל אחד יכול להוסיף שורות בלי מפתח. הן נכנסות כטיוטות, עד {n} בדקה מאותו מקום.", lang).replace("{n}", String(limits.publicWritesPerMinute)),
@@ -103,11 +113,13 @@ export function sampleValue(f: ApiField): unknown {
 
 export type Example = { id: Act | "one"; title: string; code: string };
 const KEY_HEADER = '-H "X-Api-Key: ek_…"';
+/** A signed-in shopper's own token, from the store's sign-in. */
+const SHOPPER_HEADER = '-H "Authorization: Bearer SHOPPER_TOKEN"';
 
 /** Ready requests for what the table lets the outside do (a key's header where one is needed). */
 export function examples(table: Pick<ApiTable, "slug" | "access" | "fields">, url: string, lang: Lang): Example[] {
   const at = `${url}/${table.slug}`;
-  const key = (act: Act) => (table.access[act] === "key" ? ` ${KEY_HEADER}` : "");
+  const key = (act: Act) => (table.access[act] === "key" ? ` ${KEY_HEADER}` : table.access[act] === "customer" ? ` ${SHOPPER_HEADER}` : "");
   // The required fields, or the first two: enough for a row the table takes.
   const wanted = table.fields.filter((f) => f.required);
   const shown = (wanted.length ? wanted : table.fields.slice(0, 2)).slice(0, 4);

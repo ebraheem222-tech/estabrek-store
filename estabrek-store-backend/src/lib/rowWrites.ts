@@ -50,9 +50,18 @@ export async function tableOf(id: string) {
   return { id: c.id, slug: c.slug, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], incoming: await incomingTo(prisma, c.id) };
 }
 
-/** Rows as answered: the table's own values, each relation's linked rows, and (`from`) who links the row through each relation that links this table. */
-export async function answer<T extends { id: string; data: unknown }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[]) {
-  const shown = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
+/** A row's owner as the admin is told: who the shopper is, or (`owners: "id"`, a member who may not see the customers) only that there is one. */
+export type RowOwner = { id: string; name?: string; email?: string };
+
+/**
+ * Rows as answered: the table's own values, each relation's linked rows, (`from`) who links the row
+ * through each relation that links this table, and (`owner`) the shopper whose row it is.
+ */
+export async function answer<T extends { id: string; data: unknown; ownerId?: string | null }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[], opts: { owners?: "full" | "id" } = {}) {
+  const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
+  const ownerIds = [...new Set(linked.map((row) => row.ownerId).filter((id): id is string => !!id))];
+  const people = ownerIds.length && opts.owners === "full" ? new Map((await prisma.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, email: true } })).map((u) => [u.id, u])) : null;
+  const shown = ownerIds.length ? linked.map((row) => (row.ownerId ? { ...row, owner: (people?.get(row.ownerId) ?? { id: row.ownerId }) as RowOwner } : row)) : linked;
   if (!table.incoming.length) return shown;
   const from = await linkedFrom(prisma, table.id, table.incoming, shown.map((row) => row.id));
   return shown.map((row) => ({ ...row, from: from.get(row.id) ?? {} }));
@@ -60,7 +69,7 @@ export async function answer<T extends { id: string; data: unknown }>(table: { i
 
 /* ---------------- Rows in: one, or a file's worth ---------------- */
 
-export type RowIn = { slug?: string; status?: string; values: Record<string, unknown> };
+export type RowIn = { slug?: string; status?: string; values: Record<string, unknown>; /** The shopper adding it (the API), to be its owner. */ ownerId?: string | null };
 export type Rejected = { row: number; slug: string | null; issues: Issue[] };
 
 /**
@@ -76,7 +85,7 @@ export async function writeRows(table: { id: string; fields: Field[] }, rows: Ro
   );
   const seen = new Set<string>();
   // `asked`: what the row asks of its relations; `links`: those rows, checked (below), to write with it.
-  let creates: Array<{ row: number; slug: string | null; data: Record<string, unknown>; status: Status; asked: Asked; links: Map<string, string[]> }> = [];
+  let creates: Array<{ row: number; slug: string | null; data: Record<string, unknown>; status: Status; asked: Asked; links: Map<string, string[]>; ownerId: string | null }> = [];
   let updates: Array<{ row: number; slug: string; id: string; data: Record<string, unknown>; changed: Set<string>; status?: Status; publish: boolean; asked: Asked; links: Map<string, string[]> }> = [];
   const none = () => new Map<string, string[]>();
 
@@ -112,7 +121,7 @@ export async function writeRows(table: { id: string; fields: Field[] }, rows: Ro
     const next = status?.success ? status.data : undefined;
     // What a change of fields put aside in this row stays with it.
     if (was) updates.push({ row: index, slug: was.slug, id: was.id, data: { ...hiddenOf(was.data, table.fields), ...checked.data }, changed: changedUnique(table.fields, (was.data ?? {}) as Record<string, unknown>, checked.data), status: next, publish: next === "PUBLISHED" && !was.publishedAt, asked: split.asked, links: none() });
-    else creates.push({ row: index, slug, data: checked.data, status: next ?? "DRAFT", asked: split.asked, links: none() });
+    else creates.push({ row: index, slug, data: checked.data, status: next ?? "DRAFT", asked: split.asked, links: none(), ownerId: row.ownerId ?? null });
   });
 
   // The relations: the asked rows are looked up, then each relation's own rules (one row, a row linked once, required).
@@ -165,7 +174,7 @@ export async function writeRows(table: { id: string; fields: Field[] }, rows: Ro
     const linking = creates.filter((c) => c.links.size);
     const writes = (db: Pick<Prisma.TransactionClient, "collectionItem">) => [
       ...(creates.length
-        ? [db.collectionItem.createMany({ data: creates.map((c) => ({ collectionId: table.id, slug: c.slug!, data: c.data as Prisma.InputJsonValue, status: c.status, publishedAt: c.status === "PUBLISHED" ? now : null })) })]
+        ? [db.collectionItem.createMany({ data: creates.map((c) => ({ collectionId: table.id, slug: c.slug!, data: c.data as Prisma.InputJsonValue, status: c.status, publishedAt: c.status === "PUBLISHED" ? now : null, ownerId: c.ownerId })) })]
         : []),
       ...updates.map((u) => db.collectionItem.update({ where: { id: u.id }, data: { data: u.data as Prisma.InputJsonValue, ...(u.status ? { status: u.status } : {}), ...(u.publish ? { publishedAt: now } : {}), ...(u.links.size ? { updatedAt: now } : {}) } })),
     ];

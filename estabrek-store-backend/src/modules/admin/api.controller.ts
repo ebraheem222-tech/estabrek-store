@@ -3,9 +3,12 @@
  * to the outside and for what, and the keys. The routes the outside calls are modules/data.
  * Needs api:read to look and api:write to change (mounted with them in admin.routes.ts).
  *
- * GET    /admin/api                  — every table with its access, the keys, the limits
+ * GET    /admin/api                  — every table with its access and private fields, the keys, the limits,
+ *                                      and whether shopper accounts are on (a table open "to the shopper" needs them)
  * GET    /admin/api/docs             — the open tables described: an OpenAPI document and TypeScript types (lib/apiDocs.ts)
- * PUT    /admin/api/tables/:id       { read, create, update, delete } — each "off" | "key" | "public" (update and delete: never "public")
+ * PUT    /admin/api/tables/:id       { read, create, update, delete, private? } — each act "off" | "key" | "customer" | "public"
+ *                                      (update and delete: never "public"); `private`: the fields only a key sees or
+ *                                      writes (left as they are when not sent)
  * POST   /admin/api/keys             { name, scopes: { tables: "*" | [ids], acts }, perMinute?, expiresAt? } — answers the key itself, once
  * PATCH  /admin/api/keys/:id         { name?, scopes?, perMinute?, expiresAt? }
  * POST   /admin/api/keys/:id/revoke  — stops working at once; stays in the list
@@ -20,25 +23,31 @@ import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, KEY_LIMITS, ScopesSchema, forgetKeys, keyView, newSecret, type KeyLite } from "../../lib/apiKeys.js";
 import { openApi, typesText } from "../../lib/apiDocs.js";
-import { API_LIMITS, AccessSchema, DATA_API_BASE, WHO, accessOf, docTables, fieldView, isOpen, tableFrom } from "../../lib/dataApi.js";
+import { API_LIMITS, AccessSchema, DATA_API_BASE, PRIVATE_MAX, WHO, accessOf, docTables, fieldView, isOpen, privateOf, tableFrom } from "../../lib/dataApi.js";
+import { customerAccountsOn } from "../../lib/features.js";
 
 const r = Router();
 
 const tableView = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }) => {
   const access = accessOf(c.api);
-  return { id: c.id, slug: c.slug, name: c.name, access, open: isOpen(access), fields: ((Array.isArray(c.fields) ? c.fields : []) as Field[]).map(fieldView) };
+  const fields = (Array.isArray(c.fields) ? c.fields : []) as Field[];
+  // A private field that was since removed from the table isn't listed (it comes back with the field).
+  return { id: c.id, slug: c.slug, name: c.name, access, open: isOpen(access), private: privateOf(c.api).filter((id) => fields.some((f) => f.id === id)), fields: fields.map(fieldView) };
 };
 const TABLE = { id: true, slug: true, name: true, fields: true, api: true } as const;
+
+const AccessBody = AccessSchema.extend({ private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).optional() }).strict();
 
 r.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const [tables, keys] = await Promise.all([
+    const [tables, keys, customerAccounts] = await Promise.all([
       prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: TABLE }),
       prisma.apiKey.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
+      customerAccountsOn(),
     ]);
     const now = Date.now();
-    res.json({ base: DATA_API_BASE, who: WHO, acts: ACTS, limits: { ...KEY_LIMITS, pageSize: API_LIMITS.pageSize, publicWritesPerMinute: API_LIMITS.publicWritesPerMinute }, tables: tables.map(tableView), keys: keys.map((k) => keyView(k, now)), now });
+    res.json({ base: DATA_API_BASE, who: WHO, acts: ACTS, limits: { ...KEY_LIMITS, pageSize: API_LIMITS.pageSize, publicWritesPerMinute: API_LIMITS.publicWritesPerMinute, customerWritesPerMinute: API_LIMITS.customerWritesPerMinute }, customerAccounts, tables: tables.map(tableView), keys: keys.map((k) => keyView(k, now)), now });
   }),
 );
 
@@ -56,11 +65,17 @@ r.get(
 r.put(
   "/tables/:id",
   asyncHandler(async (req, res) => {
-    const access = AccessSchema.parse(req.body ?? {});
+    const { private: asked, ...access } = AccessBody.parse(req.body ?? {});
     const id = String(req.params.id);
-    if (!(await prisma.collection.findUnique({ where: { id }, select: { id: true } }))) throw new AppError(404, "NOT_FOUND", "No such table");
+    const was = await prisma.collection.findUnique({ where: { id }, select: { fields: true, api: true } });
+    if (!was) throw new AppError(404, "NOT_FOUND", "No such table");
+    const ids = new Set(((Array.isArray(was.fields) ? was.fields : []) as Field[]).map((f) => f.id));
+    const unknown = (asked ?? []).filter((f) => !ids.has(f));
+    if (unknown.length) throw new AppError(400, "NO_SUCH_FIELD", "No such field in this table", { fields: unknown });
+    // The private fields stay as they were when the request says nothing of them.
+    const kept = { ...access, private: asked ? [...new Set(asked)] : privateOf(was.api) };
     // `updatedAt` is the table's own (its fields, its name): opening its API doesn't touch it.
-    await prisma.$executeRaw`UPDATE "Collection" SET "api" = ${JSON.stringify(access)}::jsonb WHERE "id" = ${id}`;
+    await prisma.$executeRaw`UPDATE "Collection" SET "api" = ${JSON.stringify(kept)}::jsonb WHERE "id" = ${id}`;
     res.json(tableView(await prisma.collection.findUniqueOrThrow({ where: { id }, select: TABLE })));
   }),
 );

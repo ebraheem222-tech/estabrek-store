@@ -288,6 +288,7 @@ const toRow = (t: StoreTable, r: any): GridRow => ({
   createdAt: r.createdAt,
   updatedAt: r.updatedAt,
   deletedAt: null,
+  ownerId: null,
 });
 
 /** One page of a store table's rows and how many match. Only the "all" view exists here. */

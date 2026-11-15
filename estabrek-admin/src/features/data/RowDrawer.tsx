@@ -153,6 +153,13 @@ export function RowDrawer({ table, row, incoming = [], lang, canWrite, onClose, 
             </Box>
           );
         })}
+        {/* Whose row it is, when a signed-in shopper added it through the API. */}
+        {row?.ownerId ? (
+          <div className="border-t border-white/10 pt-3 text-xs text-white/60" data-testid="row-owner">
+            {say("صاحب السطر (زبون أضافه من الـ API):|The row's owner (a shopper added it through the API):|בעל השורה (לקוח הוסיף אותה דרך ה-API):")}{" "}
+            <bdi className="text-white/80">{[row.owner?.name, row.owner?.email].filter(Boolean).join(" · ") || say("زبون|a shopper|לקוח")}</bdi>
+          </div>
+        ) : null}
         {/* Who links this row, through each relation that links its table: to read (it is changed from the row that links). */}
         {incoming.some((inc) => row?.from?.[inc.id]?.n) ? (
           <div className="space-y-2 border-t border-white/10 pt-3 text-xs text-white/60" data-testid="row-from">

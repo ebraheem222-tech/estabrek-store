@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { ApiTable, TableAccess } from "../../api/dataApi.api";
-import { curlOf, keyNeeded, openApiFile, playActs, playRequest, playTables, prettyBody, sampleBody, statusWords, type PlayDraft } from "./playText";
+import { curlOf, keyNeeded, openApiFile, playActs, playRequest, playTables, prettyBody, sampleBody, shopperMatters, shopperNeeded, statusWords, type PlayDraft } from "./playText";
 
 // "جرّب طلب": a request put together from the form, as the outside would send it.
 
@@ -11,6 +11,7 @@ const table = (access: Partial<TableAccess>, slug = "posts"): ApiTable => ({
   name: { en: slug },
   access: { ...closed, ...access },
   open: Object.values({ ...closed, ...access }).some((w) => w !== "off"),
+  private: [],
   fields: [
     { id: "title", type: "text", name: null, required: true },
     { id: "price", type: "number", name: null, required: false },
@@ -83,7 +84,7 @@ describe("The answer", () => {
   test("a status in a word, in the three languages", () => {
     expect(statusWords(200, "en")).toBe("OK");
     expect(statusWords(201, "ar")).toBe("تمام");
-    expect(statusWords(401, "en")).toBe("A key is needed, or this one doesn't work");
+    expect(statusWords(401, "en")).toBe("A key or a signed-in shopper is needed, or what was sent doesn't work");
     expect(statusWords(403, "en")).toContain("Not allowed");
     expect(statusWords(404, "he")).toBe("אין טבלה או שורה כזו");
     expect(statusWords(429, "en")).toBe("Too many requests: wait a little");
@@ -96,4 +97,27 @@ test("the OpenAPI file to keep names the API's whole address", () => {
   expect(JSON.parse(file)).toEqual({ openapi: "3.1.0", servers: [{ url }], paths: { "/": {} } });
   expect(file.endsWith("}\n")).toBe(true);
   expect(JSON.parse(openApiFile(null, url))).toEqual({ servers: [{ url }] });
+});
+
+describe("A request as a signed-in shopper", () => {
+  const t = table({ read: "customer", create: "customer", update: "customer", delete: "key" });
+
+  test("what is a shopper's needs their token or a key; what is a key's still needs the key", () => {
+    expect(shopperMatters(t)).toBe(true);
+    expect(shopperMatters(table({ read: "public", create: "key" }))).toBe(false);
+    expect(shopperNeeded(t, "list")).toBe(true);
+    expect(shopperNeeded(t, "delete")).toBe(false);
+    expect(made(t, draft())).toEqual({ problem: "This is a signed-in shopper's: paste a shopper's token, or a key" });
+    expect(made(t, draft({ token: " the.shopper.token " }))).toEqual({ request: { method: "GET", url: `${url}/posts`, headers: { Authorization: "Bearer the.shopper.token" } } });
+    expect(made(t, draft({ key: "ek_k" }))).toEqual({ request: { method: "GET", url: `${url}/posts`, headers: { "X-Api-Key": "ek_k" } } });
+    expect(made(t, draft({ act: "delete", row: "first", token: "the.shopper.token" }))).toEqual({ problem: "This needs a key: paste one of your keys" });
+    expect(made(t, draft({ act: "create", token: "tok", body: '{"values":{"title":"x"}}' }))).toEqual({ request: { method: "POST", url: `${url}/posts`, headers: { "Content-Type": "application/json", Authorization: "Bearer tok" }, body: '{"values":{"title":"x"}}' } });
+  });
+
+  test("the line for a terminal never writes the token out", () => {
+    const got = made(t, draft({ token: "the.real.shopper.token" }));
+    if (!("request" in got)) throw new Error("no request");
+    expect(curlOf(got.request)).toBe(`curl "${url}/posts" -H "Authorization: Bearer SHOPPER_TOKEN"`);
+    expect(curlOf(got.request)).not.toContain("real.shopper");
+  });
 });

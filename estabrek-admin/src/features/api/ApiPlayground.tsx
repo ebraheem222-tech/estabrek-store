@@ -10,7 +10,7 @@ import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import type { ApiTable } from "../../api/dataApi.api";
 import { nameOf } from "./apiText";
-import { PLAY_NAME, curlOf, keyNeeded, methodOf, needsBody, needsRow, playActs, playRequest, playTables, prettyBody, sampleBody, statusWords, writes, type PlayAct, type PlayRequest } from "./playText";
+import { PLAY_NAME, curlOf, keyNeeded, methodOf, needsBody, needsRow, playActs, playRequest, playTables, prettyBody, sampleBody, shopperMatters, statusWords, writes, type PlayAct, type PlayRequest } from "./playText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-10 w-full rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white";
@@ -30,6 +30,7 @@ export function ApiPlayground({ tables, url }: { tables: ApiTable[]; url: string
   const [query, setQuery] = useState("pageSize=5&sort=-createdAt");
   const [body, setBody] = useState("");
   const [key, setKey] = useState("");
+  const [token, setToken] = useState("");
   const [problem, setProblem] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<PlayRequest | null>(null);
@@ -56,7 +57,7 @@ export function ApiPlayground({ tables, url }: { tables: ApiTable[]; url: string
   }
 
   const send = async () => {
-    const made = playRequest(table, { act: current, row, query, body, key }, url, lang);
+    const made = playRequest(table, { act: current, row, query, body, key, token: shopperMatters(table) ? token : "" }, url, lang);
     if ("problem" in made) return setProblem(made.problem);
     setProblem("");
     if (writes(current)) {
@@ -152,6 +153,17 @@ export function ApiPlayground({ tables, url }: { tables: ApiTable[]; url: string
           <input className={`${field} font-mono`} dir="ltr" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="ek_…" data-testid="play-key" />
           <span className="block text-white/50">{say("بيضل بهالصفحة بس وما بينحفظ.|It stays on this page only and isn't kept.|הוא נשאר בדף הזה בלבד ואינו נשמר.")}</span>
         </label>
+        {shopperMatters(table) ? (
+          <label className="space-y-1 text-xs text-white/60 sm:col-span-2">
+            <span>{say("توكن زبون (اختياري): لتجرّب كزبون مسجّل دخوله|A shopper's token (optional): to try as a signed-in shopper|אסימון לקוח (לא חובה): כדי לנסות כלקוח מחובר")}</span>
+            <input className={`${field} font-mono`} dir="ltr" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} data-testid="play-token" />
+            <span className="block text-white/50">
+              {say(
+                "هو التوكن اللي بياخده الزبون لما يسجّل دخوله بالمتجر. معه بيشوف وبيغيّر سطوره هو بس.|The token a shopper gets on signing in to the store. With it they see and change their own rows only.|האסימון שהלקוח מקבל בכניסה לחנות. איתו הוא רואה ומשנה רק את השורות שלו.",
+              )}
+            </span>
+          </label>
+        ) : null}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button variant="primary" size="sm" onClick={() => void send()} isLoading={sending} data-testid="play-send">
