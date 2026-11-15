@@ -18,7 +18,7 @@ import { KINDS, KIND_NAME, keepLine, runDid, runName, runTimes, runTook, runTrig
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const chip = (on: boolean) => `rounded-lg px-3 py-1.5 text-sm transition ${on ? "bg-white/10 font-medium" : "text-white/60 hover:bg-white/5"}`;
 /** Where a kind's own page is. */
-const PAGE: Partial<Record<RunKind, string>> = { job: "/admin/system/jobs", automation: "/admin/system/automations" };
+const PAGE: Partial<Record<RunKind, string>> = { job: "/admin/system/jobs", automation: "/admin/system/automations", task: "/admin/system/tasks" };
 
 export default function RunsPage() {
   const lang = adminLang();
@@ -72,7 +72,7 @@ export default function RunsPage() {
                   data-testid={`runs-failing-${f.kind}-${f.name}`}
                 >
                   {/* An address reads left to right, its first slash first. */}
-                  <bdi dir={f.kind === "webhook" ? "ltr" : undefined}>{runName(f)}</bdi>
+                  <bdi dir={f.kind === "webhook" ? "ltr" : undefined}>{runName(f, lang)}</bdi>
                 </button>
                 <span className="text-xs text-white/60">{say("فشل {n} مرة|failed {n} times|נכשל {n} פעמים").replace("{n}", String(f.failures))}</span>
                 {f.error ? <bdi className="text-xs text-white/50">{f.error}</bdi> : null}
@@ -101,7 +101,7 @@ export default function RunsPage() {
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm" data-testid="runs-name">
             <span className="text-white/60">{say("بس:|Only:|רק:")}</span>
             <bdi dir={kind === "webhook" ? "ltr" : undefined} className="font-medium">
-              {runName({ kind: kind || "job", name })}
+              {runName({ kind: kind || "job", name }, lang)}
             </bdi>
             <button type="button" className="text-xs underline" onClick={() => setName("")} data-testid="runs-name-clear">
               {say("شيل|Clear|ניקוי")}
@@ -149,7 +149,7 @@ function RunRow({ run, now, onName }: { run: Run; now: number; onName: () => voi
             {say(KIND_NAME[run.kind])}
           </Badge>
           <button type="button" className="font-medium hover:underline" onClick={onName} title={say("بس هاد|Only this one|רק זה")}>
-            <bdi dir={run.kind === "webhook" ? "ltr" : undefined}>{runName(run)}</bdi>
+            <bdi dir={run.kind === "webhook" ? "ltr" : undefined}>{runName(run, lang)}</bdi>
           </button>
           {run.times > 1 ? <span className="text-xs text-white/50">{runTimes(run, lang)}</span> : null}
           {page ? (

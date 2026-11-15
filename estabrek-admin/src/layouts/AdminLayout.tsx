@@ -162,6 +162,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/system/server", tr("حالة السيرفر", "Server state")],
   ["/system/jobs", tr("المهام بالخلفية", "Background jobs")],
   ["/system/runs", say("سجل التشغيل|Run log|יומן הרצות")],
+  ["/system/tasks", say("صف الشغل|The queue|תור העבודה")],
   ["/data-api", say("الـ API والمفاتيح|API & keys|API ומפתחות")],
   ["/system/vault", tr("الخزنة والبرنامج", "Vault & launcher")],
   ["/system/schedule", tr("الجدول الزمني", "Schedule")],

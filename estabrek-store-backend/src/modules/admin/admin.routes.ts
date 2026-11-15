@@ -32,6 +32,7 @@ import scans from "./scans.controller.js";
 import speed from "./speed.controller.js";
 import jobs from "./jobs.controller.js";
 import runs from "./runs.controller.js";
+import tasks from "./tasks.controller.js";
 import deploy from "./deploy.controller.js";
 import insights from "./insights.controller.js";
 import selling from "./selling.controller.js";
@@ -184,6 +185,8 @@ r.use("/system/speed", areaAccess({ read: "system:read", write: "system:write" }
 r.use("/system/jobs", areaAccess({ read: "system:read", write: "system:write" }), jobs);
 // The run log (سجل التشغيل): everything the server did by itself, kept through restarts.
 r.use("/system/runs", areaAccess({ read: "system:read", write: "system:write" }), runs);
+// The queue (صف الشغل): background work that must not be lost; what waits, and what needs a look.
+r.use("/system/tasks", areaAccess({ read: "system:read", write: "system:write" }), tasks);
 r.use("/system/deploy", areaAccess({ read: "system:read", write: "system:write" }), deploy);
 r.use("/system/backups", areaAccess({ read: "system:read", write: "system:write" }), backups);
 r.use("/system", areaAccess({ read: "system:read", write: "system:write" }), system);

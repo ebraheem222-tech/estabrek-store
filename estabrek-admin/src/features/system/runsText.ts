@@ -6,6 +6,7 @@ import type { JobRun } from "../../api/jobs.api";
 import { TRIGGER_TEXT as RULE_TRIGGER } from "./automationText";
 import { jobLabel } from "./jobNames";
 import { TRIGGER_TEXT as JOB_TRIGGER, runSummary } from "./jobsText";
+import { rulesRanText, taskKindName } from "./tasksText";
 
 type Lang = "ar" | "en" | "he";
 const part = (words: string, lang: Lang) => {
@@ -23,8 +24,8 @@ export const KIND_NAME: Record<RunKind, string> = {
 };
 
 /** What ran, by the name its own page calls it. */
-export function runName(run: Pick<Run, "kind" | "name">): string {
-  return run.kind === "job" ? jobLabel(run.name) : run.name;
+export function runName(run: Pick<Run, "kind" | "name">, lang: Lang = "ar"): string {
+  return run.kind === "job" ? jobLabel(run.name) : run.kind === "task" ? taskKindName(run.name, lang) : run.name;
 }
 
 /** What started it, in words. */
@@ -34,6 +35,8 @@ export function runTrigger(run: Pick<Run, "kind" | "trigger">, lang: Lang): stri
   if (t === "test") return part("تجربة|A try|ניסיון", lang);
   if (run.kind === "job") return (JOB_TRIGGER as Record<string, string>)[t] ?? t;
   if (run.kind === "automation") return (RULE_TRIGGER as Record<string, { label: string }>)[t]?.label ?? t;
+  // A queued task: its first try, or one after a failure.
+  if (run.kind === "task") return t === "retry" ? part("محاولة تانية|A retry|ניסיון חוזר", lang) : t === "queue" ? part("من الصف|From the queue|מהתור", lang) : t;
   return t;
 }
 
@@ -48,6 +51,7 @@ export function runDid(run: Pick<Run, "kind" | "name" | "ok" | "result" | "error
     return runSummary(run.name, { ok: true, counts, error: null });
   }
   if (r && typeof r.did === "string") return r.did;
+  if (run.kind === "task" && r && typeof r.rules === "number") return rulesRanText(r.rules, lang);
   if (r && typeof r.status === "number") return part("انقبل ({n})|Accepted ({n})|התקבל ({n})", lang).replace("{n}", String(r.status));
   return part("تمام|Done|בוצע", lang);
 }
