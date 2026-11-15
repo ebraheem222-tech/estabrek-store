@@ -9,8 +9,10 @@ describe("the editor on a phone: its sums", () => {
     expect(Math.round(f.h * f.zoom)).toBe(624);
     // A screen wider than the frame shows it at its real size, never bigger.
     expect(phoneFrame({ w: 700, h: 500 }, 390)).toEqual({ zoom: 1, h: 484 });
-    // A very short canvas (the keyboard is up) still gets a frame a page can be read in.
-    expect(phoneFrame({ w: 390, h: 120 }, 390)!.h).toBe(240);
+    // A phone held sideways: a short canvas, and the frame is as tall as it shows.
+    expect(phoneFrame({ w: 844, h: 236 }, 390)).toEqual({ zoom: 1, h: 220 });
+    // A canvas squeezed to almost nothing still gets a frame a page can be read in.
+    expect(phoneFrame({ w: 390, h: 120 }, 390)!.h).toBe(160);
     // No size yet: nothing to fit.
     expect(phoneFrame({ w: 0, h: 0 }, 390)).toBeNull();
     expect(phoneFrame({ w: 390, h: 10 }, 390)).toBeNull();

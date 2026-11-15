@@ -215,3 +215,51 @@ test("two fingers zoom the canvas and pick nothing; one finger scrolls the page"
   await expect(page.getByTestId("studio-bar-hint")).toBeVisible();
   await context.close();
 });
+
+test("a finger takes a selection's handle from a little way round it and resizes the element", async ({ browser }) => {
+  test.setTimeout(180000);
+  const { context, page } = await phone(browser);
+  await pick(page, "Editable drawing");
+  const size = page.getByTestId("studio-selected-size");
+  await expect(size).toHaveText("180×180");
+  // The corner handle furthest down and to the right; the finger lands 9px off its middle (outside the square itself).
+  const handles = await page.locator("[data-studio-handle]").all();
+  const boxes = await Promise.all(handles.map(async (h) => (await h.boundingBox())!));
+  const corner = boxes.reduce((best, b) => (b.x + b.y > best.x + best.y ? b : best));
+  expect(corner.width).toBeGreaterThanOrEqual(13);
+  const hx = corner.x + corner.width / 2 + 9, hy = corner.y + corner.height / 2 + 9;
+  await fingers(context, page, [0, 8, 16, 24, 32, 40].map((d) => [{ x: hx + d, y: hy + d }]));
+  await expect(size).not.toHaveText("180×180", { timeout: 20000 });
+  const [w, h] = ((await size.textContent()) ?? "").split("×").map(Number);
+  expect(w).toBeGreaterThan(200);
+  expect(h).toBeGreaterThan(200);
+  await expect(page.getByTestId("studio-undo")).toBeEnabled({ timeout: 20000 });
+  await page.getByTestId("studio-undo").tap();
+  await expect(size).toHaveText("180×180", { timeout: 20000 });
+  await context.close();
+});
+
+test("a phone held sideways gets the phone's layout too, and a pull at the page's edge doesn't reload the editor", async ({ browser }) => {
+  test.setTimeout(180000);
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto(url());
+  await expect(page.getByTestId("studio-phone-bar")).toBeVisible({ timeout: 90000 });
+  await expect(page.getByTestId("studio-waiting")).toHaveCount(0, { timeout: 90000 });
+  // One row on top, the jobs at the bottom, the phone's own frame in the canvas between them.
+  expect((await rect(page, "studio-phone-head")).height).toBeLessThanOrEqual(60);
+  await expect(page.getByTestId("studio-info")).toHaveCount(0);
+  await expect(page.getByTestId("studio-frame")).toHaveAttribute("width", "390");
+  const canvas = await rect(page, "studio-canvas"), frame = await rect(page, "studio-frame");
+  expect(canvas.height).toBeGreaterThanOrEqual(200);
+  expect(frame.y + frame.height).toBeLessThanOrEqual(canvas.y + canvas.height + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(844);
+  // The page under the editor doesn't answer a pull at its edge (a phone's pull-to-refresh, a swipe back).
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY)).toBe("none");
+  // A sheet still opens above the row of jobs and leaves some of the canvas in sight.
+  await page.getByTestId("studio-phone-tab-layers").tap();
+  const sheet = (await page.getByTestId("studio-sheet").boundingBox())!;
+  expect(sheet.y).toBeGreaterThanOrEqual(canvas.y);
+  expect(sheet.y + sheet.height).toBeLessThanOrEqual((await rect(page, "studio-phone-tab-layers")).y + 1);
+  await context.close();
+});
