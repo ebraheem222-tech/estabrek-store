@@ -8,12 +8,15 @@
  *    sound off, fade.
  *  - "Make the video": the backend makes it (Cloudinary, lib/videoEdit.ts) and the element shows it; the project
  *    stays with the element, so it opens here again.
+ * On a phone its parts are stacked: the preview (as wide as the screen lets it be), the chosen clip's or words'
+ * settings under it, the timeline at the bottom; the timeline's grips are wide enough for a finger.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PageTreeNode } from "../../api/pages.api";
 import { VideoPickerModal } from "../../components/media/VideoPickerModal";
 import { LIMITS, RATIOS, SPEEDS, clipAt, clipLength, clipStarts, moveClip, outputSize, projectLength, safeProject, splitAt, type Clip, type Project, type Ratio, type Words } from "../../../../shared/videoEdit";
 import { say } from "../say";
+import { PREVIEW_SHARE, previewSize } from "./videoFit";
 
 const btn = "rounded-lg bg-white/[0.06] px-2.5 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
 const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
@@ -97,8 +100,25 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
   const sources = useMemo(() => [...new Set([first, ...(project?.clips.map((c) => c.src) ?? [])])].filter(Boolean), [first, project]);
   const length = project ? projectLength(project) : 0;
   const size = outputSize(project?.ratio, project ? lengths[project.clips[0].src] : null);
-  const scale = Math.min(1, 560 / size.w, 315 / size.h);
-  const view = { w: Math.round(size.w * scale), h: Math.round(size.h * scale) };
+  // The preview's room (videoFit.ts): the stage's own width; its height where the editor's parts sit side by side,
+  // a share of the screen's where they are stacked (a phone).
+  const stage = useRef<HTMLElement>(null);
+  const [room, setRoom] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el || typeof ResizeObserver !== "function") return;
+    const read = () => {
+      const stacked = window.matchMedia?.("(max-width: 767.98px)").matches === true;
+      // (Side by side: the stage's height less its padding and the row with the play button.)
+      setRoom({ w: el.clientWidth - 24, h: stacked ? Math.round(window.innerHeight * PREVIEW_SHARE) : el.clientHeight - 80 });
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    window.addEventListener("resize", read);
+    return () => { ro.disconnect(); window.removeEventListener("resize", read); };
+  }, []);
+  const view = previewSize(size, room);
 
   // Playing: the clock runs, the clip at the play head plays from its own trim at its speed, the others wait.
   useEffect(() => {
@@ -199,9 +219,10 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
     <div className="fixed inset-0 z-50 flex flex-col bg-surface-950 text-white" role="dialog" aria-modal="true" aria-label={say("محرّر الفيديو|The video editor|עורך הווידאו")} data-testid="studio-video-editor">
       <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
         <span className="text-sm font-semibold">🎬 {say("محرّر الفيديو|The video editor|עורך הווידאו")}</span>
-        <span className="text-xs text-white/45">{node.name ?? node.id}</span>
+        <span className="hidden text-xs text-white/45 sm:inline">{node.name ?? node.id}</span>
         <span className="flex-1" />
-        <div className="flex gap-1" role="radiogroup" aria-label={say("شكل الإطار|The frame's shape|צורת המסגרת")}>
+        {/* On a phone the shapes take a row of their own under the title, so Close and Make stay beside it. */}
+        <div className="order-last flex w-full gap-1 overflow-x-auto md:order-none md:w-auto" role="radiogroup" aria-label={say("شكل الإطار|The frame's shape|צורת המסגרת")}>
           {RATIOS.map((r) => (
             <button key={r} type="button" role="radio" aria-checked={(project?.ratio ?? "original") === r} className={chip((project?.ratio ?? "original") === r)} disabled={!project} onClick={() => project && change({ ...project, ratio: r === "original" ? undefined : (r as Ratio) })} data-testid="video-ratio" data-ratio={r}>
               {r === "original" ? say("متل ما انصوّر|As filmed|כפי שצולם") : r}
@@ -227,8 +248,9 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-2 p-3">
+      {/* Side by side on a computer; stacked on a phone, where the settings scroll in what the preview leaves. */}
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <main ref={stage} className="flex min-w-0 shrink-0 flex-col items-center justify-center gap-2 p-3 md:flex-1">
           {project ? (
             <canvas ref={canvas} width={size.w} height={size.h} style={{ width: view.w, height: view.h }} className="rounded-lg bg-black shadow-2xl" data-testid="video-preview" data-ratio={project.ratio ?? "original"} />
           ) : (
@@ -243,7 +265,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
           {note ? <p className="max-w-xl text-center text-[11px] text-white/60" data-testid="video-note">{note}</p> : null}
         </main>
 
-        <aside className="w-72 shrink-0 space-y-3 overflow-y-auto border-s border-white/[0.08] p-3" data-testid="video-inspector">
+        <aside className="min-h-0 flex-1 space-y-3 overflow-y-auto border-t border-white/[0.08] p-3 md:w-72 md:flex-none md:border-s md:border-t-0" data-testid="video-inspector">
           {one && project ? (
             <div className="space-y-2" data-testid="video-clip-panel">
               <div className="text-xs font-medium">{say("المقطع|The clip|הקטע")} {project.clips.indexOf(one) + 1}</div>
@@ -296,7 +318,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
         </aside>
       </div>
 
-      <footer className="space-y-2 border-t border-white/[0.08] p-3" data-testid="video-timeline">
+      <footer className="space-y-2 border-t border-white/[0.08] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-testid="video-timeline">
         <div className="flex flex-wrap items-center gap-1">
           <button type="button" className={btn} disabled={!project} onClick={() => project && change(splitAt(project, t, newId("c")))} data-testid="video-split">✂ {say("قص هون|Cut here|חתוך כאן")}</button>
           <button
@@ -327,7 +349,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
           <button type="button" className={btn} disabled={!project} onClick={() => setPicking("music")} data-testid="video-add-music">♪ {say("موسيقى|Music|מוזיקה")}</button>
         </div>
         {project ? (
-          <div className="relative select-none" onPointerMove={onDragMove} onPointerUp={onDragEnd}>
+          <div className="relative touch-none select-none" onPointerMove={onDragMove} onPointerUp={onDragEnd}>
             <div
               className="relative h-5 cursor-pointer rounded bg-white/[0.04]"
               onPointerDown={(e) => { const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left) / pps); }}
@@ -350,8 +372,8 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
                 return (
                   <div key={c.id} className={`absolute top-1 bottom-1 overflow-hidden rounded-md border ${on ? "border-sky-300 bg-sky-500/40" : "border-white/20 bg-accent-500/35"} cursor-grab`} style={{ left, width: Math.max(6, w) }} onPointerDown={start("move")} data-testid="video-clip" data-id={c.id}>
                     <span className="pointer-events-none absolute inset-x-3 top-1 truncate text-[10px] text-white/85">{i + 1} · {clipLength(c).toFixed(1)}s{c.speed && c.speed !== 1 ? ` · ${c.speed}×` : ""}</span>
-                    <span className="absolute inset-y-0 start-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimIn")} data-testid="video-trim-in" />
-                    <span className="absolute inset-y-0 end-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimOut")} data-testid="video-trim-out" />
+                    <span className="absolute inset-y-0 start-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimIn")} data-testid="video-trim-in" data-video-grip="" />
+                    <span className="absolute inset-y-0 end-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimOut")} data-testid="video-trim-out" data-video-grip="" />
                   </div>
                 );
               })}
@@ -368,7 +390,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
                 return (
                   <div key={w.id} className={`absolute top-1 bottom-1 cursor-grab overflow-hidden rounded border ${on ? "border-sky-300 bg-sky-500/40" : "border-amber-200/40 bg-amber-400/25"}`} style={{ left: w.at * pps, width: Math.max(10, w.dur * pps) }} onPointerDown={start("wordsMove")} data-testid="video-words" data-id={w.id}>
                     <span className="pointer-events-none absolute inset-x-1 top-0.5 truncate text-[10px]" dir="auto">{w.text}</span>
-                    <span className="absolute inset-y-0 end-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("wordsDur")} />
+                    <span className="absolute inset-y-0 end-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("wordsDur")} data-testid="video-words-grip" data-video-grip="" />
                   </div>
                 );
               })}

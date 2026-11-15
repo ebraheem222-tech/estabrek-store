@@ -1163,6 +1163,13 @@
     inset: -12px;
   }
 }
+/* The video editor's timeline under a finger (studio/focus/VideoEditor.tsx): the edges a clip is trimmed by, and
+   the edge words are made longer by, are wide enough to take. A mouse meets them as they were. */
+@media (pointer: coarse) {
+  [data-video-grip] {
+    width: 20px;
+  }
+}
 /* The editor on a phone (studio/phone.ts): in its sheet, fields a finger can press, written at 16px so a phone's
    browser doesn't zoom the page in when one is focused; the tabs of the settings' groups a little bigger.
    (The query is phone.ts PHONE_QUERY.) */
@@ -1170,6 +1177,16 @@
   [data-testid="studio-sheet"] :is(input:not([type="range"], [type="checkbox"], [type="radio"], [type="color"], [type="file"]), select, textarea) {
     min-height: 2.5rem;
     font-size: 16px;
+  }
+  /* The video editor on a phone: its buttons and fields at a finger's size too. */
+  [data-testid="studio-video-editor"] :is(input:not([type="range"], [type="checkbox"], [type="radio"], [type="color"]), select) {
+    min-height: 2.5rem;
+    font-size: 16px;
+  }
+  [data-testid="studio-video-editor"] button {
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    font-size: 13px;
   }
   [data-testid="studio-sheet"] [data-testid="studio-layer"] {
     min-height: 2.5rem;

@@ -264,7 +264,7 @@ test("a phone held sideways gets the phone's layout too, and a pull at the page'
   await context.close();
 });
 
-test("a tool that takes the whole window (the video editor) is not left under the sheet it was opened from", async ({ browser }) => {
+test("the video editor is not left under the sheet it was opened from, and fits the phone: stacked, trimmed and cut by finger", async ({ browser }) => {
   test.setTimeout(180000);
   const context = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
@@ -279,6 +279,47 @@ test("a tool that takes the whole window (the video editor) is not left under th
   await tool.tap();
   await expect(page.getByTestId("studio-video-editor")).toBeVisible({ timeout: 30000 });
   await expect(page.getByTestId("studio-sheet")).toHaveCount(0);
+
+  // The video editor itself fits the phone: its parts are stacked, none wider than the screen.
+  const editor = page.getByTestId("studio-video-editor");
+  const preview = editor.getByTestId("video-preview");
+  await expect(preview).toBeVisible({ timeout: 30000 });
+  const part = async (id: string) => (await editor.getByTestId(id).first().boundingBox())!;
+  await expect.poll(async () => (await part("video-preview")).height, { timeout: 10000 }).toBeLessThanOrEqual(Math.round(H * 0.3) + 1);
+  const pre = await part("video-preview"), insp = await part("video-inspector"), line = await part("video-timeline"), clips = await part("video-clips");
+  expect(pre.x).toBeGreaterThanOrEqual(0);
+  expect(pre.x + pre.width).toBeLessThanOrEqual(W);
+  expect(insp.y).toBeGreaterThanOrEqual(pre.y + pre.height);
+  expect(insp.width).toBe(W);
+  expect(insp.height).toBeGreaterThanOrEqual(120);
+  expect(line.y).toBeGreaterThanOrEqual(insp.y + insp.height - 1);
+  expect(line.y + line.height).toBeLessThanOrEqual(H + 1);
+  expect(clips.width).toBeGreaterThanOrEqual(340);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(W);
+  for (const id of ["video-close", "video-save", "video-split", "video-add-words", "video-play"]) expect((await part(id)).height, id).toBeGreaterThanOrEqual(40);
+
+  // A tap on the clip opens its settings under the preview, with fields at 16px.
+  await editor.getByTestId("video-clip").first().tap();
+  const out = editor.getByTestId("video-clip-out");
+  await expect(out).toBeVisible();
+  expect(await out.evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px");
+  const whole = Number(await out.inputValue());
+  expect(whole).toBeGreaterThan(5);
+  // Its end is trimmed with a finger on its edge, which is wide enough to take.
+  const grip = await part("video-trim-out");
+  expect(grip.width).toBeGreaterThanOrEqual(18);
+  const gx = grip.x + grip.width / 2, gy = grip.y + grip.height / 2;
+  await fingers(context, page, [0, 20, 40, 60, 80, 100].map((d) => [{ x: gx - d, y: gy }]));
+  await expect.poll(async () => Number(await out.inputValue()), { timeout: 10000 }).toBeLessThan(whole - 1);
+  // Cut at the play head (moved by a tap on the ruler): two clips.
+  const ruler = await part("video-ruler");
+  await page.touchscreen.tap(ruler.x + ruler.width * 0.3, ruler.y + ruler.height / 2);
+  await editor.getByTestId("video-split").tap();
+  await expect(editor.getByTestId("video-clip")).toHaveCount(2);
+  // Closed, the phone's editor is back.
+  await editor.getByTestId("video-close").tap();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByTestId("studio-phone-bar")).toBeVisible();
   await context.close();
 });
 
