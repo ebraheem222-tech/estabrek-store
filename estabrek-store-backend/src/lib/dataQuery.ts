@@ -9,13 +9,15 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/httpError.js";
 import type { Field, FieldType } from "./collectionTree.js";
+import type { Incoming } from "./links.js";
 import { dayStart, nextDay } from "./storeTime.js";
 
 export const OPS = ["contains", "notContains", "is", "isNot", "startsWith", "endsWith", "empty", "notEmpty", "gt", "gte", "lt", "lte", "between", "anyOf", "isTrue", "isFalse"] as const;
 export type Op = (typeof OPS)[number];
 /** A row's own columns, beside its fields. */
 export const SYSTEM_COLUMNS = ["$slug", "$status", "$createdAt", "$updatedAt", "$publishedAt"] as const;
-export type ColumnKind = FieldType | "$slug" | "$status" | "$date";
+/** "$from": the other side of a relation that links this table (lib/links.ts): who links the row. */
+export type ColumnKind = FieldType | "$slug" | "$status" | "$date" | "$from";
 export const VIEWS = ["all", "draft", "published", "archived", "trash"] as const;
 export type View = (typeof VIEWS)[number];
 export const STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
@@ -46,11 +48,15 @@ export const OPS_BY_KIND: Record<ColumnKind, readonly Op[]> = {
   $slug: ["contains", "is", "startsWith"],
   $status: ["is", "isNot", "anyOf"],
   $date: ["gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
+  // Linked from no row, from some.
+  $from: ["empty", "notEmpty"],
 };
 
 export const GRID_LIMITS = { pageSize: 200, filters: 12, sorts: 3, search: 100, value: 200, anyOf: 30 } as const;
 
-const FilterSchema = z.object({ field: z.string().min(1).max(40), op: z.enum(OPS), value: z.unknown().optional(), value2: z.unknown().optional() }).strict();
+/** A column: a field's id, a "$" column, or a linked-from column ("$from.<table address>.<field id>"). */
+const ColumnId = z.string().min(1).max(160);
+const FilterSchema = z.object({ field: ColumnId, op: z.enum(OPS), value: z.unknown().optional(), value2: z.unknown().optional() }).strict();
 export type GridFilter = z.infer<typeof FilterSchema>;
 
 export const GridQuerySchema = z
@@ -61,7 +67,7 @@ export const GridQuerySchema = z
     /** The language text columns sort by. */
     lang: z.enum(["ar", "en", "he"]).default("ar"),
     view: z.enum(VIEWS).default("all"),
-    sort: z.array(z.object({ field: z.string().min(1).max(40), dir: z.enum(["asc", "desc"]).default("asc") }).strict()).max(GRID_LIMITS.sorts).default([]),
+    sort: z.array(z.object({ field: ColumnId, dir: z.enum(["asc", "desc"]).default("asc") }).strict()).max(GRID_LIMITS.sorts).default([]),
     filters: z.array(FilterSchema).max(GRID_LIMITS.filters).default([]),
     /** Every filter, or any of them. */
     match: z.enum(["all", "any"]).default("all"),
@@ -87,8 +93,9 @@ export function parseGridQuery(raw: unknown): GridQuery {
   return parsed.data;
 }
 
-export function columnKind(fields: Field[], column: string): ColumnKind | null {
+export function columnKind(fields: Field[], column: string, incoming: Incoming[] = []): ColumnKind | null {
   if (column === "$slug" || column === "$status") return column;
+  if (column.startsWith("$from.")) return incoming.some((x) => x.id === column) ? "$from" : null;
   if (column === "$createdAt" || column === "$updatedAt" || column === "$publishedAt") return "$date";
   return fields.find((f) => f.id === column)?.type ?? null;
 }
@@ -118,6 +125,9 @@ const num = (f: string) => Prisma.sql`(CASE WHEN jsonb_typeof(i."data"->${f}::te
 const anyLang = (f: string, cond: Prisma.Sql) =>
   Prisma.sql`EXISTS (SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(i."data"->${f}::text) = 'object' THEN i."data"->${f}::text ELSE '{}'::jsonb END) AS w(k, v) WHERE ${cond})`;
 const like = (v: string) => v.replace(/[\\%_]/g, "\\$&");
+/** The rows that link row "i" through a relation of another table (or its own): those in the trash don't count. */
+const linkers = (inc: Incoming, select: string) =>
+  Prisma.sql`(SELECT ${Prisma.raw(select)} FROM "CollectionLink" lk JOIN "CollectionItem" ls ON ls."id" = lk."fromId" AND ls."deletedAt" IS NULL WHERE lk."collectionId" = ${inc.table} AND lk."fieldId" = ${inc.field} AND lk."toTable" = i."collectionId" AND lk."toId" = i."id")`;
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
 function str(v: unknown, what: string): string {
@@ -139,13 +149,17 @@ function list(v: unknown, what: string): string[] {
 }
 
 /** One filter as SQL. Throws when the column isn't the table's or the question doesn't fit its kind. */
-export function filterSql(fields: Field[], f: GridFilter): Prisma.Sql {
-  const kind = columnKind(fields, f.field);
+export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] = []): Prisma.Sql {
+  const kind = columnKind(fields, f.field, incoming);
   if (!kind) throw bad(`No column "${f.field}" in this table`);
   if (!OPS_BY_KIND[kind].includes(f.op)) throw bad(`"${f.op}" can't be asked of "${f.field}"`);
   const what = f.field;
   const id = f.field;
 
+  if (kind === "$from") {
+    const linked = Prisma.sql`EXISTS ${linkers(incoming.find((x) => x.id === f.field)!, "1")}`;
+    return f.op === "empty" ? Prisma.sql`NOT ${linked}` : linked;
+  }
   if (kind === "$slug") {
     const v = like(str(f.value, what).toLowerCase());
     if (f.op === "is") return Prisma.sql`i."slug" = ${str(f.value, what).toLowerCase()}`;
@@ -274,13 +288,13 @@ const VIEW_SQL: Record<View, Prisma.Sql> = {
 };
 
 /** Which rows: the table, the view (the trash is its own), the search and the filters. */
-export function gridWhere(collectionId: string, fields: Field[], q: Pick<GridQuery, "view" | "search" | "filters" | "match">): Prisma.Sql {
+export function gridWhere(collectionId: string, fields: Field[], q: Pick<GridQuery, "view" | "search" | "filters" | "match">, incoming: Incoming[] = []): Prisma.Sql {
   const parts: Prisma.Sql[] = [Prisma.sql`i."collectionId" = ${collectionId}`, VIEW_SQL[q.view]];
   if (q.search) parts.push(searchSql(q.search, fields));
   if (q.filters.length) {
     const each = q.filters.map((f, index) => {
       try {
-        return filterSql(fields, f);
+        return filterSql(fields, f, incoming);
       } catch (e) {
         if (e instanceof AppError) e.details = { ...(e.details as object | undefined), filter: index };
         throw e;
@@ -292,13 +306,16 @@ export function gridWhere(collectionId: string, fields: Field[], q: Pick<GridQue
 }
 
 /** In what order: the asked columns (empty ones last), then the table's own order. */
-export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">): Prisma.Sql {
+export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">, incoming: Incoming[] = []): Prisma.Sql {
   const parts: Prisma.Sql[] = [];
   for (const s of q.sort) {
-    const kind = columnKind(fields, s.field);
+    const kind = columnKind(fields, s.field, incoming);
     if (!kind) throw bad(`No column "${s.field}" in this table`);
     const expr =
-      kind === "$slug" || kind === "$date"
+      kind === "$from"
+        ? // By how many rows link it (none last).
+          Prisma.sql`NULLIF(${linkers(incoming.find((x) => x.id === s.field)!, "count(*)")}, 0)`
+        : kind === "$slug" || kind === "$date"
         ? SYSTEM_SQL[s.field]
         : kind === "$status"
           ? Prisma.raw(`i."status"::text`)
@@ -325,9 +342,9 @@ const ROW = Prisma.raw(`i."id", i."collectionId", i."slug", i."status"::text AS 
 type Db = { $queryRaw: <T = unknown>(query: Prisma.Sql) => Promise<T> };
 
 /** One page of rows and how many there are in all. */
-export async function queryRows(db: Db, table: { id: string; fields: Field[] }, q: GridQuery): Promise<{ rows: GridRow[]; total: number }> {
-  const where = gridWhere(table.id, table.fields, q);
-  const order = gridOrder(table.fields, q);
+export async function queryRows(db: Db, table: { id: string; fields: Field[]; incoming?: Incoming[] }, q: GridQuery): Promise<{ rows: GridRow[]; total: number }> {
+  const where = gridWhere(table.id, table.fields, q, table.incoming);
+  const order = gridOrder(table.fields, q, table.incoming);
   const [rows, count] = await Promise.all([
     db.$queryRaw<GridRow[]>(Prisma.sql`SELECT ${ROW} FROM "CollectionItem" i WHERE ${where} ORDER BY ${order} LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}`),
     db.$queryRaw<Array<{ n: number }>>(Prisma.sql`SELECT count(*)::int AS n FROM "CollectionItem" i WHERE ${where}`),
@@ -336,8 +353,8 @@ export async function queryRows(db: Db, table: { id: string; fields: Field[] }, 
 }
 
 /** Rows in order, a slice at a time (the export). */
-export async function rowsSlice(db: Db, table: { id: string; fields: Field[] }, q: GridQuery, offset: number, limit: number): Promise<GridRow[]> {
-  return db.$queryRaw<GridRow[]>(Prisma.sql`SELECT ${ROW} FROM "CollectionItem" i WHERE ${gridWhere(table.id, table.fields, q)} ORDER BY ${gridOrder(table.fields, q)} LIMIT ${limit} OFFSET ${offset}`);
+export async function rowsSlice(db: Db, table: { id: string; fields: Field[]; incoming?: Incoming[] }, q: GridQuery, offset: number, limit: number): Promise<GridRow[]> {
+  return db.$queryRaw<GridRow[]>(Prisma.sql`SELECT ${ROW} FROM "CollectionItem" i WHERE ${gridWhere(table.id, table.fields, q, table.incoming)} ORDER BY ${gridOrder(table.fields, q, table.incoming)} LIMIT ${limit} OFFSET ${offset}`);
 }
 
 /** How many rows each view holds (the tabs' numbers). */

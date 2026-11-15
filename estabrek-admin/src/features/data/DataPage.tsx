@@ -145,11 +145,12 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
     return () => clearTimeout(t);
   }, [search]);
 
-  const columns = useMemo(() => columnsOf(table, lang), [table, lang]);
   const sent = useMemo(() => queryOut({ ...query, lang: wordsLang }), [query, wordsLang]);
   const key = ["data", "rows", table.id, sent];
   const rows = useQuery({ queryKey: key, queryFn: () => (readOnly ? DataAPI.getStoreRows(table.slug, sent) : DataAPI.getRows(table.id, sent)), placeholderData: (prev: GridPage | undefined) => prev });
   const data = rows.data;
+  // The table's own columns, and one for each relation that links it (the page says which: who links each row).
+  const columns = useMemo(() => columnsOf(table, lang, data?.incoming), [table, lang, data?.incoming]);
   const view = query.view ?? "all";
   const inTrash = view === "trash";
 
@@ -507,7 +508,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
         onConfirm={() => bulk.mutate({ op: "purge" })}
         onCancel={() => setConfirmPurge(false)}
       />
-      {drawer && !readOnly ? <RowDrawer table={table} row={drawer === "new" ? null : drawer} lang={lang} canWrite={canWrite} onClose={() => setDrawer(null)} onSaved={() => { setDrawer(null); refresh(); }} /> : null}
+      {drawer && !readOnly ? <RowDrawer table={table} row={drawer === "new" ? null : drawer} incoming={data?.incoming} lang={lang} canWrite={canWrite} onClose={() => setDrawer(null)} onSaved={() => { setDrawer(null); refresh(); }} /> : null}
       {importing && !readOnly ? <ImportDialog table={table} lang={lang} wordsLang={wordsLang} batch={meta.limits.importRows} onClose={() => setImporting(false)} onDone={() => { setImporting(false); refresh(); }} /> : null}
     </section>
   );

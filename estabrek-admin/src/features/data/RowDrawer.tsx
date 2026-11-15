@@ -10,9 +10,9 @@ import { Modal } from "../../components/ui/Modal";
 import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import type { Collection, ItemStatus } from "../../api/collections.api";
 import * as DataAPI from "../../api/data.api";
-import type { GridRow, Issue, Lang } from "../../api/data.api";
-import { ValueInput, input } from "./GridCells";
-import { LANGS, LANG_NAME, WORDS, issueAbout, issueSay } from "./dataText";
+import type { GridRow, Incoming, Issue, Lang } from "../../api/data.api";
+import { FromCell, ValueInput, input } from "./GridCells";
+import { LANGS, LANG_NAME, WORDS, fromName, issueAbout, issueSay } from "./dataText";
 import { draftFrom, draftProblem, valueFrom } from "./kinds";
 
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -30,7 +30,7 @@ function startValues(table: Collection, row: GridRow | null): Record<string, str
   return out;
 }
 
-export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { table: Collection; row: GridRow | null; lang: Lang; canWrite: boolean; onClose: () => void; onSaved: () => void }) {
+export function RowDrawer({ table, row, incoming = [], lang, canWrite, onClose, onSaved }: { table: Collection; row: GridRow | null; /** The relations that link this table: who links this row is shown, to read. */ incoming?: Incoming[]; lang: Lang; canWrite: boolean; onClose: () => void; onSaved: () => void }) {
   const [slug, setSlug] = useState(row?.slug ?? "");
   const [status, setStatus] = useState<ItemStatus>(row?.status ?? "DRAFT");
   const [values, setValues] = useState(() => startValues(table, row));
@@ -153,6 +153,20 @@ export function RowDrawer({ table, row, lang, canWrite, onClose, onSaved }: { ta
             </Box>
           );
         })}
+        {/* Who links this row, through each relation that links its table: to read (it is changed from the row that links). */}
+        {incoming.some((inc) => row?.from?.[inc.id]?.n) ? (
+          <div className="space-y-2 border-t border-white/10 pt-3 text-xs text-white/60" data-testid="row-from">
+            {incoming.map((inc) =>
+              row?.from?.[inc.id]?.n ? (
+                <div key={inc.id} data-testid={`row-from-${inc.slug}-${inc.field}`}>
+                  <div className="mb-1">{say(fromName(inc))}</div>
+                  <FromCell got={row.from[inc.id]} lang={lang} />
+                </div>
+              ) : null,
+            )}
+            <p className="text-white/40">{say("للقراءة بس: الربط بيتغيّر من السطر اللي رابط.|To read: a link is changed from the row that links.|לקריאה בלבד: הקישור משתנה מהשורה המקשרת.")}</p>
+          </div>
+        ) : null}
       </div>
       <MediaLibraryModal
         open={picking !== null}

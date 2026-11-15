@@ -4,7 +4,7 @@
  * Words are written in the three languages side by side ("عربي|English|עברית"); the page says them.
  */
 import type { Collection, CollectionField, FieldType, ItemStatus, Local } from "../../api/collections.api";
-import type { Blocker, ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
+import type { Blocker, ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Incoming, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
 import { shownText, valueFrom } from "./kinds";
 
 export const LANGS: Lang[] = ["ar", "en", "he"];
@@ -27,22 +27,35 @@ export const SYSTEM_NAME: Record<SystemColumn, string> = {
   $publishedAt: "انتشر|Published on|פורסם ב",
 };
 
-export type Column = { id: string; kind: ColumnKind; field?: CollectionField; name: string; /** Worked out per page: shown, never filtered or sorted by. */ computed?: boolean };
+export type Column = { id: string; kind: ColumnKind; field?: CollectionField; name: string; /** Worked out per page: shown, never filtered or sorted by. */ computed?: boolean; /** A linked-from column: the relation it is the other side of. */ from?: Incoming };
 
 const local = (v: Local | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
 export function kindOf(column: string, fields: CollectionField[]): ColumnKind | null {
   if (column === "$slug" || column === "$status") return column;
   if (column === "$createdAt" || column === "$updatedAt" || column === "$publishedAt") return "$date";
+  if (column.startsWith("$from.")) return "$from";
   return fields.find((f) => f.id === column)?.type ?? null;
 }
 
-/** The grid's columns: the address, the status, each field, then when it changed. One of the store's tables: its address (or id), its columns, when it was made. */
-export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress">, lang: Lang): Column[] {
+/** A linked-from column's name, in the three languages: the table that links and its field ("Linked from: Books · Author"). */
+export function fromName(inc: Incoming): string {
+  // (A name is the owner's own words; the bar that parts the languages can't be one of them.)
+  const clean = (s: string) => s.replace(/\|/g, "/");
+  const one = (lang: Lang) => `${clean(local(inc.name ?? undefined, lang) || inc.slug)} · ${clean(local(inc.fieldName ?? undefined, lang) || inc.field)}`;
+  return `مربوط من: ${one("ar")}|Linked from: ${one("en")}|מקושר מ: ${one("he")}`;
+}
+
+/**
+ * The grid's columns: the address, the status, each field, who links the row (one column for each relation that
+ * links this table), then when it changed. One of the store's tables: its address (or id), its columns, when it was made.
+ */
+export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress">, lang: Lang, incoming: Incoming[] = []): Column[] {
   const system = (id: SystemColumn): Column => ({ id, kind: kindOf(id, [])!, name: SYSTEM_NAME[id] });
   const fields = table.fields.map((f): Column => ({ id: f.id, kind: f.type as ColumnKind, field: f, name: local(f.name, lang) || f.id, ...(f.computed ? { computed: true } : {}) }));
   if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, system("$createdAt")];
-  return [system("$slug"), system("$status"), ...fields, system("$updatedAt")];
+  const from = incoming.map((inc): Column => ({ id: inc.id, kind: "$from", name: fromName(inc), from: inc }));
+  return [system("$slug"), system("$status"), ...fields, ...from, system("$updatedAt")];
 }
 
 /** The columns a filter can be asked of: the shown ones that aren't worked out, and the row's dates. */
@@ -75,8 +88,10 @@ const OP_WORDS: Record<Op, string> = {
 const DATE_WORDS: Partial<Record<Op, string>> = { is: "يوم|on|ב", gt: "بعد|after|אחרי", gte: "من|from|מ", lt: "قبل|before|לפני", lte: "لحد|up to|עד" };
 /** A relation is asked about its links. */
 const LINK_WORDS: Partial<Record<Op, string>> = { anyOf: "مربوط بواحد من|linked to any of|מקושר לאחד מ", empty: "مش مربوط بشي|linked to nothing|לא מקושר", notEmpty: "مربوط بشي|linked to something|מקושר" };
+/** The other side of a relation is asked whether any row links this one. */
+const FROM_WORDS: Partial<Record<Op, string>> = { empty: "ما حدا مربوط فيه|nothing links it|שום שורה לא מקושרת אליו", notEmpty: "في مين مربوط فيه|something links it|יש שורות המקושרות אליו" };
 export function opName(op: Op, kind: ColumnKind): string {
-  return ((kind === "date" || kind === "$date") && DATE_WORDS[op]) || (kind === "relation" && LINK_WORDS[op]) || OP_WORDS[op];
+  return ((kind === "date" || kind === "$date") && DATE_WORDS[op]) || (kind === "relation" && LINK_WORDS[op]) || (kind === "$from" && FROM_WORDS[op]) || OP_WORDS[op];
 }
 
 /** What a question needs beside the column: nothing, one value, two (between) or a list. */
@@ -131,8 +146,10 @@ export function dateText(iso: string | null | undefined, lang: Lang): string {
 }
 
 /** A cell as words (what the grid shows, and what sorting by eye expects). */
-export function cellText(column: Column, row: Pick<GridRow, "slug" | "status" | "data" | "createdAt" | "updatedAt" | "publishedAt">, lang: Lang): string {
+export function cellText(column: Column, row: Pick<GridRow, "slug" | "status" | "data" | "createdAt" | "updatedAt" | "publishedAt" | "from">, lang: Lang): string {
   if (column.id === "$slug") return row.slug;
+  // Who links the row: how many rows.
+  if (column.kind === "$from") return row.from?.[column.id]?.n ? String(row.from[column.id].n) : "";
   if (column.id === "$status") return STATUS_NAME[row.status];
   if (column.id === "$createdAt") return dateText(row.createdAt, lang);
   if (column.id === "$updatedAt") return dateText(row.updatedAt, lang);
@@ -290,7 +307,7 @@ export function cellPatch(column: Column, row: Pick<GridRow, "data">, lang: Lang
 }
 
 /** Which columns a cell can be written in: not the server's own dates, and not JSON (it needs room: the row's window). */
-export const editable = (column: Column) => column.kind !== "$date" && column.kind !== "json";
+export const editable = (column: Column) => column.kind !== "$date" && column.kind !== "json" && column.kind !== "$from";
 
 /**
  * The export's lines (as the server's CSV gives them) as a sheet's cells: numbers as numbers and
