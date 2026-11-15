@@ -16,7 +16,8 @@ export const InteractionPolicy = z.object({ version: z.literal(1), bindings: z.o
   click: z.array(InteractionAction).max(8).optional(),
 }).strict() }).strict();
 /** Kept equal to the shop's lists (estabrek-storefront/src/lib/visualControls.ts). */
-export const CARD_HOVERS = ["none", "swap", "slide", "zoom", "zoomSwap", "flip", "curtain", "circle", "cycle", "grayscale", "blur", "pan"] as const;
+// (The last three are drawn by the graphics card: shared/pictureFx.ts, the kinds that answer the pointer.)
+export const CARD_HOVERS = ["none", "swap", "slide", "zoom", "zoomSwap", "flip", "curtain", "circle", "cycle", "grayscale", "blur", "pan", "ripple", "liquid", "shift"] as const;
 export const CARD_LIFTS = ["none", "lift", "shadow", "glow", "border", "scale", "tilt"] as const;
 export const CARD_ENTERS = ["none", "fade", "up", "zoom", "blur", "flip", "side"] as const;
 export const CARD_BUTTONS = ["full", "pill", "outline", "text", "icon", "hover"] as const;

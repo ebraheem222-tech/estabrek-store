@@ -222,7 +222,20 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
       ? studioLink.listen((msg) => {
           // (The bridge passes on what begins with "motion".)
           if (msg.type !== "motionGlfx" || typeof msg.nodeId !== "string") return;
-          document.querySelector(`[data-tree-node="${CSS.escape(msg.nodeId)}"][data-pt-glfx]`)?.dispatchEvent(new CustomEvent("pt:glfx-play"));
+          const el = document.querySelector(`[data-tree-node="${CSS.escape(msg.nodeId)}"]`);
+          if (!el) return;
+          // A picture is its own frame; a slider's effect is on its slides: the one most in sight plays.
+          let host: Element | null = el.matches("[data-pt-glfx]") ? el : null;
+          if (!host) {
+            const within = el.getBoundingClientRect();
+            let most = 0;
+            for (const slide of el.querySelectorAll("[data-pt-glfx]")) {
+              const r = slide.getBoundingClientRect();
+              const seen = Math.max(0, Math.min(r.right, within.right) - Math.max(r.left, within.left)) * Math.max(0, Math.min(r.bottom, within.bottom) - Math.max(r.top, within.top));
+              if (seen > most) { most = seen; host = slide; }
+            }
+          }
+          host?.dispatchEvent(new CustomEvent("pt:glfx-play"));
         })
       : null;
     const smoothOn = smooth ?? Boolean(document.querySelector("[data-pt-smooth]"));

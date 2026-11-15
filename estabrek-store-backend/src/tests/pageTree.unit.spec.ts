@@ -441,6 +441,10 @@ describe("checking a page tree", () => {
     if (r.ok) expect(r.tree.root.children![0].children![0].props.glfx).toEqual({ kind: "ripple", strength: 0.35 });
     const bad = (glfx: unknown) => issuesOf(tree(glfx)).length;
     for (const wrong of [{ kind: "melt" }, { strength: 0.5 }, { kind: "ripple", strength: 0 }, { kind: "ripple", strength: 1.5 }, { kind: "ripple", speed: 2 }, "ripple"]) expect(bad(wrong), JSON.stringify(wrong)).toBeGreaterThan(0);
+    // A slider's pictures take the kinds that answer the pointer, never the reveal.
+    const slider = (glfx: unknown) => page([section("s", [{ id: "sl", type: "slider", props: { slides: [{ src: "/a.webp" }], glfx } }])]);
+    expect(checkTree(slider({ kind: "liquid", strength: 0.8 })).ok).toBe(true);
+    expect(issuesOf(slider({ kind: "reveal" })).length).toBeGreaterThan(0);
     // Only a picture has one: on a clip it is left out, as any setting a kind doesn't have.
     const clip = checkTree(page([section("s", [{ id: "v", type: "video", props: { src: "/a.mp4", glfx: { kind: "ripple" } } }])]));
     expect(clip.ok).toBe(true);

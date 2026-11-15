@@ -36,6 +36,52 @@ test.describe("product cards", () => {
     await expect.poll(() => card.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42)).toBeLessThan(-3);
   });
 
+  test("a card's picture ripples under the pointer, drawn by the graphics card, and its link still opens the product", async ({ page }) => {
+    test.setTimeout(120000);
+    // The products' pictures come from the shop's own address here, so the page may read them.
+    const catalog = () => page.request.post("/api/revalidate", { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["catalog", "catalog:products"], paths: ["/shop"] } });
+    try {
+      await configure(page, { ownPictures: true, visualControls: { version: 1, revision: 3, cardDesign: { hover: "ripple" } } });
+      await catalog();
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto("/en/shop");
+      const card = page.locator('.configured-product-card:has(img.cpc-first[src^="/editorial/"])').first();
+      await expect(card).toHaveAttribute("data-card-hover", "ripple");
+      const pic = card.locator(".cpc-pic");
+      // At rest: the picture itself, ready for the pointer, with no canvas.
+      await expect(pic).toHaveAttribute("data-pt-glfx-state", "rest", { timeout: 30000 });
+      await expect(pic.locator("canvas")).toHaveCount(0);
+      await pic.scrollIntoViewIfNeeded();
+      const box = (await pic.boundingBox())!;
+      await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.4);
+      await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, { steps: 4 });
+      await expect(pic.locator("canvas.pt-glfx[data-on]")).toHaveCount(1, { timeout: 20000 });
+      // The canvas is the picture's box, and what it drew there is the picture (nothing see-through, not one flat colour).
+      const canvas = (await pic.locator("canvas").boundingBox())!;
+      expect(Math.abs(canvas.width - box.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(canvas.height - box.height)).toBeLessThanOrEqual(1);
+      const drawnAt = async (x: number, y: number) => {
+        await pic.evaluate((el, at) => { el.removeAttribute("data-pt-glfx-probe"); el.dispatchEvent(new CustomEvent("pt:glfx-probe", { detail: at })); }, { x, y });
+        await expect(pic).toHaveAttribute("data-pt-glfx-probe", /^\d+,\d+,\d+,\d+$/, { timeout: 5000 });
+        return ((await pic.getAttribute("data-pt-glfx-probe")) ?? "").split(",").map(Number);
+      };
+      const a = await drawnAt(0.2, 0.15), b = await drawnAt(0.5, 0.85);
+      expect(a[3]).toBe(255);
+      expect(b[3]).toBe(255);
+      expect(Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2])).toBeGreaterThan(8);
+      // The pointer leaves: the picture itself again.
+      await page.mouse.move(5, 5);
+      await expect(pic.locator("canvas.pt-glfx[data-on]")).toHaveCount(0, { timeout: 10000 });
+      // The canvas never takes the press: the picture still opens the product.
+      await pic.click();
+      await expect(page).toHaveURL(/\/p\//, { timeout: 20000 });
+    } finally {
+      await configure(page, { on: false });
+      await catalog();
+    }
+  });
+
   test("a button over the picture, an icon button and a badge on sample cards in the editor's preview", async ({ page }) => {
     await page.request.post("http://127.0.0.1:4100/__test/preview-draft", { data: { pageId: "cards-preview", sections: [], rev: 1, updatedAt: "", slug: "/shop", tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: { contained: true }, children: [
       { id: "shop", type: "shop", props: { columns: 3, gap: 40, filtersSide: "end", cardDesign: { buttonStyle: "hover", showBadge: true, badgeStyle: "circle", cardHover: "tilt" } } },

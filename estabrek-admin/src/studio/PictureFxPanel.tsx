@@ -27,8 +27,12 @@ const HINTS: Record<PictureFxKind, string> = {
 
 export function PictureFxPanel({ node, busy, onOps, onTry }: { node: PageTreeNode; busy: boolean; onOps: (label: string, ops: PageDraftOp[]) => void; onTry: () => void }) {
   const props = (node.props ?? {}) as Record<string, unknown>;
-  const fx = pictureFxOf(props.glfx);
-  const label = say("تأثير حيّ على الصورة|A live effect on the picture|אפקט חי על התמונה");
+  // A slider's pictures take the kinds that answer the pointer (a slide comes and goes by the slider's own motion).
+  const slider = node.type === "slider";
+  const kinds: readonly PictureFxKind[] = slider ? PICTURE_FX.filter(pictureFxOnPointer) : PICTURE_FX;
+  const read = pictureFxOf(props.glfx);
+  const fx = read && kinds.includes(read.kind) ? read : null;
+  const label = slider ? say("تأثير حيّ على صور السلايدر|A live effect on the slider's pictures|אפקט חי על תמונות הסליידר") : say("تأثير حيّ على الصورة|A live effect on the picture|אפקט חי על התמונה");
   const save = (next: { kind: PictureFxKind; strength?: number } | null) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...props, glfx: next ?? undefined } }]);
   return (
     <div className={box} data-testid="studio-picture-fx" data-kind={fx?.kind ?? ""}>
@@ -38,7 +42,7 @@ export function PictureFxPanel({ node, busy, onOps, onTry }: { node: PageTreeNod
         onChange={(e) => save(e.target.value ? { kind: e.target.value as PictureFxKind, ...(fx?.strength !== undefined ? { strength: fx.strength } : {}) } : null)}
       >
         <option value="">{say("— بدون —|— none —|— ללא —")}</option>
-        {PICTURE_FX.map((k) => <option key={k} value={k}>{say(PICTURE_FX_NAMES[k])}</option>)}
+        {kinds.map((k) => <option key={k} value={k}>{say(PICTURE_FX_NAMES[k])}</option>)}
       </select>
       {fx ? (
         <>

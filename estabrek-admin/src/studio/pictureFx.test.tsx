@@ -101,6 +101,13 @@ test("the panel: a kind, its strength, a try on the page; none takes it off", ()
   // None: the effect goes, the picture's other settings stay.
   fireEvent.change(kind(), { target: { value: "" } });
   expect(edits.at(-1)).toEqual({ op: "setProps", nodeId: "p", props: { src: "/a.webp", glfx: undefined } });
+  // A slider's pictures take the kinds that answer the pointer; a reveal left on one by hand counts as none.
+  view.rerender(<PictureFxPanel node={{ id: "s", type: "slider", props: { slides: [], glfx: { kind: "reveal" } } } as PageTreeNode} busy={false} onOps={(_l, ops) => edits.push(ops[0])} onTry={onTry} />);
+  expect([...kind().options].map((o) => o.value)).toEqual(["", "ripple", "liquid", "shift"]);
+  expect(kind().value).toBe("");
+  expect(screen.getByTestId("studio-picture-fx").textContent).toContain("slider's pictures");
+  fireEvent.change(kind(), { target: { value: "liquid" } });
+  expect(edits.at(-1)).toEqual({ op: "setProps", nodeId: "s", props: { slides: [], glfx: { kind: "liquid" } } });
   // Every kind has its name in the three languages.
   for (const k of PICTURE_FX) expect(PICTURE_FX_NAMES[k].split("|")).toHaveLength(3);
 });

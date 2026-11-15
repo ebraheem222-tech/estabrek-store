@@ -65,6 +65,7 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
     add("svg-parts", "✏", "أشكال الرسمة|The drawing's shapes|צורות הציור", "كل شكل لحاله: لونه، خطّه، حركته، وتحوّله لشكل تاني|Each shape on its own: its colour, its line, its motion, and morphing into another|כל צורה בנפרד: צבע, קו, תנועה והתמרה", { kind: "focus" });
   }
   if (node.type === "slider") {
+    add("slider-fx", "🌊", "تأثير حيّ على صوره|A live effect on its pictures|אפקט חי על התמונות שלו", "تموّج مي، سائل أو انفصال ألوان على صورة الشريحة لما يمرّ الزبون عليها (بيرسمه كرت الشاشة)|A water ripple, a flow or a colour split on a slide's picture when the shopper is on it (the graphics card draws it)|אדוות מים, זרימה או פיצול צבעים על תמונת השקופית כשהקונה עליה", { kind: "group", group: "motion", card: "studio-picture-fx" });
     add("slider-slides", "🖼", "شرائح السلايدر|The slider's slides|שקופיות הסליידר", "رتّب الشرائح واكتب على كل وحدة|Order the slides and write on each|סדר את השקופיות וכתוב על כל אחת", { kind: "focus" });
   }
   if (node.type === "heading" || node.type === "text" || node.type === "button") {

@@ -3303,7 +3303,7 @@ function StudioDocument() {
               }}
               onPlay={() => send({ type: "motionPlay", nodeId: selected })}
             />
-            {selFree.type === "image" ? <PictureFxPanel key={`glfx:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} onTry={() => send({ type: "motionGlfx", nodeId: selFree.id })} /> : null}
+            {selFree.type === "image" || selFree.type === "slider" ? <PictureFxPanel key={`glfx:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} onTry={() => send({ type: "motionGlfx", nodeId: selFree.id })} /> : null}
             {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {WORLD_HOSTS.has(selFree.type) ? (
               <WorldPanel

@@ -78,6 +78,38 @@ test("the pointer on a picture: a canvas draws the picture where it is, and goes
   expect(errors).toEqual([]);
 });
 
+test("a slider's pictures ripple under the pointer, with the words over a slide still over the canvas", async ({ page }) => {
+  test.setTimeout(150000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/en/picture-fx");
+  const slides = host(page, "slides").locator(".pt-slide");
+  // Its pictures are ready for the pointer; its clip is left alone.
+  await expect(slides.nth(0)).toHaveAttribute("data-pt-glfx-state", "rest", { timeout: 30000 });
+  await expect(slides.nth(1)).toHaveAttribute("data-pt-glfx", /ripple/);
+  await expect(slides.nth(2)).not.toHaveAttribute("data-pt-glfx", /./);
+  const first = slides.nth(0);
+  await first.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const box = (await first.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.2 - 10, box.y + box.height * 0.2);
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2, { steps: 4 });
+  await expect(first.locator("canvas.pt-glfx[data-on]")).toHaveCount(1, { timeout: 20000 });
+  // What it draws is the slide's picture where it is.
+  const drawn = async (x: number, y: number) => {
+    await first.evaluate((el, at) => { el.removeAttribute("data-pt-glfx-probe"); el.dispatchEvent(new CustomEvent("pt:glfx-probe", { detail: at })); }, { x, y });
+    await expect(first).toHaveAttribute("data-pt-glfx-probe", /^\d+,\d+,\d+,\d+$/, { timeout: 5000 });
+    return ((await first.getAttribute("data-pt-glfx-probe")) ?? "").split(",").map(Number);
+  };
+  expect(close(await drawn(0.7375, 0.72), RED, 14)).toBe(true);
+  expect(close(await drawn(0.5, 0.12), PALE, 8)).toBe(true);
+  // The words over the picture are over the canvas too.
+  const order = await first.evaluate((el) => ({ words: getComputedStyle(el.querySelector(".pt-slide-caption")!).zIndex, canvas: getComputedStyle(el.querySelector("canvas.pt-glfx")!).zIndex }));
+  expect(Number(order.words)).toBeGreaterThan(Number(order.canvas));
+  await expect(first.locator(".pt-slide-title")).toBeVisible();
+  await page.mouse.move(1100, 400);
+  await expect(first.locator("canvas.pt-glfx[data-on]")).toHaveCount(0, { timeout: 10000 });
+});
+
 test("a reveal waits unseen until the picture scrolls into view, then leaves the picture as it is", async ({ page }) => {
   test.setTimeout(150000);
   await page.emulateMedia({ reducedMotion: "no-preference" });

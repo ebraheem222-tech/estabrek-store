@@ -25,7 +25,7 @@ import { endlessOf, perfMarks, perfOf } from "./perf";
 import { WORLD_HOSTS, bodyOf, worldOf } from "./physics";
 import { safeCurve } from "../../../shared/textCurve";
 import { safeSparkle } from "../../../shared/sparkle";
-import { pictureFxOf } from "../../../shared/pictureFx";
+import { pictureFxOf, pictureFxOnPointer } from "../../../shared/pictureFx";
 import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
@@ -323,6 +323,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!slides.length) return null;
       const settings = sliderSettings(p);
       const looks = sliderLooksOf(p);
+      // A live effect on its pictures under the pointer (shared/pictureFx.ts; TreeMedia lays the canvas over a slide).
+      const slideFx = pictureFxOf(p.glfx);
+      const slideFxData = slideFx && pictureFxOnPointer(slideFx.kind) ? JSON.stringify(slideFx) : undefined;
       const w = SLIDER_WORDS[ctx.lang] ?? SLIDER_WORDS.ar;
       const { carousel, ...words } = w;
       return (
@@ -345,7 +348,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
                 </>
               );
               return (
-                <div key={i} className="pt-slide" role="group" aria-roledescription={w.slide} aria-label={`${i + 1} / ${slides.length}`}>
+                <div key={i} className="pt-slide" role="group" aria-roledescription={w.slide} aria-label={`${i + 1} / ${slides.length}`} data-pt-glfx={s.kind === "video" ? undefined : slideFxData}>
                   {to ? <a className="pt-slide-link" href={to}>{inner}</a> : inner}
                 </div>
               );
