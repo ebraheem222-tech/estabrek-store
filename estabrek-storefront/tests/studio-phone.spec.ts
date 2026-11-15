@@ -281,3 +281,27 @@ test("a tool that takes the whole window (the video editor) is not left under th
   await expect(page.getByTestId("studio-sheet")).toHaveCount(0);
   await context.close();
 });
+
+test("a finger on a selected element moves it, and undo puts it back", async ({ browser }) => {
+  test.setTimeout(180000);
+  const { context, page } = await phone(browser);
+  await pick(page, "Editable drawing");
+  const place = () => page.frameLocator('[data-testid="studio-frame"]').locator('[data-tree-node="drawing"]').evaluate((el) => { const b = el.getBoundingClientRect(); return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; });
+  const before = await place();
+  // Its middle on the screen: half way between its handles (clear of them: they take a finger from a little way round).
+  const spots = await page.locator("[data-studio-handle]").evaluateAll((els) => els.map((el) => { const b = el.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }));
+  const cx = (Math.min(...spots.map((s) => s.x)) + Math.max(...spots.map((s) => s.x))) / 2;
+  const ys = spots.map((s) => s.y).sort((a, b) => a - b).slice(1);
+  const cy = (ys[0] + ys[ys.length - 1]) / 2;
+  await fingers(context, page, [0, 8, 16, 24, 32, 40, 50, 60].map((d) => [{ x: cx + d, y: cy + d }]));
+  // Dropped 60px down and to the right on the screen: about as far in the page (the frame is shown at 96%), the same size.
+  await expect.poll(async () => (await place()).x - before.x, { timeout: 20000 }).toBeGreaterThan(40);
+  const after = await place();
+  expect(after.y - before.y).toBeGreaterThan(40);
+  expect(after.x - before.x).toBeLessThan(80);
+  expect([after.w, after.h]).toEqual([before.w, before.h]);
+  await expect(page.getByTestId("studio-undo")).toBeEnabled({ timeout: 20000 });
+  await page.getByTestId("studio-undo").tap();
+  await expect.poll(place, { timeout: 20000 }).toEqual(before);
+  await context.close();
+});
