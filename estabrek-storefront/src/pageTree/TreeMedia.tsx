@@ -4,7 +4,8 @@
  * animations (dotLottie, .json or .lottie), Rive animations (.riv, with their state
  * machines), particles behind a section (tsParticles), and the page's smooth scrolling
  * (Lenis). The players' WebAssembly comes from the shop itself (public/vendor, copied by
- * scripts/vendor-wasm.cjs), never a public CDN.
+ * scripts/vendor-wasm.cjs), never a public CDN. A picture's live effect (WebGL: pictureFxRun.ts)
+ * is started here too.
  *
  * An animation plays by itself, once it's seen, with the mouse over it, or (Lottie) with the
  * scroll. "Reduce motion" shows each one still, with no particles and the page's own scroll.
@@ -15,6 +16,8 @@ import { usePathname } from "next/navigation";
 import { particleOptions, type ParticleSpec } from "./particles";
 import { ViewRuntimeRegistry, viewTargets } from "./viewRuntime";
 import type { VideoLive } from "./videoPlay";
+import { studioLink } from "./studioLink";
+import { pictureFxOf } from "../../../shared/pictureFx";
 
 type Stop = () => void;
 /** Whether this page's run is still on (a player loaded after it ended is never started). */
@@ -175,6 +178,14 @@ async function particles(els: HTMLElement[], stops: Stop[], live: Live) {
   }
 }
 
+/** A picture's live effect: its WebGL code is a script of its own, loaded by the first page that has one. */
+async function pictureFx(host: HTMLElement, stops: Stop[], live: Live) {
+  const spec = pictureFxOf(read<unknown>(host, "ptGlfx"));
+  if (!spec) return;
+  const { runPictureFx } = await import("./pictureFxRun");
+  if (live()) runPictureFx(host, spec, stops);
+}
+
 export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision?: number }) {
   const pathname = usePathname();
   useEffect(() => {
@@ -192,6 +203,7 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
       if (node.matches("video[data-pt-video]")) videos(node as HTMLVideoElement, still, playerStops);
       else if (node.matches("canvas[data-pt-lottie]")) keep(lotties([node as HTMLCanvasElement], still, playerStops, playerLive));
       else if (node.matches("canvas[data-pt-rive]")) keep(rives([node as HTMLCanvasElement], still, playerStops, playerLive));
+      else if (node.matches("[data-pt-glfx]")) keep(pictureFx(node as HTMLElement, playerStops, playerLive));
       else keep(particles([node as HTMLElement], playerStops, playerLive));
       return () => { active = false; playerStops.splice(0).forEach(stop => stop()); };
     });
@@ -200,9 +212,19 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
       ...viewTargets(document, "canvas[data-pt-lottie]", ["data-pt-lottie"]),
       ...viewTargets(document, "canvas[data-pt-rive]", ["data-pt-rive"]),
       ...(still ? [] : viewTargets(document, "[data-pt-particles]", ["data-pt-particles", "$color"])),
+      // Its picture's address is part of what it is: a changed picture starts again with the new one.
+      ...(still ? [] : viewTargets(document, "[data-pt-glfx]", ["data-pt-glfx"]).map((t) => ({ ...t, config: `${t.config}|${t.node.querySelector("img")?.getAttribute("src") ?? ""}` }))),
     ]);
     reconcile();
     if (studio) window.addEventListener("studio-view-updated", reconcile);
+    // The editor's "try" on a picture's effect: it plays by itself once (the editor's pointer never reaches the page).
+    const unlisten = studio
+      ? studioLink.listen((msg) => {
+          // (The bridge passes on what begins with "motion".)
+          if (msg.type !== "motionGlfx" || typeof msg.nodeId !== "string") return;
+          document.querySelector(`[data-tree-node="${CSS.escape(msg.nodeId)}"][data-pt-glfx]`)?.dispatchEvent(new CustomEvent("pt:glfx-play"));
+        })
+      : null;
     const smoothOn = smooth ?? Boolean(document.querySelector("[data-pt-smooth]"));
     if (smoothOn && !still && !studio) {
       keep(
@@ -216,6 +238,7 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
     return () => {
       dead = true;
       window.removeEventListener("studio-view-updated", reconcile);
+      unlisten?.();
       players.clear();
       stops.splice(0).forEach((f) => f());
     };

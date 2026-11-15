@@ -25,6 +25,7 @@ import { endlessOf, perfMarks, perfOf } from "./perf";
 import { WORLD_HOSTS, bodyOf, worldOf } from "./physics";
 import { safeCurve } from "../../../shared/textCurve";
 import { safeSparkle } from "../../../shared/sparkle";
+import { pictureFxOf } from "../../../shared/pictureFx";
 import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
@@ -250,10 +251,12 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!src) return null;
       // Sparkling stars over it (focus mode, shared/sparkle.ts), drawn here and twinkling in CSS.
       const sparkle = safeSparkle(p.sparkle);
+      // A live effect on it (shared/pictureFx.ts): TreeMedia lays a WebGL canvas over the picture when it is needed.
+      const glfx = pictureFxOf(p.glfx);
       // The page's first picture loads at once and first; the rest wait until they're near the screen.
       const load = ctx.lead === node.id || p.priority === true ? ({ loading: "eager", fetchPriority: "high" } as Record<string, string>) : ({ loading: "lazy" } as Record<string, string>);
       const img = framed(node, motion) ? (
-        <span className={cls(node, "pt-frame")} {...mark}>
+        <span className={cls(node, "pt-frame")} {...mark} data-pt-glfx={glfx ? JSON.stringify(glfx) : undefined}>
           {before}
           <img className="pt-frame-media" src={src} alt={say(p.alt)} {...load} decoding="async" />
           {fx}

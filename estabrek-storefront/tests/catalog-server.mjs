@@ -367,6 +367,25 @@ const physicsShapesDemo = { id: "physics-shapes", slug: "/physics-shapes", name:
 // puck sideways into a fixed block across a gap: the puck's recipe for that block runs once, the block's own
 // recipe says what struck it, and the puck's recipe for a wall never runs.
 const counts = (name) => [{ act: "set", name, op: "add", value: 1 }];
+// Pictures with a live effect (pageTree/pictureFxRun.ts). The first three answer the pointer; the drawn picture
+// (a red disc and a navy one, bottom right, on a pale ground) is in a box of its own proportions and in a square
+// one it is cut to fill, so what the canvas draws at a point is known; the last one, far down the page, comes out
+// of a grain when it scrolls into view.
+const fxPicture = (id, kind, style, src = "/templates/fixture-subject.svg") => ({ id, type: "image", props: { src, alt: { en: id }, glfx: { kind } }, style: { base: style } });
+const pictureFxDemo = { id: "picture-fx", slug: "/picture-fx", name: "Picture effects", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    { id: "top", type: "section", props: {}, style: { base: { pad: [20, 20, 20, 20], gap: 20 } }, children: [
+      fxPicture("ripple", "ripple", { width: "400px", height: "300px" }),
+      fxPicture("liquid", "liquid", { width: "300px", height: "300px" }),
+      fxPicture("shift", "shift", { width: "360px", height: "260px" }, "/editorial/scarves.webp"),
+      { id: "plain", type: "image", props: { src: "/templates/fixture-subject.svg", alt: { en: "plain" } }, style: { base: { width: "200px", height: "150px" } } },
+    ] },
+    { id: "gap", type: "section", props: {}, style: { base: { minHeight: "1600px" } }, children: [] },
+    { id: "low", type: "section", props: {}, style: { base: { pad: [20, 20, 20, 20], minHeight: "500px" } }, children: [
+      fxPicture("reveal", "reveal", { width: "400px", height: "300px" }),
+    ] },
+  ] },
+} };
 const physicsHitsDemo = { id: "physics-hits", slug: "/physics-hits", name: "Hits", status: "PUBLISHED", format: 2, sections: [], tree: {
   version: 1, root: { id: "page", type: "page", props: {}, children: [
     { id: "drops", type: "section", props: { world: { on: "load", start: "place", gx: 0, gy: 1, walls: "box", drag: false, bounce: 0.5 } }, style: { base: { minHeight: "420px" } }, children: [
@@ -1713,6 +1732,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/physics-field") return res.end(JSON.stringify(physicsFieldDemo));
       if (slug === "/physics-shapes") return res.end(JSON.stringify(physicsShapesDemo));
       if (slug === "/physics-hits") return res.end(JSON.stringify(physicsHitsDemo));
+      if (slug === "/picture-fx") return res.end(JSON.stringify(pictureFxDemo));
       if (slug === "/stage-demo") return res.end(JSON.stringify(stageDemo));
       if (slug === "/speed-demo" || slug === "/speed-off") return res.end(JSON.stringify(speedDemo(slug === "/speed-off")));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));

@@ -359,6 +359,8 @@ export const HOVER_KINDS = [
   "spotlight", "ripple", "spring", "jelly",
 ] as const;
 export const FX_KINDS = ["shine", "gradient", "grain"] as const;
+/** A picture's live effects (the shop's shared/pictureFx.ts PICTURE_FX). */
+export const PICTURE_FX = ["ripple", "liquid", "shift", "reveal"] as const;
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
 const MotionKeys = z.object({
   rx: z.number().finite().min(-180).max(180).optional(),
@@ -765,6 +767,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     // The picture's edit (focus mode): the original it was made from and what was done to it, so the editor can
     // change or undo it (`src` is the edited copy the shop shows).
     edit: z.object({ from: src, recipe: EditRecipe }).optional(),
+    // A live effect on it, drawn by the graphics card in the shop (shared/pictureFx.ts): rings of water, a flow
+    // or a colour split under the pointer, or a soft reveal when it scrolls into view; and how strong.
+    glfx: z.object({ kind: z.enum(PICTURE_FX), strength: z.number().min(0.1).max(1).optional() }).strict().optional(),
   }),
   button: z.object({ label: local(120), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional(), rich: z.boolean().optional() }),
   video: z.object({

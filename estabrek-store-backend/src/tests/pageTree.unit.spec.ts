@@ -433,6 +433,20 @@ describe("checking a page tree", () => {
     expect(bad({ viewOn: "hover" })).toBeGreaterThan(0);
   });
 
+  test("a picture's live effect: one of the four kinds, and how strong", () => {
+    const tree = (glfx: unknown) => page([section("s", [{ id: "p", type: "image", props: { src: "/a.webp", glfx } }])]);
+    for (const kind of ["ripple", "liquid", "shift", "reveal"]) expect(checkTree(tree({ kind })).ok, kind).toBe(true);
+    const r = checkTree(tree({ kind: "ripple", strength: 0.35 }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props.glfx).toEqual({ kind: "ripple", strength: 0.35 });
+    const bad = (glfx: unknown) => issuesOf(tree(glfx)).length;
+    for (const wrong of [{ kind: "melt" }, { strength: 0.5 }, { kind: "ripple", strength: 0 }, { kind: "ripple", strength: 1.5 }, { kind: "ripple", speed: 2 }, "ripple"]) expect(bad(wrong), JSON.stringify(wrong)).toBeGreaterThan(0);
+    // Only a picture has one: on a clip it is left out, as any setting a kind doesn't have.
+    const clip = checkTree(page([section("s", [{ id: "v", type: "video", props: { src: "/a.mp4", glfx: { kind: "ripple" } } }])]));
+    expect(clip.ok).toBe(true);
+    if (clip.ok) expect(clip.tree.root.children![0].children![0].props.glfx).toBeUndefined();
+  });
+
   test("a picture's sparkling stars: where, their drawing, colour, size, speed and when", () => {
     const tree = (sparkle: unknown) => page([section("s", [{ id: "p", type: "image", props: { src: "/a.webp", sparkle } }])]);
     const good = { points: [{ x: 0.25, y: 0.4, s: 1.3 }, { x: 0.8, y: 0.1 }], shape: "glint", color: "#ffd700", size: 18, speed: 1.6, when: "hover", glow: true };
