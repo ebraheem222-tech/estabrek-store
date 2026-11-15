@@ -4,7 +4,9 @@
  * (collections.controller.ts) under the same permissions (pages:read / pages:write).
  *
  * GET    /admin/collections/grid-meta            — what may be asked of each kind of column, and the limits
- * GET    /admin/collections/:id/rows?q={…}       — one page: filters, sort, search, view (all, draft, published, archived, trash)
+ * GET    /admin/collections/:id/rows?q={…}       — one page: filters, sort, search, view (all, draft, published, archived, trash);
+ *                                                  `incoming`: the relations that link this table, each a read-only column
+ *                                                  ("$from.<table>.<field>"); a row's `from` says who links it through each
  * GET    /admin/collections/:id/rows/export?q={…} — the same rows (all pages) as CSV
  * GET    /admin/collections/:id/rows/lookup?search= — a few rows to pick from when linking (a relation's picker)
  * POST   /admin/collections/:id/rows             { slug?, values?, status?, lang? } — one new row (its address made when not given)
@@ -26,7 +28,7 @@ import { checkItemData, ITEM_SLUG, LIMITS, TRASH_DAYS, withDefaults } from "../.
 import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
 import { changedUnique, uniqueIssues, type Candidate } from "../../lib/uniqueValues.js";
 import { hiddenOf, shownRow } from "../../lib/schemaChange.js";
-import { checkLinks, isRelation, linkGone, namedRows, relationsOf, restoreRows, saveLinks, setLinksOfMany, splitLinks, trashRows, withLinks, type Asked } from "../../lib/links.js";
+import { checkLinks, incomingTo, isRelation, linkGone, linkedFrom, namedRows, relationsOf, restoreRows, saveLinks, setLinksOfMany, splitLinks, trashRows, withLinks, type Asked, type Incoming } from "../../lib/links.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { GRID_LIMITS, OPS_BY_KIND, STATUSES, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQuery, queryRows, rowsSlice, utc, viewCounts } from "../../lib/dataQuery.js";
 import { LANGS, coerceValue, csvLine, exportColumns, freeSlug, looseData, patchData, slugFrom, type Issue } from "../../lib/dataRows.js";
@@ -40,15 +42,21 @@ type Status = (typeof STATUSES)[number];
 const Lang = z.enum(LANGS).default("ar");
 const StatusIn = z.enum(STATUSES);
 
+/** The table, and the relations (of any table) that link it: the other side, read from the same links. */
 async function tableOf(id: string) {
   const c = await prisma.collection.findUnique({ where: { id }, select: { id: true, slug: true, fields: true } });
   if (!c) throw new AppError(404, "NOT_FOUND", "No such table");
-  return { id: c.id, slug: c.slug, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[] };
+  return { id: c.id, slug: c.slug, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], incoming: await incomingTo(prisma, c.id) };
 }
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 const taken = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
-/** Rows as answered: the table's own values, and each relation's linked rows. */
-const answer = <T extends { id: string; data: unknown }>(table: { id: string; fields: Field[] }, rows: T[]) => withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
+/** Rows as answered: the table's own values, each relation's linked rows, and (`from`) who links the row through each relation that links this table. */
+async function answer<T extends { id: string; data: unknown }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[]) {
+  const shown = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
+  if (!table.incoming.length) return shown;
+  const from = await linkedFrom(prisma, table.id, table.incoming, shown.map((row) => row.id));
+  return shown.map((row) => ({ ...row, from: from.get(row.id) ?? {} }));
+}
 const LONG = { timeout: 120_000, maxWait: 10_000 };
 
 r.get("/grid-meta", (_req, res) => {
@@ -62,7 +70,7 @@ r.get(
     const q = parseGridQuery(one(req.query.q));
     const t0 = performance.now();
     const [page, counts] = await Promise.all([queryRows(prisma, table, q), viewCounts(prisma, table.id)]);
-    res.json({ rows: await answer(table, page.rows), total: page.total, page: q.page, pageSize: q.pageSize, counts, ms: Math.round(performance.now() - t0) });
+    res.json({ rows: await answer(table, page.rows), total: page.total, page: q.page, pageSize: q.pageSize, counts, incoming: table.incoming, ms: Math.round(performance.now() - t0) });
   }),
 );
 
@@ -323,7 +331,7 @@ r.post(
   asyncHandler(async (req, res) => {
     const table = await tableOf(String(req.params.id));
     const body = BulkBody.parse(req.body ?? {});
-    const which = body.ids ? Prisma.sql`i."collectionId" = ${table.id} AND i."id" IN (${Prisma.join(body.ids)})` : gridWhere(table.id, table.fields, parseGridQuery(body.query));
+    const which = body.ids ? Prisma.sql`i."collectionId" = ${table.id} AND i."id" IN (${Prisma.join(body.ids)})` : gridWhere(table.id, table.fields, parseGridQuery(body.query), table.incoming);
     const live = Prisma.sql`${which} AND i."deletedAt" IS NULL`;
     const now = new Date();
     let changed = 0;

@@ -9,7 +9,12 @@ export type Op = "contains" | "notContains" | "is" | "isNot" | "startsWith" | "e
 export type View = "all" | "draft" | "published" | "archived" | "trash";
 /** A row's own columns, beside its fields. */
 export type SystemColumn = "$slug" | "$status" | "$createdAt" | "$updatedAt" | "$publishedAt";
-export type ColumnKind = FieldType | "$slug" | "$status" | "$date";
+/** "$from": the other side of a relation that links this table: who links the row (read only). */
+export type ColumnKind = FieldType | "$slug" | "$status" | "$date" | "$from";
+/** A relation of some table (this one's own too) that links this table's rows: a column of its grid, "$from.<table address>.<field id>". */
+export type Incoming = { id: string; table: string; slug: string; name: Local | null; field: string; fieldName: Local | null; /** A row here is linked from one row there at most. */ single: boolean };
+/** Who links a row through one such relation: how many rows, and the first few. */
+export type LinkedFrom = { n: number; rows: Linked[] };
 /** A table in the grid: one of the owner's (a collection), or one of the store's own, to look at. */
 export type GridTable = Omit<Collection, "fields"> & {
   /** One of the store's own tables (products, orders…): nothing is written from the grid. */
@@ -22,8 +27,8 @@ export type GridTable = Omit<Collection, "fields"> & {
 export type GridFilter = { field: string; op: Op; value?: unknown; value2?: unknown };
 export type GridSort = { field: string; dir: "asc" | "desc" };
 export type GridQuery = { page?: number; pageSize?: number; search?: string; lang?: Lang; view?: View; sort?: GridSort[]; filters?: GridFilter[]; match?: "all" | "any" };
-export type GridRow = CollectionItem & { deletedAt: string | null };
-export type GridPage = { rows: GridRow[]; total: number; page: number; pageSize: number; counts: Record<View, number>; ms: number };
+export type GridRow = CollectionItem & { deletedAt: string | null; /** Who links it, by the linked-from column's id. */ from?: Record<string, LinkedFrom> };
+export type GridPage = { rows: GridRow[]; total: number; page: number; pageSize: number; counts: Record<View, number>; ms: number; /** The relations that link this table. */ incoming?: Incoming[] };
 export type GridMeta = {
   ops: Record<ColumnKind, Op[]>;
   systemColumns: SystemColumn[];

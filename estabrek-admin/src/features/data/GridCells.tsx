@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { say } from "../../studio/say";
 import type { CollectionField } from "../../api/collections.api";
-import type { ColumnKind, GridRow, Lang } from "../../api/data.api";
+import type { ColumnKind, GridRow, Lang, LinkedFrom } from "../../api/data.api";
 import { STATUS_NAME, cellText, type Column } from "./dataText";
 import { choiceName, draftFrom, linkedName, linkedOf, mapLink, placeJoin, placeParts } from "./kinds";
 import { RelationInput } from "./RelationInput";
@@ -19,12 +19,31 @@ const STATUS_TONE: Record<string, string> = { DRAFT: "bg-white/10 text-white/70"
 const chip = "inline-block rounded-full bg-white/10 px-2 py-0.5 text-xs";
 const safeLink = (v: unknown) => (typeof v === "string" && /^(https:\/\/|\/(?!\/))/.test(v) ? v : null);
 
+/** Who links a row through one relation: how many rows, the first few by name, and how many more there are. */
+export function FromCell({ got, lang }: { got: LinkedFrom | undefined; lang: Lang }) {
+  if (!got?.n) return null;
+  return (
+    <span className="flex max-w-[22rem] flex-wrap items-center gap-1" data-testid="cell-from" data-count={got.n}>
+      <span className="rounded-full bg-accent-500/20 px-1.5 text-xs tabular-nums" title={say("كم سطر مربوط فيه|Rows that link it|שורות המקושרות אליו")}>
+        {got.n.toLocaleString("en")}
+      </span>
+      {got.rows.map((r) => (
+        <span key={r.id} className={chip} title={r.slug}>
+          <bdi>{linkedName(r, lang)}</bdi>
+        </span>
+      ))}
+      {got.n > got.rows.length ? <span className="text-xs text-white/45" dir="ltr">+{(got.n - got.rows.length).toLocaleString("en")}</span> : null}
+    </span>
+  );
+}
+
 /** A cell as it shows in the grid. */
 export function CellView({ column, row, lang }: { column: Column; row: GridRow; lang: Lang }) {
   const v = row.data?.[column.id];
   const text = cellText(column, row, lang);
   if (column.id === "$status") return <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[row.status]}`}>{say(text)}</span>;
   if (column.id === "$slug") return <span className="font-mono text-xs text-white/70" dir="ltr">{text}</span>;
+  if (column.kind === "$from") return <FromCell got={row.from?.[column.id]} lang={lang} />;
   if (!text) return null;
   switch (column.kind) {
     case "image":
