@@ -483,6 +483,36 @@ model Run {
   @@index([ok, startedAt])
 }
 
+/// The queue (E0.3, src/lib/tasks.ts; admin → صف الشغل): background work that must not be lost.
+/// A row until it is done: a restart in the middle doesn't drop it, a failure is tried again after
+/// a growing wait, and one that keeps failing is set aside for the owner to look at.
+model Task {
+  id          String    @id @default(cuid())
+  /// Which work: the name its handler is registered under ("automation"…).
+  kind        String
+  /// What it was given. Emptied when the task is done.
+  payload     Json
+  /// "Once only": asked again with the same key, it is the same task.
+  key         String?   @unique
+  /// "waiting" | "running" | "done" | "failed" (set aside: needs a look) | "cancelled"
+  status      String    @default("waiting")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  /// Not before this (each retry waits longer).
+  runAt       DateTime  @default(now())
+  /// While running: when a worker took it, and after when that worker is taken for dead.
+  lockedAt    DateTime?
+  lockedUntil DateTime?
+  lastError   String?
+  result      Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  finishedAt  DateTime?
+
+  @@index([status, runAt])
+  @@index([createdAt])
+}
+
 /// What a rule remembers per thing: when it last fired, "still low" for stock (it
 /// fires again only after the stock went back up), when to unpin a pinned product.
 model AutomationState {

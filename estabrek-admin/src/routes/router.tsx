@@ -66,6 +66,7 @@ const SpeedMonitorPage = lazy(() => import("../features/system/SpeedMonitorPage"
 const JobsPage = lazy(() => import("../features/system/JobsPage"));
 const ServerStatePage = lazy(() => import("../features/system/ServerStatePage"));
 const RunsPage = lazy(() => import("../features/system/RunsPage"));
+const TasksPage = lazy(() => import("../features/system/TasksPage"));
 const VaultPage = lazy(() => import("../features/system/VaultPage"));
 const SchedulePage = lazy(() => import("../features/system/SchedulePage"));
 const AutomationsPage = lazy(() => import("../features/system/AutomationsPage"));
@@ -277,6 +278,7 @@ export default function AppRouter() {
           <Route path="system/jobs" element={withPermissions(<JobsPage />, ["system:read"])} />
           {/* The run log (E0.2): everything the server did by itself, kept through restarts. */}
           <Route path="system/runs" element={withPermissions(<RunsPage />, ["system:read"])} />
+          <Route path="system/tasks" element={withPermissions(<TasksPage />, ["system:read"])} />
           <Route path="system/server" element={withPermissions(<ServerStatePage />, ["system:read"])} />
           <Route path="system/vault" element={withPermissions(<VaultPage />, ["system:read"])} />
           <Route path="system/schedule" element={withPermissions(<SchedulePage />, ["system:read"])} />

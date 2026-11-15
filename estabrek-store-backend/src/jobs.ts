@@ -24,6 +24,7 @@ import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
 import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
 import { purgeTrash } from "./lib/collections.js";
 import { cleanRuns } from "./lib/runs.js";
+import { cleanTasks, runTasks } from "./lib/tasks.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -107,6 +108,27 @@ export function registerBackgroundJobs() {
     limits: { min: HOUR, max: 48 * HOUR },
     firstMs: 4 * MIN,
     run: () => cleanRuns(),
+  });
+
+  registerJob({
+    name: "tasks",
+    group: "control",
+    // The queue's worker (lib/tasks.ts): at once when a task is added, and on this timer for the
+    // ones whose retry is due or whose worker died mid-way. Paused: tasks wait, none is lost.
+    everyMs: 15_000,
+    limits: { min: 5_000, max: 5 * MIN },
+    firstMs: 4_000,
+    run: () => runTasks(),
+  });
+
+  registerJob({
+    name: "tasksClean",
+    group: "data",
+    // Done tasks are kept a week, the ones set aside or dismissed a month (lib/tasks.ts TASK_KEEP_DAYS).
+    everyMs: 6 * HOUR,
+    limits: { min: HOUR, max: 48 * HOUR },
+    firstMs: 5 * MIN,
+    run: () => cleanTasks(),
   });
 
   registerJob({

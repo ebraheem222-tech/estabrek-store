@@ -1,8 +1,10 @@
 /**
  * Automations, "when X, do Y" (admin → التلقائيات). Events come in through
- * lib/automations emitAutomation (a new order, a video ready, a job failing) or
- * from the background job "automations" (every 2 minutes: stock below a rule's
- * line, a product's popularity jumping, pinned products due back). Each enabled
+ * lib/automations emitAutomation (a new order, a video ready, a job failing): each
+ * is put on the queue (lib/tasks.ts), so one that came just before a restart, or
+ * while the database was away, is still handled. Or from the background job
+ * "automations" (every 2 minutes: stock below a rule's line, a product's
+ * popularity jumping, pinned products due back). Each enabled
  * rule for the event checks its condition and its cooldown for the same thing,
  * then does its action:
  *   notify       the bell in the admin
@@ -13,12 +15,14 @@
  * Every run is kept (AutomationRun, the latest 500).
  */
 import type { AutomationRule } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
 import { triggerJob } from "../../lib/jobs.js";
 import { readPerformance, savePerformance } from "../../lib/performanceSettings.js";
 import { rankedProducts } from "../../lib/popularity.js";
-import { DEFAULT_TEXT, conditionsMet, render, setAutomationHandler, type ActionConfig, type Trigger } from "../../lib/automations.js";
+import { DEFAULT_TEXT, TRIGGERS, conditionsMet, render, setAutomationHandler, type ActionConfig, type Trigger } from "../../lib/automations.js";
+import { enqueueTask, registerTask } from "../../lib/tasks.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
 import { recordRun } from "../../lib/runs.js";
 import { getOrCreateSettings } from "./settings.controller.js";
@@ -101,16 +105,21 @@ async function record(rule: AutomationRule, subject: string, ok: boolean, detail
   }
 }
 
-/** An event: every rule for it (or just `only`), its condition, its cooldown for the same thing, its action. */
+/**
+ * An event: every rule for it (or just `only`), its condition, its cooldown for the same thing, its action.
+ * `now` is the event's own moment: the same event handled again (the queue trying it again after
+ * a crash or a database error mid-way) doesn't run a rule that already took it.
+ */
 export async function handleEvent(trigger: Trigger, data: Record<string, unknown>, subject: string, now = Date.now(), only?: AutomationRule[]) {
   let ran = 0;
   for (const rule of only ?? (await rulesFor(trigger, now))) {
     if (!conditionsMet(trigger, (rule.conditions ?? {}) as Record<string, unknown>, data)) continue;
     const key = { ruleId_subject: { ruleId: rule.id, subject } };
-    if (rule.cooldownMinutes > 0) {
-      const st = await prisma.automationState.findUnique({ where: key });
-      if (st && now - st.lastAt.getTime() < rule.cooldownMinutes * MIN) continue;
-    }
+    const st = await prisma.automationState.findUnique({ where: key });
+    if (st?.lastAt.getTime() === now) {
+      // This very event again: done already when its run is written; else it stopped before that, so it goes on.
+      if (await prisma.automationRun.findFirst({ where: { ruleId: rule.id, subject, at: new Date(now) }, select: { id: true } })) continue;
+    } else if (st && rule.cooldownMinutes > 0 && now - st.lastAt.getTime() < rule.cooldownMinutes * MIN) continue;
     await prisma.automationState.upsert({ where: key, create: { ruleId: rule.id, subject, lastAt: new Date(now) }, update: { lastAt: new Date(now) } });
     let ok = true;
     let detail: string;
@@ -227,9 +236,29 @@ export async function runAutomations(now = Date.now()) {
   return { stock, viral, unpinned };
 }
 
-/** At start: events reach the rules. */
+const EventSchema = z.object({ trigger: z.enum(TRIGGERS), data: z.record(z.string(), z.unknown()), subject: z.string().min(1), at: z.number().int().positive() });
+
+/**
+ * At start: events reach the rules, through the queue. An event is a task (kind "automation")
+ * from the moment it happens until its rules have run.
+ */
 export function startAutomations() {
-  setAutomationHandler((trigger, data, subject) => handleEvent(trigger, data, subject));
+  registerTask(
+    "automation",
+    async (payload) => {
+      const e = EventSchema.safeParse(payload);
+      // (Said in a line the owner can read, not as a list of schema issues.)
+      if (!e.success) throw new Error("Not an automation's event");
+      return { rules: await handleEvent(e.data.trigger, e.data.data, e.data.subject, e.data.at) };
+    },
+    { timeoutMs: MIN },
+  );
+  setAutomationHandler(async (trigger, data, subject) => {
+    const now = Date.now();
+    // No rule asks for this event: nothing to queue.
+    if (!(await rulesFor(trigger, now)).length) return;
+    await enqueueTask("automation", { trigger, data, subject, at: now });
+  });
 }
 
 /** Tests. */

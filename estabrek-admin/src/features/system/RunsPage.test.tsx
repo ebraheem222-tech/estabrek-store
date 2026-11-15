@@ -66,6 +66,13 @@ describe("The run log's words", () => {
     expect(runDid(rule, "en")).toBe("إيميل ← owner@shop.test");
     expect(runDid(hook, "en")).toBe("Accepted (200)");
     expect(runDid(run({ kind: "task", result: null }), "ar")).toBe("تمام");
+    // A queued task: by a name the owner knows, its first try or one after a failure, what it did.
+    const queued = run({ kind: "task", name: "automation", trigger: "queue", result: { rules: 2 } });
+    expect(runName(queued, "en")).toBe("An automation's event");
+    expect(runTrigger(queued, "en")).toBe("From the queue");
+    expect(runTrigger({ kind: "task", trigger: "retry" }, "en")).toBe("A retry");
+    expect(runDid(queued, "en")).toBe("2 rules ran");
+    expect(runDid({ ...queued, ok: false, result: { gaveUp: 1 }, error: "SMTP timed out" }, "en")).toBe("SMTP timed out");
   });
 
   test("a row that stands for an hour of timer runs says so, with what they did together and the usual time of one", () => {
