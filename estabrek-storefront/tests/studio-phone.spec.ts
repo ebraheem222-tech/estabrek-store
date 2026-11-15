@@ -147,6 +147,10 @@ test("adding from the sheet puts the element on the page and gets out of its way
   const done = page.getByTestId("studio-write-done");
   await expect(done).toBeVisible();
   await expect(page.getByTestId("studio-publish")).toHaveCount(0);
+  // The page's own writing toolbar sits clear of the words being written (above them, or under them), not over them.
+  const inFrame = page.frameLocator('[data-testid="studio-frame"]');
+  const words = (await inFrame.locator('[contenteditable="true"]').boundingBox())!, toolbar = (await inFrame.locator("[data-studio-bar]").boundingBox())!;
+  expect(toolbar.y + toolbar.height <= words.y || toolbar.y >= words.y + words.height).toBe(true);
   await page.keyboard.press("Control+a");
   await page.keyboard.type("Written on a phone");
   await done.tap();
