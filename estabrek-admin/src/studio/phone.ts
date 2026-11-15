@@ -14,7 +14,12 @@
  * is wider than that but has no height for a computer's bars, so a short touch screen counts too. (index.css has
  * the same query for the sheet's fields.)
  */
-export const PHONE_QUERY = "(max-width: 767.98px), (pointer: coarse) and (max-height: 520px)";
+// (Since the tablets came in: below Tailwind's `lg`, where a computer's inspector column starts. Between 768 and
+// 1023px the editor had a layout of its own that left the page at 40% under four rows of buttons.)
+export const PHONE_QUERY = "(max-width: 1023.98px), (pointer: coarse) and (max-height: 520px)";
+/** A frame is fitted to the canvas by its width only when that shows it at this zoom or more (a tablet's frame on
+ *  a tablet; on a phone a tablet's frame is shown whole instead). */
+export const FIT_LEAST = 0.75;
 
 export type Pt = { x: number; y: number };
 
@@ -35,11 +40,13 @@ export const SHEET_ICON: Record<SheetView, string> = { add: "＋", layers: "☰"
 
 /**
  * The phone frame fitted to the canvas: as wide as the canvas lets it be (never bigger than life), and as tall as
- * the canvas shows at that zoom. Null while the canvas has no size yet.
+ * the canvas shows at that zoom. Null while the canvas has no size yet, and when the fit would show the frame
+ * smaller than `least`.
  */
-export function phoneFrame(canvas: { w: number; h: number }, width: number, margin = 8): { zoom: number; h: number } | null {
+export function phoneFrame(canvas: { w: number; h: number }, width: number, margin = 8, least = 0): { zoom: number; h: number } | null {
   if (!(canvas.w > margin * 2 && canvas.h > margin * 2 && width > 0)) return null;
   const zoom = Math.min(1, (canvas.w - margin * 2) / width);
+  if (zoom < least) return null;
   // (Never shorter than 160: a canvas squeezed to almost nothing still gets a frame a page can be read in.)
   return { zoom, h: Math.max(160, Math.round((canvas.h - margin * 2) / zoom)) };
 }

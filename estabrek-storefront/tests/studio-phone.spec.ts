@@ -346,3 +346,39 @@ test("a finger on a selected element moves it, and undo puts it back", async ({ 
   await expect.poll(place, { timeout: 20000 }).toEqual(before);
   await context.close();
 });
+
+test("a tablet gets the touch layout too, with its own frame fitted; a computer's screen keeps the computer's", async ({ browser }) => {
+  test.setTimeout(240000);
+  const context = await browser.newContext({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto(url());
+  await expect(page.getByTestId("studio-phone-bar")).toBeVisible({ timeout: 90000 });
+  await expect(page.getByTestId("studio-waiting")).toHaveCount(0, { timeout: 90000 });
+  // The tablet's own frame (820 wide), fitted to the canvas by its width: nearly life size, none of it under the bars.
+  await expect(page.getByTestId("studio-frame")).toHaveAttribute("width", "820");
+  await expect.poll(() => zoomOf(page), { timeout: 30000 }).toBeGreaterThan(90);
+  const head = await rect(page, "studio-phone-head"), canvas = await rect(page, "studio-canvas"), frame = await rect(page, "studio-frame");
+  expect(head.height).toBeLessThanOrEqual(60);
+  expect(frame.width).toBeGreaterThanOrEqual(780);
+  expect(frame.x).toBeGreaterThanOrEqual(0);
+  expect(frame.x + frame.width).toBeLessThanOrEqual(820);
+  expect(frame.y + frame.height).toBeLessThanOrEqual(canvas.y + canvas.height + 1);
+  expect(frame.height).toBeGreaterThanOrEqual(canvas.height - 24);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(820);
+  await expect(page.getByTestId("studio-info")).toHaveCount(0);
+  await expect(page.getByTestId("studio-tab-layers")).toHaveCount(0);
+  // An element's settings open in the sheet, as on a phone.
+  await pick(page, "Editable drawing");
+  await page.getByTestId("studio-phone-tab-settings").tap();
+  await expect(page.getByTestId("studio-sheet").getByTestId("studio-path")).toContainText("Drawing");
+  await context.close();
+
+  // A computer's screen, from 1024px: the computer's layout, with its inspector and no bar at the bottom.
+  const desk = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+  const wide = await desk.newPage();
+  await wide.goto(url());
+  await expect(wide.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await expect(wide.getByTestId("studio-phone-bar")).toHaveCount(0);
+  await expect(wide.getByTestId("studio-info")).toHaveCount(1);
+  await desk.close();
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PHONE_TABS, SHEET_ICON, SHEET_VIEWS, SHEET_WORD, phoneFrame, phoneSheetTop, pinchStep } from "./phone";
+import { FIT_LEAST, PHONE_TABS, SHEET_ICON, SHEET_VIEWS, SHEET_WORD, phoneFrame, phoneSheetTop, pinchStep } from "./phone";
 
 describe("the editor on a phone: its sums", () => {
   it("fits the phone frame to the canvas by its width, as tall as the canvas shows", () => {
@@ -13,6 +13,10 @@ describe("the editor on a phone: its sums", () => {
     expect(phoneFrame({ w: 844, h: 236 }, 390)).toEqual({ zoom: 1, h: 220 });
     // A canvas squeezed to almost nothing still gets a frame a page can be read in.
     expect(phoneFrame({ w: 390, h: 120 }, 390)!.h).toBe(160);
+    // A tablet's frame on a tablet is fitted the same way; on a phone it would be under half its size, so it is
+    // not fitted (the editor shows it whole instead).
+    expect(phoneFrame({ w: 820, h: 1000 }, 820, 8, FIT_LEAST)).toEqual({ zoom: 804 / 820, h: Math.round(984 / (804 / 820)) });
+    expect(phoneFrame({ w: 390, h: 690 }, 820, 8, FIT_LEAST)).toBeNull();
     // No size yet: nothing to fit.
     expect(phoneFrame({ w: 0, h: 0 }, 390)).toBeNull();
     expect(phoneFrame({ w: 390, h: 10 }, 390)).toBeNull();
