@@ -37,7 +37,9 @@ export type AdminPermission =
   | "system:read"
   | "system:write"
   | "customers:read"
-  | "customers:write";
+  | "customers:write"
+  | "api:read"
+  | "api:write";
 
 const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "dashboard:read",
@@ -77,6 +79,8 @@ const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "system:write",
   "customers:read",
   "customers:write",
+  "api:read",
+  "api:write",
 ];
 
 /** Every signed-in member can manage their own account. */

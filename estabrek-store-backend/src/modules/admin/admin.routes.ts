@@ -49,6 +49,7 @@ import designTokens from "./designTokens.controller.js";
 import collections from "./collections.controller.js";
 import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
+import dataApi from "./api.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
 import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiPagesAdmin, aiSettingsAdmin } from "./ai.controller.js";
@@ -118,6 +119,8 @@ r.use("/data/store", dataStore);
 // The data grid's rows first (its routes are its own), then the collections themselves.
 r.use("/collections", areaAccess({ read: "pages:read", write: "pages:write" }), collectionRows);
 r.use("/collections", areaAccess({ read: "pages:read", write: "pages:write" }), collections);
+// The automatic API (B4): which tables are open to the outside, and the keys.
+r.use("/api", areaAccess({ read: "api:read", write: "api:write" }), dataApi);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);
 // Codes sold one per piece (game keys, gift cards).
 r.use("/catalog/products/:productId/codes", areaAccess({ read: "catalog:read", write: "catalog:write" }), productCodes);

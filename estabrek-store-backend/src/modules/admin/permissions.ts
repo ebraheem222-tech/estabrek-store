@@ -66,6 +66,14 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    key: "api",
+    label: "الـ API والمفاتيح",
+    permissions: [
+      { key: "api:read", label: "مشاهدة المفاتيح وأي جدول مفتوح" },
+      { key: "api:write", label: "عمل مفاتيح وإلغاؤها، وفتح وتسكير API الجداول" },
+    ],
+  },
+  {
     key: "nav",
     label: "القوائم",
     permissions: [
