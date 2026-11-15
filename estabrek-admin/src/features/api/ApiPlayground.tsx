@@ -150,7 +150,7 @@ export function ApiPlayground({ tables, url }: { tables: ApiTable[]; url: string
               : say("المفتاح (اختياري: بدونه بتشوف شو بيشوف أي حدا)|The key (optional: without it you see what anyone sees)|המפתח (לא חובה: בלעדיו רואים מה שכל אחד רואה)")}
           </span>
           <input className={`${field} font-mono`} dir="ltr" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="ek_…" data-testid="play-key" />
-          <span className="block text-white/40">{say("بيضل بهالصفحة بس وما بينحفظ.|It stays on this page only and isn't kept.|הוא נשאר בדף הזה בלבד ואינו נשמר.")}</span>
+          <span className="block text-white/50">{say("بيضل بهالصفحة بس وما بينحفظ.|It stays on this page only and isn't kept.|הוא נשאר בדף הזה בלבד ואינו נשמר.")}</span>
         </label>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
