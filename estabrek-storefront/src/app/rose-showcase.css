@@ -455,7 +455,7 @@
       animation: rose-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; will-change: transform;
     }
     /* The product's photo comes a little closer as it scrolls away. */
-    .cinematic-interior-shell .rose-pdp-frame img {
+    .cinematic-interior-shell .rose-pdp-frame img, .cinematic-interior-shell .rose-pdp-frame .pt-glfx {
       animation: rose-closer linear both; animation-timeline: view(); animation-range: exit 0% exit 100%; will-change: transform;
     }
     /* Headings of the inner pages get a drawn line under them as they come into view (it grows from its start). */

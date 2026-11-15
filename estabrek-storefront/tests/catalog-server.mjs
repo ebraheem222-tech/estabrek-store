@@ -840,6 +840,25 @@ http
       });
       return;
     }
+    // Admin → الإعدادات → صفحة المنتج: what the big picture does under the pointer ({ fx: "ripple" }, or {} for the
+    // zoom); `ownPictures` as in /__test/commerce below.
+    if (pathname === "/__test/product-picture" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (data.fx) site.header.storefront.productPictureFx = data.fx; else delete site.header.storefront.productPictureFx;
+        for (const p of products) {
+          if (!productPictures.has(p.id)) productPictures.set(p.id, p.primaryImageUrl);
+          p.primaryImageUrl = data.ownPictures === true ? "/editorial/hijab-campaign.webp" : productPictures.get(p.id);
+          // A second photo of its own for the first product: the effect has to follow the photo chosen.
+          if (data.ownPictures === true && p.id === "coat") p.images = [{ url: "/editorial/hijab-campaign.webp", isPrimary: true }, { url: "/editorial/scarves.webp" }];
+          else delete p.images;
+        }
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname === "/__test/commerce" && req.method === "POST") {
       let body = "";
       req.on("data", c => { body += c; });
@@ -1125,11 +1144,11 @@ http
       home.sections[0].data.roseHeroFilm = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
       return res.end(JSON.stringify({ ok: true, roseHeroFilm: home.sections[0].data.roseHeroFilm }));
     }
-    if (pathname === "/editorial/hijab-campaign.webp") {
+    if (pathname === "/editorial/hijab-campaign.webp" || pathname === "/editorial/scarves.webp") {
       res.setHeader("Content-Type", "image/webp");
       return res.end(
         readFileSync(
-          new URL("../public/editorial/hijab-campaign.webp", import.meta.url),
+          new URL(`../public${pathname}`, import.meta.url),
         ),
       );
     }
