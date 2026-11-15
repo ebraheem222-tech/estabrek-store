@@ -8,6 +8,9 @@ export type PermissionGroup = {
   permissions: Array<{ key: string; label: string }>;
 };
 
+/** One of the owner's tables, for a role to be given by itself ("data:<id>:read|write"). */
+export type RoleTable = { id: string; slug: string; name: Partial<Record<"ar" | "en" | "he", string>> | null };
+
 export type StaffRole = {
   id: string;
   name: string;
@@ -73,6 +76,12 @@ export type MemberLink = { token: string; expiresAt: string; kind: "invite" | "r
 export async function getPermissionGroups() {
   const res = await api.get(ENDPOINTS.admin.staff.permissions);
   return (res.data?.groups ?? []) as PermissionGroup[];
+}
+
+/** The tables a role can be given one by one (an older server names none). */
+export async function getRoleTables() {
+  const res = await api.get(ENDPOINTS.admin.staff.permissions);
+  return (res.data?.tables ?? []) as RoleTable[];
 }
 
 export async function listRoles() {

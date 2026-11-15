@@ -172,3 +172,37 @@ export function relativeTime(iso: string | null | undefined, now = Date.now()): 
   if (days < 30) return days === 1 ? "أمس" : `قبل ${days} يوم`;
   return new Date(t).toLocaleDateString(loc("ar"), { dateStyle: "medium" });
 }
+
+/* ---------------- Tables given to a role one by one (E0.5) ---------------- */
+
+const TABLE_KEY = /^data:([a-z0-9]{8,40}):(read|write)$/;
+export const tableKey = (tableId: string, what: "read" | "write") => `data:${tableId}:${what}`;
+export const isTableKey = (permission: string) => TABLE_KEY.test(permission);
+
+/** Ticking "change" also ticks "see" (rows can't be changed unseen); unticking "see" unticks "change". */
+export function toggleTable(selected: Set<string>, tableId: string, what: "read" | "write", on: boolean): Set<string> {
+  const next = new Set(selected);
+  if (on) {
+    next.add(tableKey(tableId, what));
+    if (what === "write") next.add(tableKey(tableId, "read"));
+  } else {
+    next.delete(tableKey(tableId, what));
+    if (what === "read") next.delete(tableKey(tableId, "write"));
+  }
+  return next;
+}
+
+/** How many tables a role was given one by one. */
+export function tableCount(permissions: string[]): number {
+  return new Set(permissions.map((p) => TABLE_KEY.exec(p)?.[1]).filter(Boolean)).size;
+}
+
+/** A role in a line: how many of the catalogue's permissions it has, and how many single tables. */
+export function roleSummary(permissions: string[], total: number, lang: "ar" | "en" | "he"): string {
+  const general = permissions.filter((p) => !isTableKey(p)).length;
+  const tables = tableCount(permissions);
+  const of = total ? String(total) : "…";
+  const line = { ar: `${general} من ${of} صلاحية`, en: `${general} of ${of} permissions`, he: `${general} מתוך ${of} הרשאות` }[lang];
+  if (!tables) return line;
+  return `${line} · ${{ ar: `${tables} ${tables === 1 ? "جدول" : "جداول"} محددة`, en: `${tables} single ${tables === 1 ? "table" : "tables"}`, he: `${tables} ${tables === 1 ? "טבלה מסוימת" : "טבלאות מסוימות"}` }[lang]}`;
+}

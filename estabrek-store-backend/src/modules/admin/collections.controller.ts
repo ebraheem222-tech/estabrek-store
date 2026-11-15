@@ -23,6 +23,7 @@ import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
+import { tableScope } from "../../middleware/access.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { checkTree, PAGE_FORMAT } from "../../lib/pageTree.js";
 import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, ITEM_SLUG, LIMITS, PRESETS, STORE_TEMPLATES, TEMPLATE_KIND, withDefaults, type StoreTemplateKind } from "../../lib/collections.js";
@@ -38,8 +39,10 @@ const fieldsOf = (c: { fields: unknown }) => (Array.isArray(c.fields) ? c.fields
 const issues = (e: { issues: Array<{ path: PropertyKey[]; message: string }> }) => e.issues.slice(0, 20).map((i) => ({ path: i.path.map(String).join("."), message: i.message }));
 const taken = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 
-r.get("/", asyncHandler(async (_req, res) => {
-  const rows = await prisma.collection.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { items: { where: { deletedAt: null } } } } } });
+r.get("/", asyncHandler(async (req, res) => {
+  // A member given tables one by one sees those in the list, and no others.
+  const scope = tableScope(req);
+  const rows = await prisma.collection.findMany({ where: scope ? { id: { in: [...scope] } } : {}, orderBy: { createdAt: "asc" }, include: { _count: { select: { items: { where: { deletedAt: null } } } } } });
   const published = await prisma.collectionItem.groupBy({ by: ["collectionId"], where: { status: "PUBLISHED", deletedAt: null }, _count: { _all: true } });
   res.json(rows.map(({ _count, ...c }) => ({ ...c, items: _count.items, published: published.find((p) => p.collectionId === c.id)?._count._all ?? 0 })));
 }));

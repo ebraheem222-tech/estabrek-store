@@ -11,6 +11,7 @@ import { toast } from "../../lib/toast";
 import { getApiErrorMessage } from "../../api/http";
 import { adminLang } from "../../lib/lang";
 import { useAuth } from "../../hooks/useAuth";
+import { mayWriteTable } from "../../lib/authz";
 import { say } from "../../studio/say";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { listCollections, type Collection } from "../../api/collections.api";
@@ -51,6 +52,7 @@ export function problemText(e: unknown): string {
 
 export default function DataPage() {
   const lang = adminLang() as Lang;
+  const { hasPermission } = useAuth();
   const tables = useQuery({ queryKey: ["collections"], queryFn: listCollections });
   const meta = useQuery({ queryKey: ["data", "meta"], queryFn: DataAPI.gridMeta, staleTime: Infinity });
   // The store's own tables (products, orders…), to look at: only the ones this member may see.
@@ -73,9 +75,12 @@ export default function DataPage() {
             )}
           </p>
         </div>
-        <Link to="/admin/collections" className={btn} data-testid="data-schema-link">
-          {say("جدول جديد والحقول|New table & fields|טבלה חדשה ושדות")}
-        </Link>
+        {/* Tables and their fields are made on the collections page: for whoever may open it (not a member given single tables). */}
+        {hasPermission("pages:read") ? (
+          <Link to="/admin/collections" className={btn} data-testid="data-schema-link">
+            {say("جدول جديد والحقول|New table & fields|טבלה חדשה ושדות")}
+          </Link>
+        ) : null}
       </header>
 
       {tables.isLoading ? <div className="text-sm text-white/50">…</div> : null}
@@ -122,10 +127,11 @@ export default function DataPage() {
 
 function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; lang: Lang }) {
   const qc = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, admin } = useAuth();
   /** One of the store's own tables: looked at here, changed from its own page. */
   const readOnly = !!table.readOnly;
-  const canWrite = !readOnly && hasPermission("pages:write");
+  // Every table through pages:write, or this one given to the member's role by itself.
+  const canWrite = !readOnly && (hasPermission("pages:write") || mayWriteTable(admin, table?.id));
   /** The language the words columns show and are written in. */
   const [wordsLang, setWordsLang] = useState<Lang>(lang);
   const [query, setQuery] = useState<GridQuery>({ page: 1, pageSize: 50, view: "all", filters: [], sort: [], match: "all" });

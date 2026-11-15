@@ -300,7 +300,7 @@ export default function AppRouter() {
           {/* Content collections (W3): a blog, a lookbook, branches… with their items. */}
           <Route path="collections" element={withPermissions(<ErrorBoundary title="Collections"><CollectionsPage /></ErrorBoundary>, ["pages:read"])} />
           {/* The data grid (B1): every table's rows, filtered and sorted by the server. */}
-          <Route path="data" element={withPermissions(<ErrorBoundary title="Tables"><DataPage /></ErrorBoundary>, ["pages:read"])} />
+          <Route path="data" element={withPermissions(<ErrorBoundary title="Tables"><DataPage /></ErrorBoundary>, ["data:tables"])} />
           {/* The automatic API (B4): which tables are open to the outside, and the keys. */}
           <Route path="data-api" element={withPermissions(<ErrorBoundary title="API"><ApiPage /></ErrorBoundary>, ["api:read"])} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}

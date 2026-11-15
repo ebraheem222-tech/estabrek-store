@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import type { Request } from "express-serve-static-core";
 import { prisma } from "../lib/prisma.js";
 import type { AdminAccess } from "../types/auth.js";
-import { ALL_PERMISSIONS, OWN_ACCOUNT_PERMISSIONS } from "../modules/admin/permissions.js";
+import { ALL_PERMISSIONS, OWN_ACCOUNT_PERMISSIONS, TABLE_PERMISSION, isTablePermission, tableRight } from "../modules/admin/permissions.js";
 import { policy } from "../lib/securityPolicy.js";
 
 /**
@@ -116,6 +116,40 @@ export function areaAccess(opts: {
       .catch(next);
   };
 }
+
+/**
+ * The tables whose rows this member may see: null = every table (pages:read), else the ones their
+ * role was given one by one.
+ */
+export function tableScope(req: { access?: AdminAccess }): Set<string> | null {
+  if (hasPermission(req, "pages:read")) return null;
+  const ids = new Set<string>();
+  for (const p of req.access?.permissions ?? []) {
+    const m = TABLE_PERMISSION.exec(p);
+    if (m) ids.add(m[1]);
+  }
+  return ids;
+}
+
+const ROWS_PATH = /^\/([^/]+)\/(?:rows|items)(?:\/|$)/;
+
+/**
+ * The owner's tables (/collections): everything for pages:read / pages:write, as before. A member
+ * whose role was given tables one by one gets those tables' rows (to see, or to change), the list
+ * of those tables and what the grid needs to draw them; a table's fields, versions and page stay
+ * with pages:write.
+ */
+export const tablesAccess: RequestHandler = (req, res, next) => {
+  if (!req.access) return res.status(401).json({ error: "UNAUTHORIZED" });
+  const reading = req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS";
+  const general = reading ? "pages:read" : "pages:write";
+  if (hasPermission(req, general)) return next();
+  const has = (p: string) => hasPermission(req, p);
+  const rows = ROWS_PATH.exec(req.path);
+  if (rows && tableRight(has, rows[1], reading ? "read" : "write")) return next();
+  if (reading && (req.path === "/" || req.path === "/grid-meta") && [...req.access.permissions].some(isTablePermission)) return next();
+  return res.status(403).json({ error: "PERMISSION_DENIED", required: [general] });
+};
 
 /** Does the policy ask this admin to use two-step sign-in? */
 export function twoFactorRequiredFor(access: Pick<AdminAccess, "owner">) {

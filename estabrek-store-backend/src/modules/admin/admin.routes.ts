@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request } from "express-serve-static-core";
 import { prisma } from "../../lib/prisma.js";
 import { authenticate } from "../../middleware/auth.js";
-import { loadAccess, areaAccess, requirePermission, requireTwoFactorSetup } from "../../middleware/access.js";
+import { loadAccess, areaAccess, requirePermission, requireTwoFactorSetup, tablesAccess } from "../../middleware/access.js";
 import { auditLog } from "../../middleware/auditLog.js";
 
 import core from "./admin.controller.js";
@@ -116,9 +116,10 @@ r.use("/site-styles", areaAccess({ read: "pages:read", write: "pages:write" }), 
 r.use("/design-tokens", areaAccess({ read: "pages:read", write: "pages:write" }), designTokens);
 // The store's own tables in the data grid, read only (each asks for its own page's permission).
 r.use("/data/store", dataStore);
-// The data grid's rows first (its routes are its own), then the collections themselves.
-r.use("/collections", areaAccess({ read: "pages:read", write: "pages:write" }), collectionRows);
-r.use("/collections", areaAccess({ read: "pages:read", write: "pages:write" }), collections);
+// The data grid's rows first (its routes are its own), then the collections themselves. Every table for
+// pages:read / pages:write; one table's rows for a member whose role was given that table (tablesAccess).
+r.use("/collections", tablesAccess, collectionRows);
+r.use("/collections", tablesAccess, collections);
 // The automatic API (B4): which tables are open to the outside, and the keys.
 r.use("/api", areaAccess({ read: "api:read", write: "api:write" }), dataApi);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);

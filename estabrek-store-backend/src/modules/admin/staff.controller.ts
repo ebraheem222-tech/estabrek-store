@@ -10,6 +10,7 @@ import {
   inviteMember,
   listActivity,
   listMembers,
+  listRoleTables,
   listRoles,
   memberLink,
   removeInvite,
@@ -23,10 +24,11 @@ const r = Router();
 
 const ctxOf = (req: any) => ({ ip: req.ip as string | undefined, ua: (req.get?.("user-agent") as string | undefined) ?? undefined });
 
-// What can be given to a role, grouped for the role editor.
-r.get("/permissions", (_req, res) => {
-  res.json({ groups: PERMISSION_GROUPS });
-});
+// What can be given to a role, grouped for the role editor; and the owner's tables, which can be given one by one
+// ("data:<table id>:read|write", see permissions.ts).
+r.get("/permissions", asyncHandler(async (_req, res) => {
+  res.json({ groups: PERMISSION_GROUPS, tables: await listRoleTables() });
+}));
 
 r.get("/roles", asyncHandler(async (_req, res) => {
   res.json({ roles: await listRoles() });
