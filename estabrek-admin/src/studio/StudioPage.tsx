@@ -128,7 +128,7 @@ import * as SpeedAPI from "../api/speed.api";
 import { BodyPanel, WORLD_HOSTS, WorldPanel, worldOfNode, worldOnOps, type BakedKeys } from "./PhysicsPanels";
 import { CodePanel, FormPanel } from "./FormPanels";
 import { InspectorGroup, InspectorJump, type InspectorGroupId } from "./InspectorNav";
-import { PHONE_QUERY, PHONE_TABS, SHEET_ICON, SHEET_WORD, phoneFrame, phoneSheetTop, pinchStep, type SheetView } from "./phone";
+import { FIT_LEAST, PHONE_QUERY, PHONE_TABS, SHEET_ICON, SHEET_WORD, phoneFrame, phoneSheetTop, pinchStep, type SheetView } from "./phone";
 import { besidePlace, dockPref, frameFor, saveDock, saveSections, sectionsPref, sideOf } from "./beside";
 import { wheelOver } from "./canvasWheel";
 import { ContentPanel } from "./MediaPanels";
@@ -251,7 +251,13 @@ function StudioDocument() {
   const langs = languagesOf(settings.data?.header);
 
   // On a phone the phone size reads best; elsewhere a computer.
-  const [device, setDevice] = useState<Device>(() => (typeof window !== "undefined" && (window.innerWidth < 768 || (typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches === true)) ? "phone" : "desktop"));
+  // The frame the editor opens on: the screen's own kind (a phone held sideways is still a phone).
+  const [device, setDevice] = useState<Device>(() => {
+    if (typeof window === "undefined") return "desktop";
+    if (window.innerWidth < 768) return "phone";
+    if (typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches === true) return window.innerWidth < 1024 && window.innerHeight > 520 ? "tablet" : "phone";
+    return "desktop";
+  });
   const [lang, setLang] = useState<Lang | null>(null);
   const shopLang: Lang = lang ?? (langs.enabled.includes(adminLang()) ? adminLang() : langs.default);
   const [ticket, setTicket] = useState<{ token: string; expiresAt: string } | null>(null);
@@ -461,8 +467,10 @@ function StudioDocument() {
   const sectionTypes = useMemo(() => new Map((pageQ.data?.sections ?? []).map((s) => [s.id, String(s.type)])), [pageQ.data]);
   // On a phone the phone frame is fitted to the canvas by its width, and is as tall as the canvas shows: the page
   // scrolls inside it and none of it hides under the bars (phone.ts).
-  const phoneFit = phone && device === "phone" ? phoneFrame(canvas, DEVICES.phone.w) : null;
-  const dev: { w: number; h: number } = phoneFit ? { w: DEVICES.phone.w, h: phoneFit.h } : DEVICES[device];
+  // (A tablet's frame on a tablet too; where the fit would show a frame under three quarters of its size, as a
+  // tablet's frame on a phone, it is shown whole instead.)
+  const phoneFit = phone && (device === "phone" || device === "tablet") ? phoneFrame(canvas, DEVICES[device].w, 8, device === "phone" ? 0 : FIT_LEAST) : null;
+  const dev: { w: number; h: number } = phoneFit ? { w: DEVICES[device].w, h: phoneFit.h } : DEVICES[device];
   const origin = shopOrigin();
 
   // A ticket for the shop's frame (again when the language changes after it got old).
