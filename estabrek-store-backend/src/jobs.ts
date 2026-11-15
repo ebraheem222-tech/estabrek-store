@@ -23,6 +23,7 @@ import { checkProcessingVideos } from "./modules/admin/videos.controller.js";
 import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
 import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
 import { purgeTrash } from "./lib/collections.js";
+import { cleanRuns } from "./lib/runs.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -96,6 +97,16 @@ export function registerBackgroundJobs() {
     limits: { min: HOUR, max: 48 * HOUR },
     firstMs: 3 * MIN,
     run: () => purgeTrash(),
+  });
+
+  registerJob({
+    name: "runsClean",
+    group: "data",
+    // The run log keeps a month (lib/runs.ts RUN_KEEP_DAYS); older runs go.
+    everyMs: 6 * HOUR,
+    limits: { min: HOUR, max: 48 * HOUR },
+    firstMs: 4 * MIN,
+    run: () => cleanRuns(),
   });
 
   registerJob({

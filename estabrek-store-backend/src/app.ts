@@ -21,6 +21,7 @@ import { ipAccess } from "./middleware/ipAccess.js";
 import { pressureGuard } from "./middleware/pressure.js";
 import { maintenanceGuard } from "./middleware/maintenance.js";
 import { trafficLanes } from "./middleware/trafficLanes.js";
+import { webhookRun } from "./middleware/runLog.js";
 import webhooksRouter from "./routes/webhooks.route.js"; // ???? ?????? ??? ??????
 
 const app = express();
@@ -79,7 +80,7 @@ app.get("/", (_req, res) => res.json({ ok: true, api: "/v1" }));
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
 app.use(routes);
-app.use("/v1/webhooks", webhooksRouter);
+app.use("/v1/webhooks", webhookRun, webhooksRouter);
 
 // 404 (before error handler)
 app.use((req, res) => res.status(404).json({ error: "NOT_FOUND", path: req.path }));

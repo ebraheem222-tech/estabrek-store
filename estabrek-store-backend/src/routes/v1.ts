@@ -16,13 +16,14 @@ import requestsPublic from "../modules/requests/requests.routes.js";
 import quizPublic from "../modules/quiz/quiz.routes.js";
 import aiPublic from "../modules/ai/ai.routes.js";
 import data from "../modules/data/data.routes.js";
+import { webhookRun } from "../middleware/runLog.js";
 const r = Router();
 r.use("/admin", admin);
 r.use("/catalog", catalog);
 r.use("/storefront", storefront);
 r.use("/settings", settingsPublic);
 r.use("/ugc", ugcPublic);
-r.use("/webhooks", webhooks);   // ← add this
+r.use("/webhooks", webhookRun, webhooks); // each one taken in goes to the run log
 r.use("/auth", auth);
 r.use("/customer", customer); // shopper accounts (sign in by email code)
 r.use("/stock-alerts", stockAlerts); // "tell me when it's back"

@@ -30,6 +30,11 @@ export const JOB_TEXT: Record<string, { label: string; what: string; link?: { to
     what: "السطور اللي انحذفت من الجداول بتستنى 30 يوم بالسلة، وبعدها بتنحذف نهائياً.",
     link: { to: "/admin/data", label: "الجداول" },
   },
+  runsClean: {
+    label: "تنظيف سجل التشغيل",
+    what: "سجل التشغيل بيحفظ 30 يوم؛ التشغيلات الأقدم بتنشال منه.",
+    link: { to: "/admin/system/runs", label: "سجل التشغيل" },
+  },
   popularitySave: {
     label: "حفظ شعبية المنتجات",
     what: "اللي عملوه الزباين (مشاهدة، مفضلة، سلة) بيتجمّع بالذاكرة وبينحفظ بقاعدة البيانات.",

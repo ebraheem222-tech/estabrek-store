@@ -22,6 +22,7 @@ import { storeNameOf } from "../lib/storeIdentity";
 import { setStoreCurrency } from "../lib/money";
 import { SETUP_LATER_KEY, getSetupStatus } from "../api/setup.api";
 import { tr } from "@/lib/words";
+import { say } from "../studio/say";
 import { loc } from "@/lib/lang";
 
 // Counts shown next to sidebar items (e.g. new orders), keyed by link.
@@ -160,6 +161,8 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/system/speed", tr("مراقبة السرعة والأولوية", "Speed monitor")],
   ["/system/server", tr("حالة السيرفر", "Server state")],
   ["/system/jobs", tr("المهام بالخلفية", "Background jobs")],
+  ["/system/runs", say("سجل التشغيل|Run log|יומן הרצות")],
+  ["/data-api", say("الـ API والمفاتيح|API & keys|API ומפתחות")],
   ["/system/vault", tr("الخزنة والبرنامج", "Vault & launcher")],
   ["/system/schedule", tr("الجدول الزمني", "Schedule")],
   ["/system/automations", tr("التلقائيات", "Automations")],
