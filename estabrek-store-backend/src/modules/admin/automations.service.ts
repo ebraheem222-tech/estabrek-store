@@ -91,11 +91,12 @@ async function runAction(rule: Pick<AutomationRule, "id" | "name" | "trigger" | 
 }
 
 /** The one log of everything the server did by itself (admin → سجل التشغيل), beside the rule's own list. */
-const toRunLog = (rule: AutomationRule, subject: string, ok: boolean, detail: string, now: number, test = false) =>
-  recordRun({ kind: "automation", name: rule.name, ref: rule.id, trigger: test ? "test" : rule.trigger, subject: test ? null : subject, startedAt: now, ms: Date.now() - now, ok, result: ok ? { did: detail.slice(0, 300) } : null, error: ok ? null : detail });
+/** `began`: when the action started (an event from the queue may be handled a while after it happened). */
+const toRunLog = (rule: AutomationRule, subject: string, ok: boolean, detail: string, began: number, test = false) =>
+  recordRun({ kind: "automation", name: rule.name, ref: rule.id, trigger: test ? "test" : rule.trigger, subject: test ? null : subject, startedAt: began, ms: Date.now() - began, ok, result: ok ? { did: detail.slice(0, 300) } : null, error: ok ? null : detail });
 
-async function record(rule: AutomationRule, subject: string, ok: boolean, detail: string, now: number) {
-  toRunLog(rule, subject, ok, detail, now);
+async function record(rule: AutomationRule, subject: string, ok: boolean, detail: string, now: number, began: number) {
+  toRunLog(rule, subject, ok, detail, began);
   await prisma.automationRun.create({ data: { ruleId: rule.id, subject, ok, detail: detail.slice(0, 300), at: new Date(now) } });
   await prisma.automationRule.update({ where: { id: rule.id }, data: { lastFiredAt: new Date(now), fired: { increment: 1 } } });
   // Only the latest runs are kept.
@@ -121,6 +122,7 @@ export async function handleEvent(trigger: Trigger, data: Record<string, unknown
       if (await prisma.automationRun.findFirst({ where: { ruleId: rule.id, subject, at: new Date(now) }, select: { id: true } })) continue;
     } else if (st && rule.cooldownMinutes > 0 && now - st.lastAt.getTime() < rule.cooldownMinutes * MIN) continue;
     await prisma.automationState.upsert({ where: key, create: { ruleId: rule.id, subject, lastAt: new Date(now) }, update: { lastAt: new Date(now) } });
+    const began = Date.now();
     let ok = true;
     let detail: string;
     try {
@@ -129,7 +131,7 @@ export async function handleEvent(trigger: Trigger, data: Record<string, unknown
       ok = false;
       detail = e instanceof Error ? e.message : String(e);
     }
-    await record(rule, subject, ok, detail, now);
+    await record(rule, subject, ok, detail, now, began);
     ran += 1;
   }
   return ran;
