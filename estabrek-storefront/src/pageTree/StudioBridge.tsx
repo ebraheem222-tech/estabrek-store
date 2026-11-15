@@ -692,7 +692,10 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       const place = () => {
         const r = el.getBoundingClientRect();
         bar.style.left = `${Math.max(4, Math.min(window.innerWidth - bar.offsetWidth - 4, r.left))}px`;
-        bar.style.top = `${r.top > 48 ? r.top - 42 : r.bottom + 8}px`;
+        // Above the words and clear of their outline, by the bar's own height (it was a fixed 42px, less than the
+        // bar is tall, so it covered the top of the line being written); under them when there is no room above.
+        const h = bar.offsetHeight || 42;
+        bar.style.top = `${r.top > h + 14 ? r.top - h - 8 : r.bottom + 8}px`;
       };
       place();
       el.style.outline = "2px solid #a43b64";

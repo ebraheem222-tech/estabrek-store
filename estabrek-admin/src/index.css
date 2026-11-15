@@ -1150,6 +1150,27 @@
 [data-insp-off] {
   display: none !important;
 }
+/* The editor on a phone (studio/phone.ts): in its sheet, fields a finger can press, written at 16px so a phone's
+   browser doesn't zoom the page in when one is focused; the tabs of the settings' groups a little bigger. */
+@media (max-width: 767.98px) {
+  [data-testid="studio-sheet"] :is(input:not([type="range"], [type="checkbox"], [type="radio"], [type="color"], [type="file"]), select, textarea) {
+    min-height: 2.5rem;
+    font-size: 16px;
+  }
+  [data-testid="studio-sheet"] [data-testid="studio-layer"] {
+    min-height: 2.5rem;
+    align-items: center;
+    font-size: 13px;
+  }
+  [data-testid="studio-sheet"] [data-testid="studio-add-item"] {
+    min-height: 2.75rem;
+    font-size: 13px;
+  }
+  [data-testid="studio-sheet"] [data-testid="studio-insp-chip"] {
+    padding: 0.4rem 0.7rem;
+    font-size: 12px;
+  }
+}
 /* One section at a time: the chips are tabs, so the headings aren't needed. */
 [data-insp-mode="sections"] .insp-group {
   display: none;
