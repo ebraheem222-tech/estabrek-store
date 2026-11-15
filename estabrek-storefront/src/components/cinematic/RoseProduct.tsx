@@ -3,7 +3,6 @@ import { sceneColoursOn } from "@/lib/colourEngine";
 import { productItem, trackAddToCart, trackViewItem } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
-import { gsap } from "gsap";
 import type { CatalogItem, CatalogProduct, CatalogVariant } from "@/lib/catalog";
 import { deliveryText } from "@/lib/deliveryTime";
 import {
@@ -49,6 +48,7 @@ import { RatingLink, RoseReviews } from "./RoseReviews";
 import { RoseDeliveryCity } from "./RoseDeliveryCity";
 import { RoseCompleteLook } from "./RoseCompleteLook";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { usePictureFx } from "@/lib/usePictureFx";
 import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { translatedTypeLabel } from "@/lib/localize";
@@ -172,11 +172,14 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
     return () => updateRecentlyViewed(product.id, { addSeconds: (Date.now() - start) / 1000 });
   }, [product.id, updateRecentlyViewed]);
 
-  // Photos cross-fade in.
+  // Photos cross-fade in: the browser's own animation, which writes nothing on the picture. (A tween that wrote
+  // its steps there left a transform behind once the picture also had a scale of its own from CSS, the one that
+  // brings it closer as it scrolls away, and a transform left on the picture cancels the zoom under the pointer.)
   useEffect(() => {
-    const el = frame.current?.querySelector(".rose-pdp-main-image");
-    // clearProps: an inline transform left behind would cancel the hover zoom.
-    if (el) gsap.fromTo(el, { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out", clearProps: "transform,opacity" });
+    const el = frame.current?.querySelector<HTMLElement>(".rose-pdp-main-image");
+    if (!el || typeof el.animate !== "function") return;
+    const fade = el.animate([{ opacity: 0, transform: "scale(1.03)" }, { opacity: 1 }], { duration: 500, easing: "cubic-bezier(.215,.61,.355,1)" });
+    return () => fade.cancel();
   }, [active, colorKey]);
 
   const pickColor = (key: string, it: CatalogItem, source: Element) => {
@@ -207,6 +210,9 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   };
 
   const currentImage = images[Math.min(active, images.length - 1)];
+  // Admin → الإعدادات → صفحة المنتج: a live effect on the big picture under the pointer, in place of the zoom
+  // (cinematic.css). It follows the picture shown: another photo, another colour.
+  usePictureFx(zoom, pageCfg.productPictureFx, currentImage);
   return (
     <div className="rose-pdp">
       <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>

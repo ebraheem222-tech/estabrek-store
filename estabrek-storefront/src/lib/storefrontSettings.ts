@@ -1,4 +1,5 @@
 import { COLOUR_STRENGTHS, SCENE_COLOUR_KEYS, type ColourStrength, type SceneColourKey } from "./colourEngine";
+import { pointerFxOf, type PointerFxKind } from "../../../shared/pictureFx";
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 type LiveChatPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ChatbotPosition = "bottom-left" | "bottom-right" | "bottom-center";
@@ -35,6 +36,9 @@ export type StorefrontSettings = {
   productCompleteLook: boolean;
   /** Arrival dates and the delivery price for her city (RoseDeliveryCity.tsx). */
   productDeliveryCity: boolean;
+  /** What the product page's big picture does under the pointer: the zoom ("none"), or a live effect the graphics
+   *  card draws in its place (shared/pictureFx.ts; lib/usePictureFx.ts). */
+  productPictureFx: "none" | PointerFxKind;
 
   // Search & Discovery
   voiceSearchEnabled: boolean;
@@ -150,6 +154,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   productReviews: true,
   productCompleteLook: true,
   productDeliveryCity: true,
+  productPictureFx: "none",
 
   // Search & Discovery
   voiceSearchEnabled: true,
@@ -240,7 +245,7 @@ const liveChatPositions = ["bottom-left", "bottom-right", "bottom-center"] as co
 const chatbotPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
 const toastPositions = ["top-right", "top-left", "bottom-right", "bottom-left"] as const;
 const colorFollows = ["everything", "product"] as const;
-const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow", "colorStrength"]);
+const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow", "colorStrength", "productPictureFx"]);
 
 const boolKeys = Object.entries(DEFAULT_STOREFRONT_SETTINGS)
   .filter(([, value]) => typeof value === "boolean")
@@ -308,6 +313,7 @@ export function normalizeStorefrontSettings(
   next.toastPosition = toEnum(raw.toastPosition, toastPositions, base.toastPosition);
   next.colorFollow = toEnum(raw.colorFollow, colorFollows, base.colorFollow);
   next.colorStrength = toEnum(raw.colorStrength, COLOUR_STRENGTHS, base.colorStrength);
+  next.productPictureFx = raw.productPictureFx === "none" ? "none" : pointerFxOf(raw.productPictureFx) ?? base.productPictureFx;
   const scenes = raw.colorScenes && typeof raw.colorScenes === "object" ? (raw.colorScenes as Record<string, unknown>) : {};
   next.colorScenes = Object.fromEntries(SCENE_COLOUR_KEYS.map((key) => [key, typeof scenes[key] === "boolean" ? (scenes[key] as boolean) : base.colorScenes[key]])) as Record<SceneColourKey, boolean>;
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { catalogItemKey, catalogItemLabel, formatMoney, getProductDiscountPercent, getProductMinPrice, getProductPrimaryImage, type CatalogProduct } from "@/lib/catalog";
 import type { CardDesign } from "@/lib/visualControls";
-import { PICTURE_FX, pictureFxOnPointer, type PictureFxKind } from "../../../shared/pictureFx";
+import { usePictureFx } from "@/lib/usePictureFx";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { emitVisualInteraction } from "@/lib/visualInteractions";
 import { QuickAddButton } from "./QuickAddButton";
@@ -14,8 +14,6 @@ import "./configuredProductCard.css";
 const RATIO: Record<string, string> = { portrait: "3/4", square: "1", landscape: "4/3", tall: "2/3", wide: "16/9" };
 /** Hovers that show the second picture; without one they fall back to a gentle zoom. */
 const NEEDS_SECOND = new Set(["swap", "slide", "zoomSwap", "flip", "curtain", "circle"]);
-/** Hovers the graphics card draws on the picture itself (pageTree/pictureFxRun.ts): rings of water, a flow, a colour split. */
-const DRAWN = new Set<string>(PICTURE_FX.filter(pictureFxOnPointer));
 const useIsoLayout = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /* Cards come in as they reach the screen; the ones arriving together come one after another. */
@@ -75,19 +73,10 @@ export function ConfiguredProductCard({ product, design: d, preview = false }: {
     return watch(el);
   }, [d.enter]);
 
-  // A live effect on the picture while the pointer is on it: its WebGL code is a script of its own, loaded by the
-  // first card that has one. It starts again with the picture when the colour chosen changes it. Nothing for
-  // whoever asked for less motion.
+  // A live effect on the picture while the pointer is on it (the hovers the graphics card draws: rings of water,
+  // a flow, a colour split). It starts again with the picture when the colour chosen changes it.
   const pic = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const host = pic.current;
-    if (!host || !hover || !DRAWN.has(hover) || !first) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const stops: Array<() => void> = [];
-    let live = true;
-    void import("@/pageTree/pictureFxRun").then(({ runPictureFx }) => { if (live) runPictureFx(host, { kind: hover as PictureFxKind }, stops); }).catch(() => undefined);
-    return () => { live = false; stops.splice(0).forEach((stop) => stop()); };
-  }, [hover, first]);
+  usePictureFx(pic, hover, first);
 
   // Pictures in turn while the pointer is on it.
   const timer = useRef(0);

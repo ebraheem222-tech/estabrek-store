@@ -3316,6 +3316,11 @@ html[data-scrolling]::after { content: ""; position: fixed; inset: 0; z-index: 2
 .rose-pdp-zoom { position: absolute; inset: 0; --zoom-origin: 50% 50%; }
 .rose-pdp-zoom img { transform-origin: var(--zoom-origin); transition: transform .5s cubic-bezier(.2,.7,.3,1); object-position: center 22%; }
 @media (hover: hover) { .rose-pdp-zoom:hover img { transform: scale(1.7); cursor: zoom-in; } }
+/* A live effect on the picture (Admin → الإعدادات → صفحة المنتج; pageTree/pictureFxRun.ts): its canvas lies over the
+   picture, and the zoom steps aside while the effect can be drawn (a picture it can't read keeps its zoom). */
+.rose-pdp-zoom > .pt-glfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .2s ease; transform-origin: var(--zoom-origin); }
+.rose-pdp-zoom > .pt-glfx[data-on] { opacity: 1; }
+@media (hover: hover) { .rose-pdp-zoom[data-pt-glfx-state]:not([data-pt-glfx-state="plain"]):hover img { transform: none; } }
 .rose-pdp-frame .rose-badge { top: 18px; inset-inline-start: 18px; z-index: 3; }
 .rose-pdp-wish {
   position: absolute; z-index: 3; top: 14px; inset-inline-end: 14px; width: 44px; height: 44px; border-radius: 50%;

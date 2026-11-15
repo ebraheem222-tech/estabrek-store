@@ -28,6 +28,7 @@ import {
   type SeoConfig,
 } from "./settingsCentre";
 import { StoreIdentityCard } from "./StoreIdentityCard";
+import { PRODUCT_PICTURE_FX_OPTIONS, readProductPictureFx, type ProductPictureFx } from "./productPictureFx";
 import { StoreLanguagesCard } from "./StoreLanguagesCard";
 
 /** The scenes that can dress the page in their colour (the shop's SceneColourKey, lib/colourEngine.ts). */
@@ -374,6 +375,7 @@ type StorefrontConfig = {
   productQuickView: boolean;
   productZoomEnabled: boolean;
   productCompareEnabled: boolean;
+  productPictureFx: ProductPictureFx;
   
   // Search & Discovery  
   voiceSearchEnabled: boolean;
@@ -492,6 +494,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     productQuickView: o.productQuickView !== false,
     productZoomEnabled: o.productZoomEnabled !== false,
     productCompareEnabled: o.productCompareEnabled !== false,
+    productPictureFx: readProductPictureFx(o.productPictureFx),
     
     // Search & Discovery
     voiceSearchEnabled: o.voiceSearchEnabled !== false,
@@ -2687,7 +2690,19 @@ export default function SettingsPage() {
                         value={String(storefrontCfg.productRecentlyViewedCount)}
                         onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, productRecentlyViewedCount: Number(v) || 6 }))}
                       />
+                      <Select
+                        label="الصورة الكبيرة لما يمرّ الماوس عليها"
+                        value={storefrontCfg.productPictureFx}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, productPictureFx: readProductPictureFx(v) }))}
+                        options={PRODUCT_PICTURE_FX_OPTIONS}
+                        data-testid="settings-product-picture-fx"
+                      />
                     </div>
+                    {storefrontCfg.productPictureFx !== "none" ? (
+                      <p className="mt-2 text-xs leading-5 text-white/50" data-testid="settings-product-picture-fx-hint">
+                        التأثير بياخد مكان التقريب لما الماوس على الصورة، والكبسة لسا بتفتح الصور بحجم كبير. بيرسمه كرت الشاشة (WebGL): الصورة بتضل متل ما هي للي طالب حركة أقل بجهازه، ولمتصفح ما بيدعمه، ولصورة من موقع ما بيسمح نقرا ألوانها (هدول بيضل معهم التقريب).
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Search & Discovery */}

@@ -21,6 +21,10 @@ export const PICTURE_FX_STRENGTH = { min: 0.1, max: 1, normal: 0.6 } as const;
 export const PICTURE_FX_LIVE = 6;
 /** The kinds that answer the pointer (the other plays once, when the picture comes into view). */
 export const pictureFxOnPointer = (kind: PictureFxKind) => kind !== "reveal";
+export type PointerFxKind = Exclude<PictureFxKind, "reveal">;
+export const PICTURE_FX_POINTER: readonly PointerFxKind[] = PICTURE_FX.filter((k): k is PointerFxKind => pictureFxOnPointer(k));
+/** One of those kinds read from a setting that is only its name (a product page's picture), or null. */
+export const pointerFxOf = (raw: unknown): PointerFxKind | null => (typeof raw === "string" && (PICTURE_FX_POINTER as readonly string[]).includes(raw) ? (raw as PointerFxKind) : null);
 
 /** A picture's effect as it may be drawn (its kind known, its strength in range), or null. */
 export function pictureFxOf(raw: unknown): PictureFx | null {
