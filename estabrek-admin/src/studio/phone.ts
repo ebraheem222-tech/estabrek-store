@@ -9,8 +9,12 @@
  * Here: the sums and the names, with no React in them.
  */
 
-/** Tailwind's `md` is where the editor's own side column starts: below it, the phone layout. */
-export const PHONE_QUERY = "(max-width: 767.98px)";
+/**
+ * Tailwind's `md` is where the editor's own side column starts: below it, the phone layout. A phone held sideways
+ * is wider than that but has no height for a computer's bars, so a short touch screen counts too. (index.css has
+ * the same query for the sheet's fields.)
+ */
+export const PHONE_QUERY = "(max-width: 767.98px), (pointer: coarse) and (max-height: 520px)";
 
 export type Pt = { x: number; y: number };
 
@@ -36,7 +40,8 @@ export const SHEET_ICON: Record<SheetView, string> = { add: "＋", layers: "☰"
 export function phoneFrame(canvas: { w: number; h: number }, width: number, margin = 8): { zoom: number; h: number } | null {
   if (!(canvas.w > margin * 2 && canvas.h > margin * 2 && width > 0)) return null;
   const zoom = Math.min(1, (canvas.w - margin * 2) / width);
-  return { zoom, h: Math.max(240, Math.round((canvas.h - margin * 2) / zoom)) };
+  // (Never shorter than 160: a canvas squeezed to almost nothing still gets a frame a page can be read in.)
+  return { zoom, h: Math.max(160, Math.round((canvas.h - margin * 2) / zoom)) };
 }
 
 /** Where the sheet's top edge is on a screen this tall (the sheet takes 56% of it, above the 56px row of tabs). */

@@ -251,7 +251,7 @@ function StudioDocument() {
   const langs = languagesOf(settings.data?.header);
 
   // On a phone the phone size reads best; elsewhere a computer.
-  const [device, setDevice] = useState<Device>(() => (typeof window !== "undefined" && window.innerWidth < 768 ? "phone" : "desktop"));
+  const [device, setDevice] = useState<Device>(() => (typeof window !== "undefined" && (window.innerWidth < 768 || (typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches === true)) ? "phone" : "desktop"));
   const [lang, setLang] = useState<Lang | null>(null);
   const shopLang: Lang = lang ?? (langs.enabled.includes(adminLang()) ? adminLang() : langs.default);
   const [ticket, setTicket] = useState<{ token: string; expiresAt: string } | null>(null);
@@ -2919,11 +2919,14 @@ function StudioDocument() {
     if (go.kind === "focus") {
       if (openFocus(selFree.id)) showCard(go.card);
     } else if (go.kind === "videoEditor") {
-      if (openFocus(selFree.id)) setVideoEditor(true);
+      // The video editor takes the whole window: on a phone the sheet it was opened from gets out of its way.
+      if (openFocus(selFree.id)) { setVideoEditor(true); if (phone) setSheet(false); }
     } else if (go.kind === "group") {
       goGroup(go.group, go.card);
     } else if (go.kind === "variables") {
-      setLeftTab("styles");
+      // On a phone the styles are a sheet of their own.
+      if (phone) openSheet("styles");
+      else setLeftTab("styles");
       showCard("studio-variables");
     } else if (go.kind === "worldOn") {
       const host = nodeOf(go.hostId);
@@ -4748,8 +4751,16 @@ function StudioDocument() {
 }
 
 function Shell({ children, busy = false }: { children: React.ReactNode; busy?: boolean }) {
+  // While the editor is open the page under it doesn't answer a pull at its edge: on a phone a drag down on a bar
+  // would reload the page (pull-to-refresh), and a sideways swipe would leave the editor.
+  useEffect(() => {
+    const root = document.documentElement;
+    const was = root.style.overscrollBehavior;
+    root.style.overscrollBehavior = "none";
+    return () => { root.style.overscrollBehavior = was; };
+  }, []);
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-surface-950 text-white" dir={isRtl(adminLang()) ? "rtl" : "ltr"} data-testid="studio" data-busy={busy ? "1" : "0"}>
+    <div className="fixed inset-0 z-40 flex touch-manipulation flex-col bg-surface-950 text-white" dir={isRtl(adminLang()) ? "rtl" : "ltr"} data-testid="studio" data-busy={busy ? "1" : "0"}>
       {children}
     </div>
   );

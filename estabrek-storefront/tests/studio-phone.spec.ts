@@ -215,3 +215,93 @@ test("two fingers zoom the canvas and pick nothing; one finger scrolls the page"
   await expect(page.getByTestId("studio-bar-hint")).toBeVisible();
   await context.close();
 });
+
+test("a finger takes a selection's handle from a little way round it and resizes the element", async ({ browser }) => {
+  test.setTimeout(180000);
+  const { context, page } = await phone(browser);
+  await pick(page, "Editable drawing");
+  const size = page.getByTestId("studio-selected-size");
+  await expect(size).toHaveText("180×180");
+  // The corner handle furthest down and to the right; the finger lands 9px off its middle (outside the square itself).
+  const handles = await page.locator("[data-studio-handle]").all();
+  const boxes = await Promise.all(handles.map(async (h) => (await h.boundingBox())!));
+  const corner = boxes.reduce((best, b) => (b.x + b.y > best.x + best.y ? b : best));
+  expect(corner.width).toBeGreaterThanOrEqual(13);
+  const hx = corner.x + corner.width / 2 + 9, hy = corner.y + corner.height / 2 + 9;
+  await fingers(context, page, [0, 8, 16, 24, 32, 40].map((d) => [{ x: hx + d, y: hy + d }]));
+  await expect(size).not.toHaveText("180×180", { timeout: 20000 });
+  const [w, h] = ((await size.textContent()) ?? "").split("×").map(Number);
+  expect(w).toBeGreaterThan(200);
+  expect(h).toBeGreaterThan(200);
+  await expect(page.getByTestId("studio-undo")).toBeEnabled({ timeout: 20000 });
+  await page.getByTestId("studio-undo").tap();
+  await expect(size).toHaveText("180×180", { timeout: 20000 });
+  await context.close();
+});
+
+test("a phone held sideways gets the phone's layout too, and a pull at the page's edge doesn't reload the editor", async ({ browser }) => {
+  test.setTimeout(180000);
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto(url());
+  await expect(page.getByTestId("studio-phone-bar")).toBeVisible({ timeout: 90000 });
+  await expect(page.getByTestId("studio-waiting")).toHaveCount(0, { timeout: 90000 });
+  // One row on top, the jobs at the bottom, the phone's own frame in the canvas between them.
+  expect((await rect(page, "studio-phone-head")).height).toBeLessThanOrEqual(60);
+  await expect(page.getByTestId("studio-info")).toHaveCount(0);
+  await expect(page.getByTestId("studio-frame")).toHaveAttribute("width", "390");
+  const canvas = await rect(page, "studio-canvas"), frame = await rect(page, "studio-frame");
+  expect(canvas.height).toBeGreaterThanOrEqual(200);
+  expect(frame.y + frame.height).toBeLessThanOrEqual(canvas.y + canvas.height + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(844);
+  // The page under the editor doesn't answer a pull at its edge (a phone's pull-to-refresh, a swipe back).
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY)).toBe("none");
+  // A sheet still opens above the row of jobs and leaves some of the canvas in sight.
+  await page.getByTestId("studio-phone-tab-layers").tap();
+  const sheet = (await page.getByTestId("studio-sheet").boundingBox())!;
+  expect(sheet.y).toBeGreaterThanOrEqual(canvas.y);
+  expect(sheet.y + sheet.height).toBeLessThanOrEqual((await rect(page, "studio-phone-tab-layers")).y + 1);
+  await context.close();
+});
+
+test("a tool that takes the whole window (the video editor) is not left under the sheet it was opened from", async ({ browser }) => {
+  test.setTimeout(180000);
+  const context = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto(url("&video"));
+  await expect(page.getByTestId("studio-phone-bar")).toBeVisible({ timeout: 90000 });
+  await expect(page.getByTestId("studio-waiting")).toHaveCount(0, { timeout: 90000 });
+  await page.getByTestId("studio-phone-tab-layers").tap();
+  await page.locator('[data-testid="studio-layer"][data-node="clip"]').tap();
+  await page.getByTestId("studio-phone-tab-settings").tap();
+  const tool = page.locator('[data-testid="studio-tool"][data-tool="video-editor"]');
+  await expect(tool).toBeVisible();
+  await tool.tap();
+  await expect(page.getByTestId("studio-video-editor")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId("studio-sheet")).toHaveCount(0);
+  await context.close();
+});
+
+test("a finger on a selected element moves it, and undo puts it back", async ({ browser }) => {
+  test.setTimeout(180000);
+  const { context, page } = await phone(browser);
+  await pick(page, "Editable drawing");
+  const place = () => page.frameLocator('[data-testid="studio-frame"]').locator('[data-tree-node="drawing"]').evaluate((el) => { const b = el.getBoundingClientRect(); return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; });
+  const before = await place();
+  // Its middle on the screen: half way between its handles (clear of them: they take a finger from a little way round).
+  const spots = await page.locator("[data-studio-handle]").evaluateAll((els) => els.map((el) => { const b = el.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }));
+  const cx = (Math.min(...spots.map((s) => s.x)) + Math.max(...spots.map((s) => s.x))) / 2;
+  const ys = spots.map((s) => s.y).sort((a, b) => a - b).slice(1);
+  const cy = (ys[0] + ys[ys.length - 1]) / 2;
+  await fingers(context, page, [0, 8, 16, 24, 32, 40, 50, 60].map((d) => [{ x: cx + d, y: cy + d }]));
+  // Dropped 60px down and to the right on the screen: about as far in the page (the frame is shown at 96%), the same size.
+  await expect.poll(async () => (await place()).x - before.x, { timeout: 20000 }).toBeGreaterThan(40);
+  const after = await place();
+  expect(after.y - before.y).toBeGreaterThan(40);
+  expect(after.x - before.x).toBeLessThan(80);
+  expect([after.w, after.h]).toEqual([before.w, before.h]);
+  await expect(page.getByTestId("studio-undo")).toBeEnabled({ timeout: 20000 });
+  await page.getByTestId("studio-undo").tap();
+  await expect.poll(place, { timeout: 20000 }).toEqual(before);
+  await context.close();
+});

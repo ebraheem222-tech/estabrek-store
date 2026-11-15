@@ -266,6 +266,7 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
             aria-label={tr("اسحب لتغيير الحجم، كبستين للحجم الطبيعي", "Drag to resize, double-click for its natural size")}
             className="pointer-events-auto absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-sm border border-accent-500 bg-white shadow"
             style={{ left: at.x, top: at.y, cursor: CURSOR[h] }}
+            data-studio-handle=""
             onPointerDown={(e) => start(e, { kind: "size", h, start: { ...box }, p0: local(e), zoom: scale, frame: frame ? { ...frame } : undefined, geometry: captureGeometry(geometry), proportional, ratioLimits: limitsFor(h) ? { ...limitsFor(h)! } : undefined })}
             onPointerMove={move}
             onPointerUp={end}
@@ -294,6 +295,7 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
             aria-valuenow={live?.deg ?? turn}
             className="pointer-events-auto absolute z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-accent-500 bg-white shadow"
             style={{ left: knob.x, top: knob.y, cursor: "grab" }}
+            data-studio-handle=""
             onPointerDown={(e) => start(e, { kind: "turn", c: { x: box.x + box.w / 2, y: box.y + box.h / 2 }, a0: angleAt({ x: box.x + box.w / 2, y: box.y + box.h / 2 }, local(e)), base: turn })}
             onPointerMove={move}
             onPointerUp={end}
