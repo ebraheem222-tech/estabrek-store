@@ -18,6 +18,10 @@ export const CARD_HOVER_NAMES: Named = [
   ["pan", "بتمشي ببطء|Slow pan|תנועה איטית"],
   ["grayscale", "أبيض وأسود ← ألوان|Black & white to colour|שחור-לבן לצבע"],
   ["blur", "ضبابية|Blur|טשטוש"],
+  // Drawn by the graphics card (WebGL) while the pointer is on the picture.
+  ["ripple", "تموّج مي (كرت الشاشة)|Water ripple (graphics card)|אדוות מים (כרטיס מסך)"],
+  ["liquid", "سائل (كرت الشاشة)|Liquid (graphics card)|נוזלי (כרטיס מסך)"],
+  ["shift", "انفصال ألوان (كرت الشاشة)|Colour split (graphics card)|פיצול צבעים (כרטיס מסך)"],
 ];
 export const CARD_LIFT_NAMES: Named = [
   ["none", "بلا حركة|Still|ללא תנועה"],

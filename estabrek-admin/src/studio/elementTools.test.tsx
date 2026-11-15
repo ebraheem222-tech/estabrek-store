@@ -29,7 +29,7 @@ test("a picture, a video, a 3D model and words say where their own editors are",
   expect(ids(elementTools(node("heading")))).toEqual(["ai-words", "text-curve", ...every]);
   expect(ids(elementTools(node("text")))).toEqual(["ai-words", "text-curve", ...every]);
   expect(ids(elementTools(node("svg")))).toEqual(["svg-parts", ...every]);
-  expect(ids(elementTools(node("slider")))).toEqual(["slider-slides", ...every]);
+  expect(ids(elementTools(node("slider")))).toEqual(["slider-fx", "slider-slides", ...every]);
   expect(ids(elementTools(node("scrollScene")))).toEqual(["scene-chapters", ...every]);
   expect(ids(elementTools(node("button")))).toEqual(["ai-words", ...every]);
   expect(ids(elementTools(node("icon")))).toEqual(every);

@@ -66,6 +66,8 @@ const CONTENT_TR = {
   },
 };
 let contentTranslations = false;
+/** Each product's picture as written here (see /__test/commerce `ownPictures`). */
+const productPictures = new Map();
 const products = [
   {
     id: "coat",
@@ -379,6 +381,14 @@ const pictureFxDemo = { id: "picture-fx", slug: "/picture-fx", name: "Picture ef
       fxPicture("liquid", "liquid", { width: "300px", height: "300px" }),
       fxPicture("shift", "shift", { width: "360px", height: "260px" }, "/editorial/scarves.webp"),
       { id: "plain", type: "image", props: { src: "/templates/fixture-subject.svg", alt: { en: "plain" } }, style: { base: { width: "200px", height: "150px" } } },
+    ] },
+    // A slider whose pictures ripple: two pictures and a clip, with words over the first.
+    { id: "turns", type: "section", props: {}, style: { base: { pad: [20, 20, 20, 20] } }, children: [
+      { id: "slides", type: "slider", props: { arrows: true, dots: true, loop: false, glfx: { kind: "ripple" }, slides: [
+        { src: "/templates/fixture-subject.svg", kind: "image", alt: { en: "First" }, title: { en: "Words over the picture" } },
+        { src: "/editorial/scarves.webp", kind: "image", alt: { en: "Second" } },
+        { src: "/templates/fixture.mp4", kind: "video" },
+      ] }, style: { base: { width: "400px", height: "300px" } } },
     ] },
     { id: "gap", type: "section", props: {}, style: { base: { minHeight: "1600px" } }, children: [] },
     { id: "low", type: "section", props: {}, style: { base: { pad: [20, 20, 20, 20], minHeight: "500px" } }, children: [
@@ -837,6 +847,11 @@ http
         const data = JSON.parse(body || "{}");
         commerceCms = data.on === true; invalidCommerceCart = data.invalidCart === true;
         site.visualControls = data.visualControls ?? null;
+        // Pictures from the shop's own address (a path), so a card may read its picture's pixels; else as they were.
+        for (const p of products) {
+          if (!productPictures.has(p.id)) productPictures.set(p.id, p.primaryImageUrl);
+          p.primaryImageUrl = data.ownPictures === true ? "/editorial/hijab-campaign.webp" : productPictures.get(p.id);
+        }
         visualPageProps = data.pageProps ?? {}; visualShopProps = data.shopProps ?? {};
         legacyCommerceCart = data.legacyCart === true;
         site.customerAccountsEnabled = data.accounts === true;

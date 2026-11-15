@@ -391,7 +391,7 @@ export function treeNeeds(tree: PageTree) {
   eachNode(tree, (n) => {
     if (((n.type === "lottie" || n.type === "rive") && typeof n.props?.src === "string") || (n.type === "section" && n.props?.particles)) media = true;
     if (n.type === "video" && typeof n.props?.src === "string" && videoPlay(n.props).live) media = true;
-    if (n.type === "image" && pictureFxOf(n.props?.glfx)) media = true;
+    if ((n.type === "image" || n.type === "slider") && pictureFxOf(n.props?.glfx)) media = true;
   });
   const smooth = tree.root.props?.smooth === true;
   // Scroll scenes (TreeScenes) and triggers (TreeTriggers), each runtime loaded only then.

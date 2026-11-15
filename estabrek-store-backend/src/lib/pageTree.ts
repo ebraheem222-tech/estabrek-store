@@ -906,6 +906,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     look: z.enum(SLIDER_LOOKS).optional(),
     arrowLook: z.enum(SLIDER_ARROW_LOOKS).optional(),
     dotLook: z.enum(SLIDER_DOT_LOOKS).optional(),
+    // A live effect on its pictures while the pointer is on one (a picture's `glfx`, without the reveal: a slide
+    // comes and goes by the slider's own motion).
+    glfx: z.object({ kind: z.enum(["ripple", "liquid", "shift"]), strength: z.number().min(0.1).max(1).optional() }).strict().optional(),
   }),
   instrument: z.object({ kind: z.enum(["piano", "guitar"]).default("piano"), label: local(160).optional(), sound: z.boolean().optional(), volume: z.number().finite().min(0).max(1).optional(), octave: z.number().int().min(2).max(6).optional(), octaves: z.number().int().min(1).max(2).optional(), frets: z.number().int().min(4).max(12).optional(), sustain: z.number().finite().min(.1).max(3).optional(), waveform: z.enum(["sine", "triangle", "sawtooth"]).optional(), theme: z.enum(["dark", "light"]).optional(), showNotes: z.boolean().optional(), melody: z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"]).optional(), playlist: z.array(z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"])).min(1).max(6).optional(), showPlayer: z.boolean().optional(), tempo: z.number().int().min(40).max(200).optional(), repeat: z.boolean().optional() }),
   chart: z.object({ kind: z.enum(["bar", "line", "donut"]).default("bar"), label: local(160).optional(), items: z.array(z.object({ label: local(80), value: z.number().finite().min(0).max(1000000), color: color.optional() })).min(1).max(24), showValues: z.boolean().optional() }),

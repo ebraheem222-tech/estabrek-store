@@ -47,6 +47,10 @@ describe("slider shapes", () => {
 describe("product cards", () => {
   test("the API, the shop and the editor name the same motions", () => {
     expect([...shop.CARD_HOVERS]).toEqual([...CARD_HOVERS]);
+    // The hovers the graphics card draws are the picture effects that answer the pointer.
+    expect(CARD_HOVERS.slice(-3)).toEqual(["ripple", "liquid", "shift"]);
+    expect(CardDesign.safeParse({ hover: "ripple" }).success).toBe(true);
+    expect(CardDesign.safeParse({ hover: "reveal" }).success).toBe(false);
     expect([...shop.CARD_LIFTS]).toEqual([...CARD_LIFTS]);
     expect([...shop.CARD_ENTERS]).toEqual([...CARD_ENTERS]);
     expect([...shop.CARD_BUTTONS]).toEqual([...CARD_BUTTONS]);

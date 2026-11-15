@@ -1074,6 +1074,8 @@ export const BASE_CSS = [
   ".pt-glfx{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0;transition:opacity .2s ease}",
   ".pt-glfx[data-on]{opacity:1}",
   ".pt-frame[data-pt-glfx-wait]>.pt-frame-media{opacity:0}",
+  // On a slide the words over the picture stay over the canvas.
+  ".pt-slide[data-pt-glfx] .pt-slide-caption{z-index:2}",
   // A picture's sparkling stars (sparkles.tsx): each twinkles at its own moment; size, turn and see-through only.
   ".pt-sparkles{position:absolute;inset:0;z-index:2;pointer-events:none}",
   ".pt-spark{position:absolute;width:calc(var(--sp-size,16px)*var(--s,1));height:calc(var(--sp-size,16px)*var(--s,1));translate:-50% -50%;color:var(--sp-color,#fff);opacity:0;will-change:transform,opacity;animation:pt-twinkle var(--sp-speed,1.8s) ease-in-out var(--d,0s) infinite both}",
