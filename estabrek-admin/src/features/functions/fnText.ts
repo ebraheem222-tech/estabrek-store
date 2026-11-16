@@ -242,6 +242,16 @@ export function failText(error: string, lang: Lang): string {
   return error;
 }
 
+/** Why one of a function's tests didn't pass. */
+const TEST_WHY: Record<string, string> = {
+  stopped: "وقفت، والمتوقّع إنها تمشي للآخر|It stopped, and was expected to go through|היא נעצרה, והציפייה הייתה שתעבור עד הסוף",
+  wentThrough: "مشيت للآخر، والمتوقّع إنها توقف|It went through, and was expected to stop|היא עברה עד הסוף, והציפייה הייתה שתיעצר",
+  value: "رجّعت جواب غير المتوقّع:|It gave back another answer than expected:|היא החזירה תשובה אחרת מהצפויה:",
+  reason: "وقفت، بس لسبب غير المتوقّع|It stopped, but for another reason than expected|היא נעצרה, אבל מסיבה אחרת מהצפויה",
+  time: "ما لحقت دورها: الاختبارات أخدت وقتها كله|It never got its turn: the tests used up their time|היא לא הגיעה לתורה: הבדיקות ניצלו את כל הזמן שלהן",
+};
+export const testWhyText = (why: string, lang: Lang): string => part(TEST_WHY[why] ?? why, lang);
+
 /** What a step did (or, dry, would do), in the admin's language. */
 export function lineText(line: Pick<TraceLine, "ok" | "say" | "note" | "error">, lang: Lang): string {
   if (!line.ok) return line.error ? failText(line.error, lang) : part("فشلت|Failed|נכשל", lang);

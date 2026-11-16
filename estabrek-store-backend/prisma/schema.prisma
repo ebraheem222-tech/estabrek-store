@@ -493,6 +493,8 @@ model Fn {
   /// { lang?, inputs, if?, match?, do, else?, fail? }
   draft       Json
   live        Json?
+  /// Its own tests (F4, src/lib/fnTests.ts): [{ id, name, input, caller?, expect }]. Run before every publish.
+  tests       Json      @default("[]")
   publishedAt DateTime?
   /// Off: nothing starts it (the admin's own "run" still does).
   enabled     Boolean   @default(true)

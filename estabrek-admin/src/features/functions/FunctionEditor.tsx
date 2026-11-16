@@ -15,12 +15,13 @@ import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as FnAPI from "../../api/functions.api";
-import type { FnDef, FnFull, FnInput, InputType, Outcome, Problem } from "../../api/functions.api";
+import type { FnDef, FnFull, FnInput, FnTest, InputType, Outcome, Problem, TestsOutcome } from "../../api/functions.api";
 import { countSteps, freeName, nameOk, stepOfLine } from "./fnDraft";
 import { INPUT_TYPE, STATE_NAME, problemText, stateOf, whereText } from "./fnText";
 import { FnTriggers } from "./FnTriggers";
 import { BuilderProvider, CondList, Line, StepList, type Builder } from "./StepList";
 import { TryPanel } from "./TryPanel";
+import { TestsPanel, newTest } from "./TestsPanel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -43,41 +44,63 @@ export default function FunctionEditor() {
   const [note, setNote] = useState("");
   const [openAt, setOpenAt] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // Its own tests (kept with it, saved with the draft), and how they went the last time they ran.
+  const [tests, setTests] = useState<FnTest[]>([]);
+  const [ran, setRan] = useState<TestsOutcome | null>(null);
   useEffect(() => {
     if (!fn) return;
     setDraft(fn.draft);
     setName(fn.name);
     setNote(fn.note ?? "");
+    setTests(fn.tests ?? []);
   }, [fn?.id, fn?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dirty = !!fn && !!draft && (!same(draft, fn.draft) || name.trim() !== fn.name || note.trim() !== (fn.note ?? ""));
+  const dirty = !!fn && !!draft && (!same(draft, fn.draft) || name.trim() !== fn.name || note.trim() !== (fn.note ?? "") || !same(tests, fn.tests ?? []));
+  /** What is on the page, as it is saved. */
+  const page = () => ({ name: name.trim() || fn!.name, note: note.trim() || null, draft: draft!, tests });
   const took = (saved: FnFull) => {
     qc.setQueryData(["functions", id], saved);
     void qc.invalidateQueries({ queryKey: ["functions"], exact: true });
   };
   const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) });
 
-  const save = useMutation({ mutationFn: () => FnAPI.saveFunction(id, { name: name.trim() || fn!.name, note: note.trim() || null, draft: draft! }), onSuccess: took, onError });
+  const save = useMutation({ mutationFn: () => FnAPI.saveFunction(id, page()), onSuccess: took, onError });
   const toggle = useMutation({ mutationFn: (enabled: boolean) => FnAPI.saveFunction(id, { enabled }), onSuccess: took, onError });
   const publish = useMutation({
     mutationFn: async () => {
       // What is on the page is what gets published: saved first when it changed.
-      if (dirty) took(await FnAPI.saveFunction(id, { name: name.trim() || fn!.name, note: note.trim() || null, draft: draft! }));
+      if (dirty) took(await FnAPI.saveFunction(id, page()));
       return FnAPI.publishFunction(id);
     },
     onSuccess: (saved) => {
       took(saved);
+      setRan(null);
       toast.success(say("انتشرت|Published|פורסמה"), { description: say("هاي الخطوات هي اللي بتشتغل من هلأ.|These steps are what runs from now on.|מעכשיו אלה השלבים שרצים.") });
     },
     onError: (e) => {
-      onError(e);
+      // One of its own tests didn't pass: the publish stopped, and each test says how it went.
+      const refused = (e as { response?: { data?: { error?: string; details?: TestsOutcome } } })?.response?.data;
+      if (refused?.error === "FN_TESTS_FAILED" && refused.details?.results) {
+        setRan(refused.details);
+        toast.error(say("ما انتشرت|Not published|לא פורסמה"), { description: say("في اختبارات ما نجحت. شوفها تحت بقسم الاختبارات.|Some of its tests didn't pass. See them below, under the tests.|חלק מהבדיקות לא עברו. הן מופיעות למטה, באזור הבדיקות.") });
+        document.querySelector('[data-testid="fn-tests"]')?.scrollIntoView?.({ block: "center" });
+      } else onError(e);
       void qc.invalidateQueries({ queryKey: ["functions", id] });
     },
+  });
+  const test = useMutation({
+    mutationFn: async () => {
+      // The tests run what is on the page: saved first when it changed.
+      if (dirty) took(await FnAPI.saveFunction(id, page()));
+      return FnAPI.runFnTests(id);
+    },
+    onSuccess: setRan,
+    onError,
   });
   const run = useMutation({
     mutationFn: async ({ input, real }: { input: Record<string, unknown>; real: boolean }) => {
       // The draft is tried as it is on the page.
-      if (!real && dirty) took(await FnAPI.saveFunction(id, { name: name.trim() || fn!.name, note: note.trim() || null, draft: draft! }));
+      if (!real && dirty) took(await FnAPI.saveFunction(id, page()));
       return FnAPI.runFunction(id, { input, dry: !real, which: real ? "live" : "draft" });
     },
     onSuccess: (out) => {
@@ -283,11 +306,27 @@ export default function FunctionEditor() {
               canRunLive={fn.published}
               busy={run.isPending}
               outcome={outcome}
+              onKeep={(input, ok) => {
+                if (tests.length >= (list.data?.limits.tests ?? 20)) return void toast.error(say("وصلت لأكتر عدد اختبارات|No room for another test|אין מקום לבדיקה נוספת"));
+                setTests([...tests, newTest(tests, say("اختبار {n}|Test {n}|בדיקה {n}").replace("{n}", String(tests.length + 1)), { input: input as FnTest["input"], expect: { ok } })]);
+                toast.success(say("انضافت للاختبارات|Added to the tests|נוספה לבדיקות"), { description: say("احفظ المسودة لتنحفظ معها.|Save the draft to keep it.|שמרו את הטיוטה כדי לשמור אותה.") });
+              }}
               onRun={async (input, real) => {
                 if (real && !(await confirm({ title: say("تشغيل فعلي|A real run|הרצה אמיתית"), message: say("الخطوات المنشورة رح تشتغل فعلاً: بتكتب بالجداول وبتبعت رسايل. متأكد؟|The published steps will run for real: they write to the tables and send messages. Sure?|השלבים שפורסמו ירוצו באמת: הם כותבים לטבלאות ושולחים הודעות. בטוח?"), confirmText: say("شغّل|Run|הרצה"), variant: "warning" }))) return;
                 run.mutate({ input, real });
               }}
             />
+          </div>
+        </section>
+        <section className={box}>
+          <h2 className="font-medium">{say("الاختبارات|Tests|בדיקות")}</h2>
+          <p className="mt-1 text-xs text-white/70">
+            {say(
+              "كل اختبار: شو بتنعطى الـ function، وشو لازم يصير. بيشتغلوا متل التجربة (ما بيكتبوا ولا بيبعتوا، وبيقرأوا جداولك متل ما هي هلأ)، وبيشتغلوا لحالهم قبل كل نشر: إذا واحد ما نجح، النشر بيوقف.|Each test: what the function is handed, and what must come of it. They run like a try (they write and send nothing, and read your tables as they are now), and by themselves before every publish: if one doesn't pass, the publish stops.|כל בדיקה: מה הפונקציה מקבלת ומה צריך לקרות. הן רצות כמו ניסיון (לא כותבות ולא שולחות, וקוראות את הטבלאות כפי שהן עכשיו), ומעצמן לפני כל פרסום: אם אחת לא עוברת, הפרסום נעצר.",
+            )}
+          </p>
+          <div className="mt-3">
+            <TestsPanel inputs={draft.inputs} tests={tests} onChange={setTests} canWrite={canWrite} ran={dirty ? null : ran} busy={test.isPending} onRun={() => test.mutate()} max={list.data?.limits.tests ?? 20} usesCaller={JSON.stringify(draft).includes("{{caller")} />
           </div>
         </section>
         {dialog}
