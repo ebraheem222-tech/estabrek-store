@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { api } from "../api/http";
 import { setLangForTests } from "../lib/lang";
 import { PagePublicationStatus } from "./PagePublicationStatus";
@@ -29,6 +30,27 @@ test("a committed publication with pending cache delivery is reported separately
   fireEvent.click(screen.getByRole("button", { name: "Check public page" }));
   expect(await screen.findByText("This page is visible on the checked storefronts.")).toBeVisible();
   expect(paths).toContain("/admin/pages/page/publication/check");
+});
+test("a page of a switched-off feature says it is hidden from the shop, and by which feature", async () => {
+  api.defaults.adapter = async config => {
+    const path = String(config.url); paths.push(path);
+    const data = path.endsWith("/check") ? { state: "not_public", targets: [] }
+      : { publication: { status: "PUBLISHED", slug: "/t", state: "live", public: true, publishAt: null, unpublishAt: null }, hasDraft: false, delivery: null, hiddenBy: { id: "m1", name: "Friend requests" } };
+    return { data, status: 200, statusText: "OK", headers: {}, config };
+  };
+  render(<QueryClientProvider client={client}><MemoryRouter><PagePublicationStatus page={page} lang="en" hasDraft={false} canPublish /></MemoryRouter></QueryClientProvider>);
+  const note = await screen.findByTestId("studio-hidden-by");
+  expect(note.textContent).toBe("Hidden from the shop: it belongs to a feature that is switched off, Friend requests. Switch the feature on to show it again.");
+  // The way to the feature, where its switch is.
+  expect(screen.getByRole("link", { name: "Friend requests" }).getAttribute("href")).toBe("/admin/my-features/m1");
+  // Its own status is still said (it shows again without publishing), but not as a page that is live.
+  expect(screen.getByText("Published").className).toContain("text-amber-200");
+});
+test("a page of no feature, or of one that is on, says nothing about being hidden", async () => {
+  open();
+  await screen.findByText("Storefront refresh is pending.");
+  expect(screen.queryByTestId("studio-hidden-by")).not.toBeInTheDocument();
+  expect(screen.getByText("Published").className).toContain("text-emerald-300");
 });
 test("a read-only editor can inspect availability but cannot retry a publishing operation", async () => {
   open({}, false);

@@ -222,7 +222,7 @@ export default function FeaturePage() {
       <section className={box} data-testid="feature-pages">
         <h2 className="font-medium">{say("٣. الصفحات|3. Pages|3. עמודים")}</h2>
         <p className="mt-1 text-xs text-white/60">
-          {say("وين بيشوف الزبون الميزة بالمتجر. الصفحة بتنعمل وبتتصمّم من «الصفحات»، وهون بتربطها بالميزة لتلاقيها معها.|Where the shopper sees the feature in the shop. A page is made and designed in “Pages”; here you put it with the feature so it is found with it.|איפה הלקוח רואה את התכונה בחנות. עמוד נוצר ומעוצב ב«עמודים»; כאן משייכים אותו לתכונה כדי למצוא אותו איתה.")}{" "}
+          {say("وين بيشوف الزبون الميزة بالمتجر. الصفحة بتنعمل وبتتصمّم من «الصفحات»، وهون بتربطها بالميزة لتلاقيها معها، ولتتخبّى معها لما توقّف الميزة.|Where the shopper sees the feature in the shop. A page is made and designed in “Pages”; here you put it with the feature so it is found with it, and hides with it when the feature is switched off.|איפה הלקוח רואה את התכונה בחנות. עמוד נוצר ומעוצב ב«עמודים»; כאן משייכים אותו לתכונה כדי למצוא אותו איתה, והוא מוסתר איתה כשהתכונה כבויה.")}{" "}
           <Link to="/admin/pages" className="underline">
             {say("الصفحات|Pages|עמודים")}
           </Link>
@@ -238,6 +238,13 @@ export default function FeaturePage() {
                   <Badge variant={PAGE_BADGE[p.status]} size="sm">
                     {say(PAGE_STATUS[p.status])}
                   </Badge>
+                  {p.hidden ? (
+                    <span data-testid={`feature-page-hidden-${p.id}`}>
+                      <Badge variant="warning" size="sm">
+                        {say("مخبّاة عن المتجر|Hidden from the shop|מוסתר מהחנות")}
+                      </Badge>
+                    </span>
+                  ) : null}
                   {p.hasDraft ? <span className="text-xs text-white/60">{say("فيها تعديلات مش منشورة|has changes not published|יש שינויים שלא פורסמו")}</span> : null}
                 </div>
                 <bdi dir="ltr" className="block text-xs text-white/60">

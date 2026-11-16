@@ -9,7 +9,7 @@ import { storePageDraft } from "../lib/storePageTemplates.js";
 const m = vi.hoisted(() => ({ row: null as any, blocks: [] as any[], revisions: [] as any[], owner: true, write: true, failSection: false,
   db: { page: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() }, pageRevision: { findFirst: vi.fn(), create: vi.fn() },
     pageSection: { update: vi.fn(), deleteMany: vi.fn() }, pageSectionTranslation: { upsert: vi.fn(), deleteMany: vi.fn() },
-    siteSettings: { findFirst: vi.fn() }, $transaction: vi.fn(), $queryRaw: vi.fn() },
+    siteSettings: { findFirst: vi.fn() }, featureItem: { findUnique: vi.fn() }, $transaction: vi.fn(), $queryRaw: vi.fn() },
   revalidate: vi.fn(), clear: vi.fn(),
 }));
 vi.mock("../lib/prisma.js", () => ({ prisma: m.db }));
@@ -49,6 +49,8 @@ beforeEach(() => {
   m.db.pageSection.deleteMany.mockResolvedValue({ count: 0 });
   m.db.pageSectionTranslation.upsert.mockResolvedValue({}); m.db.pageSectionTranslation.deleteMany.mockResolvedValue({ count: 0 });
   m.db.$queryRaw.mockResolvedValue([{ id: "page" }]);
+  // The page is no feature's (lib/featureGate.ts hiddenBy).
+  m.db.featureItem.findUnique.mockResolvedValue(null);
   m.db.$transaction.mockImplementation(async (run: any) => {
     const before = structuredClone(m.row), revisions = structuredClone(m.revisions);
     try { return await run(m.db); } catch (error) { m.row = before; m.revisions = revisions; throw error; }
@@ -106,7 +108,15 @@ test("a user who can edit content but cannot publish gets no write or cache side
 test("publication diagnostics separate saved content from delivery and retry requires publish permission", async () => {
   expect((await request(app).get("/pages/page/publication").expect(200)).body).toMatchObject({ publication: { state: "draft", public: false }, hasDraft: true });
   await publish().expect(200);
-  expect((await request(app).get("/pages/page/publication").expect(200)).body).toMatchObject({ publication: { state: "live", public: true }, delivery: { state: "delivered" }, hasDraft: false });
+  expect((await request(app).get("/pages/page/publication").expect(200)).body).toMatchObject({ publication: { state: "live", public: true }, delivery: { state: "delivered" }, hasDraft: false, hiddenBy: null });
+  // A page of a feature that is switched off: its own publication is as it was, and the answer says what hides it.
+  m.db.featureItem.findUnique.mockResolvedValue({ feature: { id: "m1", name: "Friend requests", enabled: false } });
+  expect((await request(app).get("/pages/page/publication").expect(200)).body).toMatchObject({ publication: { state: "live", public: true }, hiddenBy: { id: "m1", name: "Friend requests" } });
+  expect((await request(app).get("/pages/page/publication/check").expect(200)).body).toMatchObject({ state: "not_public", targets: [] });
+  // Of a feature that is on: nothing hides it.
+  m.db.featureItem.findUnique.mockResolvedValue({ feature: { id: "m1", name: "Friend requests", enabled: true } });
+  expect((await request(app).get("/pages/page/publication").expect(200)).body.hiddenBy).toBeNull();
+  m.db.featureItem.findUnique.mockResolvedValue(null);
   const id = m.row.publicationDelivery.id; m.owner = false;
   await request(app).post("/pages/page/publication/retry").expect(403);
   expect(m.row.publicationDelivery.id).toBe(id);

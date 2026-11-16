@@ -36,17 +36,22 @@ import { bindTree } from "../../lib/collectionTree.js";
 import { previewPageId } from "../../lib/previewToken.js";
 import { storedDraft } from "../../lib/pageDraft.js";
 import { publishedDesignRegions } from "../../lib/storeDesign.js";
+import { shownPagesWhere, switchedOff } from "../../lib/featureGate.js";
 
 const r = Router();
 
 const PUBLISHED_PAGES_TTL_MS = 60_000;
 const PAGE_BY_SLUG_TTL_MS = 30_000;
 
-/** The shop's live pages (a saved block of the new editor is never one: lib/pageBlocks.ts). */
-function buildPublishedWindowWhere(now = new Date()) {
+/**
+ * The shop's live pages (a saved block of the new editor is never one: lib/pageBlocks.ts). `off`: the pages of
+ * features that are switched off (lib/featureGate.ts): they answer as pages that aren't there.
+ */
+function buildPublishedWindowWhere(now = new Date(), off: ReadonlySet<string> = new Set()) {
   return {
     status: "PUBLISHED" as const,
     kind: "page",
+    ...shownPagesWhere(off),
     AND: [
       {
         OR: [{ publishAt: null }, { publishAt: { lte: now } }],
@@ -98,7 +103,7 @@ async function getPublishedPagesCached() {
   if (cached) return cached;
   const now = new Date();
   const pages = await prisma.page.findMany({
-    where: buildPublishedWindowWhere(now),
+    where: buildPublishedWindowWhere(now, (await switchedOff()).pages),
     select: {
       id: true,
       name: true,
@@ -125,7 +130,7 @@ async function getPageBySlugCached(slug: string, locale: "ar" | "he" | "en") {
   const page = await prisma.page.findFirst({
     where: {
       slug,
-      ...buildPublishedWindowWhere(now),
+      ...buildPublishedWindowWhere(now, (await switchedOff()).pages),
     },
     include: {
       translations: { where: { locale } },

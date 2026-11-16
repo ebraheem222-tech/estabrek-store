@@ -15,7 +15,8 @@ import { startFunctions } from "../modules/functions/functions.service.js";
 // ميزاتي (M), with the database: a feature the owner built is a name over tables, functions and
 // pages made elsewhere in the studio. A thing belongs to one feature at most; deleting a feature
 // only ungroups. Switched off, the feature's functions aren't started and its tables' API answers
-// as closed. Requests to /v1/admin without a token run as the test owner.
+// as closed (its pages hiding from the shop: featurePages.spec.ts). Requests to /v1/admin without a
+// token run as the test owner.
 
 const PREFIX = "mf-spec-";
 const admin = "/v1/admin";
@@ -102,7 +103,7 @@ describe("A feature", () => {
       { id: friends, slug: `${PREFIX}friends`, name: { en: "friends" }, fields: 1, rows: 0, api: { read: "off", create: "off", update: "off", delete: "off" } },
     ]);
     expect(full.functions.map((x) => [x.id, x.published, x.changed, x.triggers])).toEqual([[send, true, false, 1], [accept, false, true, 0]]);
-    expect(full.pages).toEqual([{ id: page, name: `${PREFIX}my-friends`, slug: `/${PREFIX}my-friends`, status: "DRAFT", hasDraft: false }]);
+    expect(full.pages).toEqual([{ id: page, name: `${PREFIX}my-friends`, slug: `/${PREFIX}my-friends`, status: "DRAFT", hasDraft: false, hidden: false }]);
     // What is in a feature isn't offered again.
     expect(ids(full.free.tables)).not.toEqual(expect.arrayContaining([requests]));
     expect(ids(full.free.functions)).not.toEqual(expect.arrayContaining([send]));

@@ -5,8 +5,9 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
 import { accessOf } from "../../lib/dataApi.js";
-import { FEATURE_KINDS, forgetFeatureGate, type FeatureKind } from "../../lib/featureGate.js";
+import { FEATURE_KINDS, forgetFeatureGate, isStorePage, type FeatureKind } from "../../lib/featureGate.js";
 import { forgetTriggers } from "../../lib/fnTriggers.js";
+import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -15,7 +16,9 @@ import { forgetTriggers } from "../../lib/fnTriggers.js";
  * Looking needs features:read, changing features:write (admin.routes.ts).
  *
  * Switched off (lib/featureGate.ts): the feature's functions aren't started by anything but the
- * admin's own run, and its tables' API answers as closed. Its pages stay as they are.
+ * admin's own run, its tables' API answers as closed, and its pages answer on the shop as pages
+ * that aren't there (the editor still opens them; `hidden` on each says so). The store's own pages
+ * (the home, the shop, the cart) aren't taken into a feature: they never hide.
  *
  * GET    /admin/my-features                       — the features, with how many things each holds
  * POST   /admin/my-features                       { name, note? }
@@ -43,11 +46,18 @@ async function featureOf(req: Request) {
 }
 type Held = Awaited<ReturnType<typeof featureOf>>;
 
-/** After what a feature holds, or whether it is on, changed: the doors ask again. */
-function changed() {
+/**
+ * After what a feature holds, or whether it is on, changed: the doors ask again. `pages`: the pages
+ * that show or hide with the change; the shop is told to read them again (its copies are dropped).
+ */
+async function changed(pages: string[] = []) {
   forgetFeatureGate();
   forgetTriggers();
+  if (!pages.length) return;
+  const slugs = (await prisma.page.findMany({ where: { id: { in: pages }, kind: "page" }, select: { slug: true } })).map((p) => p.slug);
+  if (slugs.length) await triggerCmsRevalidate(slugs);
 }
+const pagesOf = (feature: Held) => feature.items.filter((i) => i.kind === "page").map((i) => i.refId);
 
 /** A feature with its things as they are now. A thing deleted where it was made is dropped from the feature here. */
 async function full(feature: Held) {
@@ -81,12 +91,14 @@ async function full(feature: Held) {
     updatedAt: feature.updatedAt,
     tables: by(tables, "table").map((t) => ({ id: t.id, slug: t.slug, name: t.name, fields: Array.isArray(t.fields) ? t.fields.length : 0, rows: t._count.items, api: accessOf(t.api) })),
     functions: by(fns, "function").map((f) => ({ id: f.id, name: f.name, note: f.note, enabled: f.enabled, published: !!f.live, changed: !same(f.draft, f.live), triggers: f._count.triggers, runs: f.runs, lastRunAt: f.lastRunAt })),
-    pages: by(pages, "page").map((p) => ({ id: p.id, name: p.name, slug: p.slug, status: p.status, hasDraft: !!p.draft })),
+    // `hidden`: the feature is off, so the shop answers this page as one that isn't there.
+    pages: by(pages, "page").map((p) => ({ id: p.id, name: p.name, slug: p.slug, status: p.status, hasDraft: !!p.draft, hidden: !feature.enabled && !isStorePage(p.slug) })),
     // What isn't in any feature yet, to be added to this one.
     free: {
       tables: allTables.filter((t) => !inOne.has(`table:${t.id}`)),
       functions: allFns.filter((f) => !inOne.has(`function:${f.id}`)),
-      pages: allPages.filter((p) => !inOne.has(`page:${p.id}`)),
+      // Not the store's own pages (the home, the shop, the cart): they never follow a switch.
+      pages: allPages.filter((p) => !inOne.has(`page:${p.id}`) && !isStorePage(p.slug)),
     },
     limits: FEATURE_LIMITS,
   };
@@ -130,7 +142,8 @@ r.put(
       data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note || null } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}) },
       include: { items: { orderBy: { createdAt: "asc" } } },
     });
-    if (body.enabled !== undefined) changed();
+    // Switched: its pages show, or hide, on the shop from now.
+    if (body.enabled !== undefined) await changed(body.enabled !== feature.enabled ? pagesOf(feature) : []);
     res.json(await full(saved));
   }),
 );
@@ -141,16 +154,18 @@ r.delete(
     const feature = await featureOf(req);
     // Only the name goes: the tables, functions and pages stay where they were made (and are on again, if the feature was off).
     await prisma.feature.delete({ where: { id: feature.id } });
-    changed();
+    await changed(feature.enabled ? [] : pagesOf(feature));
     res.json({ ok: true });
   }),
 );
 
-/** Is there such a table, function or page? */
+/** Is there such a table, function or page? (A page: one a feature may hold, not one of the store's own.) */
 async function exists(kind: FeatureKind, id: string): Promise<boolean> {
   if (kind === "table") return !!(await prisma.collection.findUnique({ where: { id }, select: { id: true } }));
   if (kind === "function") return !!(await prisma.fn.findUnique({ where: { id }, select: { id: true } }));
-  return !!(await prisma.page.findFirst({ where: { id, kind: "page" }, select: { id: true } }));
+  const page = await prisma.page.findFirst({ where: { id, kind: "page" }, select: { slug: true } });
+  if (page && isStorePage(page.slug)) throw new AppError(400, "STORE_PAGE", "The home, the shop and the cart are the store's own pages: they aren't a feature's");
+  return !!page;
 }
 
 r.post(
@@ -168,7 +183,8 @@ r.post(
       const other = await prisma.featureItem.findUnique({ where: { kind_refId: { kind: body.kind, refId: body.refId } }, select: { featureId: true, feature: { select: { name: true } } } });
       if (other && other.featureId !== feature.id) throw new AppError(409, "ITEM_TAKEN", "It is another feature's already", { feature: other.feature.name });
     }
-    changed();
+    // A page joining a feature that is off hides with it.
+    await changed(body.kind === "page" && !feature.enabled ? [body.refId] : []);
     res.status(201).json(await full(await featureOf(req)));
   }),
 );
@@ -180,7 +196,8 @@ r.delete(
     const kind = z.enum(FEATURE_KINDS).safeParse(req.params.kind);
     const gone = kind.success ? await prisma.featureItem.deleteMany({ where: { featureId: feature.id, kind: kind.data, refId: String(req.params.ref) } }) : { count: 0 };
     if (!gone.count) throw new AppError(404, "ITEM_NOT_FOUND", "It isn't in this feature");
-    changed();
+    // A page leaving a feature that is off shows again.
+    await changed(kind.success && kind.data === "page" && !feature.enabled ? [String(req.params.ref)] : []);
     res.json(await full(await featureOf(req)));
   }),
 );

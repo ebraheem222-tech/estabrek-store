@@ -34,6 +34,7 @@ import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js"
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
+import { hiddenBy } from "../../lib/featureGate.js";
 import { PublicationError, nextPublicationBoundary, publicationChange, publicationState, samePublication } from "../../lib/pagePublication.js";
 import { attemptPublicationDelivery, newPublicationDelivery, storedPublicationDelivery } from "../../lib/pagePublicationDelivery.js";
 import { requirePermission } from "../../middleware/access.js";
@@ -638,7 +639,8 @@ r.get("/:id/publication", asyncHandler(async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const page = await prisma.page.findUnique({ where: { id: req.params.id } });
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
-  res.json({ publication: publicationState(page), delivery: storedPublicationDelivery(page.publicationDelivery), hasDraft: Boolean(storedDraft(page.draft)) });
+  // `hiddenBy`: published or not, the shop answers it as a page that isn't there while its feature is off.
+  res.json({ publication: publicationState(page), delivery: storedPublicationDelivery(page.publicationDelivery), hasDraft: Boolean(storedDraft(page.draft)), hiddenBy: await hiddenBy(page) });
 }));
 
 r.get("/:id/publication/check", asyncHandler(async (req, res) => {
@@ -646,6 +648,8 @@ r.get("/:id/publication/check", asyncHandler(async (req, res) => {
   const page = await prisma.page.findUnique({ where: { id: req.params.id } });
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
   const locale = ["ar", "en", "he"].includes(String(req.query.locale)) ? String(req.query.locale) as "ar" | "en" | "he" : "ar";
+  // Its feature is off: not public, whatever its own status says.
+  if (await hiddenBy(page)) return res.json({ state: "not_public", checkedAt: new Date().toISOString(), targets: [] });
   res.json(await probePublicPage(page, locale));
 }));
 

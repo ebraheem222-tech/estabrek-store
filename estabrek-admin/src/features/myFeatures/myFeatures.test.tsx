@@ -73,7 +73,12 @@ beforeEach(() => {
   server = built();
   m.listFeatures.mockImplementation(async () => ({ features: [lite(server), lite(feature({ id: "m2", name: "Waiting list", enabled: false }))], limits: { features: 100, items: 60 } }));
   m.getFeature.mockImplementation(async () => server);
-  m.saveFeature.mockImplementation(async (_id: string, body: { name?: string; note?: string | null; enabled?: boolean }) => (server = { ...server, ...body, updatedAt: bump() } as Feature));
+  m.saveFeature.mockImplementation(async (_id: string, body: { name?: string; note?: string | null; enabled?: boolean }) => {
+    server = { ...server, ...body, updatedAt: bump() } as Feature;
+    // As the server answers: a feature's pages are hidden from the shop while it is off.
+    server = { ...server, pages: server.pages.map((p) => ({ ...p, hidden: !server.enabled })) };
+    return server;
+  });
   m.addFeatureItem.mockImplementation(async (_id: string, kind: string, refId: string) => {
     if (kind === "table") server = { ...server, tables: [...server.tables, { id: refId, slug: refId === "t9" ? "posts" : "new-table", name: { en: refId === "t9" ? "Posts" : "New table" }, fields: 1, rows: 0, api: closed }], free: { ...server.free, tables: server.free.tables.filter((t) => t.id !== refId) } };
     if (kind === "function") server = { ...server, functions: [...server.functions, { id: refId, name: refId === "f9" ? "Welcome" : "Brand new", note: null, enabled: true, published: false, changed: true, triggers: 0, runs: 0, lastRunAt: null }], free: { ...server.free, functions: server.free.functions.filter((x) => x.id !== refId) } };
@@ -203,6 +208,17 @@ describe("One feature", () => {
     await waitFor(() => expect(m.saveFeature).toHaveBeenCalledWith("m1", { enabled: false }));
     expect((await screen.findByTestId("feature-off")).textContent).toContain("its tables' API answers as closed");
     expect(screen.getByTestId("feature-state").textContent).toBe("Off");
+    // Its pages hide with it, and each says so; nothing is deleted.
+    expect(screen.getByTestId("feature-off").textContent).toContain("its pages are hidden from the shop");
+    expect(screen.getByTestId("feature-off").textContent).toContain("Nothing is deleted");
+    expect(screen.getByTestId("feature-page-hidden-p1").textContent).toBe("Hidden from the shop");
+    // Switched on again: they show.
+    fireEvent.click(screen.getByRole("switch"));
+    await waitFor(() => expect(m.saveFeature).toHaveBeenLastCalledWith("m1", { enabled: true }));
+    await waitFor(() => expect(screen.queryByTestId("feature-page-hidden-p1")).toBeNull());
+    expect(screen.queryByTestId("feature-off")).toBeNull();
+    fireEvent.click(screen.getByRole("switch"));
+    await waitFor(() => expect(screen.getByTestId("feature-state").textContent).toBe("Off"));
     // The name and the note: saved together, once they changed.
     expect(screen.queryByTestId("feature-save")).toBeNull();
     fireEvent.change(screen.getByTestId("feature-name"), { target: { value: "Friendship" } });

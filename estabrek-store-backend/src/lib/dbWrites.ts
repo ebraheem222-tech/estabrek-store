@@ -20,6 +20,9 @@ const TABLE_GROUPS: Record<string, CacheGroup[]> = {
   PageSection: ["cms"],
   PageTranslation: ["cms"],
   PageSectionTranslation: ["cms"],
+  // A feature switched off hides its pages from the shop (lib/featureGate.ts).
+  Feature: ["cms"],
+  FeatureItem: ["cms"],
   NavigationMenu: ["cms", "settings"],
   NavigationItem: ["cms", "settings"],
   SiteSettings: ["settings"],
