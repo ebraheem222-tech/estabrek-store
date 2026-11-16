@@ -83,6 +83,8 @@ const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
 const CollectionsPage = lazy(() => import("../features/collections/CollectionsPage"));
 const DataPage = lazy(() => import("../features/data/DataPage"));
 const ApiPage = lazy(() => import("../features/api/ApiPage"));
+const FunctionsPage = lazy(() => import("../features/functions/FunctionsPage"));
+const FunctionEditor = lazy(() => import("../features/functions/FunctionEditor"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
 const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
@@ -308,6 +310,8 @@ export default function AppRouter() {
           <Route path="data" element={withPermissions(<ErrorBoundary title="Tables"><DataPage /></ErrorBoundary>, ["data:tables"])} />
           {/* The automatic API (B4): which tables are open to the outside, and the keys. */}
           <Route path="data-api" element={withPermissions(<ErrorBoundary title="API"><ApiPage /></ErrorBoundary>, ["api:read"])} />
+          <Route path="functions" element={withPermissions(<ErrorBoundary title="Functions"><FunctionsPage /></ErrorBoundary>, ["functions:read"])} />
+          <Route path="functions/:id" element={withPermissions(<ErrorBoundary title="Functions"><FunctionEditor /></ErrorBoundary>, ["functions:read"])} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}
           <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
           <Route path="pages/:id/classic" element={withPermissions(<OpenInStudio />, ["pages:read"])} />

@@ -93,6 +93,13 @@ export const EMAIL_TEMPLATES: Record<string, Template> = {
 ${p.url}` : ""}`,
   }),
 
+  /** From a function (الـ Functions), to whoever its step names: the subject and the text as the owner wrote them. */
+  FN_MESSAGE: (p) => ({
+    subject: String(p.subject || p.siteName || "رسالة"),
+    html: layout({ siteName: p.siteName, title: String(p.subject || p.siteName || ""), body: `<p style="white-space:pre-line">${esc(p.text)}</p>` }),
+    text: String(p.text ?? ""),
+  }),
+
   /** Customer sign-in: a 6-digit code. */
   CUSTOMER_LOGIN_CODE: (p) => {
     const code = `<p style="font-size:32px;font-weight:bold;letter-spacing:8px;direction:ltr;text-align:center;margin:20px 0;color:#7a2346">${esc(p.code)}</p>`;
