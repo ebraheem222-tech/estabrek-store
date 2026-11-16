@@ -181,7 +181,8 @@ export function layersOf(raw: unknown): LayersSpec | undefined {
 
 /** What a "hit" trigger may wait for (physics.ts HIT_WITH: anything, another body, the floor or a wall, one element's id). */
 const HIT_WITH = /^(any|body|wall|[A-Za-z0-9_-]{1,40})$/;
-export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit"] as const;
+// "sent": the element is a form of the owner's own and it was just sent (formSpec.ts FORM_SENT_EVENT).
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit", "sent"] as const;
 /** The keys a "key" trigger listens for: these by name, or one letter or digit. */
 export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 export const TRIGGER_KEY = /^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/;

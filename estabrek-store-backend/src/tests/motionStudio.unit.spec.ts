@@ -3,6 +3,7 @@ import { checkTree } from "../lib/pageTree.js";
 import { newScrollScene, readyScrollStory, readyScrollVideo, readyScrollZoom, atChapter } from "../../../estabrek-admin/src/studio/scrollScene";
 import { KEY_PRESETS, partsFor } from "../../../estabrek-admin/src/studio/keyframes";
 import { ACTS, CONDITIONS, FLOW_ACTS, GROUP_ACTS, newAction, newCondition, newStep, TRIGGER_PRESETS, triggersOp, type Trigger } from "../../../estabrek-admin/src/studio/triggers";
+import { FORM_KINDS, newField, startForm } from "../../../estabrek-admin/src/studio/formFields";
 
 type Node = { id: string; type: string; props: Record<string, unknown>; style?: Record<string, unknown>; motion?: Record<string, unknown>; children?: Node[] };
 const page = (...children: Node[]) => ({ version: 1, root: { id: "page", type: "page", props: {}, children } });
@@ -189,6 +190,38 @@ describe("triggers", () => {
     no({ on: "click", if: [{ if: "bag", cmp: "every", value: 2 }], do: [{ act: "vibrate" }] }, "a comparison the bag doesn't have");
     no({ on: "click", do: [{ act: "together", do: [{ act: "repeat", times: 2, do: [{ act: "vibrate" }] }] }] }, "a group inside a group");
     no({ on: "click", do: [{ act: "vibrate" }], fail: Array.from({ length: 9 }, () => ({ act: "vibrate" })) }, "too many fail steps");
+  });
+
+  test("a form of the owner's own: its fields, where it goes, and a recipe that waits for it to be sent", () => {
+    const form = (props: unknown) => issues(page(section({ id: "f", type: "form", props })));
+    const fields = [
+      { name: "to", kind: "email", label: { ar: "إيميل صاحبتك", en: "Your friend's email" }, required: true, hint: { en: "We only use it for this request" } },
+      { name: "note", kind: "long", label: { en: "A few words" }, max: 300 },
+      { name: "size", kind: "select", label: { en: "Size" }, options: [{ value: "s", label: { en: "Small" } }, { value: "m" }] },
+      { name: "age", kind: "number", label: { en: "Age" }, min: 13, max: 120 },
+      { name: "agree", kind: "check", label: { en: "I agree" }, required: true },
+      { name: "day", kind: "date", label: { en: "Day" } },
+      { name: "phone", kind: "phone", label: { en: "Phone" } },
+    ];
+    expect(form({ kind: "custom", fields, send: { to: "fn", fn: "friend-request", as: "req" }, button: { en: "Send" }, done: { en: "Sent to {{req_to}}" }, triggers: [{ on: "sent", do: [{ act: "burst", kind: "confetti" }] }] })).toEqual([]);
+    expect(form({ kind: "custom", fields: fields.slice(0, 2), send: { to: "table", table: "friend-requests" } })).toEqual([]);
+    // Not picked yet, and the shop's own two kinds as before.
+    expect(form({ kind: "custom" })).toEqual([]);
+    expect(form({ kind: "custom", fields: [], send: { to: "fn" } })).toEqual([]);
+    expect(form({ kind: "contact", title: { en: "Write to us" } })).toEqual([]);
+    // What the editor makes saves as it is: the form a new one starts as, and a fresh field of every kind.
+    for (const lang of ["ar", "en", "he"]) expect(form({ kind: "custom", ...startForm(lang) }), lang).toEqual([]);
+    for (const [kind] of FORM_KINDS) expect(form({ kind: "custom", fields: [newField(kind, "ar", [])] }), kind).toEqual([]);
+    // What makes no sense is refused.
+    const bad = (props: unknown, why: string) => expect(form(props).length, why).toBeGreaterThan(0);
+    bad({ kind: "custom", fields: [{ name: "Bad Name", kind: "text", label: { en: "x" } }] }, "a name that isn't one");
+    bad({ kind: "custom", fields: [{ name: "a", kind: "colour", label: { en: "x" } }] }, "a kind we don't have");
+    bad({ kind: "custom", fields: [{ name: "a", kind: "text", label: { en: "x" } }, { name: "a", kind: "text", label: { en: "y" } }] }, "two fields with one name");
+    bad({ kind: "custom", fields: [{ name: "a", kind: "number", label: { en: "x" }, min: 5, max: 1 }] }, "the least over the most");
+    bad({ kind: "custom", fields: Array.from({ length: 21 }, (_, k) => ({ name: `f${k}`, kind: "text", label: { en: "x" } })) }, "too many fields");
+    bad({ kind: "custom", send: { to: "fn", fn: "Not An Address" } }, "not a function's address");
+    bad({ kind: "custom", send: { to: "table", table: "Bad Table" } }, "not a table's address");
+    bad({ kind: "custom", send: { to: "email" } }, "nowhere we know");
   });
 
   test("the editor saves a recipe tidy: no key without a key event, no note unless locked, no fail steps when nothing can fail", () => {

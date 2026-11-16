@@ -23,7 +23,8 @@ import { keyPlayers } from "./motionPlayers";
 import { sceneScrollTop } from "./TreeScenes";
 import { studioLink } from "./studioLink";
 import { ask, burst, playMove, sound, toast } from "./triggerEffects";
-import { changeVar, compareVar, fillVars, getVar, showVars, VARS_EVENT } from "./recipeVars";
+import { changeVar, compareVar, fillVars, getVar, keepAnswer, showVars, VARS_EVENT } from "./recipeVars";
+import { FORM_SENT_EVENT } from "./formSpec";
 import { getHands, mayRun, signedIn, wantHands, whenHands, WHO_EVENT } from "./recipeHands";
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { HIT_EVENT, hitMatches, type HitDetail } from "./physics";
@@ -80,24 +81,6 @@ const FN_REFUSED: Record<string, Record<string, string>> = {
   busy: { ar: "كتير طلبات. استنّى شوي وجرّب كمان مرة", he: "יותר מדי בקשות. נסו שוב בעוד רגע", en: "Too many tries. Wait a moment and try again" },
   other: { ar: "ما زبط. جرّب كمان مرة", he: "זה לא הצליח. נסו שוב", en: "That didn't work. Try again" },
 };
-/**
- * A function's answer kept in recipe variables: a plain value under `name`; a thing's plain fields (a row's, say)
- * under name_field: its own fields first, then a row's marks ($id and the like, without the mark), a dozen in all.
- * A list isn't kept.
- */
-function keepAnswer(name: string, value: unknown) {
-  const plain = (v: unknown): v is VarValue => typeof v === "string" || typeof v === "number" || typeof v === "boolean";
-  if (plain(value)) return changeVar(name, "set", value);
-  if (!value || typeof value !== "object" || Array.isArray(value)) return;
-  const fields = Object.entries(value as Record<string, unknown>);
-  let kept = 0;
-  for (const [key, v] of [...fields.filter(([k]) => !k.startsWith("$")), ...fields.filter(([k]) => k.startsWith("$"))]) {
-    const field = key.replace(/^\$/, "");
-    if (kept >= 12 || !plain(v) || !/^[A-Za-z0-9_]+$/.test(field) || `${name}_${field}`.length > 24) continue;
-    changeVar(`${name}_${field}`, "set", v);
-    kept++;
-  }
-}
 
 /** One action. */
 async function act(a: TriggerActionSpec, { self, reduced, point, tryout, hasFail }: Run) {
@@ -511,6 +494,10 @@ export function TreeTriggers({ revision = 0 }: { revision?: number }) {
                 const d = (e as CustomEvent<HitDetail>).detail;
                 if (d && hitMatches(t.hit, d.with)) fire(d.at);
               });
+              break;
+            case "sent":
+              // The element is a form of the owner's own, and it was just sent and taken (FormView.tsx says so).
+              on(FORM_SENT_EVENT, () => fire());
               break;
             case "hover":
               on("pointerenter", () => fire());

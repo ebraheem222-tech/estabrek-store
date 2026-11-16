@@ -16,7 +16,7 @@
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { say } from "./say";
 
-export type TriggerEvent = "click" | "dblclick" | "longpress" | "hover" | "leave" | "view" | "leaveView" | "load" | "scrolled" | "timer" | "key" | "hit";
+export type TriggerEvent = "click" | "dblclick" | "longpress" | "hover" | "leave" | "view" | "leaveView" | "load" | "scrolled" | "timer" | "key" | "hit" | "sent";
 export type Words = Record<string, string>;
 export type Action =
   | { act: "play"; target: string; what: string; mode?: "play" | "reverse" | "toggle" | "restart" }
@@ -94,6 +94,8 @@ export const EVENTS: Array<[TriggerEvent, () => string]> = [
   ["timer", () => say("بعد وقت على الصفحة|After time on the page|אחרי זמן בעמוד")],
   ["key", () => say("زر بالكيبورد|A key of the keyboard|מקש במקלדת")],
   ["hit", () => say("بيصطدم بشي (بعالم فيزيائي)|It hits something (in a physics world)|מתנגש במשהו (בעולם פיזיקלי)")],
+  // On a form of the owner's own (FormPanel.tsx): after it was sent and taken at the other end.
+  ["sent", () => say("الفورم انبعت (لعنصر فورم من عندك)|The form was sent (on a form of your own)|הטופס נשלח (בטופס משלך)")],
 ];
 /** What a "hit" recipe waits for its element to meet (beside one element picked by name). */
 export const HITS: Array<[string, () => string]> = [
