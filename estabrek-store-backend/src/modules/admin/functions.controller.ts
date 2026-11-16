@@ -89,6 +89,8 @@ const lite = (f: Row) => {
     inputs: draft?.inputs.length ?? 0,
     /** What the published one is handed (for a function that calls it). */
     takes: defOf(f.live)?.inputs ?? [],
+    /** What the published one promises to give back (lib/fnGives.ts), or null. */
+    gives: defOf(f.live)?.gives ?? null,
     /** Its call addresses (a shop page's button runs it through one): who may call each. */
     calls: (f.triggers ?? []).filter((t) => t.kind === "call" && t.enabled && t.slug).map((t) => ({ address: t.slug as string, who: String((t.config as { who?: unknown } | null)?.who ?? "customer") })),
     runs: f.runs,

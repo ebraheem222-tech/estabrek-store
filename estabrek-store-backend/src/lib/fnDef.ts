@@ -26,6 +26,7 @@ import { LANGS } from "./dataRows.js";
 import { ALONE, CMPS, PATH, holesOf, type Cmp } from "./fnValues.js";
 import { SECRET_NAME, hostIn, secretsIn, siteAllowed } from "./fnSites.js";
 import { kindOf, missingIn } from "./fnKinds.js";
+import { GivesSchema, type Gives } from "./fnGives.js";
 
 export const FN_LIMITS = {
   /** Steps in one function, counting the ones inside others. */
@@ -101,6 +102,8 @@ export type FnDef = {
   else?: Step[];
   /** When a step failed: what to do about it (the failure is `{{error}}`). */
   fail?: PlainStep[];
+  /** What it promises to give back: the kind of its answer, and a thing's fields (lib/fnGives.ts). */
+  gives?: Gives;
 };
 
 /** The steps a function may take after a failure: telling someone, writing it down. */
@@ -205,6 +208,7 @@ export const FnDefSchema: z.ZodType<FnDef> = z
     do: StepsSchema,
     else: StepsSchema.optional(),
     fail: z.array(z.discriminatedUnion("act", [...PLAIN])).max(8).optional(),
+    gives: GivesSchema.optional(),
   })
   .strict()
   .superRefine((def, ctx) => {

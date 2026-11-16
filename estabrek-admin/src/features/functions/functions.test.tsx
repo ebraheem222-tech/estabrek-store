@@ -909,3 +909,80 @@ describe("Its versions", () => {
     expect(screen.queryByTestId("fn-version-2-draft")).toBeNull();
   });
 });
+
+describe("What it gives back", () => {
+  const outcome = (over: Partial<Outcome>): Outcome => ({ ok: true, dry: true, value: null, error: null, failedAt: null, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, ms: 7, ...over });
+
+  test("the kind of its answer and a thing's fields are part of the draft; nothing in particular is no promise", async () => {
+    server = full({ draft: { inputs: [], do: [{ act: "return", value: "" }] } });
+    show();
+    await screen.findByTestId("fn-gives");
+    expect((screen.getByTestId("fn-gives-type") as HTMLSelectElement).value).toBe("");
+    expect([...screen.getByTestId("fn-gives-type").querySelectorAll("option")].map((o) => o.textContent)).toEqual(["It promises nothing in particular", "Text", "Number", "Yes / no", "A list", "A thing with fields"]);
+    // Text has no fields to say.
+    pick("fn-gives-type", "text");
+    expect(screen.queryByTestId("fn-gives-field-add")).toBeNull();
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastDraft().gives).toEqual({ type: "text" }));
+    // A thing: its fields, each with its kind, and whether it is always there.
+    pick("fn-gives-type", "thing");
+    fireEvent.click(screen.getByTestId("fn-gives-field-add"));
+    type("fn-gives-field-0-name", "id");
+    fireEvent.click(screen.getByTestId("fn-gives-field-0-required"));
+    fireEvent.click(screen.getByTestId("fn-gives-field-add"));
+    type("fn-gives-field-1-name", "total");
+    pick("fn-gives-field-1-type", "number");
+    fireEvent.click(screen.getByTestId("fn-gives-field-add"));
+    // A name that isn't one, or is taken, is marked.
+    type("fn-gives-field-2-name", "total");
+    expect(screen.getByTestId("fn-gives-field-2-name").className).toContain("border-red-400/60");
+    fireEvent.click(screen.getByTestId("fn-gives-field-2-remove"));
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastDraft().gives).toEqual({ type: "thing", fields: [{ name: "id", type: "text", required: true }, { name: "total", type: "number" }] }));
+    // A list keeps the fields (they are each thing's); nothing in particular drops the promise.
+    pick("fn-gives-type", "list");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastDraft().gives?.type).toBe("list"));
+    expect(lastDraft().gives?.fields).toHaveLength(2);
+    pick("fn-gives-type", "");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect("gives" in lastDraft()).toBe(false));
+    // A member who can only look changes none of it.
+    cleanup();
+    m.may = new Set(["functions:read"]);
+    server = full({ draft: { inputs: [], do: [], gives: { type: "thing", fields: [{ name: "id", type: "text" }] } } });
+    show();
+    await screen.findByTestId("fn-gives");
+    expect((screen.getByTestId("fn-gives-type") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByTestId("fn-gives-field-0-name") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByTestId("fn-gives-field-add")).toBeNull();
+    expect(screen.queryByTestId("fn-gives-field-0-remove")).toBeNull();
+  });
+
+  test("a try says when the answer isn't what is promised; a test that goes through with another shape says how", async () => {
+    const draft: FnDef = { inputs: [], do: [{ act: "return", value: { total: "a lot" } }], gives: { type: "thing", fields: [{ name: "total", type: "number", required: true }] } };
+    server = full({ draft, tests: [{ id: "test1", name: "An order", input: {}, expect: { ok: true } }] });
+    m.runFunction.mockResolvedValue(outcome({ value: { total: "a lot" }, shape: '"total" is promised to be a number and is text' }));
+    show();
+    fireEvent.click(await screen.findByTestId("fn-try-dry"));
+    expect((await screen.findByTestId("fn-outcome-shape")).textContent).toBe("The answer isn't what it promises: “total” is promised to be a number and is text");
+    // The answer is still shown: the promise is looked at, not enforced.
+    expect(screen.getByTestId("fn-outcome-value").textContent).toContain("a lot");
+    m.runFnTests.mockResolvedValue({ results: [{ id: "test1", name: "An order", pass: false, why: "shape", said: '"total" is promised to be a number and is text', ok: true, value: { total: "a lot" }, error: null, failedAt: null, ms: 3 }], passed: 0, failed: 1, ms: 3 });
+    fireEvent.click(screen.getByTestId("fn-tests-run"));
+    await waitFor(() => expect(screen.getByTestId("fn-test-test1-result").textContent).toBe("✗ Didn't pass · It went through, but its answer isn't what it promises: “total” is promised to be a number and is text · 3 ms"));
+    // One that keeps its promise says nothing about it.
+    m.runFunction.mockResolvedValue(outcome({ value: { total: 5 } }));
+    fireEvent.click(screen.getByTestId("fn-try-dry"));
+    await waitFor(() => expect(screen.queryByTestId("fn-outcome-shape")).toBeNull());
+  });
+
+  test("a step after a call is offered the fields the called function promises", async () => {
+    const order = lite({ id: "f3", name: "Order", published: true, changed: false, gives: { type: "thing", fields: [{ name: "id", type: "text", required: true }, { name: "total", type: "number" }] } });
+    m.getFunctions.mockImplementation(async () => listOf([lite(server), greet, order]));
+    server = full({ draft: { inputs: [], do: [{ act: "call", fn: "f3", input: {}, as: "order" }, { act: "return", value: "" }] } });
+    show();
+    fireEvent.click(await screen.findByTestId("step-do.1-head"));
+    expect([...screen.getByTestId("step-do.1-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value")).slice(-3)).toEqual(["order", "order.id", "order.total"]);
+  });
+});

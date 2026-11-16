@@ -48,7 +48,7 @@ const SYSTEM = ["$slug", "$status", "$createdAt", "$updatedAt", "$publishedAt"] 
 /** The names a value can use here, as a menu that puts one in. */
 function NameMenu({ at, onPick, testid }: { at: Path; onPick: (name: string) => void; testid?: string }) {
   const b = useBuilder();
-  const names = offers(b.def, at, b.tables);
+  const names = offers(b.def, at, b.tables, b.fns);
   if (!b.canWrite || !names.length) return null;
   return (
     <select

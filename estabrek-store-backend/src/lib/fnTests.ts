@@ -85,14 +85,16 @@ export function alike(a: unknown, b: unknown): boolean {
   return false;
 }
 
-/** Why a test didn't pass: it stopped, it went through, its answer or its reason was another, or it never got its turn. */
-export type TestWhy = "stopped" | "wentThrough" | "value" | "reason" | "time";
+/** Why a test didn't pass: it stopped, it went through, its answer or its reason was another, it never got its turn, or what it gave back isn't the shape the function promises (lib/fnGives.ts). */
+export type TestWhy = "stopped" | "wentThrough" | "value" | "reason" | "time" | "shape";
 
 /** What a run's outcome means for a test: null when it is what the test expects, else why not. */
-export function verdict(test: Pick<FnTest, "expect">, out: { ok: boolean; value: unknown; error: string | null }): TestWhy | null {
+export function verdict(test: Pick<FnTest, "expect">, out: { ok: boolean; value: unknown; error: string | null; shape?: string | null }): TestWhy | null {
   if (test.expect.ok) {
     if (!out.ok) return "stopped";
-    return test.expect.value !== undefined && !alike(test.expect.value, out.value) ? "value" : null;
+    if (test.expect.value !== undefined && !alike(test.expect.value, out.value)) return "value";
+    // It went through, with an answer the function doesn't promise.
+    return out.shape ? "shape" : null;
   }
   if (out.ok) return "wentThrough";
   const words = test.expect.error?.trim().toLowerCase();

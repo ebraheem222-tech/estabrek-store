@@ -80,6 +80,42 @@ export const INPUT_TYPE: Record<string, string> = {
   any: "أي شي|Anything|כל דבר",
 };
 
+/** The kinds of answer a function may promise. */
+export const GIVE_TYPE: Record<string, string> = {
+  text: "نص|Text|טקסט",
+  number: "رقم|Number|מספר",
+  bool: "نعم / لا|Yes / no|כן / לא",
+  list: "قائمة|A list|רשימה",
+  thing: "شي بحقول|A thing with fields|דבר עם שדות",
+  any: "أي شي|Anything|כל דבר",
+};
+/** A kind as the server words it in a line ("a number"), in the admin's language. */
+const KIND_SAID: Record<string, string> = {
+  anything: "أي شي|anything|כל דבר",
+  text: "نص|text|טקסט",
+  "a number": "رقم|a number|מספר",
+  "yes/no": "نعم/لا|yes/no|כן/לא",
+  "a list": "قائمة|a list|רשימה",
+  "a thing": "شي بحقول|a thing|דבר עם שדות",
+  nothing: "ولا شي|nothing|כלום",
+};
+const kindSaid = (kind: string, lang: Lang) => (KIND_SAID[kind] ? part(KIND_SAID[kind], lang) : kind);
+/** How an answer differs from what its function promises (backend lib/fnGives.ts `answerProblem`), in the admin's language. */
+export function shapeText(message: string, lang: Lang): string {
+  const item = /^Item (\d+) of the list: (.*)$/.exec(message);
+  const where = item ? `${fill("العنصر {n} بالقائمة: |Item {n} of the list: |פריט {n} ברשימה: ", lang, { n: item[1] })}` : "";
+  const rest = item ? item[2] : message;
+  let m = /^It promises (.+) and gave back (.+)$/.exec(rest);
+  if (m) return fill("وعدت بـ {want} ورجّعت {got}|It promises {want} and gave back {got}|היא מבטיחה {want} והחזירה {got}", lang, { want: kindSaid(m[1], lang), got: kindSaid(m[2], lang) });
+  m = /^"(.+)" is promised and isn't there$/.exec(rest);
+  if (m) return `${where}${fill("الحقل «{f}» موعود ومش موجود|“{f}” is promised and isn't there|השדה «{f}» הובטח ואיננו", lang, { f: m[1] })}`;
+  m = /^"(.+)" is promised to be (.+) and is (.+)$/.exec(rest);
+  if (m) return `${where}${fill("الحقل «{f}» موعود {want} وطلع {got}|“{f}” is promised to be {want} and is {got}|השדה «{f}» הובטח כ{want} והוא {got}", lang, { f: m[1], want: kindSaid(m[2], lang), got: kindSaid(m[3], lang) })}`;
+  m = /^Item (\d+) of the list is promised to be a thing and is (.+)$/.exec(message);
+  if (m) return fill("العنصر {n} بالقائمة موعود شي بحقول وطلع {got}|Item {n} of the list is promised to be a thing and is {got}|פריט {n} ברשימה הובטח כדבר עם שדות והוא {got}", lang, { n: m[1], got: kindSaid(m[2], lang) });
+  return message;
+}
+
 /** A value in a line: its words, shortened; nothing as a dash. */
 const short = (v: Val | undefined, max = 40) => {
   const s = fromVal(v);
@@ -294,6 +330,7 @@ const TEST_WHY: Record<string, string> = {
   value: "رجّعت جواب غير المتوقّع:|It gave back another answer than expected:|היא החזירה תשובה אחרת מהצפויה:",
   reason: "وقفت، بس لسبب غير المتوقّع|It stopped, but for another reason than expected|היא נעצרה, אבל מסיבה אחרת מהצפויה",
   time: "ما لحقت دورها: الاختبارات أخدت وقتها كله|It never got its turn: the tests used up their time|היא לא הגיעה לתורה: הבדיקות ניצלו את כל הזמן שלהן",
+  shape: "مشيت، بس جوابها مش متل ما بتوعد:|It went through, but its answer isn't what it promises:|היא עברה, אבל התשובה אינה מה שהיא מבטיחה:",
 };
 export const testWhyText = (why: string, lang: Lang): string => part(TEST_WHY[why] ?? why, lang);
 

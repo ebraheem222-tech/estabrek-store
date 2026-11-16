@@ -7,7 +7,7 @@ import type { FnInput, FnTest, TestResult, TestsOutcome } from "../../api/functi
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { fromVal, toVal } from "./fnDraft";
-import { INPUT_TYPE, failText, testWhyText, whereText } from "./fnText";
+import { INPUT_TYPE, failText, shapeText, testWhyText, whereText } from "./fnText";
 
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
 const label = "text-xs text-white/70";
@@ -35,6 +35,12 @@ function ResultLine({ result }: { result: TestResult }) {
     <div className={`text-sm ${result.pass ? "text-emerald-300" : "text-red-300"}`} data-testid={`fn-test-${result.id}-result`} data-pass={result.pass}>
       <span className="font-medium">{result.pass ? say("✓ نجح|✓ Passed|✓ עבר") : say("✗ ما نجح|✗ Didn't pass|✗ לא עבר")}</span>
       {result.why ? <span> · {testWhyText(result.why, lang)}</span> : null}
+      {result.why === "shape" && result.said ? (
+        <span data-testid={`fn-test-${result.id}-shape`}>
+          {" "}
+          <bdi>{shapeText(result.said, lang)}</bdi>
+        </span>
+      ) : null}
       {/* What the run came to, beside what was expected of it. */}
       {!result.pass && result.error ? (
         <span>
