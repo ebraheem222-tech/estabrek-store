@@ -27,6 +27,7 @@ import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
 import { runCode } from "../../lib/fnCode.js";
+import { TEST_LIMITS, verdict, type FnTest, type TestWhy } from "../../lib/fnTests.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
 import { registerTask } from "../../lib/tasks.js";
@@ -89,7 +90,7 @@ class Failure extends Error {
 
 type Table = { id: string; slug: string; fields: Field[] };
 /** A run's limits, shared with the functions it calls; each keeps its own steps' lines. */
-type Budget = { deadline: number; used: { writes: number; messages: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
+type Budget = { deadline: number; /** How long the run was given. */ ms: number; used: { writes: number; messages: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
 type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[] };
 /** Who started a run. */
@@ -340,7 +341,7 @@ async function runSteps(steps: Step[], scope: Scope, base: string, ctx: Ctx): Pr
     const s = steps[k];
     const at = `${base}.${k}`;
     if (budget.counts.steps >= FN_LIMITS.executed) throw new Failure(`A run does up to ${FN_LIMITS.executed} steps`, at);
-    if (Date.now() > budget.deadline) throw new Failure(`A run takes ${FN_LIMITS.ms / 1000} seconds at most`, at);
+    if (Date.now() > budget.deadline) throw new Failure(`A run takes ${budget.ms / 1000} seconds at most`, at);
     budget.counts.steps += 1;
     const t0 = Date.now();
     if (!isGroup(s)) {
@@ -408,12 +409,12 @@ function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<str
   return out;
 }
 
-const newBudget = (): Budget => ({ deadline: Date.now() + FN_LIMITS.ms, used: { writes: 0, messages: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });
+const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });
 
-/** A definition run with what it was handed. Never throws: a failure is the outcome. */
-export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller } = {}): Promise<Outcome> {
+/** A definition run with what it was handed. Never throws: a failure is the outcome. `ms`: a shorter time than a run's own (a test's). */
+export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number } = {}): Promise<Outcome> {
   const t0 = Date.now();
-  const budget = opts.budget ?? newBudget();
+  const budget = opts.budget ?? newBudget(opts.ms ? Math.min(opts.ms, FN_LIMITS.ms) : undefined);
   // A function inside another keeps its own steps' lines to itself; the limits and counts are shared.
   const own: Budget = opts.budget ? { ...budget, trace: [] } : budget;
   const caller = opts.caller ?? SYSTEM;
@@ -441,6 +442,38 @@ export async function runDef(def: FnDef, input: Record<string, unknown>, opts: {
 }
 
 const some = (counts: Counts) => Object.fromEntries(Object.entries(counts).filter(([k, n]) => k !== "steps" && n > 0));
+
+/* ---------------- Its own tests (F4; lib/fnTests.ts) ---------------- */
+
+/** How a test went: whether it passed (else why not), and what the run it made came to. */
+export type TestResult = { id: string; name: string; pass: boolean; why: TestWhy | null; ok: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; ms: number };
+export type TestsOutcome = { results: TestResult[]; passed: number; failed: number; ms: number };
+
+/**
+ * A function's tests run against these steps, one after another, each as a try-out (nothing is
+ * written or sent). Each has its own few seconds, and all of them together a limit: a test that
+ * never got its turn didn't pass.
+ */
+export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller): Promise<TestsOutcome> {
+  const t0 = Date.now();
+  const results: TestResult[] = [];
+  for (const test of tests) {
+    const left = TEST_LIMITS.total - (Date.now() - t0);
+    if (left <= 0) {
+      results.push({ id: test.id, name: test.name, pass: false, why: "time", ok: false, value: null, error: null, failedAt: null, ms: 0 });
+      continue;
+    }
+    // Run as the member who asked, under the name and address the test says (where the steps name the caller).
+    const as: FnCaller = { ...caller, ...(test.caller?.name ? { name: test.caller.name } : {}), ...(test.caller?.email ? { email: test.caller.email.toLowerCase() } : {}) };
+    const out = await runDef(def, test.input, { dry: true, caller: as, ms: Math.min(TEST_LIMITS.ms, left) });
+    const why = verdict(test, out);
+    // What it gave back is shown beside what was expected: the beginning of a long one.
+    const big = JSON.stringify(out.value ?? null).length > 4000;
+    results.push({ id: test.id, name: test.name, pass: !why, why, ok: out.ok, value: big ? null : out.value, ...(big ? { valueCut: true } : {}), error: out.error, failedAt: out.failedAt, ms: out.ms });
+  }
+  const failed = results.filter((r) => !r.pass).length;
+  return { results, passed: results.length - failed, failed, ms: Date.now() - t0 };
+}
 
 /**
  * A saved function run: its published steps (or, from the admin's editor, the draft). A real run is

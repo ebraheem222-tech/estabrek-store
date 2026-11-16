@@ -8,10 +8,11 @@ import type { Field } from "../../lib/collectionTree.js";
 import { OPS_BY_KIND } from "../../lib/dataQuery.js";
 import { EMPTY_DEF, FN_LIMITS, FnDefSchema, defOf, problemsOf, sizeOf, type FnDef, type Known } from "../../lib/fnDef.js";
 import { CODE_LIMITS, codeProblems } from "../../lib/fnCode.js";
+import { TEST_LIMITS, TestsSchema, testsOf } from "../../lib/fnTests.js";
 import { CMPS } from "../../lib/fnValues.js";
 import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
 import { hasPermission } from "../../middleware/access.js";
-import { runFn } from "../functions/functions.service.js";
+import { runFn, runTests } from "../functions/functions.service.js";
 
 /**
  * /v1/admin/functions — الـ Functions (F1): logic the owner builds from steps (lib/fnDef.ts), tries,
@@ -23,7 +24,8 @@ import { runFn } from "../functions/functions.service.js";
  * POST   /admin/functions             { name, note? } — a new, empty one
  * GET    /admin/functions/:id         — one, with its draft, what is published, and the draft's problems
  * PUT    /admin/functions/:id         { name?, note?, enabled?, draft? } — the draft is checked for its shape only
- * POST   /admin/functions/:id/publish — the draft becomes what runs (refused while it has problems)
+ * POST   /admin/functions/:id/publish — the draft becomes what runs (refused while it has problems, or while one of its own tests doesn't pass)
+ * POST   /admin/functions/:id/tests/run — its own tests (F4, lib/fnTests.ts) run against the draft, as try-outs: how each went
  * POST   /admin/functions/:id/run     { input?, dry?, which? } — run it now; dry: nothing is written or sent
  * DELETE /admin/functions/:id         — refused while another function calls it
  *
@@ -37,7 +39,7 @@ const r = Router();
 const Name = z.string().trim().min(1).max(80);
 const Note = z.string().trim().max(300);
 const CreateBody = z.object({ name: Name, note: Note.optional() }).strict();
-const SaveBody = z.object({ name: Name.optional(), note: Note.nullable().optional(), enabled: z.boolean().optional(), draft: z.unknown().optional() }).strict();
+const SaveBody = z.object({ name: Name.optional(), note: Note.nullable().optional(), enabled: z.boolean().optional(), draft: z.unknown().optional(), tests: z.unknown().optional() }).strict();
 const RunBody = z.object({ input: z.record(z.string().max(40), z.unknown()).default({}), dry: z.boolean().default(true), which: z.enum(["draft", "live"]).default("draft") }).strict();
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -55,7 +57,7 @@ async function known(self?: string): Promise<Known> {
   };
 }
 
-type Row = { id: string; name: string; note: string | null; draft: unknown; live: unknown; publishedAt: Date | null; enabled: boolean; runs: number; lastRunAt: Date | null; createdAt: Date; updatedAt: Date; triggers?: Array<{ kind: string; slug: string | null; config: unknown; enabled: boolean }> };
+type Row = { id: string; name: string; note: string | null; draft: unknown; live: unknown; tests?: unknown; publishedAt: Date | null; enabled: boolean; runs: number; lastRunAt: Date | null; createdAt: Date; updatedAt: Date; triggers?: Array<{ kind: string; slug: string | null; config: unknown; enabled: boolean }> };
 const lite = (f: Row) => {
   const draft = defOf(f.draft);
   return {
@@ -112,8 +114,10 @@ async function full(fn: Row, req: Request) {
   ]);
   const write = hasPermission(req, "functions:write");
   // The feature it is part of (admin → ميزاتي): one that is off keeps the function from being started.
-  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null };
+  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null, tests: testsOf(fn.tests) };
 }
+/** The member trying, testing or running a function from the admin. */
+const adminCaller = (req: Request) => ({ kind: "admin" as const, id: req.access?.adminId, email: req.access?.email ?? undefined });
 
 r.get(
   "/",
@@ -126,7 +130,7 @@ r.get(
       ops: OPS_BY_KIND,
       cmps: CMPS,
       // The steps' limits, and the cage's that a code step runs in (lib/fnCode.ts).
-      limits: { ...FN_LIMITS, cage: { ms: CODE_LIMITS.ms, memoryMb: CODE_LIMITS.memory / 1024 / 1024 } },
+      limits: { ...FN_LIMITS, cage: { ms: CODE_LIMITS.ms, memoryMb: CODE_LIMITS.memory / 1024 / 1024 }, tests: TEST_LIMITS.tests },
       // What can start a function: the kinds, the store's events, and how many calls a minute when a trigger doesn't say.
       triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS },
     });
@@ -161,9 +165,12 @@ r.put(
       if (!parsed.success) throw new AppError(400, "FN_INVALID", "The steps can't be saved like this", { issues: parsed.error.issues.slice(0, 10).map((i) => ({ at: i.path.map(String).join("."), message: i.message })) });
       draft = parsed.data;
     }
+    // Its own tests: kept beside it (a new test doesn't make a published function "changed").
+    const tests = body.tests === undefined ? undefined : TestsSchema.safeParse(body.tests);
+    if (tests && !tests.success) throw new AppError(400, "FN_TESTS_INVALID", "The tests can't be saved like this", { issues: tests.error.issues.slice(0, 10).map((i) => ({ at: i.path.map(String).join("."), message: i.message })) });
     const saved = await prisma.fn.update({
       where: { id: fn.id },
-      data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note || null } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}), ...(draft ? { draft: draft as unknown as Prisma.InputJsonValue } : {}) },
+      data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note || null } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}), ...(draft ? { draft: draft as unknown as Prisma.InputJsonValue } : {}), ...(tests ? { tests: tests.data as unknown as Prisma.InputJsonValue } : {}) },
     });
     // Switched on or off: its triggers follow at once.
     if (body.enabled !== undefined) forgetTriggers();
@@ -181,9 +188,25 @@ r.post(
     // What the steps talk about is there, and every code step can be read.
     const problems = [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))];
     if (problems.length) throw new AppError(409, "FN_HAS_PROBLEMS", "Fix what the steps point at first", { problems });
+    // Its own tests, run against what is about to go live: one that doesn't pass stops the publish.
+    const tests = testsOf(fn.tests);
+    if (tests.length) {
+      const ran = await runTests(draft, tests, adminCaller(req));
+      if (ran.failed) throw new AppError(409, "FN_TESTS_FAILED", "Its own tests don't pass", ran);
+    }
     const saved = await prisma.fn.update({ where: { id: fn.id }, data: { live: draft as unknown as Prisma.InputJsonValue, publishedAt: new Date() } });
     forgetTriggers();
     res.json(await full(saved, req));
+  }),
+);
+
+r.post(
+  "/:id/tests/run",
+  asyncHandler(async (req, res) => {
+    const fn = await fnOf(req);
+    const draft = defOf(fn.draft);
+    if (!draft) throw new AppError(409, "FN_INVALID", "The draft can't be read");
+    res.json(await runTests(draft, testsOf(fn.tests), adminCaller(req)));
   }),
 );
 
@@ -194,7 +217,7 @@ r.post(
     const body = RunBody.parse(req.body ?? {});
     // A real run of the draft would do things nobody published: the draft is tried dry only.
     if (!body.dry && body.which === "draft") throw new AppError(400, "FN_DRAFT_IS_DRY", "The draft runs dry only; publish it to run it for real");
-    const out = await runFn(fn.id, body.input, { dry: body.dry, which: body.which, trigger: "admin", caller: { kind: "admin", id: req.access?.adminId, email: req.access?.email ?? undefined } });
+    const out = await runFn(fn.id, body.input, { dry: body.dry, which: body.which, trigger: "admin", caller: adminCaller(req) });
     // What it gave back may be a table's worth of rows: the page shows the beginning.
     const value = JSON.stringify(out.value ?? null);
     res.json({ ...out, value: value.length > 100_000 ? null : out.value, ...(value.length > 100_000 ? { valueCut: true } : {}) });

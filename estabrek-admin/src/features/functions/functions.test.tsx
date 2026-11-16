@@ -3,12 +3,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { FnDef, FnFull, FnList, FnLite, FnTrigger, Outcome } from "../../api/functions.api";
+import type { FnDef, FnFull, FnList, FnLite, FnTest, FnTrigger, Outcome, TestsOutcome } from "../../api/functions.api";
 
 // الـ Functions: the list and the builder over a stand-in API. Steps are added from a menu, each
 // opens to its own form; the draft is saved, tried dry, and published.
 
-const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), may: new Set<string>(), copied: [] as string[] }));
+const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), runFnTests: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), may: new Set<string>(), copied: [] as string[] }));
 vi.mock("../../api/functions.api", () => m);
 vi.mock("../../config/env", () => ({ env: { VITE_API_BASE_URL: "https://api.shop.test/v1" } }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
@@ -17,6 +17,8 @@ import { setLangForTests } from "../../lib/lang";
 import FunctionsPage from "./FunctionsPage";
 import FunctionEditor from "./FunctionEditor";
 import { inputsOut } from "./TryPanel";
+import { newTest, newTestId, setTestInput } from "./TestsPanel";
+import { testWhyText } from "./fnText";
 import { newTrigger } from "./FnTriggers";
 
 const lite = (over: Partial<FnLite>): FnLite => ({ id: "f1", name: "Points", note: null, enabled: true, published: false, publishedAt: null, changed: true, steps: 0, inputs: 0, takes: [], runs: 0, lastRunAt: null, updatedAt: "2026-11-16T10:00:00Z", ...over });
@@ -60,8 +62,8 @@ beforeEach(() => {
   server = full();
   m.getFunctions.mockImplementation(async () => listOf([lite(server), greet]));
   m.getFunction.mockImplementation(async () => server);
-  m.saveFunction.mockImplementation(async (_id: string, body: { name?: string; note?: string | null; enabled?: boolean; draft?: FnDef }) => {
-    server = { ...server, ...(body.name ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}), ...(body.draft ? { draft: body.draft, changed: true } : {}), updatedAt: new Date(Date.parse(server.updatedAt) + 1000).toISOString() };
+  m.saveFunction.mockImplementation(async (_id: string, body: { name?: string; note?: string | null; enabled?: boolean; draft?: FnDef; tests?: FnTest[] }) => {
+    server = { ...server, ...(body.name ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}), ...(body.draft ? { draft: body.draft, changed: true } : {}), ...(body.tests ? { tests: body.tests } : {}), updatedAt: new Date(Date.parse(server.updatedAt) + 1000).toISOString() };
     return server;
   });
   m.publishFunction.mockImplementation(async () => {
@@ -394,6 +396,160 @@ describe("Trying it", () => {
     expect(screen.queryByTestId("fn-try-dry")).toBeNull();
     expect(screen.queryByTestId("steps-do-add")).toBeNull();
     expect(screen.queryByTestId("fn-save")).toBeNull();
+  });
+});
+
+describe("Its own tests", () => {
+  const draft: FnDef = { inputs: [{ name: "email", type: "text", required: true }, { name: "tags", type: "list" }], do: [{ act: "if", if: [{ left: "{{input.email}}", cmp: "empty" }], do: [{ act: "stop", message: "An email is needed" }] }, { act: "return", value: { ok: true } }] };
+  const kept: FnTest[] = [
+    { id: "t001", name: "With an email", input: { email: "a@b.c" }, expect: { ok: true, value: { ok: true } } },
+    { id: "t002", name: "No email: refused", input: {}, expect: { ok: false, error: "email is needed" } },
+  ];
+  const result = (id: string, over: Partial<TestsOutcome["results"][number]> = {}) => ({ id, name: id, pass: true, why: null, ok: true, value: null, error: null, failedAt: null, ms: 3, ...over });
+  const lastTests = () => m.saveFunction.mock.calls.at(-1)?.[1].tests as FnTest[];
+
+  test("a test's own sums: a fresh one, what is typed for an input, and why one didn't pass", () => {
+    expect(newTestId(["t001"])).toMatch(/^[a-z0-9]{4,16}$/);
+    expect(newTest(kept, "Test 3")).toMatchObject({ name: "Test 3", input: {}, expect: { ok: true } });
+    expect(new Set([...kept.map((t) => t.id), newTest(kept, "x").id]).size).toBe(3);
+    const t = kept[0];
+    // Words stay words; a list is read as one; nothing typed isn't handed.
+    expect(setTestInput(t, draft.inputs[0], "12").input).toEqual({ email: "12" });
+    expect(setTestInput(t, draft.inputs[1], '["vip", "new"]').input).toEqual({ email: "a@b.c", tags: ["vip", "new"] });
+    expect(setTestInput(t, draft.inputs[0], "  ").input).toEqual({});
+    expect(testWhyText("stopped", "en")).toBe("It stopped, and was expected to go through");
+    expect(testWhyText("wentThrough", "ar")).toBe("مشيت للآخر، والمتوقّع إنها توقف");
+    expect(testWhyText("time", "en")).toContain("never got its turn");
+    // One a newer server says: as it said it.
+    expect(testWhyText("flew", "ar")).toBe("flew");
+  });
+
+  test("a test is written: what it hands, what must come of it; saved with the draft", async () => {
+    server = full({ draft });
+    show();
+    await screen.findByTestId("fn-tests");
+    expect(screen.getByTestId("fn-tests-empty").textContent).toContain("No tests yet");
+    expect(screen.queryByTestId("fn-tests-run")).toBeNull();
+    // It goes through, giving back exactly this.
+    fireEvent.click(screen.getByTestId("fn-test-add"));
+    expect((screen.getByTestId("fn-test-0-name") as HTMLInputElement).value).toBe("Test 1");
+    type("fn-test-0-name", "With an email");
+    type("fn-test-0-input-email", "a@b.c");
+    type("fn-test-0-input-tags", '["vip"]');
+    type("fn-test-0-value", '{"ok": true}');
+    // It stops, with these words in its reason.
+    fireEvent.click(screen.getByTestId("fn-test-add"));
+    type("fn-test-1-name", "No email: refused");
+    pick("fn-test-1-ok", "stop");
+    expect(screen.queryByTestId("fn-test-1-value")).toBeNull();
+    type("fn-test-1-error", "email is needed");
+    // A third, taken out again.
+    fireEvent.click(screen.getByTestId("fn-test-add"));
+    fireEvent.click(screen.getByTestId("fn-test-2-remove"));
+    // The steps don't name the caller: a test has nobody to be run as.
+    expect(screen.queryByTestId("fn-test-0-caller")).toBeNull();
+    expect(screen.getByTestId("fn-dirty").textContent).toBe("There are changes that aren't saved.");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(m.saveFunction).toHaveBeenCalled());
+    expect(lastTests().map(({ id: _id, ...t }) => t)).toEqual([
+      { name: "With an email", input: { email: "a@b.c", tags: ["vip"] }, expect: { ok: true, value: { ok: true } } },
+      { name: "No email: refused", input: {}, expect: { ok: false, error: "email is needed" } },
+    ]);
+    expect(lastTests().every((t) => /^[a-z0-9]{4,16}$/.test(t.id))).toBe(true);
+    expect(new Set(lastTests().map((t) => t.id)).size).toBe(2);
+  });
+
+  test("where the steps name the caller, a test says who it is run as", async () => {
+    server = full({ draft: { ...draft, do: [{ act: "return", value: "{{caller.email}}" }] }, tests: [kept[0]] });
+    show();
+    await screen.findByTestId("fn-test-0");
+    type("fn-test-0-caller", " lina@shop.test ");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastTests()[0].caller).toEqual({ email: "lina@shop.test" }));
+    // Emptied: run as the member themself.
+    type("fn-test-0-caller", "");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastTests()[0]).not.toHaveProperty("caller"));
+  });
+
+  test("they are run: each says how it went, and why one didn't pass", async () => {
+    server = full({ draft, tests: kept });
+    m.runFnTests.mockResolvedValueOnce({ results: [result("t001"), result("t002", { pass: false, why: "wentThrough", ok: true, value: { ok: true }, ms: 2 })], passed: 1, failed: 1, ms: 5 });
+    show();
+    await screen.findByTestId("fn-test-1");
+    fireEvent.click(screen.getByTestId("fn-tests-run"));
+    await waitFor(() => expect(m.runFnTests).toHaveBeenCalledWith("f1"));
+    // Nothing changed on the page: nothing to save first.
+    expect(m.saveFunction).not.toHaveBeenCalled();
+    expect((await screen.findByTestId("fn-test-t001-result")).textContent).toBe("✓ Passed · 3 ms");
+    expect(screen.getByTestId("fn-test-t002-result").textContent).toBe("✗ Didn't pass · It went through, and was expected to stop · 2 ms");
+    expect(screen.getByTestId("fn-tests-summary").textContent).toBe("1 of 2 didn't pass: publishing waits until they do");
+    expect(screen.getByTestId("fn-test-1").className).toContain("border-red-400/60");
+
+    // It stopped where it should have gone through: where, and the reason; another answer than expected: the answer it gave.
+    m.runFnTests.mockResolvedValueOnce({
+      results: [result("t001", { pass: false, why: "value", value: { ok: false } }), result("t002", { pass: false, why: "reason", ok: false, error: "The code ran longer than 2 seconds", failedAt: "do.0" })],
+      passed: 0,
+      failed: 2,
+      ms: 9,
+    });
+    fireEvent.click(screen.getByTestId("fn-tests-run"));
+    await waitFor(() => expect(screen.getByTestId("fn-tests-summary").textContent).toBe("2 of 2 didn't pass: publishing waits until they do"));
+    expect(screen.getByTestId("fn-test-t001-result").textContent).toContain("It gave back another answer than expected:");
+    expect(screen.getByTestId("fn-test-t001-got").textContent).toContain('"ok": false');
+    expect(screen.getByTestId("fn-test-t002-result").textContent).toBe("✗ Didn't pass · It stopped, but for another reason than expected · Step 1: The code ran longer than 2 seconds and was stopped · 3 ms");
+
+    // A test changed on the page: how the old one went is no longer said; running saves it first.
+    type("fn-test-1-error", "an email");
+    expect(screen.queryByTestId("fn-test-t002-result")).toBeNull();
+    expect(screen.queryByTestId("fn-tests-summary")).toBeNull();
+    m.runFnTests.mockResolvedValueOnce({ results: [result("t001"), result("t002", { ok: false, error: "An email is needed" })], passed: 2, failed: 0, ms: 4 });
+    fireEvent.click(screen.getByTestId("fn-tests-run"));
+    await waitFor(() => expect(screen.getByTestId("fn-tests-summary").textContent).toBe("All passed (2)"));
+    expect(lastTests()[1].expect).toEqual({ ok: false, error: "an email" });
+    expect(m.saveFunction.mock.invocationCallOrder.at(-1)!).toBeLessThan(m.runFnTests.mock.invocationCallOrder.at(-1)!);
+  });
+
+  test("a publish stopped by a test shows which, and says so", async () => {
+    server = full({ draft, tests: kept, changed: true });
+    m.publishFunction.mockRejectedValueOnce({ response: { status: 409, data: { error: "FN_TESTS_FAILED", message: "Its own tests don't pass", details: { results: [result("t001"), result("t002", { pass: false, why: "wentThrough", ok: true })], passed: 1, failed: 1, ms: 6 } } } });
+    show();
+    await screen.findByTestId("fn-test-1");
+    fireEvent.click(screen.getByTestId("fn-publish"));
+    expect((await screen.findByTestId("fn-test-t002-result")).getAttribute("data-pass")).toBe("false");
+    expect(screen.getByTestId("fn-tests-summary").textContent).toBe("1 of 2 didn't pass: publishing waits until they do");
+    expect(screen.getByTestId("fn-state").textContent).toBe("Draft, not published");
+    // Mended: it publishes, and the old results go.
+    fireEvent.click(screen.getByTestId("fn-publish"));
+    await waitFor(() => expect(screen.getByTestId("fn-state").textContent).toBe("Published"));
+    expect(screen.queryByTestId("fn-tests-summary")).toBeNull();
+  });
+
+  test("what was just tried is kept as a test; a member who can only look reads the tests and changes nothing", async () => {
+    server = full({ draft, tests: [kept[0]] });
+    m.runFunction.mockResolvedValueOnce({ ok: false, dry: true, value: null, error: "An email is needed", failedAt: "do.0.do.0", trace: [], counts: { steps: 2, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, ms: 4 });
+    show();
+    await screen.findByTestId("fn-try");
+    type("fn-try-input-tags", '["new"]');
+    fireEvent.click(screen.getByTestId("fn-try-dry"));
+    await screen.findByTestId("fn-outcome");
+    fireEvent.click(screen.getByTestId("fn-try-keep"));
+    // The same inputs, and what the try showed: it stops.
+    expect((screen.getByTestId("fn-test-1-name") as HTMLInputElement).value).toBe("Test 2");
+    expect((screen.getByTestId("fn-test-1-input-tags") as HTMLInputElement).value).toBe('["new"]');
+    expect((screen.getByTestId("fn-test-1-ok") as HTMLSelectElement).value).toBe("stop");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastTests()).toHaveLength(2));
+    expect(lastTests()[1]).toMatchObject({ input: { tags: ["new"] }, expect: { ok: false } });
+
+    cleanup();
+    m.may = new Set(["functions:read"]);
+    show();
+    await screen.findByTestId("fn-test-0");
+    expect((screen.getByTestId("fn-test-0-name") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByTestId("fn-test-add")).toBeNull();
+    expect(screen.queryByTestId("fn-tests-run")).toBeNull();
+    expect(screen.queryByTestId("fn-test-0-remove")).toBeNull();
   });
 });
 

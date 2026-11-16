@@ -35,6 +35,13 @@ export type InputType = "text" | "number" | "bool" | "list" | "any";
 export type FnInput = { name: string; type: InputType; required?: boolean; note?: string };
 export type FnDef = { lang?: "ar" | "en" | "he"; inputs: FnInput[]; if?: Cond[]; match?: Match; do: Step[]; else?: Step[]; fail?: PlainStep[] };
 
+/** One of a function's own tests (F4): what it is handed, and what must come of it. */
+export type FnTest = { id: string; name: string; input: Record<string, unknown>; /** Who it is run as, where the steps name the caller. */ caller?: { name?: string; email?: string }; expect: { /** It goes through; or it stops. */ ok: boolean; /** Going through: what it gives back, exactly. */ value?: unknown; /** Stopping: words its reason holds. */ error?: string } };
+export type TestWhy = "stopped" | "wentThrough" | "value" | "reason" | "time";
+/** How a test went: whether it passed (else why not), and what the run it made came to. */
+export type TestResult = { id: string; name: string; pass: boolean; why: TestWhy | null; ok: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; ms: number };
+export type TestsOutcome = { results: TestResult[]; passed: number; failed: number; ms: number };
+
 export type FnLite = {
   id: string;
   name: string;
@@ -56,7 +63,7 @@ export type FnLite = {
 };
 /** Where a problem is ("do.2", "do.2.else.0", "if.0", "fail.1") and what it is. */
 export type Problem = { at: string; message: string };
-export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null };
+export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null; /** Its own tests (F4): run before every publish. */ tests?: FnTest[] };
 
 /** What starts a function (backend lib/fnTriggers.ts). It fires only while the function is published and switched on. */
 export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook";
@@ -81,7 +88,7 @@ export type TriggerMeta = { kinds: TriggerKind[]; events: string[]; callPerMinut
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FnField = { id: string; type: string; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }> };
 export type FnTable = { id: string; slug: string; name: Local | null; fields: FnField[] };
-export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number; /** A code step's code, in letters. */ code?: number; /** The cage a code step runs in. */ cage?: { ms: number; memoryMb: number } };
+export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number; /** A code step's code, in letters. */ code?: number; /** The cage a code step runs in. */ cage?: { ms: number; memoryMb: number }; /** Tests one function keeps. */ tests?: number };
 export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
@@ -100,10 +107,14 @@ export async function createFunction(body: { name: string; note?: string }) {
   return (await api.post(BASE, body)).data as FnFull;
 }
 /** The draft is checked for its shape; what it talks about (tables, fields, names) comes back as `problems`. */
-export async function saveFunction(id: string, body: { name?: string; note?: string | null; enabled?: boolean; draft?: FnDef }) {
+export async function saveFunction(id: string, body: { name?: string; note?: string | null; enabled?: boolean; draft?: FnDef; tests?: FnTest[] }) {
   return (await api.put(at(id), body)).data as FnFull;
 }
-/** The draft becomes what runs. Refused (409 FN_HAS_PROBLEMS) while it has problems. */
+/** Its own tests run against the draft, as try-outs (nothing is written or sent): how each went. */
+export async function runFnTests(id: string) {
+  return (await api.post(`${at(id)}/tests/run`)).data as TestsOutcome;
+}
+/** The draft becomes what runs. Refused (409) while it has problems (FN_HAS_PROBLEMS), or while one of its own tests doesn't pass (FN_TESTS_FAILED, with how each went). */
 export async function publishFunction(id: string) {
   return (await api.post(`${at(id)}/publish`)).data as FnFull;
 }

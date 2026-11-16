@@ -27,7 +27,7 @@ const turnOf = (at: string) => {
   return m ? Number(m[1]) + 1 : null;
 };
 
-export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun }: { inputs: FnInput[]; canRun: boolean; /** Published: it can run for real. */ canRunLive: boolean; busy: boolean; outcome: Outcome | null; onRun: (input: Record<string, unknown>, real: boolean) => void }) {
+export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun, onKeep }: { inputs: FnInput[]; canRun: boolean; /** Published: it can run for real. */ canRunLive: boolean; busy: boolean; outcome: Outcome | null; onRun: (input: Record<string, unknown>, real: boolean) => void; /** What was just tried is kept as a test: these inputs, and whether it went through. */ onKeep?: (input: Record<string, unknown>, ok: boolean) => void }) {
   const lang = adminLang();
   const [typed, setTyped] = useState<Record<string, string>>({});
   return (
@@ -61,8 +61,16 @@ export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun }: {
 
       {outcome ? (
         <div className="space-y-3 rounded-xl border border-white/10 p-3" data-testid="fn-outcome" data-ok={outcome.ok} data-dry={outcome.dry}>
-          <div className={`text-sm font-medium ${outcome.ok ? "text-emerald-300" : "text-red-300"}`} data-testid="fn-outcome-line">
-            {outcomeLine(outcome, lang)}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className={`text-sm font-medium ${outcome.ok ? "text-emerald-300" : "text-red-300"}`} data-testid="fn-outcome-line">
+              {outcomeLine(outcome, lang)}
+            </div>
+            {/* A try that showed what it should: kept as a test, so it is checked before every publish. */}
+            {canRun && onKeep && outcome.dry ? (
+              <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12]" onClick={() => onKeep(inputsOut(inputs, typed), outcome.ok)} data-testid="fn-try-keep">
+                {say("＋ احفظها كاختبار|＋ Keep it as a test|＋ לשמור כבדיקה")}
+              </button>
+            ) : null}
           </div>
           {outcome.error ? (
             <div className="text-sm text-red-300" data-testid="fn-outcome-error">
