@@ -211,6 +211,70 @@ describe("The builder", () => {
     await waitFor(() => expect(lastDraft()).toEqual({ inputs: [], do: [{ act: "call", fn: "f2", input: { who: "Amal" }, as: "said" }], fail: [{ act: "notify", title: "It failed: {{error}}" }] }));
   });
 
+  test("a code step: what it is handed by name, the code, and a name for its answer; saved as written", async () => {
+    show();
+    await screen.findByTestId("fn-editor");
+    // Its own group in the menu, after the others.
+    expect([...screen.getByTestId("steps-do-add").querySelectorAll("optgroup")].map((g) => g.getAttribute("label"))).toEqual(["Your tables", "Control", "Messages", "Code"]);
+    pick("steps-do-add", "find");
+    pick("steps-do-add", "code");
+    expect(screen.getByTestId("step-do.1").getAttribute("data-open")).toBe("true");
+    // It starts with a few lines saying how it works, and says what the cage lets it do.
+    const box = screen.getByTestId("step-do.1-code") as HTMLTextAreaElement;
+    expect(box.value).toMatch(/^\/\/ What you hand the code is in input[\s\S]+return input;$/);
+    expect(box.getAttribute("dir")).toBe("ltr");
+    expect(screen.getByTestId("step-do.1-code-note").textContent).toContain("it sees only what you hand it");
+    expect(screen.getByTestId("step-do.1-code-note").textContent).toContain("At most 2 seconds and 32 MB");
+    // What it is handed: a name, and a value the run knows (the menu offers the rows found before it).
+    fireEvent.click(screen.getByTestId("step-do.1-give-add"));
+    expect((screen.getByTestId("step-do.1-give-0-name") as HTMLInputElement).value).toBe("value");
+    type("step-do.1-give-0-name", "orders");
+    expect([...screen.getByTestId("step-do.1-give-0-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toContain("rows");
+    pick("step-do.1-give-0-names", "rows");
+    fireEvent.click(screen.getByTestId("step-do.1-give-add"));
+    type("step-do.1-give-1", "100");
+    // A second value, taken out again.
+    fireEvent.click(screen.getByTestId("step-do.1-give-add"));
+    fireEvent.click(screen.getByTestId("step-do.1-give-2-remove"));
+    type("step-do.1-code", "const big = input.orders.filter((o) => o.total > input.value);\nreturn big.length;");
+    type("step-do.1-as", "count");
+    // (A long first line is cut where the card's line ends.)
+    expect(screen.getByTestId("step-do.1-line").textContent).toBe("const big = input.orders.filter((o) => o.total > input.valu… ← count");
+    // The step after it is offered what the code keeps.
+    pick("steps-do-add", "return");
+    expect([...screen.getByTestId("step-do.2-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toContain("count");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() =>
+      expect(lastDraft()).toEqual({
+        inputs: [],
+        do: [
+          { act: "find", table: "t1", as: "rows" },
+          { act: "code", code: "const big = input.orders.filter((o) => o.total > input.value);\nreturn big.length;", give: { orders: "{{rows}}", value: 100 }, as: "count" },
+          { act: "return", value: "" },
+        ],
+      }),
+    );
+  });
+
+  test("code that can't be read is said on its step, with its line; the cage's limits come from the server", async () => {
+    m.getFunctions.mockImplementation(async () => ({ ...listOf([lite(server), greet]), limits: { ...listOf([]).limits, code: 8000, cage: { ms: 3000, memoryMb: 64 } } }));
+    server = full({ draft: { inputs: [], do: [{ act: "code", code: "const a = 1;\nreturn a +;", as: "x" }] }, problems: [{ at: "do.0", message: "The code can't be read: SyntaxError: unexpected token in expression: ';' (line 2)" }] });
+    show();
+    expect((await screen.findByTestId("fn-problems")).textContent).toContain("Step 1: The code has a mistake in its writing: SyntaxError: unexpected token in expression: ';' (line 2)");
+    expect(screen.getByTestId("step-do.0-problems").textContent).toBe("The code has a mistake in its writing: SyntaxError: unexpected token in expression: ';' (line 2)");
+    fireEvent.click(screen.getByTestId("step-do.0-head"));
+    expect(screen.getByTestId("step-do.0-code-note").textContent).toContain("At most 3 seconds and 64 MB");
+    expect((screen.getByTestId("step-do.0-code") as HTMLTextAreaElement).maxLength).toBe(8000);
+    // A member who can only look reads the code and changes nothing.
+    cleanup();
+    m.may = new Set(["functions:read"]);
+    show();
+    await screen.findByTestId("fn-editor");
+    fireEvent.click(screen.getByTestId("step-do.0-head"));
+    expect((screen.getByTestId("step-do.0-code") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(screen.queryByTestId("step-do.0-give-add")).toBeNull();
+  });
+
   test("what stands in the way of publishing is shown on its step, in the page's words; publishing saves first", async () => {
     server = full({ draft: { inputs: [], do: [{ act: "find", table: "gone", as: "rows" }, { act: "notify", title: "{{order.title}}" }] }, problems: [{ at: "do.0", message: "This table isn't there any more" }, { at: "do.1", message: 'Nothing is kept under "order" before this step' }] });
     show();
@@ -275,6 +339,41 @@ describe("Trying it", () => {
     await waitFor(() => expect(screen.getByTestId("fn-outcome").getAttribute("data-ok")).toBe("false"));
     expect(screen.getByTestId("fn-outcome-error").textContent).toBe("Step 2 ← Step 1: points: Not a number");
     expect(screen.getByTestId("step-do.1.do.0").className).toContain("border-red-400/60");
+  });
+
+  test("a code step in a try-out: that it ran, what it logged, and why its cage stopped it", async () => {
+    server = full({ draft: { inputs: [], do: [{ act: "code", code: "log('customers', 2);\nreturn 2;", as: "n" }, { act: "return", value: "{{n}}" }] } });
+    m.runFunction.mockResolvedValueOnce(
+      outcome({
+        value: 2,
+        counts: { steps: 2, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 },
+        trace: [
+          { at: "do.0", act: "code", ok: true, ms: 3, note: "Ran the code (3 ms)", say: ["ran", 3], log: ["customers 2", "done"] },
+          { at: "do.1", act: "return", ok: true, ms: 0, note: "Gave back its answer", say: ["returned"] },
+        ],
+      }),
+    );
+    show();
+    await screen.findByTestId("fn-try");
+    fireEvent.click(screen.getByTestId("fn-try-dry"));
+    await screen.findByTestId("fn-outcome-line");
+    const lines = [...screen.getByTestId("fn-trace").querySelectorAll("li")];
+    expect(lines[0].textContent?.replace(/\s+/g, " ")).toContain("Step 1 JavaScript code Ran the code (3 ms)");
+    expect(screen.getByTestId("fn-trace-log-0").textContent).toBe("customers 2\ndone");
+    expect(screen.queryByTestId("fn-trace-log-1")).toBeNull();
+
+    // Stopped by the cage: said in the page's words; what the code logged before is still shown.
+    m.runFunction.mockResolvedValueOnce(outcome({ ok: false, error: "The code ran longer than 2 seconds", failedAt: "do.0", trace: [{ at: "do.0", act: "code", ok: false, ms: 2001, error: "The code ran longer than 2 seconds", log: ["started"] }] }));
+    fireEvent.click(screen.getByTestId("fn-try-dry"));
+    await waitFor(() => expect(screen.getByTestId("fn-outcome").getAttribute("data-ok")).toBe("false"));
+    expect(screen.getByTestId("fn-outcome-error").textContent).toBe("Step 1: The code ran longer than 2 seconds and was stopped");
+    expect(screen.getByTestId("fn-trace").textContent).toContain("The code ran longer than 2 seconds and was stopped");
+    expect(screen.getByTestId("fn-trace-log-0").textContent).toBe("started");
+    expect(screen.getByTestId("step-do.0").className).toContain("border-red-400/60");
+    // The code's own mistake stays as the engine said it, with its line.
+    m.runFunction.mockResolvedValueOnce(outcome({ ok: false, error: "TypeError: cannot read property 'total' of undefined (line 3)", failedAt: "do.0", trace: [{ at: "do.0", act: "code", ok: false, ms: 1, error: "TypeError: cannot read property 'total' of undefined (line 3)" }] }));
+    fireEvent.click(screen.getByTestId("fn-try-dry"));
+    await waitFor(() => expect(screen.getByTestId("fn-outcome-error").textContent).toBe("Step 1: TypeError: cannot read property 'total' of undefined (line 3)"));
   });
 
   test("a real run: published only, asked first", async () => {

@@ -6,6 +6,7 @@
  *
  * - `dry`: nothing is written or sent. Each step still checks what it would do and says so, and
  *   the steps after it see the row as it would have been (a "find" asks the table as it is).
+ *   A code step runs as it is either way: in its cage it can't write or send anything.
  * - A run has limits (lib/fnDef.ts FN_LIMITS): steps done, rows written, messages sent, functions
  *   inside functions, and ten seconds.
  * - A real run is written in the run log (lib/runs.ts) as kind "function".
@@ -25,6 +26,7 @@ import { apiRow, type LinkModes } from "../../lib/dataApi.js";
 import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
+import { runCode } from "../../lib/fnCode.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
 import { registerTask } from "../../lib/tasks.js";
@@ -39,7 +41,7 @@ import { enqueueMessage } from "../outbox/outbox.service.js";
 
 /** What a step did, as a code and its things, so the admin can say it in its own language. */
 export type Said = [code: keyof typeof NOTE, ...things: Array<string | number>];
-export type TraceLine = { /** Where the step is: "do.2", "do.2.do[1].0". */ at: string; act: string; ok: boolean; ms: number; /** What it did (or, dry, would do), in English. */ note?: string; say?: Said; error?: string };
+export type TraceLine = { /** Where the step is: "do.2", "do.2.do[1].0". */ at: string; act: string; ok: boolean; ms: number; /** What it did (or, dry, would do), in English. */ note?: string; say?: Said; error?: string; /** What a code step wrote with log(). */ log?: string[] };
 
 const KIND = { email: "an email", whatsapp: "a WhatsApp", sms: "an SMS" } as Record<string, string>;
 /** What each code says in English (the admin has the same list in its three languages: features/functions/fnText.ts). */
@@ -60,6 +62,7 @@ const NOTE = {
   rang: (title: string) => `Rang the bell: ${title}`,
   wouldRing: (title: string) => `Would ring the bell: ${title}`,
   called: (name: string) => `Called ${name}`,
+  ran: (ms: number) => `Ran the code (${ms} ms)`,
   returned: () => "Gave back its answer",
   yes: () => "Yes",
   no: () => "No",
@@ -88,7 +91,7 @@ type Table = { id: string; slug: string; fields: Field[] };
 /** A run's limits, shared with the functions it calls; each keeps its own steps' lines. */
 type Budget = { deadline: number; used: { writes: number; messages: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
-type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller };
+type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[] };
 /** Who started a run. */
 export type FnCaller = { kind: "admin" | "customer" | "key" | "public" | "system"; id?: string; name?: string; email?: string };
 const SYSTEM: FnCaller = { kind: "system" };
@@ -310,6 +313,14 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (s.as) scope[s.as] = inner.value;
       return ["called", fn.name];
     }
+    case "code": {
+      // In its cage (lib/fnCode.ts): handed these values and nothing else, it can only give one back.
+      const out = await runCode(s.code, fill(s.give ?? {}, scope));
+      if (out.logs.length) ctx.logged = out.logs;
+      if (!out.ok) throw new Failure(out.line ? `${out.error} (line ${out.line})` : out.error, at);
+      if (s.as) scope[s.as] = out.value;
+      return ["ran", out.ms];
+    }
     case "stop":
       throw new Failure(words(fill(s.message, scope)).trim().slice(0, 300) || "Stopped", at);
     case "return":
@@ -320,7 +331,10 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
 async function runSteps(steps: Step[], scope: Scope, base: string, ctx: Ctx): Promise<void> {
   const { budget } = ctx;
   const line = (l: Omit<TraceLine, "note">) => {
-    if (budget.trace.length < TRACE_MAX) budget.trace.push({ ...l, ...(l.say ? { note: english(l.say) } : {}) });
+    // What a code step logged goes on its own line, done or failed.
+    const log = ctx.logged;
+    ctx.logged = undefined;
+    if (budget.trace.length < TRACE_MAX) budget.trace.push({ ...l, ...(l.say ? { note: english(l.say) } : {}), ...(log?.length ? { log } : {}) });
   };
   for (let k = 0; k < steps.length; k++) {
     const s = steps[k];

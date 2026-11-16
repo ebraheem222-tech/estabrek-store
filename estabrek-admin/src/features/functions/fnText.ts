@@ -10,11 +10,25 @@ export const part = (words: string, lang: Lang) => {
 };
 const fill = (words: string, lang: Lang, things: Record<string, string | number>) => part(words, lang).replace(/\{(\w+)\}/g, (_m, k: string) => String(things[k] ?? ""));
 
-export const GROUP_NAME: Record<"data" | "control" | "out", string> = {
+export const GROUP_NAME: Record<"data" | "control" | "out" | "code", string> = {
   data: "جداولك|Your tables|הטבלאות שלך",
   control: "التحكّم|Control|בקרה",
   out: "رسايل وتنبيهات|Messages|הודעות",
+  code: "كود|Code|קוד",
 };
+/** What a new code step starts with: how it is handed things and gives one back. */
+export const CODE_START: Record<Lang, string> = {
+  ar: "// اللي بتعطيه للكود بتلاقيه بـ input (مثلاً input.rows).\n// رجّع الجواب بـ return. و log(...) بيكتب بنتيجة التجربة.\nreturn input;",
+  en: "// What you hand the code is in input (say, input.rows).\n// Give the answer back with return. log(...) writes to the try-out's result.\nreturn input;",
+  he: "// מה שנותנים לקוד נמצא ב-input (למשל input.rows).\n// מחזירים תשובה עם return. log(...) כותב בתוצאת הניסיון.\nreturn input;",
+};
+/** What a code step can and can't do, said under its box. */
+export const codeNote = (cage: { ms: number; memoryMb: number } | undefined, lang: Lang) =>
+  fill(
+    "الكود بيشتغل بقفص عالسيرفر: بيشوف بس اللي بتعطيه إياه، وما بيوصل لجداول ولا إنترنت ولا رسايل (هدول شغل الخطوات). بالكتير {s} ثواني و{mb} ميغا، وبدون await.|The code runs in a cage on the server: it sees only what you hand it, and reaches no table, no network and no message (those are the steps' work). At most {s} seconds and {mb} MB, and no await.|הקוד רץ בכלוב בשרת: הוא רואה רק את מה שנותנים לו, ולא מגיע לטבלאות, לרשת או להודעות (אלה עבודת השלבים). לכל היותר {s} שניות ו-{mb} מ״ב, ובלי await.",
+    lang,
+    { s: (cage?.ms ?? 2000) / 1000, mb: cage?.memoryMb ?? 32 },
+  );
 export const ACT_NAME: Record<StepKind, string> = {
   find: "دوّر بجدول|Find rows|חיפוש שורות",
   get: "جيب سطر|Get a row|שליפת שורה",
@@ -25,6 +39,7 @@ export const ACT_NAME: Record<StepKind, string> = {
   each: "لكل واحد بقائمة|For each in a list|לכל אחד ברשימה",
   set: "احفظ قيمة|Keep a value|שמירת ערך",
   call: "نادي function تانية|Call another function|קריאה לפונקציה אחרת",
+  code: "كود JavaScript|JavaScript code|קוד JavaScript",
   stop: "وقّف وقول ليش|Stop, saying why|עצירה עם סיבה",
   return: "رجّع جواب|Give back an answer|החזרת תשובה",
   notify: "جرس بالأدمن|Ring the admin's bell|התראה בניהול",
@@ -99,6 +114,11 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[] }, lan
       return `${short(s.list)} ← ${s.as ?? "item"}`;
     case "call":
       return `${ctx.fns.find((f) => f.id === s.fn)?.name ?? part("function؟|function?|פונקציה?", lang)}${kept(s.as)}`;
+    case "code": {
+      // Its first line that says something (not a remark).
+      const first = s.code.split("\n").map((l) => l.trim()).find((l) => l && !l.startsWith("//")) ?? "";
+      return `${short(first, 60)}${kept(s.as)}`;
+    }
     case "stop":
       return short(s.message, 60);
     case "return":
@@ -157,6 +177,9 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^The text is empty$/, "النص فاضي|The text is empty|הטקסט ריק"],
   [/^The title is empty$/, "العنوان فاضي|The title is empty|הכותרת ריקה"],
   [/^The reason is empty$/, "السبب فاضي|The reason is empty|הסיבה ריקה"],
+  [/^The code is empty$/, "الكود فاضي|The code is empty|הקוד ריק"],
+  [/^The code can't be read: (.+) \(line (\d+)\)$/, "الكود فيه غلطة كتابة: {1} (السطر {2})|The code has a mistake in its writing: {1} (line {2})|יש טעות בכתיבת הקוד: {1} (שורה {2})"],
+  [/^The code can't be read: (.+)$/, "الكود فيه غلطة كتابة: {1}|The code has a mistake in its writing: {1}|יש טעות בכתיבת הקוד: {1}"],
   [/^Pick a function$/, "اختار function|Pick a function|יש לבחור פונקציה"],
   [/^A function can't call itself$/, "الـ function ما بتنادي حالها|A function can't call itself|פונקציה לא יכולה לקרוא לעצמה"],
   [/^This function isn't there any more$/, "هالـ function ما عادت موجودة|This function isn't there any more|הפונקציה הזאת כבר לא קיימת"],
@@ -193,15 +216,35 @@ const SAID: Record<string, string> = {
   rang: "رنّ الجرس: {0}|Rang the bell: {0}|הפעמון צלצל: {0}",
   wouldRing: "كان رح يرنّ الجرس: {0}|Would ring the bell: {0}|הפעמון היה מצלצל: {0}",
   called: "نادى {0}|Called {0}|קרא ל-{0}",
+  ran: "الكود اشتغل ({0} ميلي ثانية)|Ran the code ({0} ms)|הקוד רץ ({0} מ״ש)",
   returned: "رجّع جوابه|Gave back its answer|החזיר את תשובתו",
   yes: "نعم|Yes|כן",
   no: "لا|No|לא",
   other: "لا: الطريق التاني|No: the other way|לא: הדרך האחרת",
   times: "{0} مرات|{0} times|{0} פעמים",
 };
+/** Why the cage stopped a code step, in the admin's language (what the code itself said stays as it said it). */
+const CAGE_SAID: Array<[RegExp, string]> = [
+  [/^The code ran longer than (\d+(?:\.\d+)?) seconds$/, "الكود أخد أكتر من {1} ثواني، فتوقّف|The code ran longer than {1} seconds and was stopped|הקוד רץ יותר מ-{1} שניות ונעצר"],
+  [/^The code used more than (\d+) MB$/, "الكود أخد أكتر من {1} ميغا ذاكرة، فتوقّف|The code used more than {1} MB and was stopped|הקוד צרך יותר מ-{1} מ״ב ונעצר"],
+  [/^Too much code is running right now: try again in a moment$/, "في كود كتير عم يشتغل هلأ: جرّب بعد شوي|Too much code is running right now: try again in a moment|רץ כרגע יותר מדי קוד: נסו שוב בעוד רגע"],
+  [/^The code gave back a promise: it runs straight through, without await$/, "الكود رجّع promise: هو بيشتغل مرة وحدة للآخر، بدون await|The code gave back a promise: it runs straight through, without await|הקוד החזיר promise: הוא רץ ברצף, בלי await"],
+  [/^The code gave back more than (\d+) KB$/, "الكود رجّع أكتر من {1} كيلوبايت|The code gave back more than {1} KB|הקוד החזיר יותר מ-{1} ק״ב"],
+  [/^The code is handed more than (\d+) KB$/, "اللي بينعطى للكود أكتر من {1} كيلوبايت|The code is handed more than {1} KB|לקוד ניתנים יותר מ-{1} ק״ב"],
+  [/^The code's machine (?:stopped|didn't start.*)$/, "قفص الكود وقف. جرّب كمان مرة|The code's cage stopped. Try again|הכלוב של הקוד נעצר. נסו שוב"],
+];
+/** Why a run stopped: the cage's own reasons in the admin's language, anything else as it was said. */
+export function failText(error: string, lang: Lang): string {
+  for (const [pattern, words] of CAGE_SAID) {
+    const m = pattern.exec(error);
+    if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
+  }
+  return error;
+}
+
 /** What a step did (or, dry, would do), in the admin's language. */
 export function lineText(line: Pick<TraceLine, "ok" | "say" | "note" | "error">, lang: Lang): string {
-  if (!line.ok) return line.error ?? part("فشلت|Failed|נכשל", lang);
+  if (!line.ok) return line.error ? failText(line.error, lang) : part("فشلت|Failed|נכשל", lang);
   const [code, ...things] = line.say ?? [];
   const words = code ? SAID[code] : undefined;
   if (!words) return line.note ?? "";

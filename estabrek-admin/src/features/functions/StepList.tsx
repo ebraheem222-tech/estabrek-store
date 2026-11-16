@@ -6,8 +6,8 @@ import type { Cond, Filter, FnDef, FnLite, FnTable, Match, Op, Problem, RowStatu
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { STATUS_NAME, SYSTEM_NAME, kindOf, opName, opNeeds } from "../data/dataText";
-import { FAIL_ACTS, GROUPS, addStep, atOf, fieldName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
-import { ACT_NAME, ALONE, CMP_NAME, GROUP_NAME, SET_OP, condsLine, problemText, stepLine } from "./fnText";
+import { FAIL_ACTS, GROUPS, addStep, atOf, fieldName, freeName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
+import { ACT_NAME, ALONE, CMP_NAME, CODE_START, GROUP_NAME, SET_OP, codeNote, condsLine, problemText, stepLine } from "./fnText";
 
 export type Builder = {
   def: FnDef;
@@ -23,6 +23,9 @@ export type Builder = {
   /** The one step whose form is open. */
   openAt: string | null;
   setOpenAt: (at: string | null) => void;
+  /** The limits of the cage a code step runs in, and its code's length, as the server says them. */
+  cage?: { ms: number; memoryMb: number };
+  codeMax?: number;
 };
 const BuilderContext = createContext<Builder | null>(null);
 export const BuilderProvider = BuilderContext.Provider;
@@ -312,6 +315,34 @@ function FiltersForm({ at, table, filters, match, onChange }: { at: Path; table:
 
 const STATUSES: RowStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
 
+/** What a code step is handed: names of the owner's choosing, each a value the run knows. The code reads them as input.name. */
+function GiveForm({ at, id, give, onChange }: { at: Path; id: string; give: Record<string, Val>; onChange: (give: Record<string, Val>) => void }) {
+  const b = useBuilder();
+  const names = Object.keys(give);
+  const rename = (was: string, name: string) => onChange(Object.fromEntries(Object.entries(give).map(([k, v]) => [k === was ? name : k, v])));
+  return (
+    <div className="space-y-2" data-testid={`step-${id}-give`}>
+      {names.map((name, k) => (
+        <div key={k} className="flex flex-wrap items-center gap-2">
+          <NameInput value={name} onChange={(next) => (next && next !== name && !names.includes(next) ? rename(name, next) : undefined)} testid={`step-${id}-give-${k}-name`} />
+          <span className="text-white/70">=</span>
+          <ValueInput at={at} value={give[name]} onChange={(v) => onChange({ ...give, [name]: v })} placeholder="{{rows}}" testid={`step-${id}-give-${k}`} />
+          {b.canWrite ? (
+            <button type="button" className="rounded px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => onChange(Object.fromEntries(Object.entries(give).filter(([key]) => key !== name)))} aria-label={say("شيل القيمة|Take the value out|הסרת הערך")} data-testid={`step-${id}-give-${k}-remove`}>
+              ✕
+            </button>
+          ) : null}
+        </div>
+      ))}
+      {b.canWrite ? (
+        <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12]" onClick={() => onChange({ ...give, [freeName("value", names)]: "" })} data-testid={`step-${id}-give-add`}>
+          {say("＋ قيمة للكود|＋ A value for the code|＋ ערך לקוד")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function StepForm({ path, step }: { path: Path; step: Step }) {
   const b = useBuilder();
   const lang = adminLang();
@@ -476,6 +507,33 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
         </>
       );
     }
+    case "code":
+      return (
+        <>
+          <div className="space-y-1">
+            <div className={label}>{say("اللي بينعطى للكود (بيقرأه input.الاسم)|What the code is handed (it reads input.name)|מה שניתן לקוד (הוא קורא input.שם)")}</div>
+            <GiveForm at={path} id={id} give={step.give ?? {}} onChange={(give) => set({ ...step, give })} />
+          </div>
+          <textarea
+            className="min-h-[180px] w-full rounded-lg border border-white/10 bg-black/30 p-3 font-mono text-[13px] leading-5 text-white"
+            dir="ltr"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            rows={9}
+            maxLength={b.codeMax ?? 8000}
+            value={step.code}
+            disabled={!b.canWrite}
+            aria-label={say("الكود|The code|הקוד")}
+            onChange={(e) => set({ ...step, code: e.target.value })}
+            data-testid={`step-${id}-code`}
+          />
+          <p className="text-xs text-white/70" data-testid={`step-${id}-code-note`}>
+            {codeNote(b.cage, lang)}
+          </p>
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+        </>
+      );
     case "stop":
       return words(say("السبب|The reason|הסיבה"), step.message, (message) => set({ ...step, message }), { key: "message", placeholder: say("ما في زبون بهالإيميل|No customer with this email|אין לקוח עם האימייל הזה") });
     case "return":
@@ -626,7 +684,7 @@ export function StepList({ list, fail }: { list: Path; fail?: boolean }) {
           onChange={(e) => {
             const act = e.target.value as StepKind;
             if (!act) return;
-            b.change(addStep(b.def, list, newStep(act, { tables: b.tables, fns: b.fns, def: b.def })));
+            b.change(addStep(b.def, list, newStep(act, { tables: b.tables, fns: b.fns, def: b.def, code: CODE_START[adminLang()] })));
             b.setOpenAt(atOf([...list, steps.length]));
           }}
           data-testid={`steps-${id}-add`}

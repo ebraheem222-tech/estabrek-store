@@ -7,6 +7,7 @@ import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { OPS_BY_KIND } from "../../lib/dataQuery.js";
 import { EMPTY_DEF, FN_LIMITS, FnDefSchema, defOf, problemsOf, sizeOf, type FnDef, type Known } from "../../lib/fnDef.js";
+import { CODE_LIMITS, codeProblems } from "../../lib/fnCode.js";
 import { CMPS } from "../../lib/fnValues.js";
 import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
 import { hasPermission } from "../../middleware/access.js";
@@ -111,7 +112,7 @@ async function full(fn: Row, req: Request) {
   ]);
   const write = hasPermission(req, "functions:write");
   // The feature it is part of (admin → ميزاتي): one that is off keeps the function from being started.
-  return { ...lite(fn), draft, live: defOf(fn.live), problems: problemsOf(draft, await known(fn.id)), triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null };
+  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null };
 }
 
 r.get(
@@ -124,7 +125,8 @@ r.get(
       tables: k.tables.map((t) => ({ id: t.id, slug: t.slug, name: t.name ?? null, fields: t.fields.map((f) => ({ id: f.id, type: f.type, name: f.name ?? null, required: !!f.required, ...(f.options ? { options: f.options.map((o) => ({ id: o.id, name: o.name ?? null })) } : {}) })) })),
       ops: OPS_BY_KIND,
       cmps: CMPS,
-      limits: FN_LIMITS,
+      // The steps' limits, and the cage's that a code step runs in (lib/fnCode.ts).
+      limits: { ...FN_LIMITS, cage: { ms: CODE_LIMITS.ms, memoryMb: CODE_LIMITS.memory / 1024 / 1024 } },
       // What can start a function: the kinds, the store's events, and how many calls a minute when a trigger doesn't say.
       triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS },
     });
@@ -176,7 +178,8 @@ r.post(
     const draft = defOf(fn.draft);
     if (!draft) throw new AppError(409, "FN_INVALID", "The draft can't be read");
     if (!draft.do.length && !draft.else?.length) throw new AppError(409, "FN_EMPTY", "A function with no steps has nothing to publish");
-    const problems = problemsOf(draft, await known(fn.id));
+    // What the steps talk about is there, and every code step can be read.
+    const problems = [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))];
     if (problems.length) throw new AppError(409, "FN_HAS_PROBLEMS", "Fix what the steps point at first", { problems });
     const saved = await prisma.fn.update({ where: { id: fn.id }, data: { live: draft as unknown as Prisma.InputJsonValue, publishedAt: new Date() } });
     forgetTriggers();
