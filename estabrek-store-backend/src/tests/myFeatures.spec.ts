@@ -6,7 +6,7 @@ import { signAccessToken } from "../config/security.js";
 import { invalidateAccess } from "../middleware/access.js";
 import { forgetFeatureGate } from "../lib/featureGate.js";
 import type { FnDef } from "../lib/fnDef.js";
-import { forgetTriggers } from "../lib/fnTriggers.js";
+import { forgetTriggers, rowEventsInFlight } from "../lib/fnTriggers.js";
 import { forgetHits } from "../lib/hitLimit.js";
 import { resetRunsForTests } from "../lib/runs.js";
 import { resetTasksForTests, runTasks } from "../lib/tasks.js";
@@ -39,7 +39,8 @@ async function settled() {
   for (let quiet = 0; quiet < 3; ) {
     await new Promise((r) => setTimeout(r, 25));
     await runTasks();
-    quiet = (await prisma.task.count({ where: { kind: "function", status: { in: ["waiting", "running"] }, runAt: { lte: new Date() } } })) ? 0 : quiet + 1;
+    // (A row's event reaches the queue a moment after the write that caused it: it isn't quiet while one is on its way.)
+    quiet = rowEventsInFlight() || (await prisma.task.count({ where: { kind: "function", status: { in: ["waiting", "running"] }, runAt: { lte: new Date() } } })) ? 0 : quiet + 1;
   }
 }
 

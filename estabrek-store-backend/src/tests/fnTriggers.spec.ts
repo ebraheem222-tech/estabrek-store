@@ -7,7 +7,7 @@ import { invalidateAccess } from "../middleware/access.js";
 import { forgetKeys } from "../lib/apiKeys.js";
 import { forgetFeatures } from "../lib/features.js";
 import type { FnDef } from "../lib/fnDef.js";
-import { CHAIN_MAX, TRIGGER_LIMITS, forgetTriggers, nextRun, runFnSchedule } from "../lib/fnTriggers.js";
+import { CHAIN_MAX, TRIGGER_LIMITS, forgetTriggers, nextRun, rowEventsInFlight, runFnSchedule } from "../lib/fnTriggers.js";
 import { forgetHits } from "../lib/hitLimit.js";
 import { emitAutomation, setAutomationHandler } from "../lib/automations.js";
 import { flushRuns, resetRunsForTests } from "../lib/runs.js";
@@ -44,7 +44,8 @@ async function settled() {
   for (let quiet = 0; quiet < 3; ) {
     await new Promise((r) => setTimeout(r, 25));
     await runTasks();
-    quiet = (await prisma.task.count({ where: { kind: { in: ["function", "automation"] }, status: { in: ["waiting", "running"] }, runAt: { lte: new Date() } } })) ? 0 : quiet + 1;
+    // (A row's event reaches the queue a moment after the write that caused it: it isn't quiet while one is on its way.)
+    quiet = rowEventsInFlight() || (await prisma.task.count({ where: { kind: { in: ["function", "automation"] }, status: { in: ["waiting", "running"] }, runAt: { lte: new Date() } } })) ? 0 : quiet + 1;
   }
 }
 const logged = async () => {
