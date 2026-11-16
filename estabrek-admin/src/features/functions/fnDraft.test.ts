@@ -106,8 +106,8 @@ describe("Names", () => {
 
   test("a code step: where it is offered, what it starts with, and the name it keeps its answer under", () => {
     // A group of its own, last; never among what a function does after a failure.
-    expect(GROUPS.map((g) => g.key)).toEqual(["data", "control", "out", "code"]);
-    expect(GROUPS[3].acts).toEqual(["code"]);
+    expect(GROUPS.map((g) => g.key)).toEqual(["data", "control", "out", "outside", "code"]);
+    expect(GROUPS[4].acts).toEqual(["code"]);
     expect(FAIL_ACTS).not.toContain("code");
     expect(newStep("code", { tables, fns, def })).toEqual({ act: "code", code: "return input;", give: {}, as: "result" });
     // The page starts it with a few lines saying how it works, in its own language.
@@ -118,6 +118,40 @@ describe("Names", () => {
     expect(namesBefore(withCode, ["do", 2]).map((k) => `${k.name}:${k.kind}`)).toEqual(["orders:rows", "sums:value"]);
     expect(namesBefore(withCode, ["do", 1]).map((k) => k.name)).toEqual(["orders"]);
     expect(namesUsed(withCode)).toContain("sums");
+  });
+});
+
+describe("A call to a site", () => {
+  test("where it is offered, what it starts with, and what its answer is called by", () => {
+    expect(GROUPS[3]).toEqual({ key: "outside", acts: ["http"] });
+    // After a failure a function may tell someone outside too.
+    expect(FAIL_ACTS).toContain("http");
+    expect(newStep("http", { tables, fns, def })).toEqual({ act: "http", method: "POST", url: "https://", as: "answer" });
+    // "secret" is never a name the run keeps something under.
+    expect(nameOk("secret")).toBe(false);
+    const withCall: FnDef = { inputs: [], do: [{ act: "http", method: "GET", url: "https://api.x.com/a", as: "got" }, { act: "return", value: "" }] };
+    expect(namesBefore(withCall, ["do", 1]).map((k) => `${k.name}:${k.kind}`)).toEqual(["got:answer"]);
+    // What it said, whether it said yes, and its status.
+    expect(offers(withCall, ["do", 1], tables).slice(-3)).toEqual(["got.body", "got.ok", "got.status"]);
+  });
+
+  test("the step in a line, what stands in the way of publishing it, and how its run is said", () => {
+    const ctx = { tables, fns };
+    expect(stepLine({ act: "http", method: "POST", url: "https://api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage?parse=1", as: "sent" }, ctx, "en")).toBe("POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage ← sent");
+    expect(stepLine({ act: "http", method: "GET", url: "https://" }, ctx, "en")).toBe("GET https://");
+    expect(problemText('"evil.example.com" isn\'t among the allowed sites', "en")).toBe("“evil.example.com” isn't among the allowed sites (it is added in “Connections & secrets”)");
+    expect(problemText('No secret called "OTHER_KEY"', "ar")).toBe("ما في سر اسمه «OTHER_KEY»");
+    expect(problemText('The secret "HOOK_KEY" isn\'t for "api.telegram.org"', "en")).toBe("The secret “HOOK_KEY” isn't for “api.telegram.org” (its sites are changed in “Connections & secrets”)");
+    expect(problemText("A secret is only named in a step that calls a site", "en")).toBe("A secret is only named in a “call a site” step");
+    expect(problemText("The address starts with https://", "ar")).toBe("العنوان لازم يبلّش بـ https://");
+    expect(problemText("The address is empty", "en")).toBe("The address is empty");
+    expect(lineText({ ok: true, say: ["answered", "POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage", 200] }, "en")).toBe("POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage answered 200");
+    expect(lineText({ ok: true, say: ["wouldCall", "GET api.x.com/a"] }, "ar")).toBe("كان رح يتصل: GET api.x.com/a");
+    expect(failText("POST api.x.com/a answered 404", "ar")).toBe("POST api.x.com/a جاوب 404");
+    expect(failText('The secret "A_KEY" isn\'t for "hooks.example.com"', "en")).toBe("The secret “A_KEY” isn't for “hooks.example.com”");
+    expect(failText('"api.x.com" didn\'t answer in time', "ar")).toBe("«api.x.com» ما جاوب بالوقت");
+    expect(failText('"api.x.com" points inside the network: it isn\'t called', "en")).toBe("“api.x.com” points inside the network: it isn't called");
+    expect(failText("A run calls sites up to 10 times", "en")).toBe("A run calls sites up to 10 times");
   });
 });
 

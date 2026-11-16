@@ -44,6 +44,8 @@ export type AdminPermission =
   | "functions:write"
   | "features:read"
   | "features:write"
+  | "connections:read"
+  | "connections:write"
   /** Not one of the server's: "may open the data grid" (every table through pages:read, or tables given one by one). */
   | "data:tables";
 
@@ -91,6 +93,8 @@ const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "functions:write",
   "features:read",
   "features:write",
+  "connections:read",
+  "connections:write",
   "data:tables",
 ];
 

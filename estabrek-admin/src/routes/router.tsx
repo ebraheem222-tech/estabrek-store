@@ -85,6 +85,7 @@ const DataPage = lazy(() => import("../features/data/DataPage"));
 const ApiPage = lazy(() => import("../features/api/ApiPage"));
 const FunctionsPage = lazy(() => import("../features/functions/FunctionsPage"));
 const FunctionEditor = lazy(() => import("../features/functions/FunctionEditor"));
+const ConnectionsPage = lazy(() => import("../features/connections/ConnectionsPage"));
 const MyFeaturesPage = lazy(() => import("../features/myFeatures/MyFeaturesPage"));
 const FeaturePage = lazy(() => import("../features/myFeatures/FeaturePage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
@@ -314,6 +315,8 @@ export default function AppRouter() {
           <Route path="data-api" element={withPermissions(<ErrorBoundary title="API"><ApiPage /></ErrorBoundary>, ["api:read"])} />
           <Route path="functions" element={withPermissions(<ErrorBoundary title="Functions"><FunctionsPage /></ErrorBoundary>, ["functions:read"])} />
           <Route path="functions/:id" element={withPermissions(<ErrorBoundary title="Functions"><FunctionEditor /></ErrorBoundary>, ["functions:read"])} />
+          {/* What functions may reach outside (F5): the allowed sites, and the services' keys (written, never read back). */}
+          <Route path="connections" element={withPermissions(<ErrorBoundary title="Connections"><ConnectionsPage /></ErrorBoundary>, ["connections:read"])} />
           <Route path="my-features" element={withPermissions(<ErrorBoundary title="My features"><MyFeaturesPage /></ErrorBoundary>, ["features:read"])} />
           <Route path="my-features/:id" element={withPermissions(<ErrorBoundary title="My features"><FeaturePage /></ErrorBoundary>, ["features:read"])} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}

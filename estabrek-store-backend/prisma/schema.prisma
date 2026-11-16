@@ -534,6 +534,30 @@ model FnTrigger {
   @@index([kind, enabled])
 }
 
+/// A site the owner's functions may call (F5, src/lib/fnHttp.ts; admin → الاتصالات والأسرار):
+/// a host name, or "*.example.com" for every name under one. Nothing else is called.
+model FnSite {
+  host      String   @id
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+/// A key of an outside service, for a function's call to a site. Written and never read back:
+/// the value is kept encrypted (src/lib/secretBox.ts) and no route answers it. It goes into a
+/// request as it leaves, and only to the sites it names.
+model FnSecret {
+  id          String    @id @default(cuid())
+  /// TELEGRAM_TOKEN: a step names it {{secret.TELEGRAM_TOKEN}}.
+  name        String    @unique
+  sealed      String
+  sites       String[]  @default([])
+  note        String?
+  createdById String?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 /// A feature the owner built (M, admin → ميزاتي): a name over things made elsewhere in the studio
 /// (tables, functions, pages), to find them together and to switch them off together
 /// (src/lib/featureGate.ts).

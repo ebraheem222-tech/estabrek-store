@@ -9,17 +9,19 @@ export const atOf = (path: Path) => path.join(".");
 export const stepOfLine = (at: string) => at.replace(/\[\d+\]/g, "");
 
 export const isGroup = (s: Step): s is GroupStep => s.act === "if" || s.act === "each";
-export const GROUPS: Array<{ key: "data" | "control" | "out" | "code"; acts: StepKind[] }> = [
+export const GROUPS: Array<{ key: "data" | "control" | "out" | "outside" | "code"; acts: StepKind[] }> = [
   { key: "data", acts: ["find", "get", "add", "change", "delete"] },
   { key: "control", acts: ["if", "each", "set", "call", "stop", "return"] },
   { key: "out", acts: ["notify", "email", "whatsapp", "sms"] },
+  // A call to a site outside the store: only one the owner allowed.
+  { key: "outside", acts: ["http"] },
   // For what the steps can't say: JavaScript, run in a cage on the server.
   { key: "code", acts: ["code"] },
 ];
 /** After a failure a function tells someone or writes it down, nothing else. */
-export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set"];
+export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set", "http"];
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
-export const RESERVED = ["input", "now", "error", "index", "caller"];
+export const RESERVED = ["input", "now", "error", "index", "caller", "secret"];
 export const nameOk = (name: string) => NAME.test(name) && !RESERVED.includes(name);
 
 /* ---------------- Changing the tree (nothing is changed in place) ---------------- */
@@ -65,8 +67,8 @@ export function countSteps(steps: Step[] | undefined): number {
 
 /* ---------------- Names: what a step can talk about ---------------- */
 
-/** Something the run keeps under a name: rows of a table, one row, or any value. */
-export type Known = { name: string; kind: "rows" | "row" | "value"; table?: string };
+/** Something the run keeps under a name: rows of a table, one row, a site's answer, or any value. */
+export type Known = { name: string; kind: "rows" | "row" | "value" | "answer"; table?: string };
 
 /** The list a loop goes over, when it is one name: "{{orders}}" → "orders". */
 const oneName = (text: string) => /^\{\{\s*([A-Za-z_$][\w$.]*)\s*\}\}$/.exec(text.trim())?.[1] ?? null;
@@ -77,6 +79,7 @@ function keep(have: Map<string, Known>, s: Step) {
   else if ((s.act === "add" || s.act === "change") && s.as) have.set(s.as, { name: s.as, kind: "row", table: s.table });
   else if (s.act === "set" && nameOk(s.name) && !have.has(s.name)) have.set(s.name, { name: s.name, kind: "value" });
   else if ((s.act === "call" || s.act === "code") && s.as) have.set(s.as, { name: s.as, kind: "value" });
+  else if (s.act === "http" && s.as) have.set(s.as, { name: s.as, kind: "answer" });
 }
 
 /**
@@ -141,6 +144,8 @@ export function offers(def: FnDef, target: Path, tables: FnTable[]): string[] {
   for (const k of namesBefore(def, target)) {
     if (k.kind === "rows") out.push(k.name, `${k.name}.length`, ...fieldsOf(k.table).map((f) => `${k.name}.first.${f.id}`));
     else if (k.kind === "row") out.push(k.name, `${k.name}.$id`, `${k.name}.$slug`, ...fieldsOf(k.table).map((f) => `${k.name}.${f.id}`));
+    // A site's answer: what it said, whether it said yes, and its status.
+    else if (k.kind === "answer") out.push(`${k.name}.body`, `${k.name}.ok`, `${k.name}.status`);
     else out.push(k.name);
   }
   return out;
@@ -199,6 +204,8 @@ export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; 
       return { act, fn: ctx.fns.find((f) => f.published)?.id ?? "", input: {} };
     case "code":
       return { act, code: ctx.code ?? "return input;", give: {}, as: free("result") };
+    case "http":
+      return { act, method: "POST", url: "https://", as: free("answer") };
     case "stop":
       return { act, message: "" };
     case "return":

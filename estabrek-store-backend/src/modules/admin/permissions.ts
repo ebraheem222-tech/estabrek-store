@@ -82,6 +82,14 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    key: "connections",
+    label: "الاتصالات والأسرار",
+    permissions: [
+      { key: "connections:read", label: "مشاهدة المواقع المسموحة وأسماء الأسرار (القيمة ما بتنقرأ لحدا)" },
+      { key: "connections:write", label: "السماح بمواقع بتتصل فيها الـ functions، وكتابة مفاتيح الخدمات الخارجية" },
+    ],
+  },
+  {
     key: "features",
     label: "ميزاتي (ميزات من عندك)",
     permissions: [

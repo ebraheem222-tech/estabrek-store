@@ -27,6 +27,7 @@ import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
 import { runCode } from "../../lib/fnCode.js";
+import { HTTP_LIMITS, SiteError, callSite } from "../../lib/fnHttp.js";
 import { TEST_LIMITS, verdict, type FnTest, type TestWhy } from "../../lib/fnTests.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
@@ -64,6 +65,8 @@ const NOTE = {
   wouldRing: (title: string) => `Would ring the bell: ${title}`,
   called: (name: string) => `Called ${name}`,
   ran: (ms: number) => `Ran the code (${ms} ms)`,
+  answered: (line: string, status: number) => `${line} answered ${status}`,
+  wouldCall: (line: string) => `Would call ${line}`,
   returned: () => "Gave back its answer",
   yes: () => "Yes",
   no: () => "No",
@@ -90,7 +93,7 @@ class Failure extends Error {
 
 type Table = { id: string; slug: string; fields: Field[] };
 /** A run's limits, shared with the functions it calls; each keeps its own steps' lines. */
-type Budget = { deadline: number; /** How long the run was given. */ ms: number; used: { writes: number; messages: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
+type Budget = { deadline: number; /** How long the run was given. */ ms: number; used: { writes: number; messages: number; http: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
 type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[] };
 /** Who started a run. */
@@ -314,6 +317,23 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (s.as) scope[s.as] = inner.value;
       return ["called", fn.name];
     }
+    case "http": {
+      // A call to a site the owner allowed (lib/fnHttp.ts): its secrets go in as it leaves, and nowhere else.
+      if (budget.used.http >= HTTP_LIMITS.calls) throw new Failure(`A run calls sites up to ${HTTP_LIMITS.calls} times`, at);
+      budget.used.http += 1;
+      let out;
+      try {
+        out = await callSite({ method: s.method, url: s.url, headers: s.headers, body: s.body, scope, dry, ms: Math.max(500, budget.deadline - Date.now()) });
+      } catch (e) {
+        if (e instanceof SiteError) throw new Failure(e.message, at);
+        throw e;
+      }
+      // Tried, not made: the steps after it see an answer with nothing in it.
+      if (s.as) scope[s.as] = out.dry ? { status: 0, ok: true, body: null, dry: true } : { status: out.status, ok: out.ok, body: out.body, type: out.type, ...(out.cut ? { cut: true } : {}) };
+      if (out.dry) return ["wouldCall", out.line];
+      if (!out.ok && !s.anyStatus) throw new Failure(`${out.line} answered ${out.status}`, at);
+      return ["answered", out.line, out.status];
+    }
     case "code": {
       // In its cage (lib/fnCode.ts): handed these values and nothing else, it can only give one back.
       const out = await runCode(s.code, fill(s.give ?? {}, scope));
@@ -409,7 +429,7 @@ function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<str
   return out;
 }
 
-const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });
+const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0, http: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });
 
 /** A definition run with what it was handed. Never throws: a failure is the outcome. `ms`: a shorter time than a run's own (a test's). */
 export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number } = {}): Promise<Outcome> {
