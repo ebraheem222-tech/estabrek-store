@@ -98,7 +98,7 @@ describe("The OpenAPI document", () => {
   test("a list's questions: its parameters, and a table of what each column can be asked", () => {
     const list = doc(whole).paths["/demo-posts"].get;
     // Everyone reads this table: a signed-in shopper may ask for their own rows of it.
-    expect(list.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).toEqual(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match", "mine"]);
+    expect(list.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).toEqual(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match", "mine", "shown"]);
     expect(doc(whole).paths["/authors"].get.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).not.toContain("mine");
     // A table with no relation the caller sees has nothing to expand.
     expect(doc(null).paths["/demo-posts"].get.parameters.map((p: { $ref: string }) => p.$ref.split("/").pop())).not.toContain("expand");
@@ -172,7 +172,7 @@ describe("The TypeScript types", () => {
   test("a table's rows and what a new row takes, from its own fields", () => {
     const text = types(whole);
     expect(text).toContain('export type Lang = "ar" | "en" | "he";');
-    expect(text).toContain("export type Row<V> = { id: string; slug: string; status: Status; values: V; createdAt: string; updatedAt: string; publishedAt: string | null };");
+    expect(text).toContain("export type Row<V> = { id: string; slug: string; status: Status; values: V; createdAt: string; updatedAt: string; publishedAt: string | null; shown?: Record<string, string>; links?: Record<string, string> };");
     expect(text).toContain("/** Posts: /v1/data/demo-posts */");
     expect(text).toContain(
       [

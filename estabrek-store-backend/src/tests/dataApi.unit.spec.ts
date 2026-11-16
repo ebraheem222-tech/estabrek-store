@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Field } from "../lib/collectionTree.js";
 import { hashKey, keyCovers, keyState, keyView, looksLikeKey, newSecret, scopesOf, ScopesSchema, type KeyLite } from "../lib/apiKeys.js";
-import { AccessSchema, CLOSED, accessOf, allow, apiRow, columnOf, fieldView, isOpen, listAsk, mineAsked, privateOf, seenFields, shapeAsk, wordsIn, type LinkModes } from "../lib/dataApi.js";
+import { AccessSchema, CLOSED, accessOf, allow, apiRow, asShown, columnOf, fieldView, isOpen, listAsk, mineAsked, privateOf, seenFields, shapeAsk, wordsIn, type LinkModes, type Viewer } from "../lib/dataApi.js";
 
 // The automatic API (B4) without a database: a key and what is kept of it, who gets into a table
 // and as what, a list's question read from an address, and a row as it is answered.
@@ -102,7 +102,7 @@ const fields: Field[] = [
 
 describe("A list's question", () => {
   test("with nothing asked: the first page of 25, every row a key may see, published ones for anyone", () => {
-    expect(listAsk(fields, {}, "key")).toEqual({ q: { page: 1, pageSize: 25, lang: "ar", view: "all", sort: [], filters: [], match: "all" }, lang: null, pick: null, expand: [] });
+    expect(listAsk(fields, {}, "key")).toEqual({ q: { page: 1, pageSize: 25, lang: "ar", view: "all", sort: [], filters: [], match: "all" }, lang: null, pick: null, expand: [], shown: false });
     expect(listAsk(fields, {}, "public").q.view).toBe("published");
     expect(listAsk(fields, { status: "published" }, "public").q.view).toBe("published");
     expect(refused(() => listAsk(fields, { status: "draft" }, "public"))).toBe("BAD_QUERY: Only published rows are open without a key");
@@ -150,7 +150,7 @@ describe("A list's question", () => {
   });
 
   test("which fields come back, and which relations are opened", () => {
-    expect(shapeAsk(fields, { fields: "title, price", expand: "author" })).toEqual({ lang: null, pick: ["title", "price"], expand: ["author"] });
+    expect(shapeAsk(fields, { fields: "title, price", expand: "author" })).toEqual({ lang: null, pick: ["title", "price"], expand: ["author"], shown: false });
     expect(refused(() => shapeAsk(fields, { fields: "title,nope" }))).toBe('BAD_QUERY: No field "nope" in this table');
     expect(refused(() => shapeAsk(fields, { expand: "price" }))).toBe('BAD_QUERY: "price" isn\'t a relation of this table');
     expect(refused(() => shapeAsk(fields, { expand: "author,author,author,author,author,author" }))).toBe("BAD_QUERY: Up to 5 relations can be opened at once");
@@ -205,6 +205,70 @@ describe("A row, as answered", () => {
   });
 });
 
+describe("A row as a page shows it", () => {
+  const F: Field[] = [
+    { id: "note", type: "text" },
+    { id: "state", type: "select", options: [{ id: "waiting", name: { ar: "ناطر", en: "Waiting" } }, { id: "done", name: { en: "Done" } }] },
+    { id: "amount", type: "money", currency: "ILS" },
+    { id: "count", type: "number" },
+    { id: "day", type: "date" },
+    { id: "seen", type: "boolean" },
+    { id: "to", type: "customer" },
+    { id: "photo", type: "image" },
+    { id: "site", type: "link" },
+    { id: "mail", type: "email" },
+    { id: "posts", type: "relation", to: "t2", many: true },
+    { id: "empty", type: "text" },
+  ];
+  const stored = { id: "r1", slug: "r-1", status: "DRAFT", createdAt: new Date(0), updatedAt: new Date(0), publishedAt: null, ownerId: "u-sara", data: {
+    note: { ar: "مرحبا", en: "Hello" }, state: "waiting", amount: 1250.5, count: 1234, day: "2026-03-01", seen: false, to: "lina@x.test", photo: "/a.png", site: "/shop", mail: "hi@x.test",
+    posts: [{ id: "p1", slug: "one", status: "PUBLISHED", title: { en: "One" } }, { id: "p2", slug: "two", status: "DRAFT", title: { en: "Two" } }],
+  } };
+  const T = { id: "t1", slug: "requests" };
+  const links: LinkModes = new Map([["posts", "published"]]);
+  const viewer = (id: string | null, email: string | null): Viewer => ({ id, email, names: new Map([["lina@x.test", "Lina Nasser"]]), owners: new Map([["u-sara", "Sara Haddad"]]) });
+
+  test("each field's words in the asked language, the way a page's elements show them; the address a field opens", () => {
+    const { shown, links: to } = asShown(stored, F, T, { lang: "en", links, viewer: viewer("u-lina", "lina@x.test") });
+    expect(shown).toEqual({ note: "Hello", state: "Waiting", amount: "₪1,250.50", count: "1,234", day: "1 March 2026", seen: "No", to: "Lina Nasser", posts: "One", mail: "hi@x.test", $by: "Sara" });
+    expect(to).toEqual({ site: "/shop", mail: "mailto:hi@x.test" });
+    const ar = asShown(stored, F, T, { lang: "ar", links, viewer: viewer("u-lina", "lina@x.test") }).shown;
+    expect([ar.note, ar.state, ar.seen]).toEqual(["مرحبا", "ناطر", "لا"]);
+    // Only the fields asked for.
+    expect(Object.keys(asShown(stored, F, T, { lang: "en", pick: ["note", "site"], links }).shown)).toEqual(["note"]);
+    expect(asShown(stored, F, T, { lang: "en", pick: ["note", "site"], links }).links).toEqual({ site: "/shop" });
+  });
+
+  test("who a row points at and who added it: as far as the reader may know", () => {
+    const by = (v?: Viewer) => asShown(stored, F, T, { lang: "en", links, viewer: v }).shown;
+    // The one it points at: her whole name; who added it by first name.
+    expect([by(viewer("u-lina", "lina@x.test")).to, by(viewer("u-lina", "lina@x.test")).$by]).toEqual(["Lina Nasser", "Sara"]);
+    // The one who added it: the other's first name, her own whole name.
+    expect([by(viewer("u-sara", "sara@x.test")).to, by(viewer("u-sara", "sara@x.test")).$by]).toEqual(["Lina", "Sara Haddad"]);
+    // Anyone else: a first name, and never who added it (the rows aren't theirs).
+    const anyone: Viewer = { id: null, email: null, names: new Map([["lina@x.test", "Lina Nasser"]]) };
+    expect(by(anyone).to).toBe("Lina");
+    expect(by(anyone)).not.toHaveProperty("$by");
+    // Nobody with that email: nothing to show (never the email); the row's owner sees the email they wrote.
+    const unknown: Viewer = { id: "u-dana", email: "dana@x.test", names: new Map() };
+    expect(by(unknown)).not.toHaveProperty("to");
+    expect(by({ id: "u-sara", email: "sara@x.test", names: new Map() }).to).toBe("lina@x.test");
+    // A key is answered the email itself.
+    expect(by(undefined).to).toBe("lina@x.test");
+    expect(JSON.stringify(by(anyone))).not.toContain("lina@x.test");
+  });
+
+  test("only when asked for; a relation the caller can't read shows nothing", () => {
+    expect(apiRow(stored, F, { lang: "en", links })).not.toHaveProperty("shown");
+    const row = apiRow(stored, F, { lang: "en", links: new Map(), shown: T, viewer: viewer(null, null) });
+    expect(row.shown).not.toHaveProperty("posts");
+    expect(row.links).toEqual({ site: "/shop", mail: "mailto:hi@x.test" });
+    expect(shapeAsk(F, {}).shown).toBe(false);
+    expect(shapeAsk(F, { shown: "1" }).shown).toBe(true);
+    expect(refused(() => shapeAsk(F, { shown: "yes" }))).toBe("BAD_QUERY: shown: 1 to answer each row also as a page shows it");
+  });
+});
+
 describe("A signed-in shopper, and fields that are a key's alone", () => {
   const key = (tables: "*" | string[], acts: KeyLite["scopes"]["acts"]): KeyLite => ({ id: "k", name: "k", prefix: "ek_x", scopes: { tables, acts }, perMinute: 60, revokedAt: null, expiresAt: null });
   const theirs = accessOf({ read: "customer", create: "customer", update: "customer", delete: "off" });
@@ -247,11 +311,14 @@ describe("A signed-in shopper, and fields that are a key's alone", () => {
     const fields: Field[] = [{ id: "title", type: "text" }];
     expect(listAsk(fields, {}, "customer").q.view).toBe("all");
     expect(listAsk(fields, { status: "draft", mine: "1" }, "customer").q.view).toBe("draft");
-    expect(mineAsked({})).toBe(false);
-    expect(mineAsked({ mine: "0" })).toBe(false);
-    expect(mineAsked({ mine: "1" })).toBe(true);
-    expect(mineAsked({ mine: "true" })).toBe(true);
-    expect(refused(() => mineAsked({ mine: "yes" }))).toBe("BAD_QUERY: mine: 1 for the signed-in shopper's own rows");
+    expect(mineAsked({})).toBeNull();
+    expect(mineAsked({ mine: "0" })).toBeNull();
+    expect(mineAsked({ mine: "1" })).toBe("all");
+    expect(mineAsked({ mine: "true" })).toBe("all");
+    // One half of them: the ones they added, the ones that point at them.
+    expect(mineAsked({ mine: "added" })).toBe("added");
+    expect(mineAsked({ mine: "tome" })).toBe("tome");
+    expect(refused(() => mineAsked({ mine: "yes" }))).toBe("BAD_QUERY: mine: 1 for the signed-in shopper's own rows (added: the ones they added, tome: the ones that point at them)");
     // A private field isn't one of a shopper's columns: asked about, it is a column that isn't there.
     expect(refused(() => listAsk(fields, { "staffNote[contains]": "x" }, "customer"))).toBe('BAD_QUERY: No column "staffNote" in this table');
   });

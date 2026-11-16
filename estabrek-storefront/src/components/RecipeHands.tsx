@@ -15,6 +15,7 @@ import { useLanguage } from "@/components/cinematic/Language";
 import { useQuickView } from "@/components/QuickViewModal";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { setHands, WHO_EVENT } from "@/pageTree/recipeHands";
+import { rowsOf } from "@/pageTree/rowsSpec";
 
 export function RecipeHands() {
   const cart = useCart();
@@ -97,6 +98,19 @@ export function RecipeHands() {
           return { ok: false, status: res.status, error: "", issues };
         } catch {
           return { ok: false, status: 0, error: "" };
+        }
+      },
+      rows: async (table, query) => {
+        try {
+          for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));
+          const who = (await now.current.account?.authHeaders()) ?? {};
+          const res = await fetch(`${apiBaseClient()}/data/${encodeURIComponent(table)}?${query}`, { cache: "no-store", headers: who });
+          if (!res.ok) return { ok: false, status: res.status };
+          const data = (await res.json().catch(() => ({}))) as { data?: unknown; total?: unknown };
+          const rows = rowsOf(data.data);
+          return { ok: true, rows, total: typeof data.total === "number" && data.total >= 0 ? data.total : rows.length };
+        } catch {
+          return { ok: false, status: 0 };
         }
       },
     });

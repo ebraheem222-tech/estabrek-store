@@ -12,10 +12,14 @@
  * "customer" holding the email they sign in with. Who a row points at is answered to a key as the
  * email; to anyone else as a first name and whether it is them (`personView`), and without a key it
  * can't be asked about (a filter would say whether someone is in the table).
+ *
+ * A shop page's list (lib/collectionTree.ts LIST_FEEDS) reads its rows here in the visitor's browser:
+ * `mine=added` and `mine=tome` are the two halves of a shopper's own rows, and `shown=1` answers each row
+ * also the way a page shows it (`asShown`).
  */
 import { z } from "zod";
 import { AppError } from "../utils/httpError.js";
-import type { Field } from "./collectionTree.js";
+import { boundValue, fieldsFor, type Field } from "./collectionTree.js";
 import { ACTS, keyCovers, type Act, type KeyLite } from "./apiKeys.js";
 import { GRID_LIMITS, GridQuerySchema, OPS, type GridFilter, type GridQuery, type Op, type View } from "./dataQuery.js";
 import { LANGS, type Lang } from "./dataRows.js";
@@ -79,7 +83,7 @@ export const reachFields = (fields: Field[]): string[] => fields.filter((f) => f
 /** A shopper a row points at, as anyone but a key is answered it. */
 export type PersonView = { /** A first name (the whole name to the shopper themself); null when there is no account with that email, or no name on it. */ name: string | null; me: boolean; /** Only to that shopper, and to the row's owner. */ email?: string };
 /** Who is reading: the signed-in shopper (if any), and the names of the shoppers the rows at hand point at, by email. */
-export type Viewer = { id: string | null; email: string | null; names: Map<string, string> };
+export type Viewer = { id: string | null; email: string | null; names: Map<string, string>; /** The names of who added the rows at hand, by their id: only where the rows are the shopper's own. */ owners?: Map<string, string> };
 
 export function personView(email: string, ownerId: string | null, viewer: Viewer): PersonView {
   const me = !!viewer.email && viewer.email === email;
@@ -125,7 +129,7 @@ export function docTables(all: ApiTable[], key: KeyLite | null, customer: string
 export const API_LIMITS = { pageSize: 100, pageSizeDefault: 25, expand: 5, publicWritesPerMinute: 10, /** A signed-in shopper's writes to one table. */ customerWritesPerMinute: 30 } as const;
 /** A row's own columns by the names the API uses (the grid's "$" names work too). */
 const OWN: Record<string, string> = { slug: "$slug", status: "$status", createdAt: "$createdAt", updatedAt: "$updatedAt", publishedAt: "$publishedAt" };
-const PLAIN = new Set(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match", "mine"]);
+const PLAIN = new Set(["page", "pageSize", "sort", "search", "lang", "status", "fields", "expand", "match", "mine", "shown"]);
 const NO_VALUE = new Set<Op>(["empty", "notEmpty", "isTrue", "isFalse"]);
 const STATUS_VIEW: Record<string, View> = { all: "all", draft: "draft", published: "published", archived: "archived" };
 
@@ -147,18 +151,24 @@ function whole(v: string | undefined, what: string, min: number, max: number, ot
   return n;
 }
 
-/** `mine=1`: a signed-in shopper asking for their own rows (whatever their status) of a table everyone reads. */
-export function mineAsked(query: Record<string, unknown>): boolean {
+/** Which of their own rows a signed-in shopper asks for: all of them, the ones they added, or the ones that point at them. */
+export type Mine = "all" | "added" | "tome";
+/**
+ * `mine=1`: a signed-in shopper asking for their own rows (whatever their status) of a table everyone reads;
+ * `mine=added` and `mine=tome`: only the ones they added, only the ones that point at them. Null: not asked.
+ */
+export function mineAsked(query: Record<string, unknown>): Mine | null {
   const raw = first(query.mine);
-  if (raw === undefined || raw === "" || raw === "0" || raw === "false") return false;
-  if (raw === "1" || raw === "true") return true;
-  throw bad("mine: 1 for the signed-in shopper's own rows");
+  if (raw === undefined || raw === "" || raw === "0" || raw === "false") return null;
+  if (raw === "1" || raw === "true") return "all";
+  if (raw === "added" || raw === "tome") return raw;
+  throw bad("mine: 1 for the signed-in shopper's own rows (added: the ones they added, tome: the ones that point at them)");
 }
 
-export type ListAsk = { q: GridQuery; /** Words answered in this language as plain strings; null = every language. */ lang: Lang | null; /** Only these fields; null = all. */ pick: string[] | null; expand: string[] };
+export type ListAsk = { q: GridQuery; /** Words answered in this language as plain strings; null = every language. */ lang: Lang | null; /** Only these fields; null = all. */ pick: string[] | null; expand: string[]; /** Each row also as a page shows it (`asShown`). */ shown: boolean };
 
 /** What to answer with, common to a list and one row: the language, the fields, the relations opened. */
-export function shapeAsk(fields: Field[], query: Record<string, unknown>): Pick<ListAsk, "lang" | "pick" | "expand"> {
+export function shapeAsk(fields: Field[], query: Record<string, unknown>): Pick<ListAsk, "lang" | "pick" | "expand" | "shown"> {
   const langRaw = first(query.lang);
   if (langRaw !== undefined && !(LANGS as readonly string[]).includes(langRaw)) throw bad("lang: ar, en or he");
   const pickRaw = first(query.fields);
@@ -167,7 +177,9 @@ export function shapeAsk(fields: Field[], query: Record<string, unknown>): Pick<
   const expand = parts(first(query.expand) ?? "");
   if (expand.length > API_LIMITS.expand) throw bad(`Up to ${API_LIMITS.expand} relations can be opened at once`);
   for (const id of expand) if (fields.find((f) => f.id === id)?.type !== "relation") throw bad(`"${id}" isn't a relation of this table`);
-  return { lang: (langRaw as Lang | undefined) ?? null, pick, expand };
+  const shownRaw = first(query.shown);
+  if (shownRaw !== undefined && !["", "0", "false", "1", "true"].includes(shownRaw)) throw bad("shown: 1 to answer each row also as a page shows it");
+  return { lang: (langRaw as Lang | undefined) ?? null, pick, expand, shown: shownRaw === "1" || shownRaw === "true" };
 }
 
 /**
@@ -235,7 +247,7 @@ export function listAsk(all: Field[], query: Record<string, unknown>, as: As): L
 
 /* ---------------- A row, as answered ---------------- */
 
-export type ApiRow = { id: string; slug: string; status: string; values: Record<string, unknown>; createdAt: Date; updatedAt: Date; publishedAt: Date | null };
+export type ApiRow = { id: string; slug: string; status: string; values: Record<string, unknown>; createdAt: Date; updatedAt: Date; publishedAt: Date | null; /** Asked with `shown=1`: each field's words as a page shows them, and the address a field opens. */ shown?: Record<string, string>; links?: Record<string, string> };
 /** How much of a relation's rows the caller sees: every linked row, or the published ones. A relation that isn't here links a table the caller can't read, and is left out. */
 export type LinkModes = Map<string, "all" | "published">;
 
@@ -255,7 +267,7 @@ type RowIn = { id: string; slug: string; status: string; data: unknown; createdA
  * null where the row has nothing (so every row of a table has the same shape). `row.data` already
  * holds each relation's linked rows (lib/links.ts withLinks).
  */
-export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; pick?: string[] | null; links?: LinkModes; expand?: Map<string, Map<string, ApiRow>>; /** Who reads, when it isn't a key (a key is answered the email itself). */ viewer?: Viewer } = { lang: null }): ApiRow {
+export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; pick?: string[] | null; links?: LinkModes; expand?: Map<string, Map<string, ApiRow>>; /** Who reads, when it isn't a key (a key is answered the email itself). */ viewer?: Viewer; /** Also as a page shows it: the row's table. */ shown?: { id: string; slug: string } } = { lang: null }): ApiRow {
   const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
   const values: Record<string, unknown> = {};
   for (const f of fields) {
@@ -271,7 +283,53 @@ export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; p
     else if (f.type === "customer" && opts.viewer) values[f.id] = typeof v === "string" && v ? personView(v, row.ownerId ?? null, opts.viewer) : null;
     else values[f.id] = v === undefined ? null : v;
   }
-  return { id: row.id, slug: row.slug, status: row.status, values, createdAt: row.createdAt, updatedAt: row.updatedAt, publishedAt: row.publishedAt };
+  return { id: row.id, slug: row.slug, status: row.status, values, createdAt: row.createdAt, updatedAt: row.updatedAt, publishedAt: row.publishedAt, ...(opts.shown ? asShown(row, fields, opts.shown, { lang: opts.lang ?? "ar", pick: opts.pick, links: opts.links, viewer: opts.viewer }) : {}) };
+}
+
+const YES_NO: Record<Lang, [string, string]> = { ar: ["نعم", "لا"], en: ["Yes", "No"], he: ["כן", "לא"] };
+const LINKS = fieldsFor(undefined, "href");
+
+/**
+ * A row as a page shows it (a shop page's list reads its rows this way: lib/collectionTree.ts LIST_FEEDS).
+ * `shown`: each field's words in one language, the way a page's elements show them (lib/collectionTree.ts
+ * `boundValue`: a number, a date, money, a choice's name…); a yes or a no; the rows a relation links, by their
+ * names; a shopper the row points at by name, as far as this caller may know it (`personView`: an email only
+ * where it is theirs to see). `shown.$by`: who added the row, by first name (their whole name to themself), only
+ * where the rows are a shopper's own. `links`: the address a field opens (a link, an email, a phone, a file, a
+ * place). A field with nothing to show is left out.
+ */
+export function asShown(row: RowIn, fields: Field[], table: { id: string; slug: string }, opts: { lang: Lang; pick?: string[] | null; links?: LinkModes; viewer?: Viewer }): { shown: Record<string, string>; links: Record<string, string> } {
+  const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
+  const item = { id: row.id, slug: row.slug, data };
+  const collection = { id: table.id, slug: table.slug, fields };
+  const shown: Record<string, string> = {};
+  const links: Record<string, string> = {};
+  for (const f of fields) {
+    if (opts.pick && !opts.pick.includes(f.id)) continue;
+    const v = data[f.id];
+    let words: string | null = null;
+    if (f.type === "relation") {
+      const mode = opts.links?.get(f.id);
+      if (!mode) continue;
+      const titles = (Array.isArray(v) ? v : []).filter((x) => !!x && typeof x === "object" && (mode === "all" || (x as { status?: unknown }).status === "PUBLISHED")).map((x) => wordsIn((x as { title?: unknown }).title, opts.lang)).filter((t): t is string => !!t);
+      words = titles.join(opts.lang === "ar" ? "، " : ", ");
+    } else if (f.type === "customer") {
+      if (typeof v === "string" && v) {
+        const who: { name: string | null; email?: string } = opts.viewer ? personView(v, row.ownerId ?? null, opts.viewer) : { name: null, email: v };
+        words = who.name ?? who.email ?? null;
+      }
+    } else if (f.type === "boolean") {
+      if (typeof v === "boolean") words = YES_NO[opts.lang][v ? 0 : 1];
+    } else words = wordsIn(boundValue("text", f.id, item, collection, "text"), opts.lang);
+    if (words && words.trim()) shown[f.id] = words;
+    if (LINKS.includes(f.type)) {
+      const to = boundValue("href", f.id, item, collection);
+      if (typeof to === "string" && to) links[f.id] = to;
+    }
+  }
+  const by = row.ownerId ? (opts.viewer?.owners?.get(row.ownerId) ?? "").trim() : "";
+  if (by) shown.$by = row.ownerId === opts.viewer?.id ? by : by.split(/\s+/)[0];
+  return { shown, links };
 }
 
 /** A field as the API describes it (the list of tables a caller reaches). */

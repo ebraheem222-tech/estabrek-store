@@ -1,0 +1,15 @@
+/* A list read in the visitor's browser (RowsView.tsx). The rows sit in the grid itself: their holder takes no box,
+   so each copy of the card is one of the grid's cells. What the list says (a moment, nothing yet, sign in) and its
+   "more" button take a whole line of the grid, in the page's own colour and font. */
+.rows { display: contents; }
+.note { grid-column: 1 / -1; margin: 0; padding: 12px 0; text-align: center; font-size: .95em; }
+.note[data-is="loading"] { opacity: .75; }
+.note a, .retry { color: inherit; font: inherit; font-weight: 600; text-decoration: underline; }
+.retry { padding: 0; border: 0; background: none; cursor: pointer; }
+.more {
+  grid-column: 1 / -1; justify-self: center; min-height: 46px; padding: 10px 26px;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 999px;
+  background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer;
+}
+.more:disabled { opacity: .6; cursor: progress; }
+.note a:focus-visible, .retry:focus-visible, .more:focus-visible { outline: 3px solid var(--accent, #243e38); outline-offset: 3px; }

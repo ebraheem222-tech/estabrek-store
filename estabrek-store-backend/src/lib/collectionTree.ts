@@ -9,6 +9,12 @@
  *   item, the first keeping the card's own ids (so the editor selects and edits the card itself),
  *   the others renamed after it. With no items the card shows as designed in the editor, and the
  *   list's own "empty" words (or nothing) on the shop.
+ * - A list with a `feed` isn't drawn with the page: the shop gets the card once and reads the rows
+ *   in the visitor's browser from the table's own API, as that visitor (lib/dataApi.ts): what the
+ *   table lets them read ("live"), or the signed-in shopper's own rows ("mine": the ones they added
+ *   and the ones pointing at them; "added" and "tome": one half of those). The card's elements keep
+ *   their `bind`; the shop fills each copy from the row as the API shows it. "$by" is who added
+ *   the row (a first name, and only in such a list).
  */
 
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -22,7 +28,8 @@ type Tree = { version: number; root: Node };
  * relation: links to rows of a table, kept in a table of their own (lib/links.ts), never among
  * the row's values. Then (M) a customer: a shopper the row points at, kept as the email they sign
  * in with. Where the table is open to shoppers, a row is also the shopper's it points at to read
- * (lib/dataApi.ts); it is never drawn on a shop page (no element takes it).
+ * (lib/dataApi.ts); it is never drawn with a page (no element takes it there). Only a list read in the
+ * visitor's browser shows who a row points at, by name and as far as that visitor may know (lib/dataApi.ts asShown).
  */
 export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location", "relation", "customer"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -65,7 +72,20 @@ const ELEMENT_FIELDS: Record<string, Record<string, readonly FieldType[]>> = { v
 export const fieldsFor = (element: string | undefined, prop: string): readonly FieldType[] => (element && ELEMENT_FIELDS[element]?.[prop]) || PROP_FIELDS[prop] || [];
 /** Where a date's time is told (the store's own zone; this file has no imports, so it reads the setting itself). */
 const STORE_ZONE = (typeof process !== "undefined" && process.env && process.env.STORE_TIMEZONE) || "Asia/Jerusalem";
-export const BIND_REF = /^(\$url|\$slug|[a-z][a-zA-Z0-9]{0,30})$/;
+export const BIND_REF = /^(\$url|\$slug|\$by|[a-z][a-zA-Z0-9]{0,30})$/;
+/** Whose rows a list shows when it is read in the visitor's browser (none of these: the published ones, drawn with the page). */
+export const LIST_FEEDS = ["live", "mine", "added", "tome"] as const;
+export type ListFeed = (typeof LIST_FEEDS)[number];
+/** What such a list may ask of a field: a few of the API's questions (lib/dataQuery.ts). */
+export const LIST_OPS = ["is", "isNot", "contains", "gt", "gte", "lt", "lte", "empty", "notEmpty", "isTrue", "isFalse"] as const;
+export type ListOp = (typeof LIST_OPS)[number];
+export const LIST_LIMITS = { filters: 4, value: 80 } as const;
+export type ListFilter = { field: string; op: ListOp; value?: string };
+/**
+ * Such a list as the shop gets it (on the grid it becomes, in `props.live`): the table's address, whose rows,
+ * how many at a time, the API's own sort, its filters, and its words for no rows and for a visitor who isn't signed in.
+ */
+export type LiveList = { table: string; feed: ListFeed; limit: number; sort: string; where?: ListFilter[]; empty?: Local; signin?: Local };
 const LANGS = ["ar", "en", "he"] as const;
 const LOCALE: Record<(typeof LANGS)[number], string> = { ar: "ar", en: "en-GB", he: "he-IL" };
 
@@ -169,6 +189,28 @@ export function listQuery(props: Record<string, unknown>): { sort: "newest" | "o
   return { sort, limit };
 }
 
+/** Whose rows a list shows, when it is one read in the browser (null: drawn with the page). */
+export function listFeed(props: Record<string, unknown>): ListFeed | null {
+  return (LIST_FEEDS as readonly unknown[]).includes(props.feed) ? (props.feed as ListFeed) : null;
+}
+
+/** A list's filters as kept (anything that isn't one is left out). */
+export function listFilters(props: Record<string, unknown>): ListFilter[] {
+  const out: ListFilter[] = [];
+  for (const x of Array.isArray(props.where) ? props.where : []) {
+    if (out.length >= LIST_LIMITS.filters) break;
+    const f = x as { field?: unknown; op?: unknown; value?: unknown } | null;
+    if (!f || typeof f.field !== "string" || !/^[a-z][a-zA-Z0-9]{0,30}$/.test(f.field) || !(LIST_OPS as readonly unknown[]).includes(f.op)) continue;
+    const value = typeof f.value === "string" ? f.value.slice(0, LIST_LIMITS.value) : undefined;
+    out.push({ field: f.field, op: f.op as ListOp, ...(value !== undefined && value !== "" ? { value } : {}) });
+  }
+  return out;
+}
+
+const words = (v: unknown): Local | undefined => (v && typeof v === "object" && !Array.isArray(v) && Object.values(v).some((x) => typeof x === "string" && x.trim()) ? (v as Local) : undefined);
+/** A card without lists inside it (a list read in the browser repeats its card there, where no list is drawn). */
+const withoutLists = (n: Node): Node => (n.children ? { ...n, children: n.children.filter((c) => c.type !== "collectionList").map(withoutLists) } : n);
+
 const time = (v: unknown) => { const t = v ? new Date(String(v)).getTime() : NaN; return Number.isNaN(t) ? 0 : t; };
 /** A list's items in its order: newest or oldest first, the merchant's own order, or by the first words field. */
 export function sortItems(items: ItemLite[], sort: ReturnType<typeof listQuery>["sort"], collection: CollectionLite | null, lang: "ar" | "en" | "he" = "ar"): ItemLite[] {
@@ -207,11 +249,22 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
       const items = sortItems(got?.items ?? [], sort, got?.collection ?? null).slice(0, limit);
       const columns = typeof n.props.columns === "number" && n.props.columns >= 1 && n.props.columns <= 6 ? n.props.columns : 3;
       const style = { ...(n.style ?? {}), base: { columns, gap: 24, ...(n.style?.base ?? {}) }, tablet: { columns: Math.min(columns, 2), ...(n.style?.tablet ?? {}) }, mobile: { columns: 1, ...(n.style?.mobile ?? {}) } };
+      const { collectionId: _c, limit: _l, sort: _s, columns: _col, empty: _e, layout: _lay, feed: _f, where: _w, signin: _si, ...rest } = n.props;
+      // Read in the visitor's browser: the shop gets the card once, its connections kept, and what to ask the
+      // table's API. (The editor's preview shows the card as designed: nobody's rows are read there.)
+      const feed = listFeed(n.props);
+      if (feed && !opts.preview) {
+        if (!card || !got) return { ...n, type: "grid", props: rest, style, children: [] };
+        const where = listFilters(n.props);
+        const empty = words(n.props.empty);
+        const signin = words(n.props.signin);
+        const live: LiveList = { table: got.collection.slug, feed, limit, sort: sort === "oldest" ? "createdAt" : "-createdAt", ...(where.length ? { where } : {}), ...(empty ? { empty } : {}), ...(signin ? { signin } : {}) };
+        return { ...n, type: "grid", props: { ...rest, live }, style, children: [withoutLists(card)] };
+      }
       let cards: Node[] = [];
-      if (card && items.length && got) cards = items.map((item, i) => bindNode(i === 0 ? card : renamed(card, `${card.id.slice(0, 30)}_${i}`), item, got.collection));
+      if (card && items.length && got && !feed) cards = items.map((item, i) => bindNode(i === 0 ? card : renamed(card, `${card.id.slice(0, 30)}_${i}`), item, got.collection));
       else if (card && opts.preview) cards = [bindNode(card, null, null)];
       else if (n.props.empty && typeof n.props.empty === "object") cards = [{ id: `${n.id.slice(0, 40)}_empty`, type: "text", props: { text: n.props.empty } }];
-      const { collectionId: _c, limit: _l, sort: _s, columns: _col, empty: _e, layout: _lay, ...rest } = n.props;
       return { ...n, type: "grid", props: rest, style, children: cards };
     }
     if (!n.children?.length) return n;

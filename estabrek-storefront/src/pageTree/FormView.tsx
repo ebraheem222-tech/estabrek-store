@@ -11,6 +11,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import type { TreeLang } from "./tree";
 import { FORM_SENT_EVENT, FORM_TEXT_MOST, formWords, problemOf, valuesFor, type FormFieldSpec, type FormSpec, type FormValue } from "./formSpec";
 import { fillVars, keepAnswer } from "./recipeVars";
+import { rowsChanged } from "./rowsSpec";
 import { wantHands, whenHands } from "./recipeHands";
 import css from "./FormView.module.css";
 
@@ -84,6 +85,8 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
       if (spec.send.to === "fn" && spec.send.as) keepAnswer(spec.send.as, out.value);
       done();
       root.current?.closest("[data-tree-node]")?.dispatchEvent(new CustomEvent(FORM_SENT_EVENT));
+      // What it added may show in a list on this page: lists read their rows again.
+      rowsChanged();
       return;
     }
     // A table says what is wrong field by field; what isn't about a field of this form is said under the button.

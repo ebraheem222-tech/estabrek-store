@@ -15,6 +15,10 @@
  *
  * Whoever asked for less motion still gets every action except the moves and bursts. In the
  * editor's frame nothing runs by itself (clicks there select); the editor tests a trigger.
+ *
+ * In a row of a list read in the browser (RowsView.tsx) a recipe sees the row's own values first ({{row_id}},
+ * {{row_<field>}}) and reaches the row's own copy of an element; the list starts its rows' recipes itself
+ * (`wireRecipes`), since they are drawn after the page.
  */
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -23,8 +27,9 @@ import { keyPlayers } from "./motionPlayers";
 import { sceneScrollTop } from "./TreeScenes";
 import { studioLink } from "./studioLink";
 import { ask, burst, playMove, sound, toast } from "./triggerEffects";
-import { changeVar, compareVar, fillVars, getVar, keepAnswer, showVars, VARS_EVENT } from "./recipeVars";
+import { changeVar, compareVar, fillVars as fill, getVar, keepAnswer, rowScopeOf, scopedVar, showVars, VARS_EVENT } from "./recipeVars";
 import { FORM_SENT_EVENT } from "./formSpec";
+import { rowsChanged } from "./rowsSpec";
 import { getHands, mayRun, signedIn, wantHands, whenHands, WHO_EVENT } from "./recipeHands";
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { HIT_EVENT, hitMatches, type HitDetail } from "./physics";
@@ -33,7 +38,10 @@ const sleep = (s: number) => new Promise<void>((r) => window.setTimeout(r, s * 1
 
 function targetOf(self: HTMLElement, id: string): HTMLElement | null {
   if (id === "self") return self;
-  return document.querySelector<HTMLElement>(`[data-tree-node="${id}"]`);
+  // In a list's row: this row's own copy of the element (every row has one), then the page's.
+  const row = self.closest<HTMLElement>("[data-pt-row]");
+  const inRow = row ? (row.matches(`[data-tree-node="${id}"]`) ? row : row.querySelector<HTMLElement>(`[data-tree-node="${id}"]`)) : null;
+  return inRow ?? document.querySelector<HTMLElement>(`[data-tree-node="${id}"]`);
 }
 
 /** Shown or hidden for this visit; what the page hid itself comes back as a block. */
@@ -55,7 +63,7 @@ function setVisible(el: HTMLElement, value: "show" | "hide" | "toggle", reduced:
  * question answers itself, the bag and the wishlist aren't touched, and what would leave the page is only said.
  * With `fail`, the steps that can fail do.
  */
-type Run = { self: HTMLElement; reduced: boolean; point?: { x: number; y: number }; alive: () => boolean; tryout?: { fail: boolean }; /** The recipe says what happens when a step fails (else a function's own words are shown). */ hasFail?: boolean };
+type Run = { self: HTMLElement; reduced: boolean; point?: { x: number; y: number }; alive: () => boolean; tryout?: { fail: boolean }; /** The recipe says what happens when a step fails (else a function's own words are shown). */ hasFail?: boolean; /** The values of the list's row the element is in ({{row_id}}…): they come before the visit's variables. */ row?: Record<string, VarValue> | null };
 
 /** A step failed (a "no" to a question, a product that can't be bought): the recipe's `fail` steps run instead of the rest. */
 const FAIL = Symbol("fail");
@@ -83,7 +91,9 @@ const FN_REFUSED: Record<string, Record<string, string>> = {
 };
 
 /** One action. */
-async function act(a: TriggerActionSpec, { self, reduced, point, tryout, hasFail }: Run) {
+async function act(a: TriggerActionSpec, { self, reduced, point, tryout, hasFail, row }: Run) {
+  // Words with their {{name}} filled in: the row's own values first.
+  const fillVars = (text: string) => fill(text, row);
   if (tryout && IN_SHOP[a.act]) {
     if (tryout.fail && (a.act === "bag" || a.act === "wish" || a.act === "fn")) throw FAIL;
     const lang = langOf(self);
@@ -236,6 +246,8 @@ async function act(a: TriggerActionSpec, { self, reduced, point, tryout, hasFail
         const out = hands ? await hands.fn(a.fn, Object.fromEntries(Object.entries(a.input).map(([k, v]) => [k, fillVars(v)]))) : { ok: false as const, status: 0, error: "" };
         if (out.ok) {
           if (a.as) keepAnswer(a.as, out.value);
+          // What it did may show in a list on this page: lists read their rows again.
+          rowsChanged();
           break;
         }
         // Why: the function's own words, or ours for what kept it from running. A recipe with fail steps says it itself ({{error}}).
@@ -297,10 +309,10 @@ async function steps(list: StepSpec[], run: Run): Promise<void> {
 const device = () => (window.innerWidth < 768 ? "phone" : window.innerWidth < 1100 ? "tablet" : "desktop");
 
 /** Whether a condition holds now (`count`: how many times this recipe ran, with this one). */
-function holds(c: ConditionSpec, count: number, self: HTMLElement): boolean {
+function holds(c: ConditionSpec, count: number, self: HTMLElement, row?: Record<string, VarValue> | null): boolean {
   switch (c.if) {
     case "var":
-      return compareVar(getVar(c.name), c.cmp, c.value);
+      return compareVar(scopedVar(c.name, row), c.cmp, c.value);
     case "count":
       return c.cmp === "eq" ? count === c.value : c.cmp === "gte" ? count >= c.value : c.cmp === "lte" ? count <= c.value : count % c.value === 0;
     case "device":
@@ -327,7 +339,7 @@ function holds(c: ConditionSpec, count: number, self: HTMLElement): boolean {
 async function runRecipe(t: TriggerSpec, count: number, run: Run) {
   // A condition on the bag waits for the shop's hands (they may still be loading right after the page opens).
   if (t.if.some((c) => c.if === "bag")) await whenHands();
-  const ok = t.if.every((c) => holds(c, count, run.self));
+  const ok = t.if.every((c) => holds(c, count, run.self, run.row));
   run.hasFail = (t.fail?.length ?? 0) > 0;
   try {
     await steps(ok ? t.do : t.else, run);
@@ -361,22 +373,189 @@ function colourOf(el: Element, c: string): string {
   return name ? getComputedStyle(el).getPropertyValue(name).trim() || "#888888" : c;
 }
 
+const inStudio = () => window.parent !== window && /\/studio-frame/.test(window.location.pathname);
+const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** An element's recipes, as the page wrote them on it. */
+const listOf = (el: HTMLElement): TriggerSpec[] => {
+  try {
+    const v = JSON.parse(el.dataset.ptTriggers ?? "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
+/** Where a list read in the browser keeps its card (never pressed) and its rows (started by the list itself). */
+const IN_ROWS = "[data-pt-row-card],[data-pt-rows]";
+
+/** "Who may": an element with a locked recipe that isn't for this shopper says so. */
+function lockCheck(els: HTMLElement[], studio: boolean) {
+  for (const el of els) {
+    const locked = !studio && listOf(el).some((t) => t.who && t.deny === "lock" && !mayRun(t.who));
+    if (locked) el.setAttribute("data-pt-denied", "lock");
+    else el.removeAttribute("data-pt-denied");
+  }
+}
+
+/** One element's recipes start listening; `offs` collects how to stop them. */
+function wire(el: HTMLElement, alive: () => boolean, offs: Array<() => void>) {
+  listOf(el).forEach((t) => {
+    let spent = false;
+    let count = 0;
+    let busy = false;
+    const fire = (point?: { x: number; y: number }) => {
+      // Once is once; and it never runs over itself (a second press while it's still going does nothing).
+      if (spent || busy) return;
+      // Not for this shopper: a press says so (or sends them to sign in); the mouse passing by says nothing.
+      if (!mayRun(t.who)) return PRESSES.has(t.on) ? turnedAway(t) : undefined;
+      if (t.once) spent = true;
+      busy = true;
+      running.set(el, (running.get(el) ?? 0) + 1);
+      // Busy shows only when it takes a moment (a wait, a question, the bag).
+      const mark = window.setTimeout(() => { el.setAttribute("data-pt-busy", ""); el.setAttribute("aria-busy", "true"); }, 180);
+      void runRecipe(t, ++count, { self: el, reduced: reduced(), point, alive, row: rowScopeOf(el) }).catch(() => {}).finally(() => {
+        busy = false;
+        window.clearTimeout(mark);
+        const left = (running.get(el) ?? 1) - 1;
+        running.set(el, left);
+        if (left <= 0) { el.removeAttribute("data-pt-busy"); el.removeAttribute("aria-busy"); }
+      });
+    };
+    const on = (type: string, fn: (e: Event) => void, target: EventTarget = el) => {
+      target.addEventListener(type, fn, { passive: type !== "click" && type !== "dblclick" && type !== "contextmenu" });
+      offs.push(() => target.removeEventListener(type, fn));
+    };
+    switch (t.on) {
+      case "click":
+      case "dblclick":
+        on(t.on, (e) => {
+          // A link to nowhere ("#") stays here; a real one still goes (unless the trigger opens it itself).
+          const a = (e.target as Element | null)?.closest?.("a[href]");
+          if (a && (a.getAttribute("href") === "#" || [...t.do, ...t.else].some((x) => STAYS.has(x.act)) || !mayRun(t.who))) e.preventDefault();
+          const m = e as MouseEvent;
+          fire(m.clientX || m.clientY ? { x: m.clientX, y: m.clientY } : undefined);
+        });
+        break;
+      case "longpress": {
+        // Held still for a moment (a finger or the mouse); the click that ends it does nothing else.
+        let timer = 0;
+        let held = false;
+        let from: { x: number; y: number } | null = null;
+        const cancel = () => { window.clearTimeout(timer); timer = 0; };
+        on("pointerdown", (e) => {
+          const p = e as PointerEvent;
+          if (p.button) return;
+          cancel();
+          held = false;
+          from = { x: p.clientX, y: p.clientY };
+          timer = window.setTimeout(() => { timer = 0; held = true; fire(from ?? undefined); }, LONG_PRESS_MS);
+        });
+        on("pointermove", (e) => {
+          const p = e as PointerEvent;
+          if (timer && from && Math.hypot(p.clientX - from.x, p.clientY - from.y) > 10) cancel();
+        });
+        on("pointerup", cancel);
+        on("pointerleave", cancel);
+        on("pointercancel", cancel);
+        on("contextmenu", (e) => { if (timer || held) e.preventDefault(); });
+        on("click", (e) => { if (held) { held = false; e.preventDefault(); } });
+        offs.push(cancel);
+        break;
+      }
+      case "key": {
+        on("keydown", (e) => {
+          const k = e as KeyboardEvent;
+          if (k.repeat || k.ctrlKey || k.metaKey || k.altKey) return;
+          // Typing in a field is typing.
+          const field = k.target instanceof HTMLElement ? k.target : null;
+          if (field && (field.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName))) return;
+          if ((k.key === " " ? "Space" : k.key.length === 1 ? k.key.toLowerCase() : k.key) === t.key) fire();
+        }, window);
+        break;
+      }
+      case "hit":
+        // Its body in a physics world met something (physicsWorld.ts says so on the element): what this
+        // recipe waits for, or not. Where they met is the recipe's point (a burst goes off there).
+        on(HIT_EVENT, (e) => {
+          const d = (e as CustomEvent<HitDetail>).detail;
+          if (d && hitMatches(t.hit, d.with)) fire(d.at);
+        });
+        break;
+      case "sent":
+        // The element is a form of the owner's own, and it was just sent and taken (FormView.tsx says so).
+        on(FORM_SENT_EVENT, () => fire());
+        break;
+      case "hover":
+        on("pointerenter", () => fire());
+        break;
+      case "leave":
+        on("pointerleave", () => fire());
+        break;
+      case "view":
+      case "leaveView": {
+        let seen = false;
+        const io = new IntersectionObserver(([e]) => {
+          if (t.on === "view" && e.isIntersecting && !seen) fire();
+          if (t.on === "leaveView" && !e.isIntersecting && seen) fire();
+          seen = e.isIntersecting;
+        }, { threshold: 0.35 });
+        io.observe(el);
+        offs.push(() => io.disconnect());
+        break;
+      }
+      case "load": {
+        const timer = window.setTimeout(() => fire(), (t.at ?? 0) * 1000);
+        offs.push(() => window.clearTimeout(timer));
+        break;
+      }
+      case "timer": {
+        const timer = window.setTimeout(() => fire(), (t.at ?? 5) * 1000);
+        offs.push(() => window.clearTimeout(timer));
+        break;
+      }
+      case "scrolled": {
+        let past = false;
+        const check = () => {
+          const most = document.documentElement.scrollHeight - window.innerHeight;
+          const now = most > 0 && (window.scrollY / most) * 100 >= (t.at ?? 50);
+          if (now && !past) fire();
+          past = now;
+        };
+        on("scroll", check, window);
+        check();
+        break;
+      }
+    }
+  });
+}
+
+/**
+ * The recipes of the elements inside `root` start listening: a list's rows, drawn after the page (RowsView.tsx).
+ * Returns how to stop them listening (before the rows are drawn again). A recipe already running goes on to its
+ * end while `alive` holds (the list is still on the page): accepting a row draws the rows again, and what the
+ * recipe does after that (its words, a wait) still happens. Nothing runs in the editor's frame.
+ */
+export function wireRecipes(root: HTMLElement, alive: () => boolean = () => true): () => void {
+  if (inStudio()) return () => {};
+  const offs: Array<() => void> = [];
+  const els = Array.from(root.querySelectorAll<HTMLElement>("[data-pt-triggers]"));
+  if (!els.length) return () => {};
+  wantHands();
+  const who = () => lockCheck(els, false);
+  who();
+  window.addEventListener(WHO_EVENT, who);
+  offs.push(() => window.removeEventListener(WHO_EVENT, who));
+  for (const el of els) wire(el, alive, offs);
+  return () => offs.forEach((f) => f());
+}
+
 export function TreeTriggers({ revision = 0 }: { revision?: number }) {
   const pathname = usePathname();
   const viewRevision = useStudioViewRevision("[data-pt-triggers]", ["data-pt-triggers"], `${pathname}:${revision}`);
   useEffect(() => {
-    const studio = window.parent !== window && /\/studio-frame/.test(window.location.pathname);
-    const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const studio = inStudio();
     const offs: Array<() => void> = [];
-    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-pt-triggers]"));
-    const listOf = (el: HTMLElement): TriggerSpec[] => {
-      try {
-        const v = JSON.parse(el.dataset.ptTriggers ?? "[]");
-        return Array.isArray(v) ? v : [];
-      } catch {
-        return [];
-      }
-    };
+    // A list's card and its rows aside: the card is never pressed, the rows are started by their list.
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-pt-triggers]")).filter((el) => !el.closest(IN_ROWS));
     let live = true;
     const alive = () => live;
     offs.push(() => { live = false; });
@@ -387,11 +566,7 @@ export function TreeTriggers({ revision = 0 }: { revision?: number }) {
     // "Who may": the page knows who's signed in (the hidden kind is CSS, off html[data-pt-in]); a locked one says so.
     const who = () => {
       document.documentElement.toggleAttribute("data-pt-in", signedIn());
-      for (const el of els) {
-        const locked = !studio && listOf(el).some((t) => t.who && t.deny === "lock" && !mayRun(t.who));
-        if (locked) el.setAttribute("data-pt-denied", "lock");
-        else el.removeAttribute("data-pt-denied");
-      }
+      lockCheck(els, studio);
     };
     who();
     window.addEventListener(WHO_EVENT, who);
@@ -411,138 +586,7 @@ export function TreeTriggers({ revision = 0 }: { revision?: number }) {
       // The owner tries it whoever it is for; `fail` tries what happens when a step fails.
       if (el && t) void runRecipe(t, tried.get(key)!, { self: el, reduced: reduced(), alive, tryout: { fail: msg.fail === true } }).catch(() => {});
     }));
-    if (!studio) {
-      for (const el of els) {
-        listOf(el).forEach((t) => {
-          let spent = false;
-          let count = 0;
-          let busy = false;
-          const fire = (point?: { x: number; y: number }) => {
-            // Once is once; and it never runs over itself (a second press while it's still going does nothing).
-            if (spent || busy) return;
-            // Not for this shopper: a press says so (or sends them to sign in); the mouse passing by says nothing.
-            if (!mayRun(t.who)) return PRESSES.has(t.on) ? turnedAway(t) : undefined;
-            if (t.once) spent = true;
-            busy = true;
-            running.set(el, (running.get(el) ?? 0) + 1);
-            // Busy shows only when it takes a moment (a wait, a question, the bag).
-            const mark = window.setTimeout(() => { el.setAttribute("data-pt-busy", ""); el.setAttribute("aria-busy", "true"); }, 180);
-            void runRecipe(t, ++count, { self: el, reduced: reduced(), point, alive }).catch(() => {}).finally(() => {
-              busy = false;
-              window.clearTimeout(mark);
-              const left = (running.get(el) ?? 1) - 1;
-              running.set(el, left);
-              if (left <= 0) { el.removeAttribute("data-pt-busy"); el.removeAttribute("aria-busy"); }
-            });
-          };
-          const on = (type: string, fn: (e: Event) => void, target: EventTarget = el) => {
-            target.addEventListener(type, fn, { passive: type !== "click" && type !== "dblclick" && type !== "contextmenu" });
-            offs.push(() => target.removeEventListener(type, fn));
-          };
-          switch (t.on) {
-            case "click":
-            case "dblclick":
-              on(t.on, (e) => {
-                // A link to nowhere ("#") stays here; a real one still goes (unless the trigger opens it itself).
-                const a = (e.target as Element | null)?.closest?.("a[href]");
-                if (a && (a.getAttribute("href") === "#" || [...t.do, ...t.else].some((x) => STAYS.has(x.act)) || !mayRun(t.who))) e.preventDefault();
-                const m = e as MouseEvent;
-                fire(m.clientX || m.clientY ? { x: m.clientX, y: m.clientY } : undefined);
-              });
-              break;
-            case "longpress": {
-              // Held still for a moment (a finger or the mouse); the click that ends it does nothing else.
-              let timer = 0;
-              let held = false;
-              let from: { x: number; y: number } | null = null;
-              const cancel = () => { window.clearTimeout(timer); timer = 0; };
-              on("pointerdown", (e) => {
-                const p = e as PointerEvent;
-                if (p.button) return;
-                cancel();
-                held = false;
-                from = { x: p.clientX, y: p.clientY };
-                timer = window.setTimeout(() => { timer = 0; held = true; fire(from ?? undefined); }, LONG_PRESS_MS);
-              });
-              on("pointermove", (e) => {
-                const p = e as PointerEvent;
-                if (timer && from && Math.hypot(p.clientX - from.x, p.clientY - from.y) > 10) cancel();
-              });
-              on("pointerup", cancel);
-              on("pointerleave", cancel);
-              on("pointercancel", cancel);
-              on("contextmenu", (e) => { if (timer || held) e.preventDefault(); });
-              on("click", (e) => { if (held) { held = false; e.preventDefault(); } });
-              offs.push(cancel);
-              break;
-            }
-            case "key": {
-              on("keydown", (e) => {
-                const k = e as KeyboardEvent;
-                if (k.repeat || k.ctrlKey || k.metaKey || k.altKey) return;
-                // Typing in a field is typing.
-                const field = k.target instanceof HTMLElement ? k.target : null;
-                if (field && (field.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName))) return;
-                if ((k.key === " " ? "Space" : k.key.length === 1 ? k.key.toLowerCase() : k.key) === t.key) fire();
-              }, window);
-              break;
-            }
-            case "hit":
-              // Its body in a physics world met something (physicsWorld.ts says so on the element): what this
-              // recipe waits for, or not. Where they met is the recipe's point (a burst goes off there).
-              on(HIT_EVENT, (e) => {
-                const d = (e as CustomEvent<HitDetail>).detail;
-                if (d && hitMatches(t.hit, d.with)) fire(d.at);
-              });
-              break;
-            case "sent":
-              // The element is a form of the owner's own, and it was just sent and taken (FormView.tsx says so).
-              on(FORM_SENT_EVENT, () => fire());
-              break;
-            case "hover":
-              on("pointerenter", () => fire());
-              break;
-            case "leave":
-              on("pointerleave", () => fire());
-              break;
-            case "view":
-            case "leaveView": {
-              let seen = false;
-              const io = new IntersectionObserver(([e]) => {
-                if (t.on === "view" && e.isIntersecting && !seen) fire();
-                if (t.on === "leaveView" && !e.isIntersecting && seen) fire();
-                seen = e.isIntersecting;
-              }, { threshold: 0.35 });
-              io.observe(el);
-              offs.push(() => io.disconnect());
-              break;
-            }
-            case "load": {
-              const timer = window.setTimeout(() => fire(), (t.at ?? 0) * 1000);
-              offs.push(() => window.clearTimeout(timer));
-              break;
-            }
-            case "timer": {
-              const timer = window.setTimeout(() => fire(), (t.at ?? 5) * 1000);
-              offs.push(() => window.clearTimeout(timer));
-              break;
-            }
-            case "scrolled": {
-              let past = false;
-              const check = () => {
-                const most = document.documentElement.scrollHeight - window.innerHeight;
-                const now = most > 0 && (window.scrollY / most) * 100 >= (t.at ?? 50);
-                if (now && !past) fire();
-                past = now;
-              };
-              on("scroll", check, window);
-              check();
-              break;
-            }
-          }
-        });
-      }
-    }
+    if (!studio) for (const el of els) wire(el, alive, offs);
     return () => offs.forEach((f) => f());
   }, [pathname, revision, viewRevision]);
   return null;
