@@ -46,6 +46,8 @@ export type FnLite = {
   inputs: number;
   /** What the published one is handed (for a function that calls it). */
   takes: FnInput[];
+  /** Its call addresses (a shop page's button runs it through one), and who may call each. */
+  calls?: Array<{ address: string; who: "customer" | "key" | "public" }>;
   runs: number;
   lastRunAt: string | null;
   updatedAt: string;

@@ -14,6 +14,12 @@ export type Hands = {
   phone: () => string;
   /** How many pieces are in the bag. */
   bagCount: () => number;
+  /**
+   * Runs one of the owner's functions by its call address, as whoever is signed in (or as anyone). Its answer, or
+   * why not: `status` 422 = the function itself stopped (`error` is its own words), 401 = it needs a signed-in
+   * shopper, 429 = too many presses, 404 = no such address (or switched off), 0 = the shop couldn't be reached.
+   */
+  fn: (address: string, input: Record<string, string>) => Promise<{ ok: true; value: unknown } | { ok: false; status: number; error: string }>;
 };
 
 let hands: Hands | null = null;
