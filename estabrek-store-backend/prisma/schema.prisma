@@ -532,6 +532,36 @@ model FnTrigger {
   @@index([kind, enabled])
 }
 
+/// A feature the owner built (M, admin → ميزاتي): a name over things made elsewhere in the studio
+/// (tables, functions, pages), to find them together and to switch them off together
+/// (src/lib/featureGate.ts).
+model Feature {
+  id        String        @id @default(cuid())
+  name      String
+  note      String?
+  /// Off: its functions aren't started and its tables' API answers as closed.
+  enabled   Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  items     FeatureItem[]
+
+  @@index([createdAt])
+}
+
+/// One thing of a feature. A thing belongs to one feature at most.
+model FeatureItem {
+  featureId String
+  feature   Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  /// "table" | "function" | "page"
+  kind      String
+  /// The table's, the function's or the page's id (each lives in its own table: not a relation).
+  refId     String
+  createdAt DateTime @default(now())
+
+  @@id([kind, refId])
+  @@index([featureId])
+}
+
 /// The queue (E0.3, src/lib/tasks.ts; admin → صف الشغل): background work that must not be lost.
 /// A row until it is done: a restart in the middle doesn't drop it, a failure is tried again after
 /// a growing wait, and one that keeps failing is set aside for the owner to look at.

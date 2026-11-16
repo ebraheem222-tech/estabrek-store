@@ -20,6 +20,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { AppError } from "../utils/httpError.js";
+import { switchedOff } from "./featureGate.js";
 import { recordRun } from "./runs.js";
 import { dayOf, nextDay, zonedToUtc } from "./storeTime.js";
 import { enqueueTask } from "./tasks.js";
@@ -95,11 +96,17 @@ let cache: { at: number; list: LiveTrigger[] } | null = null;
 export function forgetTriggers() {
   cache = null;
 }
-/** The switched-on triggers of functions that are published and switched on (read every few seconds). */
+/**
+ * The switched-on triggers of functions that are published and switched on, and not part of a
+ * feature that is switched off (read every few seconds).
+ */
 export async function liveTriggers(now = Date.now()): Promise<LiveTrigger[]> {
   if (!cache || now - cache.at > 10_000) {
-    const rows = await prisma.fnTrigger.findMany({ where: { enabled: true, fn: { enabled: true, publishedAt: { not: null } } }, select: { id: true, fnId: true, kind: true, config: true, slug: true } });
-    cache = { at: now, list: rows.map((t) => ({ ...t, kind: t.kind as TriggerKind, config: (t.config ?? {}) as Record<string, unknown> })) };
+    const [rows, off] = await Promise.all([
+      prisma.fnTrigger.findMany({ where: { enabled: true, fn: { enabled: true, publishedAt: { not: null } } }, select: { id: true, fnId: true, kind: true, config: true, slug: true } }),
+      switchedOff(now),
+    ]);
+    cache = { at: now, list: rows.filter((t) => !off.fns.has(t.fnId)).map((t) => ({ ...t, kind: t.kind as TriggerKind, config: (t.config ?? {}) as Record<string, unknown> })) };
   }
   return cache.list;
 }

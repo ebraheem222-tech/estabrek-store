@@ -35,6 +35,7 @@ import { openApi } from "../../lib/apiDocs.js";
 import { API_LIMITS, DATA_API_BASE, allow, apiRow, docTables, fieldView, isOpen, listAsk, mineAsked, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
 import { LANGS } from "../../lib/dataRows.js";
+import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow } from "../../lib/fnTriggers.js";
 import { hit } from "../../lib/hitLimit.js";
 import { namedRows, relationsOf, trashRows, withLinks } from "../../lib/links.js";
@@ -50,7 +51,11 @@ r.use(apiCaller);
 /* ---------------- The table, and whether this caller gets in ---------------- */
 
 const TABLE = { id: true, slug: true, name: true, fields: true, api: true } as const;
-const everyTable = async () => (await prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: TABLE })).map(tableFrom);
+/** The tables, but for the ones of a feature that is switched off (admin → ميزاتي): those answer as closed. */
+const everyTable = async () => {
+  const [all, off] = await Promise.all([prisma.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: TABLE }), switchedOff()]);
+  return all.filter((c) => !off.tables.has(c.id)).map(tableFrom);
+};
 const signIn = () => new AppError(401, "SIGN_IN_NEEDED", "This needs a signed-in shopper");
 
 /** `fields`: the table's fields as this caller sees and writes them (the private ones are a key's alone). */
@@ -58,8 +63,8 @@ async function enter(req: Request, act: Act): Promise<{ table: ApiTable; as: As;
   const slug = String(req.params.table ?? "").toLowerCase();
   const c = COLLECTION_SLUG.test(slug) ? await prisma.collection.findUnique({ where: { slug }, select: TABLE }) : null;
   const table = c ? tableFrom(c) : null;
-  // A closed table answers as one that isn't there.
-  if (!table || !isOpen(table.access)) throw new AppError(404, "NOT_FOUND", "No such table, or it isn't open");
+  // A closed table answers as one that isn't there; so does one whose feature is switched off.
+  if (!table || !isOpen(table.access) || (await switchedOff()).tables.has(table.id)) throw new AppError(404, "NOT_FOUND", "No such table, or it isn't open");
   const who = callerOf(req);
   const verdict = allow(table.access, act, who.key, table.id, who.customer);
   if ("as" in verdict) return { table, as: verdict.as, fields: seenFields(table, verdict.as), who };

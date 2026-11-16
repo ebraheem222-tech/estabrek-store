@@ -136,6 +136,16 @@ export default function FunctionEditor() {
               </span>
             </div>
           ) : null}
+          {fn.feature ? (
+            <p className={`mt-3 text-sm ${fn.feature.enabled ? "text-white/60" : "rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-amber-200"}`} data-testid="fn-feature">
+              {fn.feature.enabled
+                ? say("جزء من الميزة:|Part of the feature:|חלק מהתכונה:")
+                : say("ميزتها موقّفة، فما في شي بيشغّلها لحد ما ترجع الميزة تشتغل:|Its feature is switched off, so nothing starts it until the feature is on again:|התכונה שלה כבויה, ולכן שום דבר לא מפעיל אותה עד שהתכונה תופעל שוב:")}{" "}
+              <Link to={`/admin/my-features/${fn.feature.id}`} className="underline">
+                {fn.feature.name}
+              </Link>
+            </p>
+          ) : null}
           {!dirty && problems.length ? (
             <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200" data-testid="fn-problems">
               <div className="font-medium">{say("قبل النشر، صلّح هدول ({n}):|Before publishing, fix these ({n}):|לפני הפרסום יש לתקן ({n}):").replace("{n}", String(problems.length))}</div>

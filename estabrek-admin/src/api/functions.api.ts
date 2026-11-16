@@ -52,7 +52,7 @@ export type FnLite = {
 };
 /** Where a problem is ("do.2", "do.2.else.0", "if.0", "fail.1") and what it is. */
 export type Problem = { at: string; message: string };
-export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[] };
+export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null };
 
 /** What starts a function (backend lib/fnTriggers.ts). It fires only while the function is published and switched on. */
 export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook";
