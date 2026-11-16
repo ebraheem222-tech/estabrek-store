@@ -270,6 +270,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/data", label: say("الجداول (شبكة البيانات)|Tables (data grid)|טבלאות (רשת נתונים)"), icon: Icons.inventory, requirePermissions: ["data:tables"] },
   { to: "/admin/data-api", label: say("الـ API والمفاتيح|API & keys|API ומפתחות"), icon: Icons.security, requirePermissions: ["api:read"] },
   { to: "/admin/functions", label: say("الـ Functions|Functions|פונקציות"), icon: Icons.jobs, requirePermissions: ["functions:read"] },
+  { to: "/admin/connections", label: say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות"), icon: Icons.security, requirePermissions: ["connections:read"] },
   { to: "/admin/themes", label: tr("ثيمات المتجر", "Store themes"), icon: Icons.sun, requirePermissions: ["settings:read"] },
   { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
   { to: "/admin/ugc/comments", label: tr("التعليقات", "Comments"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },

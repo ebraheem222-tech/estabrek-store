@@ -13,6 +13,8 @@
  *   out      email, whatsapp, sms (through the outbox), notify (the admin's bell)
  *   code     JavaScript for what the steps can't say: it is handed values (`give`), works on them
  *            and gives one back; it reaches nothing else (no table, no network, no message)
+ *   outside  http: a call to a site the owner allowed, with the secrets that are for it
+ *            (lib/fnSites.ts says what a site and a secret are, lib/fnHttp.ts makes the call)
  *
  * A step that makes something can keep it under a name (`as`); a later step names it in its
  * values: "{{order.total}}" (lib/fnValues.ts).
@@ -22,6 +24,7 @@ import type { Field } from "./collectionTree.js";
 import { OPS, OPS_BY_KIND, VIEWS, columnKind } from "./dataQuery.js";
 import { LANGS } from "./dataRows.js";
 import { ALONE, CMPS, PATH, holesOf, type Cmp } from "./fnValues.js";
+import { SECRET_NAME, hostIn, secretsIn, siteAllowed } from "./fnSites.js";
 
 export const FN_LIMITS = {
   /** Steps in one function, counting the ones inside others. */
@@ -48,8 +51,9 @@ export const FN_LIMITS = {
 
 /** A name the run keeps something under. */
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
-/** Names the run itself uses. */
-export const RESERVED = ["input", "now", "error", "index", "caller"] as const;
+/** Names the run itself uses ("secret" is never one of its things: a secret is only put into a call as it leaves). */
+export const RESERVED = ["input", "now", "error", "index", "caller", "secret"] as const;
+export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 /** Who started the run, as its steps name them: {{caller.kind}} is "customer", "key", "public", "admin" or "system". */
 export const CALLER_KEYS = ["kind", "id", "name", "email"] as const;
 
@@ -75,6 +79,7 @@ export type PlainStep =
   | { act: "notify"; title: string; text?: string; link?: string }
   | { act: "call"; fn: string; input?: Record<string, Val>; as?: string }
   | { act: "code"; code: string; /** What the code is handed, by name: it reads them as input.name. */ give?: Record<string, Val>; as?: string }
+  | { act: "http"; method: (typeof HTTP_METHODS)[number]; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run: the steps after it decide. */ anyStatus?: boolean; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
@@ -97,7 +102,7 @@ export type FnDef = {
 };
 
 /** The steps a function may take after a failure: telling someone, writing it down. */
-export const FAIL_ACTS: ReadonlyArray<StepKind> = ["set", "notify", "email", "whatsapp", "sms", "add", "change"];
+export const FAIL_ACTS: ReadonlyArray<StepKind> = ["set", "notify", "email", "whatsapp", "sms", "add", "change", "http"];
 
 const Text = z.string().max(FN_LIMITS.text);
 const Name = z.string().regex(NAME, "A name starts with a small letter: letters, digits and _");
@@ -138,6 +143,17 @@ const PLAIN = [
   z.object({ act: z.literal("notify"), title: z.string().max(150), text: z.string().max(500).optional(), link: z.string().max(300).optional() }).strict(),
   z.object({ act: z.literal("call"), fn: Id, input: z.record(Name, ValSchema).refine(small, "Too long").optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("code"), code: z.string().max(FN_LIMITS.code), give: z.record(Name, ValSchema).refine((v) => Object.keys(v).length <= FN_LIMITS.values && small(v), "Too many values").optional(), as: Var.optional() }).strict(),
+  z
+    .object({
+      act: z.literal("http"),
+      method: z.enum(HTTP_METHODS),
+      url: z.string().max(1000),
+      headers: z.record(z.string().min(1).max(60), z.string().max(1000)).refine((h) => Object.keys(h).length <= 20, "Too many headers").optional(),
+      body: Value.optional(),
+      anyStatus: z.boolean().optional(),
+      as: Var.optional(),
+    })
+    .strict(),
   z.object({ act: z.literal("stop"), message: z.string().max(300) }).strict(),
   z.object({ act: z.literal("return"), value: Value.optional() }).strict(),
 ] as const;
@@ -204,7 +220,7 @@ export function defOf(raw: unknown): FnDef | null {
 export type Problem = { /** Where: "do.2", "do.2.else.0", "if.0", "fail.1". */ at: string; message: string };
 export type KnownTable = { id: string; slug: string; fields: Field[]; name?: unknown };
 export type KnownFn = { id: string; name: string; live: boolean; inputs: FnInput[] };
-export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string };
+export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]> };
 
 /**
  * What stands in the way of publishing: a table or field that isn't there, a question a field's
@@ -217,12 +233,17 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
   const fns = new Map(known.fns.map((f) => [f.id, f]));
   const inputs = new Set(def.inputs.map((i) => i.name));
 
-  const names = (value: unknown, at: string, have: Set<string>) => {
+  const names = (value: unknown, at: string, have: Set<string>, callsSite = false) => {
     for (const hole of holesOf(value)) {
       if (!PATH.test(hole)) out.push({ at, message: `"{{${hole}}}" isn't a name` });
       else {
         const [root, next] = hole.split(".");
-        if (root === "input") {
+        if (root === "secret") {
+          // A secret goes out in a call to a site and nowhere else (it is never one of the run's own things).
+          if (!callsSite) out.push({ at, message: "A secret is only named in a step that calls a site" });
+          else if (!next || !SECRET_NAME.test(next) || hole.split(".").length !== 2) out.push({ at, message: `"{{${hole}}}" isn't a secret's name` });
+          else if (known.secrets && !known.secrets.includes(next)) out.push({ at, message: `No secret called "${next}"` });
+        } else if (root === "input") {
           if (next && !inputs.has(next)) out.push({ at, message: `No input called "${next}"` });
         } else if (root === "caller") {
           if (next && !(CALLER_KEYS as readonly string[]).includes(next)) out.push({ at, message: `The caller has no "${next}"` });
@@ -311,6 +332,23 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
             for (const given of Object.keys(s.input ?? {})) if (!f.inputs.some((i) => i.name === given)) out.push({ at, message: `"${f.name}" takes no "${given}"` });
           }
           names(s.input, at, have);
+          if (s.as) have.add(s.as);
+          break;
+        }
+        case "http": {
+          need(s.url, at, "The address");
+          if (!blank(s.url)) {
+            const host = hostIn(s.url);
+            if (!/^https:\/\//i.test(s.url.trim())) out.push({ at, message: "The address starts with https://" });
+            else if (host && known.sites && !siteAllowed(host, known.sites)) out.push({ at, message: `"${host}" isn't among the allowed sites` });
+            // A secret goes only to the sites it was written for (the run refuses it too: lib/fnHttp.ts).
+            else if (host && known.secretSites)
+              for (const name of secretsIn([s.url, s.headers, s.body])) {
+                const its = Object.hasOwn(known.secretSites, name) ? known.secretSites[name] : null;
+                if (its && !siteAllowed(host, its)) out.push({ at, message: `The secret "${name}" isn't for "${host}"` });
+              }
+          }
+          names([s.url, s.headers, s.body], at, have, true);
           if (s.as) have.add(s.as);
           break;
         }

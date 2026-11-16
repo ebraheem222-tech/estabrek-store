@@ -10,10 +10,11 @@ export const part = (words: string, lang: Lang) => {
 };
 const fill = (words: string, lang: Lang, things: Record<string, string | number>) => part(words, lang).replace(/\{(\w+)\}/g, (_m, k: string) => String(things[k] ?? ""));
 
-export const GROUP_NAME: Record<"data" | "control" | "out" | "code", string> = {
+export const GROUP_NAME: Record<"data" | "control" | "out" | "outside" | "code", string> = {
   data: "جداولك|Your tables|הטבלאות שלך",
   control: "التحكّم|Control|בקרה",
   out: "رسايل وتنبيهات|Messages|הודעות",
+  outside: "برّا المتجر|Outside the store|מחוץ לחנות",
   code: "كود|Code|קוד",
 };
 /** What a new code step starts with: how it is handed things and gives one back. */
@@ -40,6 +41,7 @@ export const ACT_NAME: Record<StepKind, string> = {
   set: "احفظ قيمة|Keep a value|שמירת ערך",
   call: "نادي function تانية|Call another function|קריאה לפונקציה אחרת",
   code: "كود JavaScript|JavaScript code|קוד JavaScript",
+  http: "اتصال بموقع|Call a site|קריאה לאתר",
   stop: "وقّف وقول ليش|Stop, saying why|עצירה עם סיבה",
   return: "رجّع جواب|Give back an answer|החזרת תשובה",
   notify: "جرس بالأدمن|Ring the admin's bell|התראה בניהול",
@@ -114,6 +116,11 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[] }, lan
       return `${short(s.list)} ← ${s.as ?? "item"}`;
     case "call":
       return `${ctx.fns.find((f) => f.id === s.fn)?.name ?? part("function؟|function?|פונקציה?", lang)}${kept(s.as)}`;
+    case "http": {
+      // The site and the way in, without what is asked after "?" (a key may sit there).
+      const where = s.url.replace(/^https:\/\//i, "").split("?")[0];
+      return `${s.method} ${short(where && where !== s.url ? where : s.url, 60)}${kept(s.as)}`;
+    }
     case "code": {
       // Its first line that says something (not a remark).
       const first = s.code.split("\n").map((l) => l.trim()).find((l) => l && !l.startsWith("//")) ?? "";
@@ -177,6 +184,13 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^The text is empty$/, "النص فاضي|The text is empty|הטקסט ריק"],
   [/^The title is empty$/, "العنوان فاضي|The title is empty|הכותרת ריקה"],
   [/^The reason is empty$/, "السبب فاضي|The reason is empty|הסיבה ריקה"],
+  [/^The address is empty$/, "العنوان فاضي|The address is empty|הכתובת ריקה"],
+  [/^The address starts with https:\/\/$/, "العنوان لازم يبلّش بـ https://|The address starts with https://|הכתובת מתחילה ב-https://"],
+  [/^"(.+)" isn't among the allowed sites$/, "«{1}» مش من المواقع المسموحة (بتنضاف من «الاتصالات والأسرار»)|“{1}” isn't among the allowed sites (it is added in “Connections & secrets”)|«{1}» לא נמצא בין האתרים המותרים (מוסיפים אותו ב«חיבורים וסודות»)"],
+  [/^No secret called "(.+)"$/, "ما في سر اسمه «{1}»|No secret called “{1}”|אין סוד בשם «{1}»"],
+  [/^The secret "(.+)" isn't for "(.+)"$/, "السر «{1}» مش لـ «{2}» (مواقعه بتتغيّر من «الاتصالات والأسرار»)|The secret “{1}” isn't for “{2}” (its sites are changed in “Connections & secrets”)|הסוד «{1}» לא מיועד ל«{2}» (משנים את האתרים שלו ב«חיבורים וסודות»)"],
+  [/^"(.+)" isn't a secret's name$/, "«{1}» مش اسم سر|“{1}” isn't a secret's name|«{1}» אינו שם של סוד"],
+  [/^A secret is only named in a step that calls a site$/, "السر بينكتب اسمه بس بخطوة «اتصال بموقع»|A secret is only named in a “call a site” step|סוד נקרא בשמו רק בשלב «קריאה לאתר»"],
   [/^The code is empty$/, "الكود فاضي|The code is empty|הקוד ריק"],
   [/^The code can't be read: (.+) \(line (\d+)\)$/, "الكود فيه غلطة كتابة: {1} (السطر {2})|The code has a mistake in its writing: {1} (line {2})|יש טעות בכתיבת הקוד: {1} (שורה {2})"],
   [/^The code can't be read: (.+)$/, "الكود فيه غلطة كتابة: {1}|The code has a mistake in its writing: {1}|יש טעות בכתיבת הקוד: {1}"],
@@ -217,6 +231,8 @@ const SAID: Record<string, string> = {
   wouldRing: "كان رح يرنّ الجرس: {0}|Would ring the bell: {0}|הפעמון היה מצלצל: {0}",
   called: "نادى {0}|Called {0}|קרא ל-{0}",
   ran: "الكود اشتغل ({0} ميلي ثانية)|Ran the code ({0} ms)|הקוד רץ ({0} מ״ש)",
+  answered: "{0} جاوب {1}|{0} answered {1}|{0} ענה {1}",
+  wouldCall: "كان رح يتصل: {0}|Would call {0}|הייתה נעשית קריאה: {0}",
   returned: "رجّع جوابه|Gave back its answer|החזיר את תשובתו",
   yes: "نعم|Yes|כן",
   no: "لا|No|לא",
@@ -231,6 +247,16 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   [/^The code gave back a promise: it runs straight through, without await$/, "الكود رجّع promise: هو بيشتغل مرة وحدة للآخر، بدون await|The code gave back a promise: it runs straight through, without await|הקוד החזיר promise: הוא רץ ברצף, בלי await"],
   [/^The code gave back more than (\d+) KB$/, "الكود رجّع أكتر من {1} كيلوبايت|The code gave back more than {1} KB|הקוד החזיר יותר מ-{1} ק״ב"],
   [/^The code is handed more than (\d+) KB$/, "اللي بينعطى للكود أكتر من {1} كيلوبايت|The code is handed more than {1} KB|לקוד ניתנים יותר מ-{1} ק״ב"],
+  [/^(.+) answered (\d+)$/, "{1} جاوب {2}|{1} answered {2}|{1} ענה {2}"],
+  [/^"(.+)" isn't among the allowed sites$/, "«{1}» مش من المواقع المسموحة|“{1}” isn't among the allowed sites|«{1}» לא נמצא בין האתרים המותרים"],
+  [/^The secret "(.+)" isn't for "(.+)"$/, "السر «{1}» مش لـ «{2}»|The secret “{1}” isn't for “{2}”|הסוד «{1}» לא מיועד ל«{2}»"],
+  [/^No secret called "(.+)"$/, "ما في سر اسمه «{1}»|No secret called “{1}”|אין סוד בשם «{1}»"],
+  [/^"(.+)" didn't answer in time$/, "«{1}» ما جاوب بالوقت|“{1}” didn't answer in time|«{1}» לא ענה בזמן"],
+  [/^"(.+)" points inside the network: it isn't called$/, "«{1}» عنوانه جوّا الشبكة: ما بينتصل فيه|“{1}” points inside the network: it isn't called|«{1}» מפנה לתוך הרשת: לא קוראים לו"],
+  [/^No site is found at "(.+)"$/, "ما في موقع بهالاسم: «{1}»|No site is found at “{1}”|לא נמצא אתר בשם «{1}»"],
+  [/^"(.+)" couldn't be reached$/, "ما قدرنا نوصل لـ «{1}»|“{1}” couldn't be reached|לא ניתן היה להגיע אל «{1}»"],
+  [/^A site is called by its name$/, "الموقع بينتصل فيه باسمه، مش بأرقام|A site is called by its name, not in numbers|לאתר קוראים בשמו, לא במספרים"],
+  [/^A run calls sites up to (\d+) times$/, "التشغيل بيتصل بمواقع {1} مرات بالكتير|A run calls sites up to {1} times|הרצה קוראת לאתרים עד {1} פעמים"],
   [/^The code's machine (?:stopped|didn't start.*)$/, "قفص الكود وقف. جرّب كمان مرة|The code's cage stopped. Try again|הכלוב של הקוד נעצר. נסו שוב"],
 ];
 /** Why a run stopped: the cage's own reasons in the admin's language, anything else as it was said. */

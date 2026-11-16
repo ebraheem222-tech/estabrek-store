@@ -8,7 +8,7 @@ import type { FnDef, FnFull, FnList, FnLite, FnTest, FnTrigger, Outcome, TestsOu
 // الـ Functions: the list and the builder over a stand-in API. Steps are added from a menu, each
 // opens to its own form; the draft is saved, tried dry, and published.
 
-const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), runFnTests: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), may: new Set<string>(), copied: [] as string[] }));
+const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), runFnTests: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), may: new Set<string>(), copied: [] as string[], HTTP_METHODS: ["GET", "POST", "PUT", "PATCH", "DELETE"] as const }));
 vi.mock("../../api/functions.api", () => m);
 vi.mock("../../config/env", () => ({ env: { VITE_API_BASE_URL: "https://api.shop.test/v1" } }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
@@ -205,7 +205,7 @@ describe("The builder", () => {
     type("step-do.0-input-who", "Amal");
     type("step-do.0-as", "said");
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("Greet ← said");
-    expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "email", "whatsapp", "sms"]);
+    expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "email", "whatsapp", "sms", "http"]);
     pick("steps-fail-add", "notify");
     expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "said", "error"]);
     type("step-fail.0-title", "It failed: {{error}}");
@@ -217,7 +217,7 @@ describe("The builder", () => {
     show();
     await screen.findByTestId("fn-editor");
     // Its own group in the menu, after the others.
-    expect([...screen.getByTestId("steps-do-add").querySelectorAll("optgroup")].map((g) => g.getAttribute("label"))).toEqual(["Your tables", "Control", "Messages", "Code"]);
+    expect([...screen.getByTestId("steps-do-add").querySelectorAll("optgroup")].map((g) => g.getAttribute("label"))).toEqual(["Your tables", "Control", "Messages", "Outside the store", "Code"]);
     pick("steps-do-add", "find");
     pick("steps-do-add", "code");
     expect(screen.getByTestId("step-do.1").getAttribute("data-open")).toBe("true");
@@ -275,6 +275,68 @@ describe("The builder", () => {
     fireEvent.click(screen.getByTestId("step-do.0-head"));
     expect((screen.getByTestId("step-do.0-code") as HTMLTextAreaElement).disabled).toBe(true);
     expect(screen.queryByTestId("step-do.0-give-add")).toBeNull();
+  });
+
+  test("a call to a site: the way, the address, a secret put in by its name, what is sent, and a name for the answer", async () => {
+    const outside = { sites: ["api.telegram.org"], secrets: [{ name: "TELEGRAM_TOKEN", sites: ["api.telegram.org"] }] };
+    m.getFunctions.mockImplementation(async () => ({ ...listOf([lite(server), greet]), outside }));
+    server = full({ draft: { inputs: [{ name: "chat", type: "text" }], do: [] } });
+    show();
+    await screen.findByTestId("fn-editor");
+    pick("steps-do-add", "http");
+    expect(screen.getByTestId("step-do.0").getAttribute("data-open")).toBe("true");
+    expect((screen.getByTestId("step-do.0-method") as HTMLSelectElement).value).toBe("POST");
+    // Where it may call is said, with the way to the page that allows a site.
+    expect(screen.getByTestId("step-do.0-sites").textContent).toContain("It calls only the allowed sites: api.telegram.org.");
+    expect(within(screen.getByTestId("step-do.0-sites")).getByRole("link").getAttribute("href")).toBe("/admin/connections");
+    // The address, with the secret put in from the menu: only its name is ever on the page.
+    type("step-do.0-url", "https://api.telegram.org/bot");
+    expect([...screen.getByTestId("step-do.0-url-secrets").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "TELEGRAM_TOKEN"]);
+    pick("step-do.0-url-secrets", "TELEGRAM_TOKEN");
+    type("step-do.0-url", "https://api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage");
+    // A header, its secret from the menu too.
+    fireEvent.click(screen.getByTestId("step-do.0-header-add"));
+    expect((screen.getByTestId("step-do.0-header-0-name") as HTMLInputElement).value).toBe("Authorization");
+    type("step-do.0-header-0", "Bearer ");
+    pick("step-do.0-header-0-secrets", "TELEGRAM_TOKEN");
+    // A second header, taken out again.
+    fireEvent.click(screen.getByTestId("step-do.0-header-add"));
+    fireEvent.click(screen.getByTestId("step-do.0-header-1-remove"));
+    // What is sent: a thing, with the run's names in it.
+    type("step-do.0-body", '{"chat_id": "{{input.chat}}", "text": "hi"}');
+    fireEvent.click(screen.getByTestId("step-do.0-any"));
+    type("step-do.0-as", "sent");
+    expect(screen.getByTestId("step-do.0-line").textContent).toBe("POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage ← sent");
+    expect(screen.getByTestId("step-do.0-http-note").textContent).toContain("no step ever gets it back");
+    // The step after it is offered the answer's parts.
+    pick("steps-do-add", "return");
+    expect([...screen.getByTestId("step-do.1-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value")).slice(-3)).toEqual(["sent.body", "sent.ok", "sent.status"]);
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() =>
+      expect(lastDraft().do[0]).toEqual({
+        act: "http",
+        method: "POST",
+        url: "https://api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage",
+        headers: { Authorization: "Bearer {{secret.TELEGRAM_TOKEN}}" },
+        body: { chat_id: "{{input.chat}}", text: "hi" },
+        anyStatus: true,
+        as: "sent",
+      }),
+    );
+    // A GET sends nothing: what was to be sent isn't asked for.
+    fireEvent.click(screen.getByTestId("step-do.0-head"));
+    pick("step-do.0-method", "GET");
+    expect(screen.queryByTestId("step-do.0-body")).toBeNull();
+  });
+
+  test("a call with no site allowed yet says so; a site that isn't allowed is said on the step", async () => {
+    server = full({ draft: { inputs: [], do: [{ act: "http", method: "GET", url: "https://evil.example.com/x" }] }, problems: [{ at: "do.0", message: '"evil.example.com" isn\'t among the allowed sites' }] });
+    show();
+    expect((await screen.findByTestId("step-do.0-problems")).textContent).toBe("“evil.example.com” isn't among the allowed sites (it is added in “Connections & secrets”)");
+    fireEvent.click(screen.getByTestId("step-do.0-head"));
+    expect(screen.getByTestId("step-do.0-sites").textContent).toContain("No site is allowed yet: this step will call nowhere.");
+    // No secrets kept: no menu to put one in.
+    expect(screen.queryByTestId("step-do.0-url-secrets")).toBeNull();
   });
 
   test("what stands in the way of publishing is shown on its step, in the page's words; publishing saves first", async () => {

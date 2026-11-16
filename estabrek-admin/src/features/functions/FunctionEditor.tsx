@@ -113,7 +113,7 @@ export default function FunctionEditor() {
   const builder = useMemo<Builder | null>(
     () =>
       draft && list.data
-        ? { def: draft, change: setDraft, tables: list.data.tables, fns: list.data.functions.filter((f) => f.id !== id), ops: list.data.ops, problems: dirty ? [] : fn?.problems ?? [], failedAt: outcome?.failedAt ? stepOfLine(outcome.failedAt) : null, canWrite, openAt, setOpenAt, cage: list.data.limits.cage, codeMax: list.data.limits.code }
+        ? { def: draft, change: setDraft, tables: list.data.tables, fns: list.data.functions.filter((f) => f.id !== id), ops: list.data.ops, problems: dirty ? [] : fn?.problems ?? [], failedAt: outcome?.failedAt ? stepOfLine(outcome.failedAt) : null, canWrite, openAt, setOpenAt, cage: list.data.limits.cage, codeMax: list.data.limits.code, outside: list.data.outside }
         : null,
     [draft, list.data, id, dirty, fn?.problems, outcome?.failedAt, canWrite, openAt],
   );
@@ -312,7 +312,7 @@ export default function FunctionEditor() {
                 toast.success(say("انضافت للاختبارات|Added to the tests|נוספה לבדיקות"), { description: say("احفظ المسودة لتنحفظ معها.|Save the draft to keep it.|שמרו את הטיוטה כדי לשמור אותה.") });
               }}
               onRun={async (input, real) => {
-                if (real && !(await confirm({ title: say("تشغيل فعلي|A real run|הרצה אמיתית"), message: say("الخطوات المنشورة رح تشتغل فعلاً: بتكتب بالجداول وبتبعت رسايل. متأكد؟|The published steps will run for real: they write to the tables and send messages. Sure?|השלבים שפורסמו ירוצו באמת: הם כותבים לטבלאות ושולחים הודעות. בטוח?"), confirmText: say("شغّل|Run|הרצה"), variant: "warning" }))) return;
+                if (real && !(await confirm({ title: say("تشغيل فعلي|A real run|הרצה אמיתית"), message: say("الخطوات المنشورة رح تشتغل فعلاً: بتكتب بالجداول، بتبعت رسايل وبتتصل بالمواقع. متأكد؟|The published steps will run for real: they write to the tables, send messages and call sites. Sure?|השלבים שפורסמו ירוצו באמת: הם כותבים לטבלאות, שולחים הודעות ופונים לאתרים. בטוח?"), confirmText: say("شغّل|Run|הרצה"), variant: "warning" }))) return;
                 run.mutate({ input, real });
               }}
             />

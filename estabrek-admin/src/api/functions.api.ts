@@ -25,8 +25,14 @@ export type PlainStep =
   | { act: "call"; fn: string; input?: Record<string, Val>; as?: string }
   /** JavaScript run in a cage on the server: handed `give` (read as input.name), it gives one value back. */
   | { act: "code"; code: string; give?: Record<string, Val>; as?: string }
+  /** A call to a site the owner allowed (admin → الاتصالات والأسرار); a secret is named {{secret.NAME}} and never read. */
+  | { act: "http"; method: HttpMethod; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run. */ anyStatus?: boolean; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
+export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+/** What an "http" step may reach: the allowed sites, and each secret's name with the sites it is for (never a value). */
+export type Outside = { sites: string[]; secrets: Array<{ name: string; sites: string[] }> };
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
 export type Step = PlainStep | GroupStep;
 export type StepKind = Step["act"];
@@ -88,8 +94,8 @@ export type TriggerMeta = { kinds: TriggerKind[]; events: string[]; callPerMinut
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FnField = { id: string; type: string; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }> };
 export type FnTable = { id: string; slug: string; name: Local | null; fields: FnField[] };
-export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number; /** A code step's code, in letters. */ code?: number; /** The cage a code step runs in. */ cage?: { ms: number; memoryMb: number }; /** Tests one function keeps. */ tests?: number };
-export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta };
+export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number; /** A code step's code, in letters. */ code?: number; /** The cage a code step runs in. */ cage?: { ms: number; memoryMb: number }; /** Tests one function keeps. */ tests?: number; /** A call to a site: how long it may take, and how many a run makes. */ http?: { ms: number; calls: number } };
+export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
 export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number };

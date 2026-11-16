@@ -2,7 +2,8 @@
 // question and a loop hold lists of their own. Every change makes a new draft (fnDraft.ts): the
 // page above keeps it and saves it.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Cond, Filter, FnDef, FnLite, FnTable, Match, Op, Problem, RowStatus, Step, StepKind, Val } from "../../api/functions.api";
+import { Link } from "react-router-dom";
+import { HTTP_METHODS, type Cond, type Filter, type FnDef, type FnLite, type FnTable, type HttpMethod, type Match, type Op, type Outside, type Problem, type RowStatus, type Step, type StepKind, type Val } from "../../api/functions.api";
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { STATUS_NAME, SYSTEM_NAME, kindOf, opName, opNeeds } from "../data/dataText";
@@ -26,6 +27,8 @@ export type Builder = {
   /** The limits of the cage a code step runs in, and its code's length, as the server says them. */
   cage?: { ms: number; memoryMb: number };
   codeMax?: number;
+  /** What a "call a site" step may reach: the allowed sites and the secrets' names. */
+  outside?: Outside;
 };
 const BuilderContext = createContext<Builder | null>(null);
 export const BuilderProvider = BuilderContext.Provider;
@@ -315,6 +318,71 @@ function FiltersForm({ at, table, filters, match, onChange }: { at: Path; table:
 
 const STATUSES: RowStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
 
+/** The secrets a call may name, as a menu that puts one in ({{secret.NAME}}): only its name is ever on the page. */
+function SecretMenu({ onPick, testid }: { onPick: (hole: string) => void; testid?: string }) {
+  const b = useBuilder();
+  const secrets = b.outside?.secrets ?? [];
+  if (!b.canWrite || !secrets.length) return null;
+  return (
+    <select
+      className={`${field} w-24 shrink-0 text-white/70`}
+      value=""
+      aria-label={say("حط سر|Put a secret in|הוספת סוד")}
+      onChange={(e) => {
+        if (e.target.value) onPick(`{{secret.${e.target.value}}}`);
+      }}
+      data-testid={testid}
+    >
+      <option value="">{say("＋ سر|＋ secret|＋ סוד")}</option>
+      {secrets.map((s) => (
+        <option key={s.name} value={s.name}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** A call's headers: a name and its words, a secret put in from the menu. */
+function HeadersForm({ at, id, headers, onChange }: { at: Path; id: string; headers: Record<string, string>; onChange: (headers: Record<string, string> | undefined) => void }) {
+  const b = useBuilder();
+  const names = Object.keys(headers);
+  const out = (next: Record<string, string>) => onChange(Object.keys(next).length ? next : undefined);
+  return (
+    <div className="space-y-2" data-testid={`step-${id}-headers`}>
+      {names.map((name, k) => (
+        <div key={k} className="flex flex-wrap items-center gap-2">
+          <input
+            className={`${field} w-44`}
+            dir="ltr"
+            value={name}
+            disabled={!b.canWrite}
+            placeholder="Authorization"
+            onChange={(e) => {
+              const next = e.target.value.trim();
+              if (next && !names.includes(next)) out(Object.fromEntries(Object.entries(headers).map(([key, v]) => [key === name ? next : key, v])));
+            }}
+            aria-label={say("اسم السطر|The header's name|שם הכותרת")}
+            data-testid={`step-${id}-header-${k}-name`}
+          />
+          <ValueInput at={at} plain value={headers[name]} onChange={(v) => out({ ...headers, [name]: String(v) })} placeholder="Bearer {{secret.MY_KEY}}" testid={`step-${id}-header-${k}`} />
+          <SecretMenu onPick={(hole) => out({ ...headers, [name]: `${headers[name]}${hole}` })} testid={`step-${id}-header-${k}-secrets`} />
+          {b.canWrite ? (
+            <button type="button" className="rounded px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => out(Object.fromEntries(Object.entries(headers).filter(([key]) => key !== name)))} aria-label={say("شيل السطر|Take the header out|הסרת הכותרת")} data-testid={`step-${id}-header-${k}-remove`}>
+              ✕
+            </button>
+          ) : null}
+        </div>
+      ))}
+      {b.canWrite ? (
+        <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12]" onClick={() => out({ ...headers, [names.includes("Authorization") ? freeName("X-Header-", names) : "Authorization"]: "" })} data-testid={`step-${id}-header-add`}>
+          {say("＋ سطر بأول الطلب (header)|＋ A header|＋ כותרת (header)")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 /** What a code step is handed: names of the owner's choosing, each a value the run knows. The code reads them as input.name. */
 function GiveForm({ at, id, give, onChange }: { at: Path; id: string; give: Record<string, Val>; onChange: (give: Record<string, Val>) => void }) {
   const b = useBuilder();
@@ -504,6 +572,51 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
             </Row>
           ))}
           {keepAs(step.as, (as) => set({ ...step, as }))}
+        </>
+      );
+    }
+    case "http": {
+      const sites = b.outside?.sites ?? [];
+      return (
+        <>
+          <Row name={say("الطلب|The request|הבקשה")}>
+            <select className={`${field} w-28`} dir="ltr" value={step.method} disabled={!b.canWrite} onChange={(e) => set({ ...step, method: e.target.value as HttpMethod })} data-testid={`step-${id}-method`}>
+              {HTTP_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <ValueInput at={path} plain value={step.url} onChange={(v) => set({ ...step, url: String(v) })} placeholder="https://api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage" testid={`step-${id}-url`} />
+            <SecretMenu onPick={(hole) => set({ ...step, url: `${step.url}${hole}` })} testid={`step-${id}-url-secrets`} />
+          </Row>
+          <p className="text-xs text-white/70" data-testid={`step-${id}-sites`}>
+            {sites.length
+              ? `${say("بتتصل بس بالمواقع المسموحة:|It calls only the allowed sites:|היא קוראת רק לאתרים המותרים:")} ${sites.join(lang === "ar" ? "، " : ", ")}. `
+              : `${say("ولا موقع مسموح لسا: هالخطوة ما رح تتصل بولا مكان.|No site is allowed yet: this step will call nowhere.|עדיין אין אתר מותר: השלב הזה לא יקרא לשום מקום.")} `}
+            <Link to="/admin/connections" className="underline">
+              {say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות")}
+            </Link>
+          </p>
+          <div className="space-y-1">
+            <div className={label}>{say("سطور أول الطلب (headers)|Headers|כותרות (headers)")}</div>
+            <HeadersForm at={path} id={id} headers={step.headers ?? {}} onChange={(headers) => set(headers ? { ...step, headers } : (({ headers: _gone, ...rest }) => rest)(step))} />
+          </div>
+          {step.method !== "GET" ? (
+            <Row name={say("اللي بينبعت|What is sent|מה שנשלח")}>
+              <ValueInput at={path} long value={step.body} onChange={(body) => set(body === "" ? (({ body: _gone, ...rest }) => rest)(step) : { ...step, body })} placeholder={'{"chat_id": "{{input.chat}}", "text": "..."}'} testid={`step-${id}-body`} />
+            </Row>
+          ) : null}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={step.anyStatus === true} disabled={!b.canWrite} onChange={(e) => set(e.target.checked ? { ...step, anyStatus: true } : (({ anyStatus: _gone, ...rest }) => rest)(step))} data-testid={`step-${id}-any`} />
+            {say("إذا الموقع جاوب بخطأ (400 وفوق) كمّل، والخطوات بعدها بتقرّر|If the site answers with an error (400 and up) go on, and the steps after it decide|אם האתר עונה בשגיאה (400 ומעלה) ממשיכים, והשלבים שאחרי מחליטים")}
+          </label>
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+          <p className="text-xs text-white/70" data-testid={`step-${id}-http-note`}>
+            {say(
+              "السر بينكتب اسمه بس ({{secret.الاسم}}): السيرفر بيحطه بالطلب وهو طالع، وما بيرجع لولا خطوة. الجواب بينحفظ بالاسم: .body (شو جاوب)، .ok، و .status. بالتجربة الاتصال ما بيصير فعلاً.|A secret is written by its name only ({{secret.NAME}}): the server puts it into the request as it leaves, and no step ever gets it back. The answer is kept under the name: .body (what it said), .ok and .status. In a try-out the call isn't really made.|סוד נכתב רק בשמו ({{secret.NAME}}): השרת מכניס אותו לבקשה ביציאה, ואף שלב לא מקבל אותו בחזרה. התשובה נשמרת בשם: ‎.body (מה נענה), ‎.ok ו-‎.status. בניסיון הקריאה לא מתבצעת באמת.",
+            )}
+          </p>
         </>
       );
     }
