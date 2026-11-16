@@ -90,7 +90,7 @@ export default function FunctionEditor() {
   const builder = useMemo<Builder | null>(
     () =>
       draft && list.data
-        ? { def: draft, change: setDraft, tables: list.data.tables, fns: list.data.functions.filter((f) => f.id !== id), ops: list.data.ops, problems: dirty ? [] : fn?.problems ?? [], failedAt: outcome?.failedAt ? stepOfLine(outcome.failedAt) : null, canWrite, openAt, setOpenAt }
+        ? { def: draft, change: setDraft, tables: list.data.tables, fns: list.data.functions.filter((f) => f.id !== id), ops: list.data.ops, problems: dirty ? [] : fn?.problems ?? [], failedAt: outcome?.failedAt ? stepOfLine(outcome.failedAt) : null, canWrite, openAt, setOpenAt, cage: list.data.limits.cage, codeMax: list.data.limits.code }
         : null,
     [draft, list.data, id, dirty, fn?.problems, outcome?.failedAt, canWrite, openAt],
   );

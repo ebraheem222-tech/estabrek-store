@@ -4,12 +4,15 @@
  * checked before it is saved (its shape, here) and before it is published (that the tables,
  * fields and names it talks about exist, and that no step was left unfinished: `problemsOf`).
  * A draft may be saved half-written: a step with nothing in it yet is a problem, not a refusal.
- * Nothing in it is code.
+ * Nothing in it runs in the server but its steps: the one step that holds code (F2) runs it in a
+ * cage of its own (lib/fnCode.ts).
  *
  * The steps:
  *   data     find, get, add, change, delete (the owner's own tables, written as the admin writes them)
  *   control  if, each, set, call (another function), stop, return
  *   out      email, whatsapp, sms (through the outbox), notify (the admin's bell)
+ *   code     JavaScript for what the steps can't say: it is handed values (`give`), works on them
+ *            and gives one back; it reaches nothing else (no table, no network, no message)
  *
  * A step that makes something can keep it under a name (`as`); a later step names it in its
  * values: "{{order.total}}" (lib/fnValues.ts).
@@ -29,6 +32,8 @@ export const FN_LIMITS = {
   inputs: 20,
   values: 40,
   text: 2000,
+  /** A code step's code, in letters (the cage's own limits: lib/fnCode.ts CODE_LIMITS). */
+  code: 8000,
   /** Rows one "find" takes. */
   found: 200,
   /** Things one "each" goes over. */
@@ -69,6 +74,7 @@ export type PlainStep =
   | { act: "sms"; to?: string; text: string }
   | { act: "notify"; title: string; text?: string; link?: string }
   | { act: "call"; fn: string; input?: Record<string, Val>; as?: string }
+  | { act: "code"; code: string; /** What the code is handed, by name: it reads them as input.name. */ give?: Record<string, Val>; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
@@ -131,6 +137,7 @@ const PLAIN = [
   z.object({ act: z.literal("sms"), to: z.string().max(200).optional(), text: z.string().max(600) }).strict(),
   z.object({ act: z.literal("notify"), title: z.string().max(150), text: z.string().max(500).optional(), link: z.string().max(300).optional() }).strict(),
   z.object({ act: z.literal("call"), fn: Id, input: z.record(Name, ValSchema).refine(small, "Too long").optional(), as: Var.optional() }).strict(),
+  z.object({ act: z.literal("code"), code: z.string().max(FN_LIMITS.code), give: z.record(Name, ValSchema).refine((v) => Object.keys(v).length <= FN_LIMITS.values && small(v), "Too many values").optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("stop"), message: z.string().max(300) }).strict(),
   z.object({ act: z.literal("return"), value: Value.optional() }).strict(),
 ] as const;
@@ -307,6 +314,11 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
           if (s.as) have.add(s.as);
           break;
         }
+        case "code":
+          need(s.code, at, "The code");
+          names(s.give, at, have);
+          if (s.as) have.add(s.as);
+          break;
         case "if": {
           if (!s.if.length) out.push({ at, message: "A question that asks nothing" });
           conds(s.if, `${at}.if`, have);

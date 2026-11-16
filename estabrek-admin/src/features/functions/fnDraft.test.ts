@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { FnDef, FnLite, FnTable, Step } from "../../api/functions.api";
-import { addStep, atOf, countSteps, freeName, fromVal, listAt, moveStep, nameOk, namesBefore, namesUsed, newStep, offers, removeStep, setList, setStep, stepAt, stepOfLine, toVal } from "./fnDraft";
-import { condsLine, firedText, fnTriggerName, handsMissing, lineText, outcomeLine, problemText, stateOf, stepLine, triggerLine, whereText } from "./fnText";
+import { FAIL_ACTS, GROUPS, addStep, atOf, countSteps, freeName, fromVal, listAt, moveStep, nameOk, namesBefore, namesUsed, newStep, offers, removeStep, setList, setStep, stepAt, stepOfLine, toVal } from "./fnDraft";
+import { CODE_START, codeNote, condsLine, failText, firedText, fnTriggerName, handsMissing, lineText, outcomeLine, problemText, stateOf, stepLine, triggerLine, whereText } from "./fnText";
 
 // الـ Functions: the builder's sums and the pages' words. A function's steps are a tree; a step is
 // named by its way in ("do.2.else.0"), the same way the server names it.
@@ -103,6 +103,22 @@ describe("Names", () => {
     expect(newStep("sms", { tables, fns, def })).toEqual({ act: "sms", text: "" });
     expect(newStep("email", { tables, fns, def })).toEqual({ act: "email", subject: "", text: "" });
   });
+
+  test("a code step: where it is offered, what it starts with, and the name it keeps its answer under", () => {
+    // A group of its own, last; never among what a function does after a failure.
+    expect(GROUPS.map((g) => g.key)).toEqual(["data", "control", "out", "code"]);
+    expect(GROUPS[3].acts).toEqual(["code"]);
+    expect(FAIL_ACTS).not.toContain("code");
+    expect(newStep("code", { tables, fns, def })).toEqual({ act: "code", code: "return input;", give: {}, as: "result" });
+    // The page starts it with a few lines saying how it works, in its own language.
+    expect(newStep("code", { tables, fns, def, code: CODE_START.en })).toMatchObject({ code: expect.stringMatching(/^\/\/ What you hand the code is in input[\s\S]+return input;$/) });
+    expect(CODE_START.ar.split("\n")).toHaveLength(3);
+    // What it gives back is a name the steps after it can use.
+    const withCode: FnDef = { inputs: [], do: [{ act: "find", table: "t1", as: "orders" }, { act: "code", code: "return 1;", give: { orders: "{{orders}}" }, as: "sums" }, { act: "return", value: "{{sums}}" }] };
+    expect(namesBefore(withCode, ["do", 2]).map((k) => `${k.name}:${k.kind}`)).toEqual(["orders:rows", "sums:value"]);
+    expect(namesBefore(withCode, ["do", 1]).map((k) => k.name)).toEqual(["orders"]);
+    expect(namesUsed(withCode)).toContain("sums");
+  });
 });
 
 describe("A value as it is typed", () => {
@@ -136,6 +152,9 @@ describe("The pages' words", () => {
     expect(stepLine({ act: "email", subject: "Hi", text: "x" }, ctx, "en")).toBe("the shop's email · Hi");
     expect(stepLine({ act: "sms", to: "+972590000000", text: "Ready" }, ctx, "en")).toBe("+972590000000 · Ready");
     expect(stepLine({ act: "stop", message: "" }, ctx, "en")).toBe("—");
+    // A code step: its first line that says something, and the name it keeps.
+    expect(stepLine({ act: "code", code: "// a remark\n\n  const total = input.rows.length;\nreturn total;", as: "count" }, ctx, "en")).toBe("const total = input.rows.length; ← count");
+    expect(stepLine({ act: "code", code: "// only a remark" }, ctx, "en")).toBe("—");
     expect(condsLine([{ left: "{{a}}", cmp: "gt", right: 5 }, { left: "{{b}}", cmp: "notEmpty" }], "any", "en")).toBe("{{a}} is more than 5 or {{b}} is not empty");
     expect(condsLine([], undefined, "en")).toBe("Nothing asked yet");
   });
@@ -158,6 +177,10 @@ describe("The pages' words", () => {
     expect(problemText('"Greet" needs "who"', "en")).toBe("“Greet” needs “who”");
     expect(problemText('"{{1 + 1}}" isn\'t a name', "en")).toBe("“{{1 + 1}}” isn't a name");
     expect(problemText("A loop goes over one named list: {{rows}}", "en")).toBe("A loop goes over one named list, like {{rows}}");
+    expect(problemText("The code is empty", "ar")).toBe("الكود فاضي");
+    expect(problemText("The code can't be read: SyntaxError: unexpected token in expression: ';' (line 2)", "en")).toBe("The code has a mistake in its writing: SyntaxError: unexpected token in expression: ';' (line 2)");
+    expect(problemText("The code can't be read: SyntaxError: unexpected token (line 12)", "ar")).toBe("الكود فيه غلطة كتابة: SyntaxError: unexpected token (السطر 12)");
+    expect(problemText("The code can't be read: SyntaxError: unexpected token", "en")).toBe("The code has a mistake in its writing: SyntaxError: unexpected token");
     // One the page doesn't know stays as the server said it.
     expect(problemText("Something new", "ar")).toBe("Something new");
   });
@@ -171,6 +194,20 @@ describe("The pages' words", () => {
     expect(lineText({ ok: true, say: ["set", "sum", "150.5"] }, "he")).toBe("sum = 150.5");
     expect(lineText({ ok: true, say: ["other"] }, "en")).toBe("No: the other way");
     expect(lineText({ ok: false, error: "No such row to change" }, "ar")).toBe("No such row to change");
+    // A code step: that it ran; and why its cage stopped it, in the page's words (what the code itself said stays as said).
+    expect(lineText({ ok: true, say: ["ran", 3] }, "en")).toBe("Ran the code (3 ms)");
+    expect(lineText({ ok: true, say: ["ran", 3] }, "ar")).toBe("الكود اشتغل (3 ميلي ثانية)");
+    expect(lineText({ ok: false, error: "The code ran longer than 2 seconds" }, "ar")).toBe("الكود أخد أكتر من 2 ثواني، فتوقّف");
+    expect(failText("The code used more than 32 MB", "en")).toBe("The code used more than 32 MB and was stopped");
+    expect(failText("Too much code is running right now: try again in a moment", "ar")).toBe("في كود كتير عم يشتغل هلأ: جرّب بعد شوي");
+    expect(failText("The code gave back a promise: it runs straight through, without await", "en")).toBe("The code gave back a promise: it runs straight through, without await");
+    expect(failText("The code gave back more than 256 KB", "ar")).toBe("الكود رجّع أكتر من 256 كيلوبايت");
+    expect(failText("TypeError: cannot read property 'total' of undefined (line 3)", "ar")).toBe("TypeError: cannot read property 'total' of undefined (line 3)");
+    expect(failText("No stock left (line 1)", "ar")).toBe("No stock left (line 1)");
+    // What a code step may do, with the cage's limits as the server says them (or the usual ones).
+    expect(codeNote(undefined, "en")).toContain("At most 2 seconds and 32 MB, and no await.");
+    expect(codeNote({ ms: 3000, memoryMb: 64 }, "en")).toContain("At most 3 seconds and 64 MB");
+    expect(codeNote(undefined, "ar")).toContain("بالكتير 2 ثواني و32 ميغا");
     // A code a newer server says: its own English.
     expect(lineText({ ok: true, say: ["teleported", 1], note: "Teleported 1" }, "ar")).toBe("Teleported 1");
     const counts = { added: 1, changed: 2, deleted: 0, sent: 0 };

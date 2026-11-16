@@ -9,10 +9,12 @@ export const atOf = (path: Path) => path.join(".");
 export const stepOfLine = (at: string) => at.replace(/\[\d+\]/g, "");
 
 export const isGroup = (s: Step): s is GroupStep => s.act === "if" || s.act === "each";
-export const GROUPS: Array<{ key: "data" | "control" | "out"; acts: StepKind[] }> = [
+export const GROUPS: Array<{ key: "data" | "control" | "out" | "code"; acts: StepKind[] }> = [
   { key: "data", acts: ["find", "get", "add", "change", "delete"] },
   { key: "control", acts: ["if", "each", "set", "call", "stop", "return"] },
   { key: "out", acts: ["notify", "email", "whatsapp", "sms"] },
+  // For what the steps can't say: JavaScript, run in a cage on the server.
+  { key: "code", acts: ["code"] },
 ];
 /** After a failure a function tells someone or writes it down, nothing else. */
 export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set"];
@@ -74,7 +76,7 @@ function keep(have: Map<string, Known>, s: Step) {
   else if (s.act === "get") have.set(s.as, { name: s.as, kind: "row", table: s.table });
   else if ((s.act === "add" || s.act === "change") && s.as) have.set(s.as, { name: s.as, kind: "row", table: s.table });
   else if (s.act === "set" && nameOk(s.name) && !have.has(s.name)) have.set(s.name, { name: s.name, kind: "value" });
-  else if (s.act === "call" && s.as) have.set(s.as, { name: s.as, kind: "value" });
+  else if ((s.act === "call" || s.act === "code") && s.as) have.set(s.as, { name: s.as, kind: "value" });
 }
 
 /**
@@ -173,7 +175,7 @@ export function namesUsed(def: FnDef): string[] {
 }
 
 /** A fresh step of a kind, with what it needs to start from. */
-export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; def: FnDef }): Step {
+export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; def: FnDef; /** What a new code step starts with (a few lines saying how it works). */ code?: string }): Step {
   const table = ctx.tables[0]?.id ?? "";
   const free = (base: string) => freeName(base, [...namesUsed(ctx.def), ...RESERVED, "item"]);
   switch (act) {
@@ -195,6 +197,8 @@ export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; 
       return { act, list: "", do: [] };
     case "call":
       return { act, fn: ctx.fns.find((f) => f.published)?.id ?? "", input: {} };
+    case "code":
+      return { act, code: ctx.code ?? "return input;", give: {}, as: free("result") };
     case "stop":
       return { act, message: "" };
     case "return":

@@ -6,7 +6,7 @@ import type { FnInput, Outcome } from "../../api/functions.api";
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { stepOfLine, toVal } from "./fnDraft";
-import { ACT_NAME, INPUT_TYPE, lineText, outcomeLine, whereText } from "./fnText";
+import { ACT_NAME, INPUT_TYPE, failText, lineText, outcomeLine, whereText } from "./fnText";
 
 const field = "h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
 
@@ -67,7 +67,7 @@ export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun }: {
           {outcome.error ? (
             <div className="text-sm text-red-300" data-testid="fn-outcome-error">
               {outcome.failedAt ? <span className="text-white/60">{whereText(outcome.failedAt, lang)}: </span> : null}
-              <bdi>{outcome.error}</bdi>
+              <bdi>{failText(outcome.error, lang)}</bdi>
             </div>
           ) : null}
           {outcome.ok && outcome.value !== null && outcome.value !== undefined ? (
@@ -94,6 +94,12 @@ export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun }: {
                     <bdi className={l.ok ? "text-white/80" : "text-red-300"}>{lineText(l, lang)}</bdi>
                   </div>
                   <span className="shrink-0 text-xs text-white/60">{l.ms} ms</span>
+                  {/* What a code step wrote with log(). */}
+                  {l.log?.length ? (
+                    <pre dir="ltr" className="mt-1 max-h-40 w-full basis-full overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 text-start text-xs text-white/80" data-testid={`fn-trace-log-${k}`}>
+                      {l.log.join("\n")}
+                    </pre>
+                  ) : null}
                 </li>
               );
             })}
