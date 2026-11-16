@@ -8,6 +8,8 @@ import type { Field } from "../../lib/collectionTree.js";
 import { OPS_BY_KIND } from "../../lib/dataQuery.js";
 import { EMPTY_DEF, FN_LIMITS, FnDefSchema, defOf, problemsOf, sizeOf, type FnDef, type Known } from "../../lib/fnDef.js";
 import { CMPS } from "../../lib/fnValues.js";
+import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
+import { hasPermission } from "../../middleware/access.js";
 import { runFn } from "../functions/functions.service.js";
 
 /**
@@ -23,6 +25,11 @@ import { runFn } from "../functions/functions.service.js";
  * POST   /admin/functions/:id/publish — the draft becomes what runs (refused while it has problems)
  * POST   /admin/functions/:id/run     { input?, dry?, which? } — run it now; dry: nothing is written or sent
  * DELETE /admin/functions/:id         — refused while another function calls it
+ *
+ * What starts it (F3, lib/fnTriggers.ts):
+ * POST   /admin/functions/:id/triggers        { kind, config, slug? } — a row event, a schedule, a store event, a call, a webhook
+ * PUT    /admin/functions/:id/triggers/:tid   { config?, slug?, enabled? }
+ * DELETE /admin/functions/:id/triggers/:tid
  */
 const r = Router();
 
@@ -75,9 +82,30 @@ async function fnOf(req: Request) {
   return fn;
 }
 
-async function full(fn: Row) {
+type TriggerRow = { id: string; kind: string; config: unknown; slug: string | null; enabled: boolean; fired: number; lastAt: Date | null; nextAt: Date | null };
+/** A trigger as the page shows it. A webhook's address is its permission: said only to who may change the function. */
+const triggerView = (t: TriggerRow, write: boolean) => {
+  const kind = t.kind as TriggerKind;
+  return {
+    id: t.id,
+    kind,
+    config: t.config,
+    slug: kind === "call" ? t.slug : null,
+    address: kind === "call" ? `/v1/fn/${t.slug}` : kind === "webhook" ? (write ? `/v1/hooks/${t.slug}` : null) : null,
+    enabled: t.enabled,
+    fired: t.fired,
+    lastAt: t.lastAt,
+    nextAt: kind === "schedule" ? t.nextAt : null,
+    /** What it hands the function (the function takes the ones it has an input for). */
+    hands: HANDS[kind] ?? [],
+  };
+};
+
+async function full(fn: Row, req: Request) {
   const draft = defOf(fn.draft) ?? EMPTY_DEF;
-  return { ...lite(fn), draft, live: defOf(fn.live), problems: problemsOf(draft, await known(fn.id)) };
+  const triggers = await prisma.fnTrigger.findMany({ where: { fnId: fn.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  const write = hasPermission(req, "functions:write");
+  return { ...lite(fn), draft, live: defOf(fn.live), problems: problemsOf(draft, await known(fn.id)), triggers: triggers.map((t) => triggerView(t, write)) };
 }
 
 r.get(
@@ -91,6 +119,8 @@ r.get(
       ops: OPS_BY_KIND,
       cmps: CMPS,
       limits: FN_LIMITS,
+      // What can start a function: the kinds, the store's events, and how many calls a minute when a trigger doesn't say.
+      triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS },
     });
   }),
 );
@@ -100,14 +130,14 @@ r.post(
   asyncHandler(async (req, res) => {
     const body = CreateBody.parse(req.body ?? {});
     const fn = await prisma.fn.create({ data: { name: body.name, note: body.note || null, draft: EMPTY_DEF as unknown as Prisma.InputJsonValue, createdById: req.access?.email ?? null } });
-    res.status(201).json(await full(fn));
+    res.status(201).json(await full(fn, req));
   }),
 );
 
 r.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    res.json(await full(await fnOf(req)));
+    res.json(await full(await fnOf(req), req));
   }),
 );
 
@@ -127,7 +157,9 @@ r.put(
       where: { id: fn.id },
       data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note || null } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}), ...(draft ? { draft: draft as unknown as Prisma.InputJsonValue } : {}) },
     });
-    res.json(await full(saved));
+    // Switched on or off: its triggers follow at once.
+    if (body.enabled !== undefined) forgetTriggers();
+    res.json(await full(saved, req));
   }),
 );
 
@@ -141,7 +173,8 @@ r.post(
     const problems = problemsOf(draft, await known(fn.id));
     if (problems.length) throw new AppError(409, "FN_HAS_PROBLEMS", "Fix what the steps point at first", { problems });
     const saved = await prisma.fn.update({ where: { id: fn.id }, data: { live: draft as unknown as Prisma.InputJsonValue, publishedAt: new Date() } });
-    res.json(await full(saved));
+    forgetTriggers();
+    res.json(await full(saved, req));
   }),
 );
 
@@ -152,7 +185,7 @@ r.post(
     const body = RunBody.parse(req.body ?? {});
     // A real run of the draft would do things nobody published: the draft is tried dry only.
     if (!body.dry && body.which === "draft") throw new AppError(400, "FN_DRAFT_IS_DRY", "The draft runs dry only; publish it to run it for real");
-    const out = await runFn(fn.id, body.input, { dry: body.dry, which: body.which, trigger: "admin" });
+    const out = await runFn(fn.id, body.input, { dry: body.dry, which: body.which, trigger: "admin", caller: { kind: "admin", id: req.access?.adminId, email: req.access?.email ?? undefined } });
     // What it gave back may be a table's worth of rows: the page shows the beginning.
     const value = JSON.stringify(out.value ?? null);
     res.json({ ...out, value: value.length > 100_000 ? null : out.value, ...(value.length > 100_000 ? { valueCut: true } : {}) });
@@ -168,7 +201,93 @@ r.delete(
     const callers = others.filter((o) => [o.draft, o.live].some((d) => JSON.stringify(d ?? null).includes(`"fn":"${fn.id}"`))).map((o) => o.name);
     if (callers.length) throw new AppError(409, "FN_USED", "Another function calls this one", { callers });
     await prisma.fn.delete({ where: { id: fn.id } });
+    forgetTriggers();
     res.json({ ok: true });
+  }),
+);
+
+/* ---------------- What starts it ---------------- */
+
+const TriggerBody = z.object({ kind: z.enum(TRIGGER_KINDS), config: z.unknown().optional(), slug: z.string().trim().toLowerCase().max(60).optional() }).strict();
+const TriggerPatch = z.object({ config: z.unknown().optional(), slug: z.string().trim().toLowerCase().max(60).optional(), enabled: z.boolean().optional() }).strict();
+const slugTaken = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+
+/** A trigger's settings checked for its kind, and against what is there (a row trigger's table). */
+async function checked(kind: TriggerKind, raw: unknown) {
+  const config = configOf(kind, raw);
+  if (kind === "row" && !(await prisma.collection.findUnique({ where: { id: String(config.table) }, select: { id: true } }))) throw new AppError(400, "TRIGGER_INVALID", "This table isn't there", { at: "table" });
+  return config;
+}
+function callSlug(slug: string | undefined) {
+  if (!slug || !CALL_SLUG.test(slug)) throw new AppError(400, "TRIGGER_INVALID", "An address is small letters, digits and -", { at: "slug" });
+  return slug;
+}
+
+r.post(
+  "/:id/triggers",
+  asyncHandler(async (req, res) => {
+    const fn = await fnOf(req);
+    const body = TriggerBody.parse(req.body ?? {});
+    if ((await prisma.fnTrigger.count({ where: { fnId: fn.id } })) >= TRIGGER_LIMITS.perFunction) throw new AppError(400, "TOO_MANY_TRIGGERS", `A function has up to ${TRIGGER_LIMITS.perFunction} triggers`);
+    const config = await checked(body.kind, body.config);
+    try {
+      await prisma.fnTrigger.create({
+        data: {
+          fnId: fn.id,
+          kind: body.kind,
+          config: config as Prisma.InputJsonValue,
+          // A call's address is the owner's word; a webhook's is made here, long and random.
+          slug: body.kind === "call" ? callSlug(body.slug) : body.kind === "webhook" ? newToken() : null,
+          nextAt: body.kind === "schedule" ? nextRun(config as ScheduleConfig, new Date()) : null,
+        },
+      });
+    } catch (e) {
+      if (slugTaken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");
+      throw e;
+    }
+    forgetTriggers();
+    res.status(201).json(await full(fn, req));
+  }),
+);
+
+r.put(
+  "/:id/triggers/:tid",
+  asyncHandler(async (req, res) => {
+    const fn = await fnOf(req);
+    const was = await prisma.fnTrigger.findFirst({ where: { id: String(req.params.tid), fnId: fn.id } });
+    if (!was) throw new AppError(404, "TRIGGER_NOT_FOUND", "No such trigger");
+    const body = TriggerPatch.parse(req.body ?? {});
+    const kind = was.kind as TriggerKind;
+    const config = body.config !== undefined ? await checked(kind, body.config) : undefined;
+    // A schedule counts again from now when its time changes, or when it is switched back on.
+    const again = kind === "schedule" && (config !== undefined || (body.enabled === true && !was.enabled));
+    try {
+      await prisma.fnTrigger.update({
+        where: { id: was.id },
+        data: {
+          ...(config !== undefined ? { config: config as Prisma.InputJsonValue } : {}),
+          ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
+          ...(kind === "call" && body.slug !== undefined ? { slug: callSlug(body.slug) } : {}),
+          ...(again ? { nextAt: nextRun((config ?? was.config) as ScheduleConfig, new Date()) } : {}),
+        },
+      });
+    } catch (e) {
+      if (slugTaken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");
+      throw e;
+    }
+    forgetTriggers();
+    res.json(await full(fn, req));
+  }),
+);
+
+r.delete(
+  "/:id/triggers/:tid",
+  asyncHandler(async (req, res) => {
+    const fn = await fnOf(req);
+    const gone = await prisma.fnTrigger.deleteMany({ where: { id: String(req.params.tid), fnId: fn.id } });
+    if (!gone.count) throw new AppError(404, "TRIGGER_NOT_FOUND", "No such trigger");
+    forgetTriggers();
+    res.json(await full(fn, req));
   }),
 );
 

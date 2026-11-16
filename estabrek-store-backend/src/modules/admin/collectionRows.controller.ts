@@ -30,10 +30,13 @@ import { checkLinks, isRelation, linkGone, namedRows, restoreRows, setLinksOfMan
 import { GRID_LIMITS, OPS_BY_KIND, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQuery, queryRows, rowsSlice, utc, viewCounts } from "../../lib/dataQuery.js";
 import { LANGS, coerceValue, csvLine, exportColumns } from "../../lib/dataRows.js";
 import { LONG, StatusIn, addRow, answer, changeRow, refresh, tableOf, taken, writeRows } from "../../lib/rowWrites.js";
+import { emitRow } from "../../lib/fnTriggers.js";
 
 const r = Router();
 export const IMPORT_MAX = 500;
 export const BULK_MAX = 500;
+/** Up to this many rows changed in one act each start the functions waiting for it. */
+const ROW_EVENTS_MAX = 25;
 
 const Lang = z.enum(LANGS).default("ar");
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
@@ -195,6 +198,8 @@ r.post(
           : await prisma.$executeRaw(Prisma.sql`UPDATE "CollectionItem" AS i SET "data" = i."data" - ${field.id}::text, "updatedAt" = ${utc(now)} WHERE ${live}`);
     }
     if (changed) refresh();
+    // A few rows picked by hand start the functions that wait for a change or a delete; a question's worth of rows (like a file's) doesn't.
+    if (changed && body.ids && body.ids.length <= ROW_EVENTS_MAX && body.op !== "restore" && body.op !== "purge") for (const id of body.ids) emitRow(body.op === "trash" ? "deleted" : "changed", table.id, { id });
     res.json({ changed, ...(withThem ? { withThem } : {}), counts: await viewCounts(prisma, table.id) });
   }),
 );

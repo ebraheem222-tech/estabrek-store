@@ -9,6 +9,12 @@
  * - A run has limits (lib/fnDef.ts FN_LIMITS): steps done, rows written, messages sent, functions
  *   inside functions, and ten seconds.
  * - A real run is written in the run log (lib/runs.ts) as kind "function".
+ * - Who started it is {{caller}}: the admin, a signed-in shopper, an API key, anyone, or (a row
+ *   event, a schedule, a webhook) the system. A caller never says who they are: the door they
+ *   came through does.
+ * - What starts a function by itself (lib/fnTriggers.ts) comes through the queue as a task of
+ *   kind "function" (`startFunctions`). A run that was interrupted isn't run again by itself:
+ *   its steps may not be safe to repeat.
  */
 import { Prisma, type CollectionItem } from "@prisma/client";
 import { ZodError } from "zod";
@@ -19,6 +25,8 @@ import { apiRow, type LinkModes } from "../../lib/dataApi.js";
 import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
+import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
+import { registerTask } from "../../lib/tasks.js";
 import { allHold, fill, numberOf, words, type Scope } from "../../lib/fnValues.js";
 import { errorText, triggerJob } from "../../lib/jobs.js";
 import { relationsOf, splitLinks, trashRows, withLinks } from "../../lib/links.js";
@@ -79,7 +87,10 @@ type Table = { id: string; slug: string; fields: Field[] };
 /** A run's limits, shared with the functions it calls; each keeps its own steps' lines. */
 type Budget = { deadline: number; used: { writes: number; messages: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
-type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table> };
+type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller };
+/** Who started a run. */
+export type FnCaller = { kind: "admin" | "customer" | "key" | "public" | "system"; id?: string; name?: string; email?: string };
+const SYSTEM: FnCaller = { kind: "system" };
 const TRACE_MAX = 300;
 const PHONE = /^\+?[0-9][0-9 ()-]{4,19}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -174,6 +185,9 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
     case "add": {
       const t = await table(s.table);
       const values = filled(s.values);
+      // Whose row it is: a shopper, by their id (or {{caller}}). Nobody: the store's own row.
+      const ownerId = s.owner === undefined ? null : rowName(fill(s.owner, scope)) || null;
+      if (ownerId && !(await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true } }))) throw new Failure("No such shopper to own the row", at);
       writing();
       if (dry) {
         const check = await writeRows(t, [{ status: s.status, values }], { mode: "create", lang, dryRun: true });
@@ -188,7 +202,7 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
         budget.counts.added += 1;
         return ["wouldAdd", t.slug];
       }
-      const row = await addRow(t, { status: s.status, values }, lang);
+      const row = await addRow(t, { status: s.status, values, ownerId }, lang);
       if (!row) throw new Failure("The row wasn't saved", at);
       if (s.as) scope[s.as] = (await rowsOut(t, [row], lang))[0];
       budget.counts.added += 1;
@@ -231,6 +245,7 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       }
       await prisma.$transaction((tx) => trashRows(tx, Prisma.sql`i."collectionId" = ${t.id} AND i."id" = ${row.id}`, new Date()), LONG);
       refresh();
+      emitRow("deleted", t.id, row);
       return ["deleted", row.slug, t.slug];
     }
     case "set": {
@@ -287,7 +302,7 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (!fn) throw new Failure("The function it calls isn't there any more", at);
       if (!def) throw new Failure(`"${fn.name}" isn't published`, at);
       if (!fn.enabled) throw new Failure(`"${fn.name}" is switched off`, at);
-      const inner = await runDef(def, filled(s.input ?? {}), { dry, depth: ctx.depth + 1, budget });
+      const inner = await runDef(def, filled(s.input ?? {}), { dry, depth: ctx.depth + 1, budget, caller: ctx.caller });
       if (!inner.ok) throw new Failure(`${fn.name}: ${inner.error}`, at);
       if (s.as) scope[s.as] = inner.value;
       return ["called", fn.name];
@@ -379,13 +394,14 @@ function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<str
 const newBudget = (): Budget => ({ deadline: Date.now() + FN_LIMITS.ms, used: { writes: 0, messages: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });
 
 /** A definition run with what it was handed. Never throws: a failure is the outcome. */
-export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget } = {}): Promise<Outcome> {
+export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller } = {}): Promise<Outcome> {
   const t0 = Date.now();
   const budget = opts.budget ?? newBudget();
   // A function inside another keeps its own steps' lines to itself; the limits and counts are shared.
   const own: Budget = opts.budget ? { ...budget, trace: [] } : budget;
-  const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map() };
-  const scope: Scope = { now: new Date().toISOString() };
+  const caller = opts.caller ?? SYSTEM;
+  const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map(), caller };
+  const scope: Scope = { now: new Date().toISOString(), caller: { kind: caller.kind, id: caller.id ?? null, name: caller.name ?? null, email: caller.email ?? null } };
   const done = (ok: boolean, value: unknown, error: string | null, failedAt: string | null): Outcome => ({ ok, dry: ctx.dry, value: ok ? value : null, error, failedAt, trace: own.trace, counts: own.counts, ms: Date.now() - t0 });
   let failure: Failure;
   try {
@@ -413,16 +429,60 @@ const some = (counts: Counts) => Object.fromEntries(Object.entries(counts).filte
  * A saved function run: its published steps (or, from the admin's editor, the draft). A real run is
  * written in the run log and counted on the function; a dry one leaves no trace anywhere.
  */
-export async function runFn(id: string, input: Record<string, unknown>, opts: { dry?: boolean; which?: "live" | "draft"; trigger: string }): Promise<Outcome> {
+export async function runFn(id: string, input: Record<string, unknown>, opts: { dry?: boolean; which?: "live" | "draft"; trigger: string; caller?: FnCaller; /** Only when it is switched on (everything but the admin's own run). */ needOn?: boolean }): Promise<Outcome> {
   const fn = await prisma.fn.findUnique({ where: { id } });
   if (!fn) throw new AppError(404, "FN_NOT_FOUND", "No such function");
   const def = defOf(opts.which === "draft" ? fn.draft : fn.live);
   if (!def) throw new AppError(409, opts.which === "draft" ? "FN_INVALID" : "FN_NOT_PUBLISHED", opts.which === "draft" ? "The draft can't be read" : "This function isn't published yet");
+  if (opts.needOn && !fn.enabled) throw new AppError(409, "FN_OFF", "This function is switched off");
   const t0 = Date.now();
-  const out = await runDef(def, input, { dry: opts.dry });
+  const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller });
   if (!opts.dry) {
-    recordRun({ kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error });
+    recordRun({ kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error });
     await prisma.fn.update({ where: { id }, data: { runs: { increment: 1 }, lastRunAt: new Date(t0) } }).catch(() => undefined);
   }
   return out;
+}
+
+/* ---------------- Started by a trigger: through the queue ---------------- */
+
+/** What a row event hands the function: the row as it is now, as it was before a change, and what happened. */
+async function rowInput(r: NonNullable<FnTask["row"]>, lang: Lang): Promise<Record<string, unknown> | null> {
+  const c = await prisma.collection.findUnique({ where: { id: r.table }, select: { id: true, slug: true, fields: true } });
+  // (A deleted row is in the trash, and still read from there.)
+  const row = c ? await prisma.collectionItem.findUnique({ where: { id: r.id } }) : null;
+  if (!c || !row) return null;
+  const table: Table = { id: c.id, slug: c.slug, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[] };
+  const [now] = await rowsOut(table, [row], lang);
+  const before = r.before === undefined ? null : (await rowsOut(table, [{ ...row, data: r.before }], lang))[0];
+  return { row: now, before, event: r.event, table: table.slug };
+}
+
+/**
+ * At start: runs asked for by a trigger (a row event, a schedule, a store event, a webhook) are
+ * tasks of kind "function". The function's own failure is its outcome, written in the run log:
+ * the task is done either way. What is tried again is only a run that never began.
+ */
+export function startFunctions() {
+  registerTask(
+    "function",
+    async (payload, task) => {
+      const p = payload as FnTask;
+      if (!p || typeof p.fnId !== "string" || typeof p.trigger !== "string") throw new Error("Not a function's run");
+      // It began once and the server stopped in the middle: its steps may not be safe to repeat. (Asked for again from the queue's page, it runs.)
+      if (p.started && task.attempts > 1) throw new Error("It was interrupted mid-run; it isn't run again by itself");
+      const trigger = p.triggerId ? await prisma.fnTrigger.findUnique({ where: { id: p.triggerId }, select: { id: true, enabled: true } }) : null;
+      const fn = await prisma.fn.findUnique({ where: { id: p.fnId }, select: { enabled: true, live: true } });
+      const def = fn ? defOf(fn.live) : null;
+      // Removed, unpublished or switched off since it was asked for: nothing to run.
+      if (!trigger?.enabled || !fn?.enabled || !def) return { skipped: 1 };
+      const input = p.row ? await rowInput(p.row, def.lang ?? "ar") : p.input ?? {};
+      if (!input) return { skipped: 1 };
+      await prisma.task.update({ where: { id: task.id }, data: { payload: { ...p, started: true } as unknown as Prisma.InputJsonValue } });
+      const out = await inChain(p.chain ?? 1, () => runFn(p.fnId, input, { trigger: p.trigger, needOn: true }));
+      await prisma.fnTrigger.update({ where: { id: trigger.id }, data: { fired: { increment: 1 }, lastAt: new Date() } }).catch(() => undefined);
+      return out.ok ? { ran: 1 } : { ran: 1, stopped: 1 };
+    },
+    { maxAttempts: 3, timeoutMs: 30_000 },
+  );
 }

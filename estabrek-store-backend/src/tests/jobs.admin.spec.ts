@@ -37,6 +37,7 @@ describe("Background jobs", () => {
       "dataTrash",
       "runsClean",
       "tasks",
+      "fnSchedule",
       "tasksClean",
       "popularitySave",
       "popularityHot",

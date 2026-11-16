@@ -7,6 +7,7 @@ import { TRIGGER_TEXT as RULE_TRIGGER } from "./automationText";
 import { jobLabel } from "./jobNames";
 import { TRIGGER_TEXT as JOB_TRIGGER, runSummary } from "./jobsText";
 import { rulesRanText, taskKindName } from "./tasksText";
+import { fnTriggerName } from "../functions/fnText";
 
 type Lang = "ar" | "en" | "he";
 const part = (words: string, lang: Lang) => {
@@ -35,6 +36,7 @@ export function runTrigger(run: Pick<Run, "kind" | "trigger">, lang: Lang): stri
   if (t === "test") return part("تجربة|A try|ניסיון", lang);
   if (run.kind === "job") return (JOB_TRIGGER as Record<string, string>)[t] ?? t;
   if (run.kind === "automation") return (RULE_TRIGGER as Record<string, { label: string }>)[t]?.label ?? t;
+  if (run.kind === "function") return fnTriggerName(t, lang);
   // A queued task: its first try, or one after a failure.
   if (run.kind === "task") return t === "retry" ? part("محاولة تانية|A retry|ניסיון חוזר", lang) : t === "queue" ? part("من الصف|From the queue|מהתור", lang) : t;
   return t;

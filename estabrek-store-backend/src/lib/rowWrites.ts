@@ -17,6 +17,7 @@ import { checkLinks, incomingTo, linkGone, linkedFrom, relationsOf, saveLinks, s
 import type { Field } from "./collectionTree.js";
 import { STATUSES } from "./dataQuery.js";
 import { LANGS, freeSlug, looseData, patchData, slugFrom, type Issue } from "./dataRows.js";
+import { emitRow } from "./fnTriggers.js";
 
 /**
  * The shop's pages that show rows are drawn again: at once after a change, and for changes that
@@ -203,7 +204,10 @@ export async function addRow(table: { id: string; fields: Field[] }, row: RowIn,
     throw e;
   }
   if (out.rejected.length) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: out.rejected[0].issues });
-  return prisma.collectionItem.findUnique({ where: { collectionId_slug: { collectionId: table.id, slug: out.slugs[0] } } });
+  const made = await prisma.collectionItem.findUnique({ where: { collectionId_slug: { collectionId: table.id, slug: out.slugs[0] } } });
+  // The functions that wait for a row added here (lib/fnTriggers.ts): started through the queue, never held for.
+  if (made) emitRow("added", table.id, made);
+  return made;
 }
 
 /* ---------------- A row changed: a cell, or a few ---------------- */
@@ -245,6 +249,7 @@ export async function changeRow(table: { id: string; fields: Field[] }, was: Col
         })
       : await prisma.collectionItem.update({ where: { id: was.id }, data });
     refresh();
+    emitRow("changed", table.id, saved, was.data);
     return saved;
   } catch (e) {
     if (taken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");

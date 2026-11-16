@@ -3,22 +3,25 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { FnDef, FnFull, FnList, FnLite, Outcome } from "../../api/functions.api";
+import type { FnDef, FnFull, FnList, FnLite, FnTrigger, Outcome } from "../../api/functions.api";
 
 // الـ Functions: the list and the builder over a stand-in API. Steps are added from a menu, each
 // opens to its own form; the draft is saved, tried dry, and published.
 
-const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), deleteFunction: vi.fn(), may: new Set<string>() }));
+const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), may: new Set<string>(), copied: [] as string[] }));
 vi.mock("../../api/functions.api", () => m);
+vi.mock("../../config/env", () => ({ env: { VITE_API_BASE_URL: "https://api.shop.test/v1" } }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
 
 import { setLangForTests } from "../../lib/lang";
 import FunctionsPage from "./FunctionsPage";
 import FunctionEditor from "./FunctionEditor";
 import { inputsOut } from "./TryPanel";
+import { newTrigger } from "./FnTriggers";
 
 const lite = (over: Partial<FnLite>): FnLite => ({ id: "f1", name: "Points", note: null, enabled: true, published: false, publishedAt: null, changed: true, steps: 0, inputs: 0, takes: [], runs: 0, lastRunAt: null, updatedAt: "2026-11-16T10:00:00Z", ...over });
-const full = (over: Partial<FnFull> = {}): FnFull => ({ ...lite({}), draft: { inputs: [], do: [] }, live: null, problems: [], ...over });
+const full = (over: Partial<FnFull> = {}): FnFull => ({ ...lite({}), draft: { inputs: [], do: [] }, live: null, problems: [], triggers: [], ...over });
+const trig = (over: Partial<FnTrigger>): FnTrigger => ({ id: "g1", kind: "row", config: { table: "t1", on: ["added"] }, slug: null, address: null, enabled: true, fired: 0, lastAt: null, nextAt: null, hands: ["row", "before", "event", "table"], ...over });
 const greet = lite({ id: "f2", name: "Greet", published: true, changed: false, steps: 1, inputs: 1, runs: 4, takes: [{ name: "who", type: "text", required: true }] });
 const listOf = (functions: FnLite[]): FnList => ({
   functions,
@@ -29,6 +32,7 @@ const listOf = (functions: FnLite[]): FnList => ({
   ops: { text: ["contains", "is", "empty"], email: ["is", "contains"], number: ["is", "gt", "lt", "between"], select: ["is", "anyOf"], $status: ["is"], $slug: ["is"], $date: ["gt", "lt"] },
   cmps: ["eq", "ne", "gt", "empty", "notEmpty"],
   limits: { steps: 60, depth: 4, conditions: 8, inputs: 20, values: 40, text: 2000, found: 200, loop: 200, executed: 1000, writes: 200, messages: 20, calls: 3, ms: 10000 },
+  triggers: { kinds: ["row", "schedule", "event", "call", "webhook"], events: ["order.created", "video.ready"], callPerMinute: { customer: 30, key: 120, public: 10 }, limits: { perFunction: 10, everyMinutes: { min: 5, max: 10080 } } },
 });
 
 let server: FnFull;
@@ -124,7 +128,7 @@ describe("The builder", () => {
     expect([...screen.getByTestId("filter-do.0-0-op").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["is", "contains"]);
     expect((screen.getByTestId("filter-do.0-0-op") as HTMLSelectElement).value).toBe("contains");
     pick("filter-do.0-0-op", "is");
-    expect([...screen.getByTestId("filter-do.0-0-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "input.email", "now"]);
+    expect([...screen.getByTestId("filter-do.0-0-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind"]);
     pick("filter-do.0-0-value-names", "input.email");
     expect((screen.getByTestId("filter-do.0-0-value") as HTMLInputElement).value).toBe("{{input.email}}");
     type("step-do.0-as", "found");
@@ -201,7 +205,7 @@ describe("The builder", () => {
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("Greet ← said");
     expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "email", "whatsapp", "sms"]);
     pick("steps-fail-add", "notify");
-    expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "said", "error"]);
+    expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "said", "error"]);
     type("step-fail.0-title", "It failed: {{error}}");
     fireEvent.click(screen.getByTestId("fn-save"));
     await waitFor(() => expect(lastDraft()).toEqual({ inputs: [], do: [{ act: "call", fn: "f2", input: { who: "Amal" }, as: "said" }], fail: [{ act: "notify", title: "It failed: {{error}}" }] }));
@@ -291,5 +295,124 @@ describe("Trying it", () => {
     expect(screen.queryByTestId("fn-try-dry")).toBeNull();
     expect(screen.queryByTestId("steps-do-add")).toBeNull();
     expect(screen.queryByTestId("fn-save")).toBeNull();
+  });
+});
+
+describe("What starts it", () => {
+  /** The stand-in server keeps the triggers the page asks for. */
+  beforeEach(() => {
+    m.copied = [];
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (t: string) => void m.copied.push(t) } });
+    let n = 0;
+    m.addTrigger.mockImplementation(async (_id: string, body: { kind: FnTrigger["kind"]; config: Record<string, unknown>; slug?: string }) => {
+      const id = `g${++n}`;
+      const address = body.kind === "call" ? `/v1/fn/${body.slug}` : body.kind === "webhook" ? "/v1/hooks/s3cr3ts3cr3ts3cr3ts3cr3t" : null;
+      const hands = body.kind === "row" ? ["row", "before", "event", "table"] : body.kind === "webhook" ? ["body", "query"] : body.kind === "schedule" ? ["at"] : body.kind === "event" ? ["event", "subject"] : [];
+      return (server = { ...server, triggers: [...server.triggers, trig({ id, kind: body.kind, config: body.config, slug: body.kind === "call" ? body.slug ?? null : null, address, hands })] });
+    });
+    m.saveTrigger.mockImplementation(async (_id: string, tid: string, body: { config?: Record<string, unknown>; slug?: string; enabled?: boolean }) => {
+      return (server = { ...server, triggers: server.triggers.map((t) => (t.id === tid ? { ...t, ...(body.config ? { config: body.config } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}), ...(body.slug ? { slug: body.slug, address: `/v1/fn/${body.slug}` } : {}) } : t)) });
+    });
+    m.deleteTrigger.mockImplementation(async (_id: string, tid: string) => (server = { ...server, triggers: server.triggers.filter((t) => t.id !== tid) }));
+  });
+
+  test("a new trigger of each kind starts from something sensible", () => {
+    const tables = listOf([]).tables;
+    const ctx = { tables, events: ["order.created"], taken: [] as string[], name: "Customer points" };
+    expect(newTrigger("row", ctx)).toEqual({ kind: "row", config: { table: "t1", on: ["added"] } });
+    expect(newTrigger("schedule", ctx)).toEqual({ kind: "schedule", config: { everyMinutes: 60 } });
+    expect(newTrigger("event", ctx)).toEqual({ kind: "event", config: { event: "order.created" } });
+    expect(newTrigger("webhook", ctx)).toEqual({ kind: "webhook", config: {} });
+    // A call's address comes from the function's name; one that is taken gets a number; a name with no Latin letters gets "fn".
+    expect(newTrigger("call", ctx)).toEqual({ kind: "call", config: { who: "customer" }, slug: "customer-points" });
+    expect(newTrigger("call", { ...ctx, taken: ["customer-points", "customer-points-2"] }).slug).toBe("customer-points-3");
+    expect(newTrigger("call", { ...ctx, name: "نقاط الزبون" }).slug).toBe("fn");
+    expect(newTrigger("call", { ...ctx, name: "X" }).slug).toBe("x-fn");
+  });
+
+  test("a row trigger: which table, which events; it says what it hands and adds the inputs for it", async () => {
+    show();
+    expect((await screen.findByTestId("fn-triggers-empty")).textContent).toContain("Nothing starts it by itself yet");
+    pick("fn-triggers-add", "row");
+    await waitFor(() => expect(m.addTrigger).toHaveBeenCalledWith("f1", { kind: "row", config: { table: "t1", on: ["added"] } }));
+    expect((await screen.findByTestId("trigger-g1-line")).textContent).toBe("Customers: added");
+    // Not published: it is said that nothing fires yet.
+    expect(screen.getByTestId("fn-triggers-asleep").textContent).toContain("isn't published yet");
+    // The only event ticked can't be unticked; another can be added.
+    expect((screen.getByTestId("trigger-g1-on-added") as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId("trigger-g1-on-changed"));
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { config: { table: "t1", on: ["added", "changed"] } }));
+    await waitFor(() => expect(screen.getByTestId("trigger-g1-line").textContent).toBe("Customers: added, changed"));
+    pick("trigger-g1-table", "t2");
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { config: { table: "t2", on: ["added", "changed"] } }));
+    // What it hands, and the inputs the function doesn't take yet: one press adds them to the draft.
+    expect(screen.getByTestId("trigger-g1-hint").textContent).toContain("It hands the function: row, before, event, table.");
+    fireEvent.click(screen.getByTestId("trigger-g1-add-inputs"));
+    expect([0, 1, 2, 3].map((k) => (screen.getByTestId(`fn-input-${k}-name`) as HTMLInputElement).value)).toEqual(["row", "before", "event", "table"]);
+    expect(screen.queryByTestId("trigger-g1-add-inputs")).toBeNull();
+    expect(screen.getByTestId("fn-dirty").textContent).toBe("There are changes that aren't saved.");
+    // Switched off, and removed.
+    fireEvent.click(within(screen.getByTestId("trigger-g1")).getByRole("switch"));
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { enabled: false }));
+    fireEvent.click(screen.getByTestId("trigger-g1-remove"));
+    await waitFor(() => expect(m.deleteTrigger).toHaveBeenCalledWith("f1", "g1"));
+    await screen.findByTestId("fn-triggers-empty");
+  });
+
+  test("a call: who may, its own address in full, and how many a minute", async () => {
+    server = full({ name: "Join us", live: { inputs: [], do: [] }, published: true, changed: false });
+    show();
+    await screen.findByTestId("fn-triggers");
+    pick("fn-triggers-add", "call");
+    await waitFor(() => expect(m.addTrigger).toHaveBeenCalledWith("f1", { kind: "call", config: { who: "customer" }, slug: "join-us" }));
+    expect((await screen.findByTestId("trigger-g1-address")).textContent).toBe("POST https://api.shop.test/v1/fn/join-us");
+    expect(screen.queryByTestId("fn-triggers-asleep")).toBeNull();
+    fireEvent.click(screen.getByTestId("trigger-g1-copy"));
+    await waitFor(() => expect(m.copied).toEqual(["https://api.shop.test/v1/fn/join-us"]));
+    expect(screen.getByTestId("trigger-g1-hint").textContent).toContain("Who called is {{caller}}");
+    pick("trigger-g1-who", "public");
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { config: { who: "public" } }));
+    // The address and the limit are sent when their box is left.
+    type("trigger-g1-slug", "Join-Club");
+    expect(m.saveTrigger).toHaveBeenCalledTimes(1);
+    fireEvent.blur(screen.getByTestId("trigger-g1-slug"));
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { slug: "join-club" }));
+    await waitFor(() => expect(screen.getByTestId("trigger-g1-address").textContent).toBe("POST https://api.shop.test/v1/fn/join-club"));
+    expect((screen.getByTestId("trigger-g1-per-minute") as HTMLInputElement).placeholder).toBe("10");
+    type("trigger-g1-per-minute", "5");
+    fireEvent.blur(screen.getByTestId("trigger-g1-per-minute"));
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { config: { who: "public", perMinute: 5 } }));
+  });
+
+  test("a schedule, a store event and a webhook; a member who can only look sees them and changes nothing", async () => {
+    server = full({
+      triggers: [
+        trig({ id: "s1", kind: "schedule", config: { everyMinutes: 30 }, hands: ["at"], fired: 12, lastAt: "2026-11-16T09:00:00Z", nextAt: "2026-11-16T09:30:00Z" }),
+        trig({ id: "e1", kind: "event", config: { event: "order.created" }, hands: ["event", "subject"] }),
+        trig({ id: "w1", kind: "webhook", config: {}, address: "/v1/hooks/s3cr3t", hands: ["body", "query"] }),
+        trig({ id: "w2", kind: "webhook", config: {}, address: null, hands: ["body", "query"] }),
+      ],
+    });
+    show();
+    expect((await screen.findByTestId("trigger-s1-line")).textContent).toBe("Every 30 minutes");
+    expect(screen.getByTestId("trigger-s1-hint").textContent).toMatch(/It fired 12 times, last on 16 Nov.* Next: 16 Nov/);
+    expect(screen.getByTestId("trigger-e1-line").textContent).toBe("A new order");
+    expect(screen.getByTestId("trigger-w1-address").textContent).toBe("POST https://api.shop.test/v1/hooks/s3cr3t");
+    // A webhook whose address this member isn't told.
+    expect(screen.queryByTestId("trigger-w2-address")).toBeNull();
+    expect(screen.getByTestId("trigger-w2").textContent).toContain("shown only to who may change functions");
+    // Every day at a time instead.
+    pick("trigger-s1-mode", "at");
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "s1", { config: { at: "09:00" } }));
+    await waitFor(() => expect(screen.getByTestId("trigger-s1-line").textContent).toBe("Every day at 09:00"));
+    pick("trigger-e1-event", "video.ready");
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "e1", { config: { event: "video.ready" } }));
+    cleanup();
+    m.may = new Set(["functions:read"]);
+    show();
+    await screen.findByTestId("trigger-s1");
+    expect(screen.queryByTestId("fn-triggers-add")).toBeNull();
+    expect(screen.queryByTestId("trigger-s1-remove")).toBeNull();
+    expect((screen.getByTestId("trigger-e1-event") as HTMLSelectElement).disabled).toBe(true);
   });
 });

@@ -18,7 +18,8 @@ import * as FnAPI from "../../api/functions.api";
 import type { FnDef, FnFull, FnInput, InputType, Outcome, Problem } from "../../api/functions.api";
 import { countSteps, freeName, nameOk, stepOfLine } from "./fnDraft";
 import { INPUT_TYPE, STATE_NAME, problemText, stateOf, whereText } from "./fnText";
-import { BuilderProvider, CondList, StepList, type Builder } from "./StepList";
+import { FnTriggers } from "./FnTriggers";
+import { BuilderProvider, CondList, Line, StepList, type Builder } from "./StepList";
 import { TryPanel } from "./TryPanel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -154,7 +155,9 @@ export default function FunctionEditor() {
 
         <section className={box} data-testid="fn-inputs">
           <h2 className="font-medium">{say("شو بتنعطى|What it is handed|מה היא מקבלת")}</h2>
-          <p className="mt-1 text-xs text-white/60">{say("المدخلات اللي بتوصلها لما تشتغل. الخطوات بتسميها {{input.الاسم}}.|What it gets when it runs. The steps name them {{input.name}}.|מה שהיא מקבלת כשהיא רצה. השלבים קוראים להם {{input.name}}.")}</p>
+          <p className="mt-1 text-xs text-white/60">
+            <Line text={say("المدخلات اللي بتوصلها لما تشتغل. الخطوات بتسميها {{input.name}}.|What it gets when it runs. The steps name them {{input.name}}.|מה שהיא מקבלת כשהיא רצה. השלבים קוראים להם {{input.name}}.")} />
+          </p>
           <div className="mt-3 space-y-2">
             {draft.inputs.map((i, k) => (
               <div key={k} className="flex flex-wrap items-center gap-2" data-testid={`fn-input-${k}`}>
@@ -230,12 +233,33 @@ export default function FunctionEditor() {
         <section className={box}>
           <h2 className="font-medium">{say("إذا فشلت خطوة|If a step fails|אם שלב נכשל")}</h2>
           <p className="mt-1 text-xs text-white/60">
-            {say(
-              "الـ function بتوقف عند أول خطوة بتفشل، واللي انعمل قبلها بيضل. هون بتقول شو يصير وقتها: تنبيه، رسالة، أو تسجيل بجدول. سبب الفشل اسمه {{error}}.|A function stops at the first step that fails, and what was done before it stays. Here you say what happens then: a bell, a message, a row written down. The failure is called {{error}}.|פונקציה נעצרת בשלב הראשון שנכשל, ומה שנעשה לפניו נשאר. כאן קובעים מה קורה אז: התראה, הודעה או רישום בטבלה. הכישלון נקרא {{error}}.",
-            )}
+            <Line
+              text={say(
+                "الـ function بتوقف عند أول خطوة بتفشل، واللي انعمل قبلها بيضل. هون بتقول شو يصير وقتها: تنبيه، رسالة، أو تسجيل بجدول. سبب الفشل اسمه {{error}}.|A function stops at the first step that fails, and what was done before it stays. Here you say what happens then: a bell, a message, a row written down. The failure is called {{error}}.|פונקציה נעצרת בשלב הראשון שנכשל, ומה שנעשה לפניו נשאר. כאן קובעים מה קורה אז: התראה, הודעה או רישום בטבלה. הכישלון נקרא {{error}}.",
+              )}
+            />
           </p>
           <div className="mt-3">
             <StepList list={["fail"]} fail />
+          </div>
+        </section>
+
+        <section className={box}>
+          <h2 className="font-medium">{say("شو بيشغّلها|What starts it|מה מפעיל אותה")}</h2>
+          <p className="mt-1 text-xs text-white/60">
+            {say(
+              "لحالها: لما سطر ينضاف أو يتعدّل بجدول، على وقت، لما يصير شي بالمتجر، لما زبون يكبس زر أو برنامج يناديها، أو لما نظام تاني يبعت webhook. كل تغيير هون بينحفظ فوراً.|By itself: when a row is added or changed in a table, on a schedule, when something happens in the store, when a shopper presses a button or a program calls it, or when another system sends a webhook. Every change here is saved at once.|מעצמה: כששורה נוספת או משתנה בטבלה, לפי לוח זמנים, כשמשהו קורה בחנות, כשלקוח לוחץ על כפתור או תוכנה קוראת לה, או כשמערכת אחרת שולחת webhook. כל שינוי כאן נשמר מיד.",
+            )}
+          </p>
+          <div className="mt-3">
+            <FnTriggers
+              fn={fn}
+              tables={list.data!.tables}
+              meta={list.data!.triggers}
+              canWrite={canWrite}
+              inputs={draft.inputs}
+              onAddInputs={(names) => setInputs([...draft.inputs, ...names.filter((n) => !draft.inputs.some((i) => i.name === n)).map((name) => ({ name, type: "any" as const }))])}
+            />
           </div>
         </section>
 

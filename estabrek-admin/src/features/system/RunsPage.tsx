@@ -18,7 +18,7 @@ import { KINDS, KIND_NAME, keepLine, runDid, runName, runTimes, runTook, runTrig
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const chip = (on: boolean) => `rounded-lg px-3 py-1.5 text-sm transition ${on ? "bg-white/10 font-medium" : "text-white/60 hover:bg-white/5"}`;
 /** Where a kind's own page is. */
-const PAGE: Partial<Record<RunKind, string>> = { job: "/admin/system/jobs", automation: "/admin/system/automations", task: "/admin/system/tasks" };
+const PAGE: Partial<Record<RunKind, string>> = { job: "/admin/system/jobs", automation: "/admin/system/automations", task: "/admin/system/tasks", function: "/admin/functions" };
 
 export default function RunsPage() {
   const lang = adminLang();

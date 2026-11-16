@@ -502,8 +502,34 @@ model Fn {
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  triggers    FnTrigger[]
 
   @@index([createdAt])
+}
+
+/// What starts a function (F3, src/lib/fnTriggers.ts): a row of a table added, changed or
+/// deleted; a schedule; something that happened in the store; a call to its own address; a
+/// webhook. It fires only while its function is published and switched on.
+model FnTrigger {
+  id        String    @id @default(cuid())
+  fnId      String
+  fn        Fn        @relation(fields: [fnId], references: [id], onDelete: Cascade)
+  /// "row" | "schedule" | "event" | "call" | "webhook"
+  kind      String
+  /// row: { table, on }; schedule: { everyMinutes } or { at: "HH:MM" }; event: { event }; call: { who, perMinute? }; webhook: {}
+  config    Json
+  /// A call's address (the owner's word) or a webhook's (long and random).
+  slug      String?   @unique
+  enabled   Boolean   @default(true)
+  fired     Int       @default(0)
+  lastAt    DateTime?
+  /// A schedule: when it is due next.
+  nextAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([fnId])
+  @@index([kind, enabled])
 }
 
 /// The queue (E0.3, src/lib/tasks.ts; admin → صف الشغل): background work that must not be lost.

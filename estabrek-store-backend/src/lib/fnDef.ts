@@ -44,7 +44,9 @@ export const FN_LIMITS = {
 /** A name the run keeps something under. */
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
 /** Names the run itself uses. */
-export const RESERVED = ["input", "now", "error", "index"] as const;
+export const RESERVED = ["input", "now", "error", "index", "caller"] as const;
+/** Who started the run, as its steps name them: {{caller.kind}} is "customer", "key", "public", "admin" or "system". */
+export const CALLER_KEYS = ["kind", "id", "name", "email"] as const;
 
 /* ---------------- The shape ---------------- */
 
@@ -58,7 +60,7 @@ export type RowStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type PlainStep =
   | { act: "find"; table: string; filters?: Filter[]; match?: Match; sort?: Sort[]; view?: "all" | "draft" | "published" | "archived"; limit?: number; as: string }
   | { act: "get"; table: string; row: Val; as: string }
-  | { act: "add"; table: string; values: Record<string, Val>; status?: RowStatus; as?: string }
+  | { act: "add"; table: string; values: Record<string, Val>; status?: RowStatus; /** The shopper whose row it is (their id, or {{caller}}). */ owner?: Val; as?: string }
   | { act: "change"; table: string; row: Val; values: Record<string, Val>; status?: RowStatus; as?: string }
   | { act: "delete"; table: string; row: Val }
   | { act: "set"; name: string; op?: "set" | "add" | "multiply" | "append"; value: Val }
@@ -120,7 +122,7 @@ const PLAIN = [
     })
     .strict(),
   z.object({ act: z.literal("get"), table: Id, row: Value, as: Var }).strict(),
-  z.object({ act: z.literal("add"), table: Id, values: Values, status: Status.optional(), as: Var.optional() }).strict(),
+  z.object({ act: z.literal("add"), table: Id, values: Values, status: Status.optional(), owner: Value.optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("change"), table: Id, row: Value, values: Values, status: Status.optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("delete"), table: Id, row: Value }).strict(),
   z.object({ act: z.literal("set"), name: Var, op: z.enum(["set", "add", "multiply", "append"]).optional(), value: Value }).strict(),
@@ -215,6 +217,8 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
         const [root, next] = hole.split(".");
         if (root === "input") {
           if (next && !inputs.has(next)) out.push({ at, message: `No input called "${next}"` });
+        } else if (root === "caller") {
+          if (next && !(CALLER_KEYS as readonly string[]).includes(next)) out.push({ at, message: `The caller has no "${next}"` });
         } else if (root !== "now" && !have.has(root)) out.push({ at, message: `Nothing is kept under "${root}" before this step` });
       }
     }
@@ -275,6 +279,7 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
             if (!Object.keys(s.values).length && !s.status) out.push({ at, message: "Nothing to change" });
           }
           values(tableOf(s.table, at), s.values, at, have);
+          if (s.act === "add") names(s.owner, at, have);
           if (s.as) have.add(s.as);
           break;
         case "delete":

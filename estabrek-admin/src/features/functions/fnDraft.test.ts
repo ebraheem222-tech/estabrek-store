@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { FnDef, FnLite, FnTable, Step } from "../../api/functions.api";
 import { addStep, atOf, countSteps, freeName, fromVal, listAt, moveStep, nameOk, namesBefore, namesUsed, newStep, offers, removeStep, setList, setStep, stepAt, stepOfLine, toVal } from "./fnDraft";
-import { condsLine, lineText, outcomeLine, problemText, stateOf, stepLine, whereText } from "./fnText";
+import { condsLine, firedText, fnTriggerName, handsMissing, lineText, outcomeLine, problemText, stateOf, stepLine, triggerLine, whereText } from "./fnText";
 
 // الـ Functions: the builder's sums and the pages' words. A function's steps are a tree; a step is
 // named by its way in ("do.2.else.0"), the same way the server names it.
@@ -82,15 +82,17 @@ describe("Names", () => {
   });
 
   test("what a value is offered: the inputs, the moment, a row's fields, how many rows", () => {
-    expect(offers(def, ["do", 0], tables)).toEqual(["input.email", "now"]);
-    expect(offers(def, ["do", 1], tables)).toEqual(["input.email", "now", "orders", "orders.length", "orders.first.title", "orders.first.total"]);
+    // What it is handed, the moment, and who started the run.
+    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind"];
+    expect(offers(def, ["do", 0], tables)).toEqual(always);
+    expect(offers(def, ["do", 1], tables)).toEqual([...always, "orders", "orders.length", "orders.first.title", "orders.first.total"]);
     expect(offers(def, ["do", 2, "do", 0], tables)).toEqual(expect.arrayContaining(["order", "order.$id", "order.$slug", "order.title", "order.total", "index", "sum", "made.email"]));
     expect(offers(def, ["fail", 0], tables)).toContain("error");
   });
 
   test("names that can be taken; a new step takes one nobody uses", () => {
     expect(["rows", "row2", "a_b"].map(nameOk)).toEqual([true, true, true]);
-    expect(["Rows", "2row", "", "my-row", "input", "error", "index", "now"].map(nameOk)).toEqual([false, false, false, false, false, false, false, false]);
+    expect(["Rows", "2row", "", "my-row", "input", "error", "index", "now", "caller"].map(nameOk)).toEqual([false, false, false, false, false, false, false, false, false]);
     expect(namesUsed(def)).toEqual(["orders", "made", "sum", "order", "sum", "who"]);
     expect(freeName("rows", ["rows", "rows2"])).toBe("rows3");
     expect(newStep("find", { tables, fns, def })).toEqual({ act: "find", table: "t1", as: "rows" });
@@ -176,5 +178,30 @@ describe("The pages' words", () => {
     expect(outcomeLine({ ok: true, dry: false, counts: { added: 0, changed: 0, deleted: 0, sent: 0 }, ms: 3 }, "en")).toBe("It went through · and changed nothing · 3 ms");
     expect(outcomeLine({ ok: false, dry: false, counts, ms: 8 }, "ar")).toBe("وقفت · 1 انضاف، 2 تعدّل · 8 ms");
     expect([{ published: false, changed: true, enabled: true }, { published: true, changed: true, enabled: true }, { published: true, changed: false, enabled: true }, { published: true, changed: false, enabled: false }].map(stateOf)).toEqual(["draft", "changed", "live", "off"]);
+  });
+});
+
+describe("What starts a function, in words", () => {
+  test("a trigger in a line; how often it fired; what it hands that the function doesn't take", () => {
+    expect(triggerLine({ kind: "row", config: { table: "t1", on: ["added", "deleted"] }, slug: null }, tables, "en")).toBe("Orders: added, deleted");
+    expect(triggerLine({ kind: "row", config: { table: "t1", on: ["changed"] }, slug: null }, tables, "ar")).toBe("الطلبات: تعدّل");
+    expect(triggerLine({ kind: "row", config: { table: "gone", on: ["added"] }, slug: null }, tables, "en")).toBe("table?: added");
+    expect(triggerLine({ kind: "schedule", config: { everyMinutes: 15 }, slug: null }, tables, "en")).toBe("Every 15 minutes");
+    expect(triggerLine({ kind: "schedule", config: { at: "07:30" }, slug: null }, tables, "ar")).toBe("كل يوم الساعة 07:30");
+    expect(triggerLine({ kind: "event", config: { event: "order.created" }, slug: null }, tables, "en")).toBe("A new order");
+    expect(triggerLine({ kind: "call", config: { who: "customer" }, slug: "join" }, tables, "en")).toBe("A signed-in shopper");
+    expect(triggerLine({ kind: "webhook", config: {}, slug: null }, tables, "en")).toBe("");
+    expect(firedText({ fired: 0, lastAt: null, nextAt: null, enabled: true }, "en")).toBe("");
+    expect(firedText({ fired: 1200, lastAt: "2026-11-16T09:00:00Z", nextAt: null, enabled: true }, "en")).toMatch(/^It fired 1,200 times, last on 16 Nov/);
+    // A switched-off schedule has no next moment to say.
+    expect(firedText({ fired: 0, lastAt: null, nextAt: "2026-11-16T09:30:00Z", enabled: false }, "en")).toBe("");
+    expect(handsMissing({ hands: ["row", "before", "event"] }, [{ name: "row", type: "any" }])).toEqual(["before", "event"]);
+    expect(handsMissing({ hands: [] }, [])).toEqual([]);
+  });
+
+  test("what started a run, as the run log names it", () => {
+    expect(["admin", "call", "schedule", "webhook", "row.added", "row.deleted", "event.order.created", "event.something.new", "other"].map((t) => fnTriggerName(t, "en"))).toEqual(["From the admin", "A call", "On schedule", "Webhook", "A row added", "A row deleted", "A new order", "something.new", "other"]);
+    expect(fnTriggerName("row.changed", "ar")).toBe("سطر تعدّل");
+    expect(problemText('The caller has no "password"', "en")).toBe("The caller has no “password” (it has: kind, id, name, email)");
   });
 });

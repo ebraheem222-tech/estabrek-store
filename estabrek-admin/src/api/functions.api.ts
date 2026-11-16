@@ -14,7 +14,7 @@ export type RowStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type PlainStep =
   | { act: "find"; table: string; filters?: Filter[]; match?: Match; sort?: Array<{ field: string; dir?: "asc" | "desc" }>; view?: "all" | "draft" | "published" | "archived"; limit?: number; as: string }
   | { act: "get"; table: string; row: Val; as: string }
-  | { act: "add"; table: string; values: Record<string, Val>; status?: RowStatus; as?: string }
+  | { act: "add"; table: string; values: Record<string, Val>; status?: RowStatus; /** The shopper whose row it is (their id, or {{caller}}). */ owner?: Val; as?: string }
   | { act: "change"; table: string; row: Val; values: Record<string, Val>; status?: RowStatus; as?: string }
   | { act: "delete"; table: string; row: Val }
   | { act: "set"; name: string; op?: "set" | "add" | "multiply" | "append"; value: Val }
@@ -52,13 +52,33 @@ export type FnLite = {
 };
 /** Where a problem is ("do.2", "do.2.else.0", "if.0", "fail.1") and what it is. */
 export type Problem = { at: string; message: string };
-export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[] };
+export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[] };
+
+/** What starts a function (backend lib/fnTriggers.ts). It fires only while the function is published and switched on. */
+export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook";
+export type FnTrigger = {
+  id: string;
+  kind: TriggerKind;
+  /** row: { table, on }; schedule: { everyMinutes } or { at: "HH:MM" }; event: { event }; call: { who, perMinute? }; webhook: {} */
+  config: Record<string, unknown>;
+  /** A call's address (the owner's word). */
+  slug: string | null;
+  /** "/v1/fn/<address>" or "/v1/hooks/<secret>"; a webhook's is null for a member who can only look. */
+  address: string | null;
+  enabled: boolean;
+  fired: number;
+  lastAt: string | null;
+  nextAt: string | null;
+  /** What it hands the function (the function takes the ones it has an input for). */
+  hands: string[];
+};
+export type TriggerMeta = { kinds: TriggerKind[]; events: string[]; callPerMinute: Record<string, number>; limits: { perFunction: number; everyMinutes: { min: number; max: number } } };
 
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FnField = { id: string; type: string; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }> };
 export type FnTable = { id: string; slug: string; name: Local | null; fields: FnField[] };
 export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number };
-export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits };
+export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string };
 export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number };
@@ -89,4 +109,15 @@ export async function runFunction(id: string, body: { input: Record<string, unkn
 }
 export async function deleteFunction(id: string) {
   return (await api.delete(at(id))).data as { ok: true };
+}
+
+/* What starts it. Each call answers the function as it now is. */
+export async function addTrigger(id: string, body: { kind: TriggerKind; config: Record<string, unknown>; slug?: string }) {
+  return (await api.post(`${at(id)}/triggers`, body)).data as FnFull;
+}
+export async function saveTrigger(id: string, triggerId: string, body: { config?: Record<string, unknown>; slug?: string; enabled?: boolean }) {
+  return (await api.put(`${at(id)}/triggers/${encodeURIComponent(triggerId)}`, body)).data as FnFull;
+}
+export async function deleteTrigger(id: string, triggerId: string) {
+  return (await api.delete(`${at(id)}/triggers/${encodeURIComponent(triggerId)}`)).data as FnFull;
 }

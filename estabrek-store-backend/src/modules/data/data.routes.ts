@@ -27,111 +27,25 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
-import { normalizeIp } from "../../utils/ip.js";
-import { verifyCustomerToken } from "../../config/security.js";
 import { COLLECTION_SLUG } from "../../lib/collections.js";
 import type { Field } from "../../lib/collectionTree.js";
-import { ACTS, KEY_MARK, findKey, keyState, looksLikeKey, touchKey, type Act, type KeyLite } from "../../lib/apiKeys.js";
+import { ACTS, type Act, type KeyLite } from "../../lib/apiKeys.js";
+import { apiCaller, callerOf, ipOf, type Caller } from "../../middleware/apiCaller.js";
 import { openApi } from "../../lib/apiDocs.js";
 import { API_LIMITS, DATA_API_BASE, allow, apiRow, docTables, fieldView, isOpen, listAsk, mineAsked, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
 import { LANGS } from "../../lib/dataRows.js";
-import { customerAccountsOn } from "../../lib/features.js";
+import { emitRow } from "../../lib/fnTriggers.js";
 import { hit } from "../../lib/hitLimit.js";
 import { namedRows, relationsOf, trashRows, withLinks } from "../../lib/links.js";
 import { LONG, StatusIn, addRow, changeRow, refresh } from "../../lib/rowWrites.js";
 import { shownRow } from "../../lib/schemaChange.js";
 
-declare module "express-serve-static-core" {
-  interface Request {
-    /** The API key this request came with (checked), or null. */
-    apiKey?: KeyLite | null;
-  }
-}
-
 const r = Router();
 const MINUTE = 60_000;
-const ipOf = (req: Request) => normalizeIp(req.ip || "") || "unknown";
 
-/* ---------------- Who is asking: a key, a signed-in shopper, or anyone ---------------- */
-
-const bearerOf = (req: Request) => {
-  const header = req.headers.authorization || "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-};
-
-function sentKey(req: Request): string | null {
-  const own = req.get("x-api-key")?.trim();
-  if (own) return own;
-  const bearer = bearerOf(req);
-  // Other tokens in that header (a shopper's, an admin's) aren't keys.
-  return bearer.startsWith(KEY_MARK) ? bearer : null;
-}
-
-/* A shopper's account is looked up once every few seconds: one turned off (or deleted) stops being a shopper here at once-ish. */
-const SHOPPER_TTL_MS = 10_000;
-const shoppers = new Map<string, { at: number; ok: boolean }>();
-export function forgetShoppers() {
-  shoppers.clear();
-}
-async function shopperActive(id: string): Promise<boolean> {
-  const hit = shoppers.get(id);
-  if (hit && Date.now() - hit.at < SHOPPER_TTL_MS) return hit.ok;
-  const user = await prisma.user.findUnique({ where: { id }, select: { status: true } });
-  const ok = user?.status === "ACTIVE";
-  shoppers.set(id, { at: Date.now(), ok });
-  if (shoppers.size > 5000) shoppers.clear();
-  return ok;
-}
-
-/** The signed-in shopper, when the request carries one's token, accounts are on and the account is active; else nobody. */
-async function shopperOf(req: Request): Promise<string | null> {
-  const token = bearerOf(req);
-  if (!token || token.startsWith(KEY_MARK)) return null;
-  try {
-    const id = verifyCustomerToken(token).sub;
-    return (await customerAccountsOn()) && (await shopperActive(id)) ? id : null;
-  } catch {
-    // Not a shopper's token (an admin's, an old one): the request is anyone's.
-    return null;
-  }
-}
-
-type Caller = { key: KeyLite | null; customer: string | null };
-const callerOf = (req: Request): Caller => ({ key: req.apiKey ?? null, customer: req.customer?.id ?? null });
-
-r.use(
-  asyncHandler(async (req: Request, res: Response, next: () => void) => {
-    // Rows change under the same address: nothing here is kept by a cache on the way.
-    res.setHeader("Cache-Control", "no-store");
-    // A page on another address (the admin's try-it panel, the shop) may read these.
-    res.setHeader("Access-Control-Expose-Headers", "X-RateLimit-Key-Limit, X-RateLimit-Key-Remaining, X-RateLimit-Key-Reset, Retry-After");
-    const shopper = await shopperOf(req);
-    if (shopper) req.customer = { id: shopper };
-    const sent = sentKey(req);
-    if (!sent) {
-      req.apiKey = null;
-      return next();
-    }
-    // A key that is wrong never falls back to "anyone": the caller should know its key doesn't work.
-    const key = looksLikeKey(sent) ? await findKey(sent) : null;
-    if (!key) throw new AppError(401, "INVALID_KEY", "No such API key");
-    const state = keyState(key);
-    if (state === "revoked") throw new AppError(401, "KEY_REVOKED", "This API key was revoked");
-    if (state === "expired") throw new AppError(401, "KEY_EXPIRED", "This API key has expired");
-    const { count, resetAt } = await hit(`key:${key.id}`, MINUTE);
-    res.setHeader("X-RateLimit-Key-Limit", String(key.perMinute));
-    res.setHeader("X-RateLimit-Key-Remaining", String(Math.max(0, key.perMinute - count)));
-    res.setHeader("X-RateLimit-Key-Reset", String(Math.ceil(resetAt / 1000)));
-    if (count > key.perMinute) {
-      res.setHeader("Retry-After", String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))));
-      return res.status(429).json({ error: "RATE_LIMIT_KEY", message: "This key's requests for this minute are used up", retryAt: resetAt });
-    }
-    req.apiKey = key;
-    touchKey(key.id, ipOf(req));
-    next();
-  }),
-);
+// Who is asking: a key, a signed-in shopper, or anyone (middleware/apiCaller.ts).
+r.use(apiCaller);
 
 /* ---------------- The table, and whether this caller gets in ---------------- */
 
@@ -397,9 +311,11 @@ r.delete(
     // To the trash, as the relations that link it chose: unlinked, deleted with it, or refused (409 ROWS_LINKED).
     const { withThem } = await prisma.$transaction((tx) => trashRows(tx, Prisma.sql`i."collectionId" = ${table.id} AND i."id" = ${row.id}`, new Date()), LONG);
     refresh();
+    emitRow("deleted", table.id, row);
     if (as === "key" && who.key) logWrite(req, who.key, table, "delete", row.id, []);
     res.json({ ok: true, id: row.id, ...(withThem ? { withThem } : {}) });
   }),
 );
 
+export { forgetShoppers } from "../../middleware/apiCaller.js";
 export default r;
