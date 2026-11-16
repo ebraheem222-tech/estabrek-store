@@ -15,6 +15,8 @@ import { tr } from "../lib/words";
 import { MAX_CELLS, MAX_SLIDES, PRESETS, addSlides, changeSlide, dropCellOps, layoutOps, moveSlide, reduceWidths, sameWidths, shownWidths, slidesOf, styleOp, type NewKind, type Slide } from "./columns";
 import { Field } from "./StudioPanels";
 import { CategoriesPickFields, ProductsSourceFields } from "./CatalogPickers";
+import { CustomFormFields } from "./FormPanel";
+import { startForm } from "./formFields";
 import { ShapePicker } from "./ShapePanels";
 import { IconGlyph, IconPicker } from "./IconPicker";
 import { iconLineOf, iconShown, withIconLine } from "./iconLibrary";
@@ -659,8 +661,12 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
       case "form":
         return (
           <>
-            <Choice label={tr("النوع", "Kind")} value={String(p.kind ?? "newsletter")} busy={busy} options={[["newsletter", tr("النشرة البريدية", "Newsletter")], ["contact", tr("تواصل", "Contact")]]} onPick={(v) => setProps({ kind: v })} />
+            {/* The shop's own two forms, or one of the owner's own: its fields and where it goes (FormPanel.tsx). A fresh one starts with three fields. */}
+            <Choice label={tr("النوع", "Kind")} value={String(p.kind ?? "newsletter")} busy={busy} testId="studio-form-kind"
+              options={[["newsletter", tr("النشرة البريدية", "Newsletter")], ["contact", tr("تواصل", "Contact")], ["custom", say("فورم من عندك|A form of your own|טופס משלך")]]}
+              onPick={(v) => setProps(v === "custom" && !Array.isArray(p.fields) ? { kind: v, ...startForm(lang) } : { kind: v })} />
             {words("title", tr("العنوان (اختياري)", "Title (optional)"))}
+            {p.kind === "custom" ? <CustomFormFields p={p} lang={lang} busy={busy} setProps={setProps} /> : null}
           </>
         );
       default:

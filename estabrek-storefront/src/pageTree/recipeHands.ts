@@ -20,6 +20,13 @@ export type Hands = {
    * shopper, 429 = too many presses, 404 = no such address (or switched off), 0 = the shop couldn't be reached.
    */
   fn: (address: string, input: Record<string, string>) => Promise<{ ok: true; value: unknown } | { ok: false; status: number; error: string }>;
+  /**
+   * Adds a row to one of the owner's tables by its address (the backend's POST /v1/data/<table>), as whoever is
+   * signed in (or as anyone, where the owner opened the table so). The row, or why not: `status` 400 = some values
+   * are wrong (`issues` says which field and why, in the owner's words where they wrote them), 401 = it needs a
+   * signed-in shopper, 429 = too many, 404 = the table isn't open, 0 = the shop couldn't be reached.
+   */
+  row: (table: string, values: Record<string, string | number | boolean>, lang: string) => Promise<{ ok: true; value: unknown } | { ok: false; status: number; error: string; issues?: Array<{ field: string; text: string }> }>;
 };
 
 let hands: Hands | null = null;

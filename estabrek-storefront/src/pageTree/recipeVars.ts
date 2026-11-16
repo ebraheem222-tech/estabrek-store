@@ -55,6 +55,25 @@ export function changeVar(name: string, op: "set" | "add" | "toggle", value?: Va
   else setVar(name, value);
 }
 
+/**
+ * An answer kept in variables (a function's, to a recipe's step or to a form): a plain value under `name`; a
+ * thing's plain fields (a row's, say) under name_field: its own fields first, then a row's marks ($id and the like,
+ * without the mark), a dozen in all. A list isn't kept.
+ */
+export function keepAnswer(name: string, value: unknown) {
+  const plain = (v: unknown): v is VarValue => typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+  if (plain(value)) return changeVar(name, "set", value);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const fields = Object.entries(value as Record<string, unknown>);
+  let kept = 0;
+  for (const [key, v] of [...fields.filter(([k]) => !k.startsWith("$")), ...fields.filter(([k]) => k.startsWith("$"))]) {
+    const field = key.replace(/^\$/, "");
+    if (kept >= 12 || !plain(v) || !/^[A-Za-z0-9_]+$/.test(field) || `${name}_${field}`.length > 24) continue;
+    changeVar(`${name}_${field}`, "set", v);
+    kept++;
+  }
+}
+
 const truthy = (v: VarValue | undefined) => v !== undefined && v !== false && v !== 0 && v !== "" && v !== "false" && v !== "0";
 const asNumber = (v: VarValue | undefined) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : typeof v === "boolean" ? Number(v) : NaN);
 

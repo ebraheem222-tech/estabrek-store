@@ -79,6 +79,26 @@ export function RecipeHands() {
           return { ok: false, status: 0, error: "" };
         }
       },
+      row: async (table, values, lang) => {
+        try {
+          for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));
+          const who = (await now.current.account?.authHeaders()) ?? {};
+          const res = await fetch(`${apiBaseClient()}/data/${encodeURIComponent(table)}`, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json", ...who }, body: JSON.stringify({ values, lang }) });
+          type Wrong = { field?: unknown; message?: unknown; say?: Record<string, unknown> | null };
+          const data = (await res.json().catch(() => ({}))) as { details?: { issues?: Wrong[] } | null };
+          if (res.ok) return { ok: true, value: data };
+          // What is wrong, field by field (the server's 400 ROW_INVALID carries them in `details.issues`): the owner's
+          // own words for the field's rule when they wrote them, the server's otherwise.
+          const issues = (Array.isArray(data.details?.issues) ? data.details.issues : []).flatMap((i) => {
+            const own = i.say && typeof i.say[lang] === "string" ? (i.say[lang] as string) : "";
+            const text = own || (typeof i.message === "string" ? i.message : "");
+            return typeof i.field === "string" && text ? [{ field: i.field, text }] : [];
+          });
+          return { ok: false, status: res.status, error: "", issues };
+        } catch {
+          return { ok: false, status: 0, error: "" };
+        }
+      },
     });
     return () => setHands(null);
   }, []);

@@ -35,6 +35,7 @@ import { spinFor } from "@/components/cinematic/spinData";
 import type { SliderWords } from "./SliderControls";
 import { sliderSettings, sliderLooksOf } from "./sliderEffects";
 import { instrumentOf } from "./instrument";
+import { formOf } from "./formSpec";
 import { ChartView } from "./ChartView";
 import { FilterGalleryBlock } from "./FilterGalleryBlock";
 import { scheduleOf, comparisonOf } from "./referenceData";
@@ -48,7 +49,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, InstrumentView, Model3dSpot, PopupView, ProductDetail, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, InstrumentView, Model3dSpot, PopupView, ProductDetail, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 
 export type TreeCtx = {
@@ -514,6 +515,8 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       );
     }
     case "form": {
+      // The owner's own form: fields of their choosing, sent to one of their functions or added to one of their tables.
+      if (p.kind === "custom") return <div className={cls(node)} {...mark}><FormView spec={formOf(p, say)} lang={ctx.lang} signin={link("/account") ?? "/account"} /></div>;
       const type = p.kind === "contact" ? "CONTACT" : "NEWSLETTER";
       const title = say(p.title);
       return (

@@ -1,0 +1,31 @@
+/* A form the owner built (FormView.tsx). It wears the page's own colour and font: the boxes are a faint wash of the
+   text colour, the button is the store's accent. What is wrong is said in words and a mark, not by colour alone. */
+.form { position: relative; display: grid; gap: 16px; width: 100%; max-width: 560px; margin-inline: auto; text-align: start; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > label { font-size: .9em; font-weight: 600; }
+.field input:not([type="checkbox"]), .field textarea, .field select {
+  width: 100%; min-height: 46px; padding: 10px 14px; box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent); border-radius: 12px;
+  background: color-mix(in srgb, currentColor 5%, transparent); color: inherit; font: inherit;
+}
+.field textarea { min-height: 112px; resize: vertical; }
+.field :is(input, textarea, select):focus-visible { outline: 3px solid var(--accent, #243e38); outline-offset: 2px; }
+.field :is(input, textarea, select):disabled { opacity: .6; }
+.field[data-bad] :is(input:not([type="checkbox"]), textarea, select) { border-color: color-mix(in srgb, #d32f2f 75%, currentColor); border-width: 2px; }
+.field small { font-size: .8em; opacity: .78; }
+.bad { margin: 0; font-size: .85em; font-weight: 600; color: color-mix(in srgb, #d32f2f 72%, currentColor); }
+.bad::before { content: "⚠ "; }
+.check { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; cursor: pointer; }
+.check input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent, #243e38); }
+.send {
+  justify-self: start; min-height: 48px; padding: 12px 28px; border: 0; border-radius: 999px;
+  background: var(--accent, #243e38); color: var(--accent-contrast, #fff); font: inherit; font-weight: 600; cursor: pointer;
+}
+.send:disabled { opacity: .6; cursor: progress; }
+.send:focus-visible { outline: 3px solid var(--accent, #243e38); outline-offset: 3px; }
+.note { margin: 0; min-height: 1.4em; font-size: .95em; }
+.note[data-is="failed"] { font-weight: 600; color: color-mix(in srgb, #d32f2f 72%, currentColor); }
+.note a { text-decoration: underline; color: inherit; }
+/* For robots only: off the page, out of the tab order, never read out. */
+.trap { position: absolute; inset-inline-start: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+@media (max-width: 479.98px) { .send { justify-self: stretch; } }

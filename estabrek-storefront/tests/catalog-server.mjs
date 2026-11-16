@@ -1524,6 +1524,42 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (req.method === "POST") globalThis.fnCalls = [];
       return res.end(JSON.stringify({ calls }));
     }
+    // The owner's tables, written by a page's form (forms.spec.ts): stand-ins for the backend's POST /v1/data/<table>.
+    // Rows that were taken are remembered with who added them (/__test/data-rows; POST forgets them).
+    if (pathname.startsWith("/v1/data/") && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const { values = {}, lang = null } = JSON.parse(body || "{}");
+        const send = (status, payload) => { res.statusCode = status; res.end(JSON.stringify(payload)); };
+        const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
+        const shopper = bearer && customerState.tokens.has(bearer) ? customerState.user : null;
+        const table = decodeURIComponent(pathname.slice("/v1/data/".length));
+        const take = () => {
+          (globalThis.dataRows ??= []).push({ table, values, lang, shopper: shopper?.email ?? null });
+          return send(201, { id: `row${globalThis.dataRows.length}`, slug: `row-${globalThis.dataRows.length}`, status: "DRAFT", values });
+        };
+        // Anyone may add; the table has rules of its own (one with the owner's words, one with the server's).
+        if (table === "messages") {
+          const issues = [];
+          if (String(values.name ?? "").toLowerCase() === "taken") issues.push({ field: "name", message: "It has to be the only one", say: { en: "This name is taken", ar: "هالاسم مأخوذ" } });
+          if (typeof values.age === "number" && values.age < 18) issues.push({ field: "age", message: "At least 18" });
+          if (values.secret !== undefined) issues.push({ field: "secret", message: "No such column" });
+          // As the backend answers it (utils/httpError.ts): what is wrong sits in `details`.
+          if (issues.length) return send(400, { error: "ROW_INVALID", message: "Some values are wrong", details: { issues } });
+          return take();
+        }
+        // Only a signed-in shopper.
+        if (table === "members") return shopper ? take() : send(401, { error: "SIGN_IN_NEEDED", message: "This needs a signed-in shopper" });
+        return send(404, { error: "NOT_FOUND", message: "No such table" });
+      });
+      return;
+    }
+    if (pathname === "/__test/data-rows") {
+      const rows = globalThis.dataRows ?? [];
+      if (req.method === "POST") globalThis.dataRows = [];
+      return res.end(JSON.stringify({ rows }));
+    }
     // Shopper accounts (account.spec.ts): code 123456 signs in; one shopper, kept in memory.
     if (pathname.startsWith("/v1/customer/")) {
       let body = "";

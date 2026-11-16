@@ -538,7 +538,8 @@ export const NodeLayers = z.object({ before: PieceLayer.optional(), after: Piece
  * What starts a trigger: a click, a double click, a long press, the mouse coming or going, coming into or out of
  * sight, the page opening, the page scrolled past `at` %, `at` seconds on the page, a key of the keyboard (`key`).
  */
-export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit"] as const;
+// "sent": the element is a form of the owner's own and it was just sent (and taken at the other end).
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit", "sent"] as const;
 /** The keys a "key" trigger listens for: these by name, or one letter or digit. */
 export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const triggerKey = z.string().regex(/^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/, "A key by name, or one letter or digit");
@@ -686,6 +687,38 @@ export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as 
 // Words along a curve (the editor's focus mode; shared/textCurve.ts in the shop draws it): an arc, a wave or a circle,
 // how bent, the words' size and spacing in the curve's own box.
 const Curve = z.object({ kind: z.enum(["arc", "wave", "circle"]), bend: z.number().min(-100).max(100).optional(), size: z.number().min(20).max(240).optional(), space: z.number().min(-10).max(60).optional() });
+
+/**
+ * A field of a form the owner builds (form kind "custom"). `name` is what the value is sent as: the function's
+ * input of that name, or the table field's id. The shop checks what is typed (needed, an email, a number within
+ * `min`–`max`, words between `min` and `max` letters) so the shopper is told at once; the function or the table's
+ * own rules at the other end are what decide.
+ */
+export const FORM_FIELD_KINDS = ["text", "long", "email", "phone", "number", "select", "check", "date"] as const;
+export const FORM_LIMITS = { fields: 20, options: 30 } as const;
+const FormField = z
+  .object({
+    name: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,30}$/, "A field's name: letters, digits and _, starting with a small letter"),
+    kind: z.enum(FORM_FIELD_KINDS),
+    label: local(80),
+    hint: local(120).optional(),
+    required: z.boolean().optional(),
+    // A select's choices: what is sent, and the words shown for it (none = the value itself).
+    options: z.array(z.object({ value: z.string().trim().min(1).max(60), label: local(80).optional() }).strict()).max(FORM_LIMITS.options).optional(),
+    min: z.number().finite().min(-1e12).max(1e12).optional(),
+    max: z.number().finite().min(-1e12).max(1e12).optional(),
+  })
+  .strict()
+  .refine((f) => f.min === undefined || f.max === undefined || f.min <= f.max, "The least is more than the most");
+/**
+ * Where a custom form goes: one of the owner's functions by its call address (POST /v1/fn/<address>; its answer may
+ * be kept in a recipe variable), or a new row of one of their tables (POST /v1/data/<table>). Not picked yet = the
+ * form is drawn and says it isn't ready.
+ */
+const FormSend = z.discriminatedUnion("to", [
+  z.object({ to: z.literal("fn"), fn: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "A function's address").optional(), as: z.string().trim().regex(/^[A-Za-z][A-Za-z0-9_]{0,23}$/, "A name of letters, digits and _").optional() }).strict(),
+  z.object({ to: z.literal("table"), table: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "A table's address").optional() }).strict(),
+]);
 
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
@@ -969,7 +1002,15 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     look: z.enum(["tall", "square", "circle", "overlay", "pill", "banner"]).optional(),
     columns: z.number().int().min(1).max(6).optional(),
   }),
-  form: z.object({ kind: z.enum(["newsletter", "contact"]), title: local(160).optional() }),
+  // The shop's own two forms, or the owner's ("custom": its fields, where it goes, its button and what it says after).
+  form: z.object({
+    kind: z.enum(["newsletter", "contact", "custom"]),
+    title: local(160).optional(),
+    fields: z.array(FormField).max(FORM_LIMITS.fields).refine((list) => new Set(list.map((f) => f.name)).size === list.length, "Two fields with one name").optional(),
+    send: FormSend.optional(),
+    button: local(40).optional(),
+    done: local(200).optional(),
+  }),
   // Content blocks, each a list of items the editor adds, removes and orders.
   // Questions and answers (also the page's FAQ for search engines); `single` = one open at a time.
   accordion: z.object({

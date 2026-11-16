@@ -12,7 +12,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import * as CatalogAPI from "../api/catalog.api";
-import * as FnAPI from "../api/functions.api";
+import { useFnDoors } from "./fnDoors";
+import { Line, Pick, btn, marks, note, part, sel, warn } from "./smallInputs";
 import { Range } from "./LookPanels";
 import { ColourPick } from "./StudioTreePanels";
 import { say } from "./say";
@@ -25,32 +26,8 @@ import {
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Target = { id: string; label: string; type?: string };
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const sel = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
-const part = "text-[10px] font-semibold uppercase tracking-wide text-accent-200/80";
 const L = () => say("المشغّلات|Triggers|טריגרים");
-
-function Pick({ label, value, options, busy, onPick, testId }: { label: string; value: string; options: Array<[string, string]>; busy: boolean; onPick: (v: string) => void; testId?: string }) {
-  return (
-    <label className="block text-[11px] text-white/55">{label}
-      <select className={sel} value={value} disabled={busy} onChange={(e) => onPick(e.target.value)} data-testid={testId}>
-        {!options.some(([k]) => k === value) ? <option value={value}>{value}</option> : null}
-        {options.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
-      </select>
-    </label>
-  );
-}
 const named = (list: ReadonlyArray<readonly [string, () => string]>): Array<[string, string]> => list.map(([k, n]) => [k, n()]);
-
-/** A line of text saved when it's left (only when it changed and is allowed). */
-function Line({ label, value, busy, onSave, ok, ltr, max = 200, hint, testId }: { label: string; value: string; busy: boolean; onSave: (v: string) => void; ok?: (v: string) => boolean; ltr?: boolean; max?: number; hint?: string; testId?: string }) {
-  return (
-    <label className="block text-[11px] text-white/55">{label}
-      <input key={value} dir={ltr ? "ltr" : undefined} className={sel} defaultValue={value} maxLength={max} placeholder={hint} disabled={busy} data-testid={testId}
-        onBlur={(e) => { const v = e.target.value.trim(); if (v !== value && (!ok || ok(v))) onSave(v); else if (v !== value) e.target.value = value; }} />
-    </label>
-  );
-}
 const shown = (v: VarValue | undefined) => (v === undefined ? "" : String(v));
 
 /** A product for a step, found by its name. */
@@ -75,20 +52,14 @@ function ProductPick({ value, busy, onPick }: { value?: string; busy: boolean; o
   );
 }
 
-const note = "text-[10px] leading-4 text-white/70";
-const warn = "text-[11px] leading-4 text-amber-200/90";
-/** Words with their {{name}} marks kept left to right (inside Arabic or Hebrew they would read scrambled). */
-const marks = (text: string) => text.split(/(\{\{[^{}]*\}\})/).map((p, k) => (k % 2 ? <bdi key={k} dir="ltr">{p}</bdi> : p));
-
 /**
  * A function for a step: picked by the address it is called at (admin → Functions → what starts it → a call from
  * the shop), then one box for each thing it is handed, and where its answer is kept. A member who may not look at
  * the functions types the address.
  */
 function FnFields({ a, busy, onSave }: { a: Extract<Action, { act: "fn" }>; busy: boolean; onSave: (a: Action) => void }) {
-  const q = useQuery({ queryKey: ["functions"], queryFn: FnAPI.getFunctions, staleTime: 60_000, retry: false });
-  // A shop's button can't hold an API key: only the addresses a shopper, or anyone, may call.
-  const doors = useMemo(() => (q.data?.functions ?? []).flatMap((f) => (f.calls ?? []).filter((c) => c.who !== "key").map((c) => ({ address: c.address, who: c.who, fn: f }))), [q.data]);
+  // A shop's button can't hold an API key: only the addresses a shopper, or anyone, may call (fnDoors.ts).
+  const { loading, failed, loaded, doors } = useFnDoors();
   const door = doors.find((d) => d.address === a.fn);
   const given = a.input ?? {};
   const put = (next: { fn?: string; input?: Record<string, string>; as?: string }) => onSave({ act: "fn", ...(next.fn ? { fn: next.fn } : {}), ...(next.input && Object.keys(next.input).length ? { input: next.input } : {}), ...(next.as ? { as: next.as } : {}) });
@@ -103,7 +74,7 @@ function FnFields({ a, busy, onSave }: { a: Extract<Action, { act: "fn" }>; busy
   const kept = a.as || "answer";
   return (
     <div className="space-y-1.5" data-testid="trigger-fn">
-      {q.isLoading ? <p className={note}>…</p> : q.isError ? (
+      {loading ? <p className={note}>…</p> : failed ? (
         <>
           <Line label={say("عنوان الـ function|The function's address|הכתובת של הפונקציה")} value={a.fn ?? ""} ltr max={41} hint="friend-request" busy={busy} ok={(v) => v === "" || FN_ADDRESS.test(v)} onSave={(fn) => put({ fn, input: given, as: a.as })} testId="trigger-fn-address" />
           <p className={note}>{say("ما قدرنا نجيب قائمة الـ Functions (يمكن ما عندك صلاحية تشوفها). اكتب العنوان متل ما هو بصفحتها.|The list of functions couldn't be read (you may not be allowed to see it). Type the address as its page shows it.|לא ניתן לקרוא את רשימת הפונקציות (אולי אין לך הרשאה). להקליד את הכתובת כפי שהיא בעמוד שלה.")}</p>
@@ -122,8 +93,8 @@ function FnFields({ a, busy, onSave }: { a: Extract<Action, { act: "fn" }>; busy
             put({ fn, input: Object.fromEntries(Object.entries(given).filter(([k]) => takes.has(k))), as: a.as });
           }} />
       )}
-      {!a.fn && !q.isError && doors.length ? <p className={warn}>{say("لحد ما تختار، الخطوة ما بتعمل شي.|Until you pick one, the step does nothing.|עד שבוחרים, השלב לא עושה כלום.")}</p> : null}
-      {a.fn && q.data && !door ? <p className={warn} data-testid="trigger-fn-gone">{say("هالعنوان مش موجود هلأ (انشال، تطفّى، أو صار لبرنامج بمفتاح). اختار غيره.|This address isn't there now (removed, switched off, or it became a key's). Pick another.|הכתובת הזו לא קיימת כרגע (הוסרה, כובתה, או הפכה לשל מפתח). לבחור אחרת.")}</p> : null}
+      {!a.fn && !failed && doors.length ? <p className={warn}>{say("لحد ما تختار، الخطوة ما بتعمل شي.|Until you pick one, the step does nothing.|עד שבוחרים, השלב לא עושה כלום.")}</p> : null}
+      {a.fn && loaded && !door ? <p className={warn} data-testid="trigger-fn-gone">{say("هالعنوان مش موجود هلأ (انشال، تطفّى، أو صار لبرنامج بمفتاح). اختار غيره.|This address isn't there now (removed, switched off, or it became a key's). Pick another.|הכתובת הזו לא קיימת כרגע (הוסרה, כובתה, או הפכה לשל מפתח). לבחור אחרת.")}</p> : null}
       {door && (!door.fn.published || !door.fn.enabled) ? <p className={warn} data-testid="trigger-fn-off">{!door.fn.published ? say("هاي الـ function لسا مش منشورة: الزر ما بيشتغل لحد ما تنشرها.|This function isn't published yet: the button won't work until it is.|הפונקציה הזו עדיין לא פורסמה: הכפתור לא יעבוד עד שתפורסם.") : say("هاي الـ function مطفية: الزر ما بيشتغل لحد ما تشغّلها.|This function is switched off: the button won't work until it is on.|הפונקציה הזו כבויה: הכפתור לא יעבוד עד שתודלק.")}</p> : null}
       {door?.who === "customer" ? <p className={note} data-testid="trigger-fn-who">{say("بتشتغل بس لزبون مسجّل دخوله (وبتعرف مين هو). الزائر بينقاله «سجّل دخولك أول»؛ أو خلّي «مين مسموحله» فوق = زبون مسجّل.|It runs only for a signed-in shopper (and knows who they are). A guest is told “Sign in first”; or set “Who may” above to a signed-in customer.|רצה רק ללקוח מחובר (ויודעת מי הוא). לאורח נאמר «יש להתחבר קודם»; או להגדיר למעלה «למי מותר» = לקוח מחובר.")}</p> : null}
       {door ? door.fn.takes.map((i) => (
