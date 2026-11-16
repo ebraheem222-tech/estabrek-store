@@ -27,12 +27,21 @@ export type PlainStep =
   | { act: "code"; code: string; give?: Record<string, Val>; as?: string }
   /** A call to a site the owner allowed (admin → الاتصالات والأسرار); a secret is named {{secret.NAME}} and never read. */
   | { act: "http"; method: HttpMethod; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run. */ anyStatus?: boolean; as?: string }
+  /** Through a ready connection (admin → الاتصالات والأسرار): which, what it does there, and what that asks for. No address or key is written. */
+  | { act: "ready"; via: string; what: string; give?: Record<string, string>; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 /** What an "http" step may reach: the allowed sites, and each secret's name with the sites it is for (never a value). */
-export type Outside = { sites: string[]; secrets: Array<{ name: string; sites: string[] }> };
+export type Outside = {
+  sites: string[];
+  secrets: Array<{ name: string; sites: string[] }>;
+  /** The ready connections a step may pick: which settings each holds (never their values, nor a key). */
+  ready?: Array<{ id: string; name: string; kind: string; set: string[] }>;
+  /** What each kind of ready connection can do, and what that asks for. */
+  kinds?: Array<{ kind: string; label: string; actions: Array<{ id: string; fields: Array<{ id: string; required: boolean; long: boolean; or?: string }> }> }>;
+};
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
 export type Step = PlainStep | GroupStep;
 export type StepKind = Step["act"];

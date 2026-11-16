@@ -165,7 +165,7 @@ describe("The sites and the secrets", () => {
     expect(changed.secrets[0]).toMatchObject({ name: "TELEGRAM_TOKEN", sites: ["api.telegram.org", "*.example.com"], note: "The shop's bot" });
     expect(JSON.stringify(changed)).not.toContain("new-value");
     // The builder is told the names: the sites, and each secret with where it goes.
-    expect((await request(app).get(at).expect(200)).body.outside).toEqual({ sites: ["api.telegram.org"], secrets: [{ name: "TELEGRAM_TOKEN", sites: ["api.telegram.org", "*.example.com"] }] });
+    expect((await request(app).get(at).expect(200)).body.outside).toMatchObject({ sites: ["api.telegram.org"], secrets: [{ name: "TELEGRAM_TOKEN", sites: ["api.telegram.org", "*.example.com"] }] });
   });
 
   test("a secret a function names isn't deleted from under it; a site taken away is no longer called", async () => {

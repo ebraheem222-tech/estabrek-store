@@ -28,6 +28,7 @@ import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
 import { runCode } from "../../lib/fnCode.js";
 import { HTTP_LIMITS, SiteError, callSite } from "../../lib/fnHttp.js";
+import { useReady } from "../../lib/fnReady.js";
 import { TEST_LIMITS, verdict, type FnTest, type TestWhy } from "../../lib/fnTests.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
@@ -67,6 +68,8 @@ const NOTE = {
   ran: (ms: number) => `Ran the code (${ms} ms)`,
   answered: (line: string, status: number) => `${line} answered ${status}`,
   wouldCall: (line: string) => `Would call ${line}`,
+  used: (line: string) => `Sent through ${line}`,
+  wouldUse: (line: string) => `Would send through ${line}`,
   returned: () => "Gave back its answer",
   yes: () => "Yes",
   no: () => "No",
@@ -333,6 +336,23 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (out.dry) return ["wouldCall", out.line];
       if (!out.ok && !s.anyStatus) throw new Failure(`${out.line} answered ${out.status}`, at);
       return ["answered", out.line, out.status];
+    }
+    case "ready": {
+      // Through a ready connection (lib/fnReady.ts): the kind's own site, with the connection's own key. It counts as a call to a site.
+      if (budget.used.http >= HTTP_LIMITS.calls) throw new Failure(`A run calls sites up to ${HTTP_LIMITS.calls} times`, at);
+      budget.used.http += 1;
+      let out;
+      try {
+        out = await useReady({ id: s.via, what: s.what, give: s.give ?? {}, scope, dry, ms: Math.max(500, budget.deadline - Date.now()) });
+      } catch (e) {
+        if (e instanceof SiteError) throw new Failure(e.message, at);
+        throw e;
+      }
+      if (s.as) scope[s.as] = out.dry ? { status: 0, ok: true, body: null, dry: true } : { status: out.status, ok: out.ok, body: out.body };
+      if (out.dry) return ["wouldUse", out.line];
+      // The service's "no" stops the run, with its own words for why.
+      if (!out.ok) throw new Failure(`${out.line} answered ${out.status}${out.why ? `: ${out.why}` : ""}`, at);
+      return ["used", out.line];
     }
     case "code": {
       // In its cage (lib/fnCode.ts): handed these values and nothing else, it can only give one back.

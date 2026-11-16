@@ -25,6 +25,7 @@ import { OPS, OPS_BY_KIND, VIEWS, columnKind } from "./dataQuery.js";
 import { LANGS } from "./dataRows.js";
 import { ALONE, CMPS, PATH, holesOf, type Cmp } from "./fnValues.js";
 import { SECRET_NAME, hostIn, secretsIn, siteAllowed } from "./fnSites.js";
+import { kindOf, missingIn } from "./fnKinds.js";
 
 export const FN_LIMITS = {
   /** Steps in one function, counting the ones inside others. */
@@ -80,6 +81,7 @@ export type PlainStep =
   | { act: "call"; fn: string; input?: Record<string, Val>; as?: string }
   | { act: "code"; code: string; /** What the code is handed, by name: it reads them as input.name. */ give?: Record<string, Val>; as?: string }
   | { act: "http"; method: (typeof HTTP_METHODS)[number]; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run: the steps after it decide. */ anyStatus?: boolean; as?: string }
+  | { act: "ready"; /** A ready connection's id (admin → الاتصالات والأسرار). */ via: string; /** What it does there: "message". */ what: string; /** What that asks for, by name: { chat, text }. */ give?: Record<string, string>; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
@@ -102,7 +104,7 @@ export type FnDef = {
 };
 
 /** The steps a function may take after a failure: telling someone, writing it down. */
-export const FAIL_ACTS: ReadonlyArray<StepKind> = ["set", "notify", "email", "whatsapp", "sms", "add", "change", "http"];
+export const FAIL_ACTS: ReadonlyArray<StepKind> = ["set", "notify", "email", "whatsapp", "sms", "add", "change", "http", "ready"];
 
 const Text = z.string().max(FN_LIMITS.text);
 const Name = z.string().regex(NAME, "A name starts with a small letter: letters, digits and _");
@@ -151,6 +153,15 @@ const PLAIN = [
       headers: z.record(z.string().min(1).max(60), z.string().max(1000)).refine((h) => Object.keys(h).length <= 20, "Too many headers").optional(),
       body: Value.optional(),
       anyStatus: z.boolean().optional(),
+      as: Var.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      act: z.literal("ready"),
+      via: Id,
+      what: z.string().max(40),
+      give: z.record(z.string().min(1).max(40), Text).refine((g) => Object.keys(g).length <= 12, "Too many values").optional(),
       as: Var.optional(),
     })
     .strict(),
@@ -220,7 +231,7 @@ export function defOf(raw: unknown): FnDef | null {
 export type Problem = { /** Where: "do.2", "do.2.else.0", "if.0", "fail.1". */ at: string; message: string };
 export type KnownTable = { id: string; slug: string; fields: Field[]; name?: unknown };
 export type KnownFn = { id: string; name: string; live: boolean; inputs: FnInput[] };
-export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]> };
+export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]>; /** The ready connections: which, of what kind, and which of their settings are set (a setting can stand in for what a step leaves empty). */ ready?: Array<{ id: string; name: string; kind: string; set: string[] }> };
 
 /**
  * What stands in the way of publishing: a table or field that isn't there, a question a field's
@@ -349,6 +360,20 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
               }
           }
           names([s.url, s.headers, s.body], at, have, true);
+          if (s.as) have.add(s.as);
+          break;
+        }
+        case "ready": {
+          const c = known.ready?.find((x) => x.id === s.via);
+          if (!s.via) out.push({ at, message: "Pick a connection" });
+          else if (known.ready && !c) out.push({ at, message: "This connection isn't there any more" });
+          else if (c) {
+            const action = kindOf(c.kind)?.actions.find((a) => a.id === s.what);
+            if (!action) out.push({ at, message: `"${c.name}" can't do this` });
+            else for (const message of missingIn(action, s.give, (setting) => c.set.includes(setting))) out.push({ at, message });
+          }
+          // The key is the connection's own: a step that uses one names no secret.
+          names(s.give, at, have);
           if (s.as) have.add(s.as);
           break;
         }

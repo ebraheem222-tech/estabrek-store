@@ -123,7 +123,7 @@ describe("Names", () => {
 
 describe("A call to a site", () => {
   test("where it is offered, what it starts with, and what its answer is called by", () => {
-    expect(GROUPS[3]).toEqual({ key: "outside", acts: ["http"] });
+    expect(GROUPS[3]).toEqual({ key: "outside", acts: ["ready", "http"] });
     // After a failure a function may tell someone outside too.
     expect(FAIL_ACTS).toContain("http");
     expect(newStep("http", { tables, fns, def })).toEqual({ act: "http", method: "POST", url: "https://", as: "answer" });
@@ -152,6 +152,54 @@ describe("A call to a site", () => {
     expect(failText('"api.x.com" didn\'t answer in time', "ar")).toBe("«api.x.com» ما جاوب بالوقت");
     expect(failText('"api.x.com" points inside the network: it isn\'t called', "en")).toBe("“api.x.com” points inside the network: it isn't called");
     expect(failText("A run calls sites up to 10 times", "en")).toBe("A run calls sites up to 10 times");
+  });
+});
+
+describe("A step through a ready connection", () => {
+  const outside = {
+    sites: [],
+    secrets: [],
+    ready: [{ id: "c1", name: "Store alerts", kind: "telegram", set: ["chat"] }, { id: "c2", name: "Team", kind: "slack", set: [] }],
+    kinds: [
+      { kind: "telegram", label: "Telegram", actions: [{ id: "message", fields: [{ id: "chat", required: true, long: false, or: "chat" }, { id: "text", required: true, long: true }] }] },
+      { kind: "slack", label: "Slack", actions: [{ id: "message", fields: [{ id: "text", required: true, long: true }] }] },
+    ],
+  };
+
+  test("where it is offered, what it starts with, and what its answer is called by", () => {
+    // Before a call to a site: it is the easier way out of the store.
+    expect(GROUPS[3].acts[0]).toBe("ready");
+    expect(FAIL_ACTS).toContain("ready");
+    // It starts on the first connection, doing the first thing its kind does.
+    expect(newStep("ready", { tables, fns, def, outside })).toEqual({ act: "ready", via: "c1", what: "message", give: {} });
+    // None connected yet (or a server that says nothing of them): the step still opens, to say where one is made.
+    expect(newStep("ready", { tables, fns, def })).toEqual({ act: "ready", via: "", what: "message", give: {} });
+    const withSend: FnDef = { inputs: [], do: [{ act: "ready", via: "c1", what: "message", give: { text: "hi" }, as: "sent" }, { act: "return", value: "" }] };
+    expect(namesBefore(withSend, ["do", 1]).map((k) => `${k.name}:${k.kind}`)).toEqual(["sent:answer"]);
+    expect(offers(withSend, ["do", 1], tables).slice(-3)).toEqual(["sent.body", "sent.ok", "sent.status"]);
+  });
+
+  test("the step in a line, what stands in the way of publishing it, and how its run is said", () => {
+    const ctx = { tables, fns, outside };
+    expect(stepLine({ act: "ready", via: "c1", what: "message", give: { text: "New order from {{input.name}}" }, as: "sent" }, ctx, "en")).toBe("Store alerts · New order from {{input.name}} ← sent");
+    expect(stepLine({ act: "ready", via: "c2", what: "message", give: {} }, ctx, "en")).toBe("Team");
+    expect(stepLine({ act: "ready", via: "gone", what: "message", give: { text: "hi" } }, ctx, "ar")).toBe("اتصال؟ · hi");
+    expect(stepLine({ act: "ready", via: "", what: "message" }, { tables, fns }, "en")).toBe("connection?");
+    expect(problemText("Pick a connection", "ar")).toBe("اختار اتصال");
+    expect(problemText("This connection isn't there any more", "en")).toBe("This connection isn't there any more");
+    expect(problemText('"Store alerts" can\'t do this', "en")).toBe("“Store alerts” can't do this");
+    expect(problemText("The chat is empty", "en")).toBe("To which chat? (the connection has no usual one)");
+    expect(problemText("The text is empty", "ar")).toBe("النص فاضي");
+    expect(lineText({ ok: true, say: ["used", 'Telegram "Store alerts"'] }, "en")).toBe('Sent through Telegram "Store alerts"');
+    expect(lineText({ ok: true, say: ["wouldUse", 'Telegram "Store alerts"'] }, "ar")).toBe('كان رح ينبعت عبر Telegram "Store alerts"');
+    // The service's own words for its "no" stay as it said them.
+    expect(failText('Telegram "Store alerts" answered 400: Bad Request: chat not found', "ar")).toBe("«Store alerts» (Telegram) جاوب 400: Bad Request: chat not found");
+    expect(failText('Slack "Team" answered 502', "en")).toBe("Slack “Team” answered 502");
+    expect(failText('Slack "Team" answered 502', "ar")).toBe("«Team» (Slack) جاوب 502");
+    // A call to a site says it its own way.
+    expect(failText("POST api.x.com/a answered 404", "en")).toBe("POST api.x.com/a answered 404");
+    expect(failText("This connection isn't there any more", "ar")).toBe("هالاتصال ما عاد موجود");
+    expect(failText("The chat is empty", "en")).toBe("There is no chat to send it to");
   });
 });
 

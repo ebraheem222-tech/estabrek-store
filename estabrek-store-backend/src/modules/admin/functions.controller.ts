@@ -10,6 +10,8 @@ import { EMPTY_DEF, FN_LIMITS, FnDefSchema, defOf, problemsOf, sizeOf, type FnDe
 import { CODE_LIMITS, codeProblems } from "../../lib/fnCode.js";
 import { TEST_LIMITS, TestsSchema, testsOf } from "../../lib/fnTests.js";
 import { HTTP_LIMITS, connectionNames } from "../../lib/fnHttp.js";
+import { readyNames } from "../../lib/fnReady.js";
+import { kindsOut } from "../../lib/fnKinds.js";
 import { CMPS } from "../../lib/fnValues.js";
 import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
 import { hasPermission } from "../../middleware/access.js";
@@ -47,10 +49,11 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stri
 
 /** What the steps may talk about: the tables with their fields, and the functions. */
 async function known(self?: string): Promise<Known> {
-  const [tables, fns, outside] = await Promise.all([
+  const [tables, fns, outside, ready] = await Promise.all([
     prisma.collection.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, slug: true, name: true, fields: true } }),
     prisma.fn.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, live: true } }),
     connectionNames(),
+    readyNames(),
   ]);
   return {
     self,
@@ -58,6 +61,8 @@ async function known(self?: string): Promise<Known> {
     sites: outside.sites,
     secrets: outside.secrets.map((s) => s.name),
     secretSites: Object.fromEntries(outside.secrets.map((s) => [s.name, s.sites])),
+    // The ready connections a "ready" step may pick.
+    ready,
     tables: tables.map((t) => ({ id: t.id, slug: t.slug, name: t.name, fields: (Array.isArray(t.fields) ? t.fields : []) as Field[] })),
     fns: fns.map((f) => ({ id: f.id, name: f.name, live: !!f.live, inputs: defOf(f.live)?.inputs ?? [] })),
   };
@@ -138,7 +143,8 @@ r.get(
       // The steps' limits, and the cage's that a code step runs in (lib/fnCode.ts).
       limits: { ...FN_LIMITS, cage: { ms: CODE_LIMITS.ms, memoryMb: CODE_LIMITS.memory / 1024 / 1024 }, tests: TEST_LIMITS.tests, http: { ms: HTTP_LIMITS.ms, calls: HTTP_LIMITS.calls } },
       // What an "http" step may reach: the allowed sites, and each secret's name with the sites it is for (never a value).
-      outside: await connectionNames(),
+      // And the ready connections with what each kind can do (never a key, nor a setting's value).
+      outside: { ...(await connectionNames()), ready: await readyNames(), kinds: kindsOut() },
       // What can start a function: the kinds, the store's events, and how many calls a minute when a trigger doesn't say.
       triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS },
     });
