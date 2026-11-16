@@ -164,6 +164,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/system/runs", say("سجل التشغيل|Run log|יומן הרצות")],
   ["/system/tasks", say("صف الشغل|The queue|תור העבודה")],
   ["/data-api", say("الـ API والمفاتيح|API & keys|API ומפתחות")],
+  ["/functions", say("الـ Functions|Functions|פונקציות")],
   ["/system/vault", tr("الخزنة والبرنامج", "Vault & launcher")],
   ["/system/schedule", tr("الجدول الزمني", "Schedule")],
   ["/system/automations", tr("التلقائيات", "Automations")],

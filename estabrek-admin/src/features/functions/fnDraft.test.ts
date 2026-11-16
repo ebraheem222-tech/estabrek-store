@@ -1,0 +1,180 @@
+import { describe, expect, test } from "vitest";
+import type { FnDef, FnLite, FnTable, Step } from "../../api/functions.api";
+import { addStep, atOf, countSteps, freeName, fromVal, listAt, moveStep, nameOk, namesBefore, namesUsed, newStep, offers, removeStep, setList, setStep, stepAt, stepOfLine, toVal } from "./fnDraft";
+import { condsLine, lineText, outcomeLine, problemText, stateOf, stepLine, whereText } from "./fnText";
+
+// الـ Functions: the builder's sums and the pages' words. A function's steps are a tree; a step is
+// named by its way in ("do.2.else.0"), the same way the server names it.
+
+const tables: FnTable[] = [
+  { id: "t1", slug: "orders", name: { en: "Orders", ar: "الطلبات" }, fields: [{ id: "title", type: "text", name: { en: "Title" }, required: true }, { id: "total", type: "number", name: null, required: false }] },
+  { id: "t2", slug: "customers", name: null, fields: [{ id: "email", type: "email", name: null, required: false }] },
+];
+const fns: FnLite[] = [{ id: "f2", name: "Greet", note: null, enabled: true, published: true, publishedAt: null, changed: false, steps: 1, inputs: 1, takes: [{ name: "who", type: "text", required: true }], runs: 0, lastRunAt: null, updatedAt: "" }];
+const def: FnDef = {
+  inputs: [{ name: "email", type: "text", required: true }],
+  do: [
+    { act: "find", table: "t1", as: "orders" },
+    {
+      act: "if",
+      if: [{ left: "{{orders}}", cmp: "empty" }],
+      do: [{ act: "add", table: "t2", values: { email: "{{input.email}}" }, as: "made" }, { act: "stop", message: "none" }],
+      else: [{ act: "set", name: "sum", value: 0 }],
+    },
+    { act: "each", list: "{{orders}}", as: "order", do: [{ act: "set", name: "sum", op: "add", value: "{{order.total}}" }, { act: "get", table: "t2", row: "x", as: "who" }] },
+    { act: "return", value: "{{sum}}" },
+  ],
+  fail: [{ act: "notify", title: "{{error}}" }],
+};
+
+describe("Changing the tree", () => {
+  test("a step by its way in; a new draft each time, the old one as it was", () => {
+    expect(atOf(["do", 1, "else", 0])).toBe("do.1.else.0");
+    expect(stepOfLine("do.2.do[3].1")).toBe("do.2.do.1");
+    expect(stepAt(def, ["do", 1, "else", 0])).toEqual({ act: "set", name: "sum", value: 0 });
+    expect(listAt(def, ["do", 2, "do"])).toHaveLength(2);
+    expect(listAt(def, ["else"])).toEqual([]);
+    // Counting the ones inside the question and the loop.
+    expect(countSteps(def.do)).toBe(9);
+
+    const changed = setStep(def, ["do", 1, "do", 1], { act: "stop", message: "nobody" });
+    expect(stepAt(changed, ["do", 1, "do", 1])).toEqual({ act: "stop", message: "nobody" });
+    expect(stepAt(def, ["do", 1, "do", 1])).toEqual({ act: "stop", message: "none" });
+    // What wasn't touched is the same thing, not a copy.
+    expect(changed.do[2]).toBe(def.do[2]);
+
+    const added = addStep(def, ["do", 2, "do"], { act: "stop", message: "x" });
+    expect(listAt(added, ["do", 2, "do"]).map((s) => s.act)).toEqual(["set", "get", "stop"]);
+    expect(addStep({ inputs: [], do: [] }, ["else"], { act: "return" }).else).toEqual([{ act: "return" }]);
+    expect(removeStep(def, ["do", 1, "do", 0]).do[1]).toMatchObject({ do: [{ act: "stop" }] });
+    expect(moveStep(def, ["do", 0], 1).do.map((s) => s.act)).toEqual(["if", "find", "each", "return"]);
+    expect(moveStep(def, ["do", 3], -1).do.map((s) => s.act)).toEqual(["find", "if", "return", "each"]);
+    // At either end it stays.
+    expect(moveStep(def, ["do", 0], -1)).toBe(def);
+    expect(moveStep(def, ["do", 3], 1)).toBe(def);
+    // A question's other way: made, and taken away again.
+    const noElse = setList(def, ["do", 1, "else"], undefined);
+    expect("else" in (noElse.do[1] as object)).toBe(false);
+    expect((setList(noElse, ["do", 1, "else"], []).do[1] as { else: Step[] }).else).toEqual([]);
+  });
+});
+
+describe("Names", () => {
+  const names = (path: Array<string | number>) => namesBefore(def, path).map((k) => `${k.name}:${k.kind}${k.table ? `:${k.table}` : ""}`);
+  test("what is kept before a step, in the order the steps are written", () => {
+    expect(names(["do", 0])).toEqual([]);
+    expect(names(["do", 1])).toEqual(["orders:rows:t1"]);
+    // Inside a question: what came before it, and what its own side kept so far.
+    expect(names(["do", 1, "do", 1])).toEqual(["orders:rows:t1", "made:row:t2"]);
+    expect(names(["do", 1, "else", 0])).toEqual(["orders:rows:t1"]);
+    // After it: what either side kept.
+    expect(names(["do", 2])).toEqual(["orders:rows:t1", "made:row:t2", "sum:value"]);
+    // Inside a loop over rows: each one is a row of that table, with its turn.
+    expect(names(["do", 2, "do", 1])).toEqual(["orders:rows:t1", "made:row:t2", "sum:value", "order:row:t1", "index:value"]);
+    // After the loop its own names are gone; what its steps kept stays.
+    expect(names(["do", 3])).toEqual(["orders:rows:t1", "made:row:t2", "sum:value", "who:row:t2"]);
+    // One past the end: what a step added there would know.
+    expect(names(["do", 4])).toEqual(names(["do", 3]));
+    // After a failure: everything, and the failure.
+    expect(names(["fail", 0])).toEqual(["orders:rows:t1", "made:row:t2", "sum:value", "who:row:t2", "error:value"]);
+    // The function's own condition sees only what it is handed.
+    expect(names(["if"])).toEqual([]);
+  });
+
+  test("what a value is offered: the inputs, the moment, a row's fields, how many rows", () => {
+    expect(offers(def, ["do", 0], tables)).toEqual(["input.email", "now"]);
+    expect(offers(def, ["do", 1], tables)).toEqual(["input.email", "now", "orders", "orders.length", "orders.first.title", "orders.first.total"]);
+    expect(offers(def, ["do", 2, "do", 0], tables)).toEqual(expect.arrayContaining(["order", "order.$id", "order.$slug", "order.title", "order.total", "index", "sum", "made.email"]));
+    expect(offers(def, ["fail", 0], tables)).toContain("error");
+  });
+
+  test("names that can be taken; a new step takes one nobody uses", () => {
+    expect(["rows", "row2", "a_b"].map(nameOk)).toEqual([true, true, true]);
+    expect(["Rows", "2row", "", "my-row", "input", "error", "index", "now"].map(nameOk)).toEqual([false, false, false, false, false, false, false, false]);
+    expect(namesUsed(def)).toEqual(["orders", "made", "sum", "order", "sum", "who"]);
+    expect(freeName("rows", ["rows", "rows2"])).toBe("rows3");
+    expect(newStep("find", { tables, fns, def })).toEqual({ act: "find", table: "t1", as: "rows" });
+    expect(newStep("add", { tables, fns, def })).toEqual({ act: "add", table: "t1", values: {}, as: "made2" });
+    expect(newStep("get", { tables: [], fns, def })).toEqual({ act: "get", table: "", row: "", as: "row" });
+    expect(newStep("call", { tables, fns, def })).toEqual({ act: "call", fn: "f2", input: {} });
+    expect(newStep("if", { tables, fns, def })).toEqual({ act: "if", if: [{ left: "", cmp: "eq", right: "" }], do: [] });
+    expect(newStep("sms", { tables, fns, def })).toEqual({ act: "sms", text: "" });
+    expect(newStep("email", { tables, fns, def })).toEqual({ act: "email", subject: "", text: "" });
+  });
+});
+
+describe("A value as it is typed", () => {
+  test("a number, yes/no, a list or a thing; else words (a name stays words)", () => {
+    expect(toVal("12")).toBe(12);
+    expect(toVal("-3.5")).toBe(-3.5);
+    expect(toVal("true")).toBe(true);
+    expect(toVal("false")).toBe(false);
+    expect(toVal('["a", 2]')).toEqual(["a", 2]);
+    expect(toVal('{"id": "{{row.$id}}"}')).toEqual({ id: "{{row.$id}}" });
+    expect(toVal("{{order.total}}")).toBe("{{order.total}}");
+    expect(toVal("{not json")).toBe("{not json");
+    expect(toVal("12.")).toBe("12.");
+    expect(toVal("0599123456789012345")).toBe("0599123456789012345");
+    expect(toVal("Hello {{input.name}}")).toBe("Hello {{input.name}}");
+    expect([12, true, null, undefined, "x", ["a"], { k: 1 }].map((v) => fromVal(v as never))).toEqual(["12", "true", "", "", "x", '["a"]', '{"k":1}']);
+  });
+});
+
+describe("The pages' words", () => {
+  test("a step in a line", () => {
+    const ctx = { tables, fns };
+    expect(def.do.map((s) => stepLine(s, ctx, "en"))).toEqual(["Orders ← orders", "{{orders}} is empty", "{{orders}} ← order", "{{sum}}"]);
+    expect(stepLine(def.do[0], ctx, "ar")).toBe("الطلبات ← orders");
+    expect(stepLine({ act: "find", table: "t1", filters: [{ field: "total", op: "gt", value: 5 }], as: "rows" }, ctx, "en")).toBe("Orders · 1 conditions ← rows");
+    expect(stepLine({ act: "find", table: "gone", as: "rows" }, ctx, "en")).toBe("table? ← rows");
+    expect(stepLine({ act: "change", table: "t2", row: "{{who.$id}}", values: {}, as: "who" }, ctx, "en")).toBe("customers: {{who.$id}} ← who");
+    expect(stepLine({ act: "set", name: "sum", op: "add", value: 5 }, ctx, "en")).toBe("sum add to it 5");
+    expect(stepLine({ act: "call", fn: "f2", as: "said" }, ctx, "en")).toBe("Greet ← said");
+    expect(stepLine({ act: "call", fn: "", input: {} }, ctx, "en")).toBe("function?");
+    expect(stepLine({ act: "email", subject: "Hi", text: "x" }, ctx, "en")).toBe("the shop's email · Hi");
+    expect(stepLine({ act: "sms", to: "+972590000000", text: "Ready" }, ctx, "en")).toBe("+972590000000 · Ready");
+    expect(stepLine({ act: "stop", message: "" }, ctx, "en")).toBe("—");
+    expect(condsLine([{ left: "{{a}}", cmp: "gt", right: 5 }, { left: "{{b}}", cmp: "notEmpty" }], "any", "en")).toBe("{{a}} is more than 5 or {{b}} is not empty");
+    expect(condsLine([], undefined, "en")).toBe("Nothing asked yet");
+  });
+
+  test("where a step is, and what stands in the way of publishing", () => {
+    expect(whereText("do.2", "en")).toBe("Step 3");
+    expect(whereText("do.2.else.0", "en")).toBe("Step 3 ← Else ← Step 1");
+    expect(whereText("do.0.do.1", "ar")).toBe("الخطوة 1 ← الخطوة 2");
+    expect(whereText("do.5.if.0", "en")).toBe("Step 6 ← Condition 1");
+    expect(whereText("if.1", "en")).toBe("Condition 2");
+    // The function's own question, as a run's line names it.
+    expect(whereText("if", "en")).toBe("The condition");
+    expect(whereText("else.0", "en")).toBe("Else ← Step 1");
+    expect(whereText("fail.1", "en")).toBe("On failure ← Step 2");
+    expect(whereText("do.0.do[3].1", "en")).toBe("Step 1 ← Step 2");
+    expect(whereText("inputs", "en")).toBe("The inputs");
+    expect(problemText("Pick a table", "ar")).toBe("اختار جدول");
+    expect(problemText('No field "colour" in this table', "en")).toBe("No field “colour” in this table");
+    expect(problemText('Nothing is kept under "order" before this step', "ar")).toBe("ما في شي محفوظ باسم «order» قبل هالخطوة");
+    expect(problemText('"Greet" needs "who"', "en")).toBe("“Greet” needs “who”");
+    expect(problemText('"{{1 + 1}}" isn\'t a name', "en")).toBe("“{{1 + 1}}” isn't a name");
+    expect(problemText("A loop goes over one named list: {{rows}}", "en")).toBe("A loop goes over one named list, like {{rows}}");
+    // One the page doesn't know stays as the server said it.
+    expect(problemText("Something new", "ar")).toBe("Something new");
+  });
+
+  test("a run, line by line, and how it ended", () => {
+    expect(lineText({ ok: true, say: ["found", 3, 3] }, "en")).toBe("3 rows");
+    expect(lineText({ ok: true, say: ["found", 3, 20] }, "en")).toBe("3 of 20 rows");
+    expect(lineText({ ok: true, say: ["wouldChange", "basel", "customers"] }, "ar")).toBe("كان رح يتعدّل basel بـ customers");
+    expect(lineText({ ok: true, say: ["wouldSend", "email", "a@b.c"] }, "en")).toBe("Would send an email to a@b.c");
+    expect(lineText({ ok: true, say: ["queued", "sms", "+97259"] }, "ar")).toBe("SMS صار بالدور لـ +97259");
+    expect(lineText({ ok: true, say: ["set", "sum", "150.5"] }, "he")).toBe("sum = 150.5");
+    expect(lineText({ ok: true, say: ["other"] }, "en")).toBe("No: the other way");
+    expect(lineText({ ok: false, error: "No such row to change" }, "ar")).toBe("No such row to change");
+    // A code a newer server says: its own English.
+    expect(lineText({ ok: true, say: ["teleported", 1], note: "Teleported 1" }, "ar")).toBe("Teleported 1");
+    const counts = { added: 1, changed: 2, deleted: 0, sent: 0 };
+    expect(outcomeLine({ ok: true, dry: true, counts, ms: 12 }, "en")).toBe("It would have gone through · would have: 1 added، 2 changed · 12 ms");
+    expect(outcomeLine({ ok: true, dry: false, counts: { added: 0, changed: 0, deleted: 0, sent: 0 }, ms: 3 }, "en")).toBe("It went through · and changed nothing · 3 ms");
+    expect(outcomeLine({ ok: false, dry: false, counts, ms: 8 }, "ar")).toBe("وقفت · 1 انضاف، 2 تعدّل · 8 ms");
+    expect([{ published: false, changed: true, enabled: true }, { published: true, changed: true, enabled: true }, { published: true, changed: false, enabled: true }, { published: true, changed: false, enabled: false }].map(stateOf)).toEqual(["draft", "changed", "live", "off"]);
+  });
+});

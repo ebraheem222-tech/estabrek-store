@@ -74,6 +74,14 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    key: "functions",
+    label: "الـ Functions",
+    permissions: [
+      { key: "functions:read", label: "مشاهدة الـ functions وخطواتها" },
+      { key: "functions:write", label: "بناء ونشر وتشغيل (الـ function بتقرأ وبتكتب بكل الجداول وبتبعت رسايل)" },
+    ],
+  },
+  {
     key: "nav",
     label: "القوائم",
     permissions: [

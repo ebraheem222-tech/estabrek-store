@@ -52,6 +52,7 @@ import collections from "./collections.controller.js";
 import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
 import dataApi from "./api.controller.js";
+import functions from "./functions.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
 import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiPagesAdmin, aiSettingsAdmin } from "./ai.controller.js";
@@ -124,6 +125,8 @@ r.use("/collections", tablesAccess, collectionRows);
 r.use("/collections", tablesAccess, collections);
 // The automatic API (B4): which tables are open to the outside, and the keys.
 r.use("/api", areaAccess({ read: "api:read", write: "api:write" }), dataApi);
+// Functions (F1): logic built from steps; a function reads and writes the tables and sends messages.
+r.use("/functions", areaAccess({ read: "functions:read", write: "functions:write" }), functions);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);
 // Codes sold one per piece (game keys, gift cards).
 r.use("/catalog/products/:productId/codes", areaAccess({ read: "catalog:read", write: "catalog:write" }), productCodes);
