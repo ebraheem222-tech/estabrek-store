@@ -11,12 +11,12 @@ export type TableAccess = { read: Who; create: Who; update: Who; delete: Who };
 export type FeatureLite = { id: string; name: string; note: string | null; enabled: boolean; updatedAt: string; counts: Record<FeatureKind, number> };
 export type FeatureTable = { id: string; slug: string; name: Local | null; fields: number; rows: number; api: TableAccess };
 export type FeatureFn = { id: string; name: string; note: string | null; enabled: boolean; published: boolean; changed: boolean; triggers: number; runs: number; lastRunAt: string | null };
-export type FeaturePage = { id: string; name: string; slug: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; hasDraft: boolean };
+export type FeaturePage = { id: string; name: string; slug: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; hasDraft: boolean; /** The feature is off: the shop answers this page as one that isn't there. */ hidden?: boolean };
 export type Feature = {
   id: string;
   name: string;
   note: string | null;
-  /** Off: its functions aren't started and its tables' API answers as closed. */
+  /** Off: its functions aren't started, its tables' API answers as closed, and its pages are hidden from the shop. */
   enabled: boolean;
   createdAt: string;
   updatedAt: string;

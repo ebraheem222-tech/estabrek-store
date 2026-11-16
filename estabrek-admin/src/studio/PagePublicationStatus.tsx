@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkPagePublication, getPagePublication, retryPagePublication, type Page, type PublicationState } from "../api/pages.api";
+import { Link } from "react-router-dom";
 import { tr } from "../lib/words";
 import { toast } from "../lib/toast";
+import { say } from "./say";
 
 function stateOf(page: Page): PublicationState["state"] {
   return page.status === "ARCHIVED" ? "archived" : page.status !== "PUBLISHED" ? "draft"
@@ -22,6 +24,8 @@ export function PagePublicationStatus({ page, lang, hasDraft, canPublish }: { pa
   if (page.kind === "block") return null;
   const state = q.data?.publication?.state ?? stateOf(page);
   const delivery = q.data?.delivery;
+  /** Its feature is switched off: hidden from the shop, published or not. */
+  const hiddenBy = q.data?.hiddenBy ?? null;
   const labels = {
     draft: tr("مسودة؛ مش متاحة للزوار", "Draft; not public"), archived: tr("مؤرشفة", "Archived"), scheduled: tr("مجدولة", "Scheduled"), expired: tr("موعد النشر منتهي", "Publication window ended"),
     live: hasDraft || q.data?.hasDraft ? tr("منشورة وفيها تعديلات محفوظة", "Published with draft changes") : tr("منشورة", "Published"),
@@ -39,12 +43,21 @@ export function PagePublicationStatus({ page, lang, hasDraft, canPublish }: { pa
   const btn = "rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:bg-white/[0.06] disabled:opacity-40";
   return <div className="shrink-0 space-y-1 border-b border-white/[0.07] px-3 py-2 text-[11px] text-white/60" data-testid="studio-publication">
     <div className="flex flex-wrap items-center gap-2">
-      <span className={state === "live" ? "text-emerald-300" : "text-amber-200"}>{labels[state]}</span>
+      <span className={state === "live" && !hiddenBy ? "text-emerald-300" : "text-amber-200"}>{labels[state]}</span>
       {deliveryText ? <span>{deliveryText}</span> : null}
       <button type="button" className={btn} disabled={check.isPending} onClick={() => check.mutate(checkedIdentity)}>{check.isPending ? tr("عم نفحص…", "Checking…") : tr("افحص الرابط العام", "Check public page")}</button>
       {canPublish && delivery && delivery.state !== "delivered" ? <button type="button" className={btn} disabled={retry.isPending} onClick={() => retry.mutate()}>{tr("أعد تحديث الموقع", "Retry storefront refresh")}</button> : null}
       {q.isError ? <span className="text-amber-200">{tr("تعذّرت قراءة حالة النشر.", "Could not read publication status.")}</span> : null}
     </div>
+    {hiddenBy ? (
+      <p className="text-amber-200" data-testid="studio-hidden-by">
+        {say("مخبّاة عن المتجر: هي من ميزة موقّفة،|Hidden from the shop: it belongs to a feature that is switched off,|מוסתר מהחנות: הוא שייך לתכונה כבויה,")}{" "}
+        <Link to={`/admin/my-features/${hiddenBy.id}`} className="underline">
+          {hiddenBy.name}
+        </Link>
+        {say(". شغّل الميزة لترجع تبين.|. Switch the feature on to show it again.|. הפעילו את התכונה כדי שיוצג שוב.")}
+      </p>
+    ) : null}
     {checkedText ? <p aria-live="polite">{checkedText}</p> : null}
     {result?.targets?.length ? <ul className="flex flex-wrap gap-x-4 gap-y-1">
       {result.targets.map(target => <li key={target.origin}>

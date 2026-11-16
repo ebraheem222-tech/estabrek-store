@@ -12,7 +12,7 @@ export type PublicationState = PublicationSnapshot & { state: "draft" | "archive
 export type PublicationDelivery = { version: 1; id: string; state: "pending" | "delivered" | "failed" | "not_configured"; attempts: number; createdAt: string; checkedAt: string | null; retryAt: string | null; targets: Array<{ origin: string; ok: boolean; status?: number }> };
 export type PublishChoices = { mode: "keep_schedule" | "now"; republishArchived: boolean };
 export type PublishPageOptions = Partial<PublishChoices> & { rev?: number; expectedPublication?: PublicationSnapshot };
-export type PagePublication = { publication: PublicationState; delivery: PublicationDelivery | null; hasDraft: boolean };
+export type PagePublication = { publication: PublicationState; delivery: PublicationDelivery | null; hasDraft: boolean; /** The switched-off feature (admin → ميزاتي) that hides the page from the shop, whatever its own status. */ hiddenBy?: { id: string; name: string } | null };
 export type PublicPageProbe = { state: "shown" | "pending" | "not_public" | "not_configured"; checkedAt: string; targets: Array<{ origin: string; url: string; state: "shown" | "not_found" | "different_page" | "unavailable"; status?: number }> };
 
 export type Page = {
