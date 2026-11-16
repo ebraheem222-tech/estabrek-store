@@ -3,15 +3,16 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { FnDef, FnFull, FnList, FnLite, FnTest, FnTrigger, Outcome, TestsOutcome } from "../../api/functions.api";
+import type { FnVersion, FnDef, FnFull, FnList, FnLite, FnTest, FnTrigger, Outcome, TestsOutcome } from "../../api/functions.api";
 
 // الـ Functions: the list and the builder over a stand-in API. Steps are added from a menu, each
 // opens to its own form; the draft is saved, tried dry, and published.
 
-const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), runFnTests: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), may: new Set<string>(), copied: [] as string[], HTTP_METHODS: ["GET", "POST", "PUT", "PATCH", "DELETE"] as const }));
+const m = vi.hoisted(() => ({ getFunctions: vi.fn(), getFunction: vi.fn(), createFunction: vi.fn(), saveFunction: vi.fn(), publishFunction: vi.fn(), runFunction: vi.fn(), runFnTests: vi.fn(), deleteFunction: vi.fn(), addTrigger: vi.fn(), saveTrigger: vi.fn(), deleteTrigger: vi.fn(), getFnVersion: vi.fn(), restoreFnVersion: vi.fn(), toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() }, may: new Set<string>(), copied: [] as string[], HTTP_METHODS: ["GET", "POST", "PUT", "PATCH", "DELETE"] as const }));
 vi.mock("../../api/functions.api", () => m);
 vi.mock("../../config/env", () => ({ env: { VITE_API_BASE_URL: "https://api.shop.test/v1" } }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
+vi.mock("../../lib/toast", () => ({ toast: m.toast }));
 
 import { setLangForTests } from "../../lib/lang";
 import FunctionsPage from "./FunctionsPage";
@@ -795,5 +796,108 @@ describe("What starts it", () => {
     expect(screen.queryByTestId("fn-triggers-add")).toBeNull();
     expect(screen.queryByTestId("trigger-s1-remove")).toBeNull();
     expect((screen.getByTestId("trigger-e1-event") as HTMLSelectElement).disabled).toBe(true);
+  });
+});
+
+describe("Its versions", () => {
+  const v = (n: number, more: Partial<FnVersion> = {}): FnVersion => ({ n, at: `2026-11-1${n}T09:00:00Z`, by: "owner@shop.test", back: null, steps: 2, inputs: 1, ...more });
+  const three = (): FnFull => full({ published: true, changed: false, version: 3, live: { inputs: [], do: [{ act: "return", value: "three" }] }, draft: { inputs: [], do: [{ act: "return", value: "three" }] }, versions: [v(3, { back: 1 }), v(2), v(1)], versionsKept: 50 });
+  beforeEach(() => {
+    m.getFnVersion.mockImplementation(async (_id: string, n: number) => ({ n, def: { inputs: [{ name: "who", type: "text" }], do: [{ act: "notify", title: `Version ${n} says hi` }, { act: "return", value: "{{input.who}}" }], fail: [{ act: "email", subject: "It failed", text: "{{error}}" }] } }));
+    m.restoreFnVersion.mockImplementation(async (_id: string, n: number, to: "live" | "draft") => {
+      const def: FnDef = { inputs: [], do: [{ act: "return", value: `from ${n}` }] };
+      server = to === "draft" ? { ...server, draft: def, changed: true, updatedAt: new Date(Date.parse(server.updatedAt) + 1000).toISOString() } : { ...server, live: def, version: (server.version ?? 0) + 1, versions: [v((server.version ?? 0) + 1, { back: n }), ...(server.versions ?? [])], changed: true, updatedAt: new Date(Date.parse(server.updatedAt) + 1000).toISOString() };
+      return server;
+    });
+  });
+
+  test("one that was never published has none; a published one says which version runs", async () => {
+    show();
+    expect((await screen.findByTestId("fn-versions-empty")).textContent).toContain("The first publish becomes version 1");
+    expect(screen.queryByTestId("fn-version")).toBeNull();
+    cleanup();
+    server = three();
+    show();
+    expect((await screen.findByTestId("fn-version")).textContent).toBe("Version 3");
+    expect([...screen.getByTestId("fn-versions").querySelectorAll("li[data-testid^=fn-version-]")].map((li) => [li.getAttribute("data-testid"), li.getAttribute("data-live")])).toEqual([["fn-version-3", "true"], ["fn-version-2", "false"], ["fn-version-1", "false"]]);
+    // Newest first: which one runs, where its steps came from, when, who and how big.
+    expect(screen.getByTestId("fn-version-3").textContent).toContain("This one runs");
+    expect(screen.getByTestId("fn-version-3").textContent).toContain("Back to version 1");
+    expect(screen.getByTestId("fn-version-2").textContent).toMatch(/12 Nov 2026.* · owner@shop\.test · 2 steps/);
+    // The one that runs isn't published again; any of them goes into the draft.
+    expect(screen.queryByTestId("fn-version-3-publish")).toBeNull();
+    expect(screen.getByTestId("fn-version-2-publish")).toBeTruthy();
+    expect(screen.getByTestId("fn-version-3-draft")).toBeTruthy();
+  });
+
+  test("its steps are looked at as they were published", async () => {
+    server = three();
+    show();
+    fireEvent.click(await screen.findByTestId("fn-version-2-look"));
+    const steps = await screen.findByTestId("fn-version-2-steps");
+    expect(m.getFnVersion).toHaveBeenCalledWith("f1", 2);
+    expect(steps.textContent).toContain("It is handed: who");
+    expect([...steps.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["1.Ring the admin's bellVersion 2 says hi", "2.Give back an answer{{input.who}}", "1.Emailthe shop's email · It failed"]);
+    expect(steps.textContent).toContain("If a step fails");
+    // One at a time; closed again.
+    fireEvent.click(screen.getByTestId("fn-version-1-look"));
+    await screen.findByTestId("fn-version-1-steps");
+    expect(screen.queryByTestId("fn-version-2-steps")).toBeNull();
+    fireEvent.click(screen.getByTestId("fn-version-1-look"));
+    expect(screen.queryByTestId("fn-version-1-steps")).toBeNull();
+  });
+
+  test("an older version is published again after asking: a new version, and the draft stays", async () => {
+    server = three();
+    show();
+    fireEvent.click(await screen.findByTestId("fn-version-1-publish"));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("Version 1's steps become what runs again, as a new version");
+    expect(m.restoreFnVersion).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish it" }));
+    await waitFor(() => expect(m.restoreFnVersion).toHaveBeenCalledWith("f1", 1, "live"));
+    await waitFor(() => expect(screen.getByTestId("fn-version").textContent).toBe("Version 4"));
+    expect(screen.getByTestId("fn-version-4").textContent).toContain("Back to version 1");
+    expect(m.toast.success).toHaveBeenCalledWith("Version 1 runs again", { description: "It was kept as a new version, number 4." });
+    // The draft on the page is the one that was there.
+    expect(screen.getByTestId("step-do.0-line").textContent).toBe("three");
+  });
+
+  test("one that points at things that are gone isn't published again, and says which", async () => {
+    server = three();
+    m.restoreFnVersion.mockRejectedValueOnce({ response: { status: 409, data: { error: "FN_HAS_PROBLEMS", details: { problems: [{ at: "do.0", message: "This connection isn't there any more" }] } } } });
+    show();
+    fireEvent.click(await screen.findByTestId("fn-version-2-publish"));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Publish it" }));
+    await waitFor(() => expect(m.toast.error).toHaveBeenCalledWith("It can't be published as it is", { description: "It talks about things that aren't there any more: Step 1: This connection isn't there any more Put it in the draft and mend it." }));
+    expect(screen.getByTestId("fn-version").textContent).toBe("Version 3");
+  });
+
+  test("into the draft: at once when nothing would be lost, after asking when the draft has changes", async () => {
+    server = three();
+    show();
+    // The draft is what is published: nothing to lose.
+    fireEvent.click(await screen.findByTestId("fn-version-1-draft"));
+    await waitFor(() => expect(m.restoreFnVersion).toHaveBeenCalledWith("f1", 1, "draft"));
+    await waitFor(() => expect(screen.getByTestId("step-do.0-line").textContent).toBe("from 1"));
+    expect(screen.getByTestId("fn-version").textContent).toBe("Version 3");
+    expect(m.toast.success).toHaveBeenCalledWith("Version 1's steps are in the draft", { description: "What runs hasn't changed until you publish." });
+    // Now the draft differs from what runs: another version over it asks first.
+    fireEvent.click(screen.getByTestId("fn-version-2-draft"));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("the changes in it that weren't published are lost");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Replace the draft" }));
+    await waitFor(() => expect(m.restoreFnVersion).toHaveBeenLastCalledWith("f1", 2, "draft"));
+    await waitFor(() => expect(screen.getByTestId("step-do.0-line").textContent).toBe("from 2"));
+  });
+
+  test("a member who can only look sees the versions and their steps, and goes back to none", async () => {
+    m.may = new Set(["functions:read"]);
+    server = three();
+    show();
+    await screen.findByTestId("fn-versions");
+    expect(screen.getByTestId("fn-version-2-look")).toBeTruthy();
+    expect(screen.queryByTestId("fn-version-2-publish")).toBeNull();
+    expect(screen.queryByTestId("fn-version-2-draft")).toBeNull();
   });
 });

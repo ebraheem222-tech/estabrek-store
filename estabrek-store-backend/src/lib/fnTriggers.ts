@@ -90,7 +90,7 @@ export function nextRun(config: ScheduleConfig, after: Date): Date {
 
 /* ---------------- The triggers that are live ---------------- */
 
-export type LiveTrigger = { id: string; fnId: string; kind: TriggerKind; config: Record<string, unknown>; slug: string | null };
+export type LiveTrigger = { id: string; fnId: string; kind: TriggerKind; config: Record<string, unknown>; slug: string | null; /** The function's published version (lib/fnVersions.ts): what a run started now is a run of. */ version?: number | null };
 let cache: { at: number; list: LiveTrigger[] } | null = null;
 /** After a trigger or a function changes: read them again. */
 export function forgetTriggers() {
@@ -103,10 +103,10 @@ export function forgetTriggers() {
 export async function liveTriggers(now = Date.now()): Promise<LiveTrigger[]> {
   if (!cache || now - cache.at > 10_000) {
     const [rows, off] = await Promise.all([
-      prisma.fnTrigger.findMany({ where: { enabled: true, fn: { enabled: true, publishedAt: { not: null } } }, select: { id: true, fnId: true, kind: true, config: true, slug: true } }),
+      prisma.fnTrigger.findMany({ where: { enabled: true, fn: { enabled: true, publishedAt: { not: null } } }, select: { id: true, fnId: true, kind: true, config: true, slug: true, fn: { select: { version: true } } } }),
       switchedOff(now),
     ]);
-    cache = { at: now, list: rows.filter((t) => !off.fns.has(t.fnId)).map((t) => ({ ...t, kind: t.kind as TriggerKind, config: (t.config ?? {}) as Record<string, unknown> })) };
+    cache = { at: now, list: rows.filter((t) => !off.fns.has(t.fnId)).map(({ fn, ...t }) => ({ ...t, kind: t.kind as TriggerKind, config: (t.config ?? {}) as Record<string, unknown>, version: fn.version })) };
   }
   return cache.list;
 }
@@ -129,6 +129,8 @@ export type FnTask = {
   row?: { table: string; id: string; event: RowEvent; before?: unknown };
   /** The run began (set by the handler): one that was interrupted isn't run again by itself. */
   started?: boolean;
+  /** The version that was published when the run was asked for: the one it runs, whatever is published since. */
+  version?: number;
 };
 
 const chain = new AsyncLocalStorage<number>();
@@ -144,7 +146,7 @@ async function start(t: LiveTrigger, trigger: string, more: Pick<FnTask, "input"
     recordRun({ kind: "function", name: fn?.name ?? t.fnId, ref: t.fnId, trigger, startedAt: Date.now(), ms: 0, ok: false, error: `Functions started each other ${CHAIN_MAX} deep; this one wasn't started` });
     return;
   }
-  const task: FnTask = { fnId: t.fnId, triggerId: t.id, trigger, chain: depth + 1, ...more };
+  const task: FnTask = { fnId: t.fnId, triggerId: t.id, trigger, chain: depth + 1, ...(t.version ? { version: t.version } : {}), ...more };
   await enqueueTask("function", task, { key });
 }
 
@@ -175,13 +177,13 @@ export async function emitWebhook(t: LiveTrigger, body: unknown, query: unknown)
 
 /** The schedules that are due: each is started once for its moment, and its next moment is set. */
 export async function runFnSchedule(now = new Date()) {
-  const due = await prisma.fnTrigger.findMany({ where: { kind: "schedule", enabled: true, nextAt: { lte: now }, fn: { enabled: true, publishedAt: { not: null } } }, orderBy: { nextAt: "asc" }, take: 50 });
+  const due = await prisma.fnTrigger.findMany({ where: { kind: "schedule", enabled: true, nextAt: { lte: now }, fn: { enabled: true, publishedAt: { not: null } } }, orderBy: { nextAt: "asc" }, take: 50, include: { fn: { select: { version: true } } } });
   let started = 0;
   for (const t of due) {
     const config = CONFIG.schedule.safeParse(t.config);
     if (!config.success || !t.nextAt) continue;
     // The same moment asked twice (two servers, a restart) is one run.
-    await start({ id: t.id, fnId: t.fnId, kind: "schedule", config: config.data, slug: null }, "schedule", { input: { at: t.nextAt.toISOString() } }, `fn-schedule:${t.id}:${t.nextAt.toISOString()}`);
+    await start({ id: t.id, fnId: t.fnId, kind: "schedule", config: config.data, slug: null, version: t.fn.version }, "schedule", { input: { at: t.nextAt.toISOString() } }, `fn-schedule:${t.id}:${t.nextAt.toISOString()}`);
     // Moments missed while the server was down aren't run one by one: the next one from now.
     await prisma.fnTrigger.update({ where: { id: t.id }, data: { nextAt: nextRun(config.data, now) } });
     started += 1;
