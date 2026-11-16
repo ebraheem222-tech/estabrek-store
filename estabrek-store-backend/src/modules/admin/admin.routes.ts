@@ -53,6 +53,7 @@ import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
 import dataApi from "./api.controller.js";
 import functions from "./functions.controller.js";
+import myFeatures from "./myFeatures.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
 import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiPagesAdmin, aiSettingsAdmin } from "./ai.controller.js";
@@ -127,6 +128,8 @@ r.use("/collections", tablesAccess, collections);
 r.use("/api", areaAccess({ read: "api:read", write: "api:write" }), dataApi);
 // Functions (F1): logic built from steps; a function reads and writes the tables and sends messages.
 r.use("/functions", areaAccess({ read: "functions:read", write: "functions:write" }), functions);
+// ميزاتي (M): a feature the owner built: its tables, functions and pages under one name, on or off together.
+r.use("/my-features", areaAccess({ read: "features:read", write: "features:write" }), myFeatures);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);
 // Codes sold one per piece (game keys, gift cards).
 r.use("/catalog/products/:productId/codes", areaAccess({ read: "catalog:read", write: "catalog:write" }), productCodes);

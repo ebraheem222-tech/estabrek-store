@@ -103,9 +103,13 @@ const triggerView = (t: TriggerRow, write: boolean) => {
 
 async function full(fn: Row, req: Request) {
   const draft = defOf(fn.draft) ?? EMPTY_DEF;
-  const triggers = await prisma.fnTrigger.findMany({ where: { fnId: fn.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  const [triggers, part] = await Promise.all([
+    prisma.fnTrigger.findMany({ where: { fnId: fn.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
+    prisma.featureItem.findUnique({ where: { kind_refId: { kind: "function", refId: fn.id } }, select: { feature: { select: { id: true, name: true, enabled: true } } } }),
+  ]);
   const write = hasPermission(req, "functions:write");
-  return { ...lite(fn), draft, live: defOf(fn.live), problems: problemsOf(draft, await known(fn.id)), triggers: triggers.map((t) => triggerView(t, write)) };
+  // The feature it is part of (admin → ميزاتي): one that is off keeps the function from being started.
+  return { ...lite(fn), draft, live: defOf(fn.live), problems: problemsOf(draft, await known(fn.id)), triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null };
 }
 
 r.get(

@@ -85,6 +85,8 @@ const DataPage = lazy(() => import("../features/data/DataPage"));
 const ApiPage = lazy(() => import("../features/api/ApiPage"));
 const FunctionsPage = lazy(() => import("../features/functions/FunctionsPage"));
 const FunctionEditor = lazy(() => import("../features/functions/FunctionEditor"));
+const MyFeaturesPage = lazy(() => import("../features/myFeatures/MyFeaturesPage"));
+const FeaturePage = lazy(() => import("../features/myFeatures/FeaturePage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
 const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
@@ -312,6 +314,8 @@ export default function AppRouter() {
           <Route path="data-api" element={withPermissions(<ErrorBoundary title="API"><ApiPage /></ErrorBoundary>, ["api:read"])} />
           <Route path="functions" element={withPermissions(<ErrorBoundary title="Functions"><FunctionsPage /></ErrorBoundary>, ["functions:read"])} />
           <Route path="functions/:id" element={withPermissions(<ErrorBoundary title="Functions"><FunctionEditor /></ErrorBoundary>, ["functions:read"])} />
+          <Route path="my-features" element={withPermissions(<ErrorBoundary title="My features"><MyFeaturesPage /></ErrorBoundary>, ["features:read"])} />
+          <Route path="my-features/:id" element={withPermissions(<ErrorBoundary title="My features"><FeaturePage /></ErrorBoundary>, ["features:read"])} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}
           <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
           <Route path="pages/:id/classic" element={withPermissions(<OpenInStudio />, ["pages:read"])} />

@@ -82,6 +82,14 @@ export const PERMISSION_GROUPS = [
     ],
   },
   {
+    key: "features",
+    label: "ميزاتي (ميزات من عندك)",
+    permissions: [
+      { key: "features:read", label: "مشاهدة الميزات وشو فيها" },
+      { key: "features:write", label: "عمل ميزة، ترتيب جداولها ومنطقها وصفحاتها، وتشغيلها أو إيقافها كلها" },
+    ],
+  },
+  {
     key: "nav",
     label: "القوائم",
     permissions: [

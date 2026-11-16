@@ -25,6 +25,7 @@ import { apiRow, type LinkModes } from "../../lib/dataApi.js";
 import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
+import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
 import { registerTask } from "../../lib/tasks.js";
 import { allHold, fill, numberOf, words, type Scope } from "../../lib/fnValues.js";
@@ -186,7 +187,9 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       const t = await table(s.table);
       const values = filled(s.values);
       // Whose row it is: a shopper, by their id (or {{caller}}). Nobody: the store's own row.
-      const ownerId = s.owner === undefined ? null : rowName(fill(s.owner, scope)) || null;
+      let ownerId = s.owner === undefined ? null : rowName(fill(s.owner, scope)) || null;
+      // The one who started the run isn't a shopper (the admin trying it, a key): the row is the store's.
+      if (ownerId && ownerId === ctx.caller.id && ctx.caller.kind !== "customer") ownerId = null;
       if (ownerId && !(await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true } }))) throw new Failure("No such shopper to own the row", at);
       writing();
       if (dry) {
@@ -434,7 +437,8 @@ export async function runFn(id: string, input: Record<string, unknown>, opts: { 
   if (!fn) throw new AppError(404, "FN_NOT_FOUND", "No such function");
   const def = defOf(opts.which === "draft" ? fn.draft : fn.live);
   if (!def) throw new AppError(409, opts.which === "draft" ? "FN_INVALID" : "FN_NOT_PUBLISHED", opts.which === "draft" ? "The draft can't be read" : "This function isn't published yet");
-  if (opts.needOn && !fn.enabled) throw new AppError(409, "FN_OFF", "This function is switched off");
+  // Off by itself, or as part of a feature that is switched off (admin → ميزاتي).
+  if (opts.needOn && (!fn.enabled || (await switchedOff()).fns.has(fn.id))) throw new AppError(409, "FN_OFF", "This function is switched off");
   const t0 = Date.now();
   const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller });
   if (!opts.dry) {
@@ -474,8 +478,8 @@ export function startFunctions() {
       const trigger = p.triggerId ? await prisma.fnTrigger.findUnique({ where: { id: p.triggerId }, select: { id: true, enabled: true } }) : null;
       const fn = await prisma.fn.findUnique({ where: { id: p.fnId }, select: { enabled: true, live: true } });
       const def = fn ? defOf(fn.live) : null;
-      // Removed, unpublished or switched off since it was asked for: nothing to run.
-      if (!trigger?.enabled || !fn?.enabled || !def) return { skipped: 1 };
+      // Removed, unpublished or switched off (itself, or its feature) since it was asked for: nothing to run.
+      if (!trigger?.enabled || !fn?.enabled || !def || (await switchedOff()).fns.has(p.fnId)) return { skipped: 1 };
       const input = p.row ? await rowInput(p.row, def.lang ?? "ar") : p.input ?? {};
       if (!input) return { skipped: 1 };
       await prisma.task.update({ where: { id: task.id }, data: { payload: { ...p, started: true } as unknown as Prisma.InputJsonValue } });

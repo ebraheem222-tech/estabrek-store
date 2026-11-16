@@ -365,6 +365,12 @@ describe("A call to its own address", () => {
     // Nobody named: the store's own row.
     expect((await call(`${PREFIX}owned`, {}).expect(200)).body.ok).toBe(true);
     expect((await rowsOf(notes)).map((r) => r.ownerId)).toEqual([saraId, null]);
+    // "The caller's row", when the one who started the run isn't a shopper (the admin trying it, a key): the store's row, not a failure.
+    const mine = await fn("mine", { do: [{ act: "add", table: notes, owner: "{{caller}}", values: { text: "by {{caller.kind}}" }, as: "made" }, { act: "return", value: "{{made.$id}}" }] });
+    expect((await request(app).post(`${at}/${mine}/run`).send({ dry: true, which: "live" }).expect(200)).body).toMatchObject({ ok: true, counts: { added: 1 } });
+    const real = (await request(app).post(`${at}/${mine}/run`).send({ dry: false, which: "live" }).expect(200)).body;
+    expect(real.ok).toBe(true);
+    expect(await prisma.collectionItem.findUniqueOrThrow({ where: { id: real.value } })).toMatchObject({ ownerId: null });
     // What a function may say about its caller.
     const bad = (await request(app).put(`${at}/${id}`).send({ draft: { inputs: [], do: [{ act: "return", value: "{{caller.password}}" }] } }).expect(200)).body;
     expect(bad.problems).toEqual([{ at: "do.0", message: 'The caller has no "password"' }]);
