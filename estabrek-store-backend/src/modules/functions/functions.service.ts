@@ -29,6 +29,7 @@ import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, ty
 import { runCode } from "../../lib/fnCode.js";
 import { HTTP_LIMITS, SiteError, callSite } from "../../lib/fnHttp.js";
 import { useReady } from "../../lib/fnReady.js";
+import { versionDef } from "../../lib/fnVersions.js";
 import { TEST_LIMITS, verdict, type FnTest, type TestWhy } from "../../lib/fnTests.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
@@ -78,7 +79,7 @@ const NOTE = {
 } as const;
 const english = (said: Said): string => (NOTE[said[0]] as (...things: Array<string | number>) => string)(...said.slice(1));
 export type Counts = { steps: number; found: number; added: number; changed: number; deleted: number; sent: number };
-export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number };
+export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number; /** The published version that ran (a saved function's published steps). */ version?: number | null };
 
 /** "return": the run ends here, well. */
 class Finish {
@@ -519,20 +520,29 @@ export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller): P
  * A saved function run: its published steps (or, from the admin's editor, the draft). A real run is
  * written in the run log and counted on the function; a dry one leaves no trace anywhere.
  */
-export async function runFn(id: string, input: Record<string, unknown>, opts: { dry?: boolean; which?: "live" | "draft"; trigger: string; caller?: FnCaller; /** Only when it is switched on (everything but the admin's own run). */ needOn?: boolean }): Promise<Outcome> {
+export async function runFn(id: string, input: Record<string, unknown>, opts: { dry?: boolean; which?: "live" | "draft"; trigger: string; caller?: FnCaller; /** Only when it is switched on (everything but the admin's own run). */ needOn?: boolean; /** The published version to run: the one that was published when the run was asked for (a run from the queue). */ version?: number }): Promise<Outcome> {
   const fn = await prisma.fn.findUnique({ where: { id } });
   if (!fn) throw new AppError(404, "FN_NOT_FOUND", "No such function");
-  const def = defOf(opts.which === "draft" ? fn.draft : fn.live);
+  let def = defOf(opts.which === "draft" ? fn.draft : fn.live);
   if (!def) throw new AppError(409, opts.which === "draft" ? "FN_INVALID" : "FN_NOT_PUBLISHED", opts.which === "draft" ? "The draft can't be read" : "This function isn't published yet");
+  let version = opts.which === "draft" ? null : (fn.version ?? null);
+  if (opts.which !== "draft" && opts.version && opts.version !== fn.version) {
+    // Asked for while another version was published: that one runs. (One that is no longer kept runs what is published now.)
+    const then = await versionDef(fn.id, opts.version);
+    if (then) {
+      def = then;
+      version = opts.version;
+    }
+  }
   // Off by itself, or as part of a feature that is switched off (admin → ميزاتي).
   if (opts.needOn && (!fn.enabled || (await switchedOff()).fns.has(fn.id))) throw new AppError(409, "FN_OFF", "This function is switched off");
   const t0 = Date.now();
   const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller });
   if (!opts.dry) {
-    recordRun({ kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error });
+    recordRun({ kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error, detail: version ? { v: version } : undefined });
     await prisma.fn.update({ where: { id }, data: { runs: { increment: 1 }, lastRunAt: new Date(t0) } }).catch(() => undefined);
   }
-  return out;
+  return { ...out, version };
 }
 
 /* ---------------- Started by a trigger: through the queue ---------------- */
@@ -563,14 +573,16 @@ export function startFunctions() {
       // It began once and the server stopped in the middle: its steps may not be safe to repeat. (Asked for again from the queue's page, it runs.)
       if (p.started && task.attempts > 1) throw new Error("It was interrupted mid-run; it isn't run again by itself");
       const trigger = p.triggerId ? await prisma.fnTrigger.findUnique({ where: { id: p.triggerId }, select: { id: true, enabled: true } }) : null;
-      const fn = await prisma.fn.findUnique({ where: { id: p.fnId }, select: { enabled: true, live: true } });
-      const def = fn ? defOf(fn.live) : null;
+      const fn = await prisma.fn.findUnique({ where: { id: p.fnId }, select: { enabled: true, live: true, version: true } });
+      // The version that was published when it was asked for (lib/fnVersions.ts); one that isn't kept any more: what is published now.
+      const then = fn && p.version && p.version !== fn.version ? await versionDef(p.fnId, p.version) : null;
+      const def = then ?? (fn ? defOf(fn.live) : null);
       // Removed, unpublished or switched off (itself, or its feature) since it was asked for: nothing to run.
       if (!trigger?.enabled || !fn?.enabled || !def || (await switchedOff()).fns.has(p.fnId)) return { skipped: 1 };
       const input = p.row ? await rowInput(p.row, def.lang ?? "ar") : p.input ?? {};
       if (!input) return { skipped: 1 };
       await prisma.task.update({ where: { id: task.id }, data: { payload: { ...p, started: true } as unknown as Prisma.InputJsonValue } });
-      const out = await inChain(p.chain ?? 1, () => runFn(p.fnId, input, { trigger: p.trigger, needOn: true }));
+      const out = await inChain(p.chain ?? 1, () => runFn(p.fnId, input, { trigger: p.trigger, needOn: true, version: p.version }));
       await prisma.fnTrigger.update({ where: { id: trigger.id }, data: { fired: { increment: 1 }, lastAt: new Date() } }).catch(() => undefined);
       return out.ok ? { ran: 1 } : { ran: 1, stopped: 1 };
     },

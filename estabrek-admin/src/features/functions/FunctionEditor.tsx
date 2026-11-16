@@ -15,13 +15,14 @@ import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as FnAPI from "../../api/functions.api";
-import type { FnDef, FnFull, FnInput, FnTest, InputType, Outcome, Problem, TestsOutcome } from "../../api/functions.api";
+import type { FnDef, FnFull, FnInput, FnTest, FnVersion, InputType, Outcome, Problem, TestsOutcome } from "../../api/functions.api";
 import { countSteps, freeName, nameOk, stepOfLine } from "./fnDraft";
 import { INPUT_TYPE, STATE_NAME, problemText, stateOf, whereText } from "./fnText";
 import { FnTriggers } from "./FnTriggers";
 import { BuilderProvider, CondList, Line, StepList, type Builder } from "./StepList";
 import { TryPanel } from "./TryPanel";
 import { TestsPanel, newTest } from "./TestsPanel";
+import { VersionsPanel } from "./VersionsPanel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -88,6 +89,47 @@ export default function FunctionEditor() {
       void qc.invalidateQueries({ queryKey: ["functions", id] });
     },
   });
+  // An older version published again, or taken into the draft.
+  const back = useMutation({
+    mutationFn: ({ n, to }: { n: number; to: "live" | "draft" }) => FnAPI.restoreFnVersion(id, n, to),
+    onSuccess: (saved, { n, to }) => {
+      took(saved);
+      setRan(null);
+      setOutcome(null);
+      if (to === "live") toast.success(say("رجعت النسخة {n} تشتغل|Version {n} runs again|גרסה {n} שוב רצה").replace("{n}", String(n)), { description: say("انحفظت كنسخة جديدة رقم {v}.|It was kept as a new version, number {v}.|היא נשמרה כגרסה חדשה, מספר {v}.").replace("{v}", String(saved.version ?? "")) });
+      else toast.success(say("خطوات النسخة {n} صارت بالمسودة|Version {n}'s steps are in the draft|השלבים של גרסה {n} נמצאים בטיוטה").replace("{n}", String(n)), { description: say("اللي بيشتغل ما تغيّر لحد ما تنشر.|What runs hasn't changed until you publish.|מה שרץ לא השתנה עד שתפרסמו.") });
+    },
+    onError: (e) => {
+      // It points at things that are gone since (a table, a connection, a function): each is said.
+      const refused = (e as { response?: { data?: { error?: string; details?: { problems?: Problem[] } } } })?.response?.data;
+      if (refused?.error === "FN_HAS_PROBLEMS" && refused.details?.problems?.length) {
+        toast.error(say("ما بتنتشر متل ما هي|It can't be published as it is|אי אפשר לפרסם אותה כמו שהיא"), {
+          description: `${say("بتحكي عن أشياء ما عادت موجودة:|It talks about things that aren't there any more:|היא מתייחסת לדברים שכבר לא קיימים:")} ${refused.details.problems.map((p) => `${whereText(p.at, lang)}: ${problemText(p.message, lang)}`).join(" · ")} ${say("حطها بالمسودة وصلّحها.|Put it in the draft and mend it.|העבירו אותה לטיוטה ותקנו.")}`,
+        });
+      } else onError(e);
+    },
+  });
+  const restore = async (v: FnVersion, to: "live" | "draft") => {
+    const n = String(v.n);
+    const sure =
+      to === "live"
+        ? await confirm({
+            title: say("نشر النسخة {n} من جديد|Publish version {n} again|פרסום מחדש של גרסה {n}").replace("{n}", n),
+            message: say("خطوات النسخة {n} بترجع هي اللي بتشتغل، كنسخة جديدة. المسودة اللي عم تشتغل عليها ما بتتغيّر.|Version {n}'s steps become what runs again, as a new version. The draft you are working on isn't changed.|השלבים של גרסה {n} חוזרים להיות מה שרץ, כגרסה חדשה. הטיוטה שעליה עובדים לא משתנה.").replace("{n}", n),
+            confirmText: say("انشرها|Publish it|פרסום"),
+            variant: "warning",
+          })
+        : // Nothing would be lost: the draft is what is published (or this very version).
+          !dirty && !fn?.changed
+          ? true
+          : await confirm({
+              title: say("النسخة {n} للمسودة|Version {n} into the draft|גרסה {n} לטיוטה").replace("{n}", n),
+              message: say("المسودة بتتبدّل بخطوات النسخة {n}، والتعديلات اللي فيها وما انتشرت بتروح. اللي بيشتغل ما بيتغيّر.|The draft is replaced by version {n}'s steps, and the changes in it that weren't published are lost. What runs isn't changed.|הטיוטה מוחלפת בשלבים של גרסה {n}, והשינויים שבה שלא פורסמו יאבדו. מה שרץ לא משתנה.").replace("{n}", n),
+              confirmText: say("بدّل المسودة|Replace the draft|החלפת הטיוטה"),
+              variant: "warning",
+            });
+    if (sure) back.mutate({ n: v.n, to });
+  };
   const test = useMutation({
     mutationFn: async () => {
       // The tests run what is on the page: saved first when it changed.
@@ -139,6 +181,11 @@ export default function FunctionEditor() {
             <Badge variant={BADGE[state]} size="sm">
               <span data-testid="fn-state">{say(STATE_NAME[state])}</span>
             </Badge>
+            {fn.published && fn.version ? (
+              <span className="text-xs text-white/70" data-testid="fn-version">
+                {say("النسخة {n}|Version {n}|גרסה {n}").replace("{n}", String(fn.version))}
+              </span>
+            ) : null}
             {fn.published ? <ToggleSwitch checked={fn.enabled} label={say("شغّالة|Switched on|פועלת")} disabled={!canWrite} busy={toggle.isPending} onChange={(v) => toggle.mutate(v)} /> : null}
           </div>
           <input className={`${field} mt-2 w-full`} value={note} disabled={!canWrite} maxLength={300} placeholder={say("شو بتعمل؟ (ملاحظة إلك)|What does it do? (a note for you)|מה היא עושה? (הערה בשבילך)")} onChange={(e) => setNote(e.target.value)} data-testid="fn-note" />
@@ -327,6 +374,17 @@ export default function FunctionEditor() {
           </p>
           <div className="mt-3">
             <TestsPanel inputs={draft.inputs} tests={tests} onChange={setTests} canWrite={canWrite} ran={dirty ? null : ran} busy={test.isPending} onRun={() => test.mutate()} max={list.data?.limits.tests ?? 20} usesCaller={JSON.stringify(draft).includes("{{caller")} />
+          </div>
+        </section>
+        <section className={box}>
+          <h2 className="font-medium">{say("النسخ|Versions|גרסאות")}</h2>
+          <p className="mt-1 text-xs text-white/70">
+            {say(
+              "كل نشر بينحفظ كنسخة برقم وما بتتغيّر بعدها. آخر نسخة هي اللي بتشتغل، وشغل انطلب قبل نشر جديد بيكمّل على نسخته. إذا نشر جديد خرّب شي: انشر نسخة قديمة من جديد، أو حطها بالمسودة لتشتغل عليها. بينحفظ آخر {n} نسخة.|Every publish is kept as a numbered version and never changes after that. The newest one is what runs, and work that was asked for before a new publish finishes on its own version. If a new publish broke something: publish an older version again, or put it in the draft to work on. The last {n} versions are kept.|כל פרסום נשמר כגרסה ממוספרת ואינו משתנה אחר כך. הגרסה האחרונה היא שרצה, ועבודה שהתבקשה לפני פרסום חדש מסתיימת בגרסה שלה. אם פרסום חדש קלקל משהו: פרסמו שוב גרסה ישנה, או העבירו אותה לטיוטה כדי לעבוד עליה. נשמרות {n} הגרסאות האחרונות.",
+            ).replace("{n}", String(fn.versionsKept ?? 50))}
+          </p>
+          <div className="mt-3">
+            <VersionsPanel fn={fn} ctx={{ tables: list.data!.tables, fns: list.data!.functions, outside: list.data!.outside }} canWrite={canWrite} busy={back.isPending} onRestore={restore} />
           </div>
         </section>
         {dialog}

@@ -12,6 +12,7 @@ import { TEST_LIMITS, TestsSchema, testsOf } from "../../lib/fnTests.js";
 import { HTTP_LIMITS, connectionNames } from "../../lib/fnHttp.js";
 import { readyNames } from "../../lib/fnReady.js";
 import { kindsOut } from "../../lib/fnKinds.js";
+import { VERSION_LIMITS, publishVersion, versionDef, versionsOf } from "../../lib/fnVersions.js";
 import { CMPS } from "../../lib/fnValues.js";
 import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
 import { hasPermission } from "../../middleware/access.js";
@@ -36,6 +37,8 @@ import { runFn, runTests } from "../functions/functions.service.js";
  * POST   /admin/functions/:id/triggers        { kind, config, slug? } — a row event, a schedule, a store event, a call, a webhook
  * PUT    /admin/functions/:id/triggers/:tid   { config?, slug?, enabled? }
  * DELETE /admin/functions/:id/triggers/:tid
+ * GET    /admin/functions/:id/versions/:n         — a version's steps, as they were published
+ * POST   /admin/functions/:id/versions/:n/restore { to: "live" | "draft" } — published again (a new version), or taken into the draft
  */
 const r = Router();
 
@@ -68,7 +71,7 @@ async function known(self?: string): Promise<Known> {
   };
 }
 
-type Row = { id: string; name: string; note: string | null; draft: unknown; live: unknown; tests?: unknown; publishedAt: Date | null; enabled: boolean; runs: number; lastRunAt: Date | null; createdAt: Date; updatedAt: Date; triggers?: Array<{ kind: string; slug: string | null; config: unknown; enabled: boolean }> };
+type Row = { id: string; name: string; note: string | null; draft: unknown; live: unknown; version?: number | null; tests?: unknown; publishedAt: Date | null; enabled: boolean; runs: number; lastRunAt: Date | null; createdAt: Date; updatedAt: Date; triggers?: Array<{ kind: string; slug: string | null; config: unknown; enabled: boolean }> };
 const lite = (f: Row) => {
   const draft = defOf(f.draft);
   return {
@@ -77,6 +80,8 @@ const lite = (f: Row) => {
     note: f.note,
     enabled: f.enabled,
     published: !!f.live,
+    /** Which version is published (every publish is kept as one: lib/fnVersions.ts). */
+    version: f.live ? (f.version ?? null) : null,
     publishedAt: f.publishedAt,
     /** The draft isn't what runs. */
     changed: !same(f.draft, f.live),
@@ -119,13 +124,14 @@ const triggerView = (t: TriggerRow, write: boolean) => {
 
 async function full(fn: Row, req: Request) {
   const draft = defOf(fn.draft) ?? EMPTY_DEF;
-  const [triggers, part] = await Promise.all([
+  const [triggers, part, versions] = await Promise.all([
     prisma.fnTrigger.findMany({ where: { fnId: fn.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
     prisma.featureItem.findUnique({ where: { kind_refId: { kind: "function", refId: fn.id } }, select: { feature: { select: { id: true, name: true, enabled: true } } } }),
+    versionsOf(fn.id),
   ]);
   const write = hasPermission(req, "functions:write");
   // The feature it is part of (admin → ميزاتي): one that is off keeps the function from being started.
-  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null, tests: testsOf(fn.tests) };
+  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null, tests: testsOf(fn.tests), versions, versionsKept: VERSION_LIMITS.kept };
 }
 /** The member trying, testing or running a function from the admin. */
 const adminCaller = (req: Request) => ({ kind: "admin" as const, id: req.access?.adminId, email: req.access?.email ?? undefined });
@@ -208,9 +214,46 @@ r.post(
       const ran = await runTests(draft, tests, adminCaller(req));
       if (ran.failed) throw new AppError(409, "FN_TESTS_FAILED", "Its own tests don't pass", ran);
     }
-    const saved = await prisma.fn.update({ where: { id: fn.id }, data: { live: draft as unknown as Prisma.InputJsonValue, publishedAt: new Date() } });
+    // Kept as a version of its own, which is what the function runs from now on.
+    await publishVersion(fn.id, draft, req.access?.email ?? null);
     forgetTriggers();
-    res.json(await full(saved, req));
+    res.json(await full(await fnOf(req), req));
+  }),
+);
+
+const versionOf = async (req: Request) => {
+  const fn = await fnOf(req);
+  const n = Number(req.params.n);
+  const def = await versionDef(fn.id, n);
+  if (!def) throw new AppError(404, "VERSION_NOT_FOUND", "No such version");
+  return { fn, n, def };
+};
+
+r.get(
+  "/:id/versions/:n",
+  asyncHandler(async (req, res) => {
+    const { n, def } = await versionOf(req);
+    res.json({ n, def });
+  }),
+);
+
+r.post(
+  "/:id/versions/:n/restore",
+  asyncHandler(async (req, res) => {
+    const body = z.object({ to: z.enum(["live", "draft"]) }).strict().parse(req.body ?? {});
+    const { fn, n, def } = await versionOf(req);
+    if (body.to === "draft") {
+      // Into the draft, to work on: what is published stays as it is.
+      await prisma.fn.update({ where: { id: fn.id }, data: { draft: def as unknown as Prisma.InputJsonValue } });
+      return res.json(await full(await fnOf(req), req));
+    }
+    // Published again as it was. What it talks about must still be there (a table, a connection or a function may have gone since).
+    const problems = [...problemsOf(def, await known(fn.id)), ...(await codeProblems(def))];
+    if (problems.length) throw new AppError(409, "FN_HAS_PROBLEMS", "This version points at things that aren't there any more", { problems });
+    // Its steps ran as they are before: the function's tests of today aren't asked (they may be about newer steps).
+    await publishVersion(fn.id, def, req.access?.email ?? null, n);
+    forgetTriggers();
+    res.json(await full(await fnOf(req), req));
   }),
 );
 

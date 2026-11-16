@@ -477,6 +477,8 @@ model Run {
   /// What it did: counts ({ sent: 3 }; a folded row: its runs' counts added up) or a few words ({ did: "…" }).
   result    Json?
   error     String?
+  /// More about a run, by its kind. A function's: { v: the version that ran }.
+  detail    Json?
 
   @@index([startedAt])
   @@index([kind, name, startedAt])
@@ -493,6 +495,8 @@ model Fn {
   /// { lang?, inputs, if?, match?, do, else?, fail? }
   draft       Json
   live        Json?
+  /// The number of the version that is published (src/lib/fnVersions.ts): what `live` holds.
+  version     Int?
   /// Its own tests (F4, src/lib/fnTests.ts): [{ id, name, input, caller?, expect }]. Run before every publish.
   tests       Json      @default("[]")
   publishedAt DateTime?
@@ -505,8 +509,28 @@ model Fn {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   triggers    FnTrigger[]
+  versions    FnVersion[]
 
   @@index([createdAt])
+}
+
+/// A function as it was published, each time (src/lib/fnVersions.ts; admin → الـ Functions →
+/// النسخ). A version is never changed. The function runs its newest one; a run asked for through
+/// the queue runs the one that was published when it was asked for.
+model FnVersion {
+  id        String   @id @default(cuid())
+  fnId      String
+  fn        Fn       @relation(fields: [fnId], references: [id], onDelete: Cascade)
+  /// 1, 2, 3… in the order they were published.
+  n         Int
+  /// { lang?, inputs, if?, match?, do, else?, fail? }
+  def       Json
+  /// "back:3": version 3's steps, published again.
+  from      String?
+  byEmail   String?
+  createdAt DateTime @default(now())
+
+  @@unique([fnId, n])
 }
 
 /// What starts a function (F3, src/lib/fnTriggers.ts): a row of a table added, changed or

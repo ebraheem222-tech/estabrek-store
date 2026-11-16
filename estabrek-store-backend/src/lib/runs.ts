@@ -30,6 +30,8 @@ export type RunIn = {
   /** What it did: counts ({ sent: 3 }) or a few words ({ did: "…" }). */
   result?: unknown;
   error?: string | null;
+  /** More about it, by its kind (a function's run: which version ran). Kept as it is given. */
+  detail?: unknown;
 };
 
 export const RUN_KEEP_DAYS = 30;
@@ -129,6 +131,7 @@ export function recordRun(run: RunIn): void {
       ok: run.ok,
       ...(run.result != null && didSomething(run.result) ? { result: run.result as Prisma.InputJsonValue } : {}),
       error: text(run.error, 500),
+      ...(run.detail != null ? { detail: run.detail as Prisma.InputJsonValue } : {}),
     };
     void later(() => prisma.run.create({ data }));
   } catch (e) {
@@ -152,7 +155,7 @@ export async function cleanRuns(now = Date.now()): Promise<{ removed: number }> 
 
 export type RunsQuery = { kind?: RunKind; name?: string; ok?: boolean; /** Runs that started before this moment (the page after). */ before?: Date; limit: number };
 
-const ROW = { id: true, kind: true, name: true, ref: true, trigger: true, subject: true, startedAt: true, lastAt: true, times: true, ms: true, ok: true, result: true, error: true } as const;
+const ROW = { id: true, kind: true, name: true, ref: true, trigger: true, subject: true, startedAt: true, lastAt: true, times: true, ms: true, ok: true, result: true, error: true, detail: true } as const;
 
 /** A page of the log, newest first. */
 export async function listRuns(q: RunsQuery) {

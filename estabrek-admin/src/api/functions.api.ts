@@ -63,6 +63,8 @@ export type FnLite = {
   note: string | null;
   enabled: boolean;
   published: boolean;
+  /** Which version is published (every publish is kept as one). */
+  version?: number | null;
   publishedAt: string | null;
   /** The draft isn't what runs. */
   changed: boolean;
@@ -76,9 +78,11 @@ export type FnLite = {
   lastRunAt: string | null;
   updatedAt: string;
 };
+/** A function as it was published one time: when, by whom, how big; `back`: the version whose steps this one brought back. */
+export type FnVersion = { n: number; at: string; by: string | null; back: number | null; steps: number; inputs: number };
 /** Where a problem is ("do.2", "do.2.else.0", "if.0", "fail.1") and what it is. */
 export type Problem = { at: string; message: string };
-export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null; /** Its own tests (F4): run before every publish. */ tests?: FnTest[] };
+export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** Its versions, newest first, and how many are kept. */ versions?: FnVersion[]; versionsKept?: number; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null; /** Its own tests (F4): run before every publish. */ tests?: FnTest[] };
 
 /** What starts a function (backend lib/fnTriggers.ts). It fires only while the function is published and switched on. */
 export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook";
@@ -107,7 +111,7 @@ export type FnLimits = { steps: number; depth: number; conditions: number; input
 export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
-export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number };
+export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null };
 
 const BASE = "/admin/functions";
 const at = (id: string) => `${BASE}/${encodeURIComponent(id)}`;
@@ -136,6 +140,14 @@ export async function publishFunction(id: string) {
 /** Run it now. `dry`: nothing is written or sent. The draft runs dry only. */
 export async function runFunction(id: string, body: { input: Record<string, unknown>; dry: boolean; which: "draft" | "live" }) {
   return (await api.post(`${at(id)}/run`, body)).data as Outcome;
+}
+/** A version's steps, as they were published. */
+export async function getFnVersion(id: string, n: number) {
+  return (await api.get(`${at(id)}/versions/${n}`)).data as { n: number; def: FnDef };
+}
+/** An older version published again (a new version with its steps; refused, 409 FN_HAS_PROBLEMS, when it points at things that are gone), or taken into the draft. */
+export async function restoreFnVersion(id: string, n: number, to: "live" | "draft") {
+  return (await api.post(`${at(id)}/versions/${n}/restore`, { to })).data as FnFull;
 }
 export async function deleteFunction(id: string) {
   return (await api.delete(at(id))).data as { ok: true };
