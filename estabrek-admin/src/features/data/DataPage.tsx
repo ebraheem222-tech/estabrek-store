@@ -23,7 +23,8 @@ import { valueFrom } from "./kinds";
 import { parseCsv } from "./csv";
 import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
-import { LANGS, LANG_NAME, VIEW_NAME, blockersText, cellPatch, columnsOf, editable, filterColumns, filterValue, issueAbout, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, type Column } from "./dataText";
+import { SQL_TYPE, sqlFile } from "./sql";
+import { LANGS, LANG_NAME, VIEW_NAME, blockersText, cellPatch, columnsOf, editable, filterColumns, filterValue, issueAbout, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, storePage, type Column } from "./dataText";
 import { RelationInput } from "./RelationInput";
 import { draftLinks } from "./kinds";
 
@@ -71,7 +72,7 @@ export default function DataPage() {
           <h1 className="text-xl font-semibold">{say("الجداول|Tables|טבלאות")}</h1>
           <p className="mt-1 max-w-2xl text-sm text-white/55">
             {say(
-              "كل جدول من بياناتك بشبكة وحدة: فلتر، رتّب، دوّر، عدّل بالخلية، غيّر كتير سطور مرة وحدة، واستورد وصدّر Excel و CSV.|Each of your tables in one grid: filter, sort, search, write in the cell, change many rows at once, and bring Excel and CSV in and out.|כל טבלה ברשת אחת: סינון, מיון, חיפוש, עריכה בתא, שינוי שורות רבות יחד וייבוא וייצוא Excel ו־CSV.",
+              "كل جدول من بياناتك بشبكة وحدة: فلتر، رتّب، دوّر، عدّل بالخلية، غيّر كتير سطور مرة وحدة، واستورد وصدّر Excel و CSV، وصدّر ملف SQL.|Each of your tables in one grid: filter, sort, search, write in the cell, change many rows at once, bring Excel and CSV in and out, and export an SQL file.|כל טבלה ברשת אחת: סינון, מיון, חיפוש, עריכה בתא, שינוי שורות רבות יחד, ייבוא וייצוא Excel ו־CSV וייצוא קובץ SQL.",
             )}
           </p>
         </div>
@@ -208,11 +209,13 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
     onError,
   });
   const download = useMutation({
-    // The server writes the asked rows as CSV; an Excel file is made from it here.
-    mutationFn: async (as: "csv" | "xlsx") => {
+    // The server writes the asked rows as CSV; an Excel file, or an SQL one, is made from it here.
+    mutationFn: async (as: "csv" | "xlsx" | "sql") => {
       const csv = await (readOnly ? DataAPI.exportStoreRows(table.slug, { ...sent, page: 1 }) : DataAPI.exportRows(table.id, { ...sent, page: 1 }));
       if (as === "csv") return { blob: csv, name: `${table.slug}.csv` };
-      const book = writeXlsx(sheetCells(parseCsv(await csv.text(), ","), table.fields), table.slug);
+      const cells = sheetCells(parseCsv(await csv.text(), ","), table.fields);
+      if (as === "sql") return { blob: new Blob([sqlFile({ table: table.slug, title: words(table.name, lang), lines: cells, fields: table.fields, lang, at: new Date() })], { type: SQL_TYPE }), name: `${table.slug}.sql` };
+      const book = writeXlsx(cells, table.slug);
       return { blob: new Blob([book as unknown as BlobPart], { type: XLSX_TYPE }), name: `${table.slug}.xlsx` };
     },
     onSuccess: ({ blob, name }) => {
@@ -235,6 +238,9 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
   const fieldColumns = columns.filter((c) => c.field);
   const askable = useMemo(() => filterColumns(columns, readOnly), [columns, readOnly]);
   const firstAsk = askable.find((c) => c.field) ?? askable[0];
+  /** One of the store's tables: the page it is changed on, and whether a row's own page opens for this member. */
+  const ownPage = readOnly ? storePage(table.slug) : null;
+  const mayOpenRow = table.slug !== "products" || hasPermission("catalog:write");
 
   return (
     <section className={`${card} overflow-hidden`} data-testid="data-grid" data-table={table.slug}>
@@ -256,9 +262,16 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
           {say("＋ فلتر|＋ Filter|＋ סינון")}
         </button>
         {readOnly ? (
-          <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-white/55" data-testid="data-read-only">
-            {say("للعرض بس: التعديل من صفحته|To look at: it's changed from its own page|לצפייה בלבד: העריכה מהדף שלו")}
-          </span>
+          <>
+            <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-white/70" data-testid="data-read-only">
+              {say("للعرض بس: التعديل من صفحته|To look at: it's changed from its own page|לצפייה בלבד: העריכה מהדף שלו")}
+            </span>
+            {ownPage ? (
+              <Link to={ownPage.to} className={btn} data-testid="data-own-page">
+                {say("افتح صفحة|Open the page:|פתח את הדף:")} {say(ownPage.name)}
+              </Link>
+            ) : null}
+          </>
         ) : (
           <label className="flex items-center gap-1 whitespace-nowrap text-xs text-white/55">
             {say("لغة الكلام|Words in|שפת הטקסט")}
@@ -277,6 +290,9 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
           </button>
           <button type="button" className={btn} onClick={() => download.mutate("csv")} disabled={download.isPending || !data?.total} data-testid="data-export">
             {say("صدّر CSV|Export CSV|ייצוא CSV")}
+          </button>
+          <button type="button" className={btn} onClick={() => download.mutate("sql")} disabled={download.isPending || !data?.total} data-testid="data-export-sql" title={say("ملف SQL لقاعدة بيانات (PostgreSQL)|An SQL file for a database (PostgreSQL)|קובץ SQL למסד נתונים (PostgreSQL)")}>
+            {say("صدّر SQL|Export SQL|ייצוא SQL")}
           </button>
           {canWrite && !inTrash ? (
             <>
@@ -460,6 +476,12 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                     <button type="button" className="rounded px-1.5 text-white/50 hover:bg-white/10 hover:text-white" onClick={() => setDrawer(row)} aria-label={say("افتح السطر|Open the row|פתח שורה")} data-testid={`open-${row.slug}`}>
                       ⤢
                     </button>
+                  ) : null}
+                  {/* One of the store's rows: its own page, where it is seen whole and changed. */}
+                  {readOnly && storePage(table.slug, row.id, mayOpenRow) ? (
+                    <Link to={storePage(table.slug, row.id, mayOpenRow)!.to} className="inline-block rounded px-1.5 text-white/70 hover:bg-white/10 hover:text-white" aria-label={say("افتحه بصفحته|Open it on its own page|פתח בדף שלו")} title={say("افتحه بصفحته (للعرض الكامل والتعديل)|Open it on its own page (to see all of it and change it)|פתח בדף שלו (לצפייה מלאה ולעריכה)")} data-testid={`own-page-${row.slug}`}>
+                      ↗
+                    </Link>
                   ) : null}
                 </td>
               </tr>
