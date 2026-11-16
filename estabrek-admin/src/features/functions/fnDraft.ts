@@ -68,7 +68,7 @@ export function countSteps(steps: Step[] | undefined): number {
 /* ---------------- Names: what a step can talk about ---------------- */
 
 /** Something the run keeps under a name: rows of a table, one row, a site's answer, or any value. */
-export type Known = { name: string; kind: "rows" | "row" | "value" | "answer"; table?: string };
+export type Known = { name: string; kind: "rows" | "row" | "value" | "answer"; table?: string; /** What a "call" step keeps: the function it called (whose promised answer says its fields). */ fn?: string };
 
 /** The list a loop goes over, when it is one name: "{{orders}}" → "orders". */
 const oneName = (text: string) => /^\{\{\s*([A-Za-z_$][\w$.]*)\s*\}\}$/.exec(text.trim())?.[1] ?? null;
@@ -78,7 +78,8 @@ function keep(have: Map<string, Known>, s: Step) {
   else if (s.act === "get") have.set(s.as, { name: s.as, kind: "row", table: s.table });
   else if ((s.act === "add" || s.act === "change") && s.as) have.set(s.as, { name: s.as, kind: "row", table: s.table });
   else if (s.act === "set" && nameOk(s.name) && !have.has(s.name)) have.set(s.name, { name: s.name, kind: "value" });
-  else if ((s.act === "call" || s.act === "code") && s.as) have.set(s.as, { name: s.as, kind: "value" });
+  else if (s.act === "call" && s.as) have.set(s.as, { name: s.as, kind: "value", fn: s.fn });
+  else if (s.act === "code" && s.as) have.set(s.as, { name: s.as, kind: "value" });
   else if ((s.act === "http" || s.act === "ready") && s.as) have.set(s.as, { name: s.as, kind: "answer" });
 }
 
@@ -137,7 +138,7 @@ export function namesBefore(def: FnDef, target: Path): Known[] {
  * The names a value can be given at a step, ready to put in a text: the function's inputs, the
  * moment, and what is kept (a row with its fields, rows with how many and the first).
  */
-export function offers(def: FnDef, target: Path, tables: FnTable[]): string[] {
+export function offers(def: FnDef, target: Path, tables: FnTable[], /** The other functions: one that says what it gives back has its answer's fields offered. */ fns: FnLite[] = []): string[] {
   // Who started the run: a shopper's button, a key, the admin, or (a row event, a schedule) the system.
   const out = [...def.inputs.map((i) => `input.${i.name}`), "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind"];
   const fieldsOf = (id?: string) => tables.find((t) => t.id === id)?.fields ?? [];
@@ -146,7 +147,13 @@ export function offers(def: FnDef, target: Path, tables: FnTable[]): string[] {
     else if (k.kind === "row") out.push(k.name, `${k.name}.$id`, `${k.name}.$slug`, ...fieldsOf(k.table).map((f) => `${k.name}.${f.id}`));
     // A site's answer: what it said, whether it said yes, and its status.
     else if (k.kind === "answer") out.push(`${k.name}.body`, `${k.name}.ok`, `${k.name}.status`);
-    else out.push(k.name);
+    else {
+      out.push(k.name);
+      // What another function gave back: its promised fields (a list's: of its first thing).
+      const gives = k.fn ? fns.find((f) => f.id === k.fn)?.gives : null;
+      if (gives?.type === "thing") out.push(...(gives.fields ?? []).map((f) => `${k.name}.${f.name}`));
+      else if (gives?.type === "list") out.push(`${k.name}.length`, ...(gives.fields ?? []).map((f) => `${k.name}.first.${f.name}`));
+    }
   }
   return out;
 }

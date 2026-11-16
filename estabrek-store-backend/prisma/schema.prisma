@@ -477,7 +477,7 @@ model Run {
   /// What it did: counts ({ sent: 3 }; a folded row: its runs' counts added up) or a few words ({ did: "…" }).
   result    Json?
   error     String?
-  /// More about a run, by its kind. A function's: { v: the version that ran, steps: what each step did }.
+  /// More about a run, by its kind. A function's: { v: the version that ran, steps: what each step did, answer?: how its answer wasn't what it promises }.
   detail    Json?
 
   @@index([startedAt])
@@ -492,7 +492,7 @@ model Fn {
   id          String    @id @default(cuid())
   name        String
   note        String?
-  /// { lang?, inputs, if?, match?, do, else?, fail? }
+  /// { lang?, inputs, if?, match?, do, else?, fail?, gives? }
   draft       Json
   live        Json?
   /// The number of the version that is published (src/lib/fnVersions.ts): what `live` holds.

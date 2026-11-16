@@ -48,13 +48,17 @@ export type StepKind = Step["act"];
 
 export type InputType = "text" | "number" | "bool" | "list" | "any";
 export type FnInput = { name: string; type: InputType; required?: boolean; note?: string };
-export type FnDef = { lang?: "ar" | "en" | "he"; inputs: FnInput[]; if?: Cond[]; match?: Match; do: Step[]; else?: Step[]; fail?: PlainStep[] };
+/** What a function promises to give back (backend lib/fnGives.ts): the kind of its answer, and the fields of a thing (or of each thing in a list). */
+export type GiveType = "any" | "text" | "number" | "bool" | "list" | "thing";
+export type GiveField = { name: string; type: GiveType; /** It is always there. */ required?: boolean };
+export type Gives = { type: GiveType; fields?: GiveField[] };
+export type FnDef = { lang?: "ar" | "en" | "he"; inputs: FnInput[]; if?: Cond[]; match?: Match; do: Step[]; else?: Step[]; fail?: PlainStep[]; gives?: Gives };
 
 /** One of a function's own tests (F4): what it is handed, and what must come of it. */
 export type FnTest = { id: string; name: string; input: Record<string, unknown>; /** Who it is run as, where the steps name the caller. */ caller?: { name?: string; email?: string }; expect: { /** It goes through; or it stops. */ ok: boolean; /** Going through: what it gives back, exactly. */ value?: unknown; /** Stopping: words its reason holds. */ error?: string } };
-export type TestWhy = "stopped" | "wentThrough" | "value" | "reason" | "time";
+export type TestWhy = "stopped" | "wentThrough" | "value" | "reason" | "time" | "shape";
 /** How a test went: whether it passed (else why not), and what the run it made came to. */
-export type TestResult = { id: string; name: string; pass: boolean; why: TestWhy | null; ok: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; ms: number };
+export type TestResult = { id: string; name: string; pass: boolean; why: TestWhy | null; /** With "shape": how the answer differs from what the function promises. */ said?: string; ok: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; ms: number };
 export type TestsOutcome = { results: TestResult[]; passed: number; failed: number; ms: number };
 
 export type FnLite = {
@@ -72,6 +76,8 @@ export type FnLite = {
   inputs: number;
   /** What the published one is handed (for a function that calls it). */
   takes: FnInput[];
+  /** What the published one promises to give back, when it says. */
+  gives?: Gives | null;
   /** Its call addresses (a shop page's button runs it through one), and who may call each. */
   calls?: Array<{ address: string; who: "customer" | "key" | "public" }>;
   runs: number;
@@ -111,7 +117,7 @@ export type FnLimits = { steps: number; depth: number; conditions: number; input
 export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
-export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null; /** A real run's line in the run log. */ runId?: string };
+export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null; /** A real run's line in the run log. */ runId?: string; /** It went through, and what it gave back isn't what it promises: how. */ shape?: string };
 
 const BASE = "/admin/functions";
 const at = (id: string) => `${BASE}/${encodeURIComponent(id)}`;

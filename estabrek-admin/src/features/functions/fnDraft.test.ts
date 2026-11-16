@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import type { FnDef, FnLite, FnTable, Step } from "../../api/functions.api";
 import { FAIL_ACTS, GROUPS, addStep, atOf, countSteps, freeName, fromVal, listAt, moveStep, nameOk, namesBefore, namesUsed, newStep, offers, removeStep, setList, setStep, stepAt, stepOfLine, toVal } from "./fnDraft";
-import { CODE_START, codeNote, condsLine, failText, firedText, fnTriggerName, handsMissing, lineText, outcomeLine, problemText, stateOf, stepLine, triggerLine, whereText } from "./fnText";
+import { CODE_START, codeNote, condsLine, failText, firedText, fnTriggerName, handsMissing, lineText, outcomeLine, problemText, shapeText, stateOf, stepLine, testWhyText, triggerLine, whereText } from "./fnText";
+import { fieldNameOk, tidyGives } from "./GivesForm";
 
 // الـ Functions: the builder's sums and the pages' words. A function's steps are a tree; a step is
 // named by its way in ("do.2.else.0"), the same way the server names it.
@@ -200,6 +201,44 @@ describe("A step through a ready connection", () => {
     expect(failText("POST api.x.com/a answered 404", "en")).toBe("POST api.x.com/a answered 404");
     expect(failText("This connection isn't there any more", "ar")).toBe("هالاتصال ما عاد موجود");
     expect(failText("The chat is empty", "en")).toBe("There is no chat to send it to");
+  });
+});
+
+describe("What a function promises to give back", () => {
+  test("the promise as the draft keeps it; a field's name", () => {
+    expect(tidyGives(undefined)).toBeUndefined();
+    // "Anything" is no promise at all.
+    expect(tidyGives({ type: "any" })).toBeUndefined();
+    expect(tidyGives({ type: "text", fields: [{ name: "left", type: "text" }] })).toEqual({ type: "text" });
+    expect(tidyGives({ type: "thing", fields: [] })).toEqual({ type: "thing" });
+    expect(tidyGives({ type: "list", fields: [{ name: "id", type: "text", required: true }] })).toEqual({ type: "list", fields: [{ name: "id", type: "text", required: true }] });
+    expect(["total", "_id", "$slug", "a1"].map(fieldNameOk)).toEqual([true, true, true, true]);
+    expect(["", "1a", "has space", "a.b", "x".repeat(41)].map(fieldNameOk)).toEqual([false, false, false, false, false]);
+  });
+
+  test("a function that calls one is offered the fields of its promised answer", () => {
+    const order = { ...fns[0], id: "f3", name: "Order", gives: { type: "thing" as const, fields: [{ name: "id", type: "text" as const, required: true }, { name: "total", type: "number" as const }] } };
+    const rows = { ...fns[0], id: "f4", name: "Orders", gives: { type: "list" as const, fields: [{ name: "id", type: "text" as const }] } };
+    const text = { ...fns[0], id: "f5", name: "Greeting", gives: { type: "text" as const } };
+    const calls: FnDef = { inputs: [], do: [{ act: "call", fn: "f3", as: "order" }, { act: "call", fn: "f4", as: "orders" }, { act: "call", fn: "f5", as: "hi" }, { act: "call", fn: "f2", as: "plain" }, { act: "return", value: "" }] };
+    const all = [...fns, order, rows, text];
+    expect(offers(calls, ["do", 4], tables, all).slice(-8)).toEqual(["order", "order.id", "order.total", "orders", "orders.length", "orders.first.id", "hi", "plain"]);
+    // The other functions unknown (or one that promises nothing): the name alone, as before.
+    expect(offers(calls, ["do", 4], tables).slice(-4)).toEqual(["order", "orders", "hi", "plain"]);
+  });
+
+  test("how an answer differs from the promise, in the page's words", () => {
+    expect(shapeText("It promises a number and gave back text", "en")).toBe("It promises a number and gave back text");
+    expect(shapeText("It promises a number and gave back text", "ar")).toBe("وعدت بـ رقم ورجّعت نص");
+    expect(shapeText("It promises a thing and gave back nothing", "ar")).toBe("وعدت بـ شي بحقول ورجّعت ولا شي");
+    expect(shapeText('"total" is promised and isn\'t there', "en")).toBe("“total” is promised and isn't there");
+    expect(shapeText('"total" is promised to be a number and is text', "ar")).toBe("الحقل «total» موعود رقم وطلع نص");
+    expect(shapeText('Item 2 of the list: "name" is promised to be text and is a number', "en")).toBe("Item 2 of the list: “name” is promised to be text and is a number");
+    expect(shapeText('Item 3 of the list: "name" is promised and isn\'t there', "ar")).toBe("العنصر 3 بالقائمة: الحقل «name» موعود ومش موجود");
+    expect(shapeText("Item 2 of the list is promised to be a thing and is text", "en")).toBe("Item 2 of the list is promised to be a thing and is text");
+    // One the page has no words for stays as the server said it.
+    expect(shapeText("Something new", "ar")).toBe("Something new");
+    expect(testWhyText("shape", "en")).toBe("It went through, but its answer isn't what it promises:");
   });
 });
 

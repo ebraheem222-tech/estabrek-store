@@ -157,13 +157,24 @@ const quiet = (what: string) => (e: unknown) => console.error(`[functions] ${wha
  * queue). Never slows or fails the write; a file's worth of rows (an import) doesn't come here.
  */
 export function emitRow(event: RowEvent, tableId: string, row: { id: string }, before?: unknown) {
+  emitting += 1;
   void (async () => {
     for (const t of await liveTriggers()) {
       const c = t.config as Partial<RowConfig>;
       if (t.kind === "row" && c.table === tableId && c.on?.includes(event)) await start(t, `row.${event}`, { row: { table: tableId, id: row.id, event, ...(before !== undefined ? { before } : {}) } });
     }
-  })().catch(quiet(`row.${event}`));
+  })()
+    .catch(quiet(`row.${event}`))
+    .finally(() => {
+      emitting -= 1;
+    });
 }
+let emitting = 0;
+/**
+ * How many row events are still on their way to the queue (the write that caused them doesn't
+ * wait for them). A test that waits for what a write started asks this before it looks at the queue.
+ */
+export const rowEventsInFlight = () => emitting;
 
 /** Something happened in the store: the functions that wait for it are started, with what it was about. */
 export async function emitFnEvent(event: string, data: Record<string, unknown>, subject: string) {

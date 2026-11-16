@@ -7,7 +7,7 @@ import type { FnInput, Outcome } from "../../api/functions.api";
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { stepOfLine, toVal } from "./fnDraft";
-import { ACT_NAME, INPUT_TYPE, failText, lineText, outcomeLine, whereText } from "./fnText";
+import { ACT_NAME, INPUT_TYPE, failText, lineText, outcomeLine, shapeText, whereText } from "./fnText";
 
 const field = "h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
 
@@ -88,6 +88,12 @@ export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun, onK
             <div className="text-sm text-red-300" data-testid="fn-outcome-error">
               {outcome.failedAt ? <span className="text-white/60">{whereText(outcome.failedAt, lang)}: </span> : null}
               <bdi>{failText(outcome.error, lang)}</bdi>
+            </div>
+          ) : null}
+          {/* It went through, with an answer the function doesn't promise ("what it gives back"). */}
+          {outcome.shape ? (
+            <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-200" data-testid="fn-outcome-shape">
+              {say("الجواب مش متل ما بتوعد:|The answer isn't what it promises:|התשובה אינה מה שהיא מבטיחה:")} <bdi>{shapeText(outcome.shape, lang)}</bdi>
             </div>
           ) : null}
           {outcome.ok && outcome.value !== null && outcome.value !== undefined ? (

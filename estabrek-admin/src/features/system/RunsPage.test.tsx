@@ -168,7 +168,9 @@ describe("The run log page", () => {
     // A fine run from more than a week ago: its line stays, its steps are gone. And one from before versions.
     const old = run({ id: "f3", kind: "function", name: "Welcome a member", trigger: "schedule", detail: { v: 2 } });
     const older = run({ id: "f4", kind: "function", name: "Welcome a member", trigger: "admin", detail: null });
-    m.getRuns.mockResolvedValue({ now: NOW, runs: [fine, stopped, old, older], next: null, summary });
+    // One that went through with an answer it doesn't promise.
+    const off = run({ id: "f5", kind: "function", name: "Order total", trigger: "call", detail: { v: 1, answer: '"total" is promised to be a number and is text', steps: [{ at: "do.0", act: "return", ok: true, ms: 0, say: ["returned"] }] } });
+    m.getRuns.mockResolvedValue({ now: NOW, runs: [fine, stopped, old, older, off], next: null, summary });
     show();
     await screen.findByTestId("run-f1");
     expect(screen.getByTestId("run-version-f1").textContent).toBe("Version 3");
@@ -196,6 +198,10 @@ describe("The run log page", () => {
     expect(screen.queryByTestId("run-steps-toggle-f3")).toBeNull();
     expect(screen.queryByTestId("run-version-f4")).toBeNull();
     expect(screen.queryByTestId("run-steps-toggle-f4")).toBeNull();
+    // It still went through (it isn't a failure): its line says the answer wasn't what is promised.
+    expect(screen.getByTestId("run-f5").getAttribute("data-ok")).toBe("true");
+    expect(screen.getByTestId("run-answer-f5").textContent).toBe("Its answer wasn't what it promises: “total” is promised to be a number and is text");
+    expect(screen.queryByTestId("run-answer-f1")).toBeNull();
   });
 
   test("nothing failed, or nothing yet: it says which", async () => {

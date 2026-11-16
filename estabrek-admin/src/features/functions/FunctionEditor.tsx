@@ -23,6 +23,7 @@ import { BuilderProvider, CondList, Line, StepList, type Builder } from "./StepL
 import { TryPanel } from "./TryPanel";
 import { TestsPanel, newTest } from "./TestsPanel";
 import { VersionsPanel } from "./VersionsPanel";
+import { GivesForm } from "./GivesForm";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -272,6 +273,18 @@ export default function FunctionEditor() {
                 {say("＋ مدخل|＋ input|＋ קלט")}
               </button>
             ) : null}
+          </div>
+        </section>
+
+        <section className={box}>
+          <h2 className="font-medium">{say("شو بترجّع|What it gives back|מה היא מחזירה")}</h2>
+          <p className="mt-1 text-xs text-white/70">
+            {say(
+              "اختياري: قول شو نوع جوابها. وقتها التجربة والاختبارات بيقولوا إذا الجواب طلع غير هيك قبل ما تنشر، والـ function اللي بتناديها بتنعرض عليها حقول الجواب بأسمائها. التشغيل الفعلي ما بيفشل بسببها: سجل التشغيل بيقول.|Optional: say what kind its answer is. A try-out and its tests then say when the answer comes out otherwise, before you publish, and a function that calls it is offered the answer's fields by name. A real run isn't failed over it: the run log says so.|לא חובה: ציינו מה סוג התשובה. אז ניסיון והבדיקות יאמרו אם התשובה יצאה אחרת לפני הפרסום, ופונקציה שקוראת לה תקבל הצעה לשדות התשובה בשמם. הרצה אמיתית לא נכשלת בגלל זה: יומן ההרצות מציין זאת.",
+            )}
+          </p>
+          <div className="mt-3">
+            <GivesForm gives={draft.gives} canWrite={canWrite} onChange={(gives) => setDraft(gives ? { ...draft, gives } : (({ gives: _gone, ...rest }) => rest)(draft))} />
           </div>
         </section>
 

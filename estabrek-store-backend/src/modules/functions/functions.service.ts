@@ -30,6 +30,7 @@ import { runCode } from "../../lib/fnCode.js";
 import { HTTP_LIMITS, SiteError, callSite } from "../../lib/fnHttp.js";
 import { useReady } from "../../lib/fnReady.js";
 import { versionDef } from "../../lib/fnVersions.js";
+import { answerProblem } from "../../lib/fnGives.js";
 import { TEST_LIMITS, verdict, type FnTest, type TestWhy } from "../../lib/fnTests.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
@@ -79,7 +80,7 @@ const NOTE = {
 } as const;
 const english = (said: Said): string => (NOTE[said[0]] as (...things: Array<string | number>) => string)(...said.slice(1));
 export type Counts = { steps: number; found: number; added: number; changed: number; deleted: number; sent: number };
-export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number; /** The published version that ran (a saved function's published steps). */ version?: number | null; /** A real run's line in the run log. */ runId?: string };
+export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number; /** The published version that ran (a saved function's published steps). */ version?: number | null; /** A real run's line in the run log. */ runId?: string; /** It went through, and what it gave back isn't what it promises (lib/fnGives.ts): how. */ shape?: string };
 
 /** "return": the run ends here, well. */
 class Finish {
@@ -461,7 +462,11 @@ export async function runDef(def: FnDef, input: Record<string, unknown>, opts: {
   const caller = opts.caller ?? SYSTEM;
   const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map(), caller };
   const scope: Scope = { now: new Date().toISOString(), caller: { kind: caller.kind, id: caller.id ?? null, name: caller.name ?? null, email: caller.email ?? null } };
-  const done = (ok: boolean, value: unknown, error: string | null, failedAt: string | null): Outcome => ({ ok, dry: ctx.dry, value: ok ? value : null, error, failedAt, trace: own.trace, counts: own.counts, ms: Date.now() - t0 });
+  const done = (ok: boolean, value: unknown, error: string | null, failedAt: string | null): Outcome => {
+    // What it promises to give back is looked at, never enforced on a run: what the run did is done.
+    const shape = ok ? answerProblem(def.gives, value) : null;
+    return { ok, dry: ctx.dry, value: ok ? value : null, error, failedAt, trace: own.trace, counts: own.counts, ms: Date.now() - t0, ...(shape ? { shape } : {}) };
+  };
   let failure: Failure;
   try {
     scope.input = readInputs(def.inputs, input ?? {});
@@ -487,7 +492,7 @@ const some = (counts: Counts) => Object.fromEntries(Object.entries(counts).filte
 /* ---------------- Its own tests (F4; lib/fnTests.ts) ---------------- */
 
 /** How a test went: whether it passed (else why not), and what the run it made came to. */
-export type TestResult = { id: string; name: string; pass: boolean; why: TestWhy | null; ok: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; ms: number };
+export type TestResult = { id: string; name: string; pass: boolean; why: TestWhy | null; /** With "shape": how the answer differs from what is promised. */ said?: string; ok: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; ms: number };
 export type TestsOutcome = { results: TestResult[]; passed: number; failed: number; ms: number };
 
 /**
@@ -510,7 +515,7 @@ export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller): P
     const why = verdict(test, out);
     // What it gave back is shown beside what was expected: the beginning of a long one.
     const big = JSON.stringify(out.value ?? null).length > 4000;
-    results.push({ id: test.id, name: test.name, pass: !why, why, ok: out.ok, value: big ? null : out.value, ...(big ? { valueCut: true } : {}), error: out.error, failedAt: out.failedAt, ms: out.ms });
+    results.push({ id: test.id, name: test.name, pass: !why, why, ...(why === "shape" && out.shape ? { said: out.shape } : {}), ok: out.ok, value: big ? null : out.value, ...(big ? { valueCut: true } : {}), error: out.error, failedAt: out.failedAt, ms: out.ms });
   }
   const failed = results.filter((r) => !r.pass).length;
   return { results, passed: results.length - failed, failed, ms: Date.now() - t0 };
@@ -567,7 +572,7 @@ export async function runFn(id: string, input: Record<string, unknown>, opts: { 
   // Its line in the run log, said to who asked for the run: with it the owner finds what each step did.
   const runId = opts.dry ? undefined : newRunId();
   if (!opts.dry) {
-    recordRun({ id: runId, kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error, detail: { ...(version ? { v: version } : {}), steps: stepsForLog(out.trace) } });
+    recordRun({ id: runId, kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error, detail: { ...(version ? { v: version } : {}), ...(out.shape ? { answer: out.shape } : {}), steps: stepsForLog(out.trace) } });
     await prisma.fn.update({ where: { id }, data: { runs: { increment: 1 }, lastRunAt: new Date(t0) } }).catch(() => undefined);
   }
   return { ...out, version, ...(runId ? { runId } : {}) };

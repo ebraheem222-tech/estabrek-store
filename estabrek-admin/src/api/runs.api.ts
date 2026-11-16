@@ -26,7 +26,7 @@ export type Run = {
   result: Record<string, unknown> | null;
   error: string | null;
   /** More about it, by its kind. A function's run: the version that ran, and what each step did (a fine run's steps are kept a week). */
-  detail?: { v?: number; steps?: RunStep[] } | null;
+  detail?: { v?: number; steps?: RunStep[]; /** How its answer wasn't what the function promises. */ answer?: string } | null;
 };
 export type RunsSummary = {
   since: string;

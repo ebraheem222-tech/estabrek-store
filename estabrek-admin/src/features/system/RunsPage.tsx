@@ -14,7 +14,7 @@ import * as RunsAPI from "../../api/runs.api";
 import type { Run, RunKind } from "../../api/runs.api";
 import { runTimeText } from "./jobsText";
 import { KINDS, KIND_NAME, keepLine, runDid, runName, runTimes, runTook, runTrigger, summaryLine, whenText } from "./runsText";
-import { ACT_NAME, failText, lineText, part, whereText } from "../functions/fnText";
+import { ACT_NAME, failText, lineText, part, shapeText, whereText } from "../functions/fnText";
 import { stepOfLine } from "../functions/fnDraft";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -172,6 +172,11 @@ function RunRow({ run, now, onName }: { run: Run; now: number; onName: () => voi
         <div className={`break-words text-sm ${run.ok ? "text-white/70" : "text-red-300"}`} data-testid={`run-did-${run.id}`}>
           <bdi>{run.kind === "function" && !run.ok && run.error ? failText(run.error, lang) : runDid(run, lang)}</bdi>
         </div>
+        {fn?.answer ? (
+          <div className="text-xs text-amber-300" data-testid={`run-answer-${run.id}`}>
+            {say("جوابها ما كان متل ما بتوعد:|Its answer wasn't what it promises:|התשובה לא הייתה מה שהיא מבטיחה:")} <bdi>{shapeText(fn.answer, lang)}</bdi>
+          </div>
+        ) : null}
         {steps.length ? (
           <button type="button" className="text-xs underline" aria-expanded={open} onClick={() => setOpen(!open)} data-testid={`run-steps-toggle-${run.id}`}>
             {open ? say("خبّي الخطوات|Hide the steps|הסתרת השלבים") : say("شو عملت كل خطوة ({n})|What each step did ({n})|מה עשה כל שלב ({n})").replace("{n}", String(steps.filter((s) => !("cut" in s)).length))}
