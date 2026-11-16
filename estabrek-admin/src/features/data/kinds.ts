@@ -31,6 +31,8 @@ export const KIND_NAME: Record<FieldType, string> = {
   json: "JSON|JSON|JSON",
   location: "موقع (خريطة)|A place (map)|מיקום (מפה)",
   relation: "ربط بجدول|Link to a table|קישור לטבלה",
+  // A shopper the row points at, by the email they sign in with (backend lib/dataApi.ts: the row is theirs to read too).
+  customer: "زبون (بإيميله)|A customer (by email)|לקוח (לפי אימייל)",
 };
 
 /* ---------------- A relation: the rows a row links ---------------- */

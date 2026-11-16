@@ -41,35 +41,40 @@ function sentKey(req: Request): string | null {
 
 /* A shopper's account is looked up once every few seconds: one turned off (or deleted) stops being a shopper here at once-ish. */
 const SHOPPER_TTL_MS = 10_000;
-const shoppers = new Map<string, { at: number; ok: boolean }>();
+const shoppers = new Map<string, { at: number; ok: boolean; email: string }>();
 export function forgetShoppers() {
   shoppers.clear();
 }
-async function shopperActive(id: string): Promise<boolean> {
+/** The shopper's email (the one they sign in with, in small letters) when the account is active; else null. */
+async function shopperActive(id: string): Promise<string | null> {
   const known = shoppers.get(id);
-  if (known && Date.now() - known.at < SHOPPER_TTL_MS) return known.ok;
-  const user = await prisma.user.findUnique({ where: { id }, select: { status: true } });
+  if (known && Date.now() - known.at < SHOPPER_TTL_MS) return known.ok ? known.email : null;
+  const user = await prisma.user.findUnique({ where: { id }, select: { status: true, email: true } });
   const ok = user?.status === "ACTIVE";
-  shoppers.set(id, { at: Date.now(), ok });
+  const email = (user?.email ?? "").trim().toLowerCase();
+  shoppers.set(id, { at: Date.now(), ok, email });
   if (shoppers.size > 5000) shoppers.clear();
-  return ok;
+  return ok ? email : null;
 }
 
 /** The signed-in shopper, when the request carries one's token, accounts are on and the account is active; else nobody. */
-async function shopperOf(req: Request): Promise<string | null> {
+async function shopperOf(req: Request): Promise<{ id: string; email: string } | null> {
   const token = bearerOf(req);
   if (!token || token.startsWith(KEY_MARK)) return null;
   try {
     const id = verifyCustomerToken(token).sub;
-    return (await customerAccountsOn()) && (await shopperActive(id)) ? id : null;
+    if (!(await customerAccountsOn())) return null;
+    const email = await shopperActive(id);
+    return email === null ? null : { id, email };
   } catch {
     // Not a shopper's token (an admin's, an old one): the request is anyone's.
     return null;
   }
 }
 
-export type Caller = { key: KeyLite | null; customer: string | null };
-export const callerOf = (req: Request): Caller => ({ key: req.apiKey ?? null, customer: req.customer?.id ?? null });
+/** `email`: the signed-in shopper's own (rows that point at it are theirs to read: lib/dataApi.ts). */
+export type Caller = { key: KeyLite | null; customer: string | null; email: string | null };
+export const callerOf = (req: Request): Caller => ({ key: req.apiKey ?? null, customer: req.customer?.id ?? null, email: req.customer?.email || null });
 
 /** Sets `req.customer` and `req.apiKey`; a key's own requests a minute are counted here. */
 export const apiCaller = asyncHandler(async (req: Request, res: Response, next: () => void) => {
@@ -78,7 +83,7 @@ export const apiCaller = asyncHandler(async (req: Request, res: Response, next: 
   // A page on another address (the admin's try-it panel, the shop) may read these.
   res.setHeader("Access-Control-Expose-Headers", "X-RateLimit-Key-Limit, X-RateLimit-Key-Remaining, X-RateLimit-Key-Reset, Retry-After");
   const shopper = await shopperOf(req);
-  if (shopper) req.customer = { id: shopper };
+  if (shopper) req.customer = shopper;
   const sent = sentKey(req);
   if (!sent) {
     req.apiKey = null;

@@ -54,15 +54,33 @@ export async function tableOf(id: string) {
 /** A row's owner as the admin is told: who the shopper is, or (`owners: "id"`, a member who may not see the customers) only that there is one. */
 export type RowOwner = { id: string; name?: string; email?: string };
 
+/** A shopper a row points at (a field of kind "customer"), as the admin is told: the one whose account has that email. */
+export type RowCustomer = { id: string; name: string };
+
+/** `customers`: for each field pointing at a shopper, who that is; only for a member who may see the customers (`full`), and only where an account has that email. */
+async function withCustomers<T extends { data: unknown }>(fields: Field[], rows: T[], full: boolean): Promise<Array<T & { customers?: Record<string, RowCustomer> }>> {
+  const to = full ? fields.filter((f) => f.type === "customer").map((f) => f.id) : [];
+  const emailOf = (row: T, id: string) => { const v = (row.data as Record<string, unknown> | null)?.[id]; return typeof v === "string" ? v : ""; };
+  const emails = [...new Set(rows.flatMap((row) => to.map((id) => emailOf(row, id)).filter(Boolean)))];
+  if (!emails.length) return rows;
+  const known = new Map((await prisma.user.findMany({ where: { email: { in: emails } }, select: { id: true, name: true, email: true } })).map((u) => [u.email, { id: u.id, name: u.name ?? "" }]));
+  return rows.map((row) => {
+    const customers = Object.fromEntries(to.flatMap((id) => { const who = known.get(emailOf(row, id)); return who ? [[id, who]] : []; }));
+    return Object.keys(customers).length ? { ...row, customers } : row;
+  });
+}
+
 /**
  * Rows as answered: the table's own values, each relation's linked rows, (`from`) who links the row
- * through each relation that links this table, and (`owner`) the shopper whose row it is.
+ * through each relation that links this table, (`owner`) the shopper whose row it is, and
+ * (`customers`) the shoppers it points at.
  */
 export async function answer<T extends { id: string; data: unknown; ownerId?: string | null }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[], opts: { owners?: "full" | "id" } = {}) {
   const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
   const ownerIds = [...new Set(linked.map((row) => row.ownerId).filter((id): id is string => !!id))];
   const people = ownerIds.length && opts.owners === "full" ? new Map((await prisma.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, email: true } })).map((u) => [u.id, u])) : null;
-  const shown = ownerIds.length ? linked.map((row) => (row.ownerId ? { ...row, owner: (people?.get(row.ownerId) ?? { id: row.ownerId }) as RowOwner } : row)) : linked;
+  const owned = ownerIds.length ? linked.map((row) => (row.ownerId ? { ...row, owner: (people?.get(row.ownerId) ?? { id: row.ownerId }) as RowOwner } : row)) : linked;
+  const shown = await withCustomers(table.fields, owned, opts.owners === "full");
   if (!table.incoming.length) return shown;
   const from = await linkedFrom(prisma, table.id, table.incoming, shown.map((row) => row.id));
   return shown.map((row) => ({ ...row, from: from.get(row.id) ?? {} }));

@@ -58,6 +58,7 @@ export const RULES_BY_TYPE: Record<FieldType, { unique: boolean; limits: "number
   json: { unique: false, limits: null, shape: false, default: false },
   location: { unique: false, limits: null, shape: false, default: false },
   relation: { unique: false, limits: null, shape: false, default: false },
+  customer: { unique: true, limits: null, shape: false, default: false },
 };
 
 export const PATTERN_MAX = 200;

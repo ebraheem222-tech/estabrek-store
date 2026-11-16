@@ -95,6 +95,7 @@ export function sampleValue(f: ApiField): unknown {
     case "multiSelect":
       return f.options?.[0] ? [f.options[0].id] : [];
     case "email":
+    case "customer":
       return "name@example.com";
     case "phone":
       return "+970599000001";

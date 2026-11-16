@@ -84,6 +84,16 @@ export function CellView({ column, row, lang }: { column: Column; row: GridRow; 
           {text}
         </a>
       );
+    case "customer": {
+      // The shopper it points at: their name when an account has that email (and the member may see the customers), then the email.
+      const who = row.customers?.[column.id];
+      return (
+        <span className="inline-flex max-w-[22rem] items-center gap-1.5" data-testid={`customer-${column.id}`}>
+          {who ? <span className={`${chip} bg-accent-500/15`} title={say("زبون عنده حساب بهالإيميل|A customer with an account at this address|לקוח עם חשבון בכתובת הזו")}><bdi>{who.name || say("زبون|a customer|לקוח")}</bdi></span> : null}
+          <bdi dir="ltr" className="truncate text-white/75">{text}</bdi>
+        </span>
+      );
+    }
     case "file":
     case "video":
     case "model3d": {
@@ -207,6 +217,7 @@ export function ValueInput({
     case "datetime":
       return text({ type: "datetime-local", dir: "ltr" });
     case "email":
+    case "customer":
       return text({ type: "email", dir: "ltr", placeholder: "name@example.com" });
     case "phone":
       return text({ type: "tel", dir: "ltr", placeholder: "+970 599 000 000" });

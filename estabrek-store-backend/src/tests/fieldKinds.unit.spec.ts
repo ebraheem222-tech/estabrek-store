@@ -62,7 +62,8 @@ describe("Each kind's values", () => {
       expect(OPS_BY_KIND[t]?.length, t).toBeGreaterThan(0);
       expect(RULES_BY_TYPE[t], t).toBeTruthy();
     }
-    expect(FIELD_TYPES).toHaveLength(20);
+    // (The 21st is a shopper the row points at: tests/customerField.spec.ts.)
+    expect(FIELD_TYPES).toHaveLength(21);
   });
 
   test("what each takes, and how it's kept", () => {

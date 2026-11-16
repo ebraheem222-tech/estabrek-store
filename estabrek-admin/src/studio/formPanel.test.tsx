@@ -93,11 +93,14 @@ describe("a form's fields as data", () => {
       { id: "topic", type: "select", name: null, required: false, options: [{ id: "order", name: { en: "An order" } }, { id: "other", name: null }] },
       { id: "photo", type: "image", name: { en: "Photo" }, required: false },
       { id: "friend", type: "relation", name: { en: "Friend" }, required: false },
+      { id: "to", type: "customer", name: { en: "To" }, required: true },
       { id: "secret", type: "text", name: { en: "Secret" }, required: false },
     ], "en", ["secret"]);
     expect(t.fields).toEqual([
       { name: "name", kind: "text", label: { en: "Name" }, required: true },
       { name: "topic", kind: "select", label: { en: "topic" }, options: [{ value: "order", label: { en: "An order" } }, { value: "other", label: { en: "other" } }] },
+      // A field pointing at a shopper is typed as that shopper's email.
+      { name: "to", kind: "email", label: { en: "To" }, required: true },
     ]);
     expect(t.skipped).toEqual(["Photo", "Friend"]);
   });

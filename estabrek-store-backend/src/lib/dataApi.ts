@@ -7,6 +7,11 @@
  * own rows only), or (reading and adding) for everyone; changing and deleting are never for
  * everyone. Everyone sees published rows only; a shopper sees their own; a key sees every row that
  * isn't in the trash. Fields marked private are a key's alone.
+ *
+ * A shopper's own rows are the ones they added and the ones that point at them: a field of kind
+ * "customer" holding the email they sign in with. Who a row points at is answered to a key as the
+ * email; to anyone else as a first name and whether it is them (`personView`), and without a key it
+ * can't be asked about (a filter would say whether someone is in the table).
  */
 import { z } from "zod";
 import { AppError } from "../utils/httpError.js";
@@ -64,6 +69,23 @@ export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableI
 /** The fields a caller sees and may write: all of them through a key, the rest without the private ones. */
 export function seenFields(table: Pick<ApiTable, "fields" | "private">, as: As): Field[] {
   return as === "key" || !table.private.length ? table.fields : table.fields.filter((f) => !table.private.includes(f.id));
+}
+
+/** The fields a caller may ask about (filter, sort, search): without a key, never who a row points at. */
+export const askable = (fields: Field[], as: As): Field[] => (as === "key" ? fields : fields.filter((f) => f.type !== "customer"));
+/** The fields through which a row is a shopper's to read: the ones pointing at a shopper, among those the shopper sees. */
+export const reachFields = (fields: Field[]): string[] => fields.filter((f) => f.type === "customer").map((f) => f.id);
+
+/** A shopper a row points at, as anyone but a key is answered it. */
+export type PersonView = { /** A first name (the whole name to the shopper themself); null when there is no account with that email, or no name on it. */ name: string | null; me: boolean; /** Only to that shopper, and to the row's owner. */ email?: string };
+/** Who is reading: the signed-in shopper (if any), and the names of the shoppers the rows at hand point at, by email. */
+export type Viewer = { id: string | null; email: string | null; names: Map<string, string> };
+
+export function personView(email: string, ownerId: string | null, viewer: Viewer): PersonView {
+  const me = !!viewer.email && viewer.email === email;
+  const full = (viewer.names.get(email) ?? "").trim();
+  const name = full ? (me ? full : full.split(/\s+/)[0]) : null;
+  return { name, me, ...(me || (!!viewer.id && ownerId === viewer.id) ? { email } : {}) };
 }
 
 /**
@@ -154,8 +176,10 @@ export function shapeAsk(fields: Field[], query: Record<string, unknown>): Pick<
  *   &price[gte]=10&title[contains]=scarf&tags[anyOf]=new,sale&date[between]=2026-01-01,2026-12-31&match=any
  * Anything it doesn't know is refused (a misspelt filter never answers with every row).
  */
-export function listAsk(fields: Field[], query: Record<string, unknown>, as: As): ListAsk {
-  const shape = shapeAsk(fields, query);
+export function listAsk(all: Field[], query: Record<string, unknown>, as: As): ListAsk {
+  const shape = shapeAsk(all, query);
+  // What it may be sorted and filtered by: not who a row points at, without a key.
+  const fields = askable(all, as);
   const statusRaw = first(query.status)?.toLowerCase();
   if (statusRaw !== undefined && !(statusRaw in STATUS_VIEW)) throw bad("status: all, draft, published or archived");
   if (as === "public" && statusRaw !== undefined && statusRaw !== "published") throw bad("Only published rows are open without a key");
@@ -224,14 +248,14 @@ export function wordsIn(v: unknown, lang: Lang): string | null {
   return null;
 }
 
-type RowIn = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null };
+type RowIn = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; ownerId?: string | null };
 
 /**
  * One row for the answer. `values` has every field the caller sees, in the table's order, with
  * null where the row has nothing (so every row of a table has the same shape). `row.data` already
  * holds each relation's linked rows (lib/links.ts withLinks).
  */
-export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; pick?: string[] | null; links?: LinkModes; expand?: Map<string, Map<string, ApiRow>> } = { lang: null }): ApiRow {
+export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; pick?: string[] | null; links?: LinkModes; expand?: Map<string, Map<string, ApiRow>>; /** Who reads, when it isn't a key (a key is answered the email itself). */ viewer?: Viewer } = { lang: null }): ApiRow {
   const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
   const values: Record<string, unknown> = {};
   for (const f of fields) {
@@ -244,6 +268,7 @@ export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; p
       const open = opts.expand?.get(f.id);
       values[f.id] = open ? linked.map((x) => open.get(x.id)).filter((x): x is ApiRow => !!x) : linked.map((x) => ({ id: x.id, slug: x.slug, status: x.status, title: opts.lang ? wordsIn(x.title, opts.lang) : x.title ?? null }));
     } else if ((f.type === "text" || f.type === "longText") && opts.lang) values[f.id] = wordsIn(v, opts.lang);
+    else if (f.type === "customer" && opts.viewer) values[f.id] = typeof v === "string" && v ? personView(v, row.ownerId ?? null, opts.viewer) : null;
     else values[f.id] = v === undefined ? null : v;
   }
   return { id: row.id, slug: row.slug, status: row.status, values, createdAt: row.createdAt, updatedAt: row.updatedAt, publishedAt: row.publishedAt };

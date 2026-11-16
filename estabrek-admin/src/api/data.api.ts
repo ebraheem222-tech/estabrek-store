@@ -34,6 +34,8 @@ export type GridRow = CollectionItem & {
   /** The shopper whose row it is (added through the API); by name only for members who may see the customers. */
   ownerId?: string | null;
   owner?: { id: string; name?: string; email?: string };
+  /** For each field of kind "customer": the shopper whose account has that email (only for a member who may see the customers). */
+  customers?: Record<string, { id: string; name: string }>;
 };
 export type GridPage = { rows: GridRow[]; total: number; page: number; pageSize: number; counts: Record<View, number>; ms: number; /** The relations that link this table. */ incoming?: Incoming[] };
 export type GridMeta = {

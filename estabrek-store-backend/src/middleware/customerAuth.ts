@@ -9,7 +9,8 @@ import { customerAccountsOn } from "../lib/features.js";
  */
 declare module "express-serve-static-core" {
   interface Request {
-    customer?: { id: string };
+    /** `email`: the one they sign in with, where the door looked it up (middleware/apiCaller.ts). */
+    customer?: { id: string; email?: string };
   }
 }
 

@@ -20,9 +20,11 @@ type Tree = { version: number; root: Node };
  * a date with its time, money (a number in the field's currency), several choices, a file, a
  * video, a 3D model (addresses), any JSON, and a place (latitude, longitude, a label). Then (B3) a
  * relation: links to rows of a table, kept in a table of their own (lib/links.ts), never among
- * the row's values.
+ * the row's values. Then (M) a customer: a shopper the row points at, kept as the email they sign
+ * in with. Where the table is open to shoppers, a row is also the shopper's it points at to read
+ * (lib/dataApi.ts); it is never drawn on a shop page (no element takes it).
  */
-export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location", "relation"] as const;
+export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location", "relation", "customer"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 /** A field: its kind, its name, and its rules (lib/fieldRules.ts): the only value, limits, a shape, a default, the words said when a rule fails. */
 export type Field = {

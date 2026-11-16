@@ -75,7 +75,8 @@ export function fromInputs(takes: FnInput[], lang: string): FormField[] {
   });
 }
 
-const TABLE_KINDS: Partial<Record<ApiField["type"], FormKind>> = { text: "text", link: "text", longText: "long", number: "number", date: "date", boolean: "check", select: "select", email: "email", phone: "phone" };
+// (A field pointing at a shopper is written as that shopper's email.)
+const TABLE_KINDS: Partial<Record<ApiField["type"], FormKind>> = { text: "text", link: "text", longText: "long", number: "number", date: "date", boolean: "check", select: "select", email: "email", phone: "phone", customer: "email" };
 /** A field for each of a table's fields a shopper can type (pictures, files, links to other rows and the like are left out, by name). */
 export function fromTable(fields: ApiField[], lang: string, hidden: string[] = []): { fields: FormField[]; skipped: string[] } {
   const out: FormField[] = [];
