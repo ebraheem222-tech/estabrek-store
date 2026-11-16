@@ -243,7 +243,10 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
       <p className="mt-2 text-xs text-white/60" data-testid={`trigger-${t.id}-hint`}>
         {t.kind === "call" ? (
           <>
-            {say("اللي بينادي بيبعت|The caller sends|הקורא שולח")} <bdi dir="ltr">{"{ input: { … } }"}</bdi> {say("وبيرجعله جواب الـ function. مين نادى اسمه|and gets the function's answer back. Who called is|ומקבל את תשובת הפונקציה. מי שקרא הוא")} <bdi dir="ltr">{"{{caller}}"}</bdi> <bdi dir="ltr">(id, name, email, kind)</bdi>.
+            {say("اللي بينادي بيبعت|The caller sends|הקורא שולח")} <bdi dir="ltr">{"{ input: { … } }"}</bdi> {say("وبيرجعله جواب الـ function. مين نادى اسمه|and gets the function's answer back. Who called is|ומקבל את תשובת הפונקציה. מי שקרא הוא")} <bdi dir="ltr">{"{{caller}}"}</bdi> <bdi dir="ltr">(id, name, email, kind)</bdi>.{" "}
+            {say("طلب معه ترويسة|A request sent with an|בקשה שנשלחת עם כותרת")} <bdi dir="ltr">Idempotency-Key</bdi>{" "}
+            {say("ما بيشتغل مرتين: نفس المفتاح مرة تانية بياخد جواب الأولى. والجواب بيحمل رقم التشغيل بالسجل (|header isn't run twice: the same key again gets the first answer. The answer carries the run's number in the log (|לא רצה פעמיים: אותו מפתח שוב מקבל את התשובה הראשונה. התשובה נושאת את מספר ההרצה ביומן (")}
+            <bdi dir="ltr">X-Run-Id</bdi>).
           </>
         ) : t.kind === "webhook" ? (
           say("أي نظام بيعرف هالعنوان بيقدر يشغّلها، فخلّيه سر. الطلب بينقبل فوراً والـ function بتشتغل بعده.|Any system that knows this address can start it, so keep it secret. The request is taken in at once and the function runs after it.|כל מערכת שמכירה את הכתובת יכולה להפעיל אותה, לכן שמרו עליה בסוד. הבקשה מתקבלת מיד והפונקציה רצה אחריה.")

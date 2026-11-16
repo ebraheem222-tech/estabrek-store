@@ -1,6 +1,7 @@
 // الـ Functions: try one. What it is handed is typed here; "try" runs the draft dry (nothing is
 // written or sent, every step says what it would do); "run" runs what is published, for real.
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import type { FnInput, Outcome } from "../../api/functions.api";
 import { adminLang } from "../../lib/lang";
@@ -72,6 +73,17 @@ export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun, onK
               </button>
             ) : null}
           </div>
+          {/* A real run is kept in the run log, with what each step did: its number is what to quote. */}
+          {outcome.runId ? (
+            <div className="text-xs text-white/70" data-testid="fn-outcome-run">
+              {outcome.version ? `${say("النسخة {n}|Version {n}|גרסה {n}").replace("{n}", String(outcome.version))} · ` : ""}
+              {say("محفوظ بـ|Kept in the|נשמר ב")}{" "}
+              <Link to="/admin/system/runs" className="underline">
+                {say("سجل التشغيل|run log|יומן ההרצות")}
+              </Link>{" "}
+              {say("برقم|as|בתור")} <bdi dir="ltr" className="font-mono">{outcome.runId}</bdi>
+            </div>
+          ) : null}
           {outcome.error ? (
             <div className="text-sm text-red-300" data-testid="fn-outcome-error">
               {outcome.failedAt ? <span className="text-white/60">{whereText(outcome.failedAt, lang)}: </span> : null}

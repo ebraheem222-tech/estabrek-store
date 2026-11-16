@@ -24,6 +24,7 @@ import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
 import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
 import { purgeTrash } from "./lib/collections.js";
 import { cleanRuns } from "./lib/runs.js";
+import { cleanCallKeys } from "./lib/fnCallKeys.js";
 import { cleanTasks, runTasks } from "./lib/tasks.js";
 import { runFnSchedule } from "./lib/fnTriggers.js";
 
@@ -108,7 +109,12 @@ export function registerBackgroundJobs() {
     everyMs: 6 * HOUR,
     limits: { min: HOUR, max: 48 * HOUR },
     firstMs: 4 * MIN,
-    run: () => cleanRuns(),
+    // (And the calls' own names for their requests, kept a day: lib/fnCallKeys.ts.)
+    run: async () => {
+      const out = await cleanRuns();
+      await cleanCallKeys();
+      return out;
+    },
   });
 
   registerJob({

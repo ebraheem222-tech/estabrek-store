@@ -147,6 +147,57 @@ describe("The run log page", () => {
     expect(screen.queryByTestId("runs-more")).toBeNull();
   });
 
+  test("a function's run says which version ran, and opens to what each of its steps did", async () => {
+    const fine = run({
+      id: "f1",
+      kind: "function",
+      name: "Welcome a member",
+      trigger: "call",
+      ms: 41,
+      detail: {
+        v: 3,
+        steps: [
+          { at: "do.0", act: "find", ok: true, ms: 4, say: ["found", 2, 2] },
+          { at: "do.1.do[1].0", act: "email", ok: true, ms: 9, say: ["queued", "email", "s•••@example.com"] },
+          { cut: 12 },
+          { at: "do.2", act: "return", ok: true, ms: 0, say: ["returned"] },
+        ],
+      },
+    });
+    const stopped = run({ id: "f2", kind: "function", name: "Welcome a member", trigger: "row.added", ok: false, error: 'Telegram "Store alerts" answered 400: Bad Request: chat not found', detail: { v: 3, steps: [{ at: "do.0", act: "ready", ok: false, ms: 210, error: 'Telegram "Store alerts" answered 400: Bad Request: chat not found' }, { at: "fail.0", act: "notify", ok: true, ms: 2, say: ["rang", "It failed"] }] } });
+    // A fine run from more than a week ago: its line stays, its steps are gone. And one from before versions.
+    const old = run({ id: "f3", kind: "function", name: "Welcome a member", trigger: "schedule", detail: { v: 2 } });
+    const older = run({ id: "f4", kind: "function", name: "Welcome a member", trigger: "admin", detail: null });
+    m.getRuns.mockResolvedValue({ now: NOW, runs: [fine, stopped, old, older], next: null, summary });
+    show();
+    await screen.findByTestId("run-f1");
+    expect(screen.getByTestId("run-version-f1").textContent).toBe("Version 3");
+    expect(screen.getByTestId("run-steps-toggle-f1").textContent).toBe("What each step did (3)");
+    expect(screen.queryByTestId("run-steps-f1")).toBeNull();
+    fireEvent.click(screen.getByTestId("run-steps-toggle-f1"));
+    expect([...screen.getByTestId("run-steps-f1").querySelectorAll("li")].map((li) => li.textContent)).toEqual([
+      "Step 1 Find rows 2 rows4 ms",
+      "Step 2 ← Step 1 Email Queued an email to s•••@example.com9 ms",
+      "… 12 steps in between aren't kept",
+      "Step 3 Give back an answer Gave back its answer0 ms",
+    ]);
+    fireEvent.click(screen.getByTestId("run-steps-toggle-f1"));
+    expect(screen.queryByTestId("run-steps-f1")).toBeNull();
+    // One that stopped: why, in the page's words, and the step it stopped at with what was done about it.
+    expect(screen.getByTestId("run-did-f2").textContent).toBe("Telegram “Store alerts” answered 400: Bad Request: chat not found");
+    fireEvent.click(screen.getByTestId("run-steps-toggle-f2"));
+    const lines = [...screen.getByTestId("run-steps-f2").querySelectorAll("li")];
+    expect(lines.map((li) => [li.getAttribute("data-ok"), li.textContent])).toEqual([
+      ["false", "Step 1 Send through a connection Telegram “Store alerts” answered 400: Bad Request: chat not found210 ms"],
+      ["true", "On failure ← Step 1 Ring the admin's bell Rang the bell: It failed2 ms"],
+    ]);
+    // No steps kept: the version is still said, and there is nothing to open.
+    expect(screen.getByTestId("run-version-f3").textContent).toBe("Version 2");
+    expect(screen.queryByTestId("run-steps-toggle-f3")).toBeNull();
+    expect(screen.queryByTestId("run-version-f4")).toBeNull();
+    expect(screen.queryByTestId("run-steps-toggle-f4")).toBeNull();
+  });
+
   test("nothing failed, or nothing yet: it says which", async () => {
     m.getRuns.mockResolvedValue({ now: NOW, runs: [], next: null, summary: { ...summary, runs: 0, failures: 0, kinds: {}, failing: [], from: null } });
     show();

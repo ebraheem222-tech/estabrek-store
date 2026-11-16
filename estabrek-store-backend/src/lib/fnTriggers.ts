@@ -171,8 +171,8 @@ export async function emitFnEvent(event: string, data: Record<string, unknown>, 
 }
 
 /** A request came in at a webhook's address. */
-export async function emitWebhook(t: LiveTrigger, body: unknown, query: unknown) {
-  await start(t, "webhook", { input: { body, query } });
+export async function emitWebhook(t: LiveTrigger, body: unknown, query: unknown, /** The delivery's own name (its Idempotency-Key): the same one again isn't a second run. */ key?: string) {
+  await start(t, "webhook", { input: { body, query } }, key ? `fn-hook:${t.id}:${key}` : undefined);
 }
 
 /** The schedules that are due: each is started once for its moment, and its next moment is set. */

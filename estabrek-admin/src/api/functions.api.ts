@@ -111,7 +111,7 @@ export type FnLimits = { steps: number; depth: number; conditions: number; input
 export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
-export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null };
+export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null; /** A real run's line in the run log. */ runId?: string };
 
 const BASE = "/admin/functions";
 const at = (id: string) => `${BASE}/${encodeURIComponent(id)}`;

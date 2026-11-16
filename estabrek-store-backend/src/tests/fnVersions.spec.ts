@@ -90,7 +90,7 @@ describe("Every publish is a version", () => {
     expect((await request(app).get(`${at}/${id}/versions/1`).expect(200)).body).toEqual({ n: 1, def: { lang: "en", inputs: [], do: [{ act: "notify", title: `${PREFIX}one` }, { act: "return", value: "one" }] } });
     for (const bad of ["3", "0", "-1", "one", "1.5"]) expect((await request(app).get(`${at}/${id}/versions/${bad}`).expect(404)).body.error).toBe("VERSION_NOT_FOUND");
     // A run in the log says which version it was.
-    expect((await logged()).map((r) => [r.ok, r.detail])).toEqual([[true, { v: 1 }], [true, { v: 2 }]]);
+    expect((await logged()).map((r) => [r.ok, (r.detail as { v?: number }).v])).toEqual([[true, 1], [true, 2]]);
     // The function gone, its versions go with it.
     await request(app).delete(`${at}/${id}`).expect(200);
     expect(await prisma.fnVersion.count({ where: { fnId: id } })).toBe(0);
@@ -192,7 +192,7 @@ describe("A run asked for through the queue", () => {
     await request(app).post(hook).send({}).expect(202);
     await settled();
     expect(await rang()).toEqual(["one", "two"]);
-    expect((await logged()).map((r) => [r.trigger, r.ok, r.detail])).toEqual([["webhook", true, { v: 1 }], ["webhook", true, { v: 2 }]]);
+    expect((await logged()).map((r) => [r.trigger, r.ok, (r.detail as { v?: number }).v])).toEqual([["webhook", true, 1], ["webhook", true, 2]]);
   });
 
   test("a version that isn't kept any more runs what is published now", async () => {
@@ -206,6 +206,6 @@ describe("A run asked for through the queue", () => {
     startFunctions();
     await settled();
     expect(await rang()).toEqual(["two"]);
-    expect((await logged()).map((r) => r.detail)).toEqual([{ v: 2 }]);
+    expect((await logged()).map((r) => (r.detail as { v?: number }).v)).toEqual([2]);
   });
 });

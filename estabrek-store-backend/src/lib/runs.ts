@@ -9,12 +9,15 @@
  * times it ran, what they did together (their counts added up) and when last. That row is written
  * at most once a minute, and when the server stops.
  */
+import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 
 export const RUN_KINDS = ["job", "automation", "webhook", "task", "function"] as const;
 export type RunKind = (typeof RUN_KINDS)[number];
 export type RunIn = {
+  /** Its row's id, when whoever asked for the run is told it (a function's run: `newRunId()`). */
+  id?: string;
   kind: RunKind;
   /** Which one: the job's name, the rule's name, the webhook's address. */
   name: string;
@@ -35,6 +38,10 @@ export type RunIn = {
 };
 
 export const RUN_KEEP_DAYS = 30;
+/** A function's run keeps what each of its steps did. For a run that went fine that goes after this many days (the run's own line stays); a failed run keeps it as long as it is kept. */
+export const RUN_STEPS_KEEP_DAYS = 7;
+/** An id for a run's row, made before the run is written (so it can be said in the answer). */
+export const newRunId = () => `r${randomBytes(12).toString("hex")}`;
 /** Never more than this many rows, whatever their age. */
 export const RUN_KEEP_ROWS = 200_000;
 const HOUR = 3_600_000;
@@ -121,6 +128,7 @@ export function recordRun(run: RunIn): void {
   try {
     if (isFolded(run)) return fold(run);
     const data: Prisma.RunCreateInput = {
+      ...(run.id ? { id: run.id } : {}),
       kind: run.kind,
       name: run.name.slice(0, 120),
       ref: text(run.ref, 64),
@@ -148,6 +156,8 @@ export async function cleanRuns(now = Date.now()): Promise<{ removed: number }> 
     const edge = await prisma.run.findFirst({ orderBy: { startedAt: "desc" }, skip: RUN_KEEP_ROWS, select: { startedAt: true } });
     if (edge) removed += (await prisma.run.deleteMany({ where: { startedAt: { lte: edge.startedAt } } })).count;
   }
+  // A function's run that went fine: its steps were for looking into it while it was fresh.
+  await prisma.$executeRaw`UPDATE "Run" SET "detail" = "detail" - 'steps' WHERE "kind" = 'function' AND "ok" = true AND "startedAt" < ${new Date(now - RUN_STEPS_KEEP_DAYS * 86_400_000)} AND "detail" IS NOT NULL AND jsonb_exists("detail", 'steps')`;
   return { removed };
 }
 

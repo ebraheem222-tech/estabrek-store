@@ -477,7 +477,7 @@ model Run {
   /// What it did: counts ({ sent: 3 }; a folded row: its runs' counts added up) or a few words ({ did: "…" }).
   result    Json?
   error     String?
-  /// More about a run, by its kind. A function's: { v: the version that ran }.
+  /// More about a run, by its kind. A function's: { v: the version that ran, steps: what each step did }.
   detail    Json?
 
   @@index([startedAt])
@@ -511,6 +511,28 @@ model Fn {
   triggers    FnTrigger[]
   versions    FnVersion[]
 
+  @@index([createdAt])
+}
+
+/// A call's own name for its request (the Idempotency-Key header; src/lib/fnCallKeys.ts): the
+/// same key again, from the same caller at the same address, is answered with what the first
+/// call was answered, and the function isn't run again. Kept for a day.
+model FnCallKey {
+  id        String   @id @default(cuid())
+  triggerId String
+  /// Who called: "customer:<id>", "key:<id>" or "ip:<address>".
+  who       String
+  key       String
+  /// A print of what was asked: the same key with something else asked is refused.
+  asked     String
+  /// "running" until the call is answered, then "done".
+  state     String   @default("running")
+  status    Int?
+  answer    Json?
+  runId     String?
+  createdAt DateTime @default(now())
+
+  @@unique([triggerId, who, key])
   @@index([createdAt])
 }
 

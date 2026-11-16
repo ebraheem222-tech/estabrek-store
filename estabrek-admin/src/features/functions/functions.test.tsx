@@ -507,14 +507,22 @@ describe("Trying it", () => {
 
   test("a real run: published only, asked first", async () => {
     server = full({ draft, live: draft, published: true, changed: false });
-    m.runFunction.mockResolvedValue(outcome({ dry: false, counts: { steps: 1, found: 0, added: 1, changed: 0, deleted: 0, sent: 0 } }));
+    m.runFunction.mockResolvedValue(outcome({ dry: false, counts: { steps: 1, found: 0, added: 1, changed: 0, deleted: 0, sent: 0 }, version: 2, runId: "r0123456789abcdef01234567" }));
     show();
+    // A try isn't kept anywhere: it has no number.
+    m.runFunction.mockResolvedValueOnce(outcome({}));
+    fireEvent.click(await screen.findByTestId("fn-try-dry"));
+    await screen.findByTestId("fn-outcome");
+    expect(screen.queryByTestId("fn-outcome-run")).toBeNull();
     fireEvent.click(await screen.findByTestId("fn-try-real"));
     const dialog = await screen.findByRole("dialog");
     expect(dialog.textContent).toContain("The published steps will run for real");
     fireEvent.click(within(dialog).getByRole("button", { name: "Run" }));
     await waitFor(() => expect(m.runFunction).toHaveBeenCalledWith("f1", { input: {}, dry: false, which: "live" }));
-    expect((await screen.findByTestId("fn-outcome-line")).textContent).toBe("It went through · 1 added · 7 ms");
+    await waitFor(() => expect(screen.getByTestId("fn-outcome-line").textContent).toBe("It went through · 1 added · 7 ms"));
+    // A real run is kept in the run log, with what each step did: it says which version ran and under which number.
+    expect(screen.getByTestId("fn-outcome-run").textContent).toBe("Version 2 · Kept in the run log as r0123456789abcdef01234567");
+    expect(within(screen.getByTestId("fn-outcome-run")).getByRole("link").getAttribute("href")).toBe("/admin/system/runs");
     // A member who can only look can't run it.
     cleanup();
     m.may = new Set(["functions:read"]);
