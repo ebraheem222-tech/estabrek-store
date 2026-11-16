@@ -76,6 +76,38 @@ export function storePage(table: string, rowId?: string, mayOpenRow = true): { t
   return page.row && mayOpenRow && /^[A-Za-z0-9_-]{1,60}$/.test(rowId) ? { to: `${page.row}${rowId}`, name: page.name } : null;
 }
 
+/**
+ * The store's cells that are safe to write from the grid: a product's name and whether it shows in the shop, a
+ * category's name. Each is written with the command its own page uses (so its rules, its history and the activity
+ * log are the same). The rest stay on their own pages: a price and a stock belong to a colour and size, an order's
+ * state sends messages and moves stock, a customer's account and consent aren't a cell's to flip.
+ */
+type StoreCommand = { to: "product" | "category"; key: string; kind: "words" | "yesNo" };
+const STORE_WRITES: Record<string, Record<string, StoreCommand>> = {
+  products: { title: { to: "product", key: "title", kind: "words" }, active: { to: "product", key: "isActive", kind: "yesNo" } },
+  categories: { name: { to: "category", key: "name", kind: "words" } },
+};
+export const STORE_NAME_MAX = 200;
+/** The columns of a store table that can be written in the grid (none for orders and customers). */
+export const storeWritables = (table: string): string[] => Object.keys(STORE_WRITES[table] ?? {});
+/**
+ * What a written store cell sends: the command, its body, and the value the cell then shows. `problem`: why it
+ * can't be sent (a name can't be empty or longer than 200 letters; shown or hidden is yes or no). Null: not a
+ * cell that is written here.
+ */
+export function storeWrite(table: string, column: string, draft: string): { to: StoreCommand["to"]; body: Record<string, unknown>; value: unknown } | { problem: string } | null {
+  const command = STORE_WRITES[table]?.[column];
+  if (!command) return null;
+  if (command.kind === "yesNo") {
+    if (draft !== "true" && draft !== "false") return { problem: "اختار نعم أو لا|Choose yes or no|יש לבחור כן או לא" };
+    return { to: command.to, body: { [command.key]: draft === "true" }, value: draft === "true" };
+  }
+  const words = draft.trim();
+  if (!words) return { problem: "الإسم ما بيصير فاضي|A name can't be empty|שם לא יכול להיות ריק" };
+  if (words.length > STORE_NAME_MAX) return { problem: `الإسم طويل: ${STORE_NAME_MAX} حرف بالكتير|The name is too long: ${STORE_NAME_MAX} letters at most|השם ארוך מדי: עד ${STORE_NAME_MAX} תווים` };
+  return { to: command.to, body: { [command.key]: words }, value: words };
+}
+
 /** The columns a filter can be asked of: the shown ones that aren't worked out, and the row's dates. */
 export function filterColumns(columns: Column[], readOnly: boolean): Column[] {
   const date = (id: SystemColumn): Column => ({ id, kind: "$date", name: SYSTEM_NAME[id] });

@@ -24,7 +24,7 @@ import { parseCsv } from "./csv";
 import { XLSX_TYPE, writeXlsx } from "./xlsx";
 import { RowDrawer } from "./RowDrawer";
 import { SQL_TYPE, sqlFile } from "./sql";
-import { LANGS, LANG_NAME, VIEW_NAME, blockersText, cellPatch, columnsOf, editable, filterColumns, filterValue, issueAbout, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, storePage, type Column } from "./dataText";
+import { LANGS, LANG_NAME, VIEW_NAME, blockersText, cellPatch, columnsOf, editable, filterColumns, filterValue, issueAbout, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, storePage, storeWritables, storeWrite, type Column } from "./dataText";
 import { RelationInput } from "./RelationInput";
 import { draftLinks } from "./kinds";
 
@@ -97,7 +97,7 @@ export default function DataPage() {
           <nav className="flex shrink-0 gap-2 overflow-x-auto lg:w-52 lg:flex-col" aria-label={say("الجداول|Tables|טבלאות")} data-testid="data-tables">
             {[
               { title: "جداولك|Your tables|הטבלאות שלך", list: mine, prefix: "data-table" },
-              { title: "جداول المتجر (للعرض)|The store's tables (to look at)|טבלאות החנות (לצפייה)", list: theirs, prefix: "store-table" },
+              { title: "جداول المتجر|The store's tables|טבלאות החנות", list: theirs, prefix: "store-table" },
             ].map((group) =>
               group.list.length ? (
                 <div key={group.prefix} className="flex shrink-0 gap-2 lg:flex-col">
@@ -182,6 +182,16 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
     },
     onError,
   });
+  // A store row's safe cell, written with the command its own page uses. Every open table is read again after it:
+  // a category's new name shows on its products.
+  const storePatch = useMutation({
+    mutationFn: (v: { row: GridRow; column: string; value: unknown; to: "product" | "category"; body: Record<string, unknown> }) => DataAPI.writeStoreCell(v.to, v.row.id, v.body),
+    onSuccess: (_out, v) => {
+      qc.setQueryData<GridPage>(key, (page) => (page ? { ...page, rows: page.rows.map((r) => (r.id === v.row.id ? { ...r, data: { ...r.data, [v.column]: v.value } } : r)) } : page));
+      void qc.invalidateQueries({ queryKey: ["data", "rows"] });
+    },
+    onError,
+  });
   const bulk = useMutation({
     mutationFn: (v: { op: BulkOp; field?: string; value?: unknown }) =>
       DataAPI.bulkRows(table.id, { ...(allMatching ? { query: { ...sent, page: 1 } } : { ids: [...picked] }), op: v.op, field: v.field, value: v.value, lang: wordsLang }),
@@ -241,6 +251,14 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
   /** One of the store's tables: the page it is changed on, and whether a row's own page opens for this member. */
   const ownPage = readOnly ? storePage(table.slug) : null;
   const mayOpenRow = table.slug !== "products" || hasPermission("catalog:write");
+  /** One of the store's tables: the cells that are safe to write here, for a member who may change the catalogue. */
+  const storeCells = readOnly && hasPermission("catalog:write") ? storeWritables(table.slug) : [];
+  const saveStoreCell = (row: GridRow, column: string, draft: string) => {
+    const write = storeWrite(table.slug, column, draft);
+    if (!write) return;
+    if ("problem" in write) return void toast.error(say(write.problem));
+    storePatch.mutate({ row, column, value: write.value, to: write.to, body: write.body });
+  };
 
   return (
     <section className={`${card} overflow-hidden`} data-testid="data-grid" data-table={table.slug}>
@@ -264,7 +282,9 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
         {readOnly ? (
           <>
             <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-white/70" data-testid="data-read-only">
-              {say("للعرض بس: التعديل من صفحته|To look at: it's changed from its own page|לצפייה בלבד: העריכה מהדף שלו")}
+              {storeCells.length
+                ? `${say("بيتعدّل هون (كبستين عالخانة):|Changed here (double-click the cell):|ניתן לשנות כאן (לחיצה כפולה על התא):")} ${columns.filter((c) => storeCells.includes(c.id)).map((c) => c.name).join(lang === "ar" ? "، " : ", ")}. ${say("الباقي من صفحته|The rest on its own page|השאר בדף שלו")}`
+                : say("للعرض بس: التعديل من صفحته|To look at: it's changed from its own page|לצפייה בלבד: העריכה מהדף שלו")}
             </span>
             {ownPage ? (
               <Link to={ownPage.to} className={btn} data-testid="data-own-page">
@@ -408,6 +428,11 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                   <th key={c.id} className="whitespace-nowrap px-3 py-2 text-start font-medium" aria-sort={s ? (s.dir === "asc" ? "ascending" : "descending") : "none"}>
                     <button type="button" className="inline-flex items-center gap-1 hover:text-white disabled:cursor-default disabled:hover:text-inherit" disabled={c.computed} title={c.computed ? say("بينحسب لكل صفحة: ما بيترتّب فيه|Worked out per page: it can't be sorted by|מחושב לכל עמוד: אי אפשר למיין לפיו") : undefined} onClick={() => change({ sort: nextSort(query.sort, c.id) })} data-testid={`sort-${c.id}`}>
                       {c.id.startsWith("$") ? say(c.name) : c.name}
+                      {storeCells.includes(c.id) ? (
+                        <span className="text-white/70" aria-hidden="true" title={say("بيتعدّل من هون: كبستين عالخانة|Changed here: double-click the cell|ניתן לשנות כאן: לחיצה כפולה על התא")} data-testid={`writable-${c.id}`}>
+                          ✎
+                        </span>
+                      ) : null}
                       {c.field?.required ? <span className="text-red-300">*</span> : null}
                       <span className="text-accent-300">{s ? (s.dir === "asc" ? "▲" : "▼") : ""}</span>
                     </button>
@@ -439,7 +464,8 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                 </td>
                 {columns.map((c) => {
                   const open = editing?.row === row.id && editing.column === c.id;
-                  const can = canWrite && !inTrash && editable(c);
+                  // One of the owner's tables: every cell that can be written. One of the store's: only its safe cells.
+                  const can = readOnly ? storeCells.includes(c.id) : canWrite && !inTrash && editable(c);
                   return (
                     <td
                       key={c.id}
@@ -462,7 +488,8 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                           onCancel={() => setEditing(null)}
                           onSave={(draft) => {
                             setEditing(null);
-                            patch.mutate({ row, body: cellPatch(c, row, wordsLang, draft) });
+                            if (readOnly) saveStoreCell(row, c.id, draft);
+                            else patch.mutate({ row, body: cellPatch(c, row, wordsLang, draft) });
                           }}
                         />
                       ) : (
