@@ -1174,6 +1174,7 @@ model CollectionItem {
   /// The rows it links (its relation fields), and the rows that link it.
   linksOut     CollectionLink[] @relation("linkFrom")
   linksIn      CollectionLink[] @relation("linkTo")
+  storeLinks   StoreLink[]      @relation("storeLinkFrom")
 
   @@unique([collectionId, slug])
   @@index([collectionId, status, sort])
@@ -1199,6 +1200,26 @@ model CollectionLink {
 
   @@id([collectionId, fieldId, fromId, toId])
   @@index([toId, collectionId, fieldId])
+  @@index([fromId])
+}
+
+/// A relation's links to the store's own rows (src/lib/storeLinks.ts): a row of one of the owner's
+/// tables links a product, a category, an order or a customer by its id. The store's tables are
+/// never written from here; a store row that is deleted simply stops showing.
+model StoreLink {
+  collectionId String
+  fieldId      String
+  fromId       String
+  from         CollectionItem @relation("storeLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  /// "products" | "categories" | "orders" | "customers"
+  toTable      String
+  toId         String
+  /// The order the row holds them in.
+  position     Int            @default(0)
+  createdAt    DateTime       @default(now())
+
+  @@id([collectionId, fieldId, fromId, toId])
+  @@index([toTable, toId])
   @@index([fromId])
 }
 

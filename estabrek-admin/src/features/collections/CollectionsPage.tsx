@@ -25,6 +25,7 @@ import { previewFields, type Impact } from "../../api/collections.api";
 import { useAuth } from "../../hooks/useAuth";
 import { ValueInput } from "../data/GridCells";
 import { KIND_NAME, draftFrom, valueFrom } from "../data/kinds";
+import { storeLinkTables } from "../data/storeLinks";
 import { listPages, updatePage } from "../../api/pages.api";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
@@ -310,8 +311,11 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
   // The tables a relation can link (this one too), by their names.
   const all = useQuery({ queryKey: ["collections"], queryFn: listCollections });
-  const tables = useMemo(() => (all.data ?? [collection]).map((c) => ({ id: c.id, name: c.id === collection.id ? `${words(c.name, lang) || c.slug} (${say("هالجدول نفسه|this table|הטבלה הזו")})` : words(c.name, lang) || c.slug })), [all.data, collection, lang]);
-  const linkTo = firstLinkable(tables, collection.id);
+  const own = useMemo(() => (all.data ?? [collection]).map((c) => ({ id: c.id, name: c.id === collection.id ? `${words(c.name, lang) || c.slug} (${say("هالجدول نفسه|this table|הטבלה הזו")})` : words(c.name, lang) || c.slug })), [all.data, collection, lang]);
+  // …and the store's own (products, categories, orders, customers), after the owner's.
+  const tables = useMemo(() => [...own, ...storeLinkTables().map((t) => ({ ...t, name: say(t.name) }))], [own]);
+  // A new relation links one of the owner's tables to begin with.
+  const linkTo = firstLinkable(own, collection.id);
   const changed = useMemo(() => JSON.stringify([fields, name, slug]) !== JSON.stringify([collection.fields, collection.name, collection.slug]), [fields, name, slug, collection]);
   const { hasPermission } = useAuth();
   /** What the change would do to the rows, waiting for a yes. */

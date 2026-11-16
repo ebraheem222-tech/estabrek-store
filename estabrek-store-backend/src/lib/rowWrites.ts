@@ -13,7 +13,7 @@ import { triggerCmsRevalidate } from "./cmsRevalidate.js";
 import { checkItemData, ITEM_SLUG, LIMITS, withDefaults } from "./collections.js";
 import { changedUnique, uniqueIssues, type Candidate } from "./uniqueValues.js";
 import { hiddenOf, shownRow } from "./schemaChange.js";
-import { checkLinks, incomingTo, linkGone, linkedFrom, relationsOf, saveLinks, splitLinks, withLinks, type Asked, type Incoming } from "./links.js";
+import { checkLinks, incomingTo, linkGone, linkedFrom, relationsOf, saveLinks, splitLinks, withLinks, type Asked, type Incoming, type LinkView } from "./links.js";
 import type { Field } from "./collectionTree.js";
 import { STATUSES } from "./dataQuery.js";
 import { LANGS, freeSlug, looseData, patchData, slugFrom, type Issue } from "./dataRows.js";
@@ -75,8 +75,8 @@ async function withCustomers<T extends { data: unknown }>(fields: Field[], rows:
  * through each relation that links this table, (`owner`) the shopper whose row it is, and
  * (`customers`) the shoppers it points at.
  */
-export async function answer<T extends { id: string; data: unknown; ownerId?: string | null }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[], opts: { owners?: "full" | "id" } = {}) {
-  const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
+export async function answer<T extends { id: string; data: unknown; ownerId?: string | null }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[], opts: { owners?: "full" | "id" } & LinkView = {}) {
+  const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)), { store: opts.store });
   const ownerIds = [...new Set(linked.map((row) => row.ownerId).filter((id): id is string => !!id))];
   const people = ownerIds.length && opts.owners === "full" ? new Map((await prisma.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, email: true } })).map((u) => [u.id, u])) : null;
   const owned = ownerIds.length ? linked.map((row) => (row.ownerId ? { ...row, owner: (people?.get(row.ownerId) ?? { id: row.ownerId }) as RowOwner } : row)) : linked;
@@ -96,7 +96,7 @@ export type Rejected = { row: number; slug: string | null; issues: Issue[] };
  * "create" refuses an address that's already used; "upsert" changes that row instead: the columns
  * given replace its values, the others stay.
  */
-export async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], opts: { mode: "create" | "upsert"; lang: (typeof LANGS)[number]; dryRun: boolean }) {
+export async function writeRows(table: { id: string; fields: Field[] }, rows: RowIn[], opts: { mode: "create" | "upsert"; lang: (typeof LANGS)[number]; dryRun: boolean; /** Who writes, when it is a member (which of the store's tables they may link). */ view?: LinkView }) {
   const rejected: Rejected[] = [];
   const given = rows.map((row) => (typeof row.slug === "string" && row.slug.trim() ? row.slug.trim().toLowerCase() : null));
   const existing = new Map(
@@ -145,7 +145,7 @@ export async function writeRows(table: { id: string; fields: Field[] }, rows: Ro
 
   // The relations: the asked rows are looked up, then each relation's own rules (one row, a row linked once, required).
   if (relationsOf(table.fields).length) {
-    const check = await checkLinks(prisma, table, [...creates.map((c) => ({ asked: c.asked })), ...updates.map((u) => ({ id: u.id, asked: u.asked }))]);
+    const check = await checkLinks(prisma, table, [...creates.map((c) => ({ asked: c.asked })), ...updates.map((u) => ({ id: u.id, asked: u.asked }))], opts.view);
     const n = creates.length;
     creates.forEach((c, k) => (c.links = check.ready[k]));
     updates.forEach((u, k) => (u.links = check.ready[n + k]));
@@ -212,10 +212,10 @@ export async function writeRows(table: { id: string; fields: Field[] }, rows: Ro
 }
 
 /** One new row; what's wrong with it is said as the routes say it. The row as the database holds it. */
-export async function addRow(table: { id: string; fields: Field[] }, row: RowIn, lang: (typeof LANGS)[number]) {
+export async function addRow(table: { id: string; fields: Field[] }, row: RowIn, lang: (typeof LANGS)[number], view?: LinkView) {
   let out: Awaited<ReturnType<typeof writeRows>>;
   try {
-    out = await writeRows(table, [row], { mode: "create", lang, dryRun: false });
+    out = await writeRows(table, [row], { mode: "create", lang, dryRun: false, view });
   } catch (e) {
     if (taken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");
     if (linkGone(e)) throw new AppError(409, "LINK_GONE", "A linked row was deleted meanwhile; try again");
@@ -233,7 +233,7 @@ export async function addRow(table: { id: string; fields: Field[] }, row: RowIn,
 export type RowChange = { slug?: string; status?: Status; sort?: number; values?: Record<string, unknown>; lang: (typeof LANGS)[number] };
 
 /** Some of a row changed; the rest stays. The row as saved. */
-export async function changeRow(table: { id: string; fields: Field[] }, was: CollectionItem, body: RowChange) {
+export async function changeRow(table: { id: string; fields: Field[] }, was: CollectionItem, body: RowChange, view?: LinkView) {
   const data: Prisma.CollectionItemUpdateInput = {};
   if (body.slug !== undefined) {
     const slug = body.slug.trim().toLowerCase();
@@ -243,7 +243,7 @@ export async function changeRow(table: { id: string; fields: Field[] }, was: Col
   // A relation's cell names the rows it links ([] unlinks): looked up and checked apart from the values.
   const split = splitLinks(table.fields, body.values, true);
   if (split.issues.length) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: split.issues });
-  const links = split.asked.size ? await checkLinks(prisma, table, [{ id: was.id, asked: split.asked }]) : null;
+  const links = split.asked.size ? await checkLinks(prisma, table, [{ id: was.id, asked: split.asked }], view) : null;
   if (links?.issues.size) throw new AppError(400, "ROW_INVALID", "Some values are wrong", { issues: links.issues.get(0) });
   if (body.values && Object.keys(split.rest).length) {
     const next = patchData(table.fields, (was.data ?? {}) as Record<string, unknown>, split.rest, body.lang);

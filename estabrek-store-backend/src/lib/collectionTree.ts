@@ -50,7 +50,7 @@ export type Field = {
   help?: Local;
   /** Money: its currency (ILS when not said). */
   currency?: string;
-  /** A relation: the table whose rows it links (that table's id; it may be its own). */
+  /** A relation: the table whose rows it links (that table's id; it may be its own), or one of the store's own tables ("store:products", "store:categories", "store:orders", "store:customers": lib/storeLinks.ts). */
   to?: string;
   /** A relation: a row may link several rows (else one). */
   many?: boolean;

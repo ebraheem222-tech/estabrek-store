@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/httpError.js";
 import type { Field, FieldType } from "./collectionTree.js";
 import type { Incoming } from "./links.js";
+import { linkedRowsSql } from "./storeLinks.js";
 import { dayStart, nextDay } from "./storeTime.js";
 
 export const OPS = ["contains", "notContains", "is", "isNot", "startsWith", "endsWith", "empty", "notEmpty", "gt", "gte", "lt", "lte", "between", "anyOf", "isTrue", "isFalse"] as const;
@@ -217,8 +218,8 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
   if (kind === "relation") {
     // Its rows are links (lib/links.ts); a linked row in the trash doesn't count.
     const to = fields.find((x) => x.id === id)?.to ?? "";
-    const linked = (more: Prisma.Sql) =>
-      Prisma.sql`EXISTS (SELECT 1 FROM "CollectionLink" lk JOIN "CollectionItem" lt ON lt."id" = lk."toId" AND lt."deletedAt" IS NULL WHERE lk."collectionId" = i."collectionId" AND lk."fieldId" = ${id} AND lk."toTable" = ${to} AND lk."fromId" = i."id"${more})`;
+    // (One of the owner's tables, or one of the store's: lib/storeLinks.ts.)
+    const linked = (more: Prisma.Sql) => Prisma.sql`EXISTS (SELECT 1 ${linkedRowsSql(to)} AND lk."collectionId" = i."collectionId" AND lk."fieldId" = ${id} AND lk."fromId" = i."id"${more})`;
     if (f.op === "empty") return Prisma.sql`NOT ${linked(Prisma.empty)}`;
     if (f.op === "notEmpty") return linked(Prisma.empty);
     return linked(Prisma.sql` AND lk."toId" IN (${Prisma.join(list(f.value, what))})`);
@@ -329,7 +330,7 @@ export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">, 
                 ? Prisma.sql`(${json(s.field)} = 'true'::jsonb)`
                 : kind === "relation"
                   ? // By how many rows it links (none last).
-                    Prisma.sql`NULLIF((SELECT count(*) FROM "CollectionLink" lk JOIN "CollectionItem" lt ON lt."id" = lk."toId" AND lt."deletedAt" IS NULL WHERE lk."collectionId" = i."collectionId" AND lk."fieldId" = ${s.field} AND lk."toTable" = ${fields.find((x) => x.id === s.field)?.to ?? ""} AND lk."fromId" = i."id"), 0)`
+                    Prisma.sql`NULLIF((SELECT count(*) ${linkedRowsSql(fields.find((x) => x.id === s.field)?.to ?? "")} AND lk."collectionId" = i."collectionId" AND lk."fieldId" = ${s.field} AND lk."fromId" = i."id"), 0)`
                   : Prisma.sql`NULLIF(${words(s.field)}, '')`;
     parts.push(Prisma.sql`${expr} ${Prisma.raw(s.dir === "desc" ? "DESC" : "ASC")} NULLS LAST`);
   }

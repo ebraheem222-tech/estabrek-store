@@ -19,6 +19,7 @@ import * as DataAPI from "../../api/data.api";
 import type { BulkOp, GridFilter, GridMeta, GridPage, GridQuery, GridRow, GridTable, Lang, View } from "../../api/data.api";
 import { CellEditor, CellView, ValueInput, field, input } from "./GridCells";
 import { ImportDialog } from "./ImportDialog";
+import { RelationDialog } from "./RelationDialog";
 import { valueFrom } from "./kinds";
 import { parseCsv } from "./csv";
 import { XLSX_TYPE, writeXlsx } from "./xlsx";
@@ -143,6 +144,9 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
   const [editing, setEditing] = useState<{ row: string; column: string } | null>(null);
   const [drawer, setDrawer] = useState<GridRow | "new" | null>(null);
   const [importing, setImporting] = useState(false);
+  /** A new relation for this table (its fields are the table's: whoever may change every table). */
+  const [linking, setLinking] = useState(false);
+  const mayLink = !readOnly && hasPermission("pages:write");
   const [confirmPurge, setConfirmPurge] = useState(false);
   const [setting, setSetting] = useState<{ field: string; value: string } | null>(null);
 
@@ -314,6 +318,11 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
           <button type="button" className={btn} onClick={() => download.mutate("sql")} disabled={download.isPending || !data?.total} data-testid="data-export-sql" title={say("ملف SQL لقاعدة بيانات (PostgreSQL)|An SQL file for a database (PostgreSQL)|קובץ SQL למסד נתונים (PostgreSQL)")}>
             {say("صدّر SQL|Export SQL|ייצוא SQL")}
           </button>
+          {mayLink && !inTrash ? (
+            <button type="button" className={btn} onClick={() => setLinking(true)} data-testid="relation-add" title={say("اربط سطور هالجدول بجدول ثاني أو بجداول المتجر|Link this table's rows to another table, or to the store's|קשר את שורות הטבלה לטבלה אחרת או לטבלאות החנות")}>
+              {say("＋ علاقة|＋ Relation|＋ קישור")}
+            </button>
+          ) : null}
           {canWrite && !inTrash ? (
             <>
               <button type="button" className={btn} onClick={() => setImporting(true)} data-testid="data-import">
@@ -564,6 +573,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
         onCancel={() => setConfirmPurge(false)}
       />
       {drawer && !readOnly ? <RowDrawer table={table} row={drawer === "new" ? null : drawer} incoming={data?.incoming} lang={lang} canWrite={canWrite} onClose={() => setDrawer(null)} onSaved={() => { setDrawer(null); refresh(); }} /> : null}
+      {linking && mayLink ? <RelationDialog table={table} lang={lang} onClose={() => setLinking(false)} onDone={() => { setLinking(false); refresh(); }} /> : null}
       {importing && !readOnly ? <ImportDialog table={table} lang={lang} wordsLang={wordsLang} batch={meta.limits.importRows} onClose={() => setImporting(false)} onDone={() => { setImporting(false); refresh(); }} /> : null}
     </section>
   );

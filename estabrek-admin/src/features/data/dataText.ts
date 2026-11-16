@@ -257,6 +257,8 @@ const ISSUE_WORDS: Record<string, string> = {
   "One row only": "هالحقل بيرتبط بسطر واحد بس|This field links one row only|השדה מקשר שורה אחת בלבד",
   "A row can't link itself": "السطر ما بيرتبط بحاله|A row can't link itself|שורה לא יכולה לקשר את עצמה",
   "Already linked from another row": "هالسطر مربوط من سطر تاني، وما بينربط إلا من واحد|Another row already links it, and it takes one only|שורה אחרת כבר מקשרת אותה, והיא מקבלת אחת בלבד",
+  // One of the store's tables this member may not see (backend lib/links.ts): what is linked stays or is let go, nothing else is picked.
+  "Linking this table's rows needs the permission to see it": "لتربط سطور هالجدول من المتجر لازم يكون معك صلاحية تشوفه. اللي مربوط بيضل، أو بتفكّه|Linking this store table's rows needs the permission to see it. What is linked stays, or can be let go|כדי לקשר שורות מטבלת החנות הזו נדרשת הרשאה לראות אותה. מה שמקושר נשאר, או ניתן לבטל",
   "Rows by their id or address": "لازم سطور (بعناوينها)|Rows are needed (by their addresses)|נדרשות שורות (לפי הכתובות שלהן)",
   "Too many linked rows": "سطور مربوطة أكتر من المسموح|More linked rows than a row can hold|יותר מדי שורות מקושרות",
   "Only one row can link this row": "هالسطر بينربط من سطر واحد بس: حدّد سطر واحد|It takes one linking row only: choose one row|היא מקבלת שורה מקשרת אחת בלבד: בחר שורה אחת",

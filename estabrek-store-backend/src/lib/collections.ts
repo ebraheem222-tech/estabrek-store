@@ -56,6 +56,8 @@ export const FieldSchema = z
   .refine((f) => f.type !== "relation" || !!f.to, "A relation needs the table it links")
   .refine((f) => f.type === "relation" || (f.to === undefined && f.many === undefined && f.exclusive === undefined && f.onDelete === undefined), "Only a relation links a table")
   .refine((f) => f.type !== "relation" || f.options === undefined, "A relation has no choices of its own")
+  // A store row's deleting is the store's own business: nothing here is deleted with it, or holds it back.
+  .refine((f) => !(typeof f.to === "string" && f.to.startsWith("store:")) || f.onDelete === undefined || f.onDelete === "unlink", "A link to the store's rows is only ever dropped")
   .refine((f) => (f.type !== "select" && f.type !== "multiSelect") || (f.options?.length ?? 0) > 0, "A choice field needs its choices")
   .refine((f) => !f.options || new Set(f.options.map((o) => o.id)).size === f.options.length, "Two choices with one id")
   .refine((f) => f.currency === undefined || f.type === "money", "Only money has a currency")

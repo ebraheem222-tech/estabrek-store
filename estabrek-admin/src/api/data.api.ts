@@ -76,7 +76,10 @@ export async function bulkRows(id: string, body: BulkBody) {
 }
 /** A few of a table's rows to pick from when linking (a relation's picker), found by their words or address. */
 export async function lookupRows(id: string, search: string) {
-  return (await api.get(`${base}/${id}/rows/lookup`, { params: search.trim() ? { search: search.trim() } : {} })).data as { rows: Linked[]; total: number };
+  // One of the store's tables ("store:products"): its own route, which asks for that table's permission.
+  const store = /^store:([a-z]+)$/.exec(id)?.[1];
+  const at = store ? `/admin/data/store/${store}/lookup` : `${base}/${id}/rows/lookup`;
+  return (await api.get(at, { params: search.trim() ? { search: search.trim() } : {} })).data as { rows: Linked[]; total: number };
 }
 export async function importRows(id: string, body: { rows: RowIn[]; mode: "create" | "upsert"; lang: Lang; dryRun: boolean }) {
   return (await api.post(`${base}/${id}/rows/import`, body)).data as ImportReport;

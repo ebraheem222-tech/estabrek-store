@@ -72,7 +72,7 @@ export function CellView({ column, row, lang }: { column: Column; row: GridRow; 
       return (
         <span className="flex max-w-[22rem] flex-wrap gap-1">
           {linkedOf(v).map((r) => (
-            <span key={r.id} className={`${chip} bg-accent-500/15`} title={r.slug}>
+            <span key={r.id} className={`${chip} ${r.hidden ? "bg-white/[0.06] text-white/55" : "bg-accent-500/15"}`} title={r.hidden ? undefined : r.slug} data-hidden={r.hidden ? "" : undefined}>
               <bdi>{linkedName(r, lang)}</bdi>
             </span>
           ))}

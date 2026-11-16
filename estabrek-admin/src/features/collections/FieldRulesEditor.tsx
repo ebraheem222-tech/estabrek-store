@@ -8,7 +8,8 @@ import type { CollectionField, FieldType } from "../../api/collections.api";
 import { KIND_NAME } from "../data/kinds";
 import { ValueInput, field as fieldBox, input } from "../data/GridCells";
 import { useState } from "react";
-import { CURRENCIES, LIMIT_NAME, LINK_KINDS, LINK_KIND_NAME, ON_DELETE, ON_DELETE_NAME, SHAPE_NAME, addChoice, defaultDraft, defaultFrom, limitFrom, linkKind, moveChoice, removeChoice, renameChoice, setLinkKind, setOnDelete, setRules, type Lang, type LinkKind, type RuleFit, type Shape } from "./fieldRules";
+import { CURRENCIES, LIMIT_NAME, LINK_KINDS, LINK_KIND_NAME, ON_DELETE, ON_DELETE_NAME, SHAPE_NAME, addChoice, defaultDraft, defaultFrom, limitFrom, linkKind, moveChoice, removeChoice, renameChoice, setLinkKind, setLinkTo, setOnDelete, setRules, type Lang, type LinkKind, type RuleFit, type Shape } from "./fieldRules";
+import { storeTarget } from "../data/storeLinks";
 
 const label = "block text-xs text-white/60";
 
@@ -28,8 +29,8 @@ export function FieldRulesEditor({
   onChange: (next: CollectionField) => void;
   /** Another kind for the field (what it does to the rows is shown before the save). */
   onRetype?: (type: FieldType) => void;
-  /** The tables a relation can link (this one too), each by its name. */
-  tables?: Array<{ id: string; name: string }>;
+  /** The tables a relation can link (this one too), each by its name; `store`: one of the store's own (products, orders…). */
+  tables?: Array<{ id: string; name: string; store?: boolean }>;
 }) {
   const set = (patch: Parameters<typeof setRules>[1]) => onChange(setRules(field, patch));
   const limit = (v: number | string | undefined) => (v === undefined ? "" : String(v));
@@ -89,26 +90,48 @@ export function FieldRulesEditor({
         <div className="grid gap-3 md:col-span-2 md:grid-cols-2" data-testid={`relation-${field.id}`}>
           <label className={label}>
             {say("الجدول اللي بيرتبط فيه|The table it links|הטבלה המקושרת")}
-            <select className={`${input} mt-1`} value={field.to ?? ""} onChange={(e) => onChange({ ...field, to: e.target.value })} data-testid={`rule-${field.id}-to`}>
+            <select className={`${input} mt-1`} value={field.to ?? ""} onChange={(e) => onChange(setLinkTo(field, e.target.value))} data-testid={`rule-${field.id}-to`}>
               {/* A table that's gone (or not chosen yet) is said, not hidden behind the first one in the list. */}
               {!(tables ?? []).some((t) => t.id === field.to) ? <option value={field.to ?? ""}>{field.to ? say("جدول مش موجود|A table that isn't there|טבלה שאינה קיימת") : "—"}</option> : null}
-              {(tables ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
+              {(tables ?? [])
+                .filter((t) => !t.store)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              {(tables ?? []).some((t) => t.store) ? (
+                <optgroup label={say("جداول المتجر|The store's tables|טבלאות החנות")}>
+                  {(tables ?? [])
+                    .filter((t) => t.store)
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ) : null}
             </select>
           </label>
-          <label className={label}>
-            {say("لما ينحذف السطر المربوط|When the linked row is deleted|כשהשורה המקושרת נמחקת")}
-            <select className={`${input} mt-1`} value={field.onDelete ?? "unlink"} onChange={(e) => onChange(setOnDelete(field, e.target.value as (typeof ON_DELETE)[number]))} data-testid={`rule-${field.id}-ondelete`}>
-              {ON_DELETE.map((v) => (
-                <option key={v} value={v}>
-                  {say(ON_DELETE_NAME[v])}
-                </option>
-              ))}
-            </select>
-          </label>
+          {storeTarget(field.to) ? (
+            // One of the store's rows: deleted there, its links are dropped and nothing else (nothing to choose).
+            <p className="self-end text-[11px] leading-5 text-white/55" data-testid={`rule-${field.id}-store-note`}>
+              {say(
+                "سطر المتجر ما بيتغيّر من هون. وإذا انحذف من المتجر، الربط بينفك لحاله وسطورك بتضل. وإسمه بيبين بس للي معه صلاحية يشوف هالجدول بالمتجر.|The store's row is never changed from here. If it is deleted in the store, the link is dropped and your rows stay. Its name shows only to who may see that table in the store.|שורת החנות אינה משתנה מכאן. אם היא נמחקת בחנות, הקישור מתבטל והשורות שלך נשארות. שמה מוצג רק למי שמורשה לראות את הטבלה הזו בחנות.",
+              )}
+            </p>
+          ) : (
+            <label className={label}>
+              {say("لما ينحذف السطر المربوط|When the linked row is deleted|כשהשורה המקושרת נמחקת")}
+              <select className={`${input} mt-1`} value={field.onDelete ?? "unlink"} onChange={(e) => onChange(setOnDelete(field, e.target.value as (typeof ON_DELETE)[number]))} data-testid={`rule-${field.id}-ondelete`}>
+                {ON_DELETE.map((v) => (
+                  <option key={v} value={v}>
+                    {say(ON_DELETE_NAME[v])}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className={`${label} md:col-span-2`}>
             {say("كيف بيرتبطوا|How they pair up|איך הן מתקשרות")}
             <select className={`${input} mt-1`} value={linkKind(field)} onChange={(e) => onChange(setLinkKind(field, e.target.value as LinkKind))} data-testid={`rule-${field.id}-pairing`}>
