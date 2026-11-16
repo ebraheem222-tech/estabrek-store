@@ -3,6 +3,8 @@
  * shopper is signed in. The shop gives its hands once it's up (components/RecipeHands.tsx, inside its providers);
  * a page without them (a test page, the editor's frame before it's ready) answers "can't".
  */
+import type { RowOut } from "./rowsSpec";
+
 export type Hands = {
   /** A product into the bag: "added", "choose" (its quick view opened to pick a colour or size), or "fail". */
   bag: (productId: string, quantity: number, from?: Element | null) => Promise<"added" | "choose" | "fail">;
@@ -27,6 +29,13 @@ export type Hands = {
    * signed-in shopper, 429 = too many, 404 = the table isn't open, 0 = the shop couldn't be reached.
    */
   row: (table: string, values: Record<string, string | number | boolean>, lang: string) => Promise<{ ok: true; value: unknown } | { ok: false; status: number; error: string; issues?: Array<{ field: string; text: string }> }>;
+  /**
+   * Reads a page of one of the owner's tables by its address (the backend's GET /v1/data/<table>?<query>), as
+   * whoever is signed in (or as anyone): the rows this visitor may read, and how many there are in all. Or why
+   * not: `status` 401 = it needs a signed-in shopper, 404 = the table isn't open, 400 = the list asks something the
+   * table can't answer, 0 = the shop couldn't be reached.
+   */
+  rows: (table: string, query: string) => Promise<{ ok: true; rows: RowOut[]; total: number } | { ok: false; status: number }>;
 };
 
 let hands: Hands | null = null;

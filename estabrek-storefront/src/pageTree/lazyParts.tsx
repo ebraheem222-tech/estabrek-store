@@ -24,6 +24,7 @@ export const SliderControls = early("./SliderControls", () => import("./SliderCo
 export const InstrumentView = early("./InstrumentView", () => import("./InstrumentView").then((m) => m.InstrumentView));
 export const ClockView = early("./ClockView", () => import("./ClockView").then((m) => m.ClockView));
 export const FormView = early("./FormView", () => import("./FormView").then((m) => m.FormView));
+export const RowsView = early("./RowsView", () => import("./RowsView").then((m) => m.RowsView));
 export const ScheduleView = early("./ReferenceDataViews", () => import("./ReferenceDataViews").then((m) => m.ScheduleView));
 export const ComparisonView = early("./ReferenceDataViews", () => import("./ReferenceDataViews").then((m) => m.ComparisonView));
 export const DeckView = early("./DeckView", () => import("./DeckView").then((m) => m.DeckView));

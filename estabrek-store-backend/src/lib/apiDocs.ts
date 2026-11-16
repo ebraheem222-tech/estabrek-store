@@ -162,7 +162,7 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
     const row = (description: string) => ({ description, content: { "application/json": { schema: ref(`${T}Row`) } } });
 
     schemas[`${T}Values`] = { type: "object", description: `A row's values in "${title}": every field, null where the row has nothing.`, properties: Object.fromEntries(fields.map((f) => [f.id, valueSchema(f)])) };
-    schemas[`${T}Row`] = { type: "object", required: ["id", "slug", "status", "values", "createdAt", "updatedAt", "publishedAt"], properties: { id: { type: "string" }, slug: { type: "string", description: "The row's address." }, status: ref("Status"), values: ref(`${T}Values`), createdAt: { type: "string", format: "date-time" }, updatedAt: { type: "string", format: "date-time" }, publishedAt: orNull({ type: "string", format: "date-time" }) } };
+    schemas[`${T}Row`] = { type: "object", required: ["id", "slug", "status", "values", "createdAt", "updatedAt", "publishedAt"], properties: { id: { type: "string" }, slug: { type: "string", description: "The row's address." }, status: ref("Status"), values: ref(`${T}Values`), createdAt: { type: "string", format: "date-time" }, updatedAt: { type: "string", format: "date-time" }, publishedAt: orNull({ type: "string", format: "date-time" }), shown: { type: "object", additionalProperties: { type: "string" }, description: "With `shown=1`: each field's words as a page shows them, in the asked language." }, links: { type: "object", additionalProperties: { type: "string" }, description: "With `shown=1`: the address a field opens (a link, an email, a phone, a file, a place)." } } };
     if (act("read")) schemas[`${T}Page`] = { type: "object", required: ["data", "page", "pageSize", "total", "pages"], properties: { data: { type: "array", items: ref(`${T}Row`) }, page: { type: "integer" }, pageSize: { type: "integer" }, total: { type: "integer", description: "Every row the question matches." }, pages: { type: "integer" } } };
     if (act("create") || act("update")) {
       const written = writtenFields(table);
@@ -180,7 +180,7 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
         summary: `A page of "${title}"`,
         description: `${says("read", "Rows filtered, sorted and searched from the address.")} Without a key only published rows are seen.\n\n${filterTable(table)}`,
         ...who("read"),
-        parameters: [param("page"), param("pageSize"), param("sort"), param("search"), param("lang"), param("status"), param("fields"), ...(table.links.size ? [param("expand")] : []), param("match"), ...(act("read") === "public" ? [param("mine")] : [])],
+        parameters: [param("page"), param("pageSize"), param("sort"), param("search"), param("lang"), param("status"), param("fields"), ...(table.links.size ? [param("expand")] : []), param("match"), ...(act("read") === "public" || act("read") === "customer" ? [param("mine")] : []), param("shown")],
         responses: { "200": { description: "A page of rows", content: { "application/json": { schema: ref(`${T}Page`) } } }, "400": answer("BadRequest"), "401": answer("Unauthorized"), "403": answer("Forbidden"), "404": answer("NotFound"), "429": answer("TooMany") },
       };
     if (act("create"))
@@ -253,7 +253,8 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
         fields: { name: "fields", in: "query", schema: { type: "string" }, description: "Only these fields, separated by commas." },
         expand: { name: "expand", in: "query", schema: { type: "string" }, description: `Relations to answer as the linked rows themselves, separated by commas (up to ${API_LIMITS.expand}).` },
         match: { name: "match", in: "query", schema: { type: "string", enum: ["all", "any"], default: "all" }, description: "Every filter, or any of them." },
-        mine: { name: "mine", in: "query", schema: { type: "string", enum: ["1"] }, description: "With a shopper's token: only that shopper's own rows, whatever their status." },
+        mine: { name: "mine", in: "query", schema: { type: "string", enum: ["1", "added", "tome"] }, description: "With a shopper's token: only that shopper's own rows, whatever their status (`1`); only the ones they added (`added`); only the ones that point at them (`tome`)." },
+        shown: { name: "shown", in: "query", schema: { type: "string", enum: ["1"] }, description: "Answers each row also as a page shows it: `shown` (each field's words in the asked language: a formatted number, date or price, a choice's name, a shopper's name) and `links` (the address a field opens)." },
       },
       responses: {
         BadRequest: fail("The question or the values are wrong (BAD_QUERY, ROW_INVALID, VALIDATION_ERROR): `message` and `details` say what."),
@@ -341,7 +342,7 @@ export function typesText(tables: DocTable[], opts: { server: string }): string 
     "export type LinkedRow<T = Words> = { id: string; slug: string; status: Status; title: T | null };",
     "/** A shopper a row points at: the email to a key; to anyone else a first name, whether it is the caller, and the email only to that shopper and to the row's owner. */",
     "export type Shopper = { name: string | null; me: boolean; email?: string };",
-    "export type Row<V> = { id: string; slug: string; status: Status; values: V; createdAt: string; updatedAt: string; publishedAt: string | null };",
+    "export type Row<V> = { id: string; slug: string; status: Status; values: V; createdAt: string; updatedAt: string; publishedAt: string | null; shown?: Record<string, string>; links?: Record<string, string> };",
     "export type Page<R> = { data: R[]; page: number; pageSize: number; total: number; pages: number };",
     "export type ApiError = { error: string; message?: string; details?: unknown };",
   ];

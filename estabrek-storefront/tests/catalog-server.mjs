@@ -802,6 +802,13 @@ const home = {
   ],
 };
 const customerState = { user: null, tokens: new Set(), refresh: new Set(), orders: [], wishlist: new Set(), addresses: [] };
+// Friend requests for a page's list (rows.spec.ts): who sent each, who it points at, and where it stands.
+const listRows = () => (globalThis.listRowsNow ??= [
+  { id: "req1", from: "lina@example.com", fromName: "Lina", to: "sara@example.com", toName: "Sara", note: "Hi Sara", state: "waiting" },
+  { id: "req2", from: "dana@example.com", fromName: "Dana", to: "sara@example.com", toName: "Sara", note: "Remember me?", state: "waiting" },
+  { id: "req3", from: "sara@example.com", fromName: "Sara Haddad", to: "noor@example.com", toName: "Noor", note: "Hello Noor", state: "waiting" },
+  { id: "req4", from: "maya@example.com", fromName: "Maya", to: "sara@example.com", toName: "Sara", note: "Old friends", state: "accepted" },
+]);
 function wishlistItems() {
   return [...customerState.wishlist].map((id) => {
     const p = [...products, extra].find((x) => x.id === id);
@@ -1514,6 +1521,14 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         }
         // It stops by itself, with its own words.
         if (address === "full") return send(422, { ok: false, error: "You already asked her" });
+        // A request sent to the shopper, accepted by its id (rows.spec.ts): only the one it points at may.
+        if (address === "accept") {
+          const row = listRows().find((r) => r.id === input.id);
+          if (!shopper) return send(401, { error: "SIGN_IN_NEEDED", message: "This needs a signed-in shopper" });
+          if (!row || row.to !== shopper.email) return send(422, { ok: false, error: "This request isn't yours" });
+          row.state = "accepted";
+          return send(200, { ok: true, value: { $id: row.id, from: row.fromName } });
+        }
         if (address === "busy") return send(429, { error: "RATE_LIMIT", message: "Too many requests this minute" });
         return send(404, { error: "NOT_FOUND", message: "No such address" });
       });
@@ -1523,6 +1538,50 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       const calls = globalThis.fnCalls ?? [];
       if (req.method === "POST") globalThis.fnCalls = [];
       return res.end(JSON.stringify({ calls }));
+    }
+    // The owner's tables, read by a page's list in the visitor's browser (rows.spec.ts): stand-ins for the backend's
+    // GET /v1/data/<table>?shown=1. Each reading is remembered with who asked (/__test/list-rows; POST starts over).
+    if (pathname.startsWith("/v1/data/") && req.method === "GET") {
+      const q = new URL(req.url, "http://localhost").searchParams;
+      const send = (status, payload) => { res.statusCode = status; res.end(JSON.stringify(payload)); };
+      const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
+      const shopper = bearer && customerState.tokens.has(bearer) ? customerState.user : null;
+      const table = decodeURIComponent(pathname.slice("/v1/data/".length));
+      (globalThis.listReads ??= []).push({ table, query: Object.fromEntries(q), shopper: shopper?.email ?? null });
+      const page = Number(q.get("page") || 1);
+      const size = Number(q.get("pageSize") || 25);
+      const answer = (rows) => send(200, { data: rows.slice((page - 1) * size, page * size), page, pageSize: size, total: rows.length, pages: Math.ceil(rows.length / size) });
+      // Friend requests: a shopper's own rows only (the ones she added, the ones pointing at her), by their state.
+      if (table === "friend-requests") {
+        if (!shopper) return send(401, { error: "SIGN_IN_NEEDED", message: "This needs a signed-in shopper" });
+        const mine = q.get("mine");
+        const state = q.get("state[is]");
+        const rows = listRows().filter((r) => (mine === "tome" ? r.to === shopper.email : mine === "added" ? r.from === shopper.email : r.to === shopper.email || r.from === shopper.email) && (!state || r.state === state));
+        return answer(rows.map((r) => ({
+          id: r.id, slug: r.id, status: "DRAFT",
+          values: { note: r.note, state: r.state, to: { name: r.to === shopper.email ? "Sara Haddad" : r.toName, me: r.to === shopper.email } },
+          shown: { note: r.note, state: r.state === "accepted" ? "Accepted" : "Waiting", to: r.to === shopper.email ? "Sara Haddad" : r.toName, ...(r.fromName ? { $by: r.fromName } : {}) },
+          links: {},
+        })));
+      }
+      // Notes everyone reads: words, a picture, a link, and a page of its own for the published one.
+      if (table === "notes") {
+        const n = Number(q.get("pageSize") || 25) && 5;
+        return answer(Array.from({ length: n }, (_, i) => ({
+          id: `note${i + 1}`, slug: `note-${i + 1}`, status: i === 0 ? "PUBLISHED" : "DRAFT",
+          values: { title: `Note ${i + 1}`, photo: i === 1 ? null : `/templates/photo-${(i % 3) + 1}.svg`, site: i === 0 ? "/shop" : "https://example.com/n" },
+          shown: { title: `Note ${i + 1}`, price: `₪${(i + 1) * 10}.00` },
+          links: i === 2 ? {} : { site: i === 0 ? "/shop" : "https://example.com/n" },
+        })));
+      }
+      if (table === "nothing") return answer([]);
+      if (table === "broken") return send(400, { error: "BAD_QUERY", message: "No column \"gone\" in this table" });
+      return send(404, { error: "NOT_FOUND", message: "No such table, or it isn't open" });
+    }
+    if (pathname === "/__test/list-rows") {
+      const reads = globalThis.listReads ?? [];
+      if (req.method === "POST") { globalThis.listReads = []; globalThis.listRowsNow = null; }
+      return res.end(JSON.stringify({ reads, rows: listRows() }));
     }
     // The owner's tables, written by a page's form (forms.spec.ts): stand-ins for the backend's POST /v1/data/<table>.
     // Rows that were taken are remembered with who added them (/__test/data-rows; POST forgets them).

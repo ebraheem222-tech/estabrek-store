@@ -36,6 +36,7 @@ import type { SliderWords } from "./SliderControls";
 import { sliderSettings, sliderLooksOf } from "./sliderEffects";
 import { instrumentOf } from "./instrument";
 import { formOf } from "./formSpec";
+import { liveOf, rowBind } from "./rowsSpec";
 import { ChartView } from "./ChartView";
 import { FilterGalleryBlock } from "./FilterGalleryBlock";
 import { scheduleOf, comparisonOf } from "./referenceData";
@@ -49,7 +50,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, InstrumentView, Model3dSpot, PopupView, ProductDetail, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, InstrumentView, Model3dSpot, PopupView, ProductDetail, RowsView, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 
 export type TreeCtx = {
@@ -73,6 +74,11 @@ export type TreeCtx = {
   product?: CatalogProduct;
   /** The page's first picture, loaded first (tree.ts leadImageOf). */
   lead?: string;
+  /**
+   * Drawn as the card of a list read in the visitor's browser (rowsSpec.ts): its connected elements are marked for
+   * the row's values, and nothing in it waits for the motion engine (the copies are drawn after the page).
+   */
+  inRows?: boolean;
 };
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
@@ -120,7 +126,13 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const world = (WORLD_HOSTS as readonly string[]).includes(node.type) ? worldOf(p.world) : null;
   const body = bodyOf(p.body);
   const physicsMarks = { ...(motion?.physics ? { "data-pt-physics": "" } : {}), ...(world && !world.baked ? { "data-pt-world": JSON.stringify(world) } : {}), ...(body ? { "data-pt-body": JSON.stringify(body) } : {}) };
-  const mark = { ...perfMarks(perf, endless), ...physicsMarks, "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
+  // In a list's card (copied for each row after the page is drawn) the engines' marks are left out: a copy the
+  // motion engine never met would wait for it for ever.
+  const live = !ctx.inRows;
+  const mark = { ...perfMarks(perf, endless), ...(live ? physicsMarks : {}), "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion && live ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue && live ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 && live ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
+  // What the row fills in each copy of the card: the element's connections to the table's fields (rowsSpec.ts).
+  const row = ctx.inRows ? rowBind(p.bind) : {};
+  const rowWords = (ref: string | undefined, content: ReactNode) => (ref ? <span data-pt-row-text={ref}>{content}</span> : content);
   // Its two extra layers (behind its content, or in front), drawn when it has a look or keyframes for them.
   const layers = layersOf(p.layers);
   const piece = (part: "before" | "after") => (layers?.[part] || motion?.keys?.parts[part] ? <span className={`pt-pc pt-pc-${part}${layers?.[part]?.front ? " pt-pc-front" : ""}`} aria-hidden="true" /> : null);
@@ -234,18 +246,24 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "grid":
     case "stack":
     case "columns":
-    case "cell":
+    case "cell": {
+      // A list read in the visitor's browser (rowsSpec.ts): its card is drawn once, unseen, and RowsView copies it
+      // for each row the table's API answers this visitor.
+      const list = node.type === "grid" ? liveOf(p.live, say) : null;
+      const card = list ? node.children?.[0] : undefined;
+      if (list) return <div className={cls(node)} {...mark}>{before}{card ? <RowsView spec={list} lang={ctx.lang} signin={link("/account") ?? "/account"} prefix={(link("/__row__") ?? "/__row__").replace(/\/__row__$/, "")}><TreeNodeView node={card} ctx={{ ...ctx, inRows: true }} /></RowsView> : null}{fx}{after}</div>;
       return <div className={cls(node)} {...mark}>{kids()}</div>;
+    }
     case "heading": {
       const level = Math.min(6, Math.max(1, Number(p.level) || 2));
       const H = `h${level}` as "h2";
       // Words along a curve (focus mode, shared/textCurve.ts) instead of a straight line.
       const curve = safeCurve(p.curve);
-      return <H className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(words(p.text))}{fx}{after}</H>;
+      return <H className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(rowWords(row.text, words(p.text)))}{fx}{after}</H>;
     }
     case "text": {
       const curve = safeCurve(p.curve);
-      return <p className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(words(p.text))}{fx}{after}</p>;
+      return <p className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(rowWords(row.text, words(p.text)))}{fx}{after}</p>;
     }
     case "image": {
       const src = safeSrc(p.src);
@@ -259,24 +277,24 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const img = framed(node, motion) ? (
         <span className={cls(node, "pt-frame")} {...mark} data-pt-glfx={glfx ? JSON.stringify(glfx) : undefined}>
           {before}
-          <img className="pt-frame-media" src={src} alt={say(p.alt)} {...load} decoding="async" />
+          <img className="pt-frame-media" src={src} alt={say(p.alt)} {...load} decoding="async" data-pt-row-src={row.src} data-pt-row-alt={row.alt} />
           {fx}
           {sparkle ? <SparkleLayer sparkle={sparkle} /> : null}
           {after}
         </span>
       ) : (
-        <img className={cls(node)} {...mark} src={src} alt={say(p.alt)} {...load} decoding="async" />
+        <img className={cls(node)} {...mark} src={src} alt={say(p.alt)} {...load} decoding="async" data-pt-row-src={row.src} data-pt-row-alt={row.alt} />
       );
-      const to = link(p.href);
-      return to ? <a className="pt-image-link" href={to} {...(p.newTab === true ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{img}</a> : img;
+      const to = link(p.href) ?? (row.href ? "#" : null);
+      return to ? <a className="pt-image-link" href={to} data-pt-row-href={row.href} {...(p.newTab === true ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{img}</a> : img;
     }
     case "button": {
       const to = link(p.href);
       const variant = ["solid", "outline", "link"].includes(p.variant) ? p.variant : "solid";
       return (
-        <a className={cls(node, `pt-btn pt-btn-${variant}`)} {...mark} href={to ?? "#"} {...(p.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+        <a className={cls(node, `pt-btn pt-btn-${variant}`)} {...mark} href={to ?? "#"} data-pt-row-href={row.href} {...(p.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
           {before}
-          {inner(words(p.label))}
+          {inner(rowWords(row.label, words(p.label)))}
           {fx}
           {after}
         </a>
@@ -305,6 +323,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
           preload={play.preload}
           {...(play.noDownload ? { controlsList: "nodownload" } : {})}
           {...(play.live ? { "data-pt-video": JSON.stringify(play.live) } : {})}
+          data-pt-row-src={row.src}
         />
       );
       return inFrame ? (

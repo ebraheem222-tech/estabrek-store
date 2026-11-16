@@ -21,7 +21,7 @@
  */
 import { CODE_LIMITS, cssProblem } from "./cssCode.js";
 import { TOKEN_REF } from "./designTokens.js";
-import { BIND_REF } from "./collectionTree.js";
+import { BIND_REF, LIST_FEEDS, LIST_LIMITS, LIST_OPS } from "./collectionTree.js";
 import { z } from "zod";
 import { checkArt, isArtPath, type Art } from "./svgArt.js";
 import { isEase } from "./motionEase.js";
@@ -1152,6 +1152,12 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     sort: z.enum(["newest", "oldest", "order", "title"]).optional(),
     columns: z.number().int().min(1).max(6).optional(),
     empty: local(300).optional(),
+    // Whose rows: none = the published ones, drawn with the page. Else the list is read in the visitor's browser
+    // from the table's own API (lib/collectionTree.ts LIST_FEEDS), with a few filters, and words for a visitor
+    // who isn't signed in.
+    feed: z.enum(LIST_FEEDS).optional(),
+    where: z.array(z.object({ field: z.string().regex(/^[a-z][a-zA-Z0-9]{0,30}$/), op: z.enum(LIST_OPS), value: z.string().max(LIST_LIMITS.value).optional() }).strict()).max(LIST_LIMITS.filters).optional(),
+    signin: local(200).optional(),
   }),
   component: z.object({
     componentId: id,

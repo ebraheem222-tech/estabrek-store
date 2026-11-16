@@ -3,6 +3,9 @@
  * (sessionStorage, this tab), at most 40 of them. A text shows one with {{name}}, or {{name|what to show before
  * it is set}}: TreeNodeView draws each as a <span data-pt-var>, filled and kept up to date here. Messages and
  * copied words fill them in too.
+ *
+ * Inside a row of a list read in the browser (RowsView.tsx), the row's own values come first: {{row_id}},
+ * {{row_<field>}} (rowsSpec.ts rowScope). They live with the row's element, never in the visit's variables.
  */
 import { createElement, Fragment, type ReactNode } from "react";
 import type { VarValue } from "./pieces";
@@ -92,10 +95,23 @@ export function compareVar(now: VarValue | undefined, cmp: string, value?: VarVa
   return cmp === "gt" ? a > b : cmp === "lt" ? a < b : cmp === "gte" ? a >= b : cmp === "lte" ? a <= b : false;
 }
 
-/** A text with its {{name}} filled in. */
-export function fillVars(text: string): string {
+/** A row's own values, kept with its element (a list read in the browser repeats its card once per row). */
+const rowScopes = new WeakMap<Element, Record<string, VarValue>>();
+export function setRowScope(row: Element, values: Record<string, VarValue>) {
+  rowScopes.set(row, values);
+}
+/** The values of the row an element is in; null outside one. */
+export function rowScopeOf(el: Element | null): Record<string, VarValue> | null {
+  const row = el?.closest("[data-pt-row]");
+  return (row && rowScopes.get(row)) || null;
+}
+/** A variable as an element in a row sees it: the row's own value first. */
+export const scopedVar = (name: string, scope?: Record<string, VarValue> | null): VarValue | undefined => (scope && name in scope ? scope[name] : getVar(name));
+
+/** A text with its {{name}} filled in (`scope`: the row's own values, which come first). */
+export function fillVars(text: string, scope?: Record<string, VarValue> | null): string {
   return text.replace(VAR_TOKEN, (_, name: string, fallback?: string) => {
-    const v = getVar(name);
+    const v = scopedVar(name, scope);
     return v === undefined ? fallback ?? "" : String(v);
   });
 }

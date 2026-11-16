@@ -91,7 +91,7 @@ import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPa
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
 import { ComponentDocPanel, ComponentInstancePanel, detached, MakeComponentPanel, newInstance, placeOnly, useComponents } from "./ComponentsPanel";
-import { BindPanel, bindContext, CollectionListPanel, useCollections } from "./CollectionsStudio";
+import { BindPanel, bindContext, CollectionListPanel, inLiveList, useCollections } from "./CollectionsStudio";
 import { newCollectionList } from "../features/collections/collectionForms";
 import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
 import { ConvertAllPanel, ConvertPanel } from "./ConvertPanel";
@@ -3351,7 +3351,7 @@ function StudioDocument() {
             {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
             {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
             {selFree.type === "collectionList" ? <CollectionListPanel node={selFree} collections={collectionsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("قائمة المجموعة|Collection list|רשימת אוסף"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null}
-            {(() => { const c = index ? bindContext(index, selFree.id, { id, kind: pageQ.data?.kind }, collectionsQ.data) : null; return c ? <BindPanel key={`bind:${selFree.id}`} node={selFree} collection={c} lang={shopLang} busy={busy} onProps={(props) => void change(say("ربط بحقل|Connect to a field|חיבור לשדה"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null; })()}
+            {(() => { const c = index ? bindContext(index, selFree.id, { id, kind: pageQ.data?.kind }, collectionsQ.data) : null; return c ? <BindPanel key={`bind:${selFree.id}`} node={selFree} collection={c} lang={shopLang} busy={busy} live={!!index && inLiveList(index, selFree.id)} onProps={(props) => void change(say("ربط بحقل|Connect to a field|חיבור לשדה"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null; })()}
             {selFree.type === "component" ? <ComponentInstancePanel node={selFree} components={componentsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("نسخة المكوّن|Component instance|מופע רכיב"), [{ op: "setProps", nodeId: selFree.id, props }])} onEdit={(cid) => window.location.assign(`/studio/${encodeURIComponent(cid)}?from=${encodeURIComponent(id)}`)} onDetach={(variant) => detachInstance(selFree, variant)} /> : null}
             {selFree.type === "svg" ? <SvgPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
