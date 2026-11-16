@@ -266,7 +266,8 @@ export function draftOf(column: Column, row: GridRow, lang: Lang): string {
   if (column.id === "$slug") return row.slug;
   if (column.id === "$status") return row.status;
   const v = row.data?.[column.id];
-  if (column.kind === "text" || column.kind === "longText") return v && typeof v === "object" ? ((v as Record<string, string>)[lang] ?? "") : "";
+  // The owner's tables hold words per language; the store's own hold them plain.
+  if (column.kind === "text" || column.kind === "longText") return typeof v === "string" ? v : v && typeof v === "object" ? ((v as Record<string, string>)[lang] ?? "") : "";
   return column.field ? draftFrom(column.field, v) : v === undefined || v === null ? "" : String(v);
 }
 

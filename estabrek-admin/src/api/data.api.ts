@@ -2,6 +2,7 @@
 // a table's rows a page at a time, filtered, sorted and searched by the server, cells, many rows at
 // once, the trash, and CSV in and out. A table is a collection (collections.api.ts).
 import { api } from "./http";
+import { updateCategory, updateProduct } from "./catalog.api";
 import type { Collection, CollectionField, CollectionItem, FieldType, ItemStatus, Linked, Local } from "./collections.api";
 
 export type Lang = "ar" | "en" | "he";
@@ -84,6 +85,14 @@ export async function importRows(id: string, body: { rows: RowIn[]; mode: "creat
 export async function storeTables() {
   const data = (await api.get("/admin/data/store")).data;
   return (Array.isArray(data) ? data : []) as GridTable[];
+}
+/**
+ * One of a store row's safe cells (a product's name or whether it shows, a category's name), written with the
+ * command its own page uses: the catalogue's own route, with its rules, its history and the activity log.
+ */
+export async function writeStoreCell(to: "product" | "category", id: string, body: Record<string, unknown>) {
+  if (to === "product") await updateProduct(id, body);
+  else await updateCategory(id, body);
 }
 export async function getStoreRows(table: string, query: GridQuery) {
   return (await api.get(`/admin/data/store/${table}/rows`, q(query))).data as GridPage;

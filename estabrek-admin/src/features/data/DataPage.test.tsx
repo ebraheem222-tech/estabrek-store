@@ -19,11 +19,13 @@ const m = vi.hoisted(() => ({
   storeTables: vi.fn(),
   getStoreRows: vi.fn(),
   exportStoreRows: vi.fn(),
+  writeStoreCell: vi.fn(),
+  toastError: vi.fn(),
 }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
 vi.mock("../../api/collections.api", () => ({ listCollections: m.listCollections }));
-vi.mock("../../api/data.api", () => ({ gridMeta: m.gridMeta, getRows: m.getRows, patchRow: m.patchRow, bulkRows: m.bulkRows, addRow: m.addRow, importRows: m.importRows, exportRows: m.exportRows, storeTables: m.storeTables, getStoreRows: m.getStoreRows, exportStoreRows: m.exportStoreRows }));
-vi.mock("../../lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+vi.mock("../../api/data.api", () => ({ gridMeta: m.gridMeta, getRows: m.getRows, patchRow: m.patchRow, bulkRows: m.bulkRows, addRow: m.addRow, importRows: m.importRows, exportRows: m.exportRows, storeTables: m.storeTables, getStoreRows: m.getStoreRows, exportStoreRows: m.exportStoreRows, writeStoreCell: m.writeStoreCell }));
+vi.mock("../../lib/toast", () => ({ toast: { success: vi.fn(), error: m.toastError, info: vi.fn() } }));
 vi.mock("../../components/media/MediaLibraryModal", () => ({ MediaLibraryModal: () => null }));
 
 import { setLangForTests } from "../../lib/lang";
@@ -85,6 +87,26 @@ const orders: GridTable = {
   ],
 };
 const orderRows = [row("or2", { customer: "Lina", total: 120, state: "SHIPPED", pieces: 1 }, { status: "PUBLISHED" }), row("or1", { customer: "Sara", total: 100, state: "NEW", pieces: 2 }, { status: "PUBLISHED" })];
+/** The store's products as the grid knows them: plain words, a yes/no, a price worked out per page. */
+const storeProducts: GridTable = {
+  id: "$products",
+  slug: "products",
+  name: { en: "Products" },
+  templateId: null,
+  items: 2,
+  published: 2,
+  createdAt: "",
+  updatedAt: "",
+  readOnly: true,
+  hasAddress: true,
+  fields: [
+    { id: "title", type: "text", name: { en: "Name" } },
+    { id: "category", type: "text", name: { en: "Category" } },
+    { id: "active", type: "boolean", name: { en: "Shown in the shop" } },
+    { id: "price", type: "number", name: { en: "Price from" }, computed: true },
+  ],
+};
+const productRows = [row("coat", { title: "Red coat", category: "Coats", active: true, price: 120 }, { status: "PUBLISHED" }), row("hat", { title: "Hat", category: "Hats", active: false }, { status: "PUBLISHED" })];
 const lastQuery = () => m.getRows.mock.calls[m.getRows.mock.calls.length - 1][1];
 /** What a download handed the browser: the file's name and its words. */
 function downloads() {
@@ -302,6 +324,75 @@ describe("The data grid", () => {
     expect(file).toContain('"id" TEXT PRIMARY KEY,');
     expect(file).toContain('"created_at" TIMESTAMPTZ');
     expect(file).toContain("('or2', 'Lina', 120, 'SHIPPED', 1, '2026-11-01T10:00:00.000Z');");
+  });
+
+  test("a store table's safe cells: a product's name and whether it shows, written with its own page's command", async () => {
+    m.may = new Set(["pages:read", "catalog:read", "catalog:write"]);
+    m.storeTables.mockResolvedValue([storeProducts]);
+    // A stand-in for the catalogue: what its command writes is what the grid reads next.
+    let kept = productRows;
+    m.getStoreRows.mockImplementation(async () => page({ rows: kept, total: 2, counts: { all: 2, draft: 0, published: 0, archived: 0, trash: 0 } }));
+    m.writeStoreCell.mockImplementation(async (_to: string, id: string, body: { title?: string; isActive?: boolean }) => {
+      kept = kept.map((r) => (r.id === id ? { ...r, data: { ...r.data, ...(body.title !== undefined ? { title: body.title } : {}), ...(body.isActive !== undefined ? { active: body.isActive } : {}) } } : r));
+    });
+    show("/admin/data?store=products");
+    await screen.findByTestId("row-coat");
+    // Which cells are written here is said, and marked on their columns; the rest aren't.
+    expect(screen.getByTestId("data-read-only").textContent).toBe("Changed here (double-click the cell): Name, Shown in the shop. The rest on its own page");
+    expect(screen.getByTestId("writable-title")).toBeTruthy();
+    expect(screen.getByTestId("writable-active")).toBeTruthy();
+    expect(screen.queryByTestId("writable-category")).toBeNull();
+    expect(screen.queryByTestId("writable-price")).toBeNull();
+
+    // The name: the box opens with the words as they are (a store row's words are plain), and saves on Enter.
+    fireEvent.doubleClick(screen.getByTestId("cell-coat-title"));
+    const box = screen.getByTestId("cell-editor") as HTMLInputElement;
+    expect(box.value).toBe("Red coat");
+    fireEvent.change(box, { target: { value: "  Crimson coat  " } });
+    const reads = m.getStoreRows.mock.calls.length;
+    fireEvent.keyDown(box, { key: "Enter" });
+    await waitFor(() => expect(m.writeStoreCell).toHaveBeenCalledWith("product", "id-coat", { title: "Crimson coat" }));
+    // The cell shows it, and the page is read again from the server.
+    await waitFor(() => expect(screen.getByTestId("cell-coat-title").textContent).toBe("Crimson coat"));
+    await waitFor(() => expect(m.getStoreRows.mock.calls.length).toBeGreaterThan(reads));
+
+    // Shown in the shop: one press.
+    fireEvent.doubleClick(screen.getByTestId("cell-hat-active"));
+    fireEvent.change(screen.getByTestId("cell-editor"), { target: { value: "true" } });
+    await waitFor(() => expect(m.writeStoreCell).toHaveBeenCalledWith("product", "id-hat", { isActive: true }));
+    await waitFor(() => expect(screen.getByTestId("cell-hat-active").textContent).toBe("✓"));
+
+    // An emptied name isn't sent: it says why.
+    fireEvent.doubleClick(screen.getByTestId("cell-hat-title"));
+    fireEvent.change(screen.getByTestId("cell-editor"), { target: { value: "   " } });
+    fireEvent.keyDown(screen.getByTestId("cell-editor"), { key: "Enter" });
+    await waitFor(() => expect(m.toastError).toHaveBeenCalledWith("A name can't be empty"));
+    expect(m.writeStoreCell).toHaveBeenCalledTimes(2);
+
+    // The category and the price stay on the product's own page.
+    fireEvent.doubleClick(screen.getByTestId("cell-coat-category"));
+    expect(screen.queryByTestId("cell-editor")).toBeNull();
+    fireEvent.doubleClick(screen.getByTestId("cell-coat-price"));
+    expect(screen.queryByTestId("cell-editor")).toBeNull();
+    // Still no rows added, imported or opened in the row's window.
+    expect(screen.queryByTestId("row-add")).toBeNull();
+    expect(screen.queryByTestId("data-import")).toBeNull();
+    expect(m.patchRow).not.toHaveBeenCalled();
+  });
+
+  test("a member who may only look at the catalogue writes nothing in the store's tables", async () => {
+    m.may = new Set(["pages:read", "pages:write", "catalog:read"]);
+    m.storeTables.mockResolvedValue([storeProducts]);
+    m.getStoreRows.mockImplementation(async () => page({ rows: productRows, total: 2, counts: { all: 2, draft: 0, published: 0, archived: 0, trash: 0 } }));
+    show("/admin/data?store=products");
+    await screen.findByTestId("row-coat");
+    expect(screen.getByTestId("data-read-only").textContent).toBe("To look at: it's changed from its own page");
+    expect(screen.queryByTestId("writable-title")).toBeNull();
+    fireEvent.doubleClick(screen.getByTestId("cell-coat-title"));
+    expect(screen.queryByTestId("cell-editor")).toBeNull();
+    // A product's own page is for whoever may change products.
+    expect(screen.queryByTestId("own-page-coat")).toBeNull();
+    expect(m.writeStoreCell).not.toHaveBeenCalled();
   });
 
   test("one of the store's own tables: looked at, filtered and sorted, never written", async () => {

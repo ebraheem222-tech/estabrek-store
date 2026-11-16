@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { CollectionField } from "../../api/collections.api";
 import type { ColumnKind, GridRow, Op } from "../../api/data.api";
 import { parseCsv, separatorOf } from "./csv";
-import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, sheetCells, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, storePage, targetName, targetsOf, withWords } from "./dataText";
+import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, sheetCells, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, storePage, storeWritables, storeWrite, targetName, targetsOf, withWords } from "./dataText";
 
 // The data grid's pure parts: columns, questions, cells, and a CSV file's columns matched to the table's.
 
@@ -195,6 +195,28 @@ describe("A CSV file", () => {
     // Never an address made of anything but an id.
     expect(storePage("orders", "../settings")).toBeNull();
     expect(storePage("blog")).toBeNull();
+  });
+
+  test("the store's safe cells: which they are, and what each sends to its own page's command", () => {
+    expect(storeWritables("products")).toEqual(["title", "active"]);
+    expect(storeWritables("categories")).toEqual(["name"]);
+    // An order's state and a customer's account stay on their own pages.
+    expect(storeWritables("orders")).toEqual([]);
+    expect(storeWritables("customers")).toEqual([]);
+    expect(storeWrite("products", "title", "  Silk shawl ")).toEqual({ to: "product", body: { title: "Silk shawl" }, value: "Silk shawl" });
+    expect(storeWrite("products", "active", "false")).toEqual({ to: "product", body: { isActive: false }, value: false });
+    expect(storeWrite("products", "active", "true")).toEqual({ to: "product", body: { isActive: true }, value: true });
+    expect(storeWrite("categories", "name", "شالات")).toEqual({ to: "category", body: { name: "شالات" }, value: "شالات" });
+    // What can't be sent says why.
+    expect(storeWrite("products", "title", "   ")).toEqual({ problem: expect.stringContaining("A name can't be empty") });
+    expect(storeWrite("categories", "name", "x".repeat(201))).toEqual({ problem: expect.stringContaining("200") });
+    expect(storeWrite("products", "active", "")).toEqual({ problem: expect.stringContaining("Choose yes or no") });
+    // Nothing else is written here, whatever is asked.
+    expect(storeWrite("products", "price", "5")).toBeNull();
+    expect(storeWrite("products", "category", "Hats")).toBeNull();
+    expect(storeWrite("orders", "state", "SHIPPED")).toBeNull();
+    expect(storeWrite("customers", "state", "SUSPENDED")).toBeNull();
+    expect(storeWrite("blog", "title", "x")).toBeNull();
   });
 
   test("the export's lines as a sheet's cells: numbers and yes/no by their field; the formula guard comes off", () => {
