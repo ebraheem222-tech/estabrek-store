@@ -205,7 +205,7 @@ describe("The builder", () => {
     type("step-do.0-input-who", "Amal");
     type("step-do.0-as", "said");
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("Greet ← said");
-    expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "email", "whatsapp", "sms", "http"]);
+    expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "email", "whatsapp", "sms", "ready", "http"]);
     pick("steps-fail-add", "notify");
     expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "said", "error"]);
     type("step-fail.0-title", "It failed: {{error}}");
@@ -327,6 +327,70 @@ describe("The builder", () => {
     fireEvent.click(screen.getByTestId("step-do.0-head"));
     pick("step-do.0-method", "GET");
     expect(screen.queryByTestId("step-do.0-body")).toBeNull();
+  });
+
+  test("a step through a ready connection: picked from a menu, with what its kind asks for; no address and no key", async () => {
+    const outside = {
+      sites: [],
+      secrets: [],
+      ready: [{ id: "c1", name: "Store alerts", kind: "telegram", set: ["chat"] }, { id: "c2", name: "Team", kind: "slack", set: [] }, { id: "c3", name: "Bare bot", kind: "telegram", set: [] }],
+      kinds: [
+        { kind: "telegram", label: "Telegram", actions: [{ id: "message", fields: [{ id: "chat", required: true, long: false, or: "chat" }, { id: "text", required: true, long: true }] }] },
+        { kind: "slack", label: "Slack", actions: [{ id: "message", fields: [{ id: "text", required: true, long: true }] }] },
+      ],
+    };
+    m.getFunctions.mockImplementation(async () => ({ ...listOf([lite(server), greet]), outside }));
+    server = full({ draft: { inputs: [{ name: "name", type: "text" }], do: [] } });
+    show();
+    await screen.findByTestId("fn-editor");
+    // It is offered first under "Outside the store".
+    expect([...screen.getByTestId("steps-do-add").querySelectorAll('optgroup[label="Outside the store"] option')].map((o) => o.getAttribute("value"))).toEqual(["ready", "http"]);
+    pick("steps-do-add", "ready");
+    expect(screen.getByTestId("step-do.0").getAttribute("data-open")).toBe("true");
+    // The first connection is picked: each by its service and the owner's name for it.
+    expect((screen.getByTestId("step-do.0-via") as HTMLSelectElement).value).toBe("c1");
+    expect([...screen.getByTestId("step-do.0-via").querySelectorAll("option")].map((o) => o.textContent)).toEqual(["Telegram · Store alerts", "Slack · Team", "Telegram · Bare bot"]);
+    // Its kind does one thing: nothing to choose there.
+    expect(screen.queryByTestId("step-do.0-what")).toBeNull();
+    // The connection has a usual chat, so the step may leave it out; the message is the step's to write.
+    expect((screen.getByTestId("step-do.0-give-chat") as HTMLInputElement).placeholder).toBe("empty = the connection's usual one");
+    expect(screen.getByTestId("step-do.0-give-chat").closest("div.flex.flex-wrap")?.querySelector("span")?.textContent).toBe("To which chat");
+    type("step-do.0-give-text", "New order from ");
+    pick("step-do.0-give-text-names", "input.name");
+    expect((screen.getByTestId("step-do.0-give-text") as HTMLTextAreaElement).value).toBe("New order from {{input.name}}");
+    type("step-do.0-as", "sent");
+    expect(screen.getByTestId("step-do.0-line").textContent).toBe("Store alerts · New order from {{input.name}} ← sent");
+    expect(screen.getByTestId("step-do.0-ready-note").textContent).toContain("No address and no key in this step");
+    // Nothing in the step lets a secret in.
+    expect(screen.queryByTestId("step-do.0-url-secrets")).toBeNull();
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastDraft().do[0]).toEqual({ act: "ready", via: "c1", what: "message", give: { text: "New order from {{input.name}}" }, as: "sent" }));
+    // A connection with no usual chat: the step must say which.
+    pick("step-do.0-via", "c3");
+    expect((screen.getByTestId("step-do.0-give-chat") as HTMLInputElement).placeholder).toBe("");
+    expect(screen.getByTestId("step-do.0-give-chat").closest("div.flex.flex-wrap")?.querySelector("span")?.textContent).toBe("To which chat *");
+    // The same kind: what was written stays. Another kind asks for other things.
+    expect((screen.getByTestId("step-do.0-give-text") as HTMLTextAreaElement).value).toBe("New order from {{input.name}}");
+    type("step-do.0-give-chat", "@orders");
+    pick("step-do.0-via", "c2");
+    expect(screen.queryByTestId("step-do.0-give-chat")).toBeNull();
+    expect((screen.getByTestId("step-do.0-give-text") as HTMLTextAreaElement).value).toBe("");
+    type("step-do.0-give-text", "hi team");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastDraft().do[0]).toEqual({ act: "ready", via: "c2", what: "message", give: { text: "hi team" }, as: "sent" }));
+  });
+
+  test("with no ready connection the step says where one is made; one that was deleted is said on the step", async () => {
+    server = full({ draft: { inputs: [], do: [{ act: "ready", via: "gone", what: "message", give: { text: "hi" } }] }, problems: [{ at: "do.0", message: "This connection isn't there any more" }] });
+    show();
+    expect((await screen.findByTestId("step-do.0-problems")).textContent).toBe("This connection isn't there any more");
+    fireEvent.click(screen.getByTestId("step-do.0-head"));
+    expect(screen.getByTestId("step-do.0-via").querySelector("option")?.textContent).toBe("A deleted connection");
+    expect(screen.getByTestId("step-do.0-ready-none").textContent).toContain("No ready connections yet (Telegram, Slack)");
+    expect(within(screen.getByTestId("step-do.0-ready-none")).getByRole("link").getAttribute("href")).toBe("/admin/connections");
+    // A new one starts with nothing picked.
+    pick("steps-do-add", "ready");
+    expect(screen.getByTestId("step-do.1-via").querySelector("option")?.textContent).toBe("Pick a connection");
   });
 
   test("a call with no site allowed yet says so; a site that isn't allowed is said on the step", async () => {

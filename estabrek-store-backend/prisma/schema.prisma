@@ -558,6 +558,22 @@ model FnSecret {
   updatedAt   DateTime  @updatedAt
 }
 
+/// A ready connection (F5, src/lib/fnReady.ts; admin → الاتصالات والأسرار): a service the owner
+/// connected once (Telegram, Slack; the kinds are in src/lib/fnKinds.ts). Its key is kept
+/// encrypted and no route answers it; a function's "ready" step picks the connection by its id.
+model FnConnection {
+  id          String    @id @default(cuid())
+  kind        String
+  name        String    @unique
+  sealed      String
+  /// The kind's own settings (Telegram: the chat it usually writes to). Plain values, no key.
+  settings    Json      @default("{}")
+  createdById String?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 /// A feature the owner built (M, admin → ميزاتي): a name over things made elsewhere in the studio
 /// (tables, functions, pages), to find them together and to switch them off together
 /// (src/lib/featureGate.ts).

@@ -129,6 +129,12 @@ export type CallIn = {
   /** Checked as a real call is, and not made. */
   dry?: boolean;
   ms?: number;
+  /**
+   * A ready connection's call (lib/fnReady.ts): the sites and secrets it may use are these and
+   * nothing of the owner's own list, so its key can't be named by another step and its site isn't
+   * opened to one.
+   */
+  grant?: { sites: string[]; secrets: Record<string, { sealed: string; sites: string[] }> };
 };
 export type CallOut = { /** What was called, without its secrets: "POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage". */ line: string; dry: boolean; status: number; ok: boolean; /** The answer read as JSON when the site says it is, else its words. */ body: unknown; type: string; cut: boolean };
 
@@ -161,7 +167,7 @@ function valueOf(written: unknown, scope: Scope, secret: (name: string) => strin
  * its words) when the site isn't one the owner allowed, a secret isn't for it, or it didn't answer.
  */
 export async function callSite(input: CallIn): Promise<CallOut> {
-  const a = await allowed();
+  const a = input.grant ? { sites: input.grant.sites, secrets: new Map(Object.entries(input.grant.secrets)) } : await allowed();
   const hole = (name: string) => `{{secret.${name}}}`;
   // The address as it is said: the run's names filled in (each as one piece of an address), the secrets still named.
   const shown = textOf(input.url, input.scope, hole, encodeURIComponent).trim();
@@ -235,6 +241,6 @@ export async function callSite(input: CallIn): Promise<CallOut> {
       parsed = text;
     }
   }
-  if (values.size) void prisma.fnSecret.updateMany({ where: { name: { in: [...values.keys()] } }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
+  if (values.size && !input.grant) void prisma.fnSecret.updateMany({ where: { name: { in: [...values.keys()] } }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
   return { line, dry: false, status: got.status, ok: got.status >= 200 && got.status < 300, body: parsed, type: got.type.split(";")[0].trim().slice(0, 100), cut: got.cut };
 }

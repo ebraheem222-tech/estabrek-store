@@ -1,6 +1,6 @@
 // الـ Functions: the pages' words, apart from the pages so they can be tested. Written in the
 // three languages side by side ("عربي|English|עברית").
-import type { Cmp, Cond, FnInput, FnLite, FnTable, FnTrigger, Step, StepKind, TraceLine, TriggerKind, Val } from "../../api/functions.api";
+import type { Cmp, Cond, FnInput, FnLite, FnTable, FnTrigger, Outside, Step, StepKind, TraceLine, TriggerKind, Val } from "../../api/functions.api";
 import { fromVal, tableName } from "./fnDraft";
 
 export type Lang = "ar" | "en" | "he";
@@ -42,6 +42,7 @@ export const ACT_NAME: Record<StepKind, string> = {
   call: "نادي function تانية|Call another function|קריאה לפונקציה אחרת",
   code: "كود JavaScript|JavaScript code|קוד JavaScript",
   http: "اتصال بموقع|Call a site|קריאה לאתר",
+  ready: "ابعت باتصال جاهز|Send through a connection|שליחה דרך חיבור מוכן",
   stop: "وقّف وقول ليش|Stop, saying why|עצירה עם סיבה",
   return: "رجّع جواب|Give back an answer|החזרת תשובה",
   notify: "جرس بالأدمن|Ring the admin's bell|התראה בניהול",
@@ -95,7 +96,7 @@ export function condsLine(conds: Cond[] | undefined, match: "all" | "any" | unde
 }
 
 /** A step in one line, for when it is closed. */
-export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[] }, lang: Lang): string {
+export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside }, lang: Lang): string {
   const table = (id: string) => tableName(ctx.tables.find((t) => t.id === id), lang) || part("جدول؟|table?|טבלה?", lang);
   const kept = (as?: string) => (as ? ` ← ${as}` : "");
   switch (s.act) {
@@ -120,6 +121,11 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[] }, lan
       // The site and the way in, without what is asked after "?" (a key may sit there).
       const where = s.url.replace(/^https:\/\//i, "").split("?")[0];
       return `${s.method} ${short(where && where !== s.url ? where : s.url, 60)}${kept(s.as)}`;
+    }
+    case "ready": {
+      const c = ctx.outside?.ready?.find((x) => x.id === s.via);
+      const said = short(s.give?.text ?? Object.values(s.give ?? {})[0] ?? "", 50);
+      return `${c ? c.name : part("اتصال؟|connection?|חיבור?", lang)}${said === "—" ? "" : ` · ${said}`}${kept(s.as)}`;
     }
     case "code": {
       // Its first line that says something (not a remark).
@@ -191,6 +197,10 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^The secret "(.+)" isn't for "(.+)"$/, "السر «{1}» مش لـ «{2}» (مواقعه بتتغيّر من «الاتصالات والأسرار»)|The secret “{1}” isn't for “{2}” (its sites are changed in “Connections & secrets”)|הסוד «{1}» לא מיועד ל«{2}» (משנים את האתרים שלו ב«חיבורים וסודות»)"],
   [/^"(.+)" isn't a secret's name$/, "«{1}» مش اسم سر|“{1}” isn't a secret's name|«{1}» אינו שם של סוד"],
   [/^A secret is only named in a step that calls a site$/, "السر بينكتب اسمه بس بخطوة «اتصال بموقع»|A secret is only named in a “call a site” step|סוד נקרא בשמו רק בשלב «קריאה לאתר»"],
+  [/^Pick a connection$/, "اختار اتصال|Pick a connection|יש לבחור חיבור"],
+  [/^This connection isn't there any more$/, "هالاتصال ما عاد موجود|This connection isn't there any more|החיבור הזה כבר לא קיים"],
+  [/^"(.+)" can't do this$/, "«{1}» ما بيعمل هالشي|“{1}” can't do this|«{1}» לא יכול לעשות את זה"],
+  [/^The chat is empty$/, "لأي محادثة؟ (الاتصال ما إله محادثة معتادة)|To which chat? (the connection has no usual one)|לאיזה צ׳אט? (לחיבור אין צ׳אט רגיל)"],
   [/^The code is empty$/, "الكود فاضي|The code is empty|הקוד ריק"],
   [/^The code can't be read: (.+) \(line (\d+)\)$/, "الكود فيه غلطة كتابة: {1} (السطر {2})|The code has a mistake in its writing: {1} (line {2})|יש טעות בכתיבת הקוד: {1} (שורה {2})"],
   [/^The code can't be read: (.+)$/, "الكود فيه غلطة كتابة: {1}|The code has a mistake in its writing: {1}|יש טעות בכתיבת הקוד: {1}"],
@@ -233,6 +243,8 @@ const SAID: Record<string, string> = {
   ran: "الكود اشتغل ({0} ميلي ثانية)|Ran the code ({0} ms)|הקוד רץ ({0} מ״ש)",
   answered: "{0} جاوب {1}|{0} answered {1}|{0} ענה {1}",
   wouldCall: "كان رح يتصل: {0}|Would call {0}|הייתה נעשית קריאה: {0}",
+  used: "انبعت عبر {0}|Sent through {0}|נשלח דרך {0}",
+  wouldUse: "كان رح ينبعت عبر {0}|Would send through {0}|היה נשלח דרך {0}",
   returned: "رجّع جوابه|Gave back its answer|החזיר את תשובתו",
   yes: "نعم|Yes|כן",
   no: "لا|No|לא",
@@ -247,7 +259,14 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   [/^The code gave back a promise: it runs straight through, without await$/, "الكود رجّع promise: هو بيشتغل مرة وحدة للآخر، بدون await|The code gave back a promise: it runs straight through, without await|הקוד החזיר promise: הוא רץ ברצף, בלי await"],
   [/^The code gave back more than (\d+) KB$/, "الكود رجّع أكتر من {1} كيلوبايت|The code gave back more than {1} KB|הקוד החזיר יותר מ-{1} ק״ב"],
   [/^The code is handed more than (\d+) KB$/, "اللي بينعطى للكود أكتر من {1} كيلوبايت|The code is handed more than {1} KB|לקוד ניתנים יותר מ-{1} ק״ב"],
+  // A ready connection's "no", with the service's own words for why (the owner's name for it first: it is theirs to read).
+  [/^(\S+) "(.+)" answered (\d+): (.+)$/, "«{2}» ({1}) جاوب {3}: {4}|{1} “{2}” answered {3}: {4}|«{2}» ({1}) ענה {3}: {4}"],
+  [/^(\S+) "(.+)" answered (\d+)$/, "«{2}» ({1}) جاوب {3}|{1} “{2}” answered {3}|«{2}» ({1}) ענה {3}"],
   [/^(.+) answered (\d+)$/, "{1} جاوب {2}|{1} answered {2}|{1} ענה {2}"],
+  [/^This connection isn't there any more$/, "هالاتصال ما عاد موجود|This connection isn't there any more|החיבור הזה כבר לא קיים"],
+  [/^The chat is empty$/, "ما في محادثة ينبعتلها|There is no chat to send it to|אין צ׳אט לשלוח אליו"],
+  [/^The text is empty$/, "النص فاضي|The text is empty|הטקסט ריק"],
+  [/^A secret is only named in a step that calls a site$/, "السر بينكتب اسمه بس بخطوة «اتصال بموقع»|A secret is only named in a “call a site” step|סוד נקרא בשמו רק בשלב «קריאה לאתר»"],
   [/^"(.+)" isn't among the allowed sites$/, "«{1}» مش من المواقع المسموحة|“{1}” isn't among the allowed sites|«{1}» לא נמצא בין האתרים המותרים"],
   [/^The secret "(.+)" isn't for "(.+)"$/, "السر «{1}» مش لـ «{2}»|The secret “{1}” isn't for “{2}”|הסוד «{1}» לא מיועד ל«{2}»"],
   [/^No secret called "(.+)"$/, "ما في سر اسمه «{1}»|No secret called “{1}”|אין סוד בשם «{1}»"],

@@ -1,4 +1,6 @@
 // الاتصالات والأسرار (F5): what the owner's functions may reach outside the store.
+// - Ready connections: a service connected once (Telegram, Slack), which a step then picks from
+//   a menu. No address and no key is written in a function.
 // - The sites a function's "call a site" step may call. Nothing else is called.
 // - The keys of outside services. A key is written here and never shown again: a step names it
 //   ({{secret.TELEGRAM_TOKEN}}) and the server puts it into the request, only to the sites it is for.
@@ -14,7 +16,9 @@ import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as API from "../../api/connections.api";
-import type { Connections, Secret } from "../../api/connections.api";
+import type { Connections, Ready, ReadyKind, ReadyTry, Secret } from "../../api/connections.api";
+import { failText } from "../functions/fnText";
+import { keyLooks, keyName, kindHow, kindName, settingHint, settingName } from "./readyText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -33,7 +37,22 @@ export function refusalText(e: unknown): string {
   if (data?.error === "SITE_INVALID") return say("الموقع بينكتب باسمه: api.example.com، أو ‎*.example.com لكل الأسماء تحته|A site is written by its name: api.example.com, or *.example.com for every name under it|אתר נכתב בשמו: api.example.com, או ‎*.example.com לכל השמות שמתחתיו");
   if (data?.error === "SECRET_TAKEN") return say("في سر بهالاسم. غيّر قيمته من سطره|A secret has this name already. Give it a new value on its own line|כבר יש סוד בשם הזה. אפשר לתת לו ערך חדש בשורה שלו");
   if (data?.error === "SECRET_USED") return `${say("في functions بتستعمله:|Functions use it:|פונקציות משתמשות בו:")} ${(data.details?.functions ?? []).join("، ")}`;
+  if (data?.error === "CONNECTION_USED") return `${say("في functions بتستعمله:|Functions use it:|פונקציות משתמשות בו:")} ${(data.details?.functions ?? []).join("، ")}`;
+  if (data?.error === "CONNECTION_TAKEN") return say("في اتصال بهالاسم. اختار اسم تاني|A connection has this name already. Pick another name|כבר יש חיבור בשם הזה. בחרו שם אחר");
+  if (data?.error === "KEY_INVALID") return say("المفتاح مش بالشكل اللي بتعطيه هالخدمة. انسخه متل ما هو، بدون زيادة|The key doesn't look like the one this service gives. Copy it as it is, with nothing added|המפתח לא נראה כמו זה שהשירות הזה נותן. העתיקו אותו כמו שהוא, בלי תוספות");
+  if (data?.error === "SETTING_INVALID") return say("الإعداد قيمة قصيرة عادية، بدون {{ }}|A setting is a short plain value, with no {{ }} in it|הגדרה היא ערך קצר ורגיל, בלי {{ }}");
+  if (data?.error === "TOO_MANY_CONNECTIONS") return say("وصلت لأكتر عدد من الاتصالات الجاهزة|That is as many ready connections as there can be|זה מספר החיבורים המוכנים המרבי");
   return getApiErrorMessage(e);
+}
+
+/** What trying a connection's key came to, in a line. */
+export function triedText(out: ReadyTry): string {
+  const lang = adminLang();
+  if (out.ok) return out.said ? `${say("شغّال:|It works:|עובד:")} ${out.said}` : out.sends ? say("انبعتت رسالة تجربة: شوفها هناك|A test line was sent: look for it there|נשלחה שורת ניסיון: חפשו אותה שם") : say("شغّال|It works|עובד");
+  const why = out.why ? failText(out.why, lang) : "";
+  // The service's own word for it ("Unauthorized", "no_team") says little: what it means for the owner.
+  const unknown = out.status === 401 || out.status === 404 ? ` ${say("الخدمة ما بتعرف هالمفتاح: تأكد إنه منسوخ كامل وما انلغى.|The service doesn't know this key: check that it was copied whole and wasn't revoked.|השירות לא מכיר את המפתח הזה: בדקו שהוא הועתק במלואו ולא בוטל.")}` : "";
+  return `${say("ما زبط|It didn't work|זה לא הצליח")}${out.status ? ` (${out.status})` : ""}${why ? `: ${why}.` : "."}${unknown}`;
 }
 
 function SitesPick({ sites, value, onChange, disabled, testid }: { sites: string[]; value: string[]; onChange: (next: string[]) => void; disabled?: boolean; testid: string }) {
@@ -109,6 +128,109 @@ function SecretRow({ secret, sites, canWrite, busy, onSave, onRemove }: { secret
   );
 }
 
+/** A kind's settings as inputs: each a short plain value. */
+function SettingsInputs({ kind, value, onChange, testid }: { kind: ReadyKind; value: Record<string, string>; onChange: (next: Record<string, string>) => void; testid: string }) {
+  return (
+    <>
+      {kind.settings.map((s) => (
+        <label key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="w-36 shrink-0 text-xs text-white/70">{settingName(kind.kind, s.id)}</span>
+          <input className={`${field} min-w-[12rem] flex-1`} dir="ltr" value={value[s.id] ?? ""} maxLength={s.max} placeholder={settingHint(kind.kind, s.id)} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`} />
+        </label>
+      ))}
+    </>
+  );
+}
+
+function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Ready; kind: ReadyKind | undefined; canWrite: boolean; busy: boolean; onSave: (body: { name?: string; key?: string; settings?: Record<string, string> }) => void; onRemove: () => void }) {
+  const lang = adminLang();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(ready.name);
+  const [key, setKey] = useState("");
+  const [settings, setSettings] = useState(ready.settings);
+  const [tried, setTried] = useState<ReadyTry | null>(null);
+  const trying = useMutation({
+    mutationFn: () => API.tryReady(ready.id, say("✅ المتجر صار موصول بهالقناة.|✅ The store is now connected to this channel.|✅ החנות מחוברת עכשיו לערוץ הזה.")),
+    onSuccess: setTried,
+    onError: (e) => setTried({ ok: false, status: 0, said: null, why: getApiErrorMessage(e), sends: !!kind?.test.sends }),
+  });
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === "ar" ? "ar" : lang === "he" ? "he-IL" : "en-GB", { dateStyle: "medium", timeStyle: "short" }) : null);
+  const kept = Object.entries(ready.settings).filter(([, v]) => v);
+  const t = `ready-${ready.id}`;
+  return (
+    <li className="space-y-2 py-3" data-testid={t} data-kind={ready.kind} data-name={ready.name}>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-xs">{kindName(ready.kind, kind?.label)}</span>
+            <bdi>{ready.name}</bdi>
+          </div>
+          {kept.length ? (
+            <div className={note}>
+              {kept.map(([id, v]) => (
+                <span key={id}>
+                  {settingName(ready.kind, id)}: <bdi dir="ltr">{v}</bdi>{" "}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <div className={note} data-testid={`${t}-used`}>
+            {ready.usedBy.length ? `${say("بتستعمله:|Used by:|בשימוש על ידי:")} ${ready.usedBy.join("، ")}` : say("ولا function بتستعمله لسا|No function uses it yet|אף פונקציה עוד לא משתמשת בו")}
+            {" · "}
+            {ready.lastUsedAt ? `${say("آخر مرة انبعت:|Last sent:|נשלח לאחרונה:")} ${when(ready.lastUsedAt)}` : say("ما انبعت ولا مرة|Never sent|מעולם לא נשלח")}
+          </div>
+        </div>
+        {canWrite ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <button type="button" className="underline disabled:opacity-60" disabled={trying.isPending} onClick={() => trying.mutate()} data-testid={`${t}-try`}>
+              {kind?.test.sends ? say("ابعت رسالة تجربة|Send a test line|שליחת שורת ניסיון") : say("جرّب المفتاح|Try the key|בדיקת המפתח")}
+            </button>
+            <button type="button" className="underline" onClick={() => setOpen(!open)} data-testid={`${t}-edit`}>
+              {say("غيّره|Change it|שינוי")}
+            </button>
+            <button type="button" className="text-red-300 underline" onClick={onRemove} data-testid={`${t}-remove`}>
+              {say("احذفه|Delete it|מחיקה")}
+            </button>
+          </div>
+        ) : null}
+      </div>
+      {tried ? (
+        <div className={`text-sm ${tried.ok ? "text-emerald-300" : "text-red-300"}`} role="status" data-testid={`${t}-tried`} data-ok={tried.ok}>
+          {triedText(tried)}
+        </div>
+      ) : null}
+      {open && kind ? (
+        <div className="space-y-2 rounded-xl border border-white/10 p-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="w-36 shrink-0 text-xs text-white/70">{say("اسمه عندك|Your name for it|השם שלו אצלך")}</span>
+            <input className={`${field} min-w-[12rem] flex-1`} dir="auto" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} data-testid={`${t}-name`} />
+          </label>
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="w-36 shrink-0 text-xs text-white/70">{keyName(kind.kind)}</span>
+            <input className={`${field} min-w-[12rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={key} placeholder={say("فاضي = بيضل متل ما هو|empty = it stays as it is|ריק = נשאר כמו שהוא")} onChange={(e) => setKey(e.target.value)} data-testid={`${t}-key`} />
+          </label>
+          <SettingsInputs kind={kind} value={settings} onChange={setSettings} testid={`${t}-setting`} />
+          <Button
+            size="sm"
+            variant="secondary"
+            isLoading={busy}
+            disabled={!name.trim()}
+            onClick={() => {
+              onSave({ ...(name.trim() !== ready.name ? { name: name.trim() } : {}), ...(key.trim() ? { key: key.trim() } : {}), settings });
+              setKey("");
+              setOpen(false);
+              setTried(null);
+            }}
+            data-testid={`${t}-save`}
+          >
+            {say("احفظ|Save|שמירה")}
+          </Button>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 export default function ConnectionsPage() {
   const qc = useQueryClient();
   const canWrite = useAuth().hasPermission("connections:write");
@@ -118,6 +240,11 @@ export default function ConnectionsPage() {
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  // A new ready connection, as it is being written.
+  const [newKind, setNewKind] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newKey, setNewKey] = useState("");
+  const [newSettings, setNewSettings] = useState<Record<string, string>>({});
 
   const took = (data: Connections) => {
     qc.setQueryData(["connections"], data);
@@ -130,6 +257,10 @@ export default function ConnectionsPage() {
   if (q.isLoading) return <Spinner />;
   if (q.isError || !q.data) return <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div>;
   const { sites, secrets, limits } = q.data;
+  // (A server from before ready connections says nothing of them: the page shows the rest.)
+  const ready = q.data.ready ?? [];
+  const kinds = q.data.kinds ?? [];
+  const kind = kinds.find((k) => k.kind === newKind) ?? kinds[0];
   const hosts = sites.map((s) => s.host);
   const tidy = tidySite(host);
   const secretName = tidySecretName(name);
@@ -147,6 +278,88 @@ export default function ConnectionsPage() {
           </Link>
         </p>
       </div>
+
+      {kinds.length ? (
+        <section className={box} data-testid="connections-ready">
+          <h2 className="font-medium">{say("اتصالات جاهزة|Ready connections|חיבורים מוכנים")}</h2>
+          <p className={`mt-1 ${note}`}>
+            {say(
+              "خدمة بتوصلها مرة وحدة بمفتاحها، وبعدها أي function بتختارها من قائمة بخطوة «ابعت باتصال جاهز»: بدون عنوان ولا مفتاح بالخطوة. المفتاح بينكتب مرة وما بينعرض بعدها لحدا.|A service you connect once with its key; after that any function picks it from a menu in a “send through a connection” step, with no address and no key in the step. The key is written once and shown to nobody after that.|שירות שמחברים פעם אחת עם המפתח שלו; אחר כך כל פונקציה בוחרת אותו מתפריט בשלב «שליחה דרך חיבור מוכן», בלי כתובת ובלי מפתח בשלב. המפתח נכתב פעם אחת ולא מוצג אחר כך לאף אחד.",
+            )}
+          </p>
+          <ul className="mt-3 divide-y divide-white/10">
+            {ready.map((c) => (
+              <ReadyRow
+                key={c.id}
+                ready={c}
+                kind={kinds.find((k) => k.kind === c.kind)}
+                canWrite={canWrite}
+                busy={change.isPending}
+                onSave={(body) => change.mutate(() => API.saveReady(c.id, body))}
+                onRemove={async () => {
+                  if (await confirm({ title: say("حذف الاتصال|Delete the connection|מחיקת החיבור"), message: say(`«${c.name}» بينحذف، ومفتاحه ما بيرجع.|“${c.name}” is deleted, and its key can't be brought back.|«${c.name}» יימחק, ואת המפתח שלו לא ניתן לשחזר.`), confirmText: say("احذفه|Delete it|מחיקה"), variant: "danger" })) change.mutate(() => API.removeReady(c.id));
+                }}
+              />
+            ))}
+          </ul>
+          {!ready.length ? <p className="mt-2 text-sm text-white/70" data-testid="ready-empty">{say("ما في اتصالات جاهزة لسا.|No ready connections yet.|עדיין אין חיבורים מוכנים.")}</p> : null}
+          {canWrite && kind ? (
+            <form
+              className="mt-3 space-y-2 rounded-xl border border-white/10 p-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newName.trim() || !newKey.trim()) return;
+                const settings = Object.fromEntries(Object.entries(newSettings).filter(([id, v]) => v.trim() && kind.settings.some((s) => s.id === id)));
+                // Refused (a key that isn't one, a name that is taken): what was typed stays, to be mended.
+                change.mutate(() => API.addReady({ kind: kind.kind, name: newName.trim(), key: newKey.trim(), settings }), {
+                  onSuccess: () => {
+                    setNewName("");
+                    setNewKey("");
+                    setNewSettings({});
+                  },
+                });
+              }}
+              data-testid="ready-form"
+            >
+              <div className="text-sm font-medium">{say("اتصال جديد|A new connection|חיבור חדש")}</div>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={say("الخدمة|The service|השירות")}>
+                {kinds.map((k) => (
+                  <button
+                    key={k.kind}
+                    type="button"
+                    role="radio"
+                    aria-checked={k.kind === kind.kind}
+                    className={`rounded-lg border px-3 py-1.5 text-sm ${k.kind === kind.kind ? "border-white/40 bg-white/10" : "border-white/10"}`}
+                    onClick={() => {
+                      setNewKind(k.kind);
+                      setNewKey("");
+                      setNewSettings({});
+                    }}
+                    data-testid={`ready-new-kind-${k.kind}`}
+                  >
+                    {kindName(k.kind, k.label)}
+                  </button>
+                ))}
+              </div>
+              <p className={note} data-testid="ready-new-how">
+                {kindHow(kind.kind)}
+              </p>
+              <label className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-36 shrink-0 text-xs text-white/70">{say("اسمه عندك|Your name for it|השם שלו אצלך")}</span>
+                <input className={`${field} min-w-[12rem] flex-1`} dir="auto" value={newName} maxLength={60} placeholder={say("تنبيهات المتجر|Store alerts|התראות החנות")} onChange={(e) => setNewName(e.target.value)} data-testid="ready-new-name" />
+              </label>
+              <label className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-36 shrink-0 text-xs text-white/70">{keyName(kind.kind)}</span>
+                <input className={`${field} min-w-[12rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={newKey} placeholder={keyLooks(kind.kind)} onChange={(e) => setNewKey(e.target.value)} data-testid="ready-new-key" />
+              </label>
+              <SettingsInputs kind={kind} value={newSettings} onChange={setNewSettings} testid="ready-new-setting" />
+              <Button size="sm" variant="secondary" type="submit" disabled={!newName.trim() || !newKey.trim() || ready.length >= (limits.ready ?? 20)} isLoading={change.isPending} data-testid="ready-add">
+                {say("＋ وصّل الخدمة|＋ Connect the service|＋ חיבור השירות")}
+              </Button>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className={box} data-testid="connections-sites">
         <h2 className="font-medium">{say("المواقع المسموحة|Allowed sites|אתרים מותרים")}</h2>
@@ -183,8 +396,8 @@ export default function ConnectionsPage() {
             onSubmit={(e) => {
               e.preventDefault();
               if (!siteOk(tidy)) return;
-              change.mutate(() => API.addSite({ host: tidy }));
-              setHost("");
+              // What was typed stays until the server took it.
+              change.mutate(() => API.addSite({ host: tidy }), { onSuccess: () => setHost("") });
             }}
           >
             <input className={`${field} min-w-[14rem] flex-1`} dir="ltr" value={host} placeholder="api.telegram.org" onChange={(e) => setHost(e.target.value)} aria-label={say("اسم الموقع|The site's name|שם האתר")} data-testid="site-new" />
@@ -226,10 +439,13 @@ export default function ConnectionsPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!secretNameOk(secretName) || !value || !picked.length) return;
-                change.mutate(() => API.addSecret({ name: secretName, value, sites: picked }));
-                setName("");
-                setValue("");
-                setPicked([]);
+                change.mutate(() => API.addSecret({ name: secretName, value, sites: picked }), {
+                  onSuccess: () => {
+                    setName("");
+                    setValue("");
+                    setPicked([]);
+                  },
+                });
               }}
               data-testid="secret-form"
             >

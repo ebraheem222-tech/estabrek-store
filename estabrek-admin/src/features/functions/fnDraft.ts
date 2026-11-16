@@ -1,7 +1,7 @@
 // الـ Functions: the builder's own sums, apart from the page so they can be tested. A function's
 // steps are a tree (a question and a loop hold steps of their own); a step is named by its way
 // in, the same way the server names it: ["do", 2, "else", 0] is "do.2.else.0".
-import type { FnDef, FnField, FnLite, FnTable, GroupStep, PlainStep, Step, StepKind, Val } from "../../api/functions.api";
+import type { FnDef, FnField, FnLite, FnTable, GroupStep, Outside, PlainStep, Step, StepKind, Val } from "../../api/functions.api";
 
 export type Path = Array<string | number>;
 export const atOf = (path: Path) => path.join(".");
@@ -13,13 +13,13 @@ export const GROUPS: Array<{ key: "data" | "control" | "out" | "outside" | "code
   { key: "data", acts: ["find", "get", "add", "change", "delete"] },
   { key: "control", acts: ["if", "each", "set", "call", "stop", "return"] },
   { key: "out", acts: ["notify", "email", "whatsapp", "sms"] },
-  // A call to a site outside the store: only one the owner allowed.
-  { key: "outside", acts: ["http"] },
+  // Outside the store: through a service the owner connected, or a call to a site the owner allowed.
+  { key: "outside", acts: ["ready", "http"] },
   // For what the steps can't say: JavaScript, run in a cage on the server.
   { key: "code", acts: ["code"] },
 ];
 /** After a failure a function tells someone or writes it down, nothing else. */
-export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set", "http"];
+export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set", "ready", "http"];
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
 export const RESERVED = ["input", "now", "error", "index", "caller", "secret"];
 export const nameOk = (name: string) => NAME.test(name) && !RESERVED.includes(name);
@@ -79,7 +79,7 @@ function keep(have: Map<string, Known>, s: Step) {
   else if ((s.act === "add" || s.act === "change") && s.as) have.set(s.as, { name: s.as, kind: "row", table: s.table });
   else if (s.act === "set" && nameOk(s.name) && !have.has(s.name)) have.set(s.name, { name: s.name, kind: "value" });
   else if ((s.act === "call" || s.act === "code") && s.as) have.set(s.as, { name: s.as, kind: "value" });
-  else if (s.act === "http" && s.as) have.set(s.as, { name: s.as, kind: "answer" });
+  else if ((s.act === "http" || s.act === "ready") && s.as) have.set(s.as, { name: s.as, kind: "answer" });
 }
 
 /**
@@ -179,8 +179,11 @@ export function namesUsed(def: FnDef): string[] {
   return out;
 }
 
+/** What a kind of ready connection does first (each has one thing it does, for now: "message"). */
+export const firstAction = (outside: Outside | undefined, kind: string | undefined) => outside?.kinds?.find((k) => k.kind === kind)?.actions[0]?.id ?? "message";
+
 /** A fresh step of a kind, with what it needs to start from. */
-export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; def: FnDef; /** What a new code step starts with (a few lines saying how it works). */ code?: string }): Step {
+export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; def: FnDef; /** What a new code step starts with (a few lines saying how it works). */ code?: string; /** The ready connections and their kinds: a new "ready" step starts on the first one. */ outside?: Outside }): Step {
   const table = ctx.tables[0]?.id ?? "";
   const free = (base: string) => freeName(base, [...namesUsed(ctx.def), ...RESERVED, "item"]);
   switch (act) {
@@ -206,6 +209,10 @@ export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; 
       return { act, code: ctx.code ?? "return input;", give: {}, as: free("result") };
     case "http":
       return { act, method: "POST", url: "https://", as: free("answer") };
+    case "ready": {
+      const first = ctx.outside?.ready?.[0];
+      return { act, via: first?.id ?? "", what: firstAction(ctx.outside, first?.kind), give: {} };
+    }
     case "stop":
       return { act, message: "" };
     case "return":

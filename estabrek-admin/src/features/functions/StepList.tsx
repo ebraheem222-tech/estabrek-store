@@ -7,7 +7,8 @@ import { HTTP_METHODS, type Cond, type Filter, type FnDef, type FnLite, type FnT
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { STATUS_NAME, SYSTEM_NAME, kindOf, opName, opNeeds } from "../data/dataText";
-import { FAIL_ACTS, GROUPS, addStep, atOf, fieldName, freeName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
+import { FAIL_ACTS, GROUPS, addStep, atOf, fieldName, firstAction, freeName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
+import { actionName, fieldName as readyField, kindName } from "../connections/readyText";
 import { ACT_NAME, ALONE, CMP_NAME, CODE_START, GROUP_NAME, SET_OP, codeNote, condsLine, problemText, stepLine } from "./fnText";
 
 export type Builder = {
@@ -27,7 +28,7 @@ export type Builder = {
   /** The limits of the cage a code step runs in, and its code's length, as the server says them. */
   cage?: { ms: number; memoryMb: number };
   codeMax?: number;
-  /** What a "call a site" step may reach: the allowed sites and the secrets' names. */
+  /** What a step may reach outside: the ready connections, the allowed sites and the secrets' names. */
   outside?: Outside;
 };
 const BuilderContext = createContext<Builder | null>(null);
@@ -620,6 +621,79 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
         </>
       );
     }
+    case "ready": {
+      const ready = b.outside?.ready ?? [];
+      const picked = ready.find((c) => c.id === step.via);
+      const kind = b.outside?.kinds?.find((k) => k.kind === picked?.kind);
+      const action = kind?.actions.find((a) => a.id === step.what) ?? kind?.actions[0];
+      return (
+        <>
+          <Row name={say("الاتصال|The connection|החיבור")}>
+            <select
+              className={`${field} max-w-[18rem]`}
+              value={step.via}
+              disabled={!b.canWrite}
+              onChange={(e) => {
+                const next = ready.find((c) => c.id === e.target.value);
+                // Another kind asks for other things: what was written for this one isn't carried over.
+                set({ act: "ready", via: e.target.value, what: firstAction(b.outside, next?.kind), give: next?.kind === picked?.kind ? (step.give ?? {}) : {}, ...(step.as ? { as: step.as } : {}) });
+              }}
+              data-testid={`step-${id}-via`}
+            >
+              {!picked ? <option value={step.via}>{step.via ? say("اتصال انحذف|A deleted connection|חיבור שנמחק") : say("اختار اتصال|Pick a connection|בחירת חיבור")}</option> : null}
+              {ready.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {`${kindName(c.kind)} · ${c.name}`}
+                </option>
+              ))}
+            </select>
+            {kind && kind.actions.length > 1 ? (
+              <select className={field} value={action?.id ?? ""} disabled={!b.canWrite} onChange={(e) => set({ ...step, what: e.target.value, give: {} })} data-testid={`step-${id}-what`}>
+                {kind.actions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {actionName(kind.kind, a.id)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </Row>
+          {!ready.length ? (
+            <p className="text-xs text-white/70" data-testid={`step-${id}-ready-none`}>
+              {say("ما في اتصالات جاهزة لسا (تلغرام، Slack): بتنعمل مرة وحدة من|No ready connections yet (Telegram, Slack): one is made once, in|עדיין אין חיבורים מוכנים (טלגרם, Slack): יוצרים חיבור פעם אחת, ב")}{" "}
+              <Link to="/admin/connections" className="underline">
+                {say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות")}
+              </Link>
+            </p>
+          ) : null}
+          {picked && action
+            ? action.fields.map((f) => (
+                <Row key={f.id} name={`${readyField(picked.kind, f.id)}${f.required && !(f.or && picked.set.includes(f.or)) ? " *" : ""}`}>
+                  <ValueInput
+                    at={path}
+                    plain
+                    long={f.long}
+                    value={step.give?.[f.id] ?? ""}
+                    onChange={(v) => {
+                      const give = { ...(step.give ?? {}) };
+                      if (String(v) === "") delete give[f.id];
+                      else give[f.id] = String(v);
+                      set({ ...step, what: action.id, give });
+                    }}
+                    placeholder={f.or && picked.set.includes(f.or) ? say("فاضي = المعتادة تبع الاتصال|empty = the connection's usual one|ריק = הרגיל של החיבור") : undefined}
+                    testid={`step-${id}-give-${f.id}`}
+                  />
+                </Row>
+              ))
+            : null}
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+          <p className="text-xs text-white/70" data-testid={`step-${id}-ready-note`}>
+            {say(
+              "ما في عنوان ولا مفتاح بهالخطوة: الاتصال بيعرفهم، والمفتاح ما بيطلع إلا لخدمته. إذا الخدمة رفضت، الـ function بتوقف وبتقول ليش. بالتجربة ما بينبعت شي فعلاً.|No address and no key in this step: the connection knows them, and the key leaves only for its own service. If the service says no, the function stops and says why. In a try-out nothing is really sent.|אין בשלב הזה כתובת או מפתח: החיבור מכיר אותם, והמפתח יוצא רק לשירות שלו. אם השירות מסרב, הפונקציה נעצרת ואומרת למה. בניסיון דבר לא נשלח באמת.",
+            )}
+          </p>
+        </>
+      );
+    }
     case "code":
       return (
         <>
@@ -797,7 +871,7 @@ export function StepList({ list, fail }: { list: Path; fail?: boolean }) {
           onChange={(e) => {
             const act = e.target.value as StepKind;
             if (!act) return;
-            b.change(addStep(b.def, list, newStep(act, { tables: b.tables, fns: b.fns, def: b.def, code: CODE_START[adminLang()] })));
+            b.change(addStep(b.def, list, newStep(act, { tables: b.tables, fns: b.fns, def: b.def, code: CODE_START[adminLang()], outside: b.outside })));
             b.setOpenAt(atOf([...list, steps.length]));
           }}
           data-testid={`steps-${id}-add`}
