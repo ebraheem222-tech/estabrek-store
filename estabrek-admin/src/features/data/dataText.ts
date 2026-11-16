@@ -58,6 +58,24 @@ export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAdd
   return [system("$slug"), system("$status"), ...fields, ...from, system("$updatedAt")];
 }
 
+/** The store's own tables' pages in the admin: where each is changed, and (a product, an order) a row's own page. */
+const STORE_PAGES: Record<string, { list: string; row?: string; name: string }> = {
+  products: { list: "/admin/catalog/products", row: "/admin/catalog/products/", name: "المنتجات|Products|מוצרים" },
+  categories: { list: "/admin/catalog/categories", name: "الأقسام|Categories|קטגוריות" },
+  orders: { list: "/admin/orders", row: "/admin/orders/", name: "الطلبات|Orders|הזמנות" },
+  customers: { list: "/admin/customers", name: "الزبائن|Customers|לקוחות" },
+};
+/**
+ * Where one of the store's tables is changed (the grid only shows it): its own page, or with `rowId` that row's own
+ * page (null where rows have none). `mayOpenRow`: a product's page is for whoever may change products.
+ */
+export function storePage(table: string, rowId?: string, mayOpenRow = true): { to: string; name: string } | null {
+  const page = STORE_PAGES[table];
+  if (!page) return null;
+  if (rowId === undefined) return { to: page.list, name: page.name };
+  return page.row && mayOpenRow && /^[A-Za-z0-9_-]{1,60}$/.test(rowId) ? { to: `${page.row}${rowId}`, name: page.name } : null;
+}
+
 /** The columns a filter can be asked of: the shown ones that aren't worked out, and the row's dates. */
 export function filterColumns(columns: Column[], readOnly: boolean): Column[] {
   const date = (id: SystemColumn): Column => ({ id, kind: "$date", name: SYSTEM_NAME[id] });

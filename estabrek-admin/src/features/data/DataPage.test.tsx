@@ -86,6 +86,15 @@ const orders: GridTable = {
 };
 const orderRows = [row("or2", { customer: "Lina", total: 120, state: "SHIPPED", pieces: 1 }, { status: "PUBLISHED" }), row("or1", { customer: "Sara", total: 100, state: "NEW", pieces: 2 }, { status: "PUBLISHED" })];
 const lastQuery = () => m.getRows.mock.calls[m.getRows.mock.calls.length - 1][1];
+/** What a download handed the browser: the file's name and its words. */
+function downloads() {
+  const got: { name: string; blob: Blob | null } = { name: "", blob: null };
+  (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = (b: Blob) => { got.blob = b; return "blob:test"; };
+  (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = () => {};
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { got.name = this.download; });
+  const text = () => new Promise<string>((done) => { const r = new FileReader(); r.onload = () => done(String(r.result)); r.readAsText(got.blob!); });
+  return { got, text };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -251,6 +260,48 @@ describe("The data grid", () => {
     fireEvent.click(screen.getByTestId("pick-summer"));
     expect((screen.getByTestId("bulk-publish") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("data-export")).toBeTruthy();
+  });
+
+  test("the asked rows as an SQL file: the table, typed by its fields, then the rows", async () => {
+    const { got, text } = downloads();
+    m.exportRows.mockResolvedValue({ text: async () => "slug,status,title.ar,title.en,title.he,price,kind\r\nspring,PUBLISHED,,Spring dress,,1200,new\r\nsummer,DRAFT,,'=Summer hat,,80,\r\n" });
+    show();
+    await screen.findByTestId("row-spring");
+    fireEvent.click(screen.getByTestId("data-export-sql"));
+    await waitFor(() => expect(got.blob).toBeTruthy());
+    // The same question the grid shows (all its pages), asked of the server once.
+    expect(m.exportRows).toHaveBeenCalledWith("c1", { page: 1, pageSize: 50, view: "all", lang: "en" });
+    expect(got.name).toBe("products.sql");
+    const file = await text();
+    expect(file).toContain('CREATE TABLE "products" (');
+    expect(file).toContain('"slug" TEXT PRIMARY KEY,');
+    expect(file).toContain('"title_en" TEXT, -- Title (en)');
+    expect(file).toContain('"price" NUMERIC, -- Price');
+    expect(file).toContain("('spring', 'PUBLISHED', NULL, 'Spring dress', NULL, 1200, 'new'),");
+    expect(file).toContain("('summer', 'DRAFT', NULL, '=Summer hat', NULL, 80, NULL);");
+  });
+
+  test("one of the store's tables: its SQL file too, and the way to where it is changed", async () => {
+    const { got, text } = downloads();
+    m.storeTables.mockResolvedValue([orders]);
+    m.exportStoreRows.mockResolvedValue({ text: async () => "id,customer,total,state,pieces,createdAt\r\nor2,Lina,120,SHIPPED,1,2026-11-01T10:00:00.000Z\r\n" });
+    show();
+    fireEvent.click(await screen.findByTestId("store-table-orders"));
+    await screen.findByTestId("row-or2");
+    // Looked at here, changed on its own page: the page, and each order's own.
+    expect(screen.getByTestId("data-own-page").getAttribute("href")).toBe("/admin/orders");
+    expect(screen.getByTestId("data-own-page").textContent).toContain("Orders");
+    expect(screen.getByTestId("own-page-or2").getAttribute("href")).toBe("/admin/orders/id-or2");
+    fireEvent.click(screen.getByTestId("data-export-sql"));
+    await waitFor(() => expect(got.blob).toBeTruthy());
+    expect(m.exportStoreRows).toHaveBeenCalledWith("orders", { page: 1, pageSize: 50, view: "all", lang: "en" });
+    expect(m.exportRows).not.toHaveBeenCalled();
+    expect(got.name).toBe("orders.sql");
+    const file = await text();
+    expect(file).toContain('CREATE TABLE "orders" (');
+    expect(file).toContain('"id" TEXT PRIMARY KEY,');
+    expect(file).toContain('"created_at" TIMESTAMPTZ');
+    expect(file).toContain("('or2', 'Lina', 120, 'SHIPPED', 1, '2026-11-01T10:00:00.000Z');");
   });
 
   test("one of the store's own tables: looked at, filtered and sorted, never written", async () => {

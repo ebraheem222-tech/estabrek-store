@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { CollectionField } from "../../api/collections.api";
 import type { ColumnKind, GridRow, Op } from "../../api/data.api";
 import { parseCsv, separatorOf } from "./csv";
-import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, sheetCells, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, targetName, targetsOf, withWords } from "./dataText";
+import { cellPatch, cellText, columnsOf, doubledTargets, editable, filterColumns, filterReady, sheetCells, filterValue, guessTarget, issueWords, kindOf, newFilter, nextSort, opName, opNeeds, pageInfo, queryOut, rowsFromCsv, storePage, targetName, targetsOf, withWords } from "./dataText";
 
 // The data grid's pure parts: columns, questions, cells, and a CSV file's columns matched to the table's.
 
@@ -179,6 +179,22 @@ describe("A CSV file", () => {
     expect(targetName("title.he", fields, "ar")).toBe("العنوان (עברית)");
     expect(targetName("price", fields, "en")).toBe("Price");
     expect(doubledTargets(["slug", "price", "", "price", ""])).toEqual(["price"]);
+  });
+
+  test("where a store table is changed: its own page, and a product's or an order's own", () => {
+    expect(storePage("products")).toEqual({ to: "/admin/catalog/products", name: "المنتجات|Products|מוצרים" });
+    expect(storePage("products", "p1")?.to).toBe("/admin/catalog/products/p1");
+    // A product's page is for whoever may change products: the others get no link on the row.
+    expect(storePage("products", "p1", false)).toBeNull();
+    expect(storePage("orders", "o-1_x")?.to).toBe("/admin/orders/o-1_x");
+    // Categories and customers have a page, not one per row.
+    expect(storePage("categories")?.to).toBe("/admin/catalog/categories");
+    expect(storePage("categories", "c1")).toBeNull();
+    expect(storePage("customers")?.to).toBe("/admin/customers");
+    expect(storePage("customers", "u1")).toBeNull();
+    // Never an address made of anything but an id.
+    expect(storePage("orders", "../settings")).toBeNull();
+    expect(storePage("blog")).toBeNull();
   });
 
   test("the export's lines as a sheet's cells: numbers and yes/no by their field; the formula guard comes off", () => {
