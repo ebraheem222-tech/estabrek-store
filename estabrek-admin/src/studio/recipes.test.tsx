@@ -10,8 +10,27 @@ import { canFail, varsIn, type Trigger } from "./triggers";
 vi.mock("../api/catalog.api", () => ({
   listProducts: vi.fn(async () => [{ id: "prod_scarf", title: "Silk scarf" }, { id: "prod_bag", title: "Lilac bag" }]),
 }));
+// The owner's functions: one a signed-in shopper calls, one anyone calls (unpublished), one for a program with a key, one with no address.
+const fns = vi.hoisted(() => ({ fail: false }));
+vi.mock("../api/functions.api", () => ({
+  getFunctions: vi.fn(async () => {
+    if (fns.fail) throw new Error("403");
+    const fn = (id: string, name: string, more: Record<string, unknown>) => ({ id, name, note: null, enabled: true, published: true, publishedAt: null, changed: false, steps: 2, inputs: 0, takes: [], runs: 0, lastRunAt: null, updatedAt: "", ...more });
+    return {
+      functions: [
+        fn("f1", "Friend request", { takes: [{ name: "to", type: "text", required: true }, { name: "note", type: "text", note: "A few words" }], calls: [{ address: "friend-request", who: "customer" }] }),
+        fn("f2", "Say hello", { published: false, takes: [{ name: "to", type: "text" }], calls: [{ address: "hello", who: "public" }] }),
+        fn("f3", "Nightly sync", { calls: [{ address: "sync", who: "key" }] }),
+        fn("f4", "No address", {}),
+      ],
+    };
+  }),
+}));
 
-beforeEach(() => setLangForTests("en"));
+beforeEach(() => {
+  setLangForTests("en");
+  fns.fail = false;
+});
 afterEach(() => {
   cleanup();
   setLangForTests("ar");
@@ -168,5 +187,61 @@ describe("a recipe in the editor", () => {
     expect(varsIn([
       node([{ on: "click", if: [{ if: "var", name: "seen", cmp: "unset" }], do: [{ act: "set", name: "clicks", op: "add", value: 1 }, { act: "together", do: [{ act: "set", name: "inner", op: "toggle" }] }], fail: [{ act: "set", name: "failed", op: "set", value: true }] }]),
     ])).toEqual(["clicks", "failed", "inner", "seen"]);
+  });
+
+  it("a step that runs a function: picked by its address, a box for each thing it takes, its answer kept, and it can fail", async () => {
+    open([{ on: "click", do: [{ act: "vibrate" }] }]);
+    pick("trigger-0-act-0", "fn");
+    expect(saved[0].do[0]).toEqual({ act: "fn" });
+    // It can fail: the recipe may say what happens then.
+    expect(screen.getByTestId("trigger-0-fail-add")).toBeTruthy();
+    // The addresses a shop's button can call: a shopper's and anyone's, never a key's or a function with none.
+    await waitFor(() => expect(screen.getByTestId("trigger-fn-pick")).toBeTruthy());
+    expect([...(screen.getByTestId("trigger-fn-pick") as HTMLSelectElement).options].map((o) => o.value)).toEqual(["", "friend-request", "hello"]);
+    pick("trigger-fn-pick", "friend-request");
+    expect(saved[0].do[0]).toEqual({ act: "fn", fn: "friend-request" });
+    expect(screen.getByTestId("trigger-fn-who").textContent).toContain("signed-in shopper");
+    type("trigger-fn-input-to", "{{friend}}");
+    type("trigger-fn-input-note", "hi");
+    expect(screen.getByTestId("trigger-fn-help").textContent).toContain("{{answer_field}}");
+    type("trigger-fn-as", "sent");
+    expect(saved[0].do[0]).toEqual({ act: "fn", fn: "friend-request", input: { to: "{{friend}}", note: "hi" }, as: "sent" });
+    // The note speaks of the answer by its name.
+    expect(screen.getByTestId("trigger-fn-help").textContent).toContain("{{sent}}");
+    // A name that isn't one stays as it was; an emptied box leaves what it held out.
+    type("trigger-fn-as", "2 bad");
+    type("trigger-fn-input-note", "");
+    expect(saved[0].do[0]).toEqual({ act: "fn", fn: "friend-request", input: { to: "{{friend}}" }, as: "sent" });
+    // Another function: what it takes by the same name stays, the rest goes; an unpublished one is said.
+    type("trigger-fn-input-note", "again");
+    pick("trigger-fn-pick", "hello");
+    expect(saved[0].do[0]).toEqual({ act: "fn", fn: "hello", input: { to: "{{friend}}" }, as: "sent" });
+    expect(screen.getByTestId("trigger-fn-off").textContent).toContain("isn't published");
+    expect(screen.queryByTestId("trigger-fn-who")).toBeNull();
+    // Where its answer is kept is one of the page's variables.
+    expect(varsIn([{ id: "x", type: "button", props: { triggers: saved } }])).toEqual(["sent"]);
+  });
+
+  it("a function step whose address is gone says so; a member who can't see the functions types the address", async () => {
+    open([{ on: "click", do: [{ act: "fn", fn: "sync", input: { n: "1" } }] }]);
+    await waitFor(() => expect(screen.getByTestId("trigger-fn-gone")).toBeTruthy());
+    expect((screen.getByTestId("trigger-fn-pick") as HTMLSelectElement).value).toBe("sync");
+    // What it was handed is still there to read and change.
+    expect((screen.getByTestId("trigger-fn-input-n") as HTMLInputElement).value).toBe("1");
+    cleanup();
+
+    fns.fail = true;
+    open([{ on: "click", do: [{ act: "fn" }] }]);
+    await waitFor(() => expect(screen.getByTestId("trigger-fn-address")).toBeTruthy());
+    type("trigger-fn-address", "Not An Address");
+    expect(saved[0].do[0]).toEqual({ act: "fn" });
+    type("trigger-fn-address", "friend-request");
+    expect(saved[0].do[0]).toEqual({ act: "fn", fn: "friend-request" });
+  });
+
+  it("the ready recipe for a function says its own words when it stops", () => {
+    open([]);
+    fireEvent.click(document.querySelector('[data-trigger-preset="run-fn"]')!);
+    expect(saved[0]).toEqual({ on: "click", do: [{ act: "fn", as: "answer" }, { act: "toast", text: { en: "Done ✓" } }], fail: [{ act: "toast", text: { en: "{{error}}" } }] });
   });
 });

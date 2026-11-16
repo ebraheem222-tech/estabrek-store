@@ -580,6 +580,16 @@ export const TriggerAction = z.discriminatedUnion("act", [
   z.object({ act: z.literal("wish"), productId: productRef.optional(), value: z.enum(["add", "remove", "toggle"]) }),
   // Asks first ("Sure?"): a "no" stops the recipe there and runs its `fail` steps.
   z.object({ act: z.literal("confirm"), text: local(200), yes: local(24).optional(), no: local(24).optional() }),
+  // Runs one of the owner's functions by its call address (lib/fnTriggers.ts CALL_SLUG; POST /v1/fn/<address>), as
+  // the shopper who pressed. `input`: what it is handed (a value may name a recipe variable: {{name}}); `as`: the
+  // variable its answer is kept in. It fails when the function stops or can't be reached: the recipe's `fail` steps
+  // run then, with the function's own words in {{error}}. (No address yet = not picked in the editor: left out.)
+  z.object({
+    act: z.literal("fn"),
+    fn: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "A function's address").optional(),
+    input: z.record(z.string().regex(/^[a-z][a-zA-Z0-9_]{0,30}$/), z.string().max(300)).refine((v) => Object.keys(v).length <= 12, "Up to 12 inputs").optional(),
+    as: z.string().trim().regex(/^[A-Za-z][A-Za-z0-9_]{0,23}$/, "A name of letters, digits and _").optional(),
+  }),
 ]);
 /*
  * Recipes (phase 3 of the big plan, the interactions engine): a trigger is "when → if → do, else": the

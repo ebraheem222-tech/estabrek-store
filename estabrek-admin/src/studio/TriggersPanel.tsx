@@ -5,18 +5,19 @@
  *   if       conditions that must all hold (a variable, the device, the bag, signed in…)
  *   do       its steps, one after another; a step can be a group (at once, repeated, one at random)
  *   else     the steps when the conditions don't hold
- *   on fail  the steps when one fails (a "no" to a question, a product that can't be bought)
+ *   on fail  the steps when one fails (a "no" to a question, a product that can't be bought, a function that stopped)
  * Ready recipes first; each can be tried in the preview.
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import * as CatalogAPI from "../api/catalog.api";
+import * as FnAPI from "../api/functions.api";
 import { Range } from "./LookPanels";
 import { ColourPick } from "./StudioTreePanels";
 import { say } from "./say";
 import {
-  ACTS, BURSTS, CONDITIONS, COUNT_CMPS, DENY, EVENTS, HITS, FLOW_ACTS, GROUP_ACTS, KEYS, KEY_OK, MAX_FAIL, MAX_GROUP, MAX_IF, MAX_STEPS, PHONE_OK, PLAY_WHAT, SOUNDS,
+  ACTS, BURSTS, CONDITIONS, COUNT_CMPS, DENY, EVENTS, FN_ADDRESS, HITS, FLOW_ACTS, GROUP_ACTS, KEYS, KEY_OK, MAX_FAIL, MAX_GROUP, MAX_IF, MAX_STEPS, PHONE_OK, PLAY_WHAT, SOUNDS,
   TRIGGER_PRESETS, VAR_CMPS, VAR_NAME, VAR_OPS, WHO, canFail, isGroup, newAction, newCondition, newStep, triggersOf, triggersOp, valueOf,
   type Action, type Condition, type ConditionKind, type Deny, type PlainStep, type Step, type StepKind, type Trigger, type TriggerEvent, type VarValue, type Who, type Words,
 } from "./triggers";
@@ -70,6 +71,68 @@ function ProductPick({ value, busy, onPick }: { value?: string; busy: boolean; o
           <li key={x.id}><button type="button" disabled={busy} aria-pressed={x.id === value} onClick={() => onPick(x.id)} className={`w-full truncate rounded-lg px-2 py-1 text-start text-[11px] ${x.id === value ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-product={x.id}>{x.title}</button></li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+const note = "text-[10px] leading-4 text-white/70";
+const warn = "text-[11px] leading-4 text-amber-200/90";
+/** Words with their {{name}} marks kept left to right (inside Arabic or Hebrew they would read scrambled). */
+const marks = (text: string) => text.split(/(\{\{[^{}]*\}\})/).map((p, k) => (k % 2 ? <bdi key={k} dir="ltr">{p}</bdi> : p));
+
+/**
+ * A function for a step: picked by the address it is called at (admin → Functions → what starts it → a call from
+ * the shop), then one box for each thing it is handed, and where its answer is kept. A member who may not look at
+ * the functions types the address.
+ */
+function FnFields({ a, busy, onSave }: { a: Extract<Action, { act: "fn" }>; busy: boolean; onSave: (a: Action) => void }) {
+  const q = useQuery({ queryKey: ["functions"], queryFn: FnAPI.getFunctions, staleTime: 60_000, retry: false });
+  // A shop's button can't hold an API key: only the addresses a shopper, or anyone, may call.
+  const doors = useMemo(() => (q.data?.functions ?? []).flatMap((f) => (f.calls ?? []).filter((c) => c.who !== "key").map((c) => ({ address: c.address, who: c.who, fn: f }))), [q.data]);
+  const door = doors.find((d) => d.address === a.fn);
+  const given = a.input ?? {};
+  const put = (next: { fn?: string; input?: Record<string, string>; as?: string }) => onSave({ act: "fn", ...(next.fn ? { fn: next.fn } : {}), ...(next.input && Object.keys(next.input).length ? { input: next.input } : {}), ...(next.as ? { as: next.as } : {}) });
+  const setInput = (name: string, v: string) => {
+    const input = { ...given };
+    if (v) input[name] = v;
+    else delete input[name];
+    put({ fn: a.fn, input, as: a.as });
+  };
+  const value = say("قيمة، أو {{متغيّر}}|A value, or {{variable}}|ערך, או {{משתנה}}");
+  // The note speaks of the answer by the name it was given.
+  const kept = a.as || "answer";
+  return (
+    <div className="space-y-1.5" data-testid="trigger-fn">
+      {q.isLoading ? <p className={note}>…</p> : q.isError ? (
+        <>
+          <Line label={say("عنوان الـ function|The function's address|הכתובת של הפונקציה")} value={a.fn ?? ""} ltr max={41} hint="friend-request" busy={busy} ok={(v) => v === "" || FN_ADDRESS.test(v)} onSave={(fn) => put({ fn, input: given, as: a.as })} testId="trigger-fn-address" />
+          <p className={note}>{say("ما قدرنا نجيب قائمة الـ Functions (يمكن ما عندك صلاحية تشوفها). اكتب العنوان متل ما هو بصفحتها.|The list of functions couldn't be read (you may not be allowed to see it). Type the address as its page shows it.|לא ניתן לקרוא את רשימת הפונקציות (אולי אין לך הרשאה). להקליד את הכתובת כפי שהיא בעמוד שלה.")}</p>
+        </>
+      ) : !doors.length && !a.fn ? (
+        <p className={warn} data-testid="trigger-fn-none">
+          {say("ما في function إلها عنوان نداء من المتجر. افتح الـ Functions، وبقسم «شو بيشغّلها» زيد «نداء»، وانشرها.|No function has an address the shop can call yet. Open Functions, add “a call” under “What starts it”, and publish it.|אין עדיין פונקציה עם כתובת שהחנות יכולה לקרוא לה. לפתוח את הפונקציות, להוסיף «קריאה» תחת «מה מפעיל אותה», ולפרסם.")}{" "}
+          <a className="underline" href="/admin/functions" target="_blank" rel="noreferrer">{say("الـ Functions ↗|Functions ↗|פונקציות ↗")}</a>
+        </p>
+      ) : (
+        <Pick label={say("أي function|Which function|איזו פונקציה")} value={a.fn ?? ""} busy={busy} testId="trigger-fn-pick"
+          options={[["", say("اختار…|Pick one…|לבחור…")], ...doors.map((d): [string, string] => [d.address, `${d.fn.name} · ${d.address}`])]}
+          onPick={(fn) => {
+            // What it is handed stays where the newly picked one takes the same name.
+            const takes = new Set((doors.find((d) => d.address === fn)?.fn.takes ?? []).map((i) => i.name));
+            put({ fn, input: Object.fromEntries(Object.entries(given).filter(([k]) => takes.has(k))), as: a.as });
+          }} />
+      )}
+      {!a.fn && !q.isError && doors.length ? <p className={warn}>{say("لحد ما تختار، الخطوة ما بتعمل شي.|Until you pick one, the step does nothing.|עד שבוחרים, השלב לא עושה כלום.")}</p> : null}
+      {a.fn && q.data && !door ? <p className={warn} data-testid="trigger-fn-gone">{say("هالعنوان مش موجود هلأ (انشال، تطفّى، أو صار لبرنامج بمفتاح). اختار غيره.|This address isn't there now (removed, switched off, or it became a key's). Pick another.|הכתובת הזו לא קיימת כרגע (הוסרה, כובתה, או הפכה לשל מפתח). לבחור אחרת.")}</p> : null}
+      {door && (!door.fn.published || !door.fn.enabled) ? <p className={warn} data-testid="trigger-fn-off">{!door.fn.published ? say("هاي الـ function لسا مش منشورة: الزر ما بيشتغل لحد ما تنشرها.|This function isn't published yet: the button won't work until it is.|הפונקציה הזו עדיין לא פורסמה: הכפתור לא יעבוד עד שתפורסם.") : say("هاي الـ function مطفية: الزر ما بيشتغل لحد ما تشغّلها.|This function is switched off: the button won't work until it is on.|הפונקציה הזו כבויה: הכפתור לא יעבוד עד שתודלק.")}</p> : null}
+      {door?.who === "customer" ? <p className={note} data-testid="trigger-fn-who">{say("بتشتغل بس لزبون مسجّل دخوله (وبتعرف مين هو). الزائر بينقاله «سجّل دخولك أول»؛ أو خلّي «مين مسموحله» فوق = زبون مسجّل.|It runs only for a signed-in shopper (and knows who they are). A guest is told “Sign in first”; or set “Who may” above to a signed-in customer.|רצה רק ללקוח מחובר (ויודעת מי הוא). לאורח נאמר «יש להתחבר קודם»; או להגדיר למעלה «למי מותר» = לקוח מחובר.")}</p> : null}
+      {door ? door.fn.takes.map((i) => (
+        <Line key={i.name} label={`${say("بتاخد|It takes|מקבלת")} ${i.name}${i.required ? " *" : ""}${i.note ? ` · ${i.note}` : ""}`} value={given[i.name] ?? ""} max={300} hint={value} busy={busy} onSave={(v) => setInput(i.name, v)} testId={`trigger-fn-input-${i.name}`} />
+      )) : Object.keys(given).map((name) => (
+        <Line key={name} label={`${say("بتاخد|It takes|מקבלת")} ${name}`} value={given[name]} max={300} hint={value} busy={busy} onSave={(v) => setInput(name, v)} testId={`trigger-fn-input-${name}`} />
+      ))}
+      <Line label={say("احفظ جوابها بمتغيّر (اختياري)|Keep its answer in a variable (optional)|לשמור את התשובה במשתנה (לא חובה)")} value={a.as ?? ""} ltr max={24} hint="answer" busy={busy} ok={(v) => v === "" || VAR_NAME.test(v)} onSave={(as) => put({ fn: a.fn, input: given, as })} testId="trigger-fn-as" />
+      <p className={note} data-testid="trigger-fn-help">{marks(say(`جوابها بيبين بأي نص هيك: {{${kept}}}، وإذا كان صف فكل حقل منه هيك: {{${kept}_field}} (بدل field اسم الحقل). إذا وقفت، كلامها بيبين للزبون؛ بدك تقول شي تاني؟ حط خطوات بـ«إذا فشل»، وكلامها فيها هيك: {{error}}.|Its answer shows in any text like {{${kept}}}; a row's fields like {{${kept}_field}} (the field's name in place of field). When it stops, its own words are shown to the shopper; to say something else, add “on fail” steps, with its words as {{error}}.|התשובה מוצגת בכל טקסט כך: {{${kept}}}; שדות של שורה כך: {{${kept}_field}} (שם השדה במקום field). כשהיא נעצרת, המילים שלה מוצגות ללקוח; כדי לומר משהו אחר, להוסיף שלבי «אם נכשל», והמילים שלה שם כך: {{error}}.`))}</p>
     </div>
   );
 }
@@ -144,6 +207,8 @@ function ActionFields({ a, lang, targets, busy, onSave }: { a: Action; lang: str
         <ProductPick value={a.productId} busy={busy} onPick={(productId) => onSave({ ...a, productId })} />
         <Pick label={say("شو يصير|What happens|מה קורה")} value={a.value} busy={busy} onPick={(value) => onSave({ ...a, value: value as "toggle" })} options={[["toggle", say("ينحفظ / ينشال بالتناوب|Saved / removed in turn|נשמר / מוסר לסירוגין")], ["add", say("ينحفظ|Saved|נשמר")], ["remove", say("ينشال|Removed|מוסר")]]} />
       </>;
+    case "fn":
+      return <FnFields a={a} busy={busy} onSave={onSave} />;
     case "whatsapp":
       return <>{phone(a.phone, (p) => onSave({ ...a, phone: p }))}{text(a.text, say("الرسالة الجاهزة|The message, ready to send|ההודעה המוכנה"), (w) => onSave({ ...a, text: w }), 300)}</>;
     case "call":
@@ -321,21 +386,21 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
             ) : null}
             {fails ? (
               <>
-                <div className={part}>{say("إذا فشل (قال «لا»، أو المنتج خلص)|On fail (a “no”, or sold out)|אם נכשל («לא», או אזל)")}</div>
+                <div className={part}>{say("إذا فشل (قال «لا»، المنتج خلص، أو function وقفت)|On fail (a “no”, sold out, or a function stopped)|אם נכשל («לא», אזל, או פונקציה נעצרה)")}</div>
                 <StepList steps={t.fail ?? []} lang={lang} targets={others} busy={busy} max={MAX_FAIL} groups onSave={(d) => setOne(i, { ...t, fail: d })} testId={`trigger-${i}-fail`} />
               </>
             ) : null}
 
             <div className="flex flex-wrap gap-1 border-t border-white/[0.06] pt-2">
               <button type="button" className={btn} onClick={() => onTest(i)} data-testid={`trigger-${i}-test`}>▶ {say("جرّب بالمعاينة|Try in the preview|לנסות בתצוגה")}</button>
-              {fails ? <button type="button" className={btn} onClick={() => onTest(i, true)} data-testid={`trigger-${i}-test-fail`}>▶ {say("جرّب الفشل (قال «لا» / المنتج خلص)|Try the failure (a “no” / sold out)|לנסות כישלון («לא» / אזל)")}</button> : null}
+              {fails ? <button type="button" className={btn} onClick={() => onTest(i, true)} data-testid={`trigger-${i}-test-fail`}>▶ {say("جرّب الفشل (قال «لا» / المنتج خلص / function وقفت)|Try the failure (a “no” / sold out / a function stopped)|לנסות כישלון («לא» / אזל / פונקציה נעצרה)")}</button> : null}
               <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(list.filter((_, k) => k !== i))} data-testid={`trigger-${i}-remove`}>{say("شيل المشغّل|Remove the trigger|הסרת הטריגר")}</button>
             </div>
           </div>
         );
       })}
       <button type="button" className={btn} disabled={busy || list.length >= 8} onClick={() => save([...list, { on: "click", do: [newAction("play", lang)] }])} data-testid="trigger-add">+ {say("مشغّل جديد|New trigger|טריגר חדש")}</button>
-      <p className="text-[10px] leading-4 text-white/35">{say("بالمعاينة الكبسة بتختار العناصر، فجرّب من هون (التجربة بتشتغل لأي زائر كان؛ السؤال بيجاوب لحاله، واللي بيطلع من الصفحة أو بيغيّر السلة بينقال بس). بالمتجر بتشتغل لحالها. متغيّر بيبين بأي نص هيك: {{اسمه}}.|In the preview a click selects, so try from here (a try runs whoever it is for; a question answers itself, and what would leave the page or change the bag is only said). In the shop they run by themselves. A variable shows in any text like this: {{its name}}.|בתצוגה המקדימה לחיצה בוחרת, אז לנסות מכאן (ניסיון רץ לכל מבקר; שאלה עונה לעצמה, ומה שיוצא מהעמוד או משנה את הסל רק נאמר). בחנות הם פועלים לבד. משתנה מוצג בכל טקסט כך: {{השם שלו}}.")}</p>
+      <p className="text-[10px] leading-4 text-white/35">{say("بالمعاينة الكبسة بتختار العناصر، فجرّب من هون (التجربة بتشتغل لأي زائر كان؛ السؤال بيجاوب لحاله، واللي بيطلع من الصفحة أو بيغيّر السلة أو بيشغّل function بينقال بس). بالمتجر بتشتغل لحالها. متغيّر بيبين بأي نص هيك: {{اسمه}}.|In the preview a click selects, so try from here (a try runs whoever it is for; a question answers itself, and what would leave the page, change the bag or run a function is only said). In the shop they run by themselves. A variable shows in any text like this: {{its name}}.|בתצוגה המקדימה לחיצה בוחרת, אז לנסות מכאן (ניסיון רץ לכל מבקר; שאלה עונה לעצמה, ומה שיוצא מהעמוד, משנה את הסל או מפעיל פונקציה רק נאמר). בחנות הם פועלים לבד. משתנה מוצג בכל טקסט כך: {{השם שלו}}.")}</p>
     </div>
   );
 }

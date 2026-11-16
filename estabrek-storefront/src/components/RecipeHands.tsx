@@ -5,7 +5,7 @@
  * the bag, save it to the wishlist or open WhatsApp to the store. Mounted once inside the shop's providers.
  */
 import { useEffect, useRef } from "react";
-import { getProductByIdClient } from "@/lib/apiClient";
+import { apiBaseClient, getProductByIdClient } from "@/lib/apiClient";
 import { getProductPrimaryImage } from "@/lib/catalog";
 import { whatsappDigits, whatsappLink } from "@/lib/whatsapp";
 import { useCart } from "@/store/cart";
@@ -24,8 +24,8 @@ export function RecipeHands() {
   const account = useOptionalAccount();
   const { language } = useLanguage();
   // The hands are given once; they always reach for what the shop holds now.
-  const now = useRef({ cart, wishlist, quick, settings, language });
-  now.current = { cart, wishlist, quick, settings, language };
+  const now = useRef({ cart, wishlist, quick, settings, language, account });
+  now.current = { cart, wishlist, quick, settings, language, account };
 
   useEffect(() => {
     setHands({
@@ -63,6 +63,22 @@ export function RecipeHands() {
       },
       whatsapp: (phone, text) => whatsappLink(phone || now.current.settings?.whatsappNumber, text || undefined),
       phone: () => whatsappDigits(now.current.settings?.whatsappNumber),
+      fn: async (address, input) => {
+        try {
+          // The first moment of a page, her session is still coming back: wait for it (a few seconds at most), so
+          // a press then is hers and not a guest's.
+          for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));
+          // Hers when she is signed in (the shop's own short token); anyone's otherwise.
+          const who = (await now.current.account?.authHeaders()) ?? {};
+          const res = await fetch(`${apiBaseClient()}/fn/${encodeURIComponent(address)}`, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json", ...who }, body: JSON.stringify({ input }) });
+          const data = (await res.json().catch(() => ({}))) as { ok?: boolean; value?: unknown; error?: unknown };
+          if (res.ok && data.ok) return { ok: true, value: data.value ?? null };
+          // The function's own words come with 422; the other refusals carry a code, not words for a shopper.
+          return { ok: false, status: res.status, error: res.status === 422 && typeof data.error === "string" ? data.error : "" };
+        } catch {
+          return { ok: false, status: 0, error: "" };
+        }
+      },
     });
     return () => setHands(null);
   }, []);

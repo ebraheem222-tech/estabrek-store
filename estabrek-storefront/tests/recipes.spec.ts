@@ -56,6 +56,23 @@ test.describe("recipes as data", () => {
     expect(compareVar(true, "eq", true)).toBe(true);
     expect(compareVar("red", "ne", "blue")).toBe(true);
   });
+
+  test("a step that runs a function: its address, what it is handed and where its answer goes; no address, no step", () => {
+    const [t] = triggersOf([{
+      on: "click",
+      do: [
+        { act: "fn", fn: "friend-request", input: { to: "{{friend}}", note: "hi", "bad name": "x", n: 5 }, as: "sent" },
+        { act: "fn", fn: "hello" }, { act: "fn" }, { act: "fn", fn: "Not An Address" }, { act: "fn", fn: "ok-fn", as: "1bad" },
+      ],
+      fail: [{ act: "toast", text: { en: "{{error}}" } }],
+    }], link, say);
+    expect(t.do).toEqual([
+      { act: "fn", fn: "friend-request", input: { to: "{{friend}}", note: "hi" }, as: "sent" },
+      { act: "fn", fn: "hello", input: {}, as: "" },
+      { act: "fn", fn: "ok-fn", input: {}, as: "" },
+    ]);
+    expect(t.fail).toEqual([{ act: "toast", text: "{{error}}" }]);
+  });
 });
 
 const button = (id: string, label: string, triggers: unknown[]) => ({ id, type: "button", props: { label: { en: label }, href: "#", triggers } });
@@ -88,6 +105,13 @@ const RECIPES_PAGE = {
           button("locked", "Locked", [{ on: "click", who: "customer", deny: "lock", note: { en: "Sign in first" }, do: [toastOf("Opened")] }]),
           button("join", "Join", [{ on: "click", who: "guest", deny: "hide", do: [toastOf("Join us")] }]),
           button("gate", "Gate", [{ on: "click", who: "customer", deny: "signin", do: [toastOf("Inside")] }]),
+          // The owner's functions (the fixture backend's stand-ins, POST /v1/fn/<address>).
+          button("fn-hello", "Hello", [{ on: "click", do: [{ act: "set", name: "who", op: "set", value: "Rana" }, { act: "fn", fn: "hello", input: { name: "{{who}}" }, as: "greeting" }, toastOf("{{greeting}}!")] }]),
+          button("fn-friend", "Add friend", [{ on: "click", do: [{ act: "fn", fn: "friend-request", input: { to: "lina@example.com" }, as: "req" }, toastOf("Asked {{req_to}} as {{req_from}} ({{req_id}})")] }]),
+          button("fn-stops", "Stops", [{ on: "click", do: [{ act: "fn", fn: "full" }, toastOf("Sent")] }]),
+          button("fn-stops-told", "Stops, told", [{ on: "click", do: [{ act: "fn", fn: "full" }, toastOf("Sent")], fail: [toastOf("No: {{error}}")] }]),
+          button("fn-busy", "Busy", [{ on: "click", do: [{ act: "fn", fn: "busy" }, toastOf("Sent")] }]),
+          button("fn-gone", "Gone", [{ on: "click", do: [{ act: "fn", fn: "no-such" }, toastOf("Sent")] }]),
         ] },
       ],
     },
@@ -230,5 +254,49 @@ test.describe("recipes on a page", () => {
     const asked = page.waitForRequest((r) => r.isNavigationRequest() && /\/en\/account$/.test(r.url()));
     await el(page, "gate").click();
     await asked;
+  });
+
+  test("a button runs a function: its answer shows, its own words when it stops, and it runs as the shopper who pressed", async ({ page }) => {
+    const MOCK = "http://127.0.0.1:4100";
+    const calls = async () => ((await (await page.request.get(`${MOCK}/__test/fn-calls`)).json()) as { calls: Array<{ address: string; input: Record<string, string>; shopper: string | null }> }).calls;
+    await page.request.post(`${MOCK}/__test/fn-calls`);
+
+    // Anyone's function: it is handed the variable's value, and its answer is kept in one.
+    await el(page, "fn-hello").click();
+    await expect(toast(page)).toHaveText("Hello Rana!");
+    expect(await calls()).toEqual([{ address: "hello", input: { name: "Rana" }, shopper: null }]);
+
+    // It stopped: the steps after it don't run. Its own words are said, or the recipe's fail steps say them.
+    await el(page, "fn-stops").click();
+    await expect(toast(page)).toHaveText("You already asked her");
+    await el(page, "fn-stops-told").click();
+    await expect(toast(page)).toHaveText("No: You already asked her");
+    // Kept from running: words of ours, never a code.
+    await el(page, "fn-busy").click();
+    await expect(toast(page)).toHaveText("Too many tries. Wait a moment and try again");
+    await el(page, "fn-gone").click();
+    await expect(toast(page)).toHaveText("That didn't work. Try again");
+    // A guest at a function for signed-in shoppers.
+    await el(page, "fn-friend").click();
+    await expect(toast(page)).toHaveText("Sign in first");
+
+    // Signed in: the same button runs it as her, and the row it answers with fills the words.
+    await page.request.get(`${MOCK}/__test/customer-reset`);
+    await page.request.get(`${MOCK}/__test/accounts?on=1`);
+    try {
+      await page.request.post("/api/revalidate", { data: { tags: ["settings", "cms"] } });
+      expect((await page.request.post("/api/account/verify", { data: { email: "sara@example.com", code: "123456" } })).ok()).toBeTruthy();
+      await page.reload();
+      await expect(page.locator("html")).toHaveAttribute("data-pt-in", "");
+      await ready(page);
+      await page.request.post(`${MOCK}/__test/fn-calls`);
+      await el(page, "fn-friend").click();
+      await expect(toast(page)).toHaveText("Asked lina@example.com as sara@example.com (row1)");
+      expect(await calls()).toEqual([{ address: "friend-request", input: { to: "lina@example.com" }, shopper: "sara@example.com" }]);
+    } finally {
+      await page.request.get(`${MOCK}/__test/accounts?on=0`);
+      await page.request.post("/api/revalidate", { data: { tags: ["settings", "cms"] } });
+      await page.request.get(`${MOCK}/__test/customer-reset`);
+    }
   });
 });

@@ -39,7 +39,11 @@ export type Action =
   | { act: "download"; href: string; name?: string }
   | { act: "bag"; productId?: string; quantity?: number }
   | { act: "wish"; productId?: string; value: "add" | "remove" | "toggle" }
-  | { act: "confirm"; text: Words; yes?: Words; no?: Words };
+  | { act: "confirm"; text: Words; yes?: Words; no?: Words }
+  // Runs one of the owner's functions by its call address (admin → Functions → what starts it → a call), as the
+  // shopper who pressed. `input`: what it is handed ({{name}} = a variable's value); `as`: the variable its answer
+  // is kept in. No address yet = the step does nothing.
+  | { act: "fn"; fn?: string; input?: Record<string, string>; as?: string };
 export type VarValue = number | string | boolean;
 export type VarCmp = "eq" | "ne" | "gt" | "lt" | "gte" | "lte" | "set" | "unset";
 export type CountCmp = "eq" | "gte" | "lte" | "every";
@@ -70,8 +74,11 @@ export const MAX_STEPS = 16;
 export const MAX_GROUP = 8;
 export const MAX_IF = 6;
 export const MAX_FAIL = 8;
-/** The steps that can fail (a "no" to a question, a product that can't be bought): a recipe with one can say what happens then. */
-export const CAN_FAIL: ReadonlyArray<StepKind> = ["confirm", "bag", "wish"];
+/** The steps that can fail (a "no" to a question, a product that can't be bought, a function that stopped): a recipe with one can say what happens then. */
+export const CAN_FAIL: ReadonlyArray<StepKind> = ["confirm", "bag", "wish", "fn"];
+/** A function's call address, and the name of something it is handed (the backend's lib/fnTriggers.ts CALL_SLUG, lib/fnDef.ts NAME). */
+export const FN_ADDRESS = /^[a-z0-9][a-z0-9-]{1,40}$/;
+export const FN_INPUT = /^[a-z][a-zA-Z0-9_]{0,30}$/;
 export const canFail = (list: Step[]): boolean => list.some((s) => CAN_FAIL.includes(s.act) || (isGroup(s) && canFail(s.do)));
 
 export const EVENTS: Array<[TriggerEvent, () => string]> = [
@@ -128,6 +135,7 @@ export const ACTS: Array<[ActKind, () => string]> = [
   ["confirm", () => say("اسأل أول: «متأكد؟»|Ask first: “Sure?”|לשאול קודם: «בטוח?»")],
   ["bag", () => say("حط منتج بالسلة|Put a product in the bag|הוספת מוצר לסל")],
   ["wish", () => say("حط منتج بالمفضلة|Save a product to the wishlist|שמירת מוצר במועדפים")],
+  ["fn", () => say("شغّل function (منطق من عندك)|Run a function (logic of your own)|הפעלת פונקציה (לוגיקה משלך)")],
   ["whatsapp", () => say("افتح واتساب|Open WhatsApp|פתיחת וואטסאפ")],
   ["call", () => say("اتصال|Call|שיחה")],
   ["share", () => say("مشاركة الصفحة|Share the page|שיתוף העמוד")],
@@ -216,6 +224,7 @@ export function newAction(act: ActKind, lang: string): Action {
     case "bag": return { act, quantity: 1 };
     case "wish": return { act, value: "toggle" };
     case "confirm": return { act, text: { [lang]: say("متأكد؟|Are you sure?|בטוח?") } };
+    case "fn": return { act };
   }
 }
 
@@ -247,6 +256,8 @@ export function varsIn(nodes: Iterable<PageTreeNode>): string[] {
   const names = new Set<string>();
   const step = (s: Step) => {
     if (s.act === "set" || s.act === "waitUntil") names.add(s.name);
+    // Where a function's answer is kept.
+    if (s.act === "fn" && s.as) names.add(s.as);
     if (isGroup(s)) s.do.forEach(step);
   };
   for (const n of nodes) {
@@ -277,6 +288,8 @@ export const TRIGGER_PRESETS: TriggerPreset[] = [
   // What a button does in a shop: asking first, who may, WhatsApp, sharing, a long press, a key.
   { key: "ask-go", name: () => say("كبسة ← «متأكد؟» ← افتح رابط|Click → “Sure?” → open a link|לחיצה ← «בטוח?» ← פתיחת קישור"), make: (lang) => ({ on: "click", do: [newAction("confirm", lang), { act: "link", href: "/shop" }], fail: [{ act: "toast", text: { [lang]: say("تمام، خلّينا هون|OK, staying here|בסדר, נשארים כאן") } }] }) },
   { key: "members", name: () => say("للزبائن المسجّلين بس (الباقي بيسجّل دخول)|For signed-in customers only (others sign in)|רק ללקוחות מחוברים (האחרים מתחברים)"), make: (lang) => ({ on: "click", who: "customer", deny: "signin", do: [{ act: "toast", text: { [lang]: say("أهلا فيك من جديد!|Welcome back!|ברוך שובך!") } }, { act: "burst", kind: "sparkles", amount: 50 }] }) },
+  // One of the owner's own functions (admin → Functions): picked in the step; its own words show when it stops.
+  { key: "run-fn", name: () => say("كبسة ← شغّل function وقول شو صار|Click → run a function and say what happened|לחיצה ← הפעלת פונקציה והודעה מה קרה"), make: (lang) => ({ on: "click", do: [{ act: "fn", as: "answer" }, { act: "toast", text: { [lang]: say("تمّ ✓|Done ✓|בוצע ✓") } }], fail: [{ act: "toast", text: { [lang]: "{{error}}" } }] }) },
   { key: "whatsapp", name: () => say("كبسة ← واتساب المتجر مع رسالة|Click → the store's WhatsApp with a message|לחיצה ← הוואטסאפ של החנות עם הודעה"), make: (lang) => ({ on: "click", do: [newAction("whatsapp", lang)] }) },
   { key: "share", name: () => say("كبسة ← مشاركة الصفحة|Click → share the page|לחיצה ← שיתוף העמוד"), make: () => ({ on: "click", do: [{ act: "share" }] }) },
   { key: "secret", name: () => say("ضغطة مطوّلة ← كوبون سرّي|Long press → a secret coupon|לחיצה ארוכה ← קופון סודי"), make: (lang) => ({ on: "longpress", do: [{ act: "copy", text: { [lang]: "SECRET15" }, note: { [lang]: say("لقيت السر! انسخ الكود|You found the secret! Code copied|מצאת את הסוד! הקוד הועתק") } }, { act: "burst", kind: "stars", amount: 60 }, { act: "vibrate" }] }) },

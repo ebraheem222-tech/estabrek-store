@@ -54,7 +54,7 @@ async function known(self?: string): Promise<Known> {
   };
 }
 
-type Row = { id: string; name: string; note: string | null; draft: unknown; live: unknown; publishedAt: Date | null; enabled: boolean; runs: number; lastRunAt: Date | null; createdAt: Date; updatedAt: Date };
+type Row = { id: string; name: string; note: string | null; draft: unknown; live: unknown; publishedAt: Date | null; enabled: boolean; runs: number; lastRunAt: Date | null; createdAt: Date; updatedAt: Date; triggers?: Array<{ kind: string; slug: string | null; config: unknown; enabled: boolean }> };
 const lite = (f: Row) => {
   const draft = defOf(f.draft);
   return {
@@ -70,6 +70,8 @@ const lite = (f: Row) => {
     inputs: draft?.inputs.length ?? 0,
     /** What the published one is handed (for a function that calls it). */
     takes: defOf(f.live)?.inputs ?? [],
+    /** Its call addresses (a shop page's button runs it through one): who may call each. */
+    calls: (f.triggers ?? []).filter((t) => t.kind === "call" && t.enabled && t.slug).map((t) => ({ address: t.slug as string, who: String((t.config as { who?: unknown } | null)?.who ?? "customer") })),
     runs: f.runs,
     lastRunAt: f.lastRunAt,
     updatedAt: f.updatedAt,
@@ -115,7 +117,7 @@ async function full(fn: Row, req: Request) {
 r.get(
   "/",
   asyncHandler(async (_req, res) => {
-    const [fns, k] = await Promise.all([prisma.fn.findMany({ orderBy: { createdAt: "asc" } }), known()]);
+    const [fns, k] = await Promise.all([prisma.fn.findMany({ orderBy: { createdAt: "asc" }, include: { triggers: { select: { kind: true, slug: true, config: true, enabled: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] } } }), known()]);
     res.json({
       functions: fns.map(lite),
       // What a builder offers: each table's fields by their names, and what a field's kind can be asked.

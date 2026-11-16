@@ -165,6 +165,9 @@ describe("triggers", () => {
     for (const [kind] of CONDITIONS) expect(on([{ on: "click", if: [newCondition(kind)], do: [{ act: "vibrate" }], else: [{ act: "vibrate" }] }]), kind).toEqual([]);
     for (const [kind] of [...FLOW_ACTS, ...GROUP_ACTS]) expect(on([{ on: "click", do: [newStep(kind, "en")] }]), kind).toEqual([]);
     expect(on([{ on: "key", key: "Escape", do: [{ act: "vibrate" }] }, { on: "key", key: "k", do: [{ act: "vibrate" }] }, { on: "longpress", do: [{ act: "back" }] }])).toEqual([]);
+    // A button that runs one of the owner's functions, as the shopper who pressed: what it is handed, where its answer is kept.
+    expect(on([{ on: "click", who: "customer", deny: "signin", do: [{ act: "fn", fn: "friend-request", input: { to: "{{friend}}", note: "hi" }, as: "sent" }, { act: "toast", text: { en: "{{sent}}" } }], fail: [{ act: "toast", text: { en: "{{error}}" } }] }])).toEqual([]);
+    expect(on([{ on: "click", do: [{ act: "fn" }] }]), "not picked yet").toEqual([]);
     expect(on([{ on: "click", who: "customer", deny: "lock", note: { ar: "سجّل دخولك أول" }, do: [{ act: "confirm", text: { ar: "متأكد؟" } }, { act: "bag", productId: "prod_1", quantity: 2 }], fail: [{ act: "toast", text: { ar: "تمام" } }] }])).toEqual([]);
     expect(on([{ on: "click", do: [{ act: "call", phone: "+972 50-000 0000" }, { act: "whatsapp", phone: "0500000000", text: { en: "Hi" } }, { act: "share", href: "/shop", title: { en: "Look" } }, { act: "download", href: "/uploads/guide.pdf", name: "guide.pdf" }, { act: "wish", productId: "prod_1", value: "add" }] }])).toEqual([]);
   });
@@ -177,6 +180,10 @@ describe("triggers", () => {
     no({ on: "click", do: [{ act: "call", phone: "call me" }] }, "not a phone number");
     no({ on: "click", do: [{ act: "bag", productId: "../../x" }] }, "not a product id");
     no({ on: "click", do: [{ act: "bag", productId: "p", quantity: 500 }] }, "too many pieces");
+    no({ on: "click", do: [{ act: "fn", fn: "Not An Address" }] }, "not a function's address");
+    no({ on: "click", do: [{ act: "fn", fn: "ok-fn", input: { "bad name": "x" } }] }, "an input that isn't a name");
+    no({ on: "click", do: [{ act: "fn", fn: "ok-fn", input: Object.fromEntries(Array.from({ length: 13 }, (_, k) => [`k${k}`, "x"])) }] }, "too many inputs");
+    no({ on: "click", do: [{ act: "fn", fn: "ok-fn", as: "1bad" }] }, "a bad variable name for the answer");
     no({ on: "click", do: [{ act: "download", href: "javascript:alert(1)" }] }, "a script as a file");
     no({ on: "click", do: [{ act: "set", name: "1bad", op: "set", value: 1 }] }, "a bad variable name");
     no({ on: "click", if: [{ if: "bag", cmp: "every", value: 2 }], do: [{ act: "vibrate" }] }, "a comparison the bag doesn't have");

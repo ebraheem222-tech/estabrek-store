@@ -347,6 +347,9 @@ describe("A call to its own address", () => {
     // Anyone; a signed-in shopper is still known as themselves.
     expect((await call(`${PREFIX}open`).expect(200)).body).toEqual({ ok: true, value: "public" });
     expect((await call(`${PREFIX}open`).set("Authorization", `Bearer ${sara}`).expect(200)).body).toEqual({ ok: true, value: "customer" });
+    // The list says each function's call addresses and who may call each (the page editor's "run a function" step offers them).
+    const listed = (await request(app).get(at).expect(200)).body.functions.find((f: { id: string }) => f.id === who);
+    expect(listed.calls).toEqual([{ address: `${PREFIX}keyed`, who: "key" }, { address: `${PREFIX}open`, who: "public" }]);
     // Not an address; switched off; the function off.
     expect((await call(`${PREFIX}nope`).expect(404)).body.error).toBe("NOT_FOUND");
     await request(app).put(`${at}/${who}`).send({ enabled: false }).expect(200);

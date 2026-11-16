@@ -210,9 +210,15 @@ export type TriggerActionSpec =
   | { act: "download"; href: string; name: string }
   | { act: "bag"; productId: string; quantity: number }
   | { act: "wish"; productId: string; value: "add" | "remove" | "toggle" }
-  | { act: "confirm"; text: string; yes: string; no: string };
-/** The steps that can fail (a "no" to a question, a product that can't be bought): the recipe's `fail` steps run then. */
-export const CAN_FAIL: ReadonlyArray<TriggerActionSpec["act"]> = ["confirm", "bag", "wish"];
+  | { act: "confirm"; text: string; yes: string; no: string }
+  // Runs one of the owner's functions (the backend's POST /v1/fn/<address>) as the shopper who pressed. `input`:
+  // what it is handed (a value may name a recipe variable); `as` ("" = none): the variable its answer is kept in.
+  | { act: "fn"; fn: string; input: Record<string, string>; as: string };
+/** The steps that can fail (a "no" to a question, a product that can't be bought, a function that stopped): the recipe's `fail` steps run then. */
+export const CAN_FAIL: ReadonlyArray<TriggerActionSpec["act"]> = ["confirm", "bag", "wish", "fn"];
+/** A function's call address, and the name of something it is handed (the backend's lib/fnTriggers.ts CALL_SLUG, lib/fnDef.ts NAME). */
+export const FN_ADDRESS = /^[a-z0-9][a-z0-9-]{1,40}$/;
+export const FN_INPUT = /^[a-z][a-zA-Z0-9_]{0,30}$/;
 
 /* Recipes (the backend's lib/pageTree.ts NodeTrigger): when → if → do, else; groups, variables. */
 export const VAR_NAME = /^[A-Za-z][A-Za-z0-9_]{0,23}$/;
@@ -356,6 +362,13 @@ function actionOf(x: Record<string, unknown>, { link, say }: Readers): TriggerAc
       const text = say(x.text).slice(0, 200);
       if (text) return { act: "confirm", text, yes: say(x.yes).slice(0, 24), no: say(x.no).slice(0, 24) };
       break;
+    }
+    case "fn": {
+      // No address (not picked in the editor yet), or one that isn't an address: the step drops out.
+      if (typeof x.fn !== "string" || !FN_ADDRESS.test(x.fn)) break;
+      const given = x.input && typeof x.input === "object" && !Array.isArray(x.input) ? Object.entries(x.input as Record<string, unknown>) : [];
+      const input = Object.fromEntries(given.filter(([k, v]) => FN_INPUT.test(k) && typeof v === "string").slice(0, 12).map(([k, v]) => [k, (v as string).slice(0, 300)]));
+      return { act: "fn", fn: x.fn, input, as: typeof x.as === "string" && VAR_NAME.test(x.as) ? x.as : "" };
     }
     default:
       break;

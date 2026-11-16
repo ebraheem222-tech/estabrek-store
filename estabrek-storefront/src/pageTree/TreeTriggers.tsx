@@ -54,7 +54,7 @@ function setVisible(el: HTMLElement, value: "show" | "hide" | "toggle", reduced:
  * question answers itself, the bag and the wishlist aren't touched, and what would leave the page is only said.
  * With `fail`, the steps that can fail do.
  */
-type Run = { self: HTMLElement; reduced: boolean; point?: { x: number; y: number }; alive: () => boolean; tryout?: { fail: boolean } };
+type Run = { self: HTMLElement; reduced: boolean; point?: { x: number; y: number }; alive: () => boolean; tryout?: { fail: boolean }; /** The recipe says what happens when a step fails (else a function's own words are shown). */ hasFail?: boolean };
 
 /** A step failed (a "no" to a question, a product that can't be bought): the recipe's `fail` steps run instead of the rest. */
 const FAIL = Symbol("fail");
@@ -72,12 +72,37 @@ const IN_SHOP: Record<string, Record<string, string>> = {
   download: { ar: "بالمتجر: الملف بينزل", he: "בחנות: הקובץ יורד", en: "In the shop: the file downloads" },
   bag: { ar: "بالمتجر: المنتج بينحط بالسلة", he: "בחנות: המוצר נכנס לסל", en: "In the shop: the product goes into the bag" },
   wish: { ar: "بالمتجر: المنتج بينحفظ بالمفضلة", he: "בחנות: המוצר נשמר במועדפים", en: "In the shop: the product is saved to the wishlist" },
+  fn: { ar: "بالمتجر: الـ function بتشتغل", he: "בחנות: הפונקציה רצה", en: "In the shop: the function runs" },
 };
+/** Why a function couldn't be run, for the shopper (when it stopped by itself, its own words are said instead). */
+const FN_REFUSED: Record<string, Record<string, string>> = {
+  signin: { ar: "سجّل دخولك أول", he: "יש להתחבר קודם", en: "Sign in first" },
+  busy: { ar: "كتير طلبات. استنّى شوي وجرّب كمان مرة", he: "יותר מדי בקשות. נסו שוב בעוד רגע", en: "Too many tries. Wait a moment and try again" },
+  other: { ar: "ما زبط. جرّب كمان مرة", he: "זה לא הצליח. נסו שוב", en: "That didn't work. Try again" },
+};
+/**
+ * A function's answer kept in recipe variables: a plain value under `name`; a thing's plain fields (a row's, say)
+ * under name_field: its own fields first, then a row's marks ($id and the like, without the mark), a dozen in all.
+ * A list isn't kept.
+ */
+function keepAnswer(name: string, value: unknown) {
+  const plain = (v: unknown): v is VarValue => typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+  if (plain(value)) return changeVar(name, "set", value);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const fields = Object.entries(value as Record<string, unknown>);
+  let kept = 0;
+  for (const [key, v] of [...fields.filter(([k]) => !k.startsWith("$")), ...fields.filter(([k]) => k.startsWith("$"))]) {
+    const field = key.replace(/^\$/, "");
+    if (kept >= 12 || !plain(v) || !/^[A-Za-z0-9_]+$/.test(field) || `${name}_${field}`.length > 24) continue;
+    changeVar(`${name}_${field}`, "set", v);
+    kept++;
+  }
+}
 
 /** One action. */
-async function act(a: TriggerActionSpec, { self, reduced, point, tryout }: Run) {
+async function act(a: TriggerActionSpec, { self, reduced, point, tryout, hasFail }: Run) {
   if (tryout && IN_SHOP[a.act]) {
-    if (tryout.fail && (a.act === "bag" || a.act === "wish")) throw FAIL;
+    if (tryout.fail && (a.act === "bag" || a.act === "wish" || a.act === "fn")) throw FAIL;
     const lang = langOf(self);
     toast((IN_SHOP[a.act][lang] ?? IN_SHOP[a.act].en));
     return;
@@ -223,6 +248,20 @@ async function act(a: TriggerActionSpec, { self, reduced, point, tryout }: Run) 
         if (!(await ask(fillVars(a.text), a.yes || yes, a.no || no, lang === "ar" || lang === "he", tryout ? !tryout.fail : undefined, self))) throw FAIL;
         break;
       }
+      case "fn": {
+        const hands = await whenHands();
+        const out = hands ? await hands.fn(a.fn, Object.fromEntries(Object.entries(a.input).map(([k, v]) => [k, fillVars(v)]))) : { ok: false as const, status: 0, error: "" };
+        if (out.ok) {
+          if (a.as) keepAnswer(a.as, out.value);
+          break;
+        }
+        // Why: the function's own words, or ours for what kept it from running. A recipe with fail steps says it itself ({{error}}).
+        const lang = langOf(self);
+        const words = out.error || (FN_REFUSED[out.status === 401 ? "signin" : out.status === 429 ? "busy" : "other"][lang] ?? FN_REFUSED.other.en);
+        changeVar("error", "set", words);
+        if (!hasFail) toast(words);
+        throw FAIL;
+      }
     }
   }
 }
@@ -306,6 +345,7 @@ async function runRecipe(t: TriggerSpec, count: number, run: Run) {
   // A condition on the bag waits for the shop's hands (they may still be loading right after the page opens).
   if (t.if.some((c) => c.if === "bag")) await whenHands();
   const ok = t.if.every((c) => holds(c, count, run.self));
+  run.hasFail = (t.fail?.length ?? 0) > 0;
   try {
     await steps(ok ? t.do : t.else, run);
   } catch (why) {
@@ -328,7 +368,7 @@ const PRESSES = new Set<string>(["click", "dblclick", "longpress"]);
 /** How long a press is held to be a long press. */
 export const LONG_PRESS_MS = 550;
 /** Steps after which the element's own link mustn't take the shopper away at once (the recipe goes on, or goes somewhere itself). */
-const STAYS = new Set<string>(["link", "back", "wait", "waitUntil", "together", "repeat", "random", "confirm", "bag", "wish", "share", "whatsapp", "call", "download"]);
+const STAYS = new Set<string>(["link", "back", "wait", "waitUntil", "together", "repeat", "random", "confirm", "bag", "wish", "fn", "share", "whatsapp", "call", "download"]);
 
 const TOKEN_VAR: Record<string, string> = { text: "--text", muted: "--muted", accent: "--accent", "accent-soft": "--accent-soft", "accent-contrast": "--accent-contrast", bg: "--bg", surface: "--surface", border: "--border" };
 function colourOf(el: Element, c: string): string {

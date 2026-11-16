@@ -1493,6 +1493,37 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       });
       return;
     }
+    // The owner's functions, called by a page's button (recipes.spec.ts): stand-ins for the backend's
+    // POST /v1/fn/<address>. Each call is remembered with who made it (/__test/fn-calls; POST forgets them).
+    if (pathname.startsWith("/v1/fn/") && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const { input = {} } = JSON.parse(body || "{}");
+        const send = (status, payload) => { res.statusCode = status; res.end(JSON.stringify(payload)); };
+        const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
+        const shopper = bearer && customerState.tokens.has(bearer) ? customerState.user : null;
+        const address = decodeURIComponent(pathname.slice("/v1/fn/".length));
+        (globalThis.fnCalls ??= []).push({ address, input, shopper: shopper?.email ?? null });
+        // Anyone may call it; it answers with words.
+        if (address === "hello") return send(200, { ok: true, value: `Hello ${input.name ?? ""}` });
+        // Only a signed-in shopper; it answers with a row.
+        if (address === "friend-request") {
+          if (!shopper) return send(401, { error: "SIGN_IN_NEEDED", message: "This needs a signed-in shopper" });
+          return send(200, { ok: true, value: { $id: "row1", to: input.to, from: shopper.email, waiting: true, tags: ["a"] } });
+        }
+        // It stops by itself, with its own words.
+        if (address === "full") return send(422, { ok: false, error: "You already asked her" });
+        if (address === "busy") return send(429, { error: "RATE_LIMIT", message: "Too many requests this minute" });
+        return send(404, { error: "NOT_FOUND", message: "No such address" });
+      });
+      return;
+    }
+    if (pathname === "/__test/fn-calls") {
+      const calls = globalThis.fnCalls ?? [];
+      if (req.method === "POST") globalThis.fnCalls = [];
+      return res.end(JSON.stringify({ calls }));
+    }
     // Shopper accounts (account.spec.ts): code 123456 signs in; one shopper, kept in memory.
     if (pathname.startsWith("/v1/customer/")) {
       let body = "";
