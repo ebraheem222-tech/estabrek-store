@@ -6,6 +6,7 @@
  * Words per language (text, long text) are not here: their boxes are one per language.
  */
 import type { CollectionField, FieldType, Linked, Local } from "../../api/collections.api";
+import { HIDDEN_ROW } from "./storeLinks";
 
 export type Lang = "ar" | "en" | "he";
 export const WORD_KINDS: FieldType[] = ["text", "longText"];
@@ -40,12 +41,18 @@ export const KIND_NAME: Record<FieldType, string> = {
 /** The linked rows in a relation's value (as the routes answer it, or as its box holds it). */
 export function linkedOf(v: unknown): Linked[] {
   if (!Array.isArray(v)) return [];
-  return v.flatMap((x) => (x && typeof x === "object" && typeof (x as Linked).id === "string" ? [{ id: (x as Linked).id, slug: String((x as Linked).slug ?? ""), title: (x as Linked).title && typeof (x as Linked).title === "object" ? (x as Linked).title : null }] : []));
+  return v.flatMap((x) =>
+    x && typeof x === "object" && typeof (x as Linked).id === "string"
+      ? [{ id: (x as Linked).id, slug: String((x as Linked).slug ?? ""), title: (x as Linked).title && typeof (x as Linked).title === "object" ? (x as Linked).title : null, ...storeOf(x as Linked) }]
+      : [],
+  );
 }
-/** What a linked row is called: its first words, else its address. */
-export const linkedName = (row: Pick<Linked, "slug" | "title">, lang: Lang) => row.title?.[lang] || row.title?.ar || row.title?.en || row.title?.he || row.slug;
+/** A store row's own marks: its table, and whether its name is kept from this member. */
+const storeOf = (x: Linked): Pick<Linked, "store" | "hidden"> => ({ ...(typeof x.store === "string" && x.store ? { store: x.store } : {}), ...(x.hidden === true ? { hidden: true } : {}) });
+/** What a linked row is called: its first words, else its address. A store row this member may not see: that it is linked. */
+export const linkedName = (row: Pick<Linked, "slug" | "title" | "hidden">, lang: Lang) => (row.hidden ? HIDDEN_ROW.split("|")[lang === "ar" ? 0 : lang === "en" ? 1 : 2] : row.title?.[lang] || row.title?.ar || row.title?.en || row.title?.he || row.slug);
 /** A relation's box: the rows it links, as words the box can keep and compare (JSON: id, address, first words). */
-export const linksDraft = (rows: Linked[]) => (rows.length ? JSON.stringify(rows.map((r) => ({ id: r.id, slug: r.slug, title: r.title }))) : "");
+export const linksDraft = (rows: Linked[]) => (rows.length ? JSON.stringify(rows.map((r) => ({ id: r.id, slug: r.slug, title: r.title, ...storeOf(r) }))) : "");
 /** The rows in a relation's box. */
 export function draftLinks(draft: string): Linked[] {
   if (!draft.trim()) return [];

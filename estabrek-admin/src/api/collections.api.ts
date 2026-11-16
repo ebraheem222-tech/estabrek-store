@@ -7,7 +7,7 @@ export type FieldType = "text" | "longText" | "image" | "number" | "date" | "lin
 /** What happens to the rows that link a row when it is deleted (backend lib/links.ts). */
 export type OnDelete = "unlink" | "cascade" | "restrict";
 /** A linked row as the routes answer it under a relation field. */
-export type Linked = { id: string; slug: string; status?: ItemStatus; title: Local | null };
+export type Linked = { id: string; slug: string; status?: ItemStatus; title: Local | null; /** One of the store's rows: which table (products, categories, orders, customers). */ store?: string; /** A store row this member may not see: it is linked, its name isn't told. */ hidden?: boolean };
 /** A field: its kind, its name, and its rules (backend lib/fieldRules.ts). */
 export type CollectionField = {
   id: string;

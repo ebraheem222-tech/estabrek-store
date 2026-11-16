@@ -5,6 +5,7 @@
  * GET /admin/data/store                       — the tables this member may see, as the grid knows tables
  * GET /admin/data/store/:table/rows?q={…}     — one page (the grid's own question)
  * GET /admin/data/store/:table/rows/export?q= — the asked rows as CSV
+ * GET /admin/data/store/:table/lookup?search=  — a few rows by what they are called, for a relation's box (lib/storeLinks.ts)
  */
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async.js";
@@ -13,6 +14,8 @@ import { hasPermission } from "../../middleware/access.js";
 import { LIMITS } from "../../lib/collections.js";
 import { parseGridQuery } from "../../lib/dataQuery.js";
 import { STORE_TABLES, describeStoreTable, queryStoreRows, storeCsvHead, storeCsvLine, storeRowsSlice, type StoreTable } from "../../lib/storeTables.js";
+import { prisma } from "../../lib/prisma.js";
+import { storeRowsByIds, storeTarget } from "../../lib/storeLinks.js";
 
 const r = Router();
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
@@ -61,6 +64,20 @@ r.get(
       rows = await storeRowsSlice(t, q, offset + STEP, STEP);
     }
     res.end();
+  }),
+);
+
+r.get(
+  "/:table/lookup",
+  asyncHandler(async (req, res) => {
+    const t = tableOf(req);
+    const s = storeTarget(`store:${t.id}`);
+    if (!s) throw new AppError(404, "NOT_FOUND", "No such table");
+    // The grid's own search, the newest first; each row then named the way a relation shows it.
+    const search = String(one(req.query.search) ?? "").trim().slice(0, 80);
+    const page = await queryStoreRows(t, parseGridQuery(JSON.stringify({ page: 1, pageSize: 20, ...(search ? { search } : {}) })));
+    const named = await storeRowsByIds(prisma, s, page.rows.map((row) => row.id));
+    res.json({ rows: named.map((row) => ({ id: row.id, slug: row.slug, status: "PUBLISHED", title: row.label ? { ar: row.label, en: row.label, he: row.label } : null, store: s })), total: page.total });
   }),
 );
 

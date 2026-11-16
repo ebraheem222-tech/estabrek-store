@@ -29,7 +29,12 @@ import { checkTree, PAGE_FORMAT } from "../../lib/pageTree.js";
 import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, ITEM_SLUG, LIMITS, PRESETS, STORE_TEMPLATES, TEMPLATE_KIND, withDefaults, type StoreTemplateKind } from "../../lib/collections.js";
 import { changedUnique, uniqueIssues } from "../../lib/uniqueValues.js";
 import { applySchemaChange, hiddenOf, needsAccept, planChange, previewSchemaChange, shownRow, type Impact } from "../../lib/schemaChange.js";
-import { checkLinks, linkGone, relationProblem, saveLinks, splitLinks, tablesLinking, trashRows, withLinks } from "../../lib/links.js";
+import { checkLinks, linkGone, relationProblem, saveLinks, splitLinks, tablesLinking, trashRows, withLinks, type LinkView } from "../../lib/links.js";
+import { hasPermission } from "../../middleware/access.js";
+import { storePermission, type StoreId } from "../../lib/storeLinks.js";
+
+/** A linked store row is named only to who may see that store table (lib/storeLinks.ts). */
+const storeView = (req: Parameters<typeof hasPermission>[0]) => ({ store: (s: StoreId) => hasPermission(req, storePermission(s)) });
 import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 
@@ -205,13 +210,13 @@ r.get("/:id/items", asyncHandler(async (req, res) => {
     prisma.collection.findUnique({ where: { id: req.params.id }, select: { fields: true } }),
     prisma.collectionItem.findMany({ where: { collectionId: req.params.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.itemsList }),
   ]);
-  res.json(c ? await withLinks(prisma, { id: req.params.id, fields: fieldsOf(c) }, items.map((item) => shownRow(item, fieldsOf(c)))) : items);
+  res.json(c ? await withLinks(prisma, { id: req.params.id, fields: fieldsOf(c) }, items.map((item) => shownRow(item, fieldsOf(c))), storeView(req)) : items);
 }));
 
 /** An item's relations, taken out of its data and checked (lib/links.ts): the rows to link, or a 400's body. */
-async function itemLinks(table: { id: string; fields: Field[] }, body: any, was?: { id: string }) {
+async function itemLinks(table: { id: string; fields: Field[] }, body: any, view: LinkView, was?: { id: string }) {
   const split = splitLinks(table.fields, body?.data, true);
-  const check = split.issues.length ? null : await checkLinks(prisma, table, [{ id: was?.id, asked: split.asked }]);
+  const check = split.issues.length ? null : await checkLinks(prisma, table, [{ id: was?.id, asked: split.asked }], view);
   const wrong = split.issues.length ? split.issues : check?.issues.get(0);
   if (wrong) return { error: { error: "ITEM_INVALID", field: "data", message: "Some values are wrong", issues: wrong } };
   return { body: body?.data === undefined ? body : { ...body, data: split.rest }, links: check!.ready[0] };
@@ -253,7 +258,7 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
   if (!c) return res.status(404).json({ error: "NOT_FOUND" });
   if (c._count.items >= LIMITS.items) return res.status(400).json({ error: "TOO_MANY_ITEMS" });
   const table = { id: c.id, fields: fieldsOf(c) };
-  const linked = await itemLinks(table, req.body);
+  const linked = await itemLinks(table, req.body, storeView(req));
   if ("error" in linked) return res.status(400).json(linked.error);
   const b = itemBody(table.fields, linked.body, false);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
@@ -267,7 +272,7 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
       return row;
     });
     refresh();
-    res.status(201).json((await withLinks(prisma, table, [made]))[0]);
+    res.status(201).json((await withLinks(prisma, table, [made], storeView(req)))[0]);
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
     if (linkGone(e)) return res.status(409).json({ error: "LINK_GONE" });
@@ -280,7 +285,7 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
   const was = await prisma.collectionItem.findFirst({ where: { id: req.params.item, collectionId: req.params.id, deletedAt: null } });
   if (!c || !was) return res.status(404).json({ error: "NOT_FOUND" });
   const table = { id: c.id, fields: fieldsOf(c) };
-  const linked = await itemLinks(table, req.body, was);
+  const linked = await itemLinks(table, req.body, storeView(req), was);
   if ("error" in linked) return res.status(400).json(linked.error);
   const b = itemBody(table.fields, linked.body, true);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
@@ -293,7 +298,7 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
       return row;
     });
     refresh();
-    res.json((await withLinks(prisma, table, [saved]))[0]);
+    res.json((await withLinks(prisma, table, [saved], storeView(req)))[0]);
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
     if (linkGone(e)) return res.status(409).json({ error: "LINK_GONE" });

@@ -31,6 +31,7 @@ import { GRID_LIMITS, OPS_BY_KIND, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQu
 import { LANGS, coerceValue, csvLine, exportColumns } from "../../lib/dataRows.js";
 import { LONG, StatusIn, addRow, answer, changeRow, refresh, tableOf, taken, writeRows } from "../../lib/rowWrites.js";
 import { emitRow } from "../../lib/fnTriggers.js";
+import { storePermission, type StoreId } from "../../lib/storeLinks.js";
 
 const r = Router();
 export const IMPORT_MAX = 500;
@@ -41,7 +42,9 @@ const ROW_EVENTS_MAX = 25;
 const Lang = z.enum(LANGS).default("ar");
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 /** A row's owner by name and email for members who may see the customers; for the others, only that it has one. */
-const owners = (req: Parameters<typeof hasPermission>[0]) => ({ owners: hasPermission(req, "customers:read") ? ("full" as const) : ("id" as const) });
+/** What this member is told of a row: its owner by name (who may see the customers), and a linked store row by name (who may see that store table). */
+const storeView = (req: Parameters<typeof hasPermission>[0]) => ({ store: (s: StoreId) => hasPermission(req, storePermission(s)) });
+const owners = (req: Parameters<typeof hasPermission>[0]) => ({ owners: hasPermission(req, "customers:read") ? ("full" as const) : ("id" as const), ...storeView(req) });
 
 r.get("/grid-meta", (_req, res) => {
   res.json({ ops: OPS_BY_KIND, systemColumns: SYSTEM_COLUMNS, views: VIEWS, limits: { ...GRID_LIMITS, rows: LIMITS.items, importRows: IMPORT_MAX, bulkIds: BULK_MAX, trashDays: TRASH_DAYS, links: LIMITS.links }, rules: RULES_BY_TYPE, shapes: SHAPES });
@@ -72,7 +75,7 @@ r.get(
     // The mark at the start tells spreadsheets the file is UTF-8 (Arabic and Hebrew stay readable).
     res.write(`﻿${exportColumns(table.fields).join(",")}\r\n`);
     for (let offset = 0; rows.length; offset += STEP) {
-      res.write(`${(await withLinks(prisma, table, rows)).map((row) => csvLine(table.fields, row)).join("\r\n")}\r\n`);
+      res.write(`${(await withLinks(prisma, table, rows, storeView(req))).map((row) => csvLine(table.fields, row)).join("\r\n")}\r\n`);
       if (rows.length < STEP || offset + STEP >= LIMITS.items) break;
       rows = await rowsSlice(prisma, table, q, offset + STEP, STEP);
     }
@@ -105,7 +108,7 @@ r.post(
   asyncHandler(async (req, res) => {
     const table = await tableOf(String(req.params.id));
     const body = RowBody.parse(req.body ?? {});
-    const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values }, body.lang);
+    const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values }, body.lang, storeView(req));
     res.status(201).json(row ? (await answer(table, [row], owners(req)))[0] : row);
   }),
 );
@@ -122,7 +125,7 @@ r.patch(
     const was = await prisma.collectionItem.findFirst({ where: { id: String(req.params.row), collectionId: table.id } });
     if (!was) throw new AppError(404, "NOT_FOUND", "No such row");
     if (was.deletedAt) throw new AppError(409, "ROW_IN_TRASH", "Take the row out of the trash first");
-    res.json((await answer(table, [await changeRow(table, was, body)], owners(req)))[0]);
+    res.json((await answer(table, [await changeRow(table, was, body, storeView(req))], owners(req)))[0]);
   }),
 );
 
@@ -177,7 +180,7 @@ r.post(
       if (field.exclusive && names.length && (!body.ids || body.ids.length !== 1)) throw invalid([{ field: field.id, message: "Only one row can link this row" }]);
       const rowIds = (await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT i."id" FROM "CollectionItem" i WHERE ${live}`)).map((x) => x.id);
       // Checked as one row's would be (every asked row gets the same); with one row, against that row itself.
-      const check = await checkLinks(prisma, table, [{ id: rowIds.length === 1 ? rowIds[0] : "", asked: new Map([[field.id, names]]) }]);
+      const check = await checkLinks(prisma, table, [{ id: rowIds.length === 1 ? rowIds[0] : "", asked: new Map([[field.id, names]]) }], storeView(req));
       if (check.issues.size) throw invalid(check.issues.get(0));
       const ids = check.ready[0].get(field.id) ?? [];
       changed = await prisma.$transaction((tx) => setLinksOfMany(tx, table, field, rowIds, ids, now), LONG);
@@ -219,7 +222,7 @@ r.post(
     const table = await tableOf(String(req.params.id));
     const body = ImportBody.parse(req.body ?? {});
     try {
-      const { slugs: _slugs, ...report } = await writeRows(table, body.rows, { mode: body.mode, lang: body.lang, dryRun: body.dryRun });
+      const { slugs: _slugs, ...report } = await writeRows(table, body.rows, { mode: body.mode, lang: body.lang, dryRun: body.dryRun, view: storeView(req) });
       res.json(report);
     } catch (e) {
       // Two people adding the same address at once: nothing was written, ask again.

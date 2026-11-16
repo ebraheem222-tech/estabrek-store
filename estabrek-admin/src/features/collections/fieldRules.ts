@@ -5,6 +5,7 @@
  */
 import type { CollectionField, FieldType, Local } from "../../api/collections.api";
 import { draftFrom, valueFrom } from "../data/kinds";
+import { storeTarget } from "../data/storeLinks";
 
 export type Lang = "ar" | "en" | "he";
 export type Shape = NonNullable<CollectionField["shape"]>;
@@ -174,7 +175,7 @@ export const LINK_KIND_NAME: Record<LinkKind, string> = {
   manyToMany: "كل سطر هون بيرتبط بعدة سطور هناك (كثير لكثير)|Each row here links several rows there (many to many)|כל שורה כאן מקשרת כמה שורות שם (רבים לרבים)",
   oneToMany: "كل سطر هون بعدة سطور هناك، وكل سطر هناك إله سطر واحد هون (واحد لكثير)|Each row here links several rows there, and each row there belongs to one row here (one to many)|כל שורה כאן מקשרת כמה שורות שם, וכל שורה שם שייכת לשורה אחת כאן (אחד לרבים)",
 };
-const LINK_KIND_SHORT: Record<LinkKind, string> = { manyToOne: "كثير لواحد|many to one|רבים לאחד", oneToOne: "واحد لواحد|one to one|אחד לאחד", manyToMany: "كثير لكثير|many to many|רבים לרבים", oneToMany: "واحد لكثير|one to many|אחד לרבים" };
+export const LINK_KIND_SHORT: Record<LinkKind, string> = { manyToOne: "كثير لواحد|many to one|רבים לאחד", oneToOne: "واحد لواحد|one to one|אחד לאחד", manyToMany: "كثير لكثير|many to many|רבים לרבים", oneToMany: "واحد لكثير|one to many|אחד לרבים" };
 export const linkKind = (f: Pick<CollectionField, "many" | "exclusive">): LinkKind => (f.many ? (f.exclusive ? "oneToMany" : "manyToMany") : f.exclusive ? "oneToOne" : "manyToOne");
 /** The relation paired another way (what isn't asked is taken off, so an untouched field is saved as it was). */
 export function setLinkKind(field: CollectionField, kind: LinkKind): CollectionField {
@@ -197,6 +198,13 @@ export function setOnDelete(field: CollectionField, to: OnDelete): CollectionFie
   const out = { ...field };
   if (to === "unlink") delete out.onDelete;
   else out.onDelete = to;
+  return out;
+}
+
+/** The relation pointed at another table. One of the store's: a row deleted there only drops its links, so that choice goes. */
+export function setLinkTo(field: CollectionField, to: string): CollectionField {
+  const out = { ...field, to };
+  if (storeTarget(to)) delete out.onDelete;
   return out;
 }
 

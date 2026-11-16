@@ -17,12 +17,17 @@
  *  - the other side: a table sees who links its rows. Every relation that links it (another
  *    table's, or its own) is a column of its grid, read only: how many rows link each row, and
  *    the first few. Nothing is kept for it: it is the same links read from their other end.
+ *  - the store's own tables: a relation may link products, categories, orders or customers
+ *    instead of one of the owner's tables (lib/storeLinks.ts). Its rules are the same; its links
+ *    are kept in StoreLink; a store row that is deleted just stops showing; and a linked store
+ *    row is named only to who may see that table.
  */
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/httpError.js";
 import { LIMITS, type ItemIssue } from "./collections.js";
 import type { Field } from "./collectionTree.js";
 import { utc } from "./dataQuery.js";
+import { linkTable, storeLinksOf, storeRowsNamed, storeTarget, type StoreId } from "./storeLinks.js";
 
 export type RelationField = Field & { type: "relation"; to: string };
 export const isRelation = (f: Field | undefined | null): f is RelationField => !!f && f.type === "relation" && typeof f.to === "string" && f.to !== "";
@@ -30,12 +35,12 @@ export const relationsOf = (fields: Field[]): RelationField[] => fields.filter(i
 
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 /** A linked row as the routes answer it: enough to name it and open it. */
-export type Linked = { id: string; slug: string; status: string; /** Its first words field. */ title: Local | null };
+export type Linked = { id: string; slug: string; status: string; /** Its first words field. */ title: Local | null; /** One of the store's rows: which of its tables. */ store?: StoreId; /** The reader may not see that table: only that a row is linked. */ hidden?: boolean };
 /** What relation fields were asked to hold: field id → rows named by id or address ([] unlinks). */
 export type Asked = Map<string, string[]>;
 
 type Raw = { $queryRaw: <T = unknown>(query: Prisma.Sql) => Promise<T>; $executeRaw: (query: Prisma.Sql) => Promise<number> };
-type Db = Raw & Pick<Prisma.TransactionClient, "collection" | "collectionLink">;
+type Db = Raw & Pick<Prisma.TransactionClient, "collection" | "collectionLink" | "storeLink">;
 const fieldsOf = (c: { fields: unknown }) => (Array.isArray(c.fields) ? c.fields : []) as Field[];
 
 /* ---------------- What was asked ---------------- */
@@ -83,8 +88,12 @@ export type LinkCheck = { issues: Map<number, ItemIssue[]>; /** Per candidate: e
  * nothing of a required relation is missing it. A row there that may be linked from one row only
  * is refused when another row holds it: one in this batch, or one of the table (a row in the
  * trash still holds its links, like it still holds an only value).
+ *
+ * `view`: who asks. One of the store's tables they may not see is never searched for them (what a
+ * name finds, or doesn't, would say what that table holds): a row keeps the store rows it already
+ * links, or lets go of them, and takes no other.
  */
-export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }, candidates: LinkCandidate[]): Promise<LinkCheck> {
+export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }, candidates: LinkCandidate[], view: LinkView = {}): Promise<LinkCheck> {
   const issues = new Map<number, ItemIssue[]>();
   const ready = candidates.map(() => new Map<string, string[]>());
   const bad = (k: number, issue: ItemIssue) => void issues.set(k, [...(issues.get(k) ?? []), issue]);
@@ -92,11 +101,27 @@ export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }
     // A refusal by the relation's own rules is said in the owner's words when the field has some (as a value's rules are).
     const own = f.message && Object.values(f.message).some(Boolean) ? { say: f.message } : {};
     const names = [...new Set(candidates.flatMap((c) => c.asked.get(f.id) ?? []))];
-    const found = names.length
-      ? await db.$queryRaw<Array<{ id: string; slug: string }>>(
-          Prisma.sql`SELECT t."id", t."slug" FROM "CollectionItem" t WHERE t."collectionId" = ${f.to} AND t."deletedAt" IS NULL AND (t."id" = ANY(${names}::text[]) OR t."slug" = ANY(${names.map((n) => n.toLowerCase())}::text[]))`,
-        )
-      : [];
+    // One of the store's tables: its rows by id (a product or a category by its address too, a customer by email).
+    const store = storeTarget(f.to);
+    const closed = !!store && !!view.store && !view.store(store);
+    // Closed to who asks: the store rows each of these rows links now, and nothing looked up by name.
+    const kept = new Map<string, Set<string>>();
+    if (closed && names.length) {
+      const mine = candidates.flatMap((c) => (c.id ? [c.id] : []));
+      const held = mine.length
+        ? await db.$queryRaw<Array<{ fromId: string; toId: string }>>(Prisma.sql`SELECT l."fromId", l."toId" FROM "StoreLink" l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${store} AND l."fromId" = ANY(${mine}::text[])`)
+        : [];
+      for (const h of held) kept.set(h.fromId, (kept.get(h.fromId) ?? new Set()).add(h.toId));
+    }
+    const found = !names.length
+      ? []
+      : closed
+        ? [...new Set([...kept.values()].flatMap((ids) => [...ids]))].map((id) => ({ id, slug: id }))
+        : store
+        ? await storeRowsNamed(db, store, names)
+        : await db.$queryRaw<Array<{ id: string; slug: string }>>(
+            Prisma.sql`SELECT t."id", t."slug" FROM "CollectionItem" t WHERE t."collectionId" = ${f.to} AND t."deletedAt" IS NULL AND (t."id" = ANY(${names}::text[]) OR t."slug" = ANY(${names.map((n) => n.toLowerCase())}::text[]))`,
+          );
     const byId = new Map(found.map((x) => [x.id, x]));
     const bySlug = new Map(found.map((x) => [x.slug, x]));
     candidates.forEach((c, k) => {
@@ -107,6 +132,7 @@ export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }
       }
       const ids: string[] = [];
       for (const name of asked) {
+        if (closed && !kept.get(c.id ?? "")?.has(name)) return bad(k, { field: f.id, message: "Linking this table's rows needs the permission to see it" });
         const row = byId.get(name) ?? bySlug.get(name.toLowerCase());
         if (!row) return bad(k, { field: f.id, message: "No such row", value: name, ...own });
         if (row.id === c.id) return bad(k, { field: f.id, message: "A row can't link itself", ...own });
@@ -130,8 +156,9 @@ export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }
       }
     });
     if (holder.size) {
+      const kept = linkTable(f.to);
       const held = await db.$queryRaw<Array<{ toId: string; fromId: string }>>(
-        Prisma.sql`SELECT l."toId", l."fromId" FROM "CollectionLink" l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${f.to} AND l."toId" = ANY(${[...holder.keys()]}::text[])`,
+        Prisma.sql`SELECT l."toId", l."fromId" FROM ${kept.table} l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${kept.toTable} AND l."toId" = ANY(${[...holder.keys()]}::text[])`,
       );
       for (const h of held) {
         const k = holder.get(h.toId)!;
@@ -148,10 +175,24 @@ export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }
  * checkLinks made ready). Run inside the transaction that writes the rows. Two statements a
  * relation, however many rows.
  */
-export async function saveLinks(db: Pick<Db, "collectionLink">, table: { id: string; fields: Field[] }, rows: Array<{ id: string; links: Map<string, string[]> }>): Promise<void> {
+export async function saveLinks(db: Pick<Db, "collectionLink" | "storeLink">, table: { id: string; fields: Field[] }, rows: Array<{ id: string; links: Map<string, string[]> }>): Promise<void> {
   for (const f of relationsOf(table.fields)) {
     let asked = rows.filter((r) => r.links.has(f.id));
     if (!asked.length) continue;
+    const store = storeTarget(f.to);
+    if (store) {
+      // The store's rows: the same replacing, in the store links' own table.
+      const where = { collectionId: table.id, fieldId: f.id, toTable: store, fromId: { in: asked.map((r) => r.id) } };
+      const had = await db.storeLink.findMany({ where, orderBy: [{ position: "asc" }, { createdAt: "asc" }, { toId: "asc" }], select: { fromId: true, toId: true } });
+      const held = new Map<string, string[]>();
+      for (const l of had) held.set(l.fromId, [...(held.get(l.fromId) ?? []), l.toId]);
+      asked = asked.filter((r) => (held.get(r.id) ?? []).join("\n") !== r.links.get(f.id)!.join("\n"));
+      if (!asked.length) continue;
+      await db.storeLink.deleteMany({ where: { ...where, fromId: { in: asked.map((r) => r.id) } } });
+      const rowsOut = asked.flatMap((r) => r.links.get(f.id)!.map((toId, position) => ({ collectionId: table.id, fieldId: f.id, fromId: r.id, toTable: store, toId, position })));
+      if (rowsOut.length) await db.storeLink.createMany({ data: rowsOut, skipDuplicates: true });
+      continue;
+    }
     // Asked to hold what it already shows: left alone. (A row's whole form sends every field; a
     // link waiting for a row in the trash isn't shown, and must not go because the form was saved.)
     const now = await db.collectionLink.findMany({
@@ -175,6 +216,16 @@ export const linkGone = (e: unknown) => e instanceof Prisma.PrismaClientKnownReq
 /** One relation field of many rows set to the same rows (the grid's "set a value" for the ticked rows or a whole question). */
 export async function setLinksOfMany(db: Raw, table: { id: string }, f: RelationField, rowIds: string[], ids: string[], now: Date): Promise<number> {
   if (!rowIds.length) return 0;
+  const store = storeTarget(f.to);
+  if (store) {
+    await db.$executeRaw(Prisma.sql`DELETE FROM "StoreLink" AS l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${store} AND l."fromId" = ANY(${rowIds}::text[])`);
+    if (ids.length) {
+      await db.$executeRaw(
+        Prisma.sql`INSERT INTO "StoreLink" ("collectionId", "fieldId", "fromId", "toTable", "toId", "position") SELECT ${table.id}::text, ${f.id}::text, r.id, ${store}::text, u.id, (u.pos - 1)::int FROM unnest(${rowIds}::text[]) AS r(id) CROSS JOIN unnest(${ids}::text[]) WITH ORDINALITY AS u(id, pos) ON CONFLICT DO NOTHING`,
+      );
+    }
+    return db.$executeRaw(Prisma.sql`UPDATE "CollectionItem" AS i SET "updatedAt" = ${utc(now)} WHERE i."collectionId" = ${table.id} AND i."id" = ANY(${rowIds}::text[])`);
+  }
   await db.$executeRaw(Prisma.sql`DELETE FROM "CollectionLink" AS l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${f.to} AND l."fromId" = ANY(${rowIds}::text[])`);
   if (ids.length) {
     await db.$executeRaw(
@@ -187,7 +238,8 @@ export async function setLinksOfMany(db: Raw, table: { id: string }, f: Relation
 /* ---------------- Read ---------------- */
 
 /** The rows' links, per relation field: to rows that are there (not in the trash), in each row's order. */
-export async function linksFor(db: Db, table: { id: string; fields: Field[] }, rowIds: string[]): Promise<Map<string, Record<string, Linked[]>>> {
+export type LinkView = { /** Whether the reader may see one of the store's tables (when not said: yes). A linked row of a table they may not see is told by its id alone. */ store?: (table: StoreId) => boolean };
+export async function linksFor(db: Db, table: { id: string; fields: Field[] }, rowIds: string[], view: LinkView = {}): Promise<Map<string, Record<string, Linked[]>>> {
   const out = new Map<string, Record<string, Linked[]>>();
   const rels = relationsOf(table.fields);
   if (!rels.length || !rowIds.length) return out;
@@ -195,6 +247,17 @@ export async function linksFor(db: Db, table: { id: string; fields: Field[] }, r
   const targets = await db.collection.findMany({ where: { id: { in: [...new Set(rels.map((f) => f.to))] } }, select: { id: true, fields: true } });
   const titleOf = new Map(targets.map((c) => [c.id, fieldsOf(c).find((x) => x.type === "text")?.id ?? null]));
   for (const f of rels) {
+    const store = storeTarget(f.to);
+    if (store) {
+      // One of the store's rows: called what its own page calls it (the same in every language).
+      const may = view.store ? view.store(store) : true;
+      for (const r of await storeLinksOf(db, store, table.id, f.id, rowIds)) {
+        const of = out.get(r.fromId) ?? {};
+        (of[f.id] ??= []).push(may ? { id: r.id, slug: r.slug, status: "PUBLISHED", title: r.label ? { ar: r.label, en: r.label, he: r.label } : null, store } : { id: r.id, slug: r.id, status: "PUBLISHED", title: null, store, hidden: true });
+        out.set(r.fromId, of);
+      }
+      continue;
+    }
     if (!titleOf.has(f.to)) continue;
     const title = titleOf.get(f.to);
     const rows = await db.$queryRaw<Array<{ fromId: string; id: string; slug: string; status: string; title: unknown }>>(
@@ -213,9 +276,9 @@ export async function linksFor(db: Db, table: { id: string; fields: Field[] }, r
 }
 
 /** Rows as the routes answer them: each relation field holds the rows it links (nothing when none). */
-export async function withLinks<T extends { id: string; data: unknown }>(db: Db, table: { id: string; fields: Field[] }, rows: T[]): Promise<T[]> {
+export async function withLinks<T extends { id: string; data: unknown }>(db: Db, table: { id: string; fields: Field[] }, rows: T[], view: LinkView = {}): Promise<T[]> {
   if (!table.fields.some((f) => f.type === "relation")) return rows;
-  const links = await linksFor(db, table, rows.map((r) => r.id));
+  const links = await linksFor(db, table, rows.map((r) => r.id), view);
   return rows.map((row) => {
     const data: Record<string, unknown> = { ...(row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {}) };
     for (const f of table.fields) {
@@ -291,7 +354,8 @@ type Rel = { table: string; field: string; to: string; onDelete: "unlink" | "cas
 /** Every relation of every table: deleting follows them wherever they lead (a row deleted with the row it links may take its own linkers along). */
 export async function allRelations(db: Pick<Db, "collection">): Promise<Rel[]> {
   const tables = await db.collection.findMany({ select: { id: true, fields: true } });
-  return tables.flatMap((c) => relationsOf(fieldsOf(c)).map((f) => ({ table: c.id, field: f.id, to: f.to, onDelete: f.onDelete ?? "unlink" })));
+  // (A relation to the store's rows isn't among them: nothing here deletes a store row, or is deleted with one.)
+  return tables.flatMap((c) => relationsOf(fieldsOf(c)).filter((f) => !storeTarget(f.to)).map((f) => ({ table: c.id, field: f.id, to: f.to, onDelete: f.onDelete ?? "unlink" })));
 }
 const relValues = (rels: Rel[]) => Prisma.join(rels.map((r) => Prisma.sql`(${r.table}::text, ${r.field}::text, ${r.to}::text)`));
 
@@ -371,17 +435,18 @@ export async function tablesLinking(db: Pick<Db, "collection">, tableId: string)
 
 /** A relation's table has to be there (`self`: the table being saved, which a relation may link). The first that isn't, or null. */
 export async function relationProblem(db: Pick<Db, "collection">, fields: Field[], self?: string): Promise<{ path: string; message: string } | null> {
-  const asked = [...new Set(relationsOf(fields).map((f) => f.to))].filter((id) => id !== self);
+  // (One of the store's own tables is always there.)
+  const asked = [...new Set(relationsOf(fields).map((f) => f.to))].filter((id) => id !== self && !storeTarget(id));
   if (!asked.length) return null;
   const there = new Set((await db.collection.findMany({ where: { id: { in: asked } }, select: { id: true } })).map((c) => c.id));
-  const index = fields.findIndex((f) => isRelation(f) && f.to !== self && !there.has(f.to));
+  const index = fields.findIndex((f) => isRelation(f) && f.to !== self && !storeTarget(f.to) && !there.has(f.to));
   return index < 0 ? null : { path: `fields.${index}.to`, message: "No such table to link" };
 }
 
 /** A relation's links as a change of fields counts them: rows that hold any, rows that hold several, rows that share a linked row with another. */
 export async function linkCounts(db: Pick<Raw, "$queryRaw">, tableId: string, fieldId: string, to: string): Promise<{ rows: number; several: number; shared: number }> {
   const got = await db.$queryRaw<Array<{ rows: number; several: number; shared: number }>>(
-    Prisma.sql`WITH l AS (SELECT "fromId", "toId" FROM "CollectionLink" WHERE "collectionId" = ${tableId} AND "fieldId" = ${fieldId} AND "toTable" = ${to}),
+    Prisma.sql`WITH l AS (SELECT "fromId", "toId" FROM ${linkTable(to).table} WHERE "collectionId" = ${tableId} AND "fieldId" = ${fieldId} AND "toTable" = ${linkTable(to).toTable}),
       per AS (SELECT "fromId", count(*) AS n FROM l GROUP BY 1),
       dup AS (SELECT "toId" FROM l GROUP BY 1 HAVING count(*) > 1)
       SELECT (SELECT count(*)::int FROM per) AS "rows", (SELECT count(*)::int FROM per WHERE n > 1) AS "several", (SELECT count(DISTINCT l."fromId")::int FROM l JOIN dup ON dup."toId" = l."toId") AS "shared"`,
