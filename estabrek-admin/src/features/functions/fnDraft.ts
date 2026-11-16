@@ -17,7 +17,7 @@ export const GROUPS: Array<{ key: "data" | "control" | "out"; acts: StepKind[] }
 /** After a failure a function tells someone or writes it down, nothing else. */
 export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set"];
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
-export const RESERVED = ["input", "now", "error", "index"];
+export const RESERVED = ["input", "now", "error", "index", "caller"];
 export const nameOk = (name: string) => NAME.test(name) && !RESERVED.includes(name);
 
 /* ---------------- Changing the tree (nothing is changed in place) ---------------- */
@@ -133,7 +133,8 @@ export function namesBefore(def: FnDef, target: Path): Known[] {
  * moment, and what is kept (a row with its fields, rows with how many and the first).
  */
 export function offers(def: FnDef, target: Path, tables: FnTable[]): string[] {
-  const out = [...def.inputs.map((i) => `input.${i.name}`), "now"];
+  // Who started the run: a shopper's button, a key, the admin, or (a row event, a schedule) the system.
+  const out = [...def.inputs.map((i) => `input.${i.name}`), "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind"];
   const fieldsOf = (id?: string) => tables.find((t) => t.id === id)?.fields ?? [];
   for (const k of namesBefore(def, target)) {
     if (k.kind === "rows") out.push(k.name, `${k.name}.length`, ...fieldsOf(k.table).map((f) => `${k.name}.first.${f.id}`));

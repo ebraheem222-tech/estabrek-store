@@ -22,6 +22,7 @@ export const STATUS_NAME: Record<TaskStatus, string> = {
 /** The kinds of work, by a name the owner knows. One the page doesn't know is shown as the server calls it. */
 const KIND_NAME: Record<string, string> = {
   automation: "حدث لتلقائية|An automation's event|אירוע לאוטומציה",
+  function: "تشغيل function|A function's run|הרצת פונקציה",
 };
 export const taskKindName = (kind: string, lang: Lang) => (KIND_NAME[kind] ? part(KIND_NAME[kind], lang) : kind);
 

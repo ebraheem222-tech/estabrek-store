@@ -395,6 +395,15 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
           {table(step.table, (t) => set({ act: "add", table: t, values: {}, ...(step.status ? { status: step.status } : {}), ...(step.as ? { as: step.as } : {}) }))}
           <ValuesForm at={path} table={step.table} values={step.values} onChange={(values) => set({ ...step, values })} />
           {status(step.status, (s) => set({ ...step, status: s }), say(STATUS_NAME.DRAFT))}
+          <Row name={say("صاحب السطر|The row's owner|בעל השורה")}>
+            <ValueInput
+              at={path}
+              value={step.owner}
+              onChange={(v) => set({ ...step, owner: v === "" ? undefined : v })}
+              placeholder={say("فاضي = سطر للمتجر · {{caller}} = الزبون اللي نادى|empty = the store's row · {{caller}} = the shopper who called|ריק = שורה של החנות · {{caller}} = הלקוח שקרא")}
+              testid={`step-${id}-owner`}
+            />
+          </Row>
           {keepAs(step.as, (as) => set({ ...step, as }))}
         </>
       );
@@ -503,8 +512,10 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
 
 /* ---------------- The cards ---------------- */
 
-/** A step's line. The names in it ({{order.total}}) read left to right, whichever way the page's words run. */
-function Line({ text }: { text: string }) {
+/** A line of words with names in it ({{order.total}}): the names read left to right, whichever way the page's words run. */
+export function Line({ text }: { text: string }) {
+  // A thing or a list written out ({"id": "{{row.$id}}"}) is all left to right.
+  if (/^[[{]/.test(text) && !text.startsWith("{{")) return <bdi dir="ltr">{text}</bdi>;
   return (
     <>
       {text.split(/(\{\{[^{}]*\}\})/).map((part, k) =>

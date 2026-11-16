@@ -1,6 +1,6 @@
 // الـ Functions: the pages' words, apart from the pages so they can be tested. Written in the
 // three languages side by side ("عربي|English|עברית").
-import type { Cmp, Cond, FnLite, FnTable, Step, StepKind, TraceLine, Val } from "../../api/functions.api";
+import type { Cmp, Cond, FnInput, FnLite, FnTable, FnTrigger, Step, StepKind, TraceLine, TriggerKind, Val } from "../../api/functions.api";
 import { fromVal, tableName } from "./fnDraft";
 
 export type Lang = "ar" | "en" | "he";
@@ -145,6 +145,7 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^"(.+)" can't be asked "(.+)"$/, "الحقل «{1}» ما بينسأل هالسؤال|The field “{1}” can't be asked that|אי אפשר לשאול כך את השדה «{1}»"],
   [/^Nothing is kept under "(.+)" before this step$/, "ما في شي محفوظ باسم «{1}» قبل هالخطوة|Nothing is kept under “{1}” before this step|שום דבר לא נשמר בשם «{1}» לפני השלב הזה"],
   [/^No input called "(.+)"$/, "ما في مدخل اسمه «{1}»|No input called “{1}”|אין קלט בשם «{1}»"],
+  [/^The caller has no "(.+)"$/, "المنادي ما إله «{1}» (إله: kind, id, name, email)|The caller has no “{1}” (it has: kind, id, name, email)|לקורא אין «{1}» (יש לו: kind, id, name, email)"],
   [/^"(\{\{.+\}\})" isn't a name$/, "«{1}» مش اسم|“{1}” isn't a name|«{1}» אינו שם"],
   [/^Compared with what\?$/, "مقارنة مع شو؟|Compared with what?|השוואה למה?"],
   [/^What is compared\?$/, "شو اللي بينقارن؟|What is compared?|מה מושווה?"],
@@ -236,3 +237,66 @@ export const STATE_NAME: Record<ReturnType<typeof stateOf>, string> = {
   live: "منشورة|Published|פורסמה",
   off: "موقّفة|Switched off|כבויה",
 };
+
+/* ---------------- What starts it ---------------- */
+
+export const TRIGGER_KIND_NAME: Record<TriggerKind, string> = {
+  row: "سطر بجدول|A row of a table|שורה בטבלה",
+  schedule: "على الوقت|On a schedule|לפי לוח זמנים",
+  event: "حدث بالمتجر|Something in the store|אירוע בחנות",
+  call: "نداء (زر بالمتجر أو برنامج)|A call (a shop button or a program)|קריאה (כפתור בחנות או תוכנה)",
+  webhook: "Webhook من نظام تاني|A webhook from another system|Webhook ממערכת אחרת",
+};
+export const ROW_EVENT_NAME = { added: "انضاف|added|נוספה", changed: "تعدّل|changed|שונתה", deleted: "انحذف|deleted|נמחקה" } as const;
+export const EVENT_NAME: Record<string, string> = {
+  "order.created": "طلب جديد|A new order|הזמנה חדשה",
+  "video.ready": "فيديو جاهز|A video is ready|וידאו מוכן",
+  "job.failing": "مهمة بالخلفية عم تفشل|A background job keeps failing|משימת רקע נכשלת שוב ושוב",
+  "deploy.failed": "النشر ما صار حي|A deploy didn't go live|פריסה לא עלתה לאוויר",
+};
+export const CALL_WHO_NAME = {
+  customer: "زبون مسجّل دخوله|A signed-in shopper|לקוח מחובר",
+  key: "برنامج معه مفتاح API|A program with an API key|תוכנה עם מפתח API",
+  public: "أي حدا|Anyone|כל אחד",
+} as const;
+
+/** A trigger in a line: what it waits for. */
+export function triggerLine(t: Pick<FnTrigger, "kind" | "config" | "slug">, tables: FnTable[], lang: Lang): string {
+  const c = t.config;
+  if (t.kind === "row") {
+    const on = ((c.on as string[] | undefined) ?? []).map((e) => part(ROW_EVENT_NAME[e as keyof typeof ROW_EVENT_NAME] ?? e, lang));
+    return `${tableName(tables.find((x) => x.id === c.table), lang) || part("جدول؟|table?|טבלה?", lang)}: ${on.join(part("، |, |, ", lang))}`;
+  }
+  if (t.kind === "schedule") return "at" in c ? fill("كل يوم الساعة {at}|Every day at {at}|כל יום בשעה {at}", lang, { at: String(c.at) }) : fill("كل {n} دقيقة|Every {n} minutes|כל {n} דקות", lang, { n: Number(c.everyMinutes) });
+  if (t.kind === "event") return part(EVENT_NAME[String(c.event)] ?? String(c.event), lang);
+  if (t.kind === "call") return part(CALL_WHO_NAME[String(c.who) as keyof typeof CALL_WHO_NAME] ?? String(c.who), lang);
+  return "";
+}
+
+const moment = (iso: string, lang: Lang) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(lang === "ar" ? "ar" : lang === "he" ? "he-IL" : "en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+/** How often it fired and when last; a schedule's next moment. */
+export function firedText(t: Pick<FnTrigger, "fired" | "lastAt" | "nextAt" | "enabled">, lang: Lang): string {
+  const out: string[] = [];
+  if (t.fired) out.push(fill("اشتغل {n} مرة، آخرها {when}.|It fired {n} times, last on {when}.|הופעל {n} פעמים, לאחרונה ב-{when}.", lang, { n: t.fired.toLocaleString("en"), when: t.lastAt ? moment(t.lastAt, lang) : "" }));
+  if (t.nextAt && t.enabled) out.push(fill("الجاية: {when}.|Next: {when}.|הבא: {when}.", lang, { when: moment(t.nextAt, lang) }));
+  return out.join(" ");
+}
+
+/** What a trigger hands that the function has no input for yet. */
+export function handsMissing(t: Pick<FnTrigger, "hands">, inputs: FnInput[]): string[] {
+  return t.hands.filter((name) => !inputs.some((i) => i.name === name));
+}
+
+/** What started a run, as the run log says it ("row.added", "event.order.created", "call"…), in words. */
+export function fnTriggerName(trigger: string, lang: Lang): string {
+  if (trigger === "admin") return part("من الإدارة|From the admin|מהניהול", lang);
+  if (trigger === "call") return part("نداء|A call|קריאה", lang);
+  if (trigger === "schedule") return part("على الوقت|On schedule|לפי לוח זמנים", lang);
+  if (trigger === "webhook") return "Webhook";
+  if (trigger.startsWith("row.")) return fill("سطر {what}|A row {what}|שורה {what}", lang, { what: part(ROW_EVENT_NAME[trigger.slice(4) as keyof typeof ROW_EVENT_NAME] ?? trigger.slice(4), lang) });
+  if (trigger.startsWith("event.")) return part(EVENT_NAME[trigger.slice(6)] ?? trigger.slice(6), lang);
+  return trigger;
+}

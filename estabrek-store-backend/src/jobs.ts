@@ -25,6 +25,7 @@ import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
 import { purgeTrash } from "./lib/collections.js";
 import { cleanRuns } from "./lib/runs.js";
 import { cleanTasks, runTasks } from "./lib/tasks.js";
+import { runFnSchedule } from "./lib/fnTriggers.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -119,6 +120,16 @@ export function registerBackgroundJobs() {
     limits: { min: 5_000, max: 5 * MIN },
     firstMs: 4_000,
     run: () => runTasks(),
+  });
+
+  registerJob({
+    name: "fnSchedule",
+    group: "control",
+    // Functions on a schedule (lib/fnTriggers.ts): the ones that are due are put on the queue.
+    everyMs: MIN,
+    limits: { min: 30_000, max: 10 * MIN },
+    firstMs: 25_000,
+    run: () => runFnSchedule(),
   });
 
   registerJob({

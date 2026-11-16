@@ -40,6 +40,11 @@ export const JOB_TEXT: Record<string, { label: string; what: string; link?: { to
     what: "بياخد الشغل اللي بالصف وبيعمله: فوراً لما تنضاف شغلة، وعلى الوقت للّي إجا دور إعادتها أو اللي انقطعت بنصّها. إذا وقّفته، الشغل بيستنى وما بيضيع.",
     link: { to: "/admin/system/tasks", label: "صف الشغل" },
   },
+  fnSchedule: {
+    label: "الـ functions اللي على وقت",
+    what: "بيفحص كل دقيقة أي function إجا وقتها (كل كم دقيقة، أو كل يوم بساعة معيّنة) وبيحطها بصف الشغل.",
+    link: { to: "/admin/functions", label: "الـ Functions" },
+  },
   tasksClean: {
     label: "تنظيف صف الشغل",
     what: "الشغل اللي خلص بيضل بالصف أسبوع، واللي بدّه نظر أو انشال شهر؛ الأقدم بينشال.",
