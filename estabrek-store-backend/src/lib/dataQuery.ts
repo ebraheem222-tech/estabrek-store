@@ -45,6 +45,8 @@ export const OPS_BY_KIND: Record<ColumnKind, readonly Op[]> = {
   location: ["empty", "notEmpty"],
   // Linked to any of these rows (by id), to none, to some.
   relation: ["anyOf", "empty", "notEmpty"],
+  // A shopper by their email.
+  customer: ["contains", "is", "isNot", "startsWith", "endsWith", "empty", "notEmpty"],
   $slug: ["contains", "is", "startsWith"],
   $status: ["is", "isNot", "anyOf"],
   $date: ["gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
@@ -266,7 +268,7 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
   if (f.op === "endsWith") return Prisma.sql`${w} ILIKE ${`%${like(str(f.value, what))}`}`;
   const v = str(f.value, what);
   // Colours and emails are the same whatever their letters' case.
-  const blind = kind === "color" || kind === "email";
+  const blind = kind === "color" || kind === "email" || kind === "customer";
   if (f.op === "is") return blind ? Prisma.sql`lower(${w}) = ${v.toLowerCase()}` : Prisma.sql`${w} = ${v}`;
   return blind ? Prisma.sql`lower(COALESCE(${w}, '')) <> ${v.toLowerCase()}` : Prisma.sql`COALESCE(${w}, '') <> ${v}`;
 }

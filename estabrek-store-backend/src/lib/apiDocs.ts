@@ -71,6 +71,8 @@ function valueSchema(f: Field): Json {
       return { ...orNull({ type: "array", items: { type: "string", ...choices(f) } }), ...about(f) };
     case "email":
       return { ...orNull({ type: "string", format: "email" }), ...about(f) };
+    case "customer":
+      return { oneOf: [{ type: "string", format: "email", description: "To a key: the shopper's email." }, ref("Shopper"), { type: "null" }], description: [about(f).description, "A shopper the row points at. Where shoppers read the table, the row is theirs to read too."].filter(Boolean).join(" ") };
     case "location":
       return { ...orNull(ref("Place")), ...about(f) };
     case "json":
@@ -91,6 +93,8 @@ function inputSchema(f: Field): Json {
       return { oneOf: [{ type: "string", description: "Goes to the language in `lang` (ar when not given)." }, ref("Words")], ...about(f) };
     case "relation":
       return { type: "array", items: { type: "string", description: "A row's id or address." }, ...about(f) };
+    case "customer":
+      return { type: "string", format: "email", description: [about(f).description, "The shopper's email (the one they sign in with)."].filter(Boolean).join(" ") };
     case "json":
       return { description: [about(f).description, "Any JSON."].filter(Boolean).join(" ") };
     default: {
@@ -142,6 +146,7 @@ export function openApi(tables: DocTable[], opts: { server: string; title?: stri
     Status: { type: "string", enum: [...STATUSES] },
     Place: { type: "object", required: ["lat", "lng"], properties: { lat: { type: "number", minimum: -90, maximum: 90 }, lng: { type: "number", minimum: -180, maximum: 180 }, label: { type: "string" } } },
     LinkedRow: { type: "object", description: "A row another row links, lightly.", required: ["id", "slug", "status"], properties: { id: { type: "string" }, slug: { type: "string" }, status: ref("Status"), title: orNull({ oneOf: [ref("Words"), { type: "string" }] }) } },
+    Shopper: { type: "object", description: "A shopper a row points at, as anyone but a key is answered it: a first name, whether it is the caller, and the email only to that shopper and to the row's owner.", required: ["name", "me"], properties: { name: orNull({ type: "string" }), me: { type: "boolean" }, email: { type: "string", format: "email" } } },
     Error: { type: "object", required: ["error"], properties: { error: { type: "string", description: "A code: BAD_QUERY, ROW_INVALID, KEY_NEEDED, INVALID_KEY, NOT_ALLOWED, NOT_FOUND, RATE_LIMIT_KEY…" }, message: { type: "string" }, details: { description: "What exactly was wrong: for ROW_INVALID, `issues` with each field and why." } } },
   };
 
@@ -288,6 +293,8 @@ function valueType(f: Field): string {
       return "unknown";
     case "relation":
       return "LinkedRow<T>[]";
+    case "customer":
+      return "string | Shopper | null";
     default:
       return "string | null";
   }
@@ -332,6 +339,8 @@ export function typesText(tables: DocTable[], opts: { server: string }): string 
     "export type Place = { lat: number; lng: number; label?: string };",
     "/** A row another row links. */",
     "export type LinkedRow<T = Words> = { id: string; slug: string; status: Status; title: T | null };",
+    "/** A shopper a row points at: the email to a key; to anyone else a first name, whether it is the caller, and the email only to that shopper and to the row's owner. */",
+    "export type Shopper = { name: string | null; me: boolean; email?: string };",
     "export type Row<V> = { id: string; slug: string; status: Status; values: V; createdAt: string; updatedAt: string; publishedAt: string | null };",
     "export type Page<R> = { data: R[]; page: number; pageSize: number; total: number; pages: number };",
     "export type ApiError = { error: string; message?: string; details?: unknown };",

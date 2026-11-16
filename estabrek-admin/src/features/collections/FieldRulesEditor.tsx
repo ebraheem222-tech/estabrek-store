@@ -80,6 +80,11 @@ export function FieldRulesEditor({
           <p className="text-[11px] text-white/40">{say("شيل اختيار ما بيمسحه من السطور اللي فيها: بتضل عليه لحد ما تتعدّل.|Removing a choice doesn't clear it from the rows that have it: they keep it until they're changed.|הסרת אפשרות לא מוחקת אותה מהשורות שמחזיקות בה.")}</p>
         </div>
       ) : null}
+      {field.type === "customer" ? (
+        <p className="text-[11px] leading-5 text-white/70 md:col-span-2" data-testid={`customer-${field.id}-note`}>
+          {say("هالحقل بيأشّر على زبون بالإيميل اللي بيسجّل فيه دخول. بجدول مفتوح «للزبون» من «الـ API والمفاتيح»، السطر بيبين كمان للزبون اللي بيأشّر عليه (للقراءة بس؛ التعديل والحذف بيضلوا لصاحب السطر). باقي الزوار بيشوفوا اسمه الأول بس، مش إيميله. والإيميل بينقبل حتى لو صاحبه لسا مش زبون: السطر بيصير إله لما يعمل حساب.|This field points at a shopper by the email they sign in with. In a table open “to the shopper” (API and keys), the row also shows to the shopper it points at (to read only; changing and deleting stay with the row's owner). Other visitors see a first name only, never the email. An address is taken even when its owner isn't a customer yet: the row becomes theirs once they make an account.|השדה הזה מצביע על לקוח לפי האימייל שבו הוא מתחבר. בטבלה שפתוחה «ללקוח» (API ומפתחות), השורה מוצגת גם ללקוח שהיא מצביעה עליו (לקריאה בלבד; שינוי ומחיקה נשארים אצל בעל השורה). מבקרים אחרים רואים שם פרטי בלבד, לא את האימייל. כתובת מתקבלת גם אם בעליה עדיין אינו לקוח: השורה תהיה שלו כשיפתח חשבון.")}
+        </p>
+      ) : null}
       {field.type === "relation" ? (
         <div className="grid gap-3 md:col-span-2 md:grid-cols-2" data-testid={`relation-${field.id}`}>
           <label className={label}>

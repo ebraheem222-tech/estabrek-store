@@ -120,6 +120,9 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
       case "select": if (typeof v === "string" && f.options?.some((o) => o.id === v)) data[f.id] = v; else bad("One of its choices"); break;
       case "color": if (typeof v === "string" && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) data[f.id] = v; else bad("A colour like #c86b98"); break;
       case "email": if (typeof v === "string" && v.trim().length <= 200 && EMAIL.test(v.trim())) data[f.id] = v.trim().toLowerCase(); else bad("An email address"); break;
+      // A shopper, by the email they sign in with (kept in small letters, as accounts keep it). Anyone's address is
+      // taken: it becomes that shopper's once they have an account with it.
+      case "customer": if (typeof v === "string" && v.trim().length <= 200 && EMAIL.test(v.trim())) data[f.id] = v.trim().toLowerCase(); else bad("A shopper's email address"); break;
       case "phone": if (typeof v === "string" && PHONE.test(v.trim())) data[f.id] = v.trim(); else bad("A phone number"); break;
       case "datetime": {
         // Kept as one moment in time (UTC); told in the store's own zone wherever it shows.

@@ -3,7 +3,7 @@ import { api } from "./http";
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
 /** The kinds of field (backend lib/collectionTree.ts FIELD_TYPES). */
-export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location" | "relation";
+export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location" | "relation" | "customer";
 /** What happens to the rows that link a row when it is deleted (backend lib/links.ts). */
 export type OnDelete = "unlink" | "cascade" | "restrict";
 /** A linked row as the routes answer it under a relation field. */

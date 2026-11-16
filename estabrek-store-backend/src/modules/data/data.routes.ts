@@ -20,6 +20,9 @@
  * shopper" shows them nothing else; `?mine=1` asks for them where everyone reads); a key, every
  * row outside the trash. Changing and deleting need a key, or are a shopper's on their own rows.
  * Fields the owner marked private are a key's alone: not answered, asked about or written without one.
+ *
+ * A shopper's own rows to read are the ones they added and the ones that point at them (a field of
+ * kind "customer" holding their email). Changing and deleting stay with the one who added the row.
  */
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
@@ -32,7 +35,7 @@ import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, type Act, type KeyLite } from "../../lib/apiKeys.js";
 import { apiCaller, callerOf, ipOf, type Caller } from "../../middleware/apiCaller.js";
 import { openApi } from "../../lib/apiDocs.js";
-import { API_LIMITS, DATA_API_BASE, allow, apiRow, docTables, fieldView, isOpen, listAsk, mineAsked, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk } from "../../lib/dataApi.js";
+import { API_LIMITS, DATA_API_BASE, allow, apiRow, askable, docTables, fieldView, isOpen, listAsk, mineAsked, reachFields, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk, type Viewer } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
 import { LANGS } from "../../lib/dataRows.js";
 import { switchedOff } from "../../lib/featureGate.js";
@@ -77,17 +80,28 @@ async function enter(req: Request, act: Act): Promise<{ table: ApiTable; as: As;
  * Whose rows a read is about: a shopper's own (the table is theirs to read, or `?mine=1` on a table
  * everyone reads), else as the caller got in.
  */
-function reach(as: As, who: Caller, query: Record<string, unknown>): { sees: As; owner: string | null } {
+function reach(as: As, who: Caller, query: Record<string, unknown>): { sees: As; owner: string | null; /** The shopper's email: rows pointing at it are theirs to read too. */ email: string | null } {
   const mine = mineAsked(query);
   if (mine && as === "key") throw new AppError(400, "BAD_QUERY", "mine is a signed-in shopper's question, not a key's");
   if (mine && !who.customer) throw signIn();
-  return as === "customer" || mine ? { sees: "customer", owner: who.customer } : { sees: as, owner: null };
+  return as === "customer" || mine ? { sees: "customer", owner: who.customer, email: who.email } : { sees: as, owner: null, email: null };
 }
 
-async function rowOf(table: ApiTable, name: string, sees: As, owner: string | null) {
+/** A shopper's rows to read, as a condition on a list: the ones they added, and the ones a field of `to` points at them. */
+function theirs(owner: string, email: string | null, to: string[]): Prisma.Sql {
+  if (!email || !to.length) return Prisma.sql`i."ownerId" = ${owner}`;
+  return Prisma.sql`(i."ownerId" = ${owner} OR ${Prisma.join(to.map((id) => Prisma.sql`lower(i."data"->>${id}::text) = ${email}`), " OR ")})`;
+}
+
+/**
+ * One row by its id or address. `owner`: only that shopper's (one they added; with `to`, also one that points at
+ * their `email` through one of those fields).
+ */
+async function rowOf(table: ApiTable, name: string, sees: As, owner: string | null, email: string | null = null, to: string[] = []) {
+  const whose = !owner ? {} : email && to.length ? { AND: [{ OR: [{ ownerId: owner }, ...to.map((id) => ({ data: { path: [id], equals: email } }))] }] } : { ownerId: owner };
   const found =
     name && name.length <= 100
-      ? await prisma.collectionItem.findMany({ where: { collectionId: table.id, deletedAt: null, OR: [{ id: name }, { slug: name.toLowerCase() }], ...(sees === "public" ? { status: "PUBLISHED" as const } : {}), ...(owner ? { ownerId: owner } : {}) }, take: 2 })
+      ? await prisma.collectionItem.findMany({ where: { collectionId: table.id, deletedAt: null, OR: [{ id: name }, { slug: name.toLowerCase() }], ...(sees === "public" ? { status: "PUBLISHED" as const } : {}), ...whose }, take: 2 })
       : [];
   const row = found.find((x) => x.id === name) ?? found[0];
   if (!row) throw new AppError(404, "NOT_FOUND", "No such row");
@@ -119,12 +133,26 @@ async function linkModes(table: ApiTable, fields: Field[], key: KeyLite | null):
   return { modes, targets };
 }
 
-type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null };
+type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; ownerId?: string | null };
 
-/** Rows as this caller is answered them: its fields, its relations, the linked rows it may see. */
-async function shape(table: ApiTable, as: As, key: KeyLite | null, rows: Stored[], ask: Pick<ListAsk, "lang" | "pick" | "expand">, known?: Links): Promise<ApiRow[]> {
+/**
+ * Who reads, when it isn't a key: the signed-in shopper (if any), and the names of the shoppers these rows point
+ * at (one question for the page). A key is answered the emails themselves and needs none of it.
+ */
+async function viewerOf(as: As, who: Caller, fields: Field[], rows: Stored[]): Promise<Viewer | undefined> {
+  if (as === "key") return undefined;
+  const to = reachFields(fields);
+  const emails = to.length ? [...new Set(rows.flatMap((row) => to.map((id) => (row.data as Record<string, unknown> | null)?.[id]).filter((v): v is string => typeof v === "string" && !!v)))] : [];
+  const users = emails.length ? await prisma.user.findMany({ where: { email: { in: emails } }, select: { email: true, name: true } }) : [];
+  return { id: who.customer, email: who.email, names: new Map(users.map((u) => [u.email, u.name ?? ""])) };
+}
+
+/** Rows as this caller is answered them: its fields, its relations, the linked rows it may see, and who a row points at as far as this caller may know. */
+async function shape(table: ApiTable, as: As, who: Caller, rows: Stored[], ask: Pick<ListAsk, "lang" | "pick" | "expand">, known?: Links): Promise<ApiRow[]> {
+  const key = who.key;
   const fields = seenFields(table, as);
   const { modes, targets } = known ?? (await linkModes(table, fields, key));
+  const viewer = await viewerOf(as, who, fields, rows);
   let shown = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
   // A linked row is called by its table's first words field: not when that field is private there.
   const untitled = relationsOf(fields).filter((f) => {
@@ -150,7 +178,7 @@ async function shape(table: ApiTable, as: As, key: KeyLite | null, rows: Stored[
     const theirs = seenFields(target, mode === "all" ? "key" : "public");
     expand.set(id, new Map(linked.map((row) => [row.id, apiRow(shownRow(row, target.fields), theirs, { lang: ask.lang })])));
   }
-  return shown.map((row) => apiRow(row, fields, { lang: ask.lang, pick: ask.pick, links: modes, expand }));
+  return shown.map((row) => apiRow(row, fields, { lang: ask.lang, pick: ask.pick, links: modes, expand, viewer }));
 }
 
 r.get(
@@ -181,16 +209,16 @@ r.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { table, as, fields, who } = await enter(req, "read");
     const query = req.query as Record<string, unknown>;
-    const { sees, owner } = reach(as, who, query);
+    const { sees, owner, email } = reach(as, who, query);
     const ask = listAsk(fields, query, sees);
     const links = await linkModes(table, fields, who.key);
     // A relation to a table the caller can't read isn't answered, so it isn't asked about either
     // (what a filter lets through would say what that table holds).
     const hidden = [...ask.q.filters, ...ask.q.sort].find((x) => fields.some((f) => f.id === x.field && f.type === "relation") && !links.modes.has(x.field));
     if (hidden) throw new AppError(400, "BAD_QUERY", `No column "${hidden.field}" in this table`);
-    // Asked of the fields the caller sees: a search doesn't look into a private one either.
-    const page = await queryRows(prisma, { id: table.id, fields }, ask.q, owner ? Prisma.sql`i."ownerId" = ${owner}` : undefined);
-    res.json({ data: await shape(table, as, who.key, page.rows, ask, links), page: ask.q.page, pageSize: ask.q.pageSize, total: page.total, pages: Math.ceil(page.total / ask.q.pageSize) });
+    // Asked of the fields the caller sees and may ask about: a search doesn't look into a private one, nor (without a key) into who a row points at.
+    const page = await queryRows(prisma, { id: table.id, fields: askable(fields, as) }, ask.q, owner ? theirs(owner, email, reachFields(fields)) : undefined);
+    res.json({ data: await shape(table, as, who, page.rows, ask, links), page: ask.q.page, pageSize: ask.q.pageSize, total: page.total, pages: Math.ceil(page.total / ask.q.pageSize) });
   }),
 );
 
@@ -199,10 +227,10 @@ r.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { table, as, fields, who } = await enter(req, "read");
     const query = req.query as Record<string, unknown>;
-    const { sees, owner } = reach(as, who, query);
+    const { sees, owner, email } = reach(as, who, query);
     const ask = shapeAsk(fields, query);
-    const row = await rowOf(table, String(req.params.row), sees, owner);
-    res.json((await shape(table, as, who.key, [row], ask))[0]);
+    const row = await rowOf(table, String(req.params.row), sees, owner, email, reachFields(fields));
+    res.json((await shape(table, as, who, [row], ask))[0]);
   }),
 );
 
@@ -285,7 +313,7 @@ r.post(
     const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values, ownerId: as === "key" ? null : who.customer }, body.lang);
     if (!row) throw new AppError(500, "ROW_NOT_SAVED", "The row wasn't saved");
     if (as === "key" && who.key) logWrite(req, who.key, table, "create", row.id, Object.keys(body.values));
-    res.status(201).json((await shape(table, as, who.key, [row], plain))[0]);
+    res.status(201).json((await shape(table, as, who, [row], plain))[0]);
   }),
 );
 
@@ -303,7 +331,7 @@ r.patch(
     if (links.length) throw invalid(links);
     const saved = await changeRow(table, was, body);
     if (as === "key" && who.key) logWrite(req, who.key, table, "update", saved.id, [...Object.keys(body.values ?? {}), ...(body.status ? ["status"] : []), ...(body.slug !== undefined ? ["slug"] : [])]);
-    res.json((await shape(table, as, who.key, [saved], plain))[0]);
+    res.json((await shape(table, as, who, [saved], plain))[0]);
   }),
 );
 
