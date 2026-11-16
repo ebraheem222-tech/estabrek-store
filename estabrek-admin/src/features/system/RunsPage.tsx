@@ -14,6 +14,8 @@ import * as RunsAPI from "../../api/runs.api";
 import type { Run, RunKind } from "../../api/runs.api";
 import { runTimeText } from "./jobsText";
 import { KINDS, KIND_NAME, keepLine, runDid, runName, runTimes, runTook, runTrigger, summaryLine, whenText } from "./runsText";
+import { ACT_NAME, failText, lineText, part, whereText } from "../functions/fnText";
+import { stepOfLine } from "../functions/fnDraft";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const chip = (on: boolean) => `rounded-lg px-3 py-1.5 text-sm transition ${on ? "bg-white/10 font-medium" : "text-white/60 hover:bg-white/5"}`;
@@ -141,6 +143,10 @@ export default function RunsPage() {
 function RunRow({ run, now, onName }: { run: Run; now: number; onName: () => void }) {
   const lang = adminLang();
   const page = PAGE[run.kind];
+  const [open, setOpen] = useState(false);
+  // A function's run: the version that ran, and what each of its steps did.
+  const fn = run.kind === "function" ? run.detail : null;
+  const steps = fn?.steps ?? [];
   return (
     <li className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3" data-testid={`run-${run.id}`} data-ok={run.ok}>
       <div className="min-w-0 space-y-0.5">
@@ -152,6 +158,11 @@ function RunRow({ run, now, onName }: { run: Run; now: number; onName: () => voi
             <bdi dir={run.kind === "webhook" ? "ltr" : undefined}>{runName(run, lang)}</bdi>
           </button>
           {run.times > 1 ? <span className="text-xs text-white/50">{runTimes(run, lang)}</span> : null}
+          {fn?.v ? (
+            <span className="text-xs text-white/70" data-testid={`run-version-${run.id}`}>
+              {say("النسخة {n}|Version {n}|גרסה {n}").replace("{n}", String(fn.v))}
+            </span>
+          ) : null}
           {page ? (
             <Link to={page} className="text-xs text-white/50 underline">
               {say("صفحته|Its page|הדף שלו")}
@@ -159,8 +170,32 @@ function RunRow({ run, now, onName }: { run: Run; now: number; onName: () => voi
           ) : null}
         </div>
         <div className={`break-words text-sm ${run.ok ? "text-white/70" : "text-red-300"}`} data-testid={`run-did-${run.id}`}>
-          <bdi>{runDid(run, lang)}</bdi>
+          <bdi>{run.kind === "function" && !run.ok && run.error ? failText(run.error, lang) : runDid(run, lang)}</bdi>
         </div>
+        {steps.length ? (
+          <button type="button" className="text-xs underline" aria-expanded={open} onClick={() => setOpen(!open)} data-testid={`run-steps-toggle-${run.id}`}>
+            {open ? say("خبّي الخطوات|Hide the steps|הסתרת השלבים") : say("شو عملت كل خطوة ({n})|What each step did ({n})|מה עשה כל שלב ({n})").replace("{n}", String(steps.filter((s) => !("cut" in s)).length))}
+          </button>
+        ) : null}
+        {open ? (
+          <ol className="mt-1 space-y-1 rounded-xl border border-white/10 p-3 text-sm" data-testid={`run-steps-${run.id}`}>
+            {steps.map((s, k) =>
+              "cut" in s ? (
+                <li key={k} className="text-xs text-white/60">
+                  {say("… {n} خطوة بالنص مش محفوظة|… {n} steps in between aren't kept|… {n} שלבים באמצע לא נשמרו").replace("{n}", String(s.cut))}
+                </li>
+              ) : (
+                <li key={k} className="flex flex-wrap items-baseline justify-between gap-x-3" data-ok={s.ok}>
+                  <div className="min-w-0">
+                    <span className="text-xs text-white/60">{whereText(stepOfLine(s.at), lang)}</span> <span className="font-medium">{part(ACT_NAME[s.act as keyof typeof ACT_NAME] ?? s.act, lang)}</span>{" "}
+                    <bdi className={s.ok ? "text-white/80" : "text-red-300"}>{lineText({ ok: s.ok, say: s.say as never, error: s.error }, lang)}</bdi>
+                  </div>
+                  <span className="shrink-0 text-xs text-white/60">{s.ms} ms</span>
+                </li>
+              ),
+            )}
+          </ol>
+        ) : null}
         {run.subject ? (
           <bdi dir="ltr" className="block text-xs text-white/50">
             {run.subject}

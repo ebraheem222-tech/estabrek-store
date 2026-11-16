@@ -3,6 +3,8 @@
 import { api } from "./http";
 
 export type RunKind = "job" | "automation" | "webhook" | "task" | "function";
+/** What one step of a function's run did (a long run says how many of its lines in the middle aren't kept). */
+export type RunStep = { at: string; act: string; ok: boolean; ms: number; say?: Array<string | number>; error?: string } | { cut: number };
 export type Run = {
   id: string;
   kind: RunKind;
@@ -23,6 +25,8 @@ export type Run = {
   /** Counts ({ sent: 3 }) or a few words ({ did: "…" }). */
   result: Record<string, unknown> | null;
   error: string | null;
+  /** More about it, by its kind. A function's run: the version that ran, and what each step did (a fine run's steps are kept a week). */
+  detail?: { v?: number; steps?: RunStep[] } | null;
 };
 export type RunsSummary = {
   since: string;

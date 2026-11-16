@@ -38,7 +38,7 @@ import { allHold, fill, numberOf, words, type Scope } from "../../lib/fnValues.j
 import { errorText, triggerJob } from "../../lib/jobs.js";
 import { relationsOf, splitLinks, trashRows, withLinks } from "../../lib/links.js";
 import { LONG, addRow, changeRow, refresh, writeRows } from "../../lib/rowWrites.js";
-import { recordRun } from "../../lib/runs.js";
+import { newRunId, recordRun } from "../../lib/runs.js";
 import { shownRow } from "../../lib/schemaChange.js";
 import { getOrCreateSettings } from "../admin/settings.controller.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
@@ -79,7 +79,7 @@ const NOTE = {
 } as const;
 const english = (said: Said): string => (NOTE[said[0]] as (...things: Array<string | number>) => string)(...said.slice(1));
 export type Counts = { steps: number; found: number; added: number; changed: number; deleted: number; sent: number };
-export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number; /** The published version that ran (a saved function's published steps). */ version?: number | null };
+export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number; /** The published version that ran (a saved function's published steps). */ version?: number | null; /** A real run's line in the run log. */ runId?: string };
 
 /** "return": the run ends here, well. */
 class Finish {
@@ -516,6 +516,32 @@ export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller): P
   return { results, passed: results.length - failed, failed, ms: Date.now() - t0 };
 }
 
+/** How much of a run's steps the run log keeps: so many lines, each thing said cut to so many letters. */
+export const LOG_STEPS = { lines: 40, text: 120, error: 300 } as const;
+/** Who a message went to isn't the log's to keep whole: an address keeps its first letter and its site, a phone number its last two digits. */
+const hush = (s: string) =>
+  s
+    .replace(/([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/g, "$1•••@$2")
+    .replace(/\+\d[\d\s-]{6,}\d|\b0\d{8,10}\b/g, (m) => `•••${m.replace(/\D/g, "").slice(-2)}`);
+/**
+ * A run's steps as the run log keeps them (lib/runs.ts `detail.steps`): where each step is, what
+ * it did or why it failed, and how long it took. A long run keeps how it began and how it ended.
+ * What a code step wrote with log() isn't kept (it is the code's own to say anything in).
+ */
+export function stepsForLog(trace: TraceLine[]): unknown[] {
+  const line = (l: TraceLine) => ({
+    at: l.at,
+    act: l.act,
+    ok: l.ok,
+    ms: l.ms,
+    ...(l.say ? { say: l.say.map((x) => (typeof x === "string" ? hush(x).slice(0, LOG_STEPS.text) : x)) } : {}),
+    ...(l.error ? { error: hush(l.error).slice(0, LOG_STEPS.error) } : {}),
+  });
+  if (trace.length <= LOG_STEPS.lines) return trace.map(line);
+  const tail = 10;
+  return [...trace.slice(0, LOG_STEPS.lines - tail).map(line), { cut: trace.length - LOG_STEPS.lines }, ...trace.slice(-tail).map(line)];
+}
+
 /**
  * A saved function run: its published steps (or, from the admin's editor, the draft). A real run is
  * written in the run log and counted on the function; a dry one leaves no trace anywhere.
@@ -538,11 +564,13 @@ export async function runFn(id: string, input: Record<string, unknown>, opts: { 
   if (opts.needOn && (!fn.enabled || (await switchedOff()).fns.has(fn.id))) throw new AppError(409, "FN_OFF", "This function is switched off");
   const t0 = Date.now();
   const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller });
+  // Its line in the run log, said to who asked for the run: with it the owner finds what each step did.
+  const runId = opts.dry ? undefined : newRunId();
   if (!opts.dry) {
-    recordRun({ kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error, detail: version ? { v: version } : undefined });
+    recordRun({ id: runId, kind: "function", name: fn.name, ref: fn.id, trigger: opts.trigger, subject: opts.caller && opts.caller.kind !== "system" && opts.caller.kind !== "admin" ? opts.caller.kind : null, startedAt: t0, ms: out.ms, ok: out.ok, result: out.ok ? some(out.counts) : null, error: out.error, detail: { ...(version ? { v: version } : {}), steps: stepsForLog(out.trace) } });
     await prisma.fn.update({ where: { id }, data: { runs: { increment: 1 }, lastRunAt: new Date(t0) } }).catch(() => undefined);
   }
-  return { ...out, version };
+  return { ...out, version, ...(runId ? { runId } : {}) };
 }
 
 /* ---------------- Started by a trigger: through the queue ---------------- */
