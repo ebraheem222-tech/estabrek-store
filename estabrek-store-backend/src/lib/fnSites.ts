@@ -46,6 +46,13 @@ export function secretsIn(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
+/** The secrets a code step names with secret("NAME") (lib/fnCode.ts), written as words: one built while it runs is checked at its call. */
+export function codeSecrets(code: string): string[] {
+  const out: string[] = [];
+  for (const m of code.matchAll(/\bsecret\(\s*(["'`])([A-Za-z0-9_]{1,40})\1\s*\)/g)) if (!out.includes(m[2])) out.push(m[2]);
+  return out;
+}
+
 /** A text with every secret's value taken out of it (what a site echoes back mustn't become one of the run's things). */
 export function withoutSecrets(text: string, values: Iterable<string>): string {
   let out = text;

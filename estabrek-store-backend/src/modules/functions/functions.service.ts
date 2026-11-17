@@ -26,8 +26,8 @@ import { apiRow, type LinkModes } from "../../lib/dataApi.js";
 import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
 import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
-import { runCode } from "../../lib/fnCode.js";
-import { HTTP_LIMITS, SiteError, callSite } from "../../lib/fnHttp.js";
+import { runCode, type CodeCall, type CodeCallAnswer } from "../../lib/fnCode.js";
+import { HTTP_LIMITS, HTTP_METHODS, SiteError, callSite } from "../../lib/fnHttp.js";
 import { useReady } from "../../lib/fnReady.js";
 import { versionDef } from "../../lib/fnVersions.js";
 import { answerProblem } from "../../lib/fnGives.js";
@@ -154,6 +154,38 @@ function sayError(e: unknown): string {
 }
 
 /* ---------------- One step ---------------- */
+
+/**
+ * A call to a site that a code step asked for (lib/fnCode.ts http()): checked and made as an "http"
+ * step's (lib/fnHttp.ts callSite: the owner's sites, a secret only to a site it is for), from the
+ * code's own words (only its {{secret.NAME}} marks are filled). It counts with the run's calls and
+ * time. What can't be done is the code's to catch: said back as the error it throws.
+ */
+async function codeCall(call: CodeCall, ctx: Ctx, dry: boolean, said: string[]): Promise<CodeCallAnswer> {
+  const { budget } = ctx;
+  const method = typeof call.method === "string" ? call.method.toUpperCase() : "";
+  if (!(HTTP_METHODS as readonly string[]).includes(method)) return { error: "http(method, …): GET, POST, PUT, PATCH or DELETE" };
+  if (typeof call.url !== "string" || !call.url.trim()) return { error: "http(…, url): the address, in words" };
+  const options = call.options && typeof call.options === "object" && !Array.isArray(call.options) ? (call.options as Record<string, unknown>) : {};
+  const raw = options.headers;
+  if (raw !== undefined && raw !== null && (typeof raw !== "object" || Array.isArray(raw))) return { error: "http(…, { headers }): name: value pairs" };
+  const headers = Object.fromEntries(Object.entries((raw ?? {}) as Record<string, unknown>).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v) ?? ""]));
+  if (budget.used.http >= HTTP_LIMITS.calls) return { error: `A run calls sites up to ${HTTP_LIMITS.calls} times` };
+  const left = budget.deadline - Date.now();
+  if (left < 500) return { error: "The run has no time left for a call" };
+  budget.used.http += 1;
+  try {
+    const out = await callSite({ method: method as (typeof HTTP_METHODS)[number], url: call.url, headers, body: options.body, scope: {}, literal: true, dry, ms: Math.min(HTTP_LIMITS.ms, left) });
+    said.push(out.dry ? `↗ ${out.line} (dry)` : `↗ ${out.line} → ${out.status}`);
+    return { value: out.dry ? { status: 0, ok: true, body: null, dry: true } : { status: out.status, ok: out.ok, body: out.body, type: out.type, ...(out.cut ? { cut: true } : {}) } };
+  } catch (e) {
+    if (e instanceof SiteError) {
+      said.push(`↗ ${method} ✕ ${e.message}`.slice(0, 300));
+      return { error: e.message };
+    }
+    throw e;
+  }
+}
 
 /** The step done; what it says about it. */
 async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<Said> {
@@ -358,9 +390,12 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       return ["used", out.line];
     }
     case "code": {
-      // In its cage (lib/fnCode.ts): handed these values and nothing else, it can only give one back.
-      const out = await runCode(s.code, fill(s.give ?? {}, scope));
-      if (out.logs.length) ctx.logged = out.logs;
+      // In its cage (lib/fnCode.ts): handed these values and nothing else, it gives one back; its calls to sites are made
+      // here, as an "http" step's are (the run's own count and time, the owner's sites and secrets), each said in its lines.
+      const calls: string[] = [];
+      const out = await runCode(s.code, fill(s.give ?? {}, scope), { http: (call) => codeCall(call, ctx, dry, calls) });
+      const said = [...calls, ...out.logs].slice(0, 60);
+      if (said.length) ctx.logged = said;
       if (!out.ok) throw new Failure(out.line ? `${out.error} (line ${out.line})` : out.error, at);
       if (s.as) scope[s.as] = out.value;
       return ["ran", out.ms];

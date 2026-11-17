@@ -24,7 +24,7 @@ import type { Field } from "./collectionTree.js";
 import { OPS, OPS_BY_KIND, VIEWS, columnKind } from "./dataQuery.js";
 import { LANGS } from "./dataRows.js";
 import { ALONE, CMPS, PATH, holesOf, type Cmp } from "./fnValues.js";
-import { SECRET_NAME, hostIn, secretsIn, siteAllowed } from "./fnSites.js";
+import { SECRET_NAME, codeSecrets, hostIn, secretsIn, siteAllowed } from "./fnSites.js";
 import { kindOf, missingIn } from "./fnKinds.js";
 import { GivesSchema, type Gives } from "./fnGives.js";
 import { INPUT_FORMATS, INPUT_RULE_LIMITS, inputRuleProblems, type InputFormat } from "./fnInputs.js";
@@ -403,6 +403,8 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
         case "code":
           need(s.code, at, "The code");
           names(s.give, at, have);
+          // A secret the code names with secret("NAME") is one the owner keeps (which site it is for is checked at the call).
+          if (known.secrets) for (const name of codeSecrets(s.code)) if (!known.secrets.includes(name)) out.push({ at, message: `No secret called "${name}"` });
           if (s.as) have.add(s.as);
           break;
         case "if": {

@@ -33,10 +33,11 @@ describe("The cage", () => {
     expect(await value("return [new Date(input).getUTCFullYear(), Math.max(1, 7, 3), JSON.parse('[1,2]').length, [3, 1, 2].sort().join('')];", "2026-11-16T10:00:00Z")).toEqual([2026, 7, 2, "123"]);
   });
 
-  test("has nothing of the server's: no require, no process, no network, no timers, no files", async () => {
+  test("has nothing of the server's: no require, no process, no network of its own, no timers, no files", async () => {
     expect(await value("return [typeof require, typeof process, typeof fetch, typeof XMLHttpRequest, typeof setTimeout, typeof setInterval, typeof module, typeof globalThis.Buffer, typeof console, typeof import_meta];")).toEqual(Array(10).fill("undefined"));
-    // The ways out that work in a browser or in Node find the cage's own world, which holds none of it.
-    expect(await value("const g = Function('return this')(); return [typeof g.process, typeof g.require, Object.keys(g).filter((k) => !k.startsWith('__')).sort()];")).toEqual(["undefined", "undefined", ["log"]]);
+    // The ways out that work in a browser or in Node find the cage's own world, which holds none of it: only log() and
+    // the tools whose calls the server makes (http, secret: fnCodeHttp.spec.ts).
+    expect(await value("const g = Function('return this')(); return [typeof g.process, typeof g.require, Object.keys(g).filter((k) => !k.startsWith('__')).sort()];")).toEqual(["undefined", "undefined", ["http", "log", "secret"]]);
     expect(await value("return typeof (function () { return this; })();")).toBe("undefined");
     expect((await failure("return import('node:fs');")).ok).toBe(false);
     // What it was handed is a copy: changing it changes nothing outside.
@@ -99,11 +100,11 @@ describe("The cage", () => {
     // Each run is its own world: what one leaves behind, the next doesn't find.
     await value("globalThis.left = 'behind'; return 1;");
     expect(await value("return typeof globalThis.left;")).toBe("undefined");
-    // One running, forty waiting; the rest are told at once.
+    // A few running (one a machine), forty waiting; the rest are told at once.
     const slow = "let s = 0; for (let i = 0; i < 400000; i++) s += i; return s;";
     const crowd = await Promise.all(Array.from({ length: CODE_LIMITS.waiting + 12 }, () => runCode(slow, null)));
     const busy = crowd.filter((o) => !o.ok && o.why === "busy");
-    expect(busy.length).toBeGreaterThanOrEqual(10);
+    expect(busy.length).toBeGreaterThanOrEqual(12 - CODE_LIMITS.machines);
     expect(busy[0]).toMatchObject({ error: "Too much code is running right now: try again in a moment" });
     expect(crowd.filter((o) => o.ok).length).toBe(crowd.length - busy.length);
     expect(await value("return 'fine';")).toBe("fine");
