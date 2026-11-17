@@ -30,11 +30,7 @@ import { CollectionBody, checkItemData, defaultStoreTemplate, defaultTemplate, I
 import { changedUnique, uniqueIssues } from "../../lib/uniqueValues.js";
 import { applySchemaChange, hiddenOf, needsAccept, planChange, previewSchemaChange, shownRow, type Impact } from "../../lib/schemaChange.js";
 import { checkLinks, linkGone, relationProblem, saveLinks, splitLinks, tablesLinking, trashRows, withLinks, type LinkView } from "../../lib/links.js";
-import { hasPermission } from "../../middleware/access.js";
-import { storePermission, type StoreId } from "../../lib/storeLinks.js";
-
-/** A linked store row is named only to who may see that store table (lib/storeLinks.ts). */
-const storeView = (req: Parameters<typeof hasPermission>[0]) => ({ store: (s: StoreId) => hasPermission(req, storePermission(s)) });
+import { linkView } from "../../lib/linkView.js";
 import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 
@@ -210,7 +206,7 @@ r.get("/:id/items", asyncHandler(async (req, res) => {
     prisma.collection.findUnique({ where: { id: req.params.id }, select: { fields: true } }),
     prisma.collectionItem.findMany({ where: { collectionId: req.params.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: LIMITS.itemsList }),
   ]);
-  res.json(c ? await withLinks(prisma, { id: req.params.id, fields: fieldsOf(c) }, items.map((item) => shownRow(item, fieldsOf(c))), storeView(req)) : items);
+  res.json(c ? await withLinks(prisma, { id: req.params.id, fields: fieldsOf(c) }, items.map((item) => shownRow(item, fieldsOf(c))), linkView(req)) : items);
 }));
 
 /** An item's relations, taken out of its data and checked (lib/links.ts): the rows to link, or a 400's body. */
@@ -258,7 +254,7 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
   if (!c) return res.status(404).json({ error: "NOT_FOUND" });
   if (c._count.items >= LIMITS.items) return res.status(400).json({ error: "TOO_MANY_ITEMS" });
   const table = { id: c.id, fields: fieldsOf(c) };
-  const linked = await itemLinks(table, req.body, storeView(req));
+  const linked = await itemLinks(table, req.body, linkView(req));
   if ("error" in linked) return res.status(400).json(linked.error);
   const b = itemBody(table.fields, linked.body, false);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
@@ -272,7 +268,7 @@ r.post("/:id/items", asyncHandler(async (req, res) => {
       return row;
     });
     refresh();
-    res.status(201).json((await withLinks(prisma, table, [made], storeView(req)))[0]);
+    res.status(201).json((await withLinks(prisma, table, [made], linkView(req)))[0]);
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
     if (linkGone(e)) return res.status(409).json({ error: "LINK_GONE" });
@@ -285,7 +281,7 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
   const was = await prisma.collectionItem.findFirst({ where: { id: req.params.item, collectionId: req.params.id, deletedAt: null } });
   if (!c || !was) return res.status(404).json({ error: "NOT_FOUND" });
   const table = { id: c.id, fields: fieldsOf(c) };
-  const linked = await itemLinks(table, req.body, storeView(req), was);
+  const linked = await itemLinks(table, req.body, linkView(req), was);
   if ("error" in linked) return res.status(400).json(linked.error);
   const b = itemBody(table.fields, linked.body, true);
   if ("error" in b) return res.status(400).json({ error: "ITEM_INVALID", ...b.error });
@@ -298,7 +294,7 @@ r.put("/:id/items/:item", asyncHandler(async (req, res) => {
       return row;
     });
     refresh();
-    res.json((await withLinks(prisma, table, [saved], storeView(req)))[0]);
+    res.json((await withLinks(prisma, table, [saved], linkView(req)))[0]);
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
     if (linkGone(e)) return res.status(409).json({ error: "LINK_GONE" });
@@ -313,7 +309,7 @@ r.delete("/:id/items/:item", asyncHandler(async (req, res) => {
   const which = Prisma.sql`i."id" = ${where.id} AND i."collectionId" = ${where.collectionId}`;
   let moved: { changed: number; withThem: number };
   try {
-    moved = await prisma.$transaction((tx) => trashRows(tx, which, new Date()));
+    moved = await prisma.$transaction((tx) => trashRows(tx, which, new Date(), linkView(req)));
   } catch (e) {
     if (e instanceof AppError && e.code === "ROWS_LINKED") return res.status(409).json({ error: e.code, message: e.message, ...(e.details as object) });
     throw e;

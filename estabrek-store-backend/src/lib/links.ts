@@ -21,6 +21,9 @@
  *    instead of one of the owner's tables (lib/storeLinks.ts). Its rules are the same; its links
  *    are kept in StoreLink; a store row that is deleted just stops showing; and a linked store
  *    row is named only to who may see that table.
+ *  - who reads: a member given the owner's tables one by one (middleware/access.ts tableScope)
+ *    is told a linked row of a table they weren't given by its id alone, is never told who links
+ *    a row from such a table (lib/linkView.ts), and can't look its rows up by name.
  */
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/httpError.js";
@@ -89,9 +92,9 @@ export type LinkCheck = { issues: Map<number, ItemIssue[]>; /** Per candidate: e
  * is refused when another row holds it: one in this batch, or one of the table (a row in the
  * trash still holds its links, like it still holds an only value).
  *
- * `view`: who asks. One of the store's tables they may not see is never searched for them (what a
- * name finds, or doesn't, would say what that table holds): a row keeps the store rows it already
- * links, or lets go of them, and takes no other.
+ * `view`: who asks. A table they may not see (one of the store's, or one of the owner's they
+ * weren't given) is never searched for them (what a name finds, or doesn't, would say what that
+ * table holds): a row keeps the rows there it already links, or lets go of them, and takes no other.
  */
 export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }, candidates: LinkCandidate[], view: LinkView = {}): Promise<LinkCheck> {
   const issues = new Map<number, ItemIssue[]>();
@@ -103,13 +106,14 @@ export async function checkLinks(db: Raw, table: { id: string; fields: Field[] }
     const names = [...new Set(candidates.flatMap((c) => c.asked.get(f.id) ?? []))];
     // One of the store's tables: its rows by id (a product or a category by its address too, a customer by email).
     const store = storeTarget(f.to);
-    const closed = !!store && !!view.store && !view.store(store);
-    // Closed to who asks: the store rows each of these rows links now, and nothing looked up by name.
+    const closed = closedTo(view, f.to);
+    // Closed to who asks: the rows there each of these rows links now, and nothing looked up by name.
     const kept = new Map<string, Set<string>>();
     if (closed && names.length) {
       const mine = candidates.flatMap((c) => (c.id ? [c.id] : []));
+      const at = linkTable(f.to);
       const held = mine.length
-        ? await db.$queryRaw<Array<{ fromId: string; toId: string }>>(Prisma.sql`SELECT l."fromId", l."toId" FROM "StoreLink" l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${store} AND l."fromId" = ANY(${mine}::text[])`)
+        ? await db.$queryRaw<Array<{ fromId: string; toId: string }>>(Prisma.sql`SELECT l."fromId", l."toId" FROM ${at.table} l WHERE l."collectionId" = ${table.id} AND l."fieldId" = ${f.id} AND l."toTable" = ${at.toTable} AND l."fromId" = ANY(${mine}::text[])`)
         : [];
       for (const h of held) kept.set(h.fromId, (kept.get(h.fromId) ?? new Set()).add(h.toId));
     }
@@ -237,8 +241,25 @@ export async function setLinksOfMany(db: Raw, table: { id: string }, f: Relation
 
 /* ---------------- Read ---------------- */
 
+/**
+ * Who reads: which tables they may see (when not said: every one). A linked row of a table they may
+ * not see is told by its id alone.
+ */
+export type LinkView = {
+  /** One of the store's tables. */
+  store?: (table: StoreId) => boolean;
+  /** One of the owner's tables (by its id). */
+  table?: (id: string) => boolean;
+};
+/** Is the table a relation links (`to`) closed to this reader? */
+export function closedTo(view: LinkView, to: string): boolean {
+  const store = storeTarget(to);
+  return store ? !!view.store && !view.store(store) : !!view.table && !view.table(to);
+}
+/** A linked row of a table closed to the reader: only that it is there. */
+const hiddenRow = (id: string, store?: StoreId): Linked => ({ id, slug: id, status: "PUBLISHED", title: null, ...(store ? { store } : {}), hidden: true });
+
 /** The rows' links, per relation field: to rows that are there (not in the trash), in each row's order. */
-export type LinkView = { /** Whether the reader may see one of the store's tables (when not said: yes). A linked row of a table they may not see is told by its id alone. */ store?: (table: StoreId) => boolean };
 export async function linksFor(db: Db, table: { id: string; fields: Field[] }, rowIds: string[], view: LinkView = {}): Promise<Map<string, Record<string, Linked[]>>> {
   const out = new Map<string, Record<string, Linked[]>>();
   const rels = relationsOf(table.fields);
@@ -250,16 +271,18 @@ export async function linksFor(db: Db, table: { id: string; fields: Field[] }, r
     const store = storeTarget(f.to);
     if (store) {
       // One of the store's rows: called what its own page calls it (the same in every language).
-      const may = view.store ? view.store(store) : true;
+      const may = !closedTo(view, f.to);
       for (const r of await storeLinksOf(db, store, table.id, f.id, rowIds)) {
         const of = out.get(r.fromId) ?? {};
-        (of[f.id] ??= []).push(may ? { id: r.id, slug: r.slug, status: "PUBLISHED", title: r.label ? { ar: r.label, en: r.label, he: r.label } : null, store } : { id: r.id, slug: r.id, status: "PUBLISHED", title: null, store, hidden: true });
+        (of[f.id] ??= []).push(may ? { id: r.id, slug: r.slug, status: "PUBLISHED", title: r.label ? { ar: r.label, en: r.label, he: r.label } : null, store } : hiddenRow(r.id, store));
         out.set(r.fromId, of);
       }
       continue;
     }
     if (!titleOf.has(f.to)) continue;
-    const title = titleOf.get(f.to);
+    // One of the owner's tables the reader wasn't given: its rows by their id alone (nor their status, nor their words).
+    const closed = closedTo(view, f.to);
+    const title = closed ? null : titleOf.get(f.to);
     const rows = await db.$queryRaw<Array<{ fromId: string; id: string; slug: string; status: string; title: unknown }>>(
       Prisma.sql`SELECT l."fromId", t."id", t."slug", t."status"::text AS "status", ${title ? Prisma.sql`t."data"->${title}::text` : Prisma.sql`NULL::jsonb`} AS "title"
         FROM "CollectionLink" l JOIN "CollectionItem" t ON t."id" = l."toId" AND t."collectionId" = l."toTable" AND t."deletedAt" IS NULL
@@ -268,7 +291,7 @@ export async function linksFor(db: Db, table: { id: string; fields: Field[] }, r
     );
     for (const r of rows) {
       const of = out.get(r.fromId) ?? {};
-      (of[f.id] ??= []).push({ id: r.id, slug: r.slug, status: r.status, title: r.title && typeof r.title === "object" && !Array.isArray(r.title) ? (r.title as Local) : null });
+      (of[f.id] ??= []).push(closed ? hiddenRow(r.id) : { id: r.id, slug: r.slug, status: r.status, title: r.title && typeof r.title === "object" && !Array.isArray(r.title) ? (r.title as Local) : null });
       out.set(r.fromId, of);
     }
   }
@@ -381,9 +404,10 @@ export type Blocker = { table: string; slug: string; name: unknown; field: strin
  * Rows to the trash (`which`: a condition on "CollectionItem" i), the way the relations linking
  * them chose: the rows of a "deleted with it" relation go along (and what links those, in turn);
  * a "can't be deleted" relation held by a row that stays refuses the whole act (409 ROWS_LINKED).
- * Run inside a transaction, so a refusal leaves everything as it was.
+ * Run inside a transaction, so a refusal leaves everything as it was. `view`: who asks; a holding
+ * table they may not see is said (so they know why), and none of its rows is named.
  */
-export async function trashRows(db: Db, which: Prisma.Sql, now: Date): Promise<{ changed: number; withThem: number }> {
+export async function trashRows(db: Db, which: Prisma.Sql, now: Date, view: LinkView = {}): Promise<{ changed: number; withThem: number }> {
   const rels = await allRelations(db);
   const cascade = rels.filter((r) => r.onDelete === "cascade");
   const restrict = rels.filter((r) => r.onDelete === "restrict");
@@ -416,7 +440,7 @@ export async function trashRows(db: Db, which: Prisma.Sql, now: Date): Promise<{
       const tables = new Map((await db.collection.findMany({ where: { id: { in: held.map((h) => h.table) } }, select: { id: true, slug: true, name: true, fields: true } })).map((c) => [c.id, c]));
       const blockers: Blocker[] = held.map((h) => {
         const table = tables.get(h.table);
-        return { ...h, slug: table?.slug ?? "", name: table?.name ?? null, fieldName: (table ? fieldsOf(table) : []).find((f) => f.id === h.field)?.name ?? null };
+        return { ...h, ...(closedTo(view, h.table) ? { sample: "" } : {}), slug: table?.slug ?? "", name: table?.name ?? null, fieldName: (table ? fieldsOf(table) : []).find((f) => f.id === h.field)?.name ?? null };
       });
       throw new AppError(409, "ROWS_LINKED", "Other rows link these rows and don't let them be deleted", { blockers });
     }

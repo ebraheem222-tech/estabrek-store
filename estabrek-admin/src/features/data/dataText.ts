@@ -294,14 +294,16 @@ export const issueAbout = (issue: { value?: string }) => (issue.value ? ` «${is
 
 /**
  * Why rows couldn't be deleted: other rows link them through a relation that forbids it. One
- * sentence per holder ("عربي|English|עברית").
+ * sentence per holder ("عربي|English|עברית"). A holding table this member wasn't given comes with
+ * no row of it (`sample` empty): only the table is said.
  */
 export function blockersText(blockers: Blocker[], lang: Lang): string {
   const each = blockers.map((b) => {
     const table = local(b.name ?? undefined, lang) || b.slug;
     const n = b.rows.toLocaleString("en");
     const field = local(b.fieldName ?? undefined, lang) || b.field;
-    return `${n} سطر بجدول «${table}» مربوطين فيهم (حقل ${field}، متل ${b.sample}) ومانعين حذفهم.|${n} rows of “${table}” link them (field ${field}, like ${b.sample}) and don't let them be deleted.|${n} שורות בטבלה ״${table}״ מקשרות אותן (שדה ${field}, למשל ${b.sample}) ואינן מאפשרות למחוק.`;
+    const like = b.sample ? [`، متل ${b.sample}`, `, like ${b.sample}`, `, למשל ${b.sample}`] : ["", "", ""];
+    return `${n} سطر بجدول «${table}» مربوطين فيهم (حقل ${field}${like[0]}) ومانعين حذفهم.|${n} rows of “${table}” link them (field ${field}${like[1]}) and don't let them be deleted.|${n} שורות בטבלה ״${table}״ מקשרות אותן (שדה ${field}${like[2]}) ואינן מאפשרות למחוק.`;
   });
   const tail = "فك الربط من هالسطور أول، أو غيّر «عند الحذف» بقواعد الحقل.|Unlink them from those rows first, or change “when deleted” in the field's rules.|בטל קודם את הקישור מהשורות האלה, או שנה את ״בעת מחיקה״ בכללי השדה.";
   return [0, 1, 2].map((i) => [...each, tail].map((p) => p.split("|")[i]).join(" ")).join("|");
