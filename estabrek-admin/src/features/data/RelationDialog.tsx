@@ -23,7 +23,7 @@ import { STORE_FIELD_NAME, STORE_LINK_NAME, storeLinkTables, storeTarget } from 
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 const label = "block text-xs text-white/60";
 const words = (v: Local | undefined | null, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
-export function RelationDialog({ table, lang, onClose, onDone }: { table: Collection; lang: Lang; onClose: () => void; onDone: () => void }) {
+export function RelationDialog({ table, lang, initialTo, onClose, onDone }: { table: Collection; lang: Lang; /** The table to link to begin with (the diagram: the card the line was pulled to). */ initialTo?: string; onClose: () => void; onDone: () => void }) {
   const all = useQuery({ queryKey: ["collections"], queryFn: listCollections });
   const own = useMemo(() => all.data ?? [table], [all.data, table]);
   const theirs = useMemo(() => storeLinkTables(), []);
@@ -34,7 +34,7 @@ export function RelationDialog({ table, lang, onClose, onDone }: { table: Collec
     return c ? words(c.name, lang) || c.slug : say("جدول مش موجود|A table that isn't there|טבלה שאינה קיימת");
   };
   const here = words(table.name, lang) || table.slug;
-  const [to, setTo] = useState(() => firstLinkable(own, table.id));
+  const [to, setTo] = useState(() => (initialTo && (storeTarget(initialTo) || own.some((c) => c.id === initialTo)) ? initialTo : firstLinkable(own, table.id)));
   const [kind, setKind] = useState<LinkKind>("manyToOne");
   const [onDelete, setDelete] = useState<OnDelete>("unlink");
   const [name, setName] = useState("");

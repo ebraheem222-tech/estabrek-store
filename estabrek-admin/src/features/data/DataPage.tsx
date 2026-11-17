@@ -80,9 +80,15 @@ export default function DataPage() {
         </div>
         {/* Tables and their fields are made on the collections page: for whoever may open it (not a member given single tables). */}
         {hasPermission("pages:read") ? (
-          <Link to="/admin/collections" className={btn} data-testid="data-schema-link">
-            {say("جدول جديد والحقول|New table & fields|טבלה חדשה ושדות")}
-          </Link>
+          <span className="flex flex-wrap gap-2">
+            {/* Every table and the lines between them, drawn. */}
+            <Link to="/admin/data/diagram" className={btn} data-testid="data-diagram-link">
+              {say("مخطط العلاقات|Relations diagram|תרשים הקישורים")}
+            </Link>
+            <Link to="/admin/collections" className={btn} data-testid="data-schema-link">
+              {say("جدول جديد والحقول|New table & fields|טבלה חדשה ושדות")}
+            </Link>
+          </span>
         ) : null}
       </header>
 
