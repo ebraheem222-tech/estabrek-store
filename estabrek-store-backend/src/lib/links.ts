@@ -311,7 +311,7 @@ export const incomingId = (slug: string, field: string) => `${FROM}${slug}.${fie
 export type LinkedFrom = { n: number; rows: Linked[] };
 export const FROM_SHOWN = 5;
 
-/** Every relation of every table that links this table, in the order the tables were made. */
+/** Every relation of every table that links this table (one of the owner's by its id, one of the store's as "store:products"), in the order the tables were made. */
 export async function incomingTo(db: Pick<Db, "collection">, tableId: string): Promise<Incoming[]> {
   const tables = await db.collection.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, slug: true, name: true, fields: true } });
   return tables.flatMap((c) =>
@@ -328,14 +328,16 @@ export async function linkedFrom(db: Db, tableId: string, incoming: Incoming[], 
   // A linking row is called by its own table's first words field.
   const sources = await db.collection.findMany({ where: { id: { in: [...new Set(incoming.map((x) => x.table))] } }, select: { id: true, fields: true } });
   const titleOf = new Map(sources.map((c) => [c.id, fieldsOf(c).find((x) => x.type === "text")?.id ?? null]));
+  // One of the store's tables: its links are kept in their own table, under its short name.
+  const kept = linkTable(tableId);
   for (const inc of incoming) {
     const title = titleOf.get(inc.table);
     const rows = await db.$queryRaw<Array<{ toId: string; id: string; slug: string; status: string; title: unknown; n: number }>>(
       Prisma.sql`SELECT x."toId", x."id", x."slug", x."status", x."title", x."n" FROM (
           SELECT l."toId", s."id", s."slug", s."status"::text AS "status", ${title ? Prisma.sql`s."data"->${title}::text` : Prisma.sql`NULL::jsonb`} AS "title",
             (count(*) OVER (PARTITION BY l."toId"))::int AS "n", row_number() OVER (PARTITION BY l."toId" ORDER BY s."updatedAt" DESC, s."id" ASC) AS "k"
-          FROM "CollectionLink" l JOIN "CollectionItem" s ON s."id" = l."fromId" AND s."collectionId" = l."collectionId" AND s."deletedAt" IS NULL
-          WHERE l."collectionId" = ${inc.table} AND l."fieldId" = ${inc.field} AND l."toTable" = ${tableId} AND l."toId" = ANY(${rowIds}::text[])
+          FROM ${kept.table} l JOIN "CollectionItem" s ON s."id" = l."fromId" AND s."collectionId" = l."collectionId" AND s."deletedAt" IS NULL
+          WHERE l."collectionId" = ${inc.table} AND l."fieldId" = ${inc.field} AND l."toTable" = ${kept.toTable} AND l."toId" = ANY(${rowIds}::text[])
         ) x WHERE x."k" <= ${FROM_SHOWN} ORDER BY x."toId" ASC, x."k" ASC`,
     );
     for (const r of rows) {
@@ -346,6 +348,19 @@ export async function linkedFrom(db: Db, tableId: string, incoming: Incoming[], 
     }
   }
   return out;
+}
+
+/**
+ * The store rows one relation links (from rows that aren't in the trash): the store grid's "is
+ * anything linking it" is asked of this list. At most `cap` + 1 are read, so the caller can tell
+ * there are more than it takes.
+ */
+export async function storeRowsLinked(db: Raw, inc: Pick<Incoming, "table" | "field">, store: StoreId, cap: number): Promise<string[]> {
+  const rows = await db.$queryRaw<Array<{ toId: string }>>(
+    Prisma.sql`SELECT DISTINCT l."toId" FROM "StoreLink" l JOIN "CollectionItem" s ON s."id" = l."fromId" AND s."collectionId" = l."collectionId" AND s."deletedAt" IS NULL
+      WHERE l."collectionId" = ${inc.table} AND l."fieldId" = ${inc.field} AND l."toTable" = ${store} LIMIT ${cap + 1}`,
+  );
+  return rows.map((x) => x.toId);
 }
 
 /* ---------------- Deleting ---------------- */

@@ -435,7 +435,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                 const s = query.sort?.find((x) => x.field === c.id);
                 return (
                   <th key={c.id} className="whitespace-nowrap px-3 py-2 text-start font-medium" aria-sort={s ? (s.dir === "asc" ? "ascending" : "descending") : "none"}>
-                    <button type="button" className="inline-flex items-center gap-1 hover:text-white disabled:cursor-default disabled:hover:text-inherit" disabled={c.computed} title={c.computed ? say("بينحسب لكل صفحة: ما بيترتّب فيه|Worked out per page: it can't be sorted by|מחושב לכל עמוד: אי אפשר למיין לפיו") : undefined} onClick={() => change({ sort: nextSort(query.sort, c.id) })} data-testid={`sort-${c.id}`}>
+                    <button type="button" className="inline-flex items-center gap-1 hover:text-white disabled:cursor-default disabled:hover:text-inherit" disabled={c.computed || c.noSort} title={c.noSort ? say("بينعدّ جنب الصفحة: بينسأل عنه بالفلتر، وما بيترتّب فيه|Counted beside the page: ask about it with a filter; it can't be sorted by|נספר לצד העמוד: אפשר לסנן לפיו, לא למיין") : c.computed ? say("بينحسب لكل صفحة: ما بيترتّب فيه|Worked out per page: it can't be sorted by|מחושב לכל עמוד: אי אפשר למיין לפיו") : undefined} onClick={() => change({ sort: nextSort(query.sort, c.id) })} data-testid={`sort-${c.id}`}>
                       {c.id.startsWith("$") ? say(c.name) : c.name}
                       {storeCells.includes(c.id) ? (
                         <span className="text-white/70" aria-hidden="true" title={say("بيتعدّل من هون: كبستين عالخانة|Changed here: double-click the cell|ניתן לשנות כאן: לחיצה כפולה על התא")} data-testid={`writable-${c.id}`}>
