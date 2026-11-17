@@ -18,6 +18,7 @@ import { loadJobsConfig, startJobs, stopJobs } from "./lib/jobs.js";
 import { registerBackgroundJobs } from "./jobs.js";
 import { startAutomations } from "./modules/admin/automations.service.js";
 import { startFunctions } from "./modules/functions/functions.service.js";
+import { startWebhooksOut } from "./lib/webhooksOut.js";
 
 const port = Number(env.PORT || 4000);
 const host = "0.0.0.0";
@@ -77,6 +78,8 @@ registerBackgroundJobs();
 startAutomations();
 // Admin → الـ Functions: what starts a function by itself comes through the queue.
 startFunctions();
+// Admin → Webhooks طالعة: deliveries leave through the queue, and are tried again when they fail.
+startWebhooksOut();
 server = createServer(app);
 server.headersTimeout = env.HTTP_HEADER_TIMEOUT_MS;
 server.requestTimeout = env.HTTP_REQUEST_TIMEOUT_MS;

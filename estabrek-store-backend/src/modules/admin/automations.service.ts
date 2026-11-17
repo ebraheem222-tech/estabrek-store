@@ -24,6 +24,7 @@ import { rankedProducts } from "../../lib/popularity.js";
 import { DEFAULT_TEXT, TRIGGERS, conditionsMet, render, setAutomationHandler, type ActionConfig, type Trigger } from "../../lib/automations.js";
 import { enqueueTask, registerTask } from "../../lib/tasks.js";
 import { emitFnEvent } from "../../lib/fnTriggers.js";
+import { emitWebhooks } from "../../lib/webhooksOut.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
 import { recordRun } from "../../lib/runs.js";
 import { getOrCreateSettings } from "./settings.controller.js";
@@ -260,6 +261,8 @@ export function startAutomations() {
     const now = Date.now();
     // The functions that wait for this event (lib/fnTriggers.ts) are started too; one failing doesn't stop the other.
     await emitFnEvent(trigger, data, subject).catch((e) => console.error(`[functions] ${trigger}:`, e instanceof Error ? e.message : e));
+    // …and the owner's outgoing webhooks that asked for it (lib/webhooksOut.ts).
+    await emitWebhooks(trigger, () => ({ ...data, subject })).catch((e) => console.error(`[webhooks] ${trigger}:`, e instanceof Error ? e.message : e));
     // No rule asks for this event: nothing to queue.
     if (!(await rulesFor(trigger, now)).length) return;
     await enqueueTask("automation", { trigger, data, subject, at: now });

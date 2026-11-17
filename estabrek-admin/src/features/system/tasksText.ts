@@ -23,6 +23,7 @@ export const STATUS_NAME: Record<TaskStatus, string> = {
 const KIND_NAME: Record<string, string> = {
   automation: "حدث لتلقائية|An automation's event|אירוע לאוטומציה",
   function: "تشغيل function|A function's run|הרצת פונקציה",
+  "webhook-out": "تسليم webhook|A webhook delivery|מסירת webhook",
 };
 export const taskKindName = (kind: string, lang: Lang) => (KIND_NAME[kind] ? part(KIND_NAME[kind], lang) : kind);
 
