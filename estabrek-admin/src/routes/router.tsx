@@ -82,6 +82,7 @@ const PlainSpinPage = lazy(() => import("../features/scan3d/PlainSpinPage"));
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
 const CollectionsPage = lazy(() => import("../features/collections/CollectionsPage"));
 const DataPage = lazy(() => import("../features/data/DataPage"));
+const RelationsDiagramPage = lazy(() => import("../features/data/RelationsDiagramPage"));
 const ApiPage = lazy(() => import("../features/api/ApiPage"));
 const FunctionsPage = lazy(() => import("../features/functions/FunctionsPage"));
 const FunctionEditor = lazy(() => import("../features/functions/FunctionEditor"));
@@ -311,6 +312,8 @@ export default function AppRouter() {
           <Route path="collections" element={withPermissions(<ErrorBoundary title="Collections"><CollectionsPage /></ErrorBoundary>, ["pages:read"])} />
           {/* The data grid (B1): every table's rows, filtered and sorted by the server. */}
           <Route path="data" element={withPermissions(<ErrorBoundary title="Tables"><DataPage /></ErrorBoundary>, ["data:tables"])} />
+          {/* The relations diagram (B3): every table and the lines between them; for whoever may see every table. */}
+          <Route path="data/diagram" element={withPermissions(<ErrorBoundary title="Relations"><RelationsDiagramPage /></ErrorBoundary>, ["pages:read"])} />
           {/* The automatic API (B4): which tables are open to the outside, and the keys. */}
           <Route path="data-api" element={withPermissions(<ErrorBoundary title="API"><ApiPage /></ErrorBoundary>, ["api:read"])} />
           <Route path="functions" element={withPermissions(<ErrorBoundary title="Functions"><FunctionsPage /></ErrorBoundary>, ["functions:read"])} />
