@@ -7,7 +7,7 @@ import { AppError } from "../../utils/httpError.js";
 import { HTTP_LIMITS, forgetConnections } from "../../lib/fnHttp.js";
 import { SECRET_NAME, siteOf } from "../../lib/fnSites.js";
 import { seal } from "../../lib/secretBox.js";
-import { READY_KINDS, READY_LIMITS, kindOf, kindsOut, settingsOf } from "../../lib/fnKinds.js";
+import { READY_KINDS, READY_LIMITS, kindOf, kindsOut, settingsCheck } from "../../lib/fnKinds.js";
 import { forgetReady, tryReady } from "../../lib/fnReady.js";
 
 /**
@@ -90,9 +90,9 @@ function keyOf(kind: NonNullable<ReturnType<typeof kindOf>>, typed: string): str
   return key;
 }
 function settingsFor(kind: NonNullable<ReturnType<typeof kindOf>>, raw: unknown): Record<string, string> {
-  const settings = settingsOf(kind, raw);
-  if (!settings) throw new AppError(400, "SETTING_INVALID", "A setting is a short plain value", { at: "settings" });
-  return settings;
+  const c = settingsCheck(kind, raw);
+  if (!("settings" in c)) throw new AppError(400, "SETTING_INVALID", c.message, { at: c.id ? `settings.${c.id}` : "settings" });
+  return c.settings;
 }
 
 async function everything() {

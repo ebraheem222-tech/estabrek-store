@@ -17,7 +17,7 @@
 import { createPrivateKey, createSign } from "node:crypto";
 import type { HttpMethod } from "./fnHttp.js";
 
-export const READY_KINDS = ["telegram", "slack", "google"] as const;
+export const READY_KINDS = ["telegram", "slack", "google", "api"] as const;
 export type ReadyKind = (typeof READY_KINDS)[number];
 /** The name a connection's key goes by inside its own calls. It is never one of the owner's secrets. */
 export const READY_KEY = "CONNECTION_KEY";
@@ -42,8 +42,25 @@ export type ReadyField = {
   long?: boolean;
   /** A setting of the connection that stands in when the step leaves this empty. */
   or?: string;
+  /** What is wrong with what is written here (a body that isn't one), as a problem says it; null when nothing is. */
+  problem?: (written: string) => string | null;
 };
-export type ReadySetting = { id: string; max: number; /** The value as it is kept, from what was typed (a sheet's address → its id); null when it isn't one. */ tidy?: (typed: string) => string | null };
+export type ReadySetting = {
+  id: string;
+  max: number;
+  /** The value as it is kept, from what was typed (a sheet's address → its id); null when it isn't one. */
+  tidy?: (typed: string) => string | null;
+  /** A connection of this kind has it ("The base address is needed"). */
+  required?: boolean;
+  /** One of these, and nothing else (a page offers them as a list). */
+  choices?: readonly string[];
+  /** Asked only while another setting is this ("header" while "auth" is "header"). */
+  shownWhen?: [string, string];
+  /** As a refusal names it: "The base address". */
+  what?: string;
+  /** Said when what was typed isn't one. */
+  looks?: string;
+};
 export type ReadyAction = {
   id: string;
   fields: ReadyField[];
@@ -55,8 +72,10 @@ export type KindDef = {
   kind: ReadyKind;
   /** As a run's line and a failure say it. */
   label: string;
-  /** The one site this kind calls. */
+  /** The one site this kind calls ("" for a kind whose site is the connection's own: hostOf). */
   host: string;
+  /** The site a connection of this kind calls, from its settings (a generic API: its base address); null when it has none. */
+  hostOf?: (settings: Record<string, string>) => string | null;
   /** The key as it is kept, from what was typed; null when it isn't one. */
   key: (typed: string) => string | null;
   /** Said when the key isn't one. */
@@ -67,6 +86,8 @@ export type KindDef = {
   /** Settings worked out from the key, shown with the others and never typed: Google's service account's address. */
   derived?: string[];
   derive?: (key: string) => Record<string, string>;
+  /** The key as a call carries it, from the key as it is kept (a name and password as Basic asks for them: in base64). */
+  useKey?: (key: string, settings: Record<string, string>) => string;
   actions: ReadyAction[];
   /**
    * A call that shows the key works. `sends`: there is no quieter way to ask than posting a line.
@@ -85,6 +106,89 @@ export type KindDef = {
 
 const text = (v: unknown, max = 200) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const part = (body: unknown, key: string): unknown => (body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>)[key] : undefined);
+
+/* ---------------- A generic API's own pieces ---------------- */
+
+/** How its key goes with a call: "Authorization: Bearer <key>", in a header of the owner's naming, or as a name and password (Basic). */
+export const API_AUTH = ["bearer", "header", "basic"] as const;
+const SITE_NAME = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
+/** The headers a call writes itself, or that aren't a key's to take. */
+const NOT_KEY_HEADERS = new Set(["host", "content-length", "content-type", "connection", "transfer-encoding", "upgrade", "te", "trailer", "proxy-authorization", "cookie", "user-agent", "accept", "accept-encoding"]);
+/** A base address as it is kept: https, a site by its name, the standard port, no name and password, no "?" or "#"; its last "/" off. Null when it isn't one. */
+export function baseOf(typed: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(typed.trim());
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443") || u.search || u.hash || !SITE_NAME.test(host)) return null;
+  return `https://${host}${u.pathname.replace(/\/+$/, "")}`;
+}
+/** A header's name a key may go in ("X-API-Key"), in small letters; null when it isn't one or is one a call writes itself. */
+export function headerName(typed: string): string | null {
+  const name = typed.trim().toLowerCase();
+  return /^[a-z0-9-]{1,60}$/.test(name) && !NOT_KEY_HEADERS.has(name) ? name : null;
+}
+/** A path after the base address ("/orders?status=new"): never a whole address, nor one that starts another site. */
+export function pathOf(typed: string): string | null {
+  const v = typed.trim();
+  if (!v) return "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(v) || v.startsWith("//") || /[\s#\\]/.test(v)) return null;
+  return v.startsWith("/") ? v : `/${v}`;
+}
+/** A path a step writes (a run's names in it are filled as the call leaves), or why it can't be one. */
+function pathProblem(written: string): string | null {
+  const v = written.trim().replace(/\{\{[^{}]*\}\}/g, "x");
+  return pathOf(v) === null ? "The path comes after the base address: /orders, not a whole address" : null;
+}
+/** A plain value written in a line of a body: a number, yes/no and nothing are themselves; the rest are words. */
+function plain(v: string): unknown {
+  if (/^-?(0|[1-9]\d{0,14})(\.\d+)?$/.test(v)) return Number(v);
+  if (v === "true" || v === "false") return v === "true";
+  if (v === "null") return null;
+  return v;
+}
+const NO_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+/**
+ * What a step sends, from what it wrote: JSON as it is (a run's name in quotes: "{{input.total}}"), or one
+ * line a field, "name: value", a dot going deeper ("customer.name: {{input.name}}"). Empty: nothing is sent.
+ */
+export function apiBody(written: string): { body: unknown } | { problem: string } | null {
+  const v = written.trim();
+  if (!v) return null;
+  if (v.startsWith("{") || v.startsWith("[")) {
+    try {
+      return { body: JSON.parse(v) };
+    } catch {
+      return { problem: "What is sent isn't JSON (a run's name in it goes in quotes: \"{{input.total}}\")" };
+    }
+  }
+  const out: Record<string, unknown> = {};
+  for (const raw of v.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = /^([A-Za-z_$][\w$-]{0,59}(?:\.[A-Za-z_$][\w$-]{0,59}){0,5})\s*:\s*(.*)$/.exec(line);
+    if (!m) return { problem: "Each line of what is sent is name: value" };
+    const keys = m[1].split(".");
+    if (keys.some((k) => NO_KEYS.has(k))) return { problem: "Each line of what is sent is name: value" };
+    let at = out;
+    for (const k of keys.slice(0, -1)) {
+      if (!at[k] || typeof at[k] !== "object" || Array.isArray(at[k])) at[k] = {};
+      at = at[k] as Record<string, unknown>;
+    }
+    at[keys[keys.length - 1]] = plain(m[2].trim());
+  }
+  return { body: out };
+}
+/** The key's header for a call, by how the connection sends it. */
+function apiAuth(settings: Record<string, string>): Record<string, string> {
+  const auth = settings.auth ?? "bearer";
+  if (auth === "header") return { [settings.header || "x-api-key"]: KEY };
+  return { authorization: `${auth === "basic" ? "Basic" : "Bearer"} ${KEY}` };
+}
+const API_METHODS = ["get", "post", "put", "patch", "delete"] as const;
 
 /* ---------------- Google Sheets' own pieces ---------------- */
 
@@ -320,6 +424,63 @@ const KINDS: Record<ReadyKind, KindDef> = {
       why: (body) => text(part(body, "error_description")) ?? text(part(body, "error")),
     },
   },
+  /**
+   * Any other system with an API (an ERP, a warehouse, a shipping company): a base address and a key,
+   * connected once. A step writes only the path after the base ("/orders/{{input.id}}") and what it
+   * sends; the key goes with it as the connection says, and only to that system.
+   */
+  api: {
+    kind: "api",
+    label: "API",
+    host: "",
+    hostOf: (settings) => {
+      const base = settings.base ? baseOf(settings.base) : null;
+      return base ? new URL(base).hostname : null;
+    },
+    // Whatever the system gave, on one line (a name and password for Basic: "name:password").
+    key: (typed) => {
+      const t = typed.trim();
+      return t && t.length <= 4000 && !/[\r\n]/.test(t) && !t.includes("{{") ? t : null;
+    },
+    keyLooks: "The key is one line, as the other system gave it",
+    settings: [
+      { id: "base", max: 300, tidy: baseOf, required: true, what: "The base address", looks: "The base address is https:// and a site's name, with no ? or # (like https://erp.example.com/api)" },
+      { id: "auth", max: 10, choices: API_AUTH, what: "How the key is sent", looks: "The key is sent as bearer, header or basic" },
+      { id: "header", max: 60, tidy: headerName, shownWhen: ["auth", "header"], what: "The header's name", looks: "A header's name is letters, digits and - (like X-API-Key)" },
+      { id: "check", max: 200, tidy: pathOf, what: "The path to try", looks: "The path to try comes after the base address (like /me)" },
+    ],
+    useKey: (key, settings) => (settings.auth === "basic" ? Buffer.from(key).toString("base64") : key),
+    actions: API_METHODS.map(
+      (m): ReadyAction => ({
+        id: m,
+        fields: [
+          { id: "path", what: "The path", required: true, problem: pathProblem },
+          ...(m === "get" || m === "delete" ? [] : [{ id: "body", what: "What is sent", long: true, problem: (w: string) => { const b = apiBody(w); return b && "problem" in b ? b.problem : null; } }]),
+        ],
+        call: (settings, give) => {
+          const path = (give.path ?? "").trim();
+          const sent = m === "get" || m === "delete" ? null : apiBody(give.body ?? "");
+          return {
+            method: m.toUpperCase() as HttpMethod,
+            url: `${baseOf(settings.base ?? "") ?? ""}${path.startsWith("/") ? path : `/${path}`}`,
+            headers: apiAuth(settings),
+            ...(sent && "body" in sent ? { body: sent.body } : {}),
+          };
+        },
+      }),
+    ),
+    test: {
+      sends: false,
+      call: (settings) => ({ method: "GET", url: `${baseOf(settings.base ?? "") ?? ""}${settings.check ?? ""}`, headers: apiAuth(settings) }),
+      // A few words of what it answered about itself, where it says some.
+      said: (body) => text(part(body, "name"), 80) ?? text(part(body, "title"), 80) ?? text(part(body, "email"), 80) ?? text(part(body, "version"), 40) ?? text(part(body, "status"), 40),
+    },
+    // Systems say why in many shapes: a message, an error (words, or a thing with a message), a detail, a title; or a page.
+    why: (body) =>
+      typeof body === "string"
+        ? text(body.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, " ").replace(/<[^>]*>/g, " ").replace(/\s+/g, " "), 200)
+        : (text(part(body, "message")) ?? text(part(body, "error")) ?? text(part(part(body, "error"), "message")) ?? text(part(body, "detail")) ?? text(part(body, "title")) ?? text(part(body, "error_description"))),
+  },
 };
 
 export const kindOf = (kind: string): KindDef | null => ((READY_KINDS as readonly string[]).includes(kind) ? KINDS[kind as ReadyKind] : null);
@@ -332,7 +493,7 @@ export function kindsOut() {
       kind: d.kind,
       label: d.label,
       host: d.host,
-      settings: d.settings.map((s) => ({ id: s.id, max: s.max })),
+      settings: d.settings.map((s) => ({ id: s.id, max: s.max, ...(s.required ? { required: true } : {}), ...(s.choices ? { choices: [...s.choices] } : {}), ...(s.shownWhen ? { shownWhen: s.shownWhen } : {}) })),
       actions: d.actions.map((a) => ({ id: a.id, fields: a.fields.map((f) => ({ id: f.id, required: !!f.required, long: !!f.long, ...(f.or ? { or: f.or } : {}) })) })),
       test: { sends: d.test.sends },
       ...(d.keyFile ? { keyFile: d.keyFile } : {}),
@@ -341,25 +502,37 @@ export function kindsOut() {
   });
 }
 
-/** A connection's settings as they are kept: the kind's own, each a short line with no name in it. Null when one isn't right. */
-export function settingsOf(kind: KindDef, raw: unknown): Record<string, string> | null {
+/**
+ * A connection's settings as they are kept: the kind's own, each a short line with no name in it,
+ * and the ones it can't do without. Else which one isn't right, and what it should be.
+ */
+export function settingsCheck(kind: KindDef, raw: unknown): { settings: Record<string, string> } | { id: string; message: string } {
   const out: Record<string, string> = {};
-  if (raw === undefined || raw === null) return out;
-  if (typeof raw !== "object" || Array.isArray(raw)) return null;
-  for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
-    // Worked out from the key (a page sends back what it was shown): never taken from what is typed.
-    if (kind.derived?.includes(id)) continue;
-    const def = kind.settings.find((s) => s.id === id);
-    if (!def || typeof v !== "string") return null;
-    const value = v.trim();
-    // A setting is a plain value: it never names something of a run's, or a secret.
-    if (value.length > def.max || value.includes("{{") || value.includes("}}")) return null;
-    if (!value) continue;
-    const kept = def.tidy ? def.tidy(value) : value;
-    if (kept === null) return null;
-    out[id] = kept;
+  const plainOnly = "A setting is a short plain value";
+  if (raw !== undefined && raw !== null) {
+    if (typeof raw !== "object" || Array.isArray(raw)) return { id: "", message: plainOnly };
+    for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
+      // Worked out from the key (a page sends back what it was shown): never taken from what is typed.
+      if (kind.derived?.includes(id)) continue;
+      const def = kind.settings.find((s) => s.id === id);
+      if (!def || typeof v !== "string") return { id, message: plainOnly };
+      const value = v.trim();
+      // A setting is a plain value: it never names something of a run's, or a secret.
+      if (value.length > def.max || value.includes("{{") || value.includes("}}")) return { id, message: def.looks ?? plainOnly };
+      if (!value) continue;
+      const kept = def.tidy ? def.tidy(value) : value;
+      if (kept === null || (def.choices && !def.choices.includes(kept))) return { id, message: def.looks ?? plainOnly };
+      out[id] = kept;
+    }
   }
-  return out;
+  const missing = kind.settings.find((s) => s.required && !out[s.id]);
+  if (missing) return { id: missing.id, message: `${missing.what ?? missing.id} is needed` };
+  return { settings: out };
+}
+/** The settings as they are kept, or null when one isn't right (settingsCheck says which). */
+export function settingsOf(kind: KindDef, raw: unknown): Record<string, string> | null {
+  const c = settingsCheck(kind, raw);
+  return "settings" in c ? c.settings : null;
 }
 
 /** What a step that uses a connection still lacks: each as a problem says it ("The text is empty"). */
@@ -369,6 +542,8 @@ export function missingIn(action: ReadyAction, give: Record<string, unknown> | u
     const v = give?.[f.id];
     const empty = v === undefined || v === null || (typeof v === "string" && !v.trim());
     if (f.required && empty && !(f.or && has(f.or))) out.push(`${f.what} is empty`);
+    const wrong = !empty && typeof v === "string" && f.problem ? f.problem(v) : null;
+    if (wrong) out.push(wrong);
   }
   return out;
 }

@@ -18,11 +18,23 @@ import { say } from "../../studio/say";
 import * as API from "../../api/connections.api";
 import type { Connections, Ready, ReadyKind, ReadyTry, Secret } from "../../api/connections.api";
 import { failText } from "../functions/fnText";
-import { keyFileAccount, keyLooks, keyName, kindHow, kindName, settingHint, settingName } from "./readyText";
+import { choiceName, keyFileAccount, keyLooks, keyName, kindHow, kindName, settingHint, settingName } from "./readyText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
 const note = "text-xs text-white/70";
+
+/** What a setting should be, by where the server says it isn't ("settings.base"). */
+const SETTING_SAID: Record<string, string> = {
+  "settings.base": "العنوان الأساسي لازم يكون https:// واسم موقع، بدون ? ولا # ولا رقم منفذ (متل https://erp.example.com/api)|The base address is https:// and a site's name, with no ?, # or port (like https://erp.example.com/api)|הכתובת הבסיסית היא https:// ושם אתר, בלי ?, # או פורט (כמו https://erp.example.com/api)",
+  "settings.auth": "اختار طريقة المفتاح من القائمة|Pick how the key is sent from the list|בחר מהרשימה איך המפתח נשלח",
+  "settings.header": "اسم الترويسة حروف وأرقام و - بس (متل X-API-Key)|A header's name is letters, digits and - (like X-API-Key)|שם כותרת הוא אותיות, ספרות ו- (כמו X-API-Key)",
+  "settings.check": "مسار التجربة بيجي بعد العنوان الأساسي (متل /me)|The path to try comes after the base address (like /me)|נתיב הבדיקה בא אחרי הכתובת הבסיסית (כמו /me)",
+  "settings.sheet": "حط رابط الشيت متل ما هو بالمتصفح|Give the sheet's link as the browser shows it|הזן את הקישור לגיליון כפי שהדפדפן מציג אותו",
+};
+const SETTING_NEEDED: Record<string, string> = {
+  "settings.base": "لازم العنوان الأساسي للنظام (متل https://erp.example.com/api)|The system's base address is needed (like https://erp.example.com/api)|נדרשת הכתובת הבסיסית של המערכת (כמו https://erp.example.com/api)",
+};
 
 /** A site as it is typed: small letters, no "https://", nothing after the name. */
 export const tidySite = (raw: string) => raw.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/[/?#].*$/, "").replace(/\.$/, "");
@@ -33,7 +45,12 @@ export const tidySecretName = (raw: string) => raw.trim().toUpperCase().replace(
 export const secretNameOk = (name: string) => /^[A-Z][A-Z0-9_]{1,39}$/.test(name);
 /** Why the server refused, in the page's words. */
 export function refusalText(e: unknown): string {
-  const data = (e as { response?: { data?: { error?: string; details?: { functions?: string[] } } } })?.response?.data;
+  const data = (e as { response?: { data?: { error?: string; message?: string; details?: { functions?: string[]; at?: string } } } })?.response?.data;
+  // A setting that isn't right: which one, and what it should be.
+  if (data?.error === "SETTING_INVALID" && data.details?.at && SETTING_SAID[data.details.at]) {
+    const needed = /is needed$/.test(data.message ?? "");
+    return say(needed ? (SETTING_NEEDED[data.details.at] ?? SETTING_SAID[data.details.at]) : SETTING_SAID[data.details.at]);
+  }
   if (data?.error === "SITE_INVALID") return say("الموقع بينكتب باسمه: api.example.com، أو ‎*.example.com لكل الأسماء تحته|A site is written by its name: api.example.com, or *.example.com for every name under it|אתר נכתב בשמו: api.example.com, או ‎*.example.com לכל השמות שמתחתיו");
   if (data?.error === "SECRET_TAKEN") return say("في سر بهالاسم. غيّر قيمته من سطره|A secret has this name already. Give it a new value on its own line|כבר יש סוד בשם הזה. אפשר לתת לו ערך חדש בשורה שלו");
   if (data?.error === "SECRET_USED") return `${say("في functions بتستعمله:|Functions use it:|פונקציות משתמשות בו:")} ${(data.details?.functions ?? []).join("، ")}`;
@@ -182,12 +199,28 @@ function KeyInput({ kind, value, onChange, placeholder, testid }: { kind: ReadyK
 function SettingsInputs({ kind, value, onChange, testid }: { kind: ReadyKind; value: Record<string, string>; onChange: (next: Record<string, string>) => void; testid: string }) {
   return (
     <>
-      {kind.settings.map((s) => (
-        <label key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="w-36 shrink-0 text-xs text-white/70">{settingName(kind.kind, s.id)}</span>
-          <input className={`${field} min-w-[12rem] flex-1`} dir="ltr" value={value[s.id] ?? ""} maxLength={s.max} placeholder={settingHint(kind.kind, s.id)} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`} />
-        </label>
-      ))}
+      {kind.settings
+        // One asked only for a choice of another (a header's name, while the key goes in a header).
+        .filter((s) => !s.shownWhen || (value[s.shownWhen[0]] || kind.settings.find((x) => x.id === s.shownWhen![0])?.choices?.[0]) === s.shownWhen[1])
+        .map((s) => (
+          <label key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="w-36 shrink-0 text-xs text-white/70">
+              {settingName(kind.kind, s.id)}
+              {s.required ? " *" : ""}
+            </span>
+            {s.choices ? (
+              <select className={`${field} min-w-[12rem] flex-1`} value={value[s.id] || s.choices[0]} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`}>
+                {s.choices.map((c) => (
+                  <option key={c} value={c}>
+                    {choiceName(kind.kind, s.id, c)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input className={`${field} min-w-[12rem] flex-1`} dir="ltr" value={value[s.id] ?? ""} maxLength={s.max} placeholder={settingHint(kind.kind, s.id)} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`} />
+            )}
+          </label>
+        ))}
     </>
   );
 }
@@ -223,7 +256,8 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
             <div className={note}>
               {kept.map(([id, v]) => (
                 <span key={id}>
-                  {settingName(ready.kind, id)}: <bdi dir="ltr">{v}</bdi>{" "}
+                  {/* A choice by its name ("In a header of yours"), not as it is kept ("header"). */}
+                  {settingName(ready.kind, id)}: {kind?.settings.find((s) => s.id === id)?.choices ? choiceName(ready.kind, id, v) : <bdi dir="ltr">{v}</bdi>}{" "}
                 </span>
               ))}
             </div>
@@ -412,7 +446,7 @@ export default function ConnectionsPage() {
                 <KeyInput kind={kind} value={newKey} placeholder={kind.keyFile ? undefined : keyLooks(kind.kind)} onChange={setNewKey} testid="ready-new-key" />
               </label>
               <SettingsInputs kind={kind} value={newSettings} onChange={setNewSettings} testid="ready-new-setting" />
-              <Button size="sm" variant="secondary" type="submit" disabled={!newName.trim() || !newKey.trim() || (!!kind.keyFile && !keyFileAccount(newKey)) || ready.length >= (limits.ready ?? 20)} isLoading={change.isPending} data-testid="ready-add">
+              <Button size="sm" variant="secondary" type="submit" disabled={!newName.trim() || !newKey.trim() || (!!kind.keyFile && !keyFileAccount(newKey)) || kind.settings.some((s) => s.required && !newSettings[s.id]?.trim()) || ready.length >= (limits.ready ?? 20)} isLoading={change.isPending} data-testid="ready-add">
                 {say("＋ وصّل الخدمة|＋ Connect the service|＋ חיבור השירות")}
               </Button>
             </form>

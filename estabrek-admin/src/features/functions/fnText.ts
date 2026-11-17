@@ -306,6 +306,12 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   [/^The spreadsheet is empty$/, "ما في شيت: حطّه بالخطوة أو كشيت معتاد بالاتصال|No spreadsheet: give one in the step, or as the connection's usual one|אין גיליון: ציין אחד בשלב, או כגיליון הרגיל של החיבור"],
   [/^The tab is empty$/, "ما في ورقة: حطّها بالخطوة أو كورقة معتادة بالاتصال|No tab: give one in the step, or as the connection's usual one|אין לשונית: ציין אחת בשלב, או כלשונית הרגילה של החיבור"],
   [/^The row is empty$/, "ما في خانات للسطر|The row has no cells|אין תאים בשורה"],
+  // A generic API (another system): its step writes a path and what it sends.
+  [/^The path is empty$/, "ما في مسار (متل /orders)|There is no path (like /orders)|אין נתיב (כמו /orders)"],
+  [/^The path comes after the base address/, "المسار بيجي بعد العنوان الأساسي: /orders، مش عنوان كامل|The path comes after the base address: /orders, not a whole address|הנתיב בא אחרי הכתובת הבסיסית: /orders, לא כתובת שלמה"],
+  [/^Each line of what is sent is name: value$/, "كل سطر باللي بينبعت: اسم: قيمة|Each line of what is sent is name: value|כל שורה במה שנשלח היא שם: ערך"],
+  [/^What is sent isn't JSON/, "اللي بينبعت مش JSON (الاسم بين علامات تنصيص: \"{{input.total}}\")، أو اكتب كل سطر اسم: قيمة|What is sent isn't JSON (a name in it goes in quotes: \"{{input.total}}\"), or write a line a field, name: value|מה שנשלח אינו JSON (שם בתוכו במירכאות: \"{{input.total}}\"), או כתוב שורה לכל שדה, שם: ערך"],
+  [/^"(.+)" has no address$/, "«{1}» ما إله عنوان: حطّه بالاتصال|“{1}” has no address: give it one in the connection|ל«{1}» אין כתובת: הוסף אותה בחיבור"],
   [/^(.+) answered (\d+)$/, "{1} جاوب {2}|{1} answered {2}|{1} ענה {2}"],
   [/^This connection isn't there any more$/, "هالاتصال ما عاد موجود|This connection isn't there any more|החיבור הזה כבר לא קיים"],
   [/^The chat is empty$/, "ما في محادثة ينبعتلها|There is no chat to send it to|אין צ׳אט לשלוח אליו"],
