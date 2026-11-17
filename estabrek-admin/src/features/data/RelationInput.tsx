@@ -33,7 +33,8 @@ export function RelationInput({
   // The list opens when the box is used (in a cell: at once).
   const [open, setOpen] = useState(!!autoFocus);
   const [found, setFound] = useState<{ rows: Linked[]; total: number } | null>(null);
-  const [failed, setFailed] = useState(false);
+  // "denied": the linked table isn't this member's to see (its rows are never searched for them).
+  const [failed, setFailed] = useState<false | "denied" | "error">(false);
   const id = (part: string) => (testId ? `${testId}-${part}` : undefined);
 
   // The linked table's rows, found by the written words (the typing is waited for).
@@ -48,8 +49,8 @@ export function RelationInput({
             setFound(out);
             setFailed(false);
           })
-          .catch(() => {
-            if (!stale) setFailed(true);
+          .catch((e: { response?: { status?: number } }) => {
+            if (!stale) setFailed(e?.response?.status === 403 ? "denied" : "error");
           });
       },
       search ? 250 : 0,
@@ -95,7 +96,15 @@ export function RelationInput({
       </span>
       {open ? (
         <span className="mt-1 block max-h-44 overflow-y-auto border-t border-white/10 pt-1" data-testid={id("list")}>
-          {failed ? <span className="block px-1 py-1 text-xs text-red-300">{say("ما قدرنا نجيب السطور.|The rows couldn't be read.|לא ניתן היה לקרוא את השורות.")}</span> : null}
+          {failed === "denied" ? (
+            <span className="block px-1 py-1 text-xs text-amber-200" data-testid={id("denied")}>
+              {say(
+                "الجدول المربوط مش إلك تشوفه، فما بتقدر تربط سطور منه. اللي مربوط بيضل، وبتقدر تفكّه (×).|The linked table isn't yours to see, so its rows can't be linked from here. What is linked stays, and can be let go (×).|הטבלה המקושרת אינה זמינה לך, ולכן אי אפשר לקשר ממנה שורות. מה שמקושר נשאר, ואפשר לבטל אותו (×).",
+              )}
+            </span>
+          ) : failed ? (
+            <span className="block px-1 py-1 text-xs text-red-300">{say("ما قدرنا نجيب السطور.|The rows couldn't be read.|לא ניתן היה לקרוא את השורות.")}</span>
+          ) : null}
           {!failed && !found ? <span className="block px-1 py-1 text-xs text-white/40">…</span> : null}
           {!failed && found && !found.rows.length ? (
             <span className="block px-1 py-1 text-xs text-white/50" data-testid={id("none")}>

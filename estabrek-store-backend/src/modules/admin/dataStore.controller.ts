@@ -12,7 +12,8 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
-import { hasPermission, tableScope } from "../../middleware/access.js";
+import { hasPermission } from "../../middleware/access.js";
+import { seenIncoming } from "../../lib/linkView.js";
 import { LIMITS } from "../../lib/collections.js";
 import { parseGridQuery, type GridQuery } from "../../lib/dataQuery.js";
 import { FROM_ASK_CAP, STORE_TABLES, describeStoreTable, queryStoreRows, storeCsvHead, storeCsvLine, storeRowsSlice, type StoreFrom, type StoreTable } from "../../lib/storeTables.js";
@@ -36,9 +37,7 @@ function tableOf(req: any): StoreTable {
  * (a linking row is named, so a table they can't open stays out).
  */
 async function incomingOf(req: any, t: StoreTable): Promise<Incoming[]> {
-  const all = await incomingTo(prisma, `${STORE}${t.id}`);
-  const scope = tableScope(req);
-  return scope ? all.filter((x) => scope.has(x.table)) : all;
+  return seenIncoming(req, await incomingTo(prisma, `${STORE}${t.id}`));
 }
 
 /** For each linked-from column the question asks about: the store rows that relation links. */

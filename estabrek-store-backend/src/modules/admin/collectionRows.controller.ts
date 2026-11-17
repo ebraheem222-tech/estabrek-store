@@ -22,6 +22,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { hasPermission } from "../../middleware/access.js";
+import { linkView, seenTable } from "../../lib/linkView.js";
 import { AppError } from "../../utils/httpError.js";
 import { checkItemData, LIMITS, TRASH_DAYS } from "../../lib/collections.js";
 import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
@@ -31,7 +32,6 @@ import { GRID_LIMITS, OPS_BY_KIND, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQu
 import { LANGS, coerceValue, csvLine, exportColumns } from "../../lib/dataRows.js";
 import { LONG, StatusIn, addRow, answer, changeRow, refresh, tableOf, taken, writeRows } from "../../lib/rowWrites.js";
 import { emitRow } from "../../lib/fnTriggers.js";
-import { storePermission, type StoreId } from "../../lib/storeLinks.js";
 
 const r = Router();
 export const IMPORT_MAX = 500;
@@ -41,10 +41,10 @@ const ROW_EVENTS_MAX = 25;
 
 const Lang = z.enum(LANGS).default("ar");
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
-/** A row's owner by name and email for members who may see the customers; for the others, only that it has one. */
-/** What this member is told of a row: its owner by name (who may see the customers), and a linked store row by name (who may see that store table). */
-const storeView = (req: Parameters<typeof hasPermission>[0]) => ({ store: (s: StoreId) => hasPermission(req, storePermission(s)) });
-const owners = (req: Parameters<typeof hasPermission>[0]) => ({ owners: hasPermission(req, "customers:read") ? ("full" as const) : ("id" as const), ...storeView(req) });
+/** What this member is told of a row: its owner by name (who may see the customers), and a linked row by name (who may see its table: lib/linkView.ts). */
+const owners = (req: Parameters<typeof hasPermission>[0]) => ({ owners: hasPermission(req, "customers:read") ? ("full" as const) : ("id" as const), ...linkView(req) });
+/** The asked table, with the linked-from columns this member may see (lib/linkView.ts). */
+const tableFor = async (req: Parameters<typeof hasPermission>[0] & { params: Record<string, unknown> }) => seenTable(req, await tableOf(String(req.params.id)));
 
 r.get("/grid-meta", (_req, res) => {
   res.json({ ops: OPS_BY_KIND, systemColumns: SYSTEM_COLUMNS, views: VIEWS, limits: { ...GRID_LIMITS, rows: LIMITS.items, importRows: IMPORT_MAX, bulkIds: BULK_MAX, trashDays: TRASH_DAYS, links: LIMITS.links }, rules: RULES_BY_TYPE, shapes: SHAPES });
@@ -53,7 +53,7 @@ r.get("/grid-meta", (_req, res) => {
 r.get(
   "/:id/rows",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const q = parseGridQuery(one(req.query.q));
     const t0 = performance.now();
     const [page, counts] = await Promise.all([queryRows(prisma, table, q), viewCounts(prisma, table.id)]);
@@ -64,7 +64,7 @@ r.get(
 r.get(
   "/:id/rows/export",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const q = parseGridQuery(one(req.query.q));
     // The first slice is read before anything is sent: a bad question still answers 400.
     const STEP = 1000;
@@ -75,7 +75,7 @@ r.get(
     // The mark at the start tells spreadsheets the file is UTF-8 (Arabic and Hebrew stay readable).
     res.write(`﻿${exportColumns(table.fields).join(",")}\r\n`);
     for (let offset = 0; rows.length; offset += STEP) {
-      res.write(`${(await withLinks(prisma, table, rows, storeView(req))).map((row) => csvLine(table.fields, row)).join("\r\n")}\r\n`);
+      res.write(`${(await withLinks(prisma, table, rows, linkView(req))).map((row) => csvLine(table.fields, row)).join("\r\n")}\r\n`);
       if (rows.length < STEP || offset + STEP >= LIMITS.items) break;
       rows = await rowsSlice(prisma, table, q, offset + STEP, STEP);
     }
@@ -90,7 +90,7 @@ r.get(
 r.get(
   "/:id/rows/lookup",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const search = String(one(req.query.search) ?? "").trim().slice(0, GRID_LIMITS.search);
     const page = await queryRows(prisma, table, parseGridQuery({ pageSize: 20, ...(search ? { search } : {}) }));
     const title = table.fields.find((f) => f.type === "text")?.id;
@@ -106,9 +106,9 @@ const RowBody = z.object({ slug: z.string().max(100).optional(), status: z.strin
 r.post(
   "/:id/rows",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const body = RowBody.parse(req.body ?? {});
-    const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values }, body.lang, storeView(req));
+    const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values }, body.lang, linkView(req));
     res.status(201).json(row ? (await answer(table, [row], owners(req)))[0] : row);
   }),
 );
@@ -120,12 +120,12 @@ const PatchBody = z
 r.patch(
   "/:id/rows/:row",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const body = PatchBody.parse(req.body ?? {});
     const was = await prisma.collectionItem.findFirst({ where: { id: String(req.params.row), collectionId: table.id } });
     if (!was) throw new AppError(404, "NOT_FOUND", "No such row");
     if (was.deletedAt) throw new AppError(409, "ROW_IN_TRASH", "Take the row out of the trash first");
-    res.json((await answer(table, [await changeRow(table, was, body, storeView(req))], owners(req)))[0]);
+    res.json((await answer(table, [await changeRow(table, was, body, linkView(req))], owners(req)))[0]);
   }),
 );
 
@@ -147,7 +147,7 @@ const BulkBody = z
 r.post(
   "/:id/rows/bulk",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const body = BulkBody.parse(req.body ?? {});
     const which = body.ids ? Prisma.sql`i."collectionId" = ${table.id} AND i."id" IN (${Prisma.join(body.ids)})` : gridWhere(table.id, table.fields, parseGridQuery(body.query), table.incoming);
     const live = Prisma.sql`${which} AND i."deletedAt" IS NULL`;
@@ -162,7 +162,7 @@ r.post(
       changed = await prisma.$executeRaw(Prisma.sql`UPDATE "CollectionItem" AS i SET "status" = ${to}::"PageStatus", "updatedAt" = ${utc(now)} WHERE ${live} AND i."status"::text <> ${to}`);
     } else if (body.op === "trash") {
       // What the relations linking these rows chose: unlinked, deleted with them, or the whole act refused (lib/links.ts).
-      ({ changed, withThem } = await prisma.$transaction((tx) => trashRows(tx, which, now), LONG));
+      ({ changed, withThem } = await prisma.$transaction((tx) => trashRows(tx, which, now, linkView(req)), LONG));
     } else if (body.op === "restore") {
       ({ changed, withThem } = await prisma.$transaction((tx) => restoreRows(tx, which), LONG));
     } else if (body.op === "purge") {
@@ -180,7 +180,7 @@ r.post(
       if (field.exclusive && names.length && (!body.ids || body.ids.length !== 1)) throw invalid([{ field: field.id, message: "Only one row can link this row" }]);
       const rowIds = (await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT i."id" FROM "CollectionItem" i WHERE ${live}`)).map((x) => x.id);
       // Checked as one row's would be (every asked row gets the same); with one row, against that row itself.
-      const check = await checkLinks(prisma, table, [{ id: rowIds.length === 1 ? rowIds[0] : "", asked: new Map([[field.id, names]]) }], storeView(req));
+      const check = await checkLinks(prisma, table, [{ id: rowIds.length === 1 ? rowIds[0] : "", asked: new Map([[field.id, names]]) }], linkView(req));
       if (check.issues.size) throw invalid(check.issues.get(0));
       const ids = check.ready[0].get(field.id) ?? [];
       changed = await prisma.$transaction((tx) => setLinksOfMany(tx, table, field, rowIds, ids, now), LONG);
@@ -219,10 +219,10 @@ const ImportBody = z
 r.post(
   "/:id/rows/import",
   asyncHandler(async (req, res) => {
-    const table = await tableOf(String(req.params.id));
+    const table = await tableFor(req);
     const body = ImportBody.parse(req.body ?? {});
     try {
-      const { slugs: _slugs, ...report } = await writeRows(table, body.rows, { mode: body.mode, lang: body.lang, dryRun: body.dryRun, view: storeView(req) });
+      const { slugs: _slugs, ...report } = await writeRows(table, body.rows, { mode: body.mode, lang: body.lang, dryRun: body.dryRun, view: linkView(req) });
       res.json(report);
     } catch (e) {
       // Two people adding the same address at once: nothing was written, ask again.

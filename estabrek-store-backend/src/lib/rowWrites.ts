@@ -76,13 +76,15 @@ async function withCustomers<T extends { data: unknown }>(fields: Field[], rows:
  * (`customers`) the shoppers it points at.
  */
 export async function answer<T extends { id: string; data: unknown; ownerId?: string | null }>(table: { id: string; fields: Field[]; incoming: Incoming[] }, rows: T[], opts: { owners?: "full" | "id" } & LinkView = {}) {
-  const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)), { store: opts.store });
+  const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)), { store: opts.store, table: opts.table });
   const ownerIds = [...new Set(linked.map((row) => row.ownerId).filter((id): id is string => !!id))];
   const people = ownerIds.length && opts.owners === "full" ? new Map((await prisma.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, email: true } })).map((u) => [u.id, u])) : null;
   const owned = ownerIds.length ? linked.map((row) => (row.ownerId ? { ...row, owner: (people?.get(row.ownerId) ?? { id: row.ownerId }) as RowOwner } : row)) : linked;
   const shown = await withCustomers(table.fields, owned, opts.owners === "full");
-  if (!table.incoming.length) return shown;
-  const from = await linkedFrom(prisma, table.id, table.incoming, shown.map((row) => row.id));
+  // (Who links a row, only through the tables this reader may see: a linking row is named.)
+  const incoming = opts.table ? table.incoming.filter((x) => opts.table!(x.table)) : table.incoming;
+  if (!incoming.length) return shown;
+  const from = await linkedFrom(prisma, table.id, incoming, shown.map((row) => row.id));
   return shown.map((row) => ({ ...row, from: from.get(row.id) ?? {} }));
 }
 
