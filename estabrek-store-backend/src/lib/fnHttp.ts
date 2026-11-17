@@ -178,6 +178,8 @@ export type CallIn = {
    * opened to one.
    */
   grant?: { sites: string[]; secrets: Record<string, { sealed: string; sites: string[] }> };
+  /** What is sent, once the run's values are in it (a ready connection's own shaping: a sheet's cells). */
+  finish?: (body: unknown) => unknown;
 };
 export type CallOut = { /** What was called, without its secrets: "POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage". */ line: string; dry: boolean; status: number; ok: boolean; /** The answer read as JSON when the site says it is, else its words. */ body: unknown; type: string; cut: boolean };
 
@@ -254,7 +256,8 @@ export async function callSite(input: CallIn): Promise<CallOut> {
   }
   let body: string | undefined;
   if (input.method !== "GET" && input.body !== undefined && input.body !== null && input.body !== "") {
-    const sent = valueOf(input.body, input.scope, secret);
+    const filled = valueOf(input.body, input.scope, secret);
+    const sent = input.finish ? input.finish(filled) : filled;
     if (typeof sent === "string") body = sent;
     else {
       body = JSON.stringify(sent);
