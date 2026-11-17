@@ -144,6 +144,20 @@ describe("The store's other tables in the grid", () => {
     expect(filterColumns(columnsOf(coupons, "en"), true, coupons).map((c) => c.id)).toEqual(["$slug", "name", "$createdAt", "$updatedAt"]);
   });
 
+  test("who links a store row: a column for each relation that links the table, asked about, never sorted by", () => {
+    const inc = { id: "$from.notes.about", table: "c1", slug: "notes", name: { en: "Notes" }, field: "about", fieldName: { en: "About" }, single: false };
+    const products: Pick<GridTable, "readOnly" | "hasAddress" | "fields" | "made" | "changed"> = { readOnly: true, hasAddress: true, fields: [name] };
+    const columns = columnsOf(products, "en", [inc]);
+    expect(columns.map((c) => [c.id, c.kind, !!c.noSort])).toEqual([["$slug", "$slug", false], ["name", "text", false], ["$from.notes.about", "$from", true], ["$createdAt", "$date", false]]);
+    expect(columns[2].name.split("|")[1]).toBe("Linked from: Notes · About");
+    // It is a question of the filter's.
+    expect(filterColumns(columns, true, products).map((c) => c.id)).toEqual(["$slug", "name", "$from.notes.about", "$createdAt", "$updatedAt"]);
+    // On one of the owner's tables the same column sorts (by how many rows link the row), as before.
+    expect(columnsOf({ fields: [name] }, "en", [inc]).find((c) => c.kind === "$from")?.noSort).toBeUndefined();
+    // A table that keeps no dates still shows who links it.
+    expect(columnsOf({ ...products, made: false }, "en", [inc]).map((c) => c.id)).toEqual(["$slug", "name", "$from.notes.about"]);
+  });
+
   test("the list is read area by area: only the tables a member sees, an area with none left out", () => {
     // Every table is in one area, once, in the grid's order.
     expect(STORE_AREAS.flatMap((a) => a.tables)).toEqual([...STORE_LINKS]);
@@ -199,7 +213,7 @@ describe("A relation added from the Tables page", () => {
   const orders: GridTable = { id: "$orders", slug: "orders", name: { en: "Orders" }, templateId: null, items: 4, published: 0, createdAt: "", updatedAt: "", readOnly: true, fields: [{ id: "customerName", type: "text", name: { en: "Customer" } }] };
   const ops = ["contains", "is", "empty", "notEmpty", "anyOf"] as never[];
   const meta: GridMeta = {
-    ops: { text: ops, relation: ops, $slug: ops, $status: ops, $date: ops, $from: ops } as unknown as GridMeta["ops"],
+    ops: { text: ops, relation: ops, $slug: ops, $status: ops, $date: ops, $from: ["empty", "notEmpty"] } as unknown as GridMeta["ops"],
     systemColumns: ["$slug", "$status", "$createdAt", "$updatedAt", "$publishedAt"],
     views: ["all", "draft", "published", "archived", "trash"],
     limits: { pageSize: 200, filters: 12, sorts: 3, search: 100, value: 200, anyOf: 30, rows: 50_000, importRows: 500, bulkIds: 500, trashDays: 30 },
@@ -274,6 +288,28 @@ describe("A relation added from the Tables page", () => {
     expect(m.updateCollection.mock.calls[0][1].fields.at(-1)).toEqual({ id: "notes", type: "relation", name: { en: "Follows" }, to: "c1", many: true, onDelete: "restrict" });
     fireEvent.click(screen.getByText("Close"));
     expect(screen.queryByTestId("relation-dialog")).toBeNull();
+  });
+
+  test("a store table's grid: who links each row, by count and name; the column's head doesn't sort", async () => {
+    const inc = { id: "$from.notes.order", table: "c1", slug: "notes", name: { en: "Notes" }, field: "order", fieldName: { en: "Order" }, single: false };
+    const linked = { ...row({ customerName: "Sara" }), id: "or1", slug: "or1", from: { [inc.id]: { n: 7, rows: [{ id: "x1", slug: "n1", title: { en: "First" } }, { id: "x2", slug: "n2", title: { en: "Second" } }] } } };
+    const bare = { ...row({ customerName: "Lina" }), id: "or2", slug: "or2", from: {} };
+    m.may = new Set(["pages:read", "orders:read"]);
+    show("/admin/data?store=orders");
+    m.getStoreRows.mockResolvedValue({ ...page, rows: [linked, bare], total: 2, incoming: [inc] });
+    const head = await screen.findByTestId(`sort-${inc.id}`);
+    expect(head.textContent).toBe("Linked from: Notes · Order");
+    expect((head as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("sort-customerName") as HTMLButtonElement).disabled).toBe(false);
+    const cell = within(screen.getByTestId(`cell-or1-${inc.id}`));
+    expect(cell.getByTestId("cell-from").getAttribute("data-count")).toBe("7");
+    expect(cell.getByTestId("cell-from").textContent).toBe("7FirstSecond+5");
+    expect(screen.getByTestId(`cell-or2-${inc.id}`).textContent).toBe("");
+    // It is offered to the filter, with its two questions.
+    fireEvent.click(screen.getByTestId("filter-add"));
+    fireEvent.change(screen.getByTestId("filter-0-field"), { target: { value: inc.id } });
+    expect([...(screen.getByTestId("filter-0-op") as HTMLSelectElement).options].map((o) => o.value)).toEqual(["empty", "notEmpty"]);
+    await waitFor(() => expect(m.getStoreRows.mock.calls.at(-1)?.[1].filters).toEqual([{ field: inc.id, op: "empty" }]));
   });
 
   test("the button is for whoever may change every table's fields, on the owner's tables only", async () => {

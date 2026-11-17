@@ -419,6 +419,15 @@ export const changedAt = (t: StoreTable): string | null => (t.changed === false 
 
 const bad = (message: string, details?: unknown) => new AppError(400, "BAD_GRID_QUERY", message, details);
 
+/**
+ * Who links a store table's rows (lib/links.ts): for each linked-from column that is asked about
+ * ("$from.<table address>.<field id>"), the store rows that relation links. The store's rows are
+ * asked through their own models, so the question is put as a list of ids.
+ */
+export type StoreFrom = Map<string, string[]>;
+/** How many linked rows one such question takes; more than that is refused with what to do. */
+export const FROM_ASK_CAP = 10_000;
+
 /** What may be asked of a store column: its kind's questions (none for a worked-out one). */
 export function storeOps(c: StoreColumn): readonly Op[] {
   if (!c.at) return [];
@@ -478,8 +487,15 @@ function dayWhere(at: string | string[], f: GridFilter, what: string) {
 }
 
 /** One filter as a query condition. Throws when the column isn't the table's or can't be asked that. */
-export function storeFilter(t: StoreTable, f: GridFilter): object {
+export function storeFilter(t: StoreTable, f: GridFilter, from: StoreFrom = new Map()): object {
   const what = f.field;
+  if (f.field.startsWith("$from.")) {
+    // A linked-from column: is any row linking it, or none.
+    const ids = from.get(f.field);
+    if (!ids) throw bad(`No column "${f.field}" in this table`);
+    if (!OPS_BY_KIND.$from.includes(f.op)) throw bad(`"${f.op}" can't be asked of "${f.field}"`);
+    return f.op === "notEmpty" ? { id: { in: ids } } : { id: { notIn: ids } };
+  }
   if (f.field === "$createdAt" || f.field === "$updatedAt") {
     if (!OPS_BY_KIND.$date.includes(f.op)) throw bad(`"${f.op}" can't be asked of "${f.field}"`);
     const kept = f.field === "$createdAt" ? madeAt(t) : changedAt(t);
@@ -534,7 +550,7 @@ export function storeFilter(t: StoreTable, f: GridFilter): object {
   return f.op === "is" ? leaf(at, one(f.value)) : { NOT: leaf(at, one(f.value)) };
 }
 
-export function storeWhere(t: StoreTable, q: Pick<GridQuery, "search" | "filters" | "match">): object {
+export function storeWhere(t: StoreTable, q: Pick<GridQuery, "search" | "filters" | "match">, from: StoreFrom = new Map()): object {
   const and: object[] = [];
   if (q.search) {
     const text = t.columns.filter((c) => c.at && c.type === "text");
@@ -543,7 +559,7 @@ export function storeWhere(t: StoreTable, q: Pick<GridQuery, "search" | "filters
   if (q.filters.length) {
     const each = q.filters.map((f, index) => {
       try {
-        return storeFilter(t, f);
+        return storeFilter(t, f, from);
       } catch (e) {
         if (e instanceof AppError) e.details = { ...(e.details as object | undefined), filter: index };
         throw e;
@@ -562,6 +578,8 @@ export function storeOrder(t: StoreTable, q: Pick<GridQuery, "sort">): object[] 
       if (!kept) throw bad(`No column "${s.field}" in this table`);
       out.push({ [kept]: s.dir });
     } else if (s.field === "$slug") out.push({ [t.slug]: s.dir });
+    // Who links a row is counted beside the page, not in the store's own query: asked about, never sorted by.
+    else if (s.field.startsWith("$from.")) throw bad(`"${s.field}" is worked out per page: it can't be sorted by`);
     else {
       const c = t.columns.find((x) => x.id === s.field);
       if (!c) throw bad(`No column "${s.field}" in this table`);
@@ -595,16 +613,16 @@ const toRow = (t: StoreTable, r: any): StoreGridRow => ({
 });
 
 /** One page of a store table's rows and how many match. Only the "all" view exists here. */
-export async function queryStoreRows(t: StoreTable, q: GridQuery): Promise<{ rows: StoreGridRow[]; total: number }> {
+export async function queryStoreRows(t: StoreTable, q: GridQuery, from: StoreFrom = new Map()): Promise<{ rows: StoreGridRow[]; total: number }> {
   if (q.view !== "all") return { rows: [], total: 0 };
-  const where = storeWhere(t, q);
+  const where = storeWhere(t, q, from);
   const db = t.delegate();
   const [rows, total] = await Promise.all([db.findMany({ where, orderBy: storeOrder(t, q), skip: (q.page - 1) * q.pageSize, take: q.pageSize, select: t.select }), db.count({ where })]);
   return { rows: rows.map((r) => toRow(t, r)), total };
 }
 
-export async function storeRowsSlice(t: StoreTable, q: GridQuery, offset: number, limit: number): Promise<StoreGridRow[]> {
-  const rows = await t.delegate().findMany({ where: storeWhere(t, q), orderBy: storeOrder(t, q), skip: offset, take: limit, select: t.select });
+export async function storeRowsSlice(t: StoreTable, q: GridQuery, offset: number, limit: number, from: StoreFrom = new Map()): Promise<StoreGridRow[]> {
+  const rows = await t.delegate().findMany({ where: storeWhere(t, q, from), orderBy: storeOrder(t, q), skip: offset, take: limit, select: t.select });
   return rows.map((r) => toRow(t, r));
 }
 

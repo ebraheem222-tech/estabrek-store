@@ -27,7 +27,7 @@ export const SYSTEM_NAME: Record<SystemColumn, string> = {
   $publishedAt: "انتشر|Published on|פורסם ב",
 };
 
-export type Column = { id: string; kind: ColumnKind; field?: CollectionField; name: string; /** Worked out per page: shown, never filtered or sorted by. */ computed?: boolean; /** A linked-from column: the relation it is the other side of. */ from?: Incoming };
+export type Column = { id: string; kind: ColumnKind; field?: CollectionField; name: string; /** Worked out per page: shown, never filtered or sorted by. */ computed?: boolean; /** A linked-from column: the relation it is the other side of. */ from?: Incoming; /** Asked about, never sorted by (who links one of the store's rows is counted beside the page). */ noSort?: boolean };
 
 const local = (v: Local | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
@@ -48,14 +48,15 @@ export function fromName(inc: Incoming): string {
 
 /**
  * The grid's columns: the address, the status, each field, who links the row (one column for each relation that
- * links this table), then when it changed. One of the store's tables: its address (or id), its columns, when it was made.
+ * links this table), then when it changed. One of the store's tables: its address (or id), its columns, who links
+ * the row (the owner's tables that link it), when it was made.
  */
 export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress" | "made">, lang: Lang, incoming: Incoming[] = []): Column[] {
   const system = (id: SystemColumn): Column => ({ id, kind: kindOf(id, [])!, name: SYSTEM_NAME[id] });
   const fields = table.fields.map((f): Column => ({ id: f.id, kind: f.type as ColumnKind, field: f, name: local(f.name, lang) || f.id, ...(f.computed ? { computed: true } : {}) }));
   // One of the store's: when a row was made closes the row, where its rows say (sizes keep no dates).
-  if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, ...(table.made === false ? [] : [system("$createdAt")])];
-  const from = incoming.map((inc): Column => ({ id: inc.id, kind: "$from", name: fromName(inc), from: inc }));
+  const from = incoming.map((inc): Column => ({ id: inc.id, kind: "$from", name: fromName(inc), from: inc, ...(table.readOnly ? { noSort: true } : {}) }));
+  if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, ...from, ...(table.made === false ? [] : [system("$createdAt")])];
   return [system("$slug"), system("$status"), ...fields, ...from, system("$updatedAt")];
 }
 
