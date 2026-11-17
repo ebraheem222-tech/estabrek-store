@@ -50,20 +50,38 @@ export function fromName(inc: Incoming): string {
  * The grid's columns: the address, the status, each field, who links the row (one column for each relation that
  * links this table), then when it changed. One of the store's tables: its address (or id), its columns, when it was made.
  */
-export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress">, lang: Lang, incoming: Incoming[] = []): Column[] {
+export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress" | "made">, lang: Lang, incoming: Incoming[] = []): Column[] {
   const system = (id: SystemColumn): Column => ({ id, kind: kindOf(id, [])!, name: SYSTEM_NAME[id] });
   const fields = table.fields.map((f): Column => ({ id: f.id, kind: f.type as ColumnKind, field: f, name: local(f.name, lang) || f.id, ...(f.computed ? { computed: true } : {}) }));
-  if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, system("$createdAt")];
+  // One of the store's: when a row was made closes the row, where its rows say (sizes keep no dates).
+  if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, ...(table.made === false ? [] : [system("$createdAt")])];
   const from = incoming.map((inc): Column => ({ id: inc.id, kind: "$from", name: fromName(inc), from: inc }));
   return [system("$slug"), system("$status"), ...fields, ...from, system("$updatedAt")];
 }
 
-/** The store's own tables' pages in the admin: where each is changed, and (a product, an order) a row's own page. */
+/**
+ * The store's own tables' pages in the admin: where each is changed, and (a product, an order) a row's own page.
+ * A table whose rows belong to another one's page (a colour and size to its product, an address to its customer)
+ * goes there; newsletter subscribers have no page of their own.
+ */
 const STORE_PAGES: Record<string, { list: string; row?: string; name: string }> = {
   products: { list: "/admin/catalog/products", row: "/admin/catalog/products/", name: "المنتجات|Products|מוצרים" },
   categories: { list: "/admin/catalog/categories", name: "الأقسام|Categories|קטגוריות" },
+  types: { list: "/admin/catalog/types", name: "أنواع المنتجات|Product types|סוגי מוצרים" },
+  sizes: { list: "/admin/catalog/sizes", name: "المقاسات|Sizes|מידות" },
+  variants: { list: "/admin/catalog/products", name: "المنتجات|Products|מוצרים" },
+  movements: { list: "/admin/inventory/stock", name: "المخزون|Stock|מלאי" },
+  alerts: { list: "/admin/inventory/back-in-stock", name: "رجع عالمخزون|Back in stock|חזר למלאי" },
   orders: { list: "/admin/orders", row: "/admin/orders/", name: "الطلبات|Orders|הזמנות" },
+  lines: { list: "/admin/orders", name: "الطلبات|Orders|הזמנות" },
+  requests: { list: "/admin/requests", name: "طلبات الزباين|Customers' requests|בקשות לקוחות" },
   customers: { list: "/admin/customers", name: "الزبائن|Customers|לקוחות" },
+  addresses: { list: "/admin/customers", name: "الزبائن|Customers|לקוחות" },
+  wishlist: { list: "/admin/customers", name: "الزبائن|Customers|לקוחות" },
+  coupons: { list: "/admin/discounts/coupons", name: "الكوبونات|Coupons|קופונים" },
+  redemptions: { list: "/admin/discounts/coupons", name: "الكوبونات|Coupons|קופונים" },
+  reviews: { list: "/admin/ugc/reviews", name: "التقييمات|Reviews|ביקורות" },
+  comments: { list: "/admin/ugc/comments", name: "التعليقات|Comments|תגובות" },
 };
 /**
  * Where one of the store's tables is changed (the grid only shows it): its own page, or with `rowId` that row's own
@@ -108,11 +126,12 @@ export function storeWrite(table: string, column: string, draft: string): { to: 
   return { to: command.to, body: { [command.key]: words }, value: words };
 }
 
-/** The columns a filter can be asked of: the shown ones that aren't worked out, and the row's dates. */
-export function filterColumns(columns: Column[], readOnly: boolean): Column[] {
+/** The columns a filter can be asked of: the shown ones that aren't worked out, and the row's dates (one of the store's tables: the dates its rows keep). */
+export function filterColumns(columns: Column[], readOnly: boolean, keeps: Pick<GridTable, "made" | "changed"> = {}): Column[] {
   const date = (id: SystemColumn): Column => ({ id, kind: "$date", name: SYSTEM_NAME[id] });
   const have = new Set(columns.map((c) => c.id));
-  const extra = (readOnly ? (["$createdAt", "$updatedAt"] as const) : (["$createdAt", "$publishedAt"] as const)).filter((id) => !have.has(id)).map(date);
+  const theirs = [...(keeps.made === false ? [] : (["$createdAt"] as const)), ...(keeps.changed === false ? [] : (["$updatedAt"] as const))];
+  const extra = (readOnly ? theirs : (["$createdAt", "$publishedAt"] as const)).filter((id) => !have.has(id)).map(date);
   return [...columns.filter((c) => !c.computed), ...extra];
 }
 

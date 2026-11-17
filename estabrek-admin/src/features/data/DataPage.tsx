@@ -28,6 +28,7 @@ import { SQL_TYPE, sqlFile } from "./sql";
 import { LANGS, LANG_NAME, VIEW_NAME, blockersText, cellPatch, columnsOf, editable, filterColumns, filterValue, issueAbout, kindOf, newFilter, nextSort, opName, issueSay, opNeeds, pageInfo, queryOut, sheetCells, storePage, storeWritables, storeWrite, type Column } from "./dataText";
 import { RelationInput } from "./RelationInput";
 import { draftLinks } from "./kinds";
+import { storeAreas } from "./storeLinks";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03]";
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -96,12 +97,10 @@ export default function DataPage() {
       {table ? (
         <div className="flex flex-col gap-4 lg:flex-row">
           <nav className="flex shrink-0 gap-2 overflow-x-auto lg:w-52 lg:flex-col" aria-label={say("الجداول|Tables|טבלאות")} data-testid="data-tables">
-            {[
-              { title: "جداولك|Your tables|הטבלאות שלך", list: mine, prefix: "data-table" },
-              { title: "جداول المتجر|The store's tables|טבלאות החנות", list: theirs, prefix: "store-table" },
-            ].map((group) =>
+            {/* The owner's tables, then the store's, area by area (the catalogue, the stock, the orders…). */}
+            {[{ key: "mine", title: "جداولك|Your tables|הטבלאות שלך", list: mine, prefix: "data-table", small: false }, ...storeAreas(theirs).map((a) => ({ key: `store-${a.id}`, title: a.name, list: a.list, prefix: "store-table", small: true }))].map((group) =>
               group.list.length ? (
-                <div key={group.prefix} className="flex shrink-0 gap-2 lg:flex-col">
+                <div key={group.key} className="flex shrink-0 gap-2 lg:flex-col" data-testid={`tables-${group.key}`}>
                   <div className="hidden px-1 pt-1 text-xs text-white/45 lg:block">{say(group.title)}</div>
                   {group.list.map((c) => (
                     <button
@@ -110,10 +109,11 @@ export default function DataPage() {
                       onClick={() => setOpen(c)}
                       aria-current={c.id === table.id}
                       data-testid={`${group.prefix}-${c.slug}`}
-                      className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}
+                      // The store's are many: one line each in the side list (its name, then how many rows).
+                      className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${group.small ? "lg:flex lg:items-baseline lg:justify-between lg:gap-3 lg:py-1.5" : ""} ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}
                     >
                       <span className="block truncate font-medium">{words(c.name, lang) || c.slug}</span>
-                      <span className="block text-xs text-white/50">{`${c.items.toLocaleString("en")} ${say("سطر|rows|שורות")}`}</span>
+                      <span className="block shrink-0 text-xs text-white/50">{`${c.items.toLocaleString("en")} ${say("سطر|rows|שורות")}`}</span>
                     </button>
                   ))}
                 </div>
@@ -250,7 +250,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
   const filters = query.filters ?? [];
   const setFilter = (i: number, next: GridFilter | null) => change({ filters: next ? filters.map((f, k) => (k === i ? next : f)) : filters.filter((_, k) => k !== i) });
   const fieldColumns = columns.filter((c) => c.field);
-  const askable = useMemo(() => filterColumns(columns, readOnly), [columns, readOnly]);
+  const askable = useMemo(() => filterColumns(columns, readOnly, table), [columns, readOnly, table]);
   const firstAsk = askable.find((c) => c.field) ?? askable[0];
   /** One of the store's tables: the page it is changed on, and whether a row's own page opens for this member. */
   const ownPage = readOnly ? storePage(table.slug) : null;

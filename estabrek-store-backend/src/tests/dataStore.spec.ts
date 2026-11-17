@@ -44,7 +44,9 @@ afterAll(resetDb);
 describe("The store's tables in the grid", () => {
   test("the list: each table as the grid knows tables, read only, with how many rows", async () => {
     const out = await request(app).get(base).expect(200);
-    expect(out.body.map((t: { slug: string; items: number; readOnly: boolean; hasAddress: boolean }) => [t.slug, t.items, t.readOnly, t.hasAddress])).toEqual([
+    // (The store's other tables are in the list too: storeTablesRest.spec.ts.)
+    const four = ["products", "categories", "orders", "customers"].map((slug) => out.body.find((t: { slug: string }) => t.slug === slug));
+    expect(four.map((t: { slug: string; items: number; readOnly: boolean; hasAddress: boolean }) => [t.slug, t.items, t.readOnly, t.hasAddress])).toEqual([
       ["products", 2, true, true],
       ["categories", 2, true, true],
       ["orders", 3, true, false],
@@ -53,7 +55,7 @@ describe("The store's tables in the grid", () => {
     const products = out.body[0];
     expect(products).toMatchObject({ id: "$products", name: { ar: "المنتجات", en: "Products" } });
     expect(products.fields.map((f: { id: string; type: string; computed?: boolean }) => `${f.id}:${f.type}${f.computed ? ":worked-out" : ""}`)).toEqual(["title:text", "category:text", "kind:text", "active:boolean", "price:number:worked-out", "stock:number:worked-out", "colours:number:worked-out"]);
-    expect(out.body[2].fields.find((f: { id: string }) => f.id === "state").options.map((o: { id: string }) => o.id)).toContain("SHIPPED");
+    expect(four[2].fields.find((f: { id: string }) => f.id === "state").options.map((o: { id: string }) => o.id)).toContain("SHIPPED");
   });
 
   test("products: their values, the lowest price and the stock worked out per page", async () => {
@@ -146,11 +148,11 @@ describe("The store's tables in the grid", () => {
       return a;
     };
     const seller = as(["catalog:read"]);
-    expect((await request(seller).get("/store").expect(200)).body.map((t: { slug: string }) => t.slug)).toEqual(["products", "categories"]);
+    expect((await request(seller).get("/store").expect(200)).body.map((t: { slug: string }) => t.slug)).toEqual(["products", "categories", "types", "sizes", "variants"]);
     await request(seller).get("/store/products/rows").expect(200);
     await request(seller).get("/store/orders/rows").expect(403);
     await request(seller).get("/store/customers/rows/export").expect(403);
-    expect((await request(as(["orders:read", "customers:read"])).get("/store").expect(200)).body.map((t: { slug: string }) => t.slug)).toEqual(["orders", "customers"]);
+    expect((await request(as(["orders:read", "customers:read"])).get("/store").expect(200)).body.map((t: { slug: string }) => t.slug)).toEqual(["orders", "lines", "requests", "customers", "addresses", "wishlist", "subscribers"]);
     expect((await request(as([])).get("/store").expect(200)).body).toEqual([]);
   });
 

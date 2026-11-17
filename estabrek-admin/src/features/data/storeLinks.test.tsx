@@ -34,11 +34,11 @@ import { FieldRulesEditor } from "../collections/FieldRulesEditor";
 import { LINK_KINDS, linkParts, setLinkTo } from "../collections/fieldRules";
 import DataPage from "./DataPage";
 import { CellView } from "./GridCells";
-import { columnsOf, issueWords } from "./dataText";
+import { columnsOf, filterColumns, issueWords, storePage } from "./dataText";
 import { draftLinks, linkedName, linkedOf, linksDraft, shownText } from "./kinds";
 import { LINK_MARKS, relationField } from "./relationField";
 import { RelationInput } from "./RelationInput";
-import { HIDDEN_ROW, STORE_FIELD_NAME, STORE_LINKS, STORE_LINK_NAME, storeLinkTables, storeTarget } from "./storeLinks";
+import { HIDDEN_ROW, STORE_AREAS, STORE_FIELD_NAME, STORE_LINKS, STORE_LINK_NAME, storeAreas, storeLinkTables, storeTarget } from "./storeLinks";
 
 beforeEach(() => {
   setLangForTests("en");
@@ -59,10 +59,16 @@ const row = (data: Record<string, unknown>): GridRow => ({ id: "r1", collectionI
 
 describe("The store's tables as a relation's other end", () => {
   test("which they are and what each is called", () => {
-    expect(STORE_LINKS).toEqual(["products", "categories", "orders", "customers"]);
+    // Every table the grid shows as the store's, in the grid's order (backend storeTablesRest.spec.ts checks the server's list).
+    expect(STORE_LINKS).toEqual(["products", "categories", "types", "sizes", "variants", "movements", "alerts", "orders", "lines", "requests", "customers", "addresses", "wishlist", "subscribers", "coupons", "redemptions", "reviews", "comments"]);
     expect(storeTarget("store:orders")).toBe("orders");
-    for (const not of ["orders", "store:", "store:coupons", "tbl-1", "", undefined, null, 4]) expect(storeTarget(not)).toBeNull();
-    expect(storeLinkTables().map((t) => t.id)).toEqual(["store:products", "store:categories", "store:orders", "store:customers"]);
+    expect(storeTarget("store:coupons")).toBe("coupons");
+    for (const not of ["orders", "store:", "store:pages", "tbl-1", "", undefined, null, 4]) expect(storeTarget(not)).toBeNull();
+    expect(storeLinkTables().map((t) => t.id)).toEqual(STORE_LINKS.map((s) => `store:${s}`));
+    // No two are called the same; a new column's first name gives an id of its own.
+    expect(new Set(STORE_LINKS.map((s) => STORE_LINK_NAME[s])).size).toBe(STORE_LINKS.length);
+    expect(new Set(STORE_LINKS.map((s) => relationField({ fields: [] }, { to: `store:${s}`, kind: "manyToOne", onDelete: "unlink", name: "", lang: "en" }, null).id)).size).toBe(STORE_LINKS.length);
+    expect(relationField({ fields: [] }, { to: "store:variants", kind: "manyToMany", onDelete: "unlink", name: "", lang: "ar" }, null)).toEqual({ id: "colourAndSize", type: "relation", name: { ar: "اللون والمقاس", en: "Colour and size", he: "צבע ומידה" }, to: "store:variants", many: true });
     for (const s of STORE_LINKS) for (const words of [STORE_LINK_NAME[s], STORE_FIELD_NAME[s]]) expect(words.split("|").filter(Boolean)).toHaveLength(3);
     expect(HIDDEN_ROW.split("|")).toHaveLength(3);
   });
@@ -106,7 +112,7 @@ describe("The store's tables as a relation's other end", () => {
     const onChange = vi.fn();
     render(<FieldRulesEditor field={author} lang="en" fit={fit} shapes={[]} onChange={onChange} tables={tables} />);
     const to = screen.getByTestId("rule-author-to") as HTMLSelectElement;
-    expect([...to.options].map((o) => o.textContent)).toEqual(["Authors", "Tags", "The store's products", "The store's categories", "The store's orders", "The store's customers"]);
+    expect([...to.options].map((o) => o.textContent)).toEqual(["Authors", "Tags", ...STORE_LINKS.map((s) => STORE_LINK_NAME[s].split("|")[1])]);
     expect(to.querySelector("optgroup")?.getAttribute("label")).toBe("The store's tables");
     expect(screen.getByTestId("rule-author-ondelete")).toBeTruthy();
     // Pointed at the store: "can't be deleted while linked" goes with it (a store row is never held back).
@@ -120,6 +126,45 @@ describe("The store's tables as a relation's other end", () => {
     expect(screen.getByTestId("rule-product-store-note").textContent).toContain("never changed from here");
     expect((screen.getByTestId("rule-product-pairing") as HTMLSelectElement).value).toBe("oneToOne");
     expect(linkParts({ ...product, exclusive: true }).map((x) => x.split("|")[1])).toEqual(["one to one"]);
+  });
+});
+
+describe("The store's other tables in the grid", () => {
+  const name: CollectionField = { id: "name", type: "text", name: { en: "Size" } };
+
+  test("a table shows and asks about the dates its rows keep", () => {
+    // Sizes keep no dates; a stock movement is made once and never changes; a coupon keeps both.
+    const sizes = { readOnly: true, hasAddress: false, made: false, changed: false, fields: [name] };
+    expect(columnsOf(sizes, "en").map((c) => c.id)).toEqual(["$slug", "name"]);
+    expect(filterColumns(columnsOf(sizes, "en"), true, sizes).map((c) => c.id)).toEqual(["$slug", "name"]);
+    const moves = { readOnly: true, hasAddress: false, made: true, changed: false, fields: [name] };
+    expect(columnsOf(moves, "en").map((c) => c.id)).toEqual(["$slug", "name", "$createdAt"]);
+    expect(filterColumns(columnsOf(moves, "en"), true, moves).map((c) => c.id)).toEqual(["$slug", "name", "$createdAt"]);
+    const coupons: Pick<GridTable, "readOnly" | "hasAddress" | "fields" | "made" | "changed"> = { readOnly: true, hasAddress: false, fields: [name] };
+    expect(filterColumns(columnsOf(coupons, "en"), true, coupons).map((c) => c.id)).toEqual(["$slug", "name", "$createdAt", "$updatedAt"]);
+  });
+
+  test("the list is read area by area: only the tables a member sees, an area with none left out", () => {
+    // Every table is in one area, once, in the grid's order.
+    expect(STORE_AREAS.flatMap((a) => a.tables)).toEqual([...STORE_LINKS]);
+    for (const a of STORE_AREAS) expect(a.name.split("|").filter(Boolean)).toHaveLength(3);
+    const t = (slug: string) => ({ slug });
+    expect(storeAreas([t("products"), t("sizes"), t("coupons"), t("orders")]).map((a) => [a.id, a.list.map((x) => x.slug)])).toEqual([["catalogue", ["products", "sizes"]], ["orders", ["orders"]], ["discounts", ["coupons"]]]);
+    expect(storeAreas([])).toEqual([]);
+    // One the admin doesn't know yet (a newer server) still shows, last.
+    expect(storeAreas([t("gifts"), t("reviews")]).map((a) => [a.id, a.list.map((x) => x.slug)])).toEqual([["words", ["reviews"]], ["other", ["gifts"]]]);
+  });
+
+  test("where each is changed: its own page, or the page its rows belong to", () => {
+    expect(storePage("coupons")).toEqual({ to: "/admin/discounts/coupons", name: "الكوبونات|Coupons|קופונים" });
+    expect(storePage("reviews")?.to).toBe("/admin/ugc/reviews");
+    expect(storePage("sizes")?.to).toBe("/admin/catalog/sizes");
+    expect(storePage("variants")?.to).toBe("/admin/catalog/products");
+    expect(storePage("addresses")?.to).toBe("/admin/customers");
+    // Newsletter subscribers have no page; a row of these has no page of its own (a product and an order do).
+    expect(storePage("subscribers")).toBeNull();
+    for (const s of STORE_LINKS.filter((x) => x !== "products" && x !== "orders")) expect([s, storePage(s, "row1")]).toEqual([s, null]);
+    for (const s of STORE_LINKS.filter((x) => x !== "subscribers")) expect([s, storePage(s)?.name.split("|").filter(Boolean).length]).toEqual([s, 3]);
   });
 });
 
@@ -190,7 +235,7 @@ describe("A relation added from the Tables page", () => {
     const to = box.getByTestId("relation-to") as HTMLSelectElement;
     expect([...to.querySelectorAll("optgroup")].map((g) => [g.label, [...g.querySelectorAll("option")].map((o) => o.textContent)])).toEqual([
       ["Your tables", ["Notes (this table)", "Authors"]],
-      ["The store's tables", ["The store's products", "The store's categories", "The store's orders", "The store's customers"]],
+      ["The store's tables", STORE_LINKS.map((s) => STORE_LINK_NAME[s].split("|")[1])],
     ]);
     // It begins with another of the owner's tables, many to one; all four kinds are there, drawn with both names.
     expect(to.value).toBe("c2");
