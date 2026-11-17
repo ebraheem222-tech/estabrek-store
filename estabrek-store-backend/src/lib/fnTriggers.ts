@@ -7,6 +7,9 @@
  *   event     something happened in the store (a new order, a video ready, a job failing…)
  *   call      a request to /v1/fn/<address>: from a signed-in shopper, with an API key, or from anyone
  *   webhook   a request from another system to /v1/hooks/<a secret address>
+ *   route     an address of the owner's own: a method and a path under /v1/api ("GET orders/:id"),
+ *             the path's :names, the query's and the body's fields handed as the function's inputs,
+ *             checked by their rules (lib/fnInputs.ts) before it runs, and its answer sent as it is
  *
  * Everything but a call goes through the queue (lib/tasks.ts): the run isn't lost with a
  * restart, and the thing that caused it (a row saved, an order placed) never waits for it. A call
@@ -26,7 +29,7 @@ import { dayOf, nextDay, zonedToUtc } from "./storeTime.js";
 import { enqueueTask } from "./tasks.js";
 import { emitRowWebhooks } from "./webhooksOut.js";
 
-export const TRIGGER_KINDS = ["row", "schedule", "event", "call", "webhook"] as const;
+export const TRIGGER_KINDS = ["row", "schedule", "event", "call", "webhook", "route"] as const;
 export type TriggerKind = (typeof TRIGGER_KINDS)[number];
 export const ROW_EVENTS = ["added", "changed", "deleted"] as const;
 export type RowEvent = (typeof ROW_EVENTS)[number];
@@ -39,6 +42,48 @@ export const CALL_SLUG = /^[a-z0-9][a-z0-9-]{1,40}$/;
 /** How many calls a minute from one shopper, one key, or one place (when the trigger doesn't say). */
 export const CALL_PER_MINUTE: Record<CallWho, number> = { customer: 30, key: 120, public: 10 };
 export const TRIGGER_LIMITS = { perFunction: 10, everyMinutes: { min: 5, max: 7 * 24 * 60 }, webhookPerMinute: 60, webhookBytes: 64_000 } as const;
+
+/* ---------------- An address of the owner's own ---------------- */
+
+export const ROUTE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+export type RouteMethod = (typeof ROUTE_METHODS)[number];
+/** Where the owner's own addresses start. */
+export const ROUTE_BASE = "/v1/api";
+/** What a run that went through is answered with (204: nothing but that). */
+export const ROUTE_STATUS = [200, 201, 202, 204] as const;
+export const ROUTE_LIMITS = { parts: 6, length: 120, part: 200 } as const;
+/** A word of a path. */
+const ROUTE_WORD = /^[a-z0-9][a-z0-9._-]{0,39}$/;
+/** A part the caller fills: ":name", named as a function's input is (lib/fnDef.ts NAME). */
+const ROUTE_PARAM = /^:([a-z][a-zA-Z0-9_]{0,30})$/;
+
+export type RoutePath = { path: string; parts: string[]; params: string[]; /** The path with its :names as ":": two addresses of one method can't have the same. */ shape: string };
+/** A path as the owner writes it ("orders/:id/lines", with or without slashes around it), checked and kept in small letters. */
+export function routePath(raw: unknown): RoutePath {
+  const bad = (message: string) => new AppError(400, "TRIGGER_INVALID", message, { at: "path" });
+  const s = String(raw ?? "").trim().replace(/^\/+|\/+$/g, "");
+  if (!s) throw bad("The address needs a path, like orders/:id");
+  if (s.length > ROUTE_LIMITS.length) throw bad(`A path is up to ${ROUTE_LIMITS.length} letters`);
+  const raws = s.split("/");
+  if (raws.length > ROUTE_LIMITS.parts) throw bad(`A path has up to ${ROUTE_LIMITS.parts} parts`);
+  const params: string[] = [];
+  const parts = raws.map((p, k) => {
+    if (!p) throw bad("A path has no empty part (//)");
+    const param = ROUTE_PARAM.exec(p);
+    if (param) {
+      if (k === 0) throw bad("A path starts with a word, like orders/:id");
+      if (params.includes(param[1])) throw bad(`":${param[1]}" is in the path twice`);
+      params.push(param[1]);
+      return p;
+    }
+    const word = p.toLowerCase();
+    if (!ROUTE_WORD.test(word)) throw bad(`"${p}" isn't a part of a path: small letters, digits, . _ - or :name`);
+    return word;
+  });
+  return { path: parts.join("/"), parts, params, shape: parts.map((p) => (p.startsWith(":") ? ":" : p)).join("/") };
+}
+/** What keeps two addresses apart (kept as the trigger's slug, which is one of a kind). */
+export const routeSlug = (method: string, path: RoutePath) => `${method} ${path.shape}`;
 /** Functions starting functions: this many deep. */
 export const CHAIN_MAX = 3;
 
@@ -52,15 +97,29 @@ const CONFIG = {
   event: z.object({ event: z.enum(FN_EVENTS) }).strict(),
   call: z.object({ who: z.enum(CALL_WHO), perMinute: z.number().int().min(1).max(600).optional() }).strict(),
   webhook: z.object({}).strict(),
+  route: z
+    .object({
+      method: z.enum(ROUTE_METHODS),
+      path: z.string().max(200),
+      who: z.enum(CALL_WHO),
+      perMinute: z.number().int().min(1).max(600).optional(),
+      status: z.union([z.literal(200), z.literal(201), z.literal(202), z.literal(204)]).optional(),
+    })
+    .strict(),
 } as const;
 export type RowConfig = z.infer<(typeof CONFIG)["row"]>;
 export type ScheduleConfig = z.infer<(typeof CONFIG)["schedule"]>;
 export type CallConfig = z.infer<(typeof CONFIG)["call"]>;
+export type RouteConfig = z.infer<(typeof CONFIG)["route"]>;
 
-/** A trigger's settings, checked for its kind. */
+/** A trigger's settings, checked for its kind (an own address's path kept as routePath writes it). */
 export function configOf(kind: TriggerKind, raw: unknown): Record<string, unknown> {
   const parsed = CONFIG[kind].safeParse(raw ?? {});
   if (!parsed.success) throw new AppError(400, "TRIGGER_INVALID", parsed.error.issues[0]?.message ?? "Bad trigger", { at: parsed.error.issues[0]?.path.map(String).join(".") });
+  if (kind === "route") {
+    const c = parsed.data as RouteConfig;
+    return { ...c, path: routePath(c.path).path };
+  }
   return parsed.data as Record<string, unknown>;
 }
 
@@ -71,6 +130,8 @@ export const HANDS: Record<TriggerKind, string[]> = {
   event: ["event", "subject"],
   call: [],
   webhook: ["body", "query"],
+  // (Its path's :names: the page says them per address.)
+  route: [],
 };
 
 /** A webhook's address: long and random, because knowing it is the permission. */
@@ -114,6 +175,42 @@ export async function liveTriggers(now = Date.now()): Promise<LiveTrigger[]> {
 /** The live trigger behind an address (a call's, or a webhook's), or null. */
 export async function triggerAt(kind: "call" | "webhook", slug: string): Promise<LiveTrigger | null> {
   return (await liveTriggers()).find((t) => t.kind === kind && t.slug === slug) ?? null;
+}
+
+/**
+ * The live own address a request is for (its method, and its path after ROUTE_BASE), with the
+ * path's :names filled; where a word and a :name both fit, the word wins (orders/new before
+ * orders/:id). `allowed`: the methods that path has, to answer 405 when the request's isn't one.
+ */
+export async function routeAt(method: string, rawPath: string): Promise<{ match: { trigger: LiveTrigger; params: Record<string, string> } | null; allowed: string[] }> {
+  const none = { match: null, allowed: [] };
+  let asked: string[];
+  try {
+    asked = rawPath.replace(/^\/+|\/+$/g, "").split("/").map((x) => decodeURIComponent(x));
+  } catch {
+    return none;
+  }
+  if (!asked.length || asked.length > ROUTE_LIMITS.parts || asked.some((x) => !x || x.length > ROUTE_LIMITS.part)) return none;
+  const fits: Array<{ t: LiveTrigger; params: Record<string, string>; rank: string }> = [];
+  for (const t of await liveTriggers()) {
+    if (t.kind !== "route") continue;
+    const parts = String(t.config.path ?? "").split("/");
+    if (parts.length !== asked.length) continue;
+    const params: Record<string, string> = {};
+    let rank = "";
+    const fit = parts.every((p, k) => {
+      if (p.startsWith(":")) {
+        params[p.slice(1)] = asked[k];
+        rank += "1";
+        return true;
+      }
+      rank += "0";
+      return p === asked[k].toLowerCase();
+    });
+    if (fit) fits.push({ t, params, rank });
+  }
+  const mine = fits.filter((f) => f.t.config.method === method).sort((a, b) => (a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : 0));
+  return { match: mine[0] ? { trigger: mine[0].t, params: mine[0].params } : null, allowed: ROUTE_METHODS.filter((m) => fits.some((f) => f.t.config.method === m)) };
 }
 
 /* ---------------- A run for the queue ---------------- */

@@ -247,7 +247,46 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^"(.+)" isn't published yet$/, "«{1}» مش منشورة لسا|“{1}” isn't published yet|«{1}» עדיין לא פורסמה"],
   [/^"(.+)" needs "(.+)"$/, "«{1}» بدها «{2}»|“{1}” needs “{2}”|«{1}» צריכה את «{2}»"],
   [/^"(.+)" takes no "(.+)"$/, "«{1}» ما بتاخد «{2}»|“{1}” takes no “{2}”|«{1}» לא מקבלת «{2}»"],
+  // An input's rules (backend lib/fnInputs.ts inputRuleProblems).
+  [/^"(.+)": the least is more than the most$/, "المدخل «{1}»: «أقل شي» أكبر من «أكتر شي»|Input “{1}”: the least is more than the most|הקלט «{1}»: המינימום גדול מהמקסימום"],
+  [/^"(.+)": the least and the most are for a number, words or a list$/, "المدخل «{1}»: «أقل شي» و«أكتر شي» بس لرقم أو كلام أو قائمة|Input “{1}”: the least and the most are for a number, words or a list|הקלט «{1}»: מינימום ומקסימום רק למספר, מילים או רשימה"],
+  [/^"(.+)": how many is a whole number, 0 or more$/, "المدخل «{1}»: العدد رقم صحيح، صفر أو أكتر|Input “{1}”: how many is a whole number, 0 or more|הקלט «{1}»: הכמות היא מספר שלם, 0 או יותר"],
+  [/^"(.+)": choices and a format are for words$/, "المدخل «{1}»: الخيارات والشكل بس للكلام|Input “{1}”: choices and a format are for words|הקלט «{1}»: אפשרויות ותבנית רק למילים"],
+  [/^"(.+)": a choice can't be empty$/, "المدخل «{1}»: في خيار فاضي|Input “{1}”: a choice can't be empty|הקלט «{1}»: אפשרות לא יכולה להיות ריקה"],
+  [/^"(.+)": a choice is there twice$/, "المدخل «{1}»: في خيار مكرر|Input “{1}”: a choice is there twice|הקלט «{1}»: אפשרות מופיעה פעמיים"],
+  [/^"(.+)": choices or a format, not both$/, "المدخل «{1}»: يا خيارات يا شكل، مش التنين|Input “{1}”: choices or a format, not both|הקלט «{1}»: אפשרויות או תבנית, לא שתיהן"],
 ];
+
+/** What an input's format is, in words. */
+export const INPUT_FORMAT_NAME: Record<string, string> = {
+  email: "إيميل|An email|אימייל",
+  phone: "رقم تلفون|A phone number|מספר טלפון",
+  url: "عنوان موقع (https://…)|A web address (https://…)|כתובת אתר (https://…)",
+  date: "يوم (YYYY-MM-DD)|A day (YYYY-MM-DD)|יום (YYYY-MM-DD)",
+};
+const FORMAT_SAID: Record<string, string> = { "an email": "email", "a phone number": "phone", "a web address (https://…)": "url", "a day (YYYY-MM-DD)": "date" };
+/** Why what was handed isn't right (backend lib/fnInputs.ts readInputs), as a run's failure or an address's 400 says it. */
+const INPUT_SAID: Array<[RegExp, string | ((m: RegExpExecArray, lang: Lang) => string)]> = [
+  [/^It needs "(.+)"$/, "ناقص «{1}»|“{1}” is needed|חסר «{1}»"],
+  [/^"(.+)" has to be a number$/, "«{1}» لازم يكون رقم|“{1}” has to be a number|«{1}» חייב להיות מספר"],
+  [/^"(.+)" has to be a list$/, "«{1}» لازم يكون قائمة|“{1}” has to be a list|«{1}» חייב להיות רשימה"],
+  [/^"(.+)" is at least (.+)$/, "«{1}» أقل شي {2}|“{1}” is at least {2}|«{1}» לפחות {2}"],
+  [/^"(.+)" is at most (.+)$/, "«{1}» أكتر شي {2}|“{1}” is at most {2}|«{1}» לכל היותר {2}"],
+  [/^"(.+)" has at least (\d+) letters$/, "«{1}» أقل شي {2} حرف|“{1}” has at least {2} letters|«{1}» לפחות {2} תווים"],
+  [/^"(.+)" has at most (\d+) letters$/, "«{1}» أكتر شي {2} حرف|“{1}” has at most {2} letters|«{1}» לכל היותר {2} תווים"],
+  [/^"(.+)" has at least (\d+) things$/, "«{1}» فيها أقل شي {2}|“{1}” has at least {2} things|«{1}» מכילה לפחות {2}"],
+  [/^"(.+)" has at most (\d+) things$/, "«{1}» فيها أكتر شي {2}|“{1}” has at most {2} things|«{1}» מכילה לכל היותר {2}"],
+  [/^"(.+)" is one of: (.+)$/, "«{1}» واحد من: {2}|“{1}” is one of: {2}|«{1}» אחד מ: {2}"],
+  [/^"(.+)" has to be (.+)$/, (m, lang) => fill("«{name}» لازم يكون: {what}|“{name}” has to be {what}|«{name}» חייב להיות: {what}", lang, { name: m[1], what: FORMAT_SAID[m[2]] ? part(INPUT_FORMAT_NAME[FORMAT_SAID[m[2]]], lang) : m[2] })],
+];
+/** An input that isn't right, in the admin's language (one it doesn't know stays as the server said it). */
+export function inputSaid(message: string, lang: Lang): string | null {
+  for (const [pattern, words] of INPUT_SAID) {
+    const m = pattern.exec(message);
+    if (m) return typeof words === "function" ? words(m, lang) : part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
+  }
+  return null;
+}
 /** What stands in the way of publishing, in the admin's language (one it doesn't know stays as the server said it). */
 export function problemText(message: string, lang: Lang): string {
   for (const [pattern, words] of PROBLEMS) {
@@ -334,7 +373,8 @@ export function failText(error: string, lang: Lang): string {
     const m = pattern.exec(error);
     if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
   }
-  return error;
+  // What it was handed (its inputs and their rules).
+  return inputSaid(error, lang) ?? error;
 }
 
 /** Why one of a function's tests didn't pass. */
@@ -395,7 +435,33 @@ export const TRIGGER_KIND_NAME: Record<TriggerKind, string> = {
   event: "حدث بالمتجر|Something in the store|אירוע בחנות",
   call: "نداء (زر بالمتجر أو برنامج)|A call (a shop button or a program)|קריאה (כפתור בחנות או תוכנה)",
   webhook: "Webhook من نظام تاني|A webhook from another system|Webhook ממערכת אחרת",
+  route: "عنوان من عندك (method ومسار)|An address of your own (a method and a path)|כתובת משלך (method ונתיב)",
 };
+/** What a good answer of an own address is sent with. */
+export const ROUTE_STATUS_NAME: Record<number, string> = {
+  200: "200 · الجواب|200 · the answer|200 · התשובה",
+  201: "201 · انعمل جديد|201 · made|201 · נוצר",
+  202: "202 · انقبل|202 · taken in|202 · התקבל",
+  204: "204 · بلا جواب|204 · nothing|204 · ללא תוכן",
+};
+/** Why an own address wasn't kept (backend lib/fnTriggers.ts routePath, and two addresses alike), in the admin's language. */
+const ROUTE_REFUSED: Array<[RegExp, string]> = [
+  [/^The address needs a path, like orders\/:id$/, "العنوان بدّه مسار، متل orders/:id|The address needs a path, like orders/:id|לכתובת צריך נתיב, כמו orders/:id"],
+  [/^A path is up to (\d+) letters$/, "المسار أكتر شي {1} حرف|A path is up to {1} letters|נתיב הוא עד {1} תווים"],
+  [/^A path has up to (\d+) parts$/, "المسار أكتر شي {1} أجزاء|A path has up to {1} parts|לנתיב עד {1} חלקים"],
+  [/^A path has no empty part \(\/\/\)$/, "المسار ما فيه جزء فاضي (//)|A path has no empty part (//)|לנתיב אין חלק ריק (//)"],
+  [/^A path starts with a word, like orders\/:id$/, "المسار بيبلّش بكلمة، متل orders/:id|A path starts with a word, like orders/:id|נתיב מתחיל במילה, כמו orders/:id"],
+  [/^":(.+)" is in the path twice$/, "«:{1}» موجود بالمسار مرتين|“:{1}” is in the path twice|«:{1}» מופיע בנתיב פעמיים"],
+  [/^"(.+)" isn't a part of a path: .*$/, "«{1}» ما بينفع بالمسار: أحرف صغيرة، أرقام، . _ - أو ‎:اسم|“{1}” can't be in a path: small letters, digits, . _ - or :name|«{1}» לא יכול להיות בנתיב: אותיות קטנות, ספרות, . _ - או ‎:שם"],
+  [/^Another address has this method and path$/, "في عنوان تاني بنفس الـ method والمسار|Another address has this method and path|לכתובת אחרת יש את אותם method ונתיב"],
+];
+export function routeRefusal(message: string, lang: Lang): string {
+  for (const [pattern, words] of ROUTE_REFUSED) {
+    const m = pattern.exec(message);
+    if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
+  }
+  return message;
+}
 export const ROW_EVENT_NAME = { added: "انضاف|added|נוספה", changed: "تعدّل|changed|שונתה", deleted: "انحذف|deleted|נמחקה" } as const;
 export const EVENT_NAME: Record<string, string> = {
   "order.created": "طلب جديد|A new order|הזמנה חדשה",
@@ -419,6 +485,7 @@ export function triggerLine(t: Pick<FnTrigger, "kind" | "config" | "slug">, tabl
   if (t.kind === "schedule") return "at" in c ? fill("كل يوم الساعة {at}|Every day at {at}|כל יום בשעה {at}", lang, { at: String(c.at) }) : fill("كل {n} دقيقة|Every {n} minutes|כל {n} דקות", lang, { n: Number(c.everyMinutes) });
   if (t.kind === "event") return part(EVENT_NAME[String(c.event)] ?? String(c.event), lang);
   if (t.kind === "call") return part(CALL_WHO_NAME[String(c.who) as keyof typeof CALL_WHO_NAME] ?? String(c.who), lang);
+  if (t.kind === "route") return `${String(c.method)} /${String(c.path)} · ${part(CALL_WHO_NAME[String(c.who) as keyof typeof CALL_WHO_NAME] ?? String(c.who), lang)}`;
   return "";
 }
 
@@ -445,6 +512,7 @@ export function fnTriggerName(trigger: string, lang: Lang): string {
   if (trigger === "call") return part("نداء|A call|קריאה", lang);
   if (trigger === "schedule") return part("على الوقت|On schedule|לפי לוח זמנים", lang);
   if (trigger === "webhook") return "Webhook";
+  if (trigger.startsWith("route.")) return fill("عنوانك ({method})|Your address ({method})|הכתובת שלך ({method})", lang, { method: trigger.slice(6) });
   if (trigger.startsWith("row.")) return fill("سطر {what}|A row {what}|שורה {what}", lang, { what: part(ROW_EVENT_NAME[trigger.slice(4) as keyof typeof ROW_EVENT_NAME] ?? trigger.slice(4), lang) });
   if (trigger.startsWith("event.")) return part(EVENT_NAME[trigger.slice(6)] ?? trigger.slice(6), lang);
   return trigger;

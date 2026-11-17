@@ -27,6 +27,7 @@ import { ALONE, CMPS, PATH, holesOf, type Cmp } from "./fnValues.js";
 import { SECRET_NAME, hostIn, secretsIn, siteAllowed } from "./fnSites.js";
 import { kindOf, missingIn } from "./fnKinds.js";
 import { GivesSchema, type Gives } from "./fnGives.js";
+import { INPUT_FORMATS, INPUT_RULE_LIMITS, inputRuleProblems, type InputFormat } from "./fnInputs.js";
 
 export const FN_LIMITS = {
   /** Steps in one function, counting the ones inside others. */
@@ -91,7 +92,12 @@ export type StepKind = Step["act"];
 export const isGroup = (s: Step): s is GroupStep => s.act === "if" || s.act === "each";
 
 export const INPUT_TYPES = ["text", "number", "bool", "list", "any"] as const;
-export type FnInput = { name: string; type: (typeof INPUT_TYPES)[number]; required?: boolean; note?: string };
+/**
+ * One thing a function is handed. Its rules (lib/fnInputs.ts): `min` / `max` (a number's value; how
+ * many letters in words, how many things in a list), `choices` (words: one of these), `format`
+ * (words: an email, a phone number, a web address, a day).
+ */
+export type FnInput = { name: string; type: (typeof INPUT_TYPES)[number]; required?: boolean; note?: string; min?: number; max?: number; choices?: string[]; format?: InputFormat };
 export type FnDef = {
   /** The language words are read and written in (a text field holds one per language). */
   lang?: (typeof LANGS)[number];
@@ -181,7 +187,19 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
 ) as z.ZodType<Step>;
 const StepsSchema: z.ZodType<Step[]> = z.lazy(() => z.array(StepSchema).max(FN_LIMITS.steps));
 
-const InputSchema = z.object({ name: Name, type: z.enum(INPUT_TYPES), required: z.boolean().optional(), note: z.string().max(200).optional() }).strict();
+const Bound = z.number().finite().min(-1e12).max(1e12);
+const InputSchema = z
+  .object({
+    name: Name,
+    type: z.enum(INPUT_TYPES),
+    required: z.boolean().optional(),
+    note: z.string().max(200).optional(),
+    min: Bound.optional(),
+    max: Bound.optional(),
+    choices: z.array(z.string().max(INPUT_RULE_LIMITS.choice)).max(INPUT_RULE_LIMITS.choices).optional(),
+    format: z.enum(INPUT_FORMATS).optional(),
+  })
+  .strict();
 
 /** How many steps, counting the ones inside others; and how deep they go. */
 export function sizeOf(steps: Step[] | undefined, depth = 1): { steps: number; depth: number } {
@@ -247,6 +265,7 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
   const tables = new Map(known.tables.map((t) => [t.id, t]));
   const fns = new Map(known.fns.map((f) => [f.id, f]));
   const inputs = new Set(def.inputs.map((i) => i.name));
+  for (const message of inputRuleProblems(def.inputs)) out.push({ at: "inputs", message });
 
   const names = (value: unknown, at: string, have: Set<string>, callsSite = false) => {
     for (const hole of holesOf(value)) {

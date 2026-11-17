@@ -47,7 +47,9 @@ export type Step = PlainStep | GroupStep;
 export type StepKind = Step["act"];
 
 export type InputType = "text" | "number" | "bool" | "list" | "any";
-export type FnInput = { name: string; type: InputType; required?: boolean; note?: string };
+export type InputFormat = "email" | "phone" | "url" | "date";
+/** One thing a function is handed, with its rules (backend lib/fnInputs.ts): a number's least and most; words' letters, choices or format; a list's count. */
+export type FnInput = { name: string; type: InputType; required?: boolean; note?: string; min?: number; max?: number; choices?: string[]; format?: InputFormat };
 /** What a function promises to give back (backend lib/fnGives.ts): the kind of its answer, and the fields of a thing (or of each thing in a list). */
 export type GiveType = "any" | "text" | "number" | "bool" | "list" | "thing";
 export type GiveField = { name: string; type: GiveType; /** It is always there. */ required?: boolean };
@@ -91,15 +93,15 @@ export type Problem = { at: string; message: string };
 export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** Its versions, newest first, and how many are kept. */ versions?: FnVersion[]; versionsKept?: number; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null; /** Its own tests (F4): run before every publish. */ tests?: FnTest[] };
 
 /** What starts a function (backend lib/fnTriggers.ts). It fires only while the function is published and switched on. */
-export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook";
+export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook" | "route";
 export type FnTrigger = {
   id: string;
   kind: TriggerKind;
-  /** row: { table, on }; schedule: { everyMinutes } or { at: "HH:MM" }; event: { event }; call: { who, perMinute? }; webhook: {} */
+  /** row: { table, on }; schedule: { everyMinutes } or { at: "HH:MM" }; event: { event }; call: { who, perMinute? }; webhook: {}; route: { method, path, who, perMinute?, status? } */
   config: Record<string, unknown>;
   /** A call's address (the owner's word). */
   slug: string | null;
-  /** "/v1/fn/<address>" or "/v1/hooks/<secret>"; a webhook's is null for a member who can only look. */
+  /** "/v1/fn/<address>", "/v1/hooks/<secret>" or "/v1/api/<path>"; a webhook's is null for a member who can only look. */
   address: string | null;
   enabled: boolean;
   fired: number;
@@ -108,13 +110,20 @@ export type FnTrigger = {
   /** What it hands the function (the function takes the ones it has an input for). */
   hands: string[];
 };
-export type TriggerMeta = { kinds: TriggerKind[]; events: string[]; callPerMinute: Record<string, number>; limits: { perFunction: number; everyMinutes: { min: number; max: number } } };
+export type TriggerMeta = {
+  kinds: TriggerKind[];
+  events: string[];
+  callPerMinute: Record<string, number>;
+  limits: { perFunction: number; everyMinutes: { min: number; max: number } };
+  /** An address of the owner's own: where it starts, its methods, what a good answer is sent with. */
+  route?: { base: string; methods: string[]; status: number[]; limits: { parts: number; length: number } };
+};
 
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FnField = { id: string; type: string; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }> };
 export type FnTable = { id: string; slug: string; name: Local | null; fields: FnField[] };
 export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number; /** A code step's code, in letters. */ code?: number; /** The cage a code step runs in. */ cage?: { ms: number; memoryMb: number }; /** Tests one function keeps. */ tests?: number; /** A call to a site: how long it may take, and how many a run makes. */ http?: { ms: number; calls: number } };
-export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside };
+export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside; /** What an input's rules may be. */ inputRules?: { formats: InputFormat[]; limits: { choices: number; choice: number } } };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
 export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null; /** A real run's line in the run log. */ runId?: string; /** It went through, and what it gave back isn't what it promises: how. */ shape?: string };

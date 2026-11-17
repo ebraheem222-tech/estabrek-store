@@ -14,7 +14,10 @@ import * as FnAPI from "../../api/functions.api";
 import type { FnFull, FnInput, FnTable, FnTrigger, TriggerKind, TriggerMeta } from "../../api/functions.api";
 import { fullUrl } from "../api/apiText";
 import { tableName } from "./fnDraft";
-import { CALL_WHO_NAME, EVENT_NAME, ROW_EVENT_NAME, TRIGGER_KIND_NAME, firedText, handsMissing, triggerLine } from "./fnText";
+import { CALL_WHO_NAME, EVENT_NAME, ROUTE_STATUS_NAME, ROW_EVENT_NAME, TRIGGER_KIND_NAME, firedText, handsMissing, routeRefusal, triggerLine } from "./fnText";
+
+const ROUTE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+const ROUTE_STATUS = [200, 201, 202, 204];
 
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
 const label = "text-xs text-white/60";
@@ -29,13 +32,19 @@ async function copy(text: string) {
 }
 
 /** What a new trigger of a kind starts with. */
-export function newTrigger(kind: TriggerKind, ctx: { tables: FnTable[]; events: string[]; taken: string[]; name: string }): { kind: TriggerKind; config: Record<string, unknown>; slug?: string } {
+export function newTrigger(kind: TriggerKind, ctx: { tables: FnTable[]; events: string[]; taken: string[]; name: string; /** This function's own addresses ("POST orders"), so a new one starts on a free path. */ paths?: string[] }): { kind: TriggerKind; config: Record<string, unknown>; slug?: string } {
   if (kind === "row") return { kind, config: { table: ctx.tables[0]?.id ?? "", on: ["added"] } };
   if (kind === "schedule") return { kind, config: { everyMinutes: 60 } };
   if (kind === "event") return { kind, config: { event: ctx.events[0] ?? "order.created" } };
   if (kind === "webhook") return { kind, config: {} };
   // A call's address: from the function's name where it has Latin letters, else "fn"; with a number when it is taken.
   const base = ctx.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "fn";
+  if (kind === "route") {
+    // An own address starts as a program's POST to the function's name; the owner makes it theirs.
+    let path = base;
+    for (let n = 2; (ctx.paths ?? []).includes(`POST ${path}`); n++) path = `${base}-${n}`;
+    return { kind, config: { method: "POST", path, who: "key" } };
+  }
   let slug = base.length < 2 ? `${base}-fn` : base;
   for (let n = 2; ctx.taken.includes(slug); n++) slug = `${base}-${n}`;
   return { kind, config: { who: "customer" }, slug };
@@ -45,7 +54,7 @@ export function FnTriggers({ fn, tables, meta, canWrite, inputs, onAddInputs }: 
   const qc = useQueryClient();
   const lang = adminLang();
   const took = (saved: FnFull) => qc.setQueryData(["functions", fn.id], saved);
-  const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) });
+  const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: routeRefusal(getApiErrorMessage(e), lang) });
   const add = useMutation({ mutationFn: (body: ReturnType<typeof newTrigger>) => FnAPI.addTrigger(fn.id, body), onSuccess: took, onError });
   const save = useMutation({ mutationFn: ({ id, ...body }: { id: string; config?: Record<string, unknown>; slug?: string; enabled?: boolean }) => FnAPI.saveTrigger(fn.id, id, body), onSuccess: took, onError });
   const remove = useMutation({ mutationFn: (id: string) => FnAPI.deleteTrigger(fn.id, id), onSuccess: took, onError });
@@ -63,7 +72,7 @@ export function FnTriggers({ fn, tables, meta, canWrite, inputs, onAddInputs }: 
       {fn.triggers.length ? (
         <ul className="space-y-2">
           {fn.triggers.map((t) => (
-            <TriggerCard key={t.id} t={t} tables={tables} meta={meta} canWrite={canWrite} busy={save.isPending || remove.isPending} missing={handsMissing(t, inputs)} onAddInputs={onAddInputs} onSave={(body) => save.mutate({ id: t.id, ...body })} onRemove={() => remove.mutate(t.id)} />
+            <TriggerCard key={t.kind === "route" ? `${t.id}:${String(t.config.path)}` : t.id} t={t} tables={tables} meta={meta} canWrite={canWrite} busy={save.isPending || remove.isPending} missing={handsMissing(t, inputs)} onAddInputs={onAddInputs} onSave={(body) => save.mutate({ id: t.id, ...body })} onRemove={() => remove.mutate(t.id)} />
           ))}
         </ul>
       ) : (
@@ -79,7 +88,7 @@ export function FnTriggers({ fn, tables, meta, canWrite, inputs, onAddInputs }: 
           disabled={add.isPending}
           onChange={(e) => {
             const kind = e.target.value as TriggerKind;
-            if (kind) add.mutate(newTrigger(kind, { tables, events: meta.events, taken: fn.triggers.map((t) => t.slug ?? ""), name: fn.name }));
+            if (kind) add.mutate(newTrigger(kind, { tables, events: meta.events, taken: fn.triggers.map((t) => t.slug ?? ""), name: fn.name, paths: fn.triggers.filter((t) => t.kind === "route").map((t) => `${String(t.config.method)} ${String(t.config.path)}`) }));
           }}
           data-testid="fn-triggers-add"
         >
@@ -104,7 +113,15 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
   const [every, setEvery] = useState(String(c.everyMinutes ?? 60));
   const [at, setAt] = useState(String(c.at ?? "09:00"));
   const [perMinute, setPerMinute] = useState(c.perMinute === undefined ? "" : String(c.perMinute));
+  const [path, setPath] = useState(String(c.path ?? ""));
   useEffect(() => setSlug(t.slug ?? ""), [t.slug]);
+  // (An own address's path as the server kept it: the card is drawn afresh when it changes.)
+  // An own address's settings, all sent together (the server checks them as one).
+  const route = (more: Record<string, unknown>) => {
+    const next: Record<string, unknown> = { method: c.method, path: c.path, who: c.who, ...(c.perMinute !== undefined ? { perMinute: c.perMinute } : {}), ...(c.status !== undefined ? { status: c.status } : {}), ...more };
+    for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+    onSave({ config: next });
+  };
   const url = t.address ? fullUrl(t.address, env.VITE_API_BASE_URL, window.location.origin) : "";
   const fired = firedText(t, lang);
   const daily = "at" in c;
@@ -223,13 +240,70 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
             />
           </>
         ) : null}
+
+        {t.kind === "route" ? (
+          <>
+            <select className={field} value={String(c.method ?? "POST")} disabled={!canWrite} onChange={(e) => route({ method: e.target.value })} aria-label="Method" data-testid={`trigger-${t.id}-method`}>
+              {ROUTE_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <span className={label} dir="ltr">
+              /v1/api/
+            </span>
+            <input
+              className={`${field} w-56`}
+              dir="ltr"
+              value={path}
+              placeholder="orders/:id"
+              disabled={!canWrite}
+              onChange={(e) => setPath(e.target.value.trim())}
+              onBlur={() => path && path !== c.path && route({ path })}
+              aria-label={say("المسار|The path|הנתיב")}
+              data-testid={`trigger-${t.id}-path`}
+            />
+            <select className={field} value={String(c.who ?? "key")} disabled={!canWrite} onChange={(e) => route({ who: e.target.value, perMinute: undefined })} data-testid={`trigger-${t.id}-who`}>
+              {(Object.keys(CALL_WHO_NAME) as Array<keyof typeof CALL_WHO_NAME>).map((w) => (
+                <option key={w} value={w}>
+                  {say(CALL_WHO_NAME[w])}
+                </option>
+              ))}
+            </select>
+            <span className={label}>{say("بالدقيقة|a minute|בדקה")}</span>
+            <input
+              type="number"
+              min={1}
+              max={600}
+              className={`${field} w-20`}
+              value={perMinute}
+              placeholder={String(meta.callPerMinute[String(c.who ?? "key")] ?? "")}
+              disabled={!canWrite}
+              onChange={(e) => setPerMinute(e.target.value)}
+              onBlur={() => {
+                const n = perMinute.trim() === "" ? undefined : Math.max(1, Math.min(600, Math.round(Number(perMinute) || 1)));
+                if (n !== c.perMinute) route({ perMinute: n });
+              }}
+              data-testid={`trigger-${t.id}-per-minute`}
+            />
+            <span className={label}>{say("الجواب|Answer|תשובה")}</span>
+            <select className={field} value={String(c.status ?? 200)} disabled={!canWrite} onChange={(e) => route({ status: Number(e.target.value) === 200 ? undefined : Number(e.target.value) })} data-testid={`trigger-${t.id}-status`}>
+              {ROUTE_STATUS.map((s) => (
+                <option key={s} value={s}>
+                  {say(ROUTE_STATUS_NAME[s])}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
       </div>
 
-      {t.kind === "call" || t.kind === "webhook" ? (
+      {t.kind === "call" || t.kind === "webhook" || t.kind === "route" ? (
         url ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <code dir="ltr" className="min-w-0 break-all rounded-lg bg-black/30 px-2 py-1 text-xs" data-testid={`trigger-${t.id}-address`}>
-              POST {url}
+              {t.kind === "route" ? String(c.method) : "POST"} {url}
             </code>
             <button type="button" className="text-xs underline" onClick={() => void copy(url)} data-testid={`trigger-${t.id}-copy`}>
               {say("انسخ|Copy|העתקה")}
@@ -250,11 +324,16 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
           </>
         ) : t.kind === "webhook" ? (
           say("أي نظام بيعرف هالعنوان بيقدر يشغّلها، فخلّيه سر. الطلب بينقبل فوراً والـ function بتشتغل بعده.|Any system that knows this address can start it, so keep it secret. The request is taken in at once and the function runs after it.|כל מערכת שמכירה את הכתובת יכולה להפעיל אותה, לכן שמרו עליה בסוד. הבקשה מתקבלת מיד והפונקציה רצה אחריה.")
+        ) : t.kind === "route" ? (
+          <span data-testid={`trigger-${t.id}-route-help`}>
+            {say("الـ function بتاخد مدخلاتها بأساميها من الـ query ومن جسم الطلب (JSON)، ومن أجزاء المسار اللي بتبلّش بـ «:»، والمسار بيغلب. قبل ما تشتغل بتنفحص المدخلات بقواعدها: إذا في غلط بيرجع 400 مع كل غلطة. وجوابها بيرجع متل ما هو. إذا وقفت بيرجع 422. ونفس الترويسات: |The function takes its inputs by their names from the query, the request's body (JSON) and the path's parts that start with “:” (the path wins). Before it runs, the inputs are checked by their rules: what isn't right answers 400 with every problem. Its answer is sent as it is; a run that stops answers 422. Same headers: |הפונקציה מקבלת את הקלטים לפי שמם מה-query, מגוף הבקשה (JSON) ומחלקי הנתיב שמתחילים ב-«:» (הנתיב גובר). לפני שהיא רצה הקלטים נבדקים לפי הכללים שלהם: מה שלא תקין עונה 400 עם כל הבעיות. התשובה נשלחת כמו שהיא; הרצה שנעצרת עונה 422. אותן כותרות: ")}
+            <bdi dir="ltr">Idempotency-Key</bdi>, <bdi dir="ltr">X-Run-Id</bdi>.
+          </span>
         ) : null}
         {t.hands.length ? (
           <>
-            {t.kind === "webhook" ? " " : ""}
-            {say("بتعطي الـ function:|It hands the function:|היא מוסרת לפונקציה:")} <bdi dir="ltr">{t.hands.join(", ")}</bdi>.
+            {t.kind === "webhook" || t.kind === "route" ? " " : ""}
+            {t.kind === "route" ? say("أجزاء المسار:|The path's parts:|חלקי הנתיב:") : say("بتعطي الـ function:|It hands the function:|היא מוסרת לפונקציה:")} <bdi dir="ltr">{t.hands.join(", ")}</bdi>.
           </>
         ) : null}
         {fired ? ` ${fired}` : ""}
