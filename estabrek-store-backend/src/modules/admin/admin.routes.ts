@@ -51,6 +51,7 @@ import designTokens from "./designTokens.controller.js";
 import collections from "./collections.controller.js";
 import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
+import webhooksOut from "./webhooksOut.controller.js";
 import dataApi from "./api.controller.js";
 import functions from "./functions.controller.js";
 import myFeatures from "./myFeatures.controller.js";
@@ -131,6 +132,8 @@ r.use("/api", areaAccess({ read: "api:read", write: "api:write" }), dataApi);
 r.use("/functions", areaAccess({ read: "functions:read", write: "functions:write" }), functions);
 // الاتصالات والأسرار (F5): the sites functions may call, and the keys of outside services (written, never read back).
 r.use("/connections", areaAccess({ read: "connections:read", write: "connections:write" }), connections);
+// Outgoing webhooks (F6): the store's events sent, signed, to the owner's own addresses. A way out of the store, like a site or a secret.
+r.use("/webhooks", areaAccess({ read: "connections:read", write: "connections:write" }), webhooksOut);
 // ميزاتي (M): a feature the owner built: its tables, functions and pages under one name, on or off together.
 r.use("/my-features", areaAccess({ read: "features:read", write: "features:write" }), myFeatures);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);

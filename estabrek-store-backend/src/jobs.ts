@@ -26,6 +26,7 @@ import { purgeTrash } from "./lib/collections.js";
 import { cleanRuns } from "./lib/runs.js";
 import { cleanCallKeys } from "./lib/fnCallKeys.js";
 import { cleanTasks, runTasks } from "./lib/tasks.js";
+import { cleanDeliveries } from "./lib/webhooksOut.js";
 import { runFnSchedule } from "./lib/fnTriggers.js";
 
 const MIN = 60_000;
@@ -145,7 +146,12 @@ export function registerBackgroundJobs() {
     everyMs: 6 * HOUR,
     limits: { min: HOUR, max: 48 * HOUR },
     firstMs: 5 * MIN,
-    run: () => cleanTasks(),
+    // (And the outgoing webhooks' delivery log, kept two weeks: lib/webhooksOut.ts.)
+    run: async () => {
+      const out = await cleanTasks();
+      await cleanDeliveries();
+      return out;
+    },
   });
 
   registerJob({

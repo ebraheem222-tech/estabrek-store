@@ -24,6 +24,7 @@ import { switchedOff } from "./featureGate.js";
 import { recordRun } from "./runs.js";
 import { dayOf, nextDay, zonedToUtc } from "./storeTime.js";
 import { enqueueTask } from "./tasks.js";
+import { emitRowWebhooks } from "./webhooksOut.js";
 
 export const TRIGGER_KINDS = ["row", "schedule", "event", "call", "webhook"] as const;
 export type TriggerKind = (typeof TRIGGER_KINDS)[number];
@@ -159,6 +160,8 @@ const quiet = (what: string) => (e: unknown) => console.error(`[functions] ${wha
 export function emitRow(event: RowEvent, tableId: string, row: { id: string }, before?: unknown) {
   emitting += 1;
   void (async () => {
+    // The owner's outgoing webhooks first (lib/webhooksOut.ts): one failing never keeps the functions from starting.
+    await emitRowWebhooks(event, tableId, row.id, before).catch(quiet(`webhook row.${event}`));
     for (const t of await liveTriggers()) {
       const c = t.config as Partial<RowConfig>;
       if (t.kind === "row" && c.table === tableId && c.on?.includes(event)) await start(t, `row.${event}`, { row: { table: tableId, id: row.id, event, ...(before !== undefined ? { before } : {}) } });

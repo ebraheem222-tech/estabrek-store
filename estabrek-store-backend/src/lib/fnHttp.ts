@@ -96,6 +96,49 @@ export function setTransportForTests(t: Transport | null) {
   transport = t ?? overNetwork;
 }
 
+/**
+ * A call that sends exactly what it is given: nothing in the address, the headers or the body is
+ * read for names (an outgoing webhook: what was signed is what leaves). The same walls stand:
+ * https to the standard port, a site by its name, an address out on the internet, no redirect
+ * followed, a few seconds and a bounded body. Where it may go is the caller's to have decided
+ * (the owner wrote that address down as an endpoint).
+ */
+export async function sendRaw(input: { method: HttpMethod; url: string; headers: Record<string, string>; body?: string; ms?: number }): Promise<SiteAnswer & { host: string }> {
+  const read = siteUrl(input.url);
+  const host = read.hostname.toLowerCase();
+  const headers: Record<string, string> = { ...input.headers };
+  if (input.body !== undefined) {
+    if (Buffer.byteLength(input.body) > HTTP_LIMITS.body) throw new SiteError(`What is sent is more than ${Math.round(HTTP_LIMITS.body / 1000)} KB`);
+    headers["content-length"] = String(Buffer.byteLength(input.body));
+  }
+  try {
+    return { ...(await transport({ method: input.method, url: read, headers, body: input.body, ms: Math.max(500, Math.min(input.ms ?? HTTP_LIMITS.ms, HTTP_LIMITS.ms)) })), host };
+  } catch (e) {
+    throw new SiteError(failedCall(host, e));
+  }
+}
+
+/** An address a call may go to, read: https, the standard port, a site by its name, no name and password in it. */
+export function siteUrl(written: string): URL {
+  let read: URL;
+  try {
+    read = new URL(written.trim());
+  } catch {
+    throw new SiteError("The address isn't one");
+  }
+  if (read.protocol !== "https:") throw new SiteError("The address starts with https://");
+  if (read.username || read.password) throw new SiteError("An address doesn't carry a name and password");
+  if (read.port && read.port !== "443") throw new SiteError("Only the standard https port is called");
+  if (net.isIP(read.hostname.replace(/^\[|\]$/g, "")) || !read.hostname.includes(".")) throw new SiteError("A site is called by its name");
+  return read;
+}
+
+/** Why a call didn't come back, in words for the owner. */
+function failedCall(host: string, e: unknown): string {
+  const code = String((e as { code?: unknown })?.code ?? "");
+  return code === "ETIMEDOUT" ? `"${host}" didn't answer in time` : code === "PRIVATE_ADDRESS" ? `"${host}" points inside the network: it isn't called` : code === "ENOTFOUND" || code === "EAI_AGAIN" ? `No site is found at "${host}"` : `"${host}" couldn't be reached`;
+}
+
 /* ---------------- What the owner allowed (read every few seconds, at once after a change) ---------------- */
 
 type Allowed = { at: number; sites: string[]; secrets: Map<string, { sealed: string; sites: string[] }> };

@@ -580,6 +580,64 @@ model FnTrigger {
   @@index([kind, enabled])
 }
 
+/// An outgoing webhook (F6, src/lib/webhooksOut.ts; admin → Webhooks طالعة): the events the
+/// owner chose are sent to an address of theirs, each delivery signed with this endpoint's secret.
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  name        String
+  /// Where deliveries go: https, a site by its name.
+  url         String
+  /// The events it is sent: "row.added", "row.changed", "row.deleted", "order.created"…
+  events      String[] @default([])
+  /// Row events: of these tables only (their ids); empty = of every table.
+  tables      String[] @default([])
+  /// The signing secret, encrypted (src/lib/secretBox.ts): shown once, when made or renewed.
+  sealed      String
+  /// The secret's last letters, to tell which one a receiver holds.
+  hint        String
+  enabled     Boolean  @default(true)
+  /// Deliveries that failed for good, in a row since the last one that went through: after so many it is paused.
+  failures    Int      @default(0)
+  /// Paused by the server (too many failures in a row), until the owner switches it on again.
+  pausedAt    DateTime?
+  lastOkAt    DateTime?
+  lastErrorAt DateTime?
+  lastError   String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+}
+
+/// One delivery of one event to one endpoint: what was sent and how it went, try by try. Kept a
+/// while for the owner to read (and send again), then removed.
+model WebhookDelivery {
+  id         String          @id @default(cuid())
+  endpointId String
+  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  event      String
+  /// The event's own id: the same in every try and for every endpoint it went to.
+  eventId    String
+  /// What is sent, letter for letter (the signature is over these very bytes).
+  body       String
+  /// "waiting" (to be sent, or tried again), "sent", "failed" (every try failed).
+  status     String          @default("waiting")
+  attempts   Int             @default(0)
+  /// The receiver's last answer.
+  code       Int?
+  error      String?
+  ms         Int?
+  /// When it is tried next, while waiting.
+  nextAt     DateTime?
+  createdAt  DateTime        @default(now())
+  finishedAt DateTime?
+
+  @@index([endpointId, createdAt])
+  @@index([endpointId, status])
+  @@index([createdAt])
+}
+
 /// A site the owner's functions may call (F5, src/lib/fnHttp.ts; admin → الاتصالات والأسرار):
 /// a host name, or "*.example.com" for every name under one. Nothing else is called.
 model FnSite {
