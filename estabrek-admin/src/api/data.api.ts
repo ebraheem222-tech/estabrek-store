@@ -22,6 +22,9 @@ export type GridTable = Omit<Collection, "fields"> & {
   readOnly?: boolean;
   /** Its rows have an address (a slug); else the first column is their id. */
   hasAddress?: boolean;
+  /** One of the store's tables: its rows say when they were made / when they last changed (yes when not said; sizes keep no dates, a stock movement never changes). */
+  made?: boolean;
+  changed?: boolean;
   /** `computed`: worked out per page (shown, never filtered or sorted by). */
   fields: Array<CollectionField & { computed?: boolean }>;
 };

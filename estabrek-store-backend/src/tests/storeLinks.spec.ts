@@ -66,14 +66,15 @@ afterAll(clean);
 
 describe("A relation's other end may be one of the store's tables", () => {
   test("which ones, and what each asks of who looks", () => {
-    expect(STORE_IDS).toEqual(["products", "categories", "orders", "customers"]);
-    expect(STORE_IDS.map((s) => storePermission(s))).toEqual(["catalog:read", "catalog:read", "orders:read", "customers:read"]);
+    // (Every table the grid shows is one: storeTablesRest.spec.ts; these four are the ones this spec links.)
+    for (const s of ["products", "categories", "orders", "customers"] as const) expect(STORE_IDS).toContain(s);
+    expect((["products", "categories", "orders", "customers"] as const).map((s) => storePermission(s))).toEqual(["catalog:read", "catalog:read", "orders:read", "customers:read"]);
     expect(storeTarget("store:products")).toBe("products");
-    for (const not of ["products", "store:", "store:coupons", "store:constructor", "", undefined, null, 5]) expect(storeTarget(not)).toBeNull();
+    for (const not of ["products", "store:", "store:pages", "store:constructor", "", undefined, null, 5]) expect(storeTarget(not)).toBeNull();
   });
 
   test("the field is saved like any relation; a store table that isn't one is no table; nothing is deleted with a store row", async () => {
-    const none = await request(app).post("/v1/admin/collections").send({ slug: `${PREFIX}bad`, name: { en: "x" }, fields: [{ id: "title", type: "text" }, { id: "what", type: "relation", to: "store:coupons" }] }).expect(400);
+    const none = await request(app).post("/v1/admin/collections").send({ slug: `${PREFIX}bad`, name: { en: "x" }, fields: [{ id: "title", type: "text" }, { id: "what", type: "relation", to: "store:pages" }] }).expect(400);
     expect(none.body.issues).toEqual([{ path: "fields.1.to", message: "No such table to link" }]);
     const withIt = await request(app).post("/v1/admin/collections").send({ slug: `${PREFIX}bad`, name: { en: "x" }, fields: [{ id: "p", type: "relation", to: "store:products", onDelete: "cascade" }] }).expect(400);
     expect(withIt.body.issues[0].message).toBe("A link to the store's rows is only ever dropped");
@@ -199,7 +200,7 @@ describe("Who is told what", () => {
     await lookup("customers").set("Authorization", member).expect(403);
     expect(((await lookup("customers", "sara").expect(200)).body.rows as Linked[]).map((r) => [r.id, r.title?.en])).toEqual([["u1", "Sara"]]);
     expect(((await lookup("orders").expect(200)).body.rows as Linked[]).map((r) => r.title?.en).sort()).toEqual(["Lina", "Sara"]);
-    await lookup("coupons").expect(404);
+    await lookup("pages").expect(404);
     // Letting go is theirs: the link is dropped.
     expect((await as(patch(table, seen.id, { who: [] })).expect(200)).body.data.who).toBeUndefined();
     expect(await prisma.storeLink.count({ where: { fromId: seen.id, toTable: "customers" } })).toBe(0);

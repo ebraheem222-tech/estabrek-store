@@ -1204,14 +1204,14 @@ model CollectionLink {
 }
 
 /// A relation's links to the store's own rows (src/lib/storeLinks.ts): a row of one of the owner's
-/// tables links a product, a category, an order or a customer by its id. The store's tables are
+/// tables links one of the store's rows (a product, an order, a coupon…) by its id. The store's tables are
 /// never written from here; a store row that is deleted simply stops showing.
 model StoreLink {
   collectionId String
   fieldId      String
   fromId       String
   from         CollectionItem @relation("storeLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  /// "products" | "categories" | "orders" | "customers"
+  /// One of the store's tables: "products", "coupons", "reviews"… (src/lib/storeLinks.ts)
   toTable      String
   toId         String
   /// The order the row holds them in.

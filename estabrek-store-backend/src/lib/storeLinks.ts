@@ -1,9 +1,9 @@
 /**
  * The store's own tables as the other end of a relation (B3; lib/links.ts has the relations).
  * A relation field of one of the owner's tables may link the store's rows: its `to` is
- * "store:products", "store:categories", "store:orders" or "store:customers" instead of a table's
- * id. One row or several, a store row linked from one row only: the relation's own rules hold as
- * they do between two of the owner's tables.
+ * "store:<table>" (store:products, store:coupons, store:reviews… every table the grid shows,
+ * lib/storeTables.ts) instead of a table's id. One row or several, a store row linked from one
+ * row only: the relation's own rules hold as they do between two of the owner's tables.
  *
  * - The links live in a table of their own, StoreLink (the owner's row → the store's row by its
  *   id). The store's tables are never written from here.
@@ -11,8 +11,9 @@
  *   stop showing (they are read through the row), so "what happens when the linked row is
  *   deleted" isn't asked for these.
  * - A linked store row is named by what its own page calls it: a product's title, a category's
- *   name, an order's customer, a customer's name (or email). Who may not see that table is told
- *   only that a row is linked.
+ *   name, an order's customer, a customer's name (or email), a coupon's code, a colour and size
+ *   by its product, colour and size… Who may not see that table is told only that a row is
+ *   linked. A name never says more of a shopper than the table's own columns do.
  *
  * Pure SQL pieces and names here: no imports from the relations' or the grid's code (both use this).
  */
@@ -32,11 +33,51 @@ type StoreDef = {
   /** The permission its own page needs: who has it is told the row's name. */
   permission: string;
 };
+// In the grid's own order (lib/storeTables.ts): the list of tables a relation may link reads the same.
 const STORES = {
+  // The catalogue.
   products: { table: "Product", label: Prisma.sql`t."title"`, slug: Prisma.sql`t."slug"`, also: Prisma.sql`lower(t."slug")`, permission: "catalog:read" },
   categories: { table: "Category", label: Prisma.sql`t."name"`, slug: Prisma.sql`t."slug"`, also: Prisma.sql`lower(t."slug")`, permission: "catalog:read" },
+  types: { table: "ProductType", label: Prisma.sql`t."name"`, slug: Prisma.sql`t."slug"`, also: Prisma.sql`lower(t."slug")`, permission: "catalog:read" },
+  sizes: { table: "Size", label: Prisma.sql`t."name"`, slug: Prisma.sql`t."id"`, also: Prisma.sql`lower(t."name")`, permission: "catalog:read" },
+  variants: {
+    table: "ProductVariant",
+    // "Silk shawl · Rose · M": the product, its colour, the size.
+    label: Prisma.sql`(SELECT p."title" || ' · ' || i."colorName" || ' · ' || s."name" FROM "ProductItem" i JOIN "Product" p ON p."id" = i."productId" JOIN "Size" s ON s."id" = t."sizeId" WHERE i."id" = t."productItemId")`,
+    slug: Prisma.sql`t."sku"`,
+    also: Prisma.sql`lower(t."sku")`,
+    permission: "catalog:read",
+  },
+  // The stock.
+  movements: {
+    table: "InventoryAdjustment",
+    label: Prisma.sql`(SELECT v."sku" FROM "ProductVariant" v WHERE v."id" = t."variantId") || ' ' || CASE WHEN t."delta" > 0 THEN '+' ELSE '' END || t."delta"::text`,
+    slug: Prisma.sql`t."id"`,
+    also: null,
+    permission: "inventory:read",
+  },
+  alerts: { table: "StockAlert", label: Prisma.sql`(SELECT p."title" FROM "Product" p WHERE p."id" = t."productId")`, slug: Prisma.sql`t."id"`, also: null, permission: "inventory:read" },
+  // The orders.
   orders: { table: "OrderRequest", label: Prisma.sql`t."customerName"`, slug: Prisma.sql`t."id"`, also: null, permission: "orders:read" },
+  lines: { table: "OrderRequestItem", label: Prisma.sql`t."productTitle" || ' × ' || t."quantity"::text`, slug: Prisma.sql`t."id"`, also: null, permission: "orders:read" },
+  requests: { table: "CustomerRequest", label: Prisma.sql`t."name"`, slug: Prisma.sql`t."id"`, also: null, permission: "orders:read" },
+  // The customers.
   customers: { table: "User", label: Prisma.sql`COALESCE(NULLIF(t."name", ''), t."email")`, slug: Prisma.sql`t."id"`, also: Prisma.sql`lower(t."email")`, permission: "customers:read" },
+  addresses: { table: "Address", label: Prisma.sql`t."fullName" || ' · ' || t."city"`, slug: Prisma.sql`t."id"`, also: null, permission: "customers:read" },
+  wishlist: {
+    table: "WishlistItem",
+    label: Prisma.sql`(SELECT p."title" FROM "Product" p WHERE p."id" = t."productId") || ' · ' || (SELECT u."email" FROM "User" u WHERE u."id" = t."userId")`,
+    slug: Prisma.sql`t."id"`,
+    also: null,
+    permission: "customers:read",
+  },
+  subscribers: { table: "NewsletterSubscriber", label: Prisma.sql`t."email"`, slug: Prisma.sql`t."id"`, also: Prisma.sql`lower(t."email")`, permission: "customers:read" },
+  // The discounts.
+  coupons: { table: "Coupon", label: Prisma.sql`t."code"`, slug: Prisma.sql`t."code"`, also: Prisma.sql`lower(t."code")`, permission: "discounts:read" },
+  redemptions: { table: "CouponRedemption", label: Prisma.sql`(SELECT c."code" FROM "Coupon" c WHERE c."id" = t."couponId") || ' · ' || t."orderRequestId"`, slug: Prisma.sql`t."id"`, also: null, permission: "discounts:read" },
+  // What shoppers wrote.
+  reviews: { table: "Review", label: Prisma.sql`COALESCE(NULLIF(t."title", ''), left(t."body", 60))`, slug: Prisma.sql`t."id"`, also: null, permission: "ugc:read" },
+  comments: { table: "ProductComment", label: Prisma.sql`left(t."body", 60)`, slug: Prisma.sql`t."id"`, also: null, permission: "ugc:read" },
 } satisfies Record<string, StoreDef>;
 export type StoreId = keyof typeof STORES;
 export const STORE_IDS = Object.keys(STORES) as StoreId[];
