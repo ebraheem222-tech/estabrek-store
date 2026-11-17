@@ -14,7 +14,8 @@ import { readyNames } from "../../lib/fnReady.js";
 import { kindsOut } from "../../lib/fnKinds.js";
 import { VERSION_LIMITS, publishVersion, versionDef, versionsOf } from "../../lib/fnVersions.js";
 import { CMPS } from "../../lib/fnValues.js";
-import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
+import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, ROUTE_BASE, ROUTE_LIMITS, ROUTE_METHODS, ROUTE_STATUS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, routePath, routeSlug, type RouteConfig, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
+import { INPUT_FORMATS, INPUT_RULE_LIMITS } from "../../lib/fnInputs.js";
 import { hasPermission } from "../../middleware/access.js";
 import { runFn, runTests } from "../functions/functions.service.js";
 
@@ -34,7 +35,8 @@ import { runFn, runTests } from "../functions/functions.service.js";
  * DELETE /admin/functions/:id         — refused while another function calls it
  *
  * What starts it (F3, lib/fnTriggers.ts):
- * POST   /admin/functions/:id/triggers        { kind, config, slug? } — a row event, a schedule, a store event, a call, a webhook
+ * POST   /admin/functions/:id/triggers        { kind, config, slug? } — a row event, a schedule, a store event, a call, a webhook,
+ *                                               an own address ({ method, path, who, perMinute?, status? }: 409 ROUTE_TAKEN when another has it)
  * PUT    /admin/functions/:id/triggers/:tid   { config?, slug?, enabled? }
  * DELETE /admin/functions/:id/triggers/:tid
  * GET    /admin/functions/:id/versions/:n         — a version's steps, as they were published
@@ -114,15 +116,23 @@ const triggerView = (t: TriggerRow, write: boolean) => {
     kind,
     config: t.config,
     slug: kind === "call" ? t.slug : null,
-    address: kind === "call" ? `/v1/fn/${t.slug}` : kind === "webhook" ? (write ? `/v1/hooks/${t.slug}` : null) : null,
+    address: kind === "call" ? `/v1/fn/${t.slug}` : kind === "webhook" ? (write ? `/v1/hooks/${t.slug}` : null) : kind === "route" ? `${ROUTE_BASE}/${String((t.config as { path?: unknown } | null)?.path ?? "")}` : null,
     enabled: t.enabled,
     fired: t.fired,
     lastAt: t.lastAt,
     nextAt: kind === "schedule" ? t.nextAt : null,
-    /** What it hands the function (the function takes the ones it has an input for). */
-    hands: HANDS[kind] ?? [],
+    /** What it hands the function (the function takes the ones it has an input for): an own address, its path's :names. */
+    hands: kind === "route" ? routeParams(t.config) : (HANDS[kind] ?? []),
   };
 };
+/** An own address's :names (none when its path can't be read). */
+function routeParams(config: unknown): string[] {
+  try {
+    return routePath((config as { path?: unknown } | null)?.path).params;
+  } catch {
+    return [];
+  }
+}
 
 async function full(fn: Row, req: Request) {
   const draft = defOf(fn.draft) ?? EMPTY_DEF;
@@ -154,7 +164,9 @@ r.get(
       // And the ready connections with what each kind can do (never a key, nor a setting's value).
       outside: { ...(await connectionNames()), ready: await readyNames(), kinds: kindsOut() },
       // What can start a function: the kinds, the store's events, and how many calls a minute when a trigger doesn't say.
-      triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS },
+      triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS, route: { base: ROUTE_BASE, methods: ROUTE_METHODS, status: ROUTE_STATUS, limits: ROUTE_LIMITS } },
+      // What an input's rules may be (lib/fnInputs.ts).
+      inputRules: { formats: INPUT_FORMATS, limits: INPUT_RULE_LIMITS },
     });
   }),
 );
@@ -313,6 +325,9 @@ function callSlug(slug: string | undefined) {
   if (!slug || !CALL_SLUG.test(slug)) throw new AppError(400, "TRIGGER_INVALID", "An address is small letters, digits and -", { at: "slug" });
   return slug;
 }
+/** An own address is one of a kind by its method and its path's shape (orders/:id and orders/:code are the same address). */
+const ownSlug = (config: Record<string, unknown>) => routeSlug(String((config as RouteConfig).method), routePath((config as RouteConfig).path));
+const ownTaken = () => new AppError(409, "ROUTE_TAKEN", "Another address has this method and path");
 
 r.post(
   "/:id/triggers",
@@ -327,13 +342,13 @@ r.post(
           fnId: fn.id,
           kind: body.kind,
           config: config as Prisma.InputJsonValue,
-          // A call's address is the owner's word; a webhook's is made here, long and random.
-          slug: body.kind === "call" ? callSlug(body.slug) : body.kind === "webhook" ? newToken() : null,
+          // A call's address is the owner's word; a webhook's is made here, long and random; an own address's is its method and path.
+          slug: body.kind === "call" ? callSlug(body.slug) : body.kind === "webhook" ? newToken() : body.kind === "route" ? ownSlug(config) : null,
           nextAt: body.kind === "schedule" ? nextRun(config as ScheduleConfig, new Date()) : null,
         },
       });
     } catch (e) {
-      if (slugTaken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");
+      if (slugTaken(e)) throw body.kind === "route" ? ownTaken() : new AppError(409, "SLUG_TAKEN", "This address is already used");
       throw e;
     }
     forgetTriggers();
@@ -359,11 +374,12 @@ r.put(
           ...(config !== undefined ? { config: config as Prisma.InputJsonValue } : {}),
           ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
           ...(kind === "call" && body.slug !== undefined ? { slug: callSlug(body.slug) } : {}),
+          ...(kind === "route" && config !== undefined ? { slug: ownSlug(config) } : {}),
           ...(again ? { nextAt: nextRun((config ?? was.config) as ScheduleConfig, new Date()) } : {}),
         },
       });
     } catch (e) {
-      if (slugTaken(e)) throw new AppError(409, "SLUG_TAKEN", "This address is already used");
+      if (slugTaken(e)) throw kind === "route" ? ownTaken() : new AppError(409, "SLUG_TAKEN", "This address is already used");
       throw e;
     }
     forgetTriggers();

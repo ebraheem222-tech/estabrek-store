@@ -24,6 +24,8 @@ import { TryPanel } from "./TryPanel";
 import { TestsPanel, newTest } from "./TestsPanel";
 import { VersionsPanel } from "./VersionsPanel";
 import { GivesForm } from "./GivesForm";
+import { InputRules } from "./InputRules";
+import { rulesCount, withoutRules } from "./fnInputRules";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -45,6 +47,8 @@ export default function FunctionEditor() {
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [openAt, setOpenAt] = useState<string | null>(null);
+  // The input whose rules are open (one at a time).
+  const [rulesAt, setRulesAt] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // Its own tests (kept with it, saved with the draft), and how they went the last time they ran.
   const [tests, setTests] = useState<FnTest[]>([]);
@@ -241,7 +245,8 @@ export default function FunctionEditor() {
           </p>
           <div className="mt-3 space-y-2">
             {draft.inputs.map((i, k) => (
-              <div key={k} className="flex flex-wrap items-center gap-2" data-testid={`fn-input-${k}`}>
+              <div key={k} className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2" data-testid={`fn-input-${k}`}>
                 <input
                   className={`${field} w-40 ${nameOk(i.name) || i.name === "input" ? "" : "border-red-400/60"}`}
                   dir="ltr"
@@ -250,7 +255,8 @@ export default function FunctionEditor() {
                   onChange={(e) => setInputs(draft.inputs.map((x, n) => (n === k ? { ...x, name: e.target.value.trim() } : x)))}
                   data-testid={`fn-input-${k}-name`}
                 />
-                <select className={field} value={i.type} disabled={!canWrite} onChange={(e) => setInputs(draft.inputs.map((x, n) => (n === k ? { ...x, type: e.target.value as InputType } : x)))} data-testid={`fn-input-${k}-type`}>
+                {/* Another kind: the rules of the old one may not fit it, so they go. */}
+                <select className={field} value={i.type} disabled={!canWrite} onChange={(e) => setInputs(draft.inputs.map((x, n) => (n === k ? { ...withoutRules(x), type: e.target.value as InputType } : x)))} data-testid={`fn-input-${k}-type`}>
                   {Object.keys(INPUT_TYPE).map((t) => (
                     <option key={t} value={t}>
                       {say(INPUT_TYPE[t])}
@@ -261,11 +267,16 @@ export default function FunctionEditor() {
                   <input type="checkbox" className="h-4 w-4 accent-current" checked={!!i.required} disabled={!canWrite} onChange={(e) => setInputs(draft.inputs.map((x, n) => (n === k ? { ...x, required: e.target.checked || undefined } : x)))} data-testid={`fn-input-${k}-required`} />
                   {say("لازم|Needed|חובה")}
                 </label>
+                <button type="button" className="text-xs underline" aria-expanded={rulesAt === k} onClick={() => setRulesAt(rulesAt === k ? null : k)} data-testid={`fn-input-${k}-rules-toggle`}>
+                  {rulesCount(i) ? say(`قواعد (${rulesCount(i)})|Rules (${rulesCount(i)})|כללים (${rulesCount(i)})`) : say("قواعد|Rules|כללים")}
+                </button>
                 {canWrite ? (
-                  <button type="button" className="h-9 px-2 text-sm text-white/60 hover:text-red-300" onClick={() => setInputs(draft.inputs.filter((_x, n) => n !== k))} aria-label={say("شيل المدخل|Remove the input|הסרת הקלט")} data-testid={`fn-input-${k}-remove`}>
+                  <button type="button" className="h-9 px-2 text-sm text-white/60 hover:text-red-300" onClick={() => { setRulesAt(null); setInputs(draft.inputs.filter((_x, n) => n !== k)); }} aria-label={say("شيل المدخل|Remove the input|הסרת הקלט")} data-testid={`fn-input-${k}-remove`}>
                     ✕
                   </button>
                 ) : null}
+              </div>
+              {rulesAt === k ? <InputRules key={i.type} input={i} canWrite={canWrite} onChange={(next) => setInputs(draft.inputs.map((x, n) => (n === k ? next : x)))} testId={`fn-input-${k}-rules`} /> : null}
               </div>
             ))}
             {canWrite ? (

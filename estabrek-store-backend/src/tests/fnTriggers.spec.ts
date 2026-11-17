@@ -128,7 +128,7 @@ describe("A function's triggers", () => {
     expect(hook.address).toMatch(/^\/v1\/hooks\/[A-Za-z0-9_-]{24}$/);
     expect((await triggersOf(id)).map((t) => t.kind)).toEqual(["row", "schedule", "schedule", "event", "call", "webhook"]);
     // The list says what can start a function.
-    expect((await request(app).get(at).expect(200)).body.triggers).toMatchObject({ kinds: ["row", "schedule", "event", "call", "webhook"], events: expect.arrayContaining(["order.created"]), callPerMinute: { customer: 30, public: 10 } });
+    expect((await request(app).get(at).expect(200)).body.triggers).toMatchObject({ kinds: ["row", "schedule", "event", "call", "webhook", "route"], events: expect.arrayContaining(["order.created"]), callPerMinute: { customer: 30, public: 10 } });
 
     // Settings that aren't the kind's are refused.
     for (const bad of [

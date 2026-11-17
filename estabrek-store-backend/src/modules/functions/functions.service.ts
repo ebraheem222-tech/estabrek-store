@@ -36,6 +36,7 @@ import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
 import { registerTask } from "../../lib/tasks.js";
 import { allHold, fill, numberOf, words, type Scope } from "../../lib/fnValues.js";
+import { readInputs as inputsRead } from "../../lib/fnInputs.js";
 import { errorText, triggerJob } from "../../lib/jobs.js";
 import { relationsOf, splitLinks, trashRows, withLinks } from "../../lib/links.js";
 import { LONG, addRow, changeRow, refresh, writeRows } from "../../lib/rowWrites.js";
@@ -430,25 +431,11 @@ async function runSteps(steps: Step[], scope: Scope, base: string, ctx: Ctx): Pr
 /* ---------------- A run ---------------- */
 
 /** What the function was handed, as its inputs ask for it. */
+/** The inputs as the run keeps them (lib/fnInputs.ts); the first problem stops it. */
 function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const i of inputs) {
-    let v = raw[i.name];
-    if (v === undefined || v === null || v === "") {
-      if (i.required) throw new Failure(`It needs "${i.name}"`, "inputs");
-      out[i.name] = null;
-      continue;
-    }
-    if (i.type === "number") {
-      const n = numberOf(v);
-      if (n == null) throw new Failure(`"${i.name}" has to be a number`, "inputs");
-      v = n;
-    } else if (i.type === "bool") v = v === true || v === "true" || v === 1 || v === "1";
-    else if (i.type === "text") v = words(v).slice(0, 10_000);
-    else if (i.type === "list" && !Array.isArray(v)) throw new Failure(`"${i.name}" has to be a list`, "inputs");
-    out[i.name] = v;
-  }
-  return out;
+  const { values, problems } = inputsRead(inputs, raw);
+  if (problems.length) throw new Failure(problems[0].message, "inputs");
+  return values;
 }
 
 const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0, http: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });

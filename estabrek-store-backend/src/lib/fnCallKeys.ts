@@ -59,7 +59,8 @@ export async function holdKey(triggerId: string, who: string, key: string, asked
 export async function keepAnswer(id: string, status: number, answer: unknown, runId: string | null): Promise<void> {
   const fits = JSON.stringify(answer ?? null).length <= CALL_KEY.answer;
   await prisma.fnCallKey
-    .update({ where: { id }, data: { state: "done", status: fits ? status : 409, answer: (fits ? answer : { ok: false, error: "ANSWER_NOT_KEPT", message: "This request was answered before, and its answer was too big to keep" }) as Prisma.InputJsonValue, runId } })
+    // (An answer that is nothing, an own address's 204 or a function that gave back nothing, is kept as JSON's null.)
+    .update({ where: { id }, data: { state: "done", status: fits ? status : 409, answer: (fits ? (answer ?? Prisma.JsonNull) : { ok: false, error: "ANSWER_NOT_KEPT", message: "This request was answered before, and its answer was too big to keep" }) as Prisma.InputJsonValue, runId } })
     .catch(() => undefined);
 }
 
