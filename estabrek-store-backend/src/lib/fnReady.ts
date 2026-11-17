@@ -45,6 +45,16 @@ export async function readyNames(): Promise<Array<{ id: string; name: string; ki
  * for it, asked for once and kept until a minute before it runs out. A dry call asks for none.
  */
 async function keyFor(c: Kept, kind: KindDef, dry: boolean): Promise<string> {
+  // A kind that sends its key in another form (Basic: in base64): made so here, and sealed again for the call.
+  if (kind.useKey) {
+    let key: string;
+    try {
+      key = open(c.sealed);
+    } catch {
+      throw new SiteError(`The key of "${c.name}" can't be read (was the server's key changed?)`);
+    }
+    return seal(kind.useKey(key, c.settings));
+  }
   if (!kind.token || dry) return c.sealed;
   const now = Date.now();
   const had = tokens.get(c.id);
@@ -73,8 +83,11 @@ async function keyFor(c: Kept, kind: KindDef, dry: boolean): Promise<string> {
 
 /** The call made with the connection's own site and key (or the token for it), and nothing else of the owner's. */
 async function through(c: Kept, kind: KindDef, call: ReadyCall, scope: Scope, dry: boolean, ms?: number): Promise<CallOut> {
+  // The kind's one site, or (a generic API) the connection's own: its key goes there and nowhere else.
+  const host = kind.hostOf ? kind.hostOf(c.settings) : kind.host;
+  if (!host) throw new SiteError(`"${c.name}" has no address`);
   const sealed = await keyFor(c, kind, dry);
-  return callSite({ ...call, scope, dry, ms, grant: { sites: [kind.host], secrets: { [READY_KEY]: { sealed, sites: [kind.host] } } } });
+  return callSite({ ...call, scope, dry, ms, grant: { sites: [host], secrets: { [READY_KEY]: { sealed, sites: [host] } } } });
 }
 
 export type ReadyOut = { /** Which connection, as a run's line says it: Telegram "Store alerts". */ line: string; dry: boolean; status: number; ok: boolean; body: unknown; /** Why the service said no, in its own words. */ why: string | null };

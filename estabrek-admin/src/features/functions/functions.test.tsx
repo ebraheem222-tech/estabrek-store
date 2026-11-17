@@ -387,7 +387,7 @@ describe("The builder", () => {
     expect((await screen.findByTestId("step-do.0-problems")).textContent).toBe("This connection isn't there any more");
     fireEvent.click(screen.getByTestId("step-do.0-head"));
     expect(screen.getByTestId("step-do.0-via").querySelector("option")?.textContent).toBe("A deleted connection");
-    expect(screen.getByTestId("step-do.0-ready-none").textContent).toContain("No ready connections yet (Telegram, Slack, Google Sheets)");
+    expect(screen.getByTestId("step-do.0-ready-none").textContent).toContain("No ready connections yet (Telegram, Slack, Google Sheets, any API)");
     expect(within(screen.getByTestId("step-do.0-ready-none")).getByRole("link").getAttribute("href")).toBe("/admin/connections");
     // A new one starts with nothing picked.
     pick("steps-do-add", "ready");
