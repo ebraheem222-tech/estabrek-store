@@ -26,7 +26,7 @@ export const CODE_START: Record<Lang, string> = {
 /** What a code step can and can't do, said under its box. */
 export const codeNote = (cage: { ms: number; memoryMb: number } | undefined, lang: Lang) =>
   fill(
-    "الكود بيشتغل بقفص عالسيرفر: بيشوف بس اللي بتعطيه إياه، وما بيوصل لجداول ولا إنترنت ولا رسايل (هدول شغل الخطوات). بالكتير {s} ثواني و{mb} ميغا، وبدون await.|The code runs in a cage on the server: it sees only what you hand it, and reaches no table, no network and no message (those are the steps' work). At most {s} seconds and {mb} MB, and no await.|הקוד רץ בכלוב בשרת: הוא רואה רק את מה שנותנים לו, ולא מגיע לטבלאות, לרשת או להודעות (אלה עבודת השלבים). לכל היותר {s} שניות ו-{mb} מ״ב, ובלי await.",
+    "الكود بيشتغل بقفص عالسيرفر: بيشوف بس اللي بتعطيه إياه، وما بيوصل لجداول ولا رسايل (هدول شغل الخطوات). لموقع من المواقع المسموحة بيوصل بـ http.get(url) أو http.post(url, body, { headers })، والسر بيكتبه secret(\"NAME\"): السر نفسه ما بيوصل للكود، بينحط بس وهو طالع لموقعه. بالكتير {s} ثواني و{mb} ميغا (الانتظار للموقع مش محسوب)، وبدون await.|The code runs in a cage on the server: it sees only what you hand it, and reaches no table and no message (those are the steps' work). It reaches an allowed site with http.get(url) or http.post(url, body, { headers }), and names a secret as secret(\"NAME\"): the secret itself never reaches the code, it goes in only as the call leaves for its site. Waiting for a site isn't counted. At most {s} seconds and {mb} MB, and no await.|הקוד רץ בכלוב בשרת: הוא רואה רק את מה שנותנים לו, ולא מגיע לטבלאות או להודעות (אלה עבודת השלבים). לאתר מותר הוא מגיע עם http.get(url) או http.post(url, body, { headers }), וסוד נכתב כ-secret(\"NAME\"): הסוד עצמו לא מגיע לקוד, הוא נכנס רק כשהקריאה יוצאת לאתר שלו. לכל היותר {s} שניות ו-{mb} מ״ב (ההמתנה לאתר לא נספרת), ובלי await.",
     lang,
     { s: (cage?.ms ?? 2000) / 1000, mb: cage?.memoryMb ?? 32 },
   );
@@ -366,15 +366,36 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   [/^A site is called by its name$/, "الموقع بينتصل فيه باسمه، مش بأرقام|A site is called by its name, not in numbers|לאתר קוראים בשמו, לא במספרים"],
   [/^A run calls sites up to (\d+) times$/, "التشغيل بيتصل بمواقع {1} مرات بالكتير|A run calls sites up to {1} times|הרצה קוראת לאתרים עד {1} פעמים"],
   [/^The code's machine (?:stopped|didn't start.*)$/, "قفص الكود وقف. جرّب كمان مرة|The code's cage stopped. Try again|הכלוב של הקוד נעצר. נסו שוב"],
+  // A code step's calls to sites (http() in the cage).
+  [/^A code step calls sites up to (\d+) times$/, "خطوة الكود بتتصل بمواقع {1} مرات بالكتير|A code step calls sites up to {1} times|שלב קוד קורא לאתרים עד {1} פעמים"],
+  [/^Calling a site isn't open here$/, "الاتصال بموقع مش مفتوح هون|Calling a site isn't open here|קריאה לאתר לא פתוחה כאן"],
+  [/^The run has no time left for a call$/, "ما ضل وقت للتشغيل ليتصل|The run has no time left for a call|לא נשאר להרצה זמן לקריאה"],
+  [/^The call didn't come back in time$/, "الاتصال ما رجع بالوقت|The call didn't come back in time|הקריאה לא חזרה בזמן"],
+  [/^The site's answer is too big for the code$/, "جواب الموقع أكبر من اللي بياخده الكود|The site's answer is too big for the code|התשובה של האתר גדולה מדי בשביל הקוד"],
+  [/^http\(method, …\): GET, POST, PUT, PATCH or DELETE$/, "http(method, …): الـ method وحدة من GET, POST, PUT, PATCH, DELETE|http(method, …): the method is GET, POST, PUT, PATCH or DELETE|http(method, …): ה-method הוא GET, POST, PUT, PATCH או DELETE"],
+  [/^http\(…, url\): the address, in words$/, "http(…, url): العنوان، ككلام|http(…, url): the address, in words|http(…, url): הכתובת, כטקסט"],
+  [/^http\(…, \{ headers \}\): name: value pairs$/, "http(…, { headers }): أزواج اسم: قيمة|http(…, { headers }): name: value pairs|http(…, { headers }): זוגות שם: ערך"],
+  [/^secret\("NAME"\) takes a secret's name: letters, digits and _$/, "secret(\"NAME\") بياخد اسم سر: أحرف وأرقام و _|secret(\"NAME\") takes a secret's name: letters, digits and _|secret(\"NAME\") מקבל שם של סוד: אותיות, ספרות ו-_"],
+  [/^The address starts with https:\/\/$/, "العنوان لازم يبلّش بـ https://|The address starts with https://|הכתובת מתחילה ב-https://"],
+  [/^The address isn't one$/, "هاد مش عنوان|That isn't an address|זו לא כתובת"],
 ];
 /** Why a run stopped: the cage's own reasons in the admin's language, anything else as it was said. */
 export function failText(error: string, lang: Lang): string {
-  for (const [pattern, words] of CAGE_SAID) {
-    const m = pattern.exec(error);
-    if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
-  }
-  // What it was handed (its inputs and their rules).
-  return inputSaid(error, lang) ?? error;
+  const known = (said: string): string | null => {
+    for (const [pattern, words] of CAGE_SAID) {
+      const m = pattern.exec(said);
+      if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
+    }
+    // What it was handed (its inputs and their rules).
+    return inputSaid(said, lang);
+  };
+  const whole = known(error);
+  if (whole !== null) return whole;
+  // Thrown in a code step, with the line of the code it happened on: the server's own words are said in the page's
+  // language (what the code itself threw stays as it threw it).
+  const lined = /^(.+) \(line (\d+)\)$/.exec(error);
+  const inner = lined ? known(lined[1]) : null;
+  return lined && inner !== null ? `${inner} ${fill("(السطر {n})|(line {n})|(שורה {n})", lang, { n: lined[2] })}` : error;
 }
 
 /** Why one of a function's tests didn't pass. */

@@ -180,6 +180,11 @@ export type CallIn = {
   grant?: { sites: string[]; secrets: Record<string, { sealed: string; sites: string[] }> };
   /** What is sent, once the run's values are in it (a ready connection's own shaping: a sheet's cells). */
   finish?: (body: unknown) => unknown;
+  /**
+   * Written by a code step (lib/fnCode.ts http()): its own words, already whole. Only its
+   * {{secret.NAME}} marks are filled (as it leaves); any other {{…}} in it is sent as written.
+   */
+  literal?: boolean;
 };
 export type CallOut = { /** What was called, without its secrets: "POST api.telegram.org/bot{{secret.TELEGRAM_TOKEN}}/sendMessage". */ line: string; dry: boolean; status: number; ok: boolean; /** The answer read as JSON when the site says it is, else its words. */ body: unknown; type: string; cut: boolean };
 
@@ -192,14 +197,15 @@ const isSecret = (path: string) => /^secret\.[A-Za-z0-9_]{1,40}$/.test(path);
  * name it: what the run holds (a shopper's input, a row) is put in as it is and never read for
  * names again, so nothing a caller sends can ask for a secret.
  */
-function textOf(written: string, scope: Scope, secret: (name: string) => string, enc: (s: string) => string = (s) => s): string {
-  return written.replace(HOLE, (_m, path: string) => (isSecret(path) ? secret(path.slice(7)) : enc(words(named(scope, path)))));
+function textOf(written: string, scope: Scope | null, secret: (name: string) => string, enc: (s: string) => string = (s) => s): string {
+  // (No scope: a code step's own words, where only a secret is a name.)
+  return written.replace(HOLE, (m, path: string) => (isSecret(path) ? secret(path.slice(7)) : scope ? enc(words(named(scope, path))) : m));
 }
-function valueOf(written: unknown, scope: Scope, secret: (name: string) => string): unknown {
+function valueOf(written: unknown, scope: Scope | null, secret: (name: string) => string): unknown {
   if (typeof written === "string") {
     const whole = WHOLE.exec(written);
     // One name and nothing else: the thing itself (a number stays a number, a row a row).
-    if (whole && !isSecret(whole[1])) return named(scope, whole[1]) ?? null;
+    if (whole && !isSecret(whole[1]) && scope) return named(scope, whole[1]) ?? null;
     return textOf(written, scope, secret);
   }
   if (Array.isArray(written)) return written.map((v) => valueOf(v, scope, secret));
@@ -214,8 +220,9 @@ function valueOf(written: unknown, scope: Scope, secret: (name: string) => strin
 export async function callSite(input: CallIn): Promise<CallOut> {
   const a = input.grant ? { sites: input.grant.sites, secrets: new Map(Object.entries(input.grant.secrets)) } : await allowed();
   const hole = (name: string) => `{{secret.${name}}}`;
+  const scope = input.literal ? null : input.scope;
   // The address as it is said: the run's names filled in (each as one piece of an address), the secrets still named.
-  const shown = textOf(input.url, input.scope, hole, encodeURIComponent).trim();
+  const shown = textOf(input.url, scope, hole, encodeURIComponent).trim();
   let read: URL;
   try {
     read = new URL(shown.replace(/\{\{secret\.([A-Za-z0-9_]+)\}\}/g, "secret-$1"));
@@ -245,18 +252,18 @@ export async function callSite(input: CallIn): Promise<CallOut> {
   if (input.dry) return { line, dry: true, status: 0, ok: true, body: null, type: "", cut: false };
   const secret = (name: string) => values.get(name) ?? "";
 
-  const url = new URL(textOf(input.url, input.scope, secret, encodeURIComponent).trim());
+  const url = new URL(textOf(input.url, scope, secret, encodeURIComponent).trim());
   if (url.hostname.toLowerCase() !== host || url.protocol !== "https:") throw new SiteError("A site is called by its name");
   const headers: Record<string, string> = {};
   for (const [k, v] of Object.entries(input.headers ?? {}).slice(0, HTTP_LIMITS.headers)) {
     const name = k.trim().toLowerCase();
     // The connection's own lines are the server's to write.
     if (!/^[a-z0-9!#$%&'*+.^_`|~-]{1,60}$/.test(name) || ["host", "content-length", "connection", "transfer-encoding", "upgrade", "proxy-authorization", "te", "trailer"].includes(name)) continue;
-    headers[name] = textOf(String(v), input.scope, secret).replace(/[\r\n]+/g, " ").slice(0, 4000);
+    headers[name] = textOf(String(v), scope, secret).replace(/[\r\n]+/g, " ").slice(0, 4000);
   }
   let body: string | undefined;
   if (input.method !== "GET" && input.body !== undefined && input.body !== null && input.body !== "") {
-    const filled = valueOf(input.body, input.scope, secret);
+    const filled = valueOf(input.body, scope, secret);
     const sent = input.finish ? input.finish(filled) : filled;
     if (typeof sent === "string") body = sent;
     else {
