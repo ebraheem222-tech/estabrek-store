@@ -1,5 +1,5 @@
 // الاتصالات والأسرار (F5): what the owner's functions may reach outside the store.
-// - Ready connections: a service connected once (Telegram, Slack), which a step then picks from
+// - Ready connections: a service connected once (Telegram, Slack, Google Sheets), which a step then picks from
 //   a menu. No address and no key is written in a function.
 // - The sites a function's "call a site" step may call. Nothing else is called.
 // - The keys of outside services. A key is written here and never shown again: a step names it
@@ -18,7 +18,7 @@ import { say } from "../../studio/say";
 import * as API from "../../api/connections.api";
 import type { Connections, Ready, ReadyKind, ReadyTry, Secret } from "../../api/connections.api";
 import { failText } from "../functions/fnText";
-import { keyLooks, keyName, kindHow, kindName, settingHint, settingName } from "./readyText";
+import { keyFileAccount, keyLooks, keyName, kindHow, kindName, settingHint, settingName } from "./readyText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -51,6 +51,8 @@ export function triedText(out: ReadyTry): string {
   if (out.ok) return out.said ? `${say("شغّال:|It works:|עובד:")} ${out.said}` : out.sends ? say("انبعتت رسالة تجربة: شوفها هناك|A test line was sent: look for it there|נשלחה שורת ניסיון: חפשו אותה שם") : say("شغّال|It works|עובד");
   const why = out.why ? failText(out.why, lang) : "";
   // The service's own word for it ("Unauthorized", "no_team") says little: what it means for the owner.
+  // Google: the sheet wasn't shared with the service account (or the key can't reach it).
+  if (out.status === 403) return `${say("ما زبط|It didn't work|זה לא הצליח")} (403)${why ? `: ${why}.` : "."} ${say("الخدمة رفضت: إذا هاد Google Sheets، شارك الشيت مع إيميل حساب الخدمة كـ Editor.|The service refused: for Google Sheets, share the sheet with the service account's email as an Editor.|השירות סירב: ב-Google Sheets, שתף את הגיליון עם האימייל של חשבון השירות כ-Editor.")}`;
   const unknown = out.status === 401 || out.status === 404 ? ` ${say("الخدمة ما بتعرف هالمفتاح: تأكد إنه منسوخ كامل وما انلغى.|The service doesn't know this key: check that it was copied whole and wasn't revoked.|השירות לא מכיר את המפתח הזה: בדקו שהוא הועתק במלואו ולא בוטל.")}` : "";
   return `${say("ما زبط|It didn't work|זה לא הצליח")}${out.status ? ` (${out.status})` : ""}${why ? `: ${why}.` : "."}${unknown}`;
 }
@@ -128,6 +130,54 @@ function SecretRow({ secret, sites, canWrite, busy, onSave, onRemove }: { secret
   );
 }
 
+/** A file picked on this device, as its words (a key file is a couple of thousand letters). */
+function fileText(file: File): Promise<string> {
+  return new Promise((done, fail) => {
+    const reader = new FileReader();
+    reader.onload = () => done(String(reader.result ?? ""));
+    reader.onerror = () => fail(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * A connection's key: typed (a token, an address), or for a kind whose key is a file (Google's
+ * service account) picked from this device. The file is read here only to say whose it is.
+ */
+function KeyInput({ kind, value, onChange, placeholder, testid }: { kind: ReadyKind; value: string; onChange: (key: string) => void; placeholder?: string; testid: string }) {
+  if (!kind.keyFile)
+    return <input className={`${field} min-w-[12rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} data-testid={testid} />;
+  const account = value ? keyFileAccount(value) : null;
+  return (
+    <span className="flex min-w-[12rem] flex-1 flex-col items-start gap-1">
+      {/* The browser's own picker says its words in its own language: a button in the page's words opens it. */}
+      <label className="cursor-pointer rounded-lg border border-white/15 bg-white/[0.07] px-3 py-1.5 text-sm hover:bg-white/[0.12] focus-within:ring-2 focus-within:ring-white/40">
+        {value ? say("اختار ملف تاني…|Pick another file…|בחר קובץ אחר…") : say("اختار ملف المفتاح…|Pick the key file…|בחר את קובץ המפתח…")}
+        <input
+          type="file"
+          accept={`${kind.keyFile},application/json`}
+          className="sr-only"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            if (file.size > 20_000) return onChange("not a key file");
+            onChange((await fileText(file)).trim());
+          }}
+          data-testid={testid}
+        />
+      </label>
+      {value ? (
+        <span className={`text-xs ${account ? "text-emerald-300" : "text-red-300"}`} data-testid={`${testid}-read`}>
+          {account ? `${say("انقرأ الملف، حساب الخدمة:|The file was read; the service account:|הקובץ נקרא; חשבון השירות:")} ${account}` : say("هاد مش ملف مفتاح حساب خدمة (JSON من Google Cloud)|This isn't a service account's key file (a JSON from Google Cloud)|זה לא קובץ מפתח של חשבון שירות (JSON מ-Google Cloud)")}
+        </span>
+      ) : placeholder ? (
+        <span className={note}>{placeholder}</span>
+      ) : null}
+    </span>
+  );
+}
+
 /** A kind's settings as inputs: each a short plain value. */
 function SettingsInputs({ kind, value, onChange, testid }: { kind: ReadyKind; value: Record<string, string>; onChange: (next: Record<string, string>) => void; testid: string }) {
   return (
@@ -155,7 +205,11 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
     onError: (e) => setTried({ ok: false, status: 0, said: null, why: getApiErrorMessage(e), sends: !!kind?.test.sends }),
   });
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === "ar" ? "ar" : lang === "he" ? "he-IL" : "en-GB", { dateStyle: "medium", timeStyle: "short" }) : null);
-  const kept = Object.entries(ready.settings).filter(([, v]) => v);
+  // The kind's own settings in its order; what is worked out from the key on a line of its own (it is something to do).
+  const derived = kind?.derived ?? [];
+  const order = [...(kind?.settings.map((s) => s.id) ?? []), ...Object.keys(ready.settings)];
+  const kept = [...new Set(order)].filter((id) => ready.settings[id] && !derived.includes(id)).map((id) => [id, ready.settings[id]] as const);
+  const worked = derived.filter((id) => ready.settings[id]).map((id) => [id, ready.settings[id]] as const);
   const t = `ready-${ready.id}`;
   return (
     <li className="space-y-2 py-3" data-testid={t} data-kind={ready.kind} data-name={ready.name}>
@@ -174,6 +228,11 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
               ))}
             </div>
           ) : null}
+          {worked.map(([id, v]) => (
+            <div key={id} className="text-xs text-white/90" data-testid={`${t}-${id}`}>
+              {settingName(ready.kind, id)}: <bdi className="select-all font-mono" dir="ltr">{v}</bdi>
+            </div>
+          ))}
           <div className={note} data-testid={`${t}-used`}>
             {ready.usedBy.length ? `${say("بتستعمله:|Used by:|בשימוש על ידי:")} ${ready.usedBy.join("، ")}` : say("ولا function بتستعمله لسا|No function uses it yet|אף פונקציה עוד לא משתמשת בו")}
             {" · "}
@@ -207,7 +266,7 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
           </label>
           <label className="flex flex-wrap items-center gap-2 text-sm">
             <span className="w-36 shrink-0 text-xs text-white/70">{keyName(kind.kind)}</span>
-            <input className={`${field} min-w-[12rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={key} placeholder={say("فاضي = بيضل متل ما هو|empty = it stays as it is|ריק = נשאר כמו שהוא")} onChange={(e) => setKey(e.target.value)} data-testid={`${t}-key`} />
+            <KeyInput kind={kind} value={key} placeholder={say("فاضي = بيضل متل ما هو|empty = it stays as it is|ריק = נשאר כמו שהוא")} onChange={setKey} testid={`${t}-key`} />
           </label>
           <SettingsInputs kind={kind} value={settings} onChange={setSettings} testid={`${t}-setting`} />
           <Button
@@ -350,10 +409,10 @@ export default function ConnectionsPage() {
               </label>
               <label className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="w-36 shrink-0 text-xs text-white/70">{keyName(kind.kind)}</span>
-                <input className={`${field} min-w-[12rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={newKey} placeholder={keyLooks(kind.kind)} onChange={(e) => setNewKey(e.target.value)} data-testid="ready-new-key" />
+                <KeyInput kind={kind} value={newKey} placeholder={kind.keyFile ? undefined : keyLooks(kind.kind)} onChange={setNewKey} testid="ready-new-key" />
               </label>
               <SettingsInputs kind={kind} value={newSettings} onChange={setNewSettings} testid="ready-new-setting" />
-              <Button size="sm" variant="secondary" type="submit" disabled={!newName.trim() || !newKey.trim() || ready.length >= (limits.ready ?? 20)} isLoading={change.isPending} data-testid="ready-add">
+              <Button size="sm" variant="secondary" type="submit" disabled={!newName.trim() || !newKey.trim() || (!!kind.keyFile && !keyFileAccount(newKey)) || ready.length >= (limits.ready ?? 20)} isLoading={change.isPending} data-testid="ready-add">
                 {say("＋ وصّل الخدمة|＋ Connect the service|＋ חיבור השירות")}
               </Button>
             </form>

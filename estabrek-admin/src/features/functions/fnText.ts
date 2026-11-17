@@ -160,7 +160,8 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outsi
     }
     case "ready": {
       const c = ctx.outside?.ready?.find((x) => x.id === s.via);
-      const said = short(s.give?.text ?? Object.values(s.give ?? {})[0] ?? "", 50);
+      // What it says (a message), or the row it adds, or the cells it reads.
+      const said = short(s.give?.text ?? s.give?.cells?.split("\n").filter((l) => l.trim()).join(" · ") ?? s.give?.range ?? Object.values(s.give ?? {})[0] ?? "", 50);
       return `${c ? c.name : part("اتصال؟|connection?|חיבור?", lang)}${said === "—" ? "" : ` · ${said}`}${kept(s.as)}`;
     }
     case "code": {
@@ -296,8 +297,15 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   [/^The code gave back more than (\d+) KB$/, "الكود رجّع أكتر من {1} كيلوبايت|The code gave back more than {1} KB|הקוד החזיר יותר מ-{1} ק״ב"],
   [/^The code is handed more than (\d+) KB$/, "اللي بينعطى للكود أكتر من {1} كيلوبايت|The code is handed more than {1} KB|לקוד ניתנים יותר מ-{1} ק״ב"],
   // A ready connection's "no", with the service's own words for why (the owner's name for it first: it is theirs to read).
-  [/^(\S+) "(.+)" answered (\d+): (.+)$/, "«{2}» ({1}) جاوب {3}: {4}|{1} “{2}” answered {3}: {4}|«{2}» ({1}) ענה {3}: {4}"],
-  [/^(\S+) "(.+)" answered (\d+)$/, "«{2}» ({1}) جاوب {3}|{1} “{2}” answered {3}|«{2}» ({1}) ענה {3}"],
+  [/^(.+?) "(.+)" answered (\d+): (.+)$/, "«{2}» ({1}) جاوب {3}: {4}|{1} “{2}” answered {3}: {4}|«{2}» ({1}) ענה {3}: {4}"],
+  [/^(.+?) "(.+)" answered (\d+)$/, "«{2}» ({1}) جاوب {3}|{1} “{2}” answered {3}|«{2}» ({1}) ענה {3}"],
+  // A kind that trades its key for a token (Google), refused at the trade.
+  [/^(.+) refused the key: (.+)$/, "{1} رفض المفتاح: {2}|{1} refused the key: {2}|{1} דחה את המפתח: {2}"],
+  [/^(.+) refused the key \((\d+)\)$/, "{1} رفض المفتاح ({2})|{1} refused the key ({2})|{1} דחה את המפתח ({2})"],
+  [/^The key of "(.+)" can't be read/, "مفتاح «{1}» ما بينقرأ (تغيّر مفتاح السيرفر؟): حطّه من جديد|The key of “{1}” can't be read (was the server's key changed?): give it again|לא ניתן לקרוא את המפתח של «{1}» (מפתח השרת השתנה?): הזן אותו שוב"],
+  [/^The spreadsheet is empty$/, "ما في شيت: حطّه بالخطوة أو كشيت معتاد بالاتصال|No spreadsheet: give one in the step, or as the connection's usual one|אין גיליון: ציין אחד בשלב, או כגיליון הרגיל של החיבור"],
+  [/^The tab is empty$/, "ما في ورقة: حطّها بالخطوة أو كورقة معتادة بالاتصال|No tab: give one in the step, or as the connection's usual one|אין לשונית: ציין אחת בשלב, או כלשונית הרגילה של החיבור"],
+  [/^The row is empty$/, "ما في خانات للسطر|The row has no cells|אין תאים בשורה"],
   [/^(.+) answered (\d+)$/, "{1} جاوب {2}|{1} answered {2}|{1} ענה {2}"],
   [/^This connection isn't there any more$/, "هالاتصال ما عاد موجود|This connection isn't there any more|החיבור הזה כבר לא קיים"],
   [/^The chat is empty$/, "ما في محادثة ينبعتلها|There is no chat to send it to|אין צ׳אט לשלוח אליו"],

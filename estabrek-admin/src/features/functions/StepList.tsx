@@ -659,7 +659,7 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
           </Row>
           {!ready.length ? (
             <p className="text-xs text-white/70" data-testid={`step-${id}-ready-none`}>
-              {say("ما في اتصالات جاهزة لسا (تلغرام، Slack): بتنعمل مرة وحدة من|No ready connections yet (Telegram, Slack): one is made once, in|עדיין אין חיבורים מוכנים (טלגרם, Slack): יוצרים חיבור פעם אחת, ב")}{" "}
+              {say("ما في اتصالات جاهزة لسا (تلغرام، Slack، Google Sheets): بتنعمل مرة وحدة من|No ready connections yet (Telegram, Slack, Google Sheets): one is made once, in|עדיין אין חיבורים מוכנים (טלגרם, Slack, Google Sheets): יוצרים חיבור פעם אחת, ב")}{" "}
               <Link to="/admin/connections" className="underline">
                 {say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות")}
               </Link>

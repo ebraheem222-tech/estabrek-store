@@ -201,7 +201,8 @@ r.post(
     const body = ReadyBody.parse(req.body ?? {});
     const kind = kindOf(body.kind)!;
     const key = keyOf(kind, body.key);
-    const settings = settingsFor(kind, body.settings);
+    // (And what is worked out from the key: a service account's address, to share a sheet with.)
+    const settings = { ...settingsFor(kind, body.settings), ...(kind.derive?.(key) ?? {}) };
     if ((await prisma.fnConnection.count()) >= READY_LIMITS.connections) throw new AppError(400, "TOO_MANY_CONNECTIONS", `Up to ${READY_LIMITS.connections} ready connections`);
     try {
       await prisma.fnConnection.create({ data: { kind: kind.kind, name: body.name, sealed: seal(key), settings, createdById: req.access?.email ?? null } });
@@ -218,13 +219,19 @@ r.put(
   "/ready/:id",
   asyncHandler(async (req, res) => {
     const body = ReadyPatch.parse(req.body ?? {});
-    const kept = await prisma.fnConnection.findUnique({ where: { id: String(req.params.id) }, select: { id: true, kind: true } });
+    const kept = await prisma.fnConnection.findUnique({ where: { id: String(req.params.id) }, select: { id: true, kind: true, settings: true } });
     const kind = kept ? kindOf(kept.kind) : null;
     if (!kept || !kind) throw new AppError(404, "CONNECTION_NOT_FOUND", "No such connection");
+    const key = body.key !== undefined ? keyOf(kind, body.key) : null;
+    // What is worked out from the key stays with the key: worked out again from a new one, kept as it was otherwise.
+    const old = (kept.settings && typeof kept.settings === "object" && !Array.isArray(kept.settings) ? kept.settings : {}) as Record<string, string>;
+    const isDerived = (id: string) => (kind.derived ?? []).includes(id);
+    const own = body.settings !== undefined ? settingsFor(kind, body.settings) : Object.fromEntries(Object.entries(old).filter(([id]) => !isDerived(id)));
+    const derived = key ? (kind.derive?.(key) ?? {}) : Object.fromEntries(Object.entries(old).filter(([id]) => isDerived(id)));
     try {
       await prisma.fnConnection.update({
         where: { id: kept.id },
-        data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(body.key !== undefined ? { sealed: seal(keyOf(kind, body.key)) } : {}), ...(body.settings !== undefined ? { settings: settingsFor(kind, body.settings) } : {}) },
+        data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(key ? { sealed: seal(key) } : {}), ...(body.settings !== undefined || key ? { settings: { ...own, ...derived } } : {}) },
       });
     } catch (e) {
       if (taken(e)) throw new AppError(409, "CONNECTION_TAKEN", "A connection has this name already", { at: "name" });
