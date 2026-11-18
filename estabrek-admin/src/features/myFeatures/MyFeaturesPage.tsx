@@ -14,6 +14,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as FeaturesAPI from "../../api/myFeatures.api";
 import { countsLine } from "./featuresText";
+import { TemplateInstall } from "./FeatureTemplates";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white";
@@ -22,7 +23,10 @@ export default function MyFeaturesPage() {
   const qc = useQueryClient();
   const go = useNavigate();
   const lang = adminLang();
-  const canWrite = useAuth().hasPermission("features:write");
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission("features:write");
+  // Installing a template makes tables, functions and pages: the member may make each.
+  const canInstall = canWrite && hasPermission("functions:write") && hasPermission("pages:write");
   const [name, setName] = useState("");
   const q = useQuery({ queryKey: ["my-features"], queryFn: FeaturesAPI.listFeatures });
   const create = useMutation({
@@ -59,6 +63,8 @@ export default function MyFeaturesPage() {
           </form>
         ) : null}
       </section>
+
+      {canInstall ? <TemplateInstall /> : null}
 
       <section className={box}>
         {q.isLoading ? (

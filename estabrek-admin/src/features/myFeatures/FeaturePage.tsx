@@ -22,6 +22,7 @@ import { createFunction } from "../../api/functions.api";
 import { tableName } from "../functions/fnDraft";
 import { STATE_NAME, stateOf } from "../functions/fnText";
 import { OFF_TEXT, PAGE_STATUS, SLUG, STEPS, apiLine, fieldsText, rowsText, slugFrom, stepsDone, triggersText } from "./featuresText";
+import { FeatureRemove, TemplateExport, TemplateLine } from "./FeatureTemplates";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -35,6 +36,9 @@ export default function FeaturePage() {
   const go = useNavigate();
   const { hasPermission } = useAuth();
   const canWrite = hasPermission("features:write");
+  // A template's work reaches the functions and pages too.
+  const canExport = hasPermission("functions:read") && hasPermission("pages:read");
+  const canRemoveAll = canWrite && hasPermission("functions:write") && hasPermission("pages:write");
   const [confirm, dialog] = useConfirm();
   const q = useQuery({ queryKey: ["my-features", id], queryFn: () => FeaturesAPI.getFeature(id), enabled: !!id });
   const f = q.data;
@@ -112,6 +116,7 @@ export default function FeaturePage() {
           </label>
         </div>
         <input className={`${field} mt-2 w-full`} value={note} disabled={!canWrite} maxLength={300} placeholder={say("شو بتعمل هالميزة؟ (ملاحظة إلك)|What does this feature do? (a note for you)|מה התכונה הזאת עושה? (הערה בשבילך)")} onChange={(e) => setNote(e.target.value)} data-testid="feature-note" />
+        <TemplateLine feature={f} />
         {canWrite && dirty ? (
           <div className="mt-3">
             <Button size="sm" variant="secondary" onClick={() => save.mutate({ name: name.trim() || f.name, note: note.trim() || null })} isLoading={save.isPending} data-testid="feature-save">
@@ -268,6 +273,8 @@ export default function FeaturePage() {
         ) : null}
       </section>
 
+      {canExport ? <TemplateExport key={`${f.id}:${f.template?.version ?? ""}`} feature={f} /> : null}
+
       {canWrite ? (
         <section className={box}>
           <h2 className="font-medium">{say("حذف الميزة|Delete the feature|מחיקת התכונה")}</h2>
@@ -282,9 +289,17 @@ export default function FeaturePage() {
               }}
               data-testid="feature-delete"
             >
-              {say("احذف الميزة|Delete the feature|מחיקת התכונה")}
+              {say("احذف الاسم بس|Delete the name only|למחוק רק את השם")}
             </Button>
           </div>
+          {canRemoveAll ? (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <p className="text-xs text-white/60">{say("أو شيلها مع كل اللي فيها: الـ functions والصفحات، والجداول مع سطورها أو بدونها (بتختار). بتشوف شو رح ينحذف قبل.|Or take it away with everything in it: its functions and pages, and its tables with or without their rows (you choose). You see what goes first.|או להסיר אותה עם כל מה שבה: הפונקציות והעמודים, והטבלאות עם השורות או בלעדיהן (לבחירתך). רואים קודם מה יוסר.")}</p>
+              <div className="mt-2">
+                <FeatureRemove feature={f} />
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
       {dialog}

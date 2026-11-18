@@ -18,6 +18,8 @@ export type Feature = {
   note: string | null;
   /** Off: its functions aren't started, its tables' API answers as closed, and its pages are hidden from the shop. */
   enabled: boolean;
+  /** Made by installing a template: which one and its version. */
+  template?: { key: string; version: string; name: Local; installedAt: string } | null;
   createdAt: string;
   updatedAt: string;
   tables: FeatureTable[];
@@ -53,4 +55,57 @@ export async function addFeatureItem(id: string, kind: FeatureKind, refId: strin
 }
 export async function removeFeatureItem(id: string, kind: FeatureKind, refId: string) {
   return (await api.delete(`${at(id)}/items/${kind}/${encodeURIComponent(refId)}`)).data as Feature;
+}
+
+/* ---------------- Templates (stage 4: lib/featureTemplate.ts, lib/featureInstall.ts on the server) ---------------- */
+
+/** What couldn't go into an exported file, said by `what` (featuresText.ts noteText). */
+export type TemplateNote =
+  | { what: "relationOut"; table: string; field: string }
+  | { what: "stepTableOut" | "stepFnOut" | "readyOut"; fn: string; at: string }
+  | { what: "triggerTableOut" | "webhookNew"; fn: string }
+  | { what: "listOut" | "oldSections" | "blockOut" | "componentOut" | "oldPage"; page: string };
+/** A template file as the server writes it: kept and sent back as it is. */
+export type TemplateFile = { format: "estabrek.feature"; formatVersion: number; key: string; version: string; name: Local; note?: Local; tables: unknown[]; functions: unknown[]; pages: unknown[]; needs?: { secrets: string[]; sites: string[] } } & Record<string, unknown>;
+export type TemplateProblem = { at: string; message: string };
+export type TemplatePreview =
+  | { ok: false; problems: TemplateProblem[]; template?: undefined }
+  | {
+      ok: boolean;
+      template: { key: string; version: string; name: Local; note: Local | null };
+      tables: Array<{ key: string; name: Local; slug: string; was: string | null; fields: number; api: TableAccess; itemPage: boolean }>;
+      functions: Array<{ key: string; name: string; steps: number; triggers: Array<{ kind: string; slug: string | null; was: string | null }> }>;
+      pages: Array<{ key: string; name: string; slug: string; was: string | null }>;
+      needs: { secrets: Array<{ name: string; kept: boolean }>; sites: Array<{ host: string; allowed: boolean }> };
+      installed: Array<{ id: string; name: string; version: string | null }>;
+      problems: TemplateProblem[];
+    };
+export type Removal = {
+  tables: Array<{ id: string; name: string; slug: string; rows: number }>;
+  functions: Array<{ id: string; name: string; runs: number }>;
+  pages: Array<{ id: string; name: string; slug: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED" }>;
+  blockers: { linked: Array<{ table: string; by: string; field: string }>; called: Array<{ fn: string; by: string }> };
+  uses: { functions: string[]; pages: string[] };
+};
+export type Removed = { tables: number; keptTables: number; functions: number; pages: number; rows: number };
+
+/** The feature as a template file, with what couldn't go into it. */
+export async function exportFeature(id: string, opts: { key?: string; version?: string; lang: "ar" | "en" | "he" }) {
+  return (await api.get(`${at(id)}/export`, { params: { ...(opts.key ? { key: opts.key } : {}), ...(opts.version ? { version: opts.version } : {}), lang: opts.lang } })).data as { template: TemplateFile; notes: TemplateNote[] };
+}
+/** What installing a file would make here; nothing is written. */
+export async function previewTemplate(template: unknown) {
+  return (await api.post(`${BASE}/templates/preview`, { template })).data as TemplatePreview;
+}
+/** Installed as a draft, under a new feature that is switched off. */
+export async function installTemplate(template: unknown, lang: "ar" | "en" | "he") {
+  return (await api.post(`${BASE}/templates/install`, { template, lang })).data as Feature;
+}
+/** What removing the feature with everything in it would take away, and what stops it. */
+export async function removalOf(id: string, lang: "ar" | "en" | "he") {
+  return (await api.get(`${at(id)}/removal`, { params: { lang } })).data as Removal;
+}
+/** The feature with everything in it; its tables' rows kept (the tables stay, in no feature) or deleted. */
+export async function removeFeature(id: string, rows: "keep" | "delete", lang: "ar" | "en" | "he") {
+  return (await api.post(`${at(id)}/remove`, { rows, lang })).data as { ok: true; removed: Removed };
 }
