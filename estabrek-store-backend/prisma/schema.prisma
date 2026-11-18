@@ -753,6 +753,72 @@ model AutomationState {
   @@id([ruleId, subject])
 }
 
+/// The shop's own key pair for web push (src/lib/push.ts): made the first time it is needed. The
+/// private half is kept sealed (src/lib/secretBox.ts) and no route answers it.
+model PushKeys {
+  id        String   @id @default("main")
+  publicKey String
+  sealed    String
+  createdAt DateTime @default(now())
+}
+
+/// A shopper's phone or browser that said yes to the shop's notifications (admin → الإعدادات →
+/// التطبيق). Tied to the shopper while they are signed in on it; gone when the push service says so.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// The language it was asked in: what it is sent in when the message has its words.
+  lang       String    @default("ar")
+  /// "android" | "iphone" | "desktop": for the counts only.
+  device     String?
+  createdAt  DateTime  @default(now())
+  seenAt     DateTime  @default(now())
+  lastSentAt DateTime?
+  /// Failed sends in a row (the push service said no); dropped after a few.
+  failures   Int       @default(0)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// A notification to shoppers' phones (admin → الإشعارات, or a function's "push" step), sent by the
+/// background job "push" in order of the subscriptions' ids: a restart goes on from `cursor`.
+model PushMessage {
+  id          String    @id @default(cuid())
+  title       String
+  body        String?
+  /// Where it opens in the shop ("/ar/shop"); the home page when empty.
+  url         String?
+  image       String?
+  /// The same message in the store's other languages: { en: { title, body } }.
+  words       Json?
+  /// "all" | "customers" (signed in) | "customer" (userId)
+  audience    String
+  userId      String?
+  /// "admin" | "function"
+  from        String    @default("admin")
+  fnId        String?
+  createdById String?
+  /// QUEUED → SENDING → DONE
+  status      String    @default("QUEUED")
+  cursor      String?
+  total       Int       @default(0)
+  sent        Int       @default(0)
+  failed      Int       @default(0)
+  gone        Int       @default(0)
+  /// Taps on it (the worker says so; never more than were sent).
+  opened      Int       @default(0)
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
 /// The bell in the admin's top bar (an automation's "notify").
 model AdminNotification {
   id        String    @id @default(cuid())
@@ -1466,6 +1532,8 @@ model User {
   orders    OrderRequest[]
   /// Rows of the owner's tables this shopper added through the API.
   rows      CollectionItem[]
+  /// The phones and browsers this shopper gets the shop's notifications on.
+  pushSubscriptions PushSubscription[]
 }
 
 enum UserStatus {

@@ -31,6 +31,7 @@ describe("Background jobs", () => {
     expect(out.body.jobs.map((j: any) => j.name)).toEqual([
       "cmsPublish",
       "outbox",
+      "push",
       "stockAlerts",
       "backup",
       "requestPhotos",

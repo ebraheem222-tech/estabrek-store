@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { Prisma, type OrderReqStatus, type Channel } from "@prisma/client";
 import { applyOrderStatusTransition } from "./orderStatusWorkflow.js";
+import { pushOrderUpdate } from "../../lib/push.js";
 
 const ORDER_REQUEST_BASE_SELECT = {
   id: true,
@@ -94,6 +95,8 @@ export async function updateStatus(args: {
     throw err;
   }
 
+  // Its shopper's phones are told (lib/push.ts; never waits, never fails the change).
+  if (result.from !== result.order.status) void pushOrderUpdate(result.order.id, result.order.status);
   return result.order;
 }
 

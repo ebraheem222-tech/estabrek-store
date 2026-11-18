@@ -52,6 +52,7 @@ import collections from "./collections.controller.js";
 import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
 import webhooksOut from "./webhooksOut.controller.js";
+import push from "./push.controller.js";
 import dataApi from "./api.controller.js";
 import functions from "./functions.controller.js";
 import myFeatures from "./myFeatures.controller.js";
@@ -160,6 +161,8 @@ r.use("/ai-ask", areaAccess({ read: "dashboard:read", write: "dashboard:read" })
 r.use("/ai", areaAccess({ read: "settings:read", write: "settings:write" }), aiSettingsAdmin);
 r.use("/ugc", areaAccess({ read: "ugc:read", write: "ugc:write" }), ugc);
 r.use("/outbox", areaAccess({ read: "outbox:read", write: "outbox:write" }), outbox);
+// Notifications to shoppers' phones: outgoing messages too.
+r.use("/push", areaAccess({ read: "outbox:read", write: "outbox:write" }), push);
 // Images are uploaded from products, pages and settings as well as the media page.
 r.use(
   "/uploads",

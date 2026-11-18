@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createECDH, createHash } from "node:crypto";
 import http from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import os from "node:os";
@@ -802,6 +802,14 @@ const home = {
   ],
 };
 const customerState = { user: null, tokens: new Set(), refresh: new Set(), orders: [], wishlist: new Set(), addresses: [] };
+// Notifications (push.spec.ts): the shop's public key, and what phones said.
+const newPushKey = () => {
+  const e = createECDH("prime256v1");
+  e.generateKeys();
+  return e.getPublicKey().toString("base64url");
+};
+let pushKey = newPushKey();
+const pushLog = [];
 // Friend requests for a page's list (rows.spec.ts): who sent each, who it points at, and where it stands.
 const listRows = () => (globalThis.listRowsNow ??= [
   { id: "req1", from: "lina@example.com", fromName: "Lina", to: "sara@example.com", toName: "Sara", note: "Hi Sara", state: "waiting" },
@@ -1028,6 +1036,38 @@ http
         const data = JSON.parse(body || "{}");
         if (Object.keys(data).length) site.header.app = data; else delete site.header.app;
         res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    // Notifications (push.spec.ts): the shop's key while the app and its notifications are on (a real P-256 key, made
+    // at start), and what phones said: GET /__test/push-log reads it, POST empties it.
+    // POST /__test/push-key: the shop's key made again (as the backend does when it can't open the old one).
+    if (pathname === "/__test/push-key" && req.method === "POST") {
+      pushKey = newPushKey();
+      return res.end(JSON.stringify({ key: pushKey }));
+    }
+    if (pathname === "/__test/push-log") {
+      if (req.method === "POST") pushLog.length = 0;
+      return res.end(JSON.stringify(pushLog));
+    }
+    if (pathname.startsWith("/v1/push/")) {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = body ? JSON.parse(body) : {};
+        const send = (status, payload) => { res.statusCode = status; res.end(JSON.stringify(payload)); };
+        const on = site.header.app?.enabled === true && site.header.app?.push?.enabled === true;
+        const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
+        const signedIn = Boolean(bearer && customerState.tokens.has(bearer));
+        if (pathname === "/v1/push/unsubscribe") { pushLog.push({ act: "unsubscribe", endpoint: data.endpoint }); return send(200, { ok: true, removed: true }); }
+        if (pathname === "/v1/push/opened") { pushLog.push({ act: "opened", id: data.id }); return send(200, { ok: true, counted: true }); }
+        if (!on) return send(404, { error: "PUSH_OFF" });
+        if (pathname === "/v1/push/key") return send(200, { key: pushKey });
+        if (pathname === "/v1/push/subscribe") {
+          pushLog.push({ act: "subscribe", endpoint: data.endpoint, keys: data.keys, lang: data.lang, signedIn });
+          return send(201, { ok: true, signedIn });
+        }
+        return send(404, { error: "NOT_FOUND" });
       });
       return;
     }

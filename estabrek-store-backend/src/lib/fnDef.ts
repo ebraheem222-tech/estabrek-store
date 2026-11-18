@@ -10,7 +10,8 @@
  * The steps:
  *   data     find, get, add, change, delete (the owner's own tables, written as the admin writes them)
  *   control  if, each, set, call (another function), stop, return
- *   out      email, whatsapp, sms (through the outbox), notify (the admin's bell)
+ *   out      email, whatsapp, sms (through the outbox), notify (the admin's bell), push (a notification
+ *            on shoppers' phones: everyone, the signed-in ones, or one customer; lib/push.ts)
  *   code     JavaScript for what the steps can't say: it is handed values (`give`), works on them
  *            and gives one back; it reaches nothing else (no table, no network, no message)
  *   outside  http: a call to a site the owner allowed, with the secrets that are for it
@@ -80,6 +81,7 @@ export type PlainStep =
   | { act: "whatsapp"; to?: string; text: string }
   | { act: "sms"; to?: string; text: string }
   | { act: "notify"; title: string; text?: string; link?: string }
+  | { act: "push"; /** Everyone whose phone said yes, the signed-in customers, or one customer. */ who: (typeof PUSH_WHO)[number]; /** The customer: their id or email ({{caller.id}}, {{row.customer}}). */ to?: string; title: string; text?: string; /** Where it opens in the shop ("/shop"). */ link?: string }
   | { act: "call"; fn: string; input?: Record<string, Val>; as?: string }
   | { act: "code"; code: string; /** What the code is handed, by name: it reads them as input.name. */ give?: Record<string, Val>; as?: string }
   | { act: "http"; method: (typeof HTTP_METHODS)[number]; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run: the steps after it decide. */ anyStatus?: boolean; as?: string }
@@ -113,7 +115,9 @@ export type FnDef = {
 };
 
 /** The steps a function may take after a failure: telling someone, writing it down. */
-export const FAIL_ACTS: ReadonlyArray<StepKind> = ["set", "notify", "email", "whatsapp", "sms", "add", "change", "http", "ready"];
+export const FAIL_ACTS: ReadonlyArray<StepKind> = ["set", "notify", "push", "email", "whatsapp", "sms", "add", "change", "http", "ready"];
+/** Who a "push" step sends to (lib/push.ts PUSH_AUDIENCES). */
+export const PUSH_WHO = ["all", "customers", "customer"] as const;
 
 const Text = z.string().max(FN_LIMITS.text);
 const Name = z.string().regex(NAME, "A name starts with a small letter: letters, digits and _");
@@ -152,6 +156,7 @@ const PLAIN = [
   z.object({ act: z.literal("whatsapp"), to: z.string().max(200).optional(), text: Text }).strict(),
   z.object({ act: z.literal("sms"), to: z.string().max(200).optional(), text: z.string().max(600) }).strict(),
   z.object({ act: z.literal("notify"), title: z.string().max(150), text: z.string().max(500).optional(), link: z.string().max(300).optional() }).strict(),
+  z.object({ act: z.literal("push"), who: z.enum(PUSH_WHO), to: z.string().max(200).optional(), title: z.string().max(80), text: z.string().max(240).optional(), link: z.string().max(300).optional() }).strict(),
   z.object({ act: z.literal("call"), fn: Id, input: z.record(Name, ValSchema).refine(small, "Too long").optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("code"), code: z.string().max(FN_LIMITS.code), give: z.record(Name, ValSchema).refine((v) => Object.keys(v).length <= FN_LIMITS.values && small(v), "Too many values").optional(), as: Var.optional() }).strict(),
   z
@@ -430,7 +435,9 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
           // The steps that only say something: every text they hold, and none of the needed ones empty.
           if (s.act === "email") need(s.subject, at, "The subject");
           if (s.act === "email" || s.act === "whatsapp" || s.act === "sms") need(s.text, at, "The text");
-          if (s.act === "notify") need(s.title, at, "The title");
+          if (s.act === "notify" || s.act === "push") need(s.title, at, "The title");
+          if (s.act === "push" && s.who === "customer") need(s.to, at, "The customer");
+          if (s.act === "push" && s.link && !s.link.startsWith("{{") && (!s.link.startsWith("/") || s.link.startsWith("//"))) out.push({ at, message: "A place in the shop starts with / (/shop)" });
           if (s.act === "stop") need(s.message, at, "The reason");
           names(Object.values(s), at, have);
       }

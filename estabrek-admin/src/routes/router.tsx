@@ -31,6 +31,7 @@ const OrderDetailsPage = lazy(() => import("../features/orders/OrderDetailsPage"
 const OrderPrintPage = lazy(() => import("../features/orders/OrderPrintPage"));
 
 const OutboxPage = lazy(() => import("../features/outbox/OutboxPage"));
+const PushPage = lazy(() => import("../features/push/PushPage"));
 const OutboxDetailsPage = lazy(() => import("../features/outbox/OutboxDetailsPage"));
 
 const CategoriesPage = lazy(() => import("../features/catalog/CategoriesPage"));
@@ -238,6 +239,7 @@ export default function AppRouter() {
 
           {/* outbox */}
           <Route path="outbox" element={withPermissions(<OutboxPage />, ["outbox:read"])} />
+          <Route path="push" element={withPermissions(<PushPage />, ["outbox:read"])} />
           <Route path="outbox/:id" element={withPermissions(<OutboxDetailsPage />, ["outbox:read"])} />
 
           {/* catalog */}

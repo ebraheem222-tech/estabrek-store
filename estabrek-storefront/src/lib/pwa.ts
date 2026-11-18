@@ -6,12 +6,25 @@
  * Here, pure: the settings as the shop reads them, the manifest (app/manifest.webmanifest), and the colours and
  * picture the icons are drawn with (app/api/app-icon). The worker itself is public/sw.js; the shopper's side
  * (registering it, offering to install) is components/AppShell.tsx.
+ *
+ * Part two, notifications (header.app.push): the shopper's phone says yes (components/PushAsk.tsx, or the switch on
+ * their account page: PushSwitch.tsx; lib/pushClient.ts does the asking), the API keeps it and sends (the backend's
+ * lib/push.ts), and the worker shows each one and opens its page on a tap.
  */
 import { LANGS, langConfigOf, type Lang } from "./i18n";
 import { identityOf, markOf, nameOf } from "./storeIdentity";
 
 export const PROMPTS = ["off", "button", "banner"] as const;
 export type Prompt = (typeof PROMPTS)[number];
+/** How the shop asks for notifications: a small card after a while, or only the switch on the account page. */
+export const PUSH_ASKS = ["banner", "account"] as const;
+export type PushAsk = (typeof PUSH_ASKS)[number];
+export type PushSettings = {
+  enabled: boolean;
+  ask: PushAsk;
+  /** An order's news goes to its shopper's phones (confirmed, on its way…). */
+  orders: boolean;
+};
 export type AppSettings = {
   enabled: boolean;
   /** The app's name under its icon (else the store's short name) and in full (else the store's name), main language. */
@@ -24,8 +37,10 @@ export type AppSettings = {
   iconUrl: string | null;
   /** How the shop offers to install it: not at all, a small button, or a banner. */
   prompt: Prompt;
+  /** Notifications on the shoppers' phones: only ever on with the app. */
+  push: PushSettings;
 };
-export const APP_DEFAULTS: AppSettings = { enabled: false, shortName: "", name: "", themeColor: null, backgroundColor: null, iconUrl: null, prompt: "banner" };
+export const APP_DEFAULTS: AppSettings = { enabled: false, shortName: "", name: "", themeColor: null, backgroundColor: null, iconUrl: null, prompt: "banner", push: { enabled: false, ask: "banner", orders: true } };
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const color = (v: unknown) => (typeof v === "string" && HEX.test(v.trim()) ? v.trim().toLowerCase() : null);
@@ -37,6 +52,7 @@ const words = (v: unknown, max: number) => (typeof v === "string" ? v.trim().sli
 export function appOf(header: unknown): AppSettings {
   const h = header && typeof header === "object" ? (header as Record<string, unknown>) : {};
   const a = h.app && typeof h.app === "object" ? (h.app as Record<string, unknown>) : {};
+  const p = a.push && typeof a.push === "object" ? (a.push as Record<string, unknown>) : {};
   return {
     enabled: a.enabled === true,
     shortName: words(a.shortName, 24),
@@ -45,8 +61,12 @@ export function appOf(header: unknown): AppSettings {
     backgroundColor: color(a.backgroundColor),
     iconUrl: picture(a.iconUrl),
     prompt: (PROMPTS as readonly unknown[]).includes(a.prompt) ? (a.prompt as Prompt) : APP_DEFAULTS.prompt,
+    push: { enabled: p.enabled === true, ask: (PUSH_ASKS as readonly unknown[]).includes(p.ask) ? (p.ask as PushAsk) : "banner", orders: p.orders !== false },
   };
 }
+
+/** Notifications are on: the app, and its notifications (the API answers the same: /v1/push/key). */
+export const pushOn = (app: AppSettings) => app.enabled && app.push.enabled;
 
 type Site = { siteName?: string | null; header?: unknown; logoUrl?: string | null; faviconUrl?: string | null; themeColor?: string | null; currencyCode?: string | null };
 
@@ -125,9 +145,13 @@ export function manifestOf(site: Site, colours: { theme: string; background: str
   };
 }
 
-/** The worker's address: its version and the store's languages, the main one first (it keeps each one's offline page). */
-export function workerHref(version: string, header: unknown, dev: boolean) {
+/**
+ * The worker's address: its version and the store's languages, the main one first (it keeps each one's offline page),
+ * and, with notifications on, the API's address (a phone's new subscription is handed to it; a tap is counted).
+ */
+export function workerHref(version: string, header: unknown, dev: boolean, api?: string | null) {
   const cfg = langConfigOf(header);
   const list = [cfg.default, ...LANGS.filter((l) => l !== cfg.default && cfg.enabled.includes(l))];
-  return `/sw.js?v=${version}&langs=${list.join(",")}${dev ? "&dev=1" : ""}`;
+  const apiPart = api && /^https?:\/\/[^\s"'<>]+$/.test(api) ? `&api=${encodeURIComponent(api.replace(/\/+$/, ""))}` : "";
+  return `/sw.js?v=${version}&langs=${list.join(",")}${dev ? "&dev=1" : ""}${apiPart}`;
 }

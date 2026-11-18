@@ -44,12 +44,14 @@ import { newRunId, recordRun } from "../../lib/runs.js";
 import { shownRow } from "../../lib/schemaChange.js";
 import { getOrCreateSettings } from "../admin/settings.controller.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
+import { PUSH_LIMITS, pushAudienceCount, pushSettings, queuePush, shopPath } from "../../lib/push.js";
 
 /** What a step did, as a code and its things, so the admin can say it in its own language. */
 export type Said = [code: keyof typeof NOTE, ...things: Array<string | number>];
 export type TraceLine = { /** Where the step is: "do.2", "do.2.do[1].0". */ at: string; act: string; ok: boolean; ms: number; /** What it did (or, dry, would do), in English. */ note?: string; say?: Said; error?: string; /** What a code step wrote with log(). */ log?: string[] };
 
 const KIND = { email: "an email", whatsapp: "a WhatsApp", sms: "an SMS" } as Record<string, string>;
+const WHO = { all: "everyone", customers: "the signed-in customers", customer: "the customer" } as Record<string, string>;
 /** What each code says in English (the admin has the same list in its three languages: features/functions/fnText.ts). */
 const NOTE = {
   found: (n: number, total: number) => (total > n ? `${n} of ${total} rows` : `${n} rows`),
@@ -67,6 +69,8 @@ const NOTE = {
   wouldSend: (kind: string, to: string) => `Would send ${KIND[kind]} to ${to}`,
   rang: (title: string) => `Rang the bell: ${title}`,
   wouldRing: (title: string) => `Would ring the bell: ${title}`,
+  pushed: (who: string, phones: number) => `Sent a notification to ${WHO[who]} (${phones} ${phones === 1 ? "phone" : "phones"})`,
+  wouldPush: (who: string, phones: number) => `Would send a notification to ${WHO[who]} (${phones} ${phones === 1 ? "phone" : "phones"})`,
   called: (name: string) => `Called ${name}`,
   ran: (ms: number) => `Ran the code (${ms} ms)`,
   answered: (line: string, status: number) => `${line} answered ${status}`,
@@ -342,6 +346,34 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       const link = words(fill(s.link ?? "", scope)).trim();
       await prisma.adminNotification.create({ data: { title, body: words(fill(s.text ?? "", scope)).slice(0, 500) || null, link: link.startsWith("/") ? link.slice(0, 300) : null } });
       return ["rang", title];
+    }
+    case "push": {
+      // A notification on shoppers' phones (lib/push.ts), sent in the background.
+      if (budget.used.messages >= FN_LIMITS.messages) throw new Failure(`A run sends up to ${FN_LIMITS.messages} messages`, at);
+      const title = words(fill(s.title, scope)).trim().slice(0, PUSH_LIMITS.title);
+      if (!title) throw new Failure("Nothing to say (the title is empty)", at);
+      let userId: string | null = null;
+      if (s.who === "customer") {
+        const to = words(fill(s.to ?? "", scope)).trim();
+        if (!to) throw new Failure("Which customer? (nobody here)", at);
+        const user = await prisma.user.findFirst({ where: EMAIL.test(to) ? { email: to.toLowerCase() } : { id: to }, select: { id: true } });
+        if (!user) throw new Failure(`No customer "${to.slice(0, 60)}"`, at);
+        userId = user.id;
+      }
+      let link: string | null;
+      try {
+        link = shopPath(words(fill(s.link ?? "", scope)));
+      } catch {
+        throw new Failure("A place in the shop starts with / (/shop)", at);
+      }
+      if (!(await pushSettings()).on) throw new Failure("Notifications are switched off (Settings → the app)", at);
+      budget.used.messages += 1;
+      budget.counts.sent += 1;
+      const phones = await pushAudienceCount(s.who, userId);
+      if (dry) return ["wouldPush", s.who, phones];
+      // Nobody's phone said yes: nothing to send, and nothing wrong.
+      if (phones) await queuePush({ title, body: words(fill(s.text ?? "", scope)), url: link, audience: s.who, userId, from: "function" });
+      return ["pushed", s.who, phones];
     }
     case "call": {
       if (ctx.depth >= FN_LIMITS.calls) throw new Failure(`Functions call each other ${FN_LIMITS.calls} deep at most`, at);

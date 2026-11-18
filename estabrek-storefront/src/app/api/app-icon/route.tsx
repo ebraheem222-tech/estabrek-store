@@ -6,8 +6,9 @@ import { appOf, iconColour, iconLetter, iconPicture } from "@/lib/pwa";
  * GET /api/app-icon?size=192&purpose=any&c=a43b64 — the app's icon as a square PNG (sizes 180, 192, 512), drawn
  * from the picture the owner gave the app (else the store's logo or favicon) on the app's colour (`c`, put in the
  * address by the manifest and the layout: lib/pwa.ts iconHref); a store without a picture gets its first letter.
- * "maskable" keeps the picture inside the middle the phone never cuts. Drawn at the edge, like the sharing
- * pictures (api/og).
+ * "maskable" keeps the picture inside the middle the phone never cuts. "badge" (96) is the small mark a phone shows
+ * in its top bar beside a notification: the store's letter in white, on nothing (a phone only reads its shape).
+ * Drawn at the edge, like the sharing pictures (api/og).
  */
 export const runtime = "edge";
 
@@ -47,10 +48,21 @@ function inkOn(hex: string): string {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const size = Number(url.searchParams.get("size"));
-  if (!SIZES.has(size)) return new Response("size: 180, 192 or 512", { status: 400 });
-  const maskable = url.searchParams.get("purpose") === "maskable";
-  const colour = iconColour(url.searchParams.get("c"));
+  const purpose = url.searchParams.get("purpose");
   const { site } = await getPublicSettings().catch(() => ({ site: {} as Record<string, unknown> }));
+  if (purpose === "badge") {
+    return new ImageResponse(
+      (
+        <div style={{ width: 96, height: 96, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", fontSize: 70, fontWeight: 800, color: "#ffffff", lineHeight: 1 }}>{iconLetter(site as never)}</div>
+        </div>
+      ),
+      { width: 96, height: 96, headers: { "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800" } },
+    );
+  }
+  if (!SIZES.has(size)) return new Response("size: 180, 192 or 512", { status: 400 });
+  const maskable = purpose === "maskable";
+  const colour = iconColour(url.searchParams.get("c"));
   const app = appOf((site as { header?: unknown }).header);
   const picture = iconPicture(app, site as never);
   const data = picture ? await pictureData(picture, url.origin) : null;

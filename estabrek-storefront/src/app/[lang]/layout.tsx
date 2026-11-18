@@ -42,8 +42,10 @@ import { StoreDesignRegion } from "@/components/StoreDesignRegion";
 import { HeaderOffset, Navbar, Topbar } from "@/components/PlainHeaderParts";
 import { TreeRuntime } from "@/pageTree/TreeRuntime";
 import { AppShell } from "@/components/AppShell";
-import { iconHref, workerHref } from "@/lib/pwa";
+import { PushAsk } from "@/components/PushAsk";
+import { iconHref, pushOn, workerHref } from "@/lib/pwa";
 import { appState } from "@/lib/pwaServer";
+import { apiBaseClient } from "@/lib/apiClient";
 
 /** Every language is its own static page: /ar…, /en…, /he… (see src/middleware.ts). */
 export function generateStaticParams() {
@@ -319,13 +321,21 @@ export default async function RootLayout({
               {/* Global body scripts from site settings */}
               {safeMode ? null : <ScriptTags scripts={bootstrap.site.scriptsBody} />}
               <WebVitalsReporter />
+              {/* Admin → الإعدادات → التطبيق → الإشعارات (header.app.push): inside the account's provider, so a phone is tied to who is signed in on it. */}
+              <PushAsk
+                on={pwa ? pushOn(pwa.app) : false}
+                ask={pwa?.app.push.ask ?? "banner"}
+                lang={lang}
+                name={pwa?.app.shortName || nameOf(identity, lang)}
+                icon={pwa ? iconHref(192, "any", pwa.version, pwa.colours.theme) : ""}
+              />
             </UiSettingsProvider>
           </ThemeWrap>
           </StoreLookProvider>
         </Providers>
         <AppShell
           enabled={pwa?.app.enabled === true}
-          worker={pwa ? workerHref(pwa.version, header, process.env.NODE_ENV !== "production") : "/sw.js"}
+          worker={pwa ? workerHref(pwa.version, header, process.env.NODE_ENV !== "production", pushOn(pwa.app) ? apiBaseClient() : null) : "/sw.js"}
           prompt={pwa?.app.prompt ?? "off"}
           lang={lang}
           name={pwa?.app.shortName || nameOf(identity, lang)}

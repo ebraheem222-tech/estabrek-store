@@ -22,6 +22,8 @@ export type PlainStep =
   | { act: "whatsapp"; to?: string; text: string }
   | { act: "sms"; to?: string; text: string }
   | { act: "notify"; title: string; text?: string; link?: string }
+  /** A notification on shoppers' phones (الإعدادات → التطبيق → الإشعارات): everyone, the signed-in ones, or one customer (their id or email). */
+  | { act: "push"; who: "all" | "customers" | "customer"; to?: string; title: string; text?: string; link?: string }
   | { act: "call"; fn: string; input?: Record<string, Val>; as?: string }
   /** JavaScript run in a cage on the server: handed `give` (read as input.name), it gives one value back. */
   | { act: "code"; code: string; give?: Record<string, Val>; as?: string }

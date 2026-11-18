@@ -46,6 +46,7 @@ export const ACT_NAME: Record<StepKind, string> = {
   stop: "وقّف وقول ليش|Stop, saying why|עצירה עם סיבה",
   return: "رجّع جواب|Give back an answer|החזרת תשובה",
   notify: "جرس بالأدمن|Ring the admin's bell|התראה בניהול",
+  push: "إشعار لتلفون الزبون|A notification on shoppers' phones|התראה לטלפון של הלקוח",
   email: "إيميل|Email|אימייל",
   whatsapp: "واتساب|WhatsApp|וואטסאפ",
   sms: "SMS|SMS|SMS",
@@ -175,6 +176,8 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outsi
       return short(s.value, 60);
     case "notify":
       return short(s.title, 60);
+    case "push":
+      return `${s.who === "customer" ? s.to?.trim() || part("الزبون؟|which customer?|איזה לקוח?", lang) : part(PUSH_WHO_NAME[s.who], lang)} · ${short(s.title)}`;
     case "email":
       return `${s.to?.trim() || part("إيميل المتجر|the shop's email|האימייל של החנות", lang)} · ${short(s.subject)}`;
     default:
@@ -226,6 +229,8 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^The subject is empty$/, "العنوان فاضي|The subject is empty|הנושא ריק"],
   [/^The text is empty$/, "النص فاضي|The text is empty|הטקסט ריק"],
   [/^The title is empty$/, "العنوان فاضي|The title is empty|הכותרת ריקה"],
+  [/^The customer is empty$/, "لأي زبون؟ (رقمه {{caller.id}} أو إيميله)|Which customer? (their id, {{caller.id}}, or their email)|לאיזה לקוח? (המזהה שלו, {{caller.id}}, או האימייל שלו)"],
+  [/^A place in the shop starts with \/ \(\/shop\)$/, "الرابط مكان بالمتجر، بيبلّش بـ / (مثلاً /shop)|The link is a place in the shop, starting with / (e.g. /shop)|הקישור הוא מקום בחנות, ומתחיל ב-/ (למשל /shop)"],
   [/^The reason is empty$/, "السبب فاضي|The reason is empty|הסיבה ריקה"],
   [/^The address is empty$/, "العنوان فاضي|The address is empty|הכתובת ריקה"],
   [/^The address starts with https:\/\/$/, "العنوان لازم يبلّش بـ https://|The address starts with https://|הכתובת מתחילה ב-https://"],
@@ -299,6 +304,12 @@ export function problemText(message: string, lang: Lang): string {
 /* ---------------- A run, line by line ---------------- */
 
 const KIND: Record<string, string> = { email: "إيميل|an email|אימייל", whatsapp: "واتساب|a WhatsApp|וואטסאפ", sms: "SMS|an SMS|SMS" };
+/** Who a "push" step sends to, as a run's line and the step's own line say it. */
+export const PUSH_WHO_NAME: Record<"all" | "customers" | "customer", string> = {
+  all: "كل اللي قبلوا|everyone who said yes|כל מי שהסכים",
+  customers: "الزباين المسجّلين|the signed-in customers|הלקוחות המחוברים",
+  customer: "الزبون|the customer|הלקוח",
+};
 const SAID: Record<string, string> = {
   found: "{0} سطر|{0} rows|{0} שורות",
   row: "السطر {0}|Row {0}|השורה {0}",
@@ -315,6 +326,8 @@ const SAID: Record<string, string> = {
   wouldSend: "كان رح ينبعت {0} لـ {1}|Would send {0} to {1}|{0} היה נשלח אל {1}",
   rang: "رنّ الجرس: {0}|Rang the bell: {0}|הפעמון צלצל: {0}",
   wouldRing: "كان رح يرنّ الجرس: {0}|Would ring the bell: {0}|הפעמון היה מצלצל: {0}",
+  pushed: "انبعت إشعار لـ {0} ({1} تلفون)|Sent a notification to {0} ({1} phones)|נשלחה התראה אל {0} ({1} טלפונים)",
+  wouldPush: "كان رح ينبعت إشعار لـ {0} ({1} تلفون)|Would send a notification to {0} ({1} phones)|הייתה נשלחת התראה אל {0} ({1} טלפונים)",
   called: "نادى {0}|Called {0}|קרא ל-{0}",
   ran: "الكود اشتغل ({0} ميلي ثانية)|Ran the code ({0} ms)|הקוד רץ ({0} מ״ש)",
   answered: "{0} جاوب {1}|{0} answered {1}|{0} ענה {1}",
@@ -378,6 +391,11 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   [/^secret\("NAME"\) takes a secret's name: letters, digits and _$/, "secret(\"NAME\") بياخد اسم سر: أحرف وأرقام و _|secret(\"NAME\") takes a secret's name: letters, digits and _|secret(\"NAME\") מקבל שם של סוד: אותיות, ספרות ו-_"],
   [/^The address starts with https:\/\/$/, "العنوان لازم يبلّش بـ https://|The address starts with https://|הכתובת מתחילה ב-https://"],
   [/^The address isn't one$/, "هاد مش عنوان|That isn't an address|זו לא כתובת"],
+  // A "push" step (a notification on shoppers' phones).
+  [/^Notifications are switched off \(Settings → the app\)$/, "الإشعارات موقّفة (الإعدادات ← التطبيق)|Notifications are switched off (Settings → the app)|ההתראות כבויות (הגדרות ← האפליקציה)"],
+  [/^Which customer\? \(nobody here\)$/, "لأي زبون؟ (ما في حدا هون)|Which customer? (nobody here)|לאיזה לקוח? (אין כאן אף אחד)"],
+  [/^No customer "(.+)"$/, "ما في زبون «{1}»|No customer “{1}”|אין לקוח «{1}»"],
+  [/^A place in the shop starts with \/ \(\/shop\)$/, "الرابط مكان بالمتجر، بيبلّش بـ / (مثلاً /shop)|The link is a place in the shop, starting with / (e.g. /shop)|הקישור הוא מקום בחנות, ומתחיל ב-/ (למשל /shop)"],
 ];
 /** Why a run stopped: the cage's own reasons in the admin's language, anything else as it was said. */
 export function failText(error: string, lang: Lang): string {
@@ -417,7 +435,12 @@ export function lineText(line: Pick<TraceLine, "ok" | "say" | "note" | "error">,
   if (!words) return line.note ?? "";
   // "3 of 20 rows": more rows matched than the step took.
   if (code === "found" && Number(things[1]) > Number(things[0])) return fill("{n} من {total} سطر|{n} of {total} rows|{n} מתוך {total} שורות", lang, { n: things[0], total: things[1] });
-  const said = code === "queued" || code === "wouldSend" ? [part(KIND[String(things[0])] ?? String(things[0]), lang), things[1]] : things;
+  const said =
+    code === "queued" || code === "wouldSend"
+      ? [part(KIND[String(things[0])] ?? String(things[0]), lang), things[1]]
+      : code === "pushed" || code === "wouldPush"
+        ? [part(PUSH_WHO_NAME[String(things[0]) as keyof typeof PUSH_WHO_NAME] ?? String(things[0]), lang), things[1]]
+        : things;
   return part(words, lang).replace(/\{(\d)\}/g, (_m, n: string) => String(said[Number(n)] ?? ""));
 }
 

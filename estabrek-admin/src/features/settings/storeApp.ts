@@ -3,8 +3,13 @@
 
 export const PROMPTS = ["banner", "button", "off"] as const;
 export type Prompt = (typeof PROMPTS)[number];
-export type StoreApp = { enabled: boolean; shortName: string; name: string; themeColor: string | null; backgroundColor: string | null; iconUrl: string | null; prompt: Prompt };
-export const APP_DEFAULTS: StoreApp = { enabled: false, shortName: "", name: "", themeColor: null, backgroundColor: null, iconUrl: null, prompt: "banner" };
+/** Notifications (header.app.push): how the shop asks, and whether an order's news goes to its shopper's phones. */
+export const PUSH_ASKS = ["banner", "account"] as const;
+export type PushAsk = (typeof PUSH_ASKS)[number];
+export type StorePush = { enabled: boolean; ask: PushAsk; orders: boolean };
+export type StoreApp = { enabled: boolean; shortName: string; name: string; themeColor: string | null; backgroundColor: string | null; iconUrl: string | null; prompt: Prompt; push: StorePush };
+export const PUSH_DEFAULTS: StorePush = { enabled: false, ask: "banner", orders: true };
+export const APP_DEFAULTS: StoreApp = { enabled: false, shortName: "", name: "", themeColor: null, backgroundColor: null, iconUrl: null, prompt: "banner", push: PUSH_DEFAULTS };
 /** The rose design's own colours, the shop's when nothing else is set. */
 export const ROSE = { theme: "#a43b64", background: "#fff9fb" } as const;
 
@@ -17,6 +22,7 @@ const words = (v: unknown, max: number) => (typeof v === "string" ? v.trim().sli
 export function storeAppOf(header: unknown): StoreApp {
   const h = header && typeof header === "object" ? (header as Record<string, unknown>) : {};
   const a = h.app && typeof h.app === "object" ? (h.app as Record<string, unknown>) : {};
+  const p = a.push && typeof a.push === "object" ? (a.push as Record<string, unknown>) : {};
   return {
     enabled: a.enabled === true,
     shortName: words(a.shortName, 24),
@@ -25,6 +31,7 @@ export function storeAppOf(header: unknown): StoreApp {
     backgroundColor: color(a.backgroundColor),
     iconUrl: picture(a.iconUrl),
     prompt: (PROMPTS as readonly unknown[]).includes(a.prompt) ? (a.prompt as Prompt) : APP_DEFAULTS.prompt,
+    push: { enabled: p.enabled === true, ask: (PUSH_ASKS as readonly unknown[]).includes(p.ask) ? (p.ask as PushAsk) : "banner", orders: p.orders !== false },
   };
 }
 
@@ -59,5 +66,7 @@ export function savedApp(app: StoreApp): Record<string, unknown> {
     ...(app.themeColor ? { themeColor: app.themeColor } : {}),
     ...(app.backgroundColor ? { backgroundColor: app.backgroundColor } : {}),
     ...(app.iconUrl ? { iconUrl: app.iconUrl } : {}),
+    // Notifications, once the owner has touched them.
+    ...(JSON.stringify(app.push) !== JSON.stringify(PUSH_DEFAULTS) ? { push: { enabled: app.push.enabled, ask: app.push.ask, orders: app.push.orders } } : {}),
   };
 }

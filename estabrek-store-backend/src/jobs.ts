@@ -28,6 +28,7 @@ import { cleanCallKeys } from "./lib/fnCallKeys.js";
 import { cleanTasks, runTasks } from "./lib/tasks.js";
 import { cleanDeliveries } from "./lib/webhooksOut.js";
 import { runFnSchedule } from "./lib/fnTriggers.js";
+import { sendQueuedPushes } from "./lib/push.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -54,6 +55,10 @@ export function registerBackgroundJobs() {
       return { checked: r.checked, sent: r.sent, failed: r.failed };
     },
   });
+
+  // Notifications to shoppers' phones (lib/push.ts): woken when one is queued; the timer only goes on
+  // with a big one, or after a restart.
+  registerJob({ name: "push", group: "messages", everyMs: MIN, limits: { min: 15_000, max: HOUR }, firstMs: 20_000, run: () => sendQueuedPushes() });
 
   const stockEvery = envMs("STOCK_ALERT_INTERVAL_MS", 2 * MIN);
   registerJob({
