@@ -30,6 +30,7 @@ import {
 import { StoreIdentityCard } from "./StoreIdentityCard";
 import { PRODUCT_PICTURE_FX_OPTIONS, readProductPictureFx, type ProductPictureFx } from "./productPictureFx";
 import { StoreLanguagesCard } from "./StoreLanguagesCard";
+import { StoreAppCard } from "./StoreAppCard";
 
 /** The scenes that can dress the page in their colour (the shop's SceneColourKey, lib/colourEngine.ts). */
 const COLOUR_SCENES = [
@@ -847,7 +848,8 @@ function ThemeColorField({
 }
 
 /** Header keys this page shows but doesn't own: always saved from the server's latest copy. */
-const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai", "scarcity", "identity", "languages"] as const;
+// The app's part (التطبيق, StoreAppCard) is saved by its own card too.
+const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai", "scarcity", "identity", "languages", "app"] as const;
 
 export default function SettingsPage() {
   const q = useSettings();
@@ -3279,6 +3281,9 @@ export default function SettingsPage() {
             </SettingsSection>
             <SettingsSection id="seo" tab="seo" keywords="seo جوجل google بحث عنوان وصف مشاركة">
               <SeoCard value={seo} onChange={setSeo} siteName={siteName} />
+            </SettingsSection>
+            <SettingsSection id="app" tab="app" keywords="تطبيق app pwa شاشة رئيسية ايقونة icon تثبيت install بدون نت offline">
+              <StoreAppCard />
             </SettingsSection>
             <SettingsSection id="history" tab="history" keywords="سجل نسخ استرجاع تراجع history">
               <SettingsHistoryCard />

@@ -936,4 +936,13 @@ export const HE: Record<string, string> = {
   "A new address": "כתובת חדשה",
   "Save this address to your account for next time": "לשמור את הכתובת בחשבון לפעם הבאה",
   "Remember my details on this device": "לזכור את הפרטים שלי במכשיר הזה",
+  // The shop as an app (components/AppShell.tsx, app/[lang]/offline).
+  "You're offline": "אין חיבור לאינטרנט",
+  "Pages opened before still open without a connection. This one needs one, and opens as soon as you're back online.": "עמודים שנפתחו קודם נפתחים גם בלי חיבור. העמוד הזה צריך חיבור, והוא ייפתח ברגע שהאינטרנט יחזור.",
+  "Home page": "דף הבית",
+  "On an iPhone: the Share button below, then “Add to Home Screen”.": "באייפון: כפתור השיתוף למטה, ואז «הוספה למסך הבית».",
+  "Install the app": "התקנת האפליקציה",
+  "{0} on your home screen": "{0} במסך הבית",
+  "Opens like an app, and works even offline.": "נפתח כמו אפליקציה, ועובד גם בלי אינטרנט.",
+  "Install": "התקנה",
 };
