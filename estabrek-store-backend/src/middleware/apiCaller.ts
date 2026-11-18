@@ -41,40 +41,48 @@ function sentKey(req: Request): string | null {
 
 /* A shopper's account is looked up once every few seconds: one turned off (or deleted) stops being a shopper here at once-ish. */
 const SHOPPER_TTL_MS = 10_000;
-const shoppers = new Map<string, { at: number; ok: boolean; email: string }>();
+type Shopper = { email: string; roles: string[]; groups: string[] };
+const shoppers = new Map<string, { at: number; ok: boolean } & Shopper>();
+/** After a shopper's roles, groups or account changed: they are read again on their next request. */
 export function forgetShoppers() {
   shoppers.clear();
 }
-/** The shopper's email (the one they sign in with, in small letters) when the account is active; else null. */
-async function shopperActive(id: string): Promise<string | null> {
+/**
+ * The shopper's email (the one they sign in with, in small letters), roles and groups (lib/shopperRoles.ts) when the
+ * account is active; else null.
+ */
+async function shopperActive(id: string): Promise<Shopper | null> {
   const known = shoppers.get(id);
-  if (known && Date.now() - known.at < SHOPPER_TTL_MS) return known.ok ? known.email : null;
-  const user = await prisma.user.findUnique({ where: { id }, select: { status: true, email: true } });
+  if (known && Date.now() - known.at < SHOPPER_TTL_MS) return known.ok ? { email: known.email, roles: known.roles, groups: known.groups } : null;
+  const user = await prisma.user.findUnique({ where: { id }, select: { status: true, email: true, roles: true, groups: true } });
   const ok = user?.status === "ACTIVE";
-  const email = (user?.email ?? "").trim().toLowerCase();
-  shoppers.set(id, { at: Date.now(), ok, email });
+  const me: Shopper = { email: (user?.email ?? "").trim().toLowerCase(), roles: user?.roles ?? [], groups: user?.groups ?? [] };
+  shoppers.set(id, { at: Date.now(), ok, ...me });
   if (shoppers.size > 5000) shoppers.clear();
-  return ok ? email : null;
+  return ok ? me : null;
 }
 
 /** The signed-in shopper, when the request carries one's token, accounts are on and the account is active; else nobody. */
-async function shopperOf(req: Request): Promise<{ id: string; email: string } | null> {
+async function shopperOf(req: Request): Promise<({ id: string } & Shopper) | null> {
   const token = bearerOf(req);
   if (!token || token.startsWith(KEY_MARK)) return null;
   try {
     const id = verifyCustomerToken(token).sub;
     if (!(await customerAccountsOn())) return null;
-    const email = await shopperActive(id);
-    return email === null ? null : { id, email };
+    const me = await shopperActive(id);
+    return me === null ? null : { id, ...me };
   } catch {
     // Not a shopper's token (an admin's, an old one): the request is anyone's.
     return null;
   }
 }
 
-/** `email`: the signed-in shopper's own (rows that point at it are theirs to read: lib/dataApi.ts). */
-export type Caller = { key: KeyLite | null; customer: string | null; email: string | null };
-export const callerOf = (req: Request): Caller => ({ key: req.apiKey ?? null, customer: req.customer?.id ?? null, email: req.customer?.email || null });
+/**
+ * `email`: the signed-in shopper's own (rows that point at it are theirs to read: lib/dataApi.ts); `roles` and
+ * `groups`: what the owner gave them (lib/shopperRoles.ts).
+ */
+export type Caller = { key: KeyLite | null; customer: string | null; email: string | null; roles: string[]; groups: string[] };
+export const callerOf = (req: Request): Caller => ({ key: req.apiKey ?? null, customer: req.customer?.id ?? null, email: req.customer?.email || null, roles: req.customer?.roles ?? [], groups: req.customer?.groups ?? [] });
 
 /** Sets `req.customer` and `req.apiKey`; a key's own requests a minute are counted here. */
 export const apiCaller = asyncHandler(async (req: Request, res: Response, next: () => void) => {

@@ -16,7 +16,8 @@ import { env } from "../../config/env";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as API from "../../api/dataApi.api";
-import type { Act, ApiKey, ApiPage as Page, ApiTable, TableAccess, Who } from "../../api/dataApi.api";
+import type { Act, ActRoles, ApiKey, ApiPage as Page, ApiTable, TableAccess, Who } from "../../api/dataApi.api";
+import { RolePicker, useShopperRoles } from "../customers/rolesUi";
 import { ACTS, ACT_NAME, ACT_RIGHT, STATE, WHO_NAME, accessLine, accessWarnings, agoWords, draftBody, draftOf, draftProblem, examples, fullUrl, nameOf, newDraft, scopesLine, whoChoices, type KeyDraft } from "./apiText";
 import { dateText } from "../data/dataText";
 import { ApiDocs, DOCS_KEY } from "./ApiDocs";
@@ -50,7 +51,7 @@ export default function ApiPage() {
 
   const access = useMutation({
     // The private fields go with the request only when they are what changed (else the server keeps them).
-    mutationFn: (v: { id: string; access: TableAccess; hidden?: string[] }) => (v.hidden ? API.setAccess(v.id, v.access, v.hidden) : API.setAccess(v.id, v.access)),
+    mutationFn: (v: { id: string; access: TableAccess; hidden?: string[]; more?: { roles?: ActRoles; group?: boolean } }) => (v.more ? API.setAccess(v.id, v.access, v.hidden, v.more) : v.hidden ? API.setAccess(v.id, v.access, v.hidden) : API.setAccess(v.id, v.access)),
     onSuccess: (table) => {
       patch((page) => ({ ...page, tables: page.tables.map((t) => (t.id === table.id ? table : t)) }));
       // What is open changed: so did the documents.
@@ -123,6 +124,7 @@ export default function ApiPage() {
                 busy={access.isPending && access.variables?.id === t.id}
                 onChange={(next) => access.mutate({ id: t.id, access: next })}
                 onPrivate={(hidden) => access.mutate({ id: t.id, access: t.access, hidden })}
+                onRoles={(more) => access.mutate({ id: t.id, access: t.access, more })}
               />
             ))}
           </ul>
@@ -239,9 +241,12 @@ export default function ApiPage() {
   );
 }
 
-function TableCard({ table, url, limits, customerAccounts, canWrite, busy, onChange, onPrivate }: { table: ApiTable; url: string; limits: Page["limits"]; customerAccounts: boolean; canWrite: boolean; busy: boolean; onChange: (next: TableAccess) => void; onPrivate: (hidden: string[]) => void }) {
+function TableCard({ table, url, limits, customerAccounts, canWrite, busy, onChange, onPrivate, onRoles }: { table: ApiTable; url: string; limits: Page["limits"]; customerAccounts: boolean; canWrite: boolean; busy: boolean; onChange: (next: TableAccess) => void; onPrivate: (hidden: string[]) => void; onRoles: (more: { roles?: ActRoles; group?: boolean }) => void }) {
   const lang = adminLang();
   const [open, setOpen] = useState(false);
+  const shopperRoles = useShopperRoles();
+  const roles: ActRoles = table.roles ?? { read: [], create: [], update: [], delete: [] };
+  const roleList = shopperRoles.data?.roles ?? [];
   const warnings = accessWarnings(table.access, limits, lang, { private: table.private.length, customerAccounts });
   const list = examples(table, url, lang);
   return (
@@ -280,6 +285,26 @@ function TableCard({ table, url, limits, customerAccounts, canWrite, busy, onCha
           {w}
         </p>
       ))}
+      {customerAccounts && (roleList.length || ACTS.some((act) => roles[act].length)) ? (
+        <fieldset className="mt-3 space-y-2 text-xs text-white/60" data-testid={`roles-${table.slug}`}>
+          <legend>{say("أدوار بتعمل الشغلة على كل السطور، ولو كانت مسكّرة على الزبون (ما عدا حقول المفتاح):|Roles that do it on every row, even where it is closed to shoppers (never a key's fields):|תפקידים שעושים זאת על כל השורות, גם כשזה סגור ללקוחות (אף פעם לא שדות המפתח):")}</legend>
+          {ACTS.map((act: Act) => (
+            <div key={act} className="flex flex-wrap items-center gap-2">
+              <span className="w-24 shrink-0 text-white/70">{say(ACT_NAME[act])}</span>
+              <RolePicker roles={roleList} value={roles[act]} disabled={!canWrite || busy} onChange={(next) => onRoles({ roles: { ...roles, [act]: next } })} testid={`roles-${table.slug}-${act}`} />
+            </div>
+          ))}
+        </fieldset>
+      ) : null}
+      {customerAccounts && (shopperRoles.data?.groups.length || table.group) ? (
+        <label className="mt-3 flex items-start gap-2 text-xs text-white/80" data-testid={`group-${table.slug}`}>
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-current" checked={!!table.group} disabled={!canWrite || busy || (table.access.read !== "customer" && !table.group)} onChange={(e) => onRoles({ group: e.target.checked })} data-testid={`group-${table.slug}-on`} />
+          <span>
+            {say("الزبون بيشوف كمان اللي أضافوه أعضاء مجموعاته (قراءة بس)|Shoppers also see what their groups' members added (reading only)|הלקוח רואה גם מה שחברי הקבוצות שלו הוסיפו (קריאה בלבד)")}
+            {table.access.read !== "customer" ? <span className="block text-white/40">{say("بيشتغل لما القراءة «للزبون».|Works when reading is “for the shopper”.|עובד כשהקריאה «ללקוח».")}</span> : null}
+          </span>
+        </label>
+      ) : null}
       {table.open ? (
         <fieldset className="mt-3 text-xs text-white/60" data-testid={`private-${table.slug}`}>
           <legend>{say("حقول للمفتاح بس: ما بتطلع ولا بتنكتب بدونه (لا للجميع ولا للزبون)|Fields for a key only: not answered or written without one (not to everyone, not to a shopper)|שדות למפתח בלבד: לא נענים ולא נכתבים בלעדיו (לא לכולם ולא ללקוח)")}</legend>

@@ -84,7 +84,7 @@ describe("Names", () => {
 
   test("what a value is offered: the inputs, the moment, a row's fields, how many rows", () => {
     // What it is handed, the moment, and who started the run.
-    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind"];
+    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"];
     expect(offers(def, ["do", 0], tables)).toEqual(always);
     expect(offers(def, ["do", 1], tables)).toEqual([...always, "orders", "orders.length", "orders.first.title", "orders.first.total"]);
     expect(offers(def, ["do", 2, "do", 0], tables)).toEqual(expect.arrayContaining(["order", "order.$id", "order.$slug", "order.title", "order.total", "index", "sum", "made.email"]));
@@ -360,6 +360,6 @@ describe("What starts a function, in words", () => {
   test("what started a run, as the run log names it", () => {
     expect(["admin", "call", "schedule", "webhook", "row.added", "row.deleted", "event.order.created", "event.something.new", "other"].map((t) => fnTriggerName(t, "en"))).toEqual(["From the admin", "A call", "On schedule", "Webhook", "A row added", "A row deleted", "A new order", "something.new", "other"]);
     expect(fnTriggerName("row.changed", "ar")).toBe("سطر تعدّل");
-    expect(problemText('The caller has no "password"', "en")).toBe("The caller has no “password” (it has: kind, id, name, email)");
+    expect(problemText('The caller has no "password"', "en")).toBe("The caller has no “password” (it has: kind, id, name, email, roles, groups)");
   });
 });

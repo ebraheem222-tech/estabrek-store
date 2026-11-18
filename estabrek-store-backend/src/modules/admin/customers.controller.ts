@@ -46,6 +46,8 @@ r.get("/", asyncHandler(async (req, res) => {
         createdAt: true,
         lastLoginAt: true,
         marketingOptIn: true,
+        roles: true,
+        groups: true,
         _count: { select: { orders: true, wishlist: true } },
       },
     }),
@@ -71,6 +73,8 @@ r.get("/:id", asyncHandler(async (req, res) => {
       marketingOptIn: true,
       preferredSize: true,
       favoriteColor: true,
+      roles: true,
+      groups: true,
     },
   });
   if (!user) throw NotFound("Customer not found");

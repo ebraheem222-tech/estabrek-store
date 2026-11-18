@@ -22,7 +22,10 @@
  * Fields the owner marked private are a key's alone: not answered, asked about or written without one.
  *
  * A shopper's own rows to read are the ones they added and the ones that point at them (a field of
- * kind "customer" holding their email). Changing and deleting stay with the one who added the row.
+ * kind "customer" holding their email), and, where the table says so, the ones their group's members added
+ * (lib/shopperRoles.ts). Changing and deleting stay with the one who added the row. A shopper holding one of
+ * the roles a table names for an act does it on every row, whatever its status, and may set a row's status
+ * and address (a moderator publishing a post); never a key's private fields.
  * `?mine=added` and `?mine=tome` ask for one half of them. `?shown=1` answers each row also as a page
  * shows it (lib/dataApi.ts `asShown`): what a shop page's list reads (lib/collectionTree.ts LIST_FEEDS).
  */
@@ -36,6 +39,7 @@ import { COLLECTION_SLUG } from "../../lib/collections.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, type Act, type KeyLite } from "../../lib/apiKeys.js";
 import { apiCaller, callerOf, ipOf, type Caller } from "../../middleware/apiCaller.js";
+import { groupMates } from "../../lib/shopperRoles.js";
 import { openApi } from "../../lib/apiDocs.js";
 import { API_LIMITS, DATA_API_BASE, allow, apiRow, askable, docTables, fieldView, isOpen, listAsk, mineAsked, reachFields, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk, type Mine, type Viewer } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
@@ -69,9 +73,9 @@ async function enter(req: Request, act: Act): Promise<{ table: ApiTable; as: As;
   const c = COLLECTION_SLUG.test(slug) ? await prisma.collection.findUnique({ where: { slug }, select: TABLE }) : null;
   const table = c ? tableFrom(c) : null;
   // A closed table answers as one that isn't there; so does one whose feature is switched off.
-  if (!table || !isOpen(table.access) || (await switchedOff()).tables.has(table.id)) throw new AppError(404, "NOT_FOUND", "No such table, or it isn't open");
+  if (!table || !isOpen(table.access, table.roles) || (await switchedOff()).tables.has(table.id)) throw new AppError(404, "NOT_FOUND", "No such table, or it isn't open");
   const who = callerOf(req);
-  const verdict = allow(table.access, act, who.key, table.id, who.customer);
+  const verdict = allow(table.access, act, who.key, table.id, who.customer, { mine: who.roles, table: table.roles });
   if ("as" in verdict) return { table, as: verdict.as, fields: seenFields(table, verdict.as), who };
   if (verdict.no === "keyNeeded") throw new AppError(401, "KEY_NEEDED", "This needs an API key");
   if (verdict.no === "signInNeeded") throw signIn();
@@ -89,12 +93,15 @@ function reach(as: As, who: Caller, query: Record<string, unknown>): { sees: As;
   return as === "customer" || mine ? { sees: "customer", owner: who.customer, email: who.email, part: mine ?? "all" } : { sees: as, owner: null, email: null, part: "all" };
 }
 
+/** The shoppers whose added rows a shopper reads as their own: themself, and their group's members where the table says so. */
+const adders = async (table: ApiTable, owner: string, who: Caller): Promise<string[]> => (table.group && who.groups.length ? [...new Set([owner, ...(await groupMates(who.groups))])] : [owner]);
+
 /**
- * A shopper's rows to read, as a condition on a list: the ones they added, and the ones a field of `to` points
- * at them; or (`part`) one half of those.
+ * A shopper's rows to read, as a condition on a list: the ones they (or, with `by`, their group's members) added,
+ * and the ones a field of `to` points at them; or (`part`) one half of those.
  */
-function theirs(owner: string, email: string | null, to: string[], part: Mine = "all"): Prisma.Sql {
-  const added = Prisma.sql`i."ownerId" = ${owner}`;
+function theirs(owner: string, email: string | null, to: string[], part: Mine = "all", by: string[] = [owner]): Prisma.Sql {
+  const added = by.length > 1 ? Prisma.sql`i."ownerId" IN (${Prisma.join(by)})` : Prisma.sql`i."ownerId" = ${owner}`;
   const pointed = email && to.length ? Prisma.sql`(${Prisma.join(to.map((id) => Prisma.sql`lower(i."data"->>${id}::text) = ${email}`), " OR ")})` : null;
   if (part === "added") return added;
   if (part === "tome") return pointed ?? Prisma.sql`FALSE`;
@@ -105,8 +112,9 @@ function theirs(owner: string, email: string | null, to: string[], part: Mine = 
  * One row by its id or address. `owner`: only that shopper's (one they added; with `to`, also one that points at
  * their `email` through one of those fields).
  */
-async function rowOf(table: ApiTable, name: string, sees: As, owner: string | null, email: string | null = null, to: string[] = []) {
-  const whose = !owner ? {} : email && to.length ? { AND: [{ OR: [{ ownerId: owner }, ...to.map((id) => ({ data: { path: [id], equals: email } }))] }] } : { ownerId: owner };
+async function rowOf(table: ApiTable, name: string, sees: As, owner: string | null, email: string | null = null, to: string[] = [], by: string[] = owner ? [owner] : []) {
+  const added = by.length > 1 ? { ownerId: { in: by } } : { ownerId: owner };
+  const whose = !owner ? {} : email && to.length ? { AND: [{ OR: [added, ...to.map((id) => ({ data: { path: [id], equals: email } }))] }] } : added;
   const found =
     name && name.length <= 100
       ? await prisma.collectionItem.findMany({ where: { collectionId: table.id, deletedAt: null, OR: [{ id: name }, { slug: name.toLowerCase() }], ...(sees === "public" ? { status: "PUBLISHED" as const } : {}), ...whose }, take: 2 })
@@ -201,7 +209,7 @@ r.get(
   "/",
   asyncHandler(async (req: Request, res: Response) => {
     const who = callerOf(req);
-    const tables = docTables(await everyTable(), who.key, who.customer).map((t) => ({
+    const tables = docTables(await everyTable(), who.key, who.customer, who.roles).map((t) => ({
       table: t.slug,
       name: t.name,
       acts: Object.fromEntries(ACTS.map((act) => [act, !!t.acts[act]])),
@@ -216,7 +224,7 @@ r.get(
   "/openapi.json",
   asyncHandler(async (req: Request, res: Response) => {
     const who = callerOf(req);
-    res.json(openApi(docTables(await everyTable(), who.key, who.customer), { server: DATA_API_BASE }));
+    res.json(openApi(docTables(await everyTable(), who.key, who.customer, who.roles), { server: DATA_API_BASE }));
   }),
 );
 
@@ -233,7 +241,8 @@ r.get(
     const hidden = [...ask.q.filters, ...ask.q.sort].find((x) => fields.some((f) => f.id === x.field && f.type === "relation") && !links.modes.has(x.field));
     if (hidden) throw new AppError(400, "BAD_QUERY", `No column "${hidden.field}" in this table`);
     // Asked of the fields the caller sees and may ask about: a search doesn't look into a private one, nor (without a key) into who a row points at.
-    const page = await queryRows(prisma, { id: table.id, fields: askable(fields, as) }, ask.q, owner ? theirs(owner, email, reachFields(fields), part) : undefined);
+    const by = owner && part !== "tome" ? await adders(table, owner, who) : owner ? [owner] : [];
+    const page = await queryRows(prisma, { id: table.id, fields: askable(fields, as) }, ask.q, owner ? theirs(owner, email, reachFields(fields), part, by) : undefined);
     res.json({ data: await shape(table, as, who, page.rows, { ...ask, theirs: sees === "customer" }, links), page: ask.q.page, pageSize: ask.q.pageSize, total: page.total, pages: Math.ceil(page.total / ask.q.pageSize) });
   }),
 );
@@ -245,7 +254,7 @@ r.get(
     const query = req.query as Record<string, unknown>;
     const { sees, owner, email } = reach(as, who, query);
     const ask = shapeAsk(fields, query);
-    const row = await rowOf(table, String(req.params.row), sees, owner, email, reachFields(fields));
+    const row = await rowOf(table, String(req.params.row), sees, owner, email, reachFields(fields), owner ? await adders(table, owner, who) : []);
     res.json((await shape(table, as, who, [row], { ...ask, theirs: sees === "customer" }))[0]);
   }),
 );
@@ -261,14 +270,15 @@ const invalid = (issues: Problem[]) => new AppError(400, "ROW_INVALID", "Some va
 const plain = { lang: null, pick: null, expand: [] as string[] };
 
 /**
- * What only a key may write: a row's status and address, and the private fields (named as columns
- * that aren't there: the same answer a misspelt one gets).
+ * What only a key may write: a row's status and address (a role's holder may too), and the private fields
+ * (named as columns that aren't there: the same answer a misspelt one gets).
  */
 function keyOnly(table: ApiTable, as: As, body: { status?: unknown; slug?: unknown; values?: Record<string, unknown> }): Problem[] {
   if (as === "key") return [];
+  const role = as === "role";
   return [
-    ...(body.status !== undefined ? [{ field: "status", message: "Only a key sets the status" }] : []),
-    ...(body.slug !== undefined ? [{ field: "slug", message: "Only a key sets the address" }] : []),
+    ...(body.status !== undefined && !role ? [{ field: "status", message: "Only a key sets the status" }] : []),
+    ...(body.slug !== undefined && !role ? [{ field: "slug", message: "Only a key sets the address" }] : []),
     ...Object.keys(body.values ?? {}).filter((k) => table.private.includes(k.split(".")[0])).map((k) => ({ field: k, message: "No such column" })),
   ];
 }
@@ -276,8 +286,9 @@ function keyOnly(table: ApiTable, as: As, body: { status?: unknown; slug?: unkno
 /** So many rows a minute from one place (anyone), or from one shopper. False once they are used up. */
 async function mayWrite(req: Request, res: Response, table: ApiTable, as: As, who: Caller): Promise<boolean> {
   if (as === "key") return true;
-  const { count, resetAt } = as === "customer" ? await hit(`cust:${table.id}:${who.customer}`, MINUTE) : await hit(`pub:${table.id}:${ipOf(req)}`, MINUTE);
-  if (count <= (as === "customer" ? API_LIMITS.customerWritesPerMinute : API_LIMITS.publicWritesPerMinute)) return true;
+  const shopper = as === "customer" || as === "role";
+  const { count, resetAt } = shopper ? await hit(`cust:${table.id}:${who.customer}`, MINUTE) : await hit(`pub:${table.id}:${ipOf(req)}`, MINUTE);
+  if (count <= (shopper ? API_LIMITS.customerWritesPerMinute : API_LIMITS.publicWritesPerMinute)) return true;
   res.setHeader("Retry-After", String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))));
   res.status(429).json({ error: "RATE_LIMIT", message: "Too many rows from here this minute", retryAt: resetAt });
   return false;

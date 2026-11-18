@@ -11,6 +11,9 @@ export type CustomerRow = {
   createdAt: string;
   lastLoginAt: string | null;
   marketingOptIn: boolean;
+  /** The roles the owner gave them and the groups they are in (الأدوار والمجموعات). */
+  roles?: string[];
+  groups?: string[];
   orders: number;
   favourites: number;
 };

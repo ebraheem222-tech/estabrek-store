@@ -23,7 +23,8 @@ import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, KEY_LIMITS, ScopesSchema, forgetKeys, keyView, newSecret, type KeyLite } from "../../lib/apiKeys.js";
 import { openApi, typesText } from "../../lib/apiDocs.js";
-import { API_LIMITS, AccessSchema, DATA_API_BASE, PRIVATE_MAX, WHO, accessOf, docTables, fieldView, isOpen, privateOf, tableFrom } from "../../lib/dataApi.js";
+import { API_LIMITS, AccessSchema, DATA_API_BASE, PRIVATE_MAX, RolesSchema, WHO, accessOf, docTables, fieldView, groupOf, isOpen, privateOf, rolesOf, tableFrom } from "../../lib/dataApi.js";
+import { roleKeys } from "../../lib/shopperRoles.js";
 import { customerAccountsOn } from "../../lib/features.js";
 
 const r = Router();
@@ -31,12 +32,13 @@ const r = Router();
 const tableView = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }) => {
   const access = accessOf(c.api);
   const fields = (Array.isArray(c.fields) ? c.fields : []) as Field[];
+  const roles = rolesOf(c.api);
   // A private field that was since removed from the table isn't listed (it comes back with the field).
-  return { id: c.id, slug: c.slug, name: c.name, access, open: isOpen(access), private: privateOf(c.api).filter((id) => fields.some((f) => f.id === id)), fields: fields.map(fieldView) };
+  return { id: c.id, slug: c.slug, name: c.name, access, open: isOpen(access, roles), private: privateOf(c.api).filter((id) => fields.some((f) => f.id === id)), roles, group: groupOf(c.api), fields: fields.map(fieldView) };
 };
 const TABLE = { id: true, slug: true, name: true, fields: true, api: true } as const;
 
-const AccessBody = AccessSchema.extend({ private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).optional() }).strict();
+const AccessBody = AccessSchema.extend({ private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).optional(), roles: RolesSchema.optional(), group: z.boolean().optional() }).strict();
 
 r.get(
   "/",
@@ -65,15 +67,21 @@ r.get(
 r.put(
   "/tables/:id",
   asyncHandler(async (req, res) => {
-    const { private: asked, ...access } = AccessBody.parse(req.body ?? {});
+    const { private: asked, roles: askedRoles, group: askedGroup, ...access } = AccessBody.parse(req.body ?? {});
     const id = String(req.params.id);
     const was = await prisma.collection.findUnique({ where: { id }, select: { fields: true, api: true } });
     if (!was) throw new AppError(404, "NOT_FOUND", "No such table");
     const ids = new Set(((Array.isArray(was.fields) ? was.fields : []) as Field[]).map((f) => f.id));
     const unknown = (asked ?? []).filter((f) => !ids.has(f));
     if (unknown.length) throw new AppError(400, "NO_SUCH_FIELD", "No such field in this table", { fields: unknown });
-    // The private fields stay as they were when the request says nothing of them.
-    const kept = { ...access, private: asked ? [...new Set(asked)] : privateOf(was.api) };
+    // Only roles there are (admin → الزبائن → الأدوار والمجموعات).
+    const known = askedRoles ? await roleKeys() : null;
+    const missing = known ? [...new Set(Object.values(askedRoles!).flat())].filter((k) => !known.has(k)) : [];
+    if (missing.length) throw new AppError(400, "NO_SUCH_ROLE", "No such role", { roles: missing });
+    // The private fields, the roles and the group stay as they were when the request says nothing of them.
+    const roles = askedRoles ? { read: [...new Set(askedRoles.read ?? [])], create: [...new Set(askedRoles.create ?? [])], update: [...new Set(askedRoles.update ?? [])], delete: [...new Set(askedRoles.delete ?? [])] } : rolesOf(was.api);
+    const group = askedGroup ?? groupOf(was.api);
+    const kept = { ...access, private: asked ? [...new Set(asked)] : privateOf(was.api), ...(Object.values(roles).some((x) => x.length) ? { roles } : {}), ...(group ? { group } : {}) };
     // `updatedAt` is the table's own (its fields, its name): opening its API doesn't touch it.
     await prisma.$executeRaw`UPDATE "Collection" SET "api" = ${JSON.stringify(kept)}::jsonb WHERE "id" = ${id}`;
     res.json(tableView(await prisma.collection.findUniqueOrThrow({ where: { id }, select: TABLE })));

@@ -20,6 +20,10 @@ import type { CustomerRow } from "../../api/customers.api";
 import { relativeTime } from "../team/teamText";
 import { loc } from "@/lib/lang";
 import { tr } from "@/lib/words";
+import { say } from "../../studio/say";
+import { setShopper } from "../../api/shopperRoles.api";
+import { RolesGroupsCard } from "./RolesGroupsCard";
+import { ROLES_KEY, RolePicker, roleName, useShopperRoles } from "./rolesUi";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -42,6 +46,7 @@ export default function CustomersPage() {
   return (
     <div className="space-y-4" data-testid="customers-page">
       {first ? <AccountsSwitch enabled={first.accountsEnabled === true} emailReady={first.emailReady !== false} /> : null}
+      <RolesGroupsCard />
       <div className={box}>
         <h1 className="text-lg font-semibold">{tr("الزبائن", "Customers")}</h1>
         <p className="mt-1 text-sm text-white/60">
@@ -87,6 +92,7 @@ export default function CustomersPage() {
                           </Badge>
                         ) : null}
                         {c.marketingOptIn ? <Badge size="sm">{tr("موافقة على العروض", "Accepts offers")}</Badge> : null}
+                        <RoleBadges keys={c.roles ?? []} />
                       </span>
                       <span className="block truncate text-xs text-white/60" dir="ltr" style={{ textAlign: "right" }}>
                         {c.email}
@@ -287,6 +293,8 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
             </section>
           ) : null}
 
+          <RolesSection id={d.customer.id} roles={d.customer.roles ?? []} groups={d.customer.groups ?? []} canWrite={canWrite} />
+
           {canWrite ? (
             <section className="border-t border-white/10 pt-4">
               {d.customer.status === "SUSPENDED" ? (
@@ -312,6 +320,82 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
         onCancel={() => setConfirm(null)}
       />
     </Modal>
+  );
+}
+
+/** A shopper's roles, as small badges in the list. */
+function RoleBadges({ keys }: { keys: string[] }) {
+  const q = useShopperRoles();
+  if (!keys.length) return null;
+  return (
+    <>
+      {keys.map((k) => (
+        <Badge key={k} size="sm" variant="info">
+          {roleName(q.data?.roles.find((r) => r.key === k), k)}
+        </Badge>
+      ))}
+    </>
+  );
+}
+
+/** الأدوار والمجموعات of one shopper: ticked and saved together. */
+export function RolesSection({ id, roles, groups, canWrite }: { id: string; roles: string[]; groups: string[]; canWrite: boolean }) {
+  const qc = useQueryClient();
+  const q = useShopperRoles();
+  const [draft, setDraft] = useState({ roles, groups });
+  const key = `${roles.join(",")}|${groups.join(",")}`;
+  const [was, setWas] = useState(key);
+  if (was !== key) {
+    setWas(key);
+    setDraft({ roles, groups });
+  }
+  const save = useMutation({
+    mutationFn: () => setShopper(id, draft),
+    onSuccess: () => {
+      toast.success(say("انحفظ|Saved|נשמר"));
+      void qc.invalidateQueries({ queryKey: ["customers"] });
+      void qc.invalidateQueries({ queryKey: ROLES_KEY });
+    },
+    onError: (e) => toast.error(say("ما زبط|That didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) }),
+  });
+  if (!q.data) return null;
+  const all = q.data;
+  const dirty = draft.roles.join(",") !== roles.join(",") || draft.groups.join(",") !== groups.join(",");
+  return (
+    <section className="space-y-3" data-testid="customer-roles">
+      <h3 className="font-semibold">{say("الأدوار والمجموعات|Roles and groups|תפקידים וקבוצות")}</h3>
+      {all.roles.length ? (
+        <RolePicker roles={all.roles} value={draft.roles} onChange={(next) => setDraft({ ...draft, roles: next })} disabled={!canWrite} max={all.limits.rolesPerShopper} testid="customer-roles-pick" />
+      ) : (
+        <p className="text-xs text-white/50">{say("ما في أدوار لهلّق: بتنعمل فوق، بـ«الأدوار والمجموعات».|No roles yet: they are made above, in “Roles and groups”.|אין עדיין תפקידים: יוצרים אותם למעלה, ב«תפקידים וקבוצות».")}</p>
+      )}
+      {all.groups.length ? (
+        <div className="flex flex-wrap gap-1.5" data-testid="customer-groups-pick">
+          {all.groups.map((g) => {
+            const on = draft.groups.includes(g.id);
+            return (
+              <button
+                key={g.id}
+                type="button"
+                aria-pressed={on}
+                disabled={!canWrite || (!on && draft.groups.length >= all.limits.groupsPerShopper)}
+                onClick={() => setDraft({ ...draft, groups: on ? draft.groups.filter((x) => x !== g.id) : [...draft.groups, g.id] })}
+                className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-emerald-300/60 bg-emerald-400/20 text-white" : "border-white/15 text-white/60"}`}
+                data-testid={`customer-groups-pick-${g.id}`}
+              >
+                {on ? "✓ " : ""}
+                {g.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {canWrite && dirty ? (
+        <Button size="sm" isLoading={save.isPending} onClick={() => save.mutate()} data-testid="customer-roles-save">
+          {say("احفظ|Save|שמירה")}
+        </Button>
+      ) : null}
+    </section>
   );
 }
 

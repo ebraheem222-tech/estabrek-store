@@ -218,7 +218,7 @@ const PROBLEMS: Array<[RegExp, string]> = [
   [/^"(.+)" can't be asked "(.+)"$/, "الحقل «{1}» ما بينسأل هالسؤال|The field “{1}” can't be asked that|אי אפשר לשאול כך את השדה «{1}»"],
   [/^Nothing is kept under "(.+)" before this step$/, "ما في شي محفوظ باسم «{1}» قبل هالخطوة|Nothing is kept under “{1}” before this step|שום דבר לא נשמר בשם «{1}» לפני השלב הזה"],
   [/^No input called "(.+)"$/, "ما في مدخل اسمه «{1}»|No input called “{1}”|אין קלט בשם «{1}»"],
-  [/^The caller has no "(.+)"$/, "المنادي ما إله «{1}» (إله: kind, id, name, email)|The caller has no “{1}” (it has: kind, id, name, email)|לקורא אין «{1}» (יש לו: kind, id, name, email)"],
+  [/^The caller has no "(.+)"$/, "المنادي ما إله «{1}» (إله: kind, id, name, email, roles, groups)|The caller has no “{1}” (it has: kind, id, name, email, roles, groups)|לקורא אין «{1}» (יש לו: kind, id, name, email, roles, groups)"],
   [/^"(\{\{.+\}\})" isn't a name$/, "«{1}» مش اسم|“{1}” isn't a name|«{1}» אינו שם"],
   [/^Compared with what\?$/, "مقارنة مع شو؟|Compared with what?|השוואה למה?"],
   [/^What is compared\?$/, "شو اللي بينقارن؟|What is compared?|מה מושווה?"],

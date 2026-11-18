@@ -13,6 +13,10 @@
  * email; to anyone else as a first name and whether it is them (`personView`), and without a key it
  * can't be asked about (a filter would say whether someone is in the table).
  *
+ * Roles and groups (stage 2, item 3; lib/shopperRoles.ts): a table may also let the shoppers holding a role do an
+ * act on every row, whatever its status (`roles`; a moderator, a seller), and let a shopper read the rows their
+ * group's members added beside their own (`group`). A role never reaches a key's private fields.
+ *
  * A shop page's list (lib/collectionTree.ts LIST_FEEDS) reads its rows here in the visitor's browser:
  * `mine=added` and `mine=tome` are the two halves of a shopper's own rows, and `shown=1` answers each row
  * also the way a page shows it (`asShown`).
@@ -33,8 +37,19 @@ const OWNED = ["off", "key", "customer"] as const;
 const ACT_WHO = { read: z.enum(WHO), create: z.enum(WHO), update: z.enum(OWNED), delete: z.enum(OWNED) };
 export const AccessSchema = z.object(ACT_WHO).strict();
 export const PRIVATE_MAX = 40;
-/** As kept on the table: who may do what, and the fields only a key sees or writes. */
-export const SettingsSchema = z.object({ ...ACT_WHO, private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).default([]) }).strict();
+/** A shopper role's key ("seller"), as tables and doors name it. */
+export const ROLE_KEY = /^[a-z][a-z0-9_-]{1,30}$/;
+export const ROLES_PER_ACT = 10;
+/** The roles whose holders do an act on every row. */
+export type ActRoles = Record<Act, string[]>;
+export const NO_ROLES: ActRoles = { read: [], create: [], update: [], delete: [] };
+const RoleList = z.array(z.string().regex(ROLE_KEY)).max(ROLES_PER_ACT);
+export const RolesSchema = z.object({ read: RoleList.optional(), create: RoleList.optional(), update: RoleList.optional(), delete: RoleList.optional() }).strict();
+/**
+ * As kept on the table: who may do what, the fields only a key sees or writes, the roles that do an act on every row,
+ * and whether a shopper reads their group's rows too.
+ */
+export const SettingsSchema = z.object({ ...ACT_WHO, private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).default([]), roles: RolesSchema.optional(), group: z.boolean().optional() }).strict();
 
 /** A table's access as kept; anything that isn't one is closed. */
 export function accessOf(raw: unknown): TableAccess {
@@ -46,24 +61,47 @@ export function privateOf(raw: unknown): string[] {
   const parsed = SettingsSchema.safeParse(raw);
   return parsed.success ? [...new Set(parsed.data.private)] : [];
 }
-export const isOpen = (access: TableAccess) => ACTS.some((act) => access[act] !== "off");
+/** The roles a table lets do each act on every row, as kept (each once). */
+export function rolesOf(raw: unknown): ActRoles {
+  const parsed = SettingsSchema.safeParse(raw);
+  const r = parsed.success ? parsed.data.roles : undefined;
+  return { read: [...new Set(r?.read ?? [])], create: [...new Set(r?.create ?? [])], update: [...new Set(r?.update ?? [])], delete: [...new Set(r?.delete ?? [])] };
+}
+/** A shopper reads their group's rows too. */
+export const groupOf = (raw: unknown): boolean => {
+  const parsed = SettingsSchema.safeParse(raw);
+  return parsed.success && parsed.data.group === true;
+};
+/** Open to someone: an act for a key, a shopper or everyone, or for the holders of a role. */
+export const isOpen = (access: TableAccess, roles: ActRoles = NO_ROLES) => ACTS.some((act) => access[act] !== "off" || roles[act].length > 0);
 
 /** Where the routes start on the server. */
 export const DATA_API_BASE = "/v1/data";
 
-/** A table as the API knows it: its address, its fields, who reaches it, and the fields only a key sees. */
-export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess; private: string[] };
-export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api), private: privateOf(c.api) });
+/** A table as the API knows it: its address, its fields, who reaches it, the fields only a key sees, its roles and groups. */
+export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess; private: string[]; roles: ActRoles; group: boolean };
+export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api), private: privateOf(c.api), roles: rolesOf(c.api), group: groupOf(c.api) });
 
-/** How a request gets in: through its key (every row), as a signed-in shopper (their own rows), or as anyone (published rows). */
-export type As = "key" | "customer" | "public";
+/**
+ * How a request gets in: through its key (every row), as a shopper holding one of the act's roles (every row, without
+ * the private fields), as a signed-in shopper (their own rows), or as anyone (published rows).
+ */
+export type As = "key" | "role" | "customer" | "public";
 export type Verdict = { as: As } | { no: "closed" | "keyNeeded" | "keyLacks" | "signInNeeded" };
 
-/** `customer`: the signed-in shopper's id, when the request is one's. */
-export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableId: string, customer: string | null = null): Verdict {
+/**
+ * `customer`: the signed-in shopper's id, when the request is one's; `roles`: the roles that shopper holds and the
+ * table's roles (a holder of one of the act's roles does it on every row, even where the act is off to shoppers).
+ */
+export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableId: string, customer: string | null = null, roles: { mine: readonly string[]; table: ActRoles } | null = null): Verdict {
   const who = access[act];
-  if (who === "off") return { no: "closed" };
-  if (key && keyCovers(key.scopes, tableId, act)) return { as: "key" };
+  const byRole = roles?.table[act] ?? [];
+  if (who === "off" && !byRole.length) return { no: "closed" };
+  // An act that is off stays off to keys, also where a role does it.
+  if (who !== "off" && key && keyCovers(key.scopes, tableId, act)) return { as: "key" };
+  if (customer && roles && byRole.some((r) => roles.mine.includes(r))) return { as: "role" };
+  // Off to everyone but a role's holders: nobody else, and someone not signed in may be one.
+  if (who === "off") return { no: !key && !customer ? "signInNeeded" : "closed" };
   if (who === "public") return { as: "public" };
   if (who === "customer" && customer) return { as: "customer" };
   if (key) return { no: "keyLacks" };
@@ -97,19 +135,19 @@ export function personView(email: string, ownerId: string | null, viewer: Viewer
  * entered ("key", "customer" or "public"; null = not for this caller), the fields it is answered
  * (`fields`) and may write (`writeFields`, when they differ), and which of its relations it sees.
  */
-export type DocTable = { slug: string; name: unknown; fields: Field[]; writeFields?: Field[]; acts: Record<Act, Exclude<Who, "off"> | null>; links: Set<string> };
+export type DocTable = { slug: string; name: unknown; fields: Field[]; writeFields?: Field[]; acts: Record<Act, Exclude<Who, "off"> | "role" | null>; links: Set<string> };
 
 /** The tables a caller reaches, as the documents describe them; a table it can do nothing with is left out. */
-export function docTables(all: ApiTable[], key: KeyLite | null, customer: string | null = null): DocTable[] {
+export function docTables(all: ApiTable[], key: KeyLite | null, customer: string | null = null, mine: readonly string[] = []): DocTable[] {
   const byId = new Map(all.map((t) => [t.id, t]));
   return all.flatMap((t) => {
     const how = new Map<Act, As>();
     for (const act of ACTS) {
-      const verdict = allow(t.access, act, key, t.id, customer);
+      const verdict = allow(t.access, act, key, t.id, customer, { mine, table: t.roles ?? NO_ROLES });
       if ("as" in verdict) how.set(act, verdict.as);
     }
     if (!how.size) return [];
-    const acts = Object.fromEntries(ACTS.map((act) => [act, how.has(act) ? t.access[act] : null])) as DocTable["acts"];
+    const acts = Object.fromEntries(ACTS.map((act) => [act, !how.has(act) ? null : how.get(act) === "role" ? "role" : t.access[act]])) as DocTable["acts"];
     // Answered as the caller reads (or, for a table it only writes, as it writes); written as its widest write.
     const fields = seenFields(t, how.get("read") ?? [...how.values()][0]);
     const writes = [how.get("create"), how.get("update")].filter((x): x is As => !!x);
