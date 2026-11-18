@@ -307,16 +307,8 @@ export function toTemplate(input: { key: string; version: string; name: Local; n
         else (note({ what: "stepFnOut", fn: f.name, at }), (s.fn = ""));
       }
       if (s.act === "ready" && typeof s.via === "string" && s.via) (note({ what: "readyOut", fn: f.name, at }), (s.via = ""));
-      if (s.act === "http") {
-        for (const name of secretsIn([s.url, s.headers, s.body])) needs.secrets.add(name);
-        const host = typeof s.url === "string" ? hostIn(s.url) : null;
-        if (host) needs.sites.add(host);
-      }
-      if (s.act === "code" && typeof s.code === "string") {
-        for (const name of codeSecrets(s.code)) needs.secrets.add(name);
-        for (const m of s.code.matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)) needs.sites.add(m[1].toLowerCase());
-      }
     });
+    needsOf([def], needs);
     type TriggerOut = { kind: TriggerKind; config: unknown; slug?: string; enabled: boolean };
     const triggers = f.triggers.flatMap((t): TriggerOut[] => {
       if (t.kind === "row") {
@@ -351,6 +343,23 @@ export function toTemplate(input: { key: string; version: string; name: Local; n
     exportedAt: (input.now ?? new Date()).toISOString(),
   });
   return { template, notes };
+}
+
+/** The secrets (by name) and the sites (by host) the functions' steps name: what another store keeps for itself. */
+export function needsOf(defs: unknown[], into = { secrets: new Set<string>(), sites: new Set<string>() }) {
+  for (const def of defs)
+    eachStep(def, (s) => {
+      if (s.act === "http") {
+        for (const name of secretsIn([s.url, s.headers, s.body])) into.secrets.add(name);
+        const host = typeof s.url === "string" ? hostIn(s.url) : null;
+        if (host) into.sites.add(host);
+      }
+      if (s.act === "code" && typeof s.code === "string") {
+        for (const name of codeSecrets(s.code)) into.secrets.add(name);
+        for (const m of s.code.matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)) into.sites.add(m[1].toLowerCase());
+      }
+    });
+  return into;
 }
 
 /** A template's key from a feature's name, where the name has Latin letters; else one from its id. */

@@ -11,6 +11,7 @@ import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { hasPermission } from "../../middleware/access.js";
 import { TEMPLATE_KEY, TEMPLATE_VERSION } from "../../lib/featureTemplate.js";
 import { REMOVE_ROWS, exportFeature, installTemplate, installedView, previewInstall, removalOf, removeFeature } from "../../lib/featureInstall.js";
+import { galleryFile, galleryList } from "../../lib/gallery/index.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -35,6 +36,8 @@ import { REMOVE_ROWS, exportFeature, installTemplate, installedView, previewInst
  * GET    /admin/my-features/:id/export?key&version — the feature as a template file, with what couldn't go into it
  * POST   /admin/my-features/templates/preview { template } — what installing it would make here; nothing is written
  * POST   /admin/my-features/templates/install { template } — installed as a draft, under a new feature that is off
+ * GET    /admin/my-features/templates/gallery     — the ready examples (functions, APIs, features: lib/gallery)
+ * GET    /admin/my-features/templates/gallery/:key — one example's file, shown and installed like any file
  * GET    /admin/my-features/:id/removal              — what removing it with its things would take, what stops it
  * POST   /admin/my-features/:id/remove { rows: "keep" | "delete" } — the feature and its functions, pages and
  *                                                    tables (their rows kept, in no feature, or deleted)
@@ -153,6 +156,22 @@ r.post(
 /* ---------------- Templates ---------------- */
 
 const TemplateBody = z.object({ template: z.unknown(), lang: z.enum(["ar", "en", "he"]).optional() }).strict();
+
+r.get(
+  "/templates/gallery",
+  asyncHandler(async (_req, res) => {
+    res.json(galleryList());
+  }),
+);
+
+r.get(
+  "/templates/gallery/:key",
+  asyncHandler(async (req, res) => {
+    const template = galleryFile(String(req.params.key));
+    if (!template) throw new AppError(404, "TEMPLATE_NOT_FOUND", "No such example in the gallery");
+    res.json({ template });
+  }),
+);
 
 r.post(
   "/templates/preview",

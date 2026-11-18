@@ -64,6 +64,16 @@ export default function MyFeaturesPage() {
         ) : null}
       </section>
 
+      <section className={`${box} flex flex-wrap items-center justify-between gap-3`} data-testid="features-gallery">
+        <div className="min-w-0">
+          <h2 className="font-medium">{say("المعرض: أكتر من 300 جاهز|The gallery: over 300 ready to use|הגלריה: יותר מ-300 מוכנים")}</h2>
+          <p className="mt-1 text-xs text-white/60">{say("functions، APIs، وميزات كاملة (مرتجعات، حجوزات، نقاط، تذاكر…). بتختار، بتشوف، وبتثبّت كمسودة.|Functions, APIs and whole features (returns, bookings, points, tickets…). Pick, look, install as a draft.|פונקציות, APIs ותכונות שלמות (החזרות, תורים, נקודות, פניות…). בוחרים, בודקים ומתקינים כטיוטה.")}</p>
+        </div>
+        <Link to="/admin/my-features/gallery" className="inline-flex h-9 items-center rounded-xl bg-white/10 px-4 text-sm font-medium text-white hover:bg-white/15" data-testid="features-gallery-link">
+          {say("افتح المعرض|Open the gallery|פתיחת הגלריה")}
+        </Link>
+      </section>
+
       {canInstall ? <TemplateInstall /> : null}
 
       <section className={box}>

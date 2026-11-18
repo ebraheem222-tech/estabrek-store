@@ -4,7 +4,7 @@
 // leaves with everything it holds, its tables' rows kept or deleted, as the owner says.
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { getApiErrorMessage } from "../../api/http";
 import { adminLang } from "../../lib/lang";
@@ -32,18 +32,19 @@ function saveJson(name: string, value: unknown) {
   window.setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-/* ---------------- A feature from a template file ---------------- */
+/* ---------------- A template shown, then installed ---------------- */
 
-export function TemplateInstall() {
+/**
+ * A template file (picked by the owner, or one of the gallery's) shown before anything is written,
+ * then installed as a draft. `id` tells two files apart (the same file asked again isn't asked twice).
+ */
+export function InstallFlow({ id, template }: { id: string; template: unknown }) {
   const lang = adminLang();
   const go = useNavigate();
   const qc = useQueryClient();
-  const [file, setFile] = useState<unknown>(null);
-  const [bad, setBad] = useState<string | null>(null);
-  const [preview, setPreview] = useState<TemplatePreview | null>(null);
-  const look = useMutation({ mutationFn: (template: unknown) => FeaturesAPI.previewTemplate(template), onSuccess: setPreview, onError });
+  const look = useQuery({ queryKey: ["template-preview", id], queryFn: () => FeaturesAPI.previewTemplate(template), gcTime: 0, retry: false });
   const install = useMutation({
-    mutationFn: () => FeaturesAPI.installTemplate(file, lang),
+    mutationFn: () => FeaturesAPI.installTemplate(template, lang),
     onSuccess: (f: Feature) => {
       qc.setQueryData(["my-features", f.id], f);
       void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
@@ -52,18 +53,38 @@ export function TemplateInstall() {
     },
     onError,
   });
+  if (look.isLoading) return <p className="mt-2 text-sm text-white/60">{say("عم نقرأ الملف…|Reading the file…|קוראים את הקובץ…")}</p>;
+  if (look.isError || !look.data) return <p className="mt-2 text-sm text-red-300">{getApiErrorMessage(look.error)}</p>;
+  return (
+    <>
+      <PreviewView preview={look.data} lang={lang} />
+      {look.data.ok ? (
+        <div className="mt-4">
+          <Button size="sm" variant="primary" isLoading={install.isPending} onClick={() => install.mutate()} data-testid="template-install-go">
+            {say("ثبّتها كمسودة|Install it as a draft|התקנה כטיוטה")}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/* ---------------- A feature from a template file ---------------- */
+
+export function TemplateInstall() {
+  const [file, setFile] = useState<{ id: string; json: unknown } | null>(null);
+  const [bad, setBad] = useState<string | null>(null);
   const pick = async (f: File | undefined) => {
-    setPreview(null);
+    setFile(null);
     setBad(null);
     if (!f) return;
     const json = readJson(await f.text());
     if (json === null) return setBad(say("هاد الملف مش JSON. ملف القالب بينتهي بـ .feature.json|This file isn't JSON. A template file ends in .feature.json|הקובץ הזה אינו JSON. קובץ תבנית מסתיים ב-.feature.json"));
-    setFile(json);
-    look.mutate(json);
+    setFile({ id: `${f.name}:${f.size}:${f.lastModified}:${Math.random()}`, json });
   };
   return (
     <section className={box} data-testid="template-install">
-      <h2 className="font-medium">{say("ميزة من قالب|A feature from a template|תכונה מתבנית")}</h2>
+      <h2 className="font-medium">{say("ميزة من ملف قالب|A feature from a template file|תכונה מקובץ תבנית")}</h2>
       <p className="mt-1 text-xs text-white/60">
         {say(
           "عندك ملف قالب ميزة (.feature.json)؟ بتشوف شو رح ينضاف قبل ما ينكتب شي. بيتثبّت كمسودة: الميزة موقّفة، الـ functions مش منشورة، والصفحات مسودات، لحد ما تراجعهم.|Got a feature template file (.feature.json)? You see what it would add before anything is written. It is installed as a draft: the feature off, its functions unpublished, its pages drafts, until you have looked at them.|יש לכם קובץ תבנית תכונה (.feature.json)? רואים מה יתווסף לפני שנכתב משהו. היא מותקנת כטיוטה: התכונה כבויה, הפונקציות לא מפורסמות והעמודים טיוטות, עד שבודקים אותם.",
@@ -71,15 +92,7 @@ export function TemplateInstall() {
       </p>
       <input type="file" accept=".json,application/json" className="mt-3 block max-w-full text-sm text-white/80" onChange={(e) => void pick(e.target.files?.[0])} data-testid="template-file" />
       {bad ? <p className="mt-2 text-sm text-red-300" data-testid="template-bad">{bad}</p> : null}
-      {look.isPending ? <p className="mt-2 text-sm text-white/60">{say("عم نقرأ الملف…|Reading the file…|קוראים את הקובץ…")}</p> : null}
-      {preview ? <PreviewView preview={preview} lang={lang} /> : null}
-      {preview?.ok ? (
-        <div className="mt-4">
-          <Button size="sm" variant="primary" isLoading={install.isPending} onClick={() => install.mutate()} data-testid="template-install-go">
-            {say("ثبّتها كمسودة|Install it as a draft|התקנה כטיוטה")}
-          </Button>
-        </div>
-      ) : null}
+      {file ? <InstallFlow key={file.id} id={file.id} template={file.json} /> : null}
     </section>
   );
 }
