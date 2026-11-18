@@ -73,7 +73,7 @@ export type TemplatePreview =
   | {
       ok: boolean;
       template: { key: string; version: string; name: Local; note: Local | null };
-      tables: Array<{ key: string; name: Local; slug: string; was: string | null; fields: number; api: TableAccess; itemPage: boolean }>;
+      tables: Array<{ key: string; name: Local; slug: string; was: string | null; fields: number; api: TableAccess; itemPage: boolean; /** Ready rows it comes with (a whole site's menu, team…). */ rows?: number }>;
       functions: Array<{ key: string; name: string; steps: number; triggers: Array<{ kind: string; slug: string | null; was: string | null }> }>;
       pages: Array<{ key: string; name: string; slug: string; was: string | null }>;
       needs: { secrets: Array<{ name: string; kept: boolean }>; sites: Array<{ host: string; allowed: boolean }> };

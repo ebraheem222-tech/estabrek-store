@@ -113,7 +113,9 @@ describe("the list's panel", () => {
     expect((screen.getByTestId("list-feed") as HTMLSelectElement).value).toBe("");
     expect(options("list-feed")).toEqual(["The published items, for every visitor", "What the table lets the visitor read", "The shopper's rows: added by them or sent to them", "The rows the shopper added", "The rows sent to the shopper"]);
     expect(options("list-sort")).toEqual(["Newest", "Oldest", "My order", "A–Z"]);
-    expect(screen.queryByTestId("list-filters")).toBeNull();
+    // Drawn with the page, a list keeps the rows its filters ask for too (a menu's starters).
+    fireEvent.click(screen.getByTestId("list-filter-add"));
+    expect(saved.where).toEqual([{ field: "state", op: "is", value: "waiting" }]);
     expect(screen.queryByTestId("list-signin")).toBeNull();
     expect(m.asked).toBe(0);
   });
@@ -155,12 +157,13 @@ describe("the list's panel", () => {
     expect(screen.getByTestId("list-live-help").textContent).toContain("{{row_id}}");
     expect(screen.getByTestId("list-live-help").textContent).toContain("{{row_note}}");
 
-    // Back to the published items: what only such a list has goes.
+    // Back to the published items: what only such a list has goes; its filters stay (the page keeps those rows).
     pick("list-feed", "");
     expect(saved).not.toHaveProperty("feed");
-    expect(saved).not.toHaveProperty("where");
     expect(saved).not.toHaveProperty("signin");
-    expect(screen.queryByTestId("list-filters")).toBeNull();
+    expect((saved.where as unknown[]).length).toBe(3);
+    expect(screen.getByTestId("list-filters")).toBeTruthy();
+    expect(screen.queryByTestId("list-signin")).toBeNull();
   });
 
   it("says when the table's settings would leave the list empty", async () => {

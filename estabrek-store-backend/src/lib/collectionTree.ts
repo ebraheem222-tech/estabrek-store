@@ -208,6 +208,52 @@ export function listFilters(props: Record<string, unknown>): ListFilter[] {
 }
 
 const words = (v: unknown): Local | undefined => (v && typeof v === "object" && !Array.isArray(v) && Object.values(v).some((x) => typeof x === "string" && x.trim()) ? (v as Local) : undefined);
+
+/** A value as words to compare: each language of words, a choice's id, a number, a date… */
+function valueWords(v: unknown): string[] {
+  if (v === undefined || v === null || v === "") return [];
+  if (Array.isArray(v)) return v.flatMap(valueWords);
+  if (typeof v === "object") return Object.values(v as Record<string, unknown>).filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim());
+  return [String(v)];
+}
+/** A value (or a filter's words) as a number to compare with: a number, or a date's time; else null. */
+function valueNumber(v: unknown, type: FieldType): number | null {
+  if (type === "date" || type === "datetime") { const t = typeof v === "string" && v ? new Date(v).getTime() : NaN; return Number.isNaN(t) ? null : t; }
+  if (type !== "number" && type !== "money") return null;
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+/**
+ * Does a row hold what a list's filters ask? For a list drawn with the page (a menu's starters, the team's
+ * doctors): its rows are kept here, before its order and how many it shows. A filter on a field the table
+ * no longer has asks nothing.
+ */
+export function rowMatches(item: ItemLite, filters: ListFilter[], collection: CollectionLite | null): boolean {
+  return filters.every((f) => {
+    const field = collection?.fields.find((x) => x.id === f.field);
+    if (!field) return true;
+    const v = item.data?.[f.field];
+    const got = valueWords(v);
+    const want = (f.value ?? "").trim().toLowerCase();
+    switch (f.op) {
+      case "empty": return got.length === 0;
+      case "notEmpty": return got.length > 0;
+      case "isTrue": return v === true;
+      case "isFalse": return v !== true;
+      case "contains": return got.some((x) => x.toLowerCase().includes(want));
+      default: break;
+    }
+    const a = valueNumber(v, field.type);
+    const b = valueNumber(f.value, field.type);
+    if (f.op === "is" || f.op === "isNot") {
+      const same = a !== null && b !== null ? a === b : got.some((x) => x.toLowerCase() === want);
+      return f.op === "is" ? same : !same;
+    }
+    if (a === null || b === null) return false;
+    return f.op === "gt" ? a > b : f.op === "gte" ? a >= b : f.op === "lt" ? a < b : a <= b;
+  });
+}
+
 /** A card without lists inside it (a list read in the browser repeats its card there, where no list is drawn). */
 const withoutLists = (n: Node): Node => (n.children ? { ...n, children: n.children.filter((c) => c.type !== "collectionList").map(withoutLists) } : n);
 
@@ -246,7 +292,10 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
       const card = n.children?.[0];
       const got = data.get(String(n.props.collectionId));
       const { sort, limit } = listQuery(n.props);
-      const items = sortItems(got?.items ?? [], sort, got?.collection ?? null).slice(0, limit);
+      // Drawn with the page, a list keeps the rows its filters ask for (read in the browser, the API asks them).
+      const asked = listFilters(n.props);
+      const pool = asked.length && !listFeed(n.props) ? (got?.items ?? []).filter((item) => rowMatches(item, asked, got?.collection ?? null)) : got?.items ?? [];
+      const items = sortItems(pool, sort, got?.collection ?? null).slice(0, limit);
       const columns = typeof n.props.columns === "number" && n.props.columns >= 1 && n.props.columns <= 6 ? n.props.columns : 3;
       const style = { ...(n.style ?? {}), base: { columns, gap: 24, ...(n.style?.base ?? {}) }, tablet: { columns: Math.min(columns, 2), ...(n.style?.tablet ?? {}) }, mobile: { columns: 1, ...(n.style?.mobile ?? {}) } };
       const { collectionId: _c, limit: _l, sort: _s, columns: _col, empty: _e, layout: _lay, feed: _f, where: _w, signin: _si, ...rest } = n.props;

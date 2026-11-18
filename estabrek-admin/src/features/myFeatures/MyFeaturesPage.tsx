@@ -74,6 +74,16 @@ export default function MyFeaturesPage() {
         </Link>
       </section>
 
+      <section className={`${box} flex flex-wrap items-center justify-between gap-3`} data-testid="features-sites">
+        <div className="min-w-0">
+          <h2 className="font-medium">{say("مواقع كاملة لمجالك|Whole sites for your field|אתרים שלמים לתחום שלכם")}</h2>
+          <p className="mt-1 text-xs text-white/60">{say("مطعم، عيادة، صالون، نادي، قاعة أفراح… صفحات من مكتبة الأقسام، وقوائمها بتقرأ من جداول فيها سطور جاهزة.|A restaurant, a clinic, a salon, a gym, a wedding hall… pages from the section library, their lists reading tables with ready rows.|מסעדה, מרפאה, סלון, חדר כושר, אולם אירועים… עמודים מספריית הקטעים, והרשימות שלהם קוראות מטבלאות עם שורות מוכנות.")}</p>
+        </div>
+        <Link to="/admin/my-features/sites" className="inline-flex h-9 items-center rounded-xl bg-white/10 px-4 text-sm font-medium text-white hover:bg-white/15" data-testid="features-sites-link">
+          {say("شوف المواقع|See the sites|לאתרים")}
+        </Link>
+      </section>
+
       {canInstall ? <TemplateInstall /> : null}
 
       <section className={box}>

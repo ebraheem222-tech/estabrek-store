@@ -118,6 +118,17 @@ describe("Upgrading from the feature's page", () => {
     expect((await screen.findByTestId("feature-upgrade-refused")).textContent).toContain("nothing to upgrade");
   });
 
+  test("a whole site: its newer version is built here, from the admin's own sites", async () => {
+    m.getFeature.mockResolvedValue(feature({ template: { key: "site-restaurant", version: "0.9.0", name: L("مطعم", "Restaurant", "מסעדה"), installedAt: "2026-11-18T10:00:00Z" } }));
+    show();
+    expect((await screen.findByTestId("feature-upgrade-newer")).textContent).toContain("The gallery has a newer version: 1.0.0 (you have 0.9.0)");
+    fireEvent.click(screen.getByTestId("feature-upgrade-gallery"));
+    await screen.findByTestId("feature-upgrade-preview");
+    expect(m.galleryFile).not.toHaveBeenCalled();
+    const sent = m.previewUpgrade.mock.calls[0][1] as { key: string; version: string; pages: unknown[] };
+    expect([sent.key, sent.version, sent.pages.length]).toEqual(["site-restaurant", "1.0.0", 7]);
+  });
+
   test("not for a feature that didn't come from a template, or without the permissions", async () => {
     m.getFeature.mockResolvedValue(feature({ template: null }));
     show();

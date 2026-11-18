@@ -14,6 +14,7 @@ import * as FeaturesAPI from "../../api/myFeatures.api";
 import type { Feature, Removal, TemplateNote, TemplatePreview } from "../../api/myFeatures.api";
 import { tableName } from "../functions/fnDraft";
 import { apiLine, rowsText } from "./featuresText";
+import { readyRowsText } from "./sitesText";
 import { KEY, VERSION, fileName, movedText, nextMinor, noteText, problemText, readJson, stepsText, triggerKindText } from "./templatesText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -151,6 +152,11 @@ function PreviewView({ preview, lang }: { preview: TemplatePreview; lang: "ar" |
                   </bdi>
                 </div>
                 <div className="text-xs text-white/60">{apiLine(x.api, lang)}</div>
+                {x.rows ? (
+                  <div className="text-xs text-emerald-200/80" data-testid={`template-table-rows-${x.key}`}>
+                    {readyRowsText(x.rows, lang)}
+                  </div>
+                ) : null}
                 {moved(x.was, x.slug)}
               </li>
             ))}

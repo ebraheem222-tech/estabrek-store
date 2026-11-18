@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 const m = vi.hoisted(() => ({ row: null as any, revalidate: vi.fn(), clear: vi.fn(), db: { page: { findUnique: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() } } }));
 vi.mock("../lib/prisma.js", () => ({ prisma: m.db }));
-vi.mock("../lib/cache.js", () => ({ cacheDel: m.clear, cacheDelPrefix: m.clear }));
+vi.mock("../lib/cache.js", () => ({ cacheDel: m.clear, cacheDelPrefix: m.clear, invalidateGroups: () => {} }));
 vi.mock("../lib/storefrontRevalidate.js", () => ({ revalidateStorefront: m.revalidate }));
 import { attemptPublicationDelivery, newPublicationDelivery, retryPublicationDeliveries } from "../lib/pagePublicationDelivery.js";
 const now = new Date("2026-11-07T10:00:00Z");

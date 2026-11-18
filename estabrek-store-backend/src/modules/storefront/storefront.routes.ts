@@ -361,7 +361,8 @@ r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asy
   if (!page) {
     // A collection item's page (/<collection>/<item>, lib/collections.ts): its template filled with it.
     const item = await collectionItemPage(slug);
-    if (!item) return res.status(404).json({ error: "NOT_FOUND" });
+    // A table in a feature that is switched off (a site installed as a draft) has no pages on the shop.
+    if (!item || (await switchedOff()).tables.has(item.collection.id)) return res.status(404).json({ error: "NOT_FOUND" });
     const words = (v: Record<string, string> | undefined) => (v ? v[locale] ?? v.ar ?? v.en ?? v.he ?? null : null);
     const out = pageForShop({ ...item.template, slug, sections: [], translations: [] }, { tree: await withCollections(await withComponents(await withBlocks(item.tree))) });
     return res.json({ ...out, name: words(item.seo.title) ?? item.template.name, seoTitle: words(item.seo.title), seoDescription: words(item.seo.description)?.slice(0, 300) ?? null, ogImageUrl: item.seo.image ?? null, collectionItem: { collection: item.collection.slug, item: item.item.slug } });

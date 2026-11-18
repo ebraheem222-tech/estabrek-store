@@ -72,7 +72,7 @@ export function CollectionListPanel({ node, collections, lang, busy, onProps }: 
         </select>
       </label>
       <label className="block text-[11px] text-white/55">{say("سطور مين|Whose rows|השורות של מי")}
-        <select className={control} disabled={busy} value={feed} onChange={(e) => set(e.target.value ? { feed: e.target.value, sort: p.sort === "oldest" ? "oldest" : "newest" } : { feed: undefined, where: undefined, signin: undefined })} data-testid="list-feed">
+        <select className={control} disabled={busy} value={feed} onChange={(e) => set(e.target.value ? { feed: e.target.value, sort: p.sort === "oldest" ? "oldest" : "newest" } : { feed: undefined, signin: undefined })} data-testid="list-feed">
           {(["", ...LIST_FEEDS] as const).map((f) => <option key={f} value={f}>{say(FEED_NAME[f])}</option>)}
         </select>
       </label>
@@ -93,38 +93,38 @@ export function CollectionListPanel({ node, collections, lang, busy, onProps }: 
       <label className="block text-[11px] text-white/55">{say("لما ما في عناصر|When there are no items|כשאין פריטים")}
         <input className={control} disabled={busy} defaultValue={words(p.empty, lang)} key={`empty:${words(p.empty, lang)}`} onBlur={(e) => { const v = e.target.value.trim(); const next = { ...(p.empty ?? {}), [lang]: v }; if (!v) delete next[lang]; set({ empty: Object.keys(next).length ? next : undefined }); }} data-testid="list-empty" />
       </label>
+      <div className="space-y-2" data-testid="list-filters">
+        <div className="text-[11px] text-white/55">{say("بس السطور اللي|Only the rows where|רק השורות שבהן")}</div>
+        {where.map((f, i) => {
+          const field = collection?.fields.find((x) => x.id === f.field);
+          const ops = (field && OPS_FOR[field.type]) || [f.op];
+          const change = (patch: Partial<ListFilter>) => setWhere(where.map((x, k) => (k === i ? fitFilter({ ...x, ...patch }, patch.field ? collection?.fields.find((y) => y.id === patch.field) : field) : x)));
+          return (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-1" data-testid={`list-filter-${i}`}>
+              <select className={control} disabled={busy} value={f.field} onChange={(e) => change({ field: e.target.value })} aria-label={say("الحقل|Field|שדה")} data-testid={`list-filter-${i}-field`}>
+                {!fields.some((x) => x.id === f.field) ? <option value={f.field}>{f.field}</option> : null}
+                {fields.map((x) => <option key={x.id} value={x.id}>{words(x.name, lang) || x.id}</option>)}
+              </select>
+              <select className={control} disabled={busy} value={f.op} onChange={(e) => change({ op: e.target.value as ListOp })} aria-label={say("السؤال|Question|שאלה")} data-testid={`list-filter-${i}-op`}>
+                {ops.map((op) => <option key={op} value={op}>{say(opName(op, (field?.type ?? "text") as FieldType))}</option>)}
+              </select>
+              <button type="button" className={btn} disabled={busy} onClick={() => setWhere(where.filter((_, k) => k !== i))} aria-label={say("شيل الفلتر|Remove the filter|הסר את המסנן")} data-testid={`list-filter-${i}-remove`}>✕</button>
+              {needsValue(f.op) ? (
+                field?.type === "select" ? (
+                  <select className={`${control} col-span-3`} disabled={busy} value={f.value ?? ""} onChange={(e) => change({ value: e.target.value })} aria-label={say("القيمة|Value|ערך")} data-testid={`list-filter-${i}-value`}>
+                    {(field.options ?? []).map((o) => <option key={o.id} value={o.id}>{words(o.name, lang) || o.id}</option>)}
+                  </select>
+                ) : (
+                  <input className={`${control} col-span-3`} disabled={busy} maxLength={LIST_LIMITS.value} defaultValue={f.value ?? ""} key={`v:${f.field}:${f.op}:${f.value ?? ""}`} type={field?.type === "date" ? "date" : field?.type === "number" || field?.type === "money" ? "number" : "text"} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (f.value ?? "")) change({ value: v || undefined }); }} aria-label={say("القيمة|Value|ערך")} data-testid={`list-filter-${i}-value`} />
+                )
+              ) : null}
+            </div>
+          );
+        })}
+        <button type="button" className={btn} disabled={busy || where.length >= LIST_LIMITS.filters || !fields.length} onClick={() => setWhere([...where, newFilter(fields.find((x) => x.type === "select") ?? fields[0])])} data-testid="list-filter-add">+ {say("فلتر|A filter|מסנן")}</button>
+      </div>
       {feed ? (
         <>
-          <div className="space-y-2" data-testid="list-filters">
-            <div className="text-[11px] text-white/55">{say("بس السطور اللي|Only the rows where|רק השורות שבהן")}</div>
-            {where.map((f, i) => {
-              const field = collection?.fields.find((x) => x.id === f.field);
-              const ops = (field && OPS_FOR[field.type]) || [f.op];
-              const change = (patch: Partial<ListFilter>) => setWhere(where.map((x, k) => (k === i ? fitFilter({ ...x, ...patch }, patch.field ? collection?.fields.find((y) => y.id === patch.field) : field) : x)));
-              return (
-                <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-1" data-testid={`list-filter-${i}`}>
-                  <select className={control} disabled={busy} value={f.field} onChange={(e) => change({ field: e.target.value })} aria-label={say("الحقل|Field|שדה")} data-testid={`list-filter-${i}-field`}>
-                    {!fields.some((x) => x.id === f.field) ? <option value={f.field}>{f.field}</option> : null}
-                    {fields.map((x) => <option key={x.id} value={x.id}>{words(x.name, lang) || x.id}</option>)}
-                  </select>
-                  <select className={control} disabled={busy} value={f.op} onChange={(e) => change({ op: e.target.value as ListOp })} aria-label={say("السؤال|Question|שאלה")} data-testid={`list-filter-${i}-op`}>
-                    {ops.map((op) => <option key={op} value={op}>{say(opName(op, (field?.type ?? "text") as FieldType))}</option>)}
-                  </select>
-                  <button type="button" className={btn} disabled={busy} onClick={() => setWhere(where.filter((_, k) => k !== i))} aria-label={say("شيل الفلتر|Remove the filter|הסר את המסנן")} data-testid={`list-filter-${i}-remove`}>✕</button>
-                  {needsValue(f.op) ? (
-                    field?.type === "select" ? (
-                      <select className={`${control} col-span-3`} disabled={busy} value={f.value ?? ""} onChange={(e) => change({ value: e.target.value })} aria-label={say("القيمة|Value|ערך")} data-testid={`list-filter-${i}-value`}>
-                        {(field.options ?? []).map((o) => <option key={o.id} value={o.id}>{words(o.name, lang) || o.id}</option>)}
-                      </select>
-                    ) : (
-                      <input className={`${control} col-span-3`} disabled={busy} maxLength={LIST_LIMITS.value} defaultValue={f.value ?? ""} key={`v:${f.field}:${f.op}:${f.value ?? ""}`} type={field?.type === "date" ? "date" : field?.type === "number" || field?.type === "money" ? "number" : "text"} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (f.value ?? "")) change({ value: v || undefined }); }} aria-label={say("القيمة|Value|ערך")} data-testid={`list-filter-${i}-value`} />
-                    )
-                  ) : null}
-                </div>
-              );
-            })}
-            <button type="button" className={btn} disabled={busy || where.length >= LIST_LIMITS.filters || !fields.length} onClick={() => setWhere([...where, newFilter(fields.find((x) => x.type === "select") ?? fields[0])])} data-testid="list-filter-add">+ {say("فلتر|A filter|מסנן")}</button>
-          </div>
           <label className="block text-[11px] text-white/55">{say("لما الزائر مش مسجّل دخول|When the visitor isn't signed in|כשהמבקר לא מחובר")}
             <input className={control} disabled={busy} maxLength={200} defaultValue={words(p.signin, lang)} key={`signin:${words(p.signin, lang)}`} placeholder={say("سجّل دخولك لتشوف هالقائمة.|Sign in to see this list.|התחברו כדי לראות את הרשימה.")} onBlur={(e) => { const v = e.target.value.trim(); const next = { ...(p.signin ?? {}), [lang]: v }; if (!v) delete next[lang]; set({ signin: Object.keys(next).length ? next : undefined }); }} data-testid="list-signin" />
           </label>

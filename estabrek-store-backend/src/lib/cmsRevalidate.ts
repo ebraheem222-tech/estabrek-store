@@ -1,10 +1,13 @@
-import { cacheDel, cacheDelPrefix } from "./cache.js";
+import { cacheDel, cacheDelPrefix, invalidateGroups } from "./cache.js";
 import { revalidateStorefront, type RevalidationResult } from "./storefrontRevalidate.js";
 
 /** A published block changes every page referencing it; ordinary pages retain their paths. */
 export async function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []): Promise<RevalidationResult> {
   const paths = slugs.some((s) => s?.startsWith("/__block/") || s?.startsWith("/__component/")) ? [] : [...new Set(slugs.filter((s): s is string => Boolean(s)))];
   try {
+    // The pages' cached answers too: a list drawn with a page changes with its table's rows, which aren't the
+    // pages' own tables (lib/dbWrites.ts renews them only for those).
+    invalidateGroups(["cms"]);
     await cacheDel("storefront:pages:published");
     if (paths.length) {
       await Promise.all(paths.flatMap((slug) => ["ar", "he", "en"].map((locale) => cacheDel(`storefront:page:${locale}:${slug}`))));

@@ -12,6 +12,7 @@ import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import * as FeaturesAPI from "../../api/myFeatures.api";
 import type { Feature, UpgradeAction } from "../../api/myFeatures.api";
+import { buildSite, siteByKey } from "../../studio/templates/sites";
 import { problemText, readJson } from "./templatesText";
 import { actionMeans, actionName, compareVersions, inOrder, kindName, summaryLine, withChoices } from "./upgradeText";
 
@@ -24,12 +25,15 @@ export function FeatureUpgrade({ feature }: { feature: Feature }) {
   const t = feature.template!;
   const gallery = useQuery({ queryKey: ["feature-gallery"], queryFn: FeaturesAPI.listGallery, staleTime: 5 * 60_000 });
   const inGallery = gallery.data?.items.find((x) => x.key === t.key) ?? null;
-  const newer = inGallery && compareVersions(inGallery.version, t.version) > 0 ? inGallery : null;
+  // A whole site is built here, in the admin (studio/templates/sites): its newest version is the one this admin has.
+  const site = siteByKey(t.key);
+  const latest: { version: string } | null = inGallery ?? site;
+  const newer = latest && compareVersions(latest.version, t.version) > 0 ? latest : null;
   const [source, setSource] = useState<{ id: string; template: unknown } | null>(null);
   const [bad, setBad] = useState<string | null>(null);
   const fromGallery = useMutation({
-    mutationFn: () => FeaturesAPI.galleryFile(newer!.key),
-    onSuccess: (r) => setSource({ id: `gallery:${newer!.key}:${newer!.version}`, template: r.template }),
+    mutationFn: async () => (site && !inGallery ? { template: buildSite(site, { lang: adminLang() }) as unknown } : FeaturesAPI.galleryFile(t.key)),
+    onSuccess: (r) => setSource({ id: `gallery:${t.key}:${newer!.version}`, template: r.template }),
     onError: (e) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) }),
   });
   const pick = async (f: File | undefined) => {
@@ -57,7 +61,7 @@ export function FeatureUpgrade({ feature }: { feature: Feature }) {
             {say("شوف شو بيتغيّر|See what changes|מה משתנה")}
           </Button>
         </div>
-      ) : inGallery ? (
+      ) : latest ? (
         <p className="mt-3 text-xs text-white/60" data-testid="feature-upgrade-latest">
           {say("عندك آخر نسخة بالمعرض ({v}).|You have the gallery's latest ({v}).|יש לכם את הגרסה האחרונה בגלריה ({v}).").replace("{v}", t.version)}
         </p>

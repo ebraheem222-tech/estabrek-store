@@ -139,7 +139,7 @@ export async function previewInstall(raw: unknown) {
   return {
     ok: problems.length === 0,
     template: { key: template.key, version: template.version, name: template.name, note: template.note ?? null },
-    tables: plan.tables.map((t) => ({ key: t.key, name: t.name, slug: t.slug, was: t.was ?? null, fields: t.fields.length, api: accessOf(t.api), itemPage: !!t.itemPage })),
+    tables: plan.tables.map((t) => ({ key: t.key, name: t.name, slug: t.slug, was: t.was ?? null, fields: t.fields.length, api: accessOf(t.api), itemPage: !!t.itemPage, rows: t.rows.length })),
     functions: plan.fns.map((f) => ({ key: f.key, name: f.name, steps: sizeOf(f.def.do).steps + sizeOf(f.def.else).steps, triggers: f.triggers.map((t) => ({ kind: t.kind, slug: t.kind === "call" || t.kind === "route" ? t.slug : null, was: t.was ?? null })) })),
     pages: plan.pages.map((p) => ({ key: p.key, name: p.name, slug: p.slug, was: p.was ?? null })),
     // What the other store keeps for itself: which of them are here already.
@@ -159,7 +159,12 @@ type Tx = Prisma.TransactionClient;
 
 /** A template's tables made here (with their relations checked once all are there, and their rows' own page). */
 export async function makeTables(tx: Tx, tables: Plan["tables"]) {
-  for (const t of tables) await tx.collection.create({ data: { id: t.id, slug: t.slug, name: t.name as Prisma.InputJsonValue, fields: t.fields as Prisma.InputJsonValue, ...(t.api ? { api: t.api as Prisma.InputJsonValue } : {}) } });
+  const now = new Date();
+  for (const t of tables) {
+    await tx.collection.create({ data: { id: t.id, slug: t.slug, name: t.name as Prisma.InputJsonValue, fields: t.fields as Prisma.InputJsonValue, ...(t.api ? { api: t.api as Prisma.InputJsonValue } : {}) } });
+    // Its ready rows, in the file's order (a list in "my order" shows them so).
+    if (t.rows.length) await tx.collectionItem.createMany({ data: t.rows.map((r, k) => ({ collectionId: t.id, slug: r.slug, data: r.data as Prisma.InputJsonValue, status: r.status, sort: k, publishedAt: r.status === "PUBLISHED" ? now : null })) });
+  }
   // Each relation links a table that is there now (the template's own, made just above, or the store's).
   for (const t of tables) {
     const unlinked = await relationProblem(tx, t.fields as Field[], t.id);
