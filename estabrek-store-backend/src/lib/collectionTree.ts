@@ -58,6 +58,8 @@ export type Field = {
   exclusive?: boolean;
   /** A relation: when a linked row is deleted, the rows linking it lose the link (the default), are deleted with it, or forbid it. */
   onDelete?: "unlink" | "cascade" | "restrict";
+  /** A picture or file field shoppers may upload into (lib/fileKinds.ts): up to how many MB, which kinds, kept private. */
+  upload?: { maxMb: number; kinds?: Array<"image" | "pdf" | "doc" | "sheet" | "text" | "zip" | "audio">; private?: boolean };
 };
 export type CollectionLite = { id: string; slug: string; fields: Field[] };
 export type ItemLite = { id: string; slug: string; data: Record<string, unknown>; publishedAt?: string | Date | null; createdAt?: string | Date | null; sort?: number };

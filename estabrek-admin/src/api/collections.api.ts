@@ -9,11 +9,17 @@ export type OnDelete = "unlink" | "cascade" | "restrict";
 /** A linked row as the routes answer it under a relation field. */
 export type Linked = { id: string; slug: string; status?: ItemStatus; title: Local | null; /** One of the store's rows: which table (products, categories, orders, customers). */ store?: string; /** A store row this member may not see: it is linked, its name isn't told. */ hidden?: boolean };
 /** A field: its kind, its name, and its rules (backend lib/fieldRules.ts). */
+/** What a file field takes from shoppers (a picture field: pictures only). */
+export const FILE_KINDS = ["image", "pdf", "doc", "sheet", "text", "zip", "audio"] as const;
+export type FileKind = (typeof FILE_KINDS)[number];
+
 export type CollectionField = {
   id: string;
   type: FieldType;
   name?: Local;
   required?: boolean;
+  /** A picture or file field shoppers may upload into (backend lib/fileKinds.ts): up to how many MB, which kinds, kept private. */
+  upload?: { maxMb: number; kinds?: FileKind[]; private?: boolean };
   options?: { id: string; name?: Local }[];
   /** No two rows with the same value. */
   unique?: boolean;

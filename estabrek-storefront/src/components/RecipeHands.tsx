@@ -100,6 +100,20 @@ export function RecipeHands() {
           return { ok: false, status: 0, error: "" };
         }
       },
+      upload: async (table, field, file) => {
+        try {
+          for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));
+          const who = (await now.current.account?.authHeaders()) ?? {};
+          const body = new FormData();
+          body.append("file", file, file.name);
+          const res = await fetch(`${apiBaseClient()}/data/${encodeURIComponent(table)}/files/${encodeURIComponent(field)}`, { method: "POST", cache: "no-store", headers: who, body });
+          const data = (await res.json().catch(() => ({}))) as { value?: unknown; error?: unknown; details?: { maxMb?: unknown } | null };
+          if (res.ok && typeof data.value === "string") return { ok: true, value: data.value };
+          return { ok: false, status: res.status, code: typeof data.error === "string" ? data.error : "", ...(typeof data.details?.maxMb === "number" ? { maxMb: data.details.maxMb } : {}) };
+        } catch {
+          return { ok: false, status: 0, code: "" };
+        }
+      },
       rows: async (table, query) => {
         try {
           for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));

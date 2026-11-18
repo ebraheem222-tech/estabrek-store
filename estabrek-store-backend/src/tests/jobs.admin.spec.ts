@@ -32,6 +32,7 @@ describe("Background jobs", () => {
       "cmsPublish",
       "outbox",
       "push",
+      "dataFiles",
       "stockAlerts",
       "backup",
       "requestPhotos",

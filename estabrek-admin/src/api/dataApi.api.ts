@@ -9,7 +9,7 @@ export type Act = "read" | "create" | "update" | "delete";
 /** Who may: nobody, a key, a signed-in shopper (their own rows only), everyone (changing and deleting are never for everyone). */
 export type Who = "off" | "key" | "customer" | "public";
 export type TableAccess = Record<Act, Who>;
-export type ApiField = { id: string; type: FieldType; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }>; many?: boolean; currency?: string };
+export type ApiField = { id: string; type: FieldType; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }>; many?: boolean; currency?: string; /** A picture or file field shoppers may upload into. */ upload?: { maxMb: number; kinds?: string[]; private?: boolean } };
 /** The shopper roles whose holders do an act on every row (الأدوار والمجموعات). */
 export type ActRoles = Record<Act, string[]>;
 export type ApiTable = { id: string; slug: string; name: Local | null; access: TableAccess; open: boolean; /** The fields only a key sees or writes. */ private: string[]; roles?: ActRoles; /** A shopper reads their group's rows too. */ group?: boolean; fields: ApiField[] };

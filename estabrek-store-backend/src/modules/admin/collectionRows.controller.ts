@@ -13,6 +13,8 @@
  * PATCH  /admin/collections/:id/rows/:row        { slug?, status?, sort?, values?, lang? } — a cell or a few; the rest stays
  * POST   /admin/collections/:id/rows/bulk        { ids | query, op, field?, value? } — publish, draft, archive, trash, restore, purge, set
  * POST   /admin/collections/:id/rows/import      { rows, mode, lang, dryRun } — up to 500 rows a call; dryRun only reports
+ * GET    /admin/collections/:id/files/:file      — a private file a row holds ("file:<id>", lib/shopperFiles.ts): its
+ *                                                  name and kind, and a link to it that runs out
  *
  * Deleting is moving to the trash (30 days, then the job "dataTrash" empties it); only the trash is deleted for good.
  */
@@ -26,6 +28,7 @@ import { linkView, seenTable } from "../../lib/linkView.js";
 import { AppError } from "../../utils/httpError.js";
 import { checkItemData, LIMITS, TRASH_DAYS } from "../../lib/collections.js";
 import { RULES_BY_TYPE, SHAPES } from "../../lib/fieldRules.js";
+import { privateLinks } from "../../lib/shopperFiles.js";
 import { uniqueIssues } from "../../lib/uniqueValues.js";
 import { checkLinks, isRelation, linkGone, namedRows, restoreRows, setLinksOfMany, trashRows, withLinks } from "../../lib/links.js";
 import { GRID_LIMITS, OPS_BY_KIND, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQuery, queryRows, rowsSlice, utc, viewCounts } from "../../lib/dataQuery.js";
@@ -45,6 +48,17 @@ const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 const owners = (req: Parameters<typeof hasPermission>[0]) => ({ owners: hasPermission(req, "customers:read") ? ("full" as const) : ("id" as const), ...linkView(req) });
 /** The asked table, with the linked-from columns this member may see (lib/linkView.ts). */
 const tableFor = async (req: Parameters<typeof hasPermission>[0] & { params: Record<string, unknown> }) => seenTable(req, await tableOf(String(req.params.id)));
+
+r.get(
+  "/:id/files/:file",
+  asyncHandler(async (req, res) => {
+    const f = await prisma.storedFile.findUnique({ where: { id: String(req.params.file) } });
+    if (!f || f.collectionId !== String(req.params.id)) throw new AppError(404, "NOT_FOUND", "No such file");
+    const link = (await privateLinks([f.id])).get(f.id);
+    if (!link) throw new AppError(503, "STORAGE_NOT_READY", "Files can't be opened right now");
+    res.json({ id: f.id, field: f.field, private: f.private, createdAt: f.createdAt, ...link });
+  }),
+);
 
 r.get("/grid-meta", (_req, res) => {
   res.json({ ops: OPS_BY_KIND, systemColumns: SYSTEM_COLUMNS, views: VIEWS, limits: { ...GRID_LIMITS, rows: LIMITS.items, importRows: IMPORT_MAX, bulkIds: BULK_MAX, trashDays: TRASH_DAYS, links: LIMITS.links }, rules: RULES_BY_TYPE, shapes: SHAPES });

@@ -29,6 +29,8 @@ export type Hands = {
    * signed-in shopper, 429 = too many, 404 = the table isn't open, 0 = the shop couldn't be reached.
    */
   row: (table: string, values: Record<string, string | number | boolean>, lang: string) => Promise<{ ok: true; value: unknown } | { ok: false; status: number; error: string; issues?: Array<{ field: string; text: string }> }>;
+  /** A file into a table's picture or file field (POST /v1/data/<table>/files/<field>): the value to write, or why not (its code: FILE_TOO_BIG, FILE_KIND…). */
+  upload: (table: string, field: string, file: File) => Promise<{ ok: true; value: string } | { ok: false; status: number; code: string; maxMb?: number }>;
   /**
    * Reads a page of one of the owner's tables by its address (the backend's GET /v1/data/<table>?<query>), as
    * whoever is signed in (or as anyone): the rows this visitor may read, and how many there are in all. Or why

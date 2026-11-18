@@ -10,6 +10,7 @@ import type { ColumnKind, GridRow, Lang, LinkedFrom } from "../../api/data.api";
 import { STATUS_NAME, cellText, type Column } from "./dataText";
 import { choiceName, draftFrom, linkedName, linkedOf, mapLink, placeJoin, placeParts } from "./kinds";
 import { RelationInput } from "./RelationInput";
+import { privateFile } from "../../api/data.api";
 
 /** A field as wide as its words (a small select beside others), and one that fills its place. */
 export const field = "rounded-lg border border-white/15 bg-surface-925 px-2 py-1 text-sm";
@@ -38,8 +39,47 @@ export function FromCell({ got, lang }: { got: LinkedFrom | undefined; lang: Lan
 }
 
 /** A cell as it shows in the grid. */
-export function CellView({ column, row, lang }: { column: Column; row: GridRow; lang: Lang }) {
+/** A private file a shopper uploaded ("file:<id>"): opened through a link the server makes now, that runs out. */
+function PrivateFile({ tableId, fileId }: { tableId?: string; fileId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (!tableId) return <span className={chip}>🔒 {say("ملف خاص|A private file|קובץ פרטי")}</span>;
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center gap-1 text-xs underline decoration-white/25 underline-offset-2 disabled:opacity-50"
+      disabled={busy}
+      onClick={async (e) => {
+        e.stopPropagation();
+        setBusy(true);
+        setFailed(false);
+        // Opened before the answer comes, so the browser lets it open; then sent where the link points.
+        const tab = window.open("about:blank", "_blank");
+        try {
+          const f = await privateFile(tableId, fileId);
+          if (tab) {
+            tab.opener = null;
+            tab.location.href = f.url;
+          }
+          else window.open(f.url, "_blank", "noopener");
+        } catch {
+          tab?.close();
+          setFailed(true);
+        } finally {
+          setBusy(false);
+        }
+      }}
+      data-testid={`private-file-${fileId}`}
+    >
+      🔒 {failed ? say("ما انفتح|Didn't open|לא נפתח") : say("ملف خاص: افتحه|A private file: open it|קובץ פרטי: פתיחה")}
+    </button>
+  );
+}
+
+export function CellView({ column, row, lang, tableId }: { column: Column; row: GridRow; lang: Lang; /** The table: a private file in it is opened through it. */ tableId?: string }) {
   const v = row.data?.[column.id];
+  const ref = (column.kind === "image" || column.kind === "file") && typeof v === "string" ? /^file:([a-z0-9]{20,40})$/.exec(v)?.[1] : undefined;
+  if (ref) return <PrivateFile tableId={tableId} fileId={ref} />;
   const text = cellText(column, row, lang);
   if (column.id === "$status") return <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[row.status]}`}>{say(text)}</span>;
   if (column.id === "$slug") return <span className="font-mono text-xs text-white/70" dir="ltr">{text}</span>;

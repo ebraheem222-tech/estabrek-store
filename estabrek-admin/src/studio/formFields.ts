@@ -9,7 +9,7 @@ import type { ApiField } from "../api/dataApi.api";
 import { say } from "./say";
 
 export type Words = Record<string, string>;
-export type FormKind = "text" | "long" | "email" | "phone" | "number" | "select" | "check" | "date";
+export type FormKind = "text" | "long" | "email" | "phone" | "number" | "select" | "check" | "date" | "file";
 export type FormOption = { value: string; label?: Words };
 export type FormField = { name: string; kind: FormKind; label: Words; hint?: Words; required?: boolean; options?: FormOption[]; min?: number; max?: number };
 export type FormSend = { to: "fn"; fn?: string; as?: string } | { to: "table"; table?: string };
@@ -26,6 +26,8 @@ export const FORM_KINDS: Array<[FormKind, () => string]> = [
   ["select", () => say("اختيار من قائمة|A choice from a list|בחירה מרשימה")],
   ["check", () => say("مربّع صح|A tick box|תיבת סימון")],
   ["date", () => say("تاريخ|Date|תאריך")],
+  // Into the table's picture or file field of the same name (a form to a table only; the field says its size and kinds).
+  ["file", () => say("ملف أو صورة|A file or picture|קובץ או תמונה")],
 ];
 
 export const fieldsOf = (v: unknown): FormField[] => (Array.isArray(v) ? (v as FormField[]) : []);
@@ -40,7 +42,7 @@ export function freeName(base: string, taken: Iterable<string>): string {
 }
 
 export function newField(kind: FormKind, lang: string, taken: Iterable<string>): FormField {
-  const name = freeName(kind === "long" ? "message" : kind === "check" ? "agree" : kind === "select" ? "choice" : kind === "date" ? "day" : kind === "number" ? "amount" : kind, taken);
+  const name = freeName(kind === "long" ? "message" : kind === "check" ? "agree" : kind === "select" ? "choice" : kind === "date" ? "day" : kind === "number" ? "amount" : kind === "file" ? "attachment" : kind, taken);
   const label = FORM_KINDS.find(([k]) => k === kind)![1]();
   return { name, kind, label: { [lang]: label }, ...(kind === "select" ? { options: [{ value: "one", label: { [lang]: say("الأول|First|ראשון") } }, { value: "two", label: { [lang]: say("التاني|Second|שני") } }] } : {}) };
 }
@@ -85,7 +87,8 @@ export function fromTable(fields: ApiField[], lang: string, hidden: string[] = [
   for (const f of fields) {
     // A field only a key sees is never a shopper's to write.
     if (hidden.includes(f.id)) continue;
-    const kind = TABLE_KINDS[f.type];
+    // A picture or file field the owner opened for uploads becomes a file box.
+    const kind = (f.type === "image" || f.type === "file") && f.upload ? "file" : TABLE_KINDS[f.type];
     if (!kind || !FIELD_NAME.test(f.id)) {
       skipped.push(nameOf(f.name, f.id));
       continue;

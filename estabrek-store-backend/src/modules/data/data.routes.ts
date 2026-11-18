@@ -15,6 +15,10 @@
  * POST   /v1/data/:table               { values, slug?, status?, lang? } — a new row (without a key: a draft)
  * PATCH  /v1/data/:table/:row          { values?, slug?, status?, lang? } — some of a row; the rest stays
  * DELETE /v1/data/:table/:row          — to the trash (30 days), as the relations linking it allow
+ * POST   /v1/data/:table/files/:field  multipart "file" — into a picture or file field the owner opened for uploads
+ *                                        (lib/shopperFiles.ts); for who may add or change rows. Answers the `value` to
+ *                                        write: a public file's address, or "file:<id>" for a private one, which reads
+ *                                        back as a link that runs out (and as nothing to anyone without a token)
  *
  * Who sees what: anyone, published rows; a shopper, also their own rows (a table open "to the
  * shopper" shows them nothing else; `?mine=1` asks for them where everyone reads); a key, every
@@ -40,6 +44,9 @@ import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, type Act, type KeyLite } from "../../lib/apiKeys.js";
 import { apiCaller, callerOf, ipOf, type Caller } from "../../middleware/apiCaller.js";
 import { groupMates } from "../../lib/shopperRoles.js";
+import multer from "multer";
+import { FILE_LIMITS, fileIssues, privateLinks, saveUpload } from "../../lib/shopperFiles.js";
+import { UPLOAD_MAX_MB, fileRefId } from "../../lib/fileKinds.js";
 import { openApi } from "../../lib/apiDocs.js";
 import { API_LIMITS, DATA_API_BASE, allow, apiRow, askable, docTables, fieldView, isOpen, listAsk, mineAsked, reachFields, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk, type Mine, type Viewer } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
@@ -202,7 +209,28 @@ async function shape(table: ApiTable, as: As, who: Caller, rows: Stored[], ask: 
     const theirs = seenFields(target, mode === "all" ? "key" : "public");
     expand.set(id, new Map(linked.map((row) => [row.id, apiRow(shownRow(row, target.fields), theirs, { lang: ask.lang })])));
   }
-  return shown.map((row) => apiRow(row, fields, { lang: ask.lang, pick: ask.pick, links: modes, expand, viewer, ...(ask.shown ? { shown: { id: table.id, slug: table.slug } } : {}) }));
+  const out = shown.map((row) => apiRow(row, fields, { lang: ask.lang, pick: ask.pick, links: modes, expand, viewer, ...(ask.shown ? { shown: { id: table.id, slug: table.slug } } : {}) }));
+  return withFileLinks(out, fields, as);
+}
+
+/**
+ * Private files ("file:<id>", lib/shopperFiles.ts) as this caller is answered them: a link that runs out to whoever
+ * reads the row with a key or a token; nothing to anyone else.
+ */
+async function withFileLinks(rows: ApiRow[], fields: Field[], as: As): Promise<ApiRow[]> {
+  const fileFields = fields.filter((f) => f.type === "image" || f.type === "file").map((f) => f.id);
+  if (!fileFields.length) return rows;
+  const ids = rows.flatMap((row) => fileFields.map((id) => fileRefId(row.values[id])).filter((x): x is string => !!x));
+  if (!ids.length) return rows;
+  const links = as === "public" ? new Map() : await privateLinks(ids);
+  return rows.map((row) => {
+    const values = { ...row.values };
+    for (const id of fileFields) {
+      const ref = fileRefId(values[id]);
+      if (ref) values[id] = links.get(ref)?.url ?? null;
+    }
+    return { ...row, values };
+  });
 }
 
 r.get(
@@ -336,6 +364,8 @@ r.post(
     if (!(await mayWrite(req, res, table, as, who))) return;
     const links = await linkIssues(table, fields, who.key, body.values);
     if (links.length) throw invalid(links);
+    const files = await fileIssues(table, fields, body.values, { key: as === "key", shopper: who.customer });
+    if (files.length) throw invalid(files);
     // A signed-in shopper's row is theirs, also where anyone may add.
     const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values, ownerId: as === "key" ? null : who.customer }, body.lang);
     if (!row) throw new AppError(500, "ROW_NOT_SAVED", "The row wasn't saved");
@@ -356,6 +386,8 @@ r.patch(
     if (!(await mayWrite(req, res, table, as, who))) return;
     const links = await linkIssues(table, fields, who.key, body.values ?? {});
     if (links.length) throw invalid(links);
+    const files = await fileIssues(table, fields, body.values ?? {}, { key: as === "key", shopper: who.customer });
+    if (files.length) throw invalid(files);
     const saved = await changeRow(table, was, body);
     if (as === "key" && who.key) logWrite(req, who.key, table, "update", saved.id, [...Object.keys(body.values ?? {}), ...(body.status ? ["status"] : []), ...(body.slug !== undefined ? ["slug"] : [])]);
     res.json((await shape(table, as, who, [saved], plain))[0]);
@@ -374,6 +406,40 @@ r.delete(
     emitRow("deleted", table.id, row);
     if (as === "key" && who.key) logWrite(req, who.key, table, "delete", row.id, []);
     res.json({ ok: true, id: row.id, ...(withThem ? { withThem } : {}) });
+  }),
+);
+
+/* ---------------- Files in ---------------- */
+
+const HOUR = 3_600_000;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: UPLOAD_MAX_MB * 1024 * 1024, files: 1, fields: 4 } });
+
+r.post(
+  "/:table/files/:field",
+  (req, res, next) =>
+    upload.single("file")(req, res, (err: unknown) => {
+      if (!err) return next();
+      const code = (err as { code?: string }).code;
+      next(code === "LIMIT_FILE_SIZE" ? new AppError(413, "FILE_TOO_BIG", `Up to ${UPLOAD_MAX_MB} MB`) : new AppError(400, "FILE_NEEDED", "One file, as the multipart field \"file\""));
+    }),
+  asyncHandler(async (req: Request, res: Response) => {
+    // Who may add rows, or change them, may put a file into them.
+    const entered = await enter(req, "create").catch(async (first) => enter(req, "update").catch(() => Promise.reject(first)));
+    const { table, as, fields, who } = entered;
+    const field = fields.find((f) => f.id === String(req.params.field));
+    if (!field || (field.type !== "image" && field.type !== "file") || !field.upload) throw new AppError(404, "NO_UPLOADS", "This field doesn't take uploads");
+    if (!req.file) throw new AppError(400, "FILE_NEEDED", "One file, as the multipart field \"file\"");
+    // So many an hour: a shopper's own, or anyone's from one place (a key is counted by its own limit).
+    if (as !== "key") {
+      const shopper = as !== "public" && who.customer;
+      const { count, resetAt } = await hit(shopper ? `upl:${who.customer}` : `upl-pub:${ipOf(req)}`, HOUR);
+      if (count > (shopper ? FILE_LIMITS.perShopperHour : FILE_LIMITS.perAnyoneHour)) {
+        res.setHeader("Retry-After", String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))));
+        return res.status(429).json({ error: "RATE_LIMIT", message: "Too many files from here this hour", retryAt: resetAt });
+      }
+    }
+    const saved = await saveUpload(table, field, { buffer: req.file.buffer, originalname: req.file.originalname, size: req.file.size }, as === "key" ? null : who.customer);
+    res.status(201).json(saved);
   }),
 );
 

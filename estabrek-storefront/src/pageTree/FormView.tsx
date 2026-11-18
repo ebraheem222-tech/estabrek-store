@@ -27,6 +27,8 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
   const trap = useRef<HTMLInputElement>(null);
   const blank = () => Object.fromEntries(spec.fields.map((f) => [f.name, f.kind === "check" ? false : ""])) as Record<string, FormValue>;
   const [values, setValues] = useState(blank);
+  // The files picked, by field (their names are the field's value for the checks).
+  const files = useRef<Record<string, File | null>>({});
   const [problems, setProblems] = useState<Record<string, string>>({});
   const [state, setState] = useState<State>({ is: "idle", text: "" });
   const sending = state.is === "sending";
@@ -67,6 +69,8 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
     if (!spec.send) return setState({ is: "failed", text: w.notReady });
     if (inStudio()) return setState({ is: "done", text: w.inShop });
     const done = () => {
+      files.current = {};
+      root.current?.querySelectorAll<HTMLInputElement>('input[type="file"]').forEach((x) => (x.value = ""));
       setValues(blank());
       setProblems({});
       setState({ is: "done", text: fillVars(spec.done) || w.sent });
@@ -76,11 +80,29 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
 
     setState({ is: "sending", text: "" });
     const hands = await whenHands();
+    // A form to a table uploads its files first, each into the field of its name; what comes back is the value sent.
+    const uploaded: Record<string, string> = {};
+    if (hands && spec.send.to === "table") {
+      const wrong: Record<string, string> = {};
+      for (const f of spec.fields) {
+        const file = f.kind === "file" ? files.current[f.name] : null;
+        if (!file) continue;
+        const up = await hands.upload(spec.send.table, f.name, file);
+        if (up.ok) uploaded[f.name] = up.value;
+        else if (up.status === 401) return setState({ is: "failed", text: w.signin, signin: true });
+        else wrong[f.name] = up.code === "FILE_TOO_BIG" ? w.fileTooBig(up.maxMb ?? null) : up.code === "FILE_KIND" ? w.fileKind : up.status === 429 ? w.busy : w.fileFailed;
+      }
+      if (Object.keys(wrong).length) {
+        setProblems(wrong);
+        goTo.current = Object.keys(wrong)[0];
+        return setState({ is: "failed", text: "" });
+      }
+    }
     const out: Out = !hands
       ? { ok: false, status: 0, error: "" }
       : spec.send.to === "fn"
         ? await hands.fn(spec.send.fn, valuesFor(spec.fields, values, "fn"))
-        : await hands.row(spec.send.table, valuesFor(spec.fields, values, "table"), lang);
+        : await hands.row(spec.send.table, { ...valuesFor(spec.fields, values, "table"), ...uploaded }, lang);
     if (out.ok) {
       if (spec.send.to === "fn" && spec.send.as) keepAnswer(spec.send.as, out.value);
       done();
@@ -126,6 +148,18 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
         return <input {...shared} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={20} value={value} onChange={(e) => set(f.name, e.target.value)} />;
       case "date":
         return <input {...shared} type="date" value={value} onChange={(e) => set(f.name, e.target.value)} />;
+      case "file":
+        return (
+          <input
+            {...shared}
+            type="file"
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              files.current[f.name] = file;
+              set(f.name, file ? file.name : "");
+            }}
+          />
+        );
       default:
         return <input {...shared} type="text" maxLength={Math.min(f.max ?? FORM_TEXT_MOST.text, FORM_TEXT_MOST.text)} value={value} onChange={(e) => set(f.name, e.target.value)} />;
     }

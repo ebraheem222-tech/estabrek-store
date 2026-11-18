@@ -372,5 +372,5 @@ export function asShown(row: RowIn, fields: Field[], table: { id: string; slug: 
 
 /** A field as the API describes it (the list of tables a caller reaches). */
 export function fieldView(f: Field) {
-  return { id: f.id, type: f.type, name: f.name ?? null, required: !!f.required, ...(f.options ? { options: f.options.map((o) => ({ id: o.id, name: o.name ?? null })) } : {}), ...(f.type === "relation" ? { many: !!f.many } : {}), ...(f.currency ? { currency: f.currency } : {}) };
+  return { id: f.id, type: f.type, name: f.name ?? null, required: !!f.required, ...(f.options ? { options: f.options.map((o) => ({ id: o.id, name: o.name ?? null })) } : {}), ...(f.type === "relation" ? { many: !!f.many } : {}), ...(f.currency ? { currency: f.currency } : {}), ...(f.upload ? { upload: f.upload } : {}) };
 }
