@@ -14,7 +14,7 @@ const m = vi.hoisted(() => ({ row: null as any, blocks: [] as any[], revisions: 
 }));
 vi.mock("../lib/prisma.js", () => ({ prisma: m.db }));
 vi.mock("../config/env.js", () => ({ env: { NODE_ENV: "test", JWT_SECRET: "test-only-not-a-production-key", CORS_ORIGINS: "*" } }));
-vi.mock("../lib/cache.js", () => ({ cacheDel: m.clear, cacheDelPrefix: m.clear }));
+vi.mock("../lib/cache.js", () => ({ cacheDel: m.clear, cacheDelPrefix: m.clear, invalidateGroups: () => {} }));
 vi.mock("../lib/storefrontRevalidate.js", () => ({ revalidateStorefront: m.revalidate }));
 import pages from "../modules/admin/pages.controller.js";
 

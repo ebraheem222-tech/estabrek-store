@@ -18,7 +18,9 @@
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { AppError } from "../utils/httpError.js";
-import { CollectionBody, COLLECTION_SLUG, LIMITS as TABLE_LIMITS, RESERVED_SLUGS } from "./collections.js";
+import { CollectionBody, COLLECTION_SLUG, ITEM_SLUG, LIMITS as TABLE_LIMITS, RESERVED_SLUGS, checkItemData, withDefaults } from "./collections.js";
+import { uniqueKeys } from "./fieldRules.js";
+import type { Field } from "./collectionTree.js";
 import { CALL_SLUG, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, routePath, routeSlug, type RouteConfig, type TriggerKind } from "./fnTriggers.js";
 import { FnDefSchema, type FnDef } from "./fnDef.js";
 import { TestsSchema } from "./fnTests.js";
@@ -31,7 +33,7 @@ import { isStorePage } from "./featureGate.js";
 export const TEMPLATE_FORMAT = "estabrek.feature" as const;
 export const TEMPLATE_FORMAT_VERSION = 1 as const;
 /** A file's size, and what one feature can hold (60 things in all: myFeatures FEATURE_LIMITS.items). */
-export const TEMPLATE_LIMITS = { tables: 20, functions: 30, pages: 10, bytes: 1_500_000, needs: 20, notes: 60 } as const;
+export const TEMPLATE_LIMITS = { tables: 20, functions: 30, pages: 10, bytes: 1_500_000, needs: 20, notes: 60, /** Ready rows per table (a whole site's menu, team, questions…). */ rows: 60 } as const;
 
 /** A thing's name inside the file: how its steps, lists and upgrades find it. */
 export const TEMPLATE_KEY = /^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$/;
@@ -57,6 +59,19 @@ export const LocalSchema = z.object({ ar: Words.optional(), en: Words.optional()
 export type Local = z.infer<typeof LocalSchema>;
 const Key = z.string().regex(TEMPLATE_KEY, "A key is letters, digits, - and _");
 
+/**
+ * A ready row (a whole site's menu, its team, its questions): its values by field id as the table keeps
+ * them (words in ar/en/he), checked against the table's fields on install. Published unless it says not.
+ * Only a file made to be installed carries rows: exporting a feature never writes the store's rows.
+ */
+const TemplateRow = z
+  .object({
+    slug: z.string().regex(ITEM_SLUG, "A row's address is small letters, digits and -").optional(),
+    data: z.record(z.string(), z.unknown()),
+    status: z.enum(["PUBLISHED", "DRAFT"]).optional(),
+  })
+  .strict();
+
 const TemplateTable = z
   .object({
     key: Key,
@@ -68,6 +83,8 @@ const TemplateTable = z
     api: z.unknown().optional(),
     /** Its rows' own page (a page tree), when it has one. */
     itemPage: z.unknown().optional(),
+    /** Ready rows, made with the table (an upgrade adds them only to a table it makes new). */
+    rows: z.array(TemplateRow).max(TEMPLATE_LIMITS.rows).optional(),
   })
   .strict();
 const TemplateTrigger = z
@@ -375,11 +392,13 @@ export function keyFrom(name: string, id: string): string {
 /* ---------------- Install: the file made into this store's things ---------------- */
 
 export type Problem = { at: string; message: string };
+/** A ready row as it will be made: its address, its values checked against the table's fields, published or not. */
+export type PlanRow = { slug: string; data: Record<string, unknown>; status: "PUBLISHED" | "DRAFT" };
 /** What is taken in this store already: the addresses a template's things must not have. */
 export type Taken = { tables: Set<string>; pages: Set<string>; calls: Set<string>; routes: Set<string> };
 /** The template's things as they will be made here: with their new ids, their addresses, and what was renamed. */
 export type Plan = {
-  tables: Array<{ key: string; id: string; slug: string; was?: string; name: Local; fields: unknown[]; api: unknown; itemPage: PageTree | null }>;
+  tables: Array<{ key: string; id: string; slug: string; was?: string; name: Local; fields: unknown[]; api: unknown; itemPage: PageTree | null; rows: PlanRow[] }>;
   fns: Array<{ key: string; id: string; name: string; note: string | null; def: FnDef; tests: unknown[]; triggers: Array<{ kind: TriggerKind; config: Record<string, unknown>; slug: string | null; was?: string; enabled: boolean }> }>;
   pages: Array<{ key: string; id: string; name: string; slug: string; was?: string; tree: PageTree; seoTitle: string | null; seoDescription: string | null }>;
   /** Each call address the file wrote, and the one it has here (an upgrade keeps them). */
@@ -480,7 +499,8 @@ export function planInstall(t: Template, taken: Taken, ids: () => string = newId
     const api = x.api === undefined ? null : SettingsSchema.safeParse(x.api);
     if (api && !api.success) issuesAt(`${at}.api`, api.error.issues);
     const itemPage = x.itemPage === undefined ? null : treeOf(x.itemPage, `${at}.itemPage`);
-    plan.tables.push({ key: x.key, id: tableIds.get(x.key)!, slug: tableSlugs[i], ...(tableSlugs[i] !== x.slug ? { was: x.slug } : {}), name: x.name, fields: body.success ? (body.data.fields as unknown[]) : fields, api: api?.success ? api.data : null, itemPage });
+    const rows = body.success ? rowsOf(x.rows ?? [], body.data.fields as Field[], `${at}.rows`, problem) : [];
+    plan.tables.push({ key: x.key, id: tableIds.get(x.key)!, slug: tableSlugs[i], ...(tableSlugs[i] !== x.slug ? { was: x.slug } : {}), name: x.name, fields: body.success ? (body.data.fields as unknown[]) : fields, api: api?.success ? api.data : null, itemPage, rows });
   });
 
   t.functions.forEach((f, i) => {
@@ -532,6 +552,43 @@ export function planInstall(t: Template, taken: Taken, ids: () => string = newId
     if (tree) plan.pages.push({ key: p.key, id: keep?.pages[p.key]?.id ?? ids(), name: p.name, slug: pageSlugs[i], ...(pageSlugs[i] !== p.slug ? { was: p.slug } : {}), tree, seoTitle: p.seo?.title ?? null, seoDescription: p.seo?.description ?? null });
   });
   return { plan, problems };
+}
+
+/**
+ * A table's ready rows checked as the data grid checks a row (its fields' kinds and rules, a field's
+ * default where the row gives nothing), each with an address of its own (given, else item-1, item-2…).
+ * A value for a field the table hasn't, a link to rows (ready rows don't link yet) and a value one of
+ * the other rows holds in a field that keeps only one of each are said, not dropped.
+ */
+function rowsOf(rows: Template["tables"][number]["rows"] & object, fields: Field[], at: string, problem: (at: string, message: string) => void): PlanRow[] {
+  const out: PlanRow[] = [];
+  const slugs = new Set<string>();
+  const held = new Map<string, Set<string>>();
+  rows.forEach((row, k) => {
+    const rat = `${at}.${k}`;
+    const slug = row.slug ?? `item-${k + 1}`;
+    if (slugs.has(slug)) return problem(`${rat}.slug`, `Two rows have the address "${slug}"`);
+    slugs.add(slug);
+    let wrong = false;
+    for (const id of Object.keys(row.data)) {
+      const f = fields.find((x) => x.id === id);
+      if (!f) (wrong = true), problem(`${rat}.data.${id}`, `No field "${id}" in this table`);
+      else if (f.type === "relation") (wrong = true), problem(`${rat}.data.${id}`, "A ready row doesn't link rows");
+    }
+    const checked = checkItemData(fields, withDefaults(fields, row.data));
+    if (!checked.ok) return checked.issues.slice(0, 3).forEach((is) => problem(`${rat}.data.${is.field}`, is.message));
+    for (const f of fields) {
+      if (!f.unique || checked.data[f.id] === undefined) continue;
+      const seen = held.get(f.id) ?? new Set<string>();
+      held.set(f.id, seen);
+      // One row's words in two languages may be the same word: only another row's count.
+      const own = new Set(uniqueKeys(f, checked.data[f.id]));
+      if ([...own].some((value) => seen.has(value))) (wrong = true), problem(`${rat}.data.${f.id}`, "Another row has this value");
+      own.forEach((value) => seen.add(value));
+    }
+    if (!wrong) out.push({ slug, data: checked.data, status: row.status ?? "PUBLISHED" });
+  });
+  return out;
 }
 
 /** The template's name in a language (the others when it has none in it). */
