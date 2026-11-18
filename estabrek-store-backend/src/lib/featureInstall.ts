@@ -27,11 +27,26 @@ import { storedDraft } from "./pageDraft.js";
 import { triggerCmsRevalidate } from "./cmsRevalidate.js";
 import type { Field } from "./collectionTree.js";
 import { keyFrom, nameIn, planInstall, readTemplate, toTemplate, type Local, type Note, type Plan, type Template } from "./featureTemplate.js";
+import { fnPrints, pagePrint, tablePrints, type Prints } from "./featurePrints.js";
 
 type Lang = "ar" | "en" | "he";
 type Ids = Record<FeatureKind, Record<string, string>>;
 /** What a feature made by installing keeps: the file, and which of its things is which here. */
-export type Installed = { key: string; version: string; name: Local; installedAt: string; file: Template; ids: Ids };
+export type Installed = {
+  key: string;
+  version: string;
+  name: Local;
+  installedAt: string;
+  /** Upgraded since: when, and from which version. */
+  upgradedAt?: string;
+  from?: string;
+  file: Template;
+  ids: Ids;
+  /** Each call address the file wrote, and the one it was given here. */
+  calls?: Record<string, string>;
+  /** Fingerprints of what the template wrote (lib/featurePrints.ts): a thing that still has its own is untouched by the owner. Missing (installed before they were kept): everything counts as the owner's. */
+  prints?: Prints;
+};
 
 /** A feature's template, when it was made by installing one (anything else: none). */
 export function installedOf(raw: unknown): Installed | null {
@@ -42,7 +57,7 @@ export function installedOf(raw: unknown): Installed | null {
 /** What the feature's page says about where it came from. */
 export const installedView = (raw: unknown) => {
   const t = installedOf(raw);
-  return t ? { key: t.key, version: t.version, name: t.name, installedAt: t.installedAt } : null;
+  return t ? { key: t.key, version: t.version, name: t.name, installedAt: t.installedAt, ...(t.upgradedAt ? { upgradedAt: t.upgradedAt, from: t.from ?? null } : {}) } : null;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
@@ -93,7 +108,7 @@ export async function exportFeature(featureId: string, opts: { key?: string; ver
 
 /* ---------------- Preview and install ---------------- */
 
-async function takenHere() {
+export async function takenHere() {
   const [tables, pages, triggers] = await Promise.all([
     prisma.collection.findMany({ select: { slug: true } }),
     prisma.page.findMany({ select: { slug: true } }),
@@ -140,41 +155,59 @@ export async function previewInstall(raw: unknown) {
 
 const taken = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 
+type Tx = Prisma.TransactionClient;
+
+/** A template's tables made here (with their relations checked once all are there, and their rows' own page). */
+export async function makeTables(tx: Tx, tables: Plan["tables"]) {
+  for (const t of tables) await tx.collection.create({ data: { id: t.id, slug: t.slug, name: t.name as Prisma.InputJsonValue, fields: t.fields as Prisma.InputJsonValue, ...(t.api ? { api: t.api as Prisma.InputJsonValue } : {}) } });
+  // Each relation links a table that is there now (the template's own, made just above, or the store's).
+  for (const t of tables) {
+    const unlinked = await relationProblem(tx, t.fields as Field[], t.id);
+    if (unlinked) throw new AppError(400, "TEMPLATE_INVALID", unlinked.message, { problems: [{ at: `tables.${t.key}.${unlinked.path}`, message: unlinked.message }] });
+    if (!t.itemPage) continue;
+    const page = await tx.page.create({ data: { name: `${nameIn(t.name, "en") || t.slug} — item page`, slug: `/__collection/${randomBytes(6).toString("hex")}`, status: "PUBLISHED", kind: TEMPLATE_KIND, format: PAGE_FORMAT.tree, tree: t.itemPage as unknown as Prisma.InputJsonValue }, select: { id: true } });
+    await tx.collection.update({ where: { id: t.id }, data: { templateId: page.id } });
+  }
+}
+/**
+ * What starts a function, made here. `tokens`: webhook addresses it had (an upgrade keeps them, in
+ * order, so a system that calls one isn't cut off).
+ */
+export async function makeTriggers(tx: Tx, fnId: string, triggers: Plan["fns"][number]["triggers"], tokens: string[] = []) {
+  const left = [...tokens];
+  for (const t of triggers) {
+    await tx.fnTrigger.create({
+      data: { fnId, kind: t.kind, config: t.config as Prisma.InputJsonValue, enabled: t.enabled, slug: t.kind === "webhook" ? (left.shift() ?? newToken()) : t.slug, nextAt: t.kind === "schedule" ? nextRun(t.config as ScheduleConfig, new Date()) : null },
+    });
+  }
+}
+/** A template's function made here, as a draft: nothing starts a function that isn't published. */
+export async function makeFn(tx: Tx, f: Plan["fns"][number], by: string | null) {
+  await tx.fn.create({ data: { id: f.id, name: f.name, note: f.note, draft: f.def as unknown as Prisma.InputJsonValue, tests: f.tests as Prisma.InputJsonValue, createdById: by } });
+  await makeTriggers(tx, f.id, f.triggers);
+}
+/** A template's page made here, as a draft page: not on the shop until it is published from the editor. */
+export async function makePage(tx: Tx, p: Plan["pages"][number]) {
+  await tx.page.create({ data: { id: p.id, name: p.name, slug: p.slug, status: "DRAFT", kind: "page", format: PAGE_FORMAT.tree, tree: p.tree as unknown as Prisma.InputJsonValue, seoTitle: p.seoTitle, seoDescription: p.seoDescription } });
+}
+/** The fingerprints of what the plan writes (lib/featurePrints.ts). */
+export const printsOf = (plan: Pick<Plan, "tables" | "fns" | "pages">): Prints => ({
+  table: Object.fromEntries(plan.tables.map((t) => [t.key, tablePrints(t)])),
+  function: Object.fromEntries(plan.fns.map((f) => [f.key, fnPrints({ def: f.def, tests: f.tests, triggers: f.triggers })])),
+  page: Object.fromEntries(plan.pages.map((p) => [p.key, pagePrint(p.tree)])),
+});
+
 /** Writes the plan: every thing at once, under a new feature that is switched off. */
 async function write(plan: Plan, template: Template, opts: { lang: Lang; by: string | null }) {
-  const ids: Ids = { table: {}, function: {}, page: {} };
   const name = (nameIn(template.name, opts.lang) || template.key).slice(0, 80);
   const note = template.note ? nameIn(template.note, opts.lang).slice(0, 300) || null : null;
+  const ids: Ids = { table: Object.fromEntries(plan.tables.map((t) => [t.key, t.id])), function: Object.fromEntries(plan.fns.map((f) => [f.key, f.id])), page: Object.fromEntries(plan.pages.map((p) => [p.key, p.id])) };
   return prisma.$transaction(
     async (tx) => {
-      for (const t of plan.tables) {
-        await tx.collection.create({ data: { id: t.id, slug: t.slug, name: t.name as Prisma.InputJsonValue, fields: t.fields as Prisma.InputJsonValue, ...(t.api ? { api: t.api as Prisma.InputJsonValue } : {}) } });
-        ids.table[t.key] = t.id;
-      }
-      // Each relation links a table that is there now (the template's own, made just above, or the store's).
-      for (const t of plan.tables) {
-        const unlinked = await relationProblem(tx, t.fields as Field[], t.id);
-        if (unlinked) throw new AppError(400, "TEMPLATE_INVALID", unlinked.message, { problems: [{ at: `tables.${t.key}.${unlinked.path}`, message: unlinked.message }] });
-        if (!t.itemPage) continue;
-        const page = await tx.page.create({ data: { name: `${nameIn(t.name, "en") || t.slug} — item page`, slug: `/__collection/${randomBytes(6).toString("hex")}`, status: "PUBLISHED", kind: TEMPLATE_KIND, format: PAGE_FORMAT.tree, tree: t.itemPage as unknown as Prisma.InputJsonValue }, select: { id: true } });
-        await tx.collection.update({ where: { id: t.id }, data: { templateId: page.id } });
-      }
-      for (const f of plan.fns) {
-        // A draft: nothing starts a function that isn't published.
-        await tx.fn.create({ data: { id: f.id, name: f.name, note: f.note, draft: f.def as unknown as Prisma.InputJsonValue, tests: f.tests as Prisma.InputJsonValue, createdById: opts.by } });
-        ids.function[f.key] = f.id;
-        for (const t of f.triggers) {
-          await tx.fnTrigger.create({
-            data: { fnId: f.id, kind: t.kind, config: t.config as Prisma.InputJsonValue, enabled: t.enabled, slug: t.kind === "webhook" ? newToken() : t.slug, nextAt: t.kind === "schedule" ? nextRun(t.config as ScheduleConfig, new Date()) : null },
-          });
-        }
-      }
-      for (const p of plan.pages) {
-        // A draft page: not on the shop until it is published from the editor.
-        await tx.page.create({ data: { id: p.id, name: p.name, slug: p.slug, status: "DRAFT", kind: "page", format: PAGE_FORMAT.tree, tree: p.tree as unknown as Prisma.InputJsonValue, seoTitle: p.seoTitle, seoDescription: p.seoDescription } });
-        ids.page[p.key] = p.id;
-      }
-      const installed: Installed = { key: template.key, version: template.version, name: template.name, installedAt: new Date().toISOString(), file: template, ids };
+      await makeTables(tx, plan.tables);
+      for (const f of plan.fns) await makeFn(tx, f, opts.by);
+      for (const p of plan.pages) await makePage(tx, p);
+      const installed: Installed = { key: template.key, version: template.version, name: template.name, installedAt: new Date().toISOString(), file: template, ids, calls: plan.calls, prints: printsOf(plan) };
       const feature = await tx.feature.create({ data: { name, note, enabled: false, template: installed as unknown as Prisma.InputJsonValue } });
       const items = [...plan.tables.map((t) => ({ kind: "table", refId: t.id })), ...plan.fns.map((f) => ({ kind: "function", refId: f.id })), ...plan.pages.map((p) => ({ kind: "page", refId: p.id }))];
       if (items.length) await tx.featureItem.createMany({ data: items.map((i) => ({ featureId: feature.id, ...i })) });

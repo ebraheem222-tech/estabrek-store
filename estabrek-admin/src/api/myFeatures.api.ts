@@ -19,7 +19,7 @@ export type Feature = {
   /** Off: its functions aren't started, its tables' API answers as closed, and its pages are hidden from the shop. */
   enabled: boolean;
   /** Made by installing a template: which one and its version. */
-  template?: { key: string; version: string; name: Local; installedAt: string } | null;
+  template?: { key: string; version: string; name: Local; installedAt: string; /** Upgraded since: when, and from which version. */ upgradedAt?: string; from?: string | null } | null;
   createdAt: string;
   updatedAt: string;
   tables: FeatureTable[];
@@ -133,4 +133,21 @@ export async function listGallery() {
 /** One example's file, shown and installed like any file. */
 export async function galleryFile(key: string) {
   return (await api.get(`${BASE}/templates/gallery/${encodeURIComponent(key)}`)).data as { template: TemplateFile };
+}
+
+/* ---------------- Upgrading a feature made from a template ---------------- */
+
+export type UpgradeAction = "add" | "update" | "conflict" | "taken" | "dropped" | "gone" | "waits";
+/** One piece of an upgrade; `id` names it when the owner asks for the template's version. */
+export type UpgradeItem = { id: string; kind: "table" | "field" | "function" | "triggers" | "page"; key: string; field?: string; name: string; action: UpgradeAction };
+export type UpgradePreview =
+  | { ok: false; problems: TemplateProblem[]; from?: undefined }
+  | { ok: boolean; from: string; to: string; key: string; name: Local; items: UpgradeItem[]; counts: Record<UpgradeAction, number>; problems: TemplateProblem[] };
+/** What a newer file of the feature's template would change; nothing is written. */
+export async function previewUpgrade(id: string, template: unknown, lang: "ar" | "en" | "he") {
+  return (await api.post(`${at(id)}/upgrade/preview`, { template, lang })).data as UpgradePreview;
+}
+/** The upgrade made: what the owner changed stays theirs, unless named in `take`. */
+export async function upgradeFeature(id: string, template: unknown, take: string[], lang: "ar" | "en" | "he") {
+  return (await api.post(`${at(id)}/upgrade`, { template, take, lang })).data as { from: string; to: string; items: UpgradeItem[]; counts: Record<UpgradeAction, number>; feature: Feature };
 }
