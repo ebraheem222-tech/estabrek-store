@@ -20,6 +20,12 @@
  *   2. if the migration is then applied again and stops on "already exists", and all it does
  *      is create tables and indexes, what it creates is there: it's marked applied
  *      (`migrate resolve --applied`), and the deploy is tried once more.
+ *
+ * An old migration that can't run on a new client's empty database (it adds what an earlier migration
+ * already made, so it stops on "already exists") has a safe copy in scripts/migration-fixes/<name>.sql:
+ * the same changes, each only if it isn't there yet. When that migration stops on "already exists", the
+ * copy is run (`db execute`), the migration is marked applied, and the deploy goes on. The migration files
+ * themselves are never edited: databases that already applied them keep their checksums.
  * Anything else still stops the deploy with Prisma's own message.
  *
  *   node scripts/migrate-deploy.mjs            run the migrations
@@ -69,9 +75,9 @@ export function failedMigrations(out) {
   return [...new Set([...out.matchAll(/The `([A-Za-z0-9_]+)` migration started at [^\n]* failed/g)].map((m) => m[1]))];
 }
 
-/** The migration a P3018 says stopped on something that already exists (Postgres 42P07 a relation, 42710 an object), or null. */
+/** The migration a P3018 says stopped on something that already exists (Postgres 42P07 a relation, 42710 an object, 42701 a column), or null. */
 export function alreadyThere(out) {
-  if (!/P3018/.test(out) || !/Database error code: (42P07|42710)/.test(out)) return null;
+  if (!/P3018/.test(out) || !/Database error code: (42P07|42710|42701)/.test(out)) return null;
   return /Migration name: ([A-Za-z0-9_]+)/.exec(out)?.[1] ?? null;
 }
 
@@ -82,17 +88,20 @@ export function createOnly(sql) {
 }
 
 /**
- * What to do after a `migrate deploy` that failed: wait for the lock, clear a failed record (once), mark a
- * create-only migration that's already there as applied (once, and only one this run cleared), or stop.
- * `state`: { lockTries, cleared: string[], applied: string[] }; `sqlOf(name)` reads a migration's SQL (or null).
+ * What to do after a `migrate deploy` that failed: wait for the lock, clear a failed record (once), run the
+ * safe copy of a migration that has one and stopped on "already exists" (once), mark a create-only migration
+ * that's already there as applied (once, and only one this run cleared), or stop.
+ * `state`: { lockTries, cleared: string[], applied: string[] }; `sqlOf(name)` reads a migration's SQL (or null);
+ * `fixOf(name)` reads its safe copy in scripts/migration-fixes (or null).
  */
-export function nextStep(out, state, sqlOf, maxLockTries = 4) {
+export function nextStep(out, state, sqlOf, fixOf = () => null, maxLockTries = 4) {
   if (/P1002|advisory lock/i.test(out)) return state.lockTries + 1 < maxLockTries ? { do: "wait" } : { do: "stop" };
   const failed = failedMigrations(out);
   if (failed.length && !state.cleared.length) return { do: "rolled-back", names: failed };
   const there = alreadyThere(out);
-  if (there && state.cleared.includes(there) && !state.applied.includes(there)) {
-    const sql = sqlOf(there);
+  if (there && !state.applied.includes(there)) {
+    if (fixOf(there)) return { do: "fix", names: [there] };
+    const sql = state.cleared.includes(there) ? sqlOf(there) : null;
     if (sql && createOnly(sql)) return { do: "applied", names: [there] };
   }
   return { do: "stop" };
@@ -116,6 +125,15 @@ const sqlOf = (name) => {
   try { return readFileSync(path.join(ROOT, "prisma", "migrations", name, "migration.sql"), "utf8"); } catch { return null; }
 };
 
+/** A migration's safe copy, relative to the backend folder (forward slashes: the Windows shell and Linux both take it). */
+export const fixPath = (name) => `scripts/migration-fixes/${name}.sql`;
+
+/** The safe copy of a migration that can't run on an empty database as written (see the top), or null. */
+export const fixOf = (name) => {
+  if (!/^[A-Za-z0-9_]+$/.test(name)) return null;
+  try { return readFileSync(path.join(ROOT, fixPath(name)), "utf8"); } catch { return null; }
+};
+
 async function main() {
   const { url, source } = migrationUrl();
   if (!url) {
@@ -128,8 +146,17 @@ async function main() {
   for (;;) {
     const r = await prisma(["migrate", "deploy"], url);
     if (r.code === 0) return;
-    const step = nextStep(r.out, state, sqlOf);
-    if (step.do === "wait") {
+    const step = nextStep(r.out, state, sqlOf, fixOf);
+    if (step.do === "fix") {
+      for (const name of step.names) {
+        console.warn(`[migrate] ${name} adds what an earlier migration already made: running its safe copy (${fixPath(name)}) and marking it applied`);
+        const ran = await prisma(["db", "execute", "--file", fixPath(name), "--schema", "prisma/schema.prisma"], url);
+        if (ran.code !== 0) process.exit(ran.code);
+        const done = await prisma(["migrate", "resolve", "--applied", name], url);
+        if (done.code !== 0) process.exit(done.code);
+        state.applied.push(name);
+      }
+    } else if (step.do === "wait") {
       state.lockTries++;
       const wait = state.lockTries * 15;
       console.warn(`[migrate] the migration lock is busy (P1002); trying again in ${wait}s (${state.lockTries}/3)`);

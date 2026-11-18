@@ -1,6 +1,8 @@
 import { describe, test, expect } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 // @ts-expect-error a plain .mjs script (no types)
-import { alreadyThere, createOnly, failedMigrations, hostOf, migrationUrl, nextStep } from "../../scripts/migrate-deploy.mjs";
+import { alreadyThere, createOnly, failedMigrations, fixOf, fixPath, hostOf, migrationUrl, nextStep } from "../../scripts/migrate-deploy.mjs";
 
 // Which address the pre-deploy migrations use (scripts/migrate-deploy.mjs).
 
@@ -85,6 +87,84 @@ describe("A failed migration left on record", () => {
     expect(nextStep("Error: P1002 advisory lock", fresh(), () => null)).toEqual({ do: "wait" });
     expect(nextStep("Error: P1002", { ...fresh(), lockTries: 3 }, () => null)).toEqual({ do: "stop" });
     expect(nextStep("Error: P1001 can't reach database", fresh(), () => null)).toEqual({ do: "stop" });
+  });
+});
+
+// What `migrate deploy` printed on a new client's empty database (2026-11-18, and on every deploy there since 2026-11-14).
+const PAYMENTS = "20260205140000_add_payments";
+const P3018_COLUMN = `Applying migration \`${PAYMENTS}\`
+Error: P3018
+
+A migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve
+
+Migration name: ${PAYMENTS}
+
+Database error code: 42701
+
+Database error:
+ERROR: column "checkoutMode" of relation "SiteSettings" already exists`;
+const P3009_PAYMENTS = P3009.replaceAll(NAME, PAYMENTS);
+const ADD_COLUMN = 'ALTER TABLE "SiteSettings" ADD COLUMN "checkoutMode" TEXT;';
+
+describe("An old migration that can't run on an empty database", () => {
+  const fresh = () => ({ lockTries: 0, cleared: [] as string[], applied: [] as string[] });
+  const hasFix = (name: string) => (name === PAYMENTS ? "-- safe copy" : null);
+
+  test("a column already there counts as «already exists»", () => {
+    expect(alreadyThere(P3018_COLUMN)).toBe(PAYMENTS);
+  });
+
+  test("an empty database: its safe copy runs on the first failure, once", () => {
+    expect(nextStep(P3018_COLUMN, fresh(), () => ADD_COLUMN, hasFix)).toEqual({ do: "fix", names: [PAYMENTS] });
+    expect(nextStep(P3018_COLUMN, { ...fresh(), applied: [PAYMENTS] }, () => ADD_COLUMN, hasFix)).toEqual({ do: "stop" });
+  });
+
+  test("a database with its failed records piled up: cleared first, then the safe copy", () => {
+    const state = fresh();
+    expect(nextStep(P3009_PAYMENTS, state, () => ADD_COLUMN, hasFix)).toEqual({ do: "rolled-back", names: [PAYMENTS] });
+    expect(nextStep(P3018_COLUMN, { ...state, cleared: [PAYMENTS] }, () => ADD_COLUMN, hasFix)).toEqual({ do: "fix", names: [PAYMENTS] });
+  });
+
+  test("without a safe copy, a migration that adds columns still stops (as before)", () => {
+    expect(nextStep(P3018_COLUMN, fresh(), () => ADD_COLUMN)).toEqual({ do: "stop" });
+    expect(nextStep(P3018_COLUMN, { ...fresh(), cleared: [PAYMENTS] }, () => ADD_COLUMN, () => null)).toEqual({ do: "stop" });
+    // Any other error on a migration with a safe copy stops too.
+    expect(nextStep(P3018_COLUMN.replace("42701", "23502"), fresh(), () => ADD_COLUMN, hasFix)).toEqual({ do: "stop" });
+  });
+
+  test("the safe copies are read from scripts/migration-fixes, by a plain migration name only", () => {
+    expect(fixPath(PAYMENTS)).toBe(`scripts/migration-fixes/${PAYMENTS}.sql`);
+    expect(fixOf(PAYMENTS)).toContain('ADD COLUMN IF NOT EXISTS "checkoutMode"');
+    expect(fixOf(NAME)).toBeNull();
+    expect(fixOf("../../prisma/schema")).toBeNull();
+  });
+});
+
+describe("Every safe copy in scripts/migration-fixes", () => {
+  const backend = path.resolve(__dirname, "../..");
+  const fixes = readdirSync(path.join(backend, "scripts", "migration-fixes")).filter((f) => f.endsWith(".sql"));
+  /** The SQL's statements without comments, BEGIN/COMMIT and «IF NOT EXISTS», in one spacing. */
+  const plain = (sql: string) =>
+    sql.replace(/--[^\n]*/g, "").split(";").map((x) => x.replace(/\bIF NOT EXISTS\b/gi, "").replace(/\s+/g, " ").replace(/\s*([(),])\s*/g, "$1").trim())
+      .filter((x) => x && !/^(BEGIN|COMMIT)$/i.test(x));
+
+  test("there is at least the one for add_payments", () => {
+    expect(fixes).toContain(`${PAYMENTS}.sql`);
+  });
+
+  test.each(fixes)("%s names a real migration and makes exactly what it makes, each only if it isn't there", (file) => {
+    const name = file.replace(/\.sql$/, "");
+    const migration = readFileSync(path.join(backend, "prisma", "migrations", name, "migration.sql"), "utf8");
+    const fix = readFileSync(path.join(backend, "scripts", "migration-fixes", file), "utf8");
+    expect(plain(fix)).toEqual(plain(migration));
+    const body = fix.replace(/--[^\n]*/g, "");
+    // Every table, index and column it makes is guarded…
+    expect(body.match(/\bCREATE\s+(UNIQUE\s+)?(TABLE|INDEX)\s+(?!IF NOT EXISTS\b)/gi) ?? []).toEqual([]);
+    expect(body.match(/\bADD\s+COLUMN\s+(?!IF NOT EXISTS\b)/gi) ?? []).toEqual([]);
+    // …and it does nothing else: no data changes, no drops, no renames.
+    for (const s of plain(fix)) expect(s).toMatch(/^(CREATE (UNIQUE )?(TABLE|INDEX) |ALTER TABLE "[^"]+" ADD COLUMN )/i);
+    // All of it in one transaction.
+    expect(body.trim()).toMatch(/^BEGIN;[\s\S]*COMMIT;$/);
   });
 });
 
