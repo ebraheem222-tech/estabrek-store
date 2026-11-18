@@ -8,6 +8,7 @@ import { signCustomerToken } from "../../config/security.js";
 import { policy } from "../../lib/securityPolicy.js";
 import { sendEmail } from "../outbox/sender/email.js";
 import { shopperLanguage } from "../../lib/shopperLanguage.js";
+import { GoogleTokenError, googleOf, verifyGoogleToken } from "../../lib/googleSignIn.js";
 
 /**
  * Shopper accounts: sign in with a 6-digit code sent by email (no password),
@@ -83,6 +84,37 @@ export async function verifyLogin(emailRaw: string, code: string, ctx: { ip?: st
       })
     : await prisma.user.create({ data: { email, name: "", emailVerifiedAt: new Date(), lastLoginAt: new Date() } });
 
+  const tokens = await newSession(user.id, ctx);
+  return { ...tokens, user: toMe(user), isNew: !existing };
+}
+
+/**
+ * Signing in with Google (lib/googleSignIn.ts): the token Google's button gave the shop, checked; then the account of
+ * that Google account, else the one with its email (they are linked from now on), else a new one with Google's name.
+ * An account already linked to another Google account isn't opened by this one.
+ */
+export async function googleLogin(credential: string, ctx: { ip?: string; ua?: string }) {
+  const settings = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const google = googleOf(settings?.header ?? null);
+  if (!google.on || !google.clientId) throw fail(404, "GOOGLE_OFF", "Signing in with Google is switched off");
+  let profile;
+  try {
+    profile = await verifyGoogleToken(credential, google.clientId);
+  } catch (e) {
+    if (e instanceof GoogleTokenError) throw fail(401, e.message, e.message === "GOOGLE_EMAIL" ? "Google doesn't vouch for this account's email" : "Google's sign-in didn't check out; try again");
+    throw fail(503, "GOOGLE_UNREACHABLE", "Google couldn't be reached; try again in a moment");
+  }
+  const linked = await prisma.user.findUnique({ where: { googleSub: profile.sub } });
+  const byEmail = linked ? null : await prisma.user.findUnique({ where: { email: profile.email } });
+  if (byEmail?.googleSub && byEmail.googleSub !== profile.sub) throw fail(409, "GOOGLE_OTHER_ACCOUNT", "This email's account is linked to another Google account");
+  const existing = linked ?? byEmail;
+  if (existing?.status === "SUSPENDED") throw fail(403, "ACCOUNT_SUSPENDED", "This account is turned off");
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: { lastLoginAt: new Date(), emailVerifiedAt: existing.emailVerifiedAt ?? new Date(), googleSub: profile.sub, ...(!existing.name.trim() && profile.name ? { name: profile.name } : {}) },
+      })
+    : await prisma.user.create({ data: { email: profile.email, name: profile.name, emailVerifiedAt: new Date(), lastLoginAt: new Date(), googleSub: profile.sub } });
   const tokens = await newSession(user.id, ctx);
   return { ...tokens, user: toMe(user), isNew: !existing };
 }

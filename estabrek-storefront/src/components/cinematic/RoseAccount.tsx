@@ -11,20 +11,22 @@ import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { toneAr } from "@/lib/words";
 import { PushSwitch } from "@/components/PushSwitch";
+import { GoogleSignIn } from "@/components/GoogleSignIn";
 
 /**
  * حسابي: sign in with a code sent by email (no password), then her orders,
  * addresses and details. Favourites have their own page and sync on their own.
  */
-export function RoseAccount() {
+/** `googleClientId`: signing in with Google is on (admin → الزبائن → الدخول بحساب Google; lib/googleSignIn.ts). */
+export function RoseAccount({ googleClientId = null }: { googleClientId?: string | null } = {}) {
   return (
     <Suspense fallback={null}>
-      <AccountInner />
+      <AccountInner googleClientId={googleClientId} />
     </Suspense>
   );
 }
 
-function AccountInner() {
+function AccountInner({ googleClientId }: { googleClientId: string | null }) {
   const { status } = useAccount();
   if (status === "loading") {
     return (
@@ -33,7 +35,7 @@ function AccountInner() {
       </section>
     );
   }
-  return status === "signedIn" ? <SignedIn /> : <SignIn />;
+  return status === "signedIn" ? <SignedIn /> : <SignIn googleClientId={googleClientId} />;
 }
 
 /* ============================== Sign in ============================== */
@@ -42,7 +44,7 @@ function safeNext(v: string | null) {
   return v && v.startsWith("/") && !v.startsWith("//") ? v : null;
 }
 
-function SignIn() {
+function SignIn({ googleClientId }: { googleClientId: string | null }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const { sendCode, verifyCode } = useAccount();
@@ -85,6 +87,16 @@ function SignIn() {
     }
   };
 
+  /** Signed in (by a code or by Google): her favourite colour dresses the site, then back where she was going. */
+  const welcome = (user: Customer) => {
+    try {
+      if (user.favoriteColor && !window.localStorage.getItem("estabrek_theme_color")) selectStorefrontColor(user.favoriteColor);
+    } catch {
+      /* storage blocked */
+    }
+    if (next) router.push(next);
+  };
+
   const verify = async (e: FormEvent) => {
     e.preventDefault();
     if (!/^\d{6}$/.test(code.trim())) {
@@ -94,14 +106,7 @@ function SignIn() {
     setBusy(true);
     setErr(null);
     try {
-      const user = await verifyCode(email.trim(), code.trim());
-      // Her favourite colour dresses the site, unless she already picked one on this device.
-      try {
-        if (user.favoriteColor && !window.localStorage.getItem("estabrek_theme_color")) selectStorefrontColor(user.favoriteColor);
-      } catch {
-        /* storage blocked */
-      }
-      if (next) router.push(next);
+      welcome(await verifyCode(email.trim(), code.trim()));
     } catch (x) {
       setErr(accountErrorText(x, lang));
     } finally {
@@ -119,6 +124,14 @@ function SignIn() {
       </p>
         <p className="rose-account-muted"><Link href="/track">{tr(lang, "طلبتي بدون حساب؟ تابعي طلبكِ من هون", "Ordered without an account? Track your order here")}</Link></p>
 
+      {step === "email" && googleClientId ? (
+        <>
+          <GoogleSignIn clientId={googleClientId} lang={lang} onSignedIn={welcome} />
+          <p className="rose-account-or" data-testid="account-or">
+            <span>{tr(lang, "أو بكود على الإيميل", "or with an email code")}</span>
+          </p>
+        </>
+      ) : null}
       {step === "email" ? (
         <form className="rose-cart-form rose-account-form" onSubmit={send} noValidate>
           <label>

@@ -1539,6 +1539,9 @@ model User {
   roles           String[]  @default([])
   /// The groups this shopper is in (ShopperGroup ids): a table can let a shopper read their group's rows too.
   groups          String[]  @default([])
+  /// Their Google account's own id, once they signed in with Google (src/lib/googleSignIn.ts): the same
+  /// Google account always opens this account, whatever its email becomes.
+  googleSub       String?   @unique
   preferredSize   String?
   /// Hex colour she picked on the site; the rose design opens in it.
   favoriteColor   String?

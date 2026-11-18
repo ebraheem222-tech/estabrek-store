@@ -1041,6 +1041,17 @@ http
     }
     // Notifications (push.spec.ts): the shop's key while the app and its notifications are on (a real P-256 key, made
     // at start), and what phones said: GET /__test/push-log reads it, POST empties it.
+    // Signing in with Google (google-sign-in.spec.ts): POST the owner's settings (header.signIn), {} for none.
+    if (pathname === "/__test/sign-in" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (Object.keys(data).length) site.header.signIn = data; else delete site.header.signIn;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
     // POST /__test/push-key: the shop's key made again (as the backend does when it can't open the old one).
     if (pathname === "/__test/push-key" && req.method === "POST") {
       pushKey = newPushKey();
@@ -1687,6 +1698,15 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           return { accessToken: access, refreshToken: refresh, refreshExpiresInDays: 60 };
         };
         if (pathname === "/v1/customer/auth/start") return send(200, { ok: true, minutes: 5, devCode: "123456" });
+        // Google's token, played: "fixture-google-ok" is a good one; anything else isn't Google's.
+        if (pathname === "/v1/customer/auth/google") {
+          if (site.header.signIn?.google?.enabled !== true) return send(404, { error: "GOOGLE_OFF" });
+          if (data.credential !== "fixture-google-ok-credential") return send(401, { error: "GOOGLE_TOKEN" });
+          const isNew = !customerState.user;
+          customerState.user ??= { id: "cust1", email: "google.shopper@example.com", name: "Noor Google", phone: null, preferredSize: null, favoriteColor: null, marketingOptIn: false };
+          globalThis.googleSignIns = (globalThis.googleSignIns ?? 0) + 1;
+          return send(200, { ...tokens(), user: customerState.user, isNew });
+        }
         if (pathname === "/v1/customer/auth/verify") {
           if (data.code !== "123456") return send(401, { error: "WRONG_CODE" });
           const isNew = !customerState.user;

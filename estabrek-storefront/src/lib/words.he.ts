@@ -957,4 +957,9 @@ export const HE: Record<string, string> = {
   "Blocked in the browser's settings; they're turned on there.": "חסומות בהגדרות הדפדפן, ושם גם מפעילים אותן.",
   "On an iPhone they work once the shop is on the home screen: the Share button, then “Add to Home Screen”.": "באייפון הן עובדות כשהחנות במסך הבית: כפתור השיתוף, ואז «הוספה למסך הבית».",
   "Off on this device.": "כבויות במכשיר הזה.",
+  "Signing in with Google didn't work this time. It can be tried again.": "הכניסה עם Google לא הצליחה הפעם. אפשר לנסות שוב.",
+  "Google hasn't confirmed this account's email. Signing in with an email code still works.": "‏Google לא אישר את האימייל של החשבון הזה. הכניסה עם קוד באימייל עדיין זמינה.",
+  "This email is linked to another Google account. Signing in with an email code still works.": "האימייל הזה מקושר לחשבון Google אחר. הכניסה עם קוד באימייל עדיין זמינה.",
+  "Signing in with Google isn't available right now. Signing in with an email code still works.": "הכניסה עם Google לא זמינה כרגע. הכניסה עם קוד באימייל עדיין זמינה.",
+  "or with an email code": "או עם קוד באימייל",
 };
