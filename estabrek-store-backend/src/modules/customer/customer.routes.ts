@@ -9,6 +9,7 @@ import {
   deleteAddress,
   getMe,
   getWishlist,
+  googleLogin,
   listAddresses,
   logoutEverywhere,
   logoutLogin,
@@ -46,6 +47,11 @@ r.post(
     res.json(await verifyLogin(req.body.email, req.body.code, ctxOf(req)));
   }),
 );
+
+// Google's button gave the shop a signed token (lib/googleSignIn.ts); off until the owner sets it up.
+r.post("/auth/google", validate({ body: z.object({ credential: z.string().min(20).max(4096) }) }), asyncHandler(async (req, res) => {
+  res.json(await googleLogin(req.body.credential, ctxOf(req)));
+}));
 
 r.post("/auth/refresh", validate({ body: z.object({ refreshToken: Token }) }), asyncHandler(async (req, res) => {
   res.json(await refreshLogin(req.body.refreshToken, ctxOf(req)));

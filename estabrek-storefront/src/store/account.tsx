@@ -30,6 +30,8 @@ type AccountContextValue = {
   /** Sends the code. Resolves with how long it lasts (and the code itself outside production). */
   sendCode: (email: string) => Promise<{ minutes: number; devCode?: string }>;
   verifyCode: (email: string, code: string) => Promise<Customer>;
+  /** The token Google's button gave (components/GoogleSignIn.tsx) → signed in. */
+  signInWithGoogle: (credential: string) => Promise<Customer>;
   signOut: () => Promise<void>;
   /** Calls the store API as the signed-in shopper (adds the token, refreshes it once if needed). */
   api: <T = any>(path: string, init?: RequestInit) => Promise<T>;
@@ -162,6 +164,20 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     return data.user as Customer;
   }, []);
 
+  const signInWithGoogle = useCallback(async (credential: string) => {
+    const res = await fetch("/api/account/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential }),
+    });
+    const data = await readJson(res);
+    if (!res.ok || !data?.accessToken) throw new AccountError(data?.error ?? "REQUEST_FAILED", res.status, data?.message);
+    remember(data.accessToken);
+    setUserState(data.user);
+    setStatus("signedIn");
+    return data.user as Customer;
+  }, []);
+
   const signOut = useCallback(async () => {
     await fetch("/api/account/logout", { method: "POST" }).catch(() => null);
     signedOutLocally();
@@ -174,8 +190,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }, [status, currentToken]);
 
   const value = useMemo<AccountContextValue>(
-    () => ({ status, user, sendCode, verifyCode, signOut, api, authHeaders, setUser: setUserState }),
-    [status, user, sendCode, verifyCode, signOut, api, authHeaders],
+    () => ({ status, user, sendCode, verifyCode, signInWithGoogle, signOut, api, authHeaders, setUser: setUserState }),
+    [status, user, sendCode, verifyCode, signInWithGoogle, signOut, api, authHeaders],
   );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
@@ -211,6 +227,17 @@ export function accountErrorText(e: unknown, lang: Lang = "ar"): string {
       return tr(lang, "في معلومة مش مكتوبة صح. راجعيها.", "Something isn't filled in right. Please check it.");
     case "SIGNED_OUT":
       return tr(lang, "انتهت الجلسة. سجّلي دخول من جديد.", "Your session ended. Please sign in again.");
+    case "GOOGLE_TOKEN":
+    case "GOOGLE_EXPIRED":
+    case "GOOGLE_AUDIENCE":
+      return tr(lang, "الدخول بـ Google ما زبط هالمرة. ممكن المحاولة كمان مرة.", "Signing in with Google didn't work this time. It can be tried again.");
+    case "GOOGLE_EMAIL":
+      return tr(lang, "Google ما أكّد إيميل هالحساب. الدخول بالإيميل والكود بيضل متاح.", "Google hasn't confirmed this account's email. Signing in with an email code still works.");
+    case "GOOGLE_OTHER_ACCOUNT":
+      return tr(lang, "هالإيميل مربوط بحساب Google تاني. الدخول بالإيميل والكود بيضل متاح.", "This email is linked to another Google account. Signing in with an email code still works.");
+    case "GOOGLE_OFF":
+    case "GOOGLE_UNREACHABLE":
+      return tr(lang, "الدخول بـ Google مش متاح هلّق. الدخول بالإيميل والكود بيضل متاح.", "Signing in with Google isn't available right now. Signing in with an email code still works.");
     default:
       return tr(lang, "صار خطأ. جرّبي كمان مرة.", "Something went wrong. Please try again.");
   }

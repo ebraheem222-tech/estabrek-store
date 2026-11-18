@@ -849,7 +849,7 @@ function ThemeColorField({
 
 /** Header keys this page shows but doesn't own: always saved from the server's latest copy. */
 // The app's part (التطبيق, StoreAppCard) is saved by its own card too.
-const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai", "scarcity", "identity", "languages", "app"] as const;
+const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai", "scarcity", "identity", "languages", "app", "signIn"] as const;
 
 export default function SettingsPage() {
   const q = useSettings();
