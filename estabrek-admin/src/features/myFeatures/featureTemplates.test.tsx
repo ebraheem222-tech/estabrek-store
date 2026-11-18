@@ -23,6 +23,10 @@ const m = vi.hoisted(() => ({
   installTemplate: vi.fn(),
   removalOf: vi.fn(),
   removeFeature: vi.fn(),
+  listGallery: vi.fn(),
+  galleryFile: vi.fn(),
+  previewUpgrade: vi.fn(),
+  upgradeFeature: vi.fn(),
   may: new Set<string>(),
 }));
 vi.mock("../../api/myFeatures.api", () => m);
@@ -95,6 +99,7 @@ beforeEach(() => {
   m.may = new Set(["features:read", "features:write", "functions:read", "functions:write", "pages:read", "pages:write"]);
   m.listFeatures.mockResolvedValue({ features: [], limits: { features: 100, items: 60 } });
   m.getFeature.mockImplementation(async (id: string) => feature({ id }));
+  m.listGallery.mockResolvedValue({ items: [], kinds: ["function", "api", "feature"], categories: {} });
   saved = [];
   // The download: the page makes a link to the file and presses it.
   URL.createObjectURL = vi.fn(() => "blob:file");

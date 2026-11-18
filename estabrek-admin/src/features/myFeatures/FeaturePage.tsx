@@ -23,6 +23,7 @@ import { tableName } from "../functions/fnDraft";
 import { STATE_NAME, stateOf } from "../functions/fnText";
 import { OFF_TEXT, PAGE_STATUS, SLUG, STEPS, apiLine, fieldsText, rowsText, slugFrom, stepsDone, triggersText } from "./featuresText";
 import { FeatureRemove, TemplateExport, TemplateLine } from "./FeatureTemplates";
+import { FeatureUpgrade } from "./FeatureUpgrade";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -273,7 +274,9 @@ export default function FeaturePage() {
         ) : null}
       </section>
 
-      {canExport ? <TemplateExport key={`${f.id}:${f.template?.version ?? ""}`} feature={f} /> : null}
+      {canExport ? <TemplateExport key={`export:${f.id}:${f.template?.version ?? ""}`} feature={f} /> : null}
+
+      {f.template && canRemoveAll ? <FeatureUpgrade key={`upgrade:${f.id}:${f.template.version}`} feature={f} /> : null}
 
       {canWrite ? (
         <section className={box}>

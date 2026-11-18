@@ -382,7 +382,14 @@ export type Plan = {
   tables: Array<{ key: string; id: string; slug: string; was?: string; name: Local; fields: unknown[]; api: unknown; itemPage: PageTree | null }>;
   fns: Array<{ key: string; id: string; name: string; note: string | null; def: FnDef; tests: unknown[]; triggers: Array<{ kind: TriggerKind; config: Record<string, unknown>; slug: string | null; was?: string; enabled: boolean }> }>;
   pages: Array<{ key: string; id: string; name: string; slug: string; was?: string; tree: PageTree; seoTitle: string | null; seoDescription: string | null }>;
+  /** Each call address the file wrote, and the one it has here (an upgrade keeps them). */
+  calls: Record<string, string>;
 };
+/**
+ * What a feature made from an earlier version already has here (an upgrade): its things keep their ids
+ * and their addresses, and the file's call addresses the ones they were given then.
+ */
+export type Keep = { tables: Record<string, { id: string; slug: string }>; functions: Record<string, string>; pages: Record<string, { id: string; slug: string }>; calls: Record<string, string> };
 
 /** An id like the database's own (small letters and digits: a table's id is also in a role's permission). */
 export const newId = () => `c${randomBytes(12).toString("hex")}`;
@@ -404,24 +411,24 @@ const freePage = (slug: string, taken: Set<string>) => freeWord(slug, taken, (w)
  * tables' fields, the functions' steps (as a draft is: unfinished steps are fine), their tests and
  * what starts them, the pages' trees. `problems` empty = it can be installed.
  */
-export function planInstall(t: Template, taken: Taken, ids: () => string = newId): { plan: Plan; problems: Problem[] } {
+export function planInstall(t: Template, taken: Taken, ids: () => string = newId, keep?: Keep): { plan: Plan; problems: Problem[] } {
   const problems: Problem[] = [];
   const problem = (at: string, message: string) => void (problems.length < 40 && problems.push({ at, message }));
-  const tableIds = new Map(t.tables.map((x) => [x.key, ids()]));
-  const fnIds = new Map(t.functions.map((x) => [x.key, ids()]));
+  const tableIds = new Map(t.tables.map((x) => [x.key, keep?.tables[x.key]?.id ?? ids()]));
+  const fnIds = new Map(t.functions.map((x) => [x.key, keep?.functions[x.key] ?? ids()]));
   const used = { tables: new Set(taken.tables), pages: new Set(taken.pages), calls: new Set(taken.calls), routes: new Set(taken.routes) };
   const words = { calls: new Map<string, string>(), tables: new Map<string, string>(), pages: new Map<string, string>() };
   const issuesAt = (at: string, issues: Array<{ path: PropertyKey[]; message: string }>) => issues.slice(0, 5).forEach((i) => problem([at, ...i.path.map(String)].filter(Boolean).join("."), i.message));
 
   // Addresses first: the pages are written with the new ones.
   const tableSlugs = t.tables.map((x) => {
-    const slug = freeWord(x.slug, used.tables, (w) => COLLECTION_SLUG.test(w) && !RESERVED_SLUGS.has(w));
+    const slug = keep?.tables[x.key]?.slug ?? freeWord(x.slug, used.tables, (w) => COLLECTION_SLUG.test(w) && !RESERVED_SLUGS.has(w));
     used.tables.add(slug);
     if (slug !== x.slug) words.tables.set(x.slug, slug);
     return slug;
   });
   const pageSlugs = t.pages.map((p) => {
-    const slug = freePage(p.slug, used.pages);
+    const slug = keep?.pages[p.key]?.slug ?? freePage(p.slug, used.pages);
     used.pages.add(slug);
     if (slug !== p.slug) words.pages.set(p.slug, slug);
     return slug;
@@ -429,7 +436,9 @@ export function planInstall(t: Template, taken: Taken, ids: () => string = newId
   const callSlugs = t.functions.map((f) =>
     (f.triggers ?? []).map((tr) => {
       if (tr.kind !== "call" || !tr.slug) return null;
-      const slug = freeWord(tr.slug, used.calls, (w) => CALL_SLUG.test(w));
+      // A function that is here already keeps the address it was given for this word.
+      const kept = keep?.functions[f.key] && Object.hasOwn(keep.calls, tr.slug) ? keep.calls[tr.slug] : null;
+      const slug = kept ?? freeWord(tr.slug, used.calls, (w) => CALL_SLUG.test(w));
       used.calls.add(slug);
       if (slug !== tr.slug) words.calls.set(tr.slug, slug);
       return slug;
@@ -457,7 +466,8 @@ export function planInstall(t: Template, taken: Taken, ids: () => string = newId
     return checked.tree;
   };
 
-  const plan: Plan = { tables: [], fns: [], pages: [] };
+  const plan: Plan = { tables: [], fns: [], pages: [], calls: {} };
+  t.functions.forEach((f, i) => (f.triggers ?? []).forEach((tr, k) => void (tr.kind === "call" && tr.slug && callSlugs[i][k] && (plan.calls[tr.slug] = callSlugs[i][k]!))));
   t.tables.forEach((x, i) => {
     const at = `tables.${i}`;
     const fields = x.fields.map((f, k) => (isObj(f) && f.type === "relation" ? { ...f, to: storeTarget(f.to) ? f.to : tableIdOf(f.to, `${at}.fields.${k}.to`) } : f));
@@ -519,7 +529,7 @@ export function planInstall(t: Template, taken: Taken, ids: () => string = newId
 
   t.pages.forEach((p, i) => {
     const tree = treeOf(p.tree, `pages.${i}`);
-    if (tree) plan.pages.push({ key: p.key, id: ids(), name: p.name, slug: pageSlugs[i], ...(pageSlugs[i] !== p.slug ? { was: p.slug } : {}), tree, seoTitle: p.seo?.title ?? null, seoDescription: p.seo?.description ?? null });
+    if (tree) plan.pages.push({ key: p.key, id: keep?.pages[p.key]?.id ?? ids(), name: p.name, slug: pageSlugs[i], ...(pageSlugs[i] !== p.slug ? { was: p.slug } : {}), tree, seoTitle: p.seo?.title ?? null, seoDescription: p.seo?.description ?? null });
   });
   return { plan, problems };
 }

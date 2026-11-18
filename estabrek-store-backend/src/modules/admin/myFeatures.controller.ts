@@ -12,6 +12,7 @@ import { hasPermission } from "../../middleware/access.js";
 import { TEMPLATE_KEY, TEMPLATE_VERSION } from "../../lib/featureTemplate.js";
 import { REMOVE_ROWS, exportFeature, installTemplate, installedView, previewInstall, removalOf, removeFeature } from "../../lib/featureInstall.js";
 import { galleryFile, galleryList } from "../../lib/gallery/index.js";
+import { previewUpgrade, upgradeFeature } from "../../lib/featureUpgrade.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -38,6 +39,8 @@ import { galleryFile, galleryList } from "../../lib/gallery/index.js";
  * POST   /admin/my-features/templates/install { template } — installed as a draft, under a new feature that is off
  * GET    /admin/my-features/templates/gallery     — the ready examples (functions, APIs, features: lib/gallery)
  * GET    /admin/my-features/templates/gallery/:key — one example's file, shown and installed like any file
+ * POST   /admin/my-features/:id/upgrade/preview { template, take? } — what a newer file of its template would change; nothing is written
+ * POST   /admin/my-features/:id/upgrade { template, take? } — the upgrade made: what the owner changed stays theirs unless named in `take`
  * GET    /admin/my-features/:id/removal              — what removing it with its things would take, what stops it
  * POST   /admin/my-features/:id/remove { rows: "keep" | "delete" } — the feature and its functions, pages and
  *                                                    tables (their rows kept, in no feature, or deleted)
@@ -208,6 +211,27 @@ r.get(
     mayAlso(req, "functions:read", "pages:read");
     const q = ExportQuery.parse(req.query ?? {});
     res.json(await exportFeature(String(req.params.id), { key: q.key || undefined, version: q.version || undefined, lang: q.lang ?? "ar" }));
+  }),
+);
+
+const UpgradeBody = z.object({ template: z.unknown(), take: z.array(z.string().max(120)).max(200).optional(), lang: z.enum(["ar", "en", "he"]).optional() }).strict();
+
+r.post(
+  "/:id/upgrade/preview",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "functions:write", "pages:write");
+    const body = UpgradeBody.parse(req.body ?? {});
+    res.json(await previewUpgrade(String(req.params.id), body.template, body.take ?? [], body.lang ?? langOf(req)));
+  }),
+);
+
+r.post(
+  "/:id/upgrade",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "functions:write", "pages:write");
+    const body = UpgradeBody.parse(req.body ?? {});
+    const done = await upgradeFeature(String(req.params.id), body.template, { take: body.take ?? [], lang: body.lang ?? langOf(req), by: req.access?.email ?? null });
+    res.json({ ...done, feature: await full(await featureOf(req)) });
   }),
 );
 

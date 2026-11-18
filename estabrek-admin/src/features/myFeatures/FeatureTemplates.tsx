@@ -3,7 +3,7 @@
 // its functions unpublished, its pages drafts, until the owner has looked at them. And a feature
 // leaves with everything it holds, its tables' rows kept or deleted, as the owner says.
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { getApiErrorMessage } from "../../api/http";
@@ -131,7 +131,10 @@ function PreviewView({ preview, lang }: { preview: TemplatePreview; lang: "ar" |
         <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200" data-testid="template-again">
           {say("هالقالب متثبّت من قبل («{name}»، نسخة {v}). تثبيته كمان مرة بيعمل نسخة تانية بعناوين جديدة.|This template is installed already (“{name}”, version {v}). Installing it again makes a second copy under new addresses.|התבנית הזאת כבר מותקנת («{name}», גרסה {v}). התקנה נוספת יוצרת עותק שני בכתובות חדשות.")
             .replace("{name}", preview.installed[0].name)
-            .replace("{v}", preview.installed[0].version ?? "?")}
+            .replace("{v}", preview.installed[0].version ?? "?")}{" "}
+          <Link to={`/admin/my-features/${preview.installed[0].id}`} className="underline" data-testid="template-again-open">
+            {say("أو رقّيها من صفحتها|or upgrade it from its page|או לשדרג אותה מהעמוד שלה")}
+          </Link>
         </p>
       ) : null}
       {problems}
@@ -368,6 +371,13 @@ export function TemplateLine({ feature }: { feature: Feature }) {
           .replace("{v}", t.version)
           .replace("{at}", new Date(t.installedAt).toLocaleDateString(lang === "en" ? "en-GB" : lang))}
       </div>
+      {t.upgradedAt ? (
+        <div data-testid="feature-template-upgraded">
+          {say("ترقّت من {from} {at}|Upgraded from {from} {at}|שודרגה מ-{from} {at}")
+            .replace("{from}", t.from ?? "?")
+            .replace("{at}", new Date(t.upgradedAt).toLocaleDateString(lang === "en" ? "en-GB" : lang))}
+        </div>
+      ) : null}
       {!feature.enabled ? (
         <div className="text-amber-200" data-testid="feature-template-next">
           {say("انثبّتت كمسودة. قبل ما تشغّلها: افتح كل function، شوف شو ناقصها هون (جدول، اتصال)، جرّبها وانشرها؛ صمّم الصفحات وانشرها؛ وبعدين شغّل الميزة من فوق.|Installed as a draft. Before switching it on: open each function, see what it lacks here (a table, a connection), try it and publish it; design the pages and publish them; then switch the feature on above.|הותקנה כטיוטה. לפני שמפעילים: לפתוח כל פונקציה, לראות מה חסר לה כאן (טבלה, חיבור), לנסות ולפרסם; לעצב את העמודים ולפרסם; ואז להפעיל את התכונה למעלה.")}
