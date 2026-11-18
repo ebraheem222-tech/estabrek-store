@@ -694,7 +694,8 @@ const Curve = z.object({ kind: z.enum(["arc", "wave", "circle"]), bend: z.number
  * `min`–`max`, words between `min` and `max` letters) so the shopper is told at once; the function or the table's
  * own rules at the other end are what decide.
  */
-export const FORM_FIELD_KINDS = ["text", "long", "email", "phone", "number", "select", "check", "date"] as const;
+/** "file": a picture or file the shopper picks, uploaded into the table's field of that name first (lib/shopperFiles.ts). */
+export const FORM_FIELD_KINDS = ["text", "long", "email", "phone", "number", "select", "check", "date", "file"] as const;
 export const FORM_LIMITS = { fields: 20, options: 30 } as const;
 const FormField = z
   .object({

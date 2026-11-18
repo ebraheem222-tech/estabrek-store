@@ -101,6 +101,7 @@ export function CustomFormFields({ p, lang, busy, setProps }: { p: Record<string
         </>
       )}
       {fit?.missing.length ? <p className={warn} data-testid="form-missing">{send.to === "fn" ? say("الـ function لازمها وما إلها خانة:|The function needs these and no field gives them:|הפונקציה צריכה את אלה ואין להם שדה:") : say("حقول لازمة بالجدول وما إلها خانة:|The table needs these and no field gives them:|הטבלה צריכה את אלה ואין להם שדה:")} {names(fit.missing)}</p> : null}
+      {send.to === "fn" && fields.some((f) => f.kind === "file") ? <p className={warn} data-testid="form-file-fn">{say("خانة الملف بتشتغل بس لما الفورم بيروح على جدول (الملف بينرفع لحقل الجدول باسمها).|A file box only works when the form goes to a table (the file is uploaded into the table's field of its name).|תיבת קובץ עובדת רק כשהטופס נשלח לטבלה (הקובץ מועלה לשדה הטבלה בשמה).")}</p> : null}
       {fit?.extra.length ? <p className={send.to === "table" ? warn : note} data-testid="form-extra">{send.to === "fn" ? say("الـ function ما بتاخد (بتتجاهلها):|The function doesn't take (it leaves them):|הפונקציה לא מקבלת (היא מתעלמת):") : say("الجدول ما فيه هالحقول (الإرسال رح ينرفض):|The table has no such fields (sending will be refused):|בטבלה אין שדות כאלה (השליחה תידחה):")} {names(fit.extra)}</p> : null}
 
       <div className={part}>{say("الخانات|The fields|השדות")} <span className="text-white/70">{fields.length}/{FORM_MAX.fields}</span></div>

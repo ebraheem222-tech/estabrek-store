@@ -753,6 +753,31 @@ model AutomationState {
   @@id([ruleId, subject])
 }
 
+/// A file a shopper uploaded into a picture or file field of the owner's tables (src/lib/shopperFiles.ts): kept in
+/// Cloudinary, public, or private behind links that run out. One no row holds a day later is deleted.
+model StoredFile {
+  id           String   @id @default(cuid())
+  collectionId String
+  field        String
+  /// The shopper who uploaded it (none: someone not signed in, or a key).
+  ownerId      String?
+  /// Where Cloudinary keeps it, and as what ("image" or "raw").
+  location     String
+  resource     String
+  format       String
+  name         String
+  /// lib/fileKinds.ts: image, pdf, doc, sheet, text, zip, audio.
+  kind         String
+  bytes        Int
+  private      Boolean  @default(false)
+  /// A public file's address: what a row holds then (a private one's row holds "file:<id>").
+  url          String?
+  createdAt    DateTime @default(now())
+
+  @@index([collectionId, field])
+  @@index([createdAt])
+}
+
 /// A role the owner gives shoppers (admin → الزبائن → الأدوار والمجموعات): a key that tables and functions name
 /// ("seller"), and its name in the store's languages. A shopper holds the keys in User.roles.
 model ShopperRole {

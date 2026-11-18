@@ -10,6 +10,7 @@ import { prisma } from "./prisma.js";
 import { storedTree, TREE_VERSION, type PageTree } from "./pageTree.js";
 import { FIELD_TYPES, bindTree, expandLists, itemAddress, listIdsOf, type CollectionLite, type Field, type ItemLite } from "./collectionTree.js";
 import { PATTERN_MAX, SHAPES, ruleIssue, rulesProblem } from "./fieldRules.js";
+import { FILE_REF, UploadSchema } from "./fileKinds.js";
 
 export const TEMPLATE_KIND = "collectionTemplate";
 export const FIELD_ID = /^[a-z][a-zA-Z0-9]{0,30}$/;
@@ -51,8 +52,11 @@ export const FieldSchema = z
     many: z.boolean().optional(),
     exclusive: z.boolean().optional(),
     onDelete: z.enum(ON_DELETE).optional(),
+    // A picture or file field shoppers may upload into (lib/fileKinds.ts).
+    upload: UploadSchema.optional(),
   })
   .strict()
+  .refine((f) => f.upload === undefined || f.type === "image" || f.type === "file", "Only a picture or a file field takes uploads")
   .refine((f) => f.type !== "relation" || !!f.to, "A relation needs the table it links")
   .refine((f) => f.type === "relation" || (f.to === undefined && f.many === undefined && f.exclusive === undefined && f.onDelete === undefined), "Only a relation links a table")
   .refine((f) => f.type !== "relation" || f.options === undefined, "A relation has no choices of its own")
@@ -114,7 +118,8 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
     const bad = (message: string) => issues.push({ field: f.id, message });
     switch (f.type) {
       case "text": case "longText": { const r = local(f.type === "text" ? 300 : 20000).safeParse(v); if (r.success) data[f.id] = r.data; else bad("Words in ar/en/he"); break; }
-      case "image": if (typeof v === "string" && safeSrc(v.trim())) data[f.id] = v.trim(); else bad("A picture address"); break;
+      // An address, or a private file kept here ("file:<id>", lib/shopperFiles.ts).
+      case "image": if (typeof v === "string" && (safeSrc(v.trim()) || FILE_REF.test(v.trim()))) data[f.id] = v.trim(); else bad("A picture address"); break;
       case "link": if (typeof v === "string" && safeHref(v.trim())) data[f.id] = v.trim(); else bad("A link like /shop or https://…"); break;
       case "number": case "money": if (typeof v === "number" && Number.isFinite(v)) data[f.id] = v; else bad("A number"); break;
       case "date": if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && !Number.isNaN(new Date(v).getTime())) data[f.id] = v.slice(0, 10); else bad("A date"); break;
@@ -138,7 +143,8 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
         if (all) data[f.id] = (f.options ?? []).map((o) => o.id).filter((id) => (v as string[]).includes(id)); else bad("Some of its choices");
         break;
       }
-      case "file": case "video": if (typeof v === "string" && safeSrc(v.trim())) data[f.id] = v.trim(); else bad("A file's address"); break;
+      case "file": if (typeof v === "string" && (safeSrc(v.trim()) || FILE_REF.test(v.trim()))) data[f.id] = v.trim(); else bad("A file's address"); break;
+      case "video": if (typeof v === "string" && safeSrc(v.trim())) data[f.id] = v.trim(); else bad("A file's address"); break;
       case "model3d": if (typeof v === "string" && safeSrc(v.trim()) && /\.(glb|gltf)(\?[^#]*)?$/i.test(v.trim())) data[f.id] = v.trim(); else bad("A 3D model's address (.glb or .gltf)"); break;
       case "json": {
         let size = Infinity;

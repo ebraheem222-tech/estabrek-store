@@ -4,7 +4,7 @@
  * field's kind are offered (the server says which).
  */
 import { say } from "../../studio/say";
-import type { CollectionField, FieldType } from "../../api/collections.api";
+import { FILE_KINDS, type CollectionField, type FieldType, type FileKind } from "../../api/collections.api";
 import { KIND_NAME } from "../data/kinds";
 import { ValueInput, field as fieldBox, input } from "../data/GridCells";
 import { useState } from "react";
@@ -12,6 +12,15 @@ import { CURRENCIES, LIMIT_NAME, LINK_KINDS, LINK_KIND_NAME, ON_DELETE, ON_DELET
 import { storeTarget } from "../data/storeLinks";
 
 const label = "block text-xs text-white/60";
+const FILE_KIND_NAME: Record<FileKind, string> = {
+  image: "صور|Pictures|תמונות",
+  pdf: "PDF|PDF|PDF",
+  doc: "مستندات (Word…)|Documents (Word…)|מסמכים (Word…)",
+  sheet: "جداول (Excel، CSV)|Spreadsheets (Excel, CSV)|גיליונות (Excel, CSV)",
+  text: "نص (txt)|Text (txt)|טקסט (txt)",
+  zip: "ZIP|ZIP|ZIP",
+  audio: "صوت|Audio|שמע",
+};
 
 export function FieldRulesEditor({
   field,
@@ -164,6 +173,45 @@ export function FieldRulesEditor({
             {!(CURRENCIES as readonly string[]).includes(field.currency ?? "ILS") ? <input className={`${fieldBox} w-20 font-mono uppercase`} dir="ltr" maxLength={3} value={field.currency ?? ""} placeholder="XXX" onChange={(e) => onChange({ ...field, currency: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })} data-testid={`rule-${field.id}-currency-own`} /> : null}
           </span>
         </label>
+      ) : null}
+      {field.type === "image" || field.type === "file" ? (
+        <div className="space-y-2 rounded-lg border border-white/10 p-3 md:col-span-2" data-testid={`upload-${field.id}`}>
+          <label className="flex items-center gap-2 text-xs text-white/80">
+            <input type="checkbox" checked={!!field.upload} onChange={(e) => onChange(e.target.checked ? { ...field, upload: { maxMb: field.type === "image" ? 8 : 5, ...(field.type === "file" ? { kinds: ["image", "pdf"] as FileKind[] } : {}) } } : { ...field, upload: undefined })} data-testid={`upload-${field.id}-on`} />
+            {say("الزبون بيرفع ملف لهون (من فورم المتجر أو الـ API)|Shoppers upload a file here (from a shop form or the API)|הלקוח מעלה לכאן קובץ (מטופס בחנות או מה-API)")}
+          </label>
+          {field.upload ? (
+            <>
+              <label className={label}>
+                {say("أكبر حجم (ميغا)|The biggest size (MB)|הגודל המרבי (MB)")}
+                <input className={`${input} mt-1 w-24`} type="number" min={1} max={25} dir="ltr" value={field.upload.maxMb} onChange={(e) => onChange({ ...field, upload: { ...field.upload!, maxMb: Math.max(1, Math.min(25, Math.round(Number(e.target.value) || 1))) } })} data-testid={`upload-${field.id}-mb`} />
+              </label>
+              {field.type === "file" ? (
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/80" data-testid={`upload-${field.id}-kinds`}>
+                  {FILE_KINDS.map((k) => {
+                    const on = (field.upload!.kinds ?? []).includes(k);
+                    const kinds = field.upload!.kinds ?? [];
+                    return (
+                      <label key={k} className="flex items-center gap-1.5">
+                        <input type="checkbox" checked={on} disabled={on && kinds.length <= 1} onChange={() => onChange({ ...field, upload: { ...field.upload!, kinds: on ? kinds.filter((x) => x !== k) : [...kinds, k] } })} data-testid={`upload-${field.id}-kind-${k}`} />
+                        {say(FILE_KIND_NAME[k])}
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px] text-white/50">{say("صور بس: بتنحفظ webp بأكبر جهة 2400 بكسل، وبينشال منها المكان ونوع الكاميرا.|Pictures only: kept as webp at most 2400 px a side, without the place or the camera.|תמונות בלבד: נשמרות כ-webp עד 2400 פיקסלים לצד, בלי מיקום ומצלמה.")}</p>
+              )}
+              <label className="flex items-start gap-2 text-xs text-white/80">
+                <input type="checkbox" className="mt-0.5" checked={field.upload.private === true} onChange={(e) => onChange({ ...field, upload: { ...field.upload!, private: e.target.checked || undefined } })} data-testid={`upload-${field.id}-private`} />
+                <span>
+                  {say("ملف خاص|A private file|קובץ פרטי")}
+                  <span className="block text-white/50">{say("بيفتحه بس اللي بيقدر يقرأ السطر، برابط بيخلص بعد 10 دقائق. للسير الذاتية والهويات والوصفات.|Opened only by who may read the row, through a link that runs out after 10 minutes. For CVs, IDs, prescriptions.|נפתח רק למי שרשאי לקרוא את השורה, בקישור שפג אחרי 10 דקות. לקורות חיים, תעודות, מרשמים.")}</span>
+                </span>
+              </label>
+            </>
+          ) : null}
+        </div>
       ) : null}
       {fit.unique ? (
         <label className="flex items-center gap-2 text-xs text-white/70 md:col-span-2">

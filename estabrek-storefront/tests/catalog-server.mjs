@@ -1645,6 +1645,30 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (req.method === "POST") { globalThis.listReads = []; globalThis.listRowsNow = null; }
       return res.end(JSON.stringify({ reads, rows: listRows() }));
     }
+    // A file into a table's field (form-files.spec.ts): the backend's POST /v1/data/<table>/files/<field>, played. The
+    // "applications" table's "cv" takes up to 1 MB of PDF; what came is remembered (/__test/uploads; POST forgets).
+    if (/^\/v1\/data\/[^/]+\/files\/[^/]+$/.test(pathname) && req.method === "POST") {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        const raw = Buffer.concat(chunks);
+        const send = (status, payload) => { res.statusCode = status; res.end(JSON.stringify(payload)); };
+        const [, , , table, , field] = pathname.split("/");
+        const name = /filename="([^"]*)"/.exec(raw.toString("latin1"))?.[1] ?? "";
+        const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
+        if (table !== "applications" || field !== "cv") return send(404, { error: "NO_UPLOADS" });
+        if (raw.length > 1_100_000) return send(413, { error: "FILE_TOO_BIG", message: "Up to 1 MB", details: { maxMb: 1 } });
+        if (!/\.pdf$/i.test(name) || !raw.includes(Buffer.from("%PDF-"))) return send(415, { error: "FILE_KIND", message: "This kind of file isn't taken here", details: { kinds: ["pdf"] } });
+        (globalThis.uploads ??= []).push({ table, field, name, bytes: raw.length, signedIn: Boolean(bearer && customerState.tokens.has(bearer)) });
+        return send(201, { id: `upl${globalThis.uploads.length}`, value: `file:fixtureupload${String(globalThis.uploads.length).padStart(12, "0")}`, name, kind: "pdf", private: true });
+      });
+      return;
+    }
+    if (pathname === "/__test/uploads") {
+      const uploads = globalThis.uploads ?? [];
+      if (req.method === "POST") globalThis.uploads = [];
+      return res.end(JSON.stringify({ uploads }));
+    }
     // The owner's tables, written by a page's form (forms.spec.ts): stand-ins for the backend's POST /v1/data/<table>.
     // Rows that were taken are remembered with who added them (/__test/data-rows; POST forgets them).
     if (pathname.startsWith("/v1/data/") && req.method === "POST") {
@@ -1672,6 +1696,8 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         }
         // Only a signed-in shopper.
         if (table === "members") return shopper ? take() : send(401, { error: "SIGN_IN_NEEDED", message: "This needs a signed-in shopper" });
+        // Anyone, with a CV uploaded first (form-files.spec.ts).
+        if (table === "applications") return take();
         return send(404, { error: "NOT_FOUND", message: "No such table" });
       });
       return;

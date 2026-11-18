@@ -62,6 +62,11 @@ export type BulkBody = ({ ids: string[] } | { query: GridQuery }) & { op: BulkOp
 const base = "/admin/collections";
 const q = (query: GridQuery) => ({ params: { q: JSON.stringify(query) } });
 
+/** A private file a row holds ("file:<id>"): its name and kind, and a link to it that runs out (10 minutes). */
+export async function privateFile(tableId: string, fileId: string) {
+  return (await api.get(`${base}/${tableId}/files/${fileId}`)).data as { id: string; name: string; kind: string; bytes: number; url: string };
+}
+
 export async function gridMeta() {
   return (await api.get(`${base}/grid-meta`)).data as GridMeta;
 }

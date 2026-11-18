@@ -508,7 +508,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                           }}
                         />
                       ) : (
-                        <CellView column={c} row={row} lang={wordsLang} />
+                        <CellView column={c} row={row} lang={wordsLang} tableId={readOnly ? undefined : table?.id} />
                       )}
                     </td>
                   );

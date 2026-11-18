@@ -8,7 +8,8 @@
  */
 import type { TreeLang } from "./tree";
 
-export const FORM_FIELD_KINDS = ["text", "long", "email", "phone", "number", "select", "check", "date"] as const;
+/** "file": a picture or file, uploaded into the table's field of that name before the row is sent (forms to a table only). */
+export const FORM_FIELD_KINDS = ["text", "long", "email", "phone", "number", "select", "check", "date", "file"] as const;
 export type FormFieldKind = (typeof FORM_FIELD_KINDS)[number];
 export type FormFieldSpec = { name: string; kind: FormFieldKind; label: string; hint: string; required: boolean; options: Array<{ value: string; label: string }>; min?: number; max?: number };
 /** One of the owner's functions by its call address (its answer kept in the variable `as`, "" = not kept), or a new row of one of their tables. */
@@ -61,22 +62,26 @@ type Words = {
   needed: string; email: string; phone: string; number: string; day: string; choice: string;
   least: (n: number) => string; most: (n: number) => string; shortest: (n: number) => string; longest: (n: number) => string;
   choose: string; send: string; sending: string; sent: string; signin: string; signinLink: string; busy: string; other: string; notReady: string; inShop: string;
+  pickFile: string; fileTooBig: (mb: number | null) => string; fileKind: string; fileFailed: string;
 };
 const WORDS: Record<TreeLang, Words> = {
   ar: {
     needed: "هالخانة مطلوبة", email: "الإيميل مش صحيح", phone: "رقم التلفون مش صحيح", number: "لازم يكون رقم", day: "التاريخ مش صحيح", choice: "اختيار مش موجود",
     least: (n) => `أقل شي ${n}`, most: (n) => `أكتر شي ${n}`, shortest: (n) => `أقل شي ${n} حروف`, longest: (n) => `أكتر شي ${n} حرف`,
     choose: "اختيار…", send: "إرسال", sending: "عم ينبعت…", sent: "انبعت ✓", signin: "لازم تسجيل دخول أول.", signinLink: "تسجيل الدخول", busy: "كتير طلبات. استنّى شوي وجرّب كمان مرة", other: "ما زبط. جرّب كمان مرة", notReady: "هالفورم لسا مش جاهز", inShop: "بالمتجر: الفورم بينبعت",
+    pickFile: "اختيار ملف", fileTooBig: (mb) => (mb ? `الملف أكبر من ${mb} ميغا` : "الملف أكبر من المسموح"), fileKind: "هالنوع من الملفات مش مقبول هون", fileFailed: "الملف ما انرفع. ممكن المحاولة كمان مرة",
   },
   he: {
     needed: "שדה חובה", email: "כתובת האימייל אינה תקינה", phone: "מספר הטלפון אינו תקין", number: "יש להזין מספר", day: "התאריך אינו תקין", choice: "אפשרות שאינה קיימת",
     least: (n) => `לפחות ${n}`, most: (n) => `לכל היותר ${n}`, shortest: (n) => `לפחות ${n} תווים`, longest: (n) => `לכל היותר ${n} תווים`,
     choose: "בחירה…", send: "שליחה", sending: "נשלח…", sent: "נשלח ✓", signin: "יש להתחבר קודם.", signinLink: "התחברות", busy: "יותר מדי בקשות. נסו שוב בעוד רגע", other: "זה לא הצליח. נסו שוב", notReady: "הטופס הזה עדיין לא מוכן", inShop: "בחנות: הטופס נשלח",
+    pickFile: "בחירת קובץ", fileTooBig: (mb) => (mb ? `הקובץ גדול מ-${mb} MB` : "הקובץ גדול מהמותר"), fileKind: "סוג הקובץ הזה לא מתקבל כאן", fileFailed: "הקובץ לא הועלה. אפשר לנסות שוב",
   },
   en: {
     needed: "This is needed", email: "This isn't an email address", phone: "This isn't a phone number", number: "This has to be a number", day: "This isn't a date", choice: "This isn't one of the choices",
     least: (n) => `At least ${n}`, most: (n) => `At most ${n}`, shortest: (n) => `At least ${n} letters`, longest: (n) => `At most ${n} letters`,
     choose: "Choose…", send: "Send", sending: "Sending…", sent: "Sent ✓", signin: "Sign in first.", signinLink: "Sign in", busy: "Too many tries. Wait a moment and try again", other: "That didn't work. Try again", notReady: "This form isn't ready yet", inShop: "In the shop: the form is sent",
+    pickFile: "Choose a file", fileTooBig: (mb) => (mb ? `The file is over ${mb} MB` : "The file is too big"), fileKind: "This kind of file isn't taken here", fileFailed: "The file wasn't uploaded. It can be tried again",
   },
 };
 export const formWords = (lang: TreeLang): Words => WORDS[lang] ?? WORDS.en;
@@ -87,6 +92,8 @@ export function problemOf(f: FormFieldSpec, value: FormValue | undefined, lang: 
   if (f.kind === "check") return f.required && value !== true ? w.needed : null;
   const text = typeof value === "string" ? value.trim() : "";
   if (!text) return f.required ? w.needed : null;
+  // A file: its name stands for it here; the table's field decides its size and kind.
+  if (f.kind === "file") return null;
   switch (f.kind) {
     case "email":
       return EMAIL.test(text) && text.length <= 254 ? null : w.email;
@@ -127,6 +134,8 @@ export function valuesFor(fields: FormFieldSpec[], values: Record<string, FormVa
       else out[f.name] = v === true;
       continue;
     }
+    // A file is uploaded on its own (its value comes back from the upload).
+    if (f.kind === "file") continue;
     const text = typeof v === "string" ? v.trim() : "";
     if (!text) continue;
     out[f.name] = to === "table" && f.kind === "number" ? Number(text) : text;
