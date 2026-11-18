@@ -687,6 +687,9 @@ model Feature {
   note      String?
   /// Off: its functions aren't started and its tables' API answers as closed.
   enabled   Boolean       @default(true)
+  /// Made by installing a template (src/lib/featureInstall.ts): { key, version, name, installedAt, file, ids }:
+  /// the file it came from, and which of its things is which here (an upgrade tells the owner's changes by it).
+  template  Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   items     FeatureItem[]

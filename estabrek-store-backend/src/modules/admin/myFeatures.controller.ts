@@ -8,6 +8,9 @@ import { accessOf } from "../../lib/dataApi.js";
 import { FEATURE_KINDS, forgetFeatureGate, isStorePage, type FeatureKind } from "../../lib/featureGate.js";
 import { forgetTriggers } from "../../lib/fnTriggers.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
+import { hasPermission } from "../../middleware/access.js";
+import { TEMPLATE_KEY, TEMPLATE_VERSION } from "../../lib/featureTemplate.js";
+import { REMOVE_ROWS, exportFeature, installTemplate, installedView, previewInstall, removalOf, removeFeature } from "../../lib/featureInstall.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -27,6 +30,16 @@ import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
  * DELETE /admin/my-features/:id                   — the name goes; its things stay
  * POST   /admin/my-features/:id/items             { kind, refId } — a table, a function or a page joins it
  * DELETE /admin/my-features/:id/items/:kind/:ref  — it leaves (and stays where it was made)
+ *
+ * Templates (stage 4, lib/featureTemplate.ts + lib/featureInstall.ts): a feature as one file with a version.
+ * GET    /admin/my-features/:id/export?key&version — the feature as a template file, with what couldn't go into it
+ * POST   /admin/my-features/templates/preview { template } — what installing it would make here; nothing is written
+ * POST   /admin/my-features/templates/install { template } — installed as a draft, under a new feature that is off
+ * GET    /admin/my-features/:id/removal              — what removing it with its things would take, what stops it
+ * POST   /admin/my-features/:id/remove { rows: "keep" | "delete" } — the feature and its functions, pages and
+ *                                                    tables (their rows kept, in no feature, or deleted)
+ * Exporting reads functions and pages too (functions:read, pages:read); installing and removing write
+ * them (functions:write, pages:write: the tables are the pages' area).
  */
 const r = Router();
 
@@ -38,12 +51,22 @@ const SaveBody = z.object({ name: Name.optional(), note: Note.nullable().optiona
 const ItemBody = z.object({ kind: z.enum(FEATURE_KINDS), refId: z.string().min(1).max(40) }).strict();
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+const langOf = (req: Request): "ar" | "en" | "he" => {
+  const l = String(req.query?.lang ?? (req.body as { lang?: unknown } | undefined)?.lang ?? "");
+  return l === "en" || l === "he" ? l : "ar";
+};
+/** What a template's work reaches beyond the feature itself: said up front, not found out halfway. */
+function mayAlso(req: Request, ...permissions: string[]) {
+  const lacking = permissions.filter((p) => !hasPermission(req, p));
+  if (lacking.length) throw new AppError(403, "FORBIDDEN", "This needs more permissions", { lacking });
+}
 
-async function featureOf(req: Request) {
-  const feature = await prisma.feature.findUnique({ where: { id: String(req.params.id) }, include: { items: { orderBy: { createdAt: "asc" } } } });
+async function featureById(id: string) {
+  const feature = await prisma.feature.findUnique({ where: { id }, include: { items: { orderBy: { createdAt: "asc" } } } });
   if (!feature) throw new AppError(404, "FEATURE_NOT_FOUND", "No such feature");
   return feature;
 }
+const featureOf = (req: Request) => featureById(String(req.params.id));
 type Held = Awaited<ReturnType<typeof featureOf>>;
 
 /**
@@ -87,6 +110,8 @@ async function full(feature: Held) {
     name: feature.name,
     note: feature.note,
     enabled: feature.enabled,
+    // Made by installing a template: which one, and its version.
+    template: installedView(feature.template),
     createdAt: feature.createdAt,
     updatedAt: feature.updatedAt,
     tables: by(tables, "table").map((t) => ({ id: t.id, slug: t.slug, name: t.name, fields: Array.isArray(t.fields) ? t.fields.length : 0, rows: t._count.items, api: accessOf(t.api) })),
@@ -125,10 +150,61 @@ r.post(
   }),
 );
 
+/* ---------------- Templates ---------------- */
+
+const TemplateBody = z.object({ template: z.unknown(), lang: z.enum(["ar", "en", "he"]).optional() }).strict();
+
+r.post(
+  "/templates/preview",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "functions:write", "pages:write");
+    const body = TemplateBody.parse(req.body ?? {});
+    res.json(await previewInstall(body.template));
+  }),
+);
+
+r.post(
+  "/templates/install",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "functions:write", "pages:write");
+    const body = TemplateBody.parse(req.body ?? {});
+    if ((await prisma.feature.count()) >= FEATURE_LIMITS.features) throw new AppError(400, "TOO_MANY_FEATURES", `Up to ${FEATURE_LIMITS.features} features`);
+    const made = await installTemplate(body.template, { lang: body.lang ?? langOf(req), by: req.access?.email ?? null });
+    res.status(201).json(await full(await featureById(made.id)));
+  }),
+);
+
 r.get(
   "/:id",
   asyncHandler(async (req, res) => {
     res.json(await full(await featureOf(req)));
+  }),
+);
+
+const ExportQuery = z.object({ key: z.string().regex(TEMPLATE_KEY, "A key is letters, digits, - and _").optional(), version: z.string().regex(TEMPLATE_VERSION, "A version is three numbers, like 1.0.0").optional(), lang: z.enum(["ar", "en", "he"]).optional() });
+
+r.get(
+  "/:id/export",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "functions:read", "pages:read");
+    const q = ExportQuery.parse(req.query ?? {});
+    res.json(await exportFeature(String(req.params.id), { key: q.key || undefined, version: q.version || undefined, lang: q.lang ?? "ar" }));
+  }),
+);
+
+r.get(
+  "/:id/removal",
+  asyncHandler(async (req, res) => {
+    res.json(await removalOf(String(req.params.id), langOf(req)));
+  }),
+);
+
+r.post(
+  "/:id/remove",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "functions:write", "pages:write");
+    const body = z.object({ rows: z.enum(REMOVE_ROWS), lang: z.enum(["ar", "en", "he"]).optional() }).strict().parse(req.body ?? {});
+    res.json({ ok: true, removed: await removeFeature(String(req.params.id), body.rows, body.lang ?? langOf(req)) });
   }),
 );
 
