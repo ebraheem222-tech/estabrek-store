@@ -90,6 +90,7 @@ const ConnectionsPage = lazy(() => import("../features/connections/ConnectionsPa
 const WebhooksPage = lazy(() => import("../features/webhooks/WebhooksPage"));
 const MyFeaturesPage = lazy(() => import("../features/myFeatures/MyFeaturesPage"));
 const FeaturePage = lazy(() => import("../features/myFeatures/FeaturePage"));
+const GalleryPage = lazy(() => import("../features/myFeatures/GalleryPage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
 const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
@@ -324,6 +325,8 @@ export default function AppRouter() {
           {/* Outgoing webhooks (F6): the store's events sent, signed, to the owner's own addresses. */}
           <Route path="webhooks" element={withPermissions(<ErrorBoundary title="Webhooks"><WebhooksPage /></ErrorBoundary>, ["connections:read"])} />
           <Route path="my-features" element={withPermissions(<ErrorBoundary title="My features"><MyFeaturesPage /></ErrorBoundary>, ["features:read"])} />
+          {/* The gallery: ready functions, APIs and features, each installed as a draft (stage 4). */}
+          <Route path="my-features/gallery" element={withPermissions(<ErrorBoundary title="Gallery"><GalleryPage /></ErrorBoundary>, ["features:read"])} />
           <Route path="my-features/:id" element={withPermissions(<ErrorBoundary title="My features"><FeaturePage /></ErrorBoundary>, ["features:read"])} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}
           <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />

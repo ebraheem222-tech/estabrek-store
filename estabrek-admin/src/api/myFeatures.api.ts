@@ -109,3 +109,28 @@ export async function removalOf(id: string, lang: "ar" | "en" | "he") {
 export async function removeFeature(id: string, rows: "keep" | "delete", lang: "ar" | "en" | "he") {
   return (await api.post(`${at(id)}/remove`, { rows, lang })).data as { ok: true; removed: Removed };
 }
+
+/* ---------------- The gallery: ready functions, APIs and features ---------------- */
+
+export type GalleryKind = "function" | "api" | "feature";
+export type GalleryItem = {
+  key: string;
+  version: string;
+  kind: GalleryKind;
+  category: string;
+  name: Local;
+  note: Local | null;
+  counts: { tables: number; functions: number; pages: number };
+  /** What starts its functions: "event", "row", "schedule", "call", "webhook", "route". */
+  triggers: string[];
+  /** Its own addresses: "GET vat". */
+  routes: string[];
+  needs: { secrets: string[]; sites: string[]; connections: number };
+};
+export async function listGallery() {
+  return (await api.get(`${BASE}/templates/gallery`)).data as { items: GalleryItem[]; kinds: GalleryKind[]; categories: Record<string, Local> };
+}
+/** One example's file, shown and installed like any file. */
+export async function galleryFile(key: string) {
+  return (await api.get(`${BASE}/templates/gallery/${encodeURIComponent(key)}`)).data as { template: TemplateFile };
+}
