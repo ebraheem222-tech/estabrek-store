@@ -139,7 +139,10 @@ describe("The words", () => {
 describe("A feature from a template file", () => {
   test("is shown before anything is written: what it makes, what moved, what it needs; then installed as a draft", async () => {
     m.previewTemplate.mockResolvedValue(preview({ installed: [{ id: "m0", name: "Help desk", version: "1.0.0" }] }));
-    m.installTemplate.mockResolvedValue(feature({ id: "m7", enabled: false, template: { key: "help-desk", version: "1.0.0", name: { en: "Help desk" }, installedAt: "2026-11-18T10:00:00Z" } }));
+    const installed = feature({ id: "m7", enabled: false, template: { key: "help-desk", version: "1.0.0", name: { en: "Help desk" }, installedAt: "2026-11-18T10:00:00Z" } });
+    m.installTemplate.mockResolvedValue(installed);
+    // The new feature's page asks for it again: the server answers with what was installed.
+    m.getFeature.mockImplementation(async (id: string) => (id === "m7" ? installed : feature({ id })));
     show("/admin/my-features");
     choose(JSON.stringify({ format: "estabrek.feature", formatVersion: 1, key: "help-desk" }));
     await screen.findByTestId("template-preview");

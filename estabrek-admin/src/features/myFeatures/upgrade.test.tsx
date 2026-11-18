@@ -87,7 +87,10 @@ describe("The upgrade's words", () => {
 
 describe("Upgrading from the feature's page", () => {
   test("a newer version in the gallery shows what it would do, and is made with the owner's choices", async () => {
-    m.upgradeFeature.mockResolvedValue({ from: "1.0.0", to: "1.1.0", items: withChoices(ITEMS, new Set(["function:send"])), counts: preview.counts, feature: feature({ template: { key: "feat-returns", version: "1.1.0", name: L("المرتجعات", "Returns", "החזרות"), installedAt: "2026-11-18T10:00:00Z", upgradedAt: "2026-11-18T12:00:00Z", from: "1.0.0" } }) });
+    const upgraded = feature({ template: { key: "feat-returns", version: "1.1.0", name: L("المرتجعات", "Returns", "החזרות"), installedAt: "2026-11-18T10:00:00Z", upgradedAt: "2026-11-18T12:00:00Z", from: "1.0.0" } });
+    m.upgradeFeature.mockResolvedValue({ from: "1.0.0", to: "1.1.0", items: withChoices(ITEMS, new Set(["function:send"])), counts: preview.counts, feature: upgraded });
+    // Asked again after the upgrade, the server answers with the upgraded feature.
+    m.getFeature.mockImplementation(async () => (m.upgradeFeature.mock.calls.length ? upgraded : feature()));
     show();
     expect((await screen.findByTestId("feature-upgrade-newer")).textContent).toContain("The gallery has a newer version: 1.1.0 (you have 1.0.0)");
     fireEvent.click(screen.getByTestId("feature-upgrade-gallery"));
