@@ -28,6 +28,7 @@ import { recordRun } from "./runs.js";
 import { dayOf, nextDay, zonedToUtc } from "./storeTime.js";
 import { enqueueTask } from "./tasks.js";
 import { emitRowWebhooks } from "./webhooksOut.js";
+import { ROLE_KEY, ROLES_PER_ACT } from "./dataApi.js";
 
 export const TRIGGER_KINDS = ["row", "schedule", "event", "call", "webhook", "route"] as const;
 export type TriggerKind = (typeof TRIGGER_KINDS)[number];
@@ -95,7 +96,8 @@ const CONFIG = {
     z.object({ at: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }).strict(),
   ]),
   event: z.object({ event: z.enum(FN_EVENTS) }).strict(),
-  call: z.object({ who: z.enum(CALL_WHO), perMinute: z.number().int().min(1).max(600).optional() }).strict(),
+  /** `roles`: for a shopper holding one of these (lib/shopperRoles.ts) only. */
+  call: z.object({ who: z.enum(CALL_WHO), perMinute: z.number().int().min(1).max(600).optional(), roles: z.array(z.string().regex(ROLE_KEY)).max(ROLES_PER_ACT).optional() }).strict(),
   webhook: z.object({}).strict(),
   route: z
     .object({
@@ -103,6 +105,7 @@ const CONFIG = {
       path: z.string().max(200),
       who: z.enum(CALL_WHO),
       perMinute: z.number().int().min(1).max(600).optional(),
+      roles: z.array(z.string().regex(ROLE_KEY)).max(ROLES_PER_ACT).optional(),
       status: z.union([z.literal(200), z.literal(201), z.literal(202), z.literal(204)]).optional(),
     })
     .strict(),

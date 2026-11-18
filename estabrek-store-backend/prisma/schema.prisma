@@ -753,6 +753,23 @@ model AutomationState {
   @@id([ruleId, subject])
 }
 
+/// A role the owner gives shoppers (admin → الزبائن → الأدوار والمجموعات): a key that tables and functions name
+/// ("seller"), and its name in the store's languages. A shopper holds the keys in User.roles.
+model ShopperRole {
+  key       String   @id
+  name      Json     @default("{}")
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+/// A group of shoppers (a team, a class, a family): its members are the shoppers whose User.groups hold its id.
+model ShopperGroup {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  note      String?
+  createdAt DateTime @default(now())
+}
+
 /// The shop's own key pair for web push (src/lib/push.ts): made the first time it is needed. The
 /// private half is kept sealed (src/lib/secretBox.ts) and no route answers it.
 model PushKeys {
@@ -1517,6 +1534,11 @@ model User {
   lastLoginAt     DateTime?
   /// Agreed to news and offers by email.
   marketingOptIn  Boolean   @default(false)
+  /// The roles the owner gave this shopper (ShopperRole keys: "seller", "moderator"…): what they may do in the
+  /// owner's tables and functions beyond their own rows (src/lib/shopperRoles.ts).
+  roles           String[]  @default([])
+  /// The groups this shopper is in (ShopperGroup ids): a table can let a shopper read their group's rows too.
+  groups          String[]  @default([])
   preferredSize   String?
   /// Hex colour she picked on the site; the rose design opens in it.
   favoriteColor   String?

@@ -15,6 +15,7 @@ import type { FnFull, FnInput, FnTable, FnTrigger, TriggerKind, TriggerMeta } fr
 import { fullUrl } from "../api/apiText";
 import { tableName } from "./fnDraft";
 import { CALL_WHO_NAME, EVENT_NAME, ROUTE_STATUS_NAME, ROW_EVENT_NAME, TRIGGER_KIND_NAME, firedText, handsMissing, routeRefusal, triggerLine } from "./fnText";
+import { RolePicker, useShopperRoles } from "../customers/rolesUi";
 
 const ROUTE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const ROUTE_STATUS = [200, 201, 202, 204];
@@ -105,6 +106,13 @@ export function FnTriggers({ fn, tables, meta, canWrite, inputs, onAddInputs }: 
   );
 }
 
+/** A door's settings without its roles (a door for everyone or for a key has none). */
+const withoutRoles = (c: Record<string, unknown>) => {
+  const rest = { ...c };
+  delete rest.roles;
+  return rest;
+};
+
 function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, onSave, onRemove }: { t: FnTrigger; tables: FnTable[]; meta: TriggerMeta; canWrite: boolean; busy: boolean; missing: string[]; onAddInputs: (names: string[]) => void; onSave: (body: { config?: Record<string, unknown>; slug?: string; enabled?: boolean }) => void; onRemove: () => void }) {
   const lang = adminLang();
   const c = t.config as Record<string, unknown>;
@@ -118,12 +126,22 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
   // (An own address's path as the server kept it: the card is drawn afresh when it changes.)
   // An own address's settings, all sent together (the server checks them as one).
   const route = (more: Record<string, unknown>) => {
-    const next: Record<string, unknown> = { method: c.method, path: c.path, who: c.who, ...(c.perMinute !== undefined ? { perMinute: c.perMinute } : {}), ...(c.status !== undefined ? { status: c.status } : {}), ...more };
+    const next: Record<string, unknown> = { method: c.method, path: c.path, who: c.who, ...(c.perMinute !== undefined ? { perMinute: c.perMinute } : {}), ...(c.status !== undefined ? { status: c.status } : {}), ...(Array.isArray(c.roles) && c.roles.length ? { roles: c.roles } : {}), ...more };
     for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
     onSave({ config: next });
   };
   const url = t.address ? fullUrl(t.address, env.VITE_API_BASE_URL, window.location.origin) : "";
   const fired = firedText(t, lang);
+  // A door for signed-in shoppers can be for some roles only (الزبائن → الأدوار والمجموعات).
+  const shopperRoles = useShopperRoles();
+  const doorRoles = Array.isArray(c.roles) ? (c.roles as string[]) : [];
+  const rolesRow = (save: (roles: string[] | undefined) => void) =>
+    String(c.who ?? "") === "customer" && (shopperRoles.data?.roles.length || doorRoles.length) ? (
+      <div className="flex w-full flex-wrap items-center gap-2" data-testid={`trigger-${t.id}-roles`}>
+        <span className={label}>{say("بس لهالأدوار (فاضي = أي زبون):|Only these roles (none = any shopper):|רק לתפקידים האלה (ריק = כל לקוח):")}</span>
+        <RolePicker roles={shopperRoles.data?.roles ?? []} value={doorRoles} disabled={!canWrite} onChange={(next) => save(next.length ? next : undefined)} testid={`trigger-${t.id}-roles-pick`} />
+      </div>
+    ) : null;
   const daily = "at" in c;
 
   return (
@@ -213,7 +231,7 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
 
         {t.kind === "call" ? (
           <>
-            <select className={field} value={String(c.who ?? "customer")} disabled={!canWrite} onChange={(e) => onSave({ config: { ...c, who: e.target.value } })} data-testid={`trigger-${t.id}-who`}>
+            <select className={field} value={String(c.who ?? "customer")} disabled={!canWrite} onChange={(e) => onSave({ config: { ...withoutRoles(c), who: e.target.value, ...(e.target.value === "customer" && doorRoles.length ? { roles: doorRoles } : {}) } })} data-testid={`trigger-${t.id}-who`}>
               {(Object.keys(CALL_WHO_NAME) as Array<keyof typeof CALL_WHO_NAME>).map((w) => (
                 <option key={w} value={w}>
                   {say(CALL_WHO_NAME[w])}
@@ -234,10 +252,11 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
               onChange={(e) => setPerMinute(e.target.value)}
               onBlur={() => {
                 const n = perMinute.trim() === "" ? undefined : Math.max(1, Math.min(600, Math.round(Number(perMinute) || 1)));
-                if (n !== c.perMinute) onSave({ config: { who: c.who, ...(n ? { perMinute: n } : {}) } });
+                if (n !== c.perMinute) onSave({ config: { who: c.who, ...(n ? { perMinute: n } : {}), ...(doorRoles.length ? { roles: doorRoles } : {}) } });
               }}
               data-testid={`trigger-${t.id}-per-minute`}
             />
+            {rolesRow((roles) => onSave({ config: { who: c.who, ...(c.perMinute !== undefined ? { perMinute: c.perMinute } : {}), ...(roles ? { roles } : {}) } }))}
           </>
         ) : null}
 
@@ -264,7 +283,7 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
               aria-label={say("المسار|The path|הנתיב")}
               data-testid={`trigger-${t.id}-path`}
             />
-            <select className={field} value={String(c.who ?? "key")} disabled={!canWrite} onChange={(e) => route({ who: e.target.value, perMinute: undefined })} data-testid={`trigger-${t.id}-who`}>
+            <select className={field} value={String(c.who ?? "key")} disabled={!canWrite} onChange={(e) => route({ who: e.target.value, perMinute: undefined, roles: e.target.value === "customer" && doorRoles.length ? doorRoles : undefined })} data-testid={`trigger-${t.id}-who`}>
               {(Object.keys(CALL_WHO_NAME) as Array<keyof typeof CALL_WHO_NAME>).map((w) => (
                 <option key={w} value={w}>
                   {say(CALL_WHO_NAME[w])}
@@ -287,6 +306,7 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
               }}
               data-testid={`trigger-${t.id}-per-minute`}
             />
+            {rolesRow((roles) => route({ roles }))}
             <span className={label}>{say("الجواب|Answer|תשובה")}</span>
             <select className={field} value={String(c.status ?? 200)} disabled={!canWrite} onChange={(e) => route({ status: Number(e.target.value) === 200 ? undefined : Number(e.target.value) })} data-testid={`trigger-${t.id}-status`}>
               {ROUTE_STATUS.map((s) => (

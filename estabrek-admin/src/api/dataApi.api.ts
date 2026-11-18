@@ -10,7 +10,9 @@ export type Act = "read" | "create" | "update" | "delete";
 export type Who = "off" | "key" | "customer" | "public";
 export type TableAccess = Record<Act, Who>;
 export type ApiField = { id: string; type: FieldType; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }>; many?: boolean; currency?: string };
-export type ApiTable = { id: string; slug: string; name: Local | null; access: TableAccess; open: boolean; /** The fields only a key sees or writes. */ private: string[]; fields: ApiField[] };
+/** The shopper roles whose holders do an act on every row (الأدوار والمجموعات). */
+export type ActRoles = Record<Act, string[]>;
+export type ApiTable = { id: string; slug: string; name: Local | null; access: TableAccess; open: boolean; /** The fields only a key sees or writes. */ private: string[]; roles?: ActRoles; /** A shopper reads their group's rows too. */ group?: boolean; fields: ApiField[] };
 export type Scopes = { /** Every table (those made later too), or these, by id. */ tables: "*" | string[]; acts: Act[] };
 export type KeyState = "active" | "revoked" | "expired";
 /** A key as the admin sees it: its first letters, never the key itself. */
@@ -53,9 +55,9 @@ export async function getApi() {
 export async function getDocs() {
   return (await api.get(`${base}/docs`)).data as ApiDocs;
 }
-/** `hidden`: the private fields; left as they are when not given. */
-export async function setAccess(tableId: string, access: TableAccess, hidden?: string[]) {
-  return (await api.put(`${base}/tables/${tableId}`, hidden ? { ...access, private: hidden } : access)).data as ApiTable;
+/** `hidden`: the private fields; `more`: the roles and the group. Each is left as it is when not given. */
+export async function setAccess(tableId: string, access: TableAccess, hidden?: string[], more?: { roles?: ActRoles; group?: boolean }) {
+  return (await api.put(`${base}/tables/${tableId}`, { ...access, ...(hidden ? { private: hidden } : {}), ...(more?.roles ? { roles: more.roles } : {}), ...(more?.group !== undefined ? { group: more.group } : {}) })).data as ApiTable;
 }
 /** The key itself comes back this once; the server doesn't keep it. */
 export async function createKey(body: KeyBody) {

@@ -58,8 +58,11 @@ export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
 /** Names the run itself uses ("secret" is never one of its things: a secret is only put into a call as it leaves). */
 export const RESERVED = ["input", "now", "error", "index", "caller", "secret"] as const;
 export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
-/** Who started the run, as its steps name them: {{caller.kind}} is "customer", "key", "public", "admin" or "system". */
-export const CALLER_KEYS = ["kind", "id", "name", "email"] as const;
+/**
+ * Who started the run, as its steps name them: {{caller.kind}} is "customer", "key", "public", "admin" or "system";
+ * a shopper's {{caller.roles}} and {{caller.groups}} are lists (lib/shopperRoles.ts), empty for anyone else.
+ */
+export const CALLER_KEYS = ["kind", "id", "name", "email", "roles", "groups"] as const;
 
 /* ---------------- The shape ---------------- */
 

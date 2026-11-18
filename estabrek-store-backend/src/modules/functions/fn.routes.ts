@@ -45,21 +45,28 @@ const tooMany = (res: Response, resetAt: number) => {
   res.status(429).json({ error: "RATE_LIMIT", message: "Too many requests this minute", retryAt: resetAt });
 };
 
-/** Who is calling, as the trigger asks for it (`who`), and what their calls a minute are counted by. */
-async function callerFor(req: Request, who: CallWho): Promise<{ caller: FnCaller; from: string }> {
+const SHOPPER = { id: true, name: true, email: true, roles: true, groups: true } as const;
+const asShopper = (user: { id: string; name: string | null; email: string | null; roles: string[]; groups: string[] }): FnCaller => ({ kind: "customer", id: user.id, name: user.name ?? "", email: user.email ?? "", roles: user.roles, groups: user.groups });
+
+/**
+ * Who is calling, as the trigger asks for it (`who`; `roles`: a shopper holding one of them only), and what their
+ * calls a minute are counted by.
+ */
+async function callerFor(req: Request, who: CallWho, roles: readonly string[] = []): Promise<{ caller: FnCaller; from: string }> {
   if (who === "customer") {
     if (!req.customer) throw new AppError(401, "SIGN_IN_NEEDED", "This needs a signed-in shopper");
-    const user = await prisma.user.findUnique({ where: { id: req.customer.id }, select: { id: true, name: true, email: true } });
+    const user = await prisma.user.findUnique({ where: { id: req.customer.id }, select: SHOPPER });
     if (!user) throw new AppError(401, "SIGN_IN_NEEDED", "This needs a signed-in shopper");
-    return { caller: { kind: "customer", id: user.id, name: user.name ?? "", email: user.email ?? "" }, from: user.id };
+    if (roles.length && !roles.some((r) => user.roles.includes(r))) throw new AppError(403, "ROLE_NEEDED", "This is for shoppers with another role");
+    return { caller: asShopper(user), from: user.id };
   }
   if (who === "key") {
     if (!req.apiKey) throw new AppError(401, "KEY_NEEDED", "This needs an API key");
     return { caller: { kind: "key", id: req.apiKey.id, name: req.apiKey.name }, from: req.apiKey.id };
   }
   // Anyone: a signed-in shopper is still known as themselves.
-  const user = req.customer ? await prisma.user.findUnique({ where: { id: req.customer.id }, select: { id: true, name: true, email: true } }) : null;
-  return { caller: user ? { kind: "customer", id: user.id, name: user.name ?? "", email: user.email ?? "" } : { kind: "public" }, from: ipOf(req) };
+  const user = req.customer ? await prisma.user.findUnique({ where: { id: req.customer.id }, select: SHOPPER }) : null;
+  return { caller: user ? asShopper(user) : { kind: "public" }, from: ipOf(req) };
 }
 
 type Answer = { status: number; body: unknown; runId?: string };
@@ -113,7 +120,7 @@ fnCalls.post(
     const t = await triggerAt("call", String(req.params.address ?? "").toLowerCase());
     if (!t) throw gone();
     const config = t.config as CallConfig;
-    const { caller, from } = await callerFor(req, config.who);
+    const { caller, from } = await callerFor(req, config.who, config.roles);
     const { count, resetAt } = await hit(`fn:${t.id}:${from}`, MINUTE);
     if (count > (config.perMinute ?? CALL_PER_MINUTE[config.who])) return tooMany(res, resetAt);
     const body = CallBody.parse(req.body ?? {});
@@ -146,7 +153,7 @@ fnRoutes.use(
     }
     const t = match.trigger;
     const config = t.config as RouteConfig;
-    const { caller, from } = await callerFor(req, config.who);
+    const { caller, from } = await callerFor(req, config.who, config.roles);
     const { count, resetAt } = await hit(`fn:${t.id}:${from}`, MINUTE);
     if (count > (config.perMinute ?? CALL_PER_MINUTE[config.who])) return tooMany(res, resetAt);
     const raw = req.body;

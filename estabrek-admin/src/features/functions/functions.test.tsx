@@ -13,6 +13,8 @@ vi.mock("../../api/functions.api", () => m);
 vi.mock("../../config/env", () => ({ env: { VITE_API_BASE_URL: "https://api.shop.test/v1" } }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
 vi.mock("../../lib/toast", () => ({ toast: m.toast }));
+// The shoppers' roles (الأدوار والمجموعات), for a door that is for some roles only.
+vi.mock("../../api/shopperRoles.api", () => ({ getRoles: vi.fn(async () => ({ roles: [{ key: "seller", name: { en: "Seller" }, note: null, shoppers: 2, createdAt: "2026-11-18T10:00:00Z" }], groups: [], presets: [], limits: { roles: 30, groups: 200, rolesPerShopper: 10, groupsPerShopper: 20, rolesPerAct: 10, name: 60, note: 300, members: 2000 } })) }));
 
 import { setLangForTests } from "../../lib/lang";
 import FunctionsPage from "./FunctionsPage";
@@ -131,7 +133,7 @@ describe("The builder", () => {
     expect([...screen.getByTestId("filter-do.0-0-op").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["is", "contains"]);
     expect((screen.getByTestId("filter-do.0-0-op") as HTMLSelectElement).value).toBe("contains");
     pick("filter-do.0-0-op", "is");
-    expect([...screen.getByTestId("filter-do.0-0-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind"]);
+    expect([...screen.getByTestId("filter-do.0-0-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"]);
     pick("filter-do.0-0-value-names", "input.email");
     expect((screen.getByTestId("filter-do.0-0-value") as HTMLInputElement).value).toBe("{{input.email}}");
     type("step-do.0-as", "found");
@@ -208,7 +210,7 @@ describe("The builder", () => {
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("Greet ← said");
     expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "push", "email", "whatsapp", "sms", "ready", "http"]);
     pick("steps-fail-add", "notify");
-    expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "said", "error"]);
+    expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "said", "error"]);
     type("step-fail.0-title", "It failed: {{error}}");
     fireEvent.click(screen.getByTestId("fn-save"));
     await waitFor(() => expect(lastDraft()).toEqual({ inputs: [], do: [{ act: "call", fn: "f2", input: { who: "Amal" }, as: "said" }], fail: [{ act: "notify", title: "It failed: {{error}}" }] }));
@@ -772,6 +774,14 @@ describe("What starts it", () => {
     type("trigger-g1-per-minute", "5");
     fireEvent.blur(screen.getByTestId("trigger-g1-per-minute"));
     await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "g1", { config: { who: "public", perMinute: 5 } }));
+  });
+
+  test("a call for signed-in shoppers can be for some roles only (with the customers' permission)", async () => {
+    m.may = new Set([...m.may, "customers:read"]);
+    server = full({ name: "Sellers only", live: { inputs: [], do: [] }, published: true, changed: false, triggers: [trig({ id: "c1", kind: "call", config: { who: "customer", perMinute: 20 }, address: "/v1/fn/sellers-only", hands: ["input", "caller"] })] });
+    show();
+    fireEvent.click(await screen.findByTestId("trigger-c1-roles-pick-seller"));
+    await waitFor(() => expect(m.saveTrigger).toHaveBeenLastCalledWith("f1", "c1", { config: { who: "customer", perMinute: 20, roles: ["seller"] } }));
   });
 
   test("a schedule, a store event and a webhook; a member who can only look sees them and changes nothing", async () => {

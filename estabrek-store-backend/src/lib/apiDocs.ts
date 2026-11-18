@@ -120,9 +120,10 @@ function filterTable(table: DocTable): string {
   ].join("\n");
 }
 
-const SECURITY = { key: [{ apiKey: [] }], customer: [{ shopper: [] }, { apiKey: [] }], public: [{}, { apiKey: [] }] } as const;
+const SECURITY = { key: [{ apiKey: [] }], role: [{ shopper: [] }], customer: [{ shopper: [] }, { apiKey: [] }], public: [{}, { apiKey: [] }] } as const;
 const WHO_SAYS = {
   key: "Needs an API key.",
+  role: "For a signed-in shopper holding one of the roles the owner chose for this (their token in `Authorization: Bearer`), on every row.",
   customer: "For a signed-in shopper, on their own rows only (their token in `Authorization: Bearer`); a key reaches every row.",
   public: "Open to everyone; a key sees more (every row outside the trash).",
 } as const;

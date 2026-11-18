@@ -53,6 +53,7 @@ import collectionRows from "./collectionRows.controller.js";
 import dataStore from "./dataStore.controller.js";
 import webhooksOut from "./webhooksOut.controller.js";
 import push from "./push.controller.js";
+import shopperRoles from "./shopperRoles.controller.js";
 import dataApi from "./api.controller.js";
 import functions from "./functions.controller.js";
 import myFeatures from "./myFeatures.controller.js";
@@ -206,6 +207,8 @@ r.use("/system/deploy", areaAccess({ read: "system:read", write: "system:write" 
 r.use("/system/backups", areaAccess({ read: "system:read", write: "system:write" }), backups);
 r.use("/system", areaAccess({ read: "system:read", write: "system:write" }), system);
 r.use("/customers", areaAccess({ read: "customers:read", write: "customers:write" }), customers);
+// Roles and groups for shoppers (stage 2, item 3; lib/shopperRoles.ts).
+r.use("/shopper-roles", areaAccess({ read: "customers:read", write: "customers:write" }), shopperRoles);
 r.use("/stock-alerts", areaAccess({ read: "inventory:read", write: "inventory:write" }), stockAlerts);
 // Smart selling: the stock forecast (توقّع المخزون).
 r.use("/insights", areaAccess({ read: "inventory:read", write: "inventory:write" }), insights);

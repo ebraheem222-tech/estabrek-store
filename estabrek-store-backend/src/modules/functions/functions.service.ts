@@ -107,7 +107,7 @@ type Budget = { deadline: number; /** How long the run was given. */ ms: number;
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
 type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[] };
 /** Who started a run. */
-export type FnCaller = { kind: "admin" | "customer" | "key" | "public" | "system"; id?: string; name?: string; email?: string };
+export type FnCaller = { kind: "admin" | "customer" | "key" | "public" | "system"; id?: string; name?: string; email?: string; /** A shopper's (lib/shopperRoles.ts). */ roles?: string[]; groups?: string[] };
 const SYSTEM: FnCaller = { kind: "system" };
 const TRACE_MAX = 300;
 const PHONE = /^\+?[0-9][0-9 ()-]{4,19}$/;
@@ -515,7 +515,7 @@ export async function runDef(def: FnDef, input: Record<string, unknown>, opts: {
   const own: Budget = opts.budget ? { ...budget, trace: [] } : budget;
   const caller = opts.caller ?? SYSTEM;
   const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map(), caller };
-  const scope: Scope = { now: new Date().toISOString(), caller: { kind: caller.kind, id: caller.id ?? null, name: caller.name ?? null, email: caller.email ?? null } };
+  const scope: Scope = { now: new Date().toISOString(), caller: { kind: caller.kind, id: caller.id ?? null, name: caller.name ?? null, email: caller.email ?? null, roles: caller.roles ?? [], groups: caller.groups ?? [] } };
   const done = (ok: boolean, value: unknown, error: string | null, failedAt: string | null): Outcome => {
     // What it promises to give back is looked at, never enforced on a run: what the run did is done.
     const shape = ok ? answerProblem(def.gives, value) : null;
