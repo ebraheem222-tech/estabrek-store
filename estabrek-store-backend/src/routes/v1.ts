@@ -9,6 +9,7 @@ import webhooks from "../modules/webhooks/webhooks.controller.js";
 import auth from "../modules/auth/auth.routes.js";   // ← add this
 import customer from "../modules/customer/customer.routes.js";
 import stockAlerts from "../modules/stockAlerts/stockAlerts.routes.js";
+import push from "../modules/push/push.routes.js";
 import orderAccess from "../modules/fulfillment/orderAccess.routes.js";
 import licences from "../modules/protected/licence.routes.js";
 import razanPublic from "../modules/razan/razan.routes.js";
@@ -28,6 +29,7 @@ r.use("/webhooks", webhookRun, webhooks); // each one taken in goes to the run l
 r.use("/auth", auth);
 r.use("/customer", customer); // shopper accounts (sign in by email code)
 r.use("/stock-alerts", stockAlerts); // "tell me when it's back"
+r.use("/push", push); // the shop's notifications on shoppers' phones (the app, part two)
 r.use("/orders", orderAccess); // private order page: downloads and tickets
 r.use("/licences", licences); // the Windows launcher: activate a serial on a PC, check it, download the launcher
 r.use("/razan", razanPublic); // the storefront guide: usage counts and the owner's preview

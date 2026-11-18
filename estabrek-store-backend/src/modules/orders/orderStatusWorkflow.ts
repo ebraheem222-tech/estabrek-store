@@ -38,6 +38,8 @@ export type ApplyOrderStatusSuccess = {
   stockAction: "none" | "decremented" | "restored";
   /** Files/tickets: released on acceptance, taken back on cancel/reject/refund. */
   delivery: "none" | "released" | "revoked";
+  /** The state it was in before. */
+  from: OrderReqStatus;
 };
 
 export type ApplyOrderStatusResult = ApplyOrderStatusSuccess | ApplyOrderStatusError;
@@ -260,6 +262,7 @@ export async function applyOrderStatusTransition(
   return {
     ok: true,
     delivery,
+    from: existing.status,
     order: {
       ...updated,
       stockCommitted: shouldDecrement ? true : shouldRestore ? false : isCommitted,

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { Lang } from "@/lib/i18n";
 import { tr } from "@/lib/words";
 import type { Prompt } from "@/lib/pwa";
+import { inEditorFrame, standalone } from "@/lib/pushClient";
 import s from "./AppShell.module.css";
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -18,14 +19,7 @@ const MONTH = 30 * 24 * 60 * 60 * 1000;
 /** What the worker keeps (public/sw.js): emptied when the app is switched off. */
 const KEPT = /^(shell-|pages-v|assets-v)/;
 
-const inFrame = () => {
-  try {
-    return window.top !== window.self || /\/(studio-frame|design-frame)(\/|$)/.test(window.location.pathname);
-  } catch {
-    return true;
-  }
-};
-const standalone = () => window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+const inFrame = inEditorFrame;
 /** An iPhone or iPad's Safari: installing is the shopper's two taps there, never a question the shop can ask. */
 const iosSafari = () => /iP(hone|ad|od)/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
 const closedLately = () => {

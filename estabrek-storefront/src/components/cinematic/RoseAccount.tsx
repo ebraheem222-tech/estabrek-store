@@ -10,6 +10,7 @@ import { Icon } from "./Icons";
 import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { toneAr } from "@/lib/words";
+import { PushSwitch } from "@/components/PushSwitch";
 
 /**
  * حسابي: sign in with a code sent by email (no password), then her orders,
@@ -489,6 +490,7 @@ function Details() {
   };
 
   return (
+    <>
     <form className="rose-cart-form rose-account-form rose-account-details" onSubmit={save} noValidate data-testid="account-details">
       <label><span>{tr(lang, "الاسم", "Name")}</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" /></label>
       <label><span>{tr(lang, "رقم الهاتف", "Phone")}</span><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} type="tel" autoComplete="tel" dir="ltr" /></label>
@@ -519,5 +521,8 @@ function Details() {
         <button type="button" className="rose-cart-clear" onClick={() => void everywhere()}>{tr(lang, "الخروج من كل الأجهزة", "Sign out everywhere")}</button>
       </div>
     </form>
+    {/* Notifications on this phone (the shop as an app, admin → الإعدادات → التطبيق): shown only while they are on. */}
+    <PushSwitch />
+    </>
   );
 }

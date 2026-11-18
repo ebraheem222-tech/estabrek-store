@@ -2,7 +2,10 @@
 // on their phone's home screen: it opens without the browser's bar, in the store's colours and icon, and still opens
 // with no internet (the pages they saw, else a page saying so). Off by default: nothing changes until the owner
 // switches it on. The shop's side is estabrek-storefront src/lib/pwa.ts.
+// Part two, الإشعارات (header.app.push): notifications on the shoppers' phones that say yes; sent from الإشعارات
+// (features/push/PushPage.tsx), from a function's step, and, unless the owner says no, an order's own news.
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -13,13 +16,18 @@ import { useSettings } from "../../hooks/useSettings";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
-import { APP_DEFAULTS, PROMPTS, inkOn, previewColours, previewLetter, previewPicture, savedApp, storeAppOf, type Prompt, type StoreApp } from "./storeApp";
+import { APP_DEFAULTS, PROMPTS, PUSH_ASKS, inkOn, previewColours, previewLetter, previewPicture, savedApp, storeAppOf, type Prompt, type PushAsk, type StoreApp, type StorePush } from "./storeApp";
 
 const field = "h-10 w-full rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white";
 const PROMPT_WORDS: Record<Prompt, string> = {
   banner: "شريط صغير تحت بيعرض التثبيت|A small banner offering to install|באנר קטן שמציע להתקין",
   button: "زر صغير «تثبيت التطبيق» بس|Just a small “Install the app” button|רק כפתור קטן «התקנת האפליקציה»",
   off: "ولا شي: اللي بدّه بيثبّت من قائمة المتصفح|Nothing: whoever wants it installs from the browser's menu|כלום: מי שרוצה מתקין מתפריט הדפדפן",
+};
+
+const ASK_WORDS: Record<PushAsk, string> = {
+  banner: "بطاقة صغيرة بتسأل الزبون بعد ما يتفرّج شوي|A small card that asks shoppers after they've looked around a little|כרטיס קטן ששואל את הלקוח אחרי שהסתכל קצת",
+  account: "بس من صفحة حسابه (ما في سؤال)|Only from their account page (no asking)|רק מעמוד החשבון שלו (בלי לשאול)",
 };
 
 type Names = { name: string; short: string };
@@ -76,6 +84,7 @@ export function StoreAppCard() {
   const picture = previewPicture(draft, site);
   const letter = previewLetter(site.header, site.siteName);
   const set = (patch: Partial<StoreApp>) => setDraft((d) => ({ ...d, ...patch }));
+  const setPush = (patch: Partial<StorePush>) => setDraft((d) => ({ ...d, push: { ...d.push, ...patch } }));
   const dirty = JSON.stringify(savedApp(draft)) !== JSON.stringify(savedApp(saved));
 
   return (
@@ -141,6 +150,41 @@ export function StoreAppCard() {
                   "على أندرويد وكمبيوتر المتجر بيعرض التثبيت بنفسه. على الآيفون ما في هالإمكانية، فالشريط بيشرح للزبون: زر المشاركة، وبعدين «أضف إلى الشاشة الرئيسية». الأسعار والمخزون دايماً بيجوا من النت أول؛ اللي بينحفظ للفتح بدون نت ما بيشمل السلة والحساب والطلبات.|On Android and computers the shop offers the install itself. An iPhone has no such offer, so the banner tells shoppers how: the Share button, then “Add to Home Screen”. Prices and stock always come from the network first; what is kept for offline never includes the bag, the account or orders.|באנדרואיד ובמחשב החנות מציעה את ההתקנה בעצמה. באייפון אין אפשרות כזאת, אז הבאנר מסביר ללקוח: כפתור השיתוף ואז «הוספה למסך הבית». מחירים ומלאי תמיד מגיעים קודם מהרשת; מה שנשמר לשימוש בלי אינטרנט לא כולל את הסל, החשבון וההזמנות.",
                 )}
               </p>
+              <div className="space-y-3 rounded-xl border border-white/10 p-3" data-testid="store-app-push">
+                <div className="text-sm font-semibold">{say("الإشعارات|Notifications|התראות")}</div>
+                <p className="text-xs leading-5 text-white/55">
+                  {say(
+                    "إشعار على تلفون الزبون اللي بيقبل: عرض، قطعة رجعت، ووين صار طلبه. بتبعته من صفحة «الإشعارات»، أو من خطوة بالـ functions. الزبون بيقرّر؛ وعلى الآيفون بيشتغل بس لما يكون المتجر على الشاشة الرئيسية.|A notification on the phone of each shopper who says yes: an offer, a piece back in stock, where their order is. You send them from the Notifications page, or from a step in a function. Shoppers decide; on an iPhone it only works once the shop is on the home screen.|התראה בטלפון של כל לקוח שמסכים: מבצע, פריט שחזר, איפה ההזמנה שלו. שולחים מעמוד «התראות», או מצעד בפונקציה. הלקוח מחליט; באייפון זה עובד רק כשהחנות במסך הבית.",
+                  )}
+                </p>
+                <label className="flex min-h-11 items-center gap-3 rounded-xl border border-white/10 px-3 text-sm font-medium">
+                  <input type="checkbox" checked={draft.push.enabled} disabled={!canWrite || !draft.enabled} onChange={(e) => setPush({ enabled: e.target.checked })} data-testid="store-app-push-enabled" />
+                  {say("شغّل الإشعارات|Switch notifications on|הפעלת התראות")}
+                </label>
+                {!draft.enabled ? <p className="text-xs text-amber-200/80" data-testid="store-app-push-needs-app">{say("بتشتغل بس والتطبيق شغّال.|They only work with the app on.|הן עובדות רק כשהאפליקציה פעילה.")}</p> : null}
+                <label className="block text-xs text-white/60">
+                  {say("كيف بنسأل الزبون|How shoppers are asked|איך שואלים את הלקוח")}
+                  <select className={`${field} mt-1`} value={draft.push.ask} disabled={!canWrite} onChange={(e) => setPush({ ask: e.target.value as PushAsk })} data-testid="store-app-push-ask">
+                    {PUSH_ASKS.map((a) => (
+                      <option key={a} value={a}>
+                        {say(ASK_WORDS[a])}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-start gap-3 text-sm">
+                  <input type="checkbox" className="mt-1" checked={draft.push.orders} disabled={!canWrite} onChange={(e) => setPush({ orders: e.target.checked })} data-testid="store-app-push-orders" />
+                  <span>
+                    {say("خبّر الزبون عن طلبه|Tell shoppers about their order|לעדכן את הלקוח על ההזמנה שלו")}
+                    <span className="block text-xs text-white/50">{say("لما يتأكّد، ولما ينشحن، ولما ينلغى أو يرجع ثمنه. للزبون اللي طلب وهو مسجّل دخول.|When it's confirmed, shipped, canceled or refunded. For shoppers who ordered signed in.|כשהיא מאושרת, נשלחת, מבוטלת או מזוכה. ללקוחות שהזמינו כשהם מחוברים.")}</span>
+                  </span>
+                </label>
+                {saved.push.enabled && saved.enabled ? (
+                  <Link to="/admin/push" className="inline-block text-xs text-sky-300 underline" data-testid="store-app-push-send">
+                    {say("ابعت إشعار ←|Send a notification →|שליחת התראה ←")}
+                  </Link>
+                ) : null}
+              </div>
             </div>
             <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="store-app-preview">
               <div className="text-[11px] text-white/50">{say("على الشاشة الرئيسية|On the home screen|במסך הבית")}</div>

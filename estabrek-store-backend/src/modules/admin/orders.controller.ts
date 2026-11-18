@@ -6,6 +6,7 @@ import { validate } from "../../utils/validate.js";
 import { z } from "zod";
 import { annotateLinesWithDiscount, round2 } from "../../utils/money.js";
 import { ORDER_REQUEST_STATUSES, applyOrderStatusTransition } from "../orders/orderStatusWorkflow.js";
+import { pushOrderUpdate } from "../../lib/push.js";
 
 const r = Router();
 
@@ -531,6 +532,8 @@ r.patch(
       return res.status(400).json({ error: result.code, message: result.message });
     }
 
+    // Its shopper's phones are told (lib/push.ts; never waits, never fails the change).
+    if (result.from !== result.order.status) void pushOrderUpdate(result.order.id, result.order.status);
     res.json(result.order);
   })
 );

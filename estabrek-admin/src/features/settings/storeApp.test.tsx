@@ -14,6 +14,8 @@ vi.mock("../../components/media/MediaUrlInput", () => ({
   MediaUrlInput: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => <input data-testid="store-app-icon-url" value={value} onChange={(e) => onChange(e.target.value)} />,
 }));
 
+vi.mock("react-router-dom", () => ({ Link: ({ children, to, ...rest }: { children: unknown; to: string }) => <a href={to} {...rest}>{children as never}</a> }));
+
 import { setLangForTests } from "../../lib/lang";
 import { StoreAppCard } from "./StoreAppCard";
 import { APP_DEFAULTS, ROSE, inkOn, previewColours, previewLetter, previewPicture, savedApp, storeAppOf } from "./storeApp";
@@ -68,6 +70,32 @@ describe("The app's card", () => {
     fireEvent.click(screen.getByTestId("store-app-save"));
     await waitFor(() => expect(m.updateSettings).toHaveBeenCalledTimes(1));
     expect(m.updateSettings.mock.calls[0][0]).toEqual({ header: { ...header, languages: { enabled: ["ar", "en", "he"], default: "ar" }, app: { enabled: true, prompt: "button", shortName: "Estabrek", themeColor: "#123456" } } });
+  });
+
+  test("notifications: only with the app on; how shoppers are asked and order news are saved under the app's part", async () => {
+    expect(storeAppOf({ app: { push: { enabled: true, ask: "account", orders: false } } }).push).toEqual({ enabled: true, ask: "account", orders: false });
+    expect(storeAppOf({ app: { push: { ask: "nope" } } }).push).toEqual({ enabled: false, ask: "banner", orders: true });
+    // Untouched: nothing is saved for them.
+    expect(savedApp({ ...APP_DEFAULTS, enabled: true })).not.toHaveProperty("push");
+    show();
+    const on = (await screen.findByTestId("store-app-push-enabled")) as HTMLInputElement;
+    // The app is off: notifications can't be switched on yet.
+    expect(on.disabled).toBe(true);
+    expect(screen.getByTestId("store-app-push-needs-app")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("store-app-enabled"));
+    expect(on.disabled).toBe(false);
+    fireEvent.click(on);
+    fireEvent.change(screen.getByTestId("store-app-push-ask"), { target: { value: "account" } });
+    fireEvent.click(screen.getByTestId("store-app-push-orders"));
+    fireEvent.click(screen.getByTestId("store-app-save"));
+    await waitFor(() => expect(m.updateSettings).toHaveBeenCalledTimes(1));
+    expect(m.updateSettings.mock.calls[0][0].header.app).toEqual({ enabled: true, prompt: "banner", push: { enabled: true, ask: "account", orders: false } });
+    // Saved and on: the way to send one.
+    expect(screen.queryByTestId("store-app-push-send")).toBeNull();
+    cleanup();
+    m.settings = { ...m.settings, header: { ...header, app: { enabled: true, push: { enabled: true } } } };
+    show();
+    expect((await screen.findByTestId("store-app-push-send")).getAttribute("href")).toBe("/admin/push");
   });
 
   test("a colour set by the owner goes back to the store's; no picture: the first letter; without the permission, nothing changes", async () => {

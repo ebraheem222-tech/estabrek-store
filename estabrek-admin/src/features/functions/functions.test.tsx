@@ -206,7 +206,7 @@ describe("The builder", () => {
     type("step-do.0-input-who", "Amal");
     type("step-do.0-as", "said");
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("Greet ← said");
-    expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "email", "whatsapp", "sms", "ready", "http"]);
+    expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "push", "email", "whatsapp", "sms", "ready", "http"]);
     pick("steps-fail-add", "notify");
     expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "said", "error"]);
     type("step-fail.0-title", "It failed: {{error}}");

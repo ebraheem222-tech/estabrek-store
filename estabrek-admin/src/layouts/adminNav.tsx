@@ -225,6 +225,7 @@ const NAV_MAIN: NavItem[] = [
   { to: "/admin/requests", label: tr("الطلبات الخاصة", "Special requests"), icon: Icons.bell, requirePermissions: ["orders:read"] },
   { to: "/admin/customers", label: tr("الزبائن", "Customers"), icon: Icons.profile, requirePermissions: ["customers:read"] },
   { to: "/admin/outbox", label: tr("الرسائل", "Messages"), icon: Icons.outbox, requirePermissions: ["outbox:read"] },
+  { to: "/admin/push", label: tr("الإشعارات", "Notifications"), icon: Icons.bell, requirePermissions: ["outbox:read"] },
 ];
 
 const NAV_CATALOG: NavItem[] = [

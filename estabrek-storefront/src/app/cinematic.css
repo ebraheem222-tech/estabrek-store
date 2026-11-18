@@ -4416,6 +4416,19 @@ html[data-theme-crossfade]::view-transition-new(root) {
 .rose-account-check input { width: 18px !important; height: 18px; accent-color: var(--selection-accent, #7d2448); }
 .rose-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
 .rose-account-details { max-width: 560px; }
+/* Notifications on this phone (PushSwitch.tsx): a card with a switch. */
+.rose-account-push { max-width: 560px; margin-top: 22px; display: flex; align-items: center; gap: 16px; border: 1px solid var(--selection-line, #efdde5); border-radius: 22px; padding: 16px 20px; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 70%, white); }
+.rose-account-push > div { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.rose-account-push strong { font-size: 14.5px; color: var(--selection-ink, #4d2039); }
+.rose-account-push span { font-size: 13px; line-height: 1.7; color: var(--selection-muted, #8b6d7b); }
+.rose-account-push span[role="alert"] { color: #8a3a3a; }
+.rose-account-push-switch { flex: none; position: relative; width: 48px; height: 28px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; background: var(--selection-line, #e3cdd8); transition: background 0.2s; }
+.rose-account-push-switch i { position: absolute; top: 3px; inset-inline-start: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: inset-inline-start 0.2s; }
+.rose-account-push-switch[aria-checked="true"] { background: var(--selection-accent, #7d2448); }
+.rose-account-push-switch[aria-checked="true"] i { inset-inline-start: 23px; }
+.rose-account-push-switch:disabled { opacity: 0.6; cursor: progress; }
+.rose-account-push-switch:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .rose-account-push-switch, .rose-account-push-switch i { transition: none; } }
 .rose-account-color { display: grid; gap: 8px; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
 .rose-account-color > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .rose-account-color i { display: inline-block; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--selection-line, #e3cdd8); }

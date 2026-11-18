@@ -12,14 +12,14 @@ export const isGroup = (s: Step): s is GroupStep => s.act === "if" || s.act === 
 export const GROUPS: Array<{ key: "data" | "control" | "out" | "outside" | "code"; acts: StepKind[] }> = [
   { key: "data", acts: ["find", "get", "add", "change", "delete"] },
   { key: "control", acts: ["if", "each", "set", "call", "stop", "return"] },
-  { key: "out", acts: ["notify", "email", "whatsapp", "sms"] },
+  { key: "out", acts: ["notify", "push", "email", "whatsapp", "sms"] },
   // Outside the store: through a service the owner connected, or a call to a site the owner allowed.
   { key: "outside", acts: ["ready", "http"] },
   // For what the steps can't say: JavaScript, run in a cage on the server.
   { key: "code", acts: ["code"] },
 ];
 /** After a failure a function tells someone or writes it down, nothing else. */
-export const FAIL_ACTS: StepKind[] = ["notify", "email", "whatsapp", "sms", "add", "change", "set", "ready", "http"];
+export const FAIL_ACTS: StepKind[] = ["notify", "push", "email", "whatsapp", "sms", "add", "change", "set", "ready", "http"];
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
 export const RESERVED = ["input", "now", "error", "index", "caller", "secret"];
 export const nameOk = (name: string) => NAME.test(name) && !RESERVED.includes(name);
@@ -228,6 +228,9 @@ export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; 
       return { act, subject: "", text: "" };
     case "notify":
       return { act, title: "" };
+    case "push":
+      // Most often the one who started the run: the shopper whose button it was.
+      return { act, who: "customer", to: "{{caller.id}}", title: "" };
     default:
       return { act, text: "" } as PlainStep;
   }

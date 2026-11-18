@@ -5,6 +5,7 @@ import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
 import { asyncHandler } from "../../utils/async.js";
 import { ORDER_REQUEST_STATUSES, applyOrderStatusTransition } from "../orders/orderStatusWorkflow.js";
+import { pushOrderUpdate } from "../../lib/push.js";
 
 const r = Router();
 const ORDER_STATUS_SET = new Set<string>(ORDER_REQUEST_STATUSES);
@@ -111,6 +112,8 @@ r.post(
           }
           return res.status(400).json({ error: result.code, message: result.message });
         }
+        // Its shopper's phones are told (lib/push.ts; never waits, never fails the change).
+        if (result.from !== result.order.status) void pushOrderUpdate(result.order.id, result.order.status);
         return res.json({ ok: true });
       }
 

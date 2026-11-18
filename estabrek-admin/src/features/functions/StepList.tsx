@@ -9,7 +9,7 @@ import { say } from "../../studio/say";
 import { STATUS_NAME, SYSTEM_NAME, kindOf, opName, opNeeds } from "../data/dataText";
 import { FAIL_ACTS, GROUPS, addStep, atOf, fieldName, firstAction, freeName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
 import { actionName, fieldName as readyField, kindName } from "../connections/readyText";
-import { ACT_NAME, ALONE, CMP_NAME, CODE_START, GROUP_NAME, SET_OP, codeNote, condsLine, problemText, stepLine } from "./fnText";
+import { ACT_NAME, ALONE, CMP_NAME, CODE_START, GROUP_NAME, PUSH_WHO_NAME, SET_OP, codeNote, condsLine, problemText, stepLine } from "./fnText";
 
 export type Builder = {
   def: FnDef;
@@ -735,6 +735,27 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
           {words(say("العنوان|Title|כותרת"), step.title, (title) => set({ ...step, title }), { key: "title" })}
           {words(say("النص|Text|טקסט"), step.text, (text) => set({ ...step, text: text || undefined }), { key: "text" })}
           {words(say("رابط بالأدمن|A link in the admin|קישור בניהול"), step.link, (link) => set({ ...step, link: link || undefined }), { key: "link", placeholder: "/admin/data" })}
+        </>
+      );
+    case "push":
+      return (
+        <>
+          <Row name={say("لمين|Who gets it|למי")}>
+            <select className={field} value={step.who} disabled={!b.canWrite} onChange={(e) => set({ ...step, who: e.target.value as typeof step.who, to: e.target.value === "customer" ? step.to || "{{caller.id}}" : undefined })} data-testid={`step-${id}-who`}>
+              {(["customer", "customers", "all"] as const).map((w) => (
+                <option key={w} value={w}>
+                  {say(PUSH_WHO_NAME[w])}
+                </option>
+              ))}
+            </select>
+          </Row>
+          {step.who === "customer" ? words(say("الزبون (رقمه أو إيميله)|The customer (their id or email)|הלקוח (המזהה או האימייל שלו)"), step.to, (to) => set({ ...step, to }), { key: "to", placeholder: "{{caller.id}}" }) : null}
+          {words(say("العنوان|Title|כותרת"), step.title, (title) => set({ ...step, title }), { key: "title" })}
+          {words(say("النص|Text|טקסט"), step.text, (text) => set({ ...step, text: text || undefined }), { key: "text" })}
+          {words(say("وين بيفتح بالمتجر|Where it opens in the shop|איפה זה נפתח בחנות"), step.link, (link) => set({ ...step, link: link || undefined }), { key: "link", placeholder: "/account" })}
+          <p className="text-xs text-white/50" data-testid={`step-${id}-push-note`}>
+            {say("بيوصل بس للتلفونات اللي قبلت الإشعارات (الإعدادات ← التطبيق ← الإشعارات). إذا ما في ولا تلفون، الخطوة بتمشي وما بتبعت شي.|Only reaches phones that said yes to notifications (Settings → the app → Notifications). With no phone, the step goes on and sends nothing.|מגיע רק לטלפונים שהסכימו להתראות (הגדרות ← האפליקציה ← התראות). בלי אף טלפון, השלב ממשיך ולא שולח כלום.")}
+          </p>
         </>
       );
     case "email":
