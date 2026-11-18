@@ -18,7 +18,7 @@ import { loc } from "@/lib/lang";
 
 /* ---------------------------------- Tabs ---------------------------------- */
 
-export type SettingsTabId = "brand" | "rose" | "menu" | "marketing" | "seo" | "checkout" | "advanced" | "history" | "legacy";
+export type SettingsTabId = "brand" | "rose" | "menu" | "marketing" | "seo" | "app" | "checkout" | "advanced" | "history" | "legacy";
 
 export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
   { id: "brand", label: "الهوية والتواصل" },
@@ -26,6 +26,7 @@ export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
   { id: "menu", label: "القائمة" },
   { id: "marketing", label: "التسويق والتتبع" },
   { id: "seo", label: "محركات البحث" },
+  { id: "app", label: "التطبيق" },
   { id: "checkout", label: "الطلب والدفع" },
   { id: "advanced", label: "أكواد متقدمة" },
   { id: "history", label: "السجل" },

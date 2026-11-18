@@ -1020,6 +1020,17 @@ http
       return res.end(JSON.stringify({ ok: true, scenes: scenesOn }));
     }
     if (pathname === "/__test/last-order") return res.end(JSON.stringify(globalThis.lastOrder ? { ...globalThis.lastOrder, signedIn: globalThis.lastOrderSignedIn ?? false } : null));
+    // The shop as an app (pwa.spec.ts): POST the app's settings (header.app), {} for none (off, as a new store).
+    if (pathname === "/__test/app" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (Object.keys(data).length) site.header.app = data; else delete site.header.app;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
     // Store themes (store-themes.spec.ts): POST {"id":"circuit","mode":"dark"} to pick one, {} for the rose design.
     if (pathname === "/__test/store-theme" && req.method === "POST") {
       let body = "";

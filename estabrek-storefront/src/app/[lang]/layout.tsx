@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { selectStorefrontNav } from "@/lib/storefrontNav";
 import "../globals.css";
 import "../cinematic.css";
@@ -41,6 +41,9 @@ import { StoreDesignRegion } from "@/components/StoreDesignRegion";
 // The plain header (stores without the cinematic design): its own download (PlainHeaderParts.tsx).
 import { HeaderOffset, Navbar, Topbar } from "@/components/PlainHeaderParts";
 import { TreeRuntime } from "@/pageTree/TreeRuntime";
+import { AppShell } from "@/components/AppShell";
+import { iconHref, workerHref } from "@/lib/pwa";
+import { appState } from "@/lib/pwaServer";
 
 /** Every language is its own static page: /ar…, /en…, /he… (see src/middleware.ts). */
 export function generateStaticParams() {
@@ -88,15 +91,26 @@ export async function generateMetadata({ params }: { params: { lang: string } })
   const base = process.env.NEXT_PUBLIC_SITE_URL;
   const favicon = (site as any)?.faviconUrl || null;
   const shareImage = text(seo.ogImageUrl) || (site as any)?.logoUrl || (modest ? "/editorial/hijab-campaign.webp" : undefined);
+  // Admin → الإعدادات → التطبيق: the shop installs as an app (its manifest, and an iPhone's own tags and icon).
+  const app = await appState().catch(() => null);
+  const asApp = app?.app.enabled ? app : null;
+  const appIcons = asApp ? { icons: { ...(favicon ? { icon: favicon } : {}), apple: iconHref(180, "any", asApp.version, asApp.colours.theme) } } : null;
   return {
     ...(base ? { metadataBase: new URL(base) } : {}),
     title: { default: title, template: `%s | ${name}` },
     description,
     applicationName: name,
-    ...(favicon ? { icons: { icon: favicon, apple: favicon } } : {}),
+    ...(appIcons ?? (favicon ? { icons: { icon: favicon, apple: favicon } } : {})),
+    ...(asApp ? { manifest: "/manifest.webmanifest", appleWebApp: { capable: true, title: asApp.app.shortName || name, statusBarStyle: "default" as const } } : {}),
     openGraph: { type: "website", siteName: name, locale: LANG_LOCALE[lang], title, description, images: [shareImage] },
     twitter: { card: "summary_large_image", title, description, images: [shareImage] },
   };
+}
+
+/** The bar's colour on a phone: the app's, while the shop is an app. */
+export async function generateViewport(): Promise<Viewport> {
+  const app = await appState().catch(() => null);
+  return app?.app.enabled ? { themeColor: app.colours.theme } : {};
 }
 
 export default async function RootLayout({
@@ -108,9 +122,11 @@ export default async function RootLayout({
 }) {
   if (!isLang(params.lang)) notFound();
   const lang: Lang = params.lang;
-  const [bootstrap, settings] = await Promise.all([
+  const [bootstrap, settings, pwa] = await Promise.all([
     getBootstrap(),
     getPublicSettings(),
+    // Admin → الإعدادات → التطبيق (header.app).
+    appState().catch(() => null),
   ]);
   const settingsHeader = (settings.site as any)?.header;
   const bootstrapHeader = (bootstrap.site as any)?.header;
@@ -307,6 +323,14 @@ export default async function RootLayout({
           </ThemeWrap>
           </StoreLookProvider>
         </Providers>
+        <AppShell
+          enabled={pwa?.app.enabled === true}
+          worker={pwa ? workerHref(pwa.version, header, process.env.NODE_ENV !== "production") : "/sw.js"}
+          prompt={pwa?.app.prompt ?? "off"}
+          lang={lang}
+          name={pwa?.app.shortName || nameOf(identity, lang)}
+          icon={pwa ? iconHref(192, "any", pwa.version, pwa.colours.theme) : ""}
+        />
       </body>
     </html>
   );
