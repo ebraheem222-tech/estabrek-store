@@ -188,16 +188,16 @@ describe("Formatted words on a page", () => {
   test("drawn with the page: a text takes them, marked; a heading doesn't", () => {
     const out = expandLists(tree({}), new Map([["t1", { collection: notes, items: [item] }]])) as { root: { children: Array<{ children: Array<{ children: Array<{ props: Record<string, unknown> }> }> }> } };
     const [b, h, n] = out.root.children[0].children[0].children;
-    expect(b.props).toMatchObject({ text: { en: "**Bold**" }, rich: true });
-    expect(h.props.rich).toBeUndefined();
+    expect(b.props).toMatchObject({ text: { en: "**Bold**" }, formatted: true });
+    expect(h.props.formatted).toBeUndefined();
     expect(h.props.text).toEqual({ en: "x" });
     expect(n.props.text).toEqual({ ar: "3", en: "3", he: "3" });
   });
   test("read in the browser: the card's text is marked for the shop to fill", () => {
     const out = expandLists(tree({ feed: "live" }), new Map([["t1", { collection: notes, items: [] }]])) as { root: { children: Array<{ children: Array<{ children: Array<{ props: Record<string, unknown> }> }> }> } };
     const [b, h] = out.root.children[0].children[0].children;
-    expect(b.props.rich).toBe(true);
-    expect(h.props.rich).toBeUndefined();
+    expect(b.props.formatted).toBe(true);
+    expect(h.props.formatted).toBeUndefined();
   });
 });
 

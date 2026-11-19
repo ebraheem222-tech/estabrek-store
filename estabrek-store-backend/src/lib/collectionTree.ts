@@ -197,7 +197,7 @@ export function bindNode(node: Node, item: ItemLite | null, collection: Collecti
       // A fitting field this item left empty: no words (the design's sample words never show as its own).
       else if (WORDS_PROPS.has(prop) && fits(prop, ref, collection, node.type)) props = { ...props, [prop]: {} };
     }
-    if (item && richRef(node, collection)) props = { ...props, rich: true };
+    if (item && richRef(node, collection)) props = { ...props, formatted: true };
   }
   const children = node.children?.map((c) => (c.type === "collectionList" ? c : bindNode(c, item, collection)));
   return props === node.props && children === node.children ? node : { ...node, props, ...(children ? { children } : {}) };
@@ -294,7 +294,7 @@ export function rowMatches(item: ItemLite, filters: ListFilter[], collection: Co
  * connected to formatted words is marked so (the shop fills it with the row's words, marks and all).
  */
 const withoutLists = (n: Node, collection: CollectionLite): Node => {
-  const own = richRef(n, collection) ? { ...n, props: { ...n.props, rich: true } } : n;
+  const own = richRef(n, collection) ? { ...n, props: { ...n.props, formatted: true } } : n;
   return own.children ? { ...own, children: own.children.filter((c) => c.type !== "collectionList").map((c) => withoutLists(c, collection)) } : own;
 };
 

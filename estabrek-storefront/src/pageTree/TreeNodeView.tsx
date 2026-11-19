@@ -264,8 +264,8 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     }
     case "text": {
       const curve = safeCurve(p.curve);
-      // Formatted words (connected to a table's formatted field: the server marks it `rich`), drawn with their marks.
-      if (p.rich === true && !curve) {
+      // Formatted words (connected to a table's formatted field: the server marks it `formatted`; `rich` is the editor's own inline marks), drawn with their marks.
+      if (p.formatted === true && !curve) {
         const body = <RichWords text={say(p.text)} />;
         return <div className={cls(node, "pt-rich")} {...mark}>{before}{inner(row.text ? <div data-pt-row-text={row.text} data-pt-row-rich="">{body}</div> : body)}{fx}{after}</div>;
       }

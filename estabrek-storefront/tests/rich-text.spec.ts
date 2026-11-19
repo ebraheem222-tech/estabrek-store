@@ -52,12 +52,14 @@ const PAGE = {
       id: "page", type: "page", props: {}, children: [
         { id: "sec", type: "section", props: { contained: true }, style: { base: { pad: [60, 24, 60, 24], gap: 28 } }, children: [
           // Drawn with the page: the server filled it from a row and marked it.
-          { id: "drawn", type: "text", props: { text: { en: "**Hand** made\n\n- one\n- two\n\n### Care\n> keep dry" }, rich: true } },
+          { id: "drawn", type: "text", props: { text: { en: "**Hand** made\n\n- one\n- two\n\n### Care\n> keep dry" }, formatted: true } },
           { id: "plain", type: "text", props: { text: { en: "**not marked**" } } },
+          // The editor's own inline marks (`rich`, pageTree/rich.ts) are another thing, drawn as before.
+          { id: "editor-marks", type: "text", props: { text: { en: "[i]soft[/i] and [b]warm[/b]" }, rich: true } },
           { id: "notes", type: "grid", props: { live: { table: "rich-notes", feed: "live", limit: 6, sort: "-createdAt" } }, style: { base: { columns: 3, gap: 16 } }, children: [
             { id: "card", type: "stack", props: {}, children: [
               { id: "card-title", type: "heading", props: { level: 3, text: { en: "Sample" }, bind: { text: "title" } } },
-              { id: "card-body", type: "text", props: { text: { en: "Sample words" }, bind: { text: "body" }, rich: true } },
+              { id: "card-body", type: "text", props: { text: { en: "Sample words" }, bind: { text: "body" }, formatted: true } },
               { id: "card-total", type: "text", props: { text: { en: "0" }, bind: { text: "total" } } },
             ] },
           ] },
@@ -89,6 +91,9 @@ test.describe("formatted words on a page", () => {
     expect(await node("drawn").locator("ul").evaluate((el) => getComputedStyle(el).listStyleType)).toBe("disc");
     // A text that isn't connected to formatted words shows its marks as written.
     await expect(node("plain")).toHaveText("**not marked**");
+    await expect(node("editor-marks")).toHaveJSProperty("tagName", "P");
+    await expect(node("editor-marks")).toHaveText("soft and warm");
+    await expect(node("editor-marks").locator("em, i")).toHaveText("soft");
 
     // In a list read in the browser: each copy of the card, from the row's words.
     const rows = page.locator('[data-pt-rows="rich-notes"] > [data-pt-row]');
