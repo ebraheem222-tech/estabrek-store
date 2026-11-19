@@ -48,7 +48,7 @@ import multer from "multer";
 import { FILE_LIMITS, fileIssues, privateLinks, saveUpload } from "../../lib/shopperFiles.js";
 import { UPLOAD_MAX_MB, fileRefId } from "../../lib/fileKinds.js";
 import { openApi } from "../../lib/apiDocs.js";
-import { API_LIMITS, DATA_API_BASE, allow, apiRow, askable, docTables, fieldView, isOpen, listAsk, mineAsked, reachFields, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk, type Mine, type Viewer } from "../../lib/dataApi.js";
+import { API_LIMITS, DATA_API_BASE, allow, apiRow, askable, docTables, fieldView, isOpen, listAsk, mineAsked, privateOf, reachFields, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk, type Mine, type Viewer } from "../../lib/dataApi.js";
 import { queryRows } from "../../lib/dataQuery.js";
 import { LANGS } from "../../lib/dataRows.js";
 import { switchedOff } from "../../lib/featureGate.js";
@@ -178,10 +178,24 @@ async function viewerOf(as: As, who: Caller, fields: Field[], rows: Stored[], ow
 /** What to answer rows with: the language, the fields, the relations opened; also as a page shows them; and whether they are a shopper's own rows. */
 type ShapeAsk = Pick<ListAsk, "lang" | "pick" | "expand"> & { shown?: boolean; theirs?: boolean };
 
+/**
+ * Without a key: a rollup that works out a field kept private in its own table (a sum, the latest day) is as private
+ * there; its answer would tell it. Counting rows tells nothing of their values.
+ */
+async function withoutSecretRollups(table: ApiTable, fields: Field[], as: As): Promise<Field[]> {
+  if (as === "key") return fields;
+  const reach = (f: Field) => f.from ?? table.fields.find((x) => x.id === f.via && x.type === "relation")?.to ?? "";
+  const asked = fields.filter((f) => f.type === "rollup" && f.calc !== undefined && f.calc !== "count" && !!f.of && !!reach(f));
+  if (!asked.length) return fields;
+  const ids = [...new Set(asked.map(reach))];
+  const secret = new Map((await prisma.collection.findMany({ where: { id: { in: ids } }, select: { id: true, api: true } })).map((c) => [c.id, privateOf(c.api)]));
+  return fields.filter((f) => !asked.includes(f) || !(secret.get(reach(f)) ?? []).includes(f.of!));
+}
+
 /** Rows as this caller is answered them: its fields, its relations, the linked rows it may see, and who a row points at as far as this caller may know. */
 async function shape(table: ApiTable, as: As, who: Caller, rows: Stored[], ask: ShapeAsk, known?: Links): Promise<ApiRow[]> {
   const key = who.key;
-  const fields = seenFields(table, as);
+  const fields = await withoutSecretRollups(table, seenFields(table, as), as);
   const { modes, targets } = known ?? (await linkModes(table, fields, key));
   const viewer = await viewerOf(as, who, fields, rows, !!ask.shown && !!ask.theirs);
   let shown = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));

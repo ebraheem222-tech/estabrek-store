@@ -6,6 +6,7 @@
 import type { CollectionField, FieldType, Impact } from "../../api/collections.api";
 import { KIND_NAME } from "../data/kinds";
 import { fitRules, type RuleFit } from "./fieldRules";
+import { computedStart } from "./collectionForms";
 
 type Lang = "ar" | "en" | "he";
 const n = (x: number) => x.toLocaleString("en");
@@ -90,11 +91,13 @@ export function versionLine(changes: Impact[], lang: Lang): string {
 }
 
 /** A field given another kind in the editor: what the new kind can't have comes off, a choice kind gets its first choice, a relation the table it links (`to`). */
-export function retype(field: CollectionField, type: FieldType, fit: RuleFit | undefined, to?: string): CollectionField {
+export function retype(field: CollectionField, type: FieldType, fit: RuleFit | undefined, to?: string, fields: CollectionField[] = []): CollectionField {
   if (type === field.type) return field;
-  const { default: _default, currency: _currency, to: _to, many: _many, exclusive: _exclusive, onDelete: _onDelete, ...rest } = field;
+  const { default: _default, currency: _currency, to: _to, many: _many, exclusive: _exclusive, onDelete: _onDelete, formula: _formula, result: _result, via: _via, from: _from, calc: _calc, of: _of, published: _published, ...rest } = field;
   const choices = type === "select" || type === "multiSelect";
-  const next: CollectionField = { ...rest, type, ...(type === "relation" && to ? { to } : {}) };
+  const next: CollectionField = { ...rest, type, ...(type === "relation" && to ? { to } : {}), ...computedStart(type, fields) };
+  // Nothing is written into a computed field: no rules, nothing required.
+  if (type === "formula" || type === "rollup") { delete next.required; delete next.unique; delete next.min; delete next.max; delete next.shape; delete next.pattern; delete next.message; }
   if (choices && !next.options?.length) next.options = [{ id: "one", name: { ...field.name } }];
   if (!choices) delete next.options;
   return fitRules(next, fit);

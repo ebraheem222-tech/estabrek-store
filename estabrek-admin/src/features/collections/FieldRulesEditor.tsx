@@ -4,7 +4,9 @@
  * field's kind are offered (the server says which).
  */
 import { say } from "../../studio/say";
-import { FILE_KINDS, type CollectionField, type FieldType, type FileKind } from "../../api/collections.api";
+import { FILE_KINDS, type Collection, type CollectionField, type FieldType, type FileKind } from "../../api/collections.api";
+import { FormulaEditor, RollupEditor } from "./ComputedEditors";
+import { isComputedField } from "./computedText";
 import { KIND_NAME } from "../data/kinds";
 import { ValueInput, field as fieldBox, input } from "../data/GridCells";
 import { useState } from "react";
@@ -30,6 +32,7 @@ export function FieldRulesEditor({
   onChange,
   onRetype,
   tables,
+  computed,
 }: {
   field: CollectionField;
   lang: Lang;
@@ -40,6 +43,8 @@ export function FieldRulesEditor({
   onRetype?: (type: FieldType) => void;
   /** The tables a relation can link (this one too), each by its name; `store`: one of the store's own (products, orders…). */
   tables?: Array<{ id: string; name: string; store?: boolean }>;
+  /** For a computed field: the table being edited (its id and fields as they are now), and every table (a rollup reads through their relations). */
+  computed?: { tableId: string; fields: CollectionField[]; all: Array<Pick<Collection, "id" | "name" | "slug" | "fields">>; storeName: (to: string) => string | null };
 }) {
   const set = (patch: Parameters<typeof setRules>[1]) => onChange(setRules(field, patch));
   const limit = (v: number | string | undefined) => (v === undefined ? "" : String(v));
@@ -89,6 +94,13 @@ export function FieldRulesEditor({
           </div>
           <p className="text-[11px] text-white/40">{say("شيل اختيار ما بيمسحه من السطور اللي فيها: بتضل عليه لحد ما تتعدّل.|Removing a choice doesn't clear it from the rows that have it: they keep it until they're changed.|הסרת אפשרות לא מוחקת אותה מהשורות שמחזיקות בה.")}</p>
         </div>
+      ) : null}
+      {field.type === "formula" && computed ? <FormulaEditor field={field} fields={computed.fields} tableId={computed.tableId} lang={lang} onChange={onChange} /> : null}
+      {field.type === "rollup" && computed ? <RollupEditor field={field} fields={computed.fields} self={computed.tableId} tables={computed.all} lang={lang} storeName={computed.storeName} onChange={onChange} /> : null}
+      {field.type === "richText" ? (
+        <p className="text-[11px] leading-5 text-white/60 md:col-span-2" data-testid={`rich-${field.id}-note`}>
+          {say("كلام منسّق: عريض، مايل، عناوين، قوائم، اقتباس وروابط، بشريط فوق المربع. بالصفحة بيتصمّم بعنصر «نص» مربوط فيه، والمتجر بيرسمه بتنسيقه (وما بيصير كود أبداً).|Formatted words: bold, italic, headings, lists, quotes and links, from a bar over the box. On a page, connect a “Text” element to it and the shop draws it with its formatting (never as code).|מילים מעוצבות: מודגש, נטוי, כותרות, רשימות, ציטוטים וקישורים, מסרגל מעל התיבה. בדף, חברו אליו רכיב «טקסט» והחנות תציג אותו מעוצב (לעולם לא כקוד).")}
+        </p>
       ) : null}
       {field.type === "customer" ? (
         <p className="text-[11px] leading-5 text-white/70 md:col-span-2" data-testid={`customer-${field.id}-note`}>
@@ -271,10 +283,10 @@ export function FieldRulesEditor({
         {say("تلميح تحت الحقل|A hint under the field|רמז מתחת לשדה")}
         <input className={`${input} mt-1`} value={field.help?.[lang] ?? ""} onChange={(e) => set({ help: { ...field.help, [lang]: e.target.value } })} data-testid={`rule-${field.id}-help`} />
       </label>
-      <label className={`${label} md:col-span-2`}>
+      {isComputedField(field) ? null : <label className={`${label} md:col-span-2`}>
         {say("الكلام اللي بينقال لما قيمة تخالف القواعد|The words said when a value breaks the rules|המילים שנאמרות כשערך מפר את הכללים")}
         <input className={`${input} mt-1`} value={field.message?.[lang] ?? ""} placeholder={say("إذا فاضي بينقال السبب العام (متل «لازم رقم»)|Left empty, the general reason is said (like “A number is needed”)|אם ריק, תיאמר הסיבה הכללית")} onChange={(e) => set({ message: { ...field.message, [lang]: e.target.value } })} data-testid={`rule-${field.id}-message`} />
-      </label>
+      </label>}
     </div>
   );
 }

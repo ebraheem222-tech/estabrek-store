@@ -28,6 +28,7 @@ import { compareVersions, nameIn, newId, planInstall, readTemplate, type Keep, t
 import { installedOf, makeFn, makePage, makeTables, makeTriggers, takenHere, type Installed } from "./featureInstall.js";
 import { fnPrints, pagePrint, print, stable, tablePrints, triggersPrint, type Prints } from "./featurePrints.js";
 import { applySchemaChange, needsAccept, previewSchemaChange, type Impact } from "./schemaChange.js";
+import { settleComputed } from "./computed.js";
 import { storedTree } from "./pageTree.js";
 import { draftFromPage, storedDraft } from "./pageDraft.js";
 import { forgetFeatureGate, type FeatureKind } from "./featureGate.js";
@@ -265,7 +266,10 @@ export async function upgradeFeature(featureId: string, raw: unknown, opts: { ta
           // Kept as a version of the table, as any change of its fields is (the tables page brings it back).
           await applySchemaChange(tx, kept.id, change.before, change.after, lang);
           await tx.studioRevision.create({ data: { kind: "table", objectId: kept.id, data: { slug: row.slug, name: row.name, fields: change.before } as unknown as Prisma.InputJsonValue, summary: change.impacts as unknown as Prisma.InputJsonValue, adminUserId: null } });
-          await tx.collection.update({ where: { id: kept.id }, data: { fields: change.after as unknown as Prisma.InputJsonValue } });
+          // Its computed fields read what is there now, and are told what they give.
+          const settled = await settleComputed(tx, change.after as unknown as Field[], kept.id);
+          if ("problem" in settled) throw new AppError(400, "TEMPLATE_INVALID", settled.problem.message, { problems: [{ at: `tables.${x.key}.${settled.problem.path}`, message: settled.problem.message }] });
+          await tx.collection.update({ where: { id: kept.id }, data: { fields: settled.fields as unknown as Prisma.InputJsonValue } });
           for (const f of change.after as unknown as Array<{ id: string }>) if (items.some((i) => i.id === `field:${x.key}.${f.id}` && DOING.has(i.action))) p.fields[f.id] = print(f);
         }
       }

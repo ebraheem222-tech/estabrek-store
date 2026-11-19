@@ -59,6 +59,10 @@ export const RULES_BY_TYPE: Record<FieldType, { unique: boolean; limits: "number
   location: { unique: false, limits: null, shape: false, default: false },
   relation: { unique: false, limits: null, shape: false, default: false },
   customer: { unique: true, limits: null, shape: false, default: false },
+  richText: { unique: false, limits: "length", shape: false, default: true },
+  // Worked out, never written: nothing to hold to a rule.
+  formula: { unique: false, limits: null, shape: false, default: false },
+  rollup: { unique: false, limits: null, shape: false, default: false },
 };
 
 export const PATTERN_MAX = 200;

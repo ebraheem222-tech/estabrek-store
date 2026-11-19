@@ -10,6 +10,7 @@ import type { ColumnKind, GridRow, Lang, LinkedFrom } from "../../api/data.api";
 import { STATUS_NAME, cellText, type Column } from "./dataText";
 import { choiceName, draftFrom, linkedName, linkedOf, mapLink, placeJoin, placeParts } from "./kinds";
 import { RelationInput } from "./RelationInput";
+import { RichTextBox } from "./RichTextBox";
 import { privateFile } from "../../api/data.api";
 
 /** A field as wide as its words (a small select beside others), and one that fills its place. */
@@ -287,6 +288,9 @@ export function ValueInput({
       return <textarea {...common} rows={big ? 6 : 3} dir="ltr" spellCheck={false} className={`${input} font-mono text-xs`} value={value} placeholder='{ "key": "value" }' onChange={(e) => onChange(e.target.value)} />;
     case "longText":
       return big ? <textarea {...common} rows={4} value={value} onChange={(e) => onChange(e.target.value)} /> : text({});
+    case "richText":
+      // Its marks from a bar over the box, and how a page draws them (RichTextBox.tsx).
+      return big ? <RichTextBox value={value} onChange={onChange} className={input} testId={testId} /> : <textarea {...common} rows={4} value={value} onChange={(e) => onChange(e.target.value)} />;
     case "image":
     case "file":
     case "video":
@@ -307,7 +311,7 @@ export function draftOf(column: Column, row: GridRow, lang: Lang): string {
   if (column.id === "$status") return row.status;
   const v = row.data?.[column.id];
   // The owner's tables hold words per language; the store's own hold them plain.
-  if (column.kind === "text" || column.kind === "longText") return typeof v === "string" ? v : v && typeof v === "object" ? ((v as Record<string, string>)[lang] ?? "") : "";
+  if (column.kind === "text" || column.kind === "longText" || column.kind === "richText") return typeof v === "string" ? v : v && typeof v === "object" ? ((v as Record<string, string>)[lang] ?? "") : "";
   return column.field ? draftFrom(column.field, v) : v === undefined || v === null ? "" : String(v);
 }
 
@@ -328,7 +332,7 @@ export function CellEditor({ column, row, lang, onSave, onCancel }: { column: Co
     if (pick && draft !== first.current) finish(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
-  const long = column.kind === "longText";
+  const long = column.kind === "longText" || column.kind === "richText";
   // Several boxes in one cell (choices, a place): leaving the cell saves, moving between its boxes doesn't.
   const many = column.kind === "multiSelect" || column.kind === "location" || column.kind === "relation";
   return (

@@ -1710,6 +1710,15 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           links: i === 2 ? {} : { site: i === 0 ? "/shop" : "https://example.com/n" },
         })));
       }
+      // Formatted words (rich-text.spec.ts): the backend answers their words as written and names them in `rich`; a
+      // worked-out total among the rest. The second row's words try to be HTML and a script link.
+      if (table === "rich-notes") {
+        return answer([
+          { id: "rn1", slug: "rn-1", status: "PUBLISHED", values: {}, shown: { title: "Silk", body: "**Soft** silk, *light*\n- washes cold\n- dries flat\n\nSee [the guide](https://example.com/care)", total: "₪120.00" }, links: {}, rich: ["body"] },
+          { id: "rn2", slug: "rn-2", status: "PUBLISHED", values: {}, shown: { title: "Odd", body: "<b>not bold</b> <script>window.__hit=1</script> [x](javascript:window.__hit=2)" }, links: {}, rich: ["body"] },
+          { id: "rn3", slug: "rn-3", status: "PUBLISHED", values: {}, shown: { title: "Plain", body: "**stays as written**" }, links: {} },
+        ]);
+      }
       if (table === "nothing") return answer([]);
       if (table === "broken") return send(400, { error: "BAD_QUERY", message: "No column \"gone\" in this table" });
       return send(404, { error: "NOT_FOUND", message: "No such table, or it isn't open" });

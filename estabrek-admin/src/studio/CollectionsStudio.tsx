@@ -11,6 +11,7 @@ import { listCollections, type Collection, type FieldType, type Local } from "..
 import { getApi } from "../api/dataApi.api";
 import type { PageTreeNode } from "../api/pages.api";
 import { BINDABLE, CATEGORY_COLLECTION, PRODUCT_COLLECTION, fieldsFor } from "../features/collections/collectionForms";
+import { valueKindOf } from "../features/collections/computedText";
 import { opName } from "../features/data/dataText";
 import type { Lang } from "../lib/lang";
 import { FEED_NAME, LIST_FEEDS, LIST_LIMITS, OPS_FOR, askFields, feedOf, filtersOf, fitFilter, listTrouble, needsValue, newFilter, type ListFilter, type ListOp } from "./listRows";
@@ -161,7 +162,8 @@ export function BindPanel({ node, collection, lang, busy, onProps, live = false 
     <div className={box} data-testid="bind-panel">
       <div className="text-xs font-medium text-white/85">◆ {say(`ربط بحقل من «${words(collection.name, lang) || collection.slug}»|Connect to a field of “${words(collection.name, lang) || collection.slug}”|חיבור לשדה של ״${words(collection.name, lang) || collection.slug}״`)}</div>
       {props.map((prop) => {
-        const fits = collection.fields.filter((f) => fieldsFor(node.type, prop).includes(f.type) || (live && WORDS_PROPS.has(prop) && LIVE_WORDS.includes(f.type)));
+        // A computed field fits as what it gives (a total as a number, a yes/no as words where the list is read live).
+        const fits = collection.fields.filter((f) => fieldsFor(node.type, prop).includes(valueKindOf(f)) || (live && WORDS_PROPS.has(prop) && LIVE_WORDS.includes(valueKindOf(f))));
         return (
           <label key={prop} className="block text-[11px] text-white/55">{say(PROP_NAME[prop])}
             <select className={control} disabled={busy} value={bind[prop] ?? ""} onChange={(e) => set(prop, e.target.value)} data-testid={`bind-${prop}`}>

@@ -12,8 +12,8 @@ import type { Collection, ItemStatus } from "../../api/collections.api";
 import * as DataAPI from "../../api/data.api";
 import type { GridRow, Incoming, Issue, Lang } from "../../api/data.api";
 import { FromCell, ValueInput, input } from "./GridCells";
-import { LANGS, LANG_NAME, WORDS, fromName, issueAbout, issueSay } from "./dataText";
-import { draftFrom, draftProblem, valueFrom } from "./kinds";
+import { LANGS, LANG_NAME, WORDS, fromName, isWorkedOut, issueAbout, issueSay } from "./dataText";
+import { draftFrom, draftProblem, shownText, valueFrom } from "./kinds";
 
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
@@ -49,11 +49,13 @@ export function RowDrawer({ table, row, incoming = [], lang, canWrite, onClose, 
   const save = useMutation({
     mutationFn: async () => {
       // Words that can't be sent as they are (JSON with a missing bracket) are said here, before anything goes.
-      const unsendable = table.fields.flatMap((f) => (WORDS.includes(f.type) ? [] : [[f.id, draftProblem(f, values[f.id] ?? "")] as const])).filter(([, why]) => why);
+      const unsendable = table.fields.flatMap((f) => (WORDS.includes(f.type) || isWorkedOut(f) ? [] : [[f.id, draftProblem(f, values[f.id] ?? "")] as const])).filter(([, why]) => why);
       if (unsendable.length) throw { local: unsendable.map(([field, why]) => ({ field, message: why!, say: Object.fromEntries(why!.split("|").map((w, i) => [["ar", "en", "he"][i], w])) })) };
       // Every field is sent as the form holds it: words whole (their three languages), each other kind turned its own way.
       const out: Record<string, unknown> = {};
       for (const f of table.fields) {
+        // Worked out, never written.
+        if (isWorkedOut(f)) continue;
         if (WORDS.includes(f.type)) {
           const words: Record<string, string> = {};
           for (const l of LANGS) if (values[`${f.id}.${l}`]?.trim()) words[l] = values[`${f.id}.${l}`];
@@ -111,6 +113,19 @@ export function RowDrawer({ table, row, incoming = [], lang, canWrite, onClose, 
               {f.required ? <span className="text-red-300">*</span> : null}
             </span>
           );
+          // A formula or a rollup: what it works out to now (a new row's, once it's saved).
+          if (isWorkedOut(f)) {
+            const v = row?.data?.[f.id];
+            return (
+              <div key={f.id} className="block text-xs text-white/60" data-testid={`row-field-${f.id}`}>
+                {label}
+                <span className="mt-1 flex items-center gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-sm text-white/85" data-testid={`row-${f.id}-worked`}>
+                  {row ? shownText(f, v, lang) || "—" : say("بينحسب لما ينحفظ السطر|Worked out once the row is saved|מחושב כשהשורה נשמרת")}
+                  <span className="ms-auto text-[10px] text-white/35">{say("بينحسب لحاله|Worked out by itself|מחושב מעצמו")}</span>
+                </span>
+              </div>
+            );
+          }
           if (WORDS.includes(f.type)) {
             return (
               <fieldset key={f.id} className="text-xs text-white/60" data-testid={`row-field-${f.id}`}>

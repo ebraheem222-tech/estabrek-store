@@ -59,11 +59,14 @@ describe("The store's clock", () => {
 describe("Each kind's values", () => {
   test("every kind says what may be asked of it and which rules fit it", () => {
     for (const t of FIELD_TYPES) {
-      expect(OPS_BY_KIND[t]?.length, t).toBeGreaterThan(0);
+      // A computed field is worked out as rows are read (tests/computedFields.spec.ts): a formula is never asked; a
+      // rollup is asked as what it gives (its number, money or date).
+      if (t === "formula" || t === "rollup") expect(OPS_BY_KIND[t], t).toEqual([]);
+      else expect(OPS_BY_KIND[t]?.length, t).toBeGreaterThan(0);
       expect(RULES_BY_TYPE[t], t).toBeTruthy();
     }
-    // (The 21st is a shopper the row points at: tests/customerField.spec.ts.)
-    expect(FIELD_TYPES).toHaveLength(21);
+    // (The 21st is a shopper the row points at: tests/customerField.spec.ts; then formatted words, a formula, a rollup.)
+    expect(FIELD_TYPES).toHaveLength(24);
   });
 
   test("what each takes, and how it's kept", () => {

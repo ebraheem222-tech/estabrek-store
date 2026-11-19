@@ -50,7 +50,8 @@ describe("The grid's question", () => {
     expect(columnKind(fields, "$status")).toBe("$status");
     expect(columnKind(fields, "nope")).toBeNull();
     expect(columnKind(fields, "data")).toBeNull();
-    for (const [kind, ops] of Object.entries(OPS_BY_KIND)) expect(ops.length, kind).toBeGreaterThan(0);
+    // (A computed field is worked out as rows are read: a formula is never asked; a rollup is asked as what it gives.)
+    for (const [kind, ops] of Object.entries(OPS_BY_KIND)) expect(ops.length, kind).toBe(kind === "formula" || kind === "rollup" ? 0 : ops.length || 1);
     expect(refused(() => filterSql(fields, { field: "nope", op: "is", value: 1 }))).toBe('BAD_GRID_QUERY: No column "nope" in this table');
     expect(refused(() => filterSql(fields, { field: "price", op: "contains", value: "1" }))).toBe('BAD_GRID_QUERY: "contains" can\'t be asked of "price"');
     expect(refused(() => filterSql(fields, { field: "active", op: "is", value: true }))).toContain("can't be asked");

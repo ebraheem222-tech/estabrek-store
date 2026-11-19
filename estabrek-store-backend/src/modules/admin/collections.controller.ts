@@ -33,6 +33,9 @@ import { checkLinks, linkGone, relationProblem, saveLinks, splitLinks, tablesLin
 import { linkView } from "../../lib/linkView.js";
 import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
+import { settleComputed, tryFormula, withComputed } from "../../lib/computed.js";
+import { FORMULA_MAX } from "../../lib/formula.js";
+import { z } from "zod";
 
 const r = Router();
 const refresh = () => void triggerCmsRevalidate([]).catch(() => {});
@@ -76,8 +79,11 @@ r.post("/", asyncHandler(async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "COLLECTION_INVALID", issues: issues(parsed.error) });
   const unlinked = await relationProblem(prisma, parsed.data.fields as Field[]);
   if (unlinked) return res.status(400).json({ error: "COLLECTION_INVALID", issues: [unlinked] });
+  // Computed fields read what is there, and are told what they give (lib/computed.ts).
+  const settled = await settleComputed(prisma, parsed.data.fields as Field[]);
+  if ("problem" in settled) return res.status(400).json({ error: "COLLECTION_INVALID", issues: [settled.problem] });
   try {
-    const made = await prisma.collection.create({ data: { slug: parsed.data.slug, name: parsed.data.name as any, fields: parsed.data.fields as any } });
+    const made = await prisma.collection.create({ data: { slug: parsed.data.slug, name: parsed.data.name as any, fields: settled.fields as any } });
     res.status(201).json({ ...made, items: 0, published: 0 });
   } catch (e) {
     if (taken(e)) return res.status(409).json({ error: "SLUG_TAKEN" });
@@ -95,12 +101,17 @@ const langOf = (req: any) => (["ar", "en", "he"].includes(String(req.query?.lang
  * that would put values aside needs `accept`; then, in one go, the rows are rewritten where a kind
  * changed, the table is saved, and its fields as they were are kept as a version.
  */
-async function saveTable(req: any, id: string, next: { slug: string; name: unknown; fields: Field[] }, accept: boolean) {
+async function saveTable(req: any, id: string, given: { slug: string; name: unknown; fields: Field[] }, accept: boolean) {
+  let next = given;
   const was = await prisma.collection.findUnique({ where: { id } });
   if (!was) return { status: 404 as const, body: { error: "NOT_FOUND" } };
   // A relation links a table that is there (its own counts).
   const unlinked = await relationProblem(prisma, next.fields, id);
   if (unlinked) return { status: 400 as const, body: { error: "COLLECTION_INVALID", issues: [unlinked] } };
+  // Computed fields read what is there (no loop), and are told what they give (lib/computed.ts).
+  const settled = await settleComputed(prisma, next.fields, id);
+  if ("problem" in settled) return { status: 400 as const, body: { error: "COLLECTION_INVALID", issues: [settled.problem] } };
+  next = { ...next, fields: settled.fields };
   const before = fieldsOf(was);
   const lang = langOf(req);
   const changed = planChange(before, next.fields).length > 0 || JSON.stringify(before) !== JSON.stringify(next.fields);
@@ -137,6 +148,27 @@ r.put("/:id", asyncHandler(async (req, res) => {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return res.status(404).json({ error: "NOT_FOUND" });
     throw e;
   }
+}));
+
+const TryBody = z.object({ formula: z.string().max(FORMULA_MAX), field: z.string().max(40).optional(), fields: z.array(z.unknown()).max(LIMITS.fields).optional() }).strict();
+const fieldLike = (x: unknown): x is Field => !!x && typeof x === "object" && typeof (x as Field).id === "string" && typeof (x as Field).type === "string";
+/**
+ * An equation tried on the table before it is saved (the fields editor, as the owner writes it): what it gives, or
+ * what's wrong and where; and what it works out to for the table's first rows. `fields`: the fields as being edited
+ * (else as saved); `field`: the one it belongs to (it can't read itself).
+ */
+r.post("/:id/formula", asyncHandler(async (req, res) => {
+  const body = TryBody.safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "BAD_FORMULA", message: body.error.issues[0]?.message ?? "Bad question" });
+  const c = await prisma.collection.findUnique({ where: { id: req.params.id } });
+  if (!c) return res.status(404).json({ error: "NOT_FOUND" });
+  const fields = (body.data.fields ?? fieldsOf(c)).filter(fieldLike).filter((f) => f.id !== body.data.field);
+  const tried = tryFormula(fields, body.data.formula);
+  if (!tried.ok) return res.json(tried);
+  const rows = await prisma.collectionItem.findMany({ where: { collectionId: c.id, deletedAt: null }, orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: 3 });
+  const probe: Field = { id: "__try", type: "formula", formula: body.data.formula, result: tried.result };
+  const worked = await withComputed(prisma, { id: c.id, fields: [...fields, probe] }, rows.map((row) => shownRow(row, fields)));
+  res.json({ ...tried, sample: worked.map((row) => ({ slug: row.slug, value: (row.data as Record<string, unknown>).__try ?? null })) });
 }));
 
 /** What saving these fields would do to the rows that are there. Nothing is written. */

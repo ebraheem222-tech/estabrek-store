@@ -81,6 +81,8 @@ export function sampleValue(f: ApiField): unknown {
     case "text":
     case "longText":
       return "…";
+    case "richText":
+      return "**…**";
     case "number":
     case "money":
       return 10;
@@ -121,9 +123,10 @@ const SHOPPER_HEADER = '-H "Authorization: Bearer SHOPPER_TOKEN"';
 export function examples(table: Pick<ApiTable, "slug" | "access" | "fields">, url: string, lang: Lang): Example[] {
   const at = `${url}/${table.slug}`;
   const key = (act: Act) => (table.access[act] === "key" ? ` ${KEY_HEADER}` : table.access[act] === "customer" ? ` ${SHOPPER_HEADER}` : "");
-  // The required fields, or the first two: enough for a row the table takes.
-  const wanted = table.fields.filter((f) => f.required);
-  const shown = (wanted.length ? wanted : table.fields.slice(0, 2)).slice(0, 4);
+  // The required fields, or the first two: enough for a row the table takes (a computed field is never written).
+  const written = table.fields.filter((f) => f.type !== "formula" && f.type !== "rollup");
+  const wanted = written.filter((f) => f.required);
+  const shown = (wanted.length ? wanted : written.slice(0, 2)).slice(0, 4);
   const values = JSON.stringify({ values: Object.fromEntries(shown.map((f) => [f.id, sampleValue(f)])) });
   const first = table.fields.find((f) => f.type !== "relation") ?? table.fields[0];
   const out: Example[] = [];

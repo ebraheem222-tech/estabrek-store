@@ -7,7 +7,7 @@ import type { PageTreeNode } from "../../api/pages.api";
 
 export type Lang = "ar" | "en" | "he";
 export const LANGS: Lang[] = ["ar", "en", "he"];
-export const WORD_TYPES: FieldType[] = ["text", "longText"];
+export const WORD_TYPES: FieldType[] = ["text", "longText", "richText"];
 
 /** An address word from any words (latin letters and digits; else a number from the time). */
 export function slugOf(words: string): string {
@@ -25,7 +25,14 @@ export function fieldIdOf(name: string, taken: string[]): string {
 }
 
 /** A new field of a kind (a choice kind with its first choice; a relation with the table it links, `to`). */
-export const newField = (type: FieldType, name: Local, taken: string[], to?: string): CollectionField => ({ id: fieldIdOf(name.en ?? name.ar ?? name.he ?? type, taken), type, name, ...(type === "select" || type === "multiSelect" ? { options: [{ id: "one", name: { ...name } }] } : {}), ...(type === "relation" && to ? { to } : {}) });
+export const newField = (type: FieldType, name: Local, taken: string[], to?: string, fields: CollectionField[] = []): CollectionField => ({ id: fieldIdOf(name.en ?? name.ar ?? name.he ?? type, taken), type, name, ...(type === "select" || type === "multiSelect" ? { options: [{ id: "one", name: { ...name } }] } : {}), ...(type === "relation" && to ? { to } : {}), ...computedStart(type, fields) });
+
+/** A computed field to begin with: a formula's equation (written next), a rollup counting through the table's first relation. */
+export function computedStart(type: FieldType, fields: CollectionField[]): Partial<CollectionField> {
+  if (type === "formula") return { formula: "" };
+  if (type === "rollup") return { via: fields.find((f) => f.type === "relation")?.id ?? "", calc: "count" };
+  return {};
+}
 
 /** The table a new relation links to begin with: another table when there is one, else this one. */
 export const firstLinkable = (tables: Array<{ id: string }>, self: string): string => (tables.find((t) => t.id !== self) ?? tables[0])?.id ?? self;
@@ -35,6 +42,8 @@ export function itemDataOut(fields: CollectionField[], values: Record<string, un
   const out: Record<string, unknown> = {};
   for (const f of fields) {
     const v = values[f.id];
+    // Worked out each time the item is read: never sent.
+    if (f.type === "formula" || f.type === "rollup") continue;
     if (WORD_TYPES.includes(f.type)) {
       const words: Local = {};
       for (const l of LANGS) { const w = (v as Local | undefined)?.[l]; if (typeof w === "string" && w.trim()) words[l] = w; }
@@ -106,7 +115,7 @@ export const CATEGORY_COLLECTION: Collection = { id: "$category", slug: "c", nam
 export const BINDABLE: Record<string, string[]> = { heading: ["text"], text: ["text"], button: ["label", "href"], image: ["src", "alt", "href"], video: ["src"] };
 const WORDS_LIKE: FieldType[] = ["text", "longText", "number", "date", "select", "email", "phone", "datetime", "money", "multiSelect", "location"];
 export const PROP_FIELDS: Record<string, FieldType[]> = { text: WORDS_LIKE, label: WORDS_LIKE, alt: ["text", "longText"], src: ["image"], href: ["link", "email", "phone", "file", "location"] };
-/** What some elements take beyond that: a video's source is a video field (or, as before, a picture field holding a video's address). */
-const ELEMENT_FIELDS: Record<string, Record<string, FieldType[]>> = { video: { src: ["video", "image"] } };
+/** What some elements take beyond that: a video's source is a video field (or, as before, a picture field holding a video's address); a text's words may be formatted ones. */
+const ELEMENT_FIELDS: Record<string, Record<string, FieldType[]>> = { video: { src: ["video", "image"] }, text: { text: [...WORDS_LIKE, "richText"] } };
 /** The kinds of field an element's prop takes (the same list as the backend's lib/collectionTree.ts). */
 export const fieldsFor = (element: string | undefined, prop: string): FieldType[] => (element && ELEMENT_FIELDS[element]?.[prop]) || PROP_FIELDS[prop] || [];

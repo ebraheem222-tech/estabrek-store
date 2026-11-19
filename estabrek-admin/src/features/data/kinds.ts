@@ -7,9 +7,10 @@
  */
 import type { CollectionField, FieldType, Linked, Local } from "../../api/collections.api";
 import { HIDDEN_ROW } from "./storeLinks";
+import { richPlain } from "../../../../estabrek-storefront/src/pageTree/richText";
 
 export type Lang = "ar" | "en" | "he";
-export const WORD_KINDS: FieldType[] = ["text", "longText"];
+export const WORD_KINDS: FieldType[] = ["text", "longText", "richText"];
 
 export const KIND_NAME: Record<FieldType, string> = {
   text: "كلام قصير|Short words|טקסט קצר",
@@ -34,7 +35,13 @@ export const KIND_NAME: Record<FieldType, string> = {
   relation: "ربط بجدول|Link to a table|קישור לטבלה",
   // A shopper the row points at, by the email they sign in with (backend lib/dataApi.ts: the row is theirs to read too).
   customer: "زبون (بإيميله)|A customer (by email)|לקוח (לפי אימייל)",
+  // Formatted words (bold, lists, links), and two kinds worked out each time a row is read (backend lib/computed.ts).
+  richText: "نص منسّق|Formatted text|טקסט מעוצב",
+  formula: "محسوب بمعادلة|Formula|נוסחה",
+  rollup: "مجموع من جدول مربوط|Rollup (from linked rows)|סיכום משורות מקושרות",
 };
+/** Formatted words as a cell shows them: plain, without their marks. */
+export const plainOf = (words: string) => richPlain(words).replace(/\n+/g, " · ");
 
 /* ---------------- A relation: the rows a row links ---------------- */
 
@@ -178,16 +185,25 @@ export function moneyText(amount: number, currency: string | undefined, lang: La
   }
 }
 
-/** A value as the words a cell shows (not for words per language). */
-export function shownText(field: Pick<CollectionField, "type" | "options" | "currency">, v: unknown, lang: Lang): string {
+/** A value as the words a cell shows (not for words per language). A computed field shows as what it gives. */
+export function shownText(field: Pick<CollectionField, "type" | "options" | "currency" | "result">, v: unknown, lang: Lang): string {
   if (v === undefined || v === null || v === "") return "";
-  switch (field.type) {
+  const kind = field.type === "formula" || field.type === "rollup" ? (field.result ?? "number") : field.type;
+  switch (kind) {
+    case "date":
+      return typeof v === "string" ? v : "";
+    case "boolean":
+      if (field.type === "formula") return v === true ? "✓" : "✗";
+      return v === true ? "✓" : "";
+    case "text":
+      if (field.type === "formula" && v && typeof v === "object") return (v as Local)[lang] || (v as Local).ar || (v as Local).en || (v as Local).he || "";
+      return typeof v === "object" ? "" : String(v);
+    case "richText":
+      return typeof v === "string" ? plainOf(v) : "";
     case "number":
       return typeof v === "number" ? v.toLocaleString("en") : "";
     case "money":
       return typeof v === "number" ? moneyText(v, field.currency, lang) : "";
-    case "boolean":
-      return v === true ? "✓" : "";
     case "select":
       return choiceName(field, String(v), lang);
     case "multiSelect":
