@@ -711,6 +711,27 @@ model FeatureItem {
   @@index([featureId])
 }
 
+/// The whole project as it was at a moment (stage 3, src/lib/projectSync.ts; admin → النظام →
+/// المشروع كملف): kept before every project file is brought in, and when the owner saves one, so
+/// the project can go back to it. Its tables' structure, its functions, its pages, roles, groups
+/// and features; never a table's rows.
+model ProjectSnapshot {
+  id        String   @id @default(cuid())
+  /// The owner's name for it, or what it was kept before.
+  label     String
+  /// "saved" (by the owner) | "before" (kept before a file came in) | "back" (kept before going back to another)
+  reason    String
+  /// The project file (src/lib/projectFile.ts).
+  file      Json
+  /// How many of each it holds: { tables, functions, pages, roles, groups, features }.
+  size      Json
+  bytes     Int
+  byEmail   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 /// The queue (E0.3, src/lib/tasks.ts; admin → صف الشغل): background work that must not be lost.
 /// A row until it is done: a restart in the middle doesn't drop it, a failure is tried again after
 /// a growing wait, and one that keeps failing is set aside for the owner to look at.
