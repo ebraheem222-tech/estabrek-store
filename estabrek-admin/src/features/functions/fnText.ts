@@ -1,6 +1,6 @@
 // الـ Functions: the pages' words, apart from the pages so they can be tested. Written in the
 // three languages side by side ("عربي|English|עברית").
-import type { Cmp, Cond, FnInput, FnLite, FnTable, FnTrigger, Outside, Step, StepKind, TraceLine, TriggerKind, Val } from "../../api/functions.api";
+import type { Cmp, Cond, CouponOff, CustomerMark, FnInput, FnLite, FnTable, FnTrigger, Outside, Step, StepKind, StockHow, StoreMeta, TraceLine, TriggerKind, Val } from "../../api/functions.api";
 import { fromVal, tableName } from "./fnDraft";
 
 export type Lang = "ar" | "en" | "he";
@@ -10,8 +10,9 @@ export const part = (words: string, lang: Lang) => {
 };
 const fill = (words: string, lang: Lang, things: Record<string, string | number>) => part(words, lang).replace(/\{(\w+)\}/g, (_m, k: string) => String(things[k] ?? ""));
 
-export const GROUP_NAME: Record<"data" | "control" | "out" | "outside" | "code", string> = {
+export const GROUP_NAME: Record<"data" | "store" | "control" | "out" | "outside" | "code", string> = {
   data: "جداولك|Your tables|הטבלאות שלך",
+  store: "المتجر|The store|החנות",
   control: "التحكّم|Control|בקרה",
   out: "رسايل وتنبيهات|Messages|הודעות",
   outside: "برّا المتجر|Outside the store|מחוץ לחנות",
@@ -43,6 +44,9 @@ export const ACT_NAME: Record<StepKind, string> = {
   code: "كود JavaScript|JavaScript code|קוד JavaScript",
   http: "اتصال بموقع|Call a site|קריאה לאתר",
   ready: "ابعت باتصال جاهز|Send through a connection|שליחה דרך חיבור מוכן",
+  coupon: "اعمل كوبون|Make a coupon|יצירת קופון",
+  stock: "عدّل مخزون|Change stock|שינוי מלאי",
+  customer: "علّم زبون|Mark a customer|סימון לקוח",
   stop: "وقّف وقول ليش|Stop, saying why|עצירה עם סיבה",
   return: "رجّع جواب|Give back an answer|החזרת תשובה",
   notify: "جرس بالأدمن|Ring the admin's bell|התראה בניהול",
@@ -132,8 +136,84 @@ export function condsLine(conds: Cond[] | undefined, match: "all" | "any" | unde
   return conds.map((c) => condLine(c, lang)).join(match === "any" ? part(" أو | or | או ", lang) : part(" و | and | ו", lang));
 }
 
+/* ---------------- The store's own steps ---------------- */
+
+export const COUPON_OFF_NAME: Record<CouponOff, string> = {
+  percent: "نسبة من السعر (%)|A percent off|אחוז הנחה",
+  amount: "مبلغ ثابت|An amount off|סכום הנחה קבוע",
+};
+export const STOCK_HOW_NAME: Record<StockHow, string> = {
+  take: "نقّص منها|Take from it|הורדה",
+  add: "زيد عليها|Add to it|הוספה",
+  set: "خلّيها بالزبط|Make it exactly|קביעה ל",
+};
+export const CUSTOMER_MARK_NAME: Record<CustomerMark, string> = {
+  giveRole: "أعطيه دور|Give a role|מתן תפקיד",
+  takeRole: "شيل عنه دور|Take a role away|הסרת תפקיד",
+  join: "ضيفه لمجموعة|Put in a group|צירוף לקבוצה",
+  leave: "طلّعه من مجموعة|Take out of a group|הוצאה מקבוצה",
+  read: "جيبه بس (اسمه وإيميله وتلفونه)|Only read them (name, email, phone)|רק לקרוא אותו (שם, אימייל, טלפון)",
+};
+/** What a store step needs in the admin to be published (beside building functions), by its permission key. */
+export const RIGHT_NAME: Record<string, string> = {
+  "discounts:write": "الكوبونات: إضافة وتعديل|Coupons: add and change|קופונים: הוספה ועריכה",
+  "inventory:write": "المخزون: تعديل الكميات|Stock: change quantities|מלאי: שינוי כמויות",
+  "customers:write": "الزبائن: تعديل|Customers: change|לקוחות: עריכה",
+  "customers:read": "الزبائن: مشاهدة|Customers: see|לקוחות: צפייה",
+};
+/** A store step's numbers, as the server names them in what is wrong with one. */
+const NUMBER_WHAT: Record<string, string> = {
+  "The discount": "الخصم|The discount|ההנחה",
+  "The most off": "أكتر خصم|The most off|ההנחה המרבית",
+  "The least cart": "أقل سلة|The least cart|הסל המינימלי",
+  "The uses": "عدد المرات|The number of uses|מספר השימושים",
+  "The days": "عدد الأيام|The number of days|מספר הימים",
+  "The amount": "الكمية|The amount|הכמות",
+};
+const STORE_SAID: Array<[RegExp, string]> = [
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount) has to be a number$/, "{1} لازم يكون رقم|{1} has to be a number|{1}: חייב להיות מספר"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is a whole number$/, "{1} لازم يكون رقم صحيح|{1} is a whole number|{1}: חייב להיות מספר שלם"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is more than (\d+)$/, "{1} لازم يكون أكتر من {2}|{1} has to be more than {2}|{1}: חייב להיות יותר מ-{2}"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is at least (\d+)$/, "{1} أقل شي {2}|{1} is at least {2}|{1}: לפחות {2}"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is at most (\d+)$/, "{1} أكتر شي {2}|{1} is at most {2}|{1}: לכל היותר {2}"],
+  [/^The discount is empty$/, "قديش الخصم؟|How much off?|כמה הנחה?"],
+  [/^The most off is for a percent$/, "«أكتر خصم» بس للخصم بالنسبة|“The most off” is only for a percent off|«ההנחה המרבית» רק להנחה באחוזים"],
+  [/^A coupon's code is 2 to 32 letters, digits, - or _$/, "كود الكوبون من 2 لـ 32 حرف إنجليزي أو رقم أو - أو _|A coupon's code is 2 to 32 letters, digits, - or _|קוד קופון הוא 2 עד 32 אותיות באנגלית, ספרות, - או _"],
+  [/^"(.+)" isn't a phone number$/, "«{1}» مش رقم تلفون|“{1}” isn't a phone number|«{1}» אינו מספר טלפון"],
+  [/^A coupon "(.+)" is there already$/, "في كوبون «{1}» من قبل|There is a coupon “{1}” already|כבר יש קופון «{1}»"],
+  [/^No free code was found: try again$/, "ما لقينا كود فاضي: جرّب كمان مرة|No free code was found: try again|לא נמצא קוד פנוי: נסו שוב"],
+  [/^The piece is empty$/, "أي قطعة؟ (الـ SKU تبعها)|Which piece? (its SKU)|איזה פריט? (ה-SKU שלו)"],
+  [/^Which piece\? \(its SKU\)$/, "أي قطعة؟ (الـ SKU تبعها)|Which piece? (its SKU)|איזה פריט? (ה-SKU שלו)"],
+  [/^The amount is empty$/, "قديش الكمية؟|How many?|כמה?"],
+  [/^No piece with the SKU "(.+)"$/, "ما في قطعة الـ SKU تبعها «{1}»|No piece with the SKU “{1}”|אין פריט עם ה-SKU «{1}»"],
+  [/^Only (\d+) left of (.+)$/, "باقي بس {1} من {2}|Only {1} left of {2}|נשארו רק {1} מ-{2}"],
+  [/^A piece holds up to (\d+)$/, "القطعة بتوصل لـ {1} بالكتير|A piece holds up to {1}|פריט מגיע עד {1} לכל היותר"],
+  [/^The role is empty$/, "أي دور؟|Which role?|איזה תפקיד?"],
+  [/^Which role\?$/, "أي دور؟|Which role?|איזה תפקיד?"],
+  [/^The group is empty$/, "أي مجموعة؟|Which group?|איזו קבוצה?"],
+  [/^Which group\?$/, "أي مجموعة؟|Which group?|איזו קבוצה?"],
+  [/^No role "(.+)"$/, "ما في دور «{1}» (الزبائن ← الأدوار والمجموعات)|No role “{1}” (Customers → Roles & groups)|אין תפקיד «{1}» (לקוחות ← תפקידים וקבוצות)"],
+  [/^No group "(.+)"$/, "ما في مجموعة «{1}» (الزبائن ← الأدوار والمجموعات)|No group “{1}” (Customers → Roles & groups)|אין קבוצה «{1}» (לקוחות ← תפקידים וקבוצות)"],
+  [/^A customer holds up to (\d+) roles$/, "الزبون إله {1} أدوار بالكتير|A customer holds up to {1} roles|ללקוח עד {1} תפקידים"],
+  [/^A customer is in up to (\d+) groups$/, "الزبون بيكون بـ {1} مجموعة بالكتير|A customer is in up to {1} groups|לקוח נמצא בעד {1} קבוצות"],
+  [/^A run changes the store up to (\d+) times$/, "التشغيل بيغيّر بالمتجر {1} مرة بالكتير|A run changes the store up to {1} times|הרצה משנה את החנות עד {1} פעמים"],
+];
+/** What is wrong with a store step, or why one stopped a run, in the admin's language; null when it isn't one of theirs. */
+export function storeSaid(message: string, lang: Lang): string | null {
+  for (const [pattern, words] of STORE_SAID) {
+    const m = pattern.exec(message);
+    if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => (n === "1" && NUMBER_WHAT[m[1]] ? part(NUMBER_WHAT[m[1]], lang) : (m[Number(n)] ?? "")));
+  }
+  return null;
+}
+/** A role by its name in the admin's language (its key when it has none, or isn't there). */
+export function roleName(key: string, store: StoreMeta | undefined, lang: Lang): string {
+  const r = store?.roles.find((x) => x.key === key);
+  return r?.name?.[lang] || r?.name?.ar || r?.name?.en || r?.name?.he || key;
+}
+
 /** A step in one line, for when it is closed. */
-export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside }, lang: Lang): string {
+export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside; store?: StoreMeta }, lang: Lang): string {
   const table = (id: string) => tableName(ctx.tables.find((t) => t.id === id), lang) || part("جدول؟|table?|טבלה?", lang);
   const kept = (as?: string) => (as ? ` ← ${as}` : "");
   switch (s.act) {
@@ -180,6 +260,20 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outsi
       return `${s.who === "customer" ? s.to?.trim() || part("الزبون؟|which customer?|איזה לקוח?", lang) : part(PUSH_WHO_NAME[s.who], lang)} · ${short(s.title)}`;
     case "email":
       return `${s.to?.trim() || part("إيميل المتجر|the shop's email|האימייל של החנות", lang)} · ${short(s.subject)}`;
+    case "coupon": {
+      const off = s.off === "percent" ? `${short(s.value, 12)}%` : fill("{v} خصم|{v} off|{v} הנחה", lang, { v: short(s.value, 12) });
+      const days = s.days === undefined || s.days === "" ? "" : ` · ${fill("{n} يوم|{n} days|{n} ימים", lang, { n: short(s.days, 12) })}`;
+      return `${s.code?.trim() || part("كود جديد|a new code|קוד חדש", lang)} · ${off}${days}${kept(s.as)}`;
+    }
+    case "stock": {
+      const sign = s.how === "add" ? "+" : s.how === "take" ? "−" : "= ";
+      return `${s.sku.trim() || part("SKU؟|SKU?|SKU?", lang)} ${sign}${short(s.amount, 12)}${kept(s.as)}`;
+    }
+    case "customer": {
+      const what = s.mark === "giveRole" || s.mark === "takeRole" ? roleName(s.what ?? "", ctx.store, lang) : (s.what ?? "");
+      const mark = s.mark === "read" ? part("جيبه|read|קריאה", lang) : part(CUSTOMER_MARK_NAME[s.mark], lang);
+      return `${s.who.trim() || part("الزبون؟|which customer?|איזה לקוח?", lang)} · ${mark}${s.mark !== "read" && what ? ` «${what}»` : ""}${kept(s.as)}`;
+    }
     default:
       return `${s.to?.trim() || part("رقم المتجر|the shop's number|המספר של החנות", lang)} · ${short(s.text)}`;
   }
@@ -298,7 +392,7 @@ export function problemText(message: string, lang: Lang): string {
     const m = pattern.exec(message);
     if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
   }
-  return message;
+  return storeSaid(message, lang) ?? message;
 }
 
 /* ---------------- A run, line by line ---------------- */
@@ -334,6 +428,20 @@ const SAID: Record<string, string> = {
   wouldCall: "كان رح يتصل: {0}|Would call {0}|הייתה נעשית קריאה: {0}",
   used: "انبعت عبر {0}|Sent through {0}|נשלח דרך {0}",
   wouldUse: "كان رح ينبعت عبر {0}|Would send through {0}|היה נשלח דרך {0}",
+  couponMade: "انعمل الكوبون {0} (خصم {1})|Made the coupon {0} ({1} off)|נוצר הקופון {0} ({1} הנחה)",
+  wouldCoupon: "كان رح ينعمل كوبون متل {0} (خصم {1})|Would make a coupon like {0} ({1} off)|היה נוצר קופון כמו {0} ({1} הנחה)",
+  // (A piece's SKU runs left to right inside right-to-left words: kept apart, after the numbers, so neither moves.)
+  stocked: "صار {2} بدل {1}: \u2068{0}\u2069|{0}: {1} → {2}|עכשיו {2} במקום {1}: \u2068{0}\u2069",
+  wouldStock: "كان رح يصير {2} بدل {1}: \u2068{0}\u2069|{0} would go {1} → {2}|היה הופך ל-{2} במקום {1}: \u2068{0}\u2069",
+  customer: "الزبون {0}|The customer {0}|הלקוח {0}",
+  gaveRole: "صار لـ {1} الدور «{0}»|Gave {1} the role “{0}”|התפקיד «{0}» ניתן ל-{1}",
+  wouldGiveRole: "كان رح يصير لـ {1} الدور «{0}»|Would give {1} the role “{0}”|התפקיד «{0}» היה ניתן ל-{1}",
+  tookRole: "انشال الدور «{0}» عن {1}|Took the role “{0}” from {1}|התפקיד «{0}» הוסר מ-{1}",
+  wouldTakeRole: "كان رح ينشال الدور «{0}» عن {1}|Would take the role “{0}” from {1}|התפקיד «{0}» היה מוסר מ-{1}",
+  joined: "انضاف {1} لمجموعة «{0}»|Put {1} in “{0}”|{1} צורף לקבוצה «{0}»",
+  wouldJoin: "كان رح ينضاف {1} لمجموعة «{0}»|Would put {1} in “{0}”|{1} היה מצורף לקבוצה «{0}»",
+  left: "طلع {1} من مجموعة «{0}»|Took {1} out of “{0}”|{1} הוצא מהקבוצה «{0}»",
+  wouldLeave: "كان رح يطلع {1} من مجموعة «{0}»|Would take {1} out of “{0}”|{1} היה מוצא מהקבוצה «{0}»",
   returned: "رجّع جوابه|Gave back its answer|החזיר את תשובתו",
   yes: "نعم|Yes|כן",
   no: "لا|No|לא",
@@ -404,8 +512,8 @@ export function failText(error: string, lang: Lang): string {
       const m = pattern.exec(said);
       if (m) return part(words, lang).replace(/\{(\d)\}/g, (_x, n: string) => m[Number(n)] ?? "");
     }
-    // What it was handed (its inputs and their rules).
-    return inputSaid(said, lang);
+    // A store step's own reasons; then what it was handed (its inputs and their rules).
+    return storeSaid(said, lang) ?? inputSaid(said, lang);
   };
   const whole = known(error);
   if (whole !== null) return whole;
@@ -445,13 +553,14 @@ export function lineText(line: Pick<TraceLine, "ok" | "say" | "note" | "error">,
 }
 
 /** How a run ended, in a line. */
-export function outcomeLine(out: { ok: boolean; dry: boolean; counts: { added: number; changed: number; deleted: number; sent: number }; ms: number }, lang: Lang): string {
+export function outcomeLine(out: { ok: boolean; dry: boolean; counts: { added: number; changed: number; deleted: number; sent: number; store?: number }; ms: number }, lang: Lang): string {
   const c = out.counts;
   const did = [
     c.added ? fill("{n} انضاف|{n} added|{n} נוספו", lang, { n: c.added }) : "",
     c.changed ? fill("{n} تعدّل|{n} changed|{n} שונו", lang, { n: c.changed }) : "",
     c.deleted ? fill("{n} انحذف|{n} deleted|{n} נמחקו", lang, { n: c.deleted }) : "",
     c.sent ? fill("{n} رسالة|{n} messages|{n} הודעות", lang, { n: c.sent }) : "",
+    c.store ? fill("{n} تغيير بالمتجر|{n} store changes|{n} שינויים בחנות", lang, { n: c.store }) : "",
   ].filter(Boolean);
   const head = out.ok ? (out.dry ? part("كانت رح تمشي|It would have gone through|הייתה עוברת", lang) : part("مشيت|It went through|עברה", lang)) : out.dry ? part("كانت رح توقف|It would have stopped|הייתה נעצרת", lang) : part("وقفت|It stopped|נעצרה", lang);
   const tail = did.length ? did.join("، ") : out.dry ? part("وما كانت رح تغيّر شي|and would have changed nothing|ולא הייתה משנה דבר", lang) : part("وما غيّرت شي|and changed nothing|ולא שינתה דבר", lang);

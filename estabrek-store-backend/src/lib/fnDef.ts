@@ -16,6 +16,9 @@
  *            and gives one back; it reaches nothing else (no table, no network, no message)
  *   outside  http: a call to a site the owner allowed, with the secrets that are for it
  *            (lib/fnSites.ts says what a site and a secret are, lib/fnHttp.ts makes the call)
+ *   store    coupon (a discount code), stock (a piece's quantity), customer (a shopper's roles and
+ *            groups, or only who they are): the store itself (lib/fnStore.ts). Whoever publishes a
+ *            function with one must also be allowed to do that thing in the admin (`storeRights`).
  *
  * A step that makes something can keep it under a name (`as`); a later step names it in its
  * values: "{{order.total}}" (lib/fnValues.ts).
@@ -29,6 +32,7 @@ import { SECRET_NAME, codeSecrets, hostIn, secretsIn, siteAllowed } from "./fnSi
 import { kindOf, missingIn } from "./fnKinds.js";
 import { GivesSchema, type Gives } from "./fnGives.js";
 import { INPUT_FORMATS, INPUT_RULE_LIMITS, inputRuleProblems, type InputFormat } from "./fnInputs.js";
+import { phoneKey } from "./phoneKey.js";
 
 export const FN_LIMITS = {
   /** Steps in one function, counting the ones inside others. */
@@ -51,7 +55,81 @@ export const FN_LIMITS = {
   messages: 20,
   calls: 3,
   ms: 10_000,
+  /** In one run: coupons made, quantities changed and customers marked (lib/fnStore.ts). */
+  store: 50,
 } as const;
+
+/* ---------------- The store's own steps (lib/fnStore.ts does them) ---------------- */
+
+/** A coupon takes a percent off, or an amount off. */
+export const COUPON_OFF = ["percent", "amount"] as const;
+/** A piece's quantity: so many more, so many fewer, or exactly so many. */
+export const STOCK_HOW = ["add", "take", "set"] as const;
+/** What a step does to a customer: only reads who they are, or gives / takes a role, or puts them in / out of a group. */
+export const CUSTOMER_MARKS = ["read", "giveRole", "takeRole", "join", "leave"] as const;
+export const STORE_LIMITS = {
+  /** An amount off, a cart's least, the most a percent takes off. */
+  money: 100_000,
+  /** Times one coupon may be used. */
+  uses: 100_000,
+  /** Days a coupon is good for. */
+  days: 3650,
+  /** A piece's quantity. */
+  quantity: 1_000_000,
+} as const;
+/** A coupon's code as the store keeps it (admin → الكوبونات: CreateCouponBody). */
+export const COUPON_CODE = /^[A-Z0-9_-]{2,32}$/;
+/** The steps that change the store itself, and what a member needs in the admin to publish a function with one. */
+export const STORE_ACTS = ["coupon", "stock", "customer"] as const;
+
+/** What a store step's number may be: said the same way when it is checked before publishing and when it is filled at a run. */
+export type NumberRule = { what: string; min: number; max: number; /** More than `min`, not `min` itself. */ above?: boolean; whole?: boolean };
+export const STORE_NUMBERS = {
+  percent: { what: "The discount", min: 0, above: true, max: 100 },
+  amount: { what: "The discount", min: 0, above: true, max: STORE_LIMITS.money },
+  max: { what: "The most off", min: 0, max: STORE_LIMITS.money },
+  minCart: { what: "The least cart", min: 0, max: STORE_LIMITS.money },
+  uses: { what: "The uses", min: 1, max: STORE_LIMITS.uses, whole: true },
+  days: { what: "The days", min: 0, above: true, max: STORE_LIMITS.days },
+  quantity: { what: "The amount", min: 0, max: STORE_LIMITS.quantity, whole: true },
+} as const satisfies Record<string, NumberRule>;
+/** Empty: nothing given (whether that is allowed is the step's to say). */
+export const isBlank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && !v.trim());
+/** What is wrong with a number a store step was given, or null. Empty is nothing wrong here. */
+export function numberProblem(v: unknown, rule: NumberRule): string | null {
+  if (isBlank(v)) return null;
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim()) : NaN;
+  if (!Number.isFinite(n)) return `${rule.what} has to be a number`;
+  if (rule.whole && !Number.isInteger(n)) return `${rule.what} is a whole number`;
+  if (rule.above ? n <= rule.min : n < rule.min) return rule.above ? `${rule.what} is more than ${rule.min}` : `${rule.what} is at least ${rule.min}`;
+  if (n > rule.max) return `${rule.what} is at most ${rule.max}`;
+  return null;
+}
+/** A phone number as a coupon keeps it (its last 9 digits: lib/phoneKey.ts), or null when it isn't one. */
+export function couponPhone(raw: string): string | null {
+  const key = phoneKey(raw);
+  return key.length >= 7 ? key : null;
+}
+
+/** What a member needs in the admin to publish a function with these steps (beside functions:write). */
+export function storeRights(def: Pick<FnDef, "do" | "else" | "fail">): string[] {
+  const need = new Set<string>();
+  const walk = (steps: Step[] | undefined) => {
+    for (const s of steps ?? []) {
+      if (s.act === "coupon") need.add("discounts:write");
+      else if (s.act === "stock") need.add("inventory:write");
+      else if (s.act === "customer") need.add(s.mark === "read" ? "customers:read" : "customers:write");
+      else if (isGroup(s)) {
+        walk(s.do);
+        if (s.act === "if") walk(s.else);
+      }
+    }
+  };
+  walk(def.do);
+  walk(def.else);
+  walk(def.fail);
+  return [...need].sort();
+}
 
 /** A name the run keeps something under. */
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
@@ -89,6 +167,29 @@ export type PlainStep =
   | { act: "code"; code: string; /** What the code is handed, by name: it reads them as input.name. */ give?: Record<string, Val>; as?: string }
   | { act: "http"; method: (typeof HTTP_METHODS)[number]; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run: the steps after it decide. */ anyStatus?: boolean; as?: string }
   | { act: "ready"; /** A ready connection's id (admin → الاتصالات والأسرار). */ via: string; /** What it does there: "message". */ what: string; /** What that asks for, by name: { chat, text }. */ give?: Record<string, string>; as?: string }
+  | {
+      act: "coupon";
+      /** Its code ("GIFT-SARA"); empty: one is made up (8 letters and digits). */
+      code?: string;
+      off: (typeof COUPON_OFF)[number];
+      /** How much off: a percent (1–100) or an amount. */
+      value: Val;
+      /** A percent's most off, as an amount. */
+      max?: Val;
+      /** The cart is at least this. */
+      minCart?: Val;
+      /** How many times it can be used (empty: once). */
+      uses?: Val;
+      /** Good for so many days from now (empty: no end). */
+      days?: Val;
+      /** Only this phone number may use it (empty: anyone). */
+      phone?: string;
+      /** Said beside it in admin → الكوبونات. */
+      note?: string;
+      as?: string;
+    }
+  | { act: "stock"; /** The piece: its SKU (or its id). */ sku: string; how: (typeof STOCK_HOW)[number]; amount: Val; /** Why, in the piece's stock history. */ reason?: string; as?: string }
+  | { act: "customer"; /** Their id or email ({{caller.id}}). */ who: string; mark: (typeof CUSTOMER_MARKS)[number]; /** The role's key, or the group's name or id. */ what?: string; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
@@ -182,6 +283,23 @@ const PLAIN = [
       as: Var.optional(),
     })
     .strict(),
+  z
+    .object({
+      act: z.literal("coupon"),
+      code: z.string().max(200).optional(),
+      off: z.enum(COUPON_OFF),
+      value: Value,
+      max: Value.optional(),
+      minCart: Value.optional(),
+      uses: Value.optional(),
+      days: Value.optional(),
+      phone: z.string().max(200).optional(),
+      note: z.string().max(200).optional(),
+      as: Var.optional(),
+    })
+    .strict(),
+  z.object({ act: z.literal("stock"), sku: z.string().max(200), how: z.enum(STOCK_HOW), amount: Value, reason: z.string().max(200).optional(), as: Var.optional() }).strict(),
+  z.object({ act: z.literal("customer"), who: z.string().max(200), mark: z.enum(CUSTOMER_MARKS), what: z.string().max(200).optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("stop"), message: z.string().max(300) }).strict(),
   z.object({ act: z.literal("return"), value: Value.optional() }).strict(),
 ] as const;
@@ -261,7 +379,7 @@ export function defOf(raw: unknown): FnDef | null {
 export type Problem = { /** Where: "do.2", "do.2.else.0", "if.0", "fail.1". */ at: string; message: string };
 export type KnownTable = { id: string; slug: string; fields: Field[]; name?: unknown };
 export type KnownFn = { id: string; name: string; live: boolean; inputs: FnInput[] };
-export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]>; /** The ready connections: which, of what kind, and which of their settings are set (a setting can stand in for what a step leaves empty). */ ready?: Array<{ id: string; name: string; kind: string; set: string[] }> };
+export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]>; /** The ready connections: which, of what kind, and which of their settings are set (a setting can stand in for what a step leaves empty). */ ready?: Array<{ id: string; name: string; kind: string; set: string[] }>; /** The shoppers' roles (their keys) and groups: a customer step naming one that isn't there is said before publishing. */ roles?: string[]; groups?: Array<{ id: string; name: string }> };
 
 /**
  * What stands in the way of publishing: a table or field that isn't there, a question a field's
@@ -405,6 +523,54 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
           }
           // The key is the connection's own: a step that uses one names no secret.
           names(s.give, at, have);
+          if (s.as) have.add(s.as);
+          break;
+        }
+        case "coupon": {
+          need(s.value, at, "The discount");
+          // What is written as it is (not a name the run fills) is checked now; a name is checked when the run fills it.
+          const fixed = (v: unknown) => !holesOf(v).length;
+          const numbers: Array<[unknown, NumberRule]> = [
+            [s.value, STORE_NUMBERS[s.off === "percent" ? "percent" : "amount"]],
+            [s.max, STORE_NUMBERS.max],
+            [s.minCart, STORE_NUMBERS.minCart],
+            [s.uses, STORE_NUMBERS.uses],
+            [s.days, STORE_NUMBERS.days],
+          ];
+          for (const [v, rule] of numbers) {
+            const problem = fixed(v) ? numberProblem(v, rule) : null;
+            if (problem) out.push({ at, message: problem });
+          }
+          if (s.max !== undefined && s.off !== "percent") out.push({ at, message: "The most off is for a percent" });
+          const code = (s.code ?? "").trim();
+          if (code && fixed(code) && !COUPON_CODE.test(code.toUpperCase())) out.push({ at, message: "A coupon's code is 2 to 32 letters, digits, - or _" });
+          const phone = (s.phone ?? "").trim();
+          if (phone && fixed(phone) && !couponPhone(phone)) out.push({ at, message: `"${phone.slice(0, 40)}" isn't a phone number` });
+          names([s.code, s.value, s.max, s.minCart, s.uses, s.days, s.phone, s.note], at, have);
+          if (s.as) have.add(s.as);
+          break;
+        }
+        case "stock": {
+          need(s.sku, at, "The piece");
+          need(s.amount, at, "The amount");
+          const problem = holesOf(s.amount).length ? null : numberProblem(s.amount, STORE_NUMBERS.quantity);
+          if (problem) out.push({ at, message: problem });
+          names([s.sku, s.amount, s.reason], at, have);
+          if (s.as) have.add(s.as);
+          break;
+        }
+        case "customer": {
+          need(s.who, at, "The customer");
+          const what = (s.what ?? "").trim();
+          const fixed = what && !holesOf(what).length;
+          if (s.mark === "giveRole" || s.mark === "takeRole") {
+            need(s.what, at, "The role");
+            if (fixed && known.roles && !known.roles.includes(what)) out.push({ at, message: `No role "${what}"` });
+          } else if (s.mark === "join" || s.mark === "leave") {
+            need(s.what, at, "The group");
+            if (fixed && known.groups && !known.groups.some((g) => g.id === what || g.name === what)) out.push({ at, message: `No group "${what}"` });
+          }
+          names([s.who, s.mark === "read" ? undefined : s.what], at, have);
           if (s.as) have.add(s.as);
           break;
         }

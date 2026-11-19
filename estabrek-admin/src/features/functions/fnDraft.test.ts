@@ -107,8 +107,8 @@ describe("Names", () => {
 
   test("a code step: where it is offered, what it starts with, and the name it keeps its answer under", () => {
     // A group of its own, last; never among what a function does after a failure.
-    expect(GROUPS.map((g) => g.key)).toEqual(["data", "control", "out", "outside", "code"]);
-    expect(GROUPS[4].acts).toEqual(["code"]);
+    expect(GROUPS.map((g) => g.key)).toEqual(["data", "store", "control", "out", "outside", "code"]);
+    expect(GROUPS.find((g) => g.key === "code")?.acts).toEqual(["code"]);
     expect(FAIL_ACTS).not.toContain("code");
     expect(newStep("code", { tables, fns, def })).toEqual({ act: "code", code: "return input;", give: {}, as: "result" });
     // The page starts it with a few lines saying how it works, in its own language.
@@ -124,7 +124,7 @@ describe("Names", () => {
 
 describe("A call to a site", () => {
   test("where it is offered, what it starts with, and what its answer is called by", () => {
-    expect(GROUPS[3]).toEqual({ key: "outside", acts: ["ready", "http"] });
+    expect(GROUPS.find((g) => g.key === "outside")).toEqual({ key: "outside", acts: ["ready", "http"] });
     // After a failure a function may tell someone outside too.
     expect(FAIL_ACTS).toContain("http");
     expect(newStep("http", { tables, fns, def })).toEqual({ act: "http", method: "POST", url: "https://", as: "answer" });
@@ -169,7 +169,7 @@ describe("A step through a ready connection", () => {
 
   test("where it is offered, what it starts with, and what its answer is called by", () => {
     // Before a call to a site: it is the easier way out of the store.
-    expect(GROUPS[3].acts[0]).toBe("ready");
+    expect(GROUPS.find((g) => g.key === "outside")?.acts[0]).toBe("ready");
     expect(FAIL_ACTS).toContain("ready");
     // It starts on the first connection, doing the first thing its kind does.
     expect(newStep("ready", { tables, fns, def, outside })).toEqual({ act: "ready", via: "c1", what: "message", give: {} });

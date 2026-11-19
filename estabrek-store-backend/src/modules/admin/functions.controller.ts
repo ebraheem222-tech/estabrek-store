@@ -6,7 +6,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { OPS_BY_KIND } from "../../lib/dataQuery.js";
-import { EMPTY_DEF, FN_LIMITS, FnDefSchema, defOf, problemsOf, sizeOf, type FnDef, type Known } from "../../lib/fnDef.js";
+import { EMPTY_DEF, FN_LIMITS, FnDefSchema, STORE_LIMITS, defOf, problemsOf, sizeOf, storeRights, type FnDef, type Known } from "../../lib/fnDef.js";
 import { CODE_LIMITS, codeProblems } from "../../lib/fnCode.js";
 import { TEST_LIMITS, TestsSchema, testsOf } from "../../lib/fnTests.js";
 import { HTTP_LIMITS, connectionNames } from "../../lib/fnHttp.js";
@@ -54,14 +54,19 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stri
 
 /** What the steps may talk about: the tables with their fields, and the functions. */
 async function known(self?: string): Promise<Known> {
-  const [tables, fns, outside, ready] = await Promise.all([
+  const [tables, fns, outside, ready, roles, groups] = await Promise.all([
     prisma.collection.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, slug: true, name: true, fields: true } }),
     prisma.fn.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, live: true } }),
     connectionNames(),
     readyNames(),
+    prisma.shopperRole.findMany({ orderBy: { createdAt: "asc" }, select: { key: true } }),
+    prisma.shopperGroup.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   return {
     self,
+    // What a customer step may give or take (admin → الزبائن → الأدوار والمجموعات).
+    roles: roles.map((x) => x.key),
+    groups,
     // What an "http" step may reach (admin → الاتصالات والأسرار): the sites, and the secrets by name.
     sites: outside.sites,
     secrets: outside.secrets.map((s) => s.name),
@@ -148,6 +153,17 @@ async function full(fn: Row, req: Request) {
 /** The member trying, testing or running a function from the admin. */
 const adminCaller = (req: Request) => ({ kind: "admin" as const, id: req.access?.adminId, email: req.access?.email ?? undefined });
 
+/** What each store step needs in the admin (lib/fnDef.ts storeRights), for the builder to say beside it. */
+const STORE_RIGHTS_OF = { coupon: "discounts:write", stock: "inventory:write", customer: "customers:write", customerRead: "customers:read" } as const;
+/**
+ * Steps that change the store go live only with a member allowed to do that in the admin: building
+ * functions isn't a way around the coupons', the stock's or the customers' own permissions.
+ */
+function mayPublish(req: Request, def: FnDef) {
+  const missing = storeRights(def).filter((p) => !hasPermission(req, p));
+  if (missing.length) throw new AppError(403, "FN_NEEDS_RIGHT", "Publishing these steps needs a permission you don't have", { missing });
+}
+
 r.get(
   "/",
   asyncHandler(async (_req, res) => {
@@ -167,6 +183,8 @@ r.get(
       triggers: { kinds: TRIGGER_KINDS, events: FN_EVENTS, callPerMinute: CALL_PER_MINUTE, limits: TRIGGER_LIMITS, route: { base: ROUTE_BASE, methods: ROUTE_METHODS, status: ROUTE_STATUS, limits: ROUTE_LIMITS } },
       // What an input's rules may be (lib/fnInputs.ts).
       inputRules: { formats: INPUT_FORMATS, limits: INPUT_RULE_LIMITS },
+      // The store steps (lib/fnStore.ts): the roles and groups a customer step picks from, and the limits.
+      store: { roles: await prisma.shopperRole.findMany({ orderBy: { createdAt: "asc" }, select: { key: true, name: true } }), groups: k.groups ?? [], limits: STORE_LIMITS, rights: STORE_RIGHTS_OF },
     });
   }),
 );
@@ -219,6 +237,7 @@ r.post(
     const draft = defOf(fn.draft);
     if (!draft) throw new AppError(409, "FN_INVALID", "The draft can't be read");
     if (!draft.do.length && !draft.else?.length) throw new AppError(409, "FN_EMPTY", "A function with no steps has nothing to publish");
+    mayPublish(req, draft);
     // What the steps talk about is there, and every code step can be read.
     const problems = [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))];
     if (problems.length) throw new AppError(409, "FN_HAS_PROBLEMS", "Fix what the steps point at first", { problems });
@@ -262,6 +281,7 @@ r.post(
       return res.json(await full(await fnOf(req), req));
     }
     // Published again as it was. What it talks about must still be there (a table, a connection or a function may have gone since).
+    mayPublish(req, def);
     const problems = [...problemsOf(def, await known(fn.id)), ...(await codeProblems(def))];
     if (problems.length) throw new AppError(409, "FN_HAS_PROBLEMS", "This version points at things that aren't there any more", { problems });
     // Its steps ran as they are before: the function's tests of today aren't asked (they may be about newer steps).
