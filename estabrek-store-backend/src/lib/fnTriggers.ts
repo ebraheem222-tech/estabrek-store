@@ -36,7 +36,8 @@ export type TriggerKind = (typeof TRIGGER_KINDS)[number];
 export const ROW_EVENTS = ["added", "changed", "deleted"] as const;
 export type RowEvent = (typeof ROW_EVENTS)[number];
 /** The store's events that come by themselves (lib/automations.ts emitAutomation). */
-export const FN_EVENTS = ["order.created", "video.ready", "job.failing", "deploy.failed"] as const;
+/** The store's events a function can wait for; "payment.paid": a payment a function asked for was paid (lib/payLinks.ts). */
+export const FN_EVENTS = ["order.created", "payment.paid", "video.ready", "job.failing", "deploy.failed"] as const;
 export const CALL_WHO = ["customer", "key", "public"] as const;
 export type CallWho = (typeof CALL_WHO)[number];
 /** A call's address: the owner's own word for it. */

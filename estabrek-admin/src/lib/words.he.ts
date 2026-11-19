@@ -2408,6 +2408,7 @@ export const HE: Record<string, string> = {
   "Speaks to her (Arabic and Hebrew)": "פונה אליה (בערבית ובעברית)",
   "Speaks to him (Arabic and Hebrew)": "פונה אליו (בערבית ובעברית)",
   "Special requests": "בקשות מיוחדות",
+  "Payments asked for": "תשלומים שהתבקשו",
   "Special requests sent": "בקשות מיוחדות שנשלחו",
   "Speed": "מהירות",
   "Speed & cache": "מהירות ומטמון",

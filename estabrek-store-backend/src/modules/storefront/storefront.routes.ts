@@ -63,7 +63,8 @@ function buildPublishedWindowWhere(now = new Date(), off: ReadonlySet<string> = 
   };
 }
 
-function resolveStorefrontBaseUrl(req: any) {
+/** The shop's own address, for a gateway to send the shopper back to (also used by modules/pay). */
+export function resolveStorefrontBaseUrl(req: any) {
   const envUrl =
     process.env.STOREFRONT_PUBLIC_URL ||
     process.env.PUBLIC_SITE_URL ||

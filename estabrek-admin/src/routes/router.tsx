@@ -59,6 +59,7 @@ const VisualControlsPage = lazy(() => import("../features/settings/VisualControl
 const FeaturesPage = lazy(() => import("../features/features/FeaturesPage"));
 const RazanPage = lazy(() => import("../features/razan/RazanPage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
+const PaymentRequestsPage = lazy(() => import("../features/orders/PaymentRequestsPage"));
 const QuizPage = lazy(() => import("../features/quiz/QuizPage"));
 const AiPage = lazy(() => import("../features/ai/AiPage"));
 const TrafficPage = lazy(() => import("../features/system/TrafficPage"));
@@ -236,6 +237,7 @@ export default function AppRouter() {
           <Route path="orders/:id" element={withPermissions(<OrderDetailsPage />, ["orders:read"])} />
           <Route path="tickets" element={withPermissions(<TicketsPage />, ["orders:read"])} />
           <Route path="requests" element={withPermissions(<RequestsPage />, ["orders:read"])} />
+          <Route path="payment-requests" element={withPermissions(<PaymentRequestsPage />, ["orders:read"])} />
 
           {/* outbox */}
           <Route path="outbox" element={withPermissions(<OutboxPage />, ["outbox:read"])} />

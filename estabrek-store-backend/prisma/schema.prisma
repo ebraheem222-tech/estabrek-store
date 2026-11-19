@@ -2068,6 +2068,41 @@ model CheckoutSession {
   @@index([sessionRef])
 }
 
+/// A payment a function asked for (its «اطلب دفع» step, src/lib/payLinks.ts): a booking, a membership, a deposit.
+/// The shopper pays it on the shop's own page (/pay/<token>) through Stripe or PayPal; once paid, the functions
+/// waiting for "payment.paid" start, with its reference (the booking's row…).
+model PaymentRequest {
+  id               String    @id @default(cuid())
+  /// The link's secret part: knowing it is what lets someone see and pay it.
+  token            String    @unique
+  title            String
+  amount           Decimal   @db.Decimal(10, 2)
+  currency         String
+  /// PENDING | PAID | CANCELLED
+  status           String    @default("PENDING")
+  /// The owner's own reference for what it pays (a row's id): handed to the functions when it is paid.
+  ref              String?
+  email            String?
+  phone            String?
+  /// Where in the shop the shopper goes after paying ("/my-bookings").
+  back             String?
+  lang             String?
+  /// The function that asked for it.
+  fnId             String?
+  /// The way it is being paid ("stripe" | "paypal") and the gateway's own session or order.
+  provider         String?
+  providerRef      String?
+  paymentReference String?
+  paidAt           DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([providerRef])
+  @@index([ref])
+}
+
 model OutboxMessage {
   id             String        @id @default(cuid())
   channel        Channel

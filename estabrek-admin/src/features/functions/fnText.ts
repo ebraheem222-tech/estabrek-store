@@ -47,6 +47,7 @@ export const ACT_NAME: Record<StepKind, string> = {
   coupon: "اعمل كوبون|Make a coupon|יצירת קופון",
   stock: "عدّل مخزون|Change stock|שינוי מלאי",
   customer: "علّم زبون|Mark a customer|סימון לקוח",
+  pay: "اطلب دفع|Ask for a payment|בקשת תשלום",
   stop: "وقّف وقول ليش|Stop, saying why|עצירה עם סיבה",
   return: "رجّع جواب|Give back an answer|החזרת תשובה",
   notify: "جرس بالأدمن|Ring the admin's bell|התראה בניהול",
@@ -169,13 +170,14 @@ const NUMBER_WHAT: Record<string, string> = {
   "The uses": "عدد المرات|The number of uses|מספר השימושים",
   "The days": "عدد الأيام|The number of days|מספר הימים",
   "The amount": "الكمية|The amount|הכמות",
+  "The sum": "المبلغ|The sum|הסכום",
 };
 const STORE_SAID: Array<[RegExp, string]> = [
-  [/^(The discount|The most off|The least cart|The uses|The days|The amount) has to be a number$/, "{1} لازم يكون رقم|{1} has to be a number|{1}: חייב להיות מספר"],
-  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is a whole number$/, "{1} لازم يكون رقم صحيح|{1} is a whole number|{1}: חייב להיות מספר שלם"],
-  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is more than (\d+)$/, "{1} لازم يكون أكتر من {2}|{1} has to be more than {2}|{1}: חייב להיות יותר מ-{2}"],
-  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is at least (\d+)$/, "{1} أقل شي {2}|{1} is at least {2}|{1}: לפחות {2}"],
-  [/^(The discount|The most off|The least cart|The uses|The days|The amount) is at most (\d+)$/, "{1} أكتر شي {2}|{1} is at most {2}|{1}: לכל היותר {2}"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount|The sum) has to be a number$/, "{1} لازم يكون رقم|{1} has to be a number|{1}: חייב להיות מספר"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount|The sum) is a whole number$/, "{1} لازم يكون رقم صحيح|{1} is a whole number|{1}: חייב להיות מספר שלם"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount|The sum) is more than (\d+)$/, "{1} لازم يكون أكتر من {2}|{1} has to be more than {2}|{1}: חייב להיות יותר מ-{2}"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount|The sum) is at least (\d+)$/, "{1} أقل شي {2}|{1} is at least {2}|{1}: לפחות {2}"],
+  [/^(The discount|The most off|The least cart|The uses|The days|The amount|The sum) is at most (\d+)$/, "{1} أكتر شي {2}|{1} is at most {2}|{1}: לכל היותר {2}"],
   [/^The discount is empty$/, "قديش الخصم؟|How much off?|כמה הנחה?"],
   [/^The most off is for a percent$/, "«أكتر خصم» بس للخصم بالنسبة|“The most off” is only for a percent off|«ההנחה המרבית» רק להנחה באחוזים"],
   [/^A coupon's code is 2 to 32 letters, digits, - or _$/, "كود الكوبون من 2 لـ 32 حرف إنجليزي أو رقم أو - أو _|A coupon's code is 2 to 32 letters, digits, - or _|קוד קופון הוא 2 עד 32 אותיות באנגלית, ספרות, - או _"],
@@ -196,6 +198,11 @@ const STORE_SAID: Array<[RegExp, string]> = [
   [/^No group "(.+)"$/, "ما في مجموعة «{1}» (الزبائن ← الأدوار والمجموعات)|No group “{1}” (Customers → Roles & groups)|אין קבוצה «{1}» (לקוחות ← תפקידים וקבוצות)"],
   [/^A customer holds up to (\d+) roles$/, "الزبون إله {1} أدوار بالكتير|A customer holds up to {1} roles|ללקוח עד {1} תפקידים"],
   [/^A customer is in up to (\d+) groups$/, "الزبون بيكون بـ {1} مجموعة بالكتير|A customer is in up to {1} groups|לקוח נמצא בעד {1} קבוצות"],
+  // «اطلب دفع» (lib/payLinks.ts).
+  [/^The sum is empty$/, "قديش المبلغ؟|How much?|כמה?"],
+  [/^What is it for\? \(the title is empty\)$/, "الدفعة عن شو؟ (العنوان فاضي)|What is it for? (the title is empty)|על מה התשלום? (הכותרת ריקה)"],
+  [/^No way to pay is switched on/, "ما في طريقة دفع مشغّلة (الإعدادات ← الدفع: Stripe أو PayPal)|No way to pay is switched on (Settings → payments: Stripe or PayPal)|אין דרך תשלום פעילה (הגדרות ← תשלומים: Stripe או PayPal)"],
+  [/^"(.+)" isn't an email address$/, "«{1}» مش إيميل|“{1}” isn't an email address|«{1}» אינו כתובת אימייל"],
   [/^A run changes the store up to (\d+) times$/, "التشغيل بيغيّر بالمتجر {1} مرة بالكتير|A run changes the store up to {1} times|הרצה משנה את החנות עד {1} פעמים"],
 ];
 /** What is wrong with a store step, or why one stopped a run, in the admin's language; null when it isn't one of theirs. */
@@ -269,6 +276,8 @@ export function stepLine(s: Step, ctx: { tables: FnTable[]; fns: FnLite[]; outsi
       const sign = s.how === "add" ? "+" : s.how === "take" ? "−" : "= ";
       return `${s.sku.trim() || part("SKU؟|SKU?|SKU?", lang)} ${sign}${short(s.amount, 12)}${kept(s.as)}`;
     }
+    case "pay":
+      return `${short(s.title, 40)} · ${short(s.amount, 24)}${kept(s.as)}`;
     case "customer": {
       const what = s.mark === "giveRole" || s.mark === "takeRole" ? roleName(s.what ?? "", ctx.store, lang) : (s.what ?? "");
       const mark = s.mark === "read" ? part("جيبه|read|קריאה", lang) : part(CUSTOMER_MARK_NAME[s.mark], lang);
@@ -442,6 +451,8 @@ const SAID: Record<string, string> = {
   wouldJoin: "كان رح ينضاف {1} لمجموعة «{0}»|Would put {1} in “{0}”|{1} היה מצורף לקבוצה «{0}»",
   left: "طلع {1} من مجموعة «{0}»|Took {1} out of “{0}”|{1} הוצא מהקבוצה «{0}»",
   wouldLeave: "كان رح يطلع {1} من مجموعة «{0}»|Would take {1} out of “{0}”|{1} היה מוצא מהקבוצה «{0}»",
+  asked: "انطلبت دفعة: {0} ({1})|Asked for a payment: {0} ({1})|התבקש תשלום: {0} ({1})",
+  wouldAsk: "كانت رح تنطلب دفعة: {0} ({1})|Would ask for a payment: {0} ({1})|היה מתבקש תשלום: {0} ({1})",
   returned: "رجّع جوابه|Gave back its answer|החזיר את תשובתו",
   yes: "نعم|Yes|כן",
   no: "لا|No|לא",
@@ -618,6 +629,7 @@ export function routeRefusal(message: string, lang: Lang): string {
 export const ROW_EVENT_NAME = { added: "انضاف|added|נוספה", changed: "تعدّل|changed|שונתה", deleted: "انحذف|deleted|נמחקה" } as const;
 export const EVENT_NAME: Record<string, string> = {
   "order.created": "طلب جديد|A new order|הזמנה חדשה",
+  "payment.paid": "انقبضت دفعة (من «اطلب دفع»)|A payment came in (from “Ask for a payment”)|התקבל תשלום (מ«בקשת תשלום»)",
   "video.ready": "فيديو جاهز|A video is ready|וידאו מוכן",
   "job.failing": "مهمة بالخلفية عم تفشل|A background job keeps failing|משימת רקע נכשלת שוב ושוב",
   "deploy.failed": "النشر ما صار حي|A deploy didn't go live|פריסה לא עלתה לאוויר",

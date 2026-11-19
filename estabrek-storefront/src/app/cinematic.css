@@ -4461,6 +4461,11 @@ html[data-theme-crossfade]::view-transition-new(root) {
 .rose-stock-alert.done strong { color: #2f7a52; }
 .rose-stock-stop { max-width: 560px; margin-inline: auto; text-align: center; }
 .rose-stock-stop-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }
+/* A payment the shop asked for (/pay/<token>, RosePayRequest). */
+.rose-pay { max-width: 560px; margin-inline: auto; text-align: center; }
+.rose-pay-amount { font-size: clamp(1.8rem, 5vw, 2.6rem); font-weight: 600; letter-spacing: 0.01em; margin: 10px 0 18px; }
+.rose-pay-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 8px 0 14px; }
+.rose-pay-safe { font-size: 0.85rem; opacity: 0.75; }
 @media (max-width: 420px) {
   .rose-stock-alert-row { flex-direction: column; }
   .rose-stock-alert-row input { flex: none; width: 100%; }

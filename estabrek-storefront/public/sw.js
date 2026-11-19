@@ -32,7 +32,7 @@ const MAX_PAGES = 40;
 const MAX_ASSETS = 300;
 
 /** The shopper's own pages and the editor's frames: never kept. */
-const PRIVATE = /^\/(?:(?:ar|en|he)\/)?(?:account|cart|checkout|order|track|wishlist|request|stock-alert|studio-frame|design-frame|offline)(?:\/|$)/;
+const PRIVATE = /^\/(?:(?:ar|en|he)\/)?(?:account|cart|checkout|pay|order|track|wishlist|request|stock-alert|studio-frame|design-frame|offline)(?:\/|$)/;
 /** The shop's own pictures, fonts and drawings. */
 const MEDIA = /^\/(?:fonts|templates|editorial|particles|lottie|vendor|draco)\//;
 

@@ -223,6 +223,7 @@ const NAV_MAIN: NavItem[] = [
   { to: "/admin/orders", label: tr("الطلبات", "Orders"), icon: Icons.orders, requirePermissions: ["orders:read"] },
   { to: "/admin/tickets", label: tr("التذاكر والدخول", "Tickets & entry"), icon: Icons.ticket, requirePermissions: ["orders:read"] },
   { to: "/admin/requests", label: tr("الطلبات الخاصة", "Special requests"), icon: Icons.bell, requirePermissions: ["orders:read"] },
+  { to: "/admin/payment-requests", label: tr("الدفعات المطلوبة", "Payments asked for"), icon: Icons.orders, requirePermissions: ["orders:read"] },
   { to: "/admin/customers", label: tr("الزبائن", "Customers"), icon: Icons.profile, requirePermissions: ["customers:read"] },
   { to: "/admin/outbox", label: tr("الرسائل", "Messages"), icon: Icons.outbox, requirePermissions: ["outbox:read"] },
   { to: "/admin/push", label: tr("الإشعارات", "Notifications"), icon: Icons.bell, requirePermissions: ["outbox:read"] },

@@ -125,6 +125,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/dashboard", tr("لوحة التحكم", "Dashboard")],
   ["/orders", tr("الطلبات", "Orders")],
   ["/tickets", tr("التذاكر والدخول", "Tickets & entry")],
+  ["/payment-requests", tr("الدفعات المطلوبة", "Payments asked for")],
   ["/requests", tr("الطلبات الخاصة", "Special requests")],
   ["/customers", tr("الزبائن", "Customers")],
   ["/outbox", tr("الرسائل", "Messages")],
