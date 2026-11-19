@@ -3,13 +3,13 @@
 // page above keeps it and saves it.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { HTTP_METHODS, type Cond, type Filter, type FnDef, type FnLite, type FnTable, type HttpMethod, type Match, type Op, type Outside, type Problem, type RowStatus, type Step, type StepKind, type Val } from "../../api/functions.api";
+import { HTTP_METHODS, type Cond, type CouponOff, type CustomerMark, type Filter, type FnDef, type FnLite, type FnTable, type HttpMethod, type Match, type Op, type Outside, type PlainStep, type Problem, type RowStatus, type Step, type StepKind, type StockHow, type StoreMeta, type Val } from "../../api/functions.api";
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { STATUS_NAME, SYSTEM_NAME, kindOf, opName, opNeeds } from "../data/dataText";
-import { FAIL_ACTS, GROUPS, addStep, atOf, fieldName, firstAction, freeName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
+import { COUPON_OFF, CUSTOMER_MARKS, FAIL_ACTS, GROUPS, STOCK_HOW, addStep, atOf, fieldName, firstAction, freeName, fromVal, listAt, moveStep, nameOk, newStep, offers, removeStep, setList, setStep, tableName, toVal, type Path } from "./fnDraft";
 import { actionName, fieldName as readyField, kindName } from "../connections/readyText";
-import { ACT_NAME, ALONE, CMP_NAME, CODE_START, GROUP_NAME, PUSH_WHO_NAME, SET_OP, codeNote, condsLine, problemText, stepLine } from "./fnText";
+import { ACT_NAME, ALONE, CMP_NAME, CODE_START, COUPON_OFF_NAME, CUSTOMER_MARK_NAME, GROUP_NAME, PUSH_WHO_NAME, RIGHT_NAME, SET_OP, STOCK_HOW_NAME, codeNote, condsLine, problemText, roleName, stepLine } from "./fnText";
 
 export type Builder = {
   def: FnDef;
@@ -30,6 +30,8 @@ export type Builder = {
   codeMax?: number;
   /** What a step may reach outside: the ready connections, the allowed sites and the secrets' names. */
   outside?: Outside;
+  /** What the store steps pick from: the shoppers' roles and groups. */
+  store?: StoreMeta;
 };
 const BuilderContext = createContext<Builder | null>(null);
 export const BuilderProvider = BuilderContext.Provider;
@@ -758,6 +760,146 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
           </p>
         </>
       );
+    case "coupon": {
+      // A value left empty is taken away: the server's own then holds (once, no end, any cart, anyone).
+      const optional = (key: "max" | "minCart" | "uses" | "days" | "code" | "phone" | "note", v: Val) => {
+        const next = { ...step } as Record<string, unknown>;
+        if (v === "" || v === null) delete next[key];
+        else next[key] = key === "code" || key === "phone" || key === "note" ? String(v) : v;
+        set(next as PlainStep);
+      };
+      const box = (key: "max" | "minCart" | "uses" | "days" | "code" | "phone" | "note", name: string, placeholder: string, plain = false) => (
+        <Row name={name}>
+          <ValueInput at={path} plain={plain} value={step[key] ?? ""} onChange={(v) => optional(key, v)} placeholder={placeholder} testid={`step-${id}-${key === "code" ? "coupon-code" : key}`} />
+        </Row>
+      );
+      return (
+        <>
+          {box("code", say("الكود|The code|הקוד"), say("فاضي = كود جديد بينعمل لحاله|empty = a new code is made up|ריק = קוד חדש נוצר לבד"), true)}
+          <Row name={say("الخصم|The discount|ההנחה")}>
+            <select
+              className={field}
+              value={step.off}
+              disabled={!b.canWrite}
+              onChange={(e) => {
+                const off = e.target.value as CouponOff;
+                // "The most off" is a percent's only.
+                set(off === "percent" ? { ...step, off } : { ...(({ max: _gone, ...rest }) => rest)(step), off });
+              }}
+              data-testid={`step-${id}-off`}
+            >
+              {COUPON_OFF.map((o) => (
+                <option key={o} value={o}>
+                  {say(COUPON_OFF_NAME[o])}
+                </option>
+              ))}
+            </select>
+            <ValueInput at={path} value={step.value} onChange={(value) => set({ ...step, value })} placeholder={step.off === "percent" ? "10" : "20"} testid={`step-${id}-value`} />
+          </Row>
+          {step.off === "percent" ? box("max", say("أكتر خصم (مبلغ)|At most off (an amount)|הנחה מרבית (סכום)"), say("فاضي = بدون حد|empty = no limit|ריק = בלי הגבלה")) : null}
+          {box("minCart", say("أقل سلة|The least cart|סל מינימלי"), say("فاضي = أي سلة|empty = any cart|ריק = כל סל"))}
+          {box("uses", say("كم مرة بينستعمل|How many uses|כמה שימושים"), say("فاضي = مرة وحدة|empty = once|ריק = פעם אחת"))}
+          {box("days", say("صالح لكم يوم|Good for how many days|בתוקף לכמה ימים"), say("فاضي = بدون نهاية|empty = no end|ריק = בלי סוף"))}
+          {box("phone", say("بس لهالتلفون|Only for this phone|רק לטלפון הזה"), say("فاضي = لأي حدا · {{buyer.phone}}|empty = anyone · {{buyer.phone}}|ריק = לכל אחד · {{buyer.phone}}"), true)}
+          {box("note", say("ملاحظة|A note|הערה"), say("بتبيّن جنبه بالكوبونات|shown beside it in Coupons|מוצגת לידו בקופונים"), true)}
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+          <p className="text-xs text-white/70" data-testid={`step-${id}-coupon-note`}>
+            {say(
+              "الكوبون بيبيّن بصفحة الكوبونات وبينستعمل بالدفع متل أي كوبون. اللي بينحفظ بالاسم: ‎.code (الكود)، ‎.endsAt (لوقتيش) و ‎.value، مثلاً بإيميل أو إشعار للزبون. بالتجربة الكود بيتخترع وما بينحفظ.|The coupon shows on the Coupons page and works at checkout like any other. Kept under the name: .code, .endsAt (until when) and .value, say for an email or a notification to the customer. In a try-out a code is made up and not kept.|הקופון מופיע בדף הקופונים ועובד בתשלום כמו כל קופון. נשמר בשם: ‎.code, ‎.endsAt (עד מתי) ו-‎.value, למשל לאימייל או להתראה ללקוח. בניסיון ממציאים קוד ולא שומרים אותו.",
+            )}
+          </p>
+          <RightNote right="discounts:write" />
+        </>
+      );
+    }
+    case "stock":
+      return (
+        <>
+          <Row name={say("القطعة (SKU)|The piece (SKU)|הפריט (SKU)")}>
+            <ValueInput at={path} plain value={step.sku} onChange={(v) => set({ ...step, sku: String(v) })} placeholder="CH-BLK-M  ·  {{input.sku}}" testid={`step-${id}-sku`} />
+          </Row>
+          <Row name={say("الكمية|The quantity|הכמות")}>
+            <select className={field} value={step.how} disabled={!b.canWrite} onChange={(e) => set({ ...step, how: e.target.value as StockHow })} data-testid={`step-${id}-how`}>
+              {STOCK_HOW.map((h) => (
+                <option key={h} value={h}>
+                  {say(STOCK_HOW_NAME[h])}
+                </option>
+              ))}
+            </select>
+            <ValueInput at={path} value={step.amount} onChange={(amount) => set({ ...step, amount })} placeholder="1" testid={`step-${id}-amount`} />
+          </Row>
+          {words(say("السبب|The reason|הסיבה"), step.reason, (reason) => set({ ...step, reason: reason || undefined }), { key: "reason", placeholder: say("مرتجع {{row.$slug}}|A return, {{row.$slug}}|החזרה, {{row.$slug}}") })}
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+          <p className="text-xs text-white/70" data-testid={`step-${id}-stock-note`}>
+            {say(
+              "بينكتب بسجل القطعة بالمخزون متل أي تعديل. الـ SKU بتلاقيه بالمخزون جنب كل مقاس. ما بتنزل الكمية تحت الصفر: إذا ما في كفاية الـ function بتوقف وبتقول قديش باقي. بالاسم: ‎.after (قديش صار) و ‎.before.|Written in the piece's stock history like any change. A piece's SKU is in Stock, beside each size. It never goes below 0: without enough, the function stops and says how many are left. Kept under the name: .after (how many now) and .before.|נכתב בהיסטוריית המלאי של הפריט כמו כל שינוי. ה-SKU של פריט נמצא במלאי, ליד כל מידה. הכמות לא יורדת מתחת ל-0: אם אין מספיק, הפונקציה נעצרת ואומרת כמה נשארו. נשמר בשם: ‎.after (כמה עכשיו) ו-‎.before.",
+            )}
+          </p>
+          <RightNote right="inventory:write" />
+        </>
+      );
+    case "customer": {
+      const roles = b.store?.roles ?? [];
+      const groups = b.store?.groups ?? [];
+      const forRole = step.mark === "giveRole" || step.mark === "takeRole";
+      const forGroup = step.mark === "join" || step.mark === "leave";
+      // A group is kept by its name (unique, and the same in another store a template goes to); the server takes its id too.
+      const options = forRole ? roles.map((r) => ({ id: r.key, name: roleName(r.key, b.store, lang) })) : groups.map((g) => ({ id: g.name, name: g.name }));
+      const what = forGroup ? (groups.find((g) => g.id === step.what)?.name ?? step.what ?? "") : (step.what ?? "");
+      const known = options.some((o) => o.id === what);
+      return (
+        <>
+          {words(say("الزبون (رقمه أو إيميله)|The customer (their id or email)|הלקוח (המזהה או האימייל שלו)"), step.who, (who) => set({ ...step, who }), { key: "who", placeholder: "{{caller.id}}" })}
+          <Row name={say("شو بتعمل|What it does|מה עושים")}>
+            <select
+              className={`${field} max-w-[18rem]`}
+              value={step.mark}
+              disabled={!b.canWrite}
+              onChange={(e) => {
+                const mark = e.target.value as CustomerMark;
+                // A role for a role, a group for a group: the first one there to start from.
+                const first = mark === "giveRole" || mark === "takeRole" ? roles[0]?.key : mark === "join" || mark === "leave" ? groups[0]?.name : undefined;
+                set({ act: "customer", who: step.who, mark, ...(mark !== "read" ? { what: first ?? "" } : {}), ...(step.as ? { as: step.as } : {}) });
+              }}
+              data-testid={`step-${id}-mark`}
+            >
+              {CUSTOMER_MARKS.map((m) => (
+                <option key={m} value={m}>
+                  {say(CUSTOMER_MARK_NAME[m])}
+                </option>
+              ))}
+            </select>
+          </Row>
+          {forRole || forGroup ? (
+            <Row name={forRole ? say("الدور|The role|התפקיד") : say("المجموعة|The group|הקבוצה")}>
+              <select className={`${field} max-w-[16rem]`} value={what} disabled={!b.canWrite} onChange={(e) => set({ ...step, what: e.target.value })} data-testid={`step-${id}-what`}>
+                {!known ? <option value={what}>{what ? (what.includes("{{") ? what : `${what} (${say("مش موجود|not there|לא קיים")})`) : say("اختار|Pick one|בחירה")}</option> : null}
+                {options.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          ) : null}
+          {(forRole && !roles.length) || (forGroup && !groups.length) ? (
+            <p className="text-xs text-white/70" data-testid={`step-${id}-none`}>
+              {forRole ? say("ما في أدوار لسا: بتنعمل من|No roles yet: they are made in|עדיין אין תפקידים: יוצרים אותם ב") : say("ما في مجموعات لسا: بتنعمل من|No groups yet: they are made in|עדיין אין קבוצות: יוצרים אותן ב")}{" "}
+              <Link to="/admin/customers" className="underline">
+                {say("الزبائن ← الأدوار والمجموعات|Customers → Roles & groups|לקוחות ← תפקידים וקבוצות")}
+              </Link>
+            </p>
+          ) : null}
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+          <p className="text-xs text-white/70" data-testid={`step-${id}-customer-note`}>
+            {say(
+              "اللي بينحفظ بالاسم: ‎.name، ‎.email، ‎.phone، ‎.roles و ‎.groups، مثلاً كوبون لتلفونه ({{buyer.phone}}). الدور بيفتحله اللي الجداول والـ functions بتسمح فيه لهالدور.|Kept under the name: .name, .email, .phone, .roles and .groups; say a coupon for their phone ({{buyer.phone}}). A role opens to them what the tables and functions allow that role.|נשמר בשם: ‎.name, ‎.email, ‎.phone, ‎.roles ו-‎.groups, למשל קופון לטלפון שלו ({{buyer.phone}}). תפקיד פותח לו את מה שהטבלאות והפונקציות מתירות לתפקיד הזה.",
+            )}
+          </p>
+          <RightNote right={step.mark === "read" ? "customers:read" : "customers:write"} />
+        </>
+      );
+    }
     case "email":
       return (
         <>
@@ -774,6 +916,15 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
         </>
       );
   }
+}
+
+/** A store step goes live only with a member who may do that thing in the admin too (backend lib/fnDef.ts storeRights). */
+function RightNote({ right }: { right: string }) {
+  return (
+    <p className="text-xs text-amber-200/80" data-testid="store-right-note">
+      {say("نشر هالخطوة بدّه كمان صلاحية:|Publishing this step also needs the permission:|פרסום השלב הזה מצריך גם את ההרשאה:")} «{say(RIGHT_NAME[right] ?? right)}»
+    </p>
+  );
 }
 
 /* ---------------- The cards ---------------- */
@@ -892,7 +1043,7 @@ export function StepList({ list, fail }: { list: Path; fail?: boolean }) {
           onChange={(e) => {
             const act = e.target.value as StepKind;
             if (!act) return;
-            b.change(addStep(b.def, list, newStep(act, { tables: b.tables, fns: b.fns, def: b.def, code: CODE_START[adminLang()], outside: b.outside })));
+            b.change(addStep(b.def, list, newStep(act, { tables: b.tables, fns: b.fns, def: b.def, code: CODE_START[adminLang()], outside: b.outside, store: b.store })));
             b.setOpenAt(atOf([...list, steps.length]));
           }}
           data-testid={`steps-${id}-add`}

@@ -38,6 +38,8 @@ const listOf = (functions: FnLite[]): FnList => ({
   cmps: ["eq", "ne", "gt", "empty", "notEmpty"],
   limits: { steps: 60, depth: 4, conditions: 8, inputs: 20, values: 40, text: 2000, found: 200, loop: 200, executed: 1000, writes: 200, messages: 20, calls: 3, ms: 10000 },
   triggers: { kinds: ["row", "schedule", "event", "call", "webhook"], events: ["order.created", "video.ready"], callPerMinute: { customer: 30, key: 120, public: 10 }, limits: { perFunction: 10, everyMinutes: { min: 5, max: 10080 } } },
+  // What a customer step picks from.
+  store: { roles: [{ key: "vip", name: { en: "VIP", ar: "مميّزة" } }, { key: "seller", name: { en: "Seller" } }], groups: [{ id: "g1", name: "Club" }] },
 });
 
 let server: FnFull;
@@ -220,7 +222,7 @@ describe("The builder", () => {
     show();
     await screen.findByTestId("fn-editor");
     // Its own group in the menu, after the others.
-    expect([...screen.getByTestId("steps-do-add").querySelectorAll("optgroup")].map((g) => g.getAttribute("label"))).toEqual(["Your tables", "Control", "Messages", "Outside the store", "Code"]);
+    expect([...screen.getByTestId("steps-do-add").querySelectorAll("optgroup")].map((g) => g.getAttribute("label"))).toEqual(["Your tables", "The store", "Control", "Messages", "Outside the store", "Code"]);
     pick("steps-do-add", "find");
     pick("steps-do-add", "code");
     expect(screen.getByTestId("step-do.1").getAttribute("data-open")).toBe("true");
@@ -994,5 +996,73 @@ describe("What it gives back", () => {
     show();
     fireEvent.click(await screen.findByTestId("step-do.1-head"));
     expect([...screen.getByTestId("step-do.1-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value")).slice(-3)).toEqual(["order", "order.id", "order.total"]);
+  });
+});
+
+describe("The store's own steps", () => {
+  test("a coupon: its code, what it takes off, and the rest left to the store; the steps after it are offered its code", async () => {
+    show();
+    await screen.findByTestId("fn-editor");
+    expect([...screen.getByTestId("steps-do-add").querySelectorAll('optgroup[label="The store"] option')].map((o) => o.getAttribute("value"))).toEqual(["coupon", "stock", "customer"]);
+    pick("steps-do-add", "coupon");
+    // A new one: a made-up code, ten percent, a month.
+    expect(screen.getByTestId("step-do.0-line").textContent).toBe("a new code · 10% · 30 days ← coupon");
+    expect(screen.getByTestId("step-do.0-max")).toBeTruthy();
+    type("step-do.0-coupon-code", "SPRING");
+    type("step-do.0-value", "15");
+    type("step-do.0-days", "");
+    // An amount off has no "most off".
+    pick("step-do.0-off", "amount");
+    expect(screen.queryByTestId("step-do.0-max")).toBeNull();
+    expect(screen.getByTestId("step-do.0-line").textContent).toBe("SPRING · 15 off ← coupon");
+    expect(screen.getByTestId("store-right-note").textContent).toBe("Publishing this step also needs the permission: «Coupons: add and change»");
+    pick("steps-do-add", "email");
+    expect([...screen.getByTestId("step-do.1-subject-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(expect.arrayContaining(["coupon.code", "coupon.endsAt", "coupon.value"]));
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() => expect(lastDraft()).toEqual({ inputs: [], do: [{ act: "coupon", off: "amount", value: 15, code: "SPRING", as: "coupon" }, { act: "email", subject: "", text: "" }] }));
+  });
+
+  test("a customer given a role or put in a group, picked from the store's own; a piece's stock by its SKU", async () => {
+    show();
+    await screen.findByTestId("fn-editor");
+    pick("steps-do-add", "customer");
+    // It starts on the one who started the run, and the first role.
+    expect((screen.getByTestId("step-do.0-what") as HTMLSelectElement).value).toBe("vip");
+    expect(screen.getByTestId("step-do.0-line").textContent).toBe("{{caller.id}} · Give a role «VIP» ← buyer");
+    expect(screen.getByTestId("store-right-note").textContent).toContain("«Customers: change»");
+    pick("step-do.0-mark", "join");
+    const groups = screen.getByTestId("step-do.0-what") as HTMLSelectElement;
+    expect([groups.value, [...groups.options].map((o) => o.textContent)]).toEqual(["Club", ["Club"]]);
+    pick("step-do.0-mark", "read");
+    expect(screen.queryByTestId("step-do.0-what")).toBeNull();
+    expect(screen.getByTestId("store-right-note").textContent).toContain("«Customers: see»");
+    pick("step-do.0-mark", "join");
+    pick("steps-do-add", "stock");
+    type("step-do.1-sku", "CH-BLK-M");
+    pick("step-do.1-how", "add");
+    type("step-do.1-amount", "3");
+    expect(screen.getByTestId("step-do.1-line").textContent).toBe("CH-BLK-M +3 ← stock");
+    expect(screen.getByTestId("step-do.1-stock-note").textContent).toContain("It never goes below 0");
+    fireEvent.click(screen.getByTestId("fn-save"));
+    await waitFor(() =>
+      expect(lastDraft()).toEqual({
+        inputs: [],
+        do: [
+          { act: "customer", who: "{{caller.id}}", mark: "join", what: "Club", as: "buyer" },
+          { act: "stock", sku: "CH-BLK-M", how: "add", amount: 3, as: "stock" },
+        ],
+      }),
+    );
+  });
+
+  test("publishing one without the permission it needs says which", async () => {
+    server = full({ draft: { inputs: [], do: [{ act: "coupon", off: "percent", value: 10 }] }, changed: true });
+    m.publishFunction.mockRejectedValueOnce({ response: { status: 403, data: { error: "FN_NEEDS_RIGHT", details: { missing: ["discounts:write", "customers:read"] } } } });
+    show();
+    fireEvent.click(await screen.findByTestId("fn-publish"));
+    await waitFor(() => expect(m.toast.error).toHaveBeenCalled());
+    const [title, { description }] = m.toast.error.mock.calls.at(-1) as [string, { description: string }];
+    expect(title).toBe("Not published");
+    expect(description).toBe("It has steps that change the store, and publishing them needs a permission you don't have: Coupons: add and change · Customers: see");
   });
 });

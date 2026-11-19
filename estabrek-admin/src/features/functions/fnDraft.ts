@@ -1,7 +1,7 @@
 // الـ Functions: the builder's own sums, apart from the page so they can be tested. A function's
 // steps are a tree (a question and a loop hold steps of their own); a step is named by its way
 // in, the same way the server names it: ["do", 2, "else", 0] is "do.2.else.0".
-import type { FnDef, FnField, FnLite, FnTable, GroupStep, Outside, PlainStep, Step, StepKind, Val } from "../../api/functions.api";
+import type { CouponOff, CustomerMark, FnDef, FnField, FnLite, FnTable, GroupStep, Outside, PlainStep, Step, StepKind, StockHow, StoreMeta, Val } from "../../api/functions.api";
 
 export type Path = Array<string | number>;
 export const atOf = (path: Path) => path.join(".");
@@ -9,8 +9,10 @@ export const atOf = (path: Path) => path.join(".");
 export const stepOfLine = (at: string) => at.replace(/\[\d+\]/g, "");
 
 export const isGroup = (s: Step): s is GroupStep => s.act === "if" || s.act === "each";
-export const GROUPS: Array<{ key: "data" | "control" | "out" | "outside" | "code"; acts: StepKind[] }> = [
+export const GROUPS: Array<{ key: "data" | "store" | "control" | "out" | "outside" | "code"; acts: StepKind[] }> = [
   { key: "data", acts: ["find", "get", "add", "change", "delete"] },
+  // The store itself: a coupon, a piece's quantity, a customer's roles and groups.
+  { key: "store", acts: ["coupon", "stock", "customer"] },
   { key: "control", acts: ["if", "each", "set", "call", "stop", "return"] },
   { key: "out", acts: ["notify", "push", "email", "whatsapp", "sms"] },
   // Outside the store: through a service the owner connected, or a call to a site the owner allowed.
@@ -18,6 +20,10 @@ export const GROUPS: Array<{ key: "data" | "control" | "out" | "outside" | "code
   // For what the steps can't say: JavaScript, run in a cage on the server.
   { key: "code", acts: ["code"] },
 ];
+/** The store steps' choices, in the order the builder offers them. */
+export const COUPON_OFF: CouponOff[] = ["percent", "amount"];
+export const STOCK_HOW: StockHow[] = ["take", "add", "set"];
+export const CUSTOMER_MARKS: CustomerMark[] = ["giveRole", "takeRole", "join", "leave", "read"];
 /** After a failure a function tells someone or writes it down, nothing else. */
 export const FAIL_ACTS: StepKind[] = ["notify", "push", "email", "whatsapp", "sms", "add", "change", "set", "ready", "http"];
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
@@ -68,7 +74,14 @@ export function countSteps(steps: Step[] | undefined): number {
 /* ---------------- Names: what a step can talk about ---------------- */
 
 /** Something the run keeps under a name: rows of a table, one row, a site's answer, or any value. */
-export type Known = { name: string; kind: "rows" | "row" | "value" | "answer"; table?: string; /** What a "call" step keeps: the function it called (whose promised answer says its fields). */ fn?: string };
+export type Known = { name: string; kind: "rows" | "row" | "value" | "answer"; table?: string; /** What a "call" step keeps: the function it called (whose promised answer says its fields). */ fn?: string; /** A store step's thing: its own fields ({{coupon.code}}). */ fields?: readonly string[] };
+
+/** What each store step keeps under its name (backend lib/fnStore.ts CouponMade, StockDone, CustomerSeen). */
+export const STORE_KEEPS = {
+  coupon: ["code", "value", "endsAt", "uses", "phone", "id"],
+  stock: ["after", "before", "sku", "product", "color", "size"],
+  customer: ["id", "name", "email", "phone", "roles", "groups"],
+} as const;
 
 /** The list a loop goes over, when it is one name: "{{orders}}" → "orders". */
 const oneName = (text: string) => /^\{\{\s*([A-Za-z_$][\w$.]*)\s*\}\}$/.exec(text.trim())?.[1] ?? null;
@@ -81,6 +94,7 @@ function keep(have: Map<string, Known>, s: Step) {
   else if (s.act === "call" && s.as) have.set(s.as, { name: s.as, kind: "value", fn: s.fn });
   else if (s.act === "code" && s.as) have.set(s.as, { name: s.as, kind: "value" });
   else if ((s.act === "http" || s.act === "ready") && s.as) have.set(s.as, { name: s.as, kind: "answer" });
+  else if ((s.act === "coupon" || s.act === "stock" || s.act === "customer") && s.as) have.set(s.as, { name: s.as, kind: "value", fields: STORE_KEEPS[s.act] });
 }
 
 /**
@@ -147,6 +161,7 @@ export function offers(def: FnDef, target: Path, tables: FnTable[], /** The othe
     else if (k.kind === "row") out.push(k.name, `${k.name}.$id`, `${k.name}.$slug`, ...fieldsOf(k.table).map((f) => `${k.name}.${f.id}`));
     // A site's answer: what it said, whether it said yes, and its status.
     else if (k.kind === "answer") out.push(`${k.name}.body`, `${k.name}.ok`, `${k.name}.status`);
+    else if (k.fields) out.push(...k.fields.map((f) => `${k.name}.${f}`));
     else {
       out.push(k.name);
       // What another function gave back: its promised fields (a list's: of its first thing).
@@ -190,7 +205,7 @@ export function namesUsed(def: FnDef): string[] {
 export const firstAction = (outside: Outside | undefined, kind: string | undefined) => outside?.kinds?.find((k) => k.kind === kind)?.actions[0]?.id ?? "message";
 
 /** A fresh step of a kind, with what it needs to start from. */
-export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; def: FnDef; /** What a new code step starts with (a few lines saying how it works). */ code?: string; /** The ready connections and their kinds: a new "ready" step starts on the first one. */ outside?: Outside }): Step {
+export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; def: FnDef; /** What a new code step starts with (a few lines saying how it works). */ code?: string; /** The ready connections and their kinds: a new "ready" step starts on the first one. */ outside?: Outside; /** The shoppers' roles: a new customer step gives the first one. */ store?: StoreMeta }): Step {
   const table = ctx.tables[0]?.id ?? "";
   const free = (base: string) => freeName(base, [...namesUsed(ctx.def), ...RESERVED, "item"]);
   switch (act) {
@@ -231,6 +246,14 @@ export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; 
     case "push":
       // Most often the one who started the run: the shopper whose button it was.
       return { act, who: "customer", to: "{{caller.id}}", title: "" };
+    // A coupon for once, ten percent off, a month; its code made up.
+    case "coupon":
+      return { act, off: "percent", value: 10, days: 30, as: free("coupon") };
+    case "stock":
+      return { act, sku: "", how: "take", amount: 1, as: free("stock") };
+    // Most often the one who started the run.
+    case "customer":
+      return { act, who: "{{caller.id}}", mark: "giveRole", what: ctx.store?.roles[0]?.key ?? "", as: free("buyer") };
     default:
       return { act, text: "" } as PlainStep;
   }

@@ -99,6 +99,10 @@ export const s = {
   /** A ready connection's step: the store picks its own connection after installing. */
   ready: (what: string, give: Record<string, string>, as?: string): Step => ({ act: "ready", via: "", what, give, ...(as ? { as } : {}) }),
   call: (fn: string, input: Record<string, Val> = {}, as?: string): Step => ({ act: "call", fn: `@fn:${fn}`, ...(Object.keys(input).length ? { input } : {}), ...(as ? { as } : {}) }),
+  /** The store itself (lib/fnStore.ts): a coupon, a piece's quantity, a customer's role or group. */
+  coupon: (off: "percent" | "amount", value: Val, more: { code?: string; max?: Val; minCart?: Val; uses?: Val; days?: Val; phone?: string; note?: string; as?: string } = {}): Step => ({ act: "coupon", off, value, ...more }),
+  stock: (sku: string, how: "add" | "take" | "set", amount: Val, more: { reason?: string; as?: string } = {}): Step => ({ act: "stock", sku, how, amount, ...more }),
+  customer: (who: string, mark: "read" | "giveRole" | "takeRole" | "join" | "leave", what?: string, as?: string): Step => ({ act: "customer", who, mark, ...(what !== undefined ? { what } : {}), ...(as ? { as } : {}) }),
   when: (conds: ReturnType<typeof cond>[], then: Step[], otherwise?: Step[], match?: "all" | "any"): Step => ({ act: "if", if: conds, ...(match ? { match } : {}), do: then, ...(otherwise ? { else: otherwise } : {}) }),
   each: (list: string, as: string, steps: Step[]): Step => ({ act: "each", list, as, do: steps }),
   stop: (message: string): Step => ({ act: "stop", message }),

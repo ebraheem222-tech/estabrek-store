@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getApiErrorMessage } from "../../api/http";
 import * as FnAPI from "../../api/functions.api";
-import type { FnFull, FnLite, FnTable, FnVersion, Outside } from "../../api/functions.api";
+import type { FnFull, FnLite, FnTable, FnVersion, Outside, StoreMeta } from "../../api/functions.api";
 import { adminLang } from "../../lib/lang";
 import { say } from "../../studio/say";
 import { ACT_NAME, part, stepLine } from "./fnText";
@@ -14,7 +14,7 @@ import { Line } from "./StepList";
 const when = (iso: string, lang: string) => new Date(iso).toLocaleString(lang === "ar" ? "ar" : lang === "he" ? "he-IL" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
 
 /** A version's steps, read as they were published: one line each, as a closed step shows itself. */
-function VersionSteps({ fnId, n, ctx }: { fnId: string; n: number; ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside } }) {
+function VersionSteps({ fnId, n, ctx }: { fnId: string; n: number; ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside; store?: StoreMeta } }) {
   const lang = adminLang();
   const q = useQuery({ queryKey: ["functions", fnId, "version", n], queryFn: () => FnAPI.getFnVersion(fnId, n), staleTime: Infinity });
   if (q.isLoading) return <p className="text-xs text-white/60">…</p>;
@@ -54,7 +54,7 @@ function VersionSteps({ fnId, n, ctx }: { fnId: string; n: number; ctx: { tables
   );
 }
 
-export function VersionsPanel({ fn, ctx, canWrite, busy, onRestore }: { fn: FnFull; ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside }; canWrite: boolean; busy: boolean; onRestore: (version: FnVersion, to: "live" | "draft") => void }) {
+export function VersionsPanel({ fn, ctx, canWrite, busy, onRestore }: { fn: FnFull; ctx: { tables: FnTable[]; fns: FnLite[]; outside?: Outside; store?: StoreMeta }; canWrite: boolean; busy: boolean; onRestore: (version: FnVersion, to: "live" | "draft") => void }) {
   const lang = adminLang();
   const [open, setOpen] = useState<number | null>(null);
   const versions = fn.versions ?? [];

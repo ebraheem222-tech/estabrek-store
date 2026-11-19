@@ -31,10 +31,27 @@ export type PlainStep =
   | { act: "http"; method: HttpMethod; url: string; headers?: Record<string, string>; body?: Val; /** A site's "no" (400 and up) doesn't stop the run. */ anyStatus?: boolean; as?: string }
   /** Through a ready connection (admin → الاتصالات والأسرار): which, what it does there, and what that asks for. No address or key is written. */
   | { act: "ready"; via: string; what: string; give?: Record<string, string>; as?: string }
+  /** A discount code (admin → الكوبونات): its code (empty: one is made up), a percent or an amount off, uses, days, one phone only. */
+  | { act: "coupon"; code?: string; off: CouponOff; value: Val; max?: Val; minCart?: Val; uses?: Val; days?: Val; phone?: string; note?: string; as?: string }
+  /** A piece's quantity (admin → المخزون), by its SKU: more, fewer, or exactly so many. */
+  | { act: "stock"; sku: string; how: StockHow; amount: Val; reason?: string; as?: string }
+  /** A shopper (their id or email): only read, or a role given / taken, or a group joined / left. */
+  | { act: "customer"; who: string; mark: CustomerMark; what?: string; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
+/** A coupon's discount; a piece's quantity; what a step does to a customer (the lists are in features/functions/fnDraft.ts). */
+export type CouponOff = "percent" | "amount";
+export type StockHow = "add" | "take" | "set";
+export type CustomerMark = "read" | "giveRole" | "takeRole" | "join" | "leave";
+/** What the store steps pick from (the shoppers' roles and groups), their limits, and what each needs to be published. */
+export type StoreMeta = {
+  roles: Array<{ key: string; name: Partial<Record<"ar" | "en" | "he", string>> | null }>;
+  groups: Array<{ id: string; name: string }>;
+  limits?: { money: number; uses: number; days: number; quantity: number };
+  rights?: { coupon: string; stock: string; customer: string; customerRead: string };
+};
 /** What an "http" step may reach: the allowed sites, and each secret's name with the sites it is for (never a value). */
 export type Outside = {
   sites: string[];
@@ -125,10 +142,10 @@ type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FnField = { id: string; type: string; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }> };
 export type FnTable = { id: string; slug: string; name: Local | null; fields: FnField[] };
 export type FnLimits = { steps: number; depth: number; conditions: number; inputs: number; values: number; text: number; found: number; loop: number; executed: number; writes: number; messages: number; calls: number; ms: number; /** A code step's code, in letters. */ code?: number; /** The cage a code step runs in. */ cage?: { ms: number; memoryMb: number }; /** Tests one function keeps. */ tests?: number; /** A call to a site: how long it may take, and how many a run makes. */ http?: { ms: number; calls: number } };
-export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside; /** What an input's rules may be. */ inputRules?: { formats: InputFormat[]; limits: { choices: number; choice: number } } };
+export type FnList = { functions: FnLite[]; tables: FnTable[]; ops: Record<string, Op[]>; cmps: Cmp[]; limits: FnLimits; triggers: TriggerMeta; outside?: Outside; /** What an input's rules may be. */ inputRules?: { formats: InputFormat[]; limits: { choices: number; choice: number } }; /** The store steps' roles, groups and limits. */ store?: StoreMeta };
 
 export type TraceLine = { at: string; act: StepKind; ok: boolean; ms: number; note?: string; say?: [string, ...Array<string | number>]; error?: string; /** What a code step wrote with log(). */ log?: string[] };
-export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null; /** A real run's line in the run log. */ runId?: string; /** It went through, and what it gave back isn't what it promises: how. */ shape?: string };
+export type Outcome = { ok: boolean; dry: boolean; value: unknown; valueCut?: boolean; error: string | null; failedAt: string | null; trace: TraceLine[]; counts: { steps: number; found: number; added: number; changed: number; deleted: number; sent: number; /** Coupons made, quantities changed, customers marked. */ store?: number }; ms: number; /** The published version that ran (a real run). */ version?: number | null; /** A real run's line in the run log. */ runId?: string; /** It went through, and what it gave back isn't what it promises: how. */ shape?: string };
 
 const BASE = "/admin/functions";
 const at = (id: string) => `${BASE}/${encodeURIComponent(id)}`;
@@ -150,7 +167,7 @@ export async function saveFunction(id: string, body: { name?: string; note?: str
 export async function runFnTests(id: string) {
   return (await api.post(`${at(id)}/tests/run`)).data as TestsOutcome;
 }
-/** The draft becomes what runs. Refused (409) while it has problems (FN_HAS_PROBLEMS), or while one of its own tests doesn't pass (FN_TESTS_FAILED, with how each went). */
+/** The draft becomes what runs. Refused (409) while it has problems (FN_HAS_PROBLEMS), or while one of its own tests doesn't pass (FN_TESTS_FAILED, with how each went); refused (403 FN_NEEDS_RIGHT, `missing`) when a store step needs a permission the member hasn't. */
 export async function publishFunction(id: string) {
   return (await api.post(`${at(id)}/publish`)).data as FnFull;
 }

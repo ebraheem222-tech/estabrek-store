@@ -45,6 +45,7 @@ import { shownRow } from "../../lib/schemaChange.js";
 import { getOrCreateSettings } from "../admin/settings.controller.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
 import { PUSH_LIMITS, pushAudienceCount, pushSettings, queuePush, shopPath } from "../../lib/push.js";
+import { StoreError, changeStock, makeCoupon, markCustomer } from "../../lib/fnStore.js";
 
 /** What a step did, as a code and its things, so the admin can say it in its own language. */
 export type Said = [code: keyof typeof NOTE, ...things: Array<string | number>];
@@ -77,6 +78,19 @@ const NOTE = {
   wouldCall: (line: string) => `Would call ${line}`,
   used: (line: string) => `Sent through ${line}`,
   wouldUse: (line: string) => `Would send through ${line}`,
+  couponMade: (code: string, off: string) => `Made the coupon ${code} (${off} off)`,
+  wouldCoupon: (code: string, off: string) => `Would make a coupon like ${code} (${off} off)`,
+  stocked: (sku: string, before: number, after: number) => `${sku}: ${before} → ${after}`,
+  wouldStock: (sku: string, before: number, after: number) => `Would make ${sku} ${before} → ${after}`,
+  customer: (who: string) => `The customer ${who}`,
+  gaveRole: (role: string, who: string) => `Gave ${who} the role ${role}`,
+  wouldGiveRole: (role: string, who: string) => `Would give ${who} the role ${role}`,
+  tookRole: (role: string, who: string) => `Took the role ${role} from ${who}`,
+  wouldTakeRole: (role: string, who: string) => `Would take the role ${role} from ${who}`,
+  joined: (group: string, who: string) => `Put ${who} in ${group}`,
+  wouldJoin: (group: string, who: string) => `Would put ${who} in ${group}`,
+  left: (group: string, who: string) => `Took ${who} out of ${group}`,
+  wouldLeave: (group: string, who: string) => `Would take ${who} out of ${group}`,
   returned: () => "Gave back its answer",
   yes: () => "Yes",
   no: () => "No",
@@ -84,7 +98,7 @@ const NOTE = {
   times: (n: number) => `${n} times`,
 } as const;
 const english = (said: Said): string => (NOTE[said[0]] as (...things: Array<string | number>) => string)(...said.slice(1));
-export type Counts = { steps: number; found: number; added: number; changed: number; deleted: number; sent: number };
+export type Counts = { steps: number; found: number; added: number; changed: number; deleted: number; sent: number; /** Coupons made, quantities changed, customers marked. */ store: number };
 export type Outcome = { ok: boolean; dry: boolean; /** What it gave back. */ value: unknown; error: string | null; /** Where it failed. */ failedAt: string | null; trace: TraceLine[]; counts: Counts; ms: number; /** The published version that ran (a saved function's published steps). */ version?: number | null; /** A real run's line in the run log. */ runId?: string; /** It went through, and what it gave back isn't what it promises (lib/fnGives.ts): how. */ shape?: string };
 
 /** "return": the run ends here, well. */
@@ -103,7 +117,7 @@ class Failure extends Error {
 
 type Table = { id: string; slug: string; fields: Field[] };
 /** A run's limits, shared with the functions it calls; each keeps its own steps' lines. */
-type Budget = { deadline: number; /** How long the run was given. */ ms: number; used: { writes: number; messages: number; http: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null> };
+type Budget = { deadline: number; /** How long the run was given. */ ms: number; used: { writes: number; messages: number; http: number; store: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null>; /** A dry run: the pieces' quantities as its steps would have left them. */ stock: Map<string, number> };
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
 type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[] };
 /** Who started a run. */
@@ -118,14 +132,15 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * A row for a function: its fields by their ids ({{order.total}}), words in the function's
  * language, a relation as the rows it links; and the row's own things under "$" names, as the
- * grid calls them.
+ * grid calls them. Its id is also plain {{row.id}} (as the gallery's functions name it), unless
+ * the table has a field of its own called "id": that field is what the name means then.
  */
 async function rowsOut(table: Table, rows: Array<Omit<Stored, "collectionId">>, lang: Lang) {
   const links: LinkModes = new Map(relationsOf(table.fields).map((f) => [f.id, "all" as const]));
   const linked = await withLinks(prisma, table, rows.map((row) => shownRow(row, table.fields)));
   return linked.map((row) => {
     const r = apiRow(row, table.fields, { lang, links });
-    return { ...r.values, $id: r.id, $slug: r.slug, $status: r.status, $createdAt: r.createdAt.toISOString(), $updatedAt: r.updatedAt.toISOString() };
+    return { id: r.id, ...r.values, $id: r.id, $slug: r.slug, $status: r.status, $createdAt: r.createdAt.toISOString(), $updatedAt: r.updatedAt.toISOString() };
   });
 }
 
@@ -432,6 +447,41 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (s.as) scope[s.as] = out.value;
       return ["ran", out.ms];
     }
+    case "coupon":
+    case "stock":
+    case "customer": {
+      // The store itself (lib/fnStore.ts): its own limit in a run, beside the rows a run writes.
+      if (budget.used.store >= FN_LIMITS.store) throw new Failure(`A run changes the store up to ${FN_LIMITS.store} times`, at);
+      const text = (v: unknown) => words(fill(v ?? "", scope));
+      try {
+        if (s.act === "coupon") {
+          const made = await makeCoupon({ code: text(s.code), off: s.off, value: fill(s.value, scope), max: s.max === undefined ? undefined : fill(s.max, scope), minCart: s.minCart === undefined ? undefined : fill(s.minCart, scope), uses: s.uses === undefined ? undefined : fill(s.uses, scope), days: s.days === undefined ? undefined : fill(s.days, scope), phone: text(s.phone), note: text(s.note) }, dry);
+          budget.used.store += 1;
+          budget.counts.store += 1;
+          if (s.as) scope[s.as] = made;
+          const off = made.off === "percent" ? `${made.value}%` : String(made.value);
+          return dry ? ["wouldCoupon", made.code, off] : ["couponMade", made.code, off];
+        }
+        if (s.act === "stock") {
+          const done = await changeStock({ sku: text(s.sku), how: s.how, amount: fill(s.amount, scope), reason: text(s.reason) }, dry, budget.stock);
+          budget.used.store += 1;
+          budget.counts.store += 1;
+          if (s.as) scope[s.as] = done;
+          return dry ? ["wouldStock", done.sku, done.before, done.after] : ["stocked", done.sku, done.before, done.after];
+        }
+        const done = await markCustomer({ who: text(s.who), mark: s.mark, what: text(s.what) }, dry, lang);
+        if (s.as) scope[s.as] = done.customer;
+        const who = done.customer.name || done.customer.email;
+        if (s.mark === "read") return ["customer", who];
+        budget.used.store += 1;
+        if (done.changed) budget.counts.store += 1;
+        const said = { giveRole: ["gaveRole", "wouldGiveRole"], takeRole: ["tookRole", "wouldTakeRole"], join: ["joined", "wouldJoin"], leave: ["left", "wouldLeave"] } as const;
+        return [said[s.mark][dry ? 1 : 0], done.shown, who];
+      } catch (e) {
+        if (e instanceof StoreError) throw new Failure(e.message, at);
+        throw e;
+      }
+    }
     case "stop":
       throw new Failure(words(fill(s.message, scope)).trim().slice(0, 300) || "Stopped", at);
     case "return":
@@ -505,7 +555,7 @@ function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<str
   return values;
 }
 
-const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0, http: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0 }, pretend: new Map() });
+const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0, http: 0, store: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0, store: 0 }, pretend: new Map(), stock: new Map() });
 
 /** A definition run with what it was handed. Never throws: a failure is the outcome. `ms`: a shorter time than a run's own (a test's). */
 export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number } = {}): Promise<Outcome> {

@@ -17,7 +17,7 @@ import { say } from "../../studio/say";
 import * as FnAPI from "../../api/functions.api";
 import type { FnDef, FnFull, FnInput, FnTest, FnVersion, InputType, Outcome, Problem, TestsOutcome } from "../../api/functions.api";
 import { countSteps, freeName, nameOk, stepOfLine } from "./fnDraft";
-import { INPUT_TYPE, STATE_NAME, problemText, stateOf, whereText } from "./fnText";
+import { INPUT_TYPE, RIGHT_NAME, STATE_NAME, problemText, stateOf, whereText } from "./fnText";
 import { FnTriggers } from "./FnTriggers";
 import { BuilderProvider, CondList, Line, StepList, type Builder } from "./StepList";
 import { TryPanel } from "./TryPanel";
@@ -69,6 +69,15 @@ export default function FunctionEditor() {
     void qc.invalidateQueries({ queryKey: ["functions"], exact: true });
   };
   const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) });
+  /** A store step needs a permission this member hasn't (a coupon, the stock, the customers): said with what is missing. */
+  const needsRight = (e: unknown) => {
+    const refused = (e as { response?: { data?: { error?: string; details?: { missing?: string[] } } } })?.response?.data;
+    if (refused?.error !== "FN_NEEDS_RIGHT") return false;
+    toast.error(say("ما انتشرت|Not published|לא פורסמה"), {
+      description: `${say("فيها خطوات بتغيّر بالمتجر، ونشرها بدّه صلاحية ما عندك:|It has steps that change the store, and publishing them needs a permission you don't have:|יש בה שלבים שמשנים את החנות, ופרסומם מצריך הרשאה שאין לך:")} ${(refused.details?.missing ?? []).map((p) => say(RIGHT_NAME[p] ?? p)).join(" · ")}`,
+    });
+    return true;
+  };
 
   const save = useMutation({ mutationFn: () => FnAPI.saveFunction(id, page()), onSuccess: took, onError });
   const toggle = useMutation({ mutationFn: (enabled: boolean) => FnAPI.saveFunction(id, { enabled }), onSuccess: took, onError });
@@ -90,7 +99,7 @@ export default function FunctionEditor() {
         setRan(refused.details);
         toast.error(say("ما انتشرت|Not published|לא פורסמה"), { description: say("في اختبارات ما نجحت. شوفها تحت بقسم الاختبارات.|Some of its tests didn't pass. See them below, under the tests.|חלק מהבדיקות לא עברו. הן מופיעות למטה, באזור הבדיקות.") });
         document.querySelector('[data-testid="fn-tests"]')?.scrollIntoView?.({ block: "center" });
-      } else onError(e);
+      } else if (!needsRight(e)) onError(e);
       void qc.invalidateQueries({ queryKey: ["functions", id] });
     },
   });
@@ -111,7 +120,7 @@ export default function FunctionEditor() {
         toast.error(say("ما بتنتشر متل ما هي|It can't be published as it is|אי אפשר לפרסם אותה כמו שהיא"), {
           description: `${say("بتحكي عن أشياء ما عادت موجودة:|It talks about things that aren't there any more:|היא מתייחסת לדברים שכבר לא קיימים:")} ${refused.details.problems.map((p) => `${whereText(p.at, lang)}: ${problemText(p.message, lang)}`).join(" · ")} ${say("حطها بالمسودة وصلّحها.|Put it in the draft and mend it.|העבירו אותה לטיוטה ותקנו.")}`,
         });
-      } else onError(e);
+      } else if (!needsRight(e)) onError(e);
     },
   });
   const restore = async (v: FnVersion, to: "live" | "draft") => {
@@ -160,7 +169,7 @@ export default function FunctionEditor() {
   const builder = useMemo<Builder | null>(
     () =>
       draft && list.data
-        ? { def: draft, change: setDraft, tables: list.data.tables, fns: list.data.functions.filter((f) => f.id !== id), ops: list.data.ops, problems: dirty ? [] : fn?.problems ?? [], failedAt: outcome?.failedAt ? stepOfLine(outcome.failedAt) : null, canWrite, openAt, setOpenAt, cage: list.data.limits.cage, codeMax: list.data.limits.code, outside: list.data.outside }
+        ? { def: draft, change: setDraft, tables: list.data.tables, fns: list.data.functions.filter((f) => f.id !== id), ops: list.data.ops, problems: dirty ? [] : fn?.problems ?? [], failedAt: outcome?.failedAt ? stepOfLine(outcome.failedAt) : null, canWrite, openAt, setOpenAt, cage: list.data.limits.cage, codeMax: list.data.limits.code, outside: list.data.outside, store: list.data.store }
         : null,
     [draft, list.data, id, dirty, fn?.problems, outcome?.failedAt, canWrite, openAt],
   );
@@ -408,7 +417,7 @@ export default function FunctionEditor() {
             ).replace("{n}", String(fn.versionsKept ?? 50))}
           </p>
           <div className="mt-3">
-            <VersionsPanel fn={fn} ctx={{ tables: list.data!.tables, fns: list.data!.functions, outside: list.data!.outside }} canWrite={canWrite} busy={back.isPending} onRestore={restore} />
+            <VersionsPanel fn={fn} ctx={{ tables: list.data!.tables, fns: list.data!.functions, outside: list.data!.outside, store: list.data!.store }} canWrite={canWrite} busy={back.isPending} onRestore={restore} />
           </div>
         </section>
         {dialog}
