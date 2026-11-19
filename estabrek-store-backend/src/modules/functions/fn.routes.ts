@@ -106,7 +106,9 @@ async function once(req: Request, res: Response, triggerId: string, caller: FnCa
     if (e instanceof AppError && (e.statusCode === 404 || e.statusCode === 409)) throw gone();
     throw e;
   }
-  void prisma.fnTrigger.update({ where: { id: triggerId }, data: { fired: { increment: 1 }, lastAt: new Date() } }).catch(() => undefined);
+  // Counted before the answer goes: whoever reads the count after the answer sees this call in it
+  // (not left to land later, which CI once caught reading 2 after 3 calls).
+  await prisma.fnTrigger.update({ where: { id: triggerId }, data: { fired: { increment: 1 }, lastAt: new Date() } }).catch(() => undefined);
   if (out.runId) res.setHeader("X-Run-Id", out.runId);
   if (held) await keepAnswer(held, out.status, out.body, out.runId ?? null);
   send(res, out.status, out.body);
