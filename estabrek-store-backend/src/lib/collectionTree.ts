@@ -87,7 +87,7 @@ export type ListFilter = { field: string; op: ListOp; value?: string };
  * Such a list as the shop gets it (on the grid it becomes, in `props.live`): the table's address, whose rows,
  * how many at a time, the API's own sort, its filters, and its words for no rows and for a visitor who isn't signed in.
  */
-export type LiveList = { table: string; feed: ListFeed; limit: number; sort: string; where?: ListFilter[]; empty?: Local; signin?: Local };
+export type LiveList = { table: string; feed: ListFeed; limit: number; sort: string; where?: ListFilter[]; empty?: Local; signin?: Local; /** Read again by itself when its table changes (lib/live.ts). */ stream?: true };
 const LANGS = ["ar", "en", "he"] as const;
 const LOCALE: Record<(typeof LANGS)[number], string> = { ar: "ar", en: "en-GB", he: "he-IL" };
 
@@ -300,7 +300,7 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
       const items = sortItems(pool, sort, got?.collection ?? null).slice(0, limit);
       const columns = typeof n.props.columns === "number" && n.props.columns >= 1 && n.props.columns <= 6 ? n.props.columns : 3;
       const style = { ...(n.style ?? {}), base: { columns, gap: 24, ...(n.style?.base ?? {}) }, tablet: { columns: Math.min(columns, 2), ...(n.style?.tablet ?? {}) }, mobile: { columns: 1, ...(n.style?.mobile ?? {}) } };
-      const { collectionId: _c, limit: _l, sort: _s, columns: _col, empty: _e, layout: _lay, feed: _f, where: _w, signin: _si, ...rest } = n.props;
+      const { collectionId: _c, limit: _l, sort: _s, columns: _col, empty: _e, layout: _lay, feed: _f, where: _w, signin: _si, stream: _st, ...rest } = n.props;
       // Read in the visitor's browser: the shop gets the card once, its connections kept, and what to ask the
       // table's API. (The editor's preview shows the card as designed: nobody's rows are read there.)
       const feed = listFeed(n.props);
@@ -309,7 +309,7 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
         const where = listFilters(n.props);
         const empty = words(n.props.empty);
         const signin = words(n.props.signin);
-        const live: LiveList = { table: got.collection.slug, feed, limit, sort: sort === "oldest" ? "createdAt" : "-createdAt", ...(where.length ? { where } : {}), ...(empty ? { empty } : {}), ...(signin ? { signin } : {}) };
+        const live: LiveList = { table: got.collection.slug, feed, limit, sort: sort === "oldest" ? "createdAt" : "-createdAt", ...(where.length ? { where } : {}), ...(empty ? { empty } : {}), ...(signin ? { signin } : {}), ...(n.props.stream === true ? { stream: true as const } : {}) };
         return { ...n, type: "grid", props: { ...rest, live }, style, children: [withoutLists(card)] };
       }
       let cards: Node[] = [];

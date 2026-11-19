@@ -13,8 +13,11 @@ export type RowsFeed = (typeof ROWS_FEEDS)[number];
 export const ROWS_OPS = ["is", "isNot", "contains", "gt", "gte", "lt", "lte", "empty", "notEmpty", "isTrue", "isFalse"] as const;
 const NO_VALUE = new Set<string>(["empty", "notEmpty", "isTrue", "isFalse"]);
 export type RowsFilter = { field: string; op: (typeof ROWS_OPS)[number]; value: string };
-/** The list as the page draws it: its words already in the page's language. */
-export type RowsSpec = { table: string; feed: RowsFeed; limit: number; sort: string; where: RowsFilter[]; empty: string; signin: string };
+/**
+ * The list as the page draws it: its words already in the page's language. `stream`: read again by itself when one
+ * of its table's rows is added, changed or deleted (liveHub.ts).
+ */
+export type RowsSpec = { table: string; feed: RowsFeed; limit: number; sort: string; where: RowsFilter[]; empty: string; signin: string; stream?: true };
 
 /** Sent on window after something the shopper did may have changed a table's rows (a function ran, a form was taken): lists read again. */
 export const ROWS_EVENT = "pt:rows";
@@ -42,6 +45,7 @@ export function liveOf(raw: unknown, say: (t: unknown) => string): RowsSpec | nu
     where,
     empty: say(p.empty),
     signin: say(p.signin),
+    ...(p.stream === true ? { stream: true as const } : {}),
   };
 }
 

@@ -3,7 +3,8 @@
  * Triggers (pageTree/pieces.ts triggersOf, written by TreeNodeView into data-pt-triggers): when
  * something happens to an element — a click, a double click, the mouse coming or going, coming
  * into or out of sight, the page opening, the page scrolled past a point, a time on the page, its
- * body hitting something in a physics world —
+ * body hitting something in a physics world, a row of the owner's tables coming in while the page is open
+ * (liveHub.ts) —
  * its actions run one after another (`wait` pauses between them): play keyframes or a short move
  * on any element, show or hide one, scroll to one or to a scroll scene's moment, open a link or a
  * popup, play or pause a clip, burst confetti, copy a code, say something, make a sound, buzz.
@@ -33,6 +34,8 @@ import { rowsChanged } from "./rowsSpec";
 import { getHands, mayRun, signedIn, wantHands, whenHands, WHO_EVENT } from "./recipeHands";
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { HIT_EVENT, hitMatches, type HitDetail } from "./physics";
+import { listenLive } from "./liveHub";
+import { rowScope } from "./rowsSpec";
 
 const sleep = (s: number) => new Promise<void>((r) => window.setTimeout(r, s * 1000));
 
@@ -402,7 +405,7 @@ function wire(el: HTMLElement, alive: () => boolean, offs: Array<() => void>) {
     let spent = false;
     let count = 0;
     let busy = false;
-    const fire = (point?: { x: number; y: number }) => {
+    const fire = (point?: { x: number; y: number }, row?: Record<string, VarValue>) => {
       // Once is once; and it never runs over itself (a second press while it's still going does nothing).
       if (spent || busy) return;
       // Not for this shopper: a press says so (or sends them to sign in); the mouse passing by says nothing.
@@ -412,7 +415,7 @@ function wire(el: HTMLElement, alive: () => boolean, offs: Array<() => void>) {
       running.set(el, (running.get(el) ?? 0) + 1);
       // Busy shows only when it takes a moment (a wait, a question, the bag).
       const mark = window.setTimeout(() => { el.setAttribute("data-pt-busy", ""); el.setAttribute("aria-busy", "true"); }, 180);
-      void runRecipe(t, ++count, { self: el, reduced: reduced(), point, alive, row: rowScopeOf(el) }).catch(() => {}).finally(() => {
+      void runRecipe(t, ++count, { self: el, reduced: reduced(), point, alive, row: row ?? rowScopeOf(el) }).catch(() => {}).finally(() => {
         busy = false;
         window.clearTimeout(mark);
         const left = (running.get(el) ?? 1) - 1;
@@ -484,6 +487,23 @@ function wire(el: HTMLElement, alive: () => boolean, offs: Array<() => void>) {
         // The element is a form of the owner's own, and it was just sent and taken (FormView.tsx says so).
         on(FORM_SENT_EVENT, () => fire());
         break;
+      case "row": {
+        // A row of the table came in (or changed) while the page is open, one this visitor may read: read as a page
+        // shows it, and the recipe runs with its values ({{row_<field>}}). The visitor's own rows only when asked.
+        if (!t.table) break;
+        const table = t.table;
+        offs.push(listenLive(table, (s) => {
+          if (s.op !== "added" && s.op !== "changed") return;
+          if (t.change !== "any" && s.op !== (t.change ?? "added")) return;
+          if (s.mine && !t.own) return;
+          void (async () => {
+            const hands = await whenHands();
+            const got = hands ? await hands.one(table, s.id, langOf(el)) : null;
+            if (got && alive()) fire(undefined, rowScope(got));
+          })();
+        }));
+        break;
+      }
       case "hover":
         on("pointerenter", () => fire());
         break;

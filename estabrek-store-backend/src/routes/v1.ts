@@ -17,6 +17,7 @@ import requestsPublic from "../modules/requests/requests.routes.js";
 import quizPublic from "../modules/quiz/quiz.routes.js";
 import aiPublic from "../modules/ai/ai.routes.js";
 import data from "../modules/data/data.routes.js";
+import live from "../modules/live/live.routes.js";
 import { fnCalls, fnHooks, fnRoutes } from "../modules/functions/fn.routes.js";
 import { webhookRun } from "../middleware/runLog.js";
 const r = Router();
@@ -37,6 +38,7 @@ r.use("/requests", requestsPublic); // «اطلبي قطعتكِ» and «بدي 
 r.use("/quiz", quizPublic); // «سؤال وجواب» (a coupon prize)
 r.use("/ai", aiPublic); // AI for shoppers (off until OPENAI_API_KEY + the admin switch)
 r.use("/data", data); // the automatic API: the tables the owner opened, to a key or to everyone
+r.use("/live", live); // a shop page told at once when a row of those tables changes (server-sent events)
 r.use("/fn", fnCalls); // a function's own address: a shopper's button, a program with a key, or anyone
 r.use("/hooks", fnHooks); // a webhook from another system starts a function
 r.use("/api", fnRoutes); // the owner's own addresses: a method and a path, each a function's

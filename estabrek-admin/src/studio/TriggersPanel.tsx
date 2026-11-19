@@ -13,14 +13,15 @@ import { useQuery } from "@tanstack/react-query";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import * as CatalogAPI from "../api/catalog.api";
 import { useFnDoors } from "./fnDoors";
+import * as DataAPI from "../api/dataApi.api";
 import { Line, Pick, btn, marks, note, part, sel, warn } from "./smallInputs";
 import { Range } from "./LookPanels";
 import { ColourPick } from "./StudioTreePanels";
 import { say } from "./say";
 import {
-  ACTS, BURSTS, CONDITIONS, COUNT_CMPS, DENY, EVENTS, FN_ADDRESS, HITS, FLOW_ACTS, GROUP_ACTS, KEYS, KEY_OK, MAX_FAIL, MAX_GROUP, MAX_IF, MAX_STEPS, PHONE_OK, PLAY_WHAT, SOUNDS,
+  ACTS, BURSTS, CONDITIONS, COUNT_CMPS, DENY, EVENTS, FN_ADDRESS, HITS, FLOW_ACTS, GROUP_ACTS, KEYS, KEY_OK, MAX_FAIL, MAX_GROUP, MAX_IF, MAX_STEPS, PHONE_OK, PLAY_WHAT, ROW_CHANGES, SOUNDS,
   TRIGGER_PRESETS, VAR_CMPS, VAR_NAME, VAR_OPS, WHO, canFail, isGroup, newAction, newCondition, newStep, triggersOf, triggersOp, valueOf,
-  type Action, type Condition, type ConditionKind, type Deny, type PlainStep, type Step, type StepKind, type Trigger, type TriggerEvent, type VarValue, type Who, type Words,
+  type Action, type Condition, type ConditionKind, type Deny, type PlainStep, type RowChange, type Step, type StepKind, type Trigger, type TriggerEvent, type VarValue, type Who, type Words,
 } from "./triggers";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -283,6 +284,37 @@ function StepList({ steps, lang, targets, busy, max, min = 0, groups, onSave, te
   );
 }
 
+/**
+ * A "row" recipe: the table it listens to (one a shop page may read), what it waits for, and whether the visitor's
+ * own rows count too. Its steps see the row's values ({{row_<field>}}).
+ */
+function RowFields({ t, i, lang, busy, onSave }: { t: Trigger; i: number; lang: string; busy: boolean; onSave: (t: Trigger) => void }) {
+  const api = useQuery({ queryKey: ["data-api"], queryFn: DataAPI.getApi, staleTime: 60_000, retry: false });
+  const readable = (api.data?.tables ?? []).filter((x) => x.access.read !== "off" || (x.roles?.read.length ?? 0) > 0);
+  const table = readable.find((x) => x.slug === t.table);
+  const title = (x: DataAPI.ApiTable) => `${x.name?.[lang as "ar"] || x.name?.ar || x.name?.en || x.slug} · ${x.slug}`;
+  const first = table?.fields.find((f) => f.type === "text")?.id ?? "title";
+  return (
+    <>
+      {api.isError ? (
+        <>
+          <p className={note}>{say("ما قدرنا نجيب قائمة الجداول المفتوحة (يمكن ما عندك صلاحية «الـ API»). اكتب عنوان الجدول.|The list of open tables couldn't be read (you may not have the “API” permission). Type the table's address.|לא ניתן לקרוא את רשימת הטבלאות הפתוחות (אולי אין לך הרשאת «API»). להקליד את כתובת הטבלה.")}</p>
+          <Line label={say("عنوان الجدول|The table's address|כתובת הטבלה")} value={t.table ?? ""} ltr max={41} busy={busy} ok={(v) => v === "" || /^[a-z0-9][a-z0-9-]{0,40}$/.test(v)} onSave={(v) => onSave({ ...t, table: v || undefined })} testId={`trigger-${i}-table`} />
+        </>
+      ) : (
+        <Pick label={say("أي جدول|Which table|איזו טבלה")} value={t.table ?? ""} options={[["", say("اختار…|Pick one…|לבחור…")], ...readable.map((x): [string, string] => [x.slug, title(x)]), ...(t.table && !table && api.data ? [[t.table, `${t.table} ⚠`] as [string, string]] : [])]} busy={busy} onPick={(slug) => onSave({ ...t, table: slug || undefined })} testId={`trigger-${i}-table`} />
+      )}
+      {api.data && !readable.length ? <p className={warn} data-testid={`trigger-${i}-no-tables`}>⚠ {say("ما في جدول مفتوح للقراءة. افتح واحد من «الـ API والمفاتيح».|No table is open for reading. Open one in “API & keys”.|אין טבלה פתוחה לקריאה. לפתוח אחת ב״API ומפתחות״.")}</p> : null}
+      {api.data && t.table && !table ? <p className={warn} data-testid={`trigger-${i}-table-closed`}>⚠ {say("هالجدول مش مفتوح للقراءة، فما رح يوصل منه شي.|This table isn't open for reading, so nothing will come from it.|הטבלה הזו לא פתוחה לקריאה, אז לא יגיע ממנה כלום.")}</p> : null}
+      <div className="grid grid-cols-2 gap-2">
+        <Pick label={say("شو بيستنّى|What it waits for|למה הוא מחכה")} value={t.change ?? "added"} options={named(ROW_CHANGES)} busy={busy} onPick={(change) => onSave({ ...t, change: change as RowChange })} testId={`trigger-${i}-change`} />
+        <label className="flex items-center gap-2 pt-4 text-[11px] text-white/70"><input type="checkbox" checked={t.own === true} disabled={busy} onChange={(e) => onSave({ ...t, own: e.target.checked || undefined })} data-testid={`trigger-${i}-own`} />{say("وكمان سطور الزائر نفسه|The visitor's own rows too|גם השורות של המבקר עצמו")}</label>
+      </div>
+      <p className="text-[10px] leading-4 text-white/40" data-testid={`trigger-${i}-row-help`}>{marks(say(`بيشتغل والصفحة مفتوحة، لما يوصل سطر للجدول بيقدر الزائر يقراه (حسب قواعد الجدول): متل رسالة جديدة إله أو طلب صداقة. بالخطوات: {{row_${first}}} قيمة حقل بالسطر، و {{row_by}} مين ضافه. مثلاً إشعار: «وصلتك رسالة من {{row_by}}».|It runs while the page is open, when a row comes in that the visitor may read (by the table's rules): a new message to them, a friend request. In the steps: {{row_${first}}} is a field of the row, and {{row_by}} who added it. A notice, say: “A message from {{row_by}}”.|פועל כשהעמוד פתוח, כשמגיעה שורה שהמבקר רשאי לקרוא (לפי כללי הטבלה): הודעה חדשה אליו, בקשת חברות. בשלבים: {{row_${first}}} ערך של שדה בשורה, ו-{{row_by}} מי שהוסיף אותה. למשל הודעה: ״הודעה מ-{{row_by}}״.`))}</p>
+    </>
+  );
+}
+
 export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { node: PageTreeNode; lang: string; targets: Target[]; busy: boolean; onOps: Ops; onTest: (index: number, fail?: boolean) => void }) {
   const list = triggersOf(node);
   const save = (next: Trigger[]) => onOps(L(), [triggersOp(node, next)]);
@@ -313,6 +345,7 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
             </div>
             {t.on === "scrolled" ? <Range label={say("لما الصفحة تنزل لـ|When the page reaches|כשהעמוד מגיע ל־")} min={0} max={100} unit="%" busy={busy} value={t.at ?? 50} onSave={(at) => setOne(i, { ...t, at })} /> : null}
             {t.on === "timer" || t.on === "load" ? <Range label={say("بعد|After|אחרי")} min={0} max={120} unit="s" busy={busy} value={t.at ?? (t.on === "timer" ? 5 : 0)} onSave={(at) => setOne(i, { ...t, at })} /> : null}
+            {t.on === "row" ? <RowFields t={t} i={i} lang={lang} busy={busy} onSave={(next) => setOne(i, next)} /> : null}
             {t.on === "hit" ? (
               <>
                 <Pick label={say("بشو بيصطدم|What it hits|במה הוא מתנגש")} value={t.hit ?? "any"} options={[...named(HITS), ...others.map((o): [string, string] => [o.id, o.label])]} busy={busy} onPick={(hit) => setOne(i, { ...t, hit: hit === "any" ? undefined : hit })} testId={`trigger-${i}-hit`} />

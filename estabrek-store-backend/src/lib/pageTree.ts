@@ -539,7 +539,11 @@ export const NodeLayers = z.object({ before: PieceLayer.optional(), after: Piece
  * sight, the page opening, the page scrolled past `at` %, `at` seconds on the page, a key of the keyboard (`key`).
  */
 // "sent": the element is a form of the owner's own and it was just sent (and taken at the other end).
-export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit", "sent"] as const;
+// "row": a row of one of the owner's tables was added or changed while the page is open (lib/live.ts), one the
+// shopper may read; the recipe sees the row's values ({{row_<field>}}), as a list's row does.
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit", "sent", "row"] as const;
+/** What a "row" trigger waits for: a row added, one changed, or either. */
+export const ROW_CHANGES = ["added", "changed", "any"] as const;
 /** The keys a "key" trigger listens for: these by name, or one letter or digit. */
 export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const triggerKey = z.string().regex(/^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/, "A key by name, or one letter or digit");
@@ -641,6 +645,10 @@ export const NodeTrigger = z.object({
   key: triggerKey.optional(),
   /** What a "hit" trigger waits for its body to meet in a physics world: anything, another body, the floor or a wall, or one element by its id. */
   hit: z.string().regex(/^(any|body|wall|[A-Za-z0-9_-]{1,40})$/, "any, body, wall, or an element's id").optional(),
+  /** The table a "row" trigger listens to (its address), what it waits for (a row added unless said), and whether the shopper's own rows count too (not unless said). */
+  table: z.string().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "A table's address").optional(),
+  change: z.enum(ROW_CHANGES).optional(),
+  own: z.boolean().optional(),
   /**
    * Who may run it: everyone (nothing here), signed-in customers, or guests. What the others get (`deny`): the
    * element hidden, shown locked (with `note` when pressed), or sent to sign in. This is the shop's manners only:
@@ -1157,6 +1165,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     // from the table's own API (lib/collectionTree.ts LIST_FEEDS), with a few filters, and words for a visitor
     // who isn't signed in.
     feed: z.enum(LIST_FEEDS).optional(),
+    // Read in the browser: read again by itself when one of its rows is added, changed or deleted (lib/live.ts).
+    stream: z.boolean().optional(),
     where: z.array(z.object({ field: z.string().regex(/^[a-z][a-zA-Z0-9]{0,30}$/), op: z.enum(LIST_OPS), value: z.string().max(LIST_LIMITS.value).optional() }).strict()).max(LIST_LIMITS.filters).optional(),
     signin: local(200).optional(),
   }),

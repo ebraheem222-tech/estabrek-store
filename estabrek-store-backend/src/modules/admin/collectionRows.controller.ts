@@ -35,6 +35,7 @@ import { GRID_LIMITS, OPS_BY_KIND, SYSTEM_COLUMNS, VIEWS, gridWhere, parseGridQu
 import { LANGS, coerceValue, csvLine, exportColumns } from "../../lib/dataRows.js";
 import { LONG, StatusIn, addRow, answer, changeRow, refresh, tableOf, taken, writeRows } from "../../lib/rowWrites.js";
 import { emitRow } from "../../lib/fnTriggers.js";
+import { announceMany } from "../../lib/live.js";
 
 const r = Router();
 export const IMPORT_MAX = 500;
@@ -216,7 +217,10 @@ r.post(
     }
     if (changed) refresh();
     // A few rows picked by hand start the functions that wait for a change or a delete; a question's worth of rows (like a file's) doesn't.
-    if (changed && body.ids && body.ids.length <= ROW_EVENTS_MAX && body.op !== "restore" && body.op !== "purge") for (const id of body.ids) emitRow(body.op === "trash" ? "deleted" : "changed", table.id, { id });
+    const oneByOne = !!body.ids && body.ids.length <= ROW_EVENTS_MAX && body.op !== "restore" && body.op !== "purge";
+    if (changed && oneByOne) for (const id of body.ids!) emitRow(body.op === "trash" ? "deleted" : "changed", table.id, { id });
+    // The rest at once: the shop pages listening to this table read it again (lib/live.ts).
+    else if (changed || withThem) void announceMany(table.id).catch(() => {});
     res.json({ changed, ...(withThem ? { withThem } : {}), counts: await viewCounts(prisma, table.id) });
   }),
 );
@@ -237,6 +241,7 @@ r.post(
     const body = ImportBody.parse(req.body ?? {});
     try {
       const { slugs: _slugs, ...report } = await writeRows(table, body.rows, { mode: body.mode, lang: body.lang, dryRun: body.dryRun, view: linkView(req) });
+      if (!body.dryRun) void announceMany(table.id).catch(() => {});
       res.json(report);
     } catch (e) {
       // Two people adding the same address at once: nothing was written, ask again.

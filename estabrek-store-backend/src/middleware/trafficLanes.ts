@@ -26,7 +26,8 @@ function busy(req: Parameters<RequestHandler>[0], res: Response, lane: LaneName)
 }
 
 export const trafficLanes: RequestHandler = (req, res, next) => {
-  if (req.method === "OPTIONS" || req.path === "/health" || req.path === "/") return next();
+  // A live stream (lib/live.ts) stays open for minutes: it would hold its lane's place all that time.
+  if (req.method === "OPTIONS" || req.path === "/health" || req.path === "/" || req.path === "/v1/live") return next();
   const config = trafficConfig();
   if (config.mode === "off") return next();
   const lane = laneOf(req.method, req.path, req.query as Record<string, unknown>, config.routes);

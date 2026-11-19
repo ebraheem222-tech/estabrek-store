@@ -7,7 +7,9 @@
  * listening with the row's values at hand (TreeTriggers wireRecipes), so a button in a row acts on that row.
  *
  * The rows are read again after something the shopper did may have changed them (rowsSpec.ts ROWS_EVENT), when
- * they sign in or out, and when they come back to the tab after a while.
+ * they sign in or out, and when they come back to the tab after a while. A list that updates by itself (`stream`)
+ * is also read again whenever one of its table's rows is added, changed or deleted, by anyone (liveHub.ts: only
+ * rows this visitor may read are told of); a row that wasn't there before rises into its place.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { safeHref, safeSrc, type TreeLang } from "./tree";
@@ -15,6 +17,7 @@ import { ROWS_EVENT, rowScope, rowWords, rowsQuery, rowsWords, type RowOut, type
 import { setRowScope } from "./recipeVars";
 import { signedIn, wantHands, whenHands, WHO_EVENT } from "./recipeHands";
 import { wireRecipes } from "./TreeTriggers";
+import { listenLive } from "./liveHub";
 import css from "./RowsView.module.css";
 
 type State = { is: "loading" | "ready" | "empty" | "signin" | "failed"; more: boolean };
@@ -73,6 +76,8 @@ export function RowsView({ spec, lang, signin, prefix, children }: { spec: RowsS
   const stop = useRef<(() => void) | null>(null);
   // The list is on the page (a recipe started in a row goes on while it is, also after the rows are drawn again).
   const mounted = useRef(false);
+  // Its rows have been shown once (after that, one that comes in is new).
+  const shown = useRef(false);
   const key = JSON.stringify(spec);
 
   const read = useCallback(async () => {
@@ -107,12 +112,16 @@ export function RowsView({ spec, lang, signin, prefix, children }: { spec: RowsS
       total = out.total;
       if (!out.rows.length || rows.length >= total) break;
     }
-    // The new rows in one go, their recipes listening; the ones before are let go.
+    // The new rows in one go, their recipes listening; the ones before are let go. A row that wasn't shown before
+    // (once the list has been shown) is marked new.
+    const before = shown.current ? new Set(Array.from(into.children, (c) => c.getAttribute("data-pt-row"))) : null;
     const copies = rows.map((row) => {
       const copy = base.cloneNode(true) as HTMLElement;
       fill(copy, row, spec.table, prefix);
+      if (before && !before.has(row.id)) copy.setAttribute("data-pt-row-new", "");
       return copy;
     });
+    shown.current = true;
     stop.current?.();
     into.replaceChildren(...copies);
     stop.current = wireRecipes(into, () => mounted.current);
@@ -135,19 +144,34 @@ export function RowsView({ spec, lang, signin, prefix, children }: { spec: RowsS
     };
     // Signing in or out changes whose rows these are; the shop saying "who" again without a change doesn't.
     const who = () => {
+      follow();
       if (signedIn() !== was) again();
     };
     const seen = () => {
       if (document.visibilityState === "visible" && Date.now() - readAt > STALE_MS) again();
     };
     setState({ is: "loading", more: false });
+    shown.current = false;
     void read();
+    // Updates by itself: any change to its table (or "read again": what changed meanwhile isn't known). A shopper's
+    // own rows only while someone is signed in (there's nothing to hear of before).
+    let stopLive: (() => void) | null = null;
+    const follow = () => {
+      const want = !!spec.stream && (spec.feed === "live" || signedIn());
+      if (want && !stopLive) stopLive = listenLive(spec.table, () => again());
+      else if (!want && stopLive) {
+        stopLive();
+        stopLive = null;
+      }
+    };
+    follow();
     window.addEventListener(ROWS_EVENT, again);
     window.addEventListener(WHO_EVENT, who);
     document.addEventListener("visibilitychange", seen);
     return () => {
       mounted.current = false;
       turn.current++;
+      stopLive?.();
       window.clearTimeout(timer);
       window.removeEventListener(ROWS_EVENT, again);
       window.removeEventListener(WHO_EVENT, who);
@@ -170,7 +194,7 @@ export function RowsView({ spec, lang, signin, prefix, children }: { spec: RowsS
     <>
       {/* The card as designed: never seen, copied for each row. */}
       <div ref={card} hidden aria-hidden="true" data-pt-row-card>{children}</div>
-      <div ref={holder} className={css.rows} data-pt-rows={spec.table} data-state={state.is} />
+      <div ref={holder} className={css.rows} data-pt-rows={spec.table} data-state={state.is} {...(spec.stream ? { "data-pt-rows-live": "" } : {})} />
       {note ? (
         <p className={css.note} role="status" data-pt-rows-note data-is={state.is}>
           {note}

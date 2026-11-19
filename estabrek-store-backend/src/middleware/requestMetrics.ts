@@ -42,6 +42,8 @@ export const requestMetrics: RequestHandler = (req, res, next) => {
     res.on("finish", () => {
       const m = metricsStore.getStore();
       const total = performance.now() - start;
+      // A live stream (lib/live.ts) is open for minutes by design: not a slow answer.
+      if (res.locals?.stream) return void console.log(`[req] ${req.method} ${req.originalUrl} ${res.statusCode} stream ${(total / 1000).toFixed(0)}s`);
       // The route pattern (GET /v1/catalog/products/:id) while it's still known.
       const pattern = req.route ? `${req.baseUrl ?? ""}${String(req.route.path)}` : null;
       noteRequest(

@@ -817,6 +817,11 @@ const listRows = () => (globalThis.listRowsNow ??= [
   { id: "req3", from: "sara@example.com", fromName: "Sara Haddad", to: "noor@example.com", toName: "Noor", note: "Hello Noor", state: "waiting" },
   { id: "req4", from: "maya@example.com", fromName: "Maya", to: "sara@example.com", toName: "Sara", note: "Old friends", state: "accepted" },
 ]);
+// The "live-board" table (live.spec.ts): newest first; a change told through /__test/live writes into it.
+const liveRows = () => (globalThis.liveRows ??= [
+  { id: "b2", title: "Second post", author: "Dana" },
+  { id: "b1", title: "First post", author: "Lina" },
+]);
 function wishlistItems() {
   return [...customerState.wishlist].map((id) => {
     const p = [...products, extra].find((x) => x.id === id);
@@ -1600,6 +1605,75 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       const calls = globalThis.fnCalls ?? [];
       if (req.method === "POST") globalThis.fnCalls = [];
       return res.end(JSON.stringify({ calls }));
+    }
+    // The page's live stream (live.spec.ts): the backend's GET /v1/live, played. Each stream opened is remembered (its
+    // tables, the change it came back from); POST /__test/live tells the open ones a change ({ table, op, id, mine },
+    // with `row` written into the "live-board" table first), POST /__test/live-bye closes them as the server does
+    // on time. A stream that comes back from the last change told is "replayed"; any other isn't.
+    if (pathname === "/v1/live" && req.method === "GET") {
+      const q = new URL(req.url, "http://localhost").searchParams;
+      const live = (globalThis.live ??= { streams: [], opened: [], seq: 0 });
+      const tables = (q.get("tables") || "").split(",").filter(Boolean);
+      const after = q.get("after") || "";
+      const signedIn = Boolean((req.headers.authorization || "").replace(/^Bearer /, ""));
+      live.opened.push({ tables: tables.join(","), after, signedIn });
+      // A table only signed-in shoppers read ("members-only"): refused to anyone else, as the server does.
+      if (!signedIn && tables.every((t) => t === "members-only")) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: "SIGN_IN_NEEDED", message: "This needs a signed-in shopper" }));
+      }
+      res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" });
+      res.write("retry: 3000\n\n");
+      res.write(`event: ready\ndata: ${JSON.stringify({ tables, closed: [], replayed: !!after && after === `fixture.${live.seq}`, at: `fixture.${live.seq}` })}\n\n`);
+      const stream = { tables, res };
+      live.streams.push(stream);
+      req.on("close", () => { live.streams = live.streams.filter((s) => s !== stream); });
+      return;
+    }
+    if (pathname === "/__test/live" || pathname === "/__test/live-bye") {
+      const live = (globalThis.live ??= { streams: [], opened: [], seq: 0 });
+      if (req.method === "GET") return res.end(JSON.stringify({ open: live.streams.map((s) => s.tables.join(",")), opened: live.opened }));
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        if (pathname === "/__test/live-bye") {
+          for (const s of live.streams) { s.res.write("event: bye\ndata: {}\n\n"); s.res.end(); }
+          live.streams = [];
+          return res.end(JSON.stringify({ ok: true }));
+        }
+        const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
+        // Starting over: no rows but the first two, nothing opened, nothing told.
+        if (body.reset) {
+          globalThis.liveRows = null;
+          for (const s of live.streams) s.res.end();
+          globalThis.live = { streams: [], opened: [], seq: 0 };
+          return res.end(JSON.stringify({ ok: true }));
+        }
+        if (body.row) {
+          const all = liveRows();
+          const at = all.findIndex((r) => r.id === body.row.id);
+          if (at >= 0) all[at] = body.row;
+          else all.unshift(body.row);
+        }
+        live.seq += 1;
+        const note = { table: body.table, op: body.op, id: body.id ?? "", mine: body.mine === true };
+        for (const s of live.streams) if (s.tables.includes(body.table)) s.res.write(`id: fixture.${live.seq}\nevent: row\ndata: ${JSON.stringify(note)}\n\n`);
+        return res.end(JSON.stringify({ ok: true, told: live.streams.filter((s) => s.tables.includes(body.table)).length }));
+      });
+      return;
+    }
+    // The "live-board" table: its rows (newest first) and one row by its id, as a page shows them.
+    if (/^\/v1\/data\/live-board(\/[^/]+)?$/.test(pathname) && req.method === "GET") {
+      (globalThis.listReads ??= []).push({ table: "live-board", query: Object.fromEntries(new URL(req.url, "http://localhost").searchParams), shopper: null });
+      const shape = (r) => ({ id: r.id, slug: r.id, status: "PUBLISHED", values: { title: r.title, author: r.author }, shown: { title: r.title, author: r.author }, links: {} });
+      const one = pathname.split("/")[4];
+      if (one) {
+        const r = liveRows().find((x) => x.id === decodeURIComponent(one));
+        res.statusCode = r ? 200 : 404;
+        return res.end(JSON.stringify(r ? shape(r) : { error: "NOT_FOUND" }));
+      }
+      const rows = liveRows();
+      return res.end(JSON.stringify({ data: rows.map(shape), page: 1, pageSize: 25, total: rows.length, pages: 1 }));
     }
     // The owner's tables, read by a page's list in the visitor's browser (rows.spec.ts): stand-ins for the backend's
     // GET /v1/data/<table>?shown=1. Each reading is remembered with who asked (/__test/list-rows; POST starts over).

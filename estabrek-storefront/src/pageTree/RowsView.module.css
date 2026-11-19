@@ -13,3 +13,7 @@
 }
 .more:disabled { opacity: .6; cursor: progress; }
 .note a:focus-visible, .retry:focus-visible, .more:focus-visible { outline: 3px solid var(--accent, #243e38); outline-offset: 3px; }
+/* A row that just came in while the page was open (a list that updates by itself): it rises into its place. */
+.rows > [data-pt-row-new] { animation: rowIn 700ms cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes rowIn { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .rows > [data-pt-row-new] { animation: none; } }

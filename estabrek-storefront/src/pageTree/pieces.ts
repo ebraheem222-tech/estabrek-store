@@ -182,7 +182,11 @@ export function layersOf(raw: unknown): LayersSpec | undefined {
 /** What a "hit" trigger may wait for (physics.ts HIT_WITH: anything, another body, the floor or a wall, one element's id). */
 const HIT_WITH = /^(any|body|wall|[A-Za-z0-9_-]{1,40})$/;
 // "sent": the element is a form of the owner's own and it was just sent (formSpec.ts FORM_SENT_EVENT).
-export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit", "sent"] as const;
+// "row": a row of one of the owner's tables came in or changed while the page is open (liveHub.ts), one this
+// visitor may read; the recipe sees its values ({{row_<field>}}).
+export const TRIGGER_EVENTS = ["click", "dblclick", "longpress", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer", "key", "hit", "sent", "row"] as const;
+/** What a "row" trigger waits for: a row added, one changed, or either. */
+export const ROW_CHANGES = ["added", "changed", "any"] as const;
 /** The keys a "key" trigger listens for: these by name, or one letter or digit. */
 export const TRIGGER_KEYS = ["Enter", "Escape", "Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 export const TRIGGER_KEY = /^(Enter|Escape|Space|Arrow(Up|Down|Left|Right)|[a-z0-9])$/;
@@ -251,6 +255,8 @@ export type TriggerSpec = {
   on: (typeof TRIGGER_EVENTS)[number]; at?: number; once: boolean; key?: string;
   /** What a "hit" trigger waits for its body to meet (physics.ts hitMatches): anything unless said. */
   hit?: string;
+  /** A "row" trigger's table (its address), what it waits for, and whether the visitor's own rows count too. */
+  table?: string; change?: (typeof ROW_CHANGES)[number]; own?: boolean;
   who?: "customer" | "guest"; deny?: "hide" | "lock" | "signin"; note?: string; signin?: string;
   if: ConditionSpec[]; do: StepSpec[]; else: StepSpec[]; fail: StepSpec[];
 };
@@ -479,11 +485,15 @@ export function triggersOf(raw: unknown, link: (href: unknown) => string | null,
     const key = on === "key" && typeof x.key === "string" && TRIGGER_KEY.test(x.key) ? x.key : undefined;
     if (on === "key" && !key) continue;
     const hit = on === "hit" ? (typeof x.hit === "string" && HIT_WITH.test(x.hit) ? x.hit : "any") : undefined;
+    // A row trigger without a table listens to nothing.
+    const table = on === "row" && typeof x.table === "string" && /^[a-z0-9][a-z0-9-]{0,40}$/.test(x.table) ? x.table : undefined;
+    if (on === "row" && !table) continue;
     const who = inList(x.who, ["customer", "guest"] as const);
     const deny = who ? inList(x.deny, ["hide", "lock", "signin"] as const) ?? "lock" : undefined;
     const note = who ? say(x.note).slice(0, 120) : "";
     out.push({
       on, ...(within(x.at, 0, 600) !== undefined ? { at: within(x.at, 0, 600) } : {}), once: x.once === true, ...(key ? { key } : {}), ...(hit ? { hit } : {}),
+      ...(table ? { table, change: inList(x.change, ROW_CHANGES) ?? "added", own: x.own === true } : {}),
       ...(who ? { who, deny, ...(note ? { note } : {}), ...(deny === "signin" ? { signin: link("/account") ?? "/account" } : {}) } : {}),
       if: conditions, do: steps, else: conditions.length ? otherwise : [], fail: stepsOf(x.fail, r, 8, true),
     });
