@@ -127,6 +127,29 @@ export function RecipeHands() {
           return { ok: false, status: 0 };
         }
       },
+      one: async (table, id, lang) => {
+        try {
+          for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));
+          const who = (await now.current.account?.authHeaders()) ?? {};
+          const res = await fetch(`${apiBaseClient()}/data/${encodeURIComponent(table)}/${encodeURIComponent(id)}?shown=1&lang=${encodeURIComponent(lang)}`, { cache: "no-store", headers: who });
+          return res.ok ? rowsOf([await res.json().catch(() => null)])[0] ?? null : null;
+        } catch {
+          return null;
+        }
+      },
+      live: async (tables, after, signal) => {
+        try {
+          for (let k = 0; k < 40 && now.current.account?.status === "loading"; k++) await new Promise((r) => window.setTimeout(r, 100));
+          const who = (await now.current.account?.authHeaders()) ?? {};
+          const q = new URLSearchParams({ tables: tables.join(",") });
+          if (after) q.set("after", after);
+          const res = await fetch(`${apiBaseClient()}/live?${q}`, { cache: "no-store", headers: { Accept: "text/event-stream", ...who }, signal });
+          if (!res.ok || !res.body) return { ok: false, status: res.status };
+          return { ok: true, body: res.body };
+        } catch {
+          return { ok: false, status: 0 };
+        }
+      },
     });
     return () => setHands(null);
   }, []);

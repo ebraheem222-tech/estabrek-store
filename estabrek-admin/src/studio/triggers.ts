@@ -16,7 +16,9 @@
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { say } from "./say";
 
-export type TriggerEvent = "click" | "dblclick" | "longpress" | "hover" | "leave" | "view" | "leaveView" | "load" | "scrolled" | "timer" | "key" | "hit" | "sent";
+export type TriggerEvent = "click" | "dblclick" | "longpress" | "hover" | "leave" | "view" | "leaveView" | "load" | "scrolled" | "timer" | "key" | "hit" | "sent" | "row";
+/** What a "row" recipe waits for: a row added (unsaid), one changed, or either. */
+export type RowChange = "added" | "changed" | "any";
 export type Words = Record<string, string>;
 export type Action =
   | { act: "play"; target: string; what: string; mode?: "play" | "reverse" | "toggle" | "restart" }
@@ -64,7 +66,7 @@ export type GroupStep = { act: "together" | "random"; do: PlainStep[] } | { act:
 export type Step = PlainStep | GroupStep;
 export type Who = "customer" | "guest";
 export type Deny = "hide" | "lock" | "signin";
-export type Trigger = { on: TriggerEvent; at?: number; once?: boolean; name?: string; key?: string; /** What a "hit" waits for: any (unsaid), body, wall, or an element's id. */ hit?: string; who?: Who; deny?: Deny; note?: Words; if?: Condition[]; do: Step[]; else?: Step[]; fail?: Step[] };
+export type Trigger = { on: TriggerEvent; at?: number; once?: boolean; name?: string; key?: string; /** What a "hit" waits for: any (unsaid), body, wall, or an element's id. */ hit?: string; /** A "row" recipe's table (its address), what it waits for, and whether the visitor's own rows count too. */ table?: string; change?: RowChange; own?: boolean; who?: Who; deny?: Deny; note?: Words; if?: Condition[]; do: Step[]; else?: Step[]; fail?: Step[] };
 export type ActKind = Action["act"];
 export type PlainKind = PlainStep["act"];
 export type StepKind = Step["act"];
@@ -96,6 +98,13 @@ export const EVENTS: Array<[TriggerEvent, () => string]> = [
   ["hit", () => say("بيصطدم بشي (بعالم فيزيائي)|It hits something (in a physics world)|מתנגש במשהו (בעולם פיזיקלי)")],
   // On a form of the owner's own (FormPanel.tsx): after it was sent and taken at the other end.
   ["sent", () => say("الفورم انبعت (لعنصر فورم من عندك)|The form was sent (on a form of your own)|הטופס נשלח (בטופס משלך)")],
+  // While the page is open, a row of one of the owner's tables comes in (the shop's live stream), one the visitor may read.
+  ["row", () => say("وصل سطر لجدول (مباشر)|A row comes in a table (live)|שורה מגיעה לטבלה (חי)")],
+];
+export const ROW_CHANGES: Array<[RowChange, () => string]> = [
+  ["added", () => say("سطر جديد|A new row|שורה חדשה")],
+  ["changed", () => say("سطر تغيّر|A row changed|שורה השתנתה")],
+  ["any", () => say("الاتنين|Either|שתיהן")],
 ];
 /** What a "hit" recipe waits for its element to meet (beside one element picked by name). */
 export const HITS: Array<[string, () => string]> = [
@@ -273,6 +282,8 @@ export function varsIn(nodes: Iterable<PageTreeNode>): string[] {
 
 export type TriggerPreset = { key: string; name: () => string; make: (lang: string) => Trigger };
 export const TRIGGER_PRESETS: TriggerPreset[] = [
+  // A notice on the page when someone else's row comes in (the table is picked after).
+  { key: "row-notice", name: () => say("سطر جديد ← إشعار بالصفحة|A new row → a notice on the page|שורה חדשה ← הודעה בעמוד"), make: (lang) => ({ on: "row", do: [{ act: "toast", text: { [lang]: say("وصل شي جديد|Something new came in|הגיע משהו חדש") } }, { act: "sound", kind: "chime", volume: 0.4 }] }) },
   { key: "confetti", name: () => say("كبسة ← كونفيتي وصوت|Click → confetti and a pop|לחיצה ← קונפטי וצליל"), make: () => ({ on: "click", do: [{ act: "burst", kind: "confetti", amount: 80 }, { act: "sound", kind: "pop", volume: 0.35 }] }) },
   { key: "coupon", name: () => say("كبسة ← نسخ كوبون ورسالة|Click → copy a coupon with a note|לחיצה ← העתקת קופון והודעה"), make: (lang) => ({ on: "click", do: [newAction("copy", lang), { act: "burst", kind: "sparkles", amount: 40 }] }) },
   { key: "hearts", name: () => say("كبسة ← قلوب|Click → hearts|לחיצה ← לבבות"), make: () => ({ on: "click", do: [{ act: "play", target: "self", what: "heartbeat" }, { act: "burst", kind: "hearts", amount: 30, color: "#f43f5e" }] }) },
@@ -311,6 +322,13 @@ function clean(t: Trigger): Trigger {
   else if (!out.key || !KEY_OK.test(out.key)) out.key = "Enter";
   // What it hits is kept only for a hit, and only when it isn't "anything".
   if (out.on !== "hit" || !out.hit || out.hit === "any") delete out.hit;
+  // A row recipe's table, and what it waits for when it isn't a new row, and the visitor's own rows when they count.
+  if (out.on !== "row") { delete out.table; delete out.change; delete out.own; }
+  else {
+    if (!out.table) delete out.table;
+    if (!out.change || out.change === "added") delete out.change;
+    if (!out.own) delete out.own;
+  }
   // Who may: everyone = nothing kept; a note only for the locked kind.
   if (!out.who) { delete out.who; delete out.deny; delete out.note; }
   else {

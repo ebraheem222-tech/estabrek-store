@@ -28,6 +28,7 @@ import { recordRun } from "./runs.js";
 import { dayOf, nextDay, zonedToUtc } from "./storeTime.js";
 import { enqueueTask } from "./tasks.js";
 import { emitRowWebhooks } from "./webhooksOut.js";
+import { announce } from "./live.js";
 import { ROLE_KEY, ROLES_PER_ACT } from "./dataApi.js";
 
 export const TRIGGER_KINDS = ["row", "schedule", "event", "call", "webhook", "route"] as const;
@@ -259,6 +260,8 @@ const quiet = (what: string) => (e: unknown) => console.error(`[functions] ${wha
  */
 export function emitRow(event: RowEvent, tableId: string, row: { id: string }, before?: unknown) {
   emitting += 1;
+  // The shop pages listening to this table (lib/live.ts) hear of it at once, apart from the queue.
+  void announce(event, tableId, row.id, before).catch(quiet(`live row.${event}`));
   void (async () => {
     // The owner's outgoing webhooks first (lib/webhooksOut.ts): one failing never keeps the functions from starting.
     await emitRowWebhooks(event, tableId, row.id, before).catch(quiet(`webhook row.${event}`));

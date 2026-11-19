@@ -38,6 +38,13 @@ export type Hands = {
    * table can't answer, 0 = the shop couldn't be reached.
    */
   rows: (table: string, query: string) => Promise<{ ok: true; rows: RowOut[]; total: number } | { ok: false; status: number }>;
+  /** One row of a table by its id, as a page shows it (GET /v1/data/<table>/<id>?shown=1), as whoever is signed in; null when it can't be read. */
+  one: (table: string, id: string, lang: string) => Promise<RowOut | null>;
+  /**
+   * The page's live stream (the backend's GET /v1/live: liveHub.ts reads it), as whoever is signed in, after the last
+   * change heard: its body, or why not (`status` as a list's reading says it; 0 = the shop couldn't be reached).
+   */
+  live: (tables: string[], after: string, signal: AbortSignal) => Promise<{ ok: true; body: ReadableStream<Uint8Array> } | { ok: false; status: number }>;
 };
 
 let hands: Hands | null = null;

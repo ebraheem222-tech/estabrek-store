@@ -4,6 +4,7 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./lib/prisma.js";
 import { closeRedis } from "./lib/redis.js";
+import { closeLive } from "./lib/live.js";
 import { loadPolicy } from "./lib/securityPolicy.js";
 import { stopStockAlertKicks } from "./modules/stockAlerts/stockAlerts.service.js";
 import { loadCacheConfig } from "./lib/cacheConfig.js";
@@ -37,6 +38,8 @@ async function shutdown(code = 0) {
     await flushAb().catch(() => undefined);
     await flushHomeStats().catch(() => undefined);
     if (server) {
+      // Live streams stay open until closed: the server would wait for them otherwise.
+      closeLive();
       await new Promise<void>((resolve) => server!.close(() => resolve()));
     }
     await prisma.$disconnect();
