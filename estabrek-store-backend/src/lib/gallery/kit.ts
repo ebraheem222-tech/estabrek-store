@@ -103,6 +103,8 @@ export const s = {
   coupon: (off: "percent" | "amount", value: Val, more: { code?: string; max?: Val; minCart?: Val; uses?: Val; days?: Val; phone?: string; note?: string; as?: string } = {}): Step => ({ act: "coupon", off, value, ...more }),
   stock: (sku: string, how: "add" | "take" | "set", amount: Val, more: { reason?: string; as?: string } = {}): Step => ({ act: "stock", sku, how, amount, ...more }),
   customer: (who: string, mark: "read" | "giveRole" | "takeRole" | "join" | "leave", what?: string, as?: string): Step => ({ act: "customer", who, mark, ...(what !== undefined ? { what } : {}), ...(as ? { as } : {}) }),
+  /** A payment asked for (lib/payLinks.ts): its link is kept under `as` ({{payment.link}}); paid, "payment.paid" starts functions with its ref. */
+  pay: (title: string, amount: Val, more: { ref?: string; email?: string; phone?: string; days?: Val; back?: string; as?: string } = {}): Step => ({ act: "pay", title, amount, ...more }),
   when: (conds: ReturnType<typeof cond>[], then: Step[], otherwise?: Step[], match?: "all" | "any"): Step => ({ act: "if", if: conds, ...(match ? { match } : {}), do: then, ...(otherwise ? { else: otherwise } : {}) }),
   each: (list: string, as: string, steps: Step[]): Step => ({ act: "each", list, as, do: steps }),
   stop: (message: string): Step => ({ act: "stop", message }),
@@ -133,7 +135,7 @@ export const SCHEDULE_INPUTS: InputIn[] = [i.text("at")];
 type TriggerIn = { kind: string; config: Record<string, unknown>; slug?: string };
 export const on = {
   order: (): TriggerIn => ({ kind: "event", config: { event: "order.created" } }),
-  event: (event: "order.created" | "video.ready" | "job.failing" | "deploy.failed"): TriggerIn => ({ kind: "event", config: { event } }),
+  event: (event: "order.created" | "payment.paid" | "video.ready" | "job.failing" | "deploy.failed"): TriggerIn => ({ kind: "event", config: { event } }),
   row: (table: string, events: Array<"added" | "changed" | "deleted"> = ["added"]): TriggerIn => ({ kind: "row", config: { table: t(table), on: events } }),
   daily: (at: string): TriggerIn => ({ kind: "schedule", config: { at } }),
   every: (minutes: number): TriggerIn => ({ kind: "schedule", config: { everyMinutes: minutes } }),

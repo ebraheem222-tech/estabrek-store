@@ -45,6 +45,8 @@ const categories = [
   { id: "daily-hijabs", name: "حجاب يومي", slug: "daily-hijabs", parentId: "hijabs" },
 ];
 const stockAlerts = [];
+/** Payments a function asked for, by their token (pay.spec.ts). */
+const payRequests = new Map();
 // The store's content in English and Hebrew (admin → each product, category, type); off
 // by default, POST /__test/content-translations {"on":true} turns it on (languages.spec.ts).
 const CONTENT_TR = {
@@ -1564,6 +1566,45 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email || "").trim())) return send(400, { error: "VALIDATION_ERROR" });
         stockAlerts.push({ email: String(data.email).trim().toLowerCase(), variantId: v.id, status: "WAITING", token: `tok-${stockAlerts.length + 1}-abcdefghijklmnop` });
         send(201, { ok: true });
+      });
+      return;
+    }
+    // A payment a function asked for (pay.spec.ts): stand-ins for the backend's /v1/pay/<token> (lib/payLinks.ts).
+    // POST /__test/pay { token, view, lang, paidOnReturn } puts one here ({ reset: true } forgets them all). The
+    // stand-in "gateway" sends the shopper straight back to the page, paid or not as the test said.
+    if (pathname === "/__test/pay") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (data.reset) payRequests.clear();
+        if (data.token) payRequests.set(data.token, { view: data.view, lang: data.lang || "ar", paidOnReturn: !!data.paidOnReturn, starts: [], verifies: 0 });
+        res.end(JSON.stringify({ ok: true, requests: Object.fromEntries([...payRequests].map(([k, v]) => [k, { starts: v.starts, verifies: v.verifies, status: v.view?.status }])) }));
+      });
+      return;
+    }
+    if (pathname.startsWith("/v1/pay/")) {
+      const [token, act] = pathname.slice("/v1/pay/".length).split("/");
+      const p = payRequests.get(decodeURIComponent(token || ""));
+      const send = (status, payload) => { res.statusCode = status; res.end(JSON.stringify(payload)); };
+      if (!p) return send(404, { error: "PAY_NOT_FOUND" });
+      if (req.method === "GET" && !act) return send(200, p.view);
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (act === "start") {
+          if (!p.view.providers.includes(data.provider)) return send(400, { error: "PAY_PROVIDER_OFF" });
+          p.starts.push(data.provider);
+          const shop = String(req.headers.origin || "http://127.0.0.1:3900").replace(/\/+$/, "");
+          return send(200, { redirectUrl: `${shop}/${p.lang}/pay/${token}?provider=${data.provider}&session_id=cs_test_${p.starts.length}` });
+        }
+        if (act === "verify") {
+          p.verifies += 1;
+          if (p.paidOnReturn && p.starts.length) p.view = { ...p.view, status: "PAID", providers: [], paidAt: new Date().toISOString() };
+          return send(200, p.view);
+        }
+        send(404, { error: "NOT_FOUND" });
       });
       return;
     }

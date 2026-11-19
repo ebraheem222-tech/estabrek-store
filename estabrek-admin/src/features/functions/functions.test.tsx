@@ -1003,7 +1003,7 @@ describe("The store's own steps", () => {
   test("a coupon: its code, what it takes off, and the rest left to the store; the steps after it are offered its code", async () => {
     show();
     await screen.findByTestId("fn-editor");
-    expect([...screen.getByTestId("steps-do-add").querySelectorAll('optgroup[label="The store"] option')].map((o) => o.getAttribute("value"))).toEqual(["coupon", "stock", "customer"]);
+    expect([...screen.getByTestId("steps-do-add").querySelectorAll('optgroup[label="The store"] option')].map((o) => o.getAttribute("value"))).toEqual(["coupon", "stock", "customer", "pay"]);
     pick("steps-do-add", "coupon");
     // A new one: a made-up code, ten percent, a month.
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("a new code · 10% · 30 days ← coupon");

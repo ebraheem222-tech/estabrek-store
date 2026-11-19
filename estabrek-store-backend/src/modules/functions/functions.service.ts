@@ -25,7 +25,7 @@ import type { Field } from "../../lib/collectionTree.js";
 import { apiRow, type LinkModes } from "../../lib/dataApi.js";
 import { GridQuerySchema, queryRows } from "../../lib/dataQuery.js";
 import { patchData, rowData, type Lang } from "../../lib/dataRows.js";
-import { FN_LIMITS, defOf, isGroup, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
+import { FN_LIMITS, STORE_NUMBERS, defOf, isBlank, isGroup, numberProblem, type FnDef, type FnInput, type PlainStep, type Step } from "../../lib/fnDef.js";
 import { runCode, type CodeCall, type CodeCallAnswer } from "../../lib/fnCode.js";
 import { HTTP_LIMITS, HTTP_METHODS, SiteError, callSite } from "../../lib/fnHttp.js";
 import { useReady } from "../../lib/fnReady.js";
@@ -46,6 +46,7 @@ import { getOrCreateSettings } from "../admin/settings.controller.js";
 import { enqueueMessage } from "../outbox/outbox.service.js";
 import { PUSH_LIMITS, pushAudienceCount, pushSettings, queuePush, shopPath } from "../../lib/push.js";
 import { StoreError, changeStock, makeCoupon, markCustomer } from "../../lib/fnStore.js";
+import { PayError, makePayRequest } from "../../lib/payLinks.js";
 
 /** What a step did, as a code and its things, so the admin can say it in its own language. */
 export type Said = [code: keyof typeof NOTE, ...things: Array<string | number>];
@@ -91,6 +92,8 @@ const NOTE = {
   wouldJoin: (group: string, who: string) => `Would put ${who} in ${group}`,
   left: (group: string, who: string) => `Took ${who} out of ${group}`,
   wouldLeave: (group: string, who: string) => `Would take ${who} out of ${group}`,
+  asked: (title: string, sum: string) => `Asked for a payment: ${title} (${sum})`,
+  wouldAsk: (title: string, sum: string) => `Would ask for a payment: ${title} (${sum})`,
   returned: () => "Gave back its answer",
   yes: () => "Yes",
   no: () => "No",
@@ -119,7 +122,7 @@ type Table = { id: string; slug: string; fields: Field[] };
 /** A run's limits, shared with the functions it calls; each keeps its own steps' lines. */
 type Budget = { deadline: number; /** How long the run was given. */ ms: number; used: { writes: number; messages: number; http: number; store: number }; trace: TraceLine[]; counts: Counts; /** A dry run: the rows as its steps would have left them (null: deleted). */ pretend: Map<string, Stored | null>; /** A dry run: the pieces' quantities as its steps would have left them. */ stock: Map<string, number> };
 type Stored = { id: string; slug: string; status: string; data: unknown; createdAt: Date; updatedAt: Date; publishedAt: Date | null; collectionId: string };
-type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[] };
+type Ctx = { dry: boolean; lang: Lang; depth: number; budget: Budget; tables: Map<string, Table>; caller: FnCaller; /** What the code step just run wrote with log(): the step's line takes it. */ logged?: string[]; /** The saved function running (a payment it asks for says which). */ fnId?: string };
 /** Who started a run. */
 export type FnCaller = { kind: "admin" | "customer" | "key" | "public" | "system"; id?: string; name?: string; email?: string; /** A shopper's (lib/shopperRoles.ts). */ roles?: string[]; groups?: string[] };
 const SYSTEM: FnCaller = { kind: "system" };
@@ -397,7 +400,7 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (!fn) throw new Failure("The function it calls isn't there any more", at);
       if (!def) throw new Failure(`"${fn.name}" isn't published`, at);
       if (!fn.enabled) throw new Failure(`"${fn.name}" is switched off`, at);
-      const inner = await runDef(def, filled(s.input ?? {}), { dry, depth: ctx.depth + 1, budget, caller: ctx.caller });
+      const inner = await runDef(def, filled(s.input ?? {}), { dry, depth: ctx.depth + 1, budget, caller: ctx.caller, fnId: s.fn });
       if (!inner.ok) throw new Failure(`${fn.name}: ${inner.error}`, at);
       if (s.as) scope[s.as] = inner.value;
       return ["called", fn.name];
@@ -449,11 +452,26 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
     }
     case "coupon":
     case "stock":
-    case "customer": {
-      // The store itself (lib/fnStore.ts): its own limit in a run, beside the rows a run writes.
+    case "customer":
+    case "pay": {
+      // The store itself (lib/fnStore.ts, lib/payLinks.ts): its own limit in a run, beside the rows a run writes.
       if (budget.used.store >= FN_LIMITS.store) throw new Failure(`A run changes the store up to ${FN_LIMITS.store} times`, at);
       const text = (v: unknown) => words(fill(v ?? "", scope));
       try {
+        if (s.act === "pay") {
+          const amount = fill(s.amount, scope);
+          const days = s.days === undefined ? undefined : fill(s.days, scope);
+          for (const [v, rule] of [[amount, STORE_NUMBERS.sum], [days, STORE_NUMBERS.payDays]] as const) {
+            const problem = numberProblem(v, rule);
+            if (problem) throw new Failure(problem, at);
+          }
+          if (isBlank(amount)) throw new Failure("The sum is empty", at);
+          const made = await makePayRequest({ title: text(s.title), amount: Number(typeof amount === "string" ? amount.trim() : amount), ref: text(s.ref), email: text(s.email), phone: text(s.phone), days: isBlank(days) ? undefined : Number(typeof days === "string" ? days.trim() : days), back: text(s.back), lang, fnId: ctx.fnId ?? null }, dry);
+          budget.used.store += 1;
+          budget.counts.store += 1;
+          if (s.as) scope[s.as] = made;
+          return dry ? ["wouldAsk", made.title, `${made.amount} ${made.currency}`] : ["asked", made.title, `${made.amount} ${made.currency}`];
+        }
         if (s.act === "coupon") {
           const made = await makeCoupon({ code: text(s.code), off: s.off, value: fill(s.value, scope), max: s.max === undefined ? undefined : fill(s.max, scope), minCart: s.minCart === undefined ? undefined : fill(s.minCart, scope), uses: s.uses === undefined ? undefined : fill(s.uses, scope), days: s.days === undefined ? undefined : fill(s.days, scope), phone: text(s.phone), note: text(s.note) }, dry);
           budget.used.store += 1;
@@ -478,7 +496,7 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
         const said = { giveRole: ["gaveRole", "wouldGiveRole"], takeRole: ["tookRole", "wouldTakeRole"], join: ["joined", "wouldJoin"], leave: ["left", "wouldLeave"] } as const;
         return [said[s.mark][dry ? 1 : 0], done.shown, who];
       } catch (e) {
-        if (e instanceof StoreError) throw new Failure(e.message, at);
+        if (e instanceof StoreError || e instanceof PayError) throw new Failure(e.message, at);
         throw e;
       }
     }
@@ -558,13 +576,13 @@ function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<str
 const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0, http: 0, store: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0, store: 0 }, pretend: new Map(), stock: new Map() });
 
 /** A definition run with what it was handed. Never throws: a failure is the outcome. `ms`: a shorter time than a run's own (a test's). */
-export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number } = {}): Promise<Outcome> {
+export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number; /** The saved function it is (a payment it asks for says which). */ fnId?: string } = {}): Promise<Outcome> {
   const t0 = Date.now();
   const budget = opts.budget ?? newBudget(opts.ms ? Math.min(opts.ms, FN_LIMITS.ms) : undefined);
   // A function inside another keeps its own steps' lines to itself; the limits and counts are shared.
   const own: Budget = opts.budget ? { ...budget, trace: [] } : budget;
   const caller = opts.caller ?? SYSTEM;
-  const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map(), caller };
+  const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map(), caller, fnId: opts.fnId };
   const scope: Scope = { now: new Date().toISOString(), caller: { kind: caller.kind, id: caller.id ?? null, name: caller.name ?? null, email: caller.email ?? null, roles: caller.roles ?? [], groups: caller.groups ?? [] } };
   const done = (ok: boolean, value: unknown, error: string | null, failedAt: string | null): Outcome => {
     // What it promises to give back is looked at, never enforced on a run: what the run did is done.
@@ -672,7 +690,7 @@ export async function runFn(id: string, input: Record<string, unknown>, opts: { 
   // Off by itself, or as part of a feature that is switched off (admin → ميزاتي).
   if (opts.needOn && (!fn.enabled || (await switchedOff()).fns.has(fn.id))) throw new AppError(409, "FN_OFF", "This function is switched off");
   const t0 = Date.now();
-  const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller });
+  const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller, fnId: fn.id });
   // Its line in the run log, said to who asked for the run: with it the owner finds what each step did.
   const runId = opts.dry ? undefined : newRunId();
   if (!opts.dry) {

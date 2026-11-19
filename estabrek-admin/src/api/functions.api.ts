@@ -37,6 +37,8 @@ export type PlainStep =
   | { act: "stock"; sku: string; how: StockHow; amount: Val; reason?: string; as?: string }
   /** A shopper (their id or email): only read, or a role given / taken, or a group joined / left. */
   | { act: "customer"; who: string; mark: CustomerMark; what?: string; as?: string }
+  /** A payment asked for (الدفعات المطلوبة): paid on the shop's own page with Stripe or PayPal; once paid, the "payment.paid" event starts functions with its `ref`. */
+  | { act: "pay"; title: string; amount: Val; ref?: string; email?: string; phone?: string; days?: Val; back?: string; as?: string }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;

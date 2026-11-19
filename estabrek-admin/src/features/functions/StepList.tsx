@@ -900,6 +900,42 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
         </>
       );
     }
+    case "pay": {
+      // What is left empty is taken away: the server's own then holds (7 days, no reference, back to the shop's start).
+      const optional = (key: "ref" | "email" | "phone" | "back" | "days", v: Val) => {
+        const next = { ...step } as Record<string, unknown>;
+        if (v === "" || v === null) delete next[key];
+        else next[key] = key === "days" ? v : String(v);
+        set(next as PlainStep);
+      };
+      const box = (key: "ref" | "email" | "phone" | "back" | "days", name: string, placeholder: string) => (
+        <Row name={name}>
+          <ValueInput at={path} plain={key !== "days"} value={step[key] ?? ""} onChange={(v) => optional(key, v)} placeholder={placeholder} testid={`step-${id}-${key}`} />
+        </Row>
+      );
+      return (
+        <>
+          {words(say("عن شو|What it is for|על מה"), step.title, (title) => set({ ...step, title }), { key: "title", placeholder: say("حجز السبت 10:00 · {{row.title}}|Booking, Saturday 10:00 · {{row.title}}|הזמנה, שבת 10:00 · {{row.title}}") })}
+          <Row name={say("المبلغ|The sum|הסכום")}>
+            <ValueInput at={path} value={step.amount} onChange={(amount) => set({ ...step, amount })} placeholder="120  ·  {{row.price}}" testid={`step-${id}-amount`} />
+          </Row>
+          {box("ref", say("المرجع|Reference|אסמכתה"), say("{{row.$id}}: بيرجع للـ function لما تندفع|{{row.$id}}: handed back to the function once paid|{{row.$id}}: חוזר לפונקציה כשמשולם"))}
+          {box("email", say("إيميل الزبون|The customer's email|האימייל של הלקוח"), "{{caller.email}}")}
+          {box("phone", say("تلفونه|Their phone|הטלפון שלו"), "{{buyer.phone}}")}
+          {box("days", say("الرابط صالح لكم يوم|The link lasts (days)|הקישור בתוקף (ימים)"), say("فاضي = 7|empty = 7|ריק = 7"))}
+          {box("back", say("بعد الدفع بيرجع لـ|After paying, back to|אחרי התשלום, חזרה אל"), "/my-bookings")}
+          {keepAs(step.as, (as) => set({ ...step, as }))}
+          <p className="text-xs text-white/70" data-testid={`step-${id}-pay-note`}>
+            {say(
+              "الرابط (‎.link) بيفتح صفحة بالمتجر فيها العنوان والمبلغ وأزرار Stripe و PayPal اللي مشغّلين بالإعدادات: ابعته بالخطوة اللي بعدها (إيميل، واتساب، إشعار). لما يندفع المبلغ كامل بيشتغل مشغّل «انقبضت دفعة» مع المرجع، فبتأكّد الحجز مثلاً. بالتجربة ما بتنطلب دفعة.|The link (.link) opens a page in the shop with the title, the sum and the Stripe and PayPal buttons switched on in Settings: send it in the step after it (an email, WhatsApp, a notification). Once the whole sum is paid, the “A payment came in” trigger starts with the reference, say to confirm the booking. In a try-out no payment is asked for.|הקישור (‎.link) פותח עמוד בחנות עם הכותרת, הסכום וכפתורי Stripe ו-PayPal שפעילים בהגדרות: שלחו אותו בשלב שאחריו (אימייל, וואטסאפ, התראה). כשהסכום כולו משולם, מופעל הטריגר «התקבל תשלום» עם האסמכתה, למשל כדי לאשר את ההזמנה. בניסיון לא מתבקש תשלום.",
+            )}{" "}
+            <Link to="/admin/payment-requests" className="underline">
+              {say("الدفعات المطلوبة|Payments asked for|תשלומים שהתבקשו")}
+            </Link>
+          </p>
+        </>
+      );
+    }
     case "email":
       return (
         <>

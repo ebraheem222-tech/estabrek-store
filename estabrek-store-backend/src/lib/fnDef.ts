@@ -19,6 +19,7 @@
  *   store    coupon (a discount code), stock (a piece's quantity), customer (a shopper's roles and
  *            groups, or only who they are): the store itself (lib/fnStore.ts). Whoever publishes a
  *            function with one must also be allowed to do that thing in the admin (`storeRights`).
+ *            pay: a payment asked for, paid on the shop's own page (lib/payLinks.ts).
  *
  * A step that makes something can keep it under a name (`as`); a later step names it in its
  * values: "{{order.total}}" (lib/fnValues.ts).
@@ -79,8 +80,11 @@ export const STORE_LIMITS = {
 } as const;
 /** A coupon's code as the store keeps it (admin → الكوبونات: CreateCouponBody). */
 export const COUPON_CODE = /^[A-Z0-9_-]{2,32}$/;
-/** The steps that change the store itself, and what a member needs in the admin to publish a function with one. */
-export const STORE_ACTS = ["coupon", "stock", "customer"] as const;
+/**
+ * The steps that change the store itself, and what a member needs in the admin to publish a function with one.
+ * Asking for a payment ("pay") needs nothing more: the money goes only to the shop's own gateway.
+ */
+export const STORE_ACTS = ["coupon", "stock", "customer", "pay"] as const;
 
 /** What a store step's number may be: said the same way when it is checked before publishing and when it is filled at a run. */
 export type NumberRule = { what: string; min: number; max: number; /** More than `min`, not `min` itself. */ above?: boolean; whole?: boolean };
@@ -92,6 +96,9 @@ export const STORE_NUMBERS = {
   uses: { what: "The uses", min: 1, max: STORE_LIMITS.uses, whole: true },
   days: { what: "The days", min: 0, above: true, max: STORE_LIMITS.days },
   quantity: { what: "The amount", min: 0, max: STORE_LIMITS.quantity, whole: true },
+  /** A payment asked for (lib/payLinks.ts), and how many days its link lasts. */
+  sum: { what: "The sum", min: 0, above: true, max: STORE_LIMITS.money },
+  payDays: { what: "The days", min: 0, above: true, max: 90 },
 } as const satisfies Record<string, NumberRule>;
 /** Empty: nothing given (whether that is allowed is the step's to say). */
 export const isBlank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && !v.trim());
@@ -190,6 +197,22 @@ export type PlainStep =
     }
   | { act: "stock"; /** The piece: its SKU (or its id). */ sku: string; how: (typeof STOCK_HOW)[number]; amount: Val; /** Why, in the piece's stock history. */ reason?: string; as?: string }
   | { act: "customer"; /** Their id or email ({{caller.id}}). */ who: string; mark: (typeof CUSTOMER_MARKS)[number]; /** The role's key, or the group's name or id. */ what?: string; as?: string }
+  | {
+      act: "pay";
+      /** What it pays for ("Booking: Saturday 10:00"), shown on the page. */
+      title: string;
+      /** How much, in the shop's currency. */
+      amount: Val;
+      /** The owner's own reference (a booking's row id): handed to the functions waiting for "payment.paid". */
+      ref?: string;
+      email?: string;
+      phone?: string;
+      /** How many days the link is good for (empty: 7). */
+      days?: Val;
+      /** Where in the shop the shopper goes after paying ("/my-bookings"). */
+      back?: string;
+      as?: string;
+    }
   | { act: "stop"; message: string }
   | { act: "return"; value?: Val };
 export type GroupStep = { act: "if"; if: Cond[]; match?: Match; do: Step[]; else?: Step[] } | { act: "each"; list: string; as?: string; do: Step[] };
@@ -300,6 +323,19 @@ const PLAIN = [
     .strict(),
   z.object({ act: z.literal("stock"), sku: z.string().max(200), how: z.enum(STOCK_HOW), amount: Value, reason: z.string().max(200).optional(), as: Var.optional() }).strict(),
   z.object({ act: z.literal("customer"), who: z.string().max(200), mark: z.enum(CUSTOMER_MARKS), what: z.string().max(200).optional(), as: Var.optional() }).strict(),
+  z
+    .object({
+      act: z.literal("pay"),
+      title: z.string().max(300),
+      amount: Value,
+      ref: z.string().max(300).optional(),
+      email: z.string().max(200).optional(),
+      phone: z.string().max(200).optional(),
+      days: Value.optional(),
+      back: z.string().max(300).optional(),
+      as: Var.optional(),
+    })
+    .strict(),
   z.object({ act: z.literal("stop"), message: z.string().max(300) }).strict(),
   z.object({ act: z.literal("return"), value: Value.optional() }).strict(),
 ] as const;
@@ -571,6 +607,24 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
             if (fixed && known.groups && !known.groups.some((g) => g.id === what || g.name === what)) out.push({ at, message: `No group "${what}"` });
           }
           names([s.who, s.mark === "read" ? undefined : s.what], at, have);
+          if (s.as) have.add(s.as);
+          break;
+        }
+        case "pay": {
+          need(s.title, at, "The title");
+          need(s.amount, at, "The sum");
+          const fixed = (v: unknown) => !holesOf(v).length;
+          for (const [v, rule] of [[s.amount, STORE_NUMBERS.sum], [s.days, STORE_NUMBERS.payDays]] as Array<[unknown, NumberRule]>) {
+            const problem = fixed(v) ? numberProblem(v, rule) : null;
+            if (problem) out.push({ at, message: problem });
+          }
+          const back = (s.back ?? "").trim();
+          if (back && fixed(back) && (!back.startsWith("/") || back.startsWith("//"))) out.push({ at, message: "A place in the shop starts with / (/shop)" });
+          const email = (s.email ?? "").trim();
+          if (email && fixed(email) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) out.push({ at, message: `"${email.slice(0, 60)}" isn't an email address` });
+          const phone = (s.phone ?? "").trim();
+          if (phone && fixed(phone) && !couponPhone(phone)) out.push({ at, message: `"${phone.slice(0, 40)}" isn't a phone number` });
+          names([s.title, s.amount, s.ref, s.email, s.phone, s.days, s.back], at, have);
           if (s.as) have.add(s.as);
           break;
         }

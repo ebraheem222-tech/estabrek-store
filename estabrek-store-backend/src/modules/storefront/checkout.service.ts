@@ -27,7 +27,7 @@ type CheckoutVerifyInput = {
   sessionId: string;
 };
 
-type PaymentSettings = {
+export type PaymentSettings = {
   siteName: string;
   currencyCode: string;
   storeCountryCode: string;
@@ -38,7 +38,7 @@ type PaymentSettings = {
   paypalClientSecret: string | null;
 };
 
-type PayPalOrder = {
+export type PayPalOrder = {
   id: string;
   status?: string;
   links?: Array<{ href: string; rel: string; method?: string }>;
@@ -74,7 +74,7 @@ function isHttpUrl(value?: string | null) {
   return /^https?:\/\//i.test(value);
 }
 
-async function getPaymentSettings(): Promise<PaymentSettings> {
+export async function getPaymentSettings(): Promise<PaymentSettings> {
   let settings = await prisma.siteSettings.findFirst({
     select: {
       siteName: true,
@@ -107,7 +107,7 @@ function getPayPalBaseUrl() {
   return mode === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
 }
 
-async function getPayPalAccessToken(clientId: string, clientSecret: string) {
+export async function getPayPalAccessToken(clientId: string, clientSecret: string) {
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const res = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
     method: "POST",
@@ -124,7 +124,7 @@ async function getPayPalAccessToken(clientId: string, clientSecret: string) {
   return String(data.access_token);
 }
 
-async function createPayPalOrder(args: {
+export async function createPayPalOrder(args: {
   accessToken: string;
   siteName: string;
   currencyCode: string;
@@ -166,7 +166,7 @@ async function createPayPalOrder(args: {
   return data;
 }
 
-async function capturePayPalOrder(accessToken: string, orderId: string): Promise<PayPalOrder> {
+export async function capturePayPalOrder(accessToken: string, orderId: string): Promise<PayPalOrder> {
   const res = await fetch(`${getPayPalBaseUrl()}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
     headers: {

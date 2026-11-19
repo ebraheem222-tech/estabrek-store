@@ -18,6 +18,7 @@ import ugc from "../ugc/ugc.controller.js";
 import uploads from "./uploads.controller.js";
 import inventory from "./inventory.controller.js";
 import coupons from "./coupons.controller.js";
+import paymentRequests from "./paymentRequests.controller.js";
 import chatbot from "./chatbot.controller.js";
 import staff, { activity } from "./staff.controller.js";
 import system from "./system.controller.js";
@@ -181,6 +182,8 @@ r.use("/media/models", areaAccess({ read: ["media:read", "settings:read"], write
 r.use("/media/scans", areaAccess({ read: "media:read", write: "media:write" }), scans);
 r.use("/inventory", areaAccess({ read: "inventory:read", write: "inventory:write" }), inventory);
 r.use("/coupons", areaAccess({ read: "discounts:read", write: "discounts:write" }), coupons);
+// The payments functions asked for (their «اطلب دفع» step; lib/payLinks.ts).
+r.use("/payment-requests", areaAccess({ read: "orders:read", write: "orders:write" }), paymentRequests);
 // Smart selling: sale rules and seasons (البيع الذكي).
 r.use("/selling", areaAccess({ read: "discounts:read", write: "discounts:write" }), selling);
 // A/B tests (تجارب A/B).

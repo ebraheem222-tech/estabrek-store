@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { FnDef } from "../../api/functions.api";
 import { FAIL_ACTS, GROUPS, newStep, offers } from "./fnDraft";
-import { ACT_NAME, failText, lineText, outcomeLine, problemText, stepLine } from "./fnText";
+import { ACT_NAME, EVENT_NAME, failText, lineText, outcomeLine, problemText, stepLine } from "./fnText";
 
 // A function's store steps (backend lib/fnStore.ts): «اعمل كوبون», «عدّل مخزون», «علّم زبون». Offered in a group
 // of their own, never after a failure; their lines, what a run did, and what is wrong, in the admin's three languages.
@@ -11,8 +11,9 @@ const ctx = { tables: [], fns: [], def: { inputs: [], do: [] } as FnDef, store }
 
 describe("The store steps", () => {
   test("offered in their own group, never after a failure; a new one is ready to go", () => {
-    expect(GROUPS.find((g) => g.key === "store")?.acts).toEqual(["coupon", "stock", "customer"]);
-    for (const act of ["coupon", "stock", "customer"] as const) expect(FAIL_ACTS).not.toContain(act);
+    expect(GROUPS.find((g) => g.key === "store")?.acts).toEqual(["coupon", "stock", "customer", "pay"]);
+    for (const act of ["coupon", "stock", "customer", "pay"] as const) expect(FAIL_ACTS).not.toContain(act);
+    expect(newStep("pay", ctx)).toEqual({ act: "pay", title: "", amount: "", days: 7, as: "payment" });
     expect(newStep("coupon", ctx)).toEqual({ act: "coupon", off: "percent", value: 10, days: 30, as: "coupon" });
     expect(newStep("stock", ctx)).toEqual({ act: "stock", sku: "", how: "take", amount: 1, as: "stock" });
     expect(newStep("customer", ctx)).toEqual({ act: "customer", who: "{{caller.id}}", mark: "giveRole", what: "vip", as: "buyer" });
@@ -62,5 +63,20 @@ describe("The store steps", () => {
     expect(failText("A run changes the store up to 50 times", "en")).toBe("A run changes the store up to 50 times");
     // A customer who isn't there is said as the notification step says it.
     expect(failText('No customer "x@y.co"', "ar")).toBe("ما في زبون «x@y.co»");
+  });
+});
+
+describe("Asking for a payment", () => {
+  test("its line, what it keeps, what a run did and what is wrong with it; the event it starts", () => {
+    expect(stepLine({ act: "pay", title: "حجز {{row.title}}", amount: "{{row.price}}", as: "payment" }, ctx, "ar")).toBe("حجز {{row.title}} · {{row.price}} ← payment");
+    const def: FnDef = { inputs: [], do: [{ act: "pay", title: "x", amount: 5, as: "payment" }] };
+    expect(offers(def, ["do", 1], [])).toEqual(expect.arrayContaining(["payment.link", "payment.endsAt", "payment.amount"]));
+    expect(lineText({ ok: true, say: ["asked", "حجز السبت", "120 ILS"] }, "ar")).toBe("انطلبت دفعة: حجز السبت (120 ILS)");
+    expect(lineText({ ok: true, say: ["wouldAsk", "Booking", "120 ILS"] }, "en")).toBe("Would ask for a payment: Booking (120 ILS)");
+    expect(problemText("The sum is more than 0", "ar")).toBe("المبلغ لازم يكون أكتر من 0");
+    expect(problemText("The sum is empty", "he")).toBe("כמה?");
+    expect(failText("No way to pay is switched on (Settings → payments: Stripe or PayPal)", "ar")).toBe("ما في طريقة دفع مشغّلة (الإعدادات ← الدفع: Stripe أو PayPal)");
+    expect(failText('"nobody" isn\'t an email address', "en")).toBe("“nobody” isn't an email address");
+    expect(EVENT_NAME["payment.paid"].split("|")[0]).toBe("انقبضت دفعة (من «اطلب دفع»)");
   });
 });

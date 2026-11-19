@@ -12,7 +12,7 @@ export const isGroup = (s: Step): s is GroupStep => s.act === "if" || s.act === 
 export const GROUPS: Array<{ key: "data" | "store" | "control" | "out" | "outside" | "code"; acts: StepKind[] }> = [
   { key: "data", acts: ["find", "get", "add", "change", "delete"] },
   // The store itself: a coupon, a piece's quantity, a customer's roles and groups.
-  { key: "store", acts: ["coupon", "stock", "customer"] },
+  { key: "store", acts: ["coupon", "stock", "customer", "pay"] },
   { key: "control", acts: ["if", "each", "set", "call", "stop", "return"] },
   { key: "out", acts: ["notify", "push", "email", "whatsapp", "sms"] },
   // Outside the store: through a service the owner connected, or a call to a site the owner allowed.
@@ -81,6 +81,7 @@ export const STORE_KEEPS = {
   coupon: ["code", "value", "endsAt", "uses", "phone", "id"],
   stock: ["after", "before", "sku", "product", "color", "size"],
   customer: ["id", "name", "email", "phone", "roles", "groups"],
+  pay: ["link", "amount", "currency", "endsAt", "title", "ref", "id"],
 } as const;
 
 /** The list a loop goes over, when it is one name: "{{orders}}" → "orders". */
@@ -94,7 +95,7 @@ function keep(have: Map<string, Known>, s: Step) {
   else if (s.act === "call" && s.as) have.set(s.as, { name: s.as, kind: "value", fn: s.fn });
   else if (s.act === "code" && s.as) have.set(s.as, { name: s.as, kind: "value" });
   else if ((s.act === "http" || s.act === "ready") && s.as) have.set(s.as, { name: s.as, kind: "answer" });
-  else if ((s.act === "coupon" || s.act === "stock" || s.act === "customer") && s.as) have.set(s.as, { name: s.as, kind: "value", fields: STORE_KEEPS[s.act] });
+  else if ((s.act === "coupon" || s.act === "stock" || s.act === "customer" || s.act === "pay") && s.as) have.set(s.as, { name: s.as, kind: "value", fields: STORE_KEEPS[s.act] });
 }
 
 /**
@@ -254,6 +255,9 @@ export function newStep(act: StepKind, ctx: { tables: FnTable[]; fns: FnLite[]; 
     // Most often the one who started the run.
     case "customer":
       return { act, who: "{{caller.id}}", mark: "giveRole", what: ctx.store?.roles[0]?.key ?? "", as: free("buyer") };
+    // A week to pay, and its link kept for a message after it.
+    case "pay":
+      return { act, title: "", amount: "", days: 7, as: free("payment") };
     default:
       return { act, text: "" } as PlainStep;
   }
