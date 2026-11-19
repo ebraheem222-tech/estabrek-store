@@ -295,9 +295,16 @@ export function toTemplate(input: { key: string; version: string; name: Local; n
   };
 
   const tables = input.tables.map((t) => {
-    const fields = (Array.isArray(t.fields) ? t.fields : []).filter((f) => {
+    const own = (Array.isArray(t.fields) ? t.fields : []).filter((f) => {
       if (!isObj(f) || f.type !== "relation") return true;
       if (storeTarget(f.to) || tableKey.has(String(f.to))) return true;
+      note({ what: "relationOut", table: tableName(t), field: String(f.id) });
+      return false;
+    });
+    // A rollup goes with the relation it reads through (and, read from the other side, with that table).
+    const fields = own.filter((f) => {
+      if (!isObj(f) || f.type !== "rollup") return true;
+      if (f.from ? tableKey.has(String(f.from)) : own.some((x) => isObj(x) && x.id === f.via && x.type === "relation")) return true;
       note({ what: "relationOut", table: tableName(t), field: String(f.id) });
       return false;
     });
@@ -305,7 +312,7 @@ export function toTemplate(input: { key: string; version: string; name: Local; n
       key: tableKey.get(t.id)!,
       slug: t.slug,
       name: localOf(t.name),
-      fields: fields.map((f) => (isObj(f) && f.type === "relation" && tableKey.has(String(f.to)) ? { ...f, to: tableRef(tableKey.get(String(f.to))!) } : f)),
+      fields: fields.map((f) => (isObj(f) && f.type === "relation" && tableKey.has(String(f.to)) ? { ...f, to: tableRef(tableKey.get(String(f.to))!) } : isObj(f) && f.type === "rollup" && f.from ? { ...f, from: tableRef(tableKey.get(String(f.from))!) } : f)),
       ...(t.api ? { api: t.api } : {}),
       ...(t.itemPage ? { itemPage: swapTables(t.itemPage, tableName(t)) } : {}),
     };
@@ -489,7 +496,7 @@ export function planInstall(t: Template, taken: Taken, ids: () => string = newId
   t.functions.forEach((f, i) => (f.triggers ?? []).forEach((tr, k) => void (tr.kind === "call" && tr.slug && callSlugs[i][k] && (plan.calls[tr.slug] = callSlugs[i][k]!))));
   t.tables.forEach((x, i) => {
     const at = `tables.${i}`;
-    const fields = x.fields.map((f, k) => (isObj(f) && f.type === "relation" ? { ...f, to: storeTarget(f.to) ? f.to : tableIdOf(f.to, `${at}.fields.${k}.to`) } : f));
+    const fields = x.fields.map((f, k) => (isObj(f) && f.type === "relation" ? { ...f, to: storeTarget(f.to) ? f.to : tableIdOf(f.to, `${at}.fields.${k}.to`) } : isObj(f) && f.type === "rollup" && f.from !== undefined ? { ...f, from: tableIdOf(f.from, `${at}.fields.${k}.from`) } : f));
     // A relation's other end is one of the file's own tables, or one of the store's.
     fields.forEach((f, k) => {
       if (isObj(f) && f.type === "relation" && !storeTarget(f.to) && ![...tableIds.values()].includes(String(f.to))) problem(`${at}.fields.${k}.to`, "A relation links one of the template's tables, or one of the store's");

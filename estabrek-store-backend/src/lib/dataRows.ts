@@ -5,7 +5,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { checkItemData, ITEM_SLUG, type ItemIssue } from "./collections.js";
-import type { Field } from "./collectionTree.js";
+import { isComputed, valueKind, type Field } from "./collectionTree.js";
 import type { GridRow } from "./dataQuery.js";
 import { momentOf } from "./storeTime.js";
 
@@ -43,6 +43,7 @@ export function coerceValue(field: Field, raw: unknown, lang: Lang): unknown {
     switch (field.type) {
       case "text":
       case "longText":
+      case "richText":
         return { [lang]: s };
       case "number": {
         const n = Number(s.replace(/[\s,٬]/g, "").replace(/٫/g, "."));
@@ -100,7 +101,9 @@ export function looseData(fields: Field[], values: unknown, lang: Lang): { data:
   for (const [key, raw] of Object.entries(src)) {
     const [id, suffix, more] = key.split(".");
     const field = byId.get(id);
-    const textual = field?.type === "text" || field?.type === "longText";
+    // A computed field's column (an export has it) is worked out, never read in.
+    if (field && isComputed(field)) continue;
+    const textual = field?.type === "text" || field?.type === "longText" || field?.type === "richText";
     if (!field || more !== undefined || (suffix !== undefined && (!textual || !(LANGS as readonly string[]).includes(suffix)))) {
       issues.push({ field: key, message: "No such column" });
       continue;
@@ -137,6 +140,8 @@ export function patchData(fields: Field[], was: Record<string, unknown>, patch: 
       issues.push({ field: id, message: "No such column" });
       continue;
     }
+    // Worked out, never written (a whole row's form sends it back as it was shown).
+    if (isComputed(field)) continue;
     const value = coerceValue(field, raw, lang);
     // Sent back as it was (a whole row's form sends every field): not checked again, so an older value
     // that a newer rule wouldn't take doesn't hold up the rest.
@@ -183,9 +188,12 @@ export function freeSlug(slug: string, taken: Set<string>): string {
 
 /* ---------------- CSV out ---------------- */
 
-/** The export's columns: the address, the status, then each field (a text field once per language). */
+/** Words per language: a text field's, and a formula's that gives words. */
+const perLang = (f: Field) => { const k = valueKind(f); return k === "text" || k === "longText" || k === "richText"; };
+
+/** The export's columns: the address, the status, then each field (a text field once per language; a computed one as it was worked out). */
 export function exportColumns(fields: Field[]): string[] {
-  return ["slug", "status", ...fields.flatMap((f) => (f.type === "text" || f.type === "longText" ? LANGS.map((l) => `${f.id}.${l}`) : [f.id]))];
+  return ["slug", "status", ...fields.flatMap((f) => (perLang(f) ? LANGS.map((l) => `${f.id}.${l}`) : [f.id]))];
 }
 
 /** One cell: quoted when it must be; words that would start a formula in a spreadsheet get a quote in front. */
@@ -200,7 +208,7 @@ export function csvLine(fields: Field[], row: Pick<GridRow, "slug" | "status" | 
   const cells: string[] = [csvCell(row.slug), csvCell(row.status)];
   for (const f of fields) {
     const v = row.data?.[f.id];
-    if (f.type === "text" || f.type === "longText") {
+    if (perLang(f)) {
       const o = v && typeof v === "object" ? (v as Record<string, unknown>) : {};
       for (const l of LANGS) cells.push(csvCell(typeof o[l] === "string" ? o[l] : "", true));
     } else if (f.type === "multiSelect") cells.push(csvCell(Array.isArray(v) ? v.join(", ") : ""));

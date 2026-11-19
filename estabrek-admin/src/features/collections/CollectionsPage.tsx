@@ -24,8 +24,10 @@ import type { Blocker } from "../../api/data.api";
 import { previewFields, type Impact } from "../../api/collections.api";
 import { useAuth } from "../../hooks/useAuth";
 import { ValueInput } from "../data/GridCells";
-import { KIND_NAME, draftFrom, valueFrom } from "../data/kinds";
+import { KIND_NAME, draftFrom, shownText, valueFrom } from "../data/kinds";
 import { storeLinkTables } from "../data/storeLinks";
+import { isComputedField } from "./computedText";
+import { RichTextBox } from "../data/RichTextBox";
 import { listPages, updatePage } from "../../api/pages.api";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
@@ -276,11 +278,14 @@ function ItemForm({ collection, lang, item, onDone, onCancel }: { collection: Co
 function FieldInput({ field: f, lang, wordsLang, value, problem, onChange, onPick }: { field: CollectionField; lang: Lang; wordsLang: Lang; value: unknown; problem?: string; onChange: (v: unknown) => void; onPick: () => void }) {
   const label = <span className="flex items-center gap-1">{words(f.name, lang) || f.id}{f.required ? <span className="text-red-300">*</span> : null}<span className="text-white/30">· {say(TYPE_NAME[f.type])}</span></span>;
   const wrap = (el: ReactNode) => <label className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}{el}{problem ? <span className="text-red-300">{problem}</span> : null}</label>;
+  // A formula or a rollup: what it works out to (nothing to write).
+  if (isComputedField(f)) return <div className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}<span className="block rounded-lg bg-white/[0.04] px-2 py-1.5 text-sm text-white/80">{shownText(f, value, lang) || "—"}</span></div>;
   // A relation's box holds buttons (its chips, the rows to pick): a label around it would press the first one on any click.
   if (f.type === "relation") return <div className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}<KindBox field={f} lang={lang} value={value} onChange={onChange} />{problem ? <span className="text-red-300">{problem}</span> : null}</div>;
   if (WORD_TYPES.includes(f.type)) {
     const v = (value ?? {}) as Local;
     const put = (w: string) => onChange({ ...v, [wordsLang]: w });
+    if (f.type === "richText") return wrap(<RichTextBox value={v[wordsLang] ?? ""} onChange={put} className={`${input} min-h-[96px]`} dir={wordsLang === "en" ? "ltr" : "rtl"} testId={`item-rich-${f.id}`} />);
     return wrap(f.type === "text" ? <input className={input} dir={wordsLang === "en" ? "ltr" : "rtl"} value={v[wordsLang] ?? ""} onChange={(e) => put(e.target.value)} /> : <textarea className={`${input} min-h-[96px]`} dir={wordsLang === "en" ? "ltr" : "rtl"} value={v[wordsLang] ?? ""} onChange={(e) => put(e.target.value)} />);
   }
   if (f.type === "image") return wrap(<span className="flex items-center gap-2">{typeof value === "string" && value ? <img src={value} alt="" className="h-12 w-12 rounded object-cover" /> : null}<button type="button" className={btn} onClick={onPick}>{say("اختار صورة|Pick a picture|בחר תמונה")}</button><input className={input} dir="ltr" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder="https://…" /></span>);
@@ -316,6 +321,8 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
   const tables = useMemo(() => [...own, ...storeLinkTables().map((t) => ({ ...t, name: say(t.name) }))], [own]);
   // A new relation links one of the owner's tables to begin with.
   const linkTo = firstLinkable(own, collection.id);
+  // A computed field reads this table as it is being edited, and the others' relations (a rollup from the other side).
+  const computed = useMemo(() => ({ tableId: collection.id, fields, all: (all.data ?? [collection]).map((c) => (c.id === collection.id ? { ...c, fields } : c)), storeName: (to: string) => { const t = storeLinkTables().find((x) => x.id === to); return t ? say(t.name) : null; } }), [collection, fields, all.data]);
   const changed = useMemo(() => JSON.stringify([fields, name, slug]) !== JSON.stringify([collection.fields, collection.name, collection.slug]), [fields, name, slug, collection]);
   const { hasPermission } = useAuth();
   /** What the change would do to the rows, waiting for a yes. */
@@ -355,7 +362,8 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
             <input className={`${input} w-40 flex-1`} value={f.name?.[lang] ?? ""} placeholder={f.id} onChange={(e) => setFields((fs) => fs.map((x, j) => (j === i ? { ...x, name: { ...x.name, [lang]: e.target.value } } : x)))} aria-label={say("إسم الحقل|Field name|שם השדה")} />
             <span className="text-xs text-white/40">{say(TYPE_NAME[f.type])}</span>
             <code className="text-[10px] text-white/30" dir="ltr">{f.id}</code>
-            <label className="flex items-center gap-1 text-xs text-white/60"><input type="checkbox" checked={f.required === true} onChange={(e) => setFields((fs) => fs.map((x, j) => (j === i ? { ...x, required: e.target.checked || undefined } : x)))} />{say("لازم|Required|חובה")}</label>
+            {/* Nothing is written into a computed field: nothing to require. */}
+            {isComputedField(f) ? <span className="text-[11px] text-white/40">{say("بينحسب لحاله|Worked out by itself|מחושב מעצמו")}</span> : <label className="flex items-center gap-1 text-xs text-white/60"><input type="checkbox" checked={f.required === true} onChange={(e) => setFields((fs) => fs.map((x, j) => (j === i ? { ...x, required: e.target.checked || undefined } : x)))} />{say("لازم|Required|חובה")}</label>}
             {meta.data ? (
               <button type="button" className={btn} aria-expanded={rulesOpen === f.id} onClick={() => setRulesOpen(rulesOpen === f.id ? null : f.id)} data-testid={`field-rules-${f.id}`}>
                 {say("قواعد|Rules|כללים")}{ruleCount(f) ? ` (${ruleCount(f)})` : ""}
@@ -365,13 +373,13 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
             <button type="button" className={btn} onClick={() => move(i, 1)} aria-label="↓">↓</button>
             <button type="button" className={`${btn} text-red-300`} disabled={fields.length <= 1} onClick={() => setFields((fs) => fs.filter((_, j) => j !== i))}>×</button>
             {rulesOpen !== f.id && ruleParts(f, lang).length ? <span className="w-full text-[11px] text-white/45" data-testid={`field-rules-summary-${f.id}`}>{ruleParts(f, lang).map((part) => say(part)).join(" · ")}</span> : null}
-            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type] ?? NO_RULES)} lang={lang} fit={meta.data.rules[f.type] ?? NO_RULES} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} onRetype={(type) => setFields((fs) => fs.map((x, j) => (j === i ? retype(x, type, meta.data!.rules[type], linkTo) : x)))} tables={tables} /> : null}
+            {rulesOpen === f.id && meta.data ? <FieldRulesEditor field={fitRules(f, meta.data.rules[f.type] ?? NO_RULES)} lang={lang} fit={meta.data.rules[f.type] ?? NO_RULES} shapes={meta.data.shapes} onChange={(next) => setFields((fs) => fs.map((x, j) => (j === i ? next : x)))} onRetype={(type) => setFields((fs) => fs.map((x, j) => (j === i ? retype(x, type, meta.data!.rules[type], linkTo, fs) : x)))} tables={tables} computed={computed} /> : null}
           </li>
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-2">
         <select className={`${input} w-44`} value={newType} onChange={(e) => setNewType(e.target.value as FieldType)} data-testid="field-new-type">{(Object.keys(TYPE_NAME) as FieldType[]).map((t) => <option key={t} value={t}>{say(TYPE_NAME[t])}</option>)}</select>
-        <button type="button" className={btn} onClick={() => { const [ar, en, he] = TYPE_NAME[newType].split("|"); setFields((fs) => [...fs, newField(newType, { ar, en, he }, fs.map((x) => x.id), linkTo)]); if (newType === "relation") setRulesOpen(fieldIdOf(en, fields.map((x) => x.id))); }} data-testid="field-add">+ {say("حقل|Field|שדה")}</button>
+        <button type="button" className={btn} onClick={() => { const [ar, en, he] = TYPE_NAME[newType].split("|"); setFields((fs) => [...fs, newField(newType, { ar, en, he }, fs.map((x) => x.id), linkTo, fs)]); if (newType === "relation" || newType === "formula" || newType === "rollup") setRulesOpen(fieldIdOf(en, fields.map((x) => x.id))); }} data-testid="field-add">+ {say("حقل|Field|שדה")}</button>
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={primary} disabled={!changed || saving} onClick={() => void save()} data-testid="fields-save">{say("احفظ الحقول|Save the fields|שמור את השדות")}</button>

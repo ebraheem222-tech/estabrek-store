@@ -17,10 +17,13 @@
  * them. A relation removed, turned into another kind, or pointed at another table leaves its
  * links where they are, hidden (counted like hidden values: the change needs a yes); they show
  * again when the field comes back.
+ *
+ * A computed field (a formula, a rollup: lib/computed.ts) holds no written value: a field turned into one puts its
+ * values aside, hidden (the change needs a yes), and turned back it gets them back.
  */
 import { Prisma } from "@prisma/client";
 import { checkItemData } from "./collections.js";
-import type { Field, FieldType } from "./collectionTree.js";
+import { isComputed, type Field, type FieldType } from "./collectionTree.js";
 import { coerceValue, same, type Lang } from "./dataRows.js";
 import { uniqueKeys } from "./fieldRules.js";
 import { isRelation, linkCounts } from "./links.js";
@@ -53,7 +56,7 @@ export type Impact = {
 
 /** The hidden place a value is kept in when its field's kind changes. */
 export const wasKey = (id: string) => `${id}$was`;
-const WORDS = new Set<FieldType>(["text", "longText"]);
+const WORDS = new Set<FieldType>(["text", "longText", "richText"]);
 // A relation's table and how many rows it links are rules too (what deleting does isn't: it touches no row).
 const RULES = ["unique", "min", "max", "shape", "pattern", "required", "to", "many", "exclusive"] as const;
 
@@ -83,6 +86,7 @@ export function wordsOf(field: Field, v: unknown, lang: Lang): string {
   switch (field.type) {
     case "text":
     case "longText":
+    case "richText":
       return typeof v === "string" ? v : firstWords(v, lang);
     case "multiSelect":
       return Array.isArray(v) ? v.join(", ") : "";
@@ -133,6 +137,8 @@ export function convertValue(from: Field, to: Field, v: unknown, lang: Lang): un
 function fits(field: Field, v: unknown): { ok: true; value: unknown } | { ok: false; why: string } {
   // A relation holds links to rows, never a written value: what was written is put aside.
   if (field.type === "relation") return { ok: false, why: "Links to rows, not a written value" };
+  // Nor does a computed field: it is worked out each time the row is read.
+  if (isComputed(field)) return { ok: false, why: "Worked out from other values, never written" };
   const checked = checkItemData([{ ...field, required: false }], { [field.id]: v });
   if (!checked.ok) return { ok: false, why: checked.issues[0]?.message ?? "Doesn't fit" };
   return field.id in checked.data ? { ok: true, value: checked.data[field.id] } : { ok: false, why: "Nothing left" };
@@ -290,8 +296,9 @@ export async function applySchemaChange(db: Db, collectionId: string, before: Fi
 export function shownRow<T extends { data: unknown }>(row: T, fields: Field[]): T {
   const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
   const out: Record<string, unknown> = {};
-  // A relation's rows aren't among the values (lib/links.ts withLinks adds them to the answer).
-  for (const f of fields) if (f.type !== "relation" && f.id in data) out[f.id] = data[f.id];
+  // A relation's rows aren't among the values (lib/links.ts withLinks adds them to the answer), nor a computed field's
+  // (lib/computed.ts works it out, there too).
+  for (const f of fields) if (f.type !== "relation" && !isComputed(f) && f.id in data) out[f.id] = data[f.id];
   return { ...row, data: out };
 }
 

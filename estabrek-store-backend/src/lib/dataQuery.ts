@@ -8,7 +8,8 @@
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/httpError.js";
-import type { Field, FieldType } from "./collectionTree.js";
+import { isComputed, valueKind, type Field, type FieldType } from "./collectionTree.js";
+import { rollupSql } from "./computed.js";
 import type { Incoming } from "./links.js";
 import { linkedRowsSql } from "./storeLinks.js";
 import { dayStart, nextDay } from "./storeTime.js";
@@ -27,6 +28,11 @@ export const STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 export const OPS_BY_KIND: Record<ColumnKind, readonly Op[]> = {
   text: ["contains", "notContains", "is", "isNot", "startsWith", "endsWith", "empty", "notEmpty"],
   longText: ["contains", "notContains", "empty", "notEmpty"],
+  richText: ["contains", "notContains", "empty", "notEmpty"],
+  // Worked out as rows are read (lib/computed.ts): a formula is never asked. A rollup is asked as what it gives
+  // (columnKind answers its number, money or date), worked out by the database itself.
+  formula: [],
+  rollup: [],
   number: ["is", "isNot", "gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
   date: ["is", "gt", "gte", "lt", "lte", "between", "empty", "notEmpty"],
   boolean: ["isTrue", "isFalse"],
@@ -100,8 +106,11 @@ export function columnKind(fields: Field[], column: string, incoming: Incoming[]
   if (column === "$slug" || column === "$status") return column;
   if (column.startsWith("$from.")) return incoming.some((x) => x.id === column) ? "$from" : null;
   if (column === "$createdAt" || column === "$updatedAt" || column === "$publishedAt") return "$date";
-  return fields.find((f) => f.id === column)?.type ?? null;
+  const f = fields.find((x) => x.id === column);
+  return !f ? null : f.type === "rollup" ? valueKind(f) : f.type;
 }
+/** What may be asked of a field (a rollup: what fits what it gives; a formula: nothing). */
+export const opsOf = (f: Field): readonly Op[] => OPS_BY_KIND[f.type === "rollup" ? valueKind(f) : f.type];
 
 /* ---------------- Pieces of SQL (the rows' table is always "i") ---------------- */
 
@@ -158,6 +167,9 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
   if (!OPS_BY_KIND[kind].includes(f.op)) throw bad(`"${f.op}" can't be asked of "${f.field}"`);
   const what = f.field;
   const id = f.field;
+  // A rollup: its value worked out by the database for each row (lib/computed.ts), asked like a number or a date.
+  const field = fields.find((x) => x.id === id);
+  const roll = field?.type === "rollup" ? rollupSql(fields, field) : null;
 
   if (kind === "$from") {
     const linked = Prisma.sql`EXISTS ${linkers(incoming.find((x) => x.id === f.field)!, "1")}`;
@@ -190,7 +202,7 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
     return Prisma.sql`(${col} >= ${a}::date AND ${col} < (${date(f.value2, what)}::date + 1))`;
   }
 
-  if (kind === "text" || kind === "longText") {
+  if (kind === "text" || kind === "longText" || kind === "richText") {
     if (f.op === "empty") return Prisma.sql`NOT ${anyLang(id, Prisma.sql`btrim(w.v) <> ''`)}`;
     if (f.op === "notEmpty") return anyLang(id, Prisma.sql`btrim(w.v) <> ''`);
     const v = str(f.value, what);
@@ -203,7 +215,7 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
     return f.op === "is" ? same : Prisma.sql`NOT ${same}`;
   }
   if (kind === "number" || kind === "money") {
-    const n = num(id);
+    const n = roll ?? num(id);
     if (f.op === "empty") return Prisma.sql`${n} IS NULL`;
     if (f.op === "notEmpty") return Prisma.sql`${n} IS NOT NULL`;
     const a = number(f.value, what);
@@ -229,7 +241,7 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
     return f.op === "isTrue" ? Prisma.sql`${json(id)} = 'true'::jsonb` : Prisma.sql`${json(id)} IS DISTINCT FROM 'true'::jsonb`;
   }
   // The rest are plain words (or, for JSON and places, a whole value that is there or isn't).
-  const w = words(id);
+  const w = roll ?? words(id);
   if (f.op === "empty") return Prisma.sql`COALESCE(${w}, '') = ''`;
   if (f.op === "notEmpty") return Prisma.sql`COALESCE(${w}, '') <> ''`;
   if (kind === "datetime") {
@@ -278,7 +290,8 @@ export function filterSql(fields: Field[], f: GridFilter, incoming: Incoming[] =
 function searchSql(term: string, fields: Field[]): Prisma.Sql {
   // A literal ("q"), case-blind ("i") match on every string value at any depth.
   const path = `$.** ? (@.type() == "string" && @ like_regex ${JSON.stringify(term)} flag "iq")`;
-  const shown = Prisma.sql`(SELECT COALESCE(jsonb_object_agg(k, i."data"->k), '{}'::jsonb) FROM unnest(${fields.map((f) => f.id)}::text[]) AS k WHERE i."data"->k IS NOT NULL)`;
+  // (A computed field's value isn't kept: anything under its id is an older field's.)
+  const shown = Prisma.sql`(SELECT COALESCE(jsonb_object_agg(k, i."data"->k), '{}'::jsonb) FROM unnest(${fields.filter((f) => !isComputed(f)).map((f) => f.id)}::text[]) AS k WHERE i."data"->k IS NOT NULL)`;
   return Prisma.sql`(i."slug" ILIKE ${`%${like(term)}%`} OR jsonb_path_exists(${shown}, ${path}::jsonpath))`;
 }
 
@@ -314,7 +327,10 @@ export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">, 
   for (const s of q.sort) {
     const kind = columnKind(fields, s.field, incoming);
     if (!kind) throw bad(`No column "${s.field}" in this table`);
-    const expr =
+    if (kind === "formula") throw bad(`"${s.field}" is worked out as rows are read: it can't put them in order`);
+    const field = fields.find((x) => x.id === s.field);
+    const roll = field?.type === "rollup" ? rollupSql(fields, field) : null;
+    const expr = roll ? roll :
       kind === "$from"
         ? // By how many rows link it (none last).
           Prisma.sql`NULLIF(${linkers(incoming.find((x) => x.id === s.field)!, "count(*)")}, 0)`
@@ -322,7 +338,7 @@ export function gridOrder(fields: Field[], q: Pick<GridQuery, "sort" | "lang">, 
         ? SYSTEM_SQL[s.field]
         : kind === "$status"
           ? Prisma.raw(`i."status"::text`)
-          : kind === "text" || kind === "longText"
+          : kind === "text" || kind === "longText" || kind === "richText"
             ? Prisma.sql`lower(left(COALESCE(NULLIF(${json(s.field)}->>${q.lang}::text, ''), NULLIF(${json(s.field)}->>'ar', ''), NULLIF(${json(s.field)}->>'en', ''), NULLIF(${json(s.field)}->>'he', '')), 200))`
             : kind === "number" || kind === "money"
               ? num(s.field)

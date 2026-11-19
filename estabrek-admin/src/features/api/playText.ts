@@ -39,8 +39,10 @@ export const shopperMatters = (table: Pick<ApiTable, "access">) => Object.values
 
 /** A body to start from: the fields a row needs (or the first two), with a value of each one's kind. */
 export function sampleBody(table: Pick<ApiTable, "fields">): string {
-  const wanted = table.fields.filter((f) => f.required);
-  const shown = (wanted.length ? wanted : table.fields.slice(0, 2)).slice(0, 4);
+  // (A computed field is never written.)
+  const written = table.fields.filter((f) => f.type !== "formula" && f.type !== "rollup");
+  const wanted = written.filter((f) => f.required);
+  const shown = (wanted.length ? wanted : written.slice(0, 2)).slice(0, 4);
   return JSON.stringify({ values: Object.fromEntries(shown.map((f) => [f.id, sampleValue(f)])) }, null, 2);
 }
 

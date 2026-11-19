@@ -74,7 +74,7 @@ export function rowsQuery(spec: RowsSpec, lang: TreeLang, page: number): string 
 }
 
 /** A row as the API answers it with `shown=1`. */
-export type RowOut = { id: string; slug: string; status: string; values: Record<string, unknown>; shown: Record<string, string>; links: Record<string, string> };
+export type RowOut = { id: string; slug: string; status: string; values: Record<string, unknown>; shown: Record<string, string>; links: Record<string, string>; /** The fields whose shown words are formatted (richText.ts draws their marks). */ rich: string[] };
 
 const strings = (v: unknown): Record<string, string> => {
   const out: Record<string, string> = {};
@@ -87,7 +87,7 @@ export function rowsOf(raw: unknown): RowOut[] {
   for (const x of Array.isArray(raw) ? raw : []) {
     const r = x as Record<string, unknown> | null;
     if (!r || typeof r.id !== "string" || !/^[A-Za-z0-9_-]{1,60}$/.test(r.id)) continue;
-    out.push({ id: r.id, slug: typeof r.slug === "string" ? r.slug : "", status: typeof r.status === "string" ? r.status : "", values: r.values && typeof r.values === "object" && !Array.isArray(r.values) ? (r.values as Record<string, unknown>) : {}, shown: strings(r.shown), links: strings(r.links) });
+    out.push({ id: r.id, slug: typeof r.slug === "string" ? r.slug : "", status: typeof r.status === "string" ? r.status : "", values: r.values && typeof r.values === "object" && !Array.isArray(r.values) ? (r.values as Record<string, unknown>) : {}, shown: strings(r.shown), links: strings(r.links), rich: Array.isArray(r.rich) ? r.rich.filter((x): x is string => typeof x === "string" && FIELD.test(x)) : [] });
   }
   return out;
 }

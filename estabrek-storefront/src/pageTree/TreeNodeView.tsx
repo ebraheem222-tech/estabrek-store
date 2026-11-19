@@ -21,6 +21,7 @@ import { TreeIcon } from "./icons";
 import { ArtView, safeArt, safeMorph } from "./svgArt";
 import { SparkleLayer } from "./sparkles";
 import { CurvedWords } from "./curvedWords";
+import { RichWords } from "./RichWords";
 import { endlessOf, perfMarks, perfOf } from "./perf";
 import { WORLD_HOSTS, bodyOf, worldOf } from "./physics";
 import { safeCurve } from "../../../shared/textCurve";
@@ -263,6 +264,11 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     }
     case "text": {
       const curve = safeCurve(p.curve);
+      // Formatted words (connected to a table's formatted field: the server marks it `formatted`; `rich` is the editor's own inline marks), drawn with their marks.
+      if (p.formatted === true && !curve) {
+        const body = <RichWords text={say(p.text)} />;
+        return <div className={cls(node, "pt-rich")} {...mark}>{before}{inner(row.text ? <div data-pt-row-text={row.text} data-pt-row-rich="">{body}</div> : body)}{fx}{after}</div>;
+      }
       return <p className={cls(node)} {...mark}>{before}{curve ? <CurvedWords id={node.id} text={say(p.text)} curve={curve} /> : inner(rowWords(row.text, words(p.text)))}{fx}{after}</p>;
     }
     case "image": {

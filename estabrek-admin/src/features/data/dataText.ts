@@ -5,11 +5,13 @@
  */
 import type { Collection, CollectionField, FieldType, ItemStatus, Local } from "../../api/collections.api";
 import type { Blocker, ColumnKind, GridFilter, GridQuery, GridRow, GridTable, Incoming, Lang, Op, RowIn, SystemColumn, View } from "../../api/data.api";
-import { shownText, valueFrom } from "./kinds";
+import { plainOf, shownText, valueFrom } from "./kinds";
 
 export const LANGS: Lang[] = ["ar", "en", "he"];
 export const LANG_NAME: Record<Lang, string> = { ar: "عربي", en: "English", he: "עברית" };
-export const WORDS: FieldType[] = ["text", "longText"];
+export const WORDS: FieldType[] = ["text", "longText", "richText"];
+/** Worked out each time a row is read (a formula, a rollup): shown, never written. */
+export const isWorkedOut = (f: Pick<CollectionField, "type"> | undefined) => !!f && (f.type === "formula" || f.type === "rollup");
 
 export const VIEW_NAME: Record<View, string> = {
   all: "الكل|All|הכול",
@@ -35,7 +37,9 @@ export function kindOf(column: string, fields: CollectionField[]): ColumnKind | 
   if (column === "$slug" || column === "$status") return column;
   if (column === "$createdAt" || column === "$updatedAt" || column === "$publishedAt") return "$date";
   if (column.startsWith("$from.")) return "$from";
-  return fields.find((f) => f.id === column)?.type ?? null;
+  const f = fields.find((x) => x.id === column);
+  // A rollup is asked as what it gives (its number, money or date).
+  return !f ? null : f.type === "rollup" ? ((f.result ?? "number") as ColumnKind) : f.type;
 }
 
 /** A linked-from column's name, in the three languages: the table that links and its field ("Linked from: Books · Author"). */
@@ -53,7 +57,9 @@ export function fromName(inc: Incoming): string {
  */
 export function columnsOf(table: Pick<GridTable, "fields" | "readOnly" | "hasAddress" | "made">, lang: Lang, incoming: Incoming[] = []): Column[] {
   const system = (id: SystemColumn): Column => ({ id, kind: kindOf(id, [])!, name: SYSTEM_NAME[id] });
-  const fields = table.fields.map((f): Column => ({ id: f.id, kind: f.type as ColumnKind, field: f, name: local(f.name, lang) || f.id, ...(f.computed ? { computed: true } : {}) }));
+  // A computed field is a column of what it gives (a total as money, a check as yes/no); a formula is never sorted or
+  // filtered by (the server works it out as rows are read), a rollup is (the database works it out).
+  const fields = table.fields.map((f): Column => ({ id: f.id, kind: (isWorkedOut(f) ? f.result ?? "number" : f.type) as ColumnKind, field: f, name: local(f.name, lang) || f.id, ...(f.computed || f.type === "formula" ? { computed: true } : {}) }));
   // One of the store's: when a row was made closes the row, where its rows say (sizes keep no dates).
   const from = incoming.map((inc): Column => ({ id: inc.id, kind: "$from", name: fromName(inc), from: inc, ...(table.readOnly ? { noSort: true } : {}) }));
   if (table.readOnly) return [{ ...system("$slug"), ...(table.hasAddress ? {} : { name: "الرقم|ID|מזהה" }) }, ...fields, ...from, ...(table.made === false ? [] : [system("$createdAt")])];
@@ -226,7 +232,8 @@ export function cellText(column: Column, row: Pick<GridRow, "slug" | "status" | 
   if (column.id === "$publishedAt") return dateText(row.publishedAt, lang);
   const v = row.data?.[column.id];
   if (v === undefined || v === null || v === "") return "";
-  // The owner's tables hold words per language; the store's own hold them plain.
+  // The owner's tables hold words per language; the store's own hold them plain. Formatted words show plain.
+  if (column.kind === "richText") return plainOf(typeof v === "object" ? local(v as Local, lang) : typeof v === "string" ? v : "");
   if (column.kind === "text" || column.kind === "longText") return typeof v === "object" ? local(v as Local, lang) : typeof v === "string" ? v : "";
   return column.field ? shownText(column.field, v, lang) : String(v);
 }
@@ -375,13 +382,13 @@ export function targetName(t: Target, fields: CollectionField[], lang: Lang): st
 export function cellPatch(column: Column, row: Pick<GridRow, "data">, lang: Lang, draft: string): { slug?: string; status?: ItemStatus; values?: Record<string, unknown> } {
   if (column.id === "$slug") return { slug: draft.trim() };
   if (column.id === "$status") return { status: draft as ItemStatus };
-  if (column.kind === "text" || column.kind === "longText") return { values: { [column.id]: withWords(row.data?.[column.id], lang, draft) } };
+  if (column.kind === "text" || column.kind === "longText" || column.kind === "richText") return { values: { [column.id]: withWords(row.data?.[column.id], lang, draft) } };
   // Each kind turns its box's words its own way (./kinds.ts); what it can't turn goes as written, for the server to say.
   return { values: { [column.id]: column.field ? valueFrom(column.field, draft) : draft.trim() === "" ? null : draft.trim() } };
 }
 
 /** Which columns a cell can be written in: not the server's own dates, and not JSON (it needs room: the row's window). */
-export const editable = (column: Column) => column.kind !== "$date" && column.kind !== "json" && column.kind !== "$from";
+export const editable = (column: Column) => column.kind !== "$date" && column.kind !== "json" && column.kind !== "$from" && !isWorkedOut(column.field);
 
 /**
  * The export's lines (as the server's CSV gives them) as a sheet's cells: numbers as numbers and

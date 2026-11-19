@@ -23,7 +23,8 @@
  */
 import { z } from "zod";
 import { AppError } from "../utils/httpError.js";
-import { boundValue, fieldsFor, type Field } from "./collectionTree.js";
+import { boundValue, fieldsFor, isComputed, valueKind, type Field } from "./collectionTree.js";
+import { formulaReads } from "./computed.js";
 import { ACTS, keyCovers, type Act, type KeyLite } from "./apiKeys.js";
 import { GRID_LIMITS, GridQuerySchema, OPS, type GridFilter, type GridQuery, type Op, type View } from "./dataQuery.js";
 import { LANGS, type Lang } from "./dataRows.js";
@@ -108,10 +109,17 @@ export function allow(access: TableAccess, act: Act, key: KeyLite | null, tableI
   return { no: who === "customer" ? "signInNeeded" : "keyNeeded" };
 }
 
-/** The fields a caller sees and may write: all of them through a key, the rest without the private ones. */
+/**
+ * The fields a caller sees and may write: all of them through a key, the rest without the private ones. A formula
+ * that reads a private field (itself, or through another formula) is as private: its answer would tell it.
+ */
 export function seenFields(table: Pick<ApiTable, "fields" | "private">, as: As): Field[] {
-  return as === "key" || !table.private.length ? table.fields : table.fields.filter((f) => !table.private.includes(f.id));
+  if (as === "key" || !table.private.length) return table.fields;
+  const hidden = new Set(table.private);
+  return table.fields.filter((f) => !hidden.has(f.id) && !(f.type === "formula" && [...formulaReads(table.fields, f)].some((id) => hidden.has(id))));
 }
+/** A field whose value is words per language (a formula that gives words too). */
+export const isWords = (f: Field) => { const k = valueKind(f); return k === "text" || k === "longText" || k === "richText"; };
 
 /** The fields a caller may ask about (filter, sort, search): without a key, never who a row points at. */
 export const askable = (fields: Field[], as: As): Field[] => (as === "key" ? fields : fields.filter((f) => f.type !== "customer"));
@@ -285,7 +293,7 @@ export function listAsk(all: Field[], query: Record<string, unknown>, as: As): L
 
 /* ---------------- A row, as answered ---------------- */
 
-export type ApiRow = { id: string; slug: string; status: string; values: Record<string, unknown>; createdAt: Date; updatedAt: Date; publishedAt: Date | null; /** Asked with `shown=1`: each field's words as a page shows them, and the address a field opens. */ shown?: Record<string, string>; links?: Record<string, string> };
+export type ApiRow = { id: string; slug: string; status: string; values: Record<string, unknown>; createdAt: Date; updatedAt: Date; publishedAt: Date | null; /** Asked with `shown=1`: each field's words as a page shows them, and the address a field opens. */ shown?: Record<string, string>; links?: Record<string, string>; /** The fields among `shown` whose words are formatted (bold, lists, links: the page draws their marks). */ rich?: string[] };
 /** How much of a relation's rows the caller sees: every linked row, or the published ones. A relation that isn't here links a table the caller can't read, and is left out. */
 export type LinkModes = Map<string, "all" | "published">;
 
@@ -317,7 +325,7 @@ export function apiRow(row: RowIn, fields: Field[], opts: { lang: Lang | null; p
       const linked = (Array.isArray(v) ? v : []).filter((x): x is { id: string; slug: string; status: string; title: unknown } => !!x && typeof x === "object" && (mode === "all" || (x as { status?: unknown }).status === "PUBLISHED"));
       const open = opts.expand?.get(f.id);
       values[f.id] = open ? linked.map((x) => open.get(x.id)).filter((x): x is ApiRow => !!x) : linked.map((x) => ({ id: x.id, slug: x.slug, status: x.status, title: opts.lang ? wordsIn(x.title, opts.lang) : x.title ?? null }));
-    } else if ((f.type === "text" || f.type === "longText") && opts.lang) values[f.id] = wordsIn(v, opts.lang);
+    } else if (isWords(f) && opts.lang) values[f.id] = wordsIn(v, opts.lang);
     else if (f.type === "customer" && opts.viewer) values[f.id] = typeof v === "string" && v ? personView(v, row.ownerId ?? null, opts.viewer) : null;
     else values[f.id] = v === undefined ? null : v;
   }
@@ -334,14 +342,16 @@ const LINKS = fieldsFor(undefined, "href");
  * names; a shopper the row points at by name, as far as this caller may know it (`personView`: an email only
  * where it is theirs to see). `shown.$by`: who added the row, by first name (their whole name to themself), only
  * where the rows are a shopper's own. `links`: the address a field opens (a link, an email, a phone, a file, a
- * place). A field with nothing to show is left out.
+ * place). A field with nothing to show is left out. `rich`: the fields whose words are formatted (as written: the
+ * page draws their marks, never as HTML).
  */
-export function asShown(row: RowIn, fields: Field[], table: { id: string; slug: string }, opts: { lang: Lang; pick?: string[] | null; links?: LinkModes; viewer?: Viewer }): { shown: Record<string, string>; links: Record<string, string> } {
+export function asShown(row: RowIn, fields: Field[], table: { id: string; slug: string }, opts: { lang: Lang; pick?: string[] | null; links?: LinkModes; viewer?: Viewer }): { shown: Record<string, string>; links: Record<string, string>; rich?: string[] } {
   const data = row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {};
   const item = { id: row.id, slug: row.slug, data };
   const collection = { id: table.id, slug: table.slug, fields };
   const shown: Record<string, string> = {};
   const links: Record<string, string> = {};
+  const rich: string[] = [];
   for (const f of fields) {
     if (opts.pick && !opts.pick.includes(f.id)) continue;
     const v = data[f.id];
@@ -356,10 +366,13 @@ export function asShown(row: RowIn, fields: Field[], table: { id: string; slug: 
         const who: { name: string | null; email?: string } = opts.viewer ? personView(v, row.ownerId ?? null, opts.viewer) : { name: null, email: v };
         words = who.name ?? who.email ?? null;
       }
-    } else if (f.type === "boolean") {
+    } else if (valueKind(f) === "boolean") {
       if (typeof v === "boolean") words = YES_NO[opts.lang][v ? 0 : 1];
     } else words = wordsIn(boundValue("text", f.id, item, collection, "text"), opts.lang);
-    if (words && words.trim()) shown[f.id] = words;
+    if (words && words.trim()) {
+      shown[f.id] = words;
+      if (f.type === "richText") rich.push(f.id);
+    }
     if (LINKS.includes(f.type)) {
       const to = boundValue("href", f.id, item, collection);
       if (typeof to === "string" && to) links[f.id] = to;
@@ -367,10 +380,10 @@ export function asShown(row: RowIn, fields: Field[], table: { id: string; slug: 
   }
   const by = row.ownerId ? (opts.viewer?.owners?.get(row.ownerId) ?? "").trim() : "";
   if (by) shown.$by = row.ownerId === opts.viewer?.id ? by : by.split(/\s+/)[0];
-  return { shown, links };
+  return { shown, links, ...(rich.length ? { rich } : {}) };
 }
 
 /** A field as the API describes it (the list of tables a caller reaches). */
 export function fieldView(f: Field) {
-  return { id: f.id, type: f.type, name: f.name ?? null, required: !!f.required, ...(f.options ? { options: f.options.map((o) => ({ id: o.id, name: o.name ?? null })) } : {}), ...(f.type === "relation" ? { many: !!f.many } : {}), ...(f.currency ? { currency: f.currency } : {}), ...(f.upload ? { upload: f.upload } : {}) };
+  return { id: f.id, type: f.type, name: f.name ?? null, required: !!f.required, ...(f.options ? { options: f.options.map((o) => ({ id: o.id, name: o.name ?? null })) } : {}), ...(f.type === "relation" ? { many: !!f.many } : {}), ...(f.currency ? { currency: f.currency } : {}), ...(f.upload ? { upload: f.upload } : {}), ...(isComputed(f) ? { computed: true, result: f.result ?? "number" } : {}) };
 }

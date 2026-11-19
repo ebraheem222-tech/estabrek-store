@@ -4,10 +4,10 @@
  * Pure: the routes hand over the tables a caller reaches (lib/dataApi.ts docTables), and the
  * document only ever says what that caller could call anyway.
  */
-import type { Field } from "./collectionTree.js";
+import { isComputed, valueKind, type Field } from "./collectionTree.js";
 import type { Act } from "./apiKeys.js";
 import { API_LIMITS, type DocTable } from "./dataApi.js";
-import { GRID_LIMITS, OPS_BY_KIND, STATUSES, type ColumnKind } from "./dataQuery.js";
+import { GRID_LIMITS, OPS_BY_KIND, STATUSES, opsOf } from "./dataQuery.js";
 
 type Json = Record<string, unknown>;
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
@@ -40,7 +40,7 @@ export function docName(name: unknown, fallback: string): string {
 /** The fields a caller sees: every field but the relations to tables it can't read. */
 export const shownFields = (table: DocTable) => table.fields.filter((f) => f.type !== "relation" || table.links.has(f.id));
 /** The fields a caller may write (a key writes the private ones too). */
-export const writtenFields = (table: DocTable) => (table.writeFields ?? table.fields).filter((f) => f.type !== "relation" || table.links.has(f.id));
+export const writtenFields = (table: DocTable) => (table.writeFields ?? table.fields).filter((f) => (f.type !== "relation" || table.links.has(f.id)) && !isComputed(f));
 
 const choices = (f: Field) => (f.options?.length ? { enum: f.options.map((o) => o.id) } : {});
 const limits = (f: Field) => ({ ...(typeof f.min === "number" ? { minimum: f.min } : {}), ...(typeof f.max === "number" ? { maximum: f.max } : {}) });
@@ -52,10 +52,18 @@ const about = (f: Field) => {
 
 /** A field's value as a row answers it. */
 function valueSchema(f: Field): Json {
+  if (isComputed(f)) {
+    // Answered as what it gives; never written.
+    const as = valueSchema({ ...f, type: valueKind(f) }) as Json & { description?: string };
+    const how = f.type === "formula" ? "Worked out from the row's other fields each time it is read; never written." : "Worked out from the rows a relation links each time it is read; never written.";
+    return { ...as, readOnly: true, description: [as.description, how].filter(Boolean).join(" ") };
+  }
   switch (f.type) {
     case "text":
     case "longText":
       return { ...orNull({ oneOf: [ref("Words"), { type: "string" }] }), description: [about(f).description, "Words by language; one string when `lang` is asked."].filter(Boolean).join(" ") };
+    case "richText":
+      return { ...orNull({ oneOf: [ref("Words"), { type: "string" }] }), description: [about(f).description, "Formatted words by language (Markdown: **bold**, *italic*, lists, ## headings, [links](https://…)); one string when `lang` is asked."].filter(Boolean).join(" ") };
     case "number":
     case "money":
       return { ...orNull({ type: "number", ...limits(f) }), ...about(f) };
@@ -90,6 +98,7 @@ function inputSchema(f: Field): Json {
   switch (f.type) {
     case "text":
     case "longText":
+    case "richText":
       return { oneOf: [{ type: "string", description: "Goes to the language in `lang` (ar when not given)." }, ref("Words")], ...about(f) };
     case "relation":
       return { type: "array", items: { type: "string", description: "A row's id or address." }, ...about(f) };
@@ -107,7 +116,7 @@ function inputSchema(f: Field): Json {
 
 /** What a list can be asked of each column: the questions its kind takes. */
 function filterTable(table: DocTable): string {
-  const rows = shownFields(table).map((f) => `| \`${f.id}\` | ${OPS_BY_KIND[f.type as ColumnKind].join(", ")} |`);
+  const rows = shownFields(table).map((f) => `| \`${f.id}\` | ${opsOf(f).join(", ") || "— (worked out as rows are read)"} |`);
   rows.push(`| \`slug\` | ${OPS_BY_KIND.$slug.join(", ")} |`, `| \`status\` | ${OPS_BY_KIND.$status.join(", ")} |`, `| \`createdAt\`, \`updatedAt\`, \`publishedAt\` | ${OPS_BY_KIND.$date.join(", ")} |`);
   return [
     "Filters are written `field[question]=value`, for example `price[gte]=10`. Several filters must all hold; `match=any` asks for any of them.",
@@ -276,9 +285,11 @@ const literal = (f: Field) => (f.options?.length ? f.options.map((o) => JSON.str
 
 /** A field's type as answered (`T` is `Words`, or `string` when `lang` is asked). */
 function valueType(f: Field): string {
+  if (isComputed(f)) return valueType({ ...f, type: valueKind(f) });
   switch (f.type) {
     case "text":
     case "longText":
+    case "richText":
       return "T | null";
     case "number":
     case "money":
@@ -306,6 +317,7 @@ function inputType(f: Field): string {
   switch (f.type) {
     case "text":
     case "longText":
+    case "richText":
       return "string | Words";
     case "number":
     case "money":

@@ -22,6 +22,7 @@ import { sizeOf } from "./fnDef.js";
 import { newToken, nextRun, forgetTriggers, type ScheduleConfig } from "./fnTriggers.js";
 import { forgetFeatureGate, type FeatureKind } from "./featureGate.js";
 import { relationProblem } from "./links.js";
+import { settleComputed } from "./computed.js";
 import { PAGE_FORMAT, storedTree } from "./pageTree.js";
 import { storedDraft } from "./pageDraft.js";
 import { triggerCmsRevalidate } from "./cmsRevalidate.js";
@@ -169,6 +170,10 @@ export async function makeTables(tx: Tx, tables: Plan["tables"]) {
   for (const t of tables) {
     const unlinked = await relationProblem(tx, t.fields as Field[], t.id);
     if (unlinked) throw new AppError(400, "TEMPLATE_INVALID", unlinked.message, { problems: [{ at: `tables.${t.key}.${unlinked.path}`, message: unlinked.message }] });
+    // Its computed fields read the template's own tables (all made now), and are told what they give.
+    const settled = await settleComputed(tx, t.fields as Field[], t.id);
+    if ("problem" in settled) throw new AppError(400, "TEMPLATE_INVALID", settled.problem.message, { problems: [{ at: `tables.${t.key}.${settled.problem.path}`, message: settled.problem.message }] });
+    if (settled.fields !== (t.fields as Field[])) await tx.collection.update({ where: { id: t.id }, data: { fields: settled.fields as unknown as Prisma.InputJsonValue } });
     if (!t.itemPage) continue;
     const page = await tx.page.create({ data: { name: `${nameIn(t.name, "en") || t.slug} — item page`, slug: `/__collection/${randomBytes(6).toString("hex")}`, status: "PUBLISHED", kind: TEMPLATE_KIND, format: PAGE_FORMAT.tree, tree: t.itemPage as unknown as Prisma.InputJsonValue }, select: { id: true } });
     await tx.collection.update({ where: { id: t.id }, data: { templateId: page.id } });

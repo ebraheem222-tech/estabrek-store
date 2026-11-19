@@ -3,7 +3,11 @@ import { api } from "./http";
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
 /** The kinds of field (backend lib/collectionTree.ts FIELD_TYPES). */
-export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location" | "relation" | "customer";
+export type FieldType = "text" | "longText" | "image" | "number" | "date" | "link" | "boolean" | "select" | "color" | "email" | "phone" | "datetime" | "money" | "multiSelect" | "file" | "video" | "model3d" | "json" | "location" | "relation" | "customer" | "richText" | "formula" | "rollup";
+/** What a computed field gives (backend lib/collectionTree.ts ComputedResult; a rollup's smallest or biggest moment is a date and time). */
+export type ComputedResult = "number" | "money" | "text" | "boolean" | "date" | "datetime";
+/** What a rollup works out from the rows it reaches (backend lib/computed.ts). */
+export type RollupCalc = "count" | "sum" | "avg" | "min" | "max";
 /** What happens to the rows that link a row when it is deleted (backend lib/links.ts). */
 export type OnDelete = "unlink" | "cascade" | "restrict";
 /** A linked row as the routes answer it under a relation field. */
@@ -44,6 +48,19 @@ export type CollectionField = {
   exclusive?: boolean;
   /** A relation: what deleting a linked row does to the rows linking it (unlink when not said). */
   onDelete?: OnDelete;
+  /** A formula: its equation over the row's other fields (backend lib/formula.ts). */
+  formula?: string;
+  /** A formula's or a rollup's answer: what kind of value it gives (the server works it out when the table is saved). */
+  result?: ComputedResult;
+  /** A rollup: the relation it reads through (this table's, or the table `from`'s). */
+  via?: string;
+  /** A rollup read from the other side: the table whose relation `via` links this table. */
+  from?: string;
+  calc?: RollupCalc;
+  /** A rollup: the field of the linked rows it works out (not for a count). */
+  of?: string;
+  /** A rollup: only the linked rows that are published count. */
+  published?: boolean;
 };
 export type Collection = { id: string; slug: string; name: Local; fields: CollectionField[]; templateId: string | null; items: number; published: number; createdAt: string; updatedAt: string };
 export type ItemStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -122,6 +139,13 @@ export async function deleteItem(id: string, itemId: string) {
 /** The store's product or category page design (made once); its page id, to open in the editor. */
 export async function storeTemplate(kind: "product" | "category") {
   return (await api.post(`${base}/store-template/${kind}`)).data as { id: string };
+}
+/** An equation tried on the table as its fields are being edited (backend POST …/formula): what it gives and its first rows' answers, or what's wrong and where. */
+export type FormulaTry =
+  | { ok: true; result: "number" | "text" | "boolean" | "date"; reads: string[]; sample: Array<{ slug: string; value: unknown }> }
+  | { ok: false; message: string; say?: { ar: string; he: string }; at: number | null };
+export async function tryFormula(id: string, body: { formula: string; field?: string; fields?: CollectionField[] }) {
+  return (await api.post(`${base}/${id}/formula`, body)).data as FormulaTry;
 }
 /** The collection's item page (made once, with every field connected); its page id, to open in the editor. */
 export async function collectionTemplate(id: string) {

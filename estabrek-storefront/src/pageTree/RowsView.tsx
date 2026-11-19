@@ -18,6 +18,7 @@ import { setRowScope } from "./recipeVars";
 import { signedIn, wantHands, whenHands, WHO_EVENT } from "./recipeHands";
 import { wireRecipes } from "./TreeTriggers";
 import { listenLive } from "./liveHub";
+import { parseRich, richDom } from "./richText";
 import css from "./RowsView.module.css";
 
 type State = { is: "loading" | "ready" | "empty" | "signin" | "failed"; more: boolean };
@@ -43,7 +44,12 @@ function fill(copy: HTMLElement, row: RowOut, table: string, prefix: string) {
     }
   };
   // A row's words keep their own direction inside the page's (an email or a name in Latin letters among Arabic).
-  each("data-pt-row-text", (el, ref) => { el.textContent = rowWords(row, ref); el.setAttribute("dir", "auto"); });
+  each("data-pt-row-text", (el, ref) => {
+    // Formatted words where the card's text takes them and the row says they are (richText.ts: elements, never HTML).
+    if (el.hasAttribute("data-pt-row-rich") && row.rich.includes(ref)) el.replaceChildren(richDom(document, parseRich(rowWords(row, ref))));
+    else el.textContent = rowWords(row, ref);
+    el.setAttribute("dir", "auto");
+  });
   each("data-pt-row-alt", (el, ref) => el.setAttribute("alt", rowWords(row, ref)));
   // A picture or a clip the row has none of keeps the design's own (as a list drawn with the page does).
   each("data-pt-row-src", (el, ref) => {

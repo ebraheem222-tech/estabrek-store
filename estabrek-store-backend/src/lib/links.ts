@@ -30,6 +30,7 @@ import { AppError } from "../utils/httpError.js";
 import { LIMITS, type ItemIssue } from "./collections.js";
 import type { Field } from "./collectionTree.js";
 import { utc } from "./dataQuery.js";
+import { hasComputed, withComputed } from "./computed.js";
 import { linkTable, storeLinksOf, storeRowsNamed, storeTarget, type StoreId } from "./storeLinks.js";
 
 export type RelationField = Field & { type: "relation"; to: string };
@@ -298,11 +299,14 @@ export async function linksFor(db: Db, table: { id: string; fields: Field[] }, r
   return out;
 }
 
-/** Rows as the routes answer them: each relation field holds the rows it links (nothing when none). */
+/**
+ * Rows as the routes answer them: each relation field holds the rows it links (nothing when none), and each computed
+ * field what it works out to (lib/computed.ts: a rollup over a table the reader may not see is left empty).
+ */
 export async function withLinks<T extends { id: string; data: unknown }>(db: Db, table: { id: string; fields: Field[] }, rows: T[], view: LinkView = {}): Promise<T[]> {
-  if (!table.fields.some((f) => f.type === "relation")) return rows;
+  if (!table.fields.some((f) => f.type === "relation")) return hasComputed(table.fields) ? withComputed(db, table, rows, { table: view.table }) : rows;
   const links = await linksFor(db, table, rows.map((r) => r.id), view);
-  return rows.map((row) => {
+  const linked = rows.map((row) => {
     const data: Record<string, unknown> = { ...(row.data && typeof row.data === "object" && !Array.isArray(row.data) ? (row.data as Record<string, unknown>) : {}) };
     for (const f of table.fields) {
       if (f.type !== "relation") continue;
@@ -312,6 +316,7 @@ export async function withLinks<T extends { id: string; data: unknown }>(db: Db,
     }
     return { ...row, data };
   });
+  return hasComputed(table.fields) ? withComputed(db, table, linked, { table: view.table }) : linked;
 }
 
 /* ---------------- The other side ---------------- */

@@ -30,8 +30,12 @@ type Tree = { version: number; root: Node };
  * in with. Where the table is open to shoppers, a row is also the shopper's it points at to read
  * (lib/dataApi.ts); it is never drawn with a page (no element takes it there). Only a list read in the
  * visitor's browser shows who a row points at, by name and as far as that visitor may know (lib/dataApi.ts asShown).
+ * Then (item 6) formatted words (bold, lists, headings, links: lib/formula.ts plainWords reads them plain), and two
+ * kinds no row writes: a formula worked out from the row's other fields (lib/formula.ts), and a rollup worked out
+ * from the rows a relation links (how many, a sum, the latest day: lib/computed.ts). Both are worked out each time
+ * a row is read, so they are never old.
  */
-export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location", "relation", "customer"] as const;
+export const FIELD_TYPES = ["text", "longText", "image", "number", "date", "link", "boolean", "select", "color", "email", "phone", "datetime", "money", "multiSelect", "file", "video", "model3d", "json", "location", "relation", "customer", "richText", "formula", "rollup"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 /** A field: its kind, its name, and its rules (lib/fieldRules.ts): the only value, limits, a shape, a default, the words said when a rule fails. */
 export type Field = {
@@ -60,7 +64,26 @@ export type Field = {
   onDelete?: "unlink" | "cascade" | "restrict";
   /** A picture or file field shoppers may upload into (lib/fileKinds.ts): up to how many MB, which kinds, kept private. */
   upload?: { maxMb: number; kinds?: Array<"image" | "pdf" | "doc" | "sheet" | "text" | "zip" | "audio">; private?: boolean };
+  /** A formula: its equation over the row's other fields (lib/formula.ts). */
+  formula?: string;
+  /** A formula's or a rollup's answer: what kind of value it gives (the server works it out when the table is saved). */
+  result?: ComputedResult;
+  /** A rollup: the relation it reads through (a field of this table, or of the table `from`). */
+  via?: string;
+  /** A rollup read from the other side: the table whose relation `via` links this table's rows. */
+  from?: string;
+  /** A rollup: how many rows, or the sum, average, smallest or biggest of their field `of`. */
+  calc?: "count" | "sum" | "avg" | "min" | "max";
+  of?: string;
+  /** A rollup: only the linked rows that are published count. */
+  published?: boolean;
 };
+/** What a computed field gives (a rollup's smallest or biggest moment is a date and time). */
+export type ComputedResult = "number" | "money" | "text" | "boolean" | "date" | "datetime";
+/** Worked out each time a row is read; never written. */
+export const isComputed = (f: Pick<Field, "type">) => f.type === "formula" || f.type === "rollup";
+/** The kind of value a field holds as it's read: a computed field's is what it gives. */
+export const valueKind = (f: Pick<Field, "type" | "result">): FieldType => (isComputed(f) ? (f.result ?? "number") : f.type);
 export type CollectionLite = { id: string; slug: string; fields: Field[] };
 export type ItemLite = { id: string; slug: string; data: Record<string, unknown>; publishedAt?: string | Date | null; createdAt?: string | Date | null; sort?: number };
 
@@ -68,8 +91,11 @@ export type ItemLite = { id: string; slug: string; data: Record<string, unknown>
 export const BINDABLE: Record<string, string[]> = { heading: ["text"], text: ["text"], button: ["label", "href"], image: ["src", "alt", "href"], video: ["src"] };
 const WORDS = new Set<FieldType>(["text", "longText", "number", "date", "select", "email", "phone", "datetime", "money", "multiSelect", "location"]);
 export const PROP_FIELDS: Record<string, readonly FieldType[]> = { text: [...WORDS], label: [...WORDS], alt: ["text", "longText"], src: ["image"], href: ["link", "email", "phone", "file", "location"] };
-/** What some elements take beyond that: a video's source is a video field (or, as before, a picture field holding a video's address). */
-const ELEMENT_FIELDS: Record<string, Record<string, readonly FieldType[]>> = { video: { src: ["video", "image"] } };
+/**
+ * What some elements take beyond that: a video's source is a video field (or, as before, a picture field holding a
+ * video's address); a text's words may be formatted ones (a heading or a button would show their marks).
+ */
+const ELEMENT_FIELDS: Record<string, Record<string, readonly FieldType[]>> = { video: { src: ["video", "image"] }, text: { text: [...WORDS, "richText"] } };
 /** The kinds of field an element's prop takes. */
 export const fieldsFor = (element: string | undefined, prop: string): readonly FieldType[] => (element && ELEMENT_FIELDS[element]?.[prop]) || PROP_FIELDS[prop] || [];
 /** Where a date's time is told (the store's own zone; this file has no imports, so it reads the setting itself). */
@@ -103,10 +129,11 @@ export function boundValue(prop: string, ref: string, item: ItemLite, collection
   if (ref === "$slug") return prop === "href" ? undefined : each(() => item.slug);
   const field = collection.fields.find((f) => f.id === ref);
   const v = item.data?.[ref];
-  if (!field || v === undefined || v === null || v === "" || !fieldsFor(element, prop).includes(field.type)) return undefined;
-  switch (field.type) {
+  if (!field || v === undefined || v === null || v === "" || !fieldsFor(element, prop).includes(valueKind(field))) return undefined;
+  switch (valueKind(field)) {
     case "text":
-    case "longText": return v && typeof v === "object" ? v : undefined;
+    case "longText":
+    case "richText": return v && typeof v === "object" ? v : undefined;
     case "number": return typeof v === "number" ? each((l) => v.toLocaleString(LOCALE[l])) : undefined;
     case "date": {
       const d = new Date(String(v));
@@ -149,7 +176,12 @@ export function boundValue(prop: string, ref: string, item: ItemLite, collection
 
 const WORDS_PROPS = new Set(["text", "label", "alt"]);
 /** Whether a field of the collection fits an element prop (its kind is one the prop takes). */
-const fits = (prop: string, ref: string, collection: CollectionLite, element?: string) => { const f = collection.fields.find((x) => x.id === ref); return Boolean(f && fieldsFor(element, prop).includes(f.type)); };
+const fits = (prop: string, ref: string, collection: CollectionLite, element?: string) => { const f = collection.fields.find((x) => x.id === ref); return Boolean(f && fieldsFor(element, prop).includes(valueKind(f))); };
+/** A text whose words come from a formatted field: the shop draws its marks (bold, lists, links). */
+const richRef = (node: Node, collection: CollectionLite | null) => {
+  const ref = node.type === "text" && node.props?.bind && typeof node.props.bind === "object" ? (node.props.bind as Record<string, unknown>).text : undefined;
+  return typeof ref === "string" && collection?.fields.find((f) => f.id === ref)?.type === "richText";
+};
 
 /** One element (and what it holds) with its connected props filled from the item; `bind` itself goes. */
 export function bindNode(node: Node, item: ItemLite | null, collection: CollectionLite | null): Node {
@@ -165,6 +197,7 @@ export function bindNode(node: Node, item: ItemLite | null, collection: Collecti
       // A fitting field this item left empty: no words (the design's sample words never show as its own).
       else if (WORDS_PROPS.has(prop) && fits(prop, ref, collection, node.type)) props = { ...props, [prop]: {} };
     }
+    if (item && richRef(node, collection)) props = { ...props, formatted: true };
   }
   const children = node.children?.map((c) => (c.type === "collectionList" ? c : bindNode(c, item, collection)));
   return props === node.props && children === node.children ? node : { ...node, props, ...(children ? { children } : {}) };
@@ -245,8 +278,8 @@ export function rowMatches(item: ItemLite, filters: ListFilter[], collection: Co
       case "contains": return got.some((x) => x.toLowerCase().includes(want));
       default: break;
     }
-    const a = valueNumber(v, field.type);
-    const b = valueNumber(f.value, field.type);
+    const a = valueNumber(v, valueKind(field));
+    const b = valueNumber(f.value, valueKind(field));
     if (f.op === "is" || f.op === "isNot") {
       const same = a !== null && b !== null ? a === b : got.some((x) => x.toLowerCase() === want);
       return f.op === "is" ? same : !same;
@@ -256,8 +289,14 @@ export function rowMatches(item: ItemLite, filters: ListFilter[], collection: Co
   });
 }
 
-/** A card without lists inside it (a list read in the browser repeats its card there, where no list is drawn). */
-const withoutLists = (n: Node): Node => (n.children ? { ...n, children: n.children.filter((c) => c.type !== "collectionList").map(withoutLists) } : n);
+/**
+ * A card without lists inside it (a list read in the browser repeats its card there, where no list is drawn); a text
+ * connected to formatted words is marked so (the shop fills it with the row's words, marks and all).
+ */
+const withoutLists = (n: Node, collection: CollectionLite): Node => {
+  const own = richRef(n, collection) ? { ...n, props: { ...n.props, formatted: true } } : n;
+  return own.children ? { ...own, children: own.children.filter((c) => c.type !== "collectionList").map((c) => withoutLists(c, collection)) } : own;
+};
 
 const time = (v: unknown) => { const t = v ? new Date(String(v)).getTime() : NaN; return Number.isNaN(t) ? 0 : t; };
 /** A list's items in its order: newest or oldest first, the merchant's own order, or by the first words field. */
@@ -310,7 +349,7 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
         const empty = words(n.props.empty);
         const signin = words(n.props.signin);
         const live: LiveList = { table: got.collection.slug, feed, limit, sort: sort === "oldest" ? "createdAt" : "-createdAt", ...(where.length ? { where } : {}), ...(empty ? { empty } : {}), ...(signin ? { signin } : {}), ...(n.props.stream === true ? { stream: true as const } : {}) };
-        return { ...n, type: "grid", props: { ...rest, live }, style, children: [withoutLists(card)] };
+        return { ...n, type: "grid", props: { ...rest, live }, style, children: [withoutLists(card, got.collection)] };
       }
       let cards: Node[] = [];
       if (card && items.length && got && !feed) cards = items.map((item, i) => bindNode(i === 0 ? card : renamed(card, `${card.id.slice(0, 30)}_${i}`), item, got.collection));

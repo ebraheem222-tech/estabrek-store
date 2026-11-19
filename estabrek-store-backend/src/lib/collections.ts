@@ -8,9 +8,11 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { storedTree, TREE_VERSION, type PageTree } from "./pageTree.js";
-import { FIELD_TYPES, bindTree, expandLists, itemAddress, listIdsOf, type CollectionLite, type Field, type ItemLite } from "./collectionTree.js";
+import { FIELD_TYPES, bindTree, expandLists, isComputed, itemAddress, listIdsOf, type CollectionLite, type Field, type ItemLite } from "./collectionTree.js";
 import { PATTERN_MAX, SHAPES, ruleIssue, rulesProblem } from "./fieldRules.js";
 import { FILE_REF, UploadSchema } from "./fileKinds.js";
+import { FORMULA_MAX } from "./formula.js";
+import { ROLLUP_CALCS, withComputed } from "./computed.js";
 
 export const TEMPLATE_KIND = "collectionTemplate";
 export const FIELD_ID = /^[a-z][a-zA-Z0-9]{0,30}$/;
@@ -54,8 +56,23 @@ export const FieldSchema = z
     onDelete: z.enum(ON_DELETE).optional(),
     // A picture or file field shoppers may upload into (lib/fileKinds.ts).
     upload: UploadSchema.optional(),
+    // Worked out, never written (lib/computed.ts): a formula's equation; a rollup's relation, what and of what.
+    formula: z.string().trim().min(1).max(FORMULA_MAX).optional(),
+    result: z.enum(["number", "money", "text", "boolean", "date", "datetime"]).optional(),
+    via: z.string().regex(FIELD_ID).optional(),
+    from: z.string().min(1).max(64).optional(),
+    calc: z.enum(ROLLUP_CALCS).optional(),
+    of: z.string().regex(FIELD_ID).optional(),
+    published: z.boolean().optional(),
   })
   .strict()
+  .refine((f) => (f.type === "formula") === (f.formula !== undefined), "A formula field needs its equation (and only it has one)")
+  .refine((f) => f.type !== "rollup" || !!f.via, "A rollup needs the relation it reads through")
+  .refine((f) => f.type === "rollup" || (f.via === undefined && f.from === undefined && f.calc === undefined && f.of === undefined && f.published === undefined), "Only a rollup reads through a relation")
+  .refine((f) => f.result === undefined || isComputed(f as Field), "Only a computed field has a result")
+  .refine((f) => f.result !== "datetime" || f.type === "rollup", "A formula gives a number, money, words, yes/no or a date")
+  // Nothing is written into a computed field, so no rule asks anything of what is written.
+  .refine((f) => !isComputed(f as Field) || (f.required === undefined && f.unique === undefined && f.default === undefined && f.min === undefined && f.max === undefined && f.shape === undefined && f.pattern === undefined && f.options === undefined && f.upload === undefined), "A computed field takes no rules (nothing is written into it)")
   .refine((f) => f.upload === undefined || f.type === "image" || f.type === "file", "Only a picture or a file field takes uploads")
   .refine((f) => f.type !== "relation" || !!f.to, "A relation needs the table it links")
   .refine((f) => f.type === "relation" || (f.to === undefined && f.many === undefined && f.exclusive === undefined && f.onDelete === undefined), "Only a relation links a table")
@@ -64,7 +81,7 @@ export const FieldSchema = z
   .refine((f) => !(typeof f.to === "string" && f.to.startsWith("store:")) || f.onDelete === undefined || f.onDelete === "unlink", "A link to the store's rows is only ever dropped")
   .refine((f) => (f.type !== "select" && f.type !== "multiSelect") || (f.options?.length ?? 0) > 0, "A choice field needs its choices")
   .refine((f) => !f.options || new Set(f.options.map((o) => o.id)).size === f.options.length, "Two choices with one id")
-  .refine((f) => f.currency === undefined || f.type === "money", "Only money has a currency")
+  .refine((f) => f.currency === undefined || f.type === "money" || (isComputed(f as Field) && f.result === "money"), "Only money has a currency")
   .superRefine((f, ctx) => {
     const problem = rulesProblem(f as Field);
     if (problem) return void ctx.addIssue({ code: "custom", message: problem });
@@ -95,7 +112,7 @@ export const JSON_MAX = 20_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /** Digits with the usual spacing: "+970 599-000 001", "(02) 123 4567". */
 const PHONE = /^\(?\+?[0-9][0-9 ()-]{5,19}$/;
-const WORD_KINDS = new Set<Field["type"]>(["text", "longText"]);
+const WORD_KINDS = new Set<Field["type"]>(["text", "longText", "richText"]);
 
 /** Is there nothing in this value, for this kind of field? */
 function emptyValue(f: Field, v: unknown): boolean {
@@ -111,13 +128,15 @@ export function checkItemData(fields: Field[], raw: unknown): { ok: true; data: 
   const data: Record<string, unknown> = {};
   const issues: ItemIssue[] = [];
   for (const f of fields) {
-    // A relation's rows are links, kept and checked apart (lib/links.ts): never a value here.
-    if (f.type === "relation") continue;
+    // A relation's rows are links, kept and checked apart (lib/links.ts): never a value here. Nor is a computed
+    // field's: it is worked out each time the row is read (lib/computed.ts).
+    if (f.type === "relation" || isComputed(f)) continue;
     const v = src[f.id];
     if (emptyValue(f, v)) { if (f.required) issues.push({ field: f.id, message: "Required" }); continue; }
     const bad = (message: string) => issues.push({ field: f.id, message });
     switch (f.type) {
-      case "text": case "longText": { const r = local(f.type === "text" ? 300 : 20000).safeParse(v); if (r.success) data[f.id] = r.data; else bad("Words in ar/en/he"); break; }
+      // Formatted words are kept as written (their marks: **bold**, lists, links); the shop draws them, never as HTML.
+      case "text": case "longText": case "richText": { const r = local(f.type === "text" ? 300 : 20000).safeParse(v); if (r.success) data[f.id] = r.data; else bad("Words in ar/en/he"); break; }
       // An address, or a private file kept here ("file:<id>", lib/shopperFiles.ts).
       case "image": if (typeof v === "string" && (safeSrc(v.trim()) || FILE_REF.test(v.trim()))) data[f.id] = v.trim(); else bad("A picture address"); break;
       case "link": if (typeof v === "string" && safeHref(v.trim())) data[f.id] = v.trim(); else bad("A link like /shop or https://…"); break;
@@ -214,13 +233,16 @@ const lite = (c: { id: string; slug: string; fields: unknown }): CollectionLite 
 const itemLite = (i: { id: string; slug: string; data: unknown; publishedAt: Date | null; createdAt: Date; sort: number }): ItemLite => ({ id: i.id, slug: i.slug, data: (i.data && typeof i.data === "object" ? i.data : {}) as Record<string, unknown>, publishedAt: i.publishedAt, createdAt: i.createdAt, sort: i.sort });
 
 type Db = Pick<Prisma.TransactionClient, "collection" | "collectionItem" | "page">;
+/** Raw questions (a rollup is one): the given client when it asks them, else the shared one. */
+const rawOf = (db: Db) => ("$queryRaw" in db ? (db as unknown as Pick<Prisma.TransactionClient, "$queryRaw">) : prisma);
 /** The lists' collections and their items (published ones; the editor's preview also sees drafts). */
 export async function loadListData(tree: PageTree | null | undefined, opts: { preview?: boolean } = {}, db: Db = prisma) {
   const ids = listIdsOf(tree as never);
   const out = new Map<string, { collection: CollectionLite; items: ItemLite[] }>();
   if (!ids.length) return out;
   const rows = await db.collection.findMany({ where: { id: { in: ids } }, include: { items: { where: opts.preview ? { status: { not: "ARCHIVED" }, deletedAt: null } : { status: "PUBLISHED", deletedAt: null }, orderBy: { createdAt: "desc" }, take: LIMITS.listItems } } });
-  for (const c of rows) out.set(c.id, { collection: lite(c), items: c.items.map(itemLite) });
+  // Computed fields worked out (lib/computed.ts), so a card shows a total or a count like any other value.
+  for (const c of rows) out.set(c.id, { collection: lite(c), items: (await withComputed(rawOf(db), lite(c), c.items)).map(itemLite) });
   return out;
 }
 
@@ -252,7 +274,8 @@ export async function collectionItemPage(slug: string, db: Db = prisma) {
   const tree = storedTree(template.tree);
   if (!tree) return null;
   const collection = lite(c);
-  const it = itemLite(item);
+  const [computed] = await withComputed(rawOf(db), collection, [item]);
+  const it = itemLite(computed);
   const title = collection.fields.find((f) => f.type === "text")?.id;
   const summary = collection.fields.find((f) => f.type === "longText")?.id;
   const cover = collection.fields.find((f) => f.type === "image")?.id;

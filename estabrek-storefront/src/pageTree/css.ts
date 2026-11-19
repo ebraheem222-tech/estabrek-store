@@ -1281,6 +1281,13 @@ export const BASE_CSS = [
   ".pt-icon>svg{width:var(--pt-isz,24px);height:var(--pt-isz,24px);flex:none}",
   ".pt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;border-radius:999px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .2s ease,background-color .2s ease}",
   ".pt-btn-solid{background:var(--accent);color:var(--accent-contrast,#fff)}",
+  // Formatted words (RichWords.tsx): their blocks apart, lists and quotes drawn (the page's reset takes them off).
+  ".pt-rich :is(p,ul,ol,blockquote,h3,h4,hr)+:is(p,ul,ol,blockquote,h3,h4,hr){margin-top:.75em}",
+  ".pt-rich ul,.pt-rich ol{padding-inline-start:1.4em}.pt-rich ul{list-style:disc}.pt-rich ol{list-style:decimal}",
+  ".pt-rich h3{font-size:1.2em;font-weight:700;line-height:1.3}.pt-rich h4{font-size:1.05em;font-weight:700}",
+  ".pt-rich blockquote{border-inline-start:3px solid currentColor;padding-inline-start:.9em;opacity:.85}",
+  ".pt-rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;padding:.05em .35em;border-radius:4px;background:rgba(127,127,127,.15)}",
+  ".pt-rich a{color:inherit;text-decoration:underline;text-underline-offset:3px}.pt-rich hr{border:0;border-top:1px solid currentColor;opacity:.25}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",
   ".pt-btn-link{min-height:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:4px}",
   ".pt-btn:hover{filter:brightness(1.06)}",
