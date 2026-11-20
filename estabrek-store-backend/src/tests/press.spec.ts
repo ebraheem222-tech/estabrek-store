@@ -33,6 +33,8 @@ const network: Transport = async ({ method, url, headers, body }) => {
   if (u.hostname === "api.vercel.com") return taken.vercel ? json({ id: "prj_1", name: "rose" }) : json({ error: { code: "not_found", message: "Project not found" } }, 404);
   // The address itself, asked from outside: no project holds it.
   if (u.hostname === "rose.vercel.app") return { status: 404, type: "text/plain", text: "The deployment could not be found on Vercel. DEPLOYMENT_NOT_FOUND", cut: false };
+  // An address no Pages project holds isn't found by its name.
+  if (u.hostname === "rose-admin.pages.dev") throw Object.assign(new Error("not found"), { code: "ENOTFOUND" });
   if (u.hostname === "api.cloudflare.com") return taken.pages ? json({ success: true, result: { name: "rose-admin" } }) : json({ success: false, errors: [{ code: 8000007, message: "Project not found" }] }, 404);
   return json({ message: "not here" }, 404);
 };
@@ -90,9 +92,10 @@ describe("Planning a client's copy", () => {
       ["vercel.name", true],
       ["vercel.address", true],
       ["cloudflare.name", true],
+      ["cloudflare.address", true],
     ]);
     expect(out.ready).toBe(true);
-    expect(out.steps.map((s: { id: string }) => s.id)).toEqual(["neon", "railway", "vercel", "cloudflare", "owner"]);
+    expect(out.steps.map((s: { id: string }) => s.id)).toEqual(["neon", "railway", "owner", "vercel", "cloudflare"]);
     expect(out.steps[1].variables.find((v: { name: string }) => v.name === "JWT_SECRET")).toEqual({ name: "JWT_SECRET", from: "made" });
     // Each question read, at its own service, with its own key; the names went as values.
     expect(sent.every((s) => s.method === "GET" || (s.method === "POST" && !/mutation/.test(s.body ?? "")))).toBe(true);
@@ -120,6 +123,7 @@ describe("Planning a client's copy", () => {
       "vercel.name": '"rose" is taken by a project of yours',
       "vercel.address": null,
       "cloudflare.name": '"rose-admin" is taken by a project of yours',
+      "cloudflare.address": null,
     });
     expect(out.steps).toHaveLength(5);
   });

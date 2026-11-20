@@ -111,7 +111,7 @@ export const madeSecret = () => randomBytes(32).toString("base64url");
 /** One part of the plan: what is made where, said in facts the page names in its own words. */
 export type PlanStep = { id: PressKind | "owner"; facts: Array<[string, string]>; variables?: CopyVar[] };
 
-/** What making the copy will do, in order, before anything is done. */
+/** What making the copy will do, in the order it is done (lib/pressMake.ts), before anything is done. */
 export function copyPlan(input: CopyInput): { urls: CopyUrls; steps: PlanStep[] } {
   const urls = copyUrls(input.server, input.site);
   const vars = copyVariables(urls);
@@ -121,11 +121,10 @@ export function copyPlan(input: CopyInput): { urls: CopyUrls; steps: PlanStep[] 
     steps: [
       { id: "neon", facts: [["project", input.label], ["region", input.region], ["postgres", "17"]] },
       { id: "railway", facts: [["project", input.label], ["service", "api"], ["from", from], ["folder", COPY_FOLDERS.api], ["before", PRE_DEPLOY], ["address", urls.api]], variables: vars.api },
+      // The new store's owner account, made on its server once it answers, with the email and password typed when it is made.
+      { id: "owner", facts: [["account", urls.api], ["signin", `${urls.admin}/`]] },
       { id: "vercel", facts: [["project", input.site], ["from", from], ["folder", COPY_FOLDERS.shop], ["framework", "Next.js"], ["address", urls.shop]], variables: vars.shop },
       { id: "cloudflare", facts: [["project", adminName(input.site)], ["from", from], ["folder", COPY_FOLDERS.admin], ["build", "npm run build"], ["output", "dist"], ["address", urls.admin]], variables: vars.admin },
-      // A copy with no one in it opens on its own setup, not on a sign-in: its owner makes their account there
-      // (their own password, through no one's hands), then sets the store up.
-      { id: "owner", facts: [["setup", `${urls.admin}/`]] },
     ],
   };
 }

@@ -51,13 +51,17 @@ export type CopyView = {
   by: string | null;
   began: string;
   updated: string;
-  /** Its owner's setup link: once it is made, on its own page only. */
+  /** The new store's owner: their email, and whether their account is made on its server (never a password). */
+  owner: { name: string; email: string; made: boolean } | null;
+  /** Its owner's setup link, when their account wasn't made by the press: once it is made, on its own page only. */
   welcome: string | null;
 };
+/** The new store's owner, made on its server once it answers. */
+export type CopyOwner = { name: string; email: string; password: string };
 export type Alive = { api: { ok: boolean; status: number }; shop: { ok: boolean; status: number }; admin: { ok: boolean; status: number }; waiting: boolean | null };
 
-/** The copy made (202: it goes on by itself). Asked again first: a service that says no now stops it before anything is made. */
-export async function makeCopy(body: PlanAsk) {
+/** The copy made, its owner's account with it (202: it goes on by itself). Asked again first: a service that says no now stops it before anything is made. */
+export async function makeCopy(body: PlanAsk & { owner: CopyOwner }) {
   return (await api.post(`${BASE}/make`, { ...body, agree: true })).data as CopyView;
 }
 export async function listCopies() {

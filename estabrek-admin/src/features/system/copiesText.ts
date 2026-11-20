@@ -8,7 +8,7 @@ const STEP: Record<string, string> = {
   railway: "السيرفر (Railway)|The server (Railway)|השרת (Railway)",
   vercel: "المتجر (Vercel)|The shop (Vercel)|החנות (Vercel)",
   cloudflare: "لوحة الإدارة (Cloudflare Pages)|The admin (Cloudflare Pages)|לוח הניהול (Cloudflare Pages)",
-  owner: "صاحب المتجر الجديد|The new store's owner|הבעלים של החנות החדשה",
+  owner: "حساب صاحب المتجر الجديد|The new store owner's account|החשבון של הבעלים של החנות החדשה",
 };
 const FACT: Record<string, string> = {
   project: "المشروع|Project|פרויקט",
@@ -23,6 +23,8 @@ const FACT: Record<string, string> = {
   build: "البناء|Build|בנייה",
   output: "الناتج|Output|פלט",
   setup: "بتفتح على الإعداد (حسابه، وبعدين متجره)|Opens on its setup (their account, then the store)|נפתח על ההגדרה (החשבון שלו, ואז החנות)",
+  account: "بينعمل على السيرفر أول ما يشتغل، بالإيميل وكلمة السر اللي بتكتبهم تحت|Made on the server as soon as it runs, with the email and password you type below|נוצר בשרת ברגע שהוא עולה, עם האימייל והסיסמה שתכתבו למטה",
+  signin: "بيفوت من هون|Signs in here|נכנס מכאן",
 };
 /** Where a secret's value comes from (a shown value needs no words). */
 const FROM: Record<string, string> = {
@@ -44,6 +46,7 @@ const CHECK: Record<string, string> = {
   "cloudflare.connection": "اتصال Cloudflare|A Cloudflare connection|חיבור Cloudflare",
   "cloudflare.account": "اتصال Cloudflare إله Account ID|The Cloudflare connection has an Account ID|לחיבור Cloudflare יש Account ID",
   "cloudflare.name": "اسم الإدارة فاضي بـ Cloudflare Pages|The admin's name is free at Cloudflare Pages|שם הניהול פנוי ב-Cloudflare Pages",
+  "cloudflare.address": "عنوان الإدارة مش لحدا تاني على Cloudflare|The admin's address is no one else's at Cloudflare|הכתובת של הניהול לא של מישהו אחר ב-Cloudflare",
 };
 /** The server's reasons, in the admin's words ({1}…: what the reason names). */
 const WHY: Array<[RegExp, string]> = [
@@ -55,6 +58,9 @@ const WHY: Array<[RegExp, string]> = [
   [/^(.+)\.up\.railway\.app is taken$/, "{1}.up.railway.app محجوز: اختار اسم تاني للسيرفر|{1}.up.railway.app is taken: pick another name for the server|{1}.up.railway.app תפוס: בחרו שם אחר לשרת"],
   [/^The Cloudflare connection has no Account ID$/, "اتصال Cloudflare ما إله Account ID: حطّه بإعدادات الاتصال|The Cloudflare connection has no Account ID: give it one in the connection's settings|לחיבור Cloudflare אין Account ID: הוסיפו אותו בהגדרות החיבור"],
   [/^(.+)\.vercel\.app is someone else's$/, "{1}.vercel.app لحدا تاني على Vercel: اختار اسم تاني للموقع|{1}.vercel.app is someone else's at Vercel: pick another name for the site|{1}.vercel.app שייך למישהו אחר ב-Vercel: בחרו שם אחר לאתר"],
+  [/^(.+)\.pages\.dev is someone else's$/, "{1}.pages.dev لحدا تاني على Cloudflare: اختار اسم تاني للموقع|{1}.pages.dev is someone else's at Cloudflare: pick another name for the site|{1}.pages.dev שייך למישהו אחר ב-Cloudflare: בחרו שם אחר לאתר"],
+  [/^The server didn't answer in time/, "السيرفر ما اشتغل بالوقت: يمكن أول نشر إله فشل، شوفه بـ Railway، وبعدين جرّب كمان مرة من هون|The server didn't come up in time: its first deploy may have failed, see it at Railway, then try again from here|השרת לא עלה בזמן: אולי הפריסה הראשונה שלו נכשלה, ראו אותה ב-Railway, ואז נסו שוב מכאן"],
+  [/^The setup code isn't right$/, "السيرفر ما قبل كود الإعداد: جرّب كمان مرة من هون|The server didn't take the setup code: try again from here|השרת לא קיבל את קוד ההגדרה: נסו שוב מכאן"],
   [/^"(.+)" didn't answer in time$/, "«{1}» ما جاوب بالوقت: جرّب كمان مرة|“{1}” didn't answer in time: try again|«{1}» לא ענה בזמן: נסו שוב"],
   [/^The server stopped while doing it$/, "السيرفر وقف وهو بيعمل هالخطوة: جرّب كمان مرة من هون|The server stopped while doing this step: try again from here|השרת נעצר באמצע השלב הזה: נסו שוב מכאן"],
   [/^Something went wrong here$/, "صار خطأ بهالخطوة: جرّب كمان مرة، وإذا رجع، شوف سجل السيرفر|Something went wrong in this step: try again, and if it comes back, look at the server's log|משהו השתבש בשלב הזה: נסו שוב, ואם זה חוזר, הסתכלו ביומן של השרת"],
@@ -73,6 +79,8 @@ const MAKE: Record<string, string> = {
   "cloudflare.deploy": "أول نشر للإدارة|The admin's first deploy|הפריסה הראשונה של הניהול",
   "railway.variables": "متغيرات السيرفر، مع عنوان قاعدته|The server's variables, with its database's address|המשתנים של השרת, עם הכתובת של מסד הנתונים שלו",
   "railway.deploy": "السيرفر مربوط بالمستودع، وأول نشر إله|The server linked to the repository, and its first deploy|השרת מחובר למאגר, והפריסה הראשונה שלו",
+  "owner.account": "حساب صاحب المتجر على السيرفر (بيستنى أول نشر، كم دقيقة)|The owner's account on the server (it waits for the first deploy, a few minutes)|החשבון של הבעלים בשרת (מחכה לפריסה הראשונה, כמה דקות)",
+  "railway.addresses": "السيرفر بيعرف عناوين المتجر والإدارة|The server told the shop's and the admin's addresses|השרת מקבל את הכתובות של החנות והניהול",
 };
 const STEP_STATE: Record<string, string> = {
   waiting: "لسا|Not yet|עוד לא",

@@ -88,7 +88,7 @@ export default function CopiesPage() {
         </p>
         <p className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/80" data-testid="copies-how">
           {say(
-            "أول شي بتشوف شو رح ينعمل، وكل خدمة بتنسأل إذا الأسماء فاضية: هاد ما بيعمل ولا شي. بعدين، لما تأكّد، السيرفر بيعمل النسخة خطوة خطوة وإنت بتتابع، وبالآخر بيعطيك رابط لصاحب المتجر الجديد.|First you see what would be made, and each service is asked whether the names are free: that makes nothing. Then, when you confirm, the server makes the copy step by step while you watch, and at the end gives you a link for the new store's owner.|קודם רואים מה ייווצר, וכל שירות נשאל אם השמות פנויים: זה לא יוצר כלום. אחר כך, כשמאשרים, השרת יוצר את העותק שלב אחר שלב ואתם עוקבים, ובסוף הוא נותן קישור לבעלים של החנות החדשה.",
+            "أول شي بتشوف شو رح ينعمل، وكل خدمة بتنسأل إذا الأسماء فاضية: هاد ما بيعمل ولا شي. بعدين، لما تكتب إيميل صاحب المتجر الجديد وكلمة سره وتأكّد، السيرفر بيعمل النسخة خطوة خطوة وإنت بتتابع: القاعدة، السيرفر (وعنوانه أول ما يجهز)، حساب صاحب المتجر، المتجر، والإدارة.|First you see what would be made, and each service is asked whether the names are free: that makes nothing. Then, once you type the new store owner's email and password and confirm, the server makes the copy step by step while you watch: the database, the server (its address as soon as it has one), the owner's account, the shop, and the admin.|קודם רואים מה ייווצר, וכל שירות נשאל אם השמות פנויים: זה לא יוצר כלום. אחר כך, כשכותבים את האימייל והסיסמה של הבעלים החדשים ומאשרים, השרת יוצר את העותק שלב אחר שלב ואתם עוקבים: מסד הנתונים, השרת (והכתובת שלו ברגע שיש לו), החשבון של הבעלים, החנות, והניהול.",
           )}
         </p>
       </section>
@@ -292,15 +292,29 @@ function PlanView({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAs
   );
 }
 
-/** Making it: said yes to in so many words (it costs money every month), then begun; the page follows it above. */
+/**
+ * Making it: the new store's owner (made on its server once it answers), and a yes in so many words (it costs
+ * money every month); then begun, and the page follows it above.
+ */
 function MakeBox({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAsk; onChecks: (checks: CopyPlan["checks"]) => void; onMade: (id: string) => void }) {
   const qc = useQueryClient();
   const [agree, setAgree] = useState(false);
+  const [ownerName, setOwnerName] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
+  const [shown, setShown] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim());
+  const longEnough = password.length >= 10;
+  const same = password === again;
+  const can = agree && !!ownerName.trim() && emailOk && longEnough && same;
   const making = useMutation({
-    mutationFn: () => API.makeCopy({ ...ask, via: plan.via }),
+    mutationFn: () => API.makeCopy({ ...ask, via: plan.via, owner: { name: ownerName.trim(), email: ownerEmail.trim(), password } }),
     onMutate: () => setRefused(null),
     onSuccess: (copy) => {
+      setPassword("");
+      setAgain("");
       qc.setQueryData(["copy-made", copy.id], copy);
       void qc.invalidateQueries({ queryKey: ["copies-made"] });
       onMade(copy.id);
@@ -312,7 +326,39 @@ function MakeBox({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAsk
     },
   });
   return (
-    <div className="space-y-2 rounded-xl border border-accent-400/30 bg-accent-500/5 p-3" data-testid="copies-make">
+    <div className="space-y-3 rounded-xl border border-accent-400/30 bg-accent-500/5 p-3" data-testid="copies-make">
+      <fieldset className="space-y-2" data-testid="copies-owner">
+        <legend className="text-sm font-semibold">{say("صاحب المتجر الجديد|The new store's owner|הבעלים של החנות החדשה")}</legend>
+        <p className="text-xs text-white/60">
+          {say(
+            "حسابه بينعمل على السيرفر الجديد أول ما يشتغل (بعد أول نشر إله، كم دقيقة)، وبعدين بيفوت فيه على لوحة إدارته. كلمة السر بتنحفظ مقفولة لحد ما ينعمل الحساب، وبعدها بتنمسح.|Their account is made on the new server as soon as it runs (after its first deploy, a few minutes), then they sign in with it on their admin. The password is kept sealed until the account is made, then wiped.|החשבון שלו נוצר בשרת החדש ברגע שהוא עולה (אחרי הפריסה הראשונה, כמה דקות), ואז הוא נכנס איתו ללוח הניהול שלו. הסיסמה נשמרת נעולה עד שהחשבון נוצר, ואז נמחקת.",
+          )}
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="block space-y-1">
+            <span className={label}>{say("الاسم|Name|שם")}</span>
+            <input className={field} dir="auto" value={ownerName} maxLength={80} onChange={(e) => setOwnerName(e.target.value)} autoComplete="off" data-testid="copies-owner-name" />
+          </label>
+          <label className="block space-y-1">
+            <span className={label}>{say("الإيميل|Email|אימייל")}</span>
+            <input className={field} dir="ltr" type="email" value={ownerEmail} maxLength={254} onChange={(e) => setOwnerEmail(e.target.value)} autoComplete="off" data-testid="copies-owner-email" />
+          </label>
+          <label className="block space-y-1">
+            <span className={label}>{say("كلمة السر (10 حروف عالأقل)|Password (at least 10 letters)|סיסמה (לפחות 10 תווים)")}</span>
+            <input className={field} dir="ltr" type={shown ? "text" : "password"} value={password} maxLength={200} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" data-testid="copies-owner-password" />
+          </label>
+          <label className="block space-y-1">
+            <span className={label}>{say("كلمة السر مرة تانية|The password again|הסיסמה שוב")}</span>
+            <input className={field} dir="ltr" type={shown ? "text" : "password"} value={again} maxLength={200} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" data-testid="copies-owner-again" />
+          </label>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-white/70">
+          <input type="checkbox" checked={shown} onChange={(e) => setShown(e.target.checked)} data-testid="copies-owner-show" />
+          {say("إظهار كلمة السر|Show the password|הצגת הסיסמה")}
+        </label>
+        {password && !longEnough ? <p className="text-xs text-amber-300" data-testid="copies-owner-short">{say("كلمة السر 10 حروف عالأقل.|The password is at least 10 letters.|הסיסמה היא לפחות 10 תווים.")}</p> : null}
+        {again && !same ? <p className="text-xs text-amber-300" data-testid="copies-owner-differ">{say("كلمتين السر مش متل بعض.|The two passwords differ.|שתי הסיסמאות שונות.")}</p> : null}
+      </fieldset>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-1 h-4 w-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} data-testid="copies-agree" />
         <span>
@@ -321,7 +367,7 @@ function MakeBox({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAsk
           )}
         </span>
       </label>
-      <Button type="button" variant="primary" disabled={!agree} isLoading={making.isPending} onClick={() => making.mutate()} data-testid="copies-make-go">
+      <Button type="button" variant="primary" disabled={!can} isLoading={making.isPending} onClick={() => making.mutate()} data-testid="copies-make-go">
         {say("اعمل النسخة|Make the copy|ליצור את העותק")}
       </Button>
       {refused ? (

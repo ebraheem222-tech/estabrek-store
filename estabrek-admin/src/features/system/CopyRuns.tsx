@@ -110,9 +110,34 @@ export function CopyRun({ id }: { id: string }) {
           {refused ? <p className="text-xs text-red-300">{refused}</p> : null}
         </div>
       ) : null}
+      {v.state !== "made" ? <SoFar v={v} /> : null}
       <Links v={v} />
       {v.state === "made" ? <Made v={v} /> : null}
     </div>
+  );
+}
+
+/** While it is being made: each part's address as soon as that part has one (the server's first). */
+function SoFar({ v }: { v: CopyView }) {
+  const done = (id: string) => v.steps.some((s) => s.id === id && s.state === "done");
+  const parts = [
+    ["api", "railway.domain", say("السيرفر:|The server:|השרת:")],
+    ["shop", "vercel.project", say("المتجر:|The shop:|החנות:")],
+    ["admin", "cloudflare.project", say("الإدارة:|The admin:|הניהול:")],
+  ] as const;
+  const ready = parts.filter(([, step]) => done(step));
+  if (!ready.length) return null;
+  return (
+    <ul className="space-y-0.5 text-sm" data-testid="copy-so-far">
+      {ready.map(([key, , name]) => (
+        <li key={key} className="flex flex-wrap gap-x-2" data-testid={`copy-so-far-${key}`}>
+          <span className="text-white/60">{name}</span>
+          <bdi dir="ltr" className="break-all">
+            {v.addresses[key]}
+          </bdi>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -165,6 +190,20 @@ function Made({ v }: { v: CopyView }) {
         {a && a.waiting === false ? <p className="text-xs text-emerald-300" data-testid="copy-owner-in">{say("صاحب المتجر عمل حسابه.|The store's owner has made their account.|הבעלים של החנות יצרו את החשבון שלהם.")}</p> : null}
         {alive.isError ? <p className="text-xs text-red-300">{getApiErrorMessage(alive.error)}</p> : null}
       </div>
+      {v.owner?.made ? (
+        <div className="space-y-1" data-testid="copy-owner">
+          <div className="text-sm font-medium">{say("صاحب المتجر الجديد|The new store's owner|הבעלים של החנות החדשה")}</div>
+          <p className="text-sm">
+            <bdi>{v.owner.name}</bdi> · <bdi dir="ltr">{v.owner.email}</bdi>
+          </p>
+          <p className="text-xs text-white/70">
+            {say("حسابه انعمل: بيفوت على لوحة الإدارة بهالإيميل وكلمة السر اللي كتبتها.|Their account is made: they sign in on the admin with this email and the password you typed.|החשבון שלו נוצר: הוא נכנס ללוח הניהול עם האימייל הזה והסיסמה שכתבתם.")}{" "}
+            <a href={v.addresses.admin} target="_blank" rel="noreferrer noopener" className="underline">
+              <bdi dir="ltr">{v.addresses.admin.replace(/^https:\/\//, "")}</bdi>
+            </a>
+          </p>
+        </div>
+      ) : null}
       {v.welcome ? (
         <div className="space-y-1">
           <div className="text-sm font-medium">{say("رابط صاحب المتجر الجديد|The new store owner's link|הקישור של הבעלים של החנות החדשה")}</div>
