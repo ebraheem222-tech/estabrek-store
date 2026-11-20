@@ -54,6 +54,8 @@ export default function SetupWizard() {
   // The shop's assistant: on by default, as the personality that fits the store best until one is picked.
   const [assistantOn, setAssistantOn] = useState(true);
   const [persona, setPersona] = useState<string | null>(null);
+  // The store's own shop opens to this admin: until it does, the setup goes no further (its designs come from it).
+  const [shopReady, setShopReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SetupResult | null>(null);
@@ -103,7 +105,7 @@ export default function SetupWizard() {
   const back = () => setStep(steps[Math.max(0, steps.indexOf(step) - 1)]);
   const personaNow = persona ?? personasFor(pack?.industry ?? null)[0]?.id ?? "";
   const logoError = logoUrl?.trim() && !/^https?:\/\/[^\s]+$/i.test(logoUrl.trim()) ? tr("استخدم رابط صورة يبدأ بـ http أو https.", "Use an image URL starting with http or https.") : undefined;
-  const canNext = (!designEntry || previousIdentity !== null) && (step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true);
+  const canNext = (!designEntry || previousIdentity !== null) && (step === "shop" ? shopReady : step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true);
 
   async function apply() {
     if (!pack || designEntry && !previousIdentity) return;
@@ -206,7 +208,7 @@ export default function SetupWizard() {
 
         {step === "media" ? <MediaStep /> : null}
 
-        {step === "shop" ? <ShopStep onReady={next} /> : null}
+        {step === "shop" ? <ShopStep onReady={next} onReadyChange={setShopReady} /> : null}
 
         {step === "industry" ? (
           <section className="space-y-5">

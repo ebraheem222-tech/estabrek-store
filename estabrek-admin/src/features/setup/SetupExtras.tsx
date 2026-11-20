@@ -9,6 +9,7 @@ import { PersonaPicker } from "../../components/PersonaPicker";
 import { getApiErrorMessage } from "../../api/http";
 import * as CloudAPI from "../../api/cloudinary.api";
 import * as ShopAPI from "../../api/shop.api";
+import { TokenGuide } from "./TokenGuide";
 import { say } from "../../studio/say";
 
 export function AssistantStep({ on, onToggle, persona, onPersona, industry }: { on: boolean; onToggle: (v: boolean) => void; persona: string; onPersona: (id: string) => void; industry: string | null }) {
@@ -82,7 +83,7 @@ function shopRefusal(e: unknown): string {
  * The setup's first step: the store's own shop. A store whose shop opens to this admin goes on; one with none
  * (or with another store's) gets one on Vercel from here, with the owner's token, used once and never kept.
  */
-export function ShopStep({ onReady }: { onReady?: () => void }) {
+export function ShopStep({ onReady, onReadyChange }: { onReady?: () => void; /** Whether the shop opens to this admin: the setup goes no further until it does. */ onReadyChange?: (ready: boolean) => void }) {
   const qc = useQueryClient();
   const link = useQuery({ queryKey: ["shop-link"], queryFn: ShopAPI.getShopLink, retry: false });
   useEffect(() => ShopAPI.followShop(link.data), [link.data]);
@@ -133,11 +134,7 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
       }}
       data-testid="setup-shop-token-form"
     >
-      <p className="text-xs leading-6 text-white/60">
-        {say(
-          "بـ vercel.com ← Account Settings ← Tokens اعمل توكن (للحساب أو للفريق اللي رح ينعمل فيه المتجر) وانسخه هون. بيستعمل مرة وحدة لعمل المتجر وما بينحفظ.|At vercel.com → Account Settings → Tokens make a token (for the account or the team the shop goes in) and paste it here. It is used once to make the shop and isn't kept.|ב-vercel.com ← Account Settings ← Tokens צרו טוקן (לחשבון או לצוות שבו תיווצר החנות) והדביקו אותו כאן. הוא משמש פעם אחת ליצירת החנות ולא נשמר.",
-        )}
-      </p>
+      <TokenGuide open={!link.data?.connect} />
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs text-white/60">{say("توكن Vercel|Vercel token|טוקן Vercel")}</span>
@@ -161,6 +158,17 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
   const ready = !!url && opens.data === true;
   const building = !!url && made && opens.data === false;
   const showForm = !link.isLoading && !ready && !building;
+  useEffect(() => onReadyChange?.(ready), [ready, onReadyChange]);
+  // How long the shop has been building, said as it goes (its first deploy takes a few minutes).
+  const [buildingSince, setBuildingSince] = useState<number | null>(null);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!building) return setBuildingSince(null);
+    setBuildingSince((at) => at ?? Date.now());
+    const every = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(every);
+  }, [building]);
+  const waited = buildingSince ? Math.max(0, Math.floor((Date.now() - buildingSince) / 1000)) : 0;
   // Once a shop being built opens, the setup goes on by itself.
   const wasBuilding = useRef(false);
   useEffect(() => {
@@ -191,7 +199,10 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
         <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm" data-testid="setup-shop-building" role="status">
           <div className="font-medium text-sky-200">{say("المتجر انعمل وعم ينبنى… أول نشر بياخد كم دقيقة.|The shop is made and building… its first deploy takes a few minutes.|החנות נוצרה ונבנית… הפריסה הראשונה לוקחת כמה דקות.")}</div>
           <bdi dir="ltr" className="mt-1 block text-white/80">{url!.replace(/^https:\/\//, "")}</bdi>
-          <p className="mt-1 text-xs text-white/60">{say("بنكمّل لحالنا أول ما يفتح. بتقدر تكمّل هلأ كمان، والقوالب بتبيّن لما يجهز.|We go on by ourselves as soon as it opens. You can go on now too; the templates show once it's ready.|נמשיך לבד ברגע שהיא נפתחת. אפשר להמשיך גם עכשיו; התבניות יופיעו כשהיא מוכנה.")}</p>
+          <p className="mt-1 text-xs text-white/60">{say("الإعداد بيكمّل لحاله أول ما يجهز المتجر، وبعدها بتختار شو بتبيع والقالب.|The setup goes on by itself as soon as the shop is ready; then you pick what you sell and the template.|ההגדרה תמשיך לבד ברגע שהחנות מוכנה; ואז בוחרים מה מוכרים ואת התבנית.")}</p>
+          <p className="mt-1 text-xs tabular-nums text-sky-200/80" data-testid="setup-shop-waited">
+            {say("صرلو|Building for|בבנייה כבר")} <bdi dir="ltr">{`${Math.floor(waited / 60)}:${String(waited % 60).padStart(2, "0")}`}</bdi>
+          </p>
         </div>
       ) : null}
       {showForm ? (
@@ -239,6 +250,11 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
           )}
           <p className="text-xs text-white/50">{say("بينعمل بحسابك على Vercel، من نفس الكود، وموصول بسيرفر هالمتجر ولوحته.|It is made in your Vercel account, from the same code, linked to this store's server and admin.|היא נוצרת בחשבון ה-Vercel שלך, מאותו קוד, מחוברת לשרת וללוח הניהול של החנות הזו.")}</p>
         </div>
+      ) : null}
+      {!ready && !link.isLoading ? (
+        <p className="text-center text-xs text-white/50" data-testid="setup-shop-wait">
+          {say("«التالي» بيشتغل لما يجهز متجرك: منه بتنقرأ القوالب.|“Next” works once your shop is ready: the templates are read from it.|«הבא» יעבוד כשהחנות שלך מוכנה: התבניות נקראות ממנה.")}
+        </p>
       ) : null}
     </section>
   );

@@ -77,6 +77,12 @@ test("the store's own shop comes first; one that opens to this admin is said so,
   fireEvent.click(screen.getByTestId("setup-next"));
   expect(await screen.findByTestId("setup-pack-fashion")).toBeInTheDocument();
 });
+test("no going past the shop until it opens to this admin", async () => {
+  m.opens.mockResolvedValue(false);
+  start();
+  await screen.findByTestId("setup-shop-form");
+  expect(screen.getByTestId("setup-next")).toBeDisabled();
+});
 async function choose() {
   await pastShop();
   fireEvent.click(await screen.findByTestId("setup-pack-fashion"));
