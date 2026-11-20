@@ -4,11 +4,11 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
-import { HTTP_LIMITS, forgetConnections } from "../../lib/fnHttp.js";
+import { HTTP_LIMITS, SiteError, forgetConnections } from "../../lib/fnHttp.js";
 import { SECRET_NAME, siteOf } from "../../lib/fnSites.js";
 import { seal } from "../../lib/secretBox.js";
 import { READY_KINDS, READY_LIMITS, kindOf, kindsOut, settingsCheck } from "../../lib/fnKinds.js";
-import { forgetReady, tryReady } from "../../lib/fnReady.js";
+import { forgetReady, lookReady, tryReady } from "../../lib/fnReady.js";
 
 /**
  * /v1/admin/connections — الاتصالات والأسرار (F5): what the owner's functions may reach outside.
@@ -36,6 +36,8 @@ import { forgetReady, tryReady } from "../../lib/fnReady.js";
  * PUT    /admin/connections/ready/:id      { name?, key?, settings? } — a new key replaces the old
  * DELETE /admin/connections/ready/:id      — refused (409) while a function uses it
  * POST   /admin/connections/ready/:id/test { line? } — the key tried for real: { ok, status, said, why, sends }
+ * POST   /admin/connections/ready/:id/look — what is there (Neon, Railway, Vercel, Cloudflare: projects and
+ *        their last deploys, read and never changed): { ok, status, why, who, groups, missed }
  */
 const r = Router();
 
@@ -265,6 +267,23 @@ r.post(
     // Read fresh: the key may have been written a moment ago, on another copy of the server.
     forgetReady();
     res.json(await tryReady(kept.id, body.line || "The store is connected."));
+  }),
+);
+
+r.post(
+  "/ready/:id/look",
+  asyncHandler(async (req, res) => {
+    const kept = await prisma.fnConnection.findUnique({ where: { id: String(req.params.id) }, select: { id: true, kind: true } });
+    if (!kept) throw new AppError(404, "CONNECTION_NOT_FOUND", "No such connection");
+    if (!kindOf(kept.kind)?.look) throw new AppError(400, "NOTHING_TO_LOOK", "This connection has nothing to show");
+    forgetReady();
+    res.setHeader("Cache-Control", "no-store");
+    try {
+      res.json(await lookReady(kept.id));
+    } catch (e) {
+      if (e instanceof SiteError) throw new AppError(400, "LOOK_FAILED", e.message);
+      throw e;
+    }
   }),
 );
 

@@ -16,8 +16,10 @@
  */
 import { createPrivateKey, createSign } from "node:crypto";
 import type { HttpMethod } from "./fnHttp.js";
+import { INFRA_KINDS } from "./fnKindsInfra.js";
 
-export const READY_KINDS = ["telegram", "slack", "google", "api"] as const;
+/** (neon, railway, vercel, cloudflare: where the store itself is hosted, read and never changed; lib/fnKindsInfra.ts.) */
+export const READY_KINDS = ["telegram", "slack", "google", "api", "neon", "railway", "vercel", "cloudflare"] as const;
 export type ReadyKind = (typeof READY_KINDS)[number];
 /** The name a connection's key goes by inside its own calls. It is never one of the owner's secrets. */
 export const READY_KEY = "CONNECTION_KEY";
@@ -61,6 +63,31 @@ export type ReadySetting = {
   /** Said when what was typed isn't one. */
   looks?: string;
 };
+/** How a thing looked is going: well, badly, on its way, or at rest (asleep, cancelled, removed). */
+export type LookTone = "good" | "bad" | "busy" | "idle";
+/**
+ * One thing a look shows: a project, a branch, a service, a deploy. Words the page has its own for
+ * are keys (a fact's name: "region"); the rest is the service's own (names, states, commit lines).
+ */
+export type LookItem = {
+  name: string;
+  id?: string;
+  /** The service's own word for its state ("READY", "active", "CRASHED"). */
+  state?: string;
+  tone?: LookTone;
+  /** When it last changed (a deploy: when it was made), as an ISO time. */
+  when?: string;
+  /** Where it is seen: the site it serves, or its page at the service. Always https. */
+  link?: string;
+  facts?: Array<[string, string]>;
+  items?: LookItem[];
+};
+/** A kind of thing a look found ("projects", "zones"), and how many more there were than are shown. */
+export type LookGroup = { id: string; items: LookItem[]; more?: number };
+export type Look = { /** Whose the key is, as the service says it ("@name", the account's name). */ who: string | null; groups: LookGroup[] };
+export type Asked = { ok: boolean; status: number; body: unknown; why: string | null };
+export type Ask = (call: ReadyCall) => Promise<Asked>;
+
 export type ReadyAction = {
   id: string;
   fields: ReadyField[];
@@ -96,6 +123,14 @@ export type KindDef = {
   test: { sends: boolean; call: (settings: Record<string, string>, text: string) => ReadyCall | null; said: (body: unknown, settings?: Record<string, string>) => string | null };
   /** Why the service said no, in its own words. */
   why: (body: unknown) => string | null;
+  /** A "yes" (2xx) that is a no all the same: a GraphQL answer with errors and nothing else (Railway). */
+  fails?: (body: unknown) => boolean;
+  /**
+   * What is there, read for the owner to see (a hosting service: its projects, what each runs and
+   * how its last deploy went). `ask` makes one call through the connection, as a step's would go;
+   * it never throws for a "no", and a call it can't make any more (too many) is a no too.
+   */
+  look?: (ask: Ask, settings: Record<string, string>) => Promise<Look>;
   /** The key traded for a short-lived token before a call: what is asked, of which address, and what the answer holds. */
   token?: {
     ask: (key: string, now: number) => { url: string; type: string; body: string };
@@ -481,6 +516,7 @@ const KINDS: Record<ReadyKind, KindDef> = {
         ? text(body.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, " ").replace(/<[^>]*>/g, " ").replace(/\s+/g, " "), 200)
         : (text(part(body, "message")) ?? text(part(body, "error")) ?? text(part(part(body, "error"), "message")) ?? text(part(body, "detail")) ?? text(part(body, "title")) ?? text(part(body, "error_description"))),
   },
+  ...INFRA_KINDS,
 };
 
 export const kindOf = (kind: string): KindDef | null => ((READY_KINDS as readonly string[]).includes(kind) ? KINDS[kind as ReadyKind] : null);
@@ -496,6 +532,7 @@ export function kindsOut() {
       settings: d.settings.map((s) => ({ id: s.id, max: s.max, ...(s.required ? { required: true } : {}), ...(s.choices ? { choices: [...s.choices] } : {}), ...(s.shownWhen ? { shownWhen: s.shownWhen } : {}) })),
       actions: d.actions.map((a) => ({ id: a.id, fields: a.fields.map((f) => ({ id: f.id, required: !!f.required, long: !!f.long, ...(f.or ? { or: f.or } : {}) })) })),
       test: { sends: d.test.sends },
+      ...(d.look ? { look: true } : {}),
       ...(d.keyFile ? { keyFile: d.keyFile } : {}),
       ...(d.derived?.length ? { derived: d.derived } : {}),
     };

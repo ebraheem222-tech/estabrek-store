@@ -14,7 +14,8 @@ import { SiteError, callSite, sendRaw, type CallOut } from "./fnHttp.js";
 import { open, seal } from "./secretBox.js";
 import type { Scope } from "./fnValues.js";
 import { secretsIn } from "./fnSites.js";
-import { READY_KEY, READY_LIMITS, kindOf, missingIn, type KindDef, type ReadyCall } from "./fnKinds.js";
+import { READY_KEY, READY_LIMITS, kindOf, missingIn, type Ask, type KindDef, type Look, type ReadyCall } from "./fnKinds.js";
+import { LOOK_LIMITS } from "./fnKindsInfra.js";
 
 type Kept = { id: string; kind: string; name: string; sealed: string; settings: Record<string, string> };
 let cache: { at: number; byId: Map<string, Kept> } | null = null;
@@ -113,7 +114,44 @@ export async function useReady(input: { id: string; what: string; give: Record<s
   const out = await through(c, kind, action.call(c.settings, give), input.scope, !!input.dry, input.ms);
   if (out.dry) return { line, dry: true, status: 0, ok: true, body: null, why: null };
   void prisma.fnConnection.updateMany({ where: { id: c.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
-  return { line, dry: false, status: out.status, ok: out.ok, body: out.ok && action.answer ? action.answer(out.body) : out.body, why: out.ok ? null : kind.why(out.body) };
+  const ok = out.ok && !kind.fails?.(out.body);
+  return { line, dry: false, status: out.status, ok, body: ok && action.answer ? action.answer(out.body) : out.body, why: ok ? null : kind.why(out.body) };
+}
+
+export type ReadyLook = { ok: boolean; status: number; why: string | null; who: string | null; groups: Look["groups"]; /** Calls that said no (a token that may read some things and not others). */ missed: number };
+
+/**
+ * What is there, read through the connection (a hosting service's projects and their last deploys:
+ * lib/fnKindsInfra.ts). Every call goes as a step's would, with the connection's key and to its
+ * site alone; a "no" is its answer, and when everything said no, the first one says why.
+ */
+export async function lookReady(id: string): Promise<ReadyLook> {
+  const c = (await kept()).get(id);
+  const kind = c ? kindOf(c.kind) : null;
+  if (!c || !kind) throw new SiteError("This connection isn't there any more");
+  if (!kind.look) throw new SiteError(`"${c.name}" has nothing to show`);
+  const went = { calls: 0, missed: 0, any: false, first: null as { status: number; why: string | null } | null };
+  const no = (status: number, why: string | null) => {
+    went.missed++;
+    went.first ??= { status, why };
+    return { ok: false, status, body: null, why };
+  };
+  const ask: Ask = async (call) => {
+    if (++went.calls > LOOK_LIMITS.calls) return { ok: false, status: 0, body: null, why: "Too many calls for one look" };
+    try {
+      const out = await through(c, kind, call, {}, false);
+      const ok = out.ok && !kind.fails?.(out.body);
+      if (!ok) return { ...no(out.status, kind.why(out.body) ?? null), body: out.body };
+      went.any = true;
+      return { ok, status: out.status, body: out.body, why: null };
+    } catch (e) {
+      if (!(e instanceof SiteError)) throw e;
+      return no(0, e.message);
+    }
+  };
+  const look = await kind.look(ask, c.settings);
+  if (!went.any) return { ok: false, status: went.first?.status ?? 0, why: went.first?.why ?? null, who: null, groups: [], missed: went.missed };
+  return { ok: true, status: 200, why: null, who: look.who, groups: look.groups, missed: went.missed };
 }
 
 /**
@@ -132,7 +170,8 @@ export async function tryReady(id: string, line: string): Promise<{ ok: boolean;
       return { ok: true, status: 200, said: kind.test.said(null, c.settings), why: null, sends: kind.test.sends };
     }
     const out = await through(c, kind, call, {}, false);
-    return { ok: out.ok, status: out.status, said: out.ok ? kind.test.said(out.body, c.settings) : null, why: out.ok ? null : kind.why(out.body), sends: kind.test.sends };
+    const ok = out.ok && !kind.fails?.(out.body);
+    return { ok, status: out.status, said: ok ? kind.test.said(out.body, c.settings) : null, why: ok ? null : kind.why(out.body), sends: kind.test.sends };
   } catch (e) {
     if (e instanceof SiteError) return { ok: false, status: 0, said: null, why: e.message, sends: kind.test.sends };
     throw e;

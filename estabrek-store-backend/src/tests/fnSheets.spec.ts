@@ -98,7 +98,7 @@ afterAll(async () => {
 describe("The kind, by itself", () => {
   test("what a page is told: its key is a file, its settings, what is worked out from the key, what it does", () => {
     const g = kindsOut().find((k) => k.kind === "google")!;
-    expect(kindsOut().map((k) => k.kind)).toEqual(["telegram", "slack", "google", "api"]);
+    expect(kindsOut().map((k) => k.kind)).toEqual(["telegram", "slack", "google", "api", "neon", "railway", "vercel", "cloudflare"]);
     expect(g).toEqual({
       kind: "google",
       label: "Google Sheets",
