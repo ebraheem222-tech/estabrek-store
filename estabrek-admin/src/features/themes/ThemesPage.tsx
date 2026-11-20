@@ -10,6 +10,7 @@
  * and applied as one with the editor's shared styles.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useShopOrigin } from "../../hooks/useShopOrigin";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../../api/pages.api";
@@ -23,7 +24,7 @@ import { identityOf } from "../../lib/storeIdentity";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
 import { stylesOfKit, withPackStyles } from "../../studio/packs";
-import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, shopOrigin, stageOptionsOf, withOwnedTheme, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
+import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, stageOptionsOf, withOwnedTheme, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
 import { PackPanel } from "./PackPanel";
 import { packChoice, type PackChoice, type PackFrom } from "./packChoice";
 import { StageWorkspace, type StageTab } from "./StageWorkspace";
@@ -99,7 +100,9 @@ export default function ThemesPage() {
     };
   }, [home?.id]);
   const product = productsQ.data?.find((p) => p.slug);
-  const origin = shopOrigin();
+  // The store's own shop; its frame waits until it is known (a client's copy has its own).
+  const { origin: shopAt, known: shopKnown } = useShopOrigin();
+  const origin = shopKnown ? shopAt : "";
   // The current theme shows with the store's changes: the ones being tried, else the saved ones.
   const savedCustom = (current?.custom && typeof current.custom === "object" ? current.custom : null) as ThemeCustom | null;
   const [customDraft, setCustomDraft] = useState<ThemeCustom | null | undefined>(undefined);
