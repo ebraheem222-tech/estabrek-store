@@ -40,6 +40,7 @@ const CHECK: Record<string, string> = {
   "railway.domain": "عنوان السيرفر فاضي|The server's address is free|הכתובת של השרת פנויה",
   "vercel.connection": "اتصال Vercel|A Vercel connection|חיבור Vercel",
   "vercel.name": "اسم المتجر فاضي بـ Vercel|The shop's name is free at Vercel|שם החנות פנוי ב-Vercel",
+  "vercel.address": "عنوان المتجر مش لحدا تاني على Vercel|The shop's address is no one else's at Vercel|הכתובת של החנות לא של מישהו אחר ב-Vercel",
   "cloudflare.connection": "اتصال Cloudflare|A Cloudflare connection|חיבור Cloudflare",
   "cloudflare.account": "اتصال Cloudflare إله Account ID|The Cloudflare connection has an Account ID|לחיבור Cloudflare יש Account ID",
   "cloudflare.name": "اسم الإدارة فاضي بـ Cloudflare Pages|The admin's name is free at Cloudflare Pages|שם הניהול פנוי ב-Cloudflare Pages",
@@ -53,8 +54,48 @@ const WHY: Array<[RegExp, string]> = [
   [/^Domain is not available$/, "العنوان محجوز: اختار اسم تاني للسيرفر|The address is taken: pick another name for the server|הכתובת תפוסה: בחרו שם אחר לשרת"],
   [/^(.+)\.up\.railway\.app is taken$/, "{1}.up.railway.app محجوز: اختار اسم تاني للسيرفر|{1}.up.railway.app is taken: pick another name for the server|{1}.up.railway.app תפוס: בחרו שם אחר לשרת"],
   [/^The Cloudflare connection has no Account ID$/, "اتصال Cloudflare ما إله Account ID: حطّه بإعدادات الاتصال|The Cloudflare connection has no Account ID: give it one in the connection's settings|לחיבור Cloudflare אין Account ID: הוסיפו אותו בהגדרות החיבור"],
+  [/^(.+)\.vercel\.app is someone else's$/, "{1}.vercel.app لحدا تاني على Vercel: اختار اسم تاني للموقع|{1}.vercel.app is someone else's at Vercel: pick another name for the site|{1}.vercel.app שייך למישהו אחר ב-Vercel: בחרו שם אחר לאתר"],
+  [/^"(.+)" didn't answer in time$/, "«{1}» ما جاوب بالوقت: جرّب كمان مرة|“{1}” didn't answer in time: try again|«{1}» לא ענה בזמן: נסו שוב"],
+  [/^The server stopped while doing it$/, "السيرفر وقف وهو بيعمل هالخطوة: جرّب كمان مرة من هون|The server stopped while doing this step: try again from here|השרת נעצר באמצע השלב הזה: נסו שוב מכאן"],
+  [/^Something went wrong here$/, "صار خطأ بهالخطوة: جرّب كمان مرة، وإذا رجع، شوف سجل السيرفر|Something went wrong in this step: try again, and if it comes back, look at the server's log|משהו השתבש בשלב הזה: נסו שוב, ואם זה חוזר, הסתכלו ביומן של השרת"],
   [/^It answered (\d+)$/, "جاوب {1}|It answered {1}|הוא ענה {1}"],
 ];
+
+/** Each step of making a copy (backend lib/pressMake.ts MAKE_STEPS). */
+const MAKE: Record<string, string> = {
+  "neon.project": "قاعدة البيانات بـ Neon|The database at Neon|מסד הנתונים ב-Neon",
+  "railway.project": "مشروع السيرفر بـ Railway|The server's project at Railway|הפרויקט של השרת ב-Railway",
+  "railway.service": "خدمة السيرفر: مجلده، وتجهيز القاعدة قبل كل نشر|The server's service: its folder, and the database brought up to date before each deploy|השירות של השרת: התיקייה שלו, ועדכון מסד הנתונים לפני כל פריסה",
+  "railway.domain": "عنوان السيرفر|The server's address|הכתובת של השרת",
+  "vercel.project": "مشروع المتجر بـ Vercel|The shop's project at Vercel|הפרויקט של החנות ב-Vercel",
+  "cloudflare.project": "مشروع الإدارة بـ Cloudflare Pages|The admin's project at Cloudflare Pages|הפרויקט של הניהול ב-Cloudflare Pages",
+  "vercel.deploy": "متغيرات المتجر وأول نشر إله|The shop's variables and its first deploy|המשתנים של החנות והפריסה הראשונה שלה",
+  "cloudflare.deploy": "أول نشر للإدارة|The admin's first deploy|הפריסה הראשונה של הניהול",
+  "railway.variables": "متغيرات السيرفر، مع عنوان قاعدته|The server's variables, with its database's address|המשתנים של השרת, עם הכתובת של מסד הנתונים שלו",
+  "railway.deploy": "السيرفر مربوط بالمستودع، وأول نشر إله|The server linked to the repository, and its first deploy|השרת מחובר למאגר, והפריסה הראשונה שלו",
+};
+const STEP_STATE: Record<string, string> = {
+  waiting: "لسا|Not yet|עוד לא",
+  doing: "عم ينعمل…|Being made…|בתהליך…",
+  done: "خلص|Done|בוצע",
+  failed: "وقف هون|Stopped here|נעצר כאן",
+};
+const COPY_STATE: Record<string, string> = {
+  making: "عم تنعمل|Being made|בתהליך יצירה",
+  stopped: "وقفت|Stopped|נעצר",
+  made: "انعملت|Made|נוצר",
+};
+export const makeStepName = (id: string) => words(MAKE, id, id);
+export const stepStateName = (state: string) => words(STEP_STATE, state, state);
+export const copyStateName = (state: string) => words(COPY_STATE, state, state);
+/** Why the server didn't make a copy, in the page's words. */
+export function makeRefusedText(data: { error?: string; message?: string } | undefined): string | null {
+  if (!data?.error) return null;
+  if (data.error === "COPY_EXISTS") return say("في نسخة بهالاسم معمولة أو عم تنعمل: كمّلها من فوق، أو اختار اسم تاني.|A copy with this name is made or being made: carry it on from above, or pick another name.|יש עותק בשם הזה שנוצר או בתהליך: המשיכו אותו מלמעלה, או בחרו שם אחר.");
+  if (data.error === "COPY_NOT_READY") return say("خدمة من الخدمات قالت لأ هلأ: شوف الفحص من جديد تحت.|A service says no now: see the checks again below.|אחד השירותים אומר לא עכשיו: ראו את הבדיקות שוב למטה.");
+  if (data.error === "COPY_MAKING") return say("هالنسخة عم تنعمل هلأ.|This copy is being made now.|העותק הזה נוצר עכשיו.");
+  return null;
+}
 /** A refused name or repository, by the server's code. */
 const REFUSED: Record<string, string> = {
   "A name is at least 3 letters": "الاسم 3 حروف عالأقل|A name is at least 3 letters|שם הוא לפחות 3 אותיות",

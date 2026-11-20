@@ -715,6 +715,33 @@ model FeatureItem {
 /// المشروع كملف): kept before every project file is brought in, and when the owner saves one, so
 /// the project can go back to it. Its tables' structure, its functions, its pages, roles, groups
 /// and features; never a table's rows.
+/// A client's copy of this store being made, or made (admin → النظام → نسخ الزباين; src/lib/pressMake.ts): a whole
+/// store of its own in the owner's Neon, Railway, Vercel and Cloudflare accounts. A name is one copy's alone.
+model ClientCopy {
+  id        String   @id @default(cuid())
+  label     String
+  server    String   @unique
+  site      String   @unique
+  repo      String
+  branch    String
+  region    String
+  /// The ready connection each part is made through: { neon, railway, vercel, cloudflare }.
+  via       Json
+  /// "making" | "stopped" (a step said no: tried again from there) | "made"
+  state     String   @default("making")
+  /// Each step and how it went: [{ id, kind, state: waiting|doing|done|failed, why, at }].
+  steps     Json     @default("[]")
+  /// What each service made (ids, addresses; never a secret), so a step tried again finds it.
+  made      Json     @default("{}")
+  /// The copy's own secrets and its setup code, sealed (src/lib/secretBox.ts): given only to its parts.
+  sealed    String
+  byEmail   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 model ProjectSnapshot {
   id        String   @id @default(cuid())
   /// The owner's name for it, or what it was kept before.

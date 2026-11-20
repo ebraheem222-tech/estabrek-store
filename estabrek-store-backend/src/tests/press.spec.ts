@@ -31,6 +31,8 @@ const network: Transport = async ({ method, url, headers, body }) => {
     if (q.query === PRESS_QUERIES.domain) return json({ data: { serviceDomainAvailable: taken.domain ? { available: false, message: "Domain is not available" } : { available: true, message: "" } } });
   }
   if (u.hostname === "api.vercel.com") return taken.vercel ? json({ id: "prj_1", name: "rose" }) : json({ error: { code: "not_found", message: "Project not found" } }, 404);
+  // The address itself, asked from outside: no project holds it.
+  if (u.hostname === "rose.vercel.app") return { status: 404, type: "text/plain", text: "The deployment could not be found on Vercel. DEPLOYMENT_NOT_FOUND", cut: false };
   if (u.hostname === "api.cloudflare.com") return taken.pages ? json({ success: true, result: { name: "rose-admin" } }) : json({ success: false, errors: [{ code: 8000007, message: "Project not found" }] }, 404);
   return json({ message: "not here" }, 404);
 };
@@ -86,6 +88,7 @@ describe("Planning a client's copy", () => {
       ["railway.repo", true],
       ["railway.domain", true],
       ["vercel.name", true],
+      ["vercel.address", true],
       ["cloudflare.name", true],
     ]);
     expect(out.ready).toBe(true);
@@ -94,6 +97,8 @@ describe("Planning a client's copy", () => {
     // Each question read, at its own service, with its own key; the names went as values.
     expect(sent.every((s) => s.method === "GET" || (s.method === "POST" && !/mutation/.test(s.body ?? "")))).toBe(true);
     const of = (host: string) => sent.filter((s) => new URL(s.url).hostname === host);
+    expect(of("rose.vercel.app")[0]).toMatchObject({ method: "GET", url: "https://rose.vercel.app/" });
+    expect(of("rose.vercel.app")[0].headers.authorization).toBeUndefined();
     expect(of("api.vercel.com")[0]).toMatchObject({ url: "https://api.vercel.com/v9/projects/rose?teamId=team_abc123", headers: { authorization: `Bearer ${KEYS.vercel}` } });
     expect(of("api.cloudflare.com")[0].url).toBe(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/pages/projects/rose-admin`);
     expect(of("backboard.railway.com").map((s) => JSON.parse(s.body!).variables)).toEqual([{ r: "acme/store" }, { d: "rose-api.up.railway.app" }]);
@@ -113,6 +118,7 @@ describe("Planning a client's copy", () => {
       "railway.repo": "Railway can't reach acme/store on GitHub",
       "railway.domain": "Domain is not available",
       "vercel.name": '"rose" is taken by a project of yours',
+      "vercel.address": null,
       "cloudflare.name": '"rose-admin" is taken by a project of yours',
     });
     expect(out.steps).toHaveLength(5);
