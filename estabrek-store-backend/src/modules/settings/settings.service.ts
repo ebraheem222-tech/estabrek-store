@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
+import { getOrCreateSiteRow } from "../../lib/siteRow.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
 import { publicStorefrontMotion } from "../../lib/storefrontMotion.js";
 import { publicExperiments } from "../../lib/experiments.js";
@@ -44,9 +45,7 @@ export async function getMenuTreeByLocation(location: "HEADER" | "FOOTER" | "SEC
 
 /** Get the single SiteSettings (if missing, create an empty one) */
 export async function getOrCreateSiteSettings() {
-  let s = await prisma.siteSettings.findFirst();
-  if (!s) s = await prisma.siteSettings.create({ data: { header: { storeDesign: { version: 1, mode: "cms" } } } });
-  return s;
+  return getOrCreateSiteRow();
 }
 
 import { publicVisualControls } from "../../lib/visualControls.js";

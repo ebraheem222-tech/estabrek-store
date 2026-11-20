@@ -11,6 +11,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { AppError } from "../../utils/httpError.js";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { countRazan, countRazanKey, isRazanEvent, readPreview } from "./razan.service.js";
 import { razanOf } from "./razan.settings.js";
 import { OCCASIONS, answerKeys, quizStart, suggest } from "./styleQuiz.service.js";
@@ -41,7 +42,7 @@ r.get(
 /* ---------------- «رزان بتختارلك» ---------------- */
 
 async function quizSettings() {
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const razan = razanOf(s?.header);
   if (!razan.enabled || !razan.styleQuiz.enabled) throw new AppError(404, "FEATURE_OFF", "The style quiz is off");
   return razan.styleQuiz;

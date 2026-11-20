@@ -3,6 +3,7 @@
 // them, or for templates the store doesn't know, the email is only logged.
 import { env } from "../../../config/env.js";
 import { prisma } from "../../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../../lib/siteRow.js";
 import { renderEmail } from "./emailTemplates.js";
 import { identityOf, storeName, type Audience, type Industry } from "../../identity/identity.js";
 import type { ContentLang } from "../../../lib/translations.js";
@@ -11,7 +12,7 @@ type Store = { name: Record<ContentLang, string>; audience: Audience; industry: 
 let storeCache: { v: Store; at: number } | null = null;
 async function store(): Promise<Store> {
   if (storeCache && Date.now() - storeCache.at < 5 * 60_000) return storeCache.v;
-  const s = await prisma.siteSettings.findFirst({ select: { siteName: true, header: true } }).catch(() => null);
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { siteName: true, header: true } }).catch(() => null);
   // The store's own name (admin → هوية المتجر), never the platform's; and how it speaks.
   const id = identityOf(s);
   const v = { name: { ar: storeName(s, "ar"), en: storeName(s, "en"), he: storeName(s, "he") }, audience: id.audience, industry: id.industry };

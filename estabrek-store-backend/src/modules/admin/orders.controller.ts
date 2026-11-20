@@ -1,6 +1,7 @@
 // src/modules/admin/orders.controller.ts
 import { Router } from "express";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { z } from "zod";
@@ -266,6 +267,7 @@ r.get(
     if (!order) return res.status(404).json({ error: "NOT_FOUND" });
 
     const site = await prisma.siteSettings.findFirst({
+      orderBy: SITE_ROW_ORDER,
       select: { siteName: true, logoUrl: true, contactEmail: true, contactPhone: true, currencyCode: true },
     });
 

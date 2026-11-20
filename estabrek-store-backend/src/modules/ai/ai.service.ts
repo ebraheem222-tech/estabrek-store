@@ -6,6 +6,7 @@
 import sharp from "sharp";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 import { phoneKey } from "../../lib/phoneKey.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
@@ -406,7 +407,7 @@ export async function translateTexts(input: TranslateInput) {
     .map(([k, v]) => [k, String(v ?? "").trim()] as const)
     .filter(([, v]) => v)
     .slice(0, 80);
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const from = input.from ?? mainLanguage(s?.header);
   if (!entries.length || from === input.to) return { texts: {} as Record<string, string> };
   const { brief, audience } = await shop();

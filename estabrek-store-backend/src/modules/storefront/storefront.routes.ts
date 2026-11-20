@@ -3,6 +3,7 @@ import { z } from "zod";
 import { optionalCustomer } from "../../middleware/customerAuth.js";
 import multer from "multer";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { asyncHandler } from "../../utils/async.js";
 import { cacheResponse } from "../../middleware/responseCache.js";
 import { validate } from "../../utils/validate.js";
@@ -405,7 +406,7 @@ r.get("/page-preview", asyncHandler(async (req, res) => {
   });
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
   // The site styles as the editor is changing them (lib/siteStyles.ts), else as published.
-  const header = ((await prisma.siteSettings.findFirst({ select: { header: true } }))?.header ?? {}) as Record<string, unknown>;
+  const header = ((await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } }))?.header ?? {}) as Record<string, unknown>;
   const siteStyles = storedSiteStyles(header.siteStylesDraft) ?? storedSiteStyles(header.siteStyles) ?? [];
   // The design variables likewise (lib/designTokens.ts): the editor's changes, else the published ones.
   const designTokens = storedDesignTokens(header.designTokensDraft) ?? storedDesignTokens(header.designTokens);

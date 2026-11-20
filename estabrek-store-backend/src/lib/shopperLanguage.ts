@@ -5,6 +5,7 @@
  * (/en/…, /he/…; the main language has plain addresses).
  */
 import { prisma } from "./prisma.js";
+import { SITE_ROW_ORDER } from "./siteRow.js";
 import { CONTENT_LANGS, CategoryTranslations, ProductTranslations, mainLanguage, translationsOf, type ContentLang } from "./translations.js";
 import { identityOf, type Audience, type Industry } from "../modules/identity/identity.js";
 
@@ -31,7 +32,7 @@ export async function shopperLanguage(raw: unknown): Promise<ShopperLanguage> {
 
 /** Reads the store once, for a batch of messages (each shopper with her own language). */
 export async function languageResolver(): Promise<(raw: unknown) => ShopperLanguage> {
-  const s = await prisma.siteSettings.findFirst({ select: { siteName: true, header: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { siteName: true, header: true } });
   const id = identityOf(s);
   const main = mainLanguage(s?.header);
   return (raw) => ({ lang: pickLanguage(raw, s?.header), main, audience: id.audience, industry: id.industry });

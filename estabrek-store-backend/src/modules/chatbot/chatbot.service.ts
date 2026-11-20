@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import type { RecommendedProduct } from "../storefront/recommend.service.js";
 import { recommendProducts } from "../storefront/recommend.service.js";
@@ -76,6 +77,7 @@ function isRecommendationIntent(message: string): boolean {
 
 async function getSupportContact() {
   const s = await prisma.siteSettings.findFirst({
+    orderBy: SITE_ROW_ORDER,
     select: { siteName: true, header: true, contactPhone: true, contactEmail: true },
   });
   return {

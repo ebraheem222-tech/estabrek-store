@@ -2,6 +2,7 @@ import { Router } from "express";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { validate } from "../../utils/validate.js";
 import { asyncHandler } from "../../utils/async.js";
 import {
@@ -86,7 +87,7 @@ function validateScheduleWindow(publishAt?: Date | null, unpublishAt?: Date | nu
 
 /** The store's own name and what it sells, in the page's language (admin → هوية المتجر). */
 async function storeContext(locale: "ar" | "he" | "en") {
-  const s = await prisma.siteSettings.findFirst({ select: { siteName: true, header: true } }).catch(() => null);
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { siteName: true, header: true } }).catch(() => null);
   return { brand: storeName(s, locale), category: pick(INDUSTRY_WORD[identityOf(s).industry], locale) };
 }
 
@@ -530,7 +531,7 @@ r.post("/:id/format", validate({ body: PageFormatBody }), asyncHandler(async (re
 const DRAFT_PAGE = { sections: { orderBy: { order: "asc" as const }, include: { translations: { select: { locale: true, data: true } } } } };
 
 async function storeMain() {
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } }).catch(() => null);
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } }).catch(() => null);
   return mainLanguage(s?.header);
 }
 

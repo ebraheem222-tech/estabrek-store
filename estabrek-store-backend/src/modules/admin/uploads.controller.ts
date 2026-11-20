@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { z } from "zod";
 
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { scanFile } from "../../lib/antivirus.js";
 import { cloudName, deleteFromCloudinary, getCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 import { CUTOUT_TRANSFORMATIONS, cutoutUrl, fetchCutout, publicIdFromUrl } from "../../lib/cloudCutout.js";
@@ -267,6 +268,7 @@ export async function findUsageByFilename(filename: string): Promise<MediaUsage[
 
   // Settings
   const settings = await prisma.siteSettings.findFirst({
+    orderBy: SITE_ROW_ORDER,
     select: {
       logoUrl: true,
       faviconUrl: true,

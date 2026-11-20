@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { ALL_PERMISSIONS, OWN_ACCOUNT_PERMISSIONS, cleanPermissions } from "./permissions.js";
 import { mainLanguage } from "../../lib/translations.js";
 
@@ -28,7 +29,7 @@ export async function adminProfile(adminId: string) {
   });
   if (!a) return null;
   // Their own choice, else the store's main language (admin → لغات المتجر).
-  const settings = a.locale ? null : await prisma.siteSettings.findFirst({ select: { header: true } });
+  const settings = a.locale ? null : await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const owner = a.role === "SUPERADMIN";
   const permissions = owner
     ? [...ALL_PERMISSIONS, ...OWN_ACCOUNT_PERMISSIONS]

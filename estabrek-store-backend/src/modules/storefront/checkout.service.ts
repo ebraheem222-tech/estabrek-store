@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { activeCustomerId } from "../customer/customer.service.js";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER, getOrCreateSiteRow } from "../../lib/siteRow.js";
 import { quoteCart, submitOrderRequest } from "../catalog/catalog.service.js";
 import { releaseOrder, sendDeliveryEmail } from "../fulfillment/fulfillment.service.js";
 
@@ -76,6 +77,7 @@ function isHttpUrl(value?: string | null) {
 
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   let settings = await prisma.siteSettings.findFirst({
+    orderBy: SITE_ROW_ORDER,
     select: {
       siteName: true,
       currencyCode: true,
@@ -88,7 +90,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
     },
   });
   if (!settings) {
-    settings = await prisma.siteSettings.create({ data: {} });
+    settings = await getOrCreateSiteRow();
   }
   return {
     siteName: settings.siteName ?? "Store",
