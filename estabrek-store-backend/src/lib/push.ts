@@ -15,6 +15,7 @@
 import type { PushMessage, PushSubscription } from "@prisma/client";
 import { env } from "../config/env.js";
 import { prisma } from "./prisma.js";
+import { SITE_ROW_ORDER } from "./siteRow.js";
 import { open, seal } from "./secretBox.js";
 import { makePushKeys, pushEndpointOk, pushKeysOk, sendPush, type PushKeyPair, type PushResult } from "./webPush.js";
 import { triggerJob } from "./jobs.js";
@@ -53,7 +54,7 @@ export function pushOf(header: unknown): { on: boolean; ask: PushAsk; orders: bo
 }
 
 export async function pushSettings() {
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } }).catch(() => null);
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } }).catch(() => null);
   return pushOf(s?.header ?? null);
 }
 
@@ -103,7 +104,7 @@ export const forgetPushKeys = () => {
 
 /** How the push services can reach the shop (RFC 8292's "sub"): its email, else its address. */
 async function subject() {
-  const s = await prisma.siteSettings.findFirst({ select: { ordersEmail: true, contactEmail: true } }).catch(() => null);
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { ordersEmail: true, contactEmail: true } }).catch(() => null);
   const email = (s?.contactEmail || s?.ordersEmail || "").trim();
   if (/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) return `mailto:${email}`;
   if (env.STOREFRONT_URL?.startsWith("https://")) return env.STOREFRONT_URL.replace(/\/+$/, "");
@@ -330,7 +331,7 @@ export async function pushOrderUpdate(orderId: string, status: string): Promise<
     if (!settings.on || !settings.orders) return null;
     const order = await prisma.orderRequest.findUnique({ where: { id: orderId }, select: { id: true, userId: true, locale: true } });
     if (!order?.userId || !(await pushAudienceCount("customer", order.userId))) return null;
-    const site = await prisma.siteSettings.findFirst({ select: { siteName: true } }).catch(() => null);
+    const site = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { siteName: true } }).catch(() => null);
     const number = `#${order.id.slice(-8)}`;
     const body = [site?.siteName?.trim(), number].filter(Boolean).join(" · ");
     const words = Object.fromEntries(PUSH_LANGS.map((l) => [l, { title: news[l], body }]));

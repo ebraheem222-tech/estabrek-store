@@ -10,6 +10,7 @@ import { Readable } from "node:stream";
 import sharp from "sharp";
 import type { Prisma, RequestKind, RequestStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { env } from "../../config/env.js";
 import { getCloudinary, isCloudinaryEnabled } from "../../lib/cloudinary.js";
 import { AppError } from "../../utils/httpError.js";
@@ -106,7 +107,7 @@ function ipAllowed(ip: string | null | undefined) {
 const phoneCore = (raw: string) => raw.replace(/\D/g, "").replace(/^(00)?(972|970)/, "").replace(/^0/, "");
 
 export async function createRequest(input: NewRequest, files: Buffer[], ip?: string | null) {
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const cfg = requestsOf(s?.header);
   if (input.kind === "CALLBACK") {
     if (!razanOf(s?.header).helpOrder.enabled) throw new AppError(404, "FEATURE_OFF", "This isn't available");
@@ -235,7 +236,7 @@ export async function requestDemand() {
 /* ---------------- Old photos are deleted ---------------- */
 
 export async function purgeOldPhotos(now = new Date()) {
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const days = requestsOf(s?.header).photoDays;
   const old = await prisma.customerRequest.findMany({
     where: { photosDeletedAt: null, createdAt: { lt: new Date(now.getTime() - days * 24 * 3600_000) }, NOT: { photos: { equals: [] } } },

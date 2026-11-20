@@ -18,6 +18,7 @@
 import { Prisma } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { prisma } from "./prisma.js";
+import { SITE_ROW_ORDER } from "./siteRow.js";
 import { AppError } from "../utils/httpError.js";
 import { CollectionBody, TEMPLATE_KIND } from "./collections.js";
 import type { Field } from "./collectionTree.js";
@@ -57,7 +58,7 @@ const byMade = [{ createdAt: "asc" as const }, { id: "asc" as const }];
 /** The store's project as it is now, read for a file (lib/projectFile.ts toProject). */
 export async function hereNow(): Promise<Here> {
   const [settings, tables, fns, pages, roles, groups, features, connections] = await Promise.all([
-    prisma.siteSettings.findFirst({ select: { siteName: true } }),
+    prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { siteName: true } }),
     prisma.collection.findMany({ orderBy: byMade, select: { id: true, slug: true, name: true, fields: true, api: true, templateId: true } }),
     prisma.fn.findMany({ orderBy: byMade, include: { triggers: { orderBy: byMade } } }),
     prisma.page.findMany({ where: { kind: { in: [...PROJECT_PAGE_KINDS] }, format: PAGE_FORMAT.tree, slug: { notIn: [...OWN_SHOP_PAGES] } }, orderBy: byMade, select: { id: true, kind: true, name: true, slug: true, status: true, tree: true, draft: true, seoTitle: true, seoDescription: true, noIndex: true } }),

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import { prisma } from "../../lib/prisma.js";
+import { getOrCreateSiteRow } from "../../lib/siteRow.js";
 import { validate } from "../../utils/validate.js";
 import { asyncHandler } from "../../utils/async.js";
 import { UpdateSettingsBody, LinkNavsBody } from "./settings.schemas.js";
@@ -12,9 +13,7 @@ import { hasPermission } from "../../middleware/access.js";
 const r = Router();
 
 export async function getOrCreateSettings() {
-  let s = await prisma.siteSettings.findFirst();
-  if (!s) s = await prisma.siteSettings.create({ data: { header: { storeDesign: { version: 1, mode: "cms" } } } });
-  return s;
+  return getOrCreateSiteRow();
 }
 
 export function triggerSettingsRevalidate() {

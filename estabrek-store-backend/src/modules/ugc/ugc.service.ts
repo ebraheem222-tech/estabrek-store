@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import type { Prisma, ReviewStatus, CommentStatus } from "@prisma/client";
 import { enqueueMessage } from "../outbox/outbox.service.js";
 
@@ -129,6 +130,7 @@ export async function submitContactMessage(input: {
   source?: string;
 }) {
   const site = await prisma.siteSettings.findFirst({
+    orderBy: SITE_ROW_ORDER,
     select: { siteName: true, contactEmail: true },
   });
 

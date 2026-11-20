@@ -8,6 +8,7 @@
  */
 import { Readable } from "node:stream";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { env } from "../../config/env.js";
 import { getCloudinary, isCloudinaryEnabled } from "../../lib/cloudinary.js";
 import { backupFileName, packBackup } from "./backupFile.js";
@@ -65,7 +66,7 @@ export function setBackupStorage(s: BackupStorage) {
 /* ---------------- Running a backup ---------------- */
 
 export async function backupsEnabled() {
-  const s = await prisma.siteSettings.findFirst({ select: { backupsEnabled: true } }).catch(() => null);
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { backupsEnabled: true } }).catch(() => null);
   return s?.backupsEnabled !== false;
 }
 

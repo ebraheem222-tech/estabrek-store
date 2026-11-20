@@ -1,5 +1,6 @@
 // src/modules/catalog/catalog.service.ts
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
 import { notePurchases } from "../../lib/popularity.js";
 import { emitAutomation } from "../../lib/automations.js";
@@ -1315,7 +1316,7 @@ function httpError(code: string, message?: string, statusCode = 400, meta?: any)
 }
 
 async function getCurrencyCode() {
-  const s = await prisma.siteSettings.findFirst({ select: { currencyCode: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { currencyCode: true } });
   return s?.currencyCode ?? "ILS";
 }
 
@@ -1638,7 +1639,7 @@ export async function submitOrderRequest(data: {
     const lines = await loadLinesForItems(tx as any, normalized, { allowPastEvents: opts?.skipStockCheck });
     if (!opts?.skipStockCheck) assertAvailable(lines, await availability(tx, lines));
     const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
-    const site = await tx.siteSettings.findFirst({ select: { currencyCode: true, storeCountryCode: true } });
+    const site = await tx.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { currencyCode: true, storeCountryCode: true } });
     const currencyCode = site?.currencyCode ?? "ILS";
     const defaultCountry = site?.storeCountryCode ?? null;
 

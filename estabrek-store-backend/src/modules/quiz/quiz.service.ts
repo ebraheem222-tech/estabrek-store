@@ -7,6 +7,7 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { phoneKey } from "../../lib/phoneKey.js";
 import { AppError } from "../../utils/httpError.js";
 import { isChancePosition, periodOf, quizOf, type QuizSettings } from "./quiz.settings.js";
@@ -16,7 +17,7 @@ const ATTEMPT_MS = 20 * 60_000;
 export const quizLimits = { devicesPerIp: 5 };
 
 export async function quizSettings() {
-  const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   return quizOf(s?.header);
 }
 

@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import { orderSteps } from "../catalog/orderTrack.service.js";
 import argon2 from "argon2";
 import { prisma } from "../../lib/prisma.js";
+import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
 import { env } from "../../config/env.js";
 import { signCustomerToken } from "../../config/security.js";
@@ -94,7 +95,7 @@ export async function verifyLogin(emailRaw: string, code: string, ctx: { ip?: st
  * An account already linked to another Google account isn't opened by this one.
  */
 export async function googleLogin(credential: string, ctx: { ip?: string; ua?: string }) {
-  const settings = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const settings = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const google = googleOf(settings?.header ?? null);
   if (!google.on || !google.clientId) throw fail(404, "GOOGLE_OFF", "Signing in with Google is switched off");
   let profile;
