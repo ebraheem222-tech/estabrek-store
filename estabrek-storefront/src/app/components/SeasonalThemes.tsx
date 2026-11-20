@@ -19,6 +19,18 @@ export function useSeasonalTheme() {
   return useContext(SeasonalContext);
 }
 
+/**
+ * What "auto" shows on a date: winter (Dec-Feb) and summer (Jun-Aug), decorations only. Black Friday is never
+ * picked by the date: its badge says "up to 70% off", a sale the store may not have. It shows only when the
+ * owner picks it (admin → الإعدادات → الثيم الموسمي).
+ */
+export function seasonByDate(date: Date): SeasonalTheme {
+  const month = date.getMonth(); // 0-11
+  if (month === 11 || month === 0 || month === 1) return "winter";
+  if (month >= 5 && month <= 7) return "summer";
+  return "default";
+}
+
 // Provider
 export function SeasonalThemeProvider({
   children,
@@ -59,25 +71,7 @@ export function SeasonalThemeProvider({
     // Only show effects if not seen in the last hour
     const shouldShow = !lastSeen || (now - parseInt(lastSeen)) > oneHour;
 
-    const currentDate = new Date();
-    const month = currentDate.getMonth(); // 0-11
-    const day = currentDate.getDate();
-
-    // Detect season
-    let detectedTheme: SeasonalTheme = "default";
-    
-    // Winter (Dec-Feb)
-    if (month === 11 || month === 0 || month === 1) {
-      detectedTheme = "winter";
-    }
-    // Black Friday (November 20-30)
-    else if (month === 10 && day >= 20 && day <= 30) {
-      detectedTheme = "black-friday";
-    }
-    // Summer (June-Aug)
-    else if (month >= 5 && month <= 7) {
-      detectedTheme = "summer";
-    }
+    const detectedTheme = seasonByDate(new Date());
 
     setTheme(detectedTheme);
 
@@ -322,7 +316,8 @@ export function BlackFridayEffect() {
       {/* Sale badge */}
       <div className="bf-badge">
         <span className="bf-text">BLACK FRIDAY</span>
-        <span className="bf-discount">خصم حتى 70%</span>
+        {/* Its own direction: in the badge's left-to-right line the Arabic came out of order ("70 خصم حتى%"). */}
+        <span className="bf-discount" dir="rtl">خصم حتى 70%</span>
       </div>
 
       {/* Neon border */}
