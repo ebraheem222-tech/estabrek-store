@@ -448,9 +448,8 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   const tone = toneOf(ground, bgGrad, ...(mesh?.layers ?? []));
   if (tone && s.color === undefined && !paint) d.push(`color:var(--pt-on-${tone},currentColor)`);
   // The links in it (link buttons) in the theme's colour that reads on it, whatever colour its words were given
-  // (storeThemes/css.ts linksOn). A box painted a colour of the theme's own starts over with the theme's link colour.
+  // (storeThemes/css.ts linksOn). A box inside it painted a colour of the theme's own starts over (treeCss).
   if (tone) d.push(`--pt-link:var(--pt-link-on-${tone})`);
-  else if (ground?.includes("var(")) d.push("--pt-link:initial");
   const lines = num(s.lines, 1, 12);
   if (lines !== undefined && Number.isInteger(lines) && WORDS.has(type)) d.push("display:-webkit-box", "-webkit-box-orient:vertical", `-webkit-line-clamp:${lines}`, `line-clamp:${lines}`, "overflow:hidden");
   const balance = pick(s.balance, ["balance", "pretty"] as const);
@@ -803,7 +802,9 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
   // Flowing shapes' @keyframes, and elements' own CSS (last, so it wins).
   const formFrames: string[] = [];
   const own: string[] = [];
-  const walk = (n: TreeNode, parent: TreeNode | null) => {
+  // `toned`: inside a box that gave its links a colour for its tone (declarations: --pt-link).
+  const walk = (n: TreeNode, parent: TreeNode | null, toned = false) => {
+    let linksBelow = toned;
     if (n.type !== "page" && n.type !== "legacy") drawn++;
     if (!perfUsed && (perfOf(n.props?.perf) || endlessOf(n, motionOf(n)) || (auto && autoNeeded(n)))) perfUsed = true;
     if (SAFE_ID.test(n.id ?? "")) {
@@ -842,6 +843,12 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       const origin = motion?.keys?.origin;
       if (origin) fx.push(`${sel}{transform-origin:${KEY_ORIGIN_CSS[origin] ?? "50% 50%"}}`);
       const b = screenDeclarations(n.style, "base", n.type);
+      // A box painted a colour of the theme's own inside a toned one (a white card on a dark band): its links go
+      // back to the theme's link colour, which reads on the theme's own colours.
+      const ownLinks = b.some((x) => x.startsWith("--pt-link:"));
+      const themePainted = !ownLinks && Boolean(color(n.style?.base?.bg)?.includes("var("));
+      if (toned && themePainted) b.push("--pt-link:initial");
+      linksBelow = ownLinks || (toned && !themePainted);
       // Columns always say how many tracks they have (their cells' count when no shares are set).
       if (n.type === "columns" && !widthsTemplate(n.style?.base?.widths)) b.unshift(`grid-template-columns:repeat(${Math.max(1, Math.min(4, n.children?.length ?? 1))},minmax(0,1fr))`);
       // A slider's frame from its settings; a screen's own `aspect` still wins.
@@ -884,7 +891,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       tablet.push(...extra.rules.tablet);
       phone.push(...extra.rules.phone);
     }
-    n.children?.forEach((c) => walk(c, n));
+    n.children?.forEach((c) => walk(c, n, linksBelow));
   };
   walk(tree.root, null);
   // Parts of old sections and scenes (the editor's looks): their own look, per screen.

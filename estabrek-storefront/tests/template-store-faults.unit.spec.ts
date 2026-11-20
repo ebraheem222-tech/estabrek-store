@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { declarations } from "../src/pageTree/css";
+import { declarations, treeCss } from "../src/pageTree/css";
 import { linksOn } from "../src/storeThemes/css";
 import { contrast } from "../src/storeThemes/colour";
 import { reachProblem, storeFormOf } from "../src/pageTree/formSpec";
@@ -35,11 +35,16 @@ test("a link reads on any box the renderer calls dark or light, in every templat
   }
 });
 
-test("a painted box hands its links the theme's link colour for its tone; a box in a theme colour starts over", () => {
+test("a painted box hands its links the theme's link colour for its tone; a theme-coloured card inside it starts over", () => {
   expect(declarations({ bg: "#5b03e4", color: "#ffffff" }, "section")).toContain("--pt-link:var(--pt-link-on-dark)");
   expect(declarations({ bg: "#ffffff" }, "section")).toContain("--pt-link:var(--pt-link-on-light)");
-  expect(declarations({ bg: "surface" }, "section")).toContain("--pt-link:initial");
-  expect(declarations({ pad: [10, 10, 10, 10] }, "section").some((d) => d.startsWith("--pt-link"))).toBe(false);
+  // A theme colour or no colour at all: nothing of its own.
+  for (const s of [{ bg: "surface" }, { pad: [10, 10, 10, 10] }]) expect(declarations(s, "section").some((d) => d.startsWith("--pt-link"))).toBe(false);
+  // A white card on a dark band goes back to the theme's link colour; the same card on its own adds nothing.
+  const card = { id: "card", type: "stack", props: {}, style: { base: { bg: "surface" } }, children: [{ id: "go", type: "button", props: { variant: "link" } }] };
+  const page = (children: unknown[]) => ({ version: 1 as const, root: { id: "page", type: "page", props: {}, children } }) as Parameters<typeof treeCss>[0];
+  expect(treeCss(page([{ id: "band", type: "section", props: {}, style: { base: { bg: "#111111" } }, children: [card] }]))).toContain(".pt-card{background:var(--surface);--pt-link:initial}");
+  expect(treeCss(page([card]))).toContain(".pt-card{background:var(--surface)}");
 });
 
 test("the shop's contact form has its fields and a way to answer; the newsletter one email box", () => {
