@@ -30,6 +30,7 @@ import { updateProductDeep, getProductDeep } from "./catalog.service.js";
 import { keepProductRevision } from "./productRevisions.js";
 import { attributesForSave, defaultTypeId } from "../productTypes/productTypes.js";
 import { syncDigitalStock } from "../fulfillment/fulfillment.service.js";
+import { imageBlobKey, keepDuplicateUpload, keepUploadBlob } from "../../lib/uploadBlobs.js";
 
 function slugify(input: string) {
   return (input || "")
@@ -842,6 +843,8 @@ r.post("/products/:id/images/batch", (req, res) => {
           });
 
           if (duplicate) {
+            // The picture found must outlive the disk too (lost by a deploy before this: this upload brings it back).
+            await keepDuplicateUpload(duplicate, { filePath: fullPath, mime: f.mimetype });
             await fs.unlink(fullPath).catch(() => undefined);
             const response = pendingAssetToResponse(req, duplicate);
             out.push(response);
@@ -850,6 +853,9 @@ r.post("/products/:id/images/batch", (req, res) => {
           }
         }
 
+        // These stay on the server's disk (even with Cloudinary), so they are kept in the database too: the disk is
+        // wiped at every deploy (lib/uploadBlobs.ts).
+        await keepUploadBlob(imageBlobKey(f.filename), fullPath, f.mimetype);
         const created = await prisma.mediaAsset.create({
           data: {
             kind: "IMAGE",

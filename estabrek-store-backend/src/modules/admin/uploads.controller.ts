@@ -17,6 +17,7 @@ import { computeDhashHex, hammingHex } from "../../lib/imageHash.js";
 import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
 import { mediaSettings, type MediaSettings } from "../../lib/mediaSettings.js";
 import { Recipe, applyRecipe } from "../../lib/imageEdit.js";
+import { forgetUploadBlob, imageBlobKey, keepDuplicateUpload, keepUploadBlob, readUpload } from "../../lib/uploadBlobs.js";
 
 const r = Router();
 
@@ -813,6 +814,7 @@ r.delete("/images/bulk", async (req, res) => {
       }
       const fp = path.join(IMAGES_DIR, row.filename);
       await fs.unlink(fp).catch(() => undefined);
+      await forgetUploadBlob(imageBlobKey(row.filename));
     }
 
     await prisma.mediaAsset.deleteMany({ where: { id: { in: ids } } });
@@ -856,6 +858,7 @@ r.delete("/images/:id", async (req, res) => {
       } catch {
         // ignore
       }
+      await forgetUploadBlob(imageBlobKey(row.filename));
     }
 
     await prisma.mediaAsset.delete({ where: { id } });
@@ -1017,6 +1020,8 @@ export async function ingestImages(req: any, files: IngestFile[], opts: { folder
           duplicate = await prisma.mediaAsset.update({ where: { id: duplicate.id }, data: updates });
         }
 
+        // The picture found must outlive the disk too (lost by a deploy before this: this upload brings it back).
+        await keepDuplicateUpload(duplicate, { filePath: fullPath, mime: file.mimetype });
         await fs.unlink(fullPath).catch(() => undefined);
         const response = mediaAssetToResponse(req, duplicate);
         out.push(response);
@@ -1059,6 +1064,8 @@ export async function ingestImages(req: any, files: IngestFile[], opts: { folder
       out.push(response);
       if (imageHash) dedupCache.set(imageHash, response);
     } else {
+      // On the server's disk, and in the database too: the disk is wiped at every deploy (lib/uploadBlobs.ts).
+      await keepUploadBlob(imageBlobKey(file.filename), fullPath, file.mimetype || guessMimeFromExt(file.filename));
       const created = await prisma.mediaAsset.create({
         data: {
           kind: "IMAGE",
@@ -1152,7 +1159,12 @@ r.post("/edit", async (req, res) => {
       const got = await fetch(asset.url);
       if (!got.ok) return res.status(502).json({ error: "SOURCE_UNREADABLE", message: "The picture couldn't be read from Cloudinary" });
       input = Buffer.from(await got.arrayBuffer());
-    } else input = await fs.readFile(path.join(IMAGES_DIR, asset.filename));
+    } else {
+      // On the disk, or kept in the database when a deploy wiped the disk.
+      const kept = await readUpload(imageBlobKey(asset.filename));
+      if (!kept) return res.status(404).json({ error: "SOURCE_MISSING", message: "The picture's file is gone from the server" });
+      input = kept.bytes;
+    }
     const out = await applyRecipe(input, body.data.recipe);
     const filename = `edit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
     await fs.writeFile(path.join(IMAGES_DIR, filename), out.buffer);
