@@ -10,6 +10,28 @@ import { withMotionProfile, type MotionProfile } from "../../pageTree/motionProf
 
 const tree = (children: Node[]) => ({ version: 1 as const, root: { id: "page", type: "page", props: {}, children } });
 
+const STORE_NAME = "{{store.name}}";
+const isStoreName = (words: unknown) => Boolean(words) && typeof words === "object" && Object.values(words as Record<string, unknown>).some((w) => typeof w === "string" && w.trim() === STORE_NAME);
+/**
+ * The header's logo place: the part named "Store logo", else its first mention of the store's name (a button or a
+ * heading saying {{store.name}}), named so here. The setup puts the owner's logo there (admin buildSetup.ts); the
+ * templates drawn from references wrote the name as a plain button, so a client's logo never showed in its header.
+ */
+export function markLogo(root: Node): Node {
+  const named = (n: Node): boolean => n.name === "Store logo" || (n.children ?? []).some(named);
+  if (named(root)) return root;
+  let done = false;
+  const walk = (n: Node): Node => {
+    if (done) return n;
+    if ((n.type === "button" && isStoreName(n.props.label)) || (n.type === "heading" && isStoreName(n.props.text))) {
+      done = true;
+      return { ...n, name: "Store logo" };
+    }
+    return n.children?.length ? { ...n, children: n.children.map(walk) } : n;
+  };
+  return walk(root);
+}
+
 /** Detached copies: no linked sections, theme registry reference or demo products in the saved design. */
 export function importDesign(id: string, options?: MotionProfile) {
   const blank = id === "blank";
@@ -19,7 +41,7 @@ export function importDesign(id: string, options?: MotionProfile) {
   const k = withStyle(kitCtx(photosOf(template.category), false), blank ? STYLES.quiet : template.style);
   const brand = t("{{store.name}}");
   const navigation = { menu: [t("المتجر|Shop|חנות"), t("من نحن|About|עלינו"), t("تواصل|Contact|צור קשר")], highlights: [t("{{store.name}}"), t("اكتشف مجموعتنا|Explore our collection|גלו את הקולקציה שלנו")] };
-  const head = !blank && template.regions ? template.regions.header(k, brand) : header(k, template.header.kind, brand, template.header.tone, navigation);
+  const head = markLogo(!blank && template.regions ? template.regions.header(k, brand) : header(k, template.header.kind, brand, template.header.tone, navigation));
   const footerLine = blank ? t("أهلاً بمتجرنا|Welcome to our store|ברוכים הבאים לחנות שלנו") : template.category === "shoes" ? t("اكتشف المجموعة وتفاصيل كل حذاء|Explore the collection and the details of each pair|גלו את הקולקציה ואת הפרטים של כל זוג") : template.footer.line;
   const foot = !blank && template.regions ? template.regions.footer(k, brand) : footer(k, template.footer.kind, brand, footerLine, template.footer.tone);
   // One ID counter for all three regions: generated CSS selectors share the page document.
