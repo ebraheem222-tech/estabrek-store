@@ -213,6 +213,11 @@ r.post(
           delete next.storeKit;
         } else if (body.theme.id) next.storeTheme = { id: body.theme.id, mode: body.theme.mode };
         else delete next.storeTheme;
+        // The shop's assistant: on or off, and the personality it speaks as ("" = the plain assistant).
+        if (body.assistant) {
+          const storefront = next.storefront && typeof next.storefront === "object" && !Array.isArray(next.storefront) ? (next.storefront as Header) : {};
+          next.storefront = { ...storefront, chatbotEnabled: body.assistant.enabled, assistantPersona: body.assistant.persona ?? "" };
+        }
         // A menu in the CMS settings would win over the new one: the new menu is the store's now.
         if (body.menu.length && next.cmsNav && typeof next.cmsNav === "object") next.cmsNav = { ...(next.cmsNav as Header), enabled: false };
         const siteName = wordIn(body.name, main, main);

@@ -11,6 +11,7 @@ import { scanFile } from "../../lib/antivirus.js";
 import {
   VIDEO_FOLDER,
   checkVideoUrl,
+  cloudName,
   cloudinaryVideo,
   deleteVideoFromCloudinary,
   isCloudinaryEnabled,
@@ -548,7 +549,7 @@ r.post(
     const body = z.object({ project: VideoProject }).safeParse(req.body ?? {});
     if (!body.success) return res.status(400).json({ error: "BAD_REQUEST", message: body.error.issues[0]?.message ?? "Send the video's project" });
     const project = body.data.project;
-    const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+    const cloud = cloudName();
     if (!isCloudinaryEnabled() || !cloud) return res.status(409).json({ error: "NEEDS_CLOUDINARY", message: "Making videos needs the store's Cloudinary" });
     const assetOf = async (src: string) => {
       const pid = videoPublicId(src, cloud);

@@ -79,6 +79,8 @@ export const SetupBody = z.object({
   menu: z.array(MenuItem).max(16).default([]),
   /** Put the new home page in place of an existing one (kept as a revision first). */
   replaceHome: z.boolean().default(false),
+  /** The shop's assistant: on or off, and the personality it speaks as (estabrek-storefront/src/lib/personas.ts; null = the plain assistant). */
+  assistant: z.object({ enabled: z.boolean(), persona: z.string().trim().regex(/^[a-z0-9-]{2,30}$/).nullable() }).strict().optional(),
 }).refine((body) => !body.design || body.pages.some((page) => page.slug === "/" && page.tree), {
   path: ["pages"], message: "A complete design requires its own editable home page",
 });

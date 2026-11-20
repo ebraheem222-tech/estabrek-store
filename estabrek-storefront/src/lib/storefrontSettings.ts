@@ -1,5 +1,6 @@
 import { COLOUR_STRENGTHS, SCENE_COLOUR_KEYS, type ColourStrength, type SceneColourKey } from "./colourEngine";
 import { pointerFxOf, type PointerFxKind } from "../../../shared/pictureFx";
+import { PERSONA_IDS } from "./personas";
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 type LiveChatPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ChatbotPosition = "bottom-left" | "bottom-right" | "bottom-center";
@@ -55,6 +56,8 @@ export type StorefrontSettings = {
   chatbotEnabled: boolean;
   chatbotPosition: ChatbotPosition;
   chatbotDraggable: boolean;
+  /** The personality the chat speaks as (lib/personas.ts); "" = the plain assistant. */
+  assistantPersona: string;
   whatsappEnabled: boolean;
   whatsappNumber: string;
 
@@ -171,6 +174,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   chatbotEnabled: true,
   chatbotPosition: "bottom-left",
   chatbotDraggable: false,
+  assistantPersona: "",
   whatsappEnabled: false,
   whatsappNumber: "",
 
@@ -312,6 +316,8 @@ export function normalizeStorefrontSettings(
   next.chatbotPosition = toEnum(raw.chatbotPosition, chatbotPositions, base.chatbotPosition);
   next.toastPosition = toEnum(raw.toastPosition, toastPositions, base.toastPosition);
   next.colorFollow = toEnum(raw.colorFollow, colorFollows, base.colorFollow);
+  // One of the personalities, or none.
+  next.assistantPersona = typeof raw.assistantPersona === "string" && PERSONA_IDS.includes(raw.assistantPersona) ? raw.assistantPersona : "";
   next.colorStrength = toEnum(raw.colorStrength, COLOUR_STRENGTHS, base.colorStrength);
   next.productPictureFx = raw.productPictureFx === "none" ? "none" : pointerFxOf(raw.productPictureFx) ?? base.productPictureFx;
   const scenes = raw.colorScenes && typeof raw.colorScenes === "object" ? (raw.colorScenes as Record<string, unknown>) : {};

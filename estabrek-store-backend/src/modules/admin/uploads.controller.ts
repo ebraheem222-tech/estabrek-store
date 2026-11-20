@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
-import { deleteFromCloudinary, getCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
+import { cloudName, deleteFromCloudinary, getCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 import { CUTOUT_TRANSFORMATIONS, cutoutUrl, fetchCutout, publicIdFromUrl } from "../../lib/cloudCutout.js";
 import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
 import { computeDhashHex, hammingHex } from "../../lib/imageHash.js";
@@ -1114,7 +1114,7 @@ r.post("/background-removal", async (req, res) => {
   if (body.data.assetId) {
     const asset = await prisma.mediaAsset.findUnique({ where: { id: body.data.assetId }, select: { provider: true, providerId: true } });
     publicId = asset?.provider === "CLOUDINARY" ? asset.providerId : null;
-  } else publicId = publicIdFromUrl(body.data.url!, process.env.CLOUDINARY_CLOUD_NAME);
+  } else publicId = publicIdFromUrl(body.data.url!, cloudName());
   if (!publicId) return res.status(400).json({ error: "NOT_ON_CLOUDINARY", message: "The picture is not stored on this store's Cloudinary" });
 
   const out = await fetchCutout(cutoutUrl(cld, publicId, body.data.fineEdges));

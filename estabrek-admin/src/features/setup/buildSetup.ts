@@ -58,6 +58,8 @@ export type SetupRequest = {
   menu: Array<{ label: W; href: string }>;
   replaceHome: boolean;
   design?: ImportedDesign;
+  /** The shop's assistant: on or off, and the personality it speaks as (null = the plain assistant). */
+  assistant?: { enabled: boolean; persona: string | null };
 };
 
 const filled = (v: W): Partial<W> | undefined => {

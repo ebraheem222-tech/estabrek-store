@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
 import { LoadingImg } from "@/components/LoadingImg";
+import { personaFaceUrl, personaLines, type Persona, type PersonaLang } from "@/lib/personas";
 
 type Role = "user" | "assistant";
 
@@ -59,10 +60,24 @@ type ChatWidgetPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ChatWidgetProps = {
   position?: ChatWidgetPosition;
   draggable?: boolean;
+  /** The personality the assistant speaks as (admin → إعداد المتجر); none = the plain assistant. */
+  persona?: Persona | null;
 };
 
-export default function ChatWidget({ position = "bottom-left", draggable = false }: ChatWidgetProps) {
+/** The page's language, as the shop sets it on <html>. */
+function pageLang(): PersonaLang {
+  if (typeof document === "undefined") return "ar";
+  const l = document.documentElement.lang.slice(0, 2);
+  return l === "en" || l === "he" ? l : "ar";
+}
+const NUDGE_KEY = "estabrek_assistant_nudged";
+
+export default function ChatWidget({ position = "bottom-left", draggable = false, persona = null }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
+  const [lang, setLang] = useState<PersonaLang>("ar");
+  const [nudge, setNudge] = useState(false);
+  const lines = persona ? personaLines(persona, lang) : null;
+  const face = useMemo(() => (persona ? personaFaceUrl(persona, 72) : null), [persona]);
   const [sessionId, setSessionId] = useState<string>("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -80,6 +95,8 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
       typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null
     );
 
+    const l = pageLang();
+    setLang(l);
     const sid = saved?.sessionId || uid();
     setSessionId(sid);
     setConversationId(saved?.conversationId ?? null);
@@ -93,11 +110,32 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
           id: uid(),
           role: "assistant",
           at: Date.now(),
-          text: "أهلًا! أنا مساعد المتجر. اسألني عن الشحن، الاستبدال/الإرجاع، المقاسات، أو أي شيء تحتاجه.",
+          text: persona ? personaLines(persona, l).hello : "أهلًا! أنا مساعد المتجر. اسألني عن الشحن، الاستبدال/الإرجاع، المقاسات، أو أي شيء تحتاجه.",
         },
       ]);
     }
-  }, []);
+  }, [persona]);
+
+  // A personality says a short line beside its button, once a visit, a few seconds in.
+  useEffect(() => {
+    if (!persona) return;
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(NUDGE_KEY) === "1";
+    } catch {
+      // ignore
+    }
+    if (seen) return;
+    const t = window.setTimeout(() => {
+      setNudge(true);
+      try {
+        window.sessionStorage.setItem(NUDGE_KEY, "1");
+      } catch {
+        // ignore
+      }
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [persona]);
 
   useEffect(() => {
     if (!draggable) {
@@ -234,7 +272,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
         id: uid(),
         role: "assistant",
         at: Date.now(),
-        text: "تم مسح المحادثة. كيف أقدر أساعدك؟",
+        text: lines ? lines.hello : "تم مسح المحادثة. كيف أقدر أساعدك؟",
       },
     ]);
     try {
@@ -250,11 +288,27 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
       {!open ? (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setNudge(false);
+            setOpen(true);
+          }}
           onPointerDown={handlePointerDown}
           style={draggable ? { touchAction: "none" } : undefined}
-          className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 p-3 shadow-lg backdrop-blur hover:bg-white transition"
+          className="group relative inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 p-3 shadow-lg backdrop-blur hover:bg-white transition"
+          data-testid="assistant-launcher"
+          data-persona={persona?.id ?? ""}
         >
+          {persona && face ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={face} alt="" width={40} height={40} className="h-10 w-10 rounded-full" />
+              {nudge && lines ? (
+                <span className="pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-2xl border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-black shadow-md" style={{ insetInlineStart: 0 }} data-testid="assistant-nudge" dir={lang === "en" ? "ltr" : "rtl"}>
+                  {lines.nudge}
+                </span>
+              ) : null}
+            </>
+          ) : (
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--accent-2)] text-black shadow-sm">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path
@@ -265,7 +319,8 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
               <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
             </svg>
           </span>
-          <span className="sr-only">مساعدة</span>
+          )}
+          <span className="sr-only">{persona ? persona.name[lang] : "مساعدة"}</span>
         </button>
       ) : null}
 
@@ -280,10 +335,21 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
             onPointerDown={handlePointerDown}
             style={draggable ? { touchAction: "none", cursor: "move" } : undefined}
           >
+            {persona && face ? (
+              <div className="flex min-w-0 items-center gap-2" data-testid="assistant-who">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={face} alt="" width={36} height={36} className="h-9 w-9 shrink-0 rounded-full" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-black">{persona.name[lang]}</div>
+                  <div className="truncate text-[11px] text-black/60">{persona.role[lang]}</div>
+                </div>
+              </div>
+            ) : (
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-black">مساعد المتجر</div>
               <div className="truncate text-[11px] text-black/60">مبني على قاعدة المعرفة + دعم</div>
             </div>
+            )}
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -372,7 +438,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="اكتب سؤالك..."
+                placeholder={lines ? lines.hint : "اكتب سؤالك..."}
                 className="min-h-[44px] max-h-[120px] w-full resize-none rounded-2xl border border-black/10 bg-white px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
