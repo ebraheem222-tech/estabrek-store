@@ -17,10 +17,11 @@ import { env } from "../../config/env";
 import { followShop } from "../../api/shop.api";
 
 const NONE = { connect: false, error: null, url: null, source: "none", making: null, repo: "acme/store", branch: "main" };
+const readyNow = vi.fn();
 function show(onReady = vi.fn()) {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ShopStep onReady={onReady} />
+      <ShopStep onReady={onReady} onReadyChange={readyNow} />
     </QueryClientProvider>,
   );
   return onReady;
@@ -42,6 +43,22 @@ describe("The store's own shop, first in its setup", () => {
     expect((await screen.findByTestId("setup-shop-ready")).textContent).toContain("rose.vercel.app");
     expect(screen.queryByTestId("setup-shop-form")).toBeNull();
     expect(m.opens).toHaveBeenCalledWith("https://rose.vercel.app");
+    // The setup may go on: the wizard is told, and no "wait" is said.
+    await waitFor(() => expect(readyNow).toHaveBeenLastCalledWith(true));
+    expect(screen.queryByTestId("setup-shop-wait")).toBeNull();
+  });
+
+  test("the token way in pictures: Vercel's tokens page a press away, then four steps; and no going on until the shop is ready", async () => {
+    m.link.mockResolvedValue(NONE);
+    show();
+    const guide = await screen.findByTestId("setup-shop-guide");
+    expect(guide.hasAttribute("open")).toBe(true);
+    expect(screen.getByTestId("setup-shop-guide-open").getAttribute("href")).toBe("https://vercel.com/account/tokens");
+    expect([1, 2, 3, 4].map((i) => screen.getByTestId(`setup-shop-guide-${i}`).querySelector("svg") !== null)).toEqual([true, true, true, true]);
+    expect(screen.getByTestId("setup-shop-guide-2").textContent).toContain("All Projects");
+    expect(screen.getByTestId("setup-shop-guide-3").textContent).toContain("vcp_");
+    expect(readyNow).toHaveBeenLastCalledWith(false);
+    expect(screen.getByTestId("setup-shop-wait").textContent).toContain("“Next” works once your shop is ready");
   });
 
   test("another store's shop: said so, and one of its own offered", async () => {
@@ -69,7 +86,10 @@ describe("The store's own shop, first in its setup", () => {
     // Its address followed by the admin at once; the token gone from the page.
     await waitFor(() => expect(m.follow).toHaveBeenCalledWith(expect.objectContaining({ url: "https://rose-shop.vercel.app", source: "made" })));
     expect((await screen.findByTestId("setup-shop-building")).textContent).toContain("rose-shop.vercel.app");
+    expect(screen.getByTestId("setup-shop-waited").textContent).toMatch(/0:0\d/);
+    expect(readyNow).toHaveBeenLastCalledWith(false);
     await waitFor(() => expect(onReady).toHaveBeenCalled(), { timeout: 8000 });
+    expect(readyNow).toHaveBeenLastCalledWith(true);
     expect(screen.getByTestId("setup-shop-ready")).toBeTruthy();
   }, 15_000);
 
