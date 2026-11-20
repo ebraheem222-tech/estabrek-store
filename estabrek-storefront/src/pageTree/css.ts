@@ -224,6 +224,44 @@ const num = (v: unknown, min: number, max: number) => (typeof v === "number" && 
 /** A theme colour or a hex one, as CSS (anything else: undefined). */
 export const color = (v: unknown) =>
   typeof v === "string" ? (TOKENS[v] ?? (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : tokenVar(v, "colors"))) : undefined;
+/** How light each colour written in a piece of CSS is (relative luminance, 0 black … 1 white); a variable or a word gives none. */
+export function luminances(css: string): number[] {
+  const out: number[] = [];
+  for (const m of css.matchAll(/#([0-9a-f]{3,8})\b|rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)/gi)) {
+    let r: number, g: number, b: number;
+    let a = 1;
+    if (m[1]) {
+      let h = m[1];
+      if (h.length === 3 || h.length === 4) h = h.split("").map((c) => c + c).join("");
+      if (h.length !== 6 && h.length !== 8) continue;
+      [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+      if (h.length === 8) a = parseInt(h.slice(6, 8), 16) / 255;
+    } else {
+      [r, g, b] = [Number(m[2]), Number(m[3]), Number(m[4])];
+      if (m[5]) a = m[5].endsWith("%") ? parseFloat(m[5]) / 100 : Number(m[5]);
+    }
+    // A colour mostly see-through doesn't decide what the words sit on.
+    if (!(a >= 0.35)) continue;
+    const lin = (c: number) => {
+      const v = Math.max(0, Math.min(255, c)) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    out.push(0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b));
+  }
+  return out;
+}
+/**
+ * Whether a box painted with these is dark or light (its colours on average): dark enough that light words
+ * read on it (better than 4.5 : 1), light enough that dark ones do, or neither (a middle tone, a variable).
+ */
+export function toneOf(...paints: Array<string | undefined>): "dark" | "light" | null {
+  // A colour of the theme's own (a variable) could be either: the box is left as it is.
+  if (paints.some((p) => p?.includes("var("))) return null;
+  const ls = paints.flatMap((p) => (p ? luminances(p) : []));
+  if (!ls.length) return null;
+  const avg = ls.reduce((sum, l) => sum + l, 0) / ls.length;
+  return avg < 0.18 ? "dark" : avg > 0.5 ? "light" : null;
+}
 const length = (v: unknown) => (typeof v === "string" && /^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|vh))$/.test(v) ? v : undefined);
 const place = (v: unknown) => (typeof v === "string" && /^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, list: readonly T[]) => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : undefined);
@@ -402,6 +440,13 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   const paint = gradientOf(s.fill);
   if (paint) d.push(`background-image:${paint}`, "-webkit-background-clip:text", "background-clip:text", "-webkit-text-fill-color:transparent");
+  // A box painted its own colour, its words left to the page's: they take the theme's colour that reads on it
+  // (a dark section of a light theme, a light card of a dark one). Without a store theme the variables aren't
+  // there and the words stay as they were (currentColor is the colour they inherit).
+  if (s.color === undefined && !paint) {
+    const tone = toneOf(color(s.bg), bgGrad, ...(mesh?.layers ?? []));
+    if (tone) d.push(`color:var(--pt-on-${tone},currentColor)`);
+  }
   const lines = num(s.lines, 1, 12);
   if (lines !== undefined && Number.isInteger(lines) && WORDS.has(type)) d.push("display:-webkit-box", "-webkit-box-orient:vertical", `-webkit-line-clamp:${lines}`, `line-clamp:${lines}`, "overflow:hidden");
   const balance = pick(s.balance, ["balance", "pretty"] as const);

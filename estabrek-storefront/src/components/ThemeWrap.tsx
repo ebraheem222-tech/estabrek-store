@@ -98,14 +98,35 @@ function toCustomPresets(customThemes?: any[] | null): ThemePreset[] {
     .filter(Boolean) as ThemePreset[];
 }
 
+/**
+ * A store with a theme (Admin → ثيمات المتجر, or the template its setup applied): the frame (the bar on top,
+ * the footer, the page behind them) wears that theme's colours, read from its own variables (--th-*, the
+ * store-theme <style>; they follow the admin's live preview too), in the theme's mode rather than the old
+ * frame's dark default.
+ */
+const THEMED: Record<string, string> = {
+  "--bg": "var(--th-bg)",
+  "--surface": "var(--th-surface)",
+  "--surface-2": "var(--th-soft)",
+  "--border": "var(--th-line)",
+  "--text": "var(--th-ink)",
+  "--muted": "var(--th-muted)",
+  "--accent": "var(--th-strong)",
+  "--accent-hover": "var(--th-strong)",
+  "--accent-soft": "var(--th-soft)",
+};
+
 export function ThemeWrap({
   theme,
   cursorThemeId,
   storefrontSettings,
   disableGalleryBackdrop = false,
+  storeThemeMode = null,
   children,
 }: {
   theme?: ThemeCfg | null;
+  /** The store's theme is on, in this mode: the frame takes its mode and colours. */
+  storeThemeMode?: "light" | "dark" | null;
   cursorThemeId?: string | null;
   storefrontSettings?: Partial<StorefrontSettings>;
   /** The rose storefront has its own art direction; skip the legacy gallery backdrop. */
@@ -168,10 +189,12 @@ export function ThemeWrap({
     applyCursorTheme(cursorThemeId);
   }, [cursorThemeId]);
 
-  const mode: "dark" | "light" = allowDarkMode ? preview?.mode ?? domMode ?? preferredMode : "light";
+  const themed = storeThemeMode === "light" || storeThemeMode === "dark";
+  const mode: "dark" | "light" = themed ? storeThemeMode : allowDarkMode ? preview?.mode ?? domMode ?? preferredMode : "light";
   const presetId = preview?.presetId ?? basePresetId;
 
-  const preset = getThemePreset(presetId ?? null, customPresets);
+  const basePreset = getThemePreset(presetId ?? null, customPresets);
+  const preset = useMemo(() => (themed ? { ...basePreset, light: THEMED, dark: THEMED } : basePreset), [themed, basePreset]);
   const vars = mode === "dark" ? preset.dark : preset.light;
   const themeVars = useMemo(() => generateThemeCssVars(preset, mode), [preset, mode]);
 
@@ -190,7 +213,8 @@ export function ThemeWrap({
   const accent = storefrontAccent ?? primary ?? baseAccent;
   const accentSoft = storefrontAccentSoft ?? secondary ?? baseAccentSoft ?? accent;
   const accentHover = storefrontAccentSoft ?? secondary ?? baseAccentHover ?? accent;
-  const accentContrast = contrastTextColor(accent, vars["--text"]);
+  // A theme's own strong colour has its own colour for words; one the owner chose is read for its lightness.
+  const accentContrast = themed && accent === baseAccent ? "var(--th-on-strong)" : contrastTextColor(accent, vars["--text"]);
   const [a1, a2, a3] = websiteTheme
     ? [
         accentSoft ?? websiteTheme.colors.secondary,
