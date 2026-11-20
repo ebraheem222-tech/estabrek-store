@@ -31,7 +31,7 @@ test("each kind's own parts: its direct child, a part of one look, several parts
   // Only the look that draws cards (a list of lines has nothing to round).
   expect(css).toContain(".pt-acc.pt.pt-acc-cards .pt-acc-item{border-radius:30px}");
   expect(css).toContain(".pt-cat.pt .pt-tile img,.pt-cat.pt .pt-tile-blank,.pt-cat.pt .pt-tiles-overlay .pt-tile{border-radius:30px}");
-  expect(css).toContain(".pt-frm.pt section{border-radius:30px}");
+  expect(css).toContain(".pt-frm.pt .pt-form-box{border-radius:30px}");
 });
 
 test("no corners set, or a kind with a surface of its own: nothing is added; what's inside a box isn't touched", () => {

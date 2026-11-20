@@ -206,6 +206,9 @@ export async function renderCmsPageBySlug(
   const commerce = tree ? commerceNeeds(tree) : null;
   const lead = tree ? leadImageOf(tree) : undefined;
   const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg, commerce: { preview: options?.preview === true }, ...(storeProduct ? { product: storeProduct } : {}), ...(lead ? { lead } : {}) } : null;
+  // How shoppers reach the store, beside a contact form (Admin → Settings).
+  const reach = (await settingsPromise)?.site as { contactPhone?: string | null; contactEmail?: string | null; whatsappNumber?: string | null } | undefined;
+  if (treeCtx && reach) treeCtx.contact = { phone: reach.contactPhone ?? null, email: reach.contactEmail ?? null, whatsapp: reach.whatsappNumber ?? null };
   if (commerce?.shop && treeCtx?.commerce && !options?.preview) {
     const [initial, categories] = await Promise.all([listProducts({ lang, page: f.page ?? 1, pageSize: 24, sort: f.sort as any, q: f.q, inStock: f.inStock, categoryId: f.categoryId, colors: f.colors.length ? f.colors.join(",") : undefined, sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined, minPrice: f.minPrice, maxPrice: f.maxPrice, attrs: f.attrs, includeFacets: true, lite: true }), listCategories(lang)]);
     const basePath = lang === langCfg.default ? slug : `/${lang}${slug === "/" ? "" : slug}`;

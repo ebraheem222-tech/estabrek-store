@@ -9,7 +9,8 @@
  */
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import type { TreeLang } from "./tree";
-import { FORM_SENT_EVENT, FORM_TEXT_MOST, formWords, problemOf, valuesFor, type FormFieldSpec, type FormSpec, type FormValue } from "./formSpec";
+import { FORM_SENT_EVENT, FORM_TEXT_MOST, formWords, problemOf, reachProblem, valuesFor, type FormFieldSpec, type FormSpec, type FormValue } from "./formSpec";
+import { submitContactMessage } from "@/lib/contactForm";
 import { fillVars, keepAnswer } from "./recipeVars";
 import { rowsChanged } from "./rowsSpec";
 import { wantHands, whenHands } from "./recipeHands";
@@ -41,7 +42,7 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
   }, [sending, problems]);
 
   // A page with a form that goes somewhere asks the shop for its hands (they are loaded only then).
-  const goes = spec.send !== null;
+  const goes = spec.send?.to === "fn" || spec.send?.to === "table";
   useEffect(() => {
     if (goes) wantHands();
   }, [goes]);
@@ -59,6 +60,9 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
       const p = problemOf(f, values[f.name], lang);
       if (p) found[f.name] = p;
     }
+    // A message to the store says where the answer goes (under the email box when neither is there).
+    const reach = reachProblem(spec, values, lang);
+    if (reach && !found.email && !found.phone) found.email = reach;
     setProblems(found);
     const first = Object.keys(found)[0];
     if (first) {
@@ -79,6 +83,21 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
     if (trap.current?.value) return done();
 
     setState({ is: "sending", text: "" });
+    // The shop's own forms go to the store itself (its messages, its newsletter list), as anyone.
+    if (spec.send.to === "contact" || spec.send.to === "newsletter") {
+      try {
+        if (spec.send.to === "contact") await submitContactMessage({ ...valuesFor(spec.fields, values, "fn"), pageUrl: location.href, source: "page_form" });
+        else {
+          const res = await fetch("/api/newsletter/subscribe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: String(values.email ?? "").trim(), source: "page_form" }) });
+          if (!res.ok) throw new Error(String(res.status));
+        }
+      } catch {
+        return setState({ is: "failed", text: w.other });
+      }
+      done();
+      root.current?.closest("[data-tree-node]")?.dispatchEvent(new CustomEvent(FORM_SENT_EVENT));
+      return;
+    }
     const hands = await whenHands();
     // A form to a table uploads its files first, each into the field of its name; what comes back is the value sent.
     const uploaded: Record<string, string> = {};
@@ -128,7 +147,7 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
 
   const box = (f: FormFieldSpec, id: string, bad: string | undefined) => {
     const about = [f.hint ? `${id}-hint` : "", bad ? `${id}-bad` : ""].filter(Boolean).join(" ") || undefined;
-    const shared = { id, name: f.name, disabled: sending, "aria-invalid": bad ? true : undefined, "aria-describedby": about, "aria-required": f.required || undefined } as const;
+    const shared = { id, name: f.name, className: "pt-form-box", disabled: sending, "aria-invalid": bad ? true : undefined, "aria-describedby": about, "aria-required": f.required || undefined } as const;
     const value = typeof values[f.name] === "string" ? (values[f.name] as string) : "";
     switch (f.kind) {
       case "long":
@@ -166,8 +185,19 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
   };
 
   return (
-    <form ref={root} className={css.form} onSubmit={send} noValidate data-pt-form data-state={state.is}>
+    <form ref={root} className={css.form} onSubmit={send} noValidate data-pt-form data-state={state.is} data-inline={spec.inline ? "" : undefined}>
       {spec.title ? <h2 data-pt-field="title" className="pt-block-title">{spec.title}</h2> : null}
+      {spec.ways?.length ? (
+        <ul className={css.ways}>
+          {spec.ways.map((way) => (
+            <li key={way.href}>
+              <a href={way.href} target={/^https?:/.test(way.href) ? "_blank" : undefined} rel={/^https?:/.test(way.href) ? "noopener noreferrer" : undefined}>
+                <span>{way.label}</span> <bdi dir="ltr">{way.value}</bdi>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {spec.fields.map((f) => {
         const id = `${uid}-${f.name}`;
         const bad = problems[f.name];

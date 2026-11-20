@@ -82,7 +82,7 @@ export function referenceEdition(source: Template, recipe: ReferenceEditionRecip
       footer: (k, brand) => {
         const footer = sourceFooter(k, brand, links, { columns: true, line: profile.intro });
         const slug = provenance.folder.replace(/^templatemo_\d+_/, "").replaceAll("_", "-");
-        footer.children = [...footer.children ?? [], el(k, "button", { label: t("إلهام التصميم: TemplateMo|Design inspiration: TemplateMo|השראת העיצוב: TemplateMo"), href: `https://templatemo.com/tm-${provenance.number}-${slug}`, variant: "link" }, { style: { size: 11, opacity: .7, pad: [12, 0, 0, 0] } })];
+        footer.children = [...footer.children ?? [], el(k, "button", { label: t("إلهام التصميم: TemplateMo|Design inspiration: TemplateMo|השראת העיצוב: TemplateMo"), href: `https://templatemo.com/tm-${provenance.number}-${slug}`, variant: "link" }, { style: { size: 11, opacity: .85, pad: [12, 0, 0, 0] } })];
         return footer;
       },
     },

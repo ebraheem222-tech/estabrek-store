@@ -210,7 +210,8 @@ export const CORNER_PARTS: Record<string, readonly string[]> = {
   categories: [" .pt-tile img", " .pt-tile-blank", " .pt-tiles-overlay .pt-tile"],
   products: [" .product-card-3d"],
   shop: [" .product-card-3d"],
-  form: [" section"],
+  // A form's boxes (FormView.tsx: the contact and newsletter forms too, since they stopped being old sections' cards).
+  form: [" .pt-form-box"],
   chart: [" figure"],
   instrument: [">div"],
   filterGallery: [" .pt-fg-media", " .pt-fg-preview"],
@@ -443,10 +444,13 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   // A box painted its own colour, its words left to the page's: they take the theme's colour that reads on it
   // (a dark section of a light theme, a light card of a dark one). Without a store theme the variables aren't
   // there and the words stay as they were (currentColor is the colour they inherit).
-  if (s.color === undefined && !paint) {
-    const tone = toneOf(color(s.bg), bgGrad, ...(mesh?.layers ?? []));
-    if (tone) d.push(`color:var(--pt-on-${tone},currentColor)`);
-  }
+  const ground = color(s.bg);
+  const tone = toneOf(ground, bgGrad, ...(mesh?.layers ?? []));
+  if (tone && s.color === undefined && !paint) d.push(`color:var(--pt-on-${tone},currentColor)`);
+  // The links in it (link buttons) in the theme's colour that reads on it, whatever colour its words were given
+  // (storeThemes/css.ts linksOn). A box painted a colour of the theme's own starts over with the theme's link colour.
+  if (tone) d.push(`--pt-link:var(--pt-link-on-${tone})`);
+  else if (ground?.includes("var(")) d.push("--pt-link:initial");
   const lines = num(s.lines, 1, 12);
   if (lines !== undefined && Number.isInteger(lines) && WORDS.has(type)) d.push("display:-webkit-box", "-webkit-box-orient:vertical", `-webkit-line-clamp:${lines}`, `line-clamp:${lines}`, "overflow:hidden");
   const balance = pick(s.balance, ["balance", "pretty"] as const);
@@ -1334,7 +1338,7 @@ export const BASE_CSS = [
   ".pt-rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;padding:.05em .35em;border-radius:4px;background:rgba(127,127,127,.15)}",
   ".pt-rich a{color:inherit;text-decoration:underline;text-underline-offset:3px}.pt-rich hr{border:0;border-top:1px solid currentColor;opacity:.25}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",
-  ".pt-btn-link{min-height:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:4px}",
+  ".pt-btn-link{min-height:0;padding:0;color:var(--pt-link,var(--accent));text-decoration:underline;text-underline-offset:4px}",
   ".pt-btn:hover{filter:brightness(1.06)}",
   ".pt-btn:focus-visible,.pt-tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}",
   ".pt-block-title{margin:0 0 20px;font-family:var(--pt-font-heading);font-size:28px;line-height:1.2}",
