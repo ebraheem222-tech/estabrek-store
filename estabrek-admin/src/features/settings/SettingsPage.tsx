@@ -2574,12 +2574,13 @@ export default function SettingsPage() {
                         value={storefrontCfg.seasonalTheme}
                         onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, seasonalTheme: v as StorefrontConfig["seasonalTheme"] }))}
                         options={[
-                          { value: "auto", label: "تلقائي (حسب التاريخ)" },
+                          { value: "auto", label: "تلقائي: شتاء وصيف حسب التاريخ" },
                           { value: "none", label: "بدون" },
                           { value: "winter", label: "شتاء ❄️" },
                           { value: "ramadan", label: "رمضان 🌙" },
                           { value: "eid", label: "العيد 🎉" },
-                          { value: "black-friday", label: "الجمعة السوداء 🔥" },
+                          // Never by itself: its badge promises "up to 70% off" (storefront seasonByDate).
+                          { value: "black-friday", label: "الجمعة السوداء 🔥 (بتبين بس لما تختارها)" },
                           { value: "summer", label: "صيف ☀️" },
                         ]}
                       />
