@@ -31,6 +31,7 @@
  * and its bridge reports where every element is (pageTree/StudioBridge in the shop).
  */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useShopOrigin } from "../hooks/useShopOrigin";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { flushSync } from "react-dom";
 import { Link, useParams } from "react-router-dom";
@@ -160,7 +161,6 @@ import { decorArt } from "./decor";
 import { EDGE_FASTEST, around, boxMovable, edgeScroll, moveAllOps, planeTroubleOf, readDragPrefs, saveDragPrefs, shiftFreeDrag, startFreeDrag, heldAxis, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
-import { env } from "../config/env";
 import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
@@ -224,14 +224,6 @@ type PartMove = { vars: Record<string, string | number>; inlineBox?: boolean; ta
 type Down = { scroll?: Pt; panAt?: Pt; at?: Pt; keys?: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }; edge?: Pt; partMove?: PartMove; before?: string | null; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
 /** What a freely placed element can be dragged into. */
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
-
-const shopOrigin = () => {
-  try {
-    return new URL(env.VITE_STOREFRONT_BASE_URL).origin;
-  } catch {
-    return "";
-  }
-};
 
 export default function StudioPage() {
   const { id = "" } = useParams();
@@ -471,7 +463,8 @@ function StudioDocument() {
   // tablet's frame on a phone, it is shown whole instead.)
   const phoneFit = phone && (device === "phone" || device === "tablet") ? phoneFrame(canvas, DEVICES[device].w, 8, device === "phone" ? 0 : FIT_LEAST) : null;
   const dev: { w: number; h: number } = phoneFit ? { w: DEVICES[device].w, h: phoneFit.h } : DEVICES[device];
-  const origin = shopOrigin();
+  // The store's own shop (a client's copy has its own): the frame waits until it is known.
+  const { origin, known: shopKnown } = useShopOrigin();
 
   // A ticket for the shop's frame (again when the language changes after it got old).
   useEffect(() => {
@@ -496,7 +489,7 @@ function StudioDocument() {
   const currentCustom = !themePreview && savedTheme?.custom && typeof savedTheme.custom === "object" ? `&themeCustom=${encodeURIComponent(JSON.stringify(savedTheme.custom))}` : "";
   // Name the current design too: a framed visit may retain an earlier trial theme.
   const theme = `&storeTheme=${encodeURIComponent(shownTheme)}${shownThemeMode ? `&themeMode=${shownThemeMode}` : ""}${currentCustom}`;
-  const src = ticket && origin ? `${origin}${shopLang === langs.default ? "" : `/${shopLang}`}/studio-frame?token=${encodeURIComponent(ticket.token)}${theme}` : "";
+  const src = ticket && origin && shopKnown ? `${origin}${shopLang === langs.default ? "" : `/${shopLang}`}/studio-frame?token=${encodeURIComponent(ticket.token)}${theme}` : "";
   const viewRefresh = useMemo(() => new PreviewRefresh(requestId => {
     const target = frameRef.current?.contentWindow;
     if (!target) throw new Error("Preview unavailable");
