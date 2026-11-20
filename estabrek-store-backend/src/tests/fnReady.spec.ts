@@ -72,7 +72,7 @@ afterAll(async () => {
 describe("The kinds, by themselves", () => {
   test("what a page is told about a kind: what to ask for, never how the call is made", () => {
     const out = kindsOut();
-    expect(out.map((k) => k.kind)).toEqual(["telegram", "slack", "google", "api"]);
+    expect(out.map((k) => k.kind)).toEqual(["telegram", "slack", "google", "api", "neon", "railway", "vercel", "cloudflare"]);
     expect(out[0]).toEqual({
       kind: "telegram",
       label: "Telegram",
@@ -157,7 +157,7 @@ describe("The kinds, by themselves", () => {
 
 describe("The page's connections", () => {
   test("a service is connected with its key, which is never answered back; its name is one of a kind", async () => {
-    expect((await request(app).get(conn).expect(200)).body).toMatchObject({ ready: [], kinds: [{ kind: "telegram" }, { kind: "slack" }, { kind: "google" }, { kind: "api" }], limits: { ready: READY_LIMITS.connections } });
+    expect((await request(app).get(conn).expect(200)).body).toMatchObject({ ready: [], kinds: [{ kind: "telegram" }, { kind: "slack" }, { kind: "google" }, { kind: "api" }, { kind: "neon" }, { kind: "railway" }, { kind: "vercel" }, { kind: "cloudflare" }], limits: { ready: READY_LIMITS.connections } });
     // Not a token; not this kind's setting; a setting that names something.
     expect((await addReady({ kind: "telegram", name: "Bot", key: "hello" }).expect(400)).body).toMatchObject({ error: "KEY_INVALID", message: expect.stringContaining("@BotFather"), details: { at: "key" } });
     expect((await addReady({ kind: "telegram", name: "Bot", key: TOKEN, settings: { channel: "x" } }).expect(400)).body).toMatchObject({ error: "SETTING_INVALID" });
@@ -181,7 +181,7 @@ describe("The page's connections", () => {
     // The builder is told which there are, their kind, and which settings they hold: not a setting's value.
     const outside = (await request(app).get(at).expect(200)).body.outside;
     expect(outside.ready).toEqual([{ id: made.ready[0].id, name: "Store alerts", kind: "telegram", set: ["chat"] }, { id: expect.any(String), name: "Team", kind: "slack", set: [] }]);
-    expect(outside.kinds.map((k: { kind: string }) => k.kind)).toEqual(["telegram", "slack", "google", "api"]);
+    expect(outside.kinds.map((k: { kind: string }) => k.kind)).toEqual(["telegram", "slack", "google", "api", "neon", "railway", "vercel", "cloudflare"]);
     expect(JSON.stringify(outside)).not.toContain("-100123");
   });
 

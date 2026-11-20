@@ -66,7 +66,7 @@ afterAll(async () => {
 
 describe("The kind, by itself", () => {
   test("what a page is told: its settings (one needed, one a choice, one asked only for a header), a path for every way of asking", () => {
-    expect(kindsOut().map((k) => k.kind)).toEqual(["telegram", "slack", "google", "api"]);
+    expect(kindsOut().map((k) => k.kind)).toEqual(["telegram", "slack", "google", "api", "neon", "railway", "vercel", "cloudflare"]);
     const api = kindsOut().find((k) => k.kind === "api")!;
     expect(api).toMatchObject({
       kind: "api",

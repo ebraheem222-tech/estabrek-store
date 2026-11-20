@@ -661,7 +661,7 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
           </Row>
           {!ready.length ? (
             <p className="text-xs text-white/70" data-testid={`step-${id}-ready-none`}>
-              {say("ما في اتصالات جاهزة لسا (تلغرام، Slack، Google Sheets، أي API): بتنعمل مرة وحدة من|No ready connections yet (Telegram, Slack, Google Sheets, any API): one is made once, in|עדיין אין חיבורים מוכנים (טלגרם, Slack, Google Sheets, כל API): יוצרים חיבור פעם אחת, ב")}{" "}
+              {say("ما في اتصالات جاهزة لسا (تلغرام، Slack، Google Sheets، أي API، أو وين المتجر مستضاف: Neon، Railway، Vercel، Cloudflare): بتنعمل مرة وحدة من|No ready connections yet (Telegram, Slack, Google Sheets, any API, or where the store is hosted: Neon, Railway, Vercel, Cloudflare): one is made once, in|עדיין אין חיבורים מוכנים (טלגרם, Slack, Google Sheets, כל API, או היכן שהחנות מאוחסנת: Neon, Railway, Vercel, Cloudflare): יוצרים חיבור פעם אחת, ב")}{" "}
               <Link to="/admin/connections" className="underline">
                 {say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות")}
               </Link>

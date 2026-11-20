@@ -16,9 +16,10 @@ import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as API from "../../api/connections.api";
-import type { Connections, Ready, ReadyKind, ReadyTry, Secret } from "../../api/connections.api";
+import type { Connections, Ready, ReadyKind, ReadyLook, ReadyTry, Secret } from "../../api/connections.api";
 import { failText } from "../functions/fnText";
 import { choiceName, keyFileAccount, keyLooks, keyName, kindHow, kindName, settingHint, settingName } from "./readyText";
+import { LookView } from "./LookView";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -31,6 +32,11 @@ const SETTING_SAID: Record<string, string> = {
   "settings.header": "اسم الترويسة حروف وأرقام و - بس (متل X-API-Key)|A header's name is letters, digits and - (like X-API-Key)|שם כותרת הוא אותיות, ספרות ו- (כמו X-API-Key)",
   "settings.check": "مسار التجربة بيجي بعد العنوان الأساسي (متل /me)|The path to try comes after the base address (like /me)|נתיב הבדיקה בא אחרי הכתובת הבסיסית (כמו /me)",
   "settings.sheet": "حط رابط الشيت متل ما هو بالمتصفح|Give the sheet's link as the browser shows it|הזן את הקישור לגיליון כפי שהדפדפן מציג אותו",
+  "settings.org": "الـ id تبع المنظمة بيبلّش بـ org- (بتلاقيه بـ Organization settings)|An organization's id starts with org- (it is in Organization settings)|המזהה של ארגון מתחיל ב-org- (הוא מופיע ב-Organization settings)",
+  "settings.project": "الـ id تبع المشروع حروف وأرقام و - (متل cool-sky-12345678)|A project's id is letters, digits and - (like cool-sky-12345678)|מזהה של פרויקט הוא אותיות, ספרות ו- (כמו cool-sky-12345678)",
+  "settings.workspace": "الـ id تبع الـ workspace حروف وأرقام و - بس|A workspace's id is letters, digits and - only|מזהה של workspace הוא רק אותיות, ספרות ו-",
+  "settings.team": "الفريق هو الـ id تبعه (team_…) أو الاسم اللي بعنوانه|A team is its id (team_…) or the name in its address|צוות הוא המזהה שלו (team_…) או השם שבכתובת שלו",
+  "settings.account": "رقم الحساب 32 حرف ورقم (بتلاقيه بصفحة الحساب الرئيسية)|An Account ID is 32 letters and digits (it is on the account's home page)|Account ID הוא 32 אותיות וספרות (הוא מופיע בעמוד הבית של החשבון)",
 };
 const SETTING_NEEDED: Record<string, string> = {
   "settings.base": "لازم العنوان الأساسي للنظام (متل https://erp.example.com/api)|The system's base address is needed (like https://erp.example.com/api)|נדרשת הכתובת הבסיסית של המערכת (כמו https://erp.example.com/api)",
@@ -237,6 +243,13 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
     onSuccess: setTried,
     onError: (e) => setTried({ ok: false, status: 0, said: null, why: getApiErrorMessage(e), sends: !!kind?.test.sends }),
   });
+  // What is there (a hosting service's projects), read when asked.
+  const [seen, setSeen] = useState<ReadyLook | null>(null);
+  const looking = useMutation({
+    mutationFn: () => API.lookReady(ready.id),
+    onSuccess: setSeen,
+    onError: (e) => setSeen({ ok: false, status: 0, why: getApiErrorMessage(e), who: null, groups: [], missed: 0 }),
+  });
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === "ar" ? "ar" : lang === "he" ? "he-IL" : "en-GB", { dateStyle: "medium", timeStyle: "short" }) : null);
   // The kind's own settings in its order; what is worked out from the key on a line of its own (it is something to do).
   const derived = kind?.derived ?? [];
@@ -270,11 +283,23 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
           <div className={note} data-testid={`${t}-used`}>
             {ready.usedBy.length ? `${say("بتستعمله:|Used by:|בשימוש על ידי:")} ${ready.usedBy.join("، ")}` : say("ولا function بتستعمله لسا|No function uses it yet|אף פונקציה עוד לא משתמשת בו")}
             {" · "}
-            {ready.lastUsedAt ? `${say("آخر مرة انبعت:|Last sent:|נשלח לאחרונה:")} ${when(ready.lastUsedAt)}` : say("ما انبعت ولا مرة|Never sent|מעולם לא נשלח")}
+            {/* A service that is only read (a hosting one) isn't sent to: a function used it. */}
+            {kind?.look
+              ? ready.lastUsedAt
+                ? `${say("آخر مرة قرأته function:|Last read by a function:|נקרא לאחרונה על ידי פונקציה:")} ${when(ready.lastUsedAt)}`
+                : say("ولا function قرأته لسا|No function has read it yet|אף פונקציה עוד לא קראה אותו")
+              : ready.lastUsedAt
+                ? `${say("آخر مرة انبعت:|Last sent:|נשלח לאחרונה:")} ${when(ready.lastUsedAt)}`
+                : say("ما انبعت ولا مرة|Never sent|מעולם לא נשלח")}
           </div>
         </div>
         {canWrite ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            {kind?.look ? (
+              <button type="button" className="font-medium underline disabled:opacity-60" disabled={looking.isPending} onClick={() => looking.mutate()} data-testid={`${t}-look-open`}>
+                {looking.isPending ? say("عم يقرأ…|Reading…|קורא…") : seen?.ok ? say("اقرأ من جديد|Read again|קריאה מחדש") : say("شو في هناك؟|What's there?|מה יש שם?")}
+              </button>
+            ) : null}
             <button type="button" className="underline disabled:opacity-60" disabled={trying.isPending} onClick={() => trying.mutate()} data-testid={`${t}-try`}>
               {kind?.test.sends ? say("ابعت رسالة تجربة|Send a test line|שליחת שורת ניסיון") : say("جرّب المفتاح|Try the key|בדיקת המפתח")}
             </button>
@@ -289,7 +314,22 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
       </div>
       {tried ? (
         <div className={`text-sm ${tried.ok ? "text-emerald-300" : "text-red-300"}`} role="status" data-testid={`${t}-tried`} data-ok={tried.ok}>
-          {triedText(tried)}
+          {/* What the service said about itself is its own words ("@my_bot"): kept whole in a right-to-left line. */}
+          {tried.ok && tried.said ? (
+            <>
+              {say("شغّال:|It works:|עובד:")} <bdi>{tried.said}</bdi>
+            </>
+          ) : (
+            triedText(tried)
+          )}
+        </div>
+      ) : null}
+      {seen ? (
+        <div className="space-y-1">
+          <LookView look={seen} t={`${t}-look`} />
+          <button type="button" className="text-xs underline" onClick={() => setSeen(null)} data-testid={`${t}-look-close`}>
+            {say("سكّر|Close|סגירה")}
+          </button>
         </div>
       ) : null}
       {open && kind ? (

@@ -436,7 +436,8 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (s.as) scope[s.as] = out.dry ? { status: 0, ok: true, body: null, dry: true } : { status: out.status, ok: out.ok, body: out.body };
       if (out.dry) return ["wouldUse", out.line];
       // The service's "no" stops the run, with its own words for why.
-      if (!out.ok) throw new Failure(`${out.line} answered ${out.status}${out.why ? `: ${out.why}` : ""}`, at);
+      // (A "no" inside a "yes", GraphQL's errors in a 200, is said as one: "answered 200" would read as a yes.)
+      if (!out.ok) throw new Failure(out.status >= 200 && out.status < 300 ? `${out.line} said no${out.why ? `: ${out.why}` : ""}` : `${out.line} answered ${out.status}${out.why ? `: ${out.why}` : ""}`, at);
       return ["used", out.line];
     }
     case "code": {

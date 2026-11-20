@@ -470,6 +470,12 @@ const CAGE_SAID: Array<[RegExp, string]> = [
   // A ready connection's "no", with the service's own words for why (the owner's name for it first: it is theirs to read).
   [/^(.+?) "(.+)" answered (\d+): (.+)$/, "«{2}» ({1}) جاوب {3}: {4}|{1} “{2}” answered {3}: {4}|«{2}» ({1}) ענה {3}: {4}"],
   [/^(.+?) "(.+)" answered (\d+)$/, "«{2}» ({1}) جاوب {3}|{1} “{2}” answered {3}|«{2}» ({1}) ענה {3}"],
+  // A "no" inside a "yes" (Railway's GraphQL: errors in a 200).
+  [/^(.+?) "(.+)" said no: (.+)$/, "«{2}» ({1}) رفض: {3}|{1} “{2}” said no: {3}|«{2}» ({1}) סירב: {3}"],
+  [/^(.+?) "(.+)" said no$/, "«{2}» ({1}) رفض|{1} “{2}” said no|«{2}» ({1}) סירב"],
+  // Where the store is hosted (Neon, Railway, Vercel, Cloudflare): which of theirs a step reads.
+  [/^The project is empty$/, "أي مشروع؟ (الـ id تبعه، أو مشروع معتاد بالاتصال)|Which project? (its id, or the connection's usual one)|איזה פרויקט? (המזהה שלו, או הרגיל של החיבור)"],
+  [/^The account is empty$/, "أي حساب؟ (الـ Account ID، أو حساب معتاد بالاتصال)|Which account? (its Account ID, or the connection's usual one)|איזה חשבון? (ה-Account ID שלו, או הרגיל של החיבור)"],
   // A kind that trades its key for a token (Google), refused at the trade.
   [/^(.+) refused the key: (.+)$/, "{1} رفض المفتاح: {2}|{1} refused the key: {2}|{1} דחה את המפתח: {2}"],
   [/^(.+) refused the key \((\d+)\)$/, "{1} رفض المفتاح ({2})|{1} refused the key ({2})|{1} דחה את המפתח ({2})"],
