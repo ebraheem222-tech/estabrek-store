@@ -36,7 +36,8 @@ import { spinFor } from "@/components/cinematic/spinData";
 import type { SliderWords } from "./SliderControls";
 import { sliderSettings, sliderLooksOf } from "./sliderEffects";
 import { instrumentOf } from "./instrument";
-import { formOf } from "./formSpec";
+import { formOf, formWords, storeFormOf, type FormWay } from "./formSpec";
+import { whatsappLink } from "@/lib/whatsapp";
 import { liveOf, rowBind } from "./rowsSpec";
 import { ChartView } from "./ChartView";
 import { FilterGalleryBlock } from "./FilterGalleryBlock";
@@ -75,12 +76,26 @@ export type TreeCtx = {
   product?: CatalogProduct;
   /** The page's first picture, loaded first (tree.ts leadImageOf). */
   lead?: string;
+  /** How shoppers reach the store (Admin → Settings), shown with a contact form. */
+  contact?: { phone?: string | null; email?: string | null; whatsapp?: string | null };
   /**
    * Drawn as the card of a list read in the visitor's browser (rowsSpec.ts): its connected elements are marked for
    * the row's values, and nothing in it waits for the motion engine (the copies are drawn after the page).
    */
   inRows?: boolean;
 };
+
+/** The store's WhatsApp, phone and email as links for its contact form (none set: none shown). */
+function waysOf(ctx: TreeCtx): FormWay[] {
+  const w = formWords(ctx.lang);
+  const c = ctx.contact ?? {};
+  const out: FormWay[] = [];
+  const chat = whatsappLink(c.whatsapp || c.phone);
+  if (chat) out.push({ label: w.whatsapp, value: String(c.whatsapp || c.phone).trim(), href: chat });
+  if (c.phone?.trim()) out.push({ label: w.call, value: c.phone.trim(), href: `tel:${c.phone.replace(/[^0-9+]/g, "")}` });
+  if (c.email?.trim()) out.push({ label: w.write, value: c.email.trim(), href: `mailto:${c.email.trim()}` });
+  return out;
+}
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
 const cls = (n: TreeNode, ...more: string[]) =>
@@ -542,13 +557,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "form": {
       // The owner's own form: fields of their choosing, sent to one of their functions or added to one of their tables.
       if (p.kind === "custom") return <div className={cls(node)} {...mark}><FormView spec={formOf(p, say)} lang={ctx.lang} signin={link("/account") ?? "/account"} /></div>;
-      const type = p.kind === "contact" ? "CONTACT" : "NEWSLETTER";
-      const title = say(p.title);
-      return (
-        <div className={cls(node)} {...mark}>
-          {ctx.renderSection?.({ id: `form-${node.id}`, type, data: title ? { title } : {}, order: 0, isVisible: true })}
-        </div>
-      );
+      // The shop's own two: a message to the store (with the ways to reach it), a newsletter sign-up.
+      const kind = p.kind === "contact" ? "contact" : "newsletter";
+      return <div className={cls(node)} {...mark}><FormView spec={storeFormOf(kind, say(p.title), ctx.lang, kind === "contact" ? waysOf(ctx) : [])} lang={ctx.lang} signin={link("/account") ?? "/account"} /></div>;
     }
     case "roseBlock": {
       // data-rose-block: the editor picks the scene and what's inside it as on the home.

@@ -210,7 +210,8 @@ export const CORNER_PARTS: Record<string, readonly string[]> = {
   categories: [" .pt-tile img", " .pt-tile-blank", " .pt-tiles-overlay .pt-tile"],
   products: [" .product-card-3d"],
   shop: [" .product-card-3d"],
-  form: [" section"],
+  // A form's boxes (FormView.tsx: the contact and newsletter forms too, since they stopped being old sections' cards).
+  form: [" .pt-form-box"],
   chart: [" figure"],
   instrument: [">div"],
   filterGallery: [" .pt-fg-media", " .pt-fg-preview"],
@@ -443,10 +444,12 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   // A box painted its own colour, its words left to the page's: they take the theme's colour that reads on it
   // (a dark section of a light theme, a light card of a dark one). Without a store theme the variables aren't
   // there and the words stay as they were (currentColor is the colour they inherit).
-  if (s.color === undefined && !paint) {
-    const tone = toneOf(color(s.bg), bgGrad, ...(mesh?.layers ?? []));
-    if (tone) d.push(`color:var(--pt-on-${tone},currentColor)`);
-  }
+  const ground = color(s.bg);
+  const tone = toneOf(ground, bgGrad, ...(mesh?.layers ?? []));
+  if (tone && s.color === undefined && !paint) d.push(`color:var(--pt-on-${tone},currentColor)`);
+  // The links in it (link buttons) in the theme's colour that reads on it, whatever colour its words were given
+  // (storeThemes/css.ts linksOn). A box inside it painted a colour of the theme's own starts over (treeCss).
+  if (tone) d.push(`--pt-link:var(--pt-link-on-${tone})`);
   const lines = num(s.lines, 1, 12);
   if (lines !== undefined && Number.isInteger(lines) && WORDS.has(type)) d.push("display:-webkit-box", "-webkit-box-orient:vertical", `-webkit-line-clamp:${lines}`, `line-clamp:${lines}`, "overflow:hidden");
   const balance = pick(s.balance, ["balance", "pretty"] as const);
@@ -799,7 +802,9 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
   // Flowing shapes' @keyframes, and elements' own CSS (last, so it wins).
   const formFrames: string[] = [];
   const own: string[] = [];
-  const walk = (n: TreeNode, parent: TreeNode | null) => {
+  // `toned`: inside a box that gave its links a colour for its tone (declarations: --pt-link).
+  const walk = (n: TreeNode, parent: TreeNode | null, toned = false) => {
+    let linksBelow = toned;
     if (n.type !== "page" && n.type !== "legacy") drawn++;
     if (!perfUsed && (perfOf(n.props?.perf) || endlessOf(n, motionOf(n)) || (auto && autoNeeded(n)))) perfUsed = true;
     if (SAFE_ID.test(n.id ?? "")) {
@@ -838,6 +843,12 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       const origin = motion?.keys?.origin;
       if (origin) fx.push(`${sel}{transform-origin:${KEY_ORIGIN_CSS[origin] ?? "50% 50%"}}`);
       const b = screenDeclarations(n.style, "base", n.type);
+      // A box painted a colour of the theme's own inside a toned one (a white card on a dark band): its links go
+      // back to the theme's link colour, which reads on the theme's own colours.
+      const ownLinks = b.some((x) => x.startsWith("--pt-link:"));
+      const themePainted = !ownLinks && Boolean(color(n.style?.base?.bg)?.includes("var("));
+      if (toned && themePainted) b.push("--pt-link:initial");
+      linksBelow = ownLinks || (toned && !themePainted);
       // Columns always say how many tracks they have (their cells' count when no shares are set).
       if (n.type === "columns" && !widthsTemplate(n.style?.base?.widths)) b.unshift(`grid-template-columns:repeat(${Math.max(1, Math.min(4, n.children?.length ?? 1))},minmax(0,1fr))`);
       // A slider's frame from its settings; a screen's own `aspect` still wins.
@@ -880,7 +891,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
       tablet.push(...extra.rules.tablet);
       phone.push(...extra.rules.phone);
     }
-    n.children?.forEach((c) => walk(c, n));
+    n.children?.forEach((c) => walk(c, n, linksBelow));
   };
   walk(tree.root, null);
   // Parts of old sections and scenes (the editor's looks): their own look, per screen.
@@ -1334,7 +1345,7 @@ export const BASE_CSS = [
   ".pt-rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;padding:.05em .35em;border-radius:4px;background:rgba(127,127,127,.15)}",
   ".pt-rich a{color:inherit;text-decoration:underline;text-underline-offset:3px}.pt-rich hr{border:0;border-top:1px solid currentColor;opacity:.25}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",
-  ".pt-btn-link{min-height:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:4px}",
+  ".pt-btn-link{min-height:0;padding:0;color:var(--pt-link,var(--accent));text-decoration:underline;text-underline-offset:4px}",
   ".pt-btn:hover{filter:brightness(1.06)}",
   ".pt-btn:focus-visible,.pt-tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}",
   ".pt-block-title{margin:0 0 20px;font-family:var(--pt-font-heading);font-size:28px;line-height:1.2}",

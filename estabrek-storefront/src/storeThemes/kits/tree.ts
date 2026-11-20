@@ -70,12 +70,16 @@ export const el = (k: K, type: string, props: Node["props"], o?: O): Node => mak
 /** A section: its name in the editor's layers, the page's width unless `full`. */
 export function sec(k: K, name: Words, children: Node[], o?: O & { full?: boolean; tag?: "section" | "header" | "footer"; anchor?: string; props?: Node["props"] }): Node {
   const base: Style = { pad: [104, 24, 104, 24], ...o?.style };
+  // A header on a phone keeps its own padding, at most 16 on a side (a page part's 64 above and below made a phone's
+  // header bar taller than a fifth of the screen).
+  const own = Array.isArray(base.pad) && base.pad.length === 4 ? (base.pad as number[]) : [16, 16, 16, 16];
+  const phonePad = o?.tag === "header" ? own.map((v) => Math.min(typeof v === "number" ? v : 16, 16)) : [64, 16, 64, 16];
   return {
     id: k.ids("sec"),
     type: "section",
     name: name.en,
     props: { contained: !o?.full, ...(o?.tag ? { tag: o.tag } : {}), ...(o?.anchor ? { anchor: o.anchor } : {}), ...o?.props },
-    style: { base, mobile: { pad: [64, 16, 64, 16], ...o?.phone } },
+    style: { base, mobile: { pad: phonePad, ...o?.phone } },
     ...(o?.motion ? { motion: o.motion } : {}),
     children,
   };

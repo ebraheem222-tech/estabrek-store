@@ -3,7 +3,7 @@
  * the theme's own variables for its home sections (--th-*), its fonts and corners.
  * One <style> per page, from the layout (or the admin's preview).
  */
-import { mix, remapRose, type Palette } from "./colour";
+import { contrast, mix, remapRose, type Palette } from "./colour";
 import { THEME_FONT_FILES } from "./fonts.gen";
 import { TREE_FONTS, googleFontsHref } from "../pageTree/fonts";
 import { ROSE_COLOURS } from "./roseColours.gen";
@@ -45,14 +45,31 @@ export function wordsOn(p: Palette, mode: "light" | "dark"): { dark: string; lig
   return mode === "dark" ? { dark: p.ink, light: p.bg } : { dark: p.bg, light: p.ink };
 }
 
+/**
+ * The theme's colour for a link (a link button) on a dark box and on a light one: its strong colour, else its accent,
+ * else the words' colour there (wordsOn), whichever first reads (3 : 1) on any box pageTree/css.ts toneOf calls so
+ * (dark: light no more than 0.18, light: at least 0.5); white or black when none does. Many themes' strong colour is
+ * their ink, so their links were ink on the dark boxes too (a header's name on its coloured bar, "explore" on a band).
+ */
+export function linksOn(p: Palette, mode: "light" | "dark"): { dark: string; light: string } {
+  const on = wordsOn(p, mode);
+  const light = (c: string) => contrast(c, "#000000") * 0.05 - 0.05;
+  const ok = (c: string) => /^#[0-9a-f]{6}$/i.test(c);
+  return {
+    dark: [p.strong, p.accent, on.dark].find((c) => ok(c) && (light(c) + 0.05) / (0.18 + 0.05) >= 3) ?? "#ffffff",
+    light: [p.strong, p.accent, on.light].find((c) => ok(c) && (0.5 + 0.05) / (light(c) + 0.05) >= 3) ?? "#000000",
+  };
+}
+
 /** Page-tree tokens are scoped inside ThemeWrap, whose inline variables otherwise win over the theme. */
 export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null): CSSProperties {
   const { palette: p, mode: resolved } = themePalette(theme, mode);
   const on = wordsOn(p, resolved);
+  const links = linksOn(p, resolved);
   return {
     "--bg": p.bg, "--surface": p.surface, "--text": p.ink, "--muted": p.muted,
     "--accent": p.strong, "--accent-soft": p.soft, "--accent-contrast": p.onStrong, "--border": p.line,
-    "--pt-on-dark": on.dark, "--pt-on-light": on.light,
+    "--pt-on-dark": on.dark, "--pt-on-light": on.light, "--pt-link-on-dark": links.dark, "--pt-link-on-light": links.light,
     "--pt-font-heading": stack(theme.fonts.display), fontFamily: stack(theme.fonts.text),
     backgroundColor: p.bg, color: p.ink, colorScheme: resolved,
   } as CSSProperties;
@@ -62,7 +79,7 @@ export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null)
 export const liveTreeThemeVars = {
   "--bg": "var(--th-bg)", "--surface": "var(--th-surface)", "--text": "var(--th-ink)", "--muted": "var(--th-muted)",
   "--accent": "var(--th-strong)", "--accent-soft": "var(--th-soft)", "--accent-contrast": "var(--th-on-strong)", "--border": "var(--th-line)",
-  "--pt-on-dark": "var(--th-on-dark)", "--pt-on-light": "var(--th-on-light)",
+  "--pt-on-dark": "var(--th-on-dark)", "--pt-on-light": "var(--th-on-light)", "--pt-link-on-dark": "var(--th-link-on-dark)", "--pt-link-on-light": "var(--th-link-on-light)",
   "--pt-font-heading": "var(--th-display)", fontFamily: "var(--th-text)", backgroundColor: "var(--th-bg)", color: "var(--th-ink)", colorScheme: "var(--th-mode)",
 } as CSSProperties;
 
@@ -71,6 +88,7 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
   const rose = remapRose(ROSE_COLOURS, p);
   const [shadow, shadowLift] = SHADOW[theme.shadow](p);
   const on = wordsOn(p, m);
+  const links = linksOn(p, m);
   const vars: Record<string, string> = {
     ...Object.fromEntries(Object.entries(rose).map(([hex, to]) => [`--st-${hex}`, to])),
     "--st-font-display": stack(theme.fonts.display),
@@ -90,6 +108,8 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
     "--th-on-strong": p.onStrong,
     "--th-on-dark": on.dark,
     "--th-on-light": on.light,
+    "--th-link-on-dark": links.dark,
+    "--th-link-on-light": links.light,
     "--th-display": stack(theme.fonts.display),
     "--th-text": stack(theme.fonts.text),
     "--th-radius": `${Math.round(16 * theme.round)}px`,

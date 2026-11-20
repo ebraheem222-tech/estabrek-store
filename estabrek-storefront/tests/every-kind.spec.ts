@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // What every kind of element takes: its corners reach what it draws inside itself (a reviews block's cards, a
-// chart's panel, a form's box), the inspector says so where corners can't show yet, and the ready looks (cards,
+// chart's panel, a form's boxes), the inspector says so where corners can't show yet, and the ready looks (cards,
 // backgrounds, frames) are offered for every kind that draws a box or is shown like a picture.
 
 const url = "http://127.0.0.1:5178/tests/fixtures/editor-controls.html?lang=en&everyKind";
@@ -23,7 +23,7 @@ test("corners set on a block reach its cards, panel or box; the inspector says w
   test.setTimeout(240000);
   await open(page);
   const parts: Array<[string, string]> = [
-    ["testimonials", ".pt-tst-card"], ["pricing", ".pt-plan"], ["countdown", ".pt-count-part"], ["chart", "figure"], ["form", "section"], ["instrument", ":scope > div"],
+    ["testimonials", ".pt-tst-card"], ["pricing", ".pt-plan"], ["countdown", ".pt-count-part"], ["chart", "figure"], ["form", "input"], ["instrument", ":scope > div"],
   ];
   for (const [kind, part] of parts) {
     await pick(page, kind);

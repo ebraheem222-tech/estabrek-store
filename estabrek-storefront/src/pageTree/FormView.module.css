@@ -29,3 +29,12 @@
 /* For robots only: off the page, out of the tab order, never read out. */
 .trap { position: absolute; inset-inline-start: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 @media (max-width: 479.98px) { .send { justify-self: stretch; } }
+/* The shop's contact form: the ways to reach the store, over the boxes. */
+.ways { display: flex; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 0; list-style: none; }
+.ways a { display: inline-flex; align-items: baseline; gap: 6px; padding: 8px 14px; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); border-radius: 999px; color: inherit; text-decoration: none; }
+.ways a:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.ways span { font-weight: 600; }
+/* The newsletter: its one box and its button in one line, the title and what was said across. */
+.form[data-inline] { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 10px; }
+.form[data-inline] > :not(.field):not(.send):not(.trap) { grid-column: 1 / -1; }
+.form[data-inline] .send { justify-self: stretch; }

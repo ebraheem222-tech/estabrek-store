@@ -25,7 +25,7 @@ export function defineReference(number: number, definition: Omit<Template, "sour
   const [slug, title] = META[number];
   return { ...definition, regions: { ...definition.regions, footer: (k, brand) => {
     const footer = definition.regions.footer(k, brand);
-    footer.children = [...footer.children ?? [], el(k, "button", { label: t("التصميم المرجعي: TemplateMo|Reference design: TemplateMo|עיצוב מקור: TemplateMo"), href: `https://templatemo.com/tm-${number}-${slug}`, variant: "link" }, { style: { size: 11, opacity: .65, self: "center", pad: [12, 0, 0, 0] } })];
+    footer.children = [...footer.children ?? [], el(k, "button", { label: t("التصميم المرجعي: TemplateMo|Reference design: TemplateMo|עיצוב מקור: TemplateMo"), href: `https://templatemo.com/tm-${number}-${slug}`, variant: "link" }, { style: { size: 11, opacity: .85, self: "center", pad: [12, 0, 0, 0] } })];
     return footer;
   } }, source: { number, title, folder: `templatemo_${number}_${slug.replaceAll("-", "_")}` }, preview: `/templates/references/previews/${number}.png` };
 }
@@ -60,12 +60,14 @@ export function referenceStyle(number: number, base: string, options: {
 }
 
 export type RefLink = { label: Words; href: string };
+/** Off a phone's header bar (its call to action, a log-in link): the folded menu has the links, and with them the bar broke into two lines. */
+export const offPhone = (n: Node): Node => ({ ...n, style: { ...n.style, mobile: { ...n.style?.mobile, hidden: true } } });
 export function sourceHeader(k: TK, brand: Words, links: RefLink[], options: {
   center?: boolean; compact?: boolean; upper?: boolean; cta?: Words; line?: Words; bg?: string; color?: string;
 } = {}): Node {
   const mark = el(k, "button", { label: brand, href: "/", variant: "link" }, { style: { size: options.compact ? 19 : 25, weight: 700, decoration: { line: "none" }, pad: [0, 0, 0, 0], ...(options.upper ? { caps: "upper", letterSpacing: 2 } : {}) } });
   const navigation = el(k, "menu", { items: links, layout: "row", look: "plain", phone: "fold" }, { style: { size: 13, weight: 500 } });
-  const content = options.center ? stack(k, [mark, navigation], { style: { align: "center", gap: 14 } }) : row(k, [mark, navigation, ...(options.cta ? [BTN(k, options.cta, "/contact")] : [])], { style: { justify: "between", gap: 24 } });
+  const content = options.center ? stack(k, [mark, navigation], { style: { align: "center", gap: 14 } }) : row(k, [mark, navigation, ...(options.cta ? [offPhone(BTN(k, options.cta, "/contact"))] : [])], { style: { justify: "between", gap: 24 } });
   return sec(k, t("هيدر|Header|כותרת"), [...(options.line ? [T(k, options.line, { size: 11, style: { textAlign: "center", margin: [0, 0, 14, 0] }, motion: false })] : []), content], { full: false, tag: "header", style: { pad: [24, 28, 24, 28], ...(options.bg ? { bg: options.bg } : {}), ...(options.color ? { color: options.color } : {}) }, phone: { pad: [18, 18, 18, 18] } });
 }
 

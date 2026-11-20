@@ -12,9 +12,19 @@ import type { TreeLang } from "./tree";
 export const FORM_FIELD_KINDS = ["text", "long", "email", "phone", "number", "select", "check", "date", "file"] as const;
 export type FormFieldKind = (typeof FORM_FIELD_KINDS)[number];
 export type FormFieldSpec = { name: string; kind: FormFieldKind; label: string; hint: string; required: boolean; options: Array<{ value: string; label: string }>; min?: number; max?: number };
-/** One of the owner's functions by its call address (its answer kept in the variable `as`, "" = not kept), or a new row of one of their tables. */
-export type FormSendSpec = { to: "fn"; fn: string; as: string } | { to: "table"; table: string };
-export type FormSpec = { title: string; fields: FormFieldSpec[]; /** null = not picked in the editor yet. */ send: FormSendSpec | null; button: string; done: string };
+/**
+ * One of the owner's functions by its call address (its answer kept in the variable `as`, "" = not kept), or a new row
+ * of one of their tables; or the shop's own two forms (storeFormOf): a message to the store, a newsletter sign-up.
+ */
+export type FormSendSpec = { to: "fn"; fn: string; as: string } | { to: "table"; table: string } | { to: "contact" } | { to: "newsletter" };
+/** A way to reach the store shown with its contact form (WhatsApp, a phone number, an email address). */
+export type FormWay = { label: string; value: string; href: string };
+export type FormSpec = {
+  title: string; fields: FormFieldSpec[]; /** null = not picked in the editor yet. */ send: FormSendSpec | null; button: string; done: string;
+  /** Its one field and its button side by side (the newsletter). */
+  inline?: boolean;
+  ways?: FormWay[];
+};
 export type FormValue = string | boolean;
 
 /** Sent on the form's element once it was sent and taken at the other end (a recipe with the "sent" event waits for it). */
@@ -63,6 +73,9 @@ type Words = {
   least: (n: number) => string; most: (n: number) => string; shortest: (n: number) => string; longest: (n: number) => string;
   choose: string; send: string; sending: string; sent: string; signin: string; signinLink: string; busy: string; other: string; notReady: string; inShop: string;
   pickFile: string; fileTooBig: (mb: number | null) => string; fileKind: string; fileFailed: string;
+  /* The shop's own forms (storeFormOf). */
+  name: string; emailLabel: string; phoneLabel: string; message: string; reach: string; thanks: string;
+  subscribe: string; subscribed: string; whatsapp: string; call: string; write: string;
 };
 const WORDS: Record<TreeLang, Words> = {
   ar: {
@@ -70,21 +83,51 @@ const WORDS: Record<TreeLang, Words> = {
     least: (n) => `أقل شي ${n}`, most: (n) => `أكتر شي ${n}`, shortest: (n) => `أقل شي ${n} حروف`, longest: (n) => `أكتر شي ${n} حرف`,
     choose: "اختيار…", send: "إرسال", sending: "عم ينبعت…", sent: "انبعت ✓", signin: "لازم تسجيل دخول أول.", signinLink: "تسجيل الدخول", busy: "كتير طلبات. استنّى شوي وجرّب كمان مرة", other: "ما زبط. جرّب كمان مرة", notReady: "هالفورم لسا مش جاهز", inShop: "بالمتجر: الفورم بينبعت",
     pickFile: "اختيار ملف", fileTooBig: (mb) => (mb ? `الملف أكبر من ${mb} ميغا` : "الملف أكبر من المسموح"), fileKind: "هالنوع من الملفات مش مقبول هون", fileFailed: "الملف ما انرفع. ممكن المحاولة كمان مرة",
+    name: "الاسم", emailLabel: "الإيميل", phoneLabel: "رقم التلفون", message: "رسالتك", reach: "اكتب إيميل أو رقم تلفون عشان نرد عليك", thanks: "وصلت رسالتك، ومنرد عليك قريباً ✓",
+    subscribe: "اشتراك", subscribed: "تم الاشتراك ✓", whatsapp: "واتساب", call: "تلفون", write: "إيميل",
   },
   he: {
     needed: "שדה חובה", email: "כתובת האימייל אינה תקינה", phone: "מספר הטלפון אינו תקין", number: "יש להזין מספר", day: "התאריך אינו תקין", choice: "אפשרות שאינה קיימת",
     least: (n) => `לפחות ${n}`, most: (n) => `לכל היותר ${n}`, shortest: (n) => `לפחות ${n} תווים`, longest: (n) => `לכל היותר ${n} תווים`,
     choose: "בחירה…", send: "שליחה", sending: "נשלח…", sent: "נשלח ✓", signin: "יש להתחבר קודם.", signinLink: "התחברות", busy: "יותר מדי בקשות. נסו שוב בעוד רגע", other: "זה לא הצליח. נסו שוב", notReady: "הטופס הזה עדיין לא מוכן", inShop: "בחנות: הטופס נשלח",
     pickFile: "בחירת קובץ", fileTooBig: (mb) => (mb ? `הקובץ גדול מ-${mb} MB` : "הקובץ גדול מהמותר"), fileKind: "סוג הקובץ הזה לא מתקבל כאן", fileFailed: "הקובץ לא הועלה. אפשר לנסות שוב",
+    name: "שם", emailLabel: "אימייל", phoneLabel: "טלפון", message: "ההודעה שלכם", reach: "כתבו אימייל או טלפון כדי שנוכל לחזור אליכם", thanks: "ההודעה התקבלה, נחזור אליכם בקרוב ✓",
+    subscribe: "הרשמה", subscribed: "נרשמתם ✓", whatsapp: "וואטסאפ", call: "טלפון", write: "אימייל",
   },
   en: {
     needed: "This is needed", email: "This isn't an email address", phone: "This isn't a phone number", number: "This has to be a number", day: "This isn't a date", choice: "This isn't one of the choices",
     least: (n) => `At least ${n}`, most: (n) => `At most ${n}`, shortest: (n) => `At least ${n} letters`, longest: (n) => `At most ${n} letters`,
     choose: "Choose…", send: "Send", sending: "Sending…", sent: "Sent ✓", signin: "Sign in first.", signinLink: "Sign in", busy: "Too many tries. Wait a moment and try again", other: "That didn't work. Try again", notReady: "This form isn't ready yet", inShop: "In the shop: the form is sent",
     pickFile: "Choose a file", fileTooBig: (mb) => (mb ? `The file is over ${mb} MB` : "The file is too big"), fileKind: "This kind of file isn't taken here", fileFailed: "The file wasn't uploaded. It can be tried again",
+    name: "Name", emailLabel: "Email", phoneLabel: "Phone", message: "Your message", reach: "Add an email or a phone number so we can reply", thanks: "Your message is with us. We'll reply soon ✓",
+    subscribe: "Subscribe", subscribed: "You're subscribed ✓", whatsapp: "WhatsApp", call: "Phone", write: "Email",
   },
 };
 export const formWords = (lang: TreeLang): Words => WORDS[lang] ?? WORDS.en;
+
+/**
+ * The shop's own two forms (the page tree's form element of kind "contact" or "newsletter"), drawn like the owner's
+ * forms (FormView.tsx) in the page's colours: a message to the store with a name, a way to reply and the words, and
+ * the ways to reach the store beside it; a newsletter sign-up with one email box. They used to be the old sections'
+ * cards, which came with no fields at all (only a send button and "(no contact details)") and their own colours.
+ */
+export function storeFormOf(kind: "contact" | "newsletter", title: string, lang: TreeLang, ways: FormWay[] = []): FormSpec {
+  const w = formWords(lang);
+  const field = (name: string, kind: FormFieldKind, label: string, required = false): FormFieldSpec => ({ name, kind, label, hint: "", required, options: [] });
+  if (kind === "newsletter") return { title, fields: [field("email", "email", w.emailLabel, true)], send: { to: "newsletter" }, button: w.subscribe, done: w.subscribed, inline: true };
+  return {
+    title,
+    fields: [field("name", "text", w.name, true), field("email", "email", w.emailLabel), field("phone", "phone", w.phoneLabel), field("message", "long", w.message, true)],
+    send: { to: "contact" }, button: w.send, done: w.thanks, ways,
+  };
+}
+
+/** A message to the store needs a way to answer it: an email address or a phone number (the reply goes there). */
+export function reachProblem(spec: FormSpec, values: Record<string, FormValue | undefined>, lang: TreeLang): string | null {
+  if (spec.send?.to !== "contact") return null;
+  const has = (name: string) => typeof values[name] === "string" && (values[name] as string).trim() !== "";
+  return has("email") || has("phone") ? null : formWords(lang).reach;
+}
 
 /** What is wrong with what was typed in a field, in the page's language; null = fine. */
 export function problemOf(f: FormFieldSpec, value: FormValue | undefined, lang: TreeLang): string | null {
