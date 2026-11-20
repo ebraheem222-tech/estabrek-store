@@ -52,6 +52,15 @@ function nameFromHere(): string {
   }
 }
 
+/** Why the last «وصّل Vercel» didn't make the shop (the server's words, kept for the setup), in the page's words. */
+function connectRefusal(why: string): string {
+  const after = (prefix: string) => why.slice(prefix.length).replace(/^:\s*/, "");
+  if (why.startsWith("Vercel didn't give a token")) return `${say("Vercel ما عطى توكن، يمكن الرابط قديم أو انستعمل: اكبس «وصّل Vercel» كمان مرة.|Vercel didn't give a token, perhaps the link was old or used: press “Connect Vercel” again.|Vercel לא נתן טוקן, אולי הקישור ישן או שכבר נוצל: לחצו «חיבור Vercel» שוב.")}${after("Vercel didn't give a token") ? ` (${after("Vercel didn't give a token")})` : ""}`;
+  if (/is someone else's$/.test(why)) return say("هالعنوان على Vercel لحدا تاني: اختار اسم تاني للمتجر.|This address at Vercel is someone else's: pick another name for the shop.|הכתובת הזו ב-Vercel שייכת למישהו אחר: בחרו שם אחר לחנות.");
+  if (/github|git repository|install/i.test(why)) return `${say("Vercel ما بيوصل للمستودع على GitHub: بـ Vercel ركّب الـ GitHub integration واسمحلها بالمستودع.|Vercel can't reach the repository on GitHub: install Vercel's GitHub integration and let it reach the repository.|Vercel לא מגיע למאגר ב-GitHub: התקינו את האינטגרציה של GitHub ב-Vercel ואפשרו לה גישה למאגר.")} (${why})`;
+  return `${say("ما انعمل المتجر:|The shop wasn't made:|החנות לא נוצרה:")} ${why}`;
+}
+
 /** Why Vercel or the server said no, in the page's words. */
 function shopRefusal(e: unknown): string {
   const data = (e as { response?: { data?: { error?: string; message?: string } } })?.response?.data;
@@ -60,6 +69,7 @@ function shopRefusal(e: unknown): string {
   if (data?.error === "NAME_INVALID") return say("الاسم حروف إنجليزي صغيرة وأرقام و - (3 حروف عالأقل).|The name is small letters, digits and - (at least 3).|השם הוא אותיות לועזיות קטנות, ספרות ו- (לפחות 3).");
   if (data?.error === "NO_REPO") return say("السيرفر ما بيعرف من أي مستودع انبنى: بدّه يكون منشور من GitHub على Railway.|The server doesn't know which repository it was built from: it needs to be deployed from GitHub on Railway.|השרת לא יודע מאיזה מאגר הוא נבנה: הוא צריך להיפרס מ-GitHub ב-Railway.");
   if (data?.error === "OWNER_ONLY") return say("صاحب المتجر بس بيقدر يعمل متجره.|Only the store's owner makes its shop.|רק בעלי החנות יוצרים את החנות שלה.");
+  if (data?.error === "CONNECT_OFF") return say("«وصّل Vercel» مش مجهّز على السيرفر: الصق توكن بدالها.|“Connect Vercel” isn't set up on the server: paste a token instead.|«חיבור Vercel» לא מוגדר בשרת: הדביקו טוקן במקום.");
   if (data?.error === "VERCEL_REFUSED") {
     if (/token|unauthori[sz]ed|forbidden|not authorized|invalid/i.test(message)) return `${say("Vercel ما قبل التوكن: تأكد إنه منسوخ كامل وإله صلاحية على الحساب أو الفريق.|Vercel didn't take the token: check it's copied whole and allowed on the account or team.|Vercel לא קיבל את הטוקן: בדקו שהוא מועתק במלואו ושיש לו הרשאה בחשבון או בצוות.")} (${message})`;
     if (/github|git repository|install/i.test(message)) return `${say("Vercel ما بيوصل للمستودع على GitHub: بـ Vercel ركّب الـ GitHub integration واسمحلها بالمستودع.|Vercel can't reach the repository on GitHub: install Vercel's GitHub integration and let it reach the repository.|Vercel לא מגיע למאגר ב-GitHub: התקינו את האינטגרציה של GitHub ב-Vercel ואפשרו לה גישה למאגר.")} (${message})`;
@@ -104,7 +114,50 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
     },
     onError: (e) => setFailed(shopRefusal(e)),
   });
-  const can = token.trim().length >= 16 && /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(siteNow.trim()) && !make.isPending;
+  const nameOk = /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(siteNow.trim());
+  const can = token.trim().length >= 16 && nameOk && !make.isPending;
+  // «وصّل Vercel»: off to Vercel's own page; the server makes the shop when Vercel sends the owner back.
+  const [connectFailed, setConnectFailed] = useState<string | null>(null);
+  const connect = useMutation({
+    mutationFn: () => ShopAPI.startVercelConnect(siteNow.trim()),
+    onMutate: () => setConnectFailed(null),
+    onSuccess: ({ url: at }) => ShopAPI.goTo(at),
+    onError: (e) => setConnectFailed(shopRefusal(e)),
+  });
+  const tokenWay = (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (can) make.mutate();
+      }}
+      data-testid="setup-shop-token-form"
+    >
+      <p className="text-xs leading-6 text-white/60">
+        {say(
+          "بـ vercel.com ← Account Settings ← Tokens اعمل توكن (للحساب أو للفريق اللي رح ينعمل فيه المتجر) وانسخه هون. بيستعمل مرة وحدة لعمل المتجر وما بينحفظ.|At vercel.com → Account Settings → Tokens make a token (for the account or the team the shop goes in) and paste it here. It is used once to make the shop and isn't kept.|ב-vercel.com ← Account Settings ← Tokens צרו טוקן (לחשבון או לצוות שבו תיווצר החנות) והדביקו אותו כאן. הוא משמש פעם אחת ליצירת החנות ולא נשמר.",
+        )}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs text-white/60">{say("توكن Vercel|Vercel token|טוקן Vercel")}</span>
+          <input className={field} dir="ltr" type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" data-testid="setup-shop-token" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-white/60">{say("الفريق على Vercel (اختياري)|The Vercel team (optional)|הצוות ב-Vercel (לא חובה)")}</span>
+          <input className={field} dir="ltr" value={team} onChange={(e) => setTeam(e.target.value)} placeholder="team_… / slug" data-testid="setup-shop-team" />
+        </label>
+      </div>
+      {failed ? (
+        <p className="rounded-xl bg-red-500/10 p-3 text-xs text-red-200" role="alert" data-testid="setup-shop-failed">
+          {failed}
+        </p>
+      ) : null}
+      <Button type="submit" variant={link.data?.connect ? "secondary" : "primary"} size="sm" disabled={!can} isLoading={make.isPending} data-testid="setup-shop-make">
+        {say("اعمل المتجر|Make the shop|ליצור את החנות")}
+      </Button>
+    </form>
+  );
   const ready = !!url && opens.data === true;
   const building = !!url && made && opens.data === false;
   const showForm = !link.isLoading && !ready && !building;
@@ -142,14 +195,7 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
         </div>
       ) : null}
       {showForm ? (
-        <form
-          className="space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (can) make.mutate();
-          }}
-          data-testid="setup-shop-form"
-        >
+        <div className="space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4" data-testid="setup-shop-form">
           {url ? (
             <p className="rounded-xl bg-amber-500/10 p-3 text-xs leading-6 text-amber-100" data-testid="setup-shop-elsewhere">
               {say("هاللوحة موصولة بمتجر ما بيفتحلها، يمكن تبع متجر تاني:|This admin is linked to a shop that doesn't open to it, perhaps another store's:|לוח הניהול מחובר לחנות שלא נפתחת אליו, אולי של חנות אחרת:")} <bdi dir="ltr">{url.replace(/^https:\/\//, "")}</bdi>
@@ -158,36 +204,41 @@ export function ShopStep({ onReady }: { onReady?: () => void }) {
             </p>
           ) : null}
           {making ? <p className="text-xs text-white/60" data-testid="setup-shop-making">{say(`محاولة سابقة وقفت عند «${making}»: بتكمّل من مكانها.|An earlier try stopped at “${making}”: it goes on from there.|ניסיון קודם נעצר ב-«${making}»: הוא ממשיך משם.`)}</p> : null}
-          <p className="text-xs leading-6 text-white/60">
-            {say(
-              "بـ vercel.com ← Account Settings ← Tokens اعمل توكن (للحساب أو للفريق اللي رح ينعمل فيه المتجر) وانسخه هون. بيستعمل مرة وحدة لعمل المتجر وما بينحفظ.|At vercel.com → Account Settings → Tokens make a token (for the account or the team the shop goes in) and paste it here. It is used once to make the shop and isn't kept.|ב-vercel.com ← Account Settings ← Tokens צרו טוקן (לחשבון או לצוות שבו תיווצר החנות) והדביקו אותו כאן. הוא משמש פעם אחת ליצירת החנות ולא נשמר.",
-            )}
-          </p>
-          <label className="block">
-            <span className="mb-1 block text-xs text-white/60">{say("توكن Vercel|Vercel token|טוקן Vercel")}</span>
-            <input className={field} dir="ltr" type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" data-testid="setup-shop-token" />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs text-white/60">{say("اسم المتجر|The shop's name|שם החנות")}</span>
-              <input className={field} dir="ltr" value={siteNow} onChange={(e) => setSite(e.target.value.toLowerCase())} placeholder="my-shop" data-testid="setup-shop-site" />
-              <span className="mt-1 block text-xs text-white/50" dir="ltr">{siteNow ? `https://${siteNow}.vercel.app` : ""}</span>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-white/60">{say("الفريق على Vercel (اختياري)|The Vercel team (optional)|הצוות ב-Vercel (לא חובה)")}</span>
-              <input className={field} dir="ltr" value={team} onChange={(e) => setTeam(e.target.value)} placeholder="team_… / slug" data-testid="setup-shop-team" />
-            </label>
-          </div>
-          {failed ? (
-            <p className="rounded-xl bg-red-500/10 p-3 text-xs text-red-200" role="alert" data-testid="setup-shop-failed">
-              {failed}
+          {link.data?.error ? (
+            <p className="rounded-xl bg-red-500/10 p-3 text-xs text-red-200" role="alert" data-testid="setup-shop-error">
+              {connectRefusal(link.data.error)}
             </p>
           ) : null}
-          <Button type="submit" variant="primary" size="sm" disabled={!can} isLoading={make.isPending} data-testid="setup-shop-make">
-            {say("اعمل المتجر|Make the shop|ליצור את החנות")}
-          </Button>
+          <label className="block">
+            <span className="mb-1 block text-xs text-white/60">{say("اسم المتجر|The shop's name|שם החנות")}</span>
+            <input className={field} dir="ltr" value={siteNow} onChange={(e) => setSite(e.target.value.toLowerCase())} placeholder="my-shop" data-testid="setup-shop-site" />
+            <span className="mt-1 block text-xs text-white/50" dir="ltr">{siteNow ? `https://${siteNow}.vercel.app` : ""}</span>
+          </label>
+          {link.data?.connect ? (
+            <>
+              <Button type="button" variant="primary" disabled={!nameOk || connect.isPending} isLoading={connect.isPending} onClick={() => connect.mutate()} data-testid="setup-shop-connect">
+                {say("وصّل Vercel|Connect Vercel|חיבור Vercel")}
+              </Button>
+              <p className="text-xs leading-6 text-white/60">
+                {say(
+                  "بتفتح صفحة Vercel: بتفوت، بتختار الحساب أو الفريق، وبتوافق. بترجع لهون والمتجر بينعمل لحاله. ما في توكن تنسخه، وولا شي بينحفظ.|Vercel's page opens: sign in, pick the account or team, and agree. You come back here and the shop is made by itself. No token to copy, and nothing is kept.|נפתח העמוד של Vercel: נכנסים, בוחרים את החשבון או הצוות, ומאשרים. חוזרים לכאן והחנות נוצרת לבד. אין טוקן להעתיק, ושום דבר לא נשמר.",
+                )}
+              </p>
+              {connectFailed ? (
+                <p className="rounded-xl bg-red-500/10 p-3 text-xs text-red-200" role="alert" data-testid="setup-shop-connect-failed">
+                  {connectFailed}
+                </p>
+              ) : null}
+              <details className="rounded-xl border border-white/10 p-3" data-testid="setup-shop-token-way">
+                <summary className="cursor-pointer text-xs text-white/70">{say("أو الصق توكن Vercel|Or paste a Vercel token|או הדביקו טוקן Vercel")}</summary>
+                <div className="mt-3 space-y-3">{tokenWay}</div>
+              </details>
+            </>
+          ) : (
+            tokenWay
+          )}
           <p className="text-xs text-white/50">{say("بينعمل بحسابك على Vercel، من نفس الكود، وموصول بسيرفر هالمتجر ولوحته.|It is made in your Vercel account, from the same code, linked to this store's server and admin.|היא נוצרת בחשבון ה-Vercel שלך, מאותו קוד, מחוברת לשרת וללוח הניהול של החנות הזו.")}</p>
-        </form>
+        </div>
       ) : null}
     </section>
   );

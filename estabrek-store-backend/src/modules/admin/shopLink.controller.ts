@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
-import { ShopRefused, makeShop, shopView } from "../../lib/shopLink.js";
+import { ShopRefused, makeShop, ownAddressOf, shopView, startVercelConnect } from "../../lib/shopLink.js";
 import { tidyName } from "../../lib/press.js";
 
 /**
@@ -14,6 +14,8 @@ import { tidyName } from "../../lib/press.js";
  * POST /make { token, team?, site } — the shop made with the owner's Vercel token (used for these
  *        calls alone, never kept), told this server's address and this admin's (the page's own
  *        origin), and put in force; the store's owner alone
+ * POST /connect { site } — «وصّل Vercel»: the link at Vercel the owner signs in at instead (the
+ *        shop is made when Vercel sends them back: modules/vercel); the store's owner alone
  */
 const r = Router();
 
@@ -25,11 +27,7 @@ const MakeBody = z
   })
   .strict();
 
-/** This server's own public address: Railway's name for it, else the address the call came to. */
-function ownAddress(req: { get(name: string): string | undefined }): string | null {
-  const domain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim() || req.get("host")?.trim() || "";
-  return /^[a-z0-9.-]+\.[a-z]{2,}(:\d+)?$/i.test(domain) ? `https://${domain.toLowerCase()}` : null;
-}
+const ownAddress = ownAddressOf;
 /** The admin's address: the page that asked (a shop only lets its own admin read its designs). On https, or (outside production) this machine. */
 function adminAddress(origin: string | undefined): string | null {
   try {
@@ -65,6 +63,28 @@ r.post(
       const made = await makeShop({ token: body.token, team: body.team || undefined, site: tidyName(body.site), api, admin });
       res.setHeader("Cache-Control", "no-store");
       res.status(201).json(made);
+    } catch (e) {
+      if (e instanceof ShopRefused) throw new AppError(e.code === "NAME_INVALID" ? 400 : 409, e.code, e.message);
+      throw e;
+    }
+  }),
+);
+
+const ConnectBody = z.object({ site: z.string().max(80) }).strict();
+
+r.post(
+  "/connect",
+  asyncHandler(async (req, res) => {
+    if (!req.access?.owner) throw new AppError(403, "OWNER_ONLY", "Only the store's owner makes the store's shop");
+    const body = ConnectBody.parse(req.body ?? {});
+    const api = ownAddress(req);
+    if (!api) throw new AppError(409, "NO_ADDRESS", "The server doesn't know its own address");
+    const admin = adminAddress(req.get("origin"));
+    if (!admin) throw new AppError(400, "NO_ADMIN_ADDRESS", "The shop is made from the store's admin, on its https address");
+    try {
+      const url = await startVercelConnect({ site: tidyName(body.site), admin, api });
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ url });
     } catch (e) {
       if (e instanceof ShopRefused) throw new AppError(e.code === "NAME_INVALID" ? 400 : 409, e.code, e.message);
       throw e;

@@ -5,6 +5,10 @@ import { api } from "./http";
 import { env } from "../config/env";
 
 export type ShopLink = {
+  /** Whether «وصّل Vercel» is set up on the server (else a token is pasted). */
+  connect: boolean;
+  /** Why the last «وصّل Vercel» didn't make the shop (Vercel's or the server's words). */
+  error: string | null;
   url: string | null;
   /** "made" here (the setup), the server's own "server" variable, or "none". */
   source: "made" | "server" | "none";
@@ -22,6 +26,15 @@ export async function getShopLink() {
 /** The shop made (its first deploy takes a few minutes); this admin's own address goes with it, as the page's origin. */
 export async function makeShopLink(body: { token: string; team?: string; site: string }) {
   return (await api.post(`${BASE}/make`, body)).data as ShopLink & { project: string | null };
+}
+
+/** «وصّل Vercel»: the link at Vercel the owner signs in at (Vercel sends them back to the setup once the shop is made). */
+export async function startVercelConnect(site: string) {
+  return (await api.post(`${BASE}/connect`, { site })).data as { url: string };
+}
+/** Off to another site (Vercel): its own function so a test can stand in for it. */
+export function goTo(url: string) {
+  window.location.assign(url);
 }
 
 /**

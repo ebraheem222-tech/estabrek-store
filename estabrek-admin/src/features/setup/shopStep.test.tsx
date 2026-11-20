@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 // one that doesn't (another store's) or none gets a shop made on Vercel with the owner's token, which then
 // builds for a few minutes and the setup goes on by itself once it opens.
 
-const m = vi.hoisted(() => ({ link: vi.fn(), make: vi.fn(), opens: vi.fn(), follow: vi.fn() }));
-vi.mock("../../api/shop.api", () => ({ getShopLink: m.link, makeShopLink: m.make, shopOpensHere: m.opens, followShop: m.follow }));
+const m = vi.hoisted(() => ({ link: vi.fn(), make: vi.fn(), opens: vi.fn(), follow: vi.fn(), connect: vi.fn(), goTo: vi.fn() }));
+vi.mock("../../api/shop.api", () => ({ getShopLink: m.link, makeShopLink: m.make, shopOpensHere: m.opens, followShop: m.follow, startVercelConnect: m.connect, goTo: m.goTo }));
 vi.mock("../../api/cloudinary.api", () => ({ getCloudinaryAccount: vi.fn(), saveCloudinaryAccount: vi.fn() }));
 
 import { setLangForTests } from "../../lib/lang";
@@ -16,7 +16,7 @@ import { ShopStep } from "./SetupExtras";
 import { env } from "../../config/env";
 import { followShop } from "../../api/shop.api";
 
-const NONE = { url: null, source: "none", making: null, repo: "acme/store", branch: "main" };
+const NONE = { connect: false, error: null, url: null, source: "none", making: null, repo: "acme/store", branch: "main" };
 function show(onReady = vi.fn()) {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -82,6 +82,29 @@ describe("The store's own shop, first in its setup", () => {
     fireEvent.change(screen.getByTestId("setup-shop-token"), { target: { value: "made-up-vercel-token-1234" } });
     fireEvent.click(screen.getByTestId("setup-shop-make"));
     expect((await screen.findByTestId("setup-shop-failed")).textContent).toContain("install Vercel's GitHub integration");
+  });
+});
+
+describe("«وصّل Vercel»", () => {
+  test("set up on the server: one press sends the owner to Vercel to sign in; the token way stays, folded away", async () => {
+    m.link.mockResolvedValue({ ...NONE, connect: true });
+    m.connect.mockResolvedValue({ url: "https://vercel.com/integrations/estabrek-shops/new?state=abc" });
+    show();
+    await screen.findByTestId("setup-shop-connect");
+    expect(screen.getByTestId("setup-shop-token-way").hasAttribute("open")).toBe(false);
+    fireEvent.change(screen.getByTestId("setup-shop-site"), { target: { value: "rose-shop" } });
+    fireEvent.click(screen.getByTestId("setup-shop-connect"));
+    await waitFor(() => expect(m.connect).toHaveBeenCalledWith("rose-shop"));
+    await waitFor(() => expect(m.goTo).toHaveBeenCalledWith("https://vercel.com/integrations/estabrek-shops/new?state=abc"));
+    expect(m.make).not.toHaveBeenCalled();
+  });
+
+  test("back from Vercel without a shop: why, in words to act on", async () => {
+    m.link.mockResolvedValue({ ...NONE, connect: true, error: "Vercel didn't give a token: The code is invalid or expired" });
+    show();
+    const why = (await screen.findByTestId("setup-shop-error")).textContent!;
+    expect(why).toContain("Vercel didn't give a token, perhaps the link was old or used");
+    expect(why).toContain("The code is invalid or expired");
   });
 });
 
