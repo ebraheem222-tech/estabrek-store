@@ -20,6 +20,7 @@ import { registerBackgroundJobs } from "./jobs.js";
 import { startAutomations } from "./modules/admin/automations.service.js";
 import { startFunctions } from "./modules/functions/functions.service.js";
 import { startWebhooksOut } from "./lib/webhooksOut.js";
+import { announceFirstRun } from "./lib/firstRun.js";
 
 const port = Number(env.PORT || 4000);
 const host = "0.0.0.0";
@@ -90,6 +91,8 @@ server.keepAliveTimeout = env.HTTP_KEEP_ALIVE_TIMEOUT_MS;
 server.timeout = env.HTTP_SERVER_TIMEOUT_MS;
 server.listen(port, host, () => {
   console.log(`estabrak-store API on http://${host}:${port}`);
+  // A store with no one in it: the one-time code for its first setup, in the log (when it has no SETUP_CODE).
+  void announceFirstRun().catch(() => undefined);
   // The messages, back-in-stock emails, daily backup, popularity, shoppers' speed,
   // cache housekeeping… (src/jobs.ts), with what the admin paused or changed.
   void loadJobsConfig().finally(() => {

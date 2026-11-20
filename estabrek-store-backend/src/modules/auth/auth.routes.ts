@@ -7,6 +7,7 @@ import { forgotPassword, performReset } from "./password.controller.js";
 import { generateCodes, verifyCode } from "./recovery.controller.js";
 import { phoneStart, phoneVerify } from "./phone.controller.js";
 import { sms2faStart, sms2faConfirm } from "./sms2fa.controller.js";
+import { firstRunClaim, firstRunStatus } from "./firstRun.controller.js";
 
 const r = Router();
 
@@ -15,6 +16,10 @@ r.post("/login", ...login);
 r.post("/refresh", ...refresh);
 r.post("/logout", ...logoutController);
 r.get("/csrf", csrfToken);
+
+// A store with no one in it yet: its first setup makes the owner's account (lib/firstRun.ts)
+r.get("/first-run", firstRunStatus);
+r.post("/first-run", ...firstRunClaim);
 
 // phone login (passwordless)
 r.post("/phone/start", ...phoneStart);
