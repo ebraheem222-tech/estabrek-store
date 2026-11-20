@@ -14,7 +14,7 @@ import { SiteError, callSite, sendRaw, type CallOut } from "./fnHttp.js";
 import { open, seal } from "./secretBox.js";
 import type { Scope } from "./fnValues.js";
 import { secretsIn } from "./fnSites.js";
-import { READY_KEY, READY_LIMITS, kindOf, missingIn, type Ask, type KindDef, type Look, type ReadyCall } from "./fnKinds.js";
+import { READY_KEY, READY_LIMITS, kindOf, missingIn, type Ask, type Asked, type KindDef, type Look, type ReadyCall } from "./fnKinds.js";
 import { LOOK_LIMITS } from "./fnKindsInfra.js";
 
 type Kept = { id: string; kind: string; name: string; sealed: string; settings: Record<string, string> };
@@ -116,6 +116,28 @@ export async function useReady(input: { id: string; what: string; give: Record<s
   void prisma.fnConnection.updateMany({ where: { id: c.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
   const ok = out.ok && !kind.fails?.(out.body);
   return { line, dry: false, status: out.status, ok, body: ok && action.answer ? action.answer(out.body) : out.body, why: ok ? null : kind.why(out.body) };
+}
+
+/**
+ * One call of the server's own through a connection (the press checking a copy's names: lib/pressCheck.ts),
+ * to the kind's one site with its key, as a step's would go. Never throws for a "no": it is the answer.
+ */
+export async function askThrough(id: string, kindWanted: string, call: ReadyCall): Promise<Asked & { name: string; settings: Record<string, string> }> {
+  const c = (await kept()).get(id);
+  const kind = c ? kindOf(c.kind) : null;
+  if (!c || !kind || c.kind !== kindWanted) throw new SiteError("This connection isn't there any more");
+  try {
+    const out = await through(c, kind, call, {}, false);
+    const ok = out.ok && !kind.fails?.(out.body);
+    return { ok, status: out.status, body: out.body, why: ok ? null : (kind.why(out.body) ?? null), name: c.name, settings: c.settings };
+  } catch (e) {
+    if (!(e instanceof SiteError)) throw e;
+    return { ok: false, status: 0, body: null, why: e.message, name: c.name, settings: c.settings };
+  }
+}
+/** The connections of a kind, by name (never a key). */
+export async function readyOfKind(kind: string): Promise<Array<{ id: string; name: string; settings: Record<string, string> }>> {
+  return [...(await kept()).values()].filter((c) => c.kind === kind).map((c) => ({ id: c.id, name: c.name, settings: c.settings }));
 }
 
 export type ReadyLook = { ok: boolean; status: number; why: string | null; who: string | null; groups: Look["groups"]; /** Calls that said no (a token that may read some things and not others). */ missed: number };

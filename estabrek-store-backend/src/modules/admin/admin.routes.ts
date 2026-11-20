@@ -43,6 +43,7 @@ import automations, { notifications } from "./automations.controller.js";
 import history from "./history.controller.js";
 import backups from "./backups.controller.js";
 import project from "./project.controller.js";
+import copies from "./copies.controller.js";
 import productTypes from "./productTypes.controller.js";
 import { orderDelivery, productCodes, productFiles, tickets } from "./fulfillment.controller.js";
 import { orderLicences, productProtected, protectedTrace, protectedTypes } from "./protected.controller.js";
@@ -211,6 +212,7 @@ r.use("/system/deploy", areaAccess({ read: "system:read", write: "system:write" 
 r.use("/system/backups", areaAccess({ read: "system:read", write: "system:write" }), backups);
 // The project as one file (stage 3): the owner's alone (project.controller.ts says so itself).
 r.use("/system/project", areaAccess({ read: "system:read", write: "system:write" }), project);
+r.use("/system/copies", areaAccess({ read: "system:read", write: "system:write" }), copies);
 r.use("/system", areaAccess({ read: "system:read", write: "system:write" }), system);
 r.use("/customers", areaAccess({ read: "customers:read", write: "customers:write" }), customers);
 // Roles and groups for shoppers (stage 2, item 3; lib/shopperRoles.ts).
