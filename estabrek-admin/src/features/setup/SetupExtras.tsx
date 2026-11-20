@@ -1,12 +1,14 @@
-// Two steps of the store's setup (SetupWizard): the shop's assistant (on or off, and the personality it speaks as)
-// and where the store's pictures go (its own Cloudinary account, else the server's disk).
-import { useState } from "react";
+// Steps of the store's setup (SetupWizard): its own shop (made on Vercel when it has none), the shop's assistant
+// (on or off, and the personality it speaks as) and where the store's pictures go (its own Cloudinary account,
+// else the server's disk).
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
 import { PersonaPicker } from "../../components/PersonaPicker";
 import { getApiErrorMessage } from "../../api/http";
 import * as CloudAPI from "../../api/cloudinary.api";
+import * as ShopAPI from "../../api/shop.api";
 import { say } from "../../studio/say";
 
 export function AssistantStep({ on, onToggle, persona, onPersona, industry }: { on: boolean; onToggle: (v: boolean) => void; persona: string; onPersona: (id: string) => void; industry: string | null }) {
@@ -31,6 +33,165 @@ export function AssistantStep({ on, onToggle, persona, onPersona, industry }: { 
 }
 
 const field = "w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-sm outline-none focus:border-accent-400";
+
+/** A name for the shop from the admin's own address (samoray1337.pages.dev → samoray1337), as the server tidies names. */
+function nameFromHere(): string {
+  try {
+    const host = window.location.hostname;
+    // An address by number, or this machine, gives no name.
+    if (/^[\d.]+$|^\[|^localhost$/.test(host)) return "";
+    const first = host.split(".")[0] ?? "";
+    return first
+      .toLowerCase()
+      .replace(/-admin$/, "")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 30);
+  } catch {
+    return "";
+  }
+}
+
+/** Why Vercel or the server said no, in the page's words. */
+function shopRefusal(e: unknown): string {
+  const data = (e as { response?: { data?: { error?: string; message?: string } } })?.response?.data;
+  const message = data?.message ?? "";
+  if (data?.error === "NAME_TAKEN") return say("هالعنوان على Vercel لحدا تاني: اختار اسم تاني للمتجر.|This address at Vercel is someone else's: pick another name for the shop.|הכתובת הזו ב-Vercel שייכת למישהו אחר: בחרו שם אחר לחנות.");
+  if (data?.error === "NAME_INVALID") return say("الاسم حروف إنجليزي صغيرة وأرقام و - (3 حروف عالأقل).|The name is small letters, digits and - (at least 3).|השם הוא אותיות לועזיות קטנות, ספרות ו- (לפחות 3).");
+  if (data?.error === "NO_REPO") return say("السيرفر ما بيعرف من أي مستودع انبنى: بدّه يكون منشور من GitHub على Railway.|The server doesn't know which repository it was built from: it needs to be deployed from GitHub on Railway.|השרת לא יודע מאיזה מאגר הוא נבנה: הוא צריך להיפרס מ-GitHub ב-Railway.");
+  if (data?.error === "OWNER_ONLY") return say("صاحب المتجر بس بيقدر يعمل متجره.|Only the store's owner makes its shop.|רק בעלי החנות יוצרים את החנות שלה.");
+  if (data?.error === "VERCEL_REFUSED") {
+    if (/token|unauthori[sz]ed|forbidden|not authorized|invalid/i.test(message)) return `${say("Vercel ما قبل التوكن: تأكد إنه منسوخ كامل وإله صلاحية على الحساب أو الفريق.|Vercel didn't take the token: check it's copied whole and allowed on the account or team.|Vercel לא קיבל את הטוקן: בדקו שהוא מועתק במלואו ושיש לו הרשאה בחשבון או בצוות.")} (${message})`;
+    if (/github|git repository|install/i.test(message)) return `${say("Vercel ما بيوصل للمستودع على GitHub: بـ Vercel ركّب الـ GitHub integration واسمحلها بالمستودع.|Vercel can't reach the repository on GitHub: install Vercel's GitHub integration and let it reach the repository.|Vercel לא מגיע למאגר ב-GitHub: התקינו את האינטגרציה של GitHub ב-Vercel ואפשרו לה גישה למאגר.")} (${message})`;
+    return `${say("Vercel قال لأ:|Vercel said no:|Vercel אמר לא:")} ${message}`;
+  }
+  return getApiErrorMessage(e);
+}
+
+/**
+ * The setup's first step: the store's own shop. A store whose shop opens to this admin goes on; one with none
+ * (or with another store's) gets one on Vercel from here, with the owner's token, used once and never kept.
+ */
+export function ShopStep({ onReady }: { onReady?: () => void }) {
+  const qc = useQueryClient();
+  const link = useQuery({ queryKey: ["shop-link"], queryFn: ShopAPI.getShopLink, retry: false });
+  useEffect(() => ShopAPI.followShop(link.data), [link.data]);
+  const url = link.data?.url ?? null;
+  const made = link.data?.source === "made";
+  // A shop just made builds for a few minutes: asked again every few seconds until it opens.
+  const opens = useQuery({
+    queryKey: ["shop-opens", url],
+    queryFn: () => ShopAPI.shopOpensHere(url!),
+    enabled: !!url,
+    retry: false,
+    refetchInterval: (q) => (made && q.state.data === false ? 5000 : false),
+  });
+  const [token, setToken] = useState("");
+  const [team, setTeam] = useState("");
+  const [site, setSite] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const making = link.data?.making ?? null;
+  // A stopped try's name first, else the admin's own (samoray1337.pages.dev → samoray1337), until one is typed.
+  const siteNow = site ?? (making || nameFromHere());
+  const make = useMutation({
+    mutationFn: () => ShopAPI.makeShopLink({ token: token.trim(), team: team.trim() || undefined, site: siteNow.trim() }),
+    onMutate: () => setFailed(null),
+    onSuccess: (data) => {
+      setToken("");
+      ShopAPI.followShop(data);
+      qc.setQueryData(["shop-link"], data);
+      void qc.invalidateQueries({ queryKey: ["store-templates"] });
+    },
+    onError: (e) => setFailed(shopRefusal(e)),
+  });
+  const can = token.trim().length >= 16 && /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/.test(siteNow.trim()) && !make.isPending;
+  const ready = !!url && opens.data === true;
+  const building = !!url && made && opens.data === false;
+  const showForm = !link.isLoading && !ready && !building;
+  // Once a shop being built opens, the setup goes on by itself.
+  const wasBuilding = useRef(false);
+  useEffect(() => {
+    if (building) wasBuilding.current = true;
+    else if (ready && wasBuilding.current) {
+      wasBuilding.current = false;
+      onReady?.();
+    }
+  }, [building, ready, onReady]);
+  return (
+    <section className="mx-auto max-w-2xl space-y-5" data-testid="setup-shop">
+      <h1 className="text-2xl font-bold">{say("متجرك|Your shop|החנות שלך")}</h1>
+      <p className="text-sm leading-7 text-white/60">
+        {say(
+          "المتجر هو الموقع اللي بيشوفه زباينك وبيشتروا منه. قبل ما تختار شو بتبيع والتصميم، لازم يكون إلك متجر موصول بهاللوحة: منه بتنقرأ القوالب والمعاينات.|The shop is the website your shoppers see and buy from. Before you pick what you sell and the design, you need a shop of your own linked to this admin: the templates and previews are read from it.|החנות היא האתר שהקונים שלך רואים וקונים בו. לפני שבוחרים מה מוכרים ואת העיצוב, צריך חנות משלך שמחוברת ללוח הניהול הזה: התבניות והתצוגות נקראות ממנה.",
+        )}
+      </p>
+      {link.isLoading || (url && opens.isLoading) ? <Spinner /> : null}
+      {ready ? (
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm" data-testid="setup-shop-ready">
+          <div className="font-medium text-emerald-200">{say("متجرك جاهز وموصول بهاللوحة:|Your shop is ready and linked to this admin:|החנות שלך מוכנה ומחוברת ללוח הניהול:")}</div>
+          <a href={url!} target="_blank" rel="noreferrer noopener" className="mt-1 inline-block underline">
+            <bdi dir="ltr">{url!.replace(/^https:\/\//, "")}</bdi>
+          </a>
+        </div>
+      ) : null}
+      {building ? (
+        <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm" data-testid="setup-shop-building" role="status">
+          <div className="font-medium text-sky-200">{say("المتجر انعمل وعم ينبنى… أول نشر بياخد كم دقيقة.|The shop is made and building… its first deploy takes a few minutes.|החנות נוצרה ונבנית… הפריסה הראשונה לוקחת כמה דקות.")}</div>
+          <bdi dir="ltr" className="mt-1 block text-white/80">{url!.replace(/^https:\/\//, "")}</bdi>
+          <p className="mt-1 text-xs text-white/60">{say("بنكمّل لحالنا أول ما يفتح. بتقدر تكمّل هلأ كمان، والقوالب بتبيّن لما يجهز.|We go on by ourselves as soon as it opens. You can go on now too; the templates show once it's ready.|נמשיך לבד ברגע שהיא נפתחת. אפשר להמשיך גם עכשיו; התבניות יופיעו כשהיא מוכנה.")}</p>
+        </div>
+      ) : null}
+      {showForm ? (
+        <form
+          className="space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (can) make.mutate();
+          }}
+          data-testid="setup-shop-form"
+        >
+          {url ? (
+            <p className="rounded-xl bg-amber-500/10 p-3 text-xs leading-6 text-amber-100" data-testid="setup-shop-elsewhere">
+              {say("هاللوحة موصولة بمتجر ما بيفتحلها، يمكن تبع متجر تاني:|This admin is linked to a shop that doesn't open to it, perhaps another store's:|לוח הניהול מחובר לחנות שלא נפתחת אליו, אולי של חנות אחרת:")} <bdi dir="ltr">{url.replace(/^https:\/\//, "")}</bdi>
+              {". "}
+              {say("اعمل متجر إله لحاله:|Make a shop of its own:|צרו חנות משלו:")}
+            </p>
+          ) : null}
+          {making ? <p className="text-xs text-white/60" data-testid="setup-shop-making">{say(`محاولة سابقة وقفت عند «${making}»: بتكمّل من مكانها.|An earlier try stopped at “${making}”: it goes on from there.|ניסיון קודם נעצר ב-«${making}»: הוא ממשיך משם.`)}</p> : null}
+          <p className="text-xs leading-6 text-white/60">
+            {say(
+              "بـ vercel.com ← Account Settings ← Tokens اعمل توكن (للحساب أو للفريق اللي رح ينعمل فيه المتجر) وانسخه هون. بيستعمل مرة وحدة لعمل المتجر وما بينحفظ.|At vercel.com → Account Settings → Tokens make a token (for the account or the team the shop goes in) and paste it here. It is used once to make the shop and isn't kept.|ב-vercel.com ← Account Settings ← Tokens צרו טוקן (לחשבון או לצוות שבו תיווצר החנות) והדביקו אותו כאן. הוא משמש פעם אחת ליצירת החנות ולא נשמר.",
+            )}
+          </p>
+          <label className="block">
+            <span className="mb-1 block text-xs text-white/60">{say("توكن Vercel|Vercel token|טוקן Vercel")}</span>
+            <input className={field} dir="ltr" type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" data-testid="setup-shop-token" />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs text-white/60">{say("اسم المتجر|The shop's name|שם החנות")}</span>
+              <input className={field} dir="ltr" value={siteNow} onChange={(e) => setSite(e.target.value.toLowerCase())} placeholder="my-shop" data-testid="setup-shop-site" />
+              <span className="mt-1 block text-xs text-white/50" dir="ltr">{siteNow ? `https://${siteNow}.vercel.app` : ""}</span>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-white/60">{say("الفريق على Vercel (اختياري)|The Vercel team (optional)|הצוות ב-Vercel (לא חובה)")}</span>
+              <input className={field} dir="ltr" value={team} onChange={(e) => setTeam(e.target.value)} placeholder="team_… / slug" data-testid="setup-shop-team" />
+            </label>
+          </div>
+          {failed ? (
+            <p className="rounded-xl bg-red-500/10 p-3 text-xs text-red-200" role="alert" data-testid="setup-shop-failed">
+              {failed}
+            </p>
+          ) : null}
+          <Button type="submit" variant="primary" size="sm" disabled={!can} isLoading={make.isPending} data-testid="setup-shop-make">
+            {say("اعمل المتجر|Make the shop|ליצור את החנות")}
+          </Button>
+          <p className="text-xs text-white/50">{say("بينعمل بحسابك على Vercel، من نفس الكود، وموصول بسيرفر هالمتجر ولوحته.|It is made in your Vercel account, from the same code, linked to this store's server and admin.|היא נוצרת בחשבון ה-Vercel שלך, מאותו קוד, מחוברת לשרת וללוח הניהול של החנות הזו.")}</p>
+        </form>
+      ) : null}
+    </section>
+  );
+}
 
 /** Why the server refused the account, in the page's words. */
 function refusal(e: unknown): string {

@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SetupWizard from "./SetupWizard";
 
-const m = vi.hoisted(() => ({ status: vi.fn(), settings: vi.fn(), apply: vi.fn(), pages: vi.fn(), imported: vi.fn(), templates: vi.fn(), cloud: vi.fn(), cloudSave: vi.fn() }));
+const m = vi.hoisted(() => ({ status: vi.fn(), settings: vi.fn(), apply: vi.fn(), pages: vi.fn(), imported: vi.fn(), templates: vi.fn(), cloud: vi.fn(), cloudSave: vi.fn(), shop: vi.fn(), opens: vi.fn() }));
+vi.mock("../../api/shop.api", () => ({ getShopLink: m.shop, makeShopLink: vi.fn(), followShop: vi.fn(), shopOpensHere: m.opens }));
 vi.mock("../../api/setup.api", () => ({ SETUP_LATER_KEY: "setup-later", getSetupStatus: m.status, applySetup: m.apply }));
 vi.mock("../../api/settings.api", () => ({ getSettings: m.settings }));
 vi.mock("../../api/pages.api", () => ({ listPages: m.pages }));
@@ -23,6 +24,8 @@ beforeEach(() => {
   m.pages.mockResolvedValue([{ id: "home-id", slug: "/" }]);
   m.apply.mockResolvedValue({ made: { categories: 1, types: 1, pages: 1, menuItems: 1 }, kept: {} });
   m.cloud.mockResolvedValue({ source: "none", cloudName: null, apiKeyEnd: null, savedAt: null });
+  m.shop.mockResolvedValue({ url: "https://shop.example.com", source: "server", making: null, repo: "acme/store", branch: "main" });
+  m.opens.mockResolvedValue(true);
   m.imported.mockResolvedValue({ tree, design: { templateId: "fashion-quiet", theme: { id: "tpl-fashion-quiet", name: {}, family: "fashion", mode: "light", palettes: {}, fonts: {} }, header: tree, footer: tree } });
 });
 afterEach(() => { cleanup(); });
@@ -62,7 +65,20 @@ test("the exact reference selected in the editor is preselected without importin
   expect(await screen.findByText("reference-neural-glass")).toBeInTheDocument();
   expect(m.imported).not.toHaveBeenCalled();expect(m.apply).not.toHaveBeenCalled();
 });
+/** The first step: the store's own shop, here one that opens to this admin. */
+async function pastShop() {
+  await screen.findByTestId("setup-shop-ready");
+  fireEvent.click(screen.getByTestId("setup-next"));
+}
+test("the store's own shop comes first; one that opens to this admin is said so, then what it sells", async () => {
+  start();
+  expect((await screen.findByTestId("setup-shop-ready")).textContent).toContain("shop.example.com");
+  expect(screen.getAllByRole("listitem")[0].textContent).toMatch(/1\. (Your shop|متجرك)/);
+  fireEvent.click(screen.getByTestId("setup-next"));
+  expect(await screen.findByTestId("setup-pack-fashion")).toBeInTheDocument();
+});
 async function choose() {
+  await pastShop();
   fireEvent.click(await screen.findByTestId("setup-pack-fashion"));
   fireEvent.click(screen.getByTestId("setup-next"));
   fireEvent.click(screen.getByRole("button", { name: "Pick template" }));
@@ -108,6 +124,7 @@ test("the assistant: on as the personality that fits the store best, another pic
 });
 test("another personality picked, or the assistant switched off, goes with the setup", async () => {
   start();
+  await pastShop();
   fireEvent.click(await screen.findByTestId("setup-pack-fashion"));
   fireEvent.click(screen.getByTestId("setup-next"));
   fireEvent.click(screen.getByRole("button", { name: "Pick template" }));
@@ -131,6 +148,7 @@ test("another personality picked, or the assistant switched off, goes with the s
 test("pictures: the store's own Cloudinary account, tried and connected; one already connected is said so", async () => {
   m.cloudSave.mockResolvedValue({ source: "saved", cloudName: "rose-store", apiKeyEnd: "2345", savedAt: "2026-11-20T06:00:00Z" });
   start();
+  await pastShop();
   fireEvent.click(await screen.findByTestId("setup-pack-fashion"));
   fireEvent.click(screen.getByTestId("setup-next"));
   fireEvent.click(screen.getByRole("button", { name: "Pick template" }));

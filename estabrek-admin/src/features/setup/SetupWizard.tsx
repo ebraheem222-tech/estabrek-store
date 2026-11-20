@@ -20,11 +20,13 @@ import { identityOf, type StoreIdentity } from "../../lib/storeIdentity";
 import { StoreTemplatePicker } from "./StoreTemplatePicker";
 import type { MotionProfile } from "../../studio/motionProfiles";
 import { useQueryClient } from "@tanstack/react-query";
-import { AssistantStep, MediaStep } from "./SetupExtras";
+import { AssistantStep, MediaStep, ShopStep } from "./SetupExtras";
+import { followShop, getShopLink } from "../../api/shop.api";
 import { personasFor } from "../../../../estabrek-storefront/src/lib/personas";
 import { say as sayAll } from "../../studio/say";
 
-const STEPS = ["industry", "theme", "name", "assistant", "media", "content", "done"] as const;
+// The store's own shop first: what it sells and its design are read from it.
+const STEPS = ["shop", "industry", "theme", "name", "assistant", "media", "content", "done"] as const;
 type Step = (typeof STEPS)[number];
 
 
@@ -36,7 +38,7 @@ export default function SetupWizard() {
   const requestedTemplate = designEntry ? params.get("template") : null;
   const lang = adminLang();
   const say = (x: W) => x[lang] || x.ar;
-  const [step, setStep] = useState<Step>(designEntry ? "theme" : "industry");
+  const [step, setStep] = useState<Step>(designEntry ? "theme" : "shop");
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [previousIdentity, setPreviousIdentity] = useState<StoreIdentity | null>(null);
   const [identityChanged, setIdentityChanged] = useState(false);
@@ -58,6 +60,8 @@ export default function SetupWizard() {
   const [homeId, setHomeId] = useState<string | null>(null);
 
   useEffect(() => {
+    // A shop made from this setup earlier: its designs are read from it (also when only the design is changed).
+    void getShopLink().then(followShop).catch(() => undefined);
     void getSetupStatus().then(setStatus).catch(() => setStatus(null));
     void getSettings()
       .then((s) => {
@@ -94,7 +98,7 @@ export default function SetupWizard() {
   };
 
   // Changing only the design (from Settings) skips what the store set up already.
-  const steps = designEntry ? STEPS.filter((s) => s !== "assistant" && s !== "media") : [...STEPS];
+  const steps = designEntry ? STEPS.filter((s) => s !== "assistant" && s !== "media" && s !== "shop") : [...STEPS];
   const next = () => setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)]);
   const back = () => setStep(steps[Math.max(0, steps.indexOf(step) - 1)]);
   const personaNow = persona ?? personasFor(pack?.industry ?? null)[0]?.id ?? "";
@@ -140,6 +144,7 @@ export default function SetupWizard() {
   };
 
   const stepLabel: Record<Step, string> = {
+    shop: sayAll("متجرك|Your shop|החנות שלך"),
     name: tr("اسم المتجر", "Store name"),
     assistant: sayAll("المساعد|Assistant|העוזר"),
     media: sayAll("الصور|Pictures|תמונות"),
@@ -200,6 +205,8 @@ export default function SetupWizard() {
         {step === "assistant" ? <AssistantStep on={assistantOn} onToggle={setAssistantOn} persona={personaNow} onPersona={setPersona} industry={pack?.industry ?? null} /> : null}
 
         {step === "media" ? <MediaStep /> : null}
+
+        {step === "shop" ? <ShopStep onReady={next} /> : null}
 
         {step === "industry" ? (
           <section className="space-y-5">

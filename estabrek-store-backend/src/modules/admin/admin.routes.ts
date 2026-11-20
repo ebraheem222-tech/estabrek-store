@@ -45,6 +45,7 @@ import backups from "./backups.controller.js";
 import project from "./project.controller.js";
 import copies from "./copies.controller.js";
 import cloudinaryAccount from "./cloudinaryAccount.controller.js";
+import shopLink from "./shopLink.controller.js";
 import productTypes from "./productTypes.controller.js";
 import { orderDelivery, productCodes, productFiles, tickets } from "./fulfillment.controller.js";
 import { orderLicences, productProtected, protectedTrace, protectedTypes } from "./protected.controller.js";
@@ -117,6 +118,7 @@ r.use("/orders", (req, res, next) => {
 // groups
 // The store's own Cloudinary account (before /settings, whose router doesn't know it).
 r.use("/settings/cloudinary", areaAccess({ read: "settings:read", write: "settings:write" }), cloudinaryAccount);
+r.use("/settings/shop", areaAccess({ read: "settings:read", write: "settings:write" }), shopLink);
 r.use("/settings", areaAccess({ read: "settings:read", write: "settings:write" }), settings);
 r.use("/visual-controls", areaAccess({ read: "settings:read", write: "settings:write" }), visualControls);
 r.use("/features", areaAccess({ read: "settings:read", write: "settings:write" }), features);

@@ -34,7 +34,7 @@ function freeName(kind: PressKind, id: string, got: { ok: boolean; status: numbe
  * account's address, and Vercel would give the shop another one): asked of the address itself, from
  * outside, as anyone may. An address no project holds answers 404 with DEPLOYMENT_NOT_FOUND.
  */
-async function vercelAddressFree(site: string): Promise<CopyCheck> {
+export async function vercelAddressFree(site: string): Promise<CopyCheck> {
   const id = "vercel.address";
   try {
     const got = await sendRaw({ method: "GET", url: `https://${site}.vercel.app/`, headers: { accept: "text/plain,text/html", "user-agent": "store-press/1" }, ms: 6000 });

@@ -21,6 +21,7 @@ import { LanguageSwitch } from "./shell/LanguageSwitch";
 import { storeNameOf } from "../lib/storeIdentity";
 import { setStoreCurrency } from "../lib/money";
 import { SETUP_LATER_KEY, getSetupStatus } from "../api/setup.api";
+import { followShop, getShopLink } from "../api/shop.api";
 import { tr } from "@/lib/words";
 import { say } from "../studio/say";
 import { loc } from "@/lib/lang";
@@ -218,6 +219,15 @@ export default function AdminLayout() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // A shop made from the store's own setup: the admin's links, previews and designs come from it.
+  useEffect(() => {
+    if (!admin) return;
+    void getShopLink()
+      .then(followShop)
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [admin?.id]);
 
   // A new, empty store opens on its setup for the owner (once a visit if put off with «بعدين»).
   useEffect(() => {
