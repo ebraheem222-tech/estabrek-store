@@ -172,6 +172,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/system/automations", tr("التلقائيات", "Automations")],
   ["/system/history", tr("السجل والرجوع", "History & undo")],
   ["/system/backups", tr("النسخ الاحتياطي", "Backups")],
+  ["/system/project", say("المشروع كملف|The project as a file|הפרויקט כקובץ")],
   ["/security", tr("الأمان", "Security")],
   ["/team/activity", tr("سجل النشاط", "Activity log")],
   ["/team", tr("الفريق والصلاحيات", "Team & roles")],

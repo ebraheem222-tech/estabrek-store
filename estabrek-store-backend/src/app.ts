@@ -68,6 +68,8 @@ app.use(rateLimit);
 app.use(maintenanceGuard); // maintenance mode pauses public orders
 app.use(trafficLanes); // requests by priority (admin → مراقبة السرعة والأولوية)
 app.use(csrfGuard);
+// A whole project file is bigger than any other body (lib/projectFile.ts PROJECT_LIMITS.bytes); only its own routes take one.
+app.use("/v1/admin/system/project", express.json({ limit: "16mb" }));
 app.use(express.json({ limit: env.BODY_JSON_LIMIT }));
 app.use(express.urlencoded({ extended: false, limit: env.BODY_URLENCODED_LIMIT }));
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));

@@ -74,6 +74,7 @@ const SchedulePage = lazy(() => import("../features/system/SchedulePage"));
 const AutomationsPage = lazy(() => import("../features/system/AutomationsPage"));
 const HistoryPage = lazy(() => import("../features/system/HistoryPage"));
 const BackupsPage = lazy(() => import("../features/system/BackupsPage"));
+const ProjectPage = lazy(() => import("../features/system/ProjectPage"));
 const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
 const MediaCenterPage = lazy(() => import("../features/media/MediaCenterPage"));
@@ -299,6 +300,7 @@ export default function AppRouter() {
           {/* Every member: it shows only the parts they can see. */}
           <Route path="system/history" element={withPermissions(<HistoryPage />, [])} />
           <Route path="system/backups" element={withPermissions(<BackupsPage />, ["system:read"])} />
+          <Route path="system/project" element={withPermissions(<ProjectPage />, ["system:read"])} />
           <Route path="customers" element={withPermissions(<CustomersPage />, ["customers:read"])} />
 
           {/* nav + pages */}
