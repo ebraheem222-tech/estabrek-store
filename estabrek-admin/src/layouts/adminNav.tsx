@@ -286,6 +286,7 @@ const NAV_TEAM: NavItem[] = [
   { to: "/admin/system/traffic", label: tr("حماية الضغط والصيانة", "Traffic & maintenance"), icon: Icons.activity, requirePermissions: ["system:read"] },
   { to: "/admin/system/cache", label: tr("السرعة والكاش", "Speed & cache"), icon: Icons.speed, requirePermissions: ["system:read"] },
   { to: "/admin/system/speed", label: tr("مراقبة السرعة والأولوية", "Speed monitor"), icon: Icons.activity, requirePermissions: ["system:read"] },
+  { to: "/admin/system/hosting", label: say("الاستضافة|Hosting|אחסון"), icon: Icons.backup, requirePermissions: ["system:read"] },
   { to: "/admin/system/server", label: tr("حالة السيرفر", "Server state"), icon: Icons.activity, requirePermissions: ["system:read"] },
   { to: "/admin/system/jobs", label: tr("المهام بالخلفية", "Background jobs"), icon: Icons.jobs, requirePermissions: ["system:read"] },
   { to: "/admin/system/runs", label: say("سجل التشغيل|Run log|יומן הרצות"), icon: Icons.activity, requirePermissions: ["system:read"] },

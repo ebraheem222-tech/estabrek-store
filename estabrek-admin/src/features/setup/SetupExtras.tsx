@@ -10,6 +10,8 @@ import { getApiErrorMessage } from "../../api/http";
 import * as CloudAPI from "../../api/cloudinary.api";
 import * as ShopAPI from "../../api/shop.api";
 import { TokenGuide } from "./TokenGuide";
+import { CloudinaryGuide } from "./CloudinaryGuide";
+import { useConfirm } from "../../components/useConfirm";
 import { say } from "../../studio/say";
 
 export function AssistantStep({ on, onToggle, persona, onPersona, industry }: { on: boolean; onToggle: (v: boolean) => void; persona: string; onPersona: (id: string) => void; industry: string | null }) {
@@ -83,7 +85,7 @@ function shopRefusal(e: unknown): string {
  * The setup's first step: the store's own shop. A store whose shop opens to this admin goes on; one with none
  * (or with another store's) gets one on Vercel from here, with the owner's token, used once and never kept.
  */
-export function ShopStep({ onReady, onReadyChange }: { onReady?: () => void; /** Whether the shop opens to this admin: the setup goes no further until it does. */ onReadyChange?: (ready: boolean) => void }) {
+export function ShopStep({ onReady, onReadyChange, inCard = false }: { onReady?: () => void; /** Whether the shop opens to this admin: the setup goes no further until it does. */ onReadyChange?: (ready: boolean) => void; /** In a page's card (admin → الاستضافة): the card says what it is. */ inCard?: boolean }) {
   const qc = useQueryClient();
   const link = useQuery({ queryKey: ["shop-link"], queryFn: ShopAPI.getShopLink, retry: false });
   useEffect(() => ShopAPI.followShop(link.data), [link.data]);
@@ -179,8 +181,8 @@ export function ShopStep({ onReady, onReadyChange }: { onReady?: () => void; /**
     }
   }, [building, ready, onReady]);
   return (
-    <section className="mx-auto max-w-2xl space-y-5" data-testid="setup-shop">
-      <h1 className="text-2xl font-bold">{say("متجرك|Your shop|החנות שלך")}</h1>
+    <section className={inCard ? "space-y-5" : "mx-auto max-w-2xl space-y-5"} data-testid="setup-shop">
+      {inCard ? null : <h1 className="text-2xl font-bold">{say("متجرك|Your shop|החנות שלך")}</h1>}
       <p className="text-sm leading-7 text-white/60">
         {say(
           "المتجر هو الموقع اللي بيشوفه زباينك وبيشتروا منه. قبل ما تختار شو بتبيع والتصميم، لازم يكون إلك متجر موصول بهاللوحة: منه بتنقرأ القوالب والمعاينات.|The shop is the website your shoppers see and buy from. Before you pick what you sell and the design, you need a shop of your own linked to this admin: the templates and previews are read from it.|החנות היא האתר שהקונים שלך רואים וקונים בו. לפני שבוחרים מה מוכרים ואת העיצוב, צריך חנות משלך שמחוברת ללוח הניהול הזה: התבניות והתצוגות נקראות ממנה.",
@@ -269,9 +271,20 @@ function refusal(e: unknown): string {
   return getApiErrorMessage(e);
 }
 
-export function MediaStep() {
+/**
+ * `manage` (admin → الاستضافة): a saved account can be changed or taken off too; in the setup it is only made.
+ */
+export function MediaStep({ manage = false }: { manage?: boolean } = {}) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["cloudinary-account"], queryFn: CloudAPI.getCloudinaryAccount, retry: false });
+  const [changing, setChanging] = useState(false);
+  const [confirm, dialog] = useConfirm();
+  const remove = useMutation({
+    mutationFn: CloudAPI.removeCloudinaryAccount,
+    onMutate: () => setFailed(null),
+    onSuccess: (data) => qc.setQueryData(["cloudinary-account"], data),
+    onError: (e) => setFailed(refusal(e)),
+  });
   const [cloudName, setCloudName] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
@@ -282,14 +295,15 @@ export function MediaStep() {
     onSuccess: (data) => {
       qc.setQueryData(["cloudinary-account"], data);
       setApiSecret("");
+      setChanging(false);
     },
     onError: (e) => setFailed(refusal(e)),
   });
   const acc = q.data;
   const can = cloudName.trim() && /^\d{6,24}$/.test(apiKey.trim()) && apiSecret.trim().length >= 16;
   return (
-    <section className="mx-auto max-w-2xl space-y-5" data-testid="setup-media">
-      <h1 className="text-2xl font-bold">{say("وين بتنحفظ الصور|Where the pictures are kept|איפה התמונות נשמרות")}</h1>
+    <section className={manage ? "space-y-5" : "mx-auto max-w-2xl space-y-5"} data-testid="setup-media">
+      {manage ? null : <h1 className="text-2xl font-bold">{say("وين بتنحفظ الصور|Where the pictures are kept|איפה התמונות נשמרות")}</h1>}
       <p className="text-sm leading-7 text-white/60">
         {say(
           "صور المنتجات والفيديوهات بتنحفظ بحساب Cloudinary تبع متجرك: بتطلع بسرعة وبالحجم المناسب لكل جهاز. الحساب المجاني بيكفي للبداية. بدونه بتنحفظ على السيرفر نفسه، وعلى Railway بتضيع مع كل نشر جديد.|Product pictures and videos are kept in your store's own Cloudinary account: they load fast and at the right size for each device. The free plan is enough to start. Without it they are kept on the server itself, and on Railway they are lost with each new deploy.|תמונות המוצרים והסרטונים נשמרים בחשבון Cloudinary של החנות שלך: הם נטענים מהר ובגודל המתאים לכל מכשיר. התוכנית החינמית מספיקה להתחלה. בלעדיו הם נשמרים בשרת עצמו, וב-Railway הם הולכים לאיבוד בכל פריסה חדשה.",
@@ -297,7 +311,7 @@ export function MediaStep() {
       </p>
       {q.isLoading ? (
         <Spinner />
-      ) : acc && acc.source !== "none" ? (
+      ) : acc && acc.source !== "none" && !changing ? (
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm" data-testid="setup-media-connected" data-source={acc.source}>
           <div className="font-medium text-emerald-200">
             {say("موصول بـ Cloudinary:|Connected to Cloudinary:|מחובר ל-Cloudinary:")} <bdi dir="ltr">{acc.cloudName}</bdi>
@@ -307,6 +321,51 @@ export function MediaStep() {
               ? say("من إعدادات السيرفر نفسه.|From the server's own settings.|מההגדרות של השרת עצמו.")
               : say(`المفتاح بيخلص بـ ${acc.apiKeyEnd}. السر محفوظ مقفول وما بينعرض.|The key ends in ${acc.apiKeyEnd}. The secret is kept sealed and never shown.|המפתח מסתיים ב-${acc.apiKeyEnd}. הסוד שמור נעול ולא מוצג.`)}
           </div>
+          {manage && acc.source === "saved" ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setCloudName(acc.cloudName ?? "");
+                  setApiKey("");
+                  setApiSecret("");
+                  setChanging(true);
+                }}
+                data-testid="setup-media-change"
+              >
+                {say("غيّر الحساب|Change the account|החלפת החשבון")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                isLoading={remove.isPending}
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: say("افصل Cloudinary|Disconnect Cloudinary|ניתוק Cloudinary"),
+                      message: say(
+                        "الصور اللي انرفعت بتضل بحسابك بـ Cloudinary وبتضل تطلع. الصور الجديدة بتنحفظ على السيرفر لحد ما توصّل حساب.|The pictures already uploaded stay in your Cloudinary account and keep showing. New ones are kept on the server until an account is connected.|התמונות שכבר הועלו נשארות בחשבון ה-Cloudinary שלך וממשיכות להופיע. חדשות נשמרות בשרת עד שיחובר חשבון.",
+                      ),
+                      confirmText: say("افصله|Disconnect|ניתוק"),
+                      variant: "danger",
+                    })
+                  )
+                    remove.mutate();
+                }}
+                data-testid="setup-media-remove"
+              >
+                {say("افصل|Disconnect|ניתוק")}
+              </Button>
+            </div>
+          ) : manage && acc.source === "env" ? (
+            <p className="mt-2 text-xs text-white/50">{say("بيتغيّر من متغيرات السيرفر (CLOUDINARY_…) على Railway.|It is changed from the server's variables (CLOUDINARY_…) on Railway.|משנים אותו במשתני השרת (CLOUDINARY_…) ב-Railway.")}</p>
+          ) : null}
+          {failed ? (
+            <p className="mt-2 rounded-xl bg-red-500/10 p-3 text-xs text-red-200" role="alert" data-testid="setup-media-failed">
+              {failed}
+            </p>
+          ) : null}
         </div>
       ) : (
         <form
@@ -342,8 +401,15 @@ export function MediaStep() {
           <Button type="submit" variant="secondary" size="sm" disabled={!can} isLoading={save.isPending} data-testid="setup-media-save">
             {say("جرّب ووصّل|Try it and connect|לנסות ולחבר")}
           </Button>
+          {changing ? (
+            <button type="button" className="ms-3 text-xs text-white/60 underline" onClick={() => setChanging(false)} data-testid="setup-media-keep">
+              {say("خليه متل ما هو|Keep it as it is|להשאיר כמו שהוא")}
+            </button>
+          ) : null}
         </form>
       )}
+      {acc?.source !== "env" && (!acc || acc.source === "none" || changing) ? <CloudinaryGuide /> : null}
+      {dialog}
     </section>
   );
 }

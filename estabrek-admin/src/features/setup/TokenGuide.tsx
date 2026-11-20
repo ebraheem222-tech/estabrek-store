@@ -1,43 +1,10 @@
 // How a Vercel token is made, in pictures (the setup's «متجرك» step, its token way): four steps as Vercel's own
 // docs give them (vercel.com/docs/accounts/access-tokens), each drawn as a plain sketch of the screen, not a copy of
 // it. The sketches take the page's own colours (currentColor), so they read in every skin.
-import { say } from "../../studio/say";
+import { Field, Mark, PictureGuide, Window, type GuideStep } from "./PictureGuide";
+import { mono } from "./sketchStyle";
 
 export const VERCEL_TOKENS = "https://vercel.com/account/tokens";
-
-const frame = "rounded-xl border border-white/10 bg-white/[0.03] p-2";
-const mono = { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" } as const;
-
-/** A browser's window, its address written in it. */
-function Window({ address, children }: { address: string; children: React.ReactNode }) {
-  return (
-    <svg viewBox="0 0 320 180" className="block h-auto w-full text-white/70" role="img" aria-hidden direction="ltr">
-      <rect x="1" y="1" width="318" height="178" rx="12" fill="none" stroke="currentColor" strokeOpacity=".35" />
-      <circle cx="16" cy="16" r="4" fill="currentColor" fillOpacity=".3" />
-      <circle cx="28" cy="16" r="4" fill="currentColor" fillOpacity=".3" />
-      <circle cx="40" cy="16" r="4" fill="currentColor" fillOpacity=".3" />
-      <rect x="56" y="8" width="252" height="16" rx="8" fill="currentColor" fillOpacity=".08" />
-      <text x="66" y="20" fontSize="10" fill="currentColor" style={mono}>
-        {address}
-      </text>
-      <line x1="1" y1="32" x2="319" y2="32" stroke="currentColor" strokeOpacity=".2" />
-      {children}
-    </svg>
-  );
-}
-/** What is pressed or filled at this step: drawn in the page's accent. */
-const Mark = ({ x, y, w, h }: { x: number; y: number; w: number; h: number }) => <rect x={x - 3} y={y - 3} width={w + 6} height={h + 6} rx="9" fill="none" className="text-accent-400" stroke="currentColor" strokeWidth="2.5" />;
-const Field = ({ x, y, w, label, value }: { x: number; y: number; w: number; label: string; value: string }) => (
-  <g>
-    <text x={x} y={y - 4} fontSize="9" fill="currentColor" fillOpacity=".7">
-      {label}
-    </text>
-    <rect x={x} y={y} width={w} height="18" rx="5" fill="none" stroke="currentColor" strokeOpacity=".4" />
-    <text x={x + 7} y={y + 12.5} fontSize="9.5" fill="currentColor" style={mono}>
-      {value}
-    </text>
-  </g>
-);
 
 function Step1() {
   return (
@@ -120,7 +87,7 @@ function Step4() {
   );
 }
 
-const STEPS: Array<{ draw: () => React.ReactElement; words: string }> = [
+const STEPS: GuideStep[] = [
   { draw: Step1, words: "افتح صفحة التوكنات بـ Vercel (لازم تكون فايت على حسابك). هي بالإعدادات تحت Tokens.|Open Vercel's tokens page (you need to be signed in). It's under Settings → Tokens.|פתחו את עמוד הטוקנים של Vercel (צריך להיות מחוברים). הוא בהגדרות תחת Tokens." },
   {
     draw: Step2,
@@ -133,24 +100,5 @@ const STEPS: Array<{ draw: () => React.ReactElement; words: string }> = [
 
 /** The four steps in pictures, with Vercel's tokens page a press away. */
 export function TokenGuide({ open }: { open?: boolean }) {
-  return (
-    <details className="rounded-xl border border-white/10 p-3" open={open} data-testid="setup-shop-guide">
-      <summary className="cursor-pointer text-sm font-medium">{say("كيف بعمل توكن؟ بالصور|How do I make a token? In pictures|איך יוצרים טוקן? בתמונות")}</summary>
-      <a href={VERCEL_TOKENS} target="_blank" rel="noreferrer noopener" className="mt-3 inline-block rounded-lg bg-white/5 px-3 py-2 text-xs underline" data-testid="setup-shop-guide-open">
-        {say("افتح صفحة التوكنات بـ Vercel ↗|Open Vercel's tokens page ↗|פתיחת עמוד הטוקנים של Vercel ↗")}
-      </a>
-      <ol className="mt-3 grid gap-3 sm:grid-cols-2">
-        {STEPS.map(({ draw: Draw, words }, i) => (
-          <li key={i} className={frame} data-testid={`setup-shop-guide-${i + 1}`}>
-            <Draw />
-            <p className="mt-2 text-xs leading-6 text-white/75">
-              <span className="me-1 inline-grid h-5 w-5 place-items-center rounded-full bg-accent-500/25 text-[11px] font-bold">{i + 1}</span>
-              {say(words)}
-            </p>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-2 text-[11px] text-white/50">{say("الصور رسمة تقريبية للشاشة، مش نسخة عنها.|The pictures are sketches of the screens, not copies of them.|התמונות הן סקיצות של המסכים, לא העתקים שלהם.")}</p>
-    </details>
-  );
+  return <PictureGuide testid="setup-shop-guide" open={open} title="كيف بعمل توكن؟ بالصور|How do I make a token? In pictures|איך יוצרים טוקן? בתמונות" link={{ href: VERCEL_TOKENS, label: "افتح صفحة التوكنات بـ Vercel ↗|Open Vercel's tokens page ↗|פתיחת עמוד הטוקנים של Vercel ↗" }} steps={STEPS} />;
 }
