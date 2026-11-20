@@ -4,6 +4,7 @@
  * repository, is Railway's address free, is the name free at Vercel and at Cloudflare Pages. Every
  * question only reads: nothing is made or changed anywhere.
  */
+import { SiteError, sendRaw } from "./fnHttp.js";
 import { askThrough, readyOfKind } from "./fnReady.js";
 import { adminName, type CopyInput, type PressKind } from "./press.js";
 
@@ -26,6 +27,22 @@ function freeName(kind: PressKind, id: string, got: { ok: boolean; status: numbe
   if (got.status === 404) return { id, kind, ok: true, why: null };
   if (got.ok) return { id, kind, ok: false, why: `"${name}" is taken by a project of yours` };
   return { id, kind, ok: false, why: said(got) };
+}
+
+/**
+ * Whether <site>.vercel.app is no one's at all (a name free in the owner's account may be another
+ * account's address, and Vercel would give the shop another one): asked of the address itself, from
+ * outside, as anyone may. An address no project holds answers 404 with DEPLOYMENT_NOT_FOUND.
+ */
+async function vercelAddressFree(site: string): Promise<CopyCheck> {
+  const id = "vercel.address";
+  try {
+    const got = await sendRaw({ method: "GET", url: `https://${site}.vercel.app/`, headers: { accept: "text/plain,text/html", "user-agent": "store-press/1" }, ms: 6000 });
+    if (got.status === 404 && /DEPLOYMENT_NOT_FOUND/.test(got.text)) return { id, kind: "vercel", ok: true, why: null };
+    return { id, kind: "vercel", ok: false, why: `${site}.vercel.app is someone else's` };
+  } catch (e) {
+    return { id, kind: "vercel", ok: false, why: e instanceof SiteError ? e.message : `${site}.vercel.app couldn't be reached` };
+  }
 }
 
 /** Each service's questions for this copy, all at once. A service with no connection picked is said so. */
@@ -62,6 +79,7 @@ export async function checkCopy(input: CopyInput, via: Via): Promise<CopyCheck[]
   else {
     const team = vercelS.team ? `?${vercelS.team.startsWith("team_") ? "teamId" : "slug"}=${encodeURIComponent(vercelS.team)}` : "";
     jobs.push(askThrough(via.vercel!, "vercel", { method: "GET", url: `https://api.vercel.com/v9/projects/${encodeURIComponent(input.site)}${team}`, headers: bearer }).then((got) => freeName("vercel", "vercel.name", got, input.site)));
+    jobs.push(vercelAddressFree(input.site));
   }
 
   if (!cloudflareS) jobs.push(missing("cloudflare"));

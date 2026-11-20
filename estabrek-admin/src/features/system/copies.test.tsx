@@ -3,14 +3,15 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { CopiesView, CopyPlan } from "../../api/copies.api";
+import type { CopiesView, CopyPlan, CopyView } from "../../api/copies.api";
 
 // نسخ الزباين over a stand-in API: only the owner; the connections each service is made through (none, one, a
 // choice); the names as they will be addresses; the plan with each service's answer, and every variable with its
-// value or, for a secret, where it comes from. Nothing is made yet, and the page says so.
+// value or, for a secret, where it comes from; then made, once the owner says yes, and followed step by step: a step
+// that said no in its own words with "try again from here", and a made copy's addresses and its owner's link.
 
 const m = vi.hoisted(() => ({
-  api: { getCopies: vi.fn(), planCopy: vi.fn(), PRESS_KINDS: ["neon", "railway", "vercel", "cloudflare"] },
+  api: { getCopies: vi.fn(), planCopy: vi.fn(), makeCopy: vi.fn(), listCopies: vi.fn(), getCopy: vi.fn(), copyAgain: vi.fn(), copyAlive: vi.fn(), PRESS_KINDS: ["neon", "railway", "vercel", "cloudflare"] },
   admin: { owner: true, role: "SUPERADMIN" } as Record<string, unknown> | null,
 }));
 vi.mock("../../api/copies.api", () => m.api);
@@ -18,7 +19,7 @@ vi.mock("../../store/auth.store", () => ({ useAuthStore: (pick: (s: { admin: unk
 
 import { setLangForTests } from "../../lib/lang";
 import CopiesPage from "./CopiesPage";
-import { refusedText, tidyName, whyText } from "./copiesText";
+import { makeStepName, refusedText, tidyName, whyText } from "./copiesText";
 
 const VIEW: CopiesView = {
   connections: { neon: [{ id: "n1", name: "Neon" }], railway: [{ id: "r1", name: "Railway" }], vercel: [{ id: "v1", name: "Vercel A" }, { id: "v2", name: "Vercel B" }], cloudflare: [] },
@@ -47,6 +48,29 @@ const PLAN: CopyPlan = {
   ready: false,
 };
 
+const STEP_IDS = ["neon.project", "railway.project", "railway.service", "railway.domain", "vercel.project", "cloudflare.project", "vercel.deploy", "cloudflare.deploy", "railway.variables", "railway.deploy"];
+const KIND: Record<string, string> = { neon: "neon", railway: "railway", vercel: "vercel", cloudflare: "cloudflare" };
+function copy(state: CopyView["state"], upTo: number, failedWhy?: string): CopyView {
+  return {
+    id: "c1",
+    label: "Rose",
+    server: "rose-api",
+    site: "rose",
+    repo: "acme/store",
+    branch: "main",
+    region: "aws-eu-central-1",
+    state,
+    steps: STEP_IDS.map((id, i) => ({ id, kind: KIND[id.split(".")[0]] as CopyView["steps"][number]["kind"], state: i < upTo ? "done" : i === upTo ? (failedWhy ? "failed" : state === "making" ? "doing" : "waiting") : "waiting", why: i === upTo && failedWhy ? failedWhy : null, at: null })),
+    addresses: { api: "https://rose-api.up.railway.app", shop: "https://rose.vercel.app", admin: "https://rose-admin.pages.dev" },
+    links: upTo > 0 ? { neon: "https://console.neon.tech/app/projects/calm-1" } : {},
+    by: null,
+    began: "2026-11-20T10:00:00Z",
+    updated: "2026-11-20T10:00:05Z",
+    welcome: state === "made" ? "https://rose-admin.pages.dev/welcome?code=ABCD-EFGH-JKLM-NPQR" : null,
+  };
+}
+const READY: CopyPlan = { ...PLAN, via: { neon: "n1", railway: "r1", vercel: "v2", cloudflare: "c1" }, checks: PLAN.checks.map((c) => ({ ...c, ok: true, why: null })), ready: true };
+
 function show() {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -64,6 +88,7 @@ beforeEach(() => {
   m.admin = { owner: true, role: "SUPERADMIN" };
   m.api.getCopies.mockResolvedValue(VIEW);
   m.api.planCopy.mockResolvedValue(PLAN);
+  m.api.listCopies.mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup();
@@ -78,10 +103,10 @@ describe("Client copies", () => {
     expect(m.api.getCopies).not.toHaveBeenCalled();
   });
 
-  test("the accounts: one connected, a choice of two, one missing; and that nothing is made yet", async () => {
+  test("the accounts: one connected, a choice of two, one missing; and that asking makes nothing", async () => {
     show();
     await screen.findByTestId("copies-connections");
-    expect(screen.getByTestId("copies-not-yet").textContent).toContain("it makes nothing");
+    expect(screen.getByTestId("copies-how").textContent).toContain("that makes nothing");
     expect(screen.getByTestId("copies-conn-neon").textContent).toContain("Neon");
     expect(screen.getByTestId("copies-conn-railway").textContent).toContain("not a project's");
     expect(screen.getByTestId("copies-via-vercel")).toBeTruthy();
@@ -115,6 +140,84 @@ describe("Client copies", () => {
     expect(screen.getByTestId("copies-var-railway-DATABASE_URL").textContent).toContain("From Neon when the database is made");
     expect(screen.getByTestId("copies-var-railway-JWT_SECRET").textContent).toContain("shown to no one");
     expect(screen.getByTestId("copies-var-vercel-REVALIDATE_SECRET").textContent).toContain("shared by the server and the shop");
+    // Not every service said yes: nothing to make yet.
+    expect(screen.queryByTestId("copies-make")).toBeNull();
+  });
+
+  async function planReady() {
+    m.api.planCopy.mockResolvedValue(READY);
+    show();
+    await screen.findByTestId("copies-form");
+    type("copies-label", "Rose");
+    type("copies-server", "rose-api");
+    type("copies-site", "rose");
+    fireEvent.click(screen.getByTestId("copies-plan-ask"));
+    return screen.findByTestId("copies-make");
+  }
+
+  test("every service said yes: made only once its cost is agreed to, then followed step by step until it is made", async () => {
+    m.api.makeCopy.mockResolvedValue(copy("making", 2));
+    m.api.getCopy.mockResolvedValueOnce(copy("making", 2)).mockResolvedValue(copy("made", 10));
+    await planReady();
+    const go = screen.getByTestId("copies-make-go") as HTMLButtonElement;
+    expect(go.disabled).toBe(true);
+    fireEvent.click(screen.getByTestId("copies-agree"));
+    expect(go.disabled).toBe(false);
+    m.api.listCopies.mockResolvedValue([copy("making", 2)]);
+    fireEvent.click(go);
+    await waitFor(() => expect(m.api.makeCopy).toHaveBeenCalledWith({ label: "Rose", server: "rose-api", site: "rose", region: "aws-eu-central-1", repo: "acme/store", branch: "main", via: READY.via }));
+    // The plan gives way to the copy, followed where the copies are.
+    const run = await screen.findByTestId("copy-run");
+    expect(screen.queryByTestId("copies-plan")).toBeNull();
+    expect(run.getAttribute("data-state")).toBe("making");
+    expect(screen.getByTestId("copy-step-neon.project").getAttribute("data-state")).toBe("done");
+    expect(screen.getByTestId("copy-step-railway.service").getAttribute("data-state")).toBe("doing");
+    expect(screen.getByTestId("copy-step-railway.deploy").textContent).toContain("The server linked to the repository, and its first deploy");
+    m.api.listCopies.mockResolvedValue([copy("made", 10)]);
+    await waitFor(() => expect(screen.getByTestId("copy-run").getAttribute("data-state")).toBe("made"), { timeout: 4000 });
+    expect(screen.getByTestId("copy-welcome").textContent).toBe("https://rose-admin.pages.dev/welcome?code=ABCD-EFGH-JKLM-NPQR");
+  });
+
+  test("a service that says no now: its check shown again, nothing made", async () => {
+    m.api.makeCopy.mockRejectedValue({ response: { data: { error: "COPY_NOT_READY", details: { checks: [...READY.checks.slice(0, 2), { id: "railway.domain", kind: "railway", ok: false, why: "Domain is not available" }] } } } });
+    await planReady();
+    fireEvent.click(screen.getByTestId("copies-agree"));
+    fireEvent.click(screen.getByTestId("copies-make-go"));
+    expect((await screen.findByTestId("copies-refused")).textContent).toContain("A service says no now");
+    expect(screen.getByTestId("copies-check-railway.domain").textContent).toContain("The address is taken: pick another name for the server");
+    expect(screen.getByTestId("copies-ready").getAttribute("data-ready")).toBe("false");
+    expect(screen.queryByTestId("copies-make")).toBeNull();
+  });
+
+  test("a copy that stopped: the step that said no, in words to act on, and tried again from there", async () => {
+    m.api.listCopies.mockResolvedValue([copy("stopped", 3, "Domain is not available")]);
+    m.api.getCopy.mockResolvedValue(copy("stopped", 3, "Domain is not available"));
+    m.api.copyAgain.mockResolvedValue(copy("making", 3));
+    show();
+    const row = await screen.findByTestId("copies-made-rose");
+    expect(row.textContent).toContain("Stopped · 3/10");
+    fireEvent.click(within(row).getByRole("button"));
+    expect((await screen.findByTestId("copy-step-railway.domain-why")).textContent).toBe("The address is taken: pick another name for the server");
+    expect(screen.getByTestId("copy-links").querySelector("a")!.getAttribute("href")).toBe("https://console.neon.tech/app/projects/calm-1");
+    expect(screen.queryByTestId("copy-welcome")).toBeNull();
+    fireEvent.click(screen.getByTestId("copy-again"));
+    await waitFor(() => expect(m.api.copyAgain).toHaveBeenCalledWith("c1"));
+    await waitFor(() => expect(screen.getByTestId("copy-run").getAttribute("data-state")).toBe("making"));
+  });
+
+  test("a made copy: where it is, whether it answers yet, and its owner's link to hand over", async () => {
+    m.api.listCopies.mockResolvedValue([copy("made", 10)]);
+    m.api.getCopy.mockResolvedValue(copy("made", 10));
+    m.api.copyAlive.mockResolvedValue({ api: { ok: true, status: 200 }, shop: { ok: false, status: 404 }, admin: { ok: true, status: 200 }, waiting: false });
+    show();
+    fireEvent.click(within(await screen.findByTestId("copies-made-rose")).getByRole("button"));
+    await screen.findByTestId("copy-made");
+    expect(screen.getByTestId("copy-alive-shop").textContent).toContain("rose.vercel.app");
+    fireEvent.click(screen.getByTestId("copy-alive"));
+    await waitFor(() => expect(screen.getByTestId("copy-alive-api").getAttribute("data-ok")).toBe("true"));
+    expect(screen.getByTestId("copy-alive-shop").textContent).toContain("Not answering yet");
+    expect(screen.getByTestId("copy-owner-in").textContent).toContain("has made their account");
+    expect(screen.getByTestId("copy-welcome").textContent).toContain("/welcome?code=ABCD-EFGH-JKLM-NPQR");
   });
 
   test("a name refused by the server: which one, and what it should be", async () => {
@@ -133,6 +236,9 @@ describe("Client copies", () => {
     expect(whyText('"rose" is taken by a project of yours')).toBe("«rose» محجوز لمشروع عندك: اختار اسم تاني");
     expect(whyText("It answered 500")).toBe("جاوب 500");
     expect(whyText("something new")).toBe("something new");
+    expect(whyText('"console.neon.tech" didn\'t answer in time')).toBe("«console.neon.tech» ما جاوب بالوقت: جرّب كمان مرة");
+    expect(whyText("rose.vercel.app is someone else's")).toBe("rose.vercel.app لحدا تاني على Vercel: اختار اسم تاني للموقع");
+    expect(STEP_IDS.every((id) => makeStepName(id) !== id)).toBe(true);
     expect(refusedText({ error: "NAME_INVALID", message: "A name is at least 3 letters", details: { at: "server" } })).toBe("اسم السيرفر: الاسم 3 حروف عالأقل");
     expect([tidyName("  My Shop "), tidyName("Rose_Store!!"), tidyName("a--b"), tidyName("-shop-")]).toEqual(["my-shop", "rose-store", "a-b", "shop"]);
   });

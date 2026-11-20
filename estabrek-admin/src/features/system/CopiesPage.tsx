@@ -1,10 +1,11 @@
 // نسخ الزباين (platform plan, stage 6.1): a client's copy of this store, a whole store of its own (database,
 // server, shop, admin) in the owner's own Neon, Railway, Vercel and Cloudflare accounts, built from the same
-// code. For now the page shows what making one will do and asks each service whether what it needs is there;
-// nothing is made yet. Only the store's owner sees it (the server says the same).
+// code. The page shows what making one will do and asks each service whether what it needs is there; then, when
+// the owner says so, the server makes it (lib/pressMake.ts) and the page follows it step by step (CopyRuns.tsx).
+// Only the store's owner sees it (the server says the same).
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
 import { getApiErrorMessage } from "../../api/http";
@@ -13,7 +14,8 @@ import { say } from "../../studio/say";
 import * as API from "../../api/copies.api";
 import { PRESS_KINDS, type CopyPlan, type PlanAsk, type PressKind } from "../../api/copies.api";
 import { kindName } from "../connections/readyText";
-import { checkName, factName, fromText, refusedText, stepName, tidyName, whyText } from "./copiesText";
+import { checkName, factName, fromText, makeRefusedText, refusedText, stepName, tidyName, whyText } from "./copiesText";
+import { CopyRuns } from "./CopyRuns";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const field = "h-10 w-full min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
@@ -39,10 +41,15 @@ export default function CopiesPage() {
   const [branch, setBranch] = useState<string | null>(null);
   const [via, setVia] = useState<Partial<Record<PressKind, string>>>({});
   const [plan, setPlan] = useState<CopyPlan | null>(null);
+  const [asked, setAsked] = useState<PlanAsk | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
   const planning = useMutation({
     mutationFn: (body: PlanAsk) => API.planCopy(body),
-    onMutate: () => setRefused(null),
+    onMutate: (body) => {
+      setRefused(null);
+      setAsked(body);
+    },
     onSuccess: setPlan,
     onError: (e) => {
       setPlan(null);
@@ -79,12 +86,14 @@ export default function CopiesPage() {
             "نسخة لزبون هي متجر كامل إله لحاله: قاعدة بياناته وسيرفره ومتجره ولوحة إدارته، بحساباتك إنت على Neon و Railway و Vercel و Cloudflare، ومن نفس الكود. كل دمج بيوصلها لحالها، وأول نشر بيجهّز قاعدتها الفاضية. كل نسخة بتزيد مصروف شهري على حساباتك.|A client's copy is a whole store of its own: its database, server, shop and admin, in your own Neon, Railway, Vercel and Cloudflare accounts, built from the same code. Every merge reaches it by itself, and its first deploy sets up its empty database. Each copy adds a monthly cost to your accounts.|עותק ללקוח הוא חנות שלמה משלו: מסד הנתונים, השרת, החנות ולוח הניהול שלו, בחשבונות Neon, Railway, Vercel ו-Cloudflare שלך, מאותו קוד. כל מיזוג מגיע אליו מעצמו, והפריסה הראשונה מכינה את מסד הנתונים הריק שלו. כל עותק מוסיף עלות חודשית לחשבונות שלך.",
           )}
         </p>
-        <p className="mt-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100" data-testid="copies-not-yet">
+        <p className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/80" data-testid="copies-how">
           {say(
-            "هلأ الصفحة بتورجيك شو رح ينعمل، وبتسأل كل خدمة إذا الأسماء فاضية، وبس: ما بتعمل ولا شي. صنع النسخة نفسه جاي بالخطوة الجاية.|For now this page shows what would be made and asks each service whether the names are free, and that is all: it makes nothing. Making the copy itself comes in the next step.|כרגע העמוד מראה מה ייווצר ושואל כל שירות אם השמות פנויים, וזהו: הוא לא יוצר כלום. יצירת העותק עצמה תגיע בשלב הבא.",
+            "أول شي بتشوف شو رح ينعمل، وكل خدمة بتنسأل إذا الأسماء فاضية: هاد ما بيعمل ولا شي. بعدين، لما تأكّد، السيرفر بيعمل النسخة خطوة خطوة وإنت بتتابع، وبالآخر بيعطيك رابط لصاحب المتجر الجديد.|First you see what would be made, and each service is asked whether the names are free: that makes nothing. Then, when you confirm, the server makes the copy step by step while you watch, and at the end gives you a link for the new store's owner.|קודם רואים מה ייווצר, וכל שירות נשאל אם השמות פנויים: זה לא יוצר כלום. אחר כך, כשמאשרים, השרת יוצר את העותק שלב אחר שלב ואתם עוקבים, ובסוף הוא נותן קישור לבעלים של החנות החדשה.",
           )}
         </p>
       </section>
+
+      <CopyRuns open={open} onOpen={setOpen} />
 
       <section className={box} data-testid="copies-connections">
         <h2 className="font-semibold">{say("بأي حسابات|In which accounts|באילו חשבונות")}</h2>
@@ -196,12 +205,27 @@ export default function CopiesPage() {
         ) : null}
       </form>
 
-      {plan ? <PlanView plan={plan} /> : null}
+      {plan ? (
+        <PlanView
+          plan={plan}
+          ask={asked}
+          onChecks={(checks) => {
+            // A service said no since the plan: its check shown again, and why nothing was made.
+            setPlan({ ...plan, checks, ready: checks.every((c) => c.ok) });
+            setRefused(makeRefusedText({ error: "COPY_NOT_READY" }));
+          }}
+          onMade={(id) => {
+            setPlan(null);
+            setOpen(id);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-function PlanView({ plan }: { plan: CopyPlan }) {
+function PlanView({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAsk | null; onChecks: (checks: CopyPlan["checks"]) => void; onMade: (id: string) => void }) {
   return (
     <section className={`${box} space-y-4`} data-testid="copies-plan">
       <div>
@@ -263,7 +287,48 @@ function PlanView({ plan }: { plan: CopyPlan }) {
           </li>
         ))}
       </ol>
-      <p className="text-xs text-white/60">{say("الصنع نفسه جاي بالخطوة الجاية: لما ييجي، رح تشوف هالخطة نفسها قبل ما تأكّد.|The making itself comes in the next step: when it does, you'll see this same plan before you confirm.|היצירה עצמה תגיע בשלב הבא: כשתגיע, תראו את אותה תוכנית לפני שתאשרו.")}</p>
+      {plan.ready && ask ? <MakeBox plan={plan} ask={ask} onChecks={onChecks} onMade={onMade} /> : null}
     </section>
+  );
+}
+
+/** Making it: said yes to in so many words (it costs money every month), then begun; the page follows it above. */
+function MakeBox({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAsk; onChecks: (checks: CopyPlan["checks"]) => void; onMade: (id: string) => void }) {
+  const qc = useQueryClient();
+  const [agree, setAgree] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
+  const making = useMutation({
+    mutationFn: () => API.makeCopy({ ...ask, via: plan.via }),
+    onMutate: () => setRefused(null),
+    onSuccess: (copy) => {
+      qc.setQueryData(["copy-made", copy.id], copy);
+      void qc.invalidateQueries({ queryKey: ["copies-made"] });
+      onMade(copy.id);
+    },
+    onError: (e) => {
+      const data = (e as { response?: { data?: { error?: string; details?: { checks?: CopyPlan["checks"] } } } })?.response?.data;
+      if (data?.error === "COPY_NOT_READY" && data.details?.checks) return onChecks(data.details.checks);
+      setRefused(makeRefusedText(data) ?? getApiErrorMessage(e));
+    },
+  });
+  return (
+    <div className="space-y-2 rounded-xl border border-accent-400/30 bg-accent-500/5 p-3" data-testid="copies-make">
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1 h-4 w-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} data-testid="copies-agree" />
+        <span>
+          {say(
+            "بعرف إنه هيك بتنعمل مشاريع حقيقية بحساباتي على Neon و Railway و Vercel و Cloudflare، وإنها بتزيد مصروف شهري.|I know this makes real projects in my Neon, Railway, Vercel and Cloudflare accounts, and that they add a monthly cost.|אני יודע/ת שזה יוצר פרויקטים אמיתיים בחשבונות Neon, Railway, Vercel ו-Cloudflare שלי, ושהם מוסיפים עלות חודשית.",
+          )}
+        </span>
+      </label>
+      <Button type="button" variant="primary" disabled={!agree} isLoading={making.isPending} onClick={() => making.mutate()} data-testid="copies-make-go">
+        {say("اعمل النسخة|Make the copy|ליצור את העותק")}
+      </Button>
+      {refused ? (
+        <p className="text-sm text-red-300" role="alert" data-testid="copies-make-refused">
+          {refused}
+        </p>
+      ) : null}
+    </div>
   );
 }
