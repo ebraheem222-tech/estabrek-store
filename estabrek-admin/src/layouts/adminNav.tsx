@@ -296,6 +296,7 @@ const NAV_TEAM: NavItem[] = [
   { to: "/admin/system/backups", label: tr("النسخ الاحتياطي", "Backups"), icon: Icons.backup, requirePermissions: ["system:read"] },
   // The owner's alone (the page says so to anyone else, and so does the server).
   { to: "/admin/system/project", label: say("المشروع كملف|The project as a file|הפרויקט כקובץ"), icon: Icons.backup, requirePermissions: ["system:read"], noLanding: true },
+  { to: "/admin/system/copies", label: say("نسخ الزباين|Client copies|עותקי לקוחות"), icon: Icons.backup, requirePermissions: ["system:read"], noLanding: true },
   { to: "/admin/system/vault", label: tr("الخزنة والبرنامج", "Vault & launcher"), icon: Icons.security, requirePermissions: ["system:read"] },
 ];
 
