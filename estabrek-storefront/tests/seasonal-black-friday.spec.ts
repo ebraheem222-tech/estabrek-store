@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { renderToStaticMarkup } from "react-dom/server";
-import { createElement } from "react";
-import { BlackFridayEffect, seasonByDate } from "../src/components/SeasonalThemes";
+import { readFileSync } from "node:fs";
+import { seasonByDate } from "../src/components/SeasonalThemes";
 
 // The seasons "auto" shows (admin → الإعدادات → الثيم الموسمي): winter and summer by the date, decorations only.
 // Black Friday is never picked by the date: its badge promises "up to 70% off", a sale a store may not have
@@ -18,8 +17,11 @@ test("by the date: winter and summer; never Black Friday", () => {
 });
 
 test("the badge's Arabic line keeps its order (its own direction in the left-to-right badge)", () => {
-  const html = renderToStaticMarkup(createElement(BlackFridayEffect));
-  expect(html).toMatch(/<span class="bf-discount" dir="rtl">خصم حتى 70%<\/span>/);
+  // Read as written (React can't draw inside this runner's test files): both copies of the badge.
+  for (const file of ["../src/components/SeasonalThemes.tsx", "../src/app/components/SeasonalThemes.tsx"]) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    expect(source, file).toContain('<span className="bf-discount" dir="rtl">خصم حتى 70%</span>');
+  }
 });
 
 test("a shop on 25 November shows no Black Friday on its own; in December it is in winter", async ({ page }) => {
