@@ -10913,7 +10913,8 @@ html {
   color: white;
   text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
   animation: eid-bounce 2s ease infinite;
-  pointer-events: auto;
+  /* Only to look at, like the Black Friday badge: every tap goes through to the page under it. */
+  pointer-events: none;
 }
 
 @keyframes eid-bounce {
@@ -10943,7 +10944,9 @@ html {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  pointer-events: auto;
+  /* Only to look at: it sits in the middle of the screen above everything, so it lets every tap through
+     (it caught the clicks on whatever was under it, e.g. a size in the quick view, 20–30 November). */
+  pointer-events: none;
 }
 
 .bf-text {

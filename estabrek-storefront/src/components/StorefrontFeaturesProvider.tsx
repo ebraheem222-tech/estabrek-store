@@ -17,6 +17,7 @@ import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import { useStoreIdentity } from "@/store/storeIdentity";
 import { modestShop } from "@/lib/storeIdentity";
 import { setColourEngine } from "@/lib/colourEngine";
+import { personaById } from "@/lib/personas";
 import {
   DEFAULT_STOREFRONT_SETTINGS,
   normalizeStorefrontSettings,
@@ -176,7 +177,7 @@ export function StorefrontFeaturesProvider({
           {settings.voiceSearchEnabled && !cinematic && <VoiceSearchButton />}
           {/* On the rose design the chat is Rose herself (see RoseCompanion below). */}
           {settings.chatbotEnabled && !rose && (
-            <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />
+            <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} persona={personaById(settings.assistantPersona)} />
           )}
           {settings.recentPurchasesPopup && (cinematic ? <RoseRecentlyViewed /> : <RecentActivityPopup />)}
           {/* Rose, the shop guide, follows the shopper; with the chat on, she is the chat. */}

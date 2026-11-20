@@ -20,8 +20,11 @@ import { identityOf, type StoreIdentity } from "../../lib/storeIdentity";
 import { StoreTemplatePicker } from "./StoreTemplatePicker";
 import type { MotionProfile } from "../../studio/motionProfiles";
 import { useQueryClient } from "@tanstack/react-query";
+import { AssistantStep, MediaStep } from "./SetupExtras";
+import { personasFor } from "../../../../estabrek-storefront/src/lib/personas";
+import { say as sayAll } from "../../studio/say";
 
-const STEPS = ["industry", "theme", "name", "content", "done"] as const;
+const STEPS = ["industry", "theme", "name", "assistant", "media", "content", "done"] as const;
 type Step = (typeof STEPS)[number];
 
 
@@ -46,6 +49,9 @@ export default function SetupWizard() {
   const [mode, setMode] = useState<"light" | "dark" | null>(null);
   const [include, setInclude] = useState({ categories: !designEntry, types: !designEntry, home: true, menu: !designEntry });
   const [replaceHome, setReplaceHome] = useState(false);
+  // The shop's assistant: on by default, as the personality that fits the store best until one is picked.
+  const [assistantOn, setAssistantOn] = useState(true);
+  const [persona, setPersona] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SetupResult | null>(null);
@@ -87,8 +93,11 @@ export default function SetupWizard() {
     setMode(null);
   };
 
-  const next = () => setStep(STEPS[Math.min(STEPS.length - 1, STEPS.indexOf(step) + 1)]);
-  const back = () => setStep(STEPS[Math.max(0, STEPS.indexOf(step) - 1)]);
+  // Changing only the design (from Settings) skips what the store set up already.
+  const steps = designEntry ? STEPS.filter((s) => s !== "assistant" && s !== "media") : [...STEPS];
+  const next = () => setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)]);
+  const back = () => setStep(steps[Math.max(0, steps.indexOf(step) - 1)]);
+  const personaNow = persona ?? personasFor(pack?.industry ?? null)[0]?.id ?? "";
   const logoError = logoUrl?.trim() && !/^https?:\/\/[^\s]+$/i.test(logoUrl.trim()) ? tr("استخدم رابط صورة يبدأ بـ http أو https.", "Use an image URL starting with http or https.") : undefined;
   const canNext = (!designEntry || previousIdentity !== null) && (step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true);
 
@@ -100,6 +109,7 @@ export default function SetupWizard() {
       const imported = (template || blank) && include.home ? await getStoreTemplateImport(template?.id ?? "blank", motionOptions) : undefined;
       const body = buildSetup({ pack, name, logoUrl, templateTree: imported?.tree, design: imported?.design, themeId: template?.theme ?? pack.theme, mode, include, replaceHome });
       if (designEntry && previousIdentity && !identityChanged) { body.industry = previousIdentity.industry; body.audience = previousIdentity.audience; }
+      if (!designEntry) body.assistant = { enabled: assistantOn, persona: assistantOn && personaNow ? personaNow : null };
       const res = await applySetup(body);
       await Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), qc.invalidateQueries({ queryKey: ["pages"] }), qc.invalidateQueries({ queryKey: ["page-blocks"] })]);
       setResult(res);
@@ -131,6 +141,8 @@ export default function SetupWizard() {
 
   const stepLabel: Record<Step, string> = {
     name: tr("اسم المتجر", "Store name"),
+    assistant: sayAll("المساعد|Assistant|העוזר"),
+    media: sayAll("الصور|Pictures|תמונות"),
     industry: tr("نوع المتجر", "Kind of store"),
     theme: tr("الثيم", "Theme"),
     content: tr("البداية الجاهزة", "Starter content"),
@@ -142,8 +154,8 @@ export default function SetupWizard() {
       <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-white/[0.08] bg-surface-950/90 px-4 py-3 backdrop-blur">
         <div className="text-sm font-semibold">{tr("إعداد المتجر", "Store setup")}</div>
         <ol className="flex flex-1 flex-wrap justify-center gap-1 text-[11px]" aria-label={tr("الخطوات", "Steps")}>
-          {STEPS.map((s, i) => (
-            <li key={s} className={`rounded-full px-2.5 py-1 ${s === step ? "bg-accent-500/25 text-white" : i < STEPS.indexOf(step) ? "text-accent-200" : "text-white/40"}`} aria-current={s === step ? "step" : undefined}>
+          {steps.map((s, i) => (
+            <li key={s} className={`rounded-full px-2.5 py-1 ${s === step ? "bg-accent-500/25 text-white" : i < steps.indexOf(step) ? "text-accent-200" : "text-white/40"}`} aria-current={s === step ? "step" : undefined}>
               {i + 1}. {stepLabel[s]}
             </li>
           ))}
@@ -184,6 +196,10 @@ export default function SetupWizard() {
             <MediaUrlInput label={tr("لوجو المتجر (اختياري)", "Store logo (optional)")} value={logoUrl ?? ""} onChange={setLogoUrl} error={logoError} placeholder="https://…/logo.png" showPreview />
           </section>
         ) : null}
+
+        {step === "assistant" ? <AssistantStep on={assistantOn} onToggle={setAssistantOn} persona={personaNow} onPersona={setPersona} industry={pack?.industry ?? null} /> : null}
+
+        {step === "media" ? <MediaStep /> : null}
 
         {step === "industry" ? (
           <section className="space-y-5">
@@ -304,7 +320,7 @@ export default function SetupWizard() {
 
       {step !== "done" ? (
         <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/[0.08] bg-surface-950/90 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="sm" onClick={back} disabled={step === STEPS[0] || busy}>
+          <Button variant="ghost" size="sm" onClick={back} disabled={step === steps[0] || busy}>
             {tr("رجوع", "Back")}
           </Button>
           {step === "content" ? (

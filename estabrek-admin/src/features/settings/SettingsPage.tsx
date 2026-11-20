@@ -31,6 +31,9 @@ import { StoreIdentityCard } from "./StoreIdentityCard";
 import { PRODUCT_PICTURE_FX_OPTIONS, readProductPictureFx, type ProductPictureFx } from "./productPictureFx";
 import { StoreLanguagesCard } from "./StoreLanguagesCard";
 import { StoreAppCard } from "./StoreAppCard";
+import { PersonaPicker } from "../../components/PersonaPicker";
+import { say } from "../../studio/say";
+import { personaById } from "../../../../estabrek-storefront/src/lib/personas";
 
 /** The scenes that can dress the page in their colour (the shop's SceneColourKey, lib/colourEngine.ts). */
 const COLOUR_SCENES = [
@@ -393,6 +396,8 @@ type StorefrontConfig = {
   chatbotEnabled: boolean;
   chatbotPosition: "bottom-left" | "bottom-right" | "bottom-center";
   chatbotDraggable: boolean;
+  /** The personality the chat speaks as (estabrek-storefront/src/lib/personas.ts); "" = the plain assistant. */
+  assistantPersona: string;
   whatsappEnabled: boolean;
   whatsappNumber: string;
   
@@ -512,6 +517,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     chatbotEnabled: o.chatbotEnabled !== false,
     chatbotPosition: o.chatbotPosition || "bottom-left",
     chatbotDraggable: o.chatbotDraggable === true,
+    assistantPersona: typeof o.assistantPersona === "string" && personaById(o.assistantPersona) ? o.assistantPersona : "",
     whatsappEnabled: o.whatsappEnabled === true,
     whatsappNumber: o.whatsappNumber || "",
     
@@ -2821,6 +2827,12 @@ export default function SettingsPage() {
                         onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, liveChatOfflineMessage: v }))}
                         placeholder="نحن غير متصلين حالياً..."
                       />
+                    </div>
+                    {/* The chat speaks as a personality (Razan stays the modest-fashion stores' own). */}
+                    <div className="mt-4 space-y-2" data-testid="settings-assistant">
+                      <div className="text-sm font-medium">{say("شخصية المساعد|The assistant's personality|הדמות של העוזר")}</div>
+                      <p className="text-xs text-white/60">{say("الشات بوت بيحكي بإسمها ووجهها وطريقتها. بتنشاف لما يكون الشات بوت شغّال.|The chatbot speaks with its name, face and manner. It shows while the chatbot is on.|הצ'אטבוט מדבר בשם, בפנים ובסגנון שלה. היא מופיעה כשהצ'אטבוט פועל.")}</p>
+                      <PersonaPicker value={storefrontCfg.assistantPersona} onChange={(id) => setStorefrontCfg((p) => ({ ...p, assistantPersona: id }))} industry={(settings?.header as { identity?: { industry?: string } } | null | undefined)?.identity?.industry ?? null} testid="settings-persona" />
                     </div>
                   </div>
 

@@ -103,4 +103,17 @@ describe("Setting up a new store", () => {
     expect(header.storeTheme).toBeUndefined();
     expect(header.identity).toMatchObject({ industry: "fashion", audience: "women" });
   });
+
+  test("the shop's assistant: on with a personality, or off; the shop's other settings stay", async () => {
+    const s = (await prisma.siteSettings.findFirst())!;
+    await prisma.siteSettings.update({ where: { id: s.id }, data: { header: { storefront: { whatsappEnabled: true, whatsappNumber: "+970599000000" } } } });
+    await request(app).post("/v1/admin/setup/apply").send(body({ assistant: { enabled: true, persona: "yousef" } })).expect(200);
+    let header = (await prisma.siteSettings.findFirst())!.header as any;
+    expect(header.storefront).toEqual({ whatsappEnabled: true, whatsappNumber: "+970599000000", chatbotEnabled: true, assistantPersona: "yousef" });
+    await request(app).post("/v1/admin/setup/apply").send(body({ assistant: { enabled: false, persona: null } })).expect(200);
+    header = (await prisma.siteSettings.findFirst())!.header as any;
+    expect(header.storefront).toMatchObject({ whatsappEnabled: true, chatbotEnabled: false, assistantPersona: "" });
+    // Not a personality's id: refused.
+    await request(app).post("/v1/admin/setup/apply").send(body({ assistant: { enabled: true, persona: "<script>" } })).expect(400);
+  });
 });

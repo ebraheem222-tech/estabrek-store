@@ -1,19 +1,26 @@
 // src/lib/cloudinary.ts
 import { v2 as cloudinary } from "cloudinary";
+import { cloudinaryCreds } from "./cloudinaryAccount.js";
 
 /**
  * Cloudinary is optional. If env vars are missing, the app falls back to LOCAL disk uploads.
  */
 export function isCloudinaryEnabled() {
-  return Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+  return cloudinaryCreds() !== null;
 }
 
+/** The account's own name and keys (the server's variables, or the one given in the admin: lib/cloudinaryAccount.ts). */
+export const cloudName = () => cloudinaryCreds()?.cloudName;
+const apiKey = () => cloudinaryCreds()?.apiKey ?? "";
+const apiSecret = () => cloudinaryCreds()?.apiSecret ?? "";
+
 export function getCloudinary() {
-  if (!isCloudinaryEnabled()) return null;
+  const creds = cloudinaryCreds();
+  if (!creds) return null;
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: creds.cloudName,
+    api_key: creds.apiKey,
+    api_secret: creds.apiSecret,
     secure: true,
   });
   return cloudinary;
@@ -80,11 +87,11 @@ export function signModelUpload(now = Date.now()) {
   if (!cld) throw new Error("CLOUDINARY_NOT_CONFIGURED");
   const timestamp = Math.floor(now / 1000);
   const params = { folder: MODEL_FOLDER, timestamp };
-  const signature = cld.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET as string);
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME as string;
+  const signature = cld.utils.api_sign_request(params, apiSecret());
+  const cloudName = cloudinaryCreds()?.cloudName as string;
   return {
     cloudName,
-    apiKey: process.env.CLOUDINARY_API_KEY as string,
+    apiKey: apiKey(),
     timestamp,
     signature,
     folder: MODEL_FOLDER,
@@ -124,11 +131,11 @@ export function signVideoUpload(now = Date.now()) {
   if (!cld) throw new Error("CLOUDINARY_NOT_CONFIGURED");
   const timestamp = Math.floor(now / 1000);
   const params = { folder: VIDEO_FOLDER, timestamp };
-  const signature = cld.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET as string);
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME as string;
+  const signature = cld.utils.api_sign_request(params, apiSecret());
+  const cloudName = cloudinaryCreds()?.cloudName as string;
   return {
     cloudName,
-    apiKey: process.env.CLOUDINARY_API_KEY as string,
+    apiKey: apiKey(),
     timestamp,
     signature,
     folder: VIDEO_FOLDER,
