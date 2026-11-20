@@ -14495,6 +14495,42 @@ html {
   color: #0f172a !important;
 }
 
+/* A store on a theme (its setup's template, Admin → ثيمات المتجر): the footer wears the theme, its glass in the
+   theme's surface and its words in its ink, in a dark theme too (it was always light glass with navy words). */
+:root[data-store-theme] .footer-candy-glass {
+  border-top-color: var(--th-line) !important;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--th-surface) 96%, transparent) 0%,
+    color-mix(in srgb, var(--th-strong) 8%, var(--th-surface)) 55%,
+    color-mix(in srgb, var(--th-soft) 60%, var(--th-surface)) 100%
+  ) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--th-line) 60%, transparent),
+    0 -14px 34px color-mix(in srgb, var(--th-ink) 10%, transparent);
+  color: var(--th-ink);
+}
+:root[data-store-theme] .footer-candy-glass :is(.text-base.font-semibold, .text-sm.font-semibold),
+:root[data-store-theme] .footer-candy-glass a:hover,
+:root[data-store-theme] .footer-candy-glass input,
+:root[data-store-theme] .footer-candy-glass button {
+  color: var(--th-ink) !important;
+}
+:root[data-store-theme] .footer-candy-glass :is(.text-white, .text-white\/90, .text-white\/70, .text-white\/60, .text-white\/50),
+:root[data-store-theme] .footer-candy-glass a {
+  color: var(--th-muted) !important;
+}
+:root[data-store-theme] .footer-candy-glass input {
+  border-color: var(--th-line) !important;
+  background: color-mix(in srgb, var(--th-bg) 80%, transparent) !important;
+}
+:root[data-store-theme] .footer-candy-glass input::placeholder {
+  color: var(--th-muted) !important;
+}
+:root[data-store-theme] .footer-candy-glass button {
+  border-color: var(--th-line) !important;
+}
+
 
 /* Admin → رزان → "try before saving": a small bar while the owner previews her settings. */
 .razan-preview-bar { position: fixed; inset-inline: 12px; top: 12px; z-index: 2147483000; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: #2b1a22; color: #fff; font-size: 13px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.5); direction: rtl; }

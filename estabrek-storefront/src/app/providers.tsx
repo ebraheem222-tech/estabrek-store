@@ -94,9 +94,12 @@ export default function Providers({
   lang = "ar",
   languages,
   visualControls,
+  storeThemeMode = null,
 }: {
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
+  /** The store's theme is on, in this mode: the page stays in it. */
+  storeThemeMode?: "light" | "dark" | null;
   cinematic?: boolean;
   /** Admin → Settings → حسابات الزبائن. */
   accountsEnabled?: boolean;
@@ -151,7 +154,7 @@ export default function Providers({
 
   return (
     <LanguageProvider initial={lang} config={languages}>
-    <ThemeProvider defaultTheme={defaultTheme} disableDarkMode={darkModeDisabled}>
+    <ThemeProvider defaultTheme={storeThemeMode ?? defaultTheme} disableDarkMode={darkModeDisabled} lockedTheme={storeThemeMode}>
       <StoreIdentityProvider value={store}>
       <SiteFeaturesProvider value={features}>
       <RazanProvider value={razan}>

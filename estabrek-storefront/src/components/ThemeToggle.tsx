@@ -20,11 +20,18 @@ export function ThemeProvider({
   children,
   defaultTheme = "dark",
   disableDarkMode = false,
+  lockedTheme,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
   disableDarkMode?: boolean;
+  /**
+   * The store's theme decides the mode (its colours are made for it): no visitor's choice is read or kept,
+   * and the light/dark switches don't show.
+   */
+  lockedTheme?: "dark" | "light" | null;
 }) {
+  const locked = lockedTheme === "dark" || lockedTheme === "light" ? lockedTheme : null;
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
@@ -43,6 +50,12 @@ export function ThemeProvider({
 
   // Load theme from storage
   useEffect(() => {
+    if (locked) {
+      setThemeState(locked);
+      setResolvedTheme(locked);
+      setMounted(true);
+      return;
+    }
     if (disableDarkMode) {
       setThemeState("light");
       setResolvedTheme("light");
@@ -64,12 +77,20 @@ export function ThemeProvider({
       setResolvedTheme(resolveTheme(defaultTheme));
     }
     setMounted(true);
-  }, [defaultTheme, disableDarkMode]);
+  }, [defaultTheme, disableDarkMode, locked]);
 
   // Apply theme to document
   useEffect(() => {
     if (!mounted) return;
-    
+
+    if (locked) {
+      setResolvedTheme(locked);
+      document.documentElement.classList.remove("dark", "light");
+      document.documentElement.classList.add(locked);
+      document.documentElement.setAttribute("data-theme", locked);
+      return;
+    }
+
     if (disableDarkMode) {
       if (theme !== "light") {
         setThemeState("light");
@@ -98,7 +119,7 @@ export function ThemeProvider({
     } catch (e) {
       console.error("Failed to save theme:", e);
     }
-  }, [theme, mounted, disableDarkMode]);
+  }, [theme, mounted, disableDarkMode, locked]);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -113,6 +134,7 @@ export function ThemeProvider({
   }, [theme, disableDarkMode]);
 
   const setTheme = (newTheme: Theme) => {
+    if (locked) return;
     if (disableDarkMode) {
       setThemeState("light");
       return;
@@ -121,7 +143,7 @@ export function ThemeProvider({
   };
 
   const toggleTheme = () => {
-    if (disableDarkMode) return;
+    if (disableDarkMode || locked) return;
     setThemeState((prev) => {
       if (prev === "dark") return "light";
       if (prev === "light") return "dark";
@@ -130,7 +152,7 @@ export function ThemeProvider({
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, darkModeDisabled: disableDarkMode, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, darkModeDisabled: disableDarkMode || Boolean(locked), setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

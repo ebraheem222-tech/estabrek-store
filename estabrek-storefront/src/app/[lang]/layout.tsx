@@ -159,11 +159,15 @@ export default async function RootLayout({
     (bootstrap.site as any)?.storefront ??
     undefined;
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
-  const defaultTheme = darkModeDisabled
-    ? "light"
-    : initialStorefrontSettings?.darkModeDefault === false
+  // A store with a theme is in that theme's mode (a light theme's page isn't put in the old frame's dark).
+  const storeThemeMode = storeTheme ? themePalette(storeTheme.theme, storeTheme.mode).mode : null;
+  const defaultTheme =
+    storeThemeMode ??
+    (darkModeDisabled
       ? "light"
-      : "dark";
+      : initialStorefrontSettings?.darkModeDefault === false
+        ? "light"
+        : "dark");
 
   const cinematic = cinematicEnabled(header, process.env.ESTABREK_HOME_MODE);
   // Admin → Settings → حسابات الزبائن (off by default: visitors only).
@@ -223,6 +227,7 @@ export default async function RootLayout({
         </a>
         <Providers
           initialStorefrontSettings={initialStorefrontSettings}
+          storeThemeMode={storeThemeMode}
           visualControls={bootstrap.site.visualControls}
           cinematic={cinematic}
           accountsEnabled={accountsEnabled}
@@ -241,7 +246,7 @@ export default async function RootLayout({
           <StoreLookProvider
             value={{
               theme: storeTheme?.theme ?? null,
-              mode: storeTheme ? themePalette(storeTheme.theme, storeTheme.mode).mode : "light",
+              mode: storeThemeMode ?? "light",
               industry: identity.industry,
               modest: !ownedDesign && modestShop(identity),
             }}
@@ -251,6 +256,7 @@ export default async function RootLayout({
             cursorThemeId={kit ? (kit.cursor === "none" ? null : kit.cursor) : cinematic ? null : header?.ui?.cursorThemeId}
             storefrontSettings={initialStorefrontSettings}
             disableGalleryBackdrop={cinematic}
+            storeThemeMode={storeThemeMode}
           >
             <UiSettingsProvider loading={loading}>
               {customCss ? (

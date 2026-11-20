@@ -903,8 +903,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     if (!navTemplate) {
       const basePos = sticky ? "sticky top-0 z-40 " : "relative z-40 ";
       const scrollStyles = scrolled
-        ? "bg-[color:var(--surface)]/95 backdrop-blur-xl border-b-2 border-[color:var(--accent)]/20 shadow-lg"
-        : "bg-[color:var(--surface)]/80 backdrop-blur-md border-b border-[color:var(--border)]";
+        // (A variable's colour can't take Tailwind's "/80": it gave no background at all, and the page showed through.)
+        ? "bg-[color:color-mix(in_srgb,var(--surface)_95%,transparent)] backdrop-blur-xl border-b-2 border-[color:color-mix(in_srgb,var(--accent)_20%,transparent)] shadow-lg"
+        : "bg-[color:color-mix(in_srgb,var(--surface)_82%,transparent)] backdrop-blur-md border-b border-[color:var(--border)]";
       return basePos + scrollStyles + " transition-all duration-300";
     }
 

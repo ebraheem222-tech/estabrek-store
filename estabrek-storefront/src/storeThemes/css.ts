@@ -37,12 +37,22 @@ const googleImport = (families: string[]) => {
 };
 const stack = (fonts: string[]) => fonts.map((f) => (/^(serif|sans-serif|monospace)$/.test(f) ? f : `"${f}"`)).join(",");
 
+/**
+ * The theme's colour for words on a dark box and on a light one (pageTree/css.ts gives them to a box painted
+ * its own colour): its ink where that is already the right side, else its page colour.
+ */
+export function wordsOn(p: Palette, mode: "light" | "dark"): { dark: string; light: string } {
+  return mode === "dark" ? { dark: p.ink, light: p.bg } : { dark: p.bg, light: p.ink };
+}
+
 /** Page-tree tokens are scoped inside ThemeWrap, whose inline variables otherwise win over the theme. */
 export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null): CSSProperties {
   const { palette: p, mode: resolved } = themePalette(theme, mode);
+  const on = wordsOn(p, resolved);
   return {
     "--bg": p.bg, "--surface": p.surface, "--text": p.ink, "--muted": p.muted,
     "--accent": p.strong, "--accent-soft": p.soft, "--accent-contrast": p.onStrong, "--border": p.line,
+    "--pt-on-dark": on.dark, "--pt-on-light": on.light,
     "--pt-font-heading": stack(theme.fonts.display), fontFamily: stack(theme.fonts.text),
     backgroundColor: p.bg, color: p.ink, colorScheme: resolved,
   } as CSSProperties;
@@ -52,6 +62,7 @@ export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null)
 export const liveTreeThemeVars = {
   "--bg": "var(--th-bg)", "--surface": "var(--th-surface)", "--text": "var(--th-ink)", "--muted": "var(--th-muted)",
   "--accent": "var(--th-strong)", "--accent-soft": "var(--th-soft)", "--accent-contrast": "var(--th-on-strong)", "--border": "var(--th-line)",
+  "--pt-on-dark": "var(--th-on-dark)", "--pt-on-light": "var(--th-on-light)",
   "--pt-font-heading": "var(--th-display)", fontFamily: "var(--th-text)", backgroundColor: "var(--th-bg)", color: "var(--th-ink)", colorScheme: "var(--th-mode)",
 } as CSSProperties;
 
@@ -59,6 +70,7 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
   const { palette: p, mode: m } = themePalette(theme, mode);
   const rose = remapRose(ROSE_COLOURS, p);
   const [shadow, shadowLift] = SHADOW[theme.shadow](p);
+  const on = wordsOn(p, m);
   const vars: Record<string, string> = {
     ...Object.fromEntries(Object.entries(rose).map(([hex, to]) => [`--st-${hex}`, to])),
     "--st-font-display": stack(theme.fonts.display),
@@ -76,6 +88,8 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
     "--th-strong": p.strong,
     "--th-ink": p.ink,
     "--th-on-strong": p.onStrong,
+    "--th-on-dark": on.dark,
+    "--th-on-light": on.light,
     "--th-display": stack(theme.fonts.display),
     "--th-text": stack(theme.fonts.text),
     "--th-radius": `${Math.round(16 * theme.round)}px`,
