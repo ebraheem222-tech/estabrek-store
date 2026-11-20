@@ -7,6 +7,7 @@ import path from "path";
 
 import { corsOrigins, env } from "./config/env.js";
 import { healthVersion } from "./lib/deployWatch.js";
+import { serveUploadBlob } from "./lib/uploadBlobs.js";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.js";
 import { requestId } from "./middleware/requestId.js";
@@ -80,6 +81,8 @@ app.get("/health", (_req, res) => res.json({ ok: true, name: "estabrak-store", .
 app.get("/", (_req, res) => res.json({ ok: true, api: "/v1" }));
 // versioned routes
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+// Without Cloudinary, pictures are kept in the database too: the disk above is wiped at every deploy (lib/uploadBlobs.ts).
+app.use("/uploads", serveUploadBlob);
 
 app.use(routes);
 app.use("/v1/webhooks", webhookRun, webhooksRouter);

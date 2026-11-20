@@ -2706,3 +2706,18 @@ model LauncherRelease {
 
   @@index([isActive, createdAt])
 }
+
+/// A picture uploaded from the admin, kept in the database when the store has no Cloudinary account (src/lib/uploadBlobs.ts).
+/// Without Cloudinary the file is written under the server's uploads/ folder, which Railway wipes at every deploy, so
+/// /uploads/<path> is answered from here when the file isn't on the disk. The address doesn't change.
+model UploadBlob {
+  /// The file's place under uploads/ ("images/1795190743262-e81be7a6f1b96.png"); its address is /uploads/<path>.
+  path      String   @id
+  mime      String
+  size      Int
+  /// The bytes' SHA-256 (hex): the answer's ETag.
+  sha256    String
+  bytes     Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

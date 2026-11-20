@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { getOpenAIVisionModel, openaiEmbedText, openaiResponsesJson } from "./openai.js";
 import { clipEmbedImage } from "./clipEmbeddings.js";
+import { readUpload, uploadKeyFromAddress } from "./uploadBlobs.js";
 
 type Locale = "ar" | "he" | "en";
 
@@ -76,6 +77,10 @@ export async function loadImageFromUrl(url: string): Promise<{ buffer: Buffer; m
   if (localPath) {
     const local = await loadImageFromDisk(localPath);
     if (local) return local;
+    // A picture kept in the database (no Cloudinary) after a deploy wiped the disk (lib/uploadBlobs.ts).
+    const key = uploadKeyFromAddress(url);
+    const kept = key ? await readUpload(key).catch(() => null) : null;
+    if (kept && kept.bytes.length <= MAX_IMAGE_BYTES) return { buffer: kept.bytes, mime: kept.mime };
   }
 
   try {

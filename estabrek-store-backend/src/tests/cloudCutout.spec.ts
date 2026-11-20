@@ -18,6 +18,8 @@ sharp.cache(false);
 const db = vi.hoisted(() => ({
   mediaAsset: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   mediaFolder: { upsert: vi.fn() },
+  // Without Cloudinary the bytes are kept in the database too (lib/uploadBlobs.ts).
+  uploadBlob: { findUnique: vi.fn(async () => null), upsert: vi.fn(async () => ({})), deleteMany: vi.fn(async () => ({ count: 0 })) },
 }));
 const dedup = vi.hoisted(() => ({ findDuplicateMediaAsset: vi.fn() }));
 vi.mock("../lib/prisma.js", () => ({ prisma: db }));
@@ -241,6 +243,8 @@ describe("Saving the cut-out", () => {
       const same = await uploads.ingestImages(req, [{ filename: names[0], originalname: "rose.png", mimetype: "image/png", size }], { folder: null, tags: [] });
       expect("files" in same && same.files[0].id).toBe("old");
       expect(db.mediaAsset.create).not.toHaveBeenCalled();
+      // The old one's file is on neither the disk nor the database: the same picture takes its place.
+      expect(db.uploadBlob.upsert.mock.calls.at(-1)?.[0]).toMatchObject({ where: { path: "images/old.png" } });
 
       const fresh = await uploads.ingestImages(req, [{ filename: names[1], originalname: "rose-cutout.png", mimetype: "image/png", size }], { folder: "products", tags: ["cutout"], keepAsNew: true });
       expect("files" in fresh && fresh.files[0].id).toBe("new");
