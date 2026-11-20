@@ -37,6 +37,7 @@ import { kitCss, kitOfHeader } from "@/storeThemes/packs";
 import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
 import { StoreThemePreview } from "@/storeThemes/StoreThemePreview";
 import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
+import { BASE_CSS } from "@/pageTree/css";
 import { StoreDesignRegion } from "@/components/StoreDesignRegion";
 // The plain header (stores without the cinematic design): its own download (PlainHeaderParts.tsx).
 import { HeaderOffset, Navbar, Topbar } from "@/components/PlainHeaderParts";
@@ -218,6 +219,9 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body>
+        {/* A store with its own design: the page trees' shared rules once, before its header, page and footer
+            (each tree's style then carries only its own rules, cms/renderCmsPage.tsx), after every stylesheet. */}
+        {ownedDesign ? <style id="page-tree-base" dangerouslySetInnerHTML={{ __html: BASE_CSS }} /> : null}
         <MotionSettingsBridge />
         <StoreThemePreview saved={storeTheme?.theme.id ?? null} owned={readThemeSnapshot(header?.storeTheme?.snapshot)} />
         <ThemeMotion />

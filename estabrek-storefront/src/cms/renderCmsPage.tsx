@@ -42,7 +42,7 @@ import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
 import { designTokensOf, tokenFamilies, tokensCss } from "@/pageTree/designTokens";
 import { bindStore, categoryValues, productValues } from "@/pageTree/storeBind";
 import type { CatalogProduct } from "@/lib/catalog";
-import { treeCss, treeFamilies } from "@/pageTree/css";
+import { BASE_CSS, treeCss, treeFamilies } from "@/pageTree/css";
 import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
 import { leadImageOf, lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
@@ -580,7 +580,12 @@ export async function renderCmsPageBySlug(
     // The design variables (pageTree/designTokens.ts): the editor's changes in its preview, else the published ones.
     const ownTokens = (page as { designTokens?: unknown }).designTokens;
     const tokens = designTokensOf(ownTokens !== undefined ? ownTokens : settingsHeader?.designTokens);
-    treeStyle = tokensCss(tokens) + treeCss(tree, site);
+    // A store with its own design draws three trees on each page (its header, the page, its footer), and the
+    // layout writes the shared base rules once before all of them. Each tree's copy of them came after the
+    // trees before it and undid their own rules (same weight, later wins): the header's row became a column,
+    // its buttons lost their colours. So here only each tree's own rules.
+    const own = treeCss(tree, site);
+    treeStyle = tokensCss(tokens) + (independentDesign(settingsHeader) ? own.split(BASE_CSS).join("") : own);
     if (treeStyle) treeFonts = googleFontsHref([...treeFamilies(tree, site), ...tokenFamilies(tokens)]);
     treeMoves = needs.motion;
     treeScenes = needs.scenes;
