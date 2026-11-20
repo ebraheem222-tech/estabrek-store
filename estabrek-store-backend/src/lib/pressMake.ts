@@ -449,6 +449,42 @@ async function setupOpen(api: string): Promise<boolean | null> {
   }
 }
 
+/**
+ * A shop alone, for a store that has its server and admin and no shop of its own (its setup's first
+ * step: lib/shopLink.ts): the press's own two Vercel steps, told the store's real addresses. `vercel`
+ * is what an earlier try made, and is filled in as this one goes (kept by the caller, also when a
+ * step says no); `began` is when the first try began (a project made since then is that try's).
+ */
+export async function makeShopSteps(o: {
+  site: string;
+  repo: string;
+  branch: string;
+  api: string;
+  admin: string;
+  team?: string;
+  secret: string;
+  began: number;
+  vercel: NonNullable<Made["vercel"]>;
+  ask: (c: ReadyCall) => Promise<Asked>;
+}): Promise<NonNullable<Made["vercel"]>> {
+  const ctx: Ctx = {
+    input: { label: o.site, server: o.site, site: o.site, repo: o.repo, branch: o.branch, region: "" },
+    began: o.began,
+    made: { railway: { address: o.api }, cloudflare: { address: o.admin }, vercel: o.vercel },
+    secrets: { REVALIDATE_SECRET: o.secret } as CopySecrets,
+    settings: { vercel: o.team ? { team: o.team } : {} },
+    peek: (_kind, c) => o.ask(c),
+    ask: async (_kind, c) => {
+      const got = await o.ask(c);
+      if (!got.ok) throw new StepError(got.why ?? `It answered ${got.status}`);
+      return got;
+    },
+  };
+  await STEPS["vercel.project"](ctx);
+  await STEPS["vercel.deploy"](ctx);
+  return o.vercel;
+}
+
 /* ---------------- Kept, run, tried again ---------------- */
 
 /** The copies this process is making now. */

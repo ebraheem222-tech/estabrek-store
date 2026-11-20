@@ -10,6 +10,7 @@ import { stopStockAlertKicks } from "./modules/stockAlerts/stockAlerts.service.j
 import { loadCacheConfig } from "./lib/cacheConfig.js";
 import { loadMediaSettings } from "./lib/mediaSettings.js";
 import { loadCloudinaryAccount } from "./lib/cloudinaryAccount.js";
+import { loadShopLink } from "./lib/shopLink.js";
 import { loadTrafficConfig } from "./lib/traffic.js";
 import { stopRum } from "./lib/rum.js";
 import { flushAb } from "./lib/experiments.js";
@@ -77,6 +78,7 @@ void loadCacheConfig();
 void loadMediaSettings();
 // The store's own Cloudinary account, when given in the admin (the server's variables win).
 void loadCloudinaryAccount();
+void loadShopLink();
 void loadTrafficConfig();
 registerCatalogWarmers();
 // Admin → المهام بالخلفية: every job the server runs on its own.
