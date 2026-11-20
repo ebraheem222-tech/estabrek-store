@@ -9,7 +9,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { hasTokens } from "../../lib/storage";
 import { firstAllowedPath } from "../../layouts/adminNav";
 import * as AuthAPI from "../../api/auth.api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { tr } from "@/lib/words";
 
 type Mode = "email" | "phone";
@@ -50,6 +50,12 @@ export default function LoginPage() {
     const target = from === "/admin/dashboard" && !hasPermission("dashboard:read") ? firstAllowedPath(hasPermission) : from;
     nav(target, { replace: true });
   }, [admin, hasPermission, nav, from]);
+
+  // A store with no one in it yet opens on its first setup instead (the setup link's code goes with it).
+  const firstRun = useQuery({ queryKey: ["first-run"], queryFn: AuthAPI.firstRunStatus, retry: false, enabled: !admin });
+  useEffect(() => {
+    if (firstRun.data?.needed) nav(`/welcome${location.search}`, { replace: true });
+  }, [firstRun.data, nav, location.search]);
 
   const phoneStart = useMutation({ mutationFn: AuthAPI.phoneStart });
   const phoneVerify = useMutation({ mutationFn: AuthAPI.phoneVerify });

@@ -40,6 +40,18 @@ export async function login(input: { email: string; password: string }): Promise
   return data;
 }
 
+/** A store with no one in it yet opens on its first setup (backend lib/firstRun.ts); where its one-time code is. */
+export type FirstRunStatus = { needed: boolean; codeFrom?: "link" | "log" };
+export async function firstRunStatus() {
+  return (await api.get("/auth/first-run")).data as FirstRunStatus;
+}
+/** The owner's account made with the setup code, and signed in (the tokens kept as a sign-in's are). */
+export async function firstRunClaim(input: { code: string; name: string; email: string; password: string }) {
+  const data = (await api.post("/auth/first-run", input)).data as LoginOk;
+  if (data?.accessToken && data?.refreshToken) setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  return data;
+}
+
 export async function mfaFinalize(input: { sessionId: string; adminId: string; totp?: string; code?: string; challengeId?: string }) {
   const res = await api.post(ENDPOINTS.auth.mfaFinalize, input);
   const data = res.data as { accessToken: string; refreshToken: string; admin?: AdminUser };

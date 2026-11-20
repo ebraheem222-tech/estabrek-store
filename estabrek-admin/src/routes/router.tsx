@@ -11,6 +11,7 @@ import { firstAllowedPath } from "../layouts/adminNav";
 
 // features pages
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
+const FirstRunPage = lazy(() => import("../features/auth/FirstRunPage"));
 const TwoFactorPage = lazy(() => import("../features/auth/TwoFactorPage"));
 const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
@@ -141,6 +142,15 @@ export default function AppRouter() {
           element={
             <AuthLayout>
               <LoginPage />
+            </AuthLayout>
+          }
+        />
+        {/* A store with no one in it opens here, not on a sign-in: its owner makes their account. */}
+        <Route
+          path="/welcome"
+          element={
+            <AuthLayout>
+              <FirstRunPage />
             </AuthLayout>
           }
         />

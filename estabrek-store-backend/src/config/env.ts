@@ -110,6 +110,11 @@ const EnvSchema = z.object({
   ADMIN_APP_URL: OptionalUrl,
   /** Storefront address, used in customer emails, e.g. https://estabrek-store.vercel.app */
   STOREFRONT_URL: OptionalUrl,
+  /**
+   * The one-time code that opens a store's first setup while it has no one in it (lib/firstRun.ts): the
+   * press makes one for each client's copy. Unset: one is made when the server starts and written to its log.
+   */
+  SETUP_CODE: z.string().min(16).optional(),
 
   // Backups (admin → النسخ الاحتياطي). The files are encrypted with this key; keep a copy of it
   // somewhere safe — without it a backup can't be opened. Unset: a key made from JWT_SECRET.
