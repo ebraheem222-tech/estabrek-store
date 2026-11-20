@@ -18,8 +18,9 @@ import { aliveOf, copyView, isMaking, startCopy, tryCopyAgain } from "../../lib/
  *            and branch (what a copy is built from), Neon's regions, the limits
  * POST /plan { label, server, site, repo?, branch?, region?, via? } — what making it will do, each
  *            service asked whether what it needs is there (only read: nothing is made)
- * POST /make { …the same, agree: true } — asked again, and when every service said yes, made
- *            (lib/pressMake.ts; 202: it goes on by itself, the page follows it)
+ * POST /make { …the same, owner: { name, email, password }, agree: true } — asked again, and when
+ *            every service said yes, made (lib/pressMake.ts; 202: it goes on by itself, the page
+ *            follows it), the new store's owner account with it
  * GET  /made            — the copies made or being made, newest first
  * GET  /made/:id        — one, with its owner's setup link once it is made
  * POST /made/:id/again  — a copy that stopped, made again from the step that said no
@@ -53,7 +54,20 @@ const Fields = {
 };
 const PlanBody = z.object(Fields).strict();
 // Making one costs money every month: said yes to in so many words.
-const MakeBody = z.object({ ...Fields, agree: z.literal(true) }).strict();
+const MakeBody = z
+  .object({
+    ...Fields,
+    // The new store's owner: made on its server once it answers (as its own first setup would: a password as long as an owner's must be).
+    owner: z
+      .object({
+        name: z.string().trim().min(1).max(80),
+        email: z.string().trim().toLowerCase().email().max(254),
+        password: z.string().min(10).max(200),
+      })
+      .strict(),
+    agree: z.literal(true),
+  })
+  .strict();
 
 async function connections() {
   const out = {} as Record<PressKind, Array<{ id: string; name: string }>>;
@@ -109,7 +123,7 @@ r.post(
 r.post(
   "/make",
   asyncHandler(async (req, res) => {
-    const { agree: _agree, ...ask } = MakeBody.parse(req.body ?? {});
+    const { agree: _agree, owner, ...ask } = MakeBody.parse(req.body ?? {});
     const { input, via } = await readAsk(ask);
     // A name is one copy's: the copy that has it is tried again, not begun twice.
     const had = await prisma.clientCopy.findFirst({ where: { OR: [{ server: input.server }, { site: input.site }] }, select: { id: true } });
@@ -119,7 +133,7 @@ r.post(
     if (!checks.every((c) => c.ok)) throw new AppError(409, "COPY_NOT_READY", "Not every service said yes", { checks });
     let row;
     try {
-      row = await startCopy(input, via, req.user?.email ?? null);
+      row = await startCopy(input, via, req.user?.email ?? null, owner);
     } catch (e) {
       if ((e as { code?: string })?.code === "P2002") throw new AppError(409, "COPY_EXISTS", "A copy with this name is already made or being made");
       throw e;

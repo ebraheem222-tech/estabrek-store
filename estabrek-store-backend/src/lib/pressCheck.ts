@@ -45,6 +45,21 @@ async function vercelAddressFree(site: string): Promise<CopyCheck> {
   }
 }
 
+/**
+ * Whether <name>.pages.dev is no one's at all: an address no Pages project holds isn't found by its
+ * name, one that is held answers. (The server is told the admin's address before the admin is made.)
+ */
+async function pagesAddressFree(name: string): Promise<CopyCheck> {
+  const id = "cloudflare.address";
+  try {
+    await sendRaw({ method: "GET", url: `https://${name}.pages.dev/`, headers: { accept: "text/html", "user-agent": "store-press/1" }, ms: 6000 });
+    return { id, kind: "cloudflare", ok: false, why: `${name}.pages.dev is someone else's` };
+  } catch (e) {
+    if (e instanceof SiteError && e.message.startsWith("No site is found")) return { id, kind: "cloudflare", ok: true, why: null };
+    return { id, kind: "cloudflare", ok: false, why: e instanceof SiteError ? e.message : `${name}.pages.dev couldn't be reached` };
+  }
+}
+
 /** Each service's questions for this copy, all at once. A service with no connection picked is said so. */
 export async function checkCopy(input: CopyInput, via: Via): Promise<CopyCheck[]> {
   const settingsOf = async (kind: PressKind) => (via[kind] ? ((await readyOfKind(kind)).find((c) => c.id === via[kind])?.settings ?? null) : null);
@@ -88,6 +103,7 @@ export async function checkCopy(input: CopyInput, via: Via): Promise<CopyCheck[]
   else {
     const name = adminName(input.site);
     jobs.push(askThrough(via.cloudflare!, "cloudflare", { method: "GET", url: `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(cloudflareS.account)}/pages/projects/${encodeURIComponent(name)}`, headers: bearer }).then((got) => freeName("cloudflare", "cloudflare.name", got, name)));
+    jobs.push(pagesAddressFree(name));
   }
   return Promise.all(jobs);
 }

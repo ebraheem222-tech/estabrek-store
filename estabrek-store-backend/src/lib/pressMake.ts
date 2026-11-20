@@ -4,11 +4,14 @@
  * accounts, through their ready connections (each call to that kind's one site with its key, as a
  * function's step goes: lib/fnReady.ts askThrough).
  *
- * In order: the database (Neon), the server (Railway: a project, an empty service set to build
- * the backend folder and migrate before each deploy, its address), the shop (Vercel) and the
- * admin (Cloudflare Pages), each told the others' real addresses, then the server's variables
- * (the database's address read from Neon then and there, never kept) and its first deploy.
- * Every part runs the same repository and branch as this store, so every merge reaches it.
+ * In order (the owner's): the database (Neon); the server (Railway: a project, an empty service
+ * set to build the backend folder and migrate before each deploy, its address, its variables
+ * with the database's address read from Neon then and there and never kept, its first deploy);
+ * the new store's owner account, made on that server once it answers (its first build takes a few
+ * minutes) with the email and password the owner typed; then the shop (Vercel) and the admin
+ * (Cloudflare Pages), each told the others' real addresses, and the server told theirs again if
+ * they came out other than their names gave. Every part runs the same repository and branch as
+ * this store, so every merge reaches it.
  *
  * Each step finds what an earlier try of it made before making anything (by the id it kept, or a
  * project of that name made since the copy began), so a step that said no is tried again from
@@ -33,12 +36,15 @@ export const MAKE_STEPS = [
   ["railway.project", "railway"],
   ["railway.service", "railway"],
   ["railway.domain", "railway"],
+  ["railway.variables", "railway"],
+  ["railway.deploy", "railway"],
+  // Made on the new server itself, once it answers.
+  ["owner.account", "railway"],
   ["vercel.project", "vercel"],
   ["cloudflare.project", "cloudflare"],
   ["vercel.deploy", "vercel"],
   ["cloudflare.deploy", "cloudflare"],
-  ["railway.variables", "railway"],
-  ["railway.deploy", "railway"],
+  ["railway.addresses", "railway"],
 ] as const satisfies ReadonlyArray<readonly [string, PressKind]>;
 export type StepId = (typeof MAKE_STEPS)[number][0];
 export type StepState = "waiting" | "doing" | "done" | "failed";
@@ -53,12 +59,45 @@ export const RAILWAY_SERVICE = "api";
 /** What each service made: ids and addresses, never a secret. */
 export type Made = {
   neon?: { project?: string };
-  railway?: { project?: string; environment?: string; service?: string; set?: boolean; address?: string; variables?: boolean; connected?: boolean; deploying?: boolean };
+  railway?: {
+    project?: string;
+    environment?: string;
+    service?: string;
+    set?: boolean;
+    address?: string;
+    variables?: boolean;
+    connected?: boolean;
+    deploying?: boolean;
+    /** The shop's and the admin's addresses the server was given (before they were made: what their names give). */
+    given?: { shop: string; admin: string };
+  };
+  /** The new store's owner: their account made on its server (the password is kept sealed with the secrets until then). */
+  owner?: { name: string; email: string; made?: boolean };
   vercel?: { project?: string; address?: string; variables?: boolean; deployment?: string };
   cloudflare?: { project?: string; address?: string; deployment?: string };
 };
 /** The copy's own secrets (lib/press.ts says where each one goes) and the code its owner opens its setup with. */
-export type CopySecrets = { JWT_SECRET: string; WEBHOOK_TOKEN: string; CODES_ENCRYPTION_KEY: string; BACKUP_ENCRYPTION_KEY: string; REVALIDATE_SECRET: string; SETUP_CODE: string };
+export type CopySecrets = {
+  JWT_SECRET: string;
+  WEBHOOK_TOKEN: string;
+  CODES_ENCRYPTION_KEY: string;
+  BACKUP_ENCRYPTION_KEY: string;
+  REVALIDATE_SECRET: string;
+  SETUP_CODE: string;
+  /** The owner's password as they typed it: kept sealed until their account is made, then dropped. */
+  OWNER_PASSWORD?: string;
+};
+/** The new store's owner, as the press is asked to make them. */
+export type CopyOwner = { name: string; email: string; password: string };
+
+/** Waiting for the new server's first build before its owner's account is made: asked every so often, for so long. */
+export const OWNER_WAIT = { every: 10_000, until: 15 * 60_000 };
+/** For tests: the waiting made short (null: as it is). */
+export function setOwnerWaitForTests(w: { every: number; until: number } | null) {
+  Object.assign(OWNER_WAIT, w ?? { every: 10_000, until: 15 * 60_000 });
+}
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const PRESS_AGENT = "store-press/1";
 export const newCopySecrets = (): CopySecrets => ({ JWT_SECRET: madeSecret(), WEBHOOK_TOKEN: madeSecret(), CODES_ENCRYPTION_KEY: madeSecret(), BACKUP_ENCRYPTION_KEY: madeSecret(), REVALIDATE_SECRET: madeSecret(), SETUP_CODE: newSetupCode() });
 
 /** A step's "no": the service's own words, said to the owner as they are. */
@@ -323,10 +362,13 @@ const STEPS: Record<StepId, (c: Ctx) => Promise<void>> = {
     // The database's address (its password in it) asked of Neon now, given to the server and kept nowhere.
     const got = await c.ask("neon", call("GET", `${NEON}/projects/${encodeURIComponent(c.made.neon!.project!)}/connection_uri${qs([["database_name", NEON_DB.database], ["role_name", NEON_DB.role], ["pooled", "true"]])}`));
     const database = text(part(got.body, "uri")) ?? undefined;
+    // The shop and the admin aren't made yet: the addresses their names give (each checked free beforehand; told again at the end if they came out otherwise).
     const variables: Record<string, string> = Object.fromEntries(copyVariables(addressesOf(c.input, c.made)).api.map((v) => [v.name, valueOf(v, c.secrets, database)]));
     // Its owner's way in: the setup opens with this code alone, then closes for good.
     variables.SETUP_CODE = c.secrets.SETUP_CODE;
     await c.ask("railway", rail(MAKE_QUERIES.variables, { i: { projectId: m.project, environmentId: m.environment, serviceId: m.service, variables, skipDeploys: true } }));
+    const given = addressesOf(c.input, c.made);
+    m.given = { shop: given.shop, admin: given.admin };
     m.variables = true;
   },
 
@@ -343,7 +385,69 @@ const STEPS: Record<StepId, (c: Ctx) => Promise<void>> = {
       m.deploying = true;
     }
   },
+
+  async "owner.account"(c) {
+    const o = c.made.owner;
+    if (!o || o.made) return;
+    const api = addressesOf(c.input, c.made).api;
+    // Its first build and migration take a few minutes: asked every so often until its setup answers.
+    const until = Date.now() + OWNER_WAIT.until;
+    let open = await setupOpen(api);
+    while (open === null) {
+      if (Date.now() > until) throw new StepError("The server didn't answer in time: its first deploy may have failed (see it at Railway)");
+      await sleep(OWNER_WAIT.every);
+      open = await setupOpen(api);
+    }
+    if (open) {
+      const got = await sendRaw({
+        method: "POST",
+        url: `${api}/v1/auth/first-run`,
+        headers: { "content-type": "application/json", accept: "application/json", "user-agent": PRESS_AGENT },
+        body: JSON.stringify({ code: c.secrets.SETUP_CODE, name: o.name, email: o.email, password: c.secrets.OWNER_PASSWORD ?? "" }),
+      }).catch((e) => {
+        throw new StepError(e instanceof SiteError ? e.message : "The server couldn't be reached");
+      });
+      // (What it answers, the new owner's sign-in, is theirs: read for its "no" alone, and let go.)
+      if (got.status !== 201 && !(got.status === 409 && errorOf(got.text) === "FIRST_RUN_DONE")) throw new StepError(messageOf(got.text) ?? `It answered ${got.status}`);
+    }
+    // Made now, or by an earlier try whose answer was lost (the setup is closed once anyone is in, and only its code opens it).
+    o.made = true;
+    delete c.secrets.OWNER_PASSWORD;
+  },
+
+  async "railway.addresses"(c) {
+    const m = c.made.railway!;
+    const now = addressesOf(c.input, c.made);
+    if (!m.given || (m.given.shop === now.shop && m.given.admin === now.admin)) return;
+    // The shop or the admin came out at another address than its name gave: the server told, and started again with it.
+    const variables = Object.fromEntries(copyVariables(now).api.filter((v) => v.from === "url").map((v) => [v.name, v.value!]));
+    await c.ask("railway", rail(MAKE_QUERIES.variables, { i: { projectId: m.project, environmentId: m.environment, serviceId: m.service, variables } }));
+    m.given = { shop: now.shop, admin: now.admin };
+  },
 };
+
+/** A JSON answer's own field, as words (null when it isn't one). */
+function said(text: string, key: string): string | null {
+  try {
+    const v = part(JSON.parse(text), key);
+    return typeof v === "string" ? v.slice(0, 300) : null;
+  } catch {
+    return null;
+  }
+}
+const errorOf = (text: string) => said(text, "error");
+const messageOf = (text: string) => said(text, "message");
+/** Whether a new server's first setup is open (true), closed because someone is in (false), or it doesn't answer yet (null). */
+async function setupOpen(api: string): Promise<boolean | null> {
+  try {
+    const got = await sendRaw({ method: "GET", url: `${api}/v1/auth/first-run`, headers: { accept: "application/json", "user-agent": PRESS_AGENT }, ms: 6000 });
+    if (got.status !== 200) return null;
+    const needed = part(JSON.parse(got.text), "needed");
+    return typeof needed === "boolean" ? needed : null;
+  } catch {
+    return null;
+  }
+}
 
 /* ---------------- Kept, run, tried again ---------------- */
 
@@ -356,9 +460,11 @@ const freshSteps = (): MakeStep[] => MAKE_STEPS.map(([id, kind]) => ({ id, kind,
 type Row = NonNullable<Awaited<ReturnType<typeof prisma.clientCopy.findUnique>>>;
 
 /** A new copy kept, and its making begun (not waited for). */
-export async function startCopy(input: CopyInput, via: Via, by: string | null) {
+export async function startCopy(input: CopyInput, via: Via, by: string | null, owner: CopyOwner) {
+  const secrets: CopySecrets = { ...newCopySecrets(), OWNER_PASSWORD: owner.password };
+  const made: Made = { owner: { name: owner.name, email: owner.email } };
   const row = await prisma.clientCopy.create({
-    data: { label: input.label, server: input.server, site: input.site, repo: input.repo, branch: input.branch, region: input.region, via: asJson(via), steps: asJson(freshSteps()), made: {}, sealed: seal(JSON.stringify(newCopySecrets())), byEmail: by },
+    data: { label: input.label, server: input.server, site: input.site, repo: input.repo, branch: input.branch, region: input.region, via: asJson(via), steps: asJson(freshSteps()), made: asJson(made), sealed: seal(JSON.stringify(secrets)), byEmail: by },
   });
   making.add(row.id);
   void makeCopy(row.id);
@@ -419,7 +525,7 @@ export async function makeCopy(id: string): Promise<void> {
         return got;
       },
     };
-    const keep = (state: CopyState) => prisma.clientCopy.update({ where: { id }, data: { state, steps: asJson(steps), made: asJson(made) } });
+    const keep = (state: CopyState) => prisma.clientCopy.update({ where: { id }, data: { state, steps: asJson(steps), made: asJson(made), sealed: seal(JSON.stringify(secrets)) } });
     for (const step of steps) {
       if (step.state === "done") continue;
       step.state = "doing";
@@ -483,7 +589,9 @@ export type CopyView = {
   by: string | null;
   began: string;
   updated: string;
-  /** The link its owner opens their setup with: once it is made, and only on its own page. */
+  /** The new store's owner: their email, and whether their account is made (never a password). */
+  owner: { name: string; email: string; made: boolean } | null;
+  /** The link its owner opens their setup with, when the press didn't make their account: once it is made, and only on its own page. */
   welcome: string | null;
 };
 
@@ -497,7 +605,8 @@ export async function copyView(row: Row, withCode = false): Promise<CopyView> {
   const [vercelS, cloudflareS] = await Promise.all([via.vercel ? readyOfKind("vercel").then((l) => l.find((c) => c.id === via.vercel)?.settings) : undefined, via.cloudflare ? readyOfKind("cloudflare").then((l) => l.find((c) => c.id === via.cloudflare)?.settings) : undefined]);
   const addresses = addressesOf(row, made);
   let welcome: string | null = null;
-  if (withCode && state === "made") {
+  const owner = made.owner ? { name: made.owner.name, email: made.owner.email, made: !!made.owner.made } : null;
+  if (withCode && state === "made" && !owner?.made) {
     try {
       welcome = `${addresses.admin}/welcome?code=${encodeURIComponent((JSON.parse(open(row.sealed)) as CopySecrets).SETUP_CODE)}`;
     } catch {
@@ -519,6 +628,7 @@ export async function copyView(row: Row, withCode = false): Promise<CopyView> {
     by: row.byEmail,
     began: row.createdAt.toISOString(),
     updated: row.updatedAt.toISOString(),
+    owner,
     welcome,
   };
 }

@@ -81,12 +81,13 @@ describe("A copy's variables", () => {
 });
 
 describe("The plan", () => {
-  test("in order: the database, the server, the shop, the admin, then the owner's own setup", () => {
+  test("in order: the database, the server, its owner's account, the shop, the admin", () => {
     const plan = copyPlan({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", branch: "main", region: "aws-eu-central-1" });
-    expect(plan.steps.map((s) => s.id)).toEqual(["neon", "railway", "vercel", "cloudflare", "owner"]);
+    expect(plan.steps.map((s) => s.id)).toEqual(["neon", "railway", "owner", "vercel", "cloudflare"]);
+    expect(plan.steps[2].facts).toEqual([["account", "https://rose-api.up.railway.app"], ["signin", "https://rose-admin.pages.dev/"]]);
     expect(plan.steps[1].facts).toEqual([["project", "Rose"], ["service", "api"], ["from", "acme/store (main)"], ["folder", "estabrek-store-backend"], ["before", "node scripts/migrate-deploy.mjs"], ["address", "https://rose-api.up.railway.app"]]);
-    expect(plan.steps[3].facts).toContainEqual(["project", "rose-admin"]);
-    expect(plan.steps.slice(1, 4).map((s) => s.variables?.length)).toEqual([11, 5, 2]);
+    expect(plan.steps[4].facts).toContainEqual(["project", "rose-admin"]);
+    expect(plan.steps.map((s) => s.variables?.length)).toEqual([undefined, 11, undefined, 5, 2]);
   });
 
   test("its questions only read: queries of its own, with the names as values", () => {

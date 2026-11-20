@@ -6,8 +6,8 @@ import { signAccessToken } from "../config/security.js";
 import { forgetConnections, setTransportForTests, type Transport } from "../lib/fnHttp.js";
 import { forgetReady } from "../lib/fnReady.js";
 import { PRESS_QUERIES } from "../lib/pressCheck.js";
-import { MAKE_QUERIES, MAKE_STEPS } from "../lib/pressMake.js";
-import { seal } from "../lib/secretBox.js";
+import { MAKE_QUERIES, MAKE_STEPS, setOwnerWaitForTests } from "../lib/pressMake.js";
+import { open, seal } from "../lib/secretBox.js";
 
 // نسخ الزباين: a client's copy made, in the owner's own Neon, Railway, Vercel and Cloudflare accounts,
 // through their ready connections. The four services are stood in for here (each one remembers what
@@ -20,6 +20,7 @@ const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const KEYS = { neon: "made-up-neon-key-for-a-test", railway: "made-up-railway-token-test", vercel: "made-up-vercel-token-test", cloudflare: "made-up-cloudflare-token-for-a-test" } as const;
 const PASSWORD = "made-up-db-password-xyz";
 const DATABASE = `postgresql://neondb_owner:${PASSWORD}@ep-calm-1-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require`;
+const OWNER = { name: "Rana", email: "Rana@Rose.Example", password: "made-up-owner-password-1" };
 
 type Sent = { method: string; host: string; path: string; body: unknown; auth?: string };
 let sent: Sent[] = [];
@@ -37,7 +38,11 @@ function fresh() {
     lose: {} as Record<string, boolean>,
     /** The copy's parts answering from outside. */
     live: false,
-    taken: { domain: false, address: false },
+    taken: { domain: false, address: false, pages: false },
+    /** The new server: up once deployed, unless its first build is still going. */
+    api: { slow: false, owner: null as null | Record<string, string> },
+    /** The address Vercel gives the shop. */
+    shopDomain: "rose.vercel.app",
   };
 }
 const once = (name: string) => {
@@ -130,7 +135,7 @@ const network: Transport = async ({ method, url, headers, body }) => {
       world.vercel = { id: "prj_1", name: parsed.name, createdAt: Date.now(), env: [], deployments: [] };
       return json({ id: "prj_1", name: parsed.name, ...parsed });
     }
-    if (method === "GET" && u.pathname === "/v9/projects/prj_1/domains") return json({ domains: [{ name: "rose.vercel.app", verified: true }] });
+    if (method === "GET" && u.pathname === "/v9/projects/prj_1/domains") return json({ domains: [{ name: world.shopDomain, verified: true }] });
     if (method === "POST" && u.pathname === "/v10/projects/prj_1/env") {
       v!.env = parsed;
       return json({ created: parsed.map((e: { key: string }) => ({ key: e.key })) }, 201);
@@ -158,8 +163,23 @@ const network: Transport = async ({ method, url, headers, body }) => {
 
   // The copy's own addresses, asked from outside.
   if (u.hostname === "rose.vercel.app") return world.live && !world.taken.address ? { status: 200, type: "text/html", text: "<html></html>", cut: false } : { status: world.taken.address ? 200 : 404, type: "text/plain", text: world.taken.address ? "someone's shop" : "DEPLOYMENT_NOT_FOUND", cut: false };
-  if (u.hostname === "rose-api.up.railway.app") return !world.live ? json({ status: "error", message: "Application not found" }, 404) : u.pathname === "/health" ? json({ ok: true }) : json({ needed: true, codeFrom: "link" });
-  if (u.hostname === "rose-admin.pages.dev") return world.live ? { status: 200, type: "text/html", text: "<html></html>", cut: false } : { status: 404, type: "text/plain", text: "", cut: false };
+  if (u.hostname === "rose-api.up.railway.app") {
+    const up = world.railway.deployed > 0 && !world.api.slow;
+    if (!up) return json({ status: "error", message: "Application not found" }, 404);
+    if (u.pathname === "/health") return json({ ok: true });
+    if (u.pathname === "/v1/auth/first-run" && method === "GET") return json({ needed: !world.api.owner, codeFrom: "link" });
+    if (u.pathname === "/v1/auth/first-run" && method === "POST") {
+      if (world.api.owner) return json({ error: "FIRST_RUN_DONE", message: "This store already has its owner" }, 409);
+      if (parsed.code !== world.railway.variables?.SETUP_CODE) return json({ error: "SETUP_CODE_WRONG", message: "The setup code isn't right" }, 403);
+      world.api.owner = parsed;
+      return json({ accessToken: "made-up-access-token", refreshToken: "made-up-refresh-token", admin: { email: parsed.email } }, 201);
+    }
+  }
+  // An address no Pages project holds isn't found by its name.
+  if (u.hostname === "rose-admin.pages.dev") {
+    if (world.taken.pages || world.live) return { status: 200, type: "text/html", text: "<html></html>", cut: false };
+    throw Object.assign(new Error("not found"), { code: "ENOTFOUND" });
+  }
   return json({ message: "not here" }, 404);
 };
 
@@ -171,8 +191,8 @@ const connectAll = async () => {
   await connect("vercel", { team: "acme" });
   await connect("cloudflare", { account: ACCOUNT });
 };
-const make = (body: Record<string, unknown> = {}, status = 202) => request(app).post(`${at}/make`).send({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", agree: true, ...body }).expect(status);
-type View = { id: string; state: string; steps: Array<{ id: string; state: string; why: string | null }>; addresses: Record<string, string>; links: Record<string, string>; welcome: string | null };
+const make = (body: Record<string, unknown> = {}, status = 202) => request(app).post(`${at}/make`).send({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", owner: OWNER, agree: true, ...body }).expect(status);
+type View = { id: string; state: string; steps: Array<{ id: string; state: string; why: string | null }>; addresses: Record<string, string>; links: Record<string, string>; owner: { name: string; email: string; made: boolean } | null; welcome: string | null };
 /** The copy as its page sees it, once it stopped being made. */
 async function settled(id: string): Promise<View> {
   for (let i = 0; i < 250; i++) {
@@ -192,18 +212,24 @@ async function clean() {
   sent = [];
   world = fresh();
 }
-beforeAll(() => setTransportForTests(network));
+beforeAll(() => {
+  setTransportForTests(network);
+  setOwnerWaitForTests({ every: 10, until: 1500 });
+});
 beforeEach(clean);
 afterAll(async () => {
   await clean();
   setTransportForTests(null);
+  setOwnerWaitForTests(null);
 });
 
 describe("Making a client's copy", () => {
-  test("made, part by part, each told the others' addresses; its secrets go to its parts and nowhere else", async () => {
+  test("made in the owner's order: the database, the server, its owner's account on it, then the shop and the admin; its secrets go to its parts and nowhere else", async () => {
     await connectAll();
     // Said yes to in so many words: it costs money every month.
-    await request(app).post(`${at}/make`).send({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store" }).expect(400);
+    await request(app).post(`${at}/make`).send({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", owner: OWNER }).expect(400);
+    // An owner's password is as long as the store's own setup asks for.
+    await request(app).post(`${at}/make`).send({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", owner: { ...OWNER, password: "short" }, agree: true }).expect(400);
     expect(sent).toEqual([]);
 
     const begun = (await make()).body as View;
@@ -222,15 +248,19 @@ describe("Making a client's copy", () => {
       "serviceInstanceUpdate",
       "serviceDomainCreate",
       "serviceDomainUpdate",
+      "variableCollectionUpsert",
+      "serviceConnect",
+      "serviceInstanceDeploy",
+      "rose-api.up.railway.app /v1/auth/first-run",
       "api.vercel.com /v11/projects?slug=acme",
       `api.cloudflare.com /client/v4/accounts/${ACCOUNT}/pages/projects`,
       "api.vercel.com /v10/projects/prj_1/env?slug=acme&upsert=true",
       "api.vercel.com /v13/deployments?slug=acme",
       `api.cloudflare.com /client/v4/accounts/${ACCOUNT}/pages/projects/rose-admin/deployments`,
-      "variableCollectionUpsert",
-      "serviceConnect",
-      "serviceInstanceDeploy",
     ]);
+    // Its owner, made on its own server with its own code, as its first setup would; the press keeps no sign-in of theirs.
+    expect(world.api.owner).toEqual({ code: world.railway.variables!.SETUP_CODE, name: "Rana", email: "rana@rose.example", password: OWNER.password });
+    expect(v.owner).toEqual({ name: "Rana", email: "rana@rose.example", made: true });
     const keyOf = { "console.neon.tech": KEYS.neon, "backboard.railway.com": KEYS.railway, "api.vercel.com": KEYS.vercel, "api.cloudflare.com": KEYS.cloudflare } as Record<string, string>;
     expect(sent.filter((s) => keyOf[s.host]).every((s) => s.auth === `Bearer ${keyOf[s.host]}`)).toBe(true);
 
@@ -272,13 +302,14 @@ describe("Making a client's copy", () => {
     });
     expect(world.pages!.deployments).toBe(1);
 
-    // Its owner's link, on its own page alone; no secret anywhere the page reads, nor kept unsealed.
-    expect(v.welcome).toBe(`https://rose-admin.pages.dev/welcome?code=${encodeURIComponent(vars.SETUP_CODE)}`);
+    // Its owner is in: no setup link to hand over; no secret anywhere the page reads, nor kept unsealed, and the password let go.
+    expect(v.welcome).toBeNull();
     const listed = (await request(app).get(`${at}/made`).expect(200)).body.copies as View[];
     expect(listed).toHaveLength(1);
     expect(listed[0].welcome).toBeNull();
     const row = await prisma.clientCopy.findUniqueOrThrow({ where: { id: v.id } });
-    for (const said of [JSON.stringify(listed), JSON.stringify({ ...v, welcome: null }), JSON.stringify({ ...row, sealed: null })]) {
+    expect(Object.keys(JSON.parse(open(row.sealed)))).not.toContain("OWNER_PASSWORD");
+    for (const said of [JSON.stringify(listed), JSON.stringify(v), JSON.stringify({ ...row, sealed: null })]) {
       expect(said).not.toContain(PASSWORD);
       expect(said).not.toContain("made-up-");
       for (const name of ["JWT_SECRET", "WEBHOOK_TOKEN", "CODES_ENCRYPTION_KEY", "BACKUP_ENCRYPTION_KEY", "STOREFRONT_REVALIDATE_SECRET", "SETUP_CODE"]) expect(said, name).not.toContain(vars[name]);
@@ -289,10 +320,10 @@ describe("Making a client's copy", () => {
     expect((await make({ server: "other-api" }, 409)).body.error).toBe("COPY_EXISTS");
     expect((await request(app).post(`${at}/made/${v.id}/again`).expect(409)).body.error).toBe("COPY_MADE");
 
-    // Whether it answers yet, asked from outside: not before its first builds, then all of it, its owner not yet in.
-    expect((await request(app).get(`${at}/made/${v.id}/alive`).expect(200)).body).toEqual({ api: { ok: false, status: 404 }, shop: { ok: false, status: 404 }, admin: { ok: false, status: 404 }, waiting: null });
+    // Whether it answers yet, asked from outside: the server first (its owner in), then the shop and the admin once built.
+    expect((await request(app).get(`${at}/made/${v.id}/alive`).expect(200)).body).toEqual({ api: { ok: true, status: 200 }, shop: { ok: false, status: 404 }, admin: { ok: false, status: 0 }, waiting: false });
     world.live = true;
-    expect((await request(app).get(`${at}/made/${v.id}/alive`).expect(200)).body).toEqual({ api: { ok: true, status: 200 }, shop: { ok: true, status: 200 }, admin: { ok: true, status: 200 }, waiting: true });
+    expect((await request(app).get(`${at}/made/${v.id}/alive`).expect(200)).body).toEqual({ api: { ok: true, status: 200 }, shop: { ok: true, status: 200 }, admin: { ok: true, status: 200 }, waiting: false });
   });
 
   test("a step that says no stops it there, in the service's words; tried again, it goes on from there and makes nothing twice", async () => {
@@ -323,6 +354,70 @@ describe("Making a client's copy", () => {
     expect(mutations().filter((s) => s.host === "console.neon.tech")).toHaveLength(1);
   });
 
+  test("its owner waits for the server's first build; a build that takes too long stops it there, and it goes on once the server answers", async () => {
+    await connectAll();
+    world.api.slow = true;
+    const id = (await make()).body.id as string;
+    let v = await settled(id);
+    expect(v.state).toBe("stopped");
+    expect(v.steps.find((s) => s.id === "owner.account")).toMatchObject({ state: "failed", why: "The server didn't answer in time: its first deploy may have failed (see it at Railway)" });
+    expect(v.owner).toEqual({ name: "Rana", email: "rana@rose.example", made: false });
+    // The password is still kept (sealed) for the try after.
+    expect(JSON.parse(open((await prisma.clientCopy.findUniqueOrThrow({ where: { id } })).sealed)).OWNER_PASSWORD).toBe(OWNER.password);
+    world.api.slow = false;
+    await request(app).post(`${at}/made/${id}/again`).expect(202);
+    v = await settled(id);
+    expect(v.state).toBe("made");
+    expect(world.api.owner?.email).toBe("rana@rose.example");
+    expect(world.railway.projects).toHaveLength(1);
+  });
+
+  test("an owner already in (an earlier try whose answer was lost) is taken as made; the server refusing the account says why", async () => {
+    await connectAll();
+    world.api.owner = { email: "rana@rose.example" };
+    let v = await settled((await make()).body.id);
+    expect(v.state).toBe("made");
+    expect(v.owner?.made).toBe(true);
+    expect(sent.some((s) => s.host === "rose-api.up.railway.app" && s.method === "POST")).toBe(false);
+
+    await clean();
+    await connectAll();
+    // The server holds another code than the one the press gave it (its variables not taken yet).
+    const network2: Transport = async (req) => {
+      const out = await network(req);
+      if (new URL(req.url.toString()).hostname === "backboard.railway.com" && world.railway.variables) world.railway.variables = { ...world.railway.variables, SETUP_CODE: "AAAA-BBBB-CCCC-DDDD" };
+      return out;
+    };
+    setTransportForTests(network2);
+    try {
+      v = await settled((await make()).body.id);
+    } finally {
+      setTransportForTests(network);
+    }
+    expect(v.state).toBe("stopped");
+    expect(v.steps.find((s) => s.id === "owner.account")).toMatchObject({ state: "failed", why: "The setup code isn't right" });
+  });
+
+  test("a shop that came out at another address: the server is told it, and starts again with it", async () => {
+    await connectAll();
+    world.shopDomain = "rose-acme.vercel.app";
+    const v = await settled((await make()).body.id);
+    expect(v.state).toBe("made");
+    expect(v.addresses.shop).toBe("https://rose-acme.vercel.app");
+    const upserts = sent.filter((s) => s.host === "backboard.railway.com" && (s.body as { query: string }).query === MAKE_QUERIES.variables).map((s) => (s.body as { variables: { i: Record<string, unknown> } }).variables.i);
+    expect(upserts).toHaveLength(2);
+    expect(upserts[0]).toMatchObject({ skipDeploys: true, variables: { STOREFRONT_URL: "https://rose.vercel.app" } });
+    expect(upserts[1].skipDeploys).toBeUndefined();
+    expect(upserts[1].variables).toEqual({
+      CORS_ORIGINS: "https://rose-acme.vercel.app,https://rose-admin.pages.dev",
+      STOREFRONT_URL: "https://rose-acme.vercel.app",
+      STOREFRONT_REVALIDATE_URL: "https://rose-acme.vercel.app/api/revalidate",
+      ADMIN_APP_URL: "https://rose-admin.pages.dev",
+    });
+    // The admin was given the shop's real address.
+    expect((world.pages!.body as { deployment_configs: { production: { env_vars: Record<string, { value: string }> } } }).deployment_configs.production.env_vars.VITE_STOREFRONT_BASE_URL.value).toBe("https://rose-acme.vercel.app");
+  });
+
   test("an answer lost on its way back: tried again, the project it made is found by its name and when it was made", async () => {
     await connectAll();
     // An older project of the same name is someone else's business: never taken for this copy's.
@@ -345,8 +440,10 @@ describe("Making a client's copy", () => {
     expect((await make({}, 409)).body).toMatchObject({ error: "COPY_NOT_READY", details: { checks: expect.arrayContaining([expect.objectContaining({ id: "railway.domain", ok: false })]) } });
     world.taken.domain = false;
     world.taken.address = true;
+    world.taken.pages = true;
     const checks = (await make({}, 409)).body.details.checks as Array<{ id: string; ok: boolean; why: string }>;
     expect(checks.find((c) => c.id === "vercel.address")).toEqual({ id: "vercel.address", kind: "vercel", ok: false, why: "rose.vercel.app is someone else's" });
+    expect(checks.find((c) => c.id === "cloudflare.address")).toEqual({ id: "cloudflare.address", kind: "cloudflare", ok: false, why: "rose-admin.pages.dev is someone else's" });
     expect(mutations()).toEqual([]);
     expect(await prisma.clientCopy.count()).toBe(0);
     expect((await make({ label: "{{secret.CONNECTION_KEY}}" }, 400)).body.error).toBeDefined();
@@ -373,7 +470,7 @@ describe("Making a client's copy", () => {
     const member = await prisma.adminUser.create({ data: { email: "member@press-make-spec.test", name: "member", passwordHash: "x", role: "STAFF", status: "ACTIVE", staffRoleId: role.id } });
     try {
       const token = `Bearer ${signAccessToken({ sub: member.id, role: "STAFF", email: member.email })}`;
-      expect((await request(app).post(`${at}/make`).set("Authorization", token).send({ label: "x", server: "abc", site: "abc", agree: true }).expect(403)).body).toMatchObject({ error: "OWNER_ONLY" });
+      expect((await request(app).post(`${at}/make`).set("Authorization", token).send({ label: "x", server: "abc", site: "abc", owner: OWNER, agree: true }).expect(403)).body).toMatchObject({ error: "OWNER_ONLY" });
       await request(app).get(`${at}/made`).set("Authorization", token).expect(403);
     } finally {
       await prisma.adminUser.delete({ where: { id: member.id } });
