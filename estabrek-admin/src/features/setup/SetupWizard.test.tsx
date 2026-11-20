@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SetupWizard from "./SetupWizard";
@@ -171,6 +171,46 @@ test("pictures: the store's own Cloudinary account, tried and connected; one alr
   expect((await screen.findByTestId("setup-media-connected")).textContent).toContain("rose-store");
   expect(m.cloudSave).toHaveBeenCalledWith({ cloudName: "rose-store", apiKey: "123456789012345", apiSecret: "made-up-secret-for-a-test-0001" });
   expect(screen.getByTestId("setup-media-connected").textContent).toContain("2345");
+});
+// The keys typed and «التالي» pressed (not «جرّب ووصّل»): they used to be dropped, the owner thinking them kept.
+async function toPictures() {
+  start();
+  await pastShop();
+  fireEvent.click(await screen.findByTestId("setup-pack-fashion"));
+  fireEvent.click(screen.getByTestId("setup-next"));
+  fireEvent.click(screen.getByRole("button", { name: "Pick template" }));
+  fireEvent.click(screen.getByTestId("setup-next"));
+  fireEvent.change(screen.getByTestId("setup-name-ar"), { target: { value: "متجر الورق" } });
+  fireEvent.click(screen.getByTestId("setup-next"));
+  fireEvent.click(await screen.findByTestId("setup-next"));
+  await screen.findByTestId("setup-media-form");
+}
+test("pictures: keys typed and «التالي» pressed are kept first; the setup goes on", async () => {
+  m.cloudSave.mockResolvedValue({ source: "saved", cloudName: "rose-store", apiKeyEnd: "2345", savedAt: "2026-11-21T00:00:00Z" });
+  await toPictures();
+  fireEvent.change(screen.getByTestId("setup-media-cloud"), { target: { value: "rose-store" } });
+  fireEvent.change(screen.getByTestId("setup-media-key"), { target: { value: "123456789012345" } });
+  fireEvent.change(screen.getByTestId("setup-media-secret"), { target: { value: "made-up-secret-for-a-test-0001" } });
+  fireEvent.click(screen.getByTestId("setup-next"));
+  await waitFor(() => expect(m.cloudSave).toHaveBeenCalledWith({ cloudName: "rose-store", apiKey: "123456789012345", apiSecret: "made-up-secret-for-a-test-0001" }));
+  await waitFor(() => expect(screen.queryByTestId("setup-media")).not.toBeInTheDocument());
+});
+test("pictures: keys Cloudinary refuses, or only some of them, keep the setup on the step with the reason; none typed, it goes on", async () => {
+  m.cloudSave.mockRejectedValue(new Error("Cloudinary said no"));
+  await toPictures();
+  fireEvent.change(screen.getByTestId("setup-media-cloud"), { target: { value: "rose-store" } });
+  fireEvent.click(screen.getByTestId("setup-next"));
+  expect(await screen.findByTestId("setup-media-failed")).toBeInTheDocument();
+  expect(m.cloudSave).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByTestId("setup-media-key"), { target: { value: "123456789012345" } });
+  fireEvent.change(screen.getByTestId("setup-media-secret"), { target: { value: "made-up-secret-for-a-test-0001" } });
+  fireEvent.click(screen.getByTestId("setup-next"));
+  await waitFor(() => expect(m.cloudSave).toHaveBeenCalledTimes(1));
+  expect(screen.getByTestId("setup-media")).toBeInTheDocument();
+  // Emptied: skipped.
+  for (const id of ["setup-media-cloud", "setup-media-key", "setup-media-secret"]) fireEvent.change(screen.getByTestId(id), { target: { value: "" } });
+  fireEvent.click(screen.getByTestId("setup-next"));
+  await waitFor(() => expect(screen.queryByTestId("setup-media")).not.toBeInTheDocument());
 });
 test("changing only the design skips the assistant and the pictures", async () => {
   m.settings.mockResolvedValue({ siteName: "متجري", header: { identity: { industry: "digital", audience: "men", name: { ar: "متجري" } } } });

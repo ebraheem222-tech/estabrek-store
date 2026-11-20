@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../utils/async.js";
 import { prisma } from "../../lib/prisma.js";
 import { hostingView } from "../../lib/hostingView.js";
+import { pendingMigrations } from "../../lib/pendingMigrations.js";
 import { env } from "../../config/env.js";
 
 /**
@@ -17,7 +18,9 @@ r.get(
     const t = Date.now();
     const ok = await prisma.$queryRaw`SELECT 1 AS one`.then(() => true).catch(() => false);
     // The shop's address can change while the server runs (the setup's «متجرك» makes it): read it now.
-    res.json(hostingView({ ...process.env, STOREFRONT_URL: env.STOREFRONT_URL ?? process.env.STOREFRONT_URL }, { ok, ms: ok ? Date.now() - t : null }, STARTED));
+    const ms = ok ? Date.now() - t : null;
+    const pending = ok ? await pendingMigrations() : null;
+    res.json(hostingView({ ...process.env, STOREFRONT_URL: env.STOREFRONT_URL ?? process.env.STOREFRONT_URL }, { ok, ms, pending }, STARTED));
   }),
 );
 

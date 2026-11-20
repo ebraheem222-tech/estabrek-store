@@ -6,7 +6,8 @@
 export type DbProvider = "neon" | "railway" | "local" | "other" | "none";
 export type HostingView = {
   server: { host: "railway" | "other"; project: string | null; environment: string | null; service: string | null; address: string | null; commit: string | null; startedAt: string };
-  database: { provider: DbProvider; region: string | null; pooled: boolean; ok: boolean; ms: number | null };
+  /** pending: the database updates the code has and the database hasn't run (lib/pendingMigrations.ts); null = not known. */
+  database: { provider: DbProvider; region: string | null; pooled: boolean; ok: boolean; ms: number | null; pending?: string[] | null };
   shop: { address: string | null };
 };
 
@@ -37,7 +38,7 @@ export function databaseOf(url: string | undefined): { provider: DbProvider; reg
   return { provider: "other", region: null, pooled: false };
 }
 
-export function hostingView(vars: Vars, db: { ok: boolean; ms: number | null }, startedAt: Date): HostingView {
+export function hostingView(vars: Vars, db: { ok: boolean; ms: number | null; pending?: string[] | null }, startedAt: Date): HostingView {
   const onRailway = Boolean(clean(vars.RAILWAY_ENVIRONMENT_NAME) || clean(vars.RAILWAY_PROJECT_ID) || clean(vars.RAILWAY_SERVICE_ID));
   const domain = clean(vars.RAILWAY_PUBLIC_DOMAIN, 200);
   const commit = clean(vars.RAILWAY_GIT_COMMIT_SHA ?? vars.GIT_COMMIT_SHA, 40);

@@ -10,6 +10,7 @@
  */
 import { prisma } from "./prisma.js";
 import { open, seal } from "./secretBox.js";
+import { dropPerformance, mergePerformance } from "./performanceKey.js";
 
 export type CloudinaryCreds = { cloudName: string; apiKey: string; apiSecret: string };
 type Saved = { cloudName: string; apiKey: string; sealed: string; savedAt: string };
@@ -75,12 +76,10 @@ export function cloudinarySource(): { source: "env" | "saved" | "none"; cloudNam
 
 /** The account given in the admin kept (or, null, taken away), in force at once on this server. */
 export async function saveCloudinaryAccount(creds: CloudinaryCreds | null): Promise<void> {
-  const row = await prisma.performanceSettings.findUnique({ where: { id: "default" } });
-  const data = row?.data && typeof row.data === "object" ? { ...(row.data as Record<string, unknown>) } : {};
   const next: Saved | null = creds ? { cloudName: creds.cloudName, apiKey: creds.apiKey, sealed: seal(creds.apiSecret), savedAt: new Date().toISOString() } : null;
-  if (next) data.cloudinary = next;
-  else delete data.cloudinary;
-  await prisma.performanceSettings.upsert({ where: { id: "default" }, create: { id: "default", data: data as object }, update: { data: data as object } });
+  // Its own part alone (lib/performanceKey.ts): a save of the shop's link at the same moment can't put the old one back.
+  if (next) await mergePerformance({ cloudinary: next });
+  else await dropPerformance("cloudinary");
   saved = next;
   loadedAt = Date.now();
 }

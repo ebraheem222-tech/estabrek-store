@@ -415,6 +415,10 @@ export default function ConnectionsPage() {
       {kinds.length ? (
         <section className={box} data-testid="connections-ready">
           <h2 className="font-medium">{say("اتصالات جاهزة|Ready connections|חיבורים מוכנים")}</h2>
+          {/* Railway, Neon, Vercel, Cloudflare and Cloudinary, each in its own card with its how-to: admin → الاستضافة. */}
+          <Link to="/admin/system/hosting" className="mt-1 inline-block text-sm text-accent-300 underline" data-testid="connections-hosting-link">
+            {say("إعدادات Railway وNeon وVercel وCloudflare وCloudinary بمكان واحد ← الاستضافة|Railway, Neon, Vercel, Cloudflare and Cloudinary settings in one place → Hosting|ההגדרות של Railway, Neon, Vercel, Cloudflare ו-Cloudinary במקום אחד ← אחסון")}
+          </Link>
           <p className={`mt-1 ${note}`}>
             {say(
               "خدمة بتوصلها مرة وحدة بمفتاحها، وبعدها أي function بتختارها من قائمة بخطوة «ابعت باتصال جاهز»: بدون عنوان ولا مفتاح بالخطوة. المفتاح بينكتب مرة وما بينعرض بعدها لحدا.|A service you connect once with its key; after that any function picks it from a menu in a “send through a connection” step, with no address and no key in the step. The key is written once and shown to nobody after that.|שירות שמחברים פעם אחת עם המפתח שלו; אחר כך כל פונקציה בוחרת אותו מתפריט בשלב «שליחה דרך חיבור מוכן», בלי כתובת ובלי מפתח בשלב. המפתח נכתב פעם אחת ולא מוצג אחר כך לאף אחד.",

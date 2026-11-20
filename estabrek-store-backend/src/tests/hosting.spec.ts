@@ -59,3 +59,27 @@ describe("where the store runs", () => {
     expect(JSON.stringify(res.body)).not.toContain("55433");
   });
 });
+
+describe("the database's updates not run yet", () => {
+  test("named from the migrations folder against Prisma's record; none known without either", async () => {
+    const { mkdtempSync, mkdirSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const { prisma } = await import("./helpers/db.js");
+    const { migrationNames, pendingMigrations } = await import("../lib/pendingMigrations.js");
+    const dir = mkdtempSync(path.join(tmpdir(), "migrations-"));
+    for (const name of ["20200101000000_first", "20991231000000_not_run_yet", "not-a-migration"]) mkdirSync(path.join(dir, name));
+    expect(migrationNames(dir)).toEqual(["20200101000000_first", "20991231000000_not_run_yet"]);
+    expect(migrationNames(path.join(dir, "missing"))).toBeNull();
+    await prisma.$executeRaw`CREATE TABLE IF NOT EXISTS "_prisma_migrations" ("id" VARCHAR(36) PRIMARY KEY, "checksum" VARCHAR(64) NOT NULL, "finished_at" TIMESTAMPTZ, "migration_name" VARCHAR(255) NOT NULL, "logs" TEXT, "rolled_back_at" TIMESTAMPTZ, "started_at" TIMESTAMPTZ NOT NULL DEFAULT now(), "applied_steps_count" INTEGER NOT NULL DEFAULT 0)`;
+    await prisma.$executeRaw`DELETE FROM "_prisma_migrations" WHERE "migration_name" IN ('20200101000000_first', '20991231000000_not_run_yet')`;
+    await prisma.$executeRaw`INSERT INTO "_prisma_migrations" ("id", "checksum", "finished_at", "migration_name") VALUES ('zz-pending-test-1', 'x', now(), '20200101000000_first')`;
+    try {
+      expect(await pendingMigrations(dir)).toEqual(["20991231000000_not_run_yet"]);
+    } finally {
+      await prisma.$executeRaw`DELETE FROM "_prisma_migrations" WHERE "id" = 'zz-pending-test-1'`;
+    }
+    const res = await request(app).get("/v1/admin/system/hosting").expect(200);
+    expect(res.body.database.pending === null || Array.isArray(res.body.database.pending)).toBe(true);
+  });
+});

@@ -21,6 +21,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { corsOrigins, env } from "../config/env.js";
 import { prisma } from "./prisma.js";
+import { mergePerformance } from "./performanceKey.js";
 import { open, seal } from "./secretBox.js";
 import { SiteError, callSite, sendRaw } from "./fnHttp.js";
 import { INFRA_KINDS } from "./fnKindsInfra.js";
@@ -89,9 +90,8 @@ async function readDoc(): Promise<{ data: Record<string, unknown>; doc: Doc }> {
   return { data, doc: docOf(data.shop) };
 }
 async function writeDoc(next: Doc) {
-  const { data } = await readDoc();
-  data.shop = next;
-  await prisma.performanceSettings.upsert({ where: { id: "default" }, create: { id: "default", data: data as object }, update: { data: data as object } });
+  // Its own part alone (lib/performanceKey.ts): the store's Cloudinary account saved meanwhile stays.
+  await mergePerformance({ shop: next });
   doc = next;
   apply();
 }

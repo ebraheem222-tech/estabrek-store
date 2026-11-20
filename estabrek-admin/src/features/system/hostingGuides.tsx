@@ -8,6 +8,7 @@ import { mono } from "../setup/sketchStyle";
 export const RAILWAY_TOKENS = "https://railway.com/account/tokens";
 // Neon's docs give the way to its keys, not their page's address: the console's door, then its menu.
 export const NEON_CONSOLE = "https://console.neon.tech";
+export const CLOUDFLARE_TOKENS = "https://dash.cloudflare.com/profile/api-tokens";
 
 /** The last step of both: the token pasted in this page's card. */
 function PasteHere({ label }: { label: string }) {
@@ -91,6 +92,59 @@ function NeonNew() {
   );
 }
 
+function CloudflareNew() {
+  return (
+    <Window address="dash.cloudflare.com/profile/api-tokens">
+      <text x="16" y="50" fontSize="11" fontWeight="700" fill="currentColor">
+        API Tokens
+      </text>
+      <Press x={196} y={40} w={108} words="Create Token" />
+      <text x="16" y="84" fontSize="9.5" fill="currentColor" fillOpacity=".75">
+        Custom token
+      </text>
+      <rect x="16" y="92" width="288" height="22" rx="6" fill="none" stroke="currentColor" strokeOpacity=".4" />
+      <text x="24" y="107" fontSize="9" fill="currentColor" style={mono}>
+        Account · Cloudflare Pages · Read
+      </text>
+      <Mark x={16} y={92} w={288} h={22} />
+      <rect x="16" y="122" width="288" height="22" rx="6" fill="none" stroke="currentColor" strokeOpacity=".4" />
+      <text x="24" y="137" fontSize="9" fill="currentColor" style={mono}>
+        Account · Workers Scripts · Read
+      </text>
+    </Window>
+  );
+}
+function CloudflareCopy() {
+  return (
+    <Window address="dash.cloudflare.com/profile/api-tokens">
+      <text x="16" y="54" fontSize="11" fontWeight="700" fill="currentColor">
+        Token created
+      </text>
+      <rect x="16" y="66" width="250" height="24" rx="7" fill="currentColor" fillOpacity=".08" stroke="currentColor" strokeOpacity=".35" />
+      <text x="26" y="82" fontSize="10.5" fill="currentColor" style={mono}>
+        ••••••••••••••••••••••••••••
+      </text>
+      <CopyButton x={276} y={68} />
+      <text x="16" y="116" fontSize="9.5" fill="currentColor" fillOpacity=".75">
+        Shown once only: copy it now.
+      </text>
+    </Window>
+  );
+}
+
+const CLOUDFLARE: GuideStep[] = [
+  {
+    draw: CloudflareNew,
+    words:
+      "بـ Cloudflare افتح My Profile ← API Tokens ← Create Token ← Custom token. أعطيه قراءة بس: Account ← Cloudflare Pages ← Read، وAccount ← Workers Scripts ← Read. اكبس Continue وبعدين Create.|In Cloudflare open My Profile → API Tokens → Create Token → Custom token. Give it reading only: Account → Cloudflare Pages → Read, and Account → Workers Scripts → Read. Press Continue, then Create.|ב-Cloudflare פתחו My Profile ← API Tokens ← Create Token ← Custom token. תנו לו קריאה בלבד: Account ← Cloudflare Pages ← Read, ו-Account ← Workers Scripts ← Read. לחצו Continue ואז Create.",
+  },
+  { draw: CloudflareCopy, words: "انسخ التوكن هلأ: Cloudflare بيورجيه مرة وحدة بس.|Copy the token now: Cloudflare shows it once only.|העתיקו את הטוקן עכשיו: Cloudflare מציג אותו פעם אחת בלבד." },
+  {
+    draw: () => <PasteHere label="Cloudflare token" />,
+    words: "ارجع لهون، الصقه بخانة Cloudflare واكبس «وصّل». بنقرأ فيه بس: صفحات لوحة التحكم وآخر نشراتها.|Come back here, paste it in the Cloudflare box and press “Connect”. It is only read with: the admin’s Pages projects and their last deploys.|חזרו לכאן, הדביקו אותו בתיבת Cloudflare ולחצו «חיבור». רק קוראים איתו: פרויקטי ה-Pages של לוח הניהול והפריסות האחרונות.",
+  },
+];
+
 const RAILWAY: GuideStep[] = [
   {
     draw: RailwayNew,
@@ -121,6 +175,9 @@ const NEON: GuideStep[] = [
 
 export function RailwayGuide() {
   return <PictureGuide testid="railway-guide" title="كيف بعمل توكن Railway؟ بالصور|How do I make a Railway token? In pictures|איך יוצרים טוקן Railway? בתמונות" link={{ href: RAILWAY_TOKENS, label: "افتح صفحة التوكنات بـ Railway ↗|Open Railway's tokens page ↗|פתיחת עמוד הטוקנים של Railway ↗" }} steps={RAILWAY} />;
+}
+export function CloudflareGuide() {
+  return <PictureGuide testid="cloudflare-guide" title="كيف بعمل توكن Cloudflare؟ بالصور|How do I make a Cloudflare token? In pictures|איך יוצרים טוקן Cloudflare? בתמונות" link={{ href: CLOUDFLARE_TOKENS, label: "افتح توكنات Cloudflare ↗|Open Cloudflare’s API tokens ↗|פתיחת טוקני ה-API של Cloudflare ↗" }} steps={CLOUDFLARE} />;
 }
 export function NeonGuide() {
   return <PictureGuide testid="neon-guide" title="كيف بعمل مفتاح Neon؟ بالصور|How do I make a Neon key? In pictures|איך יוצרים מפתח Neon? בתמונות" link={{ href: NEON_CONSOLE, label: "افتح Neon ↗|Open Neon ↗|פתיחת Neon ↗" }} steps={NEON} />;

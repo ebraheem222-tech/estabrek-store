@@ -2,7 +2,7 @@
 // starter content that fits it, then the store itself with the next steps. Opens on its own
 // for an empty store's owner (AdminLayout), and from Settings any time later. Everything it
 // makes is ordinary content: the pages open in the new editor, the theme in its customizer.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { adminLang } from "../../lib/lang";
@@ -101,7 +101,18 @@ export default function SetupWizard() {
 
   // Changing only the design (from Settings) skips what the store set up already.
   const steps = designEntry ? STEPS.filter((s) => s !== "assistant" && s !== "media" && s !== "shop") : [...STEPS];
-  const next = () => setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)]);
+  // The pictures step: Cloudinary keys typed and not yet kept are kept first (MediaStep's saveRef); if they can't
+  // be, the setup stays there with the reason.
+  const mediaSave = useRef<(() => Promise<boolean>) | null>(null);
+  const [stepping, setStepping] = useState(false);
+  const next = async () => {
+    if (step === "media" && mediaSave.current) {
+      setStepping(true);
+      const kept = await mediaSave.current().finally(() => setStepping(false));
+      if (!kept) return;
+    }
+    setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)]);
+  };
   const back = () => setStep(steps[Math.max(0, steps.indexOf(step) - 1)]);
   const personaNow = persona ?? personasFor(pack?.industry ?? null)[0]?.id ?? "";
   const logoError = logoUrl?.trim() && !/^https?:\/\/[^\s]+$/i.test(logoUrl.trim()) ? tr("استخدم رابط صورة يبدأ بـ http أو https.", "Use an image URL starting with http or https.") : undefined;
@@ -206,7 +217,7 @@ export default function SetupWizard() {
 
         {step === "assistant" ? <AssistantStep on={assistantOn} onToggle={setAssistantOn} persona={personaNow} onPersona={setPersona} industry={pack?.industry ?? null} /> : null}
 
-        {step === "media" ? <MediaStep /> : null}
+        {step === "media" ? <MediaStep saveRef={mediaSave} /> : null}
 
         {step === "shop" ? <ShopStep onReady={next} onReadyChange={setShopReady} /> : null}
 
@@ -337,7 +348,7 @@ export default function SetupWizard() {
               {tr("جهّز المتجر", "Set up the store")}
             </Button>
           ) : (
-            <Button variant="accent" size="sm" onClick={next} disabled={!canNext} data-testid="setup-next">
+            <Button variant="accent" size="sm" onClick={() => void next()} disabled={!canNext || stepping} isLoading={stepping} data-testid="setup-next">
               {tr("التالي", "Next")}
             </Button>
           )}

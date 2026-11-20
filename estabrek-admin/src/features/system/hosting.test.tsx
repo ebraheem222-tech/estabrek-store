@@ -133,4 +133,25 @@ describe("Hosting: where the store lives", () => {
     expect(screen.queryByTestId("hosting-railway-account")).toBeNull();
     expect(screen.getByTestId("hosting-server").textContent).toContain("connections page");
   });
+
+  test("a database missing updates says so, with the command that runs them; the admin's own card has Cloudflare", async () => {
+    m.hosting.getHosting.mockResolvedValue({ ...HOSTING, database: { ...HOSTING.database, pending: ["20261120090000_project_snapshots", "20261120200000_upload_blobs"] } });
+    show();
+    const warn = await screen.findByTestId("hosting-db-pending");
+    expect(warn.textContent).toContain("missing 2");
+    expect(within(warn).getByTestId("hosting-db-pending-command").textContent).toBe("node scripts/migrate-deploy.mjs");
+    expect(warn.textContent).toContain("20261120200000_upload_blobs");
+    const admin = screen.getByTestId("hosting-admin");
+    expect(within(admin).getByTestId("hosting-admin-address").textContent).toContain(window.location.host);
+    const account = await within(admin).findByTestId("hosting-cloudflare-account");
+    expect(within(account).getByTestId("cloudflare-guide-open").getAttribute("href")).toBe("https://dash.cloudflare.com/profile/api-tokens");
+    expect(within(account).getAllByTestId(/^cloudflare-guide-\d$/)).toHaveLength(3);
+  });
+
+  test("an up-to-date database shows no warning", async () => {
+    m.hosting.getHosting.mockResolvedValue({ ...HOSTING, database: { ...HOSTING.database, pending: [] } });
+    show();
+    await screen.findByTestId("hosting-db-state");
+    expect(screen.queryByTestId("hosting-db-pending")).toBeNull();
+  });
 });
