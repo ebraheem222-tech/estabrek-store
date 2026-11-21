@@ -6,7 +6,7 @@ import { ChatbotMessageBody } from "../chatbot/chatbot.schemas.js";
 import { generateChatbotReply } from "../chatbot/chatbot.service.js";
 import { agentReply, type AgentPersona } from "../chatbot/agent.service.js";
 import { AGENT_HISTORY, type AgentTurn } from "../chatbot/agent.js";
-import { aiKeyReady } from "../ai/ai.client.js";
+import { aiReadyFor } from "../ai/ai.client.js";
 import { needPublicFeature } from "../ai/ai.guard.js";
 import { aiOf } from "../ai/ai.settings.js";
 
@@ -53,7 +53,7 @@ r.post("/message", validate({ body: ChatbotMessageBody }), asyncHandler(async (r
   let agent: Awaited<ReturnType<typeof agentReply>> | null = null;
   let resting = false;
   const settings = await prisma.siteSettings.findFirst({ select: { header: true } });
-  if (aiOf(settings?.header).shopAgent && aiKeyReady()) {
+  if (aiOf(settings?.header).shopAgent && aiReadyFor("shopAgent", settings?.header)) {
     try {
       await needPublicFeature("shopAgent", ip);
       agent = await agentReply({ locale, message, history: turnsOf(convo?.messages), pageUrl, persona: body.persona ?? null });

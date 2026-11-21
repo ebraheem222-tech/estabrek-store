@@ -12,6 +12,7 @@ import { useAuth } from "../../hooks/useAuth";
 import * as AiAPI from "../../api/ai.api";
 import type { AiFeature, AiSettings } from "../../api/ai.api";
 import { AI_TEXT } from "./aiText";
+import { AiServerCard } from "./AiServerCard";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
@@ -58,14 +59,18 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
         <h1 className="text-lg font-semibold">الذكاء الاصطناعي ✨</h1>
         <p className="mt-1 text-sm text-white/60">كل ميزة إلها زر لحالها، ومطفية لحد ما تشغّلها. كل إشي بيطلع من الذكاء الاصطناعي بيتشيّك على بيانات متجرك قبل ما يبيّن.</p>
         {data.keyReady ? (
-          <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-xs text-emerald-100" data-testid="ai-key-ok">المفتاح مضبوط ✓</p>
+          <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-xs text-emerald-100" data-testid="ai-key-ok">
+            {data.server?.kind === "own" ? <>سيرفر النماذج الخاص جاهز ✓ <span dir="ltr">({data.server.model})</span></> : "المفتاح مضبوط ✓"}
+          </p>
         ) : (
           <div className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs leading-6 text-amber-100" data-testid="ai-key-missing">
-            لسا ما في مفتاح OpenAI على السيرفر، فالميزات مطفية. ضيف بـ Railway متغيّر <b dir="ltr">OPENAI_API_KEY</b> وأعد تشغيل السيرفر، وبعدها بتقدر تشغّلها من هون.
+            لسا ما في نموذج ذكاء اصطناعي، فالميزات مطفية. يا بتضيف بـ Railway متغيّر <b dir="ltr">OPENAI_API_KEY</b> وبتعيد تشغيل السيرفر، يا بتوصّل سيرفر نماذج خاص تحت («وين بيشتغل الذكاء الاصطناعي»).
             <br />«طلبات بدها انتباه» ما بتحتاج مفتاح.
           </div>
         )}
       </section>
+
+      {data.server ? <AiServerCard key={JSON.stringify(data.server)} server={data.server} canWrite={canWrite} openaiReady={data.openaiReady ?? data.keyReady} /> : null}
 
       {groups.map((g) => (
         <section key={g.title} className={box}>
@@ -73,7 +78,9 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
           <div className="mt-2 divide-y divide-white/[0.06]">
             {g.keys.map((k) => {
               const needsKey = k !== "orderFlags";
-              const locked = needsKey && !data.keyReady && !s[k];
+              // Newer servers say per feature (pictures read, pictures made, or words); older ones only "a key".
+              const ready = data.ready?.[k] ?? (!needsKey || data.keyReady);
+              const locked = !ready && !s[k];
               const used = data.usage30[k] ?? 0;
               return (
                 <div key={k} className="flex flex-wrap items-start justify-between gap-3 py-3" data-testid={`ai-${k}`}>
@@ -81,6 +88,11 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
                     <span className="block text-sm font-medium">{AI_TEXT[k].title}</span>
                     <span className="mt-0.5 block text-xs leading-5 text-white/55">{AI_TEXT[k].hint}</span>
                     {k === "photoStudio" && !data.cloudinaryReady ? <span className="mt-1 block text-[11px] text-amber-200">محتاج Cloudinary مضبوط لحفظ الصور الجديدة.</span> : null}
+                    {!ready && data.keyReady ? (
+                      <span className="mt-1 block text-[11px] text-amber-200" data-testid={`ai-${k}-needs`}>
+                        {k === "photoStudio" ? "بدها مفتاح OpenAI: الصور ما بتنعمل بسيرفر النماذج الخاص." : k === "productWriter" ? "بدها نموذج بيقرأ الصور: مفتاح OpenAI، أو علّم «النموذج بيقرأ الصور» إذا نموذجك بيقرأها." : "بدها نموذج ذكاء اصطناعي."}
+                      </span>
+                    ) : null}
                     {needsKey && used ? <span className="mt-1 block text-[11px] text-white/40">{used} طلب للذكاء الاصطناعي بآخر 30 يوم</span> : null}
                   </div>
                   <ToggleSwitch checked={s[k]} label={AI_TEXT[k].title} disabled={!canWrite || locked} onChange={(v) => setS((x) => ({ ...x, [k]: v }))} />

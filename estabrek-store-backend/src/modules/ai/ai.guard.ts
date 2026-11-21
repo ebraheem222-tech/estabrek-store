@@ -1,14 +1,14 @@
 import { prisma } from "../../lib/prisma.js";
 import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { AppError } from "../../utils/httpError.js";
-import { aiKeyReady, publicCallsToday } from "./ai.client.js";
-import { NO_KEY_NEEDED, aiOf, type AiFeature } from "./ai.settings.js";
+import { aiReadyFor, publicCallsToday } from "./ai.client.js";
+import { aiOf, type AiFeature } from "./ai.settings.js";
 
-/** The feature is on (and, when it needs one, the key is there); else 404 FEATURE_OFF. */
+/** The feature is on (and, when it needs one, a model to ask: OpenAI or the own server); else 404 FEATURE_OFF. */
 export async function needFeature(feature: AiFeature) {
   const s = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
   const ai = aiOf(s?.header);
-  if (!ai[feature] || (!NO_KEY_NEEDED.has(feature) && !aiKeyReady())) throw new AppError(404, "FEATURE_OFF", "This AI feature is off");
+  if (!ai[feature] || !aiReadyFor(feature, s?.header)) throw new AppError(404, "FEATURE_OFF", "This AI feature is off");
   return ai;
 }
 

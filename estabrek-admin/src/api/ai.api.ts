@@ -5,8 +5,33 @@ export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "
 export type AiFeature = (typeof AI_FEATURE_KEYS)[number];
 export type AiSettings = Record<AiFeature, boolean> & { dailyLimit: number };
 
+/** Where the AI runs: OpenAI, or the store's own model server (its key is never sent here, only whether there is one). */
+export type AiServerKind = "openai" | "own";
+export type AiServerView = { kind: AiServerKind; url: string; model: string; vision: boolean; hasKey: boolean };
+export type AiServerIn = { kind: AiServerKind; url: string; model: string; vision: boolean; key?: string | null };
+
 export async function getAi() {
-  return (await api.get("/admin/ai")).data as { settings: AiSettings; defaults: AiSettings; keyReady: boolean; cloudinaryReady: boolean; usage30: Partial<Record<AiFeature, number>> };
+  return (await api.get("/admin/ai")).data as {
+    settings: AiSettings;
+    defaults: AiSettings;
+    /** A model for words is there (OpenAI's key or the own server). */
+    keyReady: boolean;
+    /** Newer servers: OpenAI's key itself, pictures read, pictures made, each feature's readiness, the own server. */
+    openaiReady?: boolean;
+    visionReady?: boolean;
+    editReady?: boolean;
+    ready?: Partial<Record<AiFeature, boolean>>;
+    server?: AiServerView;
+    cloudinaryReady: boolean;
+    usage30: Partial<Record<AiFeature, number>>;
+  };
+}
+export async function saveAiServer(body: AiServerIn) {
+  return (await api.put("/admin/ai/server", body)).data as { server: AiServerView };
+}
+/** One small question to the server as written (what is left out comes from the saved one); nothing is saved. */
+export async function tryAiServer(body: AiServerIn) {
+  return (await api.post("/admin/ai/server/try", body, { timeout: 75_000 })).data as { ok: true; ms: number; reply: string } | { ok: false; error: string };
 }
 export async function saveAi(s: AiSettings) {
   return (await api.put("/admin/ai", s)).data as { settings: AiSettings };
