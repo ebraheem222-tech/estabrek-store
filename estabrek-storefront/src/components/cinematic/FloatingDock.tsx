@@ -11,6 +11,8 @@ import { useEffect } from "react";
 const STATES: Array<[key: string, selector: string]> = [
   ["uiCover", ".quick-add-layer, .size-guide-dialog.is-open, .rose-viewer, .rose-sheet-layer"],
   ["uiBag", ".rose-minibag[data-open]"],
+  // A small-bag design that reaches the screen's foot (lib/miniBagDesigns.ts; app/minibag-designs.css).
+  ["uiBagTall", '.mb[data-open]:not([data-mb-place="float"]):not([data-mb-place="peek"])'],
   ["uiNoRecent", ".rose-product-page, .rose-cart-page, .rose-search-page"],
   ["uiRecent", '.rose-recent[aria-hidden="false"]'],
   ["uiMaint", ".rose-maint"],

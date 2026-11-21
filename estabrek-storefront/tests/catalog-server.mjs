@@ -1195,6 +1195,19 @@ http
       if (!on || unset.includes("hero")) delete home.sections[0].data.roseHeroObjectEnabled;
       return res.end("{}");
     }
+    // Admin → الإعدادات → السلة والدفع: the small bag's design and the bag icon ({ design, onIcon }; {} = as it always was).
+    if (pathname === "/__test/minibag" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        for (const [key, value] of [["miniBagDesign", data.design], ["miniBagOnIcon", data.onIcon]]) {
+          if (value === undefined) delete site.header.storefront[key]; else site.header.storefront[key] = value;
+        }
+        res.end("{}");
+      });
+      return;
+    }
     // Admin → الإعدادات → سرّ المتجر: the hidden coupon behind the logo ({ code, text, enabled }).
     if (pathname === "/__test/secret" && req.method === "POST") {
       let body = "";

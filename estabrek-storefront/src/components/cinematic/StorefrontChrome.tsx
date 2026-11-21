@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "@/lib/shopPath";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useCart } from "@/store/cart";
+import { useCart, BAG_OPEN } from "@/store/cart";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useOptionalAccount } from "@/store/account";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
@@ -40,6 +41,8 @@ export type RoseStoreData = {
   colorFollow?: "everything" | "product";
   /** The store's secret (header.storefront.secret*): holding the logo down opens it. */
   secret?: { enabled: boolean; code?: string; text?: string };
+  /** Free delivery from this subtotal (header.delivery.freeOver), for the small bag's progress line. */
+  freeOver?: number | null;
 };
 const StoreContext = createContext<RoseStoreData>({});
 export function useRoseStore() { return useContext(StoreContext); }
@@ -77,6 +80,8 @@ function Header() {
   const id = useStoreIdentity();
   const n = useNames();
   const { count } = useCart();
+  // Admin → الإعدادات → السلة والدفع: the bag icon opens the small bag instead of the bag page.
+  const bagOnIcon = useStorefrontSettings().miniBagOnIcon;
   // Shopper accounts are an admin switch (Settings → حسابات الزبائن); off = visitors only.
   const accountsOn = useOptionalAccount() !== null;
   const store = useContext(StoreContext);
@@ -197,6 +202,11 @@ function Header() {
           <Link
             className="atelier-icon-button cart-link"
             href="/cart"
+            onClick={(event) => {
+              if (!bagOnIcon || event.metaKey || event.ctrlKey || event.shiftKey || /(^|\/)cart$/.test(window.location.pathname)) return;
+              event.preventDefault();
+              window.dispatchEvent(new CustomEvent(BAG_OPEN));
+            }}
             aria-label={`${tr(lang, "حقيبة التسوق", "Shopping bag")}${count ? ` (${count})` : ""}`}
           >
             <Icon name="bag" />
@@ -444,7 +454,7 @@ export function StorefrontChrome({
         {/* Outside the page's shell (it is new on every page): the logo that fills while the next page loads. */}
         {studio ? null : <RouteLoader logoUrl={storeData.logoUrl} />}
         {studio ? null : <SmoothScroll on={home} />}
-        {studio ? null : <RoseMiniBag />}
+        {studio ? null : <RoseMiniBag freeOver={storeData.freeOver ?? null} />}
         {studio ? null : <FloatingDock />}
         {studio ? null : <RoseSecret enabled={storeData.secret?.enabled !== false} code={storeData.secret?.code} text={storeData.secret?.text} />}
         <RoseThemeProvider key={pathname}

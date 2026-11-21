@@ -9,6 +9,8 @@ import "../rose-showcase.css";
 // The home's showpieces: particles, rooms, the secret, the world, the page hero, story mode (app/rose-wonders.css).
 import "../rose-wonders.css";
 import "../store-themes.css";
+// The small bag's 100 designs (lib/miniBagDesigns.ts): app/minibag-designs.css, after the rose bag's own.
+import "../minibag-designs.css";
 import "@/pageTree/commerce.css";
 import Providers from "../providers";
 import { notFound } from "next/navigation";
@@ -47,6 +49,7 @@ import { PushAsk } from "@/components/PushAsk";
 import { iconHref, pushOn, workerHref } from "@/lib/pwa";
 import { appState } from "@/lib/pwaServer";
 import { apiBaseClient } from "@/lib/apiClient";
+import { normalizeDelivery } from "@/lib/delivery";
 
 /** Every language is its own static page: /ar…, /en…, /he… (see src/middleware.ts). */
 export function generateStaticParams() {
@@ -298,6 +301,8 @@ export default async function RootLayout({
                   colorFollow: initialStorefrontSettings?.colorFollow === "product" ? "product" : "everything",
                   // Admin → الإعدادات → سرّ المتجر: holding the logo down opens a hidden coupon.
                   secret: { enabled: initialStorefrontSettings?.secretEnabled !== false, code: typeof initialStorefrontSettings?.secretCode === "string" ? initialStorefrontSettings.secretCode.trim().slice(0, 40) : "", text: typeof initialStorefrontSettings?.secretText === "string" ? initialStorefrontSettings.secretText.slice(0, 200) : "" },
+                  // Admin → التوصيل: free delivery from this subtotal (the small bag's progress line).
+                  freeOver: normalizeDelivery(header?.delivery).freeOver,
                 }}
                 legacyHeader={cinematic ? null : regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
                   <>

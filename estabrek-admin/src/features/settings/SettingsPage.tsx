@@ -34,6 +34,8 @@ import { StoreAppCard } from "./StoreAppCard";
 import { PersonaPicker } from "../../components/PersonaPicker";
 import { say } from "../../studio/say";
 import { personaById } from "../../../../estabrek-storefront/src/lib/personas";
+import { miniBagById } from "../../../../estabrek-storefront/src/lib/miniBagDesigns";
+import { MiniBagPicker } from "./MiniBagPicker";
 
 /** The scenes that can dress the page in their colour (the shop's SceneColourKey, lib/colourEngine.ts). */
 const COLOUR_SCENES = [
@@ -411,6 +413,10 @@ type StorefrontConfig = {
   
   // Cart & Checkout
   miniCartEnabled: boolean;
+  /** The small bag's design (the shop's lib/miniBagDesigns.ts); "" = the bag as it always was. */
+  miniBagDesign: string;
+  /** The header's bag icon opens the small bag instead of the bag page. */
+  miniBagOnIcon: boolean;
   cartAnimationsEnabled: boolean;
   cartShakeOnAdd: boolean;
   checkoutProgressEnabled: boolean;
@@ -531,6 +537,8 @@ function normalizeStorefront(v: any): StorefrontConfig {
     
     // Cart & Checkout
     miniCartEnabled: o.miniCartEnabled !== false,
+    miniBagDesign: miniBagById(o.miniBagDesign)?.id ?? "",
+    miniBagOnIcon: o.miniBagOnIcon === true,
     cartAnimationsEnabled: o.cartAnimationsEnabled !== false,
     cartShakeOnAdd: o.cartShakeOnAdd !== false,
     checkoutProgressEnabled: o.checkoutProgressEnabled !== false,
@@ -2918,6 +2926,27 @@ export default function SettingsPage() {
                         label="إظهار واتساب مع بوابات الدفع"
                         checked={storefrontCfg.allowManualCheckoutWithPayments}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, allowManualCheckoutWithPayments: v }))}
+                      />
+                      <Toggle
+                        label={say("أيقونة السلة فوق بتفتح السلة المصغّرة|The bag icon at the top opens the small bag|סמל הסל למעלה פותח את הסל הקטן")}
+                        checked={storefrontCfg.miniBagOnIcon}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, miniBagOnIcon: v }))}
+                      />
+                    </div>
+                    {/* The small bag that opens when a piece is added: 100 designs (the shop's lib/miniBagDesigns.ts). */}
+                    <div className="mt-4 border-t border-white/10 pt-4">
+                      <div className="mb-1 text-sm font-semibold">{say("تصميم السلة المصغّرة|The small bag's design|עיצוב הסל הקטן")}</div>
+                      <p className="mb-3 text-xs text-white/60">
+                        {say(
+                          "السلة اللي بتفتح لما الزبون يضيف قطعة. كل تصميم بيلبس ألوان ثيم متجرك.|The bag that opens when a shopper adds a piece. Every design wears your store theme's colours.|הסל שנפתח כשקונה מוסיף פריט. כל עיצוב לובש את צבעי ערכת החנות שלך.",
+                        )}
+                      </p>
+                      <MiniBagPicker
+                        value={storefrontCfg.miniBagDesign}
+                        onChange={(id) => setStorefrontCfg((p) => ({ ...p, miniBagDesign: id }))}
+                        header={settings?.header ?? null}
+                        currency={settings?.currencyCode ?? "ILS"}
+                        testid="settings-minibag"
                       />
                     </div>
                   </div>

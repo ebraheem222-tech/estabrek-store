@@ -975,4 +975,8 @@ export const HE: Record<string, string> = {
   "Paying online isn't available right now. Get in touch with us.": "תשלום מקוון לא זמין כרגע. צרו איתנו קשר.",
   "The payment hasn't reached us yet. If you paid, wait a moment and open this page again.": "התשלום עוד לא הגיע אלינו. אם שילמתם, חכו רגע ופתחו את העמוד שוב.",
   "We couldn't open the payment page. Please try again.": "לא הצלחנו לפתוח את עמוד התשלום. נסו שוב.",
+  "Add {0} more for free delivery": "עוד {0} והמשלוח בחינם",
+  "Delivery is on us for this order": "המשלוח עלינו בהזמנה הזו",
+  "Shop the store": "לקנייה בחנות",
+  "Secure checkout": "תשלום מאובטח",
 };

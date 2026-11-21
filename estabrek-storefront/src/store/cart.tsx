@@ -9,6 +9,8 @@ import { noteHomeBag } from "@/lib/homeStats";
 export type CartItem = { variantId: string; quantity: number };
 /** Sent on window when a piece is added to the bag ({ variantId, quantity }): the small bag (RoseMiniBag) opens on it. */
 export const BAG_ADDED = "estabrek:bag-added";
+/** Sent on window to open the small bag as it is (the header's bag icon, when the owner chose so). */
+export const BAG_OPEN = "estabrek:bag-open";
 
 type CartCtx = {
   items: CartItem[];
