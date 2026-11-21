@@ -15,7 +15,7 @@ import { dateTime } from "../../lib/orders";
 import * as VaultAPI from "../../api/vault.api";
 import { Stat } from "./cacheParts";
 import { uptimeText } from "./cacheText";
-import { buildCommand, countdown, eventText, eventTone, nextVersion, shortHash } from "./vaultText";
+import { buildCommand, countdown, eventText, eventTone, launcherDownloadUrl, nextVersion, shortHash } from "./vaultText";
 import { formatBytes } from "../catalog/composer/protectedText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -64,8 +64,9 @@ export default function VaultPage() {
           <div>
             <h1 className="text-lg font-semibold">🔐 الخزنة</h1>
             <p className="mt-1 text-sm leading-6 text-white/60">
-              سيرفر خاص ما إله عنوان على الإنترنت: فيه الملفات الأصلية للمنتجات المحمية (مشفّرة) ومفتاح توقيع التراخيص. المتجر بيطلب منه نسخة الزبونة لحاله وقت البيع؛ أنتِ
-              بتفتحيه 20 دقيقة بس لترفعي أو تحذفي ملفات، بكلمة السر وكود التطبيق.
+              {d.on
+                ? "سيرفر خاص ما إله عنوان على الإنترنت: فيه الملفات الأصلية للمنتجات المحمية (مشفّرة) ومفتاح توقيع التراخيص. المتجر بيطلب منه نسخة الزبونة لحاله وقت البيع؛ أنتِ بتفتحيه 20 دقيقة بس لترفعي أو تحذفي ملفات، بكلمة السر وكود التطبيق."
+                : "المنتجات المحمية (سكربتات، برامج، ملفات): كل زبونة بتاخد نسخة مشفّرة بسيريال إلها، وبرنامج التشغيل بيربطها بجهازها."}
             </p>
           </div>
           {d.on ? (
@@ -90,14 +91,22 @@ export default function VaultPage() {
             <Stat label="مفتاح التوقيع" value={d.kid ? shortHash(d.kid) : "—"} />
           </div>
         ) : (
-          <div className="mt-4 rounded-xl bg-amber-500/10 p-4 text-sm leading-7 text-amber-100" data-testid="vault-off">
-            <b>الخزنة مش مركّبة بعد.</b> المنتجات المحمية شغّالة: الملفات محفوظة مشفّرة بقاعدة البيانات والسيرفر نفسه بيوقّع التراخيص. لتركيبها:
-            <ol className="mt-2 list-decimal space-y-1 pe-5 text-xs text-amber-100/90">
-              <li>بـ Railway: خدمة جديدة من نفس الريبو (estabrek-store-backend)، أمر التشغيل <code dir="ltr">npm run start:vault</code>، ومساحة تخزين (Volume) على <code dir="ltr">/data</code>، وبدون دومين عام.</li>
-              <li>متغيراتها: <code dir="ltr">VAULT_SHARED_SECRET</code> و <code dir="ltr">VAULT_MASTER_KEY</code> (كل واحد 32 حرف أو أكثر، عشوائي) و <code dir="ltr">VAULT_DATA_DIR=/data</code>.</li>
-              <li>بالسيرفر الأساسي: <code dir="ltr">VAULT_URL</code> (عنوانها الخاص، مثلاً <code dir="ltr">http://vault.railway.internal:4400</code>) ونفس <code dir="ltr">VAULT_SHARED_SECRET</code>.</li>
-              <li>لاحقاً مع Tailscale: غيّري <code dir="ltr">VAULT_URL</code> لاسمها بالشبكة، وحطي <code dir="ltr">VAULT_ALLOW_IPS=100.64.0.0/10</code> عندها. ما في تغيير بالكود.</li>
-            </ol>
+          <div className="mt-4 space-y-3" data-testid="vault-off">
+            <div className="rounded-xl bg-emerald-500/10 p-4 text-sm leading-7 text-emerald-100" data-testid="vault-protected-ok">
+              <b>✅ المنتجات المحمية شغّالة.</b> الملفات الأصلية محفوظة مشفّرة بقاعدة البيانات، والسيرفر نفسه بيعمل نسخة لكل زبونة وبيوقّع تراخيص الأجهزة. ما في إشي لازم تعمليه.
+            </div>
+            <details className="rounded-xl border border-white/10 p-3 text-sm" data-testid="vault-setup">
+              <summary className="cursor-pointer text-white/75">حماية أقوى (اختياري، للمتقدمين): ركّبي الخزنة على سيرفر لحالها</summary>
+              <p className="mt-2 text-xs leading-6 text-white/55">
+                الخزنة بتبعد الملفات الأصلية ومفتاح التوقيع عن السيرفر اللي على الإنترنت: لو حدا وصل للسيرفر أو لقاعدة البيانات، ما بيلاقيهن. بعد تركيبها، الزبونات بينزّلن البرنامج من جديد من صفحة الطلب (بيحمل المفتاح الجديد لحاله).
+              </p>
+              <ol className="mt-2 list-decimal space-y-1 pe-5 text-xs leading-6 text-white/65">
+                <li>بـ Railway: خدمة جديدة من نفس الريبو (estabrek-store-backend)، أمر التشغيل <code dir="ltr">npm run start:vault</code>، ومساحة تخزين (Volume) على <code dir="ltr">/data</code>، وبدون دومين عام.</li>
+                <li>متغيراتها: <code dir="ltr">VAULT_SHARED_SECRET</code> و <code dir="ltr">VAULT_MASTER_KEY</code> (كل واحد 32 حرف أو أكثر، عشوائي) و <code dir="ltr">VAULT_DATA_DIR=/data</code>.</li>
+                <li>بالسيرفر الأساسي: <code dir="ltr">VAULT_URL</code> (عنوانها الخاص، مثلاً <code dir="ltr">http://vault.railway.internal:4400</code>) ونفس <code dir="ltr">VAULT_SHARED_SECRET</code>.</li>
+                <li>لاحقاً مع Tailscale: غيّري <code dir="ltr">VAULT_URL</code> لاسمها بالشبكة، وحطي <code dir="ltr">VAULT_ALLOW_IPS=100.64.0.0/10</code> عندها. ما في تغيير بالكود.</li>
+              </ol>
+            </details>
           </div>
         )}
 
@@ -198,6 +207,7 @@ function LauncherSection({ d, canWrite, onChange }: { d: VaultAPI.VaultState; ca
     }
   };
   const command = buildCommand(env.VITE_API_BASE_URL, version);
+  const others = d.launchers.filter((l) => !l.isActive);
   return (
     <section className={box} data-testid="launcher-section">
       <h2 className="text-sm font-semibold">💻 برنامج التشغيل (ويندوز)</h2>
@@ -205,42 +215,62 @@ function LauncherSection({ d, canWrite, onChange }: { d: VaultAPI.VaultState; ca
         الزبونة بتضيف الملف المشفّر والسيريال عليه مرة وحدة، وبيتفعّل على جهازها بس ({d.checkEveryDays ? `بيتأكد أونلاين كل ${d.checkEveryDays} أيام، وبدون إنترنت بيضل شغّال ${d.offlineGraceDays} يوم` : ""}). بيشغّل
         سكربتات Python و PowerShell و Batch و Node و AutoHotkey مباشرة، وباقي الملفات (Roblox، AutoCAD، الطباعة 3D) بيحفظها بمجلد.
       </p>
-      <div className="mt-3 rounded-xl bg-white/[0.04] p-3 text-xs leading-6 text-white/65">
-        <b className="text-white/80">بناء البرنامج على جهازك</b> (ويندوز، بدون تنزيل إشي). بالمجلد الرئيسي للمشروع:
-        <code dir="ltr" className="mt-1 block select-all overflow-x-auto whitespace-nowrap rounded-lg bg-black/30 px-3 py-2 font-mono text-[11px] text-white/80" data-testid="launcher-command">{command}</code>
-        بيطلع بـ <code dir="ltr">estabrek-launcher\dist\EstabrekLauncher.exe</code>. ارفعيه هون. ابنيه من جديد إذا تغيّر مفتاح التوقيع (مثلاً لما تركّبي الخزنة).
-        <div className="mt-1 text-white/45">المفاتيح الحالية: {d.keys.map((k) => shortHash(k.kid)).join("، ")}. بدون شهادة توقيع، ويندوز بيحذّر الزبونة أول مرة («Windows protected your PC» ← «More info» ← «Run anyway»).</div>
-      </div>
 
       {current ? (
-        <p className="mt-3 text-sm text-white/80" data-testid="launcher-current">
-          النسخة اللي بتنزل للزبونات: <b dir="ltr">{current.version}</b> · {formatBytes(current.bytes)} · {dateTime(current.createdAt)}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[0.04] p-3 text-sm" data-testid="launcher-current">
+          <span className="text-white/80">
+            النسخة اللي بتنزل للزبونات: نسختك المرفوعة <bdi dir="ltr" className="font-semibold">{current.version}</bdi> · <bdi dir="ltr">{formatBytes(current.bytes)}</bdi> · {dateTime(current.createdAt)}
+          </span>
+          {canWrite && d.ready ? (
+            <Button size="sm" variant="secondary" isLoading={del.isPending} onClick={() => del.mutate(current.id)} data-testid="launcher-back-to-ready">
+              رجّعي للبرنامج الجاهز ({d.ready.version})
+            </Button>
+          ) : null}
+        </div>
+      ) : d.ready ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-500/10 p-3 text-sm text-emerald-100" data-testid="launcher-ready">
+          <span>
+            ✅ البرنامج جاهز لمتجرك: نسخة <bdi dir="ltr" className="font-semibold">{d.ready.version}</bdi> · <bdi dir="ltr">{formatBytes(d.ready.bytes)}</bdi>. بيحمل اسم متجرك وعنوانه ومفاتيحه لحاله، والزبونات بيلاقينه بصفحة الطلب. ما في إشي تبنيه أو ترفعيه.
+          </span>
+          <a href={launcherDownloadUrl(env.VITE_API_BASE_URL)} className="shrink-0 rounded-xl border border-white/15 px-3 py-1.5 text-xs text-white/85 hover:bg-white/10" data-testid="launcher-try">
+            نزّليه وجرّبيه
+          </a>
+        </div>
       ) : (
-        <p className="mt-3 text-xs text-amber-300/90">لسا ما في برنامج مرفوع: الزبونات بيقدرن ينزّلن النسخة المشفّرة ويفتحنها بـ <bdi dir="ltr">7-Zip</bdi>، بس بدون ربط بالجهاز.</p>
+        <p className="mt-3 text-xs text-amber-300/90">لسا ما في برنامج: الزبونات بيقدرن ينزّلن النسخة المشفّرة ويفتحنها بـ <bdi dir="ltr">7-Zip</bdi>، بس بدون ربط بالجهاز.</p>
       )}
+      <p className="mt-2 text-xs leading-6 text-white/45">
+        البرنامج مش موقّع بشهادة، فويندوز بيحذّر الزبونة أول مرة: «Windows protected your PC» ← «More info» ← «Run anyway».
+      </p>
 
       {canWrite ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-[8rem_1fr_auto]">
-          <input dir="ltr" className={`${field} text-center`} value={version} onChange={(e) => setVersion(e.target.value)} aria-label="رقم النسخة" />
-          <input className={field} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="شو الجديد (اختياري)" aria-label="ملاحظات" />
-          <input ref={input} type="file" accept=".exe" className="hidden" onChange={(e) => void upload(e.target.files?.[0])} data-testid="launcher-file" />
-          <Button variant="secondary" disabled={progress !== null || !/^\d+(\.\d+){1,3}$/.test(version.trim())} onClick={() => input.current?.click()}>
-            {progress !== null ? `جارٍ الرفع ${progress}%` : "+ رفع EstabrekLauncher.exe"}
-          </Button>
-        </div>
-      ) : null}
-
-      {d.launchers.length > 1 ? (
-        <ul className="mt-3 divide-y divide-white/[0.06] text-xs">
-          {d.launchers.filter((l) => !l.isActive).map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-2 py-1.5 text-white/55">
-              <span dir="ltr">{l.version}</span>
-              <span>{dateTime(l.createdAt)}</span>
-              {canWrite ? <button type="button" className="text-red-300 hover:text-red-200" onClick={() => del.mutate(l.id)}>حذف</button> : null}
-            </li>
-          ))}
-        </ul>
+        <details className="mt-3 rounded-xl border border-white/10 p-3 text-xs leading-6 text-white/65" data-testid="launcher-own" open={!d.ready || undefined}>
+          <summary className="cursor-pointer text-sm text-white/75">متقدم: ارفعي نسخة إلك (مثلاً موقّعة بشهادتك)</summary>
+          <p className="mt-2">
+            ابنيها على جهاز ويندوز من مجلد المشروع، وبتطلع بـ <code dir="ltr">estabrek-launcher\dist\EstabrekLauncher.exe</code>. النسخة المرفوعة بتنزل للزبونات بدل الجاهز لحد ما تحذفيها؛ ابنيها من جديد إذا تغيّرت المفاتيح (مثلاً لما تركّبي الخزنة).
+          </p>
+          <code dir="ltr" className="mt-1 block select-all overflow-x-auto whitespace-nowrap rounded-lg bg-black/30 px-3 py-2 font-mono text-[11px] text-white/80" data-testid="launcher-command">{command}</code>
+          <div className="mt-1 text-white/45">المفاتيح الحالية: {d.keys.map((k) => shortHash(k.kid)).join("، ")}</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-[8rem_1fr_auto]">
+            <input dir="ltr" className={`${field} text-center`} value={version} onChange={(e) => setVersion(e.target.value)} aria-label="رقم النسخة" />
+            <input className={field} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="شو الجديد (اختياري)" aria-label="ملاحظات" />
+            <input ref={input} type="file" accept=".exe" className="hidden" onChange={(e) => void upload(e.target.files?.[0])} data-testid="launcher-file" />
+            <Button variant="secondary" disabled={progress !== null || !/^\d+(\.\d+){1,3}$/.test(version.trim())} onClick={() => input.current?.click()}>
+              {progress !== null ? `جارٍ الرفع ${progress}%` : "+ رفع EstabrekLauncher.exe"}
+            </Button>
+          </div>
+          {others.length ? (
+            <ul className="mt-3 divide-y divide-white/[0.06]">
+              {others.map((l) => (
+                <li key={l.id} className="flex items-center justify-between gap-2 py-1.5 text-white/55">
+                  <span dir="ltr">{l.version}</span>
+                  <span>{dateTime(l.createdAt)}</span>
+                  <button type="button" className="text-red-300 hover:text-red-200" onClick={() => del.mutate(l.id)}>حذف</button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </details>
       ) : null}
     </section>
   );

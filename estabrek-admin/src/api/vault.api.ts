@@ -19,6 +19,8 @@ export type VaultState = {
   files: { inDatabase: number; inVault: number };
   keys: LicenceKey[];
   launchers: LauncherRelease[];
+  /** The launcher every shop has without building one (the server writes the shop's details into it); null on an older server. */
+  ready?: { version: string; bytes: number } | null;
   checkEveryDays: number;
   offlineGraceDays: number;
   launcherMaxMb: number;

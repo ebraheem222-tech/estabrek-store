@@ -23,7 +23,7 @@ namespace Estabrek.Launcher
 
         public MainForm()
         {
-            Text = "استبرق — برنامج التشغيل " + Config.Version;
+            Text = Config.Title + " — برنامج التشغيل " + Config.Version;
             RightToLeft = RightToLeft.Yes;
             RightToLeftLayout = true;
             Font = new Font("Segoe UI", 10f);
@@ -83,6 +83,7 @@ namespace Estabrek.Launcher
             foreach (Owned o in owned) products.Items.Add(o.Title);
             if (owned.Count > 0) products.SelectedIndex = 0;
             else ShowFiles();
+            if (Config.ApiBase.Length == 0) { status.Text = Licensing.Words("NO_SHOP"); return; }
             status.Text = owned.Count == 0
                 ? "ما في منتجات بعد. اضغطي «إضافة منتج» واختاري الملف المشفّر اللي نزّلتيه من صفحة طلبك، والصقي السيريال."
                 : unreadable.Count > 0 ? "في منتجات انضافت من حساب ويندوز ثاني أو جهاز ثاني: لازم تنضاف من جديد هون." : "";
@@ -141,7 +142,7 @@ namespace Estabrek.Launcher
         {
             string why = Licensing.EnsureAllowed(o);
             if (why == null) return true;
-            MessageBox.Show(this, why, "استبرق", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, MessageBoxOptions.RtlReading | MessageBoxOptions.RightAlign);
+            MessageBox.Show(this, why, Config.Title, MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, MessageBoxOptions.RtlReading | MessageBoxOptions.RightAlign);
             return false;
         }
 
@@ -182,7 +183,7 @@ namespace Estabrek.Launcher
         {
             Owned o = Current;
             if (o == null) return;
-            if (MessageBox.Show(this, "إزالة «" + o.Title + "» من هالجهاز؟ بتقدري تضيفيه من جديد بالملف والسيريال.", "استبرق", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2, MessageBoxOptions.RtlReading | MessageBoxOptions.RightAlign) != DialogResult.Yes) return;
+            if (MessageBox.Show(this, "إزالة «" + o.Title + "» من هالجهاز؟ بتقدري تضيفيه من جديد بالملف والسيريال.", Config.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2, MessageBoxOptions.RtlReading | MessageBoxOptions.RightAlign) != DialogResult.Yes) return;
             Library.Remove(o);
             Reload();
         }

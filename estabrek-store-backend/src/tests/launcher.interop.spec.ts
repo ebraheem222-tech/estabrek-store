@@ -9,6 +9,8 @@ import { encryptedZip } from "../modules/protected/zipAes.js";
 import { newSigningKey, signToken } from "../modules/protected/licenceToken.js";
 import { makePackage } from "../modules/protected/package.js";
 import { probeFile } from "../modules/protected/marks.js";
+import { readStamp, stampLauncher } from "../modules/protected/launcherStamp.js";
+import { readyLauncher } from "../modules/protected/launcher.service.js";
 
 // The Windows launcher (estabrek-launcher, C#) against what the backend and the
 // vault make: built here with a test key, then asked to open copies and check
@@ -178,4 +180,56 @@ describe.skipIf(!CAN)("The Windows launcher", () => {
     expect(late.stdout).toContain("صار وقت طويل بدون إنترنت");
     await up();
   }, 120_000);
+
+  test("the ready launcher: one blank program, each shop's address, name and keys written at its end", async () => {
+    const api = `http://127.0.0.1:${(server.address() as any).port}`;
+    const out = path.join(dir, "blank");
+    const b = spawnSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", BUILD, "-Blank", "-Version", "9.9.9", "-OutDir", out], { encoding: "utf8", timeout: 180_000 });
+    expect(b.status, b.stdout + b.stderr).toBe(0);
+    const blankExe = path.join(out, "EstabrekLauncher.exe");
+    const home2 = path.join(dir, "home2");
+    const runIn = (exePath: string, ...args: string[]) =>
+      new Promise<{ status: number | null; stdout: string }>((ok) => {
+        const p = spawn(exePath, args, { env: { ...process.env, ESTABREK_LAUNCHER_HOME: home2 } });
+        let stdout = "";
+        p.stdout.on("data", (d) => (stdout += d.toString("utf8")));
+        p.on("close", (status) => ok({ status, stdout }));
+      });
+    const lines = (t: string) => t.replace(/\r/g, "").split("\n").slice(0, 3);
+
+    // Blank: it knows no shop, and says so instead of calling anywhere.
+    expect(lines((await runIn(blankExe, "--store")).stdout)).toEqual(["", "", "built"]);
+    const zip = path.join(dir, "bought.zip");
+    expect((await runIn(blankExe, "--activate", zip, serial)).stdout).toContain("ما بتعرف متجرها");
+
+    // Stamped the way the server does on download.
+    const stamped = path.join(dir, "stamped.exe");
+    fs.writeFileSync(stamped, stampLauncher(fs.readFileSync(blankExe), { api, name: "متجر عرب لايف", keys: [key.info] }));
+    expect(lines((await runIn(stamped, "--store")).stdout)).toEqual([api, "متجر عرب لايف", "stamped"]);
+    expect((await runIn(stamped, "--keys")).stdout.trim()).toBe(key.info.kid);
+    expect((await runIn(stamped, "--version")).stdout.trim()).toBe("9.9.9");
+    Object.assign(shop, { serial, stopped: false, due: false, old: false });
+    const ok = await runIn(stamped, "--activate", zip, serial);
+    expect(ok.status, ok.stdout).toBe(0);
+    expect(ok.stdout.trim()).toBe("ok LIC1");
+
+    // A copy from before the shop's keys changed: it says to download it again.
+    const old = path.join(dir, "old.exe");
+    fs.writeFileSync(old, stampLauncher(fs.readFileSync(blankExe), { api, name: "متجر عرب لايف", keys: [newSigningKey().info] }));
+    const refused = await runIn(old, "--activate", zip, serial);
+    expect(refused.status).toBe(5);
+    expect(refused.stdout).toContain("نزّلي البرنامج من جديد");
+    // ...and her products activated by the other keys aren't listed as broken there.
+    expect((await runIn(old, "--list")).stdout.trim()).toBe("");
+    expect((await runIn(stamped, "--list")).stdout.trim()).toBe("LIC1\tسكربت الطلبات");
+
+    // The program the server keeps (assets/launcher) is such a blank one, made from these sources.
+    const kept = readyLauncher();
+    expect(kept).not.toBeNull();
+    const keptPath = path.join(dir, "kept.exe");
+    fs.writeFileSync(keptPath, stampLauncher(kept!.data, { api: "https://api.shop.example", name: "متجر", keys: [key.info] }));
+    expect(readStamp(fs.readFileSync(keptPath))!.api).toBe("https://api.shop.example");
+    expect(lines((await runIn(keptPath, "--store")).stdout)).toEqual(["https://api.shop.example", "متجر", "stamped"]);
+    expect((await runIn(keptPath, "--version")).stdout.trim()).toBe(kept!.version);
+  }, 240_000);
 });
