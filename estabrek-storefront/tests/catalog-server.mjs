@@ -1115,7 +1115,7 @@ http
           globalThis.beforeOwnedDesign ??= { header: structuredClone(site.header), name: site.siteName, logo: site.logoUrl };
           globalThis.ownedDesign = data;
           site.siteName = data.name;
-          site.logoUrl = null;
+          site.logoUrl = typeof data.logo === "string" ? data.logo : null;
           site.header = { ...site.header, storeDesign: { version: 1, mode: "cms", homeId: "owned-home", headerId: "owned-header", footerId: "owned-footer" }, storeTheme: { id: data.theme.id, mode: data.mode ?? "light", snapshot: data.theme }, identity: { name: { ar: data.name, en: data.name, he: data.name }, industry: "fashion", audience: "women" } };
           site.header.storefront = { ...(site.header.storefront ?? {}), cmsOverrideHome: false };
         } else if (globalThis.beforeOwnedDesign) {

@@ -41,6 +41,7 @@ import { localizeCategories } from "@/lib/localize";
 import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
 import { designTokensOf, tokenFamilies, tokensCss } from "@/pageTree/designTokens";
 import { bindStore, categoryValues, productValues } from "@/pageTree/storeBind";
+import { withStoreLogo } from "@/pageTree/storeLogo";
 import type { CatalogProduct } from "@/lib/catalog";
 import { BASE_CSS, treeCss, treeFamilies } from "@/pageTree/css";
 import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
@@ -200,7 +201,11 @@ export async function renderCmsPageBySlug(
   // The store's pack (header.storeKit, or one being tried): things with no motion of their own take its way of moving.
   const kit = (options?.kit ? kitFromParam(options.kit, storeTheme) : null) ?? (independentDesign(settingsHeader) && !settingsHeader?.storeKit ? null : kitOfHeader(settingsHeader, storeTheme));
   const bare = (page as any).format === 2 ? asTree(structuredClone((page as any).tree ?? null)) : null;
-  const tree = bare && kit ? { ...bare, root: withKit(bare.root, kit) } : bare;
+  const kitted = bare && kit ? { ...bare, root: withKit(bare.root, kit) } : bare;
+  // The design's "Store logo" (a template's header) shows the store's logo as it is now: a logo changed in
+  // Settings reaches it (pageTree/storeLogo.ts).
+  const siteNow = (((await settingsPromise)?.site as any) ?? bootstrap.site) as { logoUrl?: string | null; siteName?: string | null };
+  const tree = kitted ? withStoreLogo(kitted, siteNow.logoUrl ?? (bootstrap.site as any)?.logoUrl, siteNow.siteName ?? (bootstrap.site as any)?.siteName ?? "") : kitted;
   if (tree && independentDesign(settingsHeader)) roseHome = false;
   const langCfg = langConfigOf((bootstrap.site as any)?.header);
   const commerce = tree ? commerceNeeds(tree) : null;
