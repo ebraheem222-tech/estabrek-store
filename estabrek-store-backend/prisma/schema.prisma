@@ -1246,6 +1246,22 @@ model SiteSettings {
   paypalClientSecret String?
   paypalWebhookId String?
 
+  // Checkout: the shopper agrees to the store's terms before ordering (a box to tick, with a link to them).
+  checkoutTermsRequired Boolean @default(false)
+  checkoutTermsUrl      String?
+  /// The box's words in the store's languages ({ ar, en, he }); none = the shop's own.
+  checkoutTermsText     Json?
+
+  // Newsletter → Mailchimp: each new subscriber added to one audience (lib/mailchimp.ts). The key is kept sealed
+  // (lib/secretBox.ts) and never sent back to the admin.
+  mailchimpEnabled     Boolean   @default(false)
+  mailchimpApiKey      String?
+  mailchimpListId      String?
+  /// Mailchimp asks each one to confirm by email first ("pending"), else they're subscribed at once.
+  mailchimpDoubleOptIn Boolean   @default(false)
+  mailchimpSyncedAt    DateTime?
+  mailchimpError       String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -2092,6 +2108,8 @@ model OrderRequest {
   rejectedAt   DateTime?
   stockCommitted   Boolean        @default(false)
   stockCommittedAt DateTime?
+  /// When she ticked "I agree to the terms" (the store asked for it at checkout).
+  termsAcceptedAt DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -2267,6 +2285,8 @@ model NewsletterSubscriber {
   id        String   @id @default(cuid())
   email     String   @unique
   source    String?  // e.g. "footer", "newsletter_section"
+  /// When it reached the store's Mailchimp audience (none: not yet, or Mailchimp isn't connected).
+  mailchimpAt DateTime?
   createdAt DateTime @default(now())
 
   @@index([createdAt])

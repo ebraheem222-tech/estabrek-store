@@ -3,6 +3,7 @@
 import React, { createContext, useContext } from "react";
 import { REQUESTS_DEFAULTS, type RequestsSettings } from "@/lib/requestsSettings";
 import { SCARCITY_DEFAULTS, type ScarcitySettings } from "@/lib/scarcity";
+import { NO_TERMS, type CheckoutTerms } from "@/lib/checkoutTerms";
 
 /** Store features switched on and off in the admin (read from the public settings in the root layout). */
 export type SiteFeatures = {
@@ -18,6 +19,8 @@ export type SiteFeatures = {
   ai: { smartSearch: boolean; shopTheLook: boolean; sizeAdvice: boolean; reviewSummary: boolean };
   /** "آخر قطعة" / "باقي قطعتان" labels (admin → تنبيهات المخزون). */
   scarcity: ScarcitySettings;
+  /** "I agree to the store's terms" at checkout (admin → إدارة الدفع → شروط المتجر). */
+  terms: CheckoutTerms;
 };
 
 const DEFAULTS: SiteFeatures = {
@@ -27,6 +30,7 @@ const DEFAULTS: SiteFeatures = {
   quiz: false,
   ai: { smartSearch: false, shopTheLook: false, sizeAdvice: false, reviewSummary: false },
   scarcity: SCARCITY_DEFAULTS,
+  terms: NO_TERMS,
 };
 const Ctx = createContext<SiteFeatures>(DEFAULTS);
 

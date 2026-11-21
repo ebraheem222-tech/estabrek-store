@@ -3,6 +3,7 @@ import { z } from "zod";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { authenticateCustomer, requireCustomerAccounts } from "../../middleware/customerAuth.js";
+import { invoiceHtml, loadInvoice } from "../../lib/invoice.js";
 import {
   addToWishlist,
   createAddress,
@@ -94,6 +95,14 @@ me.post("/logout-everywhere", asyncHandler(async (req, res) => {
 
 me.get("/orders", asyncHandler(async (req, res) => {
   res.json({ orders: await myOrders(req.customer!.id) });
+}));
+
+// GET /v1/customer/me/orders/:id/invoice — her own order's invoice page (lib/invoice.ts), in her order's language.
+me.get("/orders/:id/invoice", asyncHandler(async (req, res) => {
+  const found = await loadInvoice({ id: String(req.params.id), userId: req.customer!.id });
+  if (!found) return res.status(404).json({ error: "NOT_FOUND" });
+  const lang = typeof req.query.lang === "string" ? req.query.lang : found.order.locale ?? "ar";
+  res.json({ html: invoiceHtml(found.order, found.site, { baseUrl: `${req.protocol}://${req.get("host")}`, lang }) });
 }));
 
 me.get("/wishlist", asyncHandler(async (req, res) => {

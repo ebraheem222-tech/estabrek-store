@@ -1622,6 +1622,12 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       });
       return;
     }
+    // Admin → إدارة الدفع → شروط المتجر: "I agree to the store's terms" asked for at checkout (?on=1&url=/policies&ar=…).
+    if (pathname === "/__test/checkout-terms") {
+      const sp = new URL(req.url, "http://localhost").searchParams;
+      site.checkoutTerms = sp.get("on") === "1" ? { required: true, url: sp.get("url") || null, text: sp.get("ar") ? { ar: sp.get("ar") } : null } : { required: false, url: null, text: null };
+      return res.end(JSON.stringify({ ok: true, checkoutTerms: site.checkoutTerms }));
+    }
     if (pathname === "/__test/stock-alerts") {
       const sp = new URL(req.url, "http://localhost").searchParams;
       site.stockAlertsEnabled = sp.get("on") === "1";
@@ -1956,6 +1962,12 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         if (pathname === "/v1/customer/me" && req.method === "GET") return send(200, customerState.user);
         if (pathname === "/v1/customer/me" && req.method === "PATCH") { Object.assign(customerState.user, data); return send(200, customerState.user); }
         if (pathname === "/v1/customer/me/orders") return send(200, { orders: customerState.orders });
+        // Her own order's invoice page (the API's lib/invoice.ts), as { html }.
+        const invoiceOf = /^\/v1\/customer\/me\/orders\/([\w-]+)\/invoice$/.exec(pathname);
+        if (invoiceOf) {
+          const mine = customerState.orders.find((o) => o.id === invoiceOf[1]);
+          return mine ? send(200, { html: `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة</title></head><body><h1>فاتورة ${mine.id}</h1></body></html>` }) : send(404, { error: "NOT_FOUND" });
+        }
         if (pathname === "/v1/customer/me/wishlist/merge") {
           for (const id of data.productIds || []) customerState.wishlist.add(id);
           return send(200, { items: wishlistItems() });

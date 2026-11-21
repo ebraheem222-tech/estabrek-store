@@ -34,6 +34,12 @@ export type SiteSettings = {
   customerAccountsEnabled?: boolean;
   /** "Tell me when it's back" on sold-out sizes (admin → بانتظار التوفّر). */
   stockAlertsEnabled?: boolean;
+  /** "I agree to the store's terms" at checkout: asked or not, the link, the box's own words (empty = the shop's). */
+  checkoutTermsRequired?: boolean;
+  checkoutTermsUrl?: string | null;
+  checkoutTermsText?: Partial<Record<"ar" | "en" | "he", string>> | null;
+  /** Whether a Mailchimp key is saved (the key itself never comes back: api/mailchimp.api.ts). */
+  mailchimpKeySet?: boolean;
   /** Maintenance mode ("back soon" screen; public orders paused) and the owner's preview key. */
   maintenanceMode?: boolean;
   maintenanceMessage?: string | null;

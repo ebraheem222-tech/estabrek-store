@@ -20,6 +20,8 @@ type CheckoutCreateInput = {
   couponCode?: string | null;
   country?: string | null;
   city?: string | null;
+  /** She ticked "I agree to the store's terms". */
+  termsAccepted?: boolean;
   baseUrl: string;
 };
 
@@ -220,6 +222,7 @@ async function finalizeCheckoutSession(args: {
     note: payload.note ?? undefined,
     couponCode: payload.couponCode ?? undefined,
     lang: payload.lang ?? undefined,
+    termsAccepted: payload.termsAccepted === true,
     source: `${args.provider.toUpperCase()}_CHECKOUT`,
     paymentProvider: args.provider.toUpperCase(),
     paymentStatus: "PAID",
@@ -263,6 +266,10 @@ export async function createCheckoutSession(input: CheckoutCreateInput) {
     throw httpError("PAYPAL_DISABLED", "PayPal غير مفعل حالياً.", 400);
   }
 
+  // The store's terms agreed to, before the money is taken (the paid order is never refused for it after).
+  const terms = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { checkoutTermsRequired: true } });
+  if (terms?.checkoutTermsRequired && input.termsAccepted !== true) throw httpError("TERMS_REQUIRED", "Agree to the store's terms first", 400);
+
   // Check the pieces are still there before taking the money.
   // The phone is checked here, before paying (a coupon can belong to one phone).
   const quote = await quoteCart({ items: input.items, couponCode: input.couponCode ?? undefined, phone: input.phone }, { requireStock: true });
@@ -283,6 +290,7 @@ export async function createCheckoutSession(input: CheckoutCreateInput) {
     country: input.country ?? settings.storeCountryCode ?? null,
     city: input.city ?? null,
     lang: (input as { lang?: string }).lang ?? null,
+    termsAccepted: input.termsAccepted === true,
     currencyCode: quote.currencyCode,
     total: quote.total,
     createdAt: new Date().toISOString(),

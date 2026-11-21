@@ -34,6 +34,8 @@ export const StorefrontCheckoutCreateBody = z.object({
   city: z.string().max(80).nullable().optional(),
   /** The shop's language (her order emails). */
   lang: z.enum(["ar", "en", "he"]).optional(),
+  /** She ticked "I agree to the store's terms" (needed when the store asks for it). */
+  termsAccepted: z.boolean().optional(),
 });
 
 export const StorefrontCheckoutVerifyQuery = z.object({

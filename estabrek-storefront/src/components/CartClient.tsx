@@ -8,6 +8,8 @@ import { LoadingImg } from "@/components/LoadingImg";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { CheckoutProgress, CouponInput } from "@/components/CheckoutEnhancements";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
+import { TermsAgree, termsMissing, useCheckoutTerms } from "@/components/TermsAgree";
+import { termsWords } from "@/lib/checkoutTerms";
 
 // Icons
 const ShoppingCartIcon = () => (
@@ -188,6 +190,16 @@ export default function CartClient(props: {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
+  // "I agree to the store's terms" (only when the store asks for it; the server refuses an order without it then).
+  const terms = useCheckoutTerms();
+  const [termsOk, setTermsOk] = useState(false);
+  const [termsShown, setTermsShown] = useState(false);
+  const termsBlock = () => {
+    if (!termsMissing(terms.required, termsOk)) return false;
+    setTermsShown(true);
+    setErr(termsWords(terms, "ar").needed);
+    return true;
+  };
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -316,6 +328,7 @@ export default function CartClient(props: {
   const startCheckout = async (provider: "stripe" | "paypal") => {
     if (!customerName.trim() || customerName.trim().length < 2) return setErr("يرجى إدخال الاسم.");
     if (!phone.trim() || phone.trim().length < 5) return setErr("يرجى إدخال رقم هاتف صحيح.");
+                  if (termsBlock()) return;
     setErr(null);
     setSuccessMsg(null);
     setSubmitting(true);
@@ -331,6 +344,7 @@ export default function CartClient(props: {
           address: address.trim() || undefined,
           note: note.trim() || undefined,
           couponCode: couponCode.trim() || undefined,
+                        termsAccepted: termsOk,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -615,6 +629,8 @@ export default function CartClient(props: {
               </div>
             </div>
 
+            <TermsAgree agreed={termsOk} onChange={(v) => { setTermsOk(v); if (v) setErr(null); }} lang="ar" invalid={termsShown && !termsOk} className="mb-3 text-[var(--text)]" />
+
             {/* Action Buttons */}
             <div className="space-y-3">
               {wantsPayments && (
@@ -655,6 +671,7 @@ export default function CartClient(props: {
                 onClick={async () => {
                   if (!customerName.trim() || customerName.trim().length < 2) return setErr("يرجى إدخال الاسم.");
                   if (!phone.trim() || phone.trim().length < 5) return setErr("يرجى إدخال رقم هاتف صحيح.");
+                  if (termsBlock()) return;
                   setErr(null);
                   setSuccessMsg(null);
                   setSubmitting(true);
@@ -670,6 +687,7 @@ export default function CartClient(props: {
                         address: address.trim() || undefined,
                         note: note.trim() || undefined,
                         couponCode: couponCode.trim() || undefined,
+                        termsAccepted: termsOk,
                         source: "WHATSAPP_CART",
                       }),
                     });
@@ -731,6 +749,7 @@ export default function CartClient(props: {
                 onClick={async () => {
                   if (!customerName.trim() || customerName.trim().length < 2) return setErr("يرجى إدخال الاسم.");
                   if (!phone.trim() || phone.trim().length < 5) return setErr("يرجى إدخال رقم هاتف صحيح.");
+                  if (termsBlock()) return;
                   setErr(null);
                   setSuccessMsg(null);
                   setSubmitting(true);
@@ -745,6 +764,7 @@ export default function CartClient(props: {
                         address: address.trim() || undefined,
                         note: note.trim() || undefined,
                         couponCode: couponCode.trim() || undefined,
+                        termsAccepted: termsOk,
                         source: "DIRECT_CART",
                       }),
                     });
@@ -771,6 +791,7 @@ export default function CartClient(props: {
                   onClick={async () => {
                     if (!customerName.trim() || customerName.trim().length < 2) return setErr("يرجى إدخال الاسم.");
                     if (!phone.trim() || phone.trim().length < 5) return setErr("يرجى إدخال رقم هاتف صحيح.");
+                  if (termsBlock()) return;
                     setErr(null);
                     setSuccessMsg(null);
                     setSubmitting(true);
@@ -785,6 +806,7 @@ export default function CartClient(props: {
                           address: address.trim() || undefined,
                           note: note.trim() || undefined,
                           couponCode: couponCode.trim() || undefined,
+                        termsAccepted: termsOk,
                           source: "EMAIL_CART",
                         }),
                       });

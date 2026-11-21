@@ -21,6 +21,7 @@ import coupons from "./coupons.controller.js";
 import paymentRequests from "./paymentRequests.controller.js";
 import chatbot from "./chatbot.controller.js";
 import stories from "./stories.controller.js";
+import mailchimp from "./mailchimp.controller.js";
 import staff, { activity } from "./staff.controller.js";
 import system from "./system.controller.js";
 import customers from "./customers.controller.js";
@@ -208,6 +209,8 @@ r.use("/history", areaAccess({ read: ["settings:read", "system:read", "pages:rea
 r.use("/chatbot", areaAccess({ read: "chatbot:read", write: "chatbot:write" }), chatbot);
 // The shop's story circles: content of the pages, so the pages' permissions.
 r.use("/stories", areaAccess({ read: "pages:read", write: "pages:write" }), stories);
+// The newsletter's Mailchimp connection (its key never comes back): the settings' permissions.
+r.use("/newsletter/mailchimp", areaAccess({ read: "settings:read", write: "settings:write" }), mailchimp);
 r.use("/staff", areaAccess({ read: "staff:read", write: "staff:write" }), staff);
 r.use("/activity", requirePermission("activity:read"), activity);
 r.use("/system/traffic", areaAccess({ read: "system:read", write: "system:write" }), traffic);
