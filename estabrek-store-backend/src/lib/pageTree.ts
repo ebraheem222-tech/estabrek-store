@@ -38,7 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "toc", "flipBox", "share", "progress", "headline",
+  "toc", "flipBox", "share", "progress", "headline", "storyBar",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -1205,6 +1205,15 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     kind: z.enum(["bar", "ring"]).optional(),
     place: z.enum(["top", "bottom"]).optional(),
     thickness: z.number().int().min(2).max(12).optional(),
+    label: local(80).optional(),
+  }),
+  // The store's story circles (admin → القصص): all the live ones in the owner's order, or only `reels` (their ids);
+  // each opens full screen. Round, rounded squares or tall cards, three sizes, their names under them or not.
+  storyBar: z.object({
+    reels: z.array(id).max(40).refine((list) => new Set(list).size === list.length, "A story twice").optional(),
+    look: z.enum(["circles", "rounded", "cards"]).optional(),
+    size: z.enum(["s", "m", "l"]).optional(),
+    names: z.boolean().optional(),
     label: local(80).optional(),
   }),
   // A heading with a moving part: its `words` taking turns ("rotate", with an effect), or one word marked by a line

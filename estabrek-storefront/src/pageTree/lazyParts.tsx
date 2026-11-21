@@ -24,6 +24,7 @@ export const ShareView = early("./ProWidgets", () => import("./ProWidgets").then
 export const ReadProgress = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.ReadProgress));
 export const HeadlineMotion = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.HeadlineMotion));
 export const WhenWatch = early("./TreeWhen", () => import("./TreeWhen").then((m) => m.WhenWatch));
+export const StoryBar = early("./StoryBar", () => import("./StoryBar").then((m) => m.StoryBar));
 export const SpinView = early("@/components/cinematic/ProductSpin", () => import("@/components/cinematic/ProductSpin").then((m) => m.SpinView));
 export const SliderControls = early("./SliderControls", () => import("./SliderControls").then((m) => m.SliderControls));
 export const InstrumentView = early("./InstrumentView", () => import("./InstrumentView").then((m) => m.InstrumentView));

@@ -90,6 +90,7 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["columns", () => typeLabel("columns"), "▥"],
       ["stack", () => tr("حاوية للعناصر", "Container for objects"), "▣"],
       ["products", () => typeLabel("products"), "▦"],
+      ["storyBar", () => typeLabel("storyBar"), "◎"],
       ["categories", () => typeLabel("categories"), "▤"],
       ["form", () => typeLabel("form"), "✉"],
     ],

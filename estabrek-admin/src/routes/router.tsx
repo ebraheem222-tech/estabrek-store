@@ -62,6 +62,7 @@ const RazanPage = lazy(() => import("../features/razan/RazanPage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
 const PaymentRequestsPage = lazy(() => import("../features/orders/PaymentRequestsPage"));
 const QuizPage = lazy(() => import("../features/quiz/QuizPage"));
+const StoriesPage = lazy(() => import("../features/stories/StoriesPage"));
 const AiPage = lazy(() => import("../features/ai/AiPage"));
 const TrafficPage = lazy(() => import("../features/system/TrafficPage"));
 const CachePage = lazy(() => import("../features/system/CachePage"));
@@ -287,6 +288,7 @@ export default function AppRouter() {
           <Route path="features" element={withPermissions(<FeaturesPage />, ["settings:read"])} />
           <Route path="razan" element={withPermissions(<RazanPage />, ["settings:read"])} />
           <Route path="quiz" element={withPermissions(<QuizPage />, ["settings:read"])} />
+          <Route path="stories" element={withPermissions(<StoriesPage />, ["pages:read"])} />
           <Route path="ai" element={withPermissions(<AiPage />, ["settings:read"])} />
           <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
           <Route path="media" element={withPermissions(<MediaCenterPage />, ["media:read"])} />

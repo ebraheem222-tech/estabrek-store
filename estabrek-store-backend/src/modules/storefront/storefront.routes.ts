@@ -17,6 +17,7 @@ import {
 } from "./storefront.schemas.js";
 import chatbot from "./chatbot.routes.js";
 import recommend from "./recommend.routes.js";
+import stories from "./stories.routes.js";
 import { searchProductsByImageBuffer } from "./imageSearch.service.js";
 import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
@@ -165,6 +166,8 @@ const imageUpload = multer({
 r.use("/chatbot", chatbot);
 // product recommendations (AI + fallback)
 r.use("/recommend", recommend);
+// The shop's story circles (admin → القصص) and their counts.
+r.use("/stories", stories);
 
 /**
  * Storefront Contract (public, no auth)

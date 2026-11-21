@@ -371,10 +371,13 @@ export function eachNode(tree: PageTree, visit: (n: TreeNode) => void) {
 export function treeNeeds(tree: PageTree) {
   const products: TreeNode[] = [];
   let categories = false;
+  // A story bar (the store's story circles, fetched with the page).
+  let storyBar = false;
   const blocks = new Set<string>();
   eachNode(tree, (n) => {
     if (n.type === "products") products.push(n);
     if (n.type === "categories") categories = true;
+    if (n.type === "storyBar") storyBar = true;
     if (n.type === "roseBlock" && typeof n.props?.block === "string") blocks.add(n.props.block);
   });
   let motion = false;
@@ -419,7 +422,7 @@ export function treeNeeds(tree: PageTree) {
   eachNode(tree, (n) => {
     if (!physics && (motionOf(n)?.physics || (WORLD_HOSTS as readonly string[]).includes(n.type) && worldOf(n.props?.world) && !worldOf(n.props?.world)?.baked)) physics = true;
   });
-  return { perf, physics, products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
+  return { storyBar, perf, physics, products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers, covers, paint, cursor };
 }
 
 /**

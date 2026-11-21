@@ -2721,3 +2721,35 @@ model UploadBlob {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+/// A story circle on the shop (admin → القصص): pictures and clips shown full screen one after another, each able to
+/// point at a product or a link (src/lib/stories.ts checks `title` and `slides`). Shown in the owner's order, while
+/// active and inside its times.
+model StoryReel {
+  id        String     @id @default(cuid())
+  /// Its name under the circle, in the store's languages ({ ar, en, he }).
+  title     Json       @default("{}")
+  /// The circle's picture (none: the first slide's).
+  cover     String?
+  /// [{ id, kind: "image" | "video", src, poster?, caption?, seconds?, productId?, href?, label? }]
+  slides    Json       @default("[]")
+  order     Int        @default(0)
+  isActive  Boolean    @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  stat      StoryStat?
+
+  @@index([isActive, order])
+}
+
+/// How often a story circle was opened and its product or link pressed. Kept apart from the reel: counting must not
+/// clear the shop's cached pages (lib/dbWrites.ts clears them on the reel's writes only).
+model StoryStat {
+  reelId    String    @id
+  reel      StoryReel @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  views     Int       @default(0)
+  taps      Int       @default(0)
+  updatedAt DateTime  @updatedAt
+}

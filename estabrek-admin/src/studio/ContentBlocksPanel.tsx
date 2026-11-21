@@ -15,6 +15,7 @@ import { Field } from "./StudioPanels";
 import { Choice } from "./StudioTreePanels";
 import { inAWeek, newItem, newSubLink, type BlockKind } from "./blockDefaults";
 import { say } from "./say";
+import { StoryBarPanel } from "./StoryBarPanel";
 import { ReferenceDataPanel } from "./ReferenceDataPanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -499,6 +500,7 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           <Field label={tr("الفاصل بينهم", "Between them")} value={typeof p.separator === "string" ? p.separator : "•"} onSave={(v) => set(tr("الفاصل", "Separator"), { separator: v.trim().slice(0, 4) || undefined })} testId="block-separator" />
         </>
       ) : null}
+      {kind === "storyBar" ? <StoryBarPanel node={node} lang={lang} busy={busy} onOps={onOps} /> : null}
       {kind === "toc" ? (
         <>
           {words("title", say("العنوان (فاضي = بهالصفحة)|Title (empty = On this page)|כותרת (ריק = בעמוד הזה)"))}
