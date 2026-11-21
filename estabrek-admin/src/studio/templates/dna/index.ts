@@ -9,6 +9,7 @@ import type { SectionCat, SectionRecipe } from "../sections";
 import { w } from "../words";
 import { HERO_LAYOUTS, HERO_PICKS, type Layout } from "./heroes";
 import { BANNER_LAYOUTS, BANNER_PICKS, CATEGORY_LAYOUTS, CATEGORY_PICKS, OFFER_LAYOUTS, OFFER_PICKS, PRODUCT_LAYOUTS, PRODUCT_PICKS } from "./sell";
+import { PERK_LAYOUTS, PERK_PICKS, REVIEW_LAYOUTS, REVIEW_PICKS, STAT_LAYOUTS, STAT_PICKS, TRUST_LAYOUTS, TRUST_PICKS } from "./trust";
 import { LOOK_BY_KEY, LOOKS, MOOD_NAMES, MOODS, type Look } from "./looks";
 
 export { LOOKS, LOOK_BY_KEY, MOODS, MOOD_NAMES };
@@ -43,6 +44,11 @@ export const DNA_KINDS: Array<[SectionCat, string, Layout[], Record<string, stri
   ["categories", "categories", CATEGORY_LAYOUTS, CATEGORY_PICKS],
   ["offer", "offer", OFFER_LAYOUTS, OFFER_PICKS],
   ["banner", "banner", BANNER_LAYOUTS, BANNER_PICKS],
+  // Wave 1: what wins a customer over.
+  ["testimonials", "reviews", REVIEW_LAYOUTS, REVIEW_PICKS],
+  ["trust", "trust", TRUST_LAYOUTS, TRUST_PICKS],
+  ["stats", "stats", STAT_LAYOUTS, STAT_PICKS],
+  ["features", "perks", PERK_LAYOUTS, PERK_PICKS],
 ];
 
 export const DNA_RECIPES: SectionRecipe[] = DNA_KINDS.flatMap(([cat, kind, layouts, picks]) => recipes(cat, kind, layouts, picks));

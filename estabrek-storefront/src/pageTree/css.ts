@@ -1175,7 +1175,7 @@ export const BASE_CSS = [
   ".pt-tst-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}.pt-tst-row>.pt-tst-card{flex:0 0 min(340px,85%);scroll-snap-align:start}",
   ".pt-tst-single{grid-template-columns:1fr;max-width:720px;margin-inline:auto;text-align:center}.pt-tst-single .pt-tst-who{justify-content:center}",
   ".pt-tst-card{margin:0;padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:12px}",
-  ".pt-tst-card blockquote{margin:0;font-size:1.05em;line-height:1.7}.pt-stars{color:#f5b301;letter-spacing:2px}",
+  ".pt-tst-card blockquote{margin:0;font-size:1.05em;line-height:1.7}.pt-stars{color:#b7791f;letter-spacing:2px}",
   ".pt-tst-who{display:flex;align-items:center;gap:12px}.pt-tst-who img{width:44px;height:44px;border-radius:50%;object-fit:cover}.pt-tst-role{display:block;color:var(--muted);font-size:.85em}",
   ".pt-plans{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));align-items:stretch}",
   ".pt-plan{position:relative;display:flex;flex-direction:column;gap:12px;padding:28px 22px;border-radius:20px;background:var(--surface);border:1px solid var(--border)}",
