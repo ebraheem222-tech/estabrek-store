@@ -14,8 +14,10 @@ import { isCloudinaryEnabled } from "../../lib/cloudinary.js";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { AppError } from "../../utils/httpError.js";
-import { AI_DEFAULTS, AI_FEATURES, AiSchema, NO_KEY_NEEDED, aiOf } from "../ai/ai.settings.js";
-import { aiKeyReady, aiUsage } from "../ai/ai.client.js";
+import { AI_DEFAULTS, AI_FEATURES, AiSchema, aiOf } from "../ai/ai.settings.js";
+import { aiImageEditReady, aiKeyReady, aiReadyFor, aiTextReady, aiUsage, aiVisionReady, forgetAiServer } from "../ai/ai.client.js";
+import { AI_SERVER_KINDS, AiServerSchema, aiServerOf, aiServerView, ownJson, ownModelEndpoint, ownServerSet } from "../ai/ownModel.js";
+import { seal } from "../../lib/secretBox.js";
 import { needFeature } from "../ai/ai.guard.js";
 import { STUDIO_SCENE_MAX, STUDIO_STYLES, askShop, orderFlags, pageWords, photoStudio, pictureAlt, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
 import { PAGE_WORD_ACTIONS, PAGE_WORD_KINDS } from "../ai/pageWords.js";
@@ -32,7 +34,20 @@ aiSettingsAdmin.get(
   "/",
   asyncHandler(async (_req, res) => {
     const s = await getOrCreateSettings();
-    res.json({ settings: aiOf(s.header), defaults: AI_DEFAULTS, keyReady: aiKeyReady(), cloudinaryReady: isCloudinaryEnabled(), usage30: await aiUsage(30) });
+    const ready = Object.fromEntries(AI_FEATURES.map((f) => [f, aiReadyFor(f, s.header)]));
+    res.json({
+      settings: aiOf(s.header),
+      defaults: AI_DEFAULTS,
+      // A model for words is there (OpenAI's key or the own server); older admins read only this.
+      keyReady: aiTextReady(s.header),
+      openaiReady: aiKeyReady(),
+      visionReady: aiVisionReady(s.header),
+      editReady: aiImageEditReady(),
+      ready,
+      server: aiServerView(aiServerOf(s.header)),
+      cloudinaryReady: isCloudinaryEnabled(),
+      usage30: await aiUsage(30),
+    });
   }),
 );
 
@@ -43,9 +58,9 @@ aiSettingsAdmin.put(
     const next = AiSchema.parse(req.body);
     const s = await getOrCreateSettings();
     const before = aiOf(s.header);
-    // Can't switch on what needs the key while it's missing (switching off is always fine).
-    const blocked = AI_FEATURES.filter((f) => next[f] && !before[f] && !NO_KEY_NEEDED.has(f) && !aiKeyReady());
-    if (blocked.length) throw new AppError(400, "AI_KEY_MISSING", "Add OPENAI_API_KEY on the server first", { features: blocked });
+    // Can't switch on what has no model to ask (switching off is always fine).
+    const blocked = AI_FEATURES.filter((f) => next[f] && !before[f] && !aiReadyFor(f, s.header));
+    if (blocked.length) throw new AppError(400, "AI_KEY_MISSING", "Add OPENAI_API_KEY on the server or connect your own model server first", { features: blocked });
     const data = { header: { ...obj(s.header), ai: next } as Prisma.InputJsonValue };
     const current = s as unknown as Record<string, unknown>;
     const changed = changedKeys(current, data as Record<string, unknown>);
@@ -55,6 +70,68 @@ aiSettingsAdmin.put(
       triggerSettingsRevalidate();
     }
     res.json({ settings: next });
+  }),
+);
+
+/**
+ * Where the AI runs: OpenAI (OPENAI_API_KEY on the server) or the store's own model server.
+ *   PUT  /v1/admin/ai/server      {kind, url, model, vision, key?}  key: a string = new, null = none, left out = kept
+ *   POST /v1/admin/ai/server/try  the same (what is left out comes from the saved one): one small question, the answer and how long it took
+ */
+const ServerBody = z.object({
+  kind: z.enum(AI_SERVER_KINDS),
+  url: z.string().trim().max(300).default(""),
+  model: z.string().trim().max(120).default(""),
+  vision: z.boolean().default(false),
+  key: z.string().trim().max(4000).nullable().optional(),
+});
+type ServerIn = z.infer<typeof ServerBody>;
+
+/** The server as it would be saved: the address read (the reason in words when it can't be used), the key sealed. */
+function serverFrom(body: ServerIn, saved: ReturnType<typeof aiServerOf>) {
+  if (body.kind === "own") {
+    if (!body.url || !body.model) throw new AppError(400, "AI_SERVER_INCOMPLETE", "The address and the model's name are both needed");
+    try {
+      ownModelEndpoint(body.url);
+    } catch (e) {
+      throw new AppError(400, "AI_SERVER_ADDRESS", (e as Error).message);
+    }
+  }
+  const key = body.key === undefined ? saved.key : body.key ? seal(body.key) : null;
+  return AiServerSchema.parse({ kind: body.kind, url: body.url, model: body.model, vision: body.vision, key });
+}
+
+aiSettingsAdmin.put(
+  "/server",
+  validate({ body: ServerBody }),
+  asyncHandler(async (req, res) => {
+    const s = await getOrCreateSettings();
+    const next = serverFrom(req.body, aiServerOf(s.header));
+    const data = { header: { ...obj(s.header), aiServer: next } as Prisma.InputJsonValue };
+    const current = s as unknown as Record<string, unknown>;
+    const changed = changedKeys(current, data as Record<string, unknown>);
+    if (changed.length) {
+      await keepRevision(current, changed, await adminIdOf(req), "تعديل سيرفر الذكاء الاصطناعي");
+      await prisma.siteSettings.update({ where: { id: s.id }, data });
+    }
+    forgetAiServer();
+    res.json({ server: aiServerView(next) });
+  }),
+);
+
+aiSettingsAdmin.post(
+  "/server/try",
+  validate({ body: ServerBody }),
+  asyncHandler(async (req, res) => {
+    const s = await getOrCreateSettings();
+    const server = serverFrom(req.body, aiServerOf(s.header));
+    if (!ownServerSet(server)) throw new AppError(400, "AI_SERVER_INCOMPLETE", "The address and the model's name are both needed");
+    const r = await ownJson<{ reply?: unknown }>(
+      server,
+      { system: "You are a helpful assistant of an online shop.", user: 'Say hello to a shopper in one short Arabic sentence. JSON: {"reply": "..."}', maxTokens: 120 },
+      { ms: 60_000 },
+    );
+    res.json(r.ok ? { ok: true, ms: r.ms, reply: String(r.data.reply ?? "").slice(0, 300) } : { ok: false, error: r.error });
   }),
 );
 
@@ -114,8 +191,11 @@ aiCatalogAdmin.get(
   asyncHandler(async (_req, res) => {
     const s = await getOrCreateSettings();
     const ai = aiOf(s.header);
-    const key = aiKeyReady();
-    res.json({ productWriter: ai.productWriter && key, photoStudio: ai.photoStudio && key && isCloudinaryEnabled(), translate: ai.translate && key });
+    res.json({
+      productWriter: ai.productWriter && aiReadyFor("productWriter", s.header),
+      photoStudio: ai.photoStudio && aiReadyFor("photoStudio", s.header) && isCloudinaryEnabled(),
+      translate: ai.translate && aiReadyFor("translate", s.header),
+    });
   }),
 );
 
@@ -154,7 +234,7 @@ aiPagesAdmin.get(
   "/status",
   asyncHandler(async (_req, res) => {
     const s = await getOrCreateSettings();
-    res.json({ pageWriter: aiOf(s.header).pageWriter && aiKeyReady() });
+    res.json({ pageWriter: aiOf(s.header).pageWriter && aiReadyFor("pageWriter", s.header) });
   }),
 );
 
@@ -172,8 +252,9 @@ aiOrdersAdmin.post(
 aiOrdersAdmin.get(
   "/status",
   asyncHandler(async (_req, res) => {
-    const ai = aiOf((await getOrCreateSettings()).header);
-    res.json({ replySuggest: ai.replySuggest && aiKeyReady(), orderFlags: ai.orderFlags });
+    const header = (await getOrCreateSettings()).header;
+    const ai = aiOf(header);
+    res.json({ replySuggest: ai.replySuggest && aiReadyFor("replySuggest", header), orderFlags: ai.orderFlags });
   }),
 );
 
@@ -217,9 +298,9 @@ const PostOptions = {
 aiMarketingAdmin.get(
   "/status",
   asyncHandler(async (_req, res) => {
-    const ai = aiOf((await getOrCreateSettings()).header);
-    const key = aiKeyReady();
-    res.json({ socialPosts: ai.socialPosts && key, seoDoctor: ai.seoDoctor && key, shopUrl: productUrl("x") ? productUrl("x")!.replace(/\/p\/x$/, "") : null });
+    const header = (await getOrCreateSettings()).header;
+    const ai = aiOf(header);
+    res.json({ socialPosts: ai.socialPosts && aiReadyFor("socialPosts", header), seoDoctor: ai.seoDoctor && aiReadyFor("seoDoctor", header), shopUrl: productUrl("x") ? productUrl("x")!.replace(/\/p\/x$/, "") : null });
   }),
 );
 
@@ -252,8 +333,8 @@ aiMarketingAdmin.post(
   "/seo/:id/draft",
   asyncHandler(async (req, res) => {
     // The pictures' descriptions need no model: with the switch off, only those.
-    const ai = aiOf((await getOrCreateSettings()).header);
-    res.json(await seoFix(String(req.params.id), { model: ai.seoDoctor && aiKeyReady() }));
+    const header = (await getOrCreateSettings()).header;
+    res.json(await seoFix(String(req.params.id), { model: aiOf(header).seoDoctor && aiReadyFor("seoDoctor", header) }));
   }),
 );
 

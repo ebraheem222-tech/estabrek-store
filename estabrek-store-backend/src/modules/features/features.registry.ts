@@ -7,7 +7,7 @@ import { razanOf } from "../razan/razan.settings.js";
 import { requestsOf } from "../requests/requests.settings.js";
 import { quizOf } from "../quiz/quiz.settings.js";
 import { aiOf, type AiFeature } from "../ai/ai.settings.js";
-import { aiKeyReady } from "../ai/ai.client.js";
+import { aiImageEditReady, aiTextReady, aiVisionReady } from "../ai/ai.client.js";
 
 /**
  * Store features ("modules") the owner turns on and off from one admin page
@@ -200,19 +200,19 @@ export const FEATURES: FeatureDef[] = [
       { label: "مفتاح تشفير خاص BACKUP_ENCRYPTION_KEY محفوظ عندك", ok: Boolean(env.BACKUP_ENCRYPTION_KEY) },
     ],
   },
-  aiFeature("productWriter", "«اكتبيلي من الصور» — كتابة صفحة المنتج", "بتحمّل صور القطعة وبتكتبلك العنوان والوصف وكلمات جوجل وحقول النوع. إنتِ بتراجعي قبل الحفظ.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("smartSearch", "بحث بكلام الزبونة", "«بدي فستان سهرة خمري لحد 300» بيصير بحث مع فلاتر جاهزة.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("shopTheLook", "«كمّلي اللبسة»", "بصفحة القطعة: 3 قطع بتلبق معها (حجاب لعباية مثلاً) مع السبب.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("sizeAdvice", "نصيحة المقاس", "الزبونة بتكتب طولها ووزنها وبتطلعلها نصيحة مقاس للقطعة. ما بينحفظ إشي عنها.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("reviewSummary", "ملخص التقييمات", "بصفحة القطعة: شو بيحكوا الزبونات بجملتين، عربي وإنجليزي (لما يكون في 3 تقييمات وأكثر).", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("adminAsk", "اسأل عن متجرك", "سؤال بكلامك («شو أكثر قطعة بعنا هالشهر؟») وجواب من أرقام متجرك.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("replySuggest", "اقتراحات ردود واتساب", "بصفحة الطلب: 3 ردود جاهزة للزبونة حسب حالة الطلب ورسالتها.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("photoStudio", "استوديو الصور", "خلفية نظيفة لصورة القطعة بكبسة — بتنضاف كصورة جديدة، الأصلية بتضل.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }, { label: "Cloudinary مضبوط (لحفظ الصورة الجديدة)", ok: isCloudinaryEnabled(), required: true }]),
-  aiFeature("translate", "ترجمة المتجر", "بصفحة كل منتج وقسم ونوع: مسودة بالإنجليزي أو العبري من النص العربي، بتراجعيها وبتعدّليها قبل الحفظ.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("pageWriter", "كاتب الصفحات (بمحرّر الصفحات)", "بمحرّر الصفحات: اقتراحات لكلام عنوان أو نص أو زر (كتابة، تحسين، تقصير، تطويل، ترجمة)، ووصف للصورة. إنتِ بتختاري وبتعدّلي.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("shopAgent", "مساعد المتجر الذكي", "شات المتجر بيصير مساعد حقيقي: بيتذكّر الحكي، بيلاقي القطع من متجرك وبيعرضها، بيعرف القطعة اللي الزبونة عم تتفرّج عليها، بيحكي بصوت، وبيحوّل لواتساب لما يلزم. الأسئلة اللي ما عرف يجاوبها بتطلعلك بصفحة مساعد المتجر.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("socialPosts", "منشورات السوشال", "من قطعة أو عرض: منشورات جاهزة لإنستغرام وفيسبوك وتيك توك وستوري واتساب وX، مع هاشتاغات ورابط القطعة، وخطة أسبوع كاملة.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
-  aiFeature("seoDoctor", "طبيب جوجل (SEO)", "بيفحص كل المنتجات: عنوان جوجل ناقص أو طويل، وصف ضعيف، صور بدون وصف، عناوين مكرّرة — وبيكتب مسودات أحسن بتراجعيها قبل الحفظ.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
+  aiFeature("productWriter", "«اكتبيلي من الصور» — كتابة صفحة المنتج", "بتحمّل صور القطعة وبتكتبلك العنوان والوصف وكلمات جوجل وحقول النوع. إنتِ بتراجعي قبل الحفظ.", (st) => [{ label: "نموذج بيقرأ الصور: مفتاح OPENAI_API_KEY، أو سيرفر خاص نموذجه بيقرأ الصور", ok: aiVisionReady(st.header), required: true }]),
+  aiFeature("smartSearch", "بحث بكلام الزبونة", "«بدي فستان سهرة خمري لحد 300» بيصير بحث مع فلاتر جاهزة.", (st) => [aiNeed(st)]),
+  aiFeature("shopTheLook", "«كمّلي اللبسة»", "بصفحة القطعة: 3 قطع بتلبق معها (حجاب لعباية مثلاً) مع السبب.", (st) => [aiNeed(st)]),
+  aiFeature("sizeAdvice", "نصيحة المقاس", "الزبونة بتكتب طولها ووزنها وبتطلعلها نصيحة مقاس للقطعة. ما بينحفظ إشي عنها.", (st) => [aiNeed(st)]),
+  aiFeature("reviewSummary", "ملخص التقييمات", "بصفحة القطعة: شو بيحكوا الزبونات بجملتين، عربي وإنجليزي (لما يكون في 3 تقييمات وأكثر).", (st) => [aiNeed(st)]),
+  aiFeature("adminAsk", "اسأل عن متجرك", "سؤال بكلامك («شو أكثر قطعة بعنا هالشهر؟») وجواب من أرقام متجرك.", (st) => [aiNeed(st)]),
+  aiFeature("replySuggest", "اقتراحات ردود واتساب", "بصفحة الطلب: 3 ردود جاهزة للزبونة حسب حالة الطلب ورسالتها.", (st) => [aiNeed(st)]),
+  aiFeature("photoStudio", "استوديو الصور", "خلفية نظيفة لصورة القطعة بكبسة — بتنضاف كصورة جديدة، الأصلية بتضل.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (الصور بتنعمل عند OpenAI بس)", ok: aiImageEditReady(), required: true }, { label: "Cloudinary مضبوط (لحفظ الصورة الجديدة)", ok: isCloudinaryEnabled(), required: true }]),
+  aiFeature("translate", "ترجمة المتجر", "بصفحة كل منتج وقسم ونوع: مسودة بالإنجليزي أو العبري من النص العربي، بتراجعيها وبتعدّليها قبل الحفظ.", (st) => [aiNeed(st)]),
+  aiFeature("pageWriter", "كاتب الصفحات (بمحرّر الصفحات)", "بمحرّر الصفحات: اقتراحات لكلام عنوان أو نص أو زر (كتابة، تحسين، تقصير، تطويل، ترجمة)، ووصف للصورة. إنتِ بتختاري وبتعدّلي.", (st) => [aiNeed(st)]),
+  aiFeature("shopAgent", "مساعد المتجر الذكي", "شات المتجر بيصير مساعد حقيقي: بيتذكّر الحكي، بيلاقي القطع من متجرك وبيعرضها، بيعرف القطعة اللي الزبونة عم تتفرّج عليها، بيحكي بصوت، وبيحوّل لواتساب لما يلزم. الأسئلة اللي ما عرف يجاوبها بتطلعلك بصفحة مساعد المتجر.", (st) => [aiNeed(st)]),
+  aiFeature("socialPosts", "منشورات السوشال", "من قطعة أو عرض: منشورات جاهزة لإنستغرام وفيسبوك وتيك توك وستوري واتساب وX، مع هاشتاغات ورابط القطعة، وخطة أسبوع كاملة.", (st) => [aiNeed(st)]),
+  aiFeature("seoDoctor", "طبيب جوجل (SEO)", "بيفحص كل المنتجات: عنوان جوجل ناقص أو طويل، وصف ضعيف، صور بدون وصف، عناوين مكرّرة — وبيكتب مسودات أحسن بتراجعيها قبل الحفظ.", (st) => [aiNeed(st)]),
   aiFeature("orderFlags", "طلبات بدها انتباه", "تنبيه بصفحة الطلب لما يكون في إشي غريب (نفس الرقم كذا مرة، كمية كبيرة…). قواعد بسيطة، ما بتحتاج مفتاح.", () => []),
 ];
 
@@ -239,6 +239,11 @@ export function describeFeatures(s: SiteSettings) {
 }
 
 /** One AI switch under header.ai (link: the AI page). */
+/** What an AI feature needs, said for the features page: a model for words (OpenAI or the own server), one that reads pictures, or OpenAI. */
+function aiNeed(s: SiteSettings): { label: string; ok: boolean; required: true } {
+  return { label: "نموذج ذكاء اصطناعي: مفتاح OPENAI_API_KEY بالسيرفر، أو سيرفر نماذج خاص (صفحة الذكاء الاصطناعي)", ok: aiTextReady(s.header), required: true };
+}
+
 function aiFeature(key: AiFeature, title: string, description: string, needs: FeatureDef["needs"]): FeatureDef {
   return {
     key: `ai-${key}`,
