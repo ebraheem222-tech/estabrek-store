@@ -11,6 +11,7 @@ import { TIMELINE, OFFER, DETAIL_TABS, BUNDLES, PEOPLE, RIGHTS, WHATSAPP, OUT_OF
 import { popup } from "./partsMore";
 import { STORE_RECIPES } from "./sectionsStore";
 import { TRUST_RECIPES } from "./sectionsTrust";
+import { DNA_RECIPES } from "./dna";
 
 export const SECTION_CATS = [
   "hero", "announce", "categories", "products", "banner", "model", "showcase", "features", "story", "split", "gallery", "lookbook", "testimonials", "trust", "stats", "data",
@@ -52,7 +53,11 @@ export const CAT_NAMES: Record<SectionCat, W> = {
   campaign: w("مناسبات وحملات", "Occasions and campaigns", "אירועים וקמפיינים"),
 };
 
-export type SectionRecipe = { key: string; cat: SectionCat; name: W; skins: Skin[]; build: (c: Ctx) => N; campaign?: Campaign };
+export type SectionRecipe = {
+  key: string; cat: SectionCat; name: W; skins: Skin[]; build: (c: Ctx) => N; campaign?: Campaign;
+  /** Made by the section DNA (dna/): its look, layout and mood, for the gallery's filters. */
+  dna?: { look: string; layout: string; mood: string };
+};
 
 /* ---------------------------------------------------------------- recipes */
 
@@ -328,7 +333,7 @@ export const RECIPES: SectionRecipe[] = [
     popup(c, { trigger: "load", delay: 5, often: "visit", size: "l" }, [COLS(c, [1, 1], [[IMG(c, OFFER.title, { aspect: "1 / 1", motion: false })], [H(c, OFFER.title, 2, { motion: false }), H(c, OFFER.code, 3, { motion: false, style: { color: pop(c), letterSpacing: 4 } }), P(c, OFFER.use, { motion: false }), B(c, C.shop, "/shop", "solid", { motion: false })]], { gap: 24, align: "center" })])),
 ];
 
-RECIPES.push(...STORE_RECIPES, ...TRUST_RECIPES);
+RECIPES.push(...STORE_RECIPES, ...TRUST_RECIPES, ...DNA_RECIPES);
 
 /* -------------------------------------------------------------- campaigns */
 

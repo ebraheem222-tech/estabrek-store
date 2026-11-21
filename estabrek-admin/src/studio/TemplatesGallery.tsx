@@ -21,6 +21,7 @@ import type { TemplateKit } from "./packs";
 import type { Ids, MotionLevel } from "./templates/build";
 import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_CATS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
 import { FAMILIES, PACKS, type Family, type W } from "./templates/words";
+import { LOOKS, MOODS, MOOD_NAMES } from "./templates/dna";
 import { StoreTemplatePicker } from "../features/setup/StoreTemplatePicker";
 import { getStoreTemplateImport, type StoreTemplate } from "../api/storeTemplates.api";
 import { copyOf } from "./columns";
@@ -91,6 +92,9 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
     return () => { importEpoch.current++; };
   }, [open]);
   const [group, setGroup] = useState<string>("all");
+  // The section DNA's look and mood (studio/templates/dna): "all" shows every design.
+  const [look, setLook] = useState<string>("all");
+  const [mood, setMood] = useState<string>("all");
   const [q, setQ] = useState("");
   const [fam, setFam] = useState<Family>(family);
   const [motion, setMotion] = useState<MotionLevel>("calm");
@@ -107,14 +111,14 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const list = useMemo(() => {
     const source = tab === "sections" ? SECTION_TEMPLATES : tab === "pages" ? PAGE_TEMPLATES : [];
     // A kind's homes show for that kind only.
-    const found = source.filter((t) => (group === "all" || t.group === group) && (!t.fam || t.fam === fam) && matches(t, q));
+    const found = source.filter((t) => (group === "all" || t.group === group) && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood) && matches(t, q));
     // One card for each design: its colours are picked in the preview. The card shows the first colour that
     // matches what's looked for (looking for "inverted" shows the designs that have it, inverted).
     const seen = new Set<string>();
     return found.filter((t) => !seen.has(designOf(t)) && Boolean(seen.add(designOf(t))));
-  }, [tab, group, fam, q]);
+  }, [tab, group, fam, q, look, mood]);
   const groups = tab === "sections" ? SECTION_CATS : tab === "pages" ? PAGE_KINDS : [];
-  const count = (g: string) => new Set((tab === "sections" ? SECTION_TEMPLATES : PAGE_TEMPLATES).filter((t) => t.group === g && (!t.fam || t.fam === fam)).map(designOf)).size;
+  const count = (g: string) => new Set((tab === "sections" ? SECTION_TEMPLATES : PAGE_TEMPLATES).filter((t) => t.group === g && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood)).map(designOf)).size;
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -200,6 +204,24 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                 if (e.target.value.trim()) setGroup("all");
                 setLimit(PAGE_SIZE);
               }} data-testid="studio-tpl-search" />
+              {tab === "sections" ? (
+                <>
+                  <label className="flex items-center gap-1 text-[11px] text-white/60">
+                    {say("الستايل|Look|סגנון")}
+                    <select className={control} value={look} onChange={(e) => { setLook(e.target.value); setLimit(PAGE_SIZE); }} data-testid="studio-tpl-look">
+                      <option value="all">{say("كل الستايلات|Every look|כל הסגנונות")}</option>
+                      {LOOKS.map((l) => <option key={l.key} value={l.key}>{nameOf(l.name)}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px] text-white/60">
+                    {say("الطابع|Mood|אופי")}
+                    <select className={control} value={mood} onChange={(e) => { setMood(e.target.value); setLimit(PAGE_SIZE); }} data-testid="studio-tpl-mood">
+                      <option value="all">{say("كل الطوابع|Every mood|כל האופיים")}</option>
+                      {MOODS.map((m) => <option key={m} value={m}>{nameOf(MOOD_NAMES[m])}</option>)}
+                    </select>
+                  </label>
+                </>
+              ) : null}
               <label className="flex items-center gap-1 text-[11px] text-white/60">
                 {tr("نوع المتجر", "Kind of store")}
                 <select className={control} value={fam} onChange={(e) => setFam(e.target.value as Family)} data-testid="studio-tpl-kind">

@@ -76,3 +76,18 @@ test("a section design has one card, and its colours are picked in the preview",
   const [nodes] = onUse.mock.calls[0];
   expect(nodes[0].style.base.bg).toBe("text");
 });
+test("the section DNA's designs are found by their look and their mood", async () => {
+  mount();
+  fireEvent.click(await screen.findByTestId("studio-tpl-tab-sections"));
+  fireEvent.change(screen.getByTestId("studio-tpl-look"), { target: { value: "luxe" } });
+  const luxe = screen.getAllByTestId("studio-tpl-card").map(card => card.getAttribute("data-id")!);
+  expect(luxe.length).toBeGreaterThan(3);
+  expect(luxe.every(id => /^s:dna-[a-z]+-[a-z-]+-luxe:/.test(id))).toBe(true);
+  // A mood narrows to its looks; with a look of another mood nothing is left.
+  fireEvent.change(screen.getByTestId("studio-tpl-mood"), { target: { value: "playful" } });
+  expect(screen.queryAllByTestId("studio-tpl-card")).toHaveLength(0);
+  fireEvent.change(screen.getByTestId("studio-tpl-look"), { target: { value: "all" } });
+  const playful = screen.getAllByTestId("studio-tpl-card").map(card => card.getAttribute("data-id")!);
+  expect(playful.length).toBeGreaterThan(10);
+  expect(playful.every(id => id.startsWith("s:dna-"))).toBe(true);
+});
