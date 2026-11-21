@@ -62,6 +62,12 @@ export function LiveChat({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const baseUrl = apiBaseUrl || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/v1";
+
+  // The page knows a live chat button is there: the accessibility button stands above it on a phone (globals.css).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-live-chat", "");
+    return () => document.documentElement.removeAttribute("data-live-chat");
+  }, []);
   const activeWelcomeMessage = isOnline ? welcomeMessage : (offlineMessage || welcomeMessage);
 
   // Generate session ID
