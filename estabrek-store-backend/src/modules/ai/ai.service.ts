@@ -10,7 +10,7 @@ import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import { isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 import { phoneKey } from "../../lib/phoneKey.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
-import { aiEditImage, aiJson, cacheKey, cached, clip } from "./ai.client.js";
+import { aiCompact, aiEditImage, aiJson, cacheKey, cached, clip } from "./ai.client.js";
 import { stylePieces } from "../razan/styleQuiz.service.js";
 import { identityOf, storeBrief, storeName, type Audience, type Industry } from "../identity/identity.js";
 import { mainLanguage, type ContentLang } from "../../lib/translations.js";
@@ -157,7 +157,7 @@ export async function shopTheLook(productId: string) {
       const neutral = p.colors.some((c) => Math.hypot(c.lab[1], c.lab[2]) < 12); // black, white, beige, grey go with anything
       return Math.max(d, neutral ? 0.6 : 0);
     };
-    const candidates = pool.map((p) => ({ p, s: near(p) })).sort((a, b) => b.s - a.s).slice(0, 24).map((x) => x.p);
+    const candidates = pool.map((p) => ({ p, s: near(p) })).sort((a, b) => b.s - a.s).slice(0, (await aiCompact()) ? 10 : 24).map((x) => x.p);
     if (candidates.length < 2) return { products: [] };
     const { brief, industry } = await shop();
     const raw = await aiJson<unknown>("shopTheLook", {

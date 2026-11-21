@@ -23,13 +23,13 @@ describe("the own model server's address", () => {
   });
 
   test("what is saved is read calmly, and the admin never sees the key", () => {
-    expect(aiServerOf(null)).toEqual({ kind: "openai", url: "", model: "", vision: false, visionModel: "", embedModel: "", key: null });
-    expect(aiServerOf({ aiServer: { kind: "nonsense", url: 7, model: "m", vision: "yes" } })).toEqual({ kind: "openai", url: "", model: "m", vision: false, visionModel: "", embedModel: "", key: null });
+    expect(aiServerOf(null)).toEqual({ kind: "openai", url: "", model: "", vision: false, visionModel: "", embedModel: "", compact: false, key: null });
+    expect(aiServerOf({ aiServer: { kind: "nonsense", url: 7, model: "m", vision: "yes" } })).toEqual({ kind: "openai", url: "", model: "m", vision: false, visionModel: "", embedModel: "", compact: false, key: null });
     const s = AiServerSchema.parse({ kind: "own", url: "https://m.example.com", model: "allam", key: "v1.sealed" });
     expect(ownServerSet(s)).toBe(true);
     expect(ownServerSet({ ...s, model: "" })).toBe(false);
     expect(ownServerSet({ ...s, kind: "openai" })).toBe(false);
-    expect(aiServerView(s)).toEqual({ kind: "own", url: "https://m.example.com", model: "allam", vision: false, visionModel: "", embedModel: "", hasKey: true });
+    expect(aiServerView(s)).toEqual({ kind: "own", url: "https://m.example.com", model: "allam", vision: false, visionModel: "", embedModel: "", compact: false, hasKey: true });
     // Pictures: their own model, else the words model when it reads them, else none. Search: its own model.
     expect(ownPicturesModel(s)).toBe("");
     expect(ownPicturesModel({ ...s, vision: true })).toBe("allam");
@@ -111,6 +111,22 @@ describe("asking the own model server", () => {
     expect(await ownJson(server, { system: "s", user: "u" })).toMatchObject({ ok: true, data: { ok: true } });
     expect(asked).toHaveLength(2);
     expect(asked[1].body.response_format).toBeUndefined();
+  });
+
+  test("not JSON: asked once more with what it said and a reminder; still not: said so, no third call", async () => {
+    asked.length = 0;
+    setOwnModelTransportForTests(stand(() => reply("sorry, I only chat")));
+    expect(await ownJson(server, { system: "s", user: "u" })).toEqual({ ok: false, error: "The model didn't answer with JSON" });
+    expect(asked).toHaveLength(2);
+    const second = asked[1].body.messages as Array<{ role: string; content: string }>;
+    expect(second.map((m) => m.role)).toEqual(["system", "user", "assistant", "user"]);
+    expect(second[2].content).toBe("sorry, I only chat");
+    expect(asked[1].body.response_format).toEqual({ type: "json_object" });
+    // No time left for another try: none is made.
+    asked.length = 0;
+    setOwnModelTransportForTests(stand(() => reply("still no")));
+    expect(await ownJson(server, { system: "s", user: "u" }, { ms: 1000 })).toMatchObject({ ok: false });
+    expect(asked).toHaveLength(1);
   });
 
   test("what went wrong is said in words, never thrown", async () => {

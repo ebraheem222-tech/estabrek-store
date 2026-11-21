@@ -66,6 +66,7 @@ const StoriesPage = lazy(() => import("../features/stories/StoriesPage"));
 const AiPage = lazy(() => import("../features/ai/AiPage"));
 const SocialPostsPage = lazy(() => import("../features/ai/SocialPostsPage"));
 const SeoDoctorPage = lazy(() => import("../features/ai/SeoDoctorPage"));
+const AiEvalPage = lazy(() => import("../features/ai/AiEvalPage"));
 const TrafficPage = lazy(() => import("../features/system/TrafficPage"));
 const CachePage = lazy(() => import("../features/system/CachePage"));
 const SpeedMonitorPage = lazy(() => import("../features/system/SpeedMonitorPage"));
@@ -294,6 +295,7 @@ export default function AppRouter() {
           <Route path="ai" element={withPermissions(<AiPage />, ["settings:read"])} />
           <Route path="ai/social" element={withPermissions(<SocialPostsPage />, ["catalog:read"])} />
           <Route path="ai/seo" element={withPermissions(<SeoDoctorPage />, ["catalog:read"])} />
+          <Route path="ai/eval" element={withPermissions(<AiEvalPage />, ["settings:read"])} />
           <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
           <Route path="media" element={withPermissions(<MediaCenterPage />, ["media:read"])} />
           <Route path="media/videos" element={withPermissions(<VideosPage />, ["media:read"])} />
