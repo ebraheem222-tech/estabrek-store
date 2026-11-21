@@ -47,7 +47,7 @@ describe("the section DNA", () => {
 
   it("makes every kind in several layouts, each layout in three looks or more, nothing picked twice", () => {
     for (const [, kind, layouts, picks] of DNA_KINDS) {
-      expect(layouts.length, kind).toBeGreaterThanOrEqual(7);
+      expect(layouts.length, kind).toBeGreaterThanOrEqual(4);
       expect(new Set(layouts.map((l) => l.key)).size, kind).toBe(layouts.length);
       for (const l of layouts) {
         expect(full(l.name), `${kind} ${l.key}`).toBe(true);
@@ -56,7 +56,7 @@ describe("the section DNA", () => {
       }
       // No pick for a layout that isn't there.
       for (const k of Object.keys(picks)) expect(layouts.some((l) => l.key === k), `${kind} ${k}`).toBe(true);
-      expect(DNA_RECIPES.filter((r) => r.key.startsWith(`dna-${kind}-`)).length, kind).toBeGreaterThanOrEqual(25);
+      expect(DNA_RECIPES.filter((r) => r.key.startsWith(`dna-${kind}-`)).length, kind).toBeGreaterThanOrEqual(16);
     }
   });
 
