@@ -40,8 +40,8 @@ export { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, SECTION_CATS };
 /** The section kinds grouped by what they are for (the gallery's side list): each kind in one area. */
 export const SECTION_AREAS: Array<{ key: string; name: W; cats: SectionCat[] }> = [
   { key: "open", name: w("الافتتاح", "Openings", "פתיחה"), cats: ["hero", "announce", "banner", "model"] },
-  { key: "sell", name: w("البيع", "Selling", "מכירה"), cats: ["categories", "products", "showcase", "lookbook", "offer", "pricing", "compare", "details"] },
-  { key: "trust", name: w("الثقة", "Trust", "אמון"), cats: ["testimonials", "trust", "stats", "features"] },
+  { key: "sell", name: w("البيع", "Selling", "מכירה"), cats: ["categories", "products", "showcase", "lookbook", "offer", "pricing", "compare", "details", "boxes", "sizes", "finder", "drops", "giftcards", "loyalty", "specs"] },
+  { key: "trust", name: w("الثقة", "Trust", "אמון"), cats: ["testimonials", "trust", "stats", "features", "delivery"] },
   { key: "story", name: w("القصة والمحتوى", "Story and content", "סיפור ותוכן"), cats: ["story", "split", "gallery", "team", "steps", "faq", "data"] },
   { key: "site", name: w("أجزاء الموقع", "Site parts", "חלקי האתר"), cats: ["header", "footer", "cta", "newsletter", "contact", "notice", "popup"] },
   { key: "occasions", name: w("المناسبات", "Occasions", "אירועים"), cats: ["campaign"] },

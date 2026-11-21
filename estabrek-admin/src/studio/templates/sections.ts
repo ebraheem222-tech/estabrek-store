@@ -16,6 +16,8 @@ import { DNA_RECIPES } from "./dna";
 export const SECTION_CATS = [
   "hero", "announce", "categories", "products", "banner", "model", "showcase", "features", "story", "split", "gallery", "lookbook", "testimonials", "trust", "stats", "data",
   "steps", "faq", "cta", "newsletter", "offer", "pricing", "team", "compare", "details", "contact", "header", "footer", "notice", "popup", "campaign",
+  // Wave 1 of the template plan: new kinds of selling sections (studio/templates/dna/sellMore.ts).
+  "boxes", "sizes", "finder", "drops", "giftcards", "loyalty", "delivery", "specs",
 ] as const;
 export type SectionCat = (typeof SECTION_CATS)[number];
 
@@ -51,6 +53,14 @@ export const CAT_NAMES: Record<SectionCat, W> = {
   notice: w("صفحات خاصة", "Special pages", "עמודים מיוחדים"),
   popup: w("نوافذ منبثقة", "Popups", "חלונות קופצים"),
   campaign: w("مناسبات وحملات", "Occasions and campaigns", "אירועים וקמפיינים"),
+  boxes: w("ركّب صندوقك", "Build a box", "הרכבת קופסה"),
+  sizes: w("دليل المقاسات", "Size guides", "מדריכי מידות"),
+  finder: w("مكتشف المنتج", "Product finders", "מאתרי מוצרים"),
+  drops: w("إطلاق وقائمة انتظار", "Drops and waitlists", "השקות ורשימות המתנה"),
+  giftcards: w("بطاقات هدايا", "Gift cards", "כרטיסי מתנה"),
+  loyalty: w("نادي الزباين والدعوات", "Members' club and invites", "מועדון לקוחות והזמנות"),
+  delivery: w("التوصيل والإرجاع", "Delivery and returns", "משלוחים והחזרות"),
+  specs: w("مقارنة مواصفات", "Comparing specs", "השוואת מפרטים"),
 };
 
 export type SectionRecipe = {
