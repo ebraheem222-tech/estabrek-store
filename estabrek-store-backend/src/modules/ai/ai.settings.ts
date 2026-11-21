@@ -17,6 +17,9 @@ export const AI_FEATURES = [
   "orderFlags",
   "translate",
   "pageWriter",
+  "shopAgent",
+  "socialPosts",
+  "seoDoctor",
 ] as const;
 export type AiFeature = (typeof AI_FEATURES)[number];
 
@@ -37,6 +40,12 @@ export const AiSchema = z.object({
   translate: z.boolean().default(false),
   /** The page editor's words helper: options for a heading, a text or a button, a picture's description. */
   pageWriter: z.boolean().default(false),
+  /** The shop's chat as a real assistant: remembers the talk, finds products, knows the piece on screen, hands over to WhatsApp. */
+  shopAgent: z.boolean().default(false),
+  /** Posts for Instagram, Facebook, TikTok, WhatsApp status and X from a product or an offer (admin → منشورات السوشال). */
+  socialPosts: z.boolean().default(false),
+  /** Finds products with weak search-engine words and drafts better ones (admin → طبيب جوجل). */
+  seoDoctor: z.boolean().default(false),
   /** Most AI calls a day from shoppers (search, size, look…): a ceiling on the bill. */
   dailyLimit: z.number().int().min(10).max(20000).default(500),
 });

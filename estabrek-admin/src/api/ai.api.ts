@@ -1,7 +1,7 @@
 // AI features (off until OPENAI_API_KEY is on the server; each has its own switch).
 import { api } from "./http";
 
-export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "adminAsk", "replySuggest", "photoStudio", "orderFlags", "translate", "pageWriter"] as const;
+export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "adminAsk", "replySuggest", "photoStudio", "orderFlags", "translate", "pageWriter", "shopAgent", "socialPosts", "seoDoctor"] as const;
 export type AiFeature = (typeof AI_FEATURE_KEYS)[number];
 export type AiSettings = Record<AiFeature, boolean> & { dailyLimit: number };
 
@@ -23,7 +23,10 @@ export async function writeProduct(body: { images: string[]; title?: string; cat
 export async function translateTexts(body: { to: "ar" | "en" | "he"; from?: "ar" | "en" | "he"; context?: string; texts: Record<string, string> }) {
   return (await api.post("/admin/ai-catalog/translate", body, { timeout: 90_000 })).data as { texts: Record<string, string> };
 }
-export async function photoStudio(body: { imageUrl: string; style: "white" | "studio" | "soft"; title?: string }) {
+export const STUDIO_STYLES = ["white", "studio", "soft", "marble", "wood", "linen", "nature", "luxury", "beach", "festive", "custom"] as const;
+export type StudioStyle = (typeof STUDIO_STYLES)[number];
+/** A new photo of the piece in a scene (custom: \`scene\` is the owner's own words). */
+export async function photoStudio(body: { imageUrl: string; style: StudioStyle; scene?: string; title?: string }) {
   return (await api.post("/admin/ai-catalog/photo-studio", body, { timeout: 180_000 })).data as { url: string };
 }
 export async function ordersAiStatus() {

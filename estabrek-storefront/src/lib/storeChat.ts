@@ -9,7 +9,8 @@ import { useLanguage } from "@/components/cinematic/Language";
 
 export type ChatRole = "user" | "assistant";
 export type ChatProduct = { id: string; slug: string; title: string; imageUrl?: string | null; minPrice?: number | null };
-export type ChatMessage = { id: string; role: ChatRole; text: string; at: number; products?: ChatProduct[] };
+/** suggestions: follow-up questions to tap; handoff: a wa.me link with the question in it (the smart assistant's). */
+export type ChatMessage = { id: string; role: ChatRole; text: string; at: number; products?: ChatProduct[]; suggestions?: string[]; handoff?: string | null };
 
 const STORAGE_KEY = "estabrek_chatbot_v1";
 
@@ -54,11 +55,16 @@ export function useStoreChat(greeting: string, ar: boolean) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId: conversationId ?? undefined, sessionId, locale: lang, message: text, pageUrl: window.location.href }),
       });
-      const json = (await res.json().catch(() => ({}))) as { reply?: string; conversationId?: string; products?: ChatProduct[]; error?: string };
+      const json = (await res.json().catch(() => ({}))) as { reply?: string; conversationId?: string; products?: ChatProduct[]; suggestions?: unknown[]; handoff?: unknown; error?: string };
       const reply = String(json?.reply ?? "").trim();
       if (!reply) throw new Error(json?.error || "no reply");
       if (json.conversationId) setConversationId(json.conversationId);
-      const msg: ChatMessage = { id: uid(), role: "assistant", text: reply, at: Date.now(), products: Array.isArray(json.products) ? json.products : [] };
+      const msg: ChatMessage = {
+        id: uid(), role: "assistant", text: reply, at: Date.now(),
+        products: Array.isArray(json.products) ? json.products : [],
+        suggestions: Array.isArray(json.suggestions) ? json.suggestions.filter((x): x is string => typeof x === "string").slice(0, 3) : [],
+        handoff: typeof json.handoff === "string" && /^https:\/\/wa\.me\//.test(json.handoff) ? json.handoff : null,
+      };
       setMessages((m) => [...m, msg]);
       return msg;
     } catch {

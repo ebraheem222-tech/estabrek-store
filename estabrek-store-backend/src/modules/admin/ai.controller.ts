@@ -17,8 +17,10 @@ import { AppError } from "../../utils/httpError.js";
 import { AI_DEFAULTS, AI_FEATURES, AiSchema, NO_KEY_NEEDED, aiOf } from "../ai/ai.settings.js";
 import { aiKeyReady, aiUsage } from "../ai/ai.client.js";
 import { needFeature } from "../ai/ai.guard.js";
-import { askShop, orderFlags, pageWords, photoStudio, pictureAlt, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
+import { STUDIO_SCENE_MAX, STUDIO_STYLES, askShop, orderFlags, pageWords, photoStudio, pictureAlt, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
 import { PAGE_WORD_ACTIONS, PAGE_WORD_KINDS } from "../ai/pageWords.js";
+import { PLATFORMS, POST_TONES } from "../ai/socialPosts.js";
+import { productUrl, seoApply, seoFix, seoScan, socialPosts, weekPlan } from "../ai/marketing.service.js";
 import { CONTENT_LANGS } from "../../lib/translations.js";
 import { adminIdOf, changedKeys, getOrCreateSettings, keepRevision, triggerSettingsRevalidate } from "./settings.controller.js";
 
@@ -97,12 +99,12 @@ aiCatalogAdmin.post(
 
 aiCatalogAdmin.post(
   "/photo-studio",
-  validate({ body: z.object({ imageUrl: z.string().url().max(1000), style: z.enum(["white", "studio", "soft"]).default("white"), title: z.string().max(200).optional() }) }),
+  validate({ body: z.object({ imageUrl: z.string().url().max(1000), style: z.enum(STUDIO_STYLES).default("white"), scene: z.string().max(STUDIO_SCENE_MAX).optional(), title: z.string().max(200).optional() }) }),
   asyncHandler(async (req, res) => {
     await needFeature("photoStudio");
     // Only the shop's own photos (Cloudinary), not any address on the internet.
     if (!/^https:\/\/res\.cloudinary\.com\//.test(req.body.imageUrl) && process.env.NODE_ENV !== "test") throw new AppError(400, "BAD_IMAGE", "Only the shop's photos");
-    res.status(201).json(await photoStudio(req.body.imageUrl, req.body.style, { title: req.body.title }));
+    res.status(201).json(await photoStudio(req.body.imageUrl, req.body.style, { title: req.body.title, scene: req.body.scene }));
   }),
 );
 
@@ -191,5 +193,80 @@ aiAskAdmin.post(
   asyncHandler(async (req, res) => {
     await needFeature("adminAsk");
     res.json(await askShop(req.body.question));
+  }),
+);
+
+/**
+ * Selling outside the shop (catalog area): social posts and a week's plan, and the search-engine doctor.
+ *   GET  /v1/admin/ai-marketing/status        what may be offered
+ *   POST /v1/admin/ai-marketing/social        posts for pieces or an offer
+ *   POST /v1/admin/ai-marketing/week          seven days of posts
+ *   GET  /v1/admin/ai-marketing/seo           every product's score and weak points (plain rules, no model)
+ *   POST /v1/admin/ai-marketing/seo/:id/draft better words, drafted (nothing saved)
+ *   POST /v1/admin/ai-marketing/seo/:id/apply saves what the owner kept (a revision first)
+ */
+export const aiMarketingAdmin = Router();
+
+const PostOptions = {
+  platforms: z.array(z.enum(PLATFORMS)).min(1).max(PLATFORMS.length).transform((l) => [...new Set(l)]),
+  tone: z.enum(POST_TONES).default("friendly"),
+  lang: z.enum(CONTENT_LANGS).optional(),
+  emojis: z.boolean().optional(),
+};
+
+aiMarketingAdmin.get(
+  "/status",
+  asyncHandler(async (_req, res) => {
+    const ai = aiOf((await getOrCreateSettings()).header);
+    const key = aiKeyReady();
+    res.json({ socialPosts: ai.socialPosts && key, seoDoctor: ai.seoDoctor && key, shopUrl: productUrl("x") ? productUrl("x")!.replace(/\/p\/x$/, "") : null });
+  }),
+);
+
+aiMarketingAdmin.post(
+  "/social",
+  validate({ body: z.object({ ...PostOptions, productIds: z.array(z.string().min(1).max(64)).max(3).optional(), offer: z.string().trim().max(300).optional() }) }),
+  asyncHandler(async (req, res) => {
+    await needFeature("socialPosts");
+    res.json(await socialPosts(req.body));
+  }),
+);
+
+aiMarketingAdmin.post(
+  "/week",
+  validate({ body: z.object(PostOptions) }),
+  asyncHandler(async (req, res) => {
+    await needFeature("socialPosts");
+    res.json(await weekPlan(req.body));
+  }),
+);
+
+aiMarketingAdmin.get(
+  "/seo",
+  asyncHandler(async (_req, res) => {
+    res.json(await seoScan());
+  }),
+);
+
+aiMarketingAdmin.post(
+  "/seo/:id/draft",
+  asyncHandler(async (req, res) => {
+    // The pictures' descriptions need no model: with the switch off, only those.
+    const ai = aiOf((await getOrCreateSettings()).header);
+    res.json(await seoFix(String(req.params.id), { model: ai.seoDoctor && aiKeyReady() }));
+  }),
+);
+
+aiMarketingAdmin.post(
+  "/seo/:id/apply",
+  validate({
+    body: z.object({
+      seoTitle: z.string().max(120).nullable().optional(),
+      seoDescription: z.string().max(320).nullable().optional(),
+      alts: z.array(z.object({ id: z.string().min(1).max(64), alt: z.string().max(200) })).max(60).optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    res.json(await seoApply(String(req.params.id), req.body, req.user?.sub));
   }),
 );

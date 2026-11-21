@@ -362,6 +362,7 @@ export const ENDPOINTS = {
         entryById: (id: string) => `/admin/chatbot/entries/${id}`,
         conversations: "/admin/chatbot/conversations",
         conversationById: (id: string) => `/admin/chatbot/conversations/${id}`,
+        misses: "/admin/chatbot/misses",
       },
       
     },

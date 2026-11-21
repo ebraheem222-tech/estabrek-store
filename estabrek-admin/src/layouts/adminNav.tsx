@@ -257,6 +257,8 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/razan", label: tr("رزان (دليلة المتجر)", "Rose (store guide)"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
   { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"] },
   { to: "/admin/ai", label: tr("الذكاء الاصطناعي ✨", "AI ✨"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
+  { to: "/admin/ai/social", label: say("منشورات السوشال ✨|Social posts ✨|פוסטים לרשתות ✨"), icon: Icons.pages, requirePermissions: ["catalog:read"] },
+  { to: "/admin/ai/seo", label: say("طبيب جوجل (SEO)|Search doctor (SEO)|רופא החיפוש (SEO)"), icon: Icons.forecast, requirePermissions: ["catalog:read"] },
   { to: "/admin/settings", label: tr("الإعدادات", "Settings"), icon: Icons.settings, requirePermissions: ["settings:read"] },
   { to: "/admin/visual-controls", label: tr("بطاقات المنتجات والتفاعلات", "Cards and interactions"), icon: Icons.toggles, requirePermissions: ["settings:read"] },
   { to: "/setup", label: tr("إعداد المتجر", "Store setup"), icon: Icons.sun, requirePermissions: ["settings:write"] },

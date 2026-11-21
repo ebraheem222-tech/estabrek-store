@@ -24,7 +24,7 @@ const STOP_WORDS = new Set([
   "the", "and", "or", "to", "a", "an", "of", "in", "on", "for", "with", "is", "are",
 ]);
 
-function tokenize(input: string): string[] {
+export function tokenize(input: string): string[] {
   const s = String(input ?? "")
     .toLowerCase()
     .replace(/\u0640/g, "") // tatweel
@@ -42,7 +42,7 @@ function tokenize(input: string): string[] {
     .slice(0, 50);
 }
 
-function scoreEntry(tokens: string[], entry: { title: string; answer: string; tags: string[]; priority: number }): number {
+export function scoreEntry(tokens: string[], entry: { title: string; answer: string; tags: string[]; priority: number }): number {
   if (!tokens.length) return 0;
 
   const title = entry.title.toLowerCase();
@@ -123,13 +123,15 @@ function fallbackText(locale: Locale, contact: { siteName: string; phone: string
 export async function generateChatbotReply(opts: {
   locale: Locale;
   message: string;
+  /** Only the owner's answers, no model (the smart assistant is on but resting for today). */
+  noModel?: boolean;
 }): Promise<ChatbotReply> {
   const locale = opts.locale ?? "ar";
   const msg = String(opts.message ?? "").trim();
   const tokens = tokenize(msg);
 
   // Product recommendation flow (uses AI ranking if available, always has fallback)
-  if (isRecommendationIntent(msg)) {
+  if (!opts.noModel && isRecommendationIntent(msg)) {
     const rec = await recommendProducts({ locale, message: msg, limit: 6 });
     const products = rec.products ?? [];
 
@@ -176,6 +178,11 @@ export async function generateChatbotReply(opts: {
   // If we have a clear KB hit, answer directly without AI.
   if (picked.length && (ranked[0]?.s ?? 0) >= 3) {
     return { answer: picked[0].answer, mode: "kb", sources };
+  }
+
+  if (opts.noModel) {
+    const contact = await getSupportContact();
+    return { answer: picked.length ? picked[0].answer : fallbackText(locale, contact), mode: picked.length ? "kb" : "fallback", sources };
   }
 
   // Try OpenAI (RAG-style) when configured.

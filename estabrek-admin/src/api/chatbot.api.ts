@@ -39,6 +39,14 @@ export type CreateEntryBody = {
   priority?: number;
 };
 
+/** A question the assistant couldn't answer from the store's facts (covered: an entry answers it now). */
+export type ChatbotMiss = { question: string; count: number; lastAt: string; conversationId: string; pageUrl: string | null; covered: boolean };
+
+export async function listMisses(days = 30) {
+  const res = await api.get(ENDPOINTS.admin.chatbot.misses, { params: { days } });
+  return res.data as { items: ChatbotMiss[]; days: number };
+}
+
 export async function listEntries(params?: { locale?: Locale; q?: string; enabled?: "0" | "1"; take?: number }) {
   const res = await api.get(ENDPOINTS.admin.chatbot.entries, { params });
   return res.data as { items: ChatbotEntry[] };
