@@ -23,6 +23,10 @@ type Msg = {
   text: string;
   at: number;
   products?: RecommendedProduct[];
+  /** Follow-up questions to tap (the smart assistant's). */
+  suggestions?: string[];
+  /** wa.me link with the question in it, when a person from the shop should take over. */
+  handoff?: string | null;
 };
 
 type ApiResponse = {
@@ -31,7 +35,32 @@ type ApiResponse = {
   reply?: string;
   error?: string;
   products?: RecommendedProduct[];
+  suggestions?: string[];
+  handoff?: string | null;
 };
+
+/** The chat's own words in the page's language. */
+const say = (lang: PersonaLang, ar: string, en: string, he: string) => (lang === "en" ? en : lang === "he" ? he : ar);
+const SPEECH_LANG: Record<PersonaLang, string> = { ar: "ar-SA", en: "en-US", he: "he-IL" };
+const VOICE_KEY = "estabrek_chat_voice";
+
+/** The browser's own speech recognition (Chrome, Edge, Safari), or null. */
+type Recognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+function recognitionCtor(): (new () => Recognition) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
 
 const STORAGE_KEY = "estabrek_chatbot_v1";
 const POSITION_KEY = "estabrek_chatbot_pos_v1";
@@ -99,6 +128,83 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
   const dragOffset = useRef({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  // Voice: talk instead of typing, and hear the replies (the browser's own speech, nothing else is sent).
+  const [canListen, setCanListen] = useState(false);
+  const [canSpeak, setCanSpeak] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [speakOn, setSpeakOn] = useState(false);
+  const recRef = useRef<Recognition | null>(null);
+
+  useEffect(() => {
+    setCanListen(Boolean(recognitionCtor()));
+    setCanSpeak(typeof window !== "undefined" && "speechSynthesis" in window);
+    try {
+      setSpeakOn(window.localStorage.getItem(VOICE_KEY) === "1");
+    } catch {
+      // ignore
+    }
+    return () => {
+      recRef.current?.abort();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  function speak(words: string) {
+    if (!speakOn || !canSpeak) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(words.replace(/https?:\/\/\S+/g, ""));
+      u.lang = SPEECH_LANG[lang];
+      window.speechSynthesis.speak(u);
+    } catch {
+      // ignore
+    }
+  }
+
+  function toggleSpeak() {
+    const next = !speakOn;
+    setSpeakOn(next);
+    if (!next && canSpeak) window.speechSynthesis.cancel();
+    try {
+      window.localStorage.setItem(VOICE_KEY, next ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }
+
+  function toggleListen() {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const Ctor = recognitionCtor();
+    if (!Ctor || loading) return;
+    const rec = new Ctor();
+    rec.lang = SPEECH_LANG[lang];
+    rec.interimResults = true;
+    rec.continuous = false;
+    let heard = "";
+    rec.onresult = (e) => {
+      heard = Array.from(e.results)
+        .map((r) => r[0]?.transcript ?? "")
+        .join(" ")
+        .trim();
+      setText(heard);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => {
+      setListening(false);
+      recRef.current = null;
+      if (heard) void send(heard);
+    };
+    recRef.current = rec;
+    setListening(true);
+    try {
+      rec.start();
+    } catch {
+      setListening(false);
+    }
+  }
 
   useEffect(() => {
     const saved = safeParse<{ sessionId?: string; conversationId?: string | null; messages?: Msg[] }>(
@@ -242,8 +348,8 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
     setDragging(true);
   };
 
-  async function send() {
-    const t = text.trim();
+  async function send(said?: string) {
+    const t = (said ?? text).trim();
     if (!t || loading) return;
 
     setError(null);
@@ -260,9 +366,10 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
         body: JSON.stringify({
           conversationId: conversationId ?? undefined,
           sessionId,
-          locale: "ar",
+          locale: lang,
           message: t,
           pageUrl: typeof window !== "undefined" ? window.location.href : undefined,
+          persona: persona ? { id: persona.id, name: persona.name[lang], role: persona.role[lang], tone: persona.tone } : undefined,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as ApiResponse;
@@ -271,7 +378,10 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
 
       if (json?.conversationId) setConversationId(json.conversationId);
       const products = Array.isArray(json?.products) ? json.products : [];
-      setMessages((m) => [...m, { id: uid(), role: "assistant", text: replyText, at: Date.now(), products }]);
+      const suggestions = Array.isArray(json?.suggestions) ? json.suggestions.filter((x) => typeof x === "string").slice(0, 3) : [];
+      const handoff = typeof json?.handoff === "string" && /^https:\/\/wa\.me\//.test(json.handoff) ? json.handoff : null;
+      setMessages((m) => [...m, { id: uid(), role: "assistant", text: replyText, at: Date.now(), products, suggestions, handoff }]);
+      speak(replyText);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "حدث خطأ");
       setMessages((m) => [
@@ -361,6 +471,22 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
             </div>
             )}
             <div className="flex items-center gap-1">
+              {canSpeak ? (
+                <button
+                  type="button"
+                  onClick={toggleSpeak}
+                  className={"inline-flex h-8 w-8 items-center justify-center rounded-xl hover:bg-black/5 " + (speakOn ? "text-black" : "text-black/40")}
+                  aria-pressed={speakOn}
+                  aria-label={say(lang, "قراءة الردود بصوت", "Read replies aloud", "הקראת התשובות")}
+                  title={say(lang, "قراءة الردود بصوت", "Read replies aloud", "הקראת התשובות")}
+                  data-testid="assistant-speak"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5L6 9H3v6h3l5 4V5z" />
+                    {speakOn ? <path strokeLinecap="round" d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13" /> : <path strokeLinecap="round" d="M16 9l5 6M21 9l-5 6" />}
+                  </svg>
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={clearChat}
@@ -429,6 +555,36 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
                       ))}
                     </div>
                   ) : null}
+
+                  {m.role === "assistant" && m.handoff ? (
+                    <a
+                      href={m.handoff}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-95"
+                      data-testid="assistant-handoff"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 001.8-1.2 2.2 2.2 0 00.1-1.3c0-.1-.2-.2-.4-.3z" />
+                      </svg>
+                      {say(lang, "كمّل مع فريق المتجر على واتساب", "Continue with the shop on WhatsApp", "להמשיך עם החנות בוואטסאפ")}
+                    </a>
+                  ) : null}
+
+                  {m.role === "assistant" && m.suggestions?.length && m.id === messages[messages.length - 1]?.id && !loading ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5" data-testid="assistant-suggestions">
+                      {m.suggestions.map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          onClick={() => void send(q)}
+                          className="rounded-full border border-black/15 bg-white px-2.5 py-1 text-[12px] text-black/80 hover:border-black/30"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -457,6 +613,26 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
                   }
                 }}
               />
+              {canListen ? (
+                <button
+                  type="button"
+                  onClick={toggleListen}
+                  disabled={loading}
+                  className={
+                    "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition " +
+                    (listening ? "animate-pulse border-red-400 bg-red-50 text-red-600" : "border-black/10 bg-white text-black/70 hover:bg-black/5")
+                  }
+                  aria-pressed={listening}
+                  aria-label={listening ? say(lang, "وقّف التسجيل", "Stop", "עצירה") : say(lang, "احكي بدل الكتابة", "Speak instead of typing", "לדבר במקום להקליד")}
+                  title={listening ? say(lang, "وقّف التسجيل", "Stop", "עצירה") : say(lang, "احكي بدل الكتابة", "Speak instead of typing", "לדבר במקום להקליד")}
+                  data-testid="assistant-mic"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                    <rect x="9" y="3" width="6" height="11" rx="3" />
+                    <path strokeLinecap="round" d="M5 11a7 7 0 0014 0M12 18v3" />
+                  </svg>
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void send()}

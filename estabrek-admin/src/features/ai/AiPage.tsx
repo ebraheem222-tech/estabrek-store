@@ -48,7 +48,8 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
   const groups: Array<{ title: string; keys: AiFeature[] }> = [
     { title: "للمنتجات", keys: ["productWriter", "photoStudio", "translate"] },
     { title: "لصفحات المتجر", keys: ["pageWriter"] },
-    { title: "للزبونات بالمتجر", keys: ["smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary"] },
+    { title: "للزبونات بالمتجر", keys: ["shopAgent", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary"] },
+    { title: "للتسويق", keys: ["socialPosts", "seoDoctor"] },
     { title: "إلك", keys: ["adminAsk", "replySuggest", "orderFlags"] },
   ];
   return (
@@ -92,7 +93,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
 
       <section className={box}>
         <h2 className="font-semibold">سقف يومي للزبونات</h2>
-        <p className="mt-1 text-xs text-white/55">أكثر عدد طلبات ذكاء اصطناعي من الزبونات باليوم (البحث، المقاس، اللبسة، التقييمات). لما يوصل، الميزات بتسكت لبكرا — عشان الفاتورة ما تكبر فجأة.</p>
+        <p className="mt-1 text-xs text-white/55">أكثر عدد طلبات ذكاء اصطناعي من الزبونات باليوم (المساعد، البحث، المقاس، اللبسة، التقييمات). لما يوصل، الميزات بتسكت لبكرا — عشان الفاتورة ما تكبر فجأة.</p>
         <input type="number" dir="ltr" min={10} max={20000} className={`${field} mt-2 w-32`} value={s.dailyLimit} disabled={!canWrite} onChange={(e) => setS((x) => ({ ...x, dailyLimit: Math.max(10, Math.min(20000, Math.round(Number(e.target.value) || 10))) }))} aria-label="سقف يومي" />
       </section>
 

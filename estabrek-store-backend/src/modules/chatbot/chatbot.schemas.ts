@@ -35,4 +35,13 @@ export const ChatbotMessageBody = z.object({
   locale: LocaleZ.optional(),
   message: z.string().trim().min(1).max(1200),
   pageUrl: z.string().trim().max(2048).optional(),
+  /** The personality the chat shows (the shop's lib/personas.ts); used only when it is the one the owner picked. */
+  persona: z
+    .object({
+      id: z.string().trim().regex(/^[a-z0-9-]{2,30}$/),
+      name: z.string().trim().min(1).max(30),
+      role: z.string().trim().max(40).default(""),
+      tone: z.enum(["warm", "playful", "calm", "expert", "luxury", "energetic"]).default("warm"),
+    })
+    .optional(),
 });

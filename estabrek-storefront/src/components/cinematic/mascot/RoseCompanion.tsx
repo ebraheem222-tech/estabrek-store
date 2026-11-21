@@ -369,9 +369,17 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
                       ))}
                     </div>
                   ) : null}
+                  {"handoff" in m && m.handoff ? (
+                    <a className="rose-chat-cta" href={m.handoff} target="_blank" rel="noopener noreferrer" data-testid="assistant-handoff"><WhatsAppGlyph /> {tr(lang, "كمّلي مع فريق المتجر على واتساب", "Continue with the shop on WhatsApp")}</a>
+                  ) : null}
                 </div>
               </div>
             ))}
+            {!offline && !chatState.loading && chatState.messages.at(-1)?.suggestions?.length ? (
+              <div className="rose-chat-quick" data-testid="assistant-suggestions">
+                {chatState.messages.at(-1)!.suggestions!.map((q) => <button key={q} type="button" onClick={() => void ask(q)}>{q}</button>)}
+              </div>
+            ) : null}
             {chatState.loading && (
               <div className="rose-chat-row" data-role="assistant">
                 <RoseFace />

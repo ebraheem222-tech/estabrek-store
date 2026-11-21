@@ -72,9 +72,12 @@ async function countUse(feature: AiFeature) {
   });
 }
 
+/** The features shoppers start (the daily ceiling covers them together). */
+export const PUBLIC_FEATURES: readonly AiFeature[] = ["smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "shopAgent"];
+
 /** Shoppers' AI calls today (all public features together). */
 export async function publicCallsToday() {
-  const rows = await prisma.aiUsage.findMany({ where: { day: today(), feature: { in: ["smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary"] } } });
+  const rows = await prisma.aiUsage.findMany({ where: { day: today(), feature: { in: [...PUBLIC_FEATURES] } } });
   return rows.reduce((s, r) => s + r.count, 0);
 }
 

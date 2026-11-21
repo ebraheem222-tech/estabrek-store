@@ -13,6 +13,7 @@ import { newKey } from "./composerModel";
 import { Section, Swatch } from "./ui";
 import { fieldCls } from "./styles";
 import { tr } from "@/lib/words";
+import { say } from "../../../studio/say";
 import { CutoutEditor } from "../../../components/media/CutoutEditor";
 import { CutoutBatch } from "../../../components/media/CutoutBatch";
 import { placeCutoutPhoto } from "../../../components/media/cutoutPlace";
@@ -297,6 +298,20 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
 }
 
 /** "صورة", "صورتين", "3 صور", "12 صورة". */
+/** The ready scenes of the photo studio (AI): a new photo of the piece in one, the original stays. */
+const studioScenes = (): ReadonlyArray<readonly [Exclude<AiAPI.StudioStyle, "custom">, string]> => [
+  ["white", tr("خلفية بيضا", "White background")],
+  ["studio", tr("استوديو فاتح", "Light studio")],
+  ["soft", tr("زهري ناعم", "Soft pink")],
+  ["marble", say("رخام أبيض|White marble|שיש לבן")],
+  ["wood", say("طاولة خشب|Wooden table|שולחן עץ")],
+  ["linen", say("قماش كتان|Linen cloth|בד פשתן")],
+  ["nature", say("طبيعة وورق شجر|Nature and leaves|טבע ועלים")],
+  ["luxury", say("فخم غامق|Dark luxury|יוקרה כהה")],
+  ["beach", say("رمل وبحر|Sand and sea|חול וים")],
+  ["festive", say("أجواء عيد|Festive lights|אווירת חג")],
+];
+
 const photosText = (n: number) => (n === 1 ? tr("صورة", "1 photo") : n === 2 ? tr("صورتين", "2 photos") : tr(n <= 10 ? `${n} صور` : `${n} صورة`, "{0} photos", [n]));
 
 // Photo buttons: finger-sized on phones, small on a computer.
@@ -318,14 +333,16 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
 }) {
   const [menu, setMenu] = useState(false);
   const [making, setMaking] = useState(false);
+  const [scene, setScene] = useState("");
   if (!photo) return null;
   const busy = photo.status === "queued" || photo.status === "uploading";
-  const make = async (style: "white" | "studio" | "soft") => {
+  const make = async (style: AiAPI.StudioStyle) => {
     if (!photo.url) return;
+    if (style === "custom" && scene.trim().length < 3) return;
     setMenu(false);
     setMaking(true);
     try {
-      const out = await AiAPI.photoStudio({ imageUrl: photo.url, style, title });
+      const out = await AiAPI.photoStudio({ imageUrl: photo.url, style, title, scene: style === "custom" ? scene.trim() : undefined });
       onStudio?.(out.url);
       toast.success(tr("انضافت صورة جديدة بخلفية نظيفة — الأصلية ضلّت", "A new photo with a clean background was added — the original stays"));
     } catch (e) {
@@ -349,10 +366,23 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
         </div>
       )}
       {menu && (
-        <div className="absolute inset-x-1 top-1 z-10 grid gap-1 rounded-lg bg-black/85 p-1.5 text-[11px]" role="menu" aria-label={tr("خلفية جديدة", "New background")}>
-          {([["white", tr("خلفية بيضا", "White background")], ["studio", tr("استوديو فاتح", "Light studio")], ["soft", tr("زهري ناعم", "Soft pink")]] as const).map(([k, l]) => (
-            <button key={k} type="button" role="menuitem" onClick={() => void make(k)} className="min-h-8 rounded-md bg-white/10 px-2 py-1 text-white hover:bg-white/20">{l}</button>
-          ))}
+        <div className="absolute inset-1 z-10 flex flex-col gap-1 overflow-y-auto rounded-lg bg-black/85 p-1.5 text-[11px]" role="menu" aria-label={tr("خلفية جديدة", "New background")} data-testid="studio-scenes">
+          <div className="grid grid-cols-2 gap-1">
+            {studioScenes().map(([k, l]) => (
+              <button key={k} type="button" role="menuitem" onClick={() => void make(k)} className="min-h-8 rounded-md bg-white/10 px-1.5 py-1 text-white hover:bg-white/20">{l}</button>
+            ))}
+          </div>
+          <form className="flex gap-1" onSubmit={(e) => { e.preventDefault(); void make("custom"); }}>
+            <input
+              value={scene}
+              maxLength={200}
+              onChange={(e) => setScene(e.target.value)}
+              placeholder={say("مشهد من عندك…|Your own scene…|סצנה משלך…")}
+              aria-label={say("مشهد من عندك|Your own scene|סצנה משלך")}
+              className="h-8 min-w-0 flex-1 rounded-md border-0 bg-white/10 px-1.5 text-white placeholder:text-white/45 focus:outline-none"
+            />
+            <button type="submit" disabled={scene.trim().length < 3} className="min-h-8 rounded-md bg-accent-500 px-2 text-white disabled:opacity-40">{say("صوّر|Make|צור")}</button>
+          </form>
           <button type="button" onClick={() => setMenu(false)} className="min-h-8 rounded-md px-2 py-1 text-white/60 hover:text-white">{tr("إلغاء", "Cancel")}</button>
         </div>
       )}

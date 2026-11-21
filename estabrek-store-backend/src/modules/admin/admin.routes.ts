@@ -66,7 +66,7 @@ import myFeatures from "./myFeatures.controller.js";
 import connections from "./connections.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
-import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiPagesAdmin, aiSettingsAdmin } from "./ai.controller.js";
+import { aiAskAdmin, aiCatalogAdmin, aiMarketingAdmin, aiOrdersAdmin, aiPagesAdmin, aiSettingsAdmin } from "./ai.controller.js";
 import { kickStockAlerts } from "../stockAlerts/stockAlerts.service.js";
 import { kickDeliveryEmails } from "../fulfillment/fulfillment.service.js";
 
@@ -167,6 +167,7 @@ r.use("/quiz", areaAccess({ read: "settings:read", write: "settings:write" }), q
 r.use("/ai-catalog", areaAccess({ read: "catalog:read", write: "catalog:write" }), aiCatalogAdmin);
 r.use("/ai-orders", areaAccess({ read: "orders:read", write: "orders:write" }), aiOrdersAdmin);
 r.use("/ai-pages", areaAccess({ read: "pages:read", write: "pages:write" }), aiPagesAdmin);
+r.use("/ai-marketing", areaAccess({ read: "catalog:read", write: "catalog:write" }), aiMarketingAdmin);
 r.use("/ai-ask", areaAccess({ read: "dashboard:read", write: "dashboard:read" }), aiAskAdmin);
 r.use("/ai", areaAccess({ read: "settings:read", write: "settings:write" }), aiSettingsAdmin);
 r.use("/ugc", areaAccess({ read: "ugc:read", write: "ugc:write" }), ugc);

@@ -9,6 +9,7 @@ import {
   ChatbotEntryCreateBody,
   ChatbotEntryUpdateBody,
 } from "../chatbot/chatbot.schemas.js";
+import { scoreEntry, tokenize } from "../chatbot/chatbot.service.js";
 
 const r = Router();
 
@@ -138,5 +139,42 @@ r.patch("/conversations/:id", validate({ body: ChatbotConversationUpdateBody }),
   res.json(updated);
 }));
 
-export default r;
+// GET /v1/admin/chatbot/misses?days=30
+// What shoppers asked that the assistant couldn't answer from the shop's facts (newest first, the same
+// question once with how many times), so the owner can write the answer once (a knowledge-base entry).
+r.get("/misses", asyncHandler(async (req, res) => {
+  const days = Math.min(90, Math.max(1, Math.round(Number((req.query as any)?.days ?? 30)) || 30));
+  const since = new Date(Date.now() - days * 864e5);
+  const convos = await prisma.chatbotConversation.findMany({
+    where: { lastAt: { gte: since } },
+    orderBy: { lastAt: "desc" },
+    take: 600,
+    select: { id: true, messages: true, pageUrl: true },
+  });
+  const entries = await prisma.chatbotEntry.findMany({ where: { isEnabled: true }, select: { title: true, answer: true, tags: true, priority: true }, take: 500 });
+  const groups = new Map<string, { question: string; count: number; lastAt: string; conversationId: string; pageUrl: string | null; covered: boolean }>();
+  for (const c of convos) {
+    const list = Array.isArray(c.messages) ? (c.messages as Array<{ role?: string; content?: string; at?: string; miss?: boolean }>) : [];
+    for (let i = 1; i < list.length; i++) {
+      const a = list[i], q = list[i - 1];
+      if (a?.role !== "assistant" || a.miss !== true || q?.role !== "user" || typeof q.content !== "string") continue;
+      const at = String(q.at ?? "");
+      if (at && new Date(at) < since) continue;
+      const tokens = tokenize(q.content);
+      const key = tokens.slice().sort().join(" ") || q.content.trim().toLowerCase();
+      const cur = groups.get(key);
+      if (cur) {
+        cur.count++;
+        if (at > cur.lastAt) Object.assign(cur, { lastAt: at, question: q.content.trim().slice(0, 300), conversationId: c.id, pageUrl: c.pageUrl ?? null });
+        continue;
+      }
+      // Answered since: an entry now matches it clearly.
+      const covered = entries.some((e) => scoreEntry(tokens, e) >= 3);
+      groups.set(key, { question: q.content.trim().slice(0, 300), count: 1, lastAt: at, conversationId: c.id, pageUrl: c.pageUrl ?? null, covered });
+    }
+  }
+  const items = [...groups.values()].sort((a, b) => Number(a.covered) - Number(b.covered) || b.lastAt.localeCompare(a.lastAt)).slice(0, 60);
+  res.json({ items, days });
+}));
 
+export default r;

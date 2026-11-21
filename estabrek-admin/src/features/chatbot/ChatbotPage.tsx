@@ -12,8 +12,10 @@ import type { ChatbotConversation, ChatbotEntry, Locale } from "../../api/chatbo
 import { useChatbotActions, useChatbotConversation, useChatbotConversations, useChatbotEntries } from "../../hooks/useChatbot";
 import { formatDateTime, truncate } from "../../lib/format";
 import { tr } from "@/lib/words";
+import { ChatbotMisses } from "./ChatbotMisses";
+import { say } from "../../studio/say";
 
-type Tab = "kb" | "logs";
+type Tab = "kb" | "logs" | "misses";
 
 const LOCALE_OPTIONS = [
   { value: "ar", label: "العربية" },
@@ -60,10 +62,10 @@ export default function ChatbotPage() {
   const [entryEnabled, setEntryEnabled] = useState(true);
   const [entryPriority, setEntryPriority] = useState<number>(0);
 
-  const openCreateEntry = () => {
+  const openCreateEntry = (question?: string) => {
     setEditingEntry(null);
     setEntryLocale(kbLocale);
-    setEntryTitle("");
+    setEntryTitle(question ?? "");
     setEntryAnswer("");
     setEntryTags("");
     setEntryEnabled(true);
@@ -127,11 +129,16 @@ export default function ChatbotPage() {
             <Button variant={tab === "logs" ? "primary" : "secondary"} onClick={() => setTab("logs")}>
               {tr("المحادثات", "Chats")}
             </Button>
+            <Button variant={tab === "misses" ? "primary" : "secondary"} onClick={() => setTab("misses")} data-testid="chatbot-tab-misses">
+              {say("ما عرف يجاوب|Couldn't answer|לא ידע לענות")}
+            </Button>
           </div>
         }
       />
 
-      {tab === "kb" ? (
+      {tab === "misses" ? (
+        <ChatbotMisses onAnswer={(q) => openCreateEntry(q)} onOpenChat={setOpenConversationId} />
+      ) : tab === "kb" ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="grid gap-3 sm:grid-cols-3">
@@ -154,7 +161,7 @@ export default function ChatbotPage() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="accent" onClick={openCreateEntry}>
+              <Button variant="accent" onClick={() => openCreateEntry()}>
                 {tr("إضافة سؤال/إجابة", "Add a question/answer")}
               </Button>
             </div>

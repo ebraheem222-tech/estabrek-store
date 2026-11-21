@@ -21,7 +21,7 @@ const money = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100;
 /** The store the prompts speak for: its own name, what it sells and who it talks to (admin → هوية المتجر). */
 type Shop = { brief: string; name: string; currency: string; industry: Industry; audience: Audience };
 let shopMemo: { at: number; value: Promise<Shop> } | null = null;
-async function shop(): Promise<Shop> {
+export async function shop(): Promise<Shop> {
   if (shopMemo && Date.now() - shopMemo.at < 60_000) return shopMemo.value;
   const value = prisma.siteSettings
     .findFirst({ select: { siteName: true, header: true, currencyCode: true } })
@@ -34,7 +34,7 @@ async function shop(): Promise<Shop> {
   return value;
 }
 const dressed = (i: Industry) => i === "fashion" || i === "shoes" || i === "jewelry";
-const addressing = (a: Audience) => (a === "women" ? ", addressing her in the feminine" : a === "men" ? ", addressing him in the masculine" : "");
+export const addressing = (a: Audience) => (a === "women" ? ", addressing her in the feminine" : a === "men" ? ", addressing him in the masculine" : "");
 
 /* ---------------- 1. Product writer (from photos) ---------------- */
 
@@ -315,12 +315,30 @@ JSON: {"replies": [{"label": 2-3 word Arabic label, "text": the message (max 400
 
 /* ---------------- 8. Photo studio (clean background) ---------------- */
 
-export type StudioStyle = "white" | "studio" | "soft";
-const STUDIO_PROMPT: Record<StudioStyle, string> = {
-  white: "Place the garment on a pure white seamless background with a soft natural shadow.",
-  studio: "Place the garment in a bright, minimal photo studio with a light warm-grey backdrop and soft daylight.",
-  soft: "Place the garment on a soft blush-pink backdrop with gentle diffused light, elegant and calm.",
+/** The scenes a product's photo can be put in (custom: the owner's own words, see STUDIO_SCENE_MAX). */
+export const STUDIO_STYLES = ["white", "studio", "soft", "marble", "wood", "linen", "nature", "luxury", "beach", "festive", "custom"] as const;
+export type StudioStyle = (typeof STUDIO_STYLES)[number];
+export const STUDIO_SCENE_MAX = 200;
+const STUDIO_PROMPT: Record<Exclude<StudioStyle, "custom">, string> = {
+  white: "Place the product on a pure white seamless background with a soft natural shadow.",
+  studio: "Place the product in a bright, minimal photo studio with a light warm-grey backdrop and soft daylight.",
+  soft: "Place the product on a soft blush-pink backdrop with gentle diffused light, elegant and calm.",
+  marble: "Place the product on a white marble surface with soft daylight from a window and a gentle shadow.",
+  wood: "Place the product on a warm natural wooden table with soft daylight and a softly blurred, calm background.",
+  linen: "Place the product on soft beige linen fabric with gentle folds and diffused light.",
+  nature: "Place the product outdoors among fresh green leaves in gentle morning sunlight, with a softly blurred background.",
+  luxury: "Place the product on a deep, dark elegant backdrop with a soft golden rim light, like a luxury catalogue.",
+  beach: "Place the product on light sand by the sea in warm golden-hour light, with a softly blurred background.",
+  festive: "Place the product in a tasteful festive scene with warm fairy lights and soft bokeh, a holiday feeling, calm and elegant.",
 };
+
+/** The scene in words: one of the ready ones, or the owner's own (cleaned; never people, text or logos). */
+export function studioScene(style: StudioStyle, scene?: string | null): string {
+  if (style !== "custom") return STUDIO_PROMPT[style];
+  const own = clip(scene, STUDIO_SCENE_MAX).replace(/[<>{}]/g, "");
+  if (own.length < 3) throw new AppError(400, "NO_SCENE", "Describe the scene");
+  return `Place the product in this scene: ${own}. Soft, natural light and a realistic shadow.`;
+}
 
 let studioUpload = async (png: Buffer, name: string) => {
   const up = await uploadImageToCloudinary({ filePath: `data:image/png;base64,${png.toString("base64")}`, folder: "estabrek-studio", displayName: name, tags: ["ai-studio"] });
@@ -340,7 +358,8 @@ export function setStudioFetch(fn: typeof studioFetch) {
  * product page, which adds it next to the original (never replaces it) and
  * saves it with the product.
  */
-export async function photoStudio(imageUrl: string, style: StudioStyle, opts: { cloudinaryReady?: boolean; title?: string } = {}) {
+export async function photoStudio(imageUrl: string, style: StudioStyle, opts: { cloudinaryReady?: boolean; title?: string; scene?: string | null } = {}) {
+  const scene = studioScene(style, opts.scene);
   if (!(opts.cloudinaryReady ?? isCloudinaryEnabled())) throw new AppError(409, "CLOUDINARY_NOT_CONFIGURED", "Cloudinary is needed to keep the new photo");
   let original: Buffer;
   try {
@@ -354,7 +373,7 @@ export async function photoStudio(imageUrl: string, style: StudioStyle, opts: { 
   const edited = await aiEditImage(
     "photoStudio",
     png,
-    `${STUDIO_PROMPT[style]} Keep the garment exactly as it is: same shape, colour, fabric, folds, details and any person wearing it; change only the background and lighting. No text, no logos.`,
+    `${scene} Keep the product exactly as it is: same shape, colour, material, folds, details and any person wearing or holding it; change only the background and lighting. Add no people, no text and no logos.`,
   );
   return { url: await studioUpload(edited, `${clip(opts.title, 60) || "piece"} — studio`) };
 }
