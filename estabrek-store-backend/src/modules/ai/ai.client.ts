@@ -12,17 +12,25 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
-import { getDefaultOpenAIModel, getOpenAIVisionModel, openaiResponsesJson } from "../../lib/openai.js";
+import { getDefaultOpenAIModel, getOpenAIEmbeddingModel, getOpenAIVisionModel, openaiEmbedText, openaiResponsesJson } from "../../lib/openai.js";
 import { AppError } from "../../utils/httpError.js";
-import { NO_KEY_NEEDED, type AiFeature } from "./ai.settings.js";
-import { aiServerOf, ownJson, ownServerSet, type AiServer } from "./ownModel.js";
+import { NO_KEY_NEEDED, aiOf, type AiFeature } from "./ai.settings.js";
+import { aiServerOf, ownEmbed, ownEmbedName, ownEmbedSet, ownJson, ownPicturesModel, ownServerSet, type AiServer } from "./ownModel.js";
 
 export type AiPrompt = { system: string; user: string; images?: string[]; maxTokens?: number };
 export type AiProvider = {
   json: <T>(p: AiPrompt) => Promise<{ ok: true; data: T } | { ok: false; error: string }>;
   /** Edits a photo (e.g. a clean background); returns PNG bytes. */
   editImage: (image: Buffer, prompt: string) => Promise<{ ok: true; png: Buffer } | { ok: false; error: string }>;
+  /** Numbers for search by meaning (tests' stand-ins may leave it out). */
+  embed?: (texts: string[]) => Promise<{ ok: true; vectors: number[][]; model: string } | { ok: false; error: string }>;
 };
+
+/**
+ * What a call is counted under (AiUsage.feature): an AI switch, or one of the shop's older uses that
+ * have no switch of their own (search by meaning, the plain chat, the picks, the page editor's old tools).
+ */
+export type AiUse = AiFeature | "search" | "oldChat" | "recommend" | "pagesTools";
 
 const openai: AiProvider = {
   async json<T>(p: AiPrompt) {
@@ -71,11 +79,10 @@ export const aiKeyReady = () => providerSwapped || Boolean(process.env.OPENAI_AP
 
 /** Words can be written: OpenAI, or the own model server the owner set up (header = SiteSettings.header). */
 export const aiTextReady = (header: unknown) => aiKeyReady() || ownServerSet(aiServerOf(header));
-/** Pictures can be read: OpenAI, or an own model that reads pictures. */
-export const aiVisionReady = (header: unknown) => {
-  const s = aiServerOf(header);
-  return aiKeyReady() || (ownServerSet(s) && s.vision);
-};
+/** Pictures can be read: OpenAI, or an own model that reads pictures (the words model, or its own pictures model). */
+export const aiVisionReady = (header: unknown) => aiKeyReady() || Boolean(ownPicturesModel(aiServerOf(header)));
+/** Search by meaning can make its numbers: the own server's search model, or OpenAI's. */
+export const aiEmbedReady = (header: unknown) => ownEmbedSet(aiServerOf(header)) || aiKeyReady();
 /** Pictures can be made (the photo studio): OpenAI only. */
 export const aiImageEditReady = () => aiKeyReady();
 
@@ -104,7 +111,7 @@ export function forgetAiServer() {
 
 const today = () => new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
 
-async function countUse(feature: AiFeature) {
+async function countUse(feature: AiUse) {
   await prisma.aiUsage.upsert({
     where: { day_feature: { day: today(), feature } },
     create: { day: today(), feature, count: 1 },
@@ -130,13 +137,14 @@ export async function aiUsage(days = 30) {
 }
 
 /** Ask for JSON. Throws AI_FAILED (502) when the provider fails, so callers can show a calm message. */
-export async function aiJson<T>(feature: AiFeature, p: AiPrompt): Promise<T> {
+export async function aiJson<T>(feature: AiUse, p: AiPrompt): Promise<T> {
   if (!providerSwapped) {
     const server = await currentServer();
     if (ownServerSet(server)) {
-      if (!p.images?.length || server.vision) {
+      const picturesModel = ownPicturesModel(server);
+      if (!p.images?.length || picturesModel) {
         await countUse(feature);
-        const own = await ownJson<T>(server, p);
+        const own = await ownJson<T>(server, p, p.images?.length ? { model: picturesModel } : {});
         if (!own.ok) {
           console.warn(`[ai] ${feature} on the own model server failed:`, own.error.slice(0, 300));
           throw new AppError(502, "AI_FAILED", `The store's own model didn't answer: ${own.error}`);
@@ -166,6 +174,64 @@ export async function aiEditImage(feature: AiFeature, image: Buffer, prompt: str
     throw new AppError(502, "AI_FAILED", "The AI didn't answer, try again");
   }
   return r.png;
+}
+
+/**
+ * The same door for the shop's older callers that never throw (the plain chat, the picks, the page
+ * editor's old tools): {ok, data} or {ok: false, error}. A shopper's call (shopper: true) also stops
+ * at the owner's daily ceiling, and counts towards it.
+ */
+export async function aiAsk<T>(use: AiUse, p: AiPrompt, opts: { shopper?: boolean } = {}): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    if (opts.shopper) {
+      const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+      if ((await publicCallsToday()) >= aiOf(s?.header).dailyLimit) return { ok: false, error: "The shop's AI is resting for today" };
+    }
+    return { ok: true, data: await aiJson<T>(use, p) };
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message ?? "AI failed" };
+  }
+}
+
+/* ---------------- Search by meaning (embeddings) ---------------- */
+
+/** The name of the numbers search compares now (Product.embeddingModel), or null when nothing makes them. */
+export async function currentEmbedModel(): Promise<string | null> {
+  if (providerSwapped) return provider.embed ? "test-embed" : null;
+  const server = await currentServer();
+  if (ownEmbedSet(server)) return ownEmbedName(server);
+  return aiKeyReady() ? getOpenAIEmbeddingModel() : null;
+}
+
+/**
+ * Numbers for each text, from the own server's search model when it has one, else OpenAI's. Every
+ * vector says which model made it: numbers from two models are never compared.
+ */
+export async function aiEmbed(texts: string[], use: AiUse = "search"): Promise<{ ok: true; vectors: number[][]; model: string } | { ok: false; error: string }> {
+  if (!texts.length) return { ok: true, vectors: [], model: (await currentEmbedModel()) ?? "" };
+  if (providerSwapped) {
+    if (!provider.embed) return { ok: false, error: "No search model" };
+    await countUse(use);
+    return provider.embed(texts);
+  }
+  const server = await currentServer();
+  if (ownEmbedSet(server)) {
+    await countUse(use);
+    const r = await ownEmbed(server, texts);
+    if (!r.ok) console.warn(`[ai] ${use} embeddings on the own model server failed:`, r.error.slice(0, 300));
+    return r;
+  }
+  if (!aiKeyReady()) return { ok: false, error: "No search model" };
+  await countUse(use);
+  const vectors: number[][] = [];
+  let model = getOpenAIEmbeddingModel();
+  for (const t of texts) {
+    const r = await openaiEmbedText(t);
+    if (!r.ok) return { ok: false, error: r.error };
+    vectors.push(r.embedding);
+    model = r.model;
+  }
+  return { ok: true, vectors, model };
 }
 
 /* ---------------- Saved answers ---------------- */

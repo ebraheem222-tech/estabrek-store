@@ -2,7 +2,7 @@
 // any server that speaks OpenAI's chat language (Ollama, LM Studio, vLLM, llama.cpp, a rented GPU
 // box) with an open model such as ALLaM, Karnak or Jais. Try sends one small question before saving.
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { getApiErrorMessage } from "../../api/http";
 import * as AiAPI from "../../api/ai.api";
@@ -21,16 +21,63 @@ const MODELS: Array<{ name: string; size: string; note: string }> = [
   { name: "Jais 13B chat", size: "13B", note: say("عربي أقوى، بدها جهاز أقوى|Stronger Arabic, needs a stronger machine|ערבית חזקה יותר, דורש מחשב חזק יותר") },
 ];
 
+/**
+ * Search by meaning with the model now: how many products are ready, and a run that makes the rest
+ * (after the search model changes; until a product is done, it is found by its words).
+ */
+function SearchIndexPanel({ canWrite }: { canWrite: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["ai-search-index"], queryFn: AiAPI.searchIndex, refetchInterval: (query) => (query.state.data?.run.running ? 1500 : false) });
+  const start = useMutation({
+    mutationFn: AiAPI.startSearchIndex,
+    onSuccess: (d) => qc.setQueryData(["ai-search-index"], d),
+    onError: (e) => toast.error(say("ما بلّش|It didn't start|לא התחיל"), { description: getApiErrorMessage(e) }),
+  });
+  const d = q.data;
+  if (!d?.model) return null;
+  const running = d.run.running;
+  const left = Math.max(0, d.total - d.indexed);
+  return (
+    <div className="rounded-xl border border-white/10 p-3 text-xs" data-testid="ai-search-index">
+      <p className="font-medium">{say("البحث بالمعنى عن المنتجات|Search by meaning|חיפוש לפי משמעות")}</p>
+      <p className="mt-1 text-white/60" dir="auto">
+        {say(`${d.indexed} من ${d.total} قطعة جاهزة للبحث بـ|${d.indexed} of ${d.total} pieces ready for search with|${d.indexed} מתוך ${d.total} פריטים מוכנים לחיפוש עם`)} <span dir="ltr" className="font-mono">{d.model.replace(/^own:/, "")}</span>
+      </p>
+      {running ? (
+        <p className="mt-1 text-white/70" data-testid="ai-search-index-running">
+          {say(`عم يجهّز… ${d.run.done} جاهزة${d.run.failed ? `، ${d.run.failed} ما زبطت` : ""}|Preparing… ${d.run.done} done${d.run.failed ? `, ${d.run.failed} failed` : ""}|מכין… ${d.run.done} מוכנים${d.run.failed ? `, ${d.run.failed} נכשלו` : ""}`)}
+        </p>
+      ) : d.run.lastError ? (
+        <p className="mt-1 text-amber-200" data-testid="ai-search-index-error">{say("وقف:|Stopped:|נעצר:")} {d.run.lastError}</p>
+      ) : null}
+      {left > 0 && !running && canWrite ? (
+        <Button size="sm" variant="secondary" className="mt-2" isLoading={start.isPending} onClick={() => start.mutate()} data-testid="ai-search-index-start">
+          {say(`جهّز الـ ${left} الباقيين|Prepare the other ${left}|להכין את ${left} הנותרים`)}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServerView; canWrite: boolean; openaiReady: boolean }) {
   const qc = useQueryClient();
   const [kind, setKind] = useState<AiServerKind>(server.kind);
   const [url, setUrl] = useState(server.url);
   const [model, setModel] = useState(server.model);
   const [vision, setVision] = useState(server.vision);
+  const [visionModel, setVisionModel] = useState(server.visionModel ?? "");
+  const [embedModel, setEmbedModel] = useState(server.embedModel ?? "");
   // undefined = the saved key stays; "" typed = nothing new; null = take it away.
   const [key, setKey] = useState<string | null | undefined>(undefined);
-  const body = (): AiServerIn => ({ kind, url: url.trim(), model: model.trim(), vision, ...(key === undefined || key === "" ? {} : { key }) });
-  const dirty = kind !== server.kind || url.trim() !== server.url || model.trim() !== server.model || vision !== server.vision || (key !== undefined && key !== "");
+  const body = (): AiServerIn => ({ kind, url: url.trim(), model: model.trim(), vision, visionModel: visionModel.trim(), embedModel: embedModel.trim(), ...(key === undefined || key === "" ? {} : { key }) });
+  const dirty =
+    kind !== server.kind ||
+    url.trim() !== server.url ||
+    model.trim() !== server.model ||
+    vision !== server.vision ||
+    visionModel.trim() !== (server.visionModel ?? "") ||
+    embedModel.trim() !== (server.embedModel ?? "") ||
+    (key !== undefined && key !== "");
 
   const save = useMutation({
     mutationFn: () => AiAPI.saveAiServer(body()),
@@ -39,6 +86,7 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
       setKey(undefined);
       qc.invalidateQueries({ queryKey: ["ai"] });
       qc.invalidateQueries({ queryKey: ["features"] });
+      qc.invalidateQueries({ queryKey: ["ai-search-index"] });
     },
     onError: (e) => toast.error(say("ما انحفظ|Not saved|לא נשמר"), { description: getApiErrorMessage(e) }),
   });
@@ -102,10 +150,22 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
             <input type="checkbox" className="mt-0.5" checked={vision} disabled={!canWrite} onChange={(e) => setVision(e.target.checked)} data-testid="ai-server-vision" />
             <span>
               {say(
-                "النموذج بيقرأ الصور (مثل Qwen-VL أو LLaVA). بدون هيك: «اكتبيلي من الصور» ووصف الصور بيضلّوا على OpenAI إذا مفتاحه موجود.|The model reads pictures (like Qwen-VL or LLaVA). Otherwise the product writer from photos and pictures' descriptions stay on OpenAI when its key is there.|המודל קורא תמונות (כמו Qwen-VL או LLaVA). אחרת, כתיבת מוצר מתמונות ותיאורי תמונות נשארים ב־OpenAI אם יש לו מפתח.",
+                "نموذج الكتابة نفسه بيقرأ الصور (مثل Qwen-VL). أو حط نموذج صور لحاله تحت. بدون الاتنين: «اكتبيلي من الصور» ووصف الصور بيضلّوا على OpenAI إذا مفتاحه موجود.|The words model itself reads pictures (like Qwen-VL). Or set a pictures model of its own below. Without either, the product writer from photos and pictures' descriptions stay on OpenAI when its key is there.|מודל הכתיבה עצמו קורא תמונות (כמו Qwen-VL). או להגדיר מודל תמונות נפרד למטה. בלי אף אחד מהם, כתיבת מוצר מתמונות ותיאורי תמונות נשארים ב־OpenAI אם יש לו מפתח.",
               )}
             </span>
           </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-xs text-white/60">
+              {say("نموذج الصور (اختياري)|Pictures model (optional)|מודל תמונות (לא חובה)")}
+              <input className={`${field} mt-1`} dir="ltr" value={visionModel} maxLength={120} disabled={!canWrite} onChange={(e) => setVisionModel(e.target.value)} placeholder="qwen3-vl:4b" aria-label={say("نموذج الصور|Pictures model|מודל תמונות")} data-testid="ai-server-vision-model" />
+              <span className="mt-1 block text-[11px] leading-5 text-white/45">{say("نموذج تاني على نفس السيرفر بيقرأ الصور («اكتبيلي من الصور»، وصف الصور).|Another model on the same server that reads pictures (product writer, pictures' descriptions).|מודל נוסף באותו שרת שקורא תמונות (כתיבת מוצר, תיאורי תמונות).")}</span>
+            </label>
+            <label className="block text-xs text-white/60">
+              {say("نموذج البحث (اختياري)|Search model (optional)|מודל חיפוש (לא חובה)")}
+              <input className={`${field} mt-1`} dir="ltr" value={embedModel} maxLength={120} disabled={!canWrite} onChange={(e) => setEmbedModel(e.target.value)} placeholder="bge-m3" aria-label={say("نموذج البحث|Search model|מודל חיפוש")} data-testid="ai-server-embed-model" />
+              <span className="mt-1 block text-[11px] leading-5 text-white/45">{say("للبحث بالمعنى عن المنتجات («بدي إشي للعرس»)، مثل BGE-M3 (رخصة MIT).|For search by meaning («something for a wedding»), e.g. BGE-M3 (MIT licence).|לחיפוש לפי משמעות («משהו לחתונה»), למשל BGE-M3 (רישיון MIT).")}</span>
+            </label>
+          </div>
           <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] leading-5 text-white/55">
             {say(
               "استوديو الصور (مشاهد جديدة للقطعة) بيضل على OpenAI بس: النماذج النصية ما بتعمل صور. بالسيرفر الحقيقي العنوان لازم يبلّش بـ https:// ويكون على الإنترنت — لو النموذج على كمبيوترك، افتحله رابط https (مثل Cloudflare Tunnel).|The photo studio (new scenes for a piece) stays on OpenAI only: text models don't make pictures. On the live server the address must start with https:// and be on the internet — for a model on your own computer, give it an https link (e.g. Cloudflare Tunnel).|סטודיו התמונות נשאר ב־OpenAI בלבד: מודלי טקסט לא יוצרים תמונות. בשרת החי הכתובת חייבת להתחיל ב־https:// ולהיות באינטרנט — למודל במחשב שלך צריך קישור https (למשל Cloudflare Tunnel).",
@@ -129,10 +189,18 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
               )}
             </p>
           </div>
+          <SearchIndexPanel canWrite={canWrite} />
           {trial.data ? (
             trial.data.ok ? (
               <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-xs leading-6 text-emerald-100" data-testid="ai-server-try-ok">
                 {say(`ردّ بـ ${(trial.data.ms / 1000).toFixed(1)} ثانية:|Answered in ${(trial.data.ms / 1000).toFixed(1)} s:|ענה תוך ${(trial.data.ms / 1000).toFixed(1)} שניות:`)} «{trial.data.reply}»
+                {trial.data.search ? (
+                  <span className="block" data-testid="ai-server-try-search">
+                    {trial.data.search.ok
+                      ? say(`نموذج البحث شغّال ✓ (${trial.data.search.size} رقم لكل نص)|Search model works ✓ (${trial.data.search.size} numbers per text)|מודל החיפוש עובד ✓ (${trial.data.search.size} מספרים לכל טקסט)`)
+                      : `${say("نموذج البحث:|Search model:|מודל החיפוש:")} ${trial.data.search.error}`}
+                  </span>
+                ) : null}
               </p>
             ) : (
               <p className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-xs leading-6 text-red-100" data-testid="ai-server-try-failed">{trial.data.error}</p>

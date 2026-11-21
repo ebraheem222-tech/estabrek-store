@@ -1,6 +1,6 @@
 import { CategoryTranslations, ProductTranslations, translationsOf } from "../../lib/translations.js";
 import { prisma } from "../../lib/prisma.js";
-import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
+import { aiAsk } from "../ai/ai.client.js";
 
 type Locale = "ar" | "he" | "en";
 
@@ -201,7 +201,6 @@ async function rankWithOpenAI(opts: {
   const ids = new Set(opts.candidates.map((c) => String(c.id)));
   if (!ids.size) return [];
 
-  const model = getDefaultOpenAIModel();
   const sys = `You are a product recommendation engine for an e-commerce store.
 Output STRICT JSON only: {"productIds": string[]}.
 Rules:
@@ -218,15 +217,8 @@ Rules:
     output: { productIds: `Array<string> (<=${opts.limit})` },
   };
 
-  const result = await openaiResponsesJson<any>({
-    model,
-    input: [
-      { role: "system", content: sys },
-      { role: "user", content: JSON.stringify(user) },
-    ],
-    max_output_tokens: 350,
-    temperature: 0.4,
-  });
+  // The store's AI (OpenAI or the own model server), counted and held to the shoppers' daily ceiling.
+  const result = await aiAsk<any>("recommend", { system: sys, user: JSON.stringify(user), maxTokens: 350 }, { shopper: true });
 
   if (!result.ok) return null;
   const arr = Array.isArray(result.data?.productIds) ? result.data.productIds : null;

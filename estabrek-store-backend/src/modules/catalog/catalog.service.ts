@@ -7,7 +7,7 @@ import { emitAutomation } from "../../lib/automations.js";
 import { phoneKey } from "../../lib/phoneKey.js";
 import { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
-import { openaiEmbedText } from "../../lib/openai.js";
+import { aiEmbed, currentEmbedModel } from "../ai/ai.client.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
 import { attributesWhere, deliveryOf, fieldsOf, publicType, publicTypeSelect, specsOf, type DeliveryFields } from "../productTypes/productTypes.js";
 import { DIGITAL_STOCK, eventIsOver } from "../fulfillment/fulfillment.service.js";
@@ -370,13 +370,16 @@ function setCachedEmbedding(query: string, embedding: number[]) {
   EMBED_CACHE.set(key, { v: embedding, t: Date.now() });
 }
 
-async function getQueryEmbedding(query: string): Promise<number[] | null> {
-  const cached = getCachedEmbedding(query);
-  if (cached) return cached;
-  const embedded = await openaiEmbedText(query);
-  if (!embedded.ok) return null;
-  setCachedEmbedding(query, embedded.embedding);
-  return embedded.embedding;
+/** The question's numbers from the search model now (the own server's or OpenAI's), and that model's name. */
+async function getQueryEmbedding(query: string): Promise<{ vector: number[]; model: string } | null> {
+  const model = await currentEmbedModel();
+  if (!model) return null;
+  const cached = getCachedEmbedding(`${model}|${query}`);
+  if (cached) return { vector: cached, model };
+  const embedded = await aiEmbed([query], "search");
+  if (!embedded.ok || !embedded.vectors[0]?.length) return null;
+  setCachedEmbedding(`${model}|${query}`, embedded.vectors[0]);
+  return { vector: embedded.vectors[0], model: embedded.model };
 }
 
 type SemanticCandidate = {
@@ -385,6 +388,7 @@ type SemanticCandidate = {
   slug: string;
   description?: string | null;
   embedding?: any;
+  embeddingModel?: string | null;
   category?: { name?: string | null } | null;
 };
 
@@ -422,7 +426,7 @@ function buildCandidateText(c: SemanticCandidate): string {
   return [c.title, c.description, c.slug, c.category?.name].filter(Boolean).join(" ");
 }
 
-function rankSemanticCandidates(query: string, queryEmbedding: number[], candidates: SemanticCandidate[]) {
+function rankSemanticCandidates(query: string, queryEmbedding: number[], candidates: SemanticCandidate[], model?: string) {
   const ranked: Array<{ id: string; score: number }> = [];
   for (const c of candidates) {
     const text = buildCandidateText(c);
@@ -431,7 +435,8 @@ function rankSemanticCandidates(query: string, queryEmbedding: number[], candida
 
     let semanticScore = 0;
     let hasEmbedding = false;
-    const vec = asVector(c.embedding);
+    // Only numbers made by the same model are compared (another model's may even have the same length).
+    const vec = !model || c.embeddingModel === model ? asVector(c.embedding) : null;
     if (vec && vec.length === queryEmbedding.length) {
       semanticScore = cosineSimilarity(queryEmbedding, vec);
       hasEmbedding = true;
@@ -769,6 +774,7 @@ async function listProductsSemantic(params: {
       slug: true,
       description: true,
       embedding: true,
+      embeddingModel: true,
       category: { select: { name: true } },
       createdAt: true,
     },
@@ -778,7 +784,7 @@ async function listProductsSemantic(params: {
 
   if (!candidates.length) return null;
 
-  const ranked = rankSemanticCandidates(query, embedded, candidates);
+  const ranked = rankSemanticCandidates(query, embedded.vector, candidates, embedded.model);
   if (!ranked.length) return null;
 
   const minScore = minScoreForQuery(query);

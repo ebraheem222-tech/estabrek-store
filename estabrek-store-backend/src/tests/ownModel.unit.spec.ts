@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, test } from "vitest";
-import { AiServerSchema, aiServerOf, aiServerView, ownJson, ownModelEndpoint, ownServerSet, readJsonAnswer, setOwnModelTransportForTests, type OwnTransport } from "../modules/ai/ownModel.js";
+import { AiServerSchema, aiServerOf, aiServerView, inlinePicture, ownEmbed, ownEmbedEndpoint, ownEmbedSet, ownJson, ownModelEndpoint, ownPicturesModel, ownServerSet, readJsonAnswer, setOwnModelTransportForTests, setPictureLoaderForTests, type OwnTransport } from "../modules/ai/ownModel.js";
+import sharp from "sharp";
 import { seal } from "../lib/secretBox.js";
 
-afterEach(() => setOwnModelTransportForTests(null));
+afterEach(() => {
+  setOwnModelTransportForTests(null);
+  setPictureLoaderForTests(null);
+});
 
 describe("the own model server's address", () => {
   test("the chat-completions path is added the OpenAI way; https on the live server, http only elsewhere", () => {
@@ -19,13 +23,21 @@ describe("the own model server's address", () => {
   });
 
   test("what is saved is read calmly, and the admin never sees the key", () => {
-    expect(aiServerOf(null)).toEqual({ kind: "openai", url: "", model: "", vision: false, key: null });
-    expect(aiServerOf({ aiServer: { kind: "nonsense", url: 7, model: "m", vision: "yes" } })).toEqual({ kind: "openai", url: "", model: "m", vision: false, key: null });
+    expect(aiServerOf(null)).toEqual({ kind: "openai", url: "", model: "", vision: false, visionModel: "", embedModel: "", key: null });
+    expect(aiServerOf({ aiServer: { kind: "nonsense", url: 7, model: "m", vision: "yes" } })).toEqual({ kind: "openai", url: "", model: "m", vision: false, visionModel: "", embedModel: "", key: null });
     const s = AiServerSchema.parse({ kind: "own", url: "https://m.example.com", model: "allam", key: "v1.sealed" });
     expect(ownServerSet(s)).toBe(true);
     expect(ownServerSet({ ...s, model: "" })).toBe(false);
     expect(ownServerSet({ ...s, kind: "openai" })).toBe(false);
-    expect(aiServerView(s)).toEqual({ kind: "own", url: "https://m.example.com", model: "allam", vision: false, hasKey: true });
+    expect(aiServerView(s)).toEqual({ kind: "own", url: "https://m.example.com", model: "allam", vision: false, visionModel: "", embedModel: "", hasKey: true });
+    // Pictures: their own model, else the words model when it reads them, else none. Search: its own model.
+    expect(ownPicturesModel(s)).toBe("");
+    expect(ownPicturesModel({ ...s, vision: true })).toBe("allam");
+    expect(ownPicturesModel({ ...s, visionModel: "qwen3-vl:4b" })).toBe("qwen3-vl:4b");
+    expect(ownPicturesModel({ ...s, kind: "openai", visionModel: "qwen3-vl:4b" })).toBe("");
+    expect(ownEmbedSet(s)).toBe(false);
+    expect(ownEmbedSet({ ...s, embedModel: "bge-m3" })).toBe(true);
+    expect(ownEmbedEndpoint("https://m.example.com/v1", true).href).toBe("https://m.example.com/v1/embeddings");
   });
 });
 
@@ -49,19 +61,48 @@ describe("asking the own model server", () => {
   };
   const reply = (content: unknown) => ({ status: 200, text: JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }) });
 
-  test("the OpenAI chat language: model, words, the key as a bearer, JSON asked for; pictures as image parts", async () => {
+  test("the OpenAI chat language: model, words, the key as a bearer, JSON asked for; pictures sent inside, to the pictures model", async () => {
     asked.length = 0;
+    const loaded: string[] = [];
+    const big = await sharp({ create: { width: 3000, height: 1500, channels: 3, background: "#b03060" } }).png().toBuffer();
+    setPictureLoaderForTests(async (url) => {
+      loaded.push(url);
+      return url.includes("missing") ? null : { buffer: big, mime: "image/png" };
+    });
     setOwnModelTransportForTests(stand(() => reply('Here you go: {"answer":"أهلين"}')));
-    const r = await ownJson<{ answer: string }>(server, { system: "Be kind.", user: "مرحبا", images: ["https://img.example.com/a.jpg"], maxTokens: 300 });
+    const r = await ownJson<{ answer: string }>(server, { system: "Be kind.", user: "مرحبا", images: ["https://img.example.com/a.jpg", "https://img.example.com/missing.jpg"], maxTokens: 300 }, { model: "qwen3-vl:4b" });
     expect(r).toMatchObject({ ok: true, data: { answer: "أهلين" } });
+    expect(loaded).toEqual(["https://img.example.com/a.jpg", "https://img.example.com/missing.jpg"]);
     expect(asked[0].url).toBe("http://127.0.0.1:11434/v1/chat/completions");
     expect(asked[0].headers.authorization).toBe("Bearer sk-local-test-value");
-    expect(asked[0].body).toMatchObject({ model: "allam-7b", max_tokens: 300, stream: false, response_format: { type: "json_object" } });
+    expect(asked[0].body).toMatchObject({ model: "qwen3-vl:4b", max_tokens: 300, stream: false, response_format: { type: "json_object" } });
     const messages = asked[0].body.messages as Array<{ role: string; content: unknown }>;
     expect(messages[0].role).toBe("system");
     expect(String(messages[0].content)).toContain("Be kind.");
     expect(String(messages[0].content)).toContain("JSON object only");
-    expect(messages[1].content).toEqual([{ type: "text", text: "مرحبا" }, { type: "image_url", image_url: { url: "https://img.example.com/a.jpg" } }]);
+    // The picture that could be read, inside the request as a smaller JPEG; the one that couldn't, left out.
+    const parts = messages[1].content as Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    expect(parts.map((x) => x.type)).toEqual(["text", "image_url"]);
+    const sent = parts[1].image_url!.url;
+    expect(sent.startsWith("data:image/jpeg;base64,")).toBe(true);
+    const meta = await sharp(Buffer.from(sent.split(",")[1], "base64")).metadata();
+    expect([meta.width, meta.height]).toEqual([1024, 512]);
+    // None could be read: the model isn't asked.
+    asked.length = 0;
+    expect(await ownJson(server, { system: "s", user: "u", images: ["https://img.example.com/missing.jpg"] })).toEqual({ ok: false, error: "The pictures couldn't be read to send to the model" });
+    expect(asked).toHaveLength(0);
+    expect(await inlinePicture("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
+  });
+
+  test("search numbers: the embeddings address, in order, named as the own server's; incomplete answers refused", async () => {
+    asked.length = 0;
+    const withSearch = { ...server, embedModel: "bge-m3" };
+    setOwnModelTransportForTests(stand(() => ({ status: 200, text: JSON.stringify({ data: [{ index: 1, embedding: [0, 1] }, { index: 0, embedding: [1, 0] }] }) })));
+    expect(await ownEmbed(withSearch, ["أسود", "أبيض"])).toEqual({ ok: true, vectors: [[1, 0], [0, 1]], model: "own:bge-m3" });
+    expect(asked[0]).toMatchObject({ url: "http://127.0.0.1:11434/v1/embeddings", body: { model: "bge-m3", input: ["أسود", "أبيض"] } });
+    setOwnModelTransportForTests(stand(() => ({ status: 200, text: JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }] }) })));
+    expect(await ownEmbed(withSearch, ["a", "b"])).toEqual({ ok: false, error: "The model server's numbers came back incomplete" });
+    expect(await ownEmbed(server, ["a"])).toEqual({ ok: false, error: "No search model is set on the own server" });
   });
 
   test("a server that doesn't know response_format is asked again without it; answers in parts are joined", async () => {

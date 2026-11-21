@@ -15,8 +15,9 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { AppError } from "../../utils/httpError.js";
 import { AI_DEFAULTS, AI_FEATURES, AiSchema, aiOf } from "../ai/ai.settings.js";
-import { aiImageEditReady, aiKeyReady, aiReadyFor, aiTextReady, aiUsage, aiVisionReady, forgetAiServer } from "../ai/ai.client.js";
-import { AI_SERVER_KINDS, AiServerSchema, aiServerOf, aiServerView, ownJson, ownModelEndpoint, ownServerSet } from "../ai/ownModel.js";
+import { aiEmbedReady, aiImageEditReady, aiKeyReady, aiReadyFor, aiTextReady, aiUsage, aiVisionReady, forgetAiServer } from "../ai/ai.client.js";
+import { AI_SERVER_KINDS, AiServerSchema, aiServerOf, aiServerView, ownEmbed, ownEmbedSet, ownJson, ownModelEndpoint, ownServerSet } from "../ai/ownModel.js";
+import { searchIndexStatus, startSearchIndex } from "../../lib/productTextEmbeddings.js";
 import { seal } from "../../lib/secretBox.js";
 import { needFeature } from "../ai/ai.guard.js";
 import { STUDIO_SCENE_MAX, STUDIO_STYLES, askShop, orderFlags, pageWords, photoStudio, pictureAlt, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
@@ -42,6 +43,7 @@ aiSettingsAdmin.get(
       keyReady: aiTextReady(s.header),
       openaiReady: aiKeyReady(),
       visionReady: aiVisionReady(s.header),
+      embedReady: aiEmbedReady(s.header),
       editReady: aiImageEditReady(),
       ready,
       server: aiServerView(aiServerOf(s.header)),
@@ -83,6 +85,9 @@ const ServerBody = z.object({
   url: z.string().trim().max(300).default(""),
   model: z.string().trim().max(120).default(""),
   vision: z.boolean().default(false),
+  /** Optional models on the same server: one that reads pictures, one for search by meaning. */
+  visionModel: z.string().trim().max(120).default(""),
+  embedModel: z.string().trim().max(120).default(""),
   key: z.string().trim().max(4000).nullable().optional(),
 });
 type ServerIn = z.infer<typeof ServerBody>;
@@ -98,7 +103,7 @@ function serverFrom(body: ServerIn, saved: ReturnType<typeof aiServerOf>) {
     }
   }
   const key = body.key === undefined ? saved.key : body.key ? seal(body.key) : null;
-  return AiServerSchema.parse({ kind: body.kind, url: body.url, model: body.model, vision: body.vision, key });
+  return AiServerSchema.parse({ kind: body.kind, url: body.url, model: body.model, vision: body.vision, visionModel: body.visionModel, embedModel: body.embedModel, key });
 }
 
 aiSettingsAdmin.put(
@@ -131,7 +136,31 @@ aiSettingsAdmin.post(
       { system: "You are a helpful assistant of an online shop.", user: 'Say hello to a shopper in one short Arabic sentence. JSON: {"reply": "..."}', maxTokens: 120 },
       { ms: 60_000 },
     );
-    res.json(r.ok ? { ok: true, ms: r.ms, reply: String(r.data.reply ?? "").slice(0, 300) } : { ok: false, error: r.error });
+    // The search model too, when there is one: one short text, how many numbers came back.
+    const embed = ownEmbedSet(server) ? await ownEmbed(server, ["عباية سوداء"], { ms: 30_000 }) : null;
+    const searchTry = embed ? (embed.ok ? { ok: true, size: embed.vectors[0].length } : { ok: false, error: embed.error }) : undefined;
+    res.json(r.ok ? { ok: true, ms: r.ms, reply: String(r.data.reply ?? "").slice(0, 300), search: searchTry } : { ok: false, error: r.error, search: searchTry });
+  }),
+);
+
+/**
+ * Search by meaning after the search model changed: how many products are ready with the model now,
+ * and a run that makes the rest (it goes on after the answer; GET again to follow it).
+ *   GET  /v1/admin/ai/search-index   {model, total, indexed, run}
+ *   POST /v1/admin/ai/search-index   starts a run (409 when one is going or nothing makes the numbers)
+ */
+aiSettingsAdmin.get(
+  "/search-index",
+  asyncHandler(async (_req, res) => {
+    res.json(await searchIndexStatus());
+  }),
+);
+
+aiSettingsAdmin.post(
+  "/search-index",
+  asyncHandler(async (_req, res) => {
+    if (!(await startSearchIndex())) throw new AppError(409, "SEARCH_INDEX_BUSY", "A run is going, or there is no search model");
+    res.status(202).json(await searchIndexStatus());
   }),
 );
 
