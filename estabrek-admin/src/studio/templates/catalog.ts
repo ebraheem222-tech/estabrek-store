@@ -37,6 +37,16 @@ export const SKIN_NAMES: Record<Skin, W> = {
 };
 export { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, SECTION_CATS };
 
+/** The section kinds grouped by what they are for (the gallery's side list): each kind in one area. */
+export const SECTION_AREAS: Array<{ key: string; name: W; cats: SectionCat[] }> = [
+  { key: "open", name: w("الافتتاح", "Openings", "פתיחה"), cats: ["hero", "announce", "banner", "model"] },
+  { key: "sell", name: w("البيع", "Selling", "מכירה"), cats: ["categories", "products", "showcase", "lookbook", "offer", "pricing", "compare", "details"] },
+  { key: "trust", name: w("الثقة", "Trust", "אמון"), cats: ["testimonials", "trust", "stats", "features"] },
+  { key: "story", name: w("القصة والمحتوى", "Story and content", "סיפור ותוכן"), cats: ["story", "split", "gallery", "team", "steps", "faq", "data"] },
+  { key: "site", name: w("أجزاء الموقع", "Site parts", "חלקי האתר"), cats: ["header", "footer", "cta", "newsletter", "contact", "notice", "popup"] },
+  { key: "occasions", name: w("المناسبات", "Occasions", "אירועים"), cats: ["campaign"] },
+];
+
 const SECTION_BY_KEY = new Map(RECIPES.map((r) => [r.key, r]));
 const PAGE_BY_KEY = new Map(PAGES.map((p) => [p.key, p]));
 

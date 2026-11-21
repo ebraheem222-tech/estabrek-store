@@ -19,7 +19,7 @@ import { TemplateThumb } from "./TemplateThumb";
 import type { ThumbColours } from "./templates/colours";
 import type { TemplateKit } from "./packs";
 import type { Ids, MotionLevel } from "./templates/build";
-import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_CATS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
+import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_AREAS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
 import { FAMILIES, PACKS, type Family, type W } from "./templates/words";
 import { LOOKS, MOODS, MOOD_NAMES } from "./templates/dna";
 import { StoreTemplatePicker } from "../features/setup/StoreTemplatePicker";
@@ -43,6 +43,15 @@ const designOf = (t: Template) => (t.kind === "section" ? t.id.split(":")[1] : t
 /** Every colour a section design comes in, in its own order. */
 const COLOURS_OF = new Map<string, Template[]>();
 for (const t of SECTION_TEMPLATES) COLOURS_OF.set(designOf(t), [...(COLOURS_OF.get(designOf(t)) ?? []), t]);
+
+/** The designs starred in this browser (the gallery's «المفضلة»): a design's key, whatever its colour. */
+const FAVS_KEY = "estabrek:template-favourites";
+function readFavs(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(FAVS_KEY) ?? "[]")); } catch { return new Set(); }
+}
+/** The section DNA's designs (studio/templates/dna) are the new ones. */
+const isNew = (t: Template) => Boolean(t.look);
+const areaOf = (g: string) => SECTION_AREAS.find((a) => g === `area:${a.key}`);
 
 /** Counted ids for drawings (the page's own ids are made when something is added). */
 const drawIds = (): Ids => {
@@ -94,6 +103,13 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const [group, setGroup] = useState<string>("all");
   // The section DNA's look and mood (studio/templates/dna): "all" shows every design.
   const [look, setLook] = useState<string>("all");
+  const [favs, setFavs] = useState<Set<string>>(readFavs);
+  const star = (t: Template) => {
+    const next = new Set(favs);
+    if (next.has(designOf(t))) next.delete(designOf(t)); else next.add(designOf(t));
+    setFavs(next);
+    try { localStorage.setItem(FAVS_KEY, JSON.stringify([...next])); } catch { /* a private window */ }
+  };
   const [mood, setMood] = useState<string>("all");
   const [q, setQ] = useState("");
   const [fam, setFam] = useState<Family>(family);
@@ -111,14 +127,18 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const list = useMemo(() => {
     const source = tab === "sections" ? SECTION_TEMPLATES : tab === "pages" ? PAGE_TEMPLATES : [];
     // A kind's homes show for that kind only.
-    const found = source.filter((t) => (group === "all" || t.group === group) && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood) && matches(t, q));
+    const area = areaOf(group);
+    const inGroup = (t: Template) => group === "all" || t.group === group || (area ? (area.cats as string[]).includes(t.group) : group === "favs" ? favs.has(designOf(t)) : group === "new" && isNew(t));
+    const found = source.filter((t) => inGroup(t) && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood) && matches(t, q));
     // One card for each design: its colours are picked in the preview. The card shows the first colour that
     // matches what's looked for (looking for "inverted" shows the designs that have it, inverted).
     const seen = new Set<string>();
     return found.filter((t) => !seen.has(designOf(t)) && Boolean(seen.add(designOf(t))));
-  }, [tab, group, fam, q, look, mood]);
-  const groups = tab === "sections" ? SECTION_CATS : tab === "pages" ? PAGE_KINDS : [];
-  const count = (g: string) => new Set((tab === "sections" ? SECTION_TEMPLATES : PAGE_TEMPLATES).filter((t) => t.group === g && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood)).map(designOf)).size;
+  }, [tab, group, fam, q, look, mood, favs]);
+  const counted = (keep: (t: Template) => boolean) => new Set((tab === "sections" ? SECTION_TEMPLATES : PAGE_TEMPLATES).filter((t) => keep(t) && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood)).map(designOf)).size;
+  const count = (g: string) => counted((t) => t.group === g);
+  const favCount = counted((t) => favs.has(designOf(t)));
+  const newCount = tab === "sections" ? counted(isNew) : 0;
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -270,14 +290,43 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                     <span>{tr("الكل", "All")}</span>
                   </button>
                 </li>
-                {groups.map((g) => (
+                {/* The starred designs, and (sections) the newest ones. */}
+                {([["favs", say("★ المفضلة|★ Favourites|★ מועדפים"), favCount], ["new", say("جديد|New|חדש"), newCount]] as const).filter(([, , n]) => n > 0).map(([g, label, n]) => (
                   <li key={g}>
                     <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group={g}>
-                      <span className="truncate">{nameOf(tab === "sections" ? CAT_NAMES[g as keyof typeof CAT_NAMES] : PAGE_KIND_NAMES[g as keyof typeof PAGE_KIND_NAMES])}</span>
-                      <span className="text-white/35">{count(g)}</span>
+                      <span className="truncate">{label}</span>
+                      <span className="text-white/35">{n}</span>
                     </button>
                   </li>
                 ))}
+                {tab === "sections"
+                  ? SECTION_AREAS.map((a) => (
+                    <li key={a.key} className="pt-2">
+                      {/* An area: all of its kinds at once, then each kind. */}
+                      <button type="button" onClick={() => { setGroup(`area:${a.key}`); setLimit(PAGE_SIZE); }} aria-pressed={group === `area:${a.key}`} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1 text-start text-[10px] font-semibold uppercase ${group === `area:${a.key}` ? "bg-accent-500/20 text-white" : "text-white/40 hover:text-white/70"}`} data-testid="studio-tpl-area" data-area={a.key}>
+                        <span className="truncate">{nameOf(a.name)}</span>
+                        <span>{counted((t) => (a.cats as string[]).includes(t.group))}</span>
+                      </button>
+                      <ul className="space-y-0.5">
+                        {a.cats.map((g) => (
+                          <li key={g}>
+                            <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group={g}>
+                              <span className="truncate">{nameOf(CAT_NAMES[g])}</span>
+                              <span className="text-white/35">{count(g)}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))
+                  : PAGE_KINDS.map((g) => (
+                    <li key={g}>
+                      <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group={g}>
+                        <span className="truncate">{nameOf(PAGE_KIND_NAMES[g])}</span>
+                        <span className="text-white/35">{count(g)}</span>
+                      </button>
+                    </li>
+                  ))}
               </ul>
             )}
           </nav>
@@ -320,7 +369,10 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                     const on = shown?.kind === "library" && designOf(shown.t) === designOf(t);
                     const colours_ = t.kind === "section" ? COLOURS_OF.get(designOf(t))?.length ?? 1 : 0;
                     return (
-                      <li key={t.id}>
+                      <li key={t.id} className="relative">
+                        {/* The star: kept in this browser, the design whatever its colour. */}
+                        <button type="button" onClick={() => star(t)} aria-pressed={favs.has(designOf(t))} aria-label={favs.has(designOf(t)) ? say("شيلها من المفضلة|Remove from favourites|הסרה מהמועדפים") : say("ضيفها للمفضلة|Add to favourites|הוספה למועדפים")} className={`absolute end-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-sm ${favs.has(designOf(t)) ? "text-amber-300" : "text-white/70 hover:text-white"}`} data-testid="studio-tpl-star">{favs.has(designOf(t)) ? "★" : "☆"}</button>
+                        {isNew(t) ? <span className="pointer-events-none absolute start-1.5 top-1.5 z-10 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white" data-testid="studio-tpl-new">{say("جديد|New|חדש")}</span> : null}
                         <button type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/[0.08] hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
                           <TemplateThumb key={`${t.id}:${fam}:${motion}:${all}`} build={thumbOf(t)} colours={colours} lang={lang} width={220} height={tab === "pages" ? 190 : 130} />
                           <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{nameOf(t.name)}</span>

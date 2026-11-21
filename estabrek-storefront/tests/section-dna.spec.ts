@@ -18,11 +18,35 @@ import { auditPage, layoutsOf, type Fault } from "./templateAudit";
  *   DNA_THEME=dark   on a dark theme instead of a light one
  *   DNA_LANG=en  in another language (ar by default)
  *   DNA_OUT=dir  a picture of each design at each width, and report.json
+ *
+ * And no two designs look alike: each one's picture on a computer gets a small fingerprint (a 256-bit difference
+ * hash of its grey picture), and two different designs whose fingerprints are this close fail the last test.
  */
 const API = "http://127.0.0.1:4100";
 const OUT = process.env.DNA_OUT || "";
 const LANG = (process.env.DNA_LANG || "ar") as "ar" | "en" | "he";
 const PER_PAGE = 6;
+/** How close (bits out of 256) two different designs' fingerprints may come; the same design's colours may be closer. */
+const ALIKE = 10;
+const hashesFile = () => path.join(test.info().project.outputDir, "section-dna-hashes.json");
+const readHashes = (): Record<string, string> => { try { return JSON.parse(fs.readFileSync(hashesFile(), "utf8")); } catch { return {}; } };
+/** The fingerprint of a picture, worked out in the page (a 17×16 grey copy, each pixel against its neighbour). */
+async function fingerprint(page: Page, png: Buffer): Promise<string> {
+  return page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const W = 17, H = 16, canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0, W, H);
+    const d = ctx.getImageData(0, 0, W, H).data, grey: number[] = [];
+    for (let i = 0; i < W * H; i++) grey.push(d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114);
+    let bits = "";
+    for (let y = 0; y < H; y++) for (let x = 0; x < W - 1; x++) bits += grey[y * W + x] > grey[y * W + x + 1] ? "1" : "0";
+    return bits;
+  }, `data:image/png;base64,${png.toString("base64")}`);
+}
 const WIDTHS = [{ name: "wide", width: 1366, height: 900 }, { name: "phone", width: 390, height: 844 }] as const;
 
 const designOf = (id: string) => id.split(":")[1];
@@ -98,7 +122,15 @@ for (let at = 0; at < list.length; at += PER_PAGE) {
     for (const w of WIDTHS) {
       await page.setViewportSize({ width: w.width, height: w.height });
       await page.goto(`/${LANG}`, { waitUntil: "load" });
-      await expect(page.locator(`[data-tree-node="${sections[0].id}"]`)).toBeVisible({ timeout: 60000 });
+      // Now and then the page is drawn before the stand-in's new store reaches it: once more, after a refresh.
+      const first = page.locator(`[data-tree-node="${sections[0].id}"]`);
+      try {
+        await expect(first).toBeVisible({ timeout: 20000 });
+      } catch {
+        await revalidate(page);
+        await page.goto(`/${LANG}`, { waitUntil: "load" });
+        await expect(first).toBeVisible({ timeout: 60000 });
+      }
       await page.evaluate(async () => {
         for (let y = 0; y < document.documentElement.scrollHeight; y += 500) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); }
         scrollTo(0, 0);
@@ -112,16 +144,21 @@ for (let at = 0; at < list.length; at += PER_PAGE) {
         if (!who) continue;
         (faults[`${who} ${w.name}`] ??= []).push(f);
       }
-      if (OUT) {
-        fs.mkdirSync(OUT, { recursive: true });
-        for (const [i, t] of batch.entries()) {
-          const first = sections.find((s) => owner.get(s.id) === t.id);
-          if (!first) continue;
-          const el = page.locator(`[data-tree-node="${first.id}"]`);
-          await el.scrollIntoViewIfNeeded().catch(() => {});
-          await page.waitForTimeout(150);
-          await el.screenshot({ path: path.join(OUT, `${String(at + i).padStart(3, "0")}-${t.id.slice(2).replace(":", "-")}-${w.width}.jpg`), type: "jpeg", quality: 72 }).catch(() => {});
-        }
+      if (OUT) fs.mkdirSync(OUT, { recursive: true });
+      const prints: Record<string, string> = {};
+      for (const [i, t] of batch.entries()) {
+        const first = sections.find((s) => owner.get(s.id) === t.id);
+        if (!first) continue;
+        const el = page.locator(`[data-tree-node="${first.id}"]`);
+        await el.scrollIntoViewIfNeeded().catch(() => {});
+        await page.waitForTimeout(150);
+        const png = await el.screenshot().catch(() => null);
+        if (png && w.name === "wide") prints[t.id] = await fingerprint(page, png);
+        if (OUT) await el.screenshot({ path: path.join(OUT, `${String(at + i).padStart(3, "0")}-${t.id.slice(2).replace(":", "-")}-${w.width}.jpg`), type: "jpeg", quality: 72 }).catch(() => {});
+      }
+      if (Object.keys(prints).length) {
+        fs.mkdirSync(path.dirname(hashesFile()), { recursive: true });
+        fs.writeFileSync(hashesFile(), JSON.stringify({ ...readHashes(), ...prints }));
       }
     }
     if (OUT) {
@@ -133,3 +170,17 @@ for (let at = 0; at < list.length; at += PER_PAGE) {
     expect(faults).toEqual({});
   });
 }
+
+test("no two designs look alike", () => {
+  const prints = readHashes();
+  const ids = Object.keys(prints);
+  test.skip(ids.length < 2, "the designs' pictures weren't taken in this run");
+  const alike: string[] = [];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    if (designOf(ids[i]) === designOf(ids[j])) continue;
+    let d = 0;
+    for (let k = 0; k < prints[ids[i]].length; k++) if (prints[ids[i]][k] !== prints[ids[j]][k]) d++;
+    if (d <= ALIKE) alike.push(`${designOf(ids[i])} ~ ${designOf(ids[j])} (${d})`);
+  }
+  expect(alike).toEqual([]);
+});
