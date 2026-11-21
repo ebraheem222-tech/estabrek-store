@@ -1209,6 +1209,21 @@ http
       return;
     }
     // Admin → الإعدادات → سرّ المتجر: the hidden coupon behind the logo ({ code, text, enabled }).
+    // The shop's floating parts for floating-buttons.spec.ts: the phone's bottom bar, the chat, the accessibility
+    // button ({ bottomNav, chat, a11y }: true / false; left out = the stand-in's own default).
+    if (pathname === "/__test/floating" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        for (const [key, value] of [["mobileBottomNavEnabled", data.bottomNav], ["chatbotEnabled", data.chat], ["accessibilityToolsEnabled", data.a11y]]) {
+          if (value === undefined) delete site.header.storefront[key]; else site.header.storefront[key] = value;
+        }
+        if (data.bottomNav === undefined) site.header.storefront.mobileBottomNavEnabled = false;
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname === "/__test/secret" && req.method === "POST") {
       let body = "";
       req.on("data", c => { body += c; });

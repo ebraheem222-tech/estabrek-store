@@ -52,6 +52,23 @@ export function MobileBottomNav() {
   const settings = useStorefrontSettings();
   const prevCartCount = useRef(cartCount);
   const [cartAnimate, setCartAnimate] = useState(false);
+  // The page knows the bar is there, and how tall it is (its labels and the phone's safe area make it so):
+  // the floating buttons (the chat, accessibility) stand above it on a phone (globals.css --float-bottom).
+  const barRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-bottom-nav", "");
+    const bar = barRef.current;
+    const measure = () => root.style.setProperty("--bottom-nav-h", `${Math.ceil(bar?.getBoundingClientRect().height ?? 0)}px`);
+    measure();
+    const watch = bar && typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (bar && watch) watch.observe(bar);
+    return () => {
+      watch?.disconnect();
+      root.removeAttribute("data-bottom-nav");
+      root.style.removeProperty("--bottom-nav-h");
+    };
+  }, []);
 
   useEffect(() => {
     const shouldAnimate =
@@ -79,7 +96,7 @@ export function MobileBottomNav() {
   };
 
   return (
-    <nav className="mobile-bottom-nav" dir="rtl">
+    <nav ref={barRef} className="mobile-bottom-nav" dir="rtl">
       {navItems.map((item) => {
         const active = isActive(item.href);
         const badgeStyle =

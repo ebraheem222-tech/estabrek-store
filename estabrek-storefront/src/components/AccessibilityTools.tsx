@@ -70,13 +70,19 @@ export function AccessibilityTools() {
     }
   }, []);
 
+  // Dragged by the visitor (kept with the place, so a place only ever set by default isn't taken for theirs).
+  const draggedRef = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // A store on a theme: the page's CSS places it, above the phone's bottom bar and the chat (globals.css); only
+    // a place the visitor dragged it to is kept. (Its default was set here, 120px from the bottom, on the bar.)
+    const themed = document.documentElement.hasAttribute("data-store-theme");
     const raw = window.localStorage.getItem(POSITION_KEY);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed.x === "number" && typeof parsed.y === "number") {
+        if (parsed && typeof parsed.x === "number" && typeof parsed.y === "number" && (!themed || parsed.moved === true)) {
+          draggedRef.current = parsed.moved === true;
           setPosition({ x: parsed.x, y: parsed.y });
           return;
         }
@@ -84,6 +90,7 @@ export function AccessibilityTools() {
         // ignore
       }
     }
+    if (themed) return;
     const defaultX = 20;
     const defaultY = Math.max(20, window.innerHeight - 120);
     setPosition({ x: defaultX, y: defaultY });
@@ -98,7 +105,7 @@ export function AccessibilityTools() {
 
   useEffect(() => {
     if (!position || typeof window === "undefined") return;
-    window.localStorage.setItem(POSITION_KEY, JSON.stringify(position));
+    window.localStorage.setItem(POSITION_KEY, JSON.stringify(draggedRef.current ? { ...position, moved: true } : position));
   }, [position]);
 
   useEffect(() => {
@@ -175,6 +182,7 @@ export function AccessibilityTools() {
     const clampedX = clamp(nextX, 8, window.innerWidth - 56);
     const clampedY = clamp(nextY, 8, window.innerHeight - 56);
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedRef.current = true;
+    draggedRef.current = true;
     setPosition({ x: clampedX, y: clampedY });
   };
 
