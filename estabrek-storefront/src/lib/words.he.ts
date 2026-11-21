@@ -279,6 +279,7 @@ export const HE: Record<string, string> = {
   "Max price": "מחיר מקסימלי",
   "Message us and our team will help you find it.": "אפשר לכתוב לנו והצוות שלנו יעזור למצוא.",
   "Message us on WhatsApp": "לכתוב לנו בוואטסאפ",
+  "Continue with the shop on WhatsApp": "להמשיך עם החנות בוואטסאפ",
   "Min price": "מחיר מינימלי",
   "Modern modesty, made for your everyday. We’re here to help you find the pieces you love.": "צניעות מודרנית לכל יום. אנחנו כאן כדי לעזור למצוא את הפריטים שאוהבים.",
   "Modern modesty. Beautifully yours.": "צניעות מודרנית. ביופי שלך.",
