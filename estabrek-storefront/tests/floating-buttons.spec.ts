@@ -78,14 +78,22 @@ test("opened, the chat's panel stays above the bar too", async ({ page }) => {
 test("the live chat (the assistant off): its button in the store's accent above the bar, the accessibility button above it; scroll-to-top above the bar", async ({ page }) => {
   await page.request.post(`${API}/__test/floating`, { data: { bottomNav: true, chat: false, liveChat: true, a11y: true, toTop: true } });
   await page.request.post("/api/revalidate", { data: { tags: ["settings", "cms:settings", "cms:bootstrap"], paths: ["/", "/en"] } });
-  await page.goto("/en");
   const nav = page.locator(".mobile-bottom-nav");
   const live = page.locator(".live-chat-button");
-  await expect(live).toBeVisible();
+  // The stand-in's settings reach the page once the shop's cache lets go of the earlier ones: opened again until then.
+  await expect(async () => {
+    await page.goto("/en");
+    await expect(live).toBeVisible({ timeout: 4000 });
+  }).toPass({ timeout: 45_000 });
   await expect(page.getByTestId("assistant-launcher")).toHaveCount(0);
   const navBox = (await nav.boundingBox())!;
+  // The buttons glide to their place (their transitions move `bottom` and `transform`): measured once settled.
+  const bottomOf = (l: typeof live) => async () => {
+    const b = await l.boundingBox();
+    return b ? b.y + b.height : Infinity;
+  };
+  await expect.poll(bottomOf(live), { message: "the live chat ends above the bar" }).toBeLessThanOrEqual(navBox.y + 1);
   const liveBox = (await live.boundingBox())!;
-  expect(liveBox.y + liveBox.height, "the live chat ends above the bar").toBeLessThanOrEqual(navBox.y);
   expect(liveBox.width).toBeLessThanOrEqual(48);
   expect(await live.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
   expect(await live.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(await computed(page, "var(--th-accent)", "backgroundColor"));
@@ -95,8 +103,7 @@ test("the live chat (the assistant off): its button in the store's accent above 
   await page.mouse.wheel(0, 2400);
   const top = page.locator(".scroll-to-top.visible");
   await expect(top).toBeVisible();
-  const topBox = (await top.boundingBox())!;
-  expect(topBox.y + topBox.height).toBeLessThanOrEqual(navBox.y + 1);
+  await expect.poll(bottomOf(top), { message: "scroll-to-top above the bar" }).toBeLessThanOrEqual(navBox.y + 1);
   expect(await top.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
   await page.screenshot({ path: "test-results/floating-live-chat-phone.png" });
 });
