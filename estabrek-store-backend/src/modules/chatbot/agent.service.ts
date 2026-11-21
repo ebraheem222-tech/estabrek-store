@@ -6,7 +6,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
-import { aiJson } from "../ai/ai.client.js";
+import { aiCompact, aiJson, type AiUse } from "../ai/ai.client.js";
 import { identityOf, storeBrief, storeName } from "../identity/identity.js";
 import { CategoryTranslations, ProductTranslations, translationsOf } from "../../lib/translations.js";
 import type { RecommendedProduct } from "../storefront/recommend.service.js";
@@ -166,16 +166,16 @@ async function candidatesFor(tokens: string[], excludeId: string | null, take: n
 }
 
 /** The owner's answers that match the question best (and the top ones when nothing matches). */
-async function knowledgeFor(locale: AgentLocale, tokens: string[]) {
+async function knowledgeFor(locale: AgentLocale, tokens: string[], most = 8) {
   const all = await prisma.chatbotEntry.findMany({ where: { locale, isEnabled: true }, orderBy: [{ priority: "desc" }, { updatedAt: "desc" }], take: 300 });
   const ranked = all
     .map((e) => ({ e, s: scoreEntry(tokens, e) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s)
     .map((x) => x.e);
-  const picked = ranked.slice(0, 8);
+  const picked = ranked.slice(0, most);
   for (const e of all) {
-    if (picked.length >= 5) break;
+    if (picked.length >= Math.min(5, most)) break;
     if (!picked.includes(e)) picked.push(e);
   }
   return picked.map((e) => ({ title: e.title, answer: e.answer }));
@@ -188,6 +188,8 @@ export async function agentReply(opts: {
   pageUrl?: string | null;
   persona?: AgentPersona | null;
   now?: Date;
+  /** What the call is counted under (the owner's «جرّب النموذج» runs count apart from shoppers'). */
+  use?: AiUse;
 }): Promise<AgentReply> {
   const now = opts.now ?? new Date();
   const locale = opts.locale;
@@ -203,16 +205,20 @@ export async function agentReply(opts: {
   const tokens = tokenize(`${opts.message} ${opts.message.length < 30 ? lastAsked : ""}`);
   const slug = slugInView(opts.pageUrl);
   const viewed = slug ? ((await prisma.product.findFirst({ where: { slug, isActive: true }, select: PRODUCT_SELECT })) as unknown as Row | null) : null;
-  const [knowledge, rows] = await Promise.all([knowledgeFor(locale, tokens), candidatesFor(tokens, viewed?.id ?? null, 10)]);
+  // A small model (admin → «نموذج صغير»): fewer pieces and answers, a shorter talk, a shorter piece text.
+  const compact = await aiCompact();
+  const [knowledge, rows] = await Promise.all([knowledgeFor(locale, tokens, compact ? 4 : 8), candidatesFor(tokens, viewed?.id ?? null, compact ? 5 : 10)]);
   const inView = viewed ? shape(viewed, locale, now) : null;
+  if (inView && compact && inView.fact.about) inView.fact.about = inView.fact.about.slice(0, 220);
   const shaped = rows.map((r) => shape(r, locale, now));
+  if (compact) for (const s of shaped) s.fact.about = null;
 
   const raw = await aiJson<unknown>(
-    "shopAgent",
+    opts.use ?? "shopAgent",
     agentPrompt({
       locale,
       message: opts.message,
-      history: opts.history,
+      history: compact ? opts.history.slice(-4) : opts.history,
       store: {
         brief: storeBrief(site),
         name: storeName(site, locale),

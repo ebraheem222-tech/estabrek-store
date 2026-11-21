@@ -13,6 +13,7 @@ import * as AiAPI from "../../api/ai.api";
 import type { AiFeature, AiSettings } from "../../api/ai.api";
 import { AI_TEXT } from "./aiText";
 import { AiServerCard } from "./AiServerCard";
+import { AiStatsCard } from "./AiStatsCard";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
@@ -71,6 +72,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
       </section>
 
       {data.server ? <AiServerCard key={JSON.stringify(data.server)} server={data.server} canWrite={canWrite} openaiReady={data.openaiReady ?? data.keyReady} /> : null}
+      {data.server ? <AiStatsCard /> : null}
 
       {groups.map((g) => (
         <section key={g.title} className={box}>

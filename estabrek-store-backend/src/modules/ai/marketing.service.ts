@@ -8,7 +8,7 @@ import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
 import { mainLanguage, type ContentLang } from "../../lib/translations.js";
 import { AppError } from "../../utils/httpError.js";
-import { aiJson, cacheKey, cached } from "./ai.client.js";
+import { aiCompact, aiJson, cacheKey, cached } from "./ai.client.js";
 import { addressing, shop } from "./ai.service.js";
 import { priceNow } from "../chatbot/agent.service.js";
 import { cleanPosts, cleanWeek, socialPrompt, weekPrompt, type Platform, type PostProduct, type PostTone } from "./socialPosts.js";
@@ -97,7 +97,8 @@ export async function weekPlan(body: { platforms: Platform[]; tone: PostTone; la
     prisma.product.findMany({ where, orderBy: [{ popularity: { score: "desc" } }], take: 12, select: POST_SELECT }),
     prisma.product.findMany({ where, orderBy: { createdAt: "desc" }, take: 10, select: POST_SELECT }),
   ]);
-  const rows = [...new Map([...popular, ...newest].map((p) => [p.id, p as unknown as PostRow])).values()].slice(0, 18);
+  // A small model gets fewer pieces to choose from.
+  const rows = [...new Map([...popular, ...newest].map((p) => [p.id, p as unknown as PostRow])).values()].slice(0, (await aiCompact()) ? 8 : 18);
   if (rows.length < 2) throw new AppError(409, "FEW_PRODUCTS", "Add a few products in stock first");
   const products = rows.map((r) => postProduct(r));
   const store = await shop();
@@ -162,7 +163,7 @@ export async function seoFix(productId: string, opts: { model?: boolean } = {}) 
   const s = await prisma.siteSettings.findFirst({ select: { header: true } });
   const lang = mainLanguage(s?.header);
   if (opts.model === false) return { productId, seoTitle: null, seoDescription: null, alts: altsFor(p, lang) };
-  const others = (await prisma.product.findMany({ where: { isActive: true, id: { not: productId } }, orderBy: { createdAt: "desc" }, take: 40, select: { title: true, seoTitle: true } }))
+  const others = (await prisma.product.findMany({ where: { isActive: true, id: { not: productId } }, orderBy: { createdAt: "desc" }, take: (await aiCompact()) ? 12 : 40, select: { title: true, seoTitle: true } }))
     .map((o) => o.seoTitle || o.title)
     .filter(Boolean);
   const { brief } = await shop();

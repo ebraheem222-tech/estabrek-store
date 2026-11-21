@@ -60,13 +60,13 @@ describe("where the AI runs", () => {
 
     fireEvent.click(screen.getByTestId("ai-server-try"));
     expect(await screen.findByTestId("ai-server-try-ok")).toHaveTextContent("أهلين فيكِ");
-    expect(m.tryAiServer).toHaveBeenCalledWith({ kind: "own", url: "https://models.example.com/v1", model: "allam-7b-instruct", vision: false, visionModel: "", embedModel: "" });
+    expect(m.tryAiServer).toHaveBeenCalledWith({ kind: "own", url: "https://models.example.com/v1", model: "allam-7b-instruct", vision: false, visionModel: "", embedModel: "", compact: false });
 
     // Nothing changed: nothing to save. A new model name: saved without touching the key.
     expect(screen.getByTestId("ai-server-save")).toBeDisabled();
     fireEvent.change(screen.getByTestId("ai-server-model"), { target: { value: "karnak-6b" } });
     fireEvent.click(screen.getByTestId("ai-server-save"));
-    await waitFor(() => expect(m.saveAiServer).toHaveBeenLastCalledWith({ kind: "own", url: "https://models.example.com/v1", model: "karnak-6b", vision: false, visionModel: "", embedModel: "" }));
+    await waitFor(() => expect(m.saveAiServer).toHaveBeenLastCalledWith({ kind: "own", url: "https://models.example.com/v1", model: "karnak-6b", vision: false, visionModel: "", embedModel: "", compact: false }));
 
     fireEvent.click(screen.getByText("شيل المفتاح"));
     fireEvent.click(screen.getByTestId("ai-server-save"));
@@ -85,7 +85,7 @@ describe("where the AI runs", () => {
     fireEvent.click(screen.getByTestId("ai-server-try"));
     expect(await screen.findByTestId("ai-server-try-failed")).toHaveTextContent("is it running?");
     fireEvent.click(screen.getByTestId("ai-server-save"));
-    await waitFor(() => expect(m.saveAiServer).toHaveBeenCalledWith({ kind: "own", url: "https://gpu.example.com", model: "allam-7b-instruct", vision: false, visionModel: "", embedModel: "" }));
+    await waitFor(() => expect(m.saveAiServer).toHaveBeenCalledWith({ kind: "own", url: "https://gpu.example.com", model: "allam-7b-instruct", vision: false, visionModel: "", embedModel: "", compact: false }));
   });
 
   test("a pictures model and a search model on the same server; the search's try; products made ready for search with progress", async () => {
@@ -105,6 +105,6 @@ describe("where the AI runs", () => {
     expect(await screen.findByTestId("ai-server-try-search")).toHaveTextContent("1024");
     fireEvent.change(screen.getByTestId("ai-server-vision-model"), { target: { value: "qwen3-vl:4b" } });
     fireEvent.click(screen.getByTestId("ai-server-save"));
-    await waitFor(() => expect(m.saveAiServer).toHaveBeenCalledWith({ kind: "own", url: "https://models.example.com/v1", model: "qwen3:8b", vision: false, visionModel: "qwen3-vl:4b", embedModel: "bge-m3" }));
+    await waitFor(() => expect(m.saveAiServer).toHaveBeenCalledWith({ kind: "own", url: "https://models.example.com/v1", model: "qwen3:8b", vision: false, visionModel: "qwen3-vl:4b", embedModel: "bge-m3", compact: false }));
   });
 });

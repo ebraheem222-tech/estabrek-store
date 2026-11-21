@@ -15,7 +15,8 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { AppError } from "../../utils/httpError.js";
 import { AI_DEFAULTS, AI_FEATURES, AiSchema, aiOf } from "../ai/ai.settings.js";
-import { aiEmbedReady, aiImageEditReady, aiKeyReady, aiReadyFor, aiTextReady, aiUsage, aiVisionReady, forgetAiServer } from "../ai/ai.client.js";
+import { aiEmbedReady, aiImageEditReady, aiKeyReady, aiReadyFor, aiStats, aiTextReady, aiUsage, aiVisionReady, forgetAiServer } from "../ai/ai.client.js";
+import { EVAL_LIMITS, deleteRun, evalState, markAnswer, setQuestions, startRun } from "../ai/aiEval.js";
 import { AI_SERVER_KINDS, AiServerSchema, aiServerOf, aiServerView, ownEmbed, ownEmbedSet, ownJson, ownModelEndpoint, ownServerSet } from "../ai/ownModel.js";
 import { searchIndexStatus, startSearchIndex } from "../../lib/productTextEmbeddings.js";
 import { seal } from "../../lib/secretBox.js";
@@ -88,6 +89,8 @@ const ServerBody = z.object({
   /** Optional models on the same server: one that reads pictures, one for search by meaning. */
   visionModel: z.string().trim().max(120).default(""),
   embedModel: z.string().trim().max(120).default(""),
+  /** A small model: shorter prompts. */
+  compact: z.boolean().default(false),
   key: z.string().trim().max(4000).nullable().optional(),
 });
 type ServerIn = z.infer<typeof ServerBody>;
@@ -103,7 +106,7 @@ function serverFrom(body: ServerIn, saved: ReturnType<typeof aiServerOf>) {
     }
   }
   const key = body.key === undefined ? saved.key : body.key ? seal(body.key) : null;
-  return AiServerSchema.parse({ kind: body.kind, url: body.url, model: body.model, vision: body.vision, visionModel: body.visionModel, embedModel: body.embedModel, key });
+  return AiServerSchema.parse({ kind: body.kind, url: body.url, model: body.model, vision: body.vision, visionModel: body.visionModel, embedModel: body.embedModel, compact: body.compact, key });
 }
 
 aiSettingsAdmin.put(
@@ -140,6 +143,65 @@ aiSettingsAdmin.post(
     const embed = ownEmbedSet(server) ? await ownEmbed(server, ["عباية سوداء"], { ms: 30_000 }) : null;
     const searchTry = embed ? (embed.ok ? { ok: true, size: embed.vectors[0].length } : { ok: false, error: embed.error }) : undefined;
     res.json(r.ok ? { ok: true, ms: r.ms, reply: String(r.data.reply ?? "").slice(0, 300), search: searchTry } : { ok: false, error: r.error, search: searchTry });
+  }),
+);
+
+/** What each use did since the server last started: calls, failures (time limits included), the average time. */
+aiSettingsAdmin.get(
+  "/stats",
+  asyncHandler(async (_req, res) => {
+    res.json(aiStats());
+  }),
+);
+
+/**
+ * «جرّب النموذج»: the owner's questions asked to the shop's assistant as it is now, side by side.
+ *   GET    /v1/admin/ai/eval                          the questions, the last runs, whether one is going
+ *   PUT    /v1/admin/ai/eval/questions {questions}    one per line, at most 50
+ *   POST   /v1/admin/ai/eval/run                      a run in the background (409: one is going, no questions, or no model)
+ *   PATCH  /v1/admin/ai/eval/runs/:run/answers/:q     {mark: "good" | "bad" | null}
+ *   DELETE /v1/admin/ai/eval/runs/:run
+ */
+aiSettingsAdmin.get(
+  "/eval",
+  asyncHandler(async (_req, res) => {
+    res.json(await evalState());
+  }),
+);
+
+aiSettingsAdmin.put(
+  "/eval/questions",
+  validate({ body: z.object({ questions: z.array(z.string().max(EVAL_LIMITS.text * 2)).max(EVAL_LIMITS.questions * 2) }) }),
+  asyncHandler(async (req, res) => {
+    res.json(await setQuestions(req.body.questions));
+  }),
+);
+
+aiSettingsAdmin.post(
+  "/eval/run",
+  asyncHandler(async (_req, res) => {
+    const s = await getOrCreateSettings();
+    if (!aiTextReady(s.header)) throw new AppError(409, "AI_OFF", "Connect a model first (OpenAI's key or your own server)");
+    const run = await startRun();
+    if (!run) throw new AppError(409, "EVAL_BUSY", "A run is going, or there are no questions");
+    res.status(202).json(await evalState());
+  }),
+);
+
+aiSettingsAdmin.patch(
+  "/eval/runs/:run/answers/:q",
+  validate({ body: z.object({ mark: z.enum(["good", "bad"]).nullable() }) }),
+  asyncHandler(async (req, res) => {
+    if (!(await markAnswer(String(req.params.run), String(req.params.q), req.body.mark))) throw new AppError(404, "NOT_FOUND", "No such answer");
+    res.json({ ok: true });
+  }),
+);
+
+aiSettingsAdmin.delete(
+  "/eval/runs/:run",
+  asyncHandler(async (req, res) => {
+    if (!(await deleteRun(String(req.params.run)))) throw new AppError(404, "NOT_FOUND", "No such run (or it is still going)");
+    res.json({ ok: true });
   }),
 );
 

@@ -8,8 +8,8 @@ export type AiSettings = Record<AiFeature, boolean> & { dailyLimit: number };
 /** Where the AI runs: OpenAI, or the store's own model server (its key is never sent here, only whether there is one). */
 export type AiServerKind = "openai" | "own";
 /** visionModel / embedModel: optional models on the same server for pictures and for search by meaning ("" = none; older servers leave them out). */
-export type AiServerView = { kind: AiServerKind; url: string; model: string; vision: boolean; visionModel?: string; embedModel?: string; hasKey: boolean };
-export type AiServerIn = { kind: AiServerKind; url: string; model: string; vision: boolean; visionModel?: string; embedModel?: string; key?: string | null };
+export type AiServerView = { kind: AiServerKind; url: string; model: string; vision: boolean; visionModel?: string; embedModel?: string; compact?: boolean; hasKey: boolean };
+export type AiServerIn = { kind: AiServerKind; url: string; model: string; vision: boolean; visionModel?: string; embedModel?: string; compact?: boolean; key?: string | null };
 
 export async function getAi() {
   return (await api.get("/admin/ai")).data as {
@@ -99,4 +99,31 @@ export async function pageWords(body: { action: "write" | "improve" | "shorter" 
 /** A picture's description, from the picture (an https address). */
 export async function pictureAlt(body: { imageUrl: string; lang: ShopLang }) {
   return (await api.post("/admin/ai-pages/alt", body, { timeout: 60_000 })).data as { alt: string };
+}
+
+/** What each use did since the server last started: calls, failures (time limits included), the average time. */
+export type AiUseStats = { use: string; calls: number; failed: number; avgMs: number; lastError: string | null; lastAt: string | null; via: "openai" | "own" | null };
+export async function aiStats() {
+  return (await api.get("/admin/ai/stats")).data as { since: string; uses: AiUseStats[] };
+}
+
+/* «جرّب النموذج»: the owner's questions asked to the shop's assistant as it is now, runs side by side. */
+export type EvalMark = "good" | "bad";
+export type EvalAnswer = { qid: string; text: string; answer: string; products: string[]; ms: number; ok: boolean; error: string | null; missed: boolean; mark: EvalMark | null };
+export type EvalRun = { id: string; at: string; finishedAt: string | null; model: string; running: boolean; total: number; answers: EvalAnswer[] };
+export type EvalState = { questions: Array<{ id: string; text: string }>; runs: EvalRun[]; running: boolean; limits: { questions: number; text: number; runs: number } };
+export async function evalState() {
+  return (await api.get("/admin/ai/eval")).data as EvalState;
+}
+export async function saveEvalQuestions(questions: string[]) {
+  return (await api.put("/admin/ai/eval/questions", { questions })).data as EvalState;
+}
+export async function startEvalRun() {
+  return (await api.post("/admin/ai/eval/run", {})).data as EvalState;
+}
+export async function markEvalAnswer(runId: string, qid: string, mark: EvalMark | null) {
+  return (await api.patch(`/admin/ai/eval/runs/${encodeURIComponent(runId)}/answers/${encodeURIComponent(qid)}`, { mark })).data as { ok: true };
+}
+export async function deleteEvalRun(runId: string) {
+  return (await api.delete(`/admin/ai/eval/runs/${encodeURIComponent(runId)}`)).data as { ok: true };
 }

@@ -67,9 +67,10 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
   const [vision, setVision] = useState(server.vision);
   const [visionModel, setVisionModel] = useState(server.visionModel ?? "");
   const [embedModel, setEmbedModel] = useState(server.embedModel ?? "");
+  const [compact, setCompact] = useState(server.compact ?? false);
   // undefined = the saved key stays; "" typed = nothing new; null = take it away.
   const [key, setKey] = useState<string | null | undefined>(undefined);
-  const body = (): AiServerIn => ({ kind, url: url.trim(), model: model.trim(), vision, visionModel: visionModel.trim(), embedModel: embedModel.trim(), ...(key === undefined || key === "" ? {} : { key }) });
+  const body = (): AiServerIn => ({ kind, url: url.trim(), model: model.trim(), vision, visionModel: visionModel.trim(), embedModel: embedModel.trim(), compact, ...(key === undefined || key === "" ? {} : { key }) });
   const dirty =
     kind !== server.kind ||
     url.trim() !== server.url ||
@@ -77,6 +78,7 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
     vision !== server.vision ||
     visionModel.trim() !== (server.visionModel ?? "") ||
     embedModel.trim() !== (server.embedModel ?? "") ||
+    compact !== (server.compact ?? false) ||
     (key !== undefined && key !== "");
 
   const save = useMutation({
@@ -151,6 +153,14 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
             <span>
               {say(
                 "نموذج الكتابة نفسه بيقرأ الصور (مثل Qwen-VL). أو حط نموذج صور لحاله تحت. بدون الاتنين: «اكتبيلي من الصور» ووصف الصور بيضلّوا على OpenAI إذا مفتاحه موجود.|The words model itself reads pictures (like Qwen-VL). Or set a pictures model of its own below. Without either, the product writer from photos and pictures' descriptions stay on OpenAI when its key is there.|מודל הכתיבה עצמו קורא תמונות (כמו Qwen-VL). או להגדיר מודל תמונות נפרד למטה. בלי אף אחד מהם, כתיבת מוצר מתמונות ותיאורי תמונות נשארים ב־OpenAI אם יש לו מפתח.",
+              )}
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-xs text-white/70">
+            <input type="checkbox" className="mt-0.5" checked={compact} disabled={!canWrite} onChange={(e) => setCompact(e.target.checked)} data-testid="ai-server-compact" />
+            <span>
+              {say(
+                "نموذج صغير (8B وأقل): بنبعتله طلبات أقصر، قطع أقل ومحادثة أقصر، عشان يرد أسرع وما يضيع.|A small model (8B and under): shorter prompts, fewer pieces and a shorter talk, so it answers faster and doesn't get lost.|מודל קטן (8B ומטה): בקשות קצרות יותר, פחות פריטים ושיחה קצרה יותר, כדי שיענה מהר יותר ולא יתבלבל.",
               )}
             </span>
           </label>

@@ -30,7 +30,74 @@ export type AiProvider = {
  * What a call is counted under (AiUsage.feature): an AI switch, or one of the shop's older uses that
  * have no switch of their own (search by meaning, the plain chat, the picks, the page editor's old tools).
  */
-export type AiUse = AiFeature | "search" | "oldChat" | "recommend" | "pagesTools";
+export type AiUse = AiFeature | "search" | "oldChat" | "recommend" | "pagesTools" | "eval";
+
+/**
+ * How long a call may take before it's given up (ms): a shopper waiting in the chat or the search gets
+ * a short wait and then the plain answer; the owner's tools may wait longer. The rest: 90 s.
+ */
+export const AI_TIME_BUDGET: Partial<Record<AiUse, number>> = {
+  shopAgent: 15_000,
+  oldChat: 15_000,
+  recommend: 10_000,
+  smartSearch: 10_000,
+  sizeAdvice: 15_000,
+  shopTheLook: 20_000,
+  reviewSummary: 30_000,
+  search: 8_000,
+  eval: 30_000,
+  socialPosts: 60_000,
+};
+const DEFAULT_BUDGET = 90_000;
+let budgetScale = 1;
+/** Tests: every time limit multiplied (0.01 makes 15 s into 150 ms). */
+export function setAiBudgetScaleForTests(k: number) {
+  budgetScale = k;
+}
+export const aiBudget = (use: AiUse) => Math.max(50, Math.round((AI_TIME_BUDGET[use] ?? DEFAULT_BUDGET) * budgetScale));
+
+/* What each use did since the server started (admin → AI): calls, failures (time limit included), time. */
+type UseStats = { calls: number; failed: number; ms: number; lastError: string | null; lastAt: string | null; via: "openai" | "own" | null };
+const stats = new Map<AiUse, UseStats>();
+const since = new Date().toISOString();
+function note(use: AiUse, ok: boolean, ms: number, via: "openai" | "own", error?: string) {
+  const cur = stats.get(use) ?? { calls: 0, failed: 0, ms: 0, lastError: null, lastAt: null, via: null };
+  cur.calls++;
+  if (!ok) {
+    cur.failed++;
+    cur.lastError = (error ?? "failed").slice(0, 200);
+  }
+  cur.ms += ms;
+  cur.lastAt = new Date().toISOString();
+  cur.via = via;
+  stats.set(use, cur);
+}
+/** Per use: calls, failures, the average time; since the server last started (a deploy starts them again). */
+export function aiStats() {
+  return {
+    since,
+    uses: [...stats.entries()].map(([use, x]) => ({ use, calls: x.calls, failed: x.failed, avgMs: x.calls ? Math.round(x.ms / x.calls) : 0, lastError: x.lastError, lastAt: x.lastAt, via: x.via })),
+  };
+}
+export function resetAiStatsForTests() {
+  stats.clear();
+}
+
+/** The work's answer, or late() when it takes longer than ms (the work itself is left to end on its own). */
+const timeLimit = <T,>(work: Promise<T>, ms: number, late: () => T): Promise<T> =>
+  new Promise((done, fail) => {
+    const t = setTimeout(() => done(late()), ms);
+    work.then(
+      (v) => {
+        clearTimeout(t);
+        done(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        fail(e);
+      },
+    );
+  });
 
 const openai: AiProvider = {
   async json<T>(p: AiPrompt) {
@@ -144,7 +211,9 @@ export async function aiJson<T>(feature: AiUse, p: AiPrompt): Promise<T> {
       const picturesModel = ownPicturesModel(server);
       if (!p.images?.length || picturesModel) {
         await countUse(feature);
-        const own = await ownJson<T>(server, p, p.images?.length ? { model: picturesModel } : {});
+        const started = Date.now();
+        const own = await ownJson<T>(server, p, { ms: aiBudget(feature), ...(p.images?.length ? { model: picturesModel } : {}) });
+        note(feature, own.ok, Date.now() - started, "own", own.ok ? undefined : own.error);
         if (!own.ok) {
           console.warn(`[ai] ${feature} on the own model server failed:`, own.error.slice(0, 300));
           throw new AppError(502, "AI_FAILED", `The store's own model didn't answer: ${own.error}`);
@@ -157,12 +226,26 @@ export async function aiJson<T>(feature: AiUse, p: AiPrompt): Promise<T> {
   }
   if (!aiKeyReady()) throw new AppError(404, "AI_OFF", "AI is not set up");
   await countUse(feature);
-  const r = await provider.json<T>(p);
+  const started = Date.now();
+  const ms = aiBudget(feature);
+  const r = await timeLimit(provider.json<T>(p), ms, () => ({ ok: false as const, error: `No answer within ${Math.round(ms / 1000)} s` }));
+  note(feature, r.ok, Date.now() - started, "openai", r.ok ? undefined : r.error);
   if (!r.ok) {
     console.warn(`[ai] ${feature} failed:`, r.error.slice(0, 300));
     throw new AppError(502, "AI_FAILED", "The AI didn't answer, try again");
   }
   return r.data;
+}
+
+/** The own server's model is a small one: the prompts are kept shorter (fewer pieces, a shorter talk). */
+export async function aiCompact(): Promise<boolean> {
+  if (providerSwapped) return compactForTests;
+  const server = await currentServer();
+  return ownServerSet(server) && server.compact;
+}
+let compactForTests = false;
+export function setAiCompactForTests(on: boolean) {
+  compactForTests = on;
 }
 
 export async function aiEditImage(feature: AiFeature, image: Buffer, prompt: string) {
@@ -217,7 +300,9 @@ export async function aiEmbed(texts: string[], use: AiUse = "search"): Promise<{
   const server = await currentServer();
   if (ownEmbedSet(server)) {
     await countUse(use);
-    const r = await ownEmbed(server, texts);
+    const started = Date.now();
+    const r = await ownEmbed(server, texts, { ms: Math.max(aiBudget(use), 8_000) });
+    note(use, r.ok, Date.now() - started, "own", r.ok ? undefined : r.error);
     if (!r.ok) console.warn(`[ai] ${use} embeddings on the own model server failed:`, r.error.slice(0, 300));
     return r;
   }

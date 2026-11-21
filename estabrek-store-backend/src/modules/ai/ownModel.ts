@@ -33,6 +33,8 @@ export const AiServerSchema = z.object({
   visionModel: z.string().trim().max(120).catch("").default(""),
   /** A model on the same server for search by meaning (embeddings, e.g. "bge-m3"); "" = none (OpenAI's when its key is there). */
   embedModel: z.string().trim().max(120).catch("").default(""),
+  /** A small model (about 8B and under): the prompts are kept shorter (fewer pieces, a shorter talk). */
+  compact: z.boolean().catch(false).default(false),
   /** The server's key, sealed; null = none (Ollama and LM Studio need none). */
   key: z.string().max(4000).nullable().catch(null).default(null),
 });
@@ -44,7 +46,7 @@ export const aiServerOf = (header: unknown): AiServer => {
 };
 
 /** What the admin may see of it: never the key, only whether there is one. */
-export const aiServerView = (s: AiServer) => ({ kind: s.kind, url: s.url, model: s.model, vision: s.vision, visionModel: s.visionModel, embedModel: s.embedModel, hasKey: Boolean(s.key) });
+export const aiServerView = (s: AiServer) => ({ kind: s.kind, url: s.url, model: s.model, vision: s.vision, visionModel: s.visionModel, embedModel: s.embedModel, compact: s.compact, hasKey: Boolean(s.key) });
 
 /** The own server is set up enough to be called. */
 export const ownServerSet = (s: AiServer) => s.kind === "own" && Boolean(s.url) && Boolean(s.model);
@@ -288,11 +290,14 @@ export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: num
   if (key) headers.authorization = `Bearer ${key}`;
   const started = Date.now();
   const ms = Math.max(1000, Math.min(opts.ms ?? OWN_MODEL_LIMITS.ms, OWN_MODEL_LIMITS.ms));
+  const left = () => Math.max(0, ms - (Date.now() - started));
+  let withFormat = true;
   try {
     let res = await transport({ url, headers, body: JSON.stringify({ ...base, response_format: { type: "json_object" } }), ms });
     // Some servers don't know "response_format": ask again without it.
     if ((res.status === 400 || res.status === 422) && /response_format|json_object/i.test(res.text)) {
-      res = await transport({ url, headers, body: JSON.stringify(base), ms });
+      withFormat = false;
+      res = await transport({ url, headers, body: JSON.stringify(base), ms: Math.max(1000, left()) });
     }
     if (res.status === 401 || res.status === 403) return { ok: false, error: `The model server refused the key (${res.status})` };
     if (res.status === 404) return { ok: false, error: /model/i.test(res.text) ? `The model server doesn't have the model "${model}"` : "Nothing answers at that address (404): check the address" };
@@ -303,7 +308,24 @@ export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: num
     } catch {
       return { ok: false, error: "The model server's answer isn't JSON (is the address the OpenAI-style one?)" };
     }
-    const data = readJsonAnswer(contentOf(json));
+    const said = contentOf(json);
+    let data = readJsonAnswer(said);
+    // A small model that wandered off the JSON: asked once more, with what it said and a short reminder, while there is time.
+    if ((data == null || typeof data !== "object") && left() >= 1500) {
+      const again = {
+        ...base,
+        messages: [...base.messages, { role: "assistant", content: said.slice(0, 2000) }, { role: "user", content: "That wasn't one JSON object. Answer again with the JSON object only, as asked." }],
+        ...(withFormat ? { response_format: { type: "json_object" } } : {}),
+      };
+      const res2 = await transport({ url, headers, body: JSON.stringify(again), ms: left() });
+      if (res2.status >= 200 && res2.status < 300) {
+        try {
+          data = readJsonAnswer(contentOf(JSON.parse(res2.text)));
+        } catch {
+          data = null;
+        }
+      }
+    }
     if (data == null || typeof data !== "object") return { ok: false, error: "The model didn't answer with JSON" };
     return { ok: true, data: data as T, ms: Date.now() - started };
   } catch (e) {
