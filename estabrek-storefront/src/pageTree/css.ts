@@ -1250,7 +1250,7 @@ export const BASE_CSS = [
   ".pt-tiles-square .pt-tile img,.pt-tiles-square .pt-tile-blank{aspect-ratio:1/1}.pt-tiles-banner .pt-tile img,.pt-tiles-banner .pt-tile-blank{aspect-ratio:16/9}",
   ".pt-tiles-circle .pt-tile{align-items:center;text-align:center}.pt-tiles-circle .pt-tile img,.pt-tiles-circle .pt-tile-blank{aspect-ratio:1/1;border-radius:50%}",
   ".pt-tiles-overlay .pt-tile{position:relative;overflow:hidden;border-radius:18px}.pt-tiles-overlay .pt-tile span{position:absolute;inset-inline:0;bottom:0;padding:24px 16px 14px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))}",
-  ".pt-tiles-pill{display:flex;flex-wrap:wrap;gap:10px}.pt-tiles-pill .pt-tile{flex-direction:row;align-items:center;gap:8px;padding:6px 14px 6px 6px;padding-inline:6px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--border)}",
+  ".pt-tiles-pill{display:flex;flex-wrap:wrap;gap:10px}.pt-tiles-pill .pt-tile{flex-direction:row;align-items:center;gap:8px;padding:6px 14px 6px 6px;padding-inline:6px 14px;border-radius:999px;background:var(--surface);color:var(--text);border:1px solid var(--border)}",
   ".pt-tiles-pill .pt-tile img,.pt-tiles-pill .pt-tile-blank{width:32px;height:32px;aspect-ratio:auto;border-radius:50%}",
   `@media (max-width:${PHONE_MAX}px){.pt-products-grid[style*=--pt-cols],.pt-tiles[style*=--pt-cols]:not(.pt-tiles-pill){grid-template-columns:repeat(2,minmax(0,1fr))}}`,
   // A 3D model: square unless the element says; its link covers it.

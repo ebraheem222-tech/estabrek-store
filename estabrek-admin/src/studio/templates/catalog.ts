@@ -20,6 +20,10 @@ export type Template = {
   campaign?: Campaign;
   /** It goes over the page (a popup), not between sections. */
   popup?: boolean;
+  /** Made by the section DNA: its look (dna/looks.ts), layout and mood. */
+  look?: string;
+  layout?: string;
+  mood?: string;
 };
 
 export const SKIN_NAMES: Record<Skin, W> = {
@@ -37,7 +41,7 @@ const SECTION_BY_KEY = new Map(RECIPES.map((r) => [r.key, r]));
 const PAGE_BY_KEY = new Map(PAGES.map((p) => [p.key, p]));
 
 export const SECTION_TEMPLATES: Template[] = RECIPES.flatMap((r) =>
-  r.skins.map((skin): Template => ({ id: `s:${r.key}:${skin}`, kind: "section", group: r.cat, name: r.name, skin, ...(r.campaign ? { campaign: r.campaign } : {}), ...(r.cat === "popup" ? { popup: true } : {}) })),
+  r.skins.map((skin): Template => ({ id: `s:${r.key}:${skin}`, kind: "section", group: r.cat, name: r.name, skin, ...(r.campaign ? { campaign: r.campaign } : {}), ...(r.cat === "popup" ? { popup: true } : {}), ...(r.dna ? { look: r.dna.look, layout: r.dna.layout, mood: r.dna.mood } : {}) })),
 );
 export const PAGE_TEMPLATES: Template[] = PAGES.map((p): Template => ({ id: `p:${p.key}`, kind: "page", group: p.kind, name: p.name, ...(p.fam ? { fam: p.fam } : {}), ...(p.campaign ? { campaign: p.campaign } : {}) }));
 export const templateById = (id: string) => SECTION_TEMPLATES.find((t) => t.id === id) ?? PAGE_TEMPLATES.find((t) => t.id === id) ?? null;
