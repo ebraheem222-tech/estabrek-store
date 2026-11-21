@@ -83,12 +83,13 @@ export function buttons(c: Ctx, L: Look, o: { center?: boolean; over?: boolean; 
 }
 
 /** A picture cut, toned and framed the look's way. `bare` = no frame (a cover, a strip of many). */
-export function picture(c: Ctx, L: Look, alt: W, o: { aspect?: string; bare?: boolean; radius?: number; style?: S; phone?: S } = {}): N {
+export function picture(c: Ctx, L: Look, alt: W, o: { aspect?: string; bare?: boolean; cut?: boolean; radius?: number; style?: S; phone?: S } = {}): N {
   const tone: S = L.pic.tone === "gray" ? { filters: { gray: 1, contrast: 1.05 } }
     : L.pic.tone === "duo" ? { overlay: { color: "accent", opacity: 0.5, blend: "color" } }
     : L.pic.tone === "warm" ? { filters: { saturate: 1.15, contrast: 1.04 } }
     : L.pic.tone === "night" ? { filters: { bright: 0.85, contrast: 1.12, saturate: 0.75 } } : {};
-  const cut: S = L.pic.shape && !o.bare ? { shape: L.pic.shape, radius: 0 } : {};
+  // `bare` drops the frame; `cut` keeps the look's shape even then (a banner cut as an arch, a blob…).
+  const cut: S = L.pic.shape && (!o.bare || o.cut) ? { shape: L.pic.shape, radius: 0 } : {};
   const frame = o.bare ? undefined : L.pic.frame;
   const own: S = frame === "shade" ? { shade: { x: 14, y: 14, blur: 0, color: pop(c) } }
     : frame === "tilt" ? { rotateZ: -3, shadow: "lg" }
@@ -132,6 +133,18 @@ export function section(c: Ctx, L: Look, kids: N[], name: W, o: { center?: boole
     pad: o.pad ?? [L.pad, 24, d?.edge ? L.pad + 40 : L.pad, 24], style: ground, props, ...(o.phone ? { phone: o.phone } : {}),
   });
 }
+
+/**
+ * The store's own parts (product cards, category tiles, tabs, a countdown) are drawn for the page's light ground:
+ * on a dark or coloured section they sit on a light panel, so their words read; on a light one they stand bare,
+ * or (looks with framed cards) in the look's card.
+ */
+export function storePanel(c: Ctx, L: Look, kids: N[], style: S = {}): N {
+  if (!light(c)) return STACK(c, kids, { gap: 16, pad: [24, 22, 24, 22], bg: "bg", color: "text", radius: Math.min(28, L.pic.radius || L.btn.radius || 0), self: "stretch", ...style });
+  if (L.card === "pop" || L.card === "shadow") return card(c, L, kids, { self: "stretch", ...style });
+  return kids.length === 1 && !Object.keys(style).length ? kids[0] : STACK(c, kids, { gap: 16, self: "stretch", ...style });
+}
+export const isLight = light;
 
 /** A thin rule, for the looks that draw one. */
 export const rule = (c: Ctx, L: Look): N[] => (L.deco?.rule ? [STACK(c, [], { height: "1px", width: "100%", bg: hair(c), margin: [8, 0, 8, 0] })] : []);

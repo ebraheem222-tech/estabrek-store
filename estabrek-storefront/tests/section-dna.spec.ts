@@ -15,12 +15,14 @@ import { auditPage, layoutsOf, type Fault } from "./templateAudit";
  *   default      one design of each layout (CI)
  *   DNA=all      every design, in its first colour
  *   DNA_IDS=     chosen designs ("dna-hero-split-luxe,…")
+ *   DNA_KIND=    only these kinds ("products,categories"), with DNA=all every design of them
  *   DNA_THEME=dark   on a dark theme instead of a light one
  *   DNA_LANG=en  in another language (ar by default)
  *   DNA_OUT=dir  a picture of each design at each width, and report.json
  *
- * And no two designs look alike: each one's picture on a computer gets a small fingerprint (a 256-bit difference
- * hash of its grey picture), and two different designs whose fingerprints are this close fail the last test.
+ * And no two designs of a kind look alike (the gallery shows a kind at a time): each one's picture on a computer gets
+ * a small fingerprint (a 256-bit difference hash of its grey picture), and two different designs of the same kind
+ * whose fingerprints are this close fail the last test.
  */
 const API = "http://127.0.0.1:4100";
 const OUT = process.env.DNA_OUT || "";
@@ -50,7 +52,10 @@ async function fingerprint(page: Page, png: Buffer): Promise<string> {
 const WIDTHS = [{ name: "wide", width: 1366, height: 900 }, { name: "phone", width: 390, height: 844 }] as const;
 
 const designOf = (id: string) => id.split(":")[1];
-const DNA_TEMPLATES = SECTION_TEMPLATES.filter((t) => t.layout);
+const KINDS = process.env.DNA_KIND ? new Set(process.env.DNA_KIND.split(",").map((s) => s.trim())) : null;
+const DNA_TEMPLATES = SECTION_TEMPLATES.filter((t) => t.layout && (!KINDS || KINDS.has(t.group)));
+/** A design's kind, from its key ("dna-<kind>-<layout>-<look>"). */
+const kindOf = (design: string) => design.split("-")[1];
 function chosen() {
   if (process.env.DNA_IDS) {
     const want = new Set(process.env.DNA_IDS.split(",").map((s) => s.trim()));
@@ -171,13 +176,13 @@ for (let at = 0; at < list.length; at += PER_PAGE) {
   });
 }
 
-test("no two designs look alike", () => {
+test("no two designs of a kind look alike", () => {
   const prints = readHashes();
   const ids = Object.keys(prints);
   test.skip(ids.length < 2, "the designs' pictures weren't taken in this run");
   const alike: string[] = [];
   for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
-    if (designOf(ids[i]) === designOf(ids[j])) continue;
+    if (designOf(ids[i]) === designOf(ids[j]) || kindOf(designOf(ids[i])) !== kindOf(designOf(ids[j]))) continue;
     let d = 0;
     for (let k = 0; k < prints[ids[i]].length; k++) if (prints[ids[i]][k] !== prints[ids[j]][k]) d++;
     if (d <= ALIKE) alike.push(`${designOf(ids[i])} ~ ${designOf(ids[j])} (${d})`);
