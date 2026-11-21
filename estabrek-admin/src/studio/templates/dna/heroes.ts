@@ -21,6 +21,11 @@ function words(c: Ctx, L: Look, o: { center?: boolean; size?: number; overPic?: 
     buttons(c, L, { center: o.center, over: o.overPic }),
   ];
 }
+/** Where a card sits on a full picture, by the look's mood (so the same layout reads differently in each). */
+const CARD_SPOT: Record<Look["mood"], { x: number; y: number; anchor: string }> = {
+  calm: { x: 5, y: 90, anchor: "bottom-start" }, tech: { x: 5, y: 90, anchor: "bottom-start" }, playful: { x: 95, y: 90, anchor: "bottom-end" },
+  bold: { x: 50, y: 50, anchor: "center" }, classic: { x: 5, y: 10, anchor: "top-start" }, luxe: { x: 95, y: 10, anchor: "top-end" },
+};
 /** Words in a card on a picture: glass keeps the section's build (white words); a solid card is the page's own ground. */
 const inCard = (c: Ctx, L: Look): Ctx => (L.card === "glass" ? c : { ...c, skin: "plain" });
 const group = (c: Ctx, kids: N[], center = false, gap = 18) => STACK(c, kids, { gap, ...(center ? { align: "center", textAlign: "center" } : {}) });
@@ -43,7 +48,7 @@ export const HERO_LAYOUTS: Layout[] = [
   { key: "cover-card", name: w("صورة كاملة وبطاقة", "A full picture and a card", "תמונה מלאה וכרטיס"), build: (c, L) =>
     section(c, L, [
       picture(c, L, c.pack.collection, { bare: true, radius: 0, aspect: "16 / 9", style: { height: "86vh", aspect: undefined, overlay: { color: "#000000", opacity: L.card === "glass" ? 0.42 : 0.18 } }, phone: { height: "60vh" } }),
-      STACK(c, [card(c, L, words(inCard(c, L), L, { overPic: L.card === "glass", max: "440px" }), {}, { onPic: true })], { width: "92%", maxWidth: "520px", layer: { x: 5, y: 90, anchor: "bottom-start" }, z: 2 }, mo.text(c, 0.2)),
+      STACK(c, [card(c, L, words(inCard(c, L), L, { overPic: L.card === "glass", max: "440px" }), {}, { onPic: true })], { width: "92%", maxWidth: "520px", layer: CARD_SPOT[L.mood], z: 2 }, mo.text(c, 0.2)),
     ], NAME, { full: true, pad: [0, 0, 0, 0], phone: { pad: [0, 0, 0, 0] }, plainGround: true }) },
   { key: "giant", name: w("كلام ضخم وصور", "Giant words and pictures", "מילים ענקיות ותמונות"), build: (c, L) =>
     section(c, L, [
@@ -56,11 +61,13 @@ export const HERO_LAYOUTS: Layout[] = [
       [group(c, words(c, L))],
       [GRID(c, 2, [picture(c, L, c.pack.product, { aspect: "3 / 5", bare: true }), STACK(c, [picture(c, L, c.pack.collection, { aspect: "1 / 1", bare: true }), picture(c, L, C.newIn, { aspect: "1 / 1", bare: true })], { gap: 16 })], { gap: 16, phone: 2 })],
     ], { gap: 56, align: "center" })], NAME) },
-  { key: "framed", name: w("صورة مبروزة وشارة", "A framed picture and a badge", "תמונה ממוסגרת ותג"), build: (c, L) =>
+  { key: "framed", name: w("صورتين فوق بعض وشارة", "Two pictures, one over the other, and a badge", "שתי תמונות זו על זו ותג"), build: (c, L) =>
     section(c, L, [COLS(c, [1, 1], [
       [group(c, words(c, L))],
       [STACK(c, [
-        picture(c, L, c.pack.product, { aspect: "4 / 5" }),
+        // The one behind, at the top's start; the one in front, lower and at the end, holds the place's height.
+        STACK(c, [picture(c, L, c.pack.collection, { aspect: "1 / 1", bare: true })], { width: "52%", layer: { x: 0, y: 0, anchor: "top-start" }, z: 0 }),
+        STACK(c, [picture(c, L, c.pack.product, { aspect: "4 / 5" })], { width: "68%", self: "end", margin: [56, 0, 0, 0], z: 1 }),
         STACK(c, [head(c, L, STATS[1].n, 3, { size: 34 }), text(c, L, STATS[1].label)], { gap: 2, pad: [18, 22, 18, 22], bg: "bg", color: "text", radius: Math.min(24, L.btn.radius === 999 ? 24 : L.btn.radius), shadow: "lg", layer: { x: 4, y: 92, anchor: "bottom-start" }, z: 2 }),
       ], { gap: 0 })],
     ], { gap: 64, align: "center" })], NAME) },
@@ -120,8 +127,8 @@ export const HERO_PICKS: Record<string, string[]> = {
   split: ["editorial", "pillow", "marker", "mono", "duotone", "sport", "luxe"],
   "split-flip": ["arches", "blobs", "tilted", "paper", "glass", "retro"],
   wide: ["heavy", "editorial", "minimal", "carved", "luxe", "ink"],
-  cover: ["luxe", "sport", "minimal", "heavy", "noir", "marker"],
-  "cover-card": ["glass", "pillow", "gallery", "brutal", "editorial", "airy"],
+  cover: ["luxe", "sport", "minimal", "editorial", "noir", "carved"],
+  "cover-card": ["glass", "pillow", "noir", "brutal", "editorial", "retro"],
   giant: ["heavy", "carved", "ink", "sport", "neon", "retro"],
   collage: ["pillow", "candy", "editorial", "mono", "organic", "duotone"],
   framed: ["gallery", "paper", "tilted", "brutal", "arches", "marker"],

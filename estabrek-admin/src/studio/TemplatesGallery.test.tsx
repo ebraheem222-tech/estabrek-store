@@ -91,3 +91,23 @@ test("the section DNA's designs are found by their look and their mood", async (
   expect(playful.length).toBeGreaterThan(10);
   expect(playful.every(id => id.startsWith("s:dna-"))).toBe(true);
 });
+test("kinds sit in areas; an area shows all of its kinds; stars keep favourites; the newest are marked", async () => {
+  localStorage.clear();
+  mount();
+  fireEvent.click(await screen.findByTestId("studio-tpl-tab-sections"));
+  // An area: every kind in it at once.
+  fireEvent.click(screen.getAllByTestId("studio-tpl-area").find(b => b.getAttribute("data-area") === "site")!);
+  const site = screen.getAllByTestId("studio-tpl-card").map(c => c.getAttribute("data-id")!);
+  expect(site.some(id => id.startsWith("s:head-") || id.includes("header"))).toBe(true);
+  expect(site.some(id => id.includes("hero"))).toBe(false);
+  // The newest (the section DNA's) carry a mark, and have a group of their own.
+  fireEvent.click(screen.getAllByTestId("studio-tpl-group").find(b => b.getAttribute("data-group") === "new")!);
+  const fresh = screen.getAllByTestId("studio-tpl-card").map(c => c.getAttribute("data-id")!);
+  expect(fresh.every(id => id.startsWith("s:dna-"))).toBe(true);
+  expect(screen.getAllByTestId("studio-tpl-new").length).toBe(fresh.length);
+  // A star: the favourites group appears with that design, and stays in this browser.
+  fireEvent.click(screen.getAllByTestId("studio-tpl-star")[0]);
+  expect(JSON.parse(localStorage.getItem("estabrek:template-favourites")!)).toEqual([fresh[0].split(":")[1]]);
+  fireEvent.click(screen.getAllByTestId("studio-tpl-group").find(b => b.getAttribute("data-group") === "favs")!);
+  expect(screen.getAllByTestId("studio-tpl-card").map(c => c.getAttribute("data-id")!.split(":")[1])).toEqual([fresh[0].split(":")[1]]);
+});

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PageTreeNode } from "../../api/pages.api";
 import { PLACEHOLDERS } from "./build";
-import { CAT_NAMES, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_CATS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, templateById, toFile } from "./catalog";
+import { CAT_NAMES, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_AREAS, SECTION_CATS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, templateById, toFile } from "./catalog";
 import { CAMPAIGNS, FAMILIES, PACKS } from "./words";
 
 // The backend's src/tests/templates.unit.spec.ts checks every build against the page tree's rules.
@@ -29,6 +29,13 @@ describe("the template catalog", () => {
     for (const n of [...Object.values(CAT_NAMES), ...Object.values(PAGE_KIND_NAMES), ...Object.values(SKIN_NAMES)]) expect(full(n)).toBe(true);
     for (const f of FAMILIES) for (const k of ["label", "eyebrow", "title", "sub", "cta", "product", "story", "collection"] as const) expect(full(PACKS[f][k]), `${f}.${k}`).toBe(true);
     for (const c of CAMPAIGNS) for (const k of ["name", "title", "sub", "strip"] as const) expect(full(c[k]), `${c.key}.${k}`).toBe(true);
+  });
+
+  it("puts every kind of section in exactly one area, named in three languages", () => {
+    const placed = SECTION_AREAS.flatMap((a) => a.cats);
+    expect([...placed].sort()).toEqual([...SECTION_CATS].sort());
+    expect(new Set(placed).size).toBe(placed.length);
+    for (const a of SECTION_AREAS) expect(full(a.name), a.key).toBe(true);
   });
 
   it("has every category filled, six homes for each kind of store and a page for each campaign", () => {

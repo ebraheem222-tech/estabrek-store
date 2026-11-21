@@ -21,12 +21,27 @@ const say = (v: unknown, lang: Lang): string => {
 const len = (v: unknown) => (typeof v !== "string" ? undefined : v.endsWith("vh") ? `${parseFloat(v) * 8}px` : v.endsWith("vw") ? `${parseFloat(v) * 12}px` : v);
 const JUSTIFY: Obj = { start: "flex-start", center: "center", end: "flex-end", between: "space-between", around: "space-around" };
 const ALIGN: Obj = { start: "flex-start", center: "center", end: "flex-end", stretch: "stretch" };
-const SHAPES: Obj = { circle: "50%", pill: "999px", arch: "999px 999px 12px 12px", blob: "42% 58% 55% 45% / 48% 40% 60% 52%", rounded: "28px" };
+const SHAPES: Obj = { circle: "50%", pill: "999px", arch: "999px 999px 12px 12px", blob: "42% 58% 55% 45% / 48% 40% 60% 52%", blob2: "58% 42% 45% 55% / 40% 52% 48% 60%", rounded: "28px", squircle: "30%", leaf: "0 70% 0 70%", drop: "50% 50% 50% 0", bubble: "40px 40px 40px 6px", ticket: "14px" };
+/** Shapes a corner radius can't draw, as a clip. */
+const CLIPS: Obj = { slant: "polygon(0 0, 100% 0, 100% 86%, 0 100%)", tilt: "polygon(4% 0, 100% 0, 96% 100%, 0 100%)", hexagon: "polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)", diamond: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)", triangle: "polygon(50% 0, 100% 100%, 0 100%)", octagon: "polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%)" };
+const FONTS: Obj = { serif: "Georgia, 'Times New Roman', serif", mono: "ui-monospace, Menlo, Consolas, monospace", sans: "system-ui, 'Segoe UI', sans-serif" };
+/** A pattern as the drawing's background (the shop's pageTree/css.ts draws the real one). */
+function patternOf(kind: string, col: string, size: number): string {
+  switch (kind) {
+    case "grid": return `linear-gradient(${col} 1px, transparent 1px) 0 0 / ${size}px ${size}px, linear-gradient(90deg, ${col} 1px, transparent 1px) 0 0 / ${size}px ${size}px`;
+    case "lines": return `linear-gradient(${col} 1px, transparent 1px) 0 0 / 100% ${size}px`;
+    case "columns": return `linear-gradient(90deg, ${col} 1px, transparent 1px) 0 0 / ${size}px 100%`;
+    case "stripes": case "diagonal": case "hatch": return `repeating-linear-gradient(45deg, ${col} 0 ${Math.max(2, size / 4)}px, transparent ${Math.max(2, size / 4)}px ${size}px)`;
+    case "checks": return `repeating-conic-gradient(${col} 0 25%, transparent 0 50%) 0 0 / ${size}px ${size}px`;
+    default: return `radial-gradient(${col} 2px, transparent 2.5px) 0 0 / ${size}px ${size}px`;
+  }
+}
 /** The point of a placed element that sits at its x/y, as % of its own size (the shop's pageTree/css.ts ANCHORS). */
 const ANCHORS: Record<string, [number, number]> = { "top-start": [0, 0], top: [50, 0], "top-end": [100, 0], start: [0, 50], center: [50, 50], end: [100, 50], "bottom-start": [0, 100], bottom: [50, 100], "bottom-end": [100, 100] };
 const SHADOWS: Obj = { sm: "0 2px 8px rgba(0,0,0,.10)", md: "0 8px 24px rgba(0,0,0,.14)", lg: "0 18px 44px rgba(0,0,0,.20)" };
 
-function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
+/** A node's look as the drawing's CSS (exported for the tests). */
+export function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
   const s = obj(obj(n.style).base);
   const paint = (v: unknown): string | undefined => (typeof v !== "string" ? undefined : v.startsWith("#") ? v : v === "white" ? "#ffffff" : v === "black" ? "#000000" : v === "transparent" ? "transparent" : c[v as keyof ThumbColours]);
   const out: CSSProperties = {};
@@ -43,9 +58,25 @@ function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
   if (num(s.lineHeight)) out.lineHeight = num(s.lineHeight);
   if (typeof s.textAlign === "string") out.textAlign = s.textAlign as CSSProperties["textAlign"];
   if (s.italic === true) out.fontStyle = "italic";
+  if (typeof s.font === "string" && FONTS[s.font]) out.fontFamily = FONTS[s.font] as string;
+  if (s.caps === "upper") out.textTransform = "uppercase";
+  const stroke = obj(s.stroke);
+  if (num(stroke.width)) out.WebkitTextStroke = `${num(stroke.width)}px ${paint(stroke.color)}`;
+  const deco = obj(s.decoration);
+  if (deco.line === "underline") Object.assign(out, { textDecorationLine: "underline", textDecorationColor: paint(deco.color), textDecorationThickness: num(deco.width), textUnderlineOffset: num(deco.offset) });
+  if (Array.isArray(s.shadows) && s.shadows.length) out.textShadow = (s.shadows as Obj[]).map((x) => `${num(x.x) ?? 0}px ${num(x.y) ?? 0}px ${num(x.blur) ?? 0}px ${paint(x.color)}`).join(", ");
+  const filters = obj(s.filters);
+  const f: string[] = [];
+  if (num(filters.gray)) f.push(`grayscale(${num(filters.gray)})`);
+  if (num(filters.bright) !== undefined) f.push(`brightness(${num(filters.bright)})`);
+  if (num(filters.contrast) !== undefined) f.push(`contrast(${num(filters.contrast)})`);
+  if (num(filters.saturate) !== undefined) f.push(`saturate(${num(filters.saturate)})`);
+  if (f.length) out.filter = f.join(" ");
+  if (num(obj(s.backdrop).blur)) out.backdropFilter = `blur(${num(obj(s.backdrop).blur)}px)`;
   if (num(s.opacity) !== undefined) out.opacity = num(s.opacity);
   if (num(s.radius) !== undefined) out.borderRadius = num(s.radius);
   if (typeof s.shape === "string" && SHAPES[s.shape]) out.borderRadius = SHAPES[s.shape] as string;
+  if (typeof s.shape === "string" && CLIPS[s.shape]) out.clipPath = CLIPS[s.shape] as string;
   const border = obj(s.border);
   if (num(border.width)) out.border = `${num(border.width)}px ${String(border.style ?? "solid")} ${paint(border.color)}`;
   for (const k of ["width", "maxWidth", "height", "minHeight"] as const) if (len(s[k])) out[k] = len(s[k]);
@@ -59,11 +90,23 @@ function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
   if (typeof s.col === "string") out.gridColumn = s.col;
   if (typeof s.row === "string") out.gridRow = s.row;
   const pattern = obj(s.pattern);
+  const mesh = obj(s.mesh);
+  const grounds: string[] = [];
   if (pattern.kind) {
-    out.backgroundImage = `radial-gradient(${paint(pattern.color)} 2px, transparent 2.5px)`;
-    out.backgroundSize = `${num(pattern.size) ?? 20}px ${num(pattern.size) ?? 20}px`;
+    // Its colour at the pattern's own strength over the ground.
+    const col = `color-mix(in srgb, ${paint(pattern.color)} ${Math.round((num(pattern.opacity) ?? 0.2) * 100)}%, transparent)`;
+    grounds.push(patternOf(String(pattern.kind), col, num(pattern.size) ?? 20));
   }
-  if (typeof s.shadow === "string" && SHADOWS[s.shadow]) out.boxShadow = SHADOWS[s.shadow] as string;
+  if (Array.isArray(mesh.colors) && mesh.colors.length > 1) {
+    const at = ["0% 0%", "100% 100%", "100% 0%", "0% 100%"];
+    grounds.push(...(mesh.colors as string[]).map((m, i) => `radial-gradient(circle at ${at[i % 4]}, ${paint(m)}, transparent 70%)`));
+  }
+  if (grounds.length) out.background = `${grounds.join(", ")}${out.background ? `, ${out.background}` : ""}`;
+  const shades: string[] = [];
+  if (typeof s.shadow === "string" && SHADOWS[s.shadow]) shades.push(SHADOWS[s.shadow] as string);
+  const shade = obj(s.shade);
+  if (shade.color) shades.push(`${rtl ? -(num(shade.x) ?? 0) : num(shade.x) ?? 0}px ${num(shade.y) ?? 0}px ${num(shade.blur) ?? 0}px ${paint(shade.color)}`);
+  if (shades.length) out.boxShadow = shades.join(", ");
   if (s.overflow === "hidden" || s.overflow === "clip") out.overflow = "hidden";
   // Where it sits and how it's turned, in one transform: placed by its anchor (the start side follows the language).
   const moves: string[] = [];
@@ -79,9 +122,9 @@ function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
   return out;
 }
 
-/** A picture's place: a soft box (dimmed under words over it). */
-const Pic = ({ c, style, dim }: { c: ThumbColours; style?: CSSProperties; dim?: boolean }) => (
-  <div style={{ width: "100%", aspectRatio: "4/5", borderRadius: 20, background: `linear-gradient(135deg, ${c["accent-soft"]}, ${c.border})`, filter: dim ? "brightness(.55)" : undefined, ...style }} />
+/** A picture's place: a soft box (dimmed under words over it, or tinted with its overlay's colour). */
+const Pic = ({ c, style, dim, tint }: { c: ThumbColours; style?: CSSProperties; dim?: boolean; tint?: string }) => (
+  <div style={{ width: "100%", aspectRatio: "4/5", borderRadius: 20, background: tint ? `linear-gradient(135deg, color-mix(in srgb, ${tint} 55%, ${c["accent-soft"]}), color-mix(in srgb, ${tint} 35%, ${c.border}))` : `linear-gradient(135deg, ${c["accent-soft"]}, ${c.border})`, filter: dim ? "brightness(.55)" : undefined, ...style }} />
 );
 const boxes = (n: number, c: ThumbColours, item: (i: number) => ReactNode, columns = n) => (
   <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 20, width: "100%" }}>{Array.from({ length: n }, (_, i) => <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>{item(i)}</div>)}</div>
@@ -138,8 +181,12 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
       const look: CSSProperties = v === "solid" ? { background: c.accent, color: c["accent-contrast"] } : v === "outline" ? { border: "2px solid currentColor", color: c.accent } : { color: c.accent, textDecoration: "underline", padding: 0 };
       return <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "12px 26px", borderRadius: 999, fontWeight: 600, fontSize: 17, ...look, ...s }}>{say(p.label, lang)}</span>;
     }
-    case "image":
-      return <Pic c={c} style={s} dim={Boolean(obj(obj(obj(n.style).base).overlay).color)} />;
+    case "image": {
+      const overlay = obj(obj(obj(n.style).base).overlay);
+      const black = overlay.color === "#000000" || overlay.color === "black";
+      const tint = overlay.color && !black ? (String(overlay.color).startsWith("#") ? String(overlay.color) : c[String(overlay.color) as keyof ThumbColours]) : undefined;
+      return <Pic c={c} style={s} dim={black} tint={tint} />;
+    }
     case "icon":
       return <span style={{ display: "inline-grid", placeItems: "center", width: 48, height: 48, borderRadius: "50%", background: c["accent-soft"], color: c.accent, fontSize: 24, ...s }}>✦</span>;
     case "model3d":
