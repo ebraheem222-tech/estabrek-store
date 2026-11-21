@@ -1,6 +1,7 @@
 import { COLOUR_STRENGTHS, SCENE_COLOUR_KEYS, type ColourStrength, type SceneColourKey } from "./colourEngine";
 import { pointerFxOf, type PointerFxKind } from "../../../shared/pictureFx";
 import { PERSONA_IDS } from "./personas";
+import { miniBagById } from "./miniBagDesigns";
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 type LiveChatPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ChatbotPosition = "bottom-left" | "bottom-right" | "bottom-center";
@@ -71,6 +72,10 @@ export type StorefrontSettings = {
 
   // Cart & Checkout
   miniCartEnabled: boolean;
+  /** The small bag's design (lib/miniBagDesigns.ts); "" = the bag as it always was. */
+  miniBagDesign: string;
+  /** The bag icon in the header opens the small bag instead of the bag page. */
+  miniBagOnIcon: boolean;
   cartAnimationsEnabled: boolean;
   cartShakeOnAdd: boolean;
   checkoutProgressEnabled: boolean;
@@ -188,6 +193,8 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
 
   // Cart & Checkout
   miniCartEnabled: true,
+  miniBagDesign: "",
+  miniBagOnIcon: false,
   cartAnimationsEnabled: true,
   cartShakeOnAdd: true,
   checkoutProgressEnabled: true,
@@ -249,7 +256,7 @@ const liveChatPositions = ["bottom-left", "bottom-right", "bottom-center"] as co
 const chatbotPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
 const toastPositions = ["top-right", "top-left", "bottom-right", "bottom-left"] as const;
 const colorFollows = ["everything", "product"] as const;
-const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow", "colorStrength", "productPictureFx"]);
+const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow", "colorStrength", "productPictureFx", "miniBagDesign"]);
 
 const boolKeys = Object.entries(DEFAULT_STOREFRONT_SETTINGS)
   .filter(([, value]) => typeof value === "boolean")
@@ -318,6 +325,8 @@ export function normalizeStorefrontSettings(
   next.colorFollow = toEnum(raw.colorFollow, colorFollows, base.colorFollow);
   // One of the personalities, or none.
   next.assistantPersona = typeof raw.assistantPersona === "string" && PERSONA_IDS.includes(raw.assistantPersona) ? raw.assistantPersona : "";
+  // One of the small bag's designs, or none.
+  next.miniBagDesign = miniBagById(raw.miniBagDesign)?.id ?? "";
   next.colorStrength = toEnum(raw.colorStrength, COLOUR_STRENGTHS, base.colorStrength);
   next.productPictureFx = raw.productPictureFx === "none" ? "none" : pointerFxOf(raw.productPictureFx) ?? base.productPictureFx;
   const scenes = raw.colorScenes && typeof raw.colorScenes === "object" ? (raw.colorScenes as Record<string, unknown>) : {};
