@@ -20,8 +20,11 @@ const light = (c: Ctx) => c.skin === "plain" || c.skin === "soft" || c.skin === 
 
 const BASE: Record<number, number> = { 1: 56, 2: 40, 3: 28, 4: 22, 5: 18, 6: 16 };
 
-/** A heading in the look: its face, weight, size, and on the big one its paint. `over` = it sits on a picture (white). */
-export function head(c: Ctx, L: Look, t: W, level: number, o: { size?: number; center?: boolean; over?: boolean; at?: number } = {}): N {
+/**
+ * A heading in the look: its face, weight, size, and on the big one its paint. `over` = it sits on a picture (white);
+ * `paint` = a big heading that isn't the page's main one (a footer's giant name, a coupon's number) wears the paint too.
+ */
+export function head(c: Ctx, L: Look, t: W, level: number, o: { size?: number; center?: boolean; over?: boolean; at?: number; paint?: boolean } = {}): N {
   const size = Math.min(200, Math.round((o.size ?? BASE[level] ?? 32) * (level <= 2 ? L.head.scale : 1)));
   const s: S = {
     size, sizeMin: Math.max(18, Math.min(64, Math.round(size * (size > 90 ? 0.42 : 0.6)))), weight: L.head.weight,
@@ -31,7 +34,7 @@ export function head(c: Ctx, L: Look, t: W, level: number, o: { size?: number; c
     ...(L.head.caps ? { caps: "upper" } : {}),
     ...(o.over ? { color: "white" } : {}),
   };
-  const big = level === 1;
+  const big = level === 1 || o.paint === true;
   const paint = big ? L.head.paint : undefined;
   if (paint === "gradient" && !o.over) s.fill = { color: pop(c), to: ink(c), angle: 115 };
   // Letters in outline only when they are big enough to read that way.
@@ -116,9 +119,13 @@ export function card(c: Ctx, L: Look, kids: N[], style: S = {}, o: { onPic?: boo
   return STACK(c, kids, { gap: 12, pad: L.card === "plain" && !o.onPic ? [0, 0, 0, 0] : [28, 26, 28, 26], radius: L.card === "plain" ? 0 : r, ...frame, ...style }, hover);
 }
 
-/** The section's ground in the look: its space, a pattern, a soft mesh of the theme's colours, an edge, particles. */
-export function section(c: Ctx, L: Look, kids: N[], name: W, o: { center?: boolean; full?: boolean; pad?: [number, number, number, number]; phone?: S; plainGround?: boolean } = {}): N {
-  const d = o.plainGround ? undefined : L.deco;
+/**
+ * The section's ground in the look: its space, a pattern, a soft mesh of the theme's colours, an edge, particles.
+ * `tag` = it is the page's header or footer; `calm` = the pattern and mesh only (a header or footer has no edge
+ * cutting into the next section and no particles drifting over its links).
+ */
+export function section(c: Ctx, L: Look, kids: N[], name: W, o: { center?: boolean; full?: boolean; pad?: [number, number, number, number]; phone?: S; plainGround?: boolean; tag?: "header" | "footer"; calm?: boolean } = {}): N {
+  const d = o.plainGround ? undefined : o.calm && L.deco ? { ...L.deco, edge: undefined, particles: undefined } : L.deco;
   const ground: S = {
     ...(d?.pattern ? patternOf(c, d.pattern[0], light(c) ? "accent" : ink(c), d.pattern[1], d.pattern[2]) : {}),
     ...(d?.mesh && light(c) ? { mesh: { colors: d.mesh === "glow" ? ["accent-soft", "bg", "accent-soft", "surface"] : ["accent-soft", "surface"], soft: d.mesh === "glow" ? 100 : 70 } } : {}),
@@ -127,6 +134,7 @@ export function section(c: Ctx, L: Look, kids: N[], name: W, o: { center?: boole
   const props: S = {
     ...(d?.edge ? { edges: edge(c, d.edge) } : {}),
     ...(d?.particles ? { particles: { kind: d.particles, color: pop(c), amount: 0.6 } } : {}),
+    ...(o.tag ? { tag: o.tag } : {}),
   };
   return SEC(c, kids, {
     name, ...(o.center ? { center: true } : {}), ...(o.full ? { full: true } : {}),
@@ -145,6 +153,7 @@ export function storePanel(c: Ctx, L: Look, kids: N[], style: S = {}): N {
   return kids.length === 1 && !Object.keys(style).length ? kids[0] : STACK(c, kids, { gap: 16, self: "stretch", ...style });
 }
 export const isLight = light;
+export { hair, onPop };
 
 /** A thin rule, for the looks that draw one. */
 export const rule = (c: Ctx, L: Look): N[] => (L.deco?.rule ? [STACK(c, [], { height: "1px", width: "100%", bg: hair(c), margin: [8, 0, 8, 0] })] : []);
