@@ -307,6 +307,42 @@ function useLoad<T>(path: string) {
   return { data, err, reload: load, setData };
 }
 
+/**
+ * An order's invoice (the store's lib/invoice.ts page), opened in a new tab to print or keep as a PDF. The tab opens
+ * inside the click (so pop-up blockers allow it) and gets the page once it has come.
+ */
+function InvoiceButton({ orderId }: { orderId: string }) {
+  const { api } = useAccount();
+  const { language: lang } = useLanguage();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const open = async () => {
+    const tab = window.open("", "_blank");
+    setBusy(true);
+    setFailed(false);
+    try {
+      const { html } = await api<{ html: string }>(`/customer/me/orders/${encodeURIComponent(orderId)}/invoice?lang=${lang}`);
+      const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      tab?.close();
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="rose-account-invoice">
+      <button type="button" className="rose-link-button" onClick={() => void open()} disabled={busy} data-testid="account-invoice">
+        {busy ? tr(lang, "عم نجهّزها…", "Preparing…") : tr(lang, "الفاتورة 🧾", "Invoice 🧾")}
+      </button>
+      {failed ? <small role="alert">{tr(lang, "ما زبطت، جربي كمان مرة.", "That didn't work, please try again.")}</small> : null}
+    </span>
+  );
+}
+
 function Orders() {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
@@ -343,7 +379,10 @@ function Orders() {
               </li>
             ))}
           </ul>
-          <small className="rose-account-muted" dir="ltr">#{o.id.slice(-8)}</small>
+          <div className="rose-account-order-foot">
+            <small className="rose-account-muted" dir="ltr">#{o.id.slice(-8)}</small>
+            <InvoiceButton orderId={o.id} />
+          </div>
         </li>
       ))}
     </ul>

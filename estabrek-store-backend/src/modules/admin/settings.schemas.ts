@@ -40,6 +40,11 @@ export const UpdateSettingsBody = z.object({
   announcementLinkUrl: z.string().max(2048).nullable().optional(),
 
 
+  // Checkout terms: a box the shopper ticks before ordering, a link to the terms, the box's words in each language.
+  checkoutTermsRequired: z.boolean().optional(),
+  checkoutTermsUrl: z.string().trim().max(500).refine((v) => /^(\/(?!\/)|https?:\/\/)[^\s<>"'`\\]*$/i.test(v), "A page of the shop (/policies) or an https link").nullable().optional(),
+  checkoutTermsText: z.object({ ar: z.string().trim().max(200).optional(), en: z.string().trim().max(200).optional(), he: z.string().trim().max(200).optional() }).nullable().optional(),
+
   // Newsletter
   newsletterIsActive: z.boolean().optional(),
   newsletterTitle: z.string().max(120).nullable().optional(),

@@ -7,6 +7,7 @@ import { CartProvider } from "@/store/cart";
 import { WishlistProvider } from "@/store/wishlist";
 import { AccountProvider } from "@/store/account";
 import { SiteFeaturesProvider } from "@/store/siteFeatures";
+import { checkoutTermsOf } from "@/lib/checkoutTerms";
 import { RecentlyViewedProvider } from "@/store/recentlyViewed";
 import { ToastProvider } from "@/components/Toast";
 import { QuickViewProvider } from "@/components/QuickViewModal";
@@ -84,6 +85,7 @@ export default function Providers({
   cinematic = false,
   accountsEnabled = false,
   stockAlertsEnabled = false,
+  checkoutTerms,
   razan,
   requests,
   delivery,
@@ -105,6 +107,8 @@ export default function Providers({
   accountsEnabled?: boolean;
   /** Admin → المخزون → بانتظار التوفّر. */
   stockAlertsEnabled?: boolean;
+  /** Admin → إدارة الدفع → شروط المتجر (site.checkoutTerms). */
+  checkoutTerms?: unknown;
   /** Admin → رزان (header.razan). */
   razan?: unknown;
   /** Admin → الطلبات الخاصة (header.requests). */
@@ -140,8 +144,9 @@ export default function Providers({
       quiz: Boolean(quiz && typeof quiz === "object" && (quiz as { enabled?: unknown }).enabled === true),
       ai: aiFlags(ai),
       scarcity: normalizeScarcity(scarcity),
+      terms: checkoutTermsOf(checkoutTerms),
     }),
-    [stockAlertsEnabled, requests, delivery, quiz, ai, scarcity],
+    [stockAlertsEnabled, requests, delivery, quiz, ai, scarcity, checkoutTerms],
   );
 
   useEffect(() => {

@@ -109,6 +109,8 @@ export async function getPublicSettings() {
       paypalClientId: (s as any).paypalClientId ?? null,
       customerAccountsEnabled: s.customerAccountsEnabled === true,
       stockAlertsEnabled: s.stockAlertsEnabled === true,
+      // A box to tick at checkout ("I agree to the terms"), with its link and the store's own words for it.
+      checkoutTerms: { required: s.checkoutTermsRequired === true, url: s.checkoutTermsUrl ?? null, text: s.checkoutTermsText ?? null },
       // Maintenance: the storefront shows a "back soon" screen; the owner opens it with ?preview=<key> (only its hash is public).
       // How the shop moves and loads (admin → السرعة والكاش → الحركة والتحميل).
       performance: await publicStorefrontMotion(),

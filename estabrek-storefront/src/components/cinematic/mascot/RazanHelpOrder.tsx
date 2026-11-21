@@ -23,6 +23,8 @@ import { useNames } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { translatedTypeLabel } from "@/lib/localize";
 import { useLanguage } from "../Language";
+import { TermsAgree, termsMissing } from "@/components/TermsAgree";
+import { termsWords } from "@/lib/checkoutTerms";
 
 type Step = "color" | "size" | "qty" | "name" | "phone" | "address" | "summary";
 type Done = { kind: "order"; orderId?: string } | { kind: "call" };
@@ -34,7 +36,7 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
   const { language: lang } = useLanguage();
   const n = useNames();
   const account = useOptionalAccount();
-  const { delivery: deliveryRaw, scarcity } = useSiteFeatures();
+  const { delivery: deliveryRaw, scarcity, terms: storeTerms } = useSiteFeatures();
   const cities = useMemo(() => deliveryCities(normalizeDelivery(deliveryRaw)).flatMap((g) => g.cities), [deliveryRaw]);
   const kind = product.type ?? null;
   const fulfillment = kind?.fulfillment ?? "SHIPPING";
@@ -62,6 +64,8 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
   const [form, setForm] = useState(() => ({ name: signedUser?.name ?? "", phone: signedUser?.phone ?? "", email: signedUser?.email ?? "", city: "", address: "" }));
   const [call, setCall] = useState(false);
   const [busy, setBusy] = useState(false);
+  // "I agree to the store's terms" on the summary (only when the store asks for it).
+  const [termsOk, setTermsOk] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -128,6 +132,8 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
   async function order() {
     if (!variant || busy) return;
     if (!emailOk) { setErr(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right.")); return; }
+    const terms = storeTerms;
+    if (termsMissing(terms.required, termsOk)) { setErr(termsWords(terms, lang).needed); return; }
     setBusy(true);
     setErr(null);
     const note = [
@@ -147,6 +153,7 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
           city: ships ? form.city.trim() || undefined : undefined,
           address: ships ? form.address.trim() || undefined : undefined,
           note,
+          termsAccepted: termsOk,
           source: "RAZAN_HELP",
         }),
       });
@@ -367,6 +374,7 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
               {total != null ? <div className="razan-help-total"><dt>{tr(lang, "المجموع", "Total")}</dt><dd>{formatMoney(total, currency)}{ships ? <small>{tr(lang, " + التوصيل (منأكده معكِ)", " + delivery (we'll confirm)")}</small> : null}</dd></div> : null}
             </dl>
           </div>
+          <TermsAgree agreed={termsOk} onChange={(v) => { setTermsOk(v); if (v) setErr(null); }} lang={lang} className="razan-help-terms" />
         </>
       )}
 

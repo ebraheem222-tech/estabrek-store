@@ -30,6 +30,8 @@ import {
 import { StoreIdentityCard } from "./StoreIdentityCard";
 import { PRODUCT_PICTURE_FX_OPTIONS, readProductPictureFx, type ProductPictureFx } from "./productPictureFx";
 import { StoreLanguagesCard } from "./StoreLanguagesCard";
+import { CheckoutTermsCard } from "./CheckoutTermsCard";
+import { MailchimpCard } from "./MailchimpCard";
 import { StoreAppCard } from "./StoreAppCard";
 import { PersonaPicker } from "../../components/PersonaPicker";
 import { say } from "../../studio/say";
@@ -1551,7 +1553,7 @@ export default function SettingsPage() {
             <div className="mt-4"><StoreIdentityCard /></div>
             <div className="mt-4"><StoreLanguagesCard /></div>
             </SettingsSection>
-            <SettingsSection id="checkout" tab="checkout" keywords="دفع واتساب whatsapp stripe paypal طلب">
+            <SettingsSection id="checkout" tab="checkout" keywords="دفع واتساب whatsapp stripe paypal طلب شروط terms">
             <Card>
               <CardHeader title="إدارة الدفع" subtitle="بوابات الدفع وإعدادات تحويل الدفع." />
               <CardContent>
@@ -1663,6 +1665,7 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            <div className="mt-4"><CheckoutTermsCard /></div>
             </SettingsSection>
             <SettingsSection id="safe-mode" tab="advanced" keywords="امان ايقاف safe">
               <SafeModeCard value={safeMode} onChange={setSafeMode} />
@@ -2157,7 +2160,7 @@ export default function SettingsPage() {
             </Card>
             </SettingsSection>
 
-            <SettingsSection id="footer" tab="rose" note="يستخدم تصميم روز من هنا: تفعيل الفوتر، النبذة، ورابط إنستغرام. باقي الخيارات للتصميم القديم." keywords="فوتر footer نبذة انستغرام instagram">
+            <SettingsSection id="footer" tab="rose" note="يستخدم تصميم روز من هنا: تفعيل الفوتر، النبذة، ورابط إنستغرام. باقي الخيارات للتصميم القديم." keywords="فوتر footer نبذة انستغرام instagram نشرة newsletter mailchimp">
             <Card>
               <CardHeader title="الفوتر" subtitle="روابط، نبذة، ونشرة بريدية." />
               <CardContent>
@@ -2404,6 +2407,8 @@ export default function SettingsPage() {
                     />
                   </div>
                 </div>
+
+                <div className="mt-4"><MailchimpCard /></div>
 
                 <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="mb-3 text-sm font-semibold">روابط السوشال</div>

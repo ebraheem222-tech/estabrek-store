@@ -11,6 +11,8 @@ import { whatsappLink } from "@/lib/whatsapp";
 import { deliveryCities, deliveryFor, hasDeliveryPrices, lowestFee, normalizeDelivery, rememberCity, rememberedCity } from "@/lib/delivery";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
+import { TermsAgree, termsMissing, useCheckoutTerms } from "@/components/TermsAgree";
+import { termsWords } from "@/lib/checkoutTerms";
 import { Icon } from "./Icons";
 import { useOptionalAccount } from "@/store/account";
 import { rememberRemoved } from "@/lib/razanHistory";
@@ -221,6 +223,9 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     rememberDetails(remember ? { name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim(), city: form.city.trim(), address: form.address.trim() } : null);
   };
   const [touched, setTouched] = useState(false);
+  // "I agree to the store's terms" (only when the store asks for it; the server refuses an order without it then).
+  const terms = useCheckoutTerms();
+  const [termsOk, setTermsOk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ orderId?: string; via: "whatsapp" | "direct" | "email"; handover?: string } | null>(null);
   const list = useRef<HTMLUListElement>(null);
@@ -365,6 +370,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     setTouched(true);
     if (!nameOk || !phoneOk) { setErr(tr(lang, "أكملي الاسم ورقم الهاتف حتى نتواصل معكِ.", "Add your name and phone so we can reach you.")); return; }
     if (!emailOk) { setErr(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right.")); return; }
+    if (termsMissing(terms.required, termsOk)) { setErr(termsWords(terms, lang).needed); return; }
     setErr(null);
     setSubmitting(true);
     const tracked = bagItems(quote?.lines ?? []);
@@ -387,6 +393,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
           address: noShipping ? undefined : form.address.trim() || undefined,
           note: form.note.trim() || undefined,
           couponCode: coupon.trim() || undefined,
+          termsAccepted: termsOk,
           source: via === "whatsapp" ? "WHATSAPP_CART" : via === "email" ? "EMAIL_CART" : "DIRECT_CART",
         }),
       });
@@ -421,13 +428,14 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     setTouched(true);
     if (!nameOk || !phoneOk) { setErr(tr(lang, "أكملي الاسم ورقم الهاتف.", "Add your name and phone.")); return; }
     if (!emailOk) { setErr(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right.")); return; }
+    if (termsMissing(terms.required, termsOk)) { setErr(termsWords(terms, lang).needed); return; }
     setSubmitting(true);
     setErr(null);
     try {
       const res = await fetch(`${apiBase()}/storefront/checkout/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...((await account?.authHeaders()) ?? {}) },
-        body: JSON.stringify({ provider, items: payload, lang, customerName: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, address: noShipping ? undefined : [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
+        body: JSON.stringify({ provider, items: payload, lang, customerName: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, address: noShipping ? undefined : [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined, termsAccepted: termsOk }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
@@ -671,6 +679,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
           )}
           {err && <p className="rose-cart-error" role="alert">{err}</p>}
 
+          <TermsAgree agreed={termsOk} onChange={(v) => { setTermsOk(v); if (v) setErr(null); }} lang={lang} invalid={touched && terms.required && !termsOk} className="rose-cart-terms" />
           <div className="rose-cart-actions">
             {wantsStripe && <button data-cms-part="cart-submit" type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("stripe")}>{tr(lang, "الدفع بالبطاقة", "Pay by card")}<Icon name="arrow" /></button>}
             {wantsPaypal && <button data-cms-part="cart-submit" type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("paypal")}>{tr(lang, "الدفع عبر PayPal", "Pay with PayPal")}<Icon name="arrow" /></button>}

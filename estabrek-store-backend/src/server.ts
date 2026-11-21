@@ -22,6 +22,7 @@ import { registerBackgroundJobs } from "./jobs.js";
 import { startAutomations } from "./modules/admin/automations.service.js";
 import { startFunctions } from "./modules/functions/functions.service.js";
 import { startWebhooksOut } from "./lib/webhooksOut.js";
+import { startMailchimp } from "./lib/mailchimp.js";
 import { announceFirstRun } from "./lib/firstRun.js";
 
 const port = Number(env.PORT || 4000);
@@ -89,6 +90,7 @@ startAutomations();
 startFunctions();
 // Admin → Webhooks طالعة: deliveries leave through the queue, and are tried again when they fail.
 startWebhooksOut();
+startMailchimp();
 server = createServer(app);
 server.headersTimeout = env.HTTP_HEADER_TIMEOUT_MS;
 server.requestTimeout = env.HTTP_REQUEST_TIMEOUT_MS;

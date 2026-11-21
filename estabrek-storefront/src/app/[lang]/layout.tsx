@@ -239,6 +239,7 @@ export default async function RootLayout({
           cinematic={cinematic}
           accountsEnabled={accountsEnabled}
           stockAlertsEnabled={stockAlertsEnabled}
+          checkoutTerms={(settings.site as { checkoutTerms?: unknown } | undefined)?.checkoutTerms}
           razan={header?.razan}
           requests={header?.requests}
           delivery={header?.delivery}

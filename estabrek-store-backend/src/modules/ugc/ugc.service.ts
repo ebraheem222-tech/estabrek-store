@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { queueMailchimp } from "../../lib/mailchimp.js";
 import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
 import type { Prisma, ReviewStatus, CommentStatus } from "@prisma/client";
 import { enqueueMessage } from "../outbox/outbox.service.js";
@@ -116,6 +117,8 @@ export async function subscribeNewsletter(email: string, source?: string) {
   await prisma.newsletterSubscriber.create({
     data: { email: normalized, source: source?.trim() || null },
   });
+  // Into the store's Mailchimp audience when it's connected (through the queue: never in the shopper's way).
+  await queueMailchimp(normalized).catch(() => false);
   return { ok: true, created: true };
 }
 

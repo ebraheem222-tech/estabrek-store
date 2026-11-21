@@ -96,6 +96,8 @@ export const CreateOrderRequestBody = z
     source: z.string().trim().max(80).optional(),
     /** The shop's language when she ordered (her emails come in it). */
     lang: z.enum(["ar", "en", "he"]).optional(),
+    /** She ticked "I agree to the store's terms" (needed when the store asks for it). */
+    termsAccepted: z.boolean().optional(),
   })
   .superRefine((v, ctx) => {
     const hasItems = Array.isArray(v.items) && v.items.length > 0;

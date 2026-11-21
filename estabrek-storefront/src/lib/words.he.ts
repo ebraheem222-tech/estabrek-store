@@ -384,6 +384,8 @@ export const HE: Record<string, string> = {
   "Please try again shortly.": "כדאי לנסות שוב בקרוב.",
   "Preparing your copy…": "מכינים את העותק שלך…",
   "Preparing…": "מכינים…",
+  "Invoice 🧾": "חשבונית 🧾",
+  "That didn't work, please try again.": "זה לא הצליח, נסו שוב.",
   "Preview": "תצוגה מקדימה",
   "Preview {0}": "תצוגה מקדימה של {0}",
   "Previous photo": "התמונה הקודמת",

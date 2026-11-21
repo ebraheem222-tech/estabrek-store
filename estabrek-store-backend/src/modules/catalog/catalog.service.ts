@@ -1622,6 +1622,8 @@ export async function submitOrderRequest(data: {
   paymentReference?: string;
   /** The shop's language she ordered in (her emails); one the store offers, else none. */
   lang?: string | null;
+  /** She ticked "I agree to the store's terms" (refused without it when the store asks for it). */
+  termsAccepted?: boolean;
 }, opts?: {
   /** A paid order is always recorded (the money was taken); the owner sorts out stock. */
   skipStockCheck?: boolean;
@@ -1645,7 +1647,9 @@ export async function submitOrderRequest(data: {
     const lines = await loadLinesForItems(tx as any, normalized, { allowPastEvents: opts?.skipStockCheck });
     if (!opts?.skipStockCheck) assertAvailable(lines, await availability(tx, lines));
     const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
-    const site = await tx.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { currencyCode: true, storeCountryCode: true } });
+    const site = await tx.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { currencyCode: true, storeCountryCode: true, checkoutTermsRequired: true } });
+    // The store asks for its terms to be agreed to (a paid order was asked before the payment: never refused after it).
+    if (site?.checkoutTermsRequired && data.termsAccepted !== true && !opts?.skipStockCheck) throw httpError("TERMS_REQUIRED", "Agree to the store's terms first", 400);
     const currencyCode = site?.currencyCode ?? "ILS";
     const defaultCountry = site?.storeCountryCode ?? null;
 
@@ -1704,6 +1708,7 @@ export async function submitOrderRequest(data: {
         customerName: data.customerName,
         phone: data.phone,
         whatsapp: data.whatsapp,
+        termsAcceptedAt: data.termsAccepted === true ? now : null,
         email: data.email ? data.email.trim().toLowerCase() : null,
         country: data.country ?? defaultCountry,
         city: data.city,

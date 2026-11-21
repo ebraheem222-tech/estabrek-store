@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { getOrCreateSiteRow } from "../../lib/siteRow.js";
 import { validate } from "../../utils/validate.js";
@@ -46,6 +47,9 @@ function canEditPayments(req: any) {
 
 /** Settings as a member may see them: secrets blanked unless they hold payments:write. */
 function visibleSettings(req: any, s: Record<string, unknown>) {
+  // The Mailchimp key is never sent back: only whether there is one (admin → النشرة البريدية, lib/mailchimp.ts).
+  const { mailchimpApiKey, ...rest } = s;
+  s = { ...rest, mailchimpKeySet: Boolean(mailchimpApiKey) };
   if (canEditPayments(req)) return { ...s, paymentsLocked: false };
   const out: Record<string, unknown> = { ...s, paymentsLocked: true };
   for (const k of ["stripeSecretKey", "stripeWebhookSecret", "paypalClientSecret"]) out[k] = null;
@@ -69,7 +73,7 @@ r.get("/", asyncHandler(async (req, res) => {
 /* ---------------- History: every save keeps the settings as they were ---------------- */
 
 /** Never copied into the history (and never restored from it). */
-const SECRET_KEYS = ["stripeSecretKey", "stripeWebhookSecret", "paypalClientSecret"] as const;
+const SECRET_KEYS = ["mailchimpApiKey", "stripeSecretKey", "stripeWebhookSecret", "paypalClientSecret"] as const;
 /** Not part of a snapshot: identity and timestamps. */
 const META_KEYS = ["id", "createdAt", "updatedAt", "visualControls"] as const;
 const KEEP_REVISIONS = 60;
@@ -80,6 +84,14 @@ function snapshotOf(s: Record<string, unknown>) {
     if ((SECRET_KEYS as readonly string[]).includes(k) || (META_KEYS as readonly string[]).includes(k)) continue;
     out[k] = v;
   }
+  return out;
+}
+
+/** The settings' JSON columns: an empty one is written as the database's NULL (Prisma refuses a plain null there). */
+const JSON_COLUMNS = ["header", "footer", "scriptsHead", "scriptsBody", "checkoutTermsText"] as const;
+export function withJsonNulls(data: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...data };
+  for (const k of JSON_COLUMNS) if (out[k] === null) out[k] = Prisma.DbNull;
   return out;
 }
 
@@ -145,7 +157,7 @@ export async function restoreSettingsRevision(req: any, id: string) {
   const changed = changedKeys(current, restore);
   const adminUserId = await adminIdOf(req);
   await keepRevision(current, changed, adminUserId, "قبل الاسترجاع");
-  const updated = await prisma.siteSettings.update({ where: { id: s.id }, data: restore as any });
+  const updated = await prisma.siteSettings.update({ where: { id: s.id }, data: withJsonNulls(restore) as any });
   triggerSettingsRevalidate();
   return { settings: visibleSettings(req, updated as unknown as Record<string, unknown>), changed };
 }
@@ -186,7 +198,7 @@ r.patch("/", validate({ body: UpdateSettingsBody }), asyncHandler(async (req, re
   if (changed.length) await keepRevision(s as unknown as Record<string, unknown>, changed, await adminIdOf(req));
   const updated = await prisma.siteSettings.update({
     where: { id: s.id },
-    data: body,
+    data: withJsonNulls(body),
   });
   triggerSettingsRevalidate();
   res.json(visibleSettings(req, updated as unknown as Record<string, unknown>));
