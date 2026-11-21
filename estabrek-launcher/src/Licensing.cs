@@ -21,6 +21,8 @@ namespace Estabrek.Launcher
                 case "ORDER_CLOSED": return "الطلب ملغي، فالسيريال وقف.";
                 case "DEVICE_RESET": return "هالجهاز انشال من السيريال. إذا بدك تستعمليه هون، فعّليه من جديد.";
                 case "OTHER_PC": case "BAD_LICENCE": return "الترخيص مش لهالجهاز.";
+                case "OLD_LAUNCHER": return "المتجر غيّر مفاتيحه: نزّلي البرنامج من جديد من صفحة طلبك وشغّليه.";
+                case "NO_SHOP": return "هالنسخة من البرنامج ما بتعرف متجرها: نزّليها من صفحة طلبك.";
                 case "TOO_MANY_TRIES": return "محاولات كثيرة. جرّبي كمان شوي.";
                 case "OFFLINE": return "ما في اتصال بالإنترنت. التفعيل بدّه إنترنت مرة وحدة بس.";
                 case "OFFLINE_TOO_LONG": return "صار وقت طويل بدون إنترنت. اتصلي بالإنترنت مرة لنتأكد من الترخيص.";
@@ -37,6 +39,7 @@ namespace Estabrek.Launcher
             try { ZipAes.Read(package, serial); }
             catch (BadSerialException) { return Words("BAD_SERIAL"); }
             catch (Exception e) { return Words(e.Message); }
+            if (Config.ApiBase.Length == 0) return Words("NO_SHOP");
 
             string device = Device.Hash();
             var body = new Dictionary<string, object>();
@@ -49,6 +52,7 @@ namespace Estabrek.Launcher
             if (!r.Ok) return Words(r.Error);
             string token = LicenceToken.Str(r.Body, "token");
             Dictionary<string, object> p = LicenceToken.Verify(token);
+            if (p == null && LicenceToken.ForeignKey(token)) return Words("OLD_LAUNCHER");
             if (p == null || LicenceToken.Str(p, "dev") != device) return Words("BAD_LICENCE");
             owned = Library.Save(LicenceToken.Str(p, "lic"), package, serial, token, device);
             return owned == null ? Words("SAVE_FAILED") : null;
@@ -71,6 +75,7 @@ namespace Estabrek.Launcher
             if (!r.Ok) return Words(r.Error);
             string token = LicenceToken.Str(r.Body, "token");
             Dictionary<string, object> p = LicenceToken.Verify(token);
+            if (p == null && LicenceToken.ForeignKey(token)) return Words("OLD_LAUNCHER");
             if (p == null || LicenceToken.Str(p, "dev") != o.DeviceHash) return Words("BAD_LICENCE");
             Library.WriteLicence(o.Folder, o.Serial, token, o.DeviceHash);
             o.Token = token;

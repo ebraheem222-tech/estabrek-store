@@ -1,6 +1,6 @@
 // Estabrek's launcher for protected products (phase 4). Opens with its window;
 // a few command-line switches exist for checking a build:
-//   --version, --fingerprint, --keys
+//   --version, --fingerprint, --keys, --store
 //   --unzip <copy.zip> <serial> <folder>   opens a copy (exit 3: wrong serial)
 //   --verify <token>                       checks a licence (exit 4: not valid)
 using System;
@@ -51,6 +51,12 @@ namespace Estabrek.Launcher
                         return 0;
                     case "--keys":
                         foreach (string[] k in Config.Keys) Out(k[0]);
+                        return 0;
+                    case "--store":
+                        // The shop this copy belongs to: address, name, and whether a shop wrote them into the file.
+                        Out(Config.ApiBase);
+                        Out(Config.StoreName);
+                        Out(Config.Stamped ? "stamped" : "built");
                         return 0;
                     case "--unzip":
                         if (a.Length < 4) return 2;

@@ -19,19 +19,39 @@ the files from there.
 - **Honest limit:** anything running on the buyer's PC can be reverse-engineered
   by someone determined. This makes casual sharing hard and leaks traceable.
 
-## Build
+## Every shop has it ready
 
-Nothing to install: it uses the C# compiler that comes with Windows (.NET
-Framework 4.8). From the project folder:
+Nobody builds a launcher per shop. One **blank** program is built once and
+kept with the backend (`estabrek-store-backend/assets/launcher/`, with
+`launcher.json`: its version and a hash of the sources it was built from). When a
+buyer (or the owner, from the admin) downloads it, that shop's server writes its
+address, its name and its licence keys at the end of the file
+(`modules/protected/launcherStamp.ts`); the program reads them from its own file
+at start (`src/Config.cs`). Windows ignores bytes after a program's last section,
+so it still runs. A change of keys (the vault turned on) reaches the next
+download by itself; buyers with an older copy are told to download it again.
+
+After changing anything here, build the blank program again and commit it (a
+backend test, `launcher.ready.spec.ts`, fails until you do). Nothing to install:
+it uses the C# compiler that comes with Windows (.NET Framework 4.8):
+
+```bash
+powershell -ExecutionPolicy Bypass -File estabrek-launcher/build.ps1 -Blank -Version 1.1.1
+```
+
+## A build of the owner's own
+
+Still possible, for a build signed with the owner's certificate. It reads the
+shop's licence keys from `<ApiUrl>/v1/licences/public-key` and builds them in:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File estabrek-launcher/build.ps1 -ApiUrl https://estabrek-store-production.up.railway.app -Version 1.0.0
 ```
 
-It reads the shop's licence keys from `<ApiUrl>/v1/licences/public-key`, builds
-them in, and writes `estabrek-launcher/dist/EstabrekLauncher.exe`. Upload it in
-the admin: **الخزنة والبرنامج → رفع EstabrekLauncher.exe**. Build again whenever
-the keys change (for example when the vault is turned on).
+It writes `estabrek-launcher/dist/EstabrekLauncher.exe`. Upload it in the admin:
+**الخزنة والبرنامج → متقدم → رفع EstabrekLauncher.exe**. The upload is offered
+instead of the ready one until it is deleted; build it again whenever the keys
+change.
 
 ### Signing (optional)
 
@@ -45,6 +65,6 @@ signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /a estabre
 ## Checking a build
 
 Switches used by the backend's tests (`src/tests/launcher.interop.spec.ts`):
-`--version`, `--fingerprint`, `--keys`, `--unzip <copy.zip> <serial> <folder>`,
+`--version`, `--fingerprint`, `--keys`, `--store`, `--unzip <copy.zip> <serial> <folder>`,
 `--verify <licence>`, `--activate <copy.zip> <serial>`, `--list`,
 `--run <licence> <file>`. `ESTABREK_LAUNCHER_HOME` points it at a folder of its own.

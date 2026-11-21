@@ -12,7 +12,7 @@ import { validate } from "../../utils/validate.js";
 import { AppError } from "../../utils/httpError.js";
 import { closeVaultSession, moveLocalFilesToVault, openVaultSession, requireVaultSession, vaultEvents, vaultStatus } from "../vault/vaultAdmin.service.js";
 import { CHECK_EVERY_DAYS, OFFLINE_GRACE_DAYS, publicKeys } from "../protected/activation.service.js";
-import { listLaunchers, removeLauncher, uploadLauncher } from "../protected/launcher.service.js";
+import { listLaunchers, readyLauncher, removeLauncher, uploadLauncher } from "../protected/launcher.service.js";
 
 export const vaultAdmin = Router();
 
@@ -26,7 +26,9 @@ vaultAdmin.get(
   "/",
   asyncHandler(async (req: any, res) => {
     const [status, keys, launchers] = await Promise.all([vaultStatus(me(req)), publicKeys(), listLaunchers()]);
-    res.json({ ...status, keys, launchers, checkEveryDays: CHECK_EVERY_DAYS, offlineGraceDays: OFFLINE_GRACE_DAYS, launcherMaxMb: env.LAUNCHER_MAX_UPLOAD_MB });
+    // ready: the launcher every shop has without building one (launcher.service.ts); an active upload is offered instead.
+    const r = readyLauncher();
+    res.json({ ...status, keys, launchers, ready: r ? { version: r.version, bytes: r.data.length } : null, checkEveryDays: CHECK_EVERY_DAYS, offlineGraceDays: OFFLINE_GRACE_DAYS, launcherMaxMb: env.LAUNCHER_MAX_UPLOAD_MB });
   }),
 );
 

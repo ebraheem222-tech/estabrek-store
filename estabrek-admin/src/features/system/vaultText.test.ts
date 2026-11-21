@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildCommand, countdown, eventText, eventTone, nextVersion, shortHash } from "./vaultText";
+import { buildCommand, countdown, eventText, eventTone, launcherDownloadUrl, nextVersion, shortHash } from "./vaultText";
 
 describe("Vault text", () => {
   test("the session countdown", () => {
@@ -22,6 +22,7 @@ describe("Vault text", () => {
   test("building the launcher", () => {
     expect(buildCommand("https://api.shop.test/v1", "1.0.2")).toBe("powershell -ExecutionPolicy Bypass -File estabrek-launcher\\build.ps1 -ApiUrl https://api.shop.test -Version 1.0.2");
     expect(buildCommand("", "1.0.0")).toContain("https://YOUR-API");
+    expect(launcherDownloadUrl("https://api.shop.test/v1/")).toBe("https://api.shop.test/v1/licences/launcher/download");
     expect(nextVersion("1.0.4")).toBe("1.0.5");
     expect(nextVersion(null)).toBe("1.0.0");
     expect(shortHash("47158e0478551e0f")).toBe("47158e…1e0f");

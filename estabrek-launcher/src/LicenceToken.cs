@@ -39,6 +39,15 @@ namespace Estabrek.Launcher
             }
         }
 
+        /** True when the token is signed by a key this copy doesn't carry (the shop changed keys, or another shop's). */
+        public static bool ForeignKey(string token)
+        {
+            string[] parts = (token ?? "").Split('.');
+            if (parts.Length != 4 || parts[0] != "v1") return false;
+            foreach (string[] k in Config.Keys) if (k[0] == parts[1]) return false;
+            return true;
+        }
+
         public static string Str(Dictionary<string, object> p, string name)
         {
             object v;
