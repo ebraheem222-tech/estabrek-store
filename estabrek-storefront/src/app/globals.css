@@ -14542,3 +14542,37 @@ html[data-ab-hero="photo"] .rose-film,
 html[data-ab-hero="film"] .rose-opening {
   visibility: hidden;
 }
+
+/* ============================================
+   FLOATING BUTTONS ABOVE THE PHONE'S BOTTOM BAR, IN THE STORE'S COLOURS
+   ============================================ */
+/* The chat's button: one round button in the store's accent, in every template (ChatWidget). */
+.chat-launcher {
+  background: var(--th-accent, var(--accent, #7c3aed));
+  color: var(--th-on-strong, var(--accent-contrast, #fff));
+  border: 1px solid color-mix(in srgb, var(--th-on-strong, #fff) 18%, transparent);
+}
+/* On a phone the chat (and its panel) and the accessibility button stand 12px above the bottom bar (its
+   height as MobileBottomNav measures it), the accessibility button over the chat. */
+@media (max-width: 1023px) {
+  html[data-bottom-nav] { --float-bottom: calc(var(--bottom-nav-h, calc(76px + env(safe-area-inset-bottom))) + 12px); }
+  html[data-bottom-nav][data-chat] { --chat-room: 60px; }
+  :root[data-store-theme][data-bottom-nav] .a11y-fab {
+    top: auto;
+    bottom: calc(var(--float-bottom) + var(--chat-room, 0px));
+  }
+}
+/* A store on a theme: the bottom bar wears it (it had its own navy whatever the template). */
+:root[data-store-theme] .mobile-bottom-nav {
+  background: color-mix(in srgb, var(--th-surface) 94%, transparent);
+  border-top-color: var(--th-line);
+}
+:root[data-store-theme] .mobile-nav-item { color: var(--th-muted); }
+:root[data-store-theme] .mobile-nav-item.active { color: var(--th-accent); }
+:root[data-store-theme] .mobile-nav-indicator { background: var(--th-accent); }
+:root[data-store-theme] .mobile-nav-badge { background: var(--th-accent); color: var(--th-on-strong); }
+:root[data-store-theme] .a11y-fab {
+  background: color-mix(in srgb, var(--th-surface) 88%, transparent);
+  color: var(--th-ink);
+  border-color: var(--th-line);
+}

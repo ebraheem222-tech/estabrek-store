@@ -72,6 +72,16 @@ function pageLang(): PersonaLang {
 }
 const NUDGE_KEY = "estabrek_assistant_nudged";
 
+/** The chat's sign, in the button's own words colour. */
+function ChatIcon() {
+  return (
+    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25-4.03 8.25-9 8.25c-1.446 0-2.812-.28-4.03-.78L3 20.25l1.053-3.158A7.83 7.83 0 012.25 12z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
+    </svg>
+  );
+}
+
 export default function ChatWidget({ position = "bottom-left", draggable = false, persona = null }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<PersonaLang>("ar");
@@ -208,14 +218,22 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
     if (dragPos) {
       return { left: dragPos.x, top: dragPos.y, right: "auto", bottom: "auto", transform: "none" as const };
     }
+    // Above the phone's bottom bar while it shows (--float-bottom, globals.css): it sat on «السلة».
+    const bottom = "var(--float-bottom, 1rem)";
     if (position === "bottom-right") {
-      return { right: "1rem", bottom: "1rem", left: "auto", transform: "none" as const };
+      return { right: "1rem", bottom, left: "auto", transform: "none" as const };
     }
     if (position === "bottom-center") {
-      return { left: "50%", bottom: "1rem", transform: "translateX(-50%)" as const };
+      return { left: "50%", bottom, transform: "translateX(-50%)" as const };
     }
-    return { left: "1rem", bottom: "1rem", transform: "none" as const };
+    return { left: "1rem", bottom, transform: "none" as const };
   }, [dragPos, position]);
+
+  // The page knows a chat button is there: the accessibility button stands above it (globals.css).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-chat", "");
+    return () => document.documentElement.removeAttribute("data-chat");
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!draggable || !containerRef.current) return;
@@ -294,14 +312,15 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
           }}
           onPointerDown={handlePointerDown}
           style={draggable ? { touchAction: "none" } : undefined}
-          className="group relative inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 p-3 shadow-lg backdrop-blur hover:bg-white transition"
+          // A plain round button in the store's own accent (its theme's, else the page's), the same in every
+          // template: the assistant's own picture (its colours) shows in the chat itself.
+          className="chat-launcher group relative grid h-12 w-12 place-items-center rounded-full shadow-lg transition hover:-translate-y-0.5 sm:h-14 sm:w-14"
           data-testid="assistant-launcher"
           data-persona={persona?.id ?? ""}
         >
           {persona && face ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={face} alt="" width={40} height={40} className="h-10 w-10 rounded-full" />
+              <ChatIcon />
               {nudge && lines ? (
                 <span className="pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-2xl border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-black shadow-md" style={{ insetInlineStart: 0 }} data-testid="assistant-nudge" dir={lang === "en" ? "ltr" : "rtl"}>
                   {lines.nudge}
@@ -309,16 +328,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
               ) : null}
             </>
           ) : (
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--accent-2)] text-black shadow-sm">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25-4.03 8.25-9 8.25c-1.446 0-2.812-.28-4.03-.78L3 20.25l1.053-3.158A7.83 7.83 0 012.25 12z"
-              />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
-            </svg>
-          </span>
+            <ChatIcon />
           )}
           <span className="sr-only">{persona ? persona.name[lang] : "مساعدة"}</span>
         </button>
