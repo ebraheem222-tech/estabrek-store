@@ -3,7 +3,7 @@ import type { PageTreeNode } from "../../../api/pages.api";
 import { SECTION_TEMPLATES, buildTemplate } from "../catalog";
 import { RECIPES } from "../sections";
 import { FAMILIES } from "../words";
-import { DNA_RECIPES, LOOKS, MOODS, MOOD_NAMES } from ".";
+import { DNA_KINDS, DNA_RECIPES, LOOKS, MOODS, MOOD_NAMES } from ".";
 import { HERO_LAYOUTS, HERO_PICKS } from "./heroes";
 
 // The section DNA (studio/templates/dna): looks × layouts, picked by hand. The catalog's own tests
@@ -45,16 +45,35 @@ describe("the section DNA", () => {
     }
   });
 
+  it("makes every kind in several layouts, each layout in three looks or more, nothing picked twice", () => {
+    for (const [, kind, layouts, picks] of DNA_KINDS) {
+      expect(layouts.length, kind).toBeGreaterThanOrEqual(7);
+      expect(new Set(layouts.map((l) => l.key)).size, kind).toBe(layouts.length);
+      for (const l of layouts) {
+        expect(full(l.name), `${kind} ${l.key}`).toBe(true);
+        expect(picks[l.key]?.length ?? 0, `${kind} ${l.key}`).toBeGreaterThanOrEqual(3);
+        expect(new Set(picks[l.key]).size, `${kind} ${l.key}`).toBe(picks[l.key].length);
+      }
+      // No pick for a layout that isn't there.
+      for (const k of Object.keys(picks)) expect(layouts.some((l) => l.key === k), `${kind} ${k}`).toBe(true);
+      expect(DNA_RECIPES.filter((r) => r.key.startsWith(`dna-${kind}-`)).length, kind).toBeGreaterThanOrEqual(25);
+    }
+  });
+
   it("joins the library with its own keys and names, and the gallery knows each one's look", () => {
     const keys = RECIPES.map((r) => r.key);
     expect(new Set(keys).size).toBe(keys.length);
-    for (const lang of ["ar", "en", "he"] as const) expect(new Set(DNA_RECIPES.map((r) => r.name[lang])).size, lang).toBe(DNA_RECIPES.length);
+    // Within a kind no two designs share a name (the gallery lists a kind at a time).
+    for (const [cat] of DNA_KINDS) for (const lang of ["ar", "en", "he"] as const) {
+      const names = DNA_RECIPES.filter((r) => r.cat === cat).map((r) => r.name[lang]);
+      expect(new Set(names).size, `${cat} ${lang}`).toBe(names.length);
+    }
     const dna = SECTION_TEMPLATES.filter((t) => t.look);
     expect(new Set(dna.map((t) => t.id.split(":")[1])).size).toBe(DNA_RECIPES.length);
     for (const t of dna) expect(t.mood && t.layout, t.id).toBeTruthy();
   });
 
-  it("builds every design for every kind of store; each has its big heading, and no two come out the same", () => {
+  it("builds every design for every kind of store; only openings hold the big heading, and no two come out the same", () => {
     const seen = new Map<string, string>();
     for (const r of DNA_RECIPES) {
       for (const [i, fam] of FAMILIES.entries()) {
@@ -62,9 +81,11 @@ describe("the section DNA", () => {
         expect(built?.length, `${r.key} ${fam}`).toBe(1);
       }
       const built = buildTemplate(`s:${r.key}:${r.skins[0]}`, { ids: ids(), fam: "fashion", lang: "en" })!;
-      let h1 = 0;
-      walk(built, (n) => { if (n.type === "heading" && (n.props as { level?: number }).level === 1) h1++; });
-      expect(h1, r.key).toBe(1);
+      // An opening holds the page's one big heading; the other kinds only headings under it.
+      let h1 = 0, headings = 0;
+      walk(built, (n) => { if (n.type === "heading") { headings++; if ((n.props as { level?: number }).level === 1) h1++; } });
+      expect(h1, r.key).toBe(r.cat === "hero" ? 1 : 0);
+      expect(headings, r.key).toBeGreaterThan(0);
       const print = JSON.stringify(built);
       expect(seen.get(print), `${r.key} looks like ${seen.get(print)}`).toBeUndefined();
       seen.set(print, r.key);

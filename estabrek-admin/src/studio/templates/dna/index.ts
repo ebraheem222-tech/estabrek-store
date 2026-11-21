@@ -8,6 +8,7 @@ import type { Skin } from "../build";
 import type { SectionCat, SectionRecipe } from "../sections";
 import { w } from "../words";
 import { HERO_LAYOUTS, HERO_PICKS, type Layout } from "./heroes";
+import { BANNER_LAYOUTS, BANNER_PICKS, CATEGORY_LAYOUTS, CATEGORY_PICKS, OFFER_LAYOUTS, OFFER_PICKS, PRODUCT_LAYOUTS, PRODUCT_PICKS } from "./sell";
 import { LOOK_BY_KEY, LOOKS, MOOD_NAMES, MOODS, type Look } from "./looks";
 
 export { LOOKS, LOOK_BY_KEY, MOODS, MOOD_NAMES };
@@ -34,4 +35,14 @@ function recipes(cat: SectionCat, kind: string, layouts: Layout[], picks: Record
   );
 }
 
-export const DNA_RECIPES: SectionRecipe[] = [...recipes("hero", "hero", HERO_LAYOUTS, HERO_PICKS)];
+/** Every kind made so far: [the library's category, the kind's key, its layouts, its picks]. */
+export const DNA_KINDS: Array<[SectionCat, string, Layout[], Record<string, string[]>]> = [
+  ["hero", "hero", HERO_LAYOUTS, HERO_PICKS],
+  // Wave 1: selling.
+  ["products", "products", PRODUCT_LAYOUTS, PRODUCT_PICKS],
+  ["categories", "categories", CATEGORY_LAYOUTS, CATEGORY_PICKS],
+  ["offer", "offer", OFFER_LAYOUTS, OFFER_PICKS],
+  ["banner", "banner", BANNER_LAYOUTS, BANNER_PICKS],
+];
+
+export const DNA_RECIPES: SectionRecipe[] = DNA_KINDS.flatMap(([cat, kind, layouts, picks]) => recipes(cat, kind, layouts, picks));
