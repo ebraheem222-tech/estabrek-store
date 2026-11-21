@@ -78,6 +78,7 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
     let ctx: { revert: () => void } | null = null;
     let observer: MutationObserver | null = null;
     let rafId: number | null = null;
+    let stopMeasuring = () => {};
 
     (async () => {
       const gsapMod = await import("gsap");
@@ -156,6 +157,8 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
         // Defer layout refresh until scrolling settles; an immediate refresh
         // temporarily scrolls to zero and can cancel native smooth navigation.
         ScrollTrigger?.refresh?.(true);
+        // What this did to the page itself (a held section wrapped or unwrapped) is not a change to answer.
+        observer?.takeRecords();
       };
 
       const scheduleApply = () => {
@@ -164,6 +167,38 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
           rafId = null;
           applyAnimations();
         });
+      };
+
+      // The page is watched for changes, and a change is answered with a new measure (above). The measure
+      // itself changes the page: GSAP takes every held (pinned) section out of its holder and puts it back.
+      // Seen as a change, that asked for another measure, which made another change: a page with a held
+      // section was measured about three times a second, for ever (and a word being written in the section
+      // lost its focus each time). What a measure does to the page is now left out: what waits when it
+      // starts is real and is answered, what it leaves behind is its own and is dropped.
+      let measuredHeight = root.offsetHeight;
+      const measureStarts = () => {
+        if (observer?.takeRecords().length) scheduleApply();
+      };
+      const measureEnds = () => {
+        observer?.takeRecords();
+        measuredHeight = root.offsetHeight;
+      };
+      ScrollTrigger?.addEventListener?.("refreshInit", measureStarts);
+      ScrollTrigger?.addEventListener?.("refresh", measureEnds);
+      // The endless measuring also kept a held section in its place when the page grew without anything
+      // added or removed (a picture loading above it, an answer opening): that part is kept, on purpose
+      // now. While something is held, a page whose height is no longer the one last measured is measured
+      // again. The height a measure ends at is the one remembered, so what a measure itself adds to the
+      // page (a holder's room) asks for nothing and this can't go round.
+      const grown = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+        if (disposed || root.offsetHeight === measuredHeight) return;
+        if (ScrollTrigger?.getAll?.().some((t: { pin?: unknown }) => Boolean(t.pin))) ScrollTrigger.refresh(true);
+      });
+      grown?.observe(root);
+      stopMeasuring = () => {
+        ScrollTrigger?.removeEventListener?.("refreshInit", measureStarts);
+        ScrollTrigger?.removeEventListener?.("refresh", measureEnds);
+        grown?.disconnect();
       };
 
       applyAnimations();
@@ -190,6 +225,7 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
       disposed = true;
       observer?.disconnect();
       observer = null;
+      stopMeasuring();
       if (rafId != null) cancelAnimationFrame(rafId);
       rafId = null;
       try {
