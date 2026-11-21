@@ -123,6 +123,7 @@ import { VideoEditor } from "./focus/VideoEditor";
 import { ModelPartPanel, ModelSpotsPanel, ModelViewsPanel, type ModelPartInfo, type Spot3d } from "./focus/ModelPanels";
 import { CurvePanel, SlidePanel } from "./focus/KindPanels";
 import { PageBudget, PerfPanel, type Sample } from "./focus/PerfPanel";
+import { WhenPanel } from "./WhenPanel";
 import { SlowdownAlert, SpeedCheck, keepLab, type Lab } from "./focus/SpeedCheck";
 import { lightenAll } from "./focus/perfCost";
 import * as SpeedAPI from "../api/speed.api";
@@ -3037,7 +3038,7 @@ function StudioDocument() {
           <div className="text-base font-semibold">{label(selected)}</div>
           <div className="mt-0.5 font-mono text-[11px] text-white/35" dir="ltr">{selExtra?.kind === "slot" ? selExtra.path : selected}</div>
         </div>
-        {selFree && selFree.type !== "page" ? <div data-insp-as="behaviour"><PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /></div> : null}
+        {selFree && selFree.type !== "page" ? <div data-insp-as="behaviour" className="space-y-3"><PerfPanel key={`perf:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /><WhenPanel key={`when:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /></div> : null}
         {/* One small row: the element opened on its own, then its tools by name (elementTools.ts). */}
         <ElementToolsCard tools={selFree && selFree.type !== "page" && !focus ? elementTools(selFree, nodeOf(selNode?.parentId), selNode?.parentId && selNode.parentId !== index.root ? label(selNode.parentId) : "") : []} busy={busy} onGo={runTool}>
           {selected && selected !== index.root && shapeOf(selected) && focus?.id !== selected ? (

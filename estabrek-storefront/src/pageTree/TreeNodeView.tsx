@@ -52,7 +52,10 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, InstrumentView, Model3dSpot, PopupView, ProductDetail, RowsView, ScheduleView, SceneView, ShowcaseView, SliderControls, SpinView } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, TocView, WhenWatch } from "./lazyParts";
+import { whenOf } from "./pieces";
+import { PRO_WORDS } from "./proWords";
+import type { ShareNetwork } from "./ProWidgets";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 
 export type TreeCtx = {
@@ -97,7 +100,10 @@ function waysOf(ctx: TreeCtx): FormWay[] {
   return out;
 }
 
-const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
+/** One of a list, or the default. */
+const pick = <T extends string>(v: unknown, list: readonly T[], def: T): T => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : def);
+
+const HOVER_CLASS: Record<string, string> ={ glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
 const cls = (n: TreeNode, ...more: string[]) =>
   ["pt", `pt-${n.type}`, /^[A-Za-z0-9_-]{1,40}$/.test(n.id) ? `pt-${n.id}` : "", styleClass(n.props?.styleId), HOVER_CLASS[motionOf(n)?.hover?.kind ?? ""] ?? "", n.type !== "popup" && (n.props?.edges?.top || n.props?.edges?.bottom) ? "pt-has-edges" : "", ...more].filter(Boolean).join(" ");
 
@@ -117,7 +123,9 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
   const view = node.type === "section" || node.type === "popup" ? rendered : withDecoration(rendered, nodeEdges(node.id, node.props?.edges));
   const { partLooks: _partLooks, ...configuration } = node.props ?? {};
   const keyed = STRUCTURAL_VIEWS.has(node.type) || !isValidElement(view) ? view : cloneElement(view, { key: `${node.id}:${JSON.stringify(configuration)}` });
-  return PROP_WIDGETS.has(node.type) ? <StableWidgetView version={JSON.stringify([{ ...node, props: configuration },ctx.lang,ctx.main,ctx.cfg,node.type === "product360" ? ctx.spinProducts : null])}>{keyed}</StableWidgetView> : keyed;
+  const shown = PROP_WIDGETS.has(node.type) ? <StableWidgetView version={JSON.stringify([{ ...node, props: configuration },ctx.lang,ctx.main,ctx.cfg,node.type === "product360" ? ctx.spinProducts : null])}>{keyed}</StableWidgetView> : keyed;
+  // An element with a time to show brings the check that shows it then (TreeWhen.tsx), whichever way the page is drawn.
+  return node.type !== "page" && whenOf(node.props?.when) && view !== null ? <>{shown}<WhenWatch /></> : shown;
 }
 
 function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
@@ -145,7 +153,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   // In a list's card (copied for each row after the page is drawn) the engines' marks are left out: a copy the
   // motion engine never met would wait for it for ever.
   const live = !ctx.inRows;
-  const mark = { ...perfMarks(perf, endless), ...(live ? physicsMarks : {}), "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion && live ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue && live ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 && live ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
+  // Its time to show (TreeWhen marks it when that's now; the stylesheet leaves it out until then).
+  const when = node.type === "page" ? undefined : whenOf(p.when);
+  const mark = { ...perfMarks(perf, endless), ...(live ? physicsMarks : {}), ...(when ? { "data-pt-when": JSON.stringify(when) } : {}), "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion && live ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue && live ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 && live ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
   // What the row fills in each copy of the card: the element's connections to the table's fields (rowsSpec.ts).
   const row = ctx.inRows ? rowBind(p.bind) : {};
   const rowWords = (ref: string | undefined, content: ReactNode) => (ref ? <span data-pt-row-text={ref}>{content}</span> : content);
@@ -207,13 +217,14 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const one = <T extends string>(v: unknown, list: readonly T[], def: T): T => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : def);
       const num = (v: unknown, max: number, def: number) => (typeof v === "number" && v >= 0 && v <= max ? v : def);
       const spec = {
-        trigger: one(p.trigger, ["load", "scroll", "exit", "click"] as const, "load"),
+        trigger: one(p.trigger, ["load", "scroll", "exit", "click", "idle"] as const, "load"),
         delay: num(p.delay, 120, 3),
         scroll: num(p.scroll, 100, 50),
+        idle: Math.max(5, num(p.idle, 600, 30)),
         anchor: typeof p.anchor === "string" && /^[A-Za-z][\w-]{0,40}$/.test(p.anchor) ? p.anchor : undefined,
         often: one(p.often, ["always", "visit", "day", "once"] as const, "visit"),
         size: one(p.size, ["s", "m", "l"] as const, "m"),
-        place: one(p.place, ["center", "bottom", "corner"] as const, "center"),
+        place: one(p.place, ["center", "bottom", "corner", "start", "end"] as const, "center"),
       };
       return (
         <div className={cls(node)} {...mark}>
@@ -496,6 +507,101 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
         <div className={cls(node)} {...mark} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
           <canvas className="pt-anim-canvas" {...{ [lottie ? "data-pt-lottie" : "data-pt-rive"]: JSON.stringify(spec) }} />
         </div>
+      );
+    }
+    case "toc": {
+      // The page's own headings, listed in the shopper's browser (ProWidgets.tsx TocView).
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      return (
+        <div className={cls(node)} {...mark}>
+          <TocView title={say(p.title) || W.toc} levels={pick(p.levels, ["2", "2-3", "2-4"] as const, "2-3")} look={pick(p.look, ["list", "numbers", "line", "boxed"] as const, "list")} fold={p.fold === true} empty={W.tocEmpty} />
+        </div>
+      );
+    }
+    case "flipBox": {
+      // Two faces; the back comes round as the mouse comes over it, a tap or the keyboard's focus (css.ts, no script).
+      const title = say(p.title);
+      if (!title) return null;
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      const image = safeSrc(p.image);
+      const to = link(p.href);
+      const icon = typeof p.icon === "string" && /^[a-z]{2,20}$/.test(p.icon) ? p.icon : null;
+      const height = typeof p.height === "number" && p.height >= 160 && p.height <= 720 ? Math.round(p.height) : 300;
+      const [backTitle, backText, button] = [say(p.backTitle), say(p.backText), say(p.button)];
+      return (
+        <div
+          className={cls(node, `pt-flip-${pick(p.effect, ["flip", "slide", "fade", "zoom"] as const, "flip")}`, `pt-flip-${pick(p.direction, ["start", "end", "up", "down"] as const, "start")}`)}
+          {...mark} style={{ "--pt-flip-h": `${height}px` } as CSSProperties} role="group" aria-label={title} {...(to && button ? {} : { tabIndex: 0, title: W.flip })}
+        >
+          {before}
+          <div className="pt-flip-inner">
+            <div className={`pt-flip-face pt-flip-front${image ? " pt-flip-pic" : ""}`}>
+              {image ? <img className="pt-flip-img" src={image} alt="" loading="lazy" /> : null}
+              {icon && !image ? <span className="pt-flip-icon"><TreeIcon name={icon} /></span> : null}
+              <div className="pt-flip-title" data-pt-field="title">{title}</div>
+              {say(p.text) ? <p className="pt-flip-text" data-pt-field="text">{say(p.text)}</p> : null}
+            </div>
+            <div className="pt-flip-face pt-flip-back">
+              {backTitle ? <div className="pt-flip-title" data-pt-field="backTitle">{backTitle}</div> : null}
+              {backText ? <p className="pt-flip-text" data-pt-field="backText">{backText}</p> : null}
+              {to && button ? <a className="pt-btn pt-btn-solid pt-flip-btn" href={to} data-pt-field="button">{button}</a> : null}
+            </div>
+          </div>
+          {fx}
+          {after}
+        </div>
+      );
+    }
+    case "share": {
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      const known = Object.keys(W.networks);
+      const networks = (Array.isArray(p.networks) ? p.networks : []).filter((n: unknown, i: number, all: unknown[]) => typeof n === "string" && known.includes(n) && all.indexOf(n) === i) as ShareNetwork[];
+      if (!networks.length) return null;
+      return (
+        <div className={cls(node)} {...mark}>
+          <ShareView networks={networks} look={pick(p.look, ["round", "square", "pill", "plain"] as const, "round")} labels={p.labels === true} tint={p.tint === "theme" ? "theme" : "brand"} text={say(p.text)} words={{ ...W.networks, copied: W.copied, label: W.share }} />
+        </div>
+      );
+    }
+    case "progress": {
+      // Drawn along the window (on the body); here only its place in the page, empty in the shop.
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      const kind = p.kind === "ring" ? "ring" : "bar";
+      const thickness = typeof p.thickness === "number" && p.thickness >= 2 && p.thickness <= 12 ? Math.round(p.thickness) : 4;
+      return (
+        <div className={cls(node)} {...mark}>
+          <ReadProgress kind={kind} place={p.place === "bottom" ? "bottom" : "top"} thickness={thickness} label={say(p.label) || (kind === "ring" ? W.up : W.reading)} note={W.readNote} />
+        </div>
+      );
+    }
+    case "headline": {
+      // A heading whose words take turns, or with one word marked (ProWidgets.tsx HeadlineMotion moves them).
+      const list = (Array.isArray(p.words) ? p.words : []).slice(0, 8).map((t: unknown) => say(t)).filter(Boolean) as string[];
+      if (!list.length) return null;
+      const level = Math.min(6, Math.max(1, Number(p.level) || 2));
+      const H = `h${level}` as "h2";
+      const mode = p.mode === "mark" ? "mark" : "rotate";
+      const [lead, tail] = [say(p.before), say(p.after)];
+      const seconds = typeof p.seconds === "number" && p.seconds >= 1 && p.seconds <= 10 ? p.seconds : 2.5;
+      return (
+        <H className={cls(node, `pt-hl-is-${mode}`)} {...mark} data-pt-toc={[lead, list[0], tail].filter(Boolean).join(" ")}>
+          {before}
+          {/* Read out whole: its words, every one of the turns. */}
+          <span className="pt-sr">{[lead, mode === "mark" ? list[0] : list.join(" / "), tail].filter(Boolean).join(" ")}</span>
+          <span className="pt-hl-shown" aria-hidden="true">
+            {lead ? <><span className="pt-hl-lead" data-pt-field="before">{lead}</span>{" "}</> : null}
+            <HeadlineMotion
+              words={mode === "mark" ? [list[0]] : list} mode={mode} seconds={seconds} again={p.again === true}
+              effect={pick(p.effect, ["type", "slide", "fade", "flip", "clip", "blur"] as const, "slide")}
+              shape={pick(p.shape, ["circle", "underline", "curly", "double", "strike", "cross", "zigzag", "box", "swoosh"] as const, "circle")}
+            >
+              {mode === "mark" ? <span data-pt-field="words.0">{list[0]}</span> : null}
+            </HeadlineMotion>
+            {tail ? <>{" "}<span className="pt-hl-tail" data-pt-field="after">{tail}</span></> : null}
+          </span>
+          {fx}
+          {after}
+        </H>
       );
     }
     case "spacer":

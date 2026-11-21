@@ -38,6 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
+  "toc", "flipBox", "share", "progress", "headline",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -113,6 +114,27 @@ const px = (min: number, max: number) => z.number().finite().min(min).max(max);
 const box = (min: number) => z.tuple([px(min, 400), px(min, 400), px(min, 400), px(min, 400)]);
 const length = z.string().trim().regex(/^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|vh))$/, "A length like 320px, 50% or auto");
 const place = z.string().trim().regex(/^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/, "Like “1 / 3” or “span 2”");
+/** A moment in the shop's own time, as the editor's date-and-time box gives it ("2026-12-31T23:59"). */
+const MOMENT = z.string().trim().max(40).refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && !Number.isNaN(Date.parse(v)), "A date and time like 2026-12-31T23:59");
+
+/** A menu link holds at most this many links of its own. */
+export const MENU_LIMITS = { children: 12 } as const;
+/** The headings a table of contents lists: h2 only, h2 and h3, or down to h4. */
+export const TOC_LEVELS = ["2", "2-3", "2-4"] as const;
+/** How a flip card shows its back: turning round, sliding over, fading in, or growing from the middle. */
+export const FLIP_EFFECTS = ["flip", "slide", "fade", "zoom"] as const;
+/** Where the share buttons send the page ("native" = the phone's own share sheet, "copy" = the link copied). */
+export const SHARE_NETWORKS = ["whatsapp", "facebook", "x", "telegram", "linkedin", "pinterest", "email", "copy", "native"] as const;
+/** How a moving headline's words take turns. */
+export const HEADLINE_EFFECTS = ["type", "slide", "fade", "flip", "clip", "blur"] as const;
+/** The line a moving headline draws round its word. */
+export const HEADLINE_SHAPES = ["circle", "underline", "curly", "double", "strike", "cross", "zigzag", "box", "swoosh"] as const;
+/**
+ * When an element shows (props.when, on any kind but the page): from one moment, until another, or between the two,
+ * in the shop's own time. Outside them the shop leaves it out (checked in the shopper's browser, every minute).
+ */
+export const NodeWhen = z.object({ from: MOMENT.optional(), until: MOMENT.optional() })
+  .refine((w) => !w.from || !w.until || Date.parse(w.from) < Date.parse(w.until), { message: "It ends before it starts", path: ["until"] });
 
 /** How a motion speeds up and slows down (also a state change's). */
 // "fall" speeds up as it goes (a fall; a world baked into keyframes uses it), the rest slow down as they arrive or glide.
@@ -1100,12 +1122,19 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     items: z.array(z.object({ label: local(60), text: local(3000), image: src.optional() })).min(1).max(12),
     look: z.enum(["pills", "underline", "boxed"]).optional(),
   }),
-  // Down to a moment (an ISO date and time); then its words for after, or nothing.
+  // Down to a moment (an ISO date and time); then its words for after, or nothing. "visitor": each shopper gets
+  // their own `minutes` from their first visit (kept in their browser), and `again` starts it over once it ends.
   countdown: z.object({
-    until: z.string().trim().max(40).refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && !Number.isNaN(Date.parse(v)), "A date and time like 2026-12-31T23:59"),
+    mode: z.enum(["date", "visitor"]).optional(),
+    until: MOMENT.optional(),
+    minutes: z.number().int().min(1).max(43_200).optional(),
+    again: z.boolean().optional(),
     done: local(200).optional(),
     dayLabel: local(40).optional(), hourLabel: local(40).optional(), minuteLabel: local(40).optional(), secondLabel: local(40).optional(),
     look: z.enum(["boxes", "plain"]).optional(),
+  }).superRefine((c, ctx) => {
+    if (c.mode === "visitor" ? c.minutes === undefined : c.until === undefined)
+      ctx.addIssue({ code: "custom", ...(c.mode === "visitor" ? { message: "How many minutes each shopper gets", path: ["minutes"] } : { message: "A date and time like 2026-12-31T23:59", path: ["until"] }) });
   }),
   // Two pictures, one over the other, a handle between them (`start` % across).
   beforeAfter: z.object({ before: src, after: src, beforeLabel: local(40).optional(), afterLabel: local(40).optional(), start: z.number().min(0).max(100).optional() }),
@@ -1117,26 +1146,79 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // A map of a place by its address (or "lat,lng"), zoomed 1 (the world) to 20 (a street).
   map: z.object({ query: z.string().trim().min(2).max(200), zoom: z.number().int().min(1).max(20).optional(), label: local(120).optional() }),
   // Over the page when its moment comes: on arrival (after `delay` s), at `scroll` % down, as the mouse leaves the
-  // page (`exit`), or from a link to "#<anchor>"; shown always, once a visit, once a day or once ever.
+  // page (`exit`), after `idle` seconds of the shopper doing nothing, or from a link to "#<anchor>"; shown always,
+  // once a visit, once a day or once ever. "start"/"end": a drawer sliding in from that side, the page's full height.
   popup: z.object({
-    trigger: z.enum(["load", "scroll", "exit", "click"]).optional(),
+    trigger: z.enum(["load", "scroll", "exit", "click", "idle"]).optional(),
     delay: z.number().min(0).max(120).optional(),
     scroll: z.number().min(0).max(100).optional(),
+    idle: z.number().int().min(5).max(600).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     often: z.enum(["always", "visit", "day", "once"]).optional(),
     size: z.enum(["s", "m", "l"]).optional(),
-    place: z.enum(["center", "bottom", "corner"]).optional(),
+    place: z.enum(["center", "bottom", "corner", "start", "end"]).optional(),
     label: local(120).optional(),
   }),
   // A search box sending to the shop's search page.
   search: z.object({ placeholder: local(80).optional(), button: local(30).optional(), look: z.enum(["rounded", "pill", "underline", "boxed", "glass"]).optional() }),
-  // Links in a row or a column (a header's or a footer's); on a phone it can fold under a button.
+  // Links in a row or a column (a header's or a footer's); on a phone it can fold under a button. A link can hold
+  // links of its own (`children`, each with a line of words under it): they open under it as the mouse comes over.
   menu: z.object({
-    items: z.array(z.object({ label: local(60), href })).min(1).max(20),
+    items: z.array(z.object({ label: local(60), href, children: z.array(z.object({ label: local(60), href, note: local(120).optional() })).max(MENU_LIMITS.children).optional() })).min(1).max(20),
     layout: z.enum(["row", "column"]).optional(),
     look: z.enum(["plain", "pills", "underline", "buttons"]).optional(),
     phone: z.enum(["same", "fold"]).optional(),
     label: local(80).optional(),
+  }),
+  // The page's own headings (h2, down to h3 or h4) as links down to each; the one being read lights up.
+  toc: z.object({
+    title: local(80).optional(),
+    levels: z.enum(TOC_LEVELS).optional(),
+    look: z.enum(["list", "numbers", "line", "boxed"]).optional(),
+    fold: z.boolean().optional(),
+  }),
+  // A card with two faces: the back comes round as the mouse comes over it (a tap on a phone, the keyboard's focus).
+  flipBox: z.object({
+    title: local(120),
+    text: local(600).optional(),
+    image: src.optional(),
+    icon: z.enum(ICON_NAMES).optional(),
+    backTitle: local(120).optional(),
+    backText: local(600).optional(),
+    button: local(40).optional(),
+    href: href.optional(),
+    effect: z.enum(FLIP_EFFECTS).optional(),
+    direction: z.enum(["start", "end", "up", "down"]).optional(),
+    height: z.number().int().min(160).max(720).optional(),
+  }),
+  // Buttons that share this page (or `text` with it): each network's own, the phone's share sheet, or a copy.
+  share: z.object({
+    networks: z.array(z.enum(SHARE_NETWORKS)).min(1).max(SHARE_NETWORKS.length).refine((list) => new Set(list).size === list.length, "A network twice"),
+    look: z.enum(["round", "square", "pill", "plain"]).optional(),
+    labels: z.boolean().optional(),
+    tint: z.enum(["brand", "theme"]).optional(),
+    text: local(200).optional(),
+  }),
+  // How far down the page the shopper has read: a thin bar along the window's top or bottom, or a ring in a corner
+  // that takes them back up when pressed.
+  progress: z.object({
+    kind: z.enum(["bar", "ring"]).optional(),
+    place: z.enum(["top", "bottom"]).optional(),
+    thickness: z.number().int().min(2).max(12).optional(),
+    label: local(80).optional(),
+  }),
+  // A heading with a moving part: its `words` taking turns ("rotate", with an effect), or one word marked by a line
+  // drawn round it ("mark", in a shape), between `before` and `after`.
+  headline: z.object({
+    before: local(200).optional(),
+    words: z.array(local(80)).min(1).max(8),
+    after: local(200).optional(),
+    level: z.number().int().min(1).max(6).default(2),
+    mode: z.enum(["rotate", "mark"]).optional(),
+    effect: z.enum(HEADLINE_EFFECTS).optional(),
+    shape: z.enum(HEADLINE_SHAPES).optional(),
+    seconds: z.number().min(1).max(10).optional(),
+    again: z.boolean().optional(),
   }),
   // Words running along a line, again and again (a full loop takes `speed` seconds).
   marquee: z.object({
@@ -1370,6 +1452,14 @@ export function checkTree(input: unknown): TreeCheck {
       const perf = NodePerf.safeParse(perfRaw);
       if (!perf.success) for (const i of perf.error.issues) add(`${path}.props.perf${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
       else if (Object.keys(perf.data).length) node.props.perf = perf.data;
+    }
+    // When it shows (from, until), the same on every kind but the page.
+    const whenRaw = isObject(raw.props) ? (raw.props as Record<string, unknown>).when : undefined;
+    if (whenRaw !== undefined && whenRaw !== null) {
+      const when = NodeWhen.safeParse(whenRaw);
+      if (type === "page") add(`${path}.props.when`, "The page itself always shows");
+      else if (!when.success) for (const i of when.error.issues) add(`${path}.props.when${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
+      else if (when.data.from || when.data.until) node.props.when = when.data;
     }
     // Its own CSS: what the editor made from it must stay on this element (lib/cssCode.ts).
     const codeRaw = isObject(raw.props) ? (raw.props as Record<string, unknown>).code : undefined;

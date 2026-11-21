@@ -285,15 +285,15 @@ test.describe("styles become safe CSS", () => {
       root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: { styleId: "card" }, children: [{ id: "h", type: "heading", props: { level: 2 }, style: { base: { size: 60 } } }] }] },
     } as any, site);
     const at = (s: string) => css.indexOf(s);
-    expect(css).toContain(":where(h2).pt-heading{font-size:44px;transition-property:color,-webkit-text-fill-color;");
+    expect(css).toContain(":where(h2):is(.pt-heading,.pt-headline){font-size:44px;transition-property:color,-webkit-text-fill-color;");
     expect(css).toContain(".pt-text{line-height:1.9}");
     expect(css).toContain(".pt-btn-solid{border-radius:6px;transition-property:--pt-s");
     expect(css).toContain(".ps-card{background:var(--surface);border-radius:24px}");
-    expect(css).toContain("@media (hover:hover){:is(:where(h2).pt-heading):hover{color:var(--accent)}}");
-    expect(css).toMatch(/@media \(max-width:639\.98px\)\{:where\(h2\)\.pt-heading\{font-size:30px\}\}/);
+    expect(css).toContain("@media (hover:hover){:is(:where(h2):is(.pt-heading,.pt-headline)):hover{color:var(--accent)}}");
+    expect(css).toMatch(/@media \(max-width:639\.98px\)\{:where\(h2\):is\(\.pt-heading,\.pt-headline\)\{font-size:30px\}\}/);
     // After the base CSS (so they win over it), before the elements' own looks (so those win over them).
-    expect(at(":where(h2).pt-heading{font-size:44px;")).toBeGreaterThan(at(".pt-heading{margin:0"));
-    expect(at(":where(h2).pt-heading{font-size:44px;")).toBeLessThan(at(".pt-h{font-size:60px}"));
+    expect(at(":where(h2):is(.pt-heading,.pt-headline){font-size:44px;")).toBeGreaterThan(at(".pt-heading{margin:0"));
+    expect(at(":where(h2):is(.pt-heading,.pt-headline){font-size:44px;")).toBeLessThan(at(".pt-h{font-size:60px}"));
     // A pressed button turns: the button kind gets the transform.
     expect(css).toMatch(/[,}]\.pt-btn-solid[,{][^}]*--pt-ax:0%/);
     expect(styleClass("card")).toBe("ps-card");

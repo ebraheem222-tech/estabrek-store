@@ -49,7 +49,20 @@ const HELP: Array<[Words, string]> = [
 ];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline"] as const;
+/** A moving headline's words, ready to change. */
+const TURNS: Words[] = [w("ناعمة", "soft", "רכים"), w("أنيقة", "elegant", "אלגנטיים"), w("لكل يوم", "for every day", "לכל יום")];
+/** Links under a menu link, ready to change. */
+const UNDER: Array<[Words, string, Words]> = [
+  [w("وصل جديد", "New in", "חדש"), "/shop?sort=new", w("آخر ما نزل", "The latest pieces", "הפריטים האחרונים")],
+  [w("الأكثر طلباً", "Most loved", "הכי אהובים"), "/shop?sort=popular", w("اللي الكل بيحبه", "What everyone loves", "מה שכולם אוהבים")],
+  [w("العروض", "Offers", "מבצעים"), "/shop?sale=1", w("أسعار لفترة محدودة", "Prices for a short while", "מחירים לזמן מוגבל")],
+];
+/** One more link under a menu link. */
+export function newSubLink(lang: Lang, n = 0): Record<string, unknown> {
+  const [label, href, note] = UNDER[n % UNDER.length];
+  return { label: one(lang, label), href, note: one(lang, note) };
+}
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 
 /** One more item of a block's list, ready to edit. */
@@ -188,5 +201,23 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("srch"), type: "search", props: { look: "pill" } };
     case "menu":
       return { id: id("menu"), type: "menu", props: { items: items(4), layout: "row", phone: "fold" } };
+    case "toc":
+      return { id: id("toc"), type: "toc", props: { levels: "2-3", look: "boxed" } };
+    case "flipBox":
+      return {
+        id: id("flipcard"), type: "flipBox",
+        props: {
+          title: one(lang, w("قطعة الموسم", "This season's piece", "הפריט של העונה")), text: one(lang, w("مرّري فوقها لتشوفي أكتر", "Hover to see more", "העבירו מעליו כדי לראות עוד")), icon: "sparkle",
+          backTitle: one(lang, w("مصنوعة بحب", "Made with care", "נעשה באהבה")), backText: one(lang, w("قماش ناعم وقصّة مريحة لكل يوم.", "Soft fabric and an easy cut for every day.", "בד רך וגזרה נוחה לכל יום.")),
+          button: one(lang, w("تسوّقي", "Shop now", "לקנייה")), href: "/shop", effect: "flip", direction: "start", height: 300,
+          ...(src ? { image: src } : {}),
+        },
+      };
+    case "share":
+      return { id: id("share"), type: "share", props: { networks: ["whatsapp", "facebook", "telegram", "copy", "native"], look: "round", tint: "brand" } };
+    case "progress":
+      return { id: id("progress"), type: "progress", props: { kind: "bar", place: "top", thickness: 4 } };
+    case "headline":
+      return { id: id("headline"), type: "headline", props: { before: one(lang, w("قطع", "Pieces", "פריטים")), words: TURNS.map((t) => one(lang, t)), level: 2, mode: "rotate", effect: "slide", seconds: 2.5 } };
   }
 }

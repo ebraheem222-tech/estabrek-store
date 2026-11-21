@@ -355,11 +355,11 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
  * two lists the same, cornerKinds.test.ts checks it). Anything else shows its corners once it has a background or a
  * frame.
  */
-export const CORNER_PART_KINDS = ["accordion", "testimonials", "pricing", "team", "tabs", "countdown", "categories", "products", "shop", "form", "chart", "instrument", "filterGallery", "showcase", "menu"] as const;
+export const CORNER_PART_KINDS = ["accordion", "testimonials", "pricing", "team", "tabs", "countdown", "categories", "products", "shop", "form", "chart", "instrument", "filterGallery", "showcase", "menu", "flipBox", "toc", "share"] as const;
 const CORNER_OWN_KINDS = ["button", "image", "video", "slider", "alert", "search", "svg", "model3d", "product360", "map", "beforeAfter", "hotspots"] as const;
 const SURFACE_KEYS = ["bg", "gradient", "mesh", "pattern", "border", "backdrop", "overlay"] as const;
 /** A look some kinds only draw boxes in (a list of lines has no card to round). */
-const BOXED_LOOKS: Record<string, readonly string[]> = { accordion: ["cards"], menu: ["pills", "buttons"] };
+const BOXED_LOOKS: Record<string, readonly string[]> = { accordion: ["cards"], menu: ["pills", "buttons"], toc: ["boxed"], share: ["round", "square", "pill"] };
 /** Whether rounding this element's corners changes what's seen, as it is now. */
 export function cornersShow(node: PageTreeNode, screen: TreeScreen): boolean {
   const boxed = BOXED_LOOKS[node.type];

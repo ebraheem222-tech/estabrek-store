@@ -19,6 +19,11 @@ export const ProductDetail = early("@/components/ProductDetail", () => import("@
 export const SceneView = early("./SceneView", () => import("./SceneView").then((m) => m.SceneView));
 export const Model3dSpot = early("./Model3dSpot", () => import("./Model3dSpot").then((m) => m.Model3dSpot));
 export const PopupView = early("./Interactive", () => import("./Interactive").then((m) => m.PopupView));
+export const TocView = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.TocView));
+export const ShareView = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.ShareView));
+export const ReadProgress = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.ReadProgress));
+export const HeadlineMotion = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.HeadlineMotion));
+export const WhenWatch = early("./TreeWhen", () => import("./TreeWhen").then((m) => m.WhenWatch));
 export const SpinView = early("@/components/cinematic/ProductSpin", () => import("@/components/cinematic/ProductSpin").then((m) => m.SpinView));
 export const SliderControls = early("./SliderControls", () => import("./SliderControls").then((m) => m.SliderControls));
 export const InstrumentView = early("./InstrumentView", () => import("./InstrumentView").then((m) => m.InstrumentView));

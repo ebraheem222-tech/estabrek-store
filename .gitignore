@@ -23,5 +23,8 @@ estabrek-admin/estabrek-admin.zip
 estabrek-launcher/estabrek-launcher.zip
 Claude outputs/
 
+# Outside packages dropped in to study their features (third-party code that must never reach the repository).
+/addons/
+
 # Animation players' WebAssembly, copied from node_modules before dev and build (estabrek-storefront/scripts/vendor-wasm.cjs)
 estabrek-storefront/public/vendor/
