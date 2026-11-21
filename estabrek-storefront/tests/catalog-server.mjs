@@ -1216,11 +1216,12 @@ http
       req.on("data", c => { body += c; });
       req.on("end", () => {
         const data = JSON.parse(body || "{}");
-        for (const [key, value] of [["mobileBottomNavEnabled", data.bottomNav], ["chatbotEnabled", data.chat], ["accessibilityToolsEnabled", data.a11y], ["liveChatEnabled", data.liveChat], ["scrollToTopEnabled", data.toTop]]) {
+        for (const [key, value] of [["mobileBottomNavEnabled", data.bottomNav], ["chatbotEnabled", data.chat], ["accessibilityToolsEnabled", data.a11y], ["liveChatEnabled", data.liveChat], ["scrollToTopEnabled", data.toTop], ["scrollProgressEnabled", data.progress], ["accentColor", data.accent], ["accentColor2", data.accent2]]) {
           if (value === undefined) delete site.header.storefront[key]; else site.header.storefront[key] = value;
         }
         if (data.bottomNav === undefined) site.header.storefront.mobileBottomNavEnabled = false;
         if (data.liveChat === undefined) site.header.storefront.liveChatEnabled = false;
+        if (data.progress === undefined) site.header.storefront.scrollProgressEnabled = false;
         res.end("{}");
       });
       return;

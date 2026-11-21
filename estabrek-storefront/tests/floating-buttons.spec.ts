@@ -108,3 +108,21 @@ test("the live chat (the assistant off): its button in the store's accent above 
   await page.screenshot({ path: "test-results/floating-live-chat-phone.png" });
 });
 
+test("a themed store takes every accent from its theme, not the Rose design's two colours (the scroll progress bar too)", async ({ page }) => {
+  await page.request.post(`${API}/__test/floating`, { data: { bottomNav: true, progress: true, accent: "#8b5cf6", accent2: "#f59e0b" } });
+  await page.request.post("/api/revalidate", { data: { tags: ["settings", "cms:settings", "cms:bootstrap"], paths: ["/", "/en"] } });
+  const bar = page.locator(".scroll-progress-bar");
+  await expect(async () => {
+    await page.goto("/en");
+    await expect(bar).toBeAttached({ timeout: 4000 });
+  }).toPass({ timeout: 45_000 });
+  // No Rose colour put on the page itself.
+  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue("--accent"))).toBe("");
+  const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim());
+  const strong = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--th-strong").trim());
+  expect(accent).toBe(strong);
+  const image = await bar.evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(image).not.toContain("139, 92, 246");
+  expect(image).not.toContain("245, 158, 11");
+});
+

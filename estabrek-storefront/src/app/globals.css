@@ -14613,3 +14613,20 @@ html[data-ab-hero="film"] .rose-opening {
   color: var(--th-accent);
 }
 :root[data-store-theme] .quick-replies button:hover { background: var(--th-accent); color: var(--th-on-strong); }
+
+/* A store on a theme: every part that takes the page's accents (the scroll progress bar, badges, notices, cart
+   effects, the old floating parts) takes the theme's, not the Rose design's two colours (StorefrontFeaturesProvider
+   no longer puts those on a themed store). */
+:root[data-store-theme] {
+  --accent: var(--th-strong);
+  --accent-1: var(--th-strong);
+  --accent-primary: var(--th-strong);
+  --accent-2: var(--th-accent);
+  --accent-3: var(--th-accent);
+  --accent-secondary: var(--th-accent);
+  --accent-contrast: var(--th-on-strong);
+}
+:root[data-store-theme] .scroll-progress-bar {
+  background: linear-gradient(90deg, var(--th-strong), var(--th-accent));
+  box-shadow: none;
+}
