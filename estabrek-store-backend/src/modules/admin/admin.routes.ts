@@ -20,6 +20,7 @@ import inventory from "./inventory.controller.js";
 import coupons from "./coupons.controller.js";
 import paymentRequests from "./paymentRequests.controller.js";
 import chatbot from "./chatbot.controller.js";
+import stories from "./stories.controller.js";
 import staff, { activity } from "./staff.controller.js";
 import system from "./system.controller.js";
 import customers from "./customers.controller.js";
@@ -204,6 +205,8 @@ r.use("/notifications", areaAccess({ read: "dashboard:read", write: "dashboard:r
 // One history for everything (السجل): each part checks its own rights.
 r.use("/history", areaAccess({ read: ["settings:read", "system:read", "pages:read", "catalog:read", "inventory:read", "discounts:read"], write: ["settings:write", "system:write", "pages:write", "catalog:write", "inventory:write", "discounts:write"] }), history);
 r.use("/chatbot", areaAccess({ read: "chatbot:read", write: "chatbot:write" }), chatbot);
+// The shop's story circles: content of the pages, so the pages' permissions.
+r.use("/stories", areaAccess({ read: "pages:read", write: "pages:write" }), stories);
 r.use("/staff", areaAccess({ read: "staff:read", write: "staff:write" }), staff);
 r.use("/activity", requirePermission("activity:read"), activity);
 r.use("/system/traffic", areaAccess({ read: "system:read", write: "system:write" }), traffic);

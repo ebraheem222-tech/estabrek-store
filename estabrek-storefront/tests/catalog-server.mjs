@@ -287,6 +287,26 @@ const proIdleDemo = demoPage("pro-idle-demo", [
   demoSection("idle-top", [{ id: "idle-h", type: "heading", props: { level: 2, text: W("استنّي شوي", "Wait a moment", "רגע") } }]),
   { id: "idle", type: "popup", props: { trigger: "idle", idle: 5, often: "always" }, children: [{ id: "idle-t", type: "text", props: { text: W("لسا هون؟", "Still there?", "עדיין כאן?") } }] },
 ]);
+// The store's story circles (admin → القصص) for /stories-demo: a reel of two pictures (one with a product's button,
+// one with a link), a reel of one clip with its own circle picture, and one already over (the shop leaves it out).
+const storyReels = { reels: [
+  { id: "reel-new", title: W("وصل جديد", "New in", "חדש"), cover: null, endsAt: null, updatedAt: "2026-11-21T00:00:00.000Z", slides: [
+    { id: "s1", kind: "image", src: "/editorial/scarves.webp", caption: W("شالات الموسم", "This season's scarves", "צעיפי העונה"), seconds: 2, productId: "coat" },
+    { id: "s2", kind: "image", src: "/editorial/hijab-campaign.webp", seconds: 2, href: "/shop?sort=new", label: W("شوفي الكل", "See them all", "לראות הכול") },
+  ] },
+  { id: "reel-film", title: W("من الكواليس", "Behind the scenes", "מאחורי הקלעים"), cover: "/editorial/hero-film-end.webp", endsAt: null, updatedAt: "2026-11-21T00:00:00.000Z", slides: [
+    { id: "v1", kind: "video", src: "/editorial/hero-film-120.mp4", poster: "/editorial/hero-film-end.webp" },
+  ] },
+  { id: "reel-over", title: W("خلص", "Over", "נגמר"), cover: null, endsAt: "2020-01-01T00:00:00.000Z", updatedAt: null, slides: [{ id: "x", kind: "image", src: "/editorial/scarves.webp" }] },
+] };
+// What the shoppers' browsers told about them (/__test/story-events reads it).
+const storyEvents = [];
+const storiesDemo = demoPage("stories-demo", [
+  demoSection("stories-top", [
+    { id: "bar", type: "storyBar", props: { look: "circles", size: "m" } },
+    { id: "bar-cards", type: "storyBar", props: { look: "cards", size: "s", reels: ["reel-film"], names: false } },
+  ]),
+]);
 const expandedGalleryItems = ["Alpha", "Beta", "Gamma"].map((title, index) => ({ title: { en: title, ar: title, he: title }, category: { en: index === 1 ? "Design" : "Art", ar: index === 1 ? "تصميم" : "فن", he: index === 1 ? "עיצוב" : "אמנות" }, image: `/templates/experimental/kinetic-${index + 1}.svg`, text: { en: ["One", "Two", "Three"][index] }, href: "/shop", cta: { en: "Explore" } }));
 const expandedDemo = demoPage("expanded-demo", [
   ...["grid", "split", "masonry"].map(layout => demoSection(`section-gallery-${layout}`, [{ id: `gallery-${layout}`, type: "filterGallery", props: { label: { en: "Editable gallery" }, items: expandedGalleryItems, layout, columns: 3, gap: 20, hoverEffect: "zoom", lightbox: true, searchable: true, activation: "hover" } }])),
@@ -867,6 +887,11 @@ http
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     res.setHeader("Content-Type", "application/json");
     const pathname = new URL(req.url, "http://localhost").pathname;
+    // The store's story circles, and what the browsers tell about them (a beacon: no answer to read).
+    if (pathname === "/v1/storefront/stories" && req.method === "GET") return res.end(JSON.stringify(storyReels));
+    const storyEvent = /^\/v1\/storefront\/stories\/([\w-]+)\/(view|tap)$/.exec(pathname);
+    if (storyEvent && req.method === "POST") { storyEvents.push({ id: storyEvent[1], event: storyEvent[2] }); res.statusCode = 204; return res.end(); }
+    if (pathname === "/__test/story-events") return res.end(JSON.stringify(storyEvents));
     // Admin → الإعدادات → الثيم والألوان: where a picked colour shows ({ follow: "product" } or {} for the default).
     if (pathname === "/__test/color-follow" && req.method === "POST") {
       let body = "";
@@ -2180,6 +2205,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/interactive-demo") return res.end(JSON.stringify(interactiveDemo));
       if (slug === "/pro-widgets-demo") return res.end(JSON.stringify(proWidgetsDemo));
       if (slug === "/pro-idle-demo") return res.end(JSON.stringify(proIdleDemo));
+      if (slug === "/stories-demo") return res.end(JSON.stringify(storiesDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [

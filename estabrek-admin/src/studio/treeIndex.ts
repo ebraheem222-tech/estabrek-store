@@ -81,6 +81,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   share: () => say("أزرار المشاركة|Share buttons|כפתורי שיתוף"),
   progress: () => say("شريط القراءة|Reading bar|פס קריאה"),
   headline: () => say("عنوان متحرك|Moving headline|כותרת זזה"),
+  storyBar: () => say("شريط القصص (ستوريز)|Story bar|פס סטוריז"),
   products: () => tr("منتجات", "Products"),
   categories: () => tr("أقسام المتجر", "Store categories"),
   form: () => tr("نموذج", "Form"),

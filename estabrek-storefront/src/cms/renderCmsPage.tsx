@@ -12,6 +12,7 @@ import {
   listProductsByIds,
   listProductsBySlugs,
   listCategories,
+  loadStoryReels,
 } from "@/lib/api";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
 import { getProductBadge, getProductSecondaryImage } from "@/lib/productBadges";
@@ -570,6 +571,8 @@ export async function renderCmsPageBySlug(
       if (needs.seasons) treeCtx.seasons = homeData ? seasons : await loadSeasonalEdits(cats, currencyCode, lang).catch(() => []);
       if (needs.stories) treeCtx.stories = homeData ? stories : await loadCollectionStories(cats, currencyCode, lang).catch(() => []);
     }
+    // Story bars: the store's story circles and the products they point at.
+    if (needs.storyBar) treeCtx.storyReels = await loadStoryReels(lang).catch(() => ({ reels: [], products: {} }));
     // 360° elements: their products with their views (the product page's own data).
     if (needs.spinProducts.length) {
       const found = await Promise.all(needs.spinProducts.map((id) => getProductById(id, lang).catch(() => null)));

@@ -23,6 +23,8 @@ const TABLE_GROUPS: Record<string, CacheGroup[]> = {
   // A feature switched off hides its pages from the shop (lib/featureGate.ts).
   Feature: ["cms"],
   FeatureItem: ["cms"],
+  // Story circles are drawn with the pages (their views and taps, StoryStat, are counted apart and clear nothing).
+  StoryReel: ["cms"],
   NavigationMenu: ["cms", "settings"],
   NavigationItem: ["cms", "settings"],
   SiteSettings: ["settings"],

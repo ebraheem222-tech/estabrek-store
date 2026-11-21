@@ -52,9 +52,10 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
+import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
 import type { ShareNetwork } from "./ProWidgets";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 
@@ -71,6 +72,8 @@ export type TreeCtx = {
   seasons?: SeasonEdit[];
   stories?: StoryChapter[];
   instagram?: string[];
+  /** The store's story circles and the products they point at, for its story bars (fetched when the page has one). */
+  storyReels?: { reels: StoryReelRaw[]; products: Record<string, StoryProduct> };
   /** The products 360° elements show, with their views (null = not found). */
   spinProducts?: Record<string, { title: string; spins?: unknown } | null>;
   /** Drawn inside a scroll scene (what waits for its moment stays unseen until the scene starts). */
@@ -602,6 +605,22 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
           {fx}
           {after}
         </H>
+      );
+    }
+    case "storyBar": {
+      // The store's story circles (admin → القصص): drawn here when the page fetched them, else fetched in the browser.
+      const W = (PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar).stories;
+      const only = Array.isArray(p.reels) ? p.reels.filter((x: unknown): x is string => typeof x === "string" && /^[\w-]{1,64}$/.test(x)).slice(0, 40) : undefined;
+      const reels = ctx.storyReels ? storyViews(ctx.storyReels.reels, ctx.storyReels.products, { lang: ctx.lang, main: ctx.main, link: (path) => link(path), shopThis: W.shopThis, only }) : null;
+      const prefix = withLang("/x", ctx.lang, ctx.cfg).slice(0, -2);
+      return (
+        <div className={cls(node)} {...mark}>
+          <StoryBar
+            reels={reels} only={only} lang={ctx.lang} main={ctx.main} prefix={prefix} names={p.names !== false}
+            look={pick(p.look, ["circles", "rounded", "cards"] as const, "circles")} size={pick(p.size, ["s", "m", "l"] as const, "m")}
+            words={{ ...W, label: say(p.label) || W.label }}
+          />
+        </div>
       );
     }
     case "spacer":

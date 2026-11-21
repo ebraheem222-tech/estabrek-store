@@ -9,6 +9,7 @@ import { localizeCategories, localizeList, localizeProduct, localizeProducts } f
 import { identityOf } from "./storeIdentity";
 import { setArabicTone } from "./words";
 import type { PageTree } from "@/pageTree/tree";
+import { storyProductIds, storyReelsOf, type StoryProduct, type StoryReelRaw } from "@/pageTree/storyData";
 
 /** The store's way of speaking Arabic comes with its settings (admin → هوية المتجر). */
 const toneFrom = (site: unknown) => setArabicTone(identityOf(site as Parameters<typeof identityOf>[0]).audience);
@@ -420,6 +421,27 @@ export const recommendProducts = cache(async (params: {
   }
 });
 
+
+/**
+ * The store's story circles (admin → القصص) with the products their slides point at, for a page's story bars
+ * (pageTree/storyData.ts draws them in the page's language). Cached like the pages, under its own tag the admin's
+ * changes clear.
+ */
+export const loadStoryReels = cache(async (lang?: Lang): Promise<{ reels: StoryReelRaw[]; products: Record<string, StoryProduct> }> => {
+  try {
+    const res = await fetch(`${baseUrl()}/storefront/stories`, { next: { revalidate: 60, tags: ["cms", "cms:stories"] } });
+    if (!res.ok) throw new Error(`stories failed (${res.status})`);
+    const reels = storyReelsOf(await res.json());
+    const ids = storyProductIds(reels);
+    const found = ids.length ? await listProductsByIds(ids, { lite: true, lang }) : [];
+    const products: Record<string, StoryProduct> = {};
+    for (const p of found) if (p?.id && p.slug) products[p.id] = { slug: p.slug, title: p.title, image: p.primaryImageUrl ?? null };
+    return { reels, products };
+  } catch (error) {
+    warnApiFallback("loadStoryReels", error);
+    return { reels: [], products: {} };
+  }
+});
 
 // List CMS pages (for sitemap)
 export const listPages = cache(async (): Promise<Array<{ slug: string }>> => {
