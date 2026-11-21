@@ -121,7 +121,10 @@ export function StorefrontFeaturesProvider({
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
     const root = document.documentElement;
-    if (settings.themeColorsEnabled !== false) {
+    // A store on a theme takes its accents from the theme (globals.css :root[data-store-theme]): the Rose
+    // design's two colours (purple and orange by default) were put on every store and won over the theme's.
+    const themed = root.hasAttribute("data-store-theme");
+    if (settings.themeColorsEnabled !== false && !themed) {
       root.style.setProperty("--accent", settings.accentColor);
       root.style.setProperty("--accent-2", settings.accentColor2);
       root.style.setProperty("--accent-1", settings.accentColor);

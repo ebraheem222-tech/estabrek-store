@@ -870,6 +870,8 @@ export default function SettingsPage() {
   const actions = useSettingsActions();
 
   const settings = q.data ?? null;
+  // The store's own theme (admin → ثيمات المتجر): the Rose design's colours don't reach its shop.
+  const ownStoreTheme = Boolean(((settings?.header as { storeTheme?: { id?: unknown } } | null | undefined)?.storeTheme)?.id);
 
   const [siteName, setSiteName] = useState<string>("");
   const [logoUrl, setLogoUrl] = useState<string>("");
@@ -3100,6 +3102,15 @@ export default function SettingsPage() {
                       <span className="text-lg">🎨</span>
                       الثيم والألوان
                     </div>
+                    {/* A store on its own theme takes every colour from it (the shop ignores these two there). */}
+                    {ownStoreTheme ? (
+                      <p className="mb-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs leading-6 text-amber-100" data-testid="settings-colours-from-theme">
+                        {say("متجرك على ثيم خاص فيه: ألوان الأزرار وشريط التمرير والإشعارات وأزرار الشات بتيجي من الثيم. اللونين هون بيمشوا بس على تصميم روز. لتغيير ألوان متجرك روح على ثيمات المتجر.|Your store is on its own theme: the buttons, the scroll bar, the notices and the chat buttons take its colours. These two colours only apply to the Rose design. To change your store’s colours, go to Store themes.|החנות שלך בערכת נושא משלה: הכפתורים, פס הגלילה, ההודעות וכפתורי הצ׳אט לוקחים את הצבעים שלה. שני הצבעים כאן חלים רק על עיצוב רוז. כדי לשנות את צבעי החנות, עברו לערכות הנושא.")}{" "}
+                        <a href="/admin/themes" className="underline">
+                          {say("ثيمات المتجر ←|Store themes →|ערכות נושא ←")}
+                        </a>
+                      </p>
+                    ) : null}
                     <div className="grid gap-3 md:grid-cols-2">
                       <Toggle
                         label="تفعيل الثيم والألوان"
@@ -3215,7 +3226,7 @@ export default function SettingsPage() {
                             type="color"
                             value={storefrontCfg.accentColor}
                             onChange={(e) => setStorefrontCfg((p) => ({ ...p, accentColor: e.target.value }))}
-                            disabled={!storefrontCfg.themeColorsEnabled}
+                            disabled={!storefrontCfg.themeColorsEnabled || ownStoreTheme}
                             className={
                               "h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1" +
                               (!storefrontCfg.themeColorsEnabled ? " cursor-not-allowed opacity-60" : "")
@@ -3233,7 +3244,7 @@ export default function SettingsPage() {
                             type="color"
                             value={storefrontCfg.accentColor2}
                             onChange={(e) => setStorefrontCfg((p) => ({ ...p, accentColor2: e.target.value }))}
-                            disabled={!storefrontCfg.themeColorsEnabled}
+                            disabled={!storefrontCfg.themeColorsEnabled || ownStoreTheme}
                             className={
                               "h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1" +
                               (!storefrontCfg.themeColorsEnabled ? " cursor-not-allowed opacity-60" : "")
