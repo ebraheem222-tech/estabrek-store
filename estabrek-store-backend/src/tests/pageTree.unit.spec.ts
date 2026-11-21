@@ -577,6 +577,63 @@ describe("checking a page tree", () => {
     expect(issuesOf(page([{ ...pop, props: { trigger: "hover" } }])).length).toBe(1);
   });
 
+  test("pro widgets: a table of contents, a flip card, share buttons, a reading bar and a moving headline", () => {
+    const ok = (type: string, props: unknown) => checkTree(page([section("s", [{ id: "x", type, props }])])).ok;
+    const bad = (type: string, props: unknown) => issuesOf(page([section("s", [{ id: "x", type, props }])])).length > 0;
+    const w = (ar: string) => ({ ar });
+    expect(ok("toc", { title: w("بهالصفحة"), levels: "2-3", look: "numbers", fold: true })).toBe(true);
+    expect(ok("toc", {})).toBe(true);
+    expect(bad("toc", { levels: "1-6" })).toBe(true);
+    expect(ok("flipBox", { title: w("الحرير"), text: w("ناعم"), icon: "sparkle", backTitle: w("شوفيه"), backText: w("قطعة"), button: w("تسوّقي"), href: "/shop", effect: "flip", direction: "up", height: 320 })).toBe(true);
+    expect(bad("flipBox", { text: w("بلا عنوان") })).toBe(true);
+    expect(bad("flipBox", { title: w("x"), href: "javascript:alert(1)" })).toBe(true);
+    expect(bad("flipBox", { title: w("x"), effect: "explode" })).toBe(true);
+    expect(bad("flipBox", { title: w("x"), height: 40 })).toBe(true);
+    expect(ok("share", { networks: ["whatsapp", "facebook", "copy", "native"], look: "round", labels: true, tint: "brand", text: w("شوفي هالقطعة") })).toBe(true);
+    expect(bad("share", { networks: [] })).toBe(true);
+    expect(bad("share", { networks: ["whatsapp", "whatsapp"] })).toBe(true);
+    expect(bad("share", { networks: ["myspace"] })).toBe(true);
+    expect(ok("progress", { kind: "bar", place: "top", thickness: 4 })).toBe(true);
+    expect(ok("progress", { kind: "ring", label: w("لفوق") })).toBe(true);
+    expect(bad("progress", { thickness: 40 })).toBe(true);
+    expect(ok("headline", { before: w("قطع"), words: [w("ناعمة"), w("أنيقة")], after: w("لكل يوم"), mode: "rotate", effect: "type", seconds: 2.5 })).toBe(true);
+    expect(ok("headline", { words: [w("بتجنن")], mode: "mark", shape: "curly", again: true, level: 1 })).toBe(true);
+    expect(bad("headline", { words: [] })).toBe(true);
+    expect(bad("headline", { words: [w("x")], shape: "heart" })).toBe(true);
+    expect(bad("headline", { words: Array.from({ length: 9 }, () => w("x")) })).toBe(true);
+  });
+
+  test("a visitor's own countdown, side drawers, a popup after doing nothing, menus with links of their own, and a time to show", () => {
+    const ok = (type: string, props: unknown) => checkTree(page([section("s", [{ id: "x", type, props }])])).ok;
+    const bad = (type: string, props: unknown) => issuesOf(page([section("s", [{ id: "x", type, props }])])).length > 0;
+    const w = (ar: string) => ({ ar });
+    // Each shopper gets their own minutes; a date isn't needed then, and is needed otherwise.
+    expect(ok("countdown", { mode: "visitor", minutes: 30, again: true })).toBe(true);
+    expect(issuesOf(page([section("s", [{ id: "x", type: "countdown", props: { mode: "visitor" } }])]))[0].path).toBe("root.children[0].children[0].props.minutes");
+    expect(issuesOf(page([section("s", [{ id: "x", type: "countdown", props: {} }])]))[0].path).toBe("root.children[0].children[0].props.until");
+    expect(bad("countdown", { mode: "visitor", minutes: 0 })).toBe(true);
+    // A drawer from either side, and a popup after the shopper does nothing for a while.
+    const pop = (props: unknown) => page([{ id: "pop", type: "popup", props, children: [] }]);
+    expect(checkTree(pop({ trigger: "click", anchor: "cart", place: "end", size: "s" })).ok).toBe(true);
+    expect(checkTree(pop({ trigger: "idle", idle: 20, place: "start" })).ok).toBe(true);
+    expect(checkTree(pop({ trigger: "idle", idle: 2 })).ok).toBe(false);
+    // A menu link with links of its own (at most 12), each checked like the rest.
+    const sub = (n: number) => Array.from({ length: n }, (_, i) => ({ label: w(`قسم ${i}`), href: `/shop?c=${i}`, note: w("جديد") }));
+    expect(ok("menu", { items: [{ label: w("نسائي"), href: "/shop", children: sub(3) }, { label: w("تواصل"), href: "/contact" }] })).toBe(true);
+    expect(bad("menu", { items: [{ label: w("نسائي"), href: "/shop", children: sub(13) }] })).toBe(true);
+    expect(bad("menu", { items: [{ label: w("نسائي"), href: "/shop", children: [{ label: w("x"), href: "javascript:alert(1)" }] }] })).toBe(true);
+    // A time to show, on any element but the page; kept when it says something, its end after its start.
+    const timed = (when: unknown) => checkTree(page([section("s", [{ id: "x", type: "text", props: { text: w("عرض"), when } }])]));
+    const kept = timed({ from: "2026-11-27T00:00", until: "2026-11-30T23:59" });
+    expect(kept.ok && kept.tree.root.children![0].children![0].props.when).toEqual({ from: "2026-11-27T00:00", until: "2026-11-30T23:59" });
+    expect(timed({ until: "2026-12-31T23:59" }).ok).toBe(true);
+    const empty = timed({});
+    expect(empty.ok && "when" in empty.tree.root.children![0].children![0].props).toBe(false);
+    expect(timed({ from: "2026-12-31T23:59", until: "2026-12-01T00:00" }).ok).toBe(false);
+    expect(timed({ from: "next week" }).ok).toBe(false);
+    expect(checkTree({ version: 1, root: { id: "page", type: "page", props: { when: { from: "2026-12-01T00:00" } }, children: [] } }).ok).toBe(false);
+  });
+
   test("store pieces: a search box, a menu of links, and the looks of product and category cards", () => {
     const ok = (type: string, props: unknown) => checkTree(page([section("s", [{ id: "x", type, props }])])).ok;
     const bad = (type: string, props: unknown) => issuesOf(page([section("s", [{ id: "x", type, props }])])).length > 0;

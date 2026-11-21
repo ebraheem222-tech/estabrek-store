@@ -203,6 +203,11 @@ function makeElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTree
     case "map":
     case "search":
     case "menu":
+    case "toc":
+    case "flipBox":
+    case "share":
+    case "progress":
+    case "headline":
       return newBlock(kind, lang, id, src);
     case "popup":
       return newPopup(lang, id);

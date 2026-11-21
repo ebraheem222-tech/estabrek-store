@@ -208,11 +208,13 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
       );
     }
     case "countdown": {
-      const until = typeof p.until === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(p.until) && !Number.isNaN(Date.parse(p.until)) ? p.until : null;
-      if (!until) return null;
+      // Down to a moment, or each visitor's own minutes from their first visit (kept in their browser by the element's id).
+      const minutes = p.mode === "visitor" && typeof p.minutes === "number" && Number.isInteger(p.minutes) && p.minutes >= 1 && p.minutes <= 43_200 ? p.minutes : null;
+      const until = minutes === null && typeof p.until === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(p.until) && !Number.isNaN(Date.parse(p.until)) ? p.until : null;
+      if (!until && minutes === null) return null;
       return (
         <div className={className} {...mark}>
-          <CountdownView until={until} done={say(p.done)} look={p.look === "plain" ? "plain" : "boxes"} words={COUNTDOWN_WORD_FIELDS.map(key => say(p[key]) || defaultPartWords("countdown", key)![lang]) as [string, string, string, string]} />
+          <CountdownView until={until ?? undefined} minutes={minutes ?? undefined} again={minutes !== null && p.again === true} storeKey={node.id} done={say(p.done)} look={p.look === "plain" ? "plain" : "boxes"} words={COUNTDOWN_WORD_FIELDS.map(key => say(p[key]) || defaultPartWords("countdown", key)![lang]) as [string, string, string, string]} />
         </div>
       );
     }
@@ -273,14 +275,37 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
       );
     }
     case "menu": {
-      const items = itemsOf(p.items, 20).map((i) => ({ sourceIndex: p.items.indexOf(i), label: say(i.label), to: link(i.href) })).filter((i) => i.label && i.to);
+      const items = itemsOf(p.items, 20).map((i) => ({
+        sourceIndex: p.items.indexOf(i), label: say(i.label), to: link(i.href),
+        // Its own links (at most 12), each with an optional line of words under it.
+        children: itemsOf(i.children, 12).map((c) => ({ at: (i.children as unknown[]).indexOf(c), label: say(c.label), to: link(c.href), note: say(c.note) })).filter((c) => c.label && c.to),
+      })).filter((i) => i.label && i.to);
       if (!items.length) return null;
       const layout = p.layout === "column" ? "column" : "row";
       const look = ["plain", "pills", "underline", "buttons"].includes(p.look) ? p.look : "plain";
       const name = say(p.label) || w.menu;
       const list = (cls: string) => (
         <ul className={cls}>
-          {items.map((i, n) => <li key={n}><a data-pt-field={`items.${i.sourceIndex}.label`} href={i.to!}>{i.label}</a></li>)}
+          {items.map((i, n) => (
+            <li key={n} className={i.children.length ? "pt-menu-has" : undefined}>
+              <a data-pt-field={`items.${i.sourceIndex}.label`} href={i.to!} {...(i.children.length ? { "aria-haspopup": "true" } : {})}>
+                {i.label}
+                {i.children.length ? <svg className="pt-menu-caret" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg> : null}
+              </a>
+              {i.children.length ? (
+                <ul className="pt-menu-sub">
+                  {i.children.map((c) => (
+                    <li key={c.at}>
+                      <a href={c.to!}>
+                        <span data-pt-field={`items.${i.sourceIndex}.children.${c.at}.label`}>{c.label}</span>
+                        {c.note ? <small data-pt-field={`items.${i.sourceIndex}.children.${c.at}.note`}>{c.note}</small> : null}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
         </ul>
       );
       return (

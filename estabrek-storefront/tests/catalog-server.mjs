@@ -259,6 +259,34 @@ const mediaOverlaySection = (id, color, opacity) => ({
 });
 const demoPage = (id, sections) => ({ id, slug: `/${id}`, name: id, status: "PUBLISHED", format: 2, sections: [], tree: { version: 1, root: { id: "page", type: "page", props: {}, children: sections } } });
 const demoSection = (id, children, props = {}, style = {}) => ({ id, type: "section", props: { contained: true, ...props }, style: { base: { pad: [40, 24, 40, 24], ...style } }, children });
+// The pro widgets: a table of contents over the page's headings, moving headlines, a flip card, share buttons, a
+// reading bar, a visitor's own countdown, a menu link with links of its own, a drawer, and a time to show.
+const proLong = W("قطن ناعم بيتنفّس، منسوج ببطء ومغسول مرتين حتى يصير أنعم.", "Soft cotton that breathes, woven slowly and washed twice to soften it.", "כותנה רכה שנושמת, ארוגה לאט ומכובסת פעמיים.");
+const proWidgetsDemo = demoPage("pro-widgets-demo", [
+  demoSection("pro-top", [
+    { id: "toc", type: "toc", props: { look: "numbers", levels: "2-3" } },
+    { id: "hl-rotate", type: "headline", props: { before: W("قطع", "Pieces", "פריטים"), words: [W("ناعمة", "soft", "רכים"), W("أنيقة", "elegant", "אלגנטיים")], mode: "rotate", effect: "slide", seconds: 1 } },
+    { id: "hl-mark", type: "headline", props: { before: W("لكل", "For every", "לכל"), words: [W("يوم", "day", "יום")], mode: "mark", shape: "curly", level: 3 } },
+    { id: "flip", type: "flipBox", props: { title: W("الوجه", "Front", "קדמי"), backTitle: W("الضهر", "Back", "אחורי"), button: W("تسوّقي", "Shop", "לקנייה"), href: "/shop", effect: "fade", height: 240 }, style: { base: { width: "320px" } } },
+    { id: "shr", type: "share", props: { networks: ["whatsapp", "facebook", "copy", "native"], labels: true, text: W("شوفي هالقطعة", "Look at this", "תראו") } },
+    { id: "read", type: "progress", props: { kind: "bar", place: "top", thickness: 6 } },
+    { id: "cd-me", type: "countdown", props: { mode: "visitor", minutes: 90 } },
+    { id: "nav", type: "menu", props: { items: [{ label: W("نسائي", "Women", "נשים"), href: "/shop", children: [{ label: W("وصل جديد", "New in", "חדש"), href: "/shop?sort=new", note: W("آخر ما نزل", "The latest", "האחרונים") }] }, { label: W("تواصل", "Contact", "צור קשר"), href: "/contact" }] } },
+    { id: "open-drawer", type: "button", props: { label: W("افتحي الدرج", "Open the drawer", "פתיחת המגירה"), href: "#drawer" } },
+    { id: "soon", type: "text", props: { text: W("عرض جاي", "An offer to come", "מבצע שיגיע"), when: { from: "2099-01-01T00:00" } } },
+    { id: "over", type: "text", props: { text: W("عرض خلص", "An offer that ended", "מבצע שנגמר"), when: { until: "2020-01-01T00:00" } } },
+    { id: "now", type: "text", props: { text: W("عرض هلّق", "An offer now", "מבצע עכשיו"), when: { from: "2020-01-01T00:00", until: "2099-01-01T00:00" } } },
+  ]),
+  demoSection("pro-a", [{ id: "h-a", type: "heading", props: { level: 2, text: W("القماش", "The fabric", "הבד") } }, { id: "t-a", type: "text", props: { text: proLong } }], {}, { minHeight: "900px" }),
+  demoSection("pro-b", [{ id: "h-b", type: "heading", props: { level: 3, text: W("العناية", "Care", "טיפול") } }, { id: "t-b", type: "text", props: { text: proLong } }], {}, { minHeight: "900px" }),
+  demoSection("pro-c", [{ id: "h-c", type: "heading", props: { level: 2, text: W("التوصيل", "Delivery", "משלוח") } }, { id: "t-c", type: "text", props: { text: proLong } }], {}, { minHeight: "900px" }),
+  { id: "drawer", type: "popup", props: { trigger: "click", anchor: "drawer", place: "end", often: "always", size: "s" }, children: [{ id: "drawer-t", type: "text", props: { text: W("سلتك", "Your bag", "הסל שלך") } }] },
+]);
+// A popup after the shopper does nothing for five seconds.
+const proIdleDemo = demoPage("pro-idle-demo", [
+  demoSection("idle-top", [{ id: "idle-h", type: "heading", props: { level: 2, text: W("استنّي شوي", "Wait a moment", "רגע") } }]),
+  { id: "idle", type: "popup", props: { trigger: "idle", idle: 5, often: "always" }, children: [{ id: "idle-t", type: "text", props: { text: W("لسا هون؟", "Still there?", "עדיין כאן?") } }] },
+]);
 const expandedGalleryItems = ["Alpha", "Beta", "Gamma"].map((title, index) => ({ title: { en: title, ar: title, he: title }, category: { en: index === 1 ? "Design" : "Art", ar: index === 1 ? "تصميم" : "فن", he: index === 1 ? "עיצוב" : "אמנות" }, image: `/templates/experimental/kinetic-${index + 1}.svg`, text: { en: ["One", "Two", "Three"][index] }, href: "/shop", cta: { en: "Explore" } }));
 const expandedDemo = demoPage("expanded-demo", [
   ...["grid", "split", "masonry"].map(layout => demoSection(`section-gallery-${layout}`, [{ id: `gallery-${layout}`, type: "filterGallery", props: { label: { en: "Editable gallery" }, items: expandedGalleryItems, layout, columns: 3, gap: 20, hoverEffect: "zoom", lightbox: true, searchable: true, activation: "hover" } }])),
@@ -2149,6 +2177,8 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
       if (slug === "/blocks-demo") return res.end(JSON.stringify(blocksDemo));
       if (slug === "/interactive-demo") return res.end(JSON.stringify(interactiveDemo));
+      if (slug === "/pro-widgets-demo") return res.end(JSON.stringify(proWidgetsDemo));
+      if (slug === "/pro-idle-demo") return res.end(JSON.stringify(proIdleDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [
@@ -2165,4 +2195,5 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
     res.statusCode = 404;
     res.end("{}");
   })
-  .listen(4100, "127.0.0.1");
+  // 4100, or CATALOG_PORT for a second run beside another session's (its own shop pointing at it).
+  .listen(Number(process.env.CATALOG_PORT) || 4100, "127.0.0.1");

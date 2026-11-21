@@ -55,15 +55,42 @@ export function TabsView({ items, look }: { items: TabItem[]; look: string }) {
 
 /* --------------------------------------------------------------- countdown */
 
-export function CountdownView({ until, done, look, words }: { until: string; done: string; look: string; words: [string, string, string, string] }) {
-  const end = Date.parse(until);
+/**
+ * When a visitor's own countdown ends for them: kept in their browser from their first visit (`key`), started over
+ * once it ends when `again`. With no storage, it starts from now.
+ */
+export function visitorEnd(key: string, minutes: number, again: boolean, now = Date.now(), store: Pick<Storage, "getItem" | "setItem"> | null = null): number {
+  const length = minutes * 60_000;
+  let end = NaN;
+  try { end = Number(store?.getItem(key)); } catch { /* no storage */ }
+  // A kept end further away than the timer's length was set for a longer timer: start this one fresh.
+  if (!Number.isFinite(end) || end <= 0 || end - now > length) end = now + length;
+  if (end <= now && again) end = now + length - ((now - end) % length);
+  try { store?.setItem(key, String(end)); } catch { /* no storage */ }
+  return end;
+}
+
+export function CountdownView({ until, minutes, again = false, storeKey, done, look, words }: { until?: string; minutes?: number; again?: boolean; storeKey?: string; done: string; look: string; words: [string, string, string, string] }) {
+  const [end, setEnd] = useState<number | null>(until ? Date.parse(until) : null);
   const [left, setLeft] = useState<number | null>(null);
+  const key = `pt-cd-${storeKey ?? "timer"}`;
+  const storage = () => { try { return window.localStorage; } catch { return null; } };
   useEffect(() => {
-    const tick = () => setLeft(Math.max(0, end - Date.now()));
+    if (until || !minutes) return;
+    setEnd(visitorEnd(key, minutes, again, Date.now(), storage()));
+  }, [until, minutes, again, key]);
+  useEffect(() => {
+    if (end === null) return;
+    const tick = () => {
+      const rest = end - Date.now();
+      // A visitor's timer that starts over comes round again instead of stopping at nought.
+      if (rest <= 0 && !until && again && minutes) return void setEnd(visitorEnd(key, minutes, true, Date.now(), storage()));
+      setLeft(Math.max(0, rest));
+    };
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, [end]);
+  }, [end, until, again, minutes, key]);
   if (left === 0) return done ? <div data-pt-field="done" className="pt-count-done">{done}</div> : null;
   const s = left === null ? null : Math.floor(left / 1000);
   const parts = s === null ? [null, null, null, null] : [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60];
@@ -97,7 +124,9 @@ export function BeforeAfterView({ before, after, beforeLabel, afterLabel, start,
 
 /* ------------------------------------------------------------------- popup */
 
-export type PopupSpec = { trigger: string; delay: number; scroll: number; anchor?: string; often: string; size: string; place: string };
+export type PopupSpec = { trigger: string; delay: number; scroll: number; idle?: number; anchor?: string; often: string; size: string; place: string };
+/** Drawers and the centred popup hold the page still behind them (a modal); the others sit beside it. */
+const MODAL_PLACES = new Set(["center", "start", "end"]);
 /** Whether the popup may show again (the store's choice: always, once a visit, once a day, once ever). */
 function mayShow(key: string, often: string): boolean {
   try {
@@ -131,7 +160,7 @@ export function PopupView({ id, spec, label, close, children, decoration }: { id
     const open = (forced = false) => {
       if (dialog.open || (!forced && !mayShow(key, spec.often))) return;
       markShown(key, spec.often);
-      if (spec.place === "center") dialog.showModal();
+      if (MODAL_PLACES.has(spec.place)) dialog.showModal();
       else dialog.show();
     };
     const offs: Array<() => void> = [];
@@ -155,6 +184,20 @@ export function PopupView({ id, spec, label, close, children, decoration }: { id
       };
       document.addEventListener("mouseout", leave);
       offs.push(() => document.removeEventListener("mouseout", leave));
+    } else if (spec.trigger === "idle") {
+      // The shopper doing nothing (no mouse, keys, scrolling or touch) for `idle` seconds; once, then it stops watching.
+      const acts = ["pointermove", "pointerdown", "keydown", "scroll", "touchstart", "wheel"] as const;
+      let t = 0;
+      const stop = () => { clearTimeout(t); acts.forEach((a) => removeEventListener(a, again)); document.removeEventListener("visibilitychange", again); };
+      const again = () => {
+        clearTimeout(t);
+        if (document.visibilityState === "hidden") return;
+        t = window.setTimeout(() => { stop(); open(); }, (spec.idle ?? 30) * 1000);
+      };
+      acts.forEach((a) => addEventListener(a, again, { passive: true }));
+      document.addEventListener("visibilitychange", again);
+      again();
+      offs.push(stop);
     }
     if (spec.anchor) {
       // A link to "#<anchor>" anywhere on the page opens it, every time.
@@ -177,7 +220,7 @@ export function PopupView({ id, spec, label, close, children, decoration }: { id
     addEventListener("pt:popup", asked);
     offs.push(() => removeEventListener("pt:popup", asked));
     return () => offs.forEach((f) => f());
-  }, [id, spec.trigger, spec.delay, spec.scroll, spec.anchor, spec.often, spec.place]);
+  }, [id, spec.trigger, spec.delay, spec.scroll, spec.idle, spec.anchor, spec.often, spec.place]);
   if (studio) return <div className={`pt-popup-studio${decorated ? " pt-has-edges" : ""}`}>{children}{decoration}</div>;
   return (
     <dialog ref={box} className={`pt-popup pt-popup-${spec.size} pt-popup-${spec.place}`} style={decorated ? { isolation: "isolate" } : undefined} aria-label={label || undefined}>

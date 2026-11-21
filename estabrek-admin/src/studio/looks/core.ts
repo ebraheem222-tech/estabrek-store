@@ -19,9 +19,9 @@ const BOXES = [
   "stack", "cell", "grid", "columns", "section", "popup", "form",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown",
   "search", "menu", "showcase", "products", "categories", "chart", "clock", "instrument", "filterGallery", "deck",
-  "collectionList", "shop", "cartItems", "cartSummary", "cartCheckout", "productDetail",
+  "collectionList", "shop", "cartItems", "cartSummary", "cartCheckout", "productDetail", "toc", "share",
 ] as const;
-const WORDS = ["heading", "text", "button"] as const;
+const WORDS = ["heading", "text", "button", "headline"] as const;
 /** Pictures and clips, and what's shown in a frame like one (a drawing, a 3D model, a map, a before/after). */
 const PICTURES = ["image", "video", "slider", "product360", "svg", "model3d", "lottie", "rive", "beforeAfter", "hotspots", "map"] as const;
 /** What each kind of look is called, the elements it fits ("*" = any), and the style and motion keys it owns. */

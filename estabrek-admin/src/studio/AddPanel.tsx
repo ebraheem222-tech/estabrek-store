@@ -121,6 +121,11 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["popup", () => typeLabel("popup"), "▣"],
       ["search", () => typeLabel("search"), "⌕"],
       ["menu", () => typeLabel("menu"), "≡"],
+      ["flipBox", () => typeLabel("flipBox"), "⟲"],
+      ["headline", () => typeLabel("headline"), "✎"],
+      ["toc", () => typeLabel("toc"), "☷"],
+      ["share", () => typeLabel("share"), "⤴"],
+      ["progress", () => typeLabel("progress"), "▬"],
     ],
   },
 ];

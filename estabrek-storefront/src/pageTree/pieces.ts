@@ -465,6 +465,26 @@ export function hiddenFrom(list: TriggerSpec[]): "customer" | "guest" | undefine
   return list.find((t) => t.who && t.deny === "hide")?.who;
 }
 
+/* ------------------------------------------------------------ time to show */
+
+export type WhenSpec = { from?: string; until?: string };
+const MOMENT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const momentOf = (v: unknown) => (typeof v === "string" && v.length <= 40 && MOMENT.test(v) && !Number.isNaN(Date.parse(v)) ? v : undefined);
+/** An element's time to show (props.when), or none when it says nothing usable. */
+export function whenOf(raw: unknown): WhenSpec | undefined {
+  const o = obj(raw);
+  if (!o) return undefined;
+  const from = momentOf(o.from), until = momentOf(o.until);
+  if (!from && !until) return undefined;
+  return { ...(from ? { from } : {}), ...(until ? { until } : {}) };
+}
+/** Whether it's its time at `now` (the moments read in the shopper's own time, as the shop's countdown reads them). */
+export function whenNow(when: WhenSpec, now = Date.now()): boolean {
+  const from = when.from ? Date.parse(when.from) : -Infinity;
+  const until = when.until ? Date.parse(when.until) : Infinity;
+  return now >= from && now < until;
+}
+
 /**
  * An element's recipes for this page: unknown ones drop out, links get the page's language
  * (`link`, null = not a safe link) and words the page's language (`say`).
