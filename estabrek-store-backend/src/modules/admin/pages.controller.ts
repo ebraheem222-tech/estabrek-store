@@ -31,7 +31,7 @@ import { PAGE_FORMAT, TREE_VERSION, checkTree, legacySectionIds, storedTree, syn
 import { BLOCK_KIND, TEMPLATE_KIND, blockIdsOf, blockSlug, blockUses, templateSlug, withBlocks } from "../../lib/pageBlocks.js";
 import { COMPONENT_KIND, componentSlug, componentUses } from "../../lib/pageComponents.js";
 import { variantsOf } from "../../lib/componentTree.js";
-import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
+import { aiAsk } from "../ai/ai.client.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
@@ -895,7 +895,6 @@ r.post("/ai/suggest-sections", validate({ body: AiSuggestSectionsBody }), asyncH
   const storeCategory = body.storeCategory ?? store.category;
   const fb = fallbackLanding(locale, brandName, storeCategory);
 
-  const model = getDefaultOpenAIModel();
   const sys = `You are a senior e-commerce CMS assistant. Output STRICT JSON only.`;
   const user = {
     task: "suggest_sections",
@@ -917,15 +916,7 @@ r.post("/ai/suggest-sections", validate({ body: AiSuggestSectionsBody }), asyncH
     seedExample: fb,
   };
 
-  const result = await openaiResponsesJson<any>({
-    model,
-    input: [
-      { role: "system", content: sys },
-      { role: "user", content: JSON.stringify(user) },
-    ],
-    max_output_tokens: 1200,
-    temperature: 0.6,
-  });
+  const result = await aiAsk<any>("pagesTools", { system: sys, user: JSON.stringify(user), maxTokens: 1200 });
 
   if (!result.ok) {
     // Use fallback if no key or error
@@ -947,7 +938,6 @@ r.post("/ai/improve-seo", validate({ body: AiImproveSeoBody }), asyncHandler(asy
   const storeCategory = body.storeCategory ?? store.category;
   const fb = fallbackLanding(locale, brandName, storeCategory).seo;
 
-  const model = getDefaultOpenAIModel();
   const sys = `You are an SEO copywriter for e-commerce. Output STRICT JSON only.`;
   const user = {
     task: "improve_seo",
@@ -960,15 +950,7 @@ r.post("/ai/improve-seo", validate({ body: AiImproveSeoBody }), asyncHandler(asy
     seedExample: fb,
   };
 
-  const result = await openaiResponsesJson<any>({
-    model,
-    input: [
-      { role: "system", content: sys },
-      { role: "user", content: JSON.stringify(user) },
-    ],
-    max_output_tokens: 600,
-    temperature: 0.5,
-  });
+  const result = await aiAsk<any>("pagesTools", { system: sys, user: JSON.stringify(user), maxTokens: 600 });
 
   if (!result.ok) return res.json({ ok: true, source: "fallback", seoTitle: fb.seoTitle, seoDescription: fb.seoDescription });
   const seoTitle = String(result.data?.seoTitle ?? fb.seoTitle).slice(0, 120);
@@ -982,7 +964,6 @@ r.post("/ai/translate", validate({ body: AiTranslatePageBody }), asyncHandler(as
   const to = ((body.to ?? "en") as ("ar"|"he"|"en"));
 
   // Fallback: keep same payload if no AI (Admin will store it as a starting point)
-  const model = getDefaultOpenAIModel();
   const sys = `You are a professional e-commerce translator.
 Output STRICT JSON only: {"fields": object, "sections": [{"type": string, "data": object}]}.
 Rules:
@@ -1008,15 +989,7 @@ Rules:
     },
   };
 
-  const result = await openaiResponsesJson<any>({
-    model,
-    input: [
-      { role: "system", content: sys },
-      { role: "user", content: JSON.stringify(user) },
-    ],
-    max_output_tokens: 1400,
-    temperature: 0.3,
-  });
+  const result = await aiAsk<any>("pagesTools", { system: sys, user: JSON.stringify(user), maxTokens: 1400 });
 
   if (!result.ok) return res.json({ ok: true, source: "fallback", fields: body.fields ?? {}, sections: body.sections ?? [] });
 

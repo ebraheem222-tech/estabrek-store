@@ -6,7 +6,9 @@ import { prisma, resetDb } from "./helpers/db.js";
 import { AI_DEFAULTS } from "../modules/ai/ai.settings.js";
 import { forgetAiServer, setAiProvider } from "../modules/ai/ai.client.js";
 import { aiPublicLimits } from "../modules/ai/ai.guard.js";
-import { setOwnModelTransportForTests, type OwnTransport } from "../modules/ai/ownModel.js";
+import { setOwnModelTransportForTests, setPictureLoaderForTests, type OwnTransport } from "../modules/ai/ownModel.js";
+import { searchIndexSettled } from "../lib/productTextEmbeddings.js";
+import sharp from "sharp";
 import { open } from "../lib/secretBox.js";
 
 // The store's own model server instead of OpenAI: no OPENAI_API_KEY here and no stand-in provider,
@@ -45,6 +47,7 @@ beforeEach(async () => {
 });
 afterAll(async () => {
   setOwnModelTransportForTests(null);
+  setPictureLoaderForTests(null);
   await clearServer();
   await prisma.chatbotConversation.deleteMany();
 });
@@ -60,7 +63,7 @@ describe("the store's own model server", () => {
     expect((await setServer({ kind: "own", url: "ftp://models.example.com", model: "allam" }).expect(400)).body.error).toBe("AI_SERVER_ADDRESS");
 
     const saved = (await setServer({ kind: "own", url: "http://127.0.0.1:11434", model: "allam-7b", key: "sk-local-only" }).expect(200)).body;
-    expect(saved.server).toEqual({ kind: "own", url: "http://127.0.0.1:11434", model: "allam-7b", vision: false, hasKey: true });
+    expect(saved.server).toEqual({ kind: "own", url: "http://127.0.0.1:11434", model: "allam-7b", vision: false, visionModel: "", embedModel: "", hasKey: true });
     const kept = ((await prisma.siteSettings.findFirst())!.header as Record<string, { key: string }>).aiServer.key;
     expect(kept).not.toContain("sk-local-only");
     expect(open(kept)).toBe("sk-local-only");
@@ -118,5 +121,68 @@ describe("the store's own model server", () => {
     const down = (await request(app).post("/v1/storefront/chatbot/message").send({ sessionId: "own-2", locale: "ar", message: "مرحبا" }).expect(200)).body;
     expect(down.mode).not.toBe("agent");
     expect(down.reply).toBeTruthy();
+  });
+});
+
+describe("phase 1: a model for each job on the same server", () => {
+  /** Words by the "words" model, pictures by the pictures model, and search numbers by meaning: wedding/evening → one corner, daily → another. */
+  const vectorOf = (t: string) => (/عرس|سهرة|مطرز/.test(t) ? [1, 0, 0] : /يومي/.test(t) ? [0, 1, 0] : [0, 0, 1]);
+  const jobs: Array<{ path: string; model: string }> = [];
+  const allJobs: OwnTransport = async (req) => {
+    const body = JSON.parse(req.body);
+    jobs.push({ path: req.url.pathname, model: body.model });
+    if (req.url.pathname.endsWith("/embeddings")) return { status: 200, text: JSON.stringify({ data: (body.input as string[]).map((t, index) => ({ index, embedding: vectorOf(t) })) }) };
+    const sys = String(body.messages[0].content);
+    const answerText = sys.includes("describe a picture") || sys.includes("alt text") || sys.includes("image")
+      ? '{"alt":"عباية سوداء على شماعة"}'
+      : sys.includes("e-commerce support assistant")
+        ? '{"answer":"التوصيل من يومين لأربع أيام","shouldHandoff":false,"confidence":0.9}'
+        : sys.includes("SEO copywriter")
+          ? '{"seoTitle":"عبايات استبرق للمناسبات","seoDescription":"تشكيلة عبايات للسهرات والعرس."}'
+          : "{}";
+    return { status: 200, text: JSON.stringify({ choices: [{ message: { role: "assistant", content: answerText } }] }) };
+  };
+
+  const product = (id: string, title: string) =>
+    prisma.product.create({ data: { id, title, slug: `own-${id}`, isActive: true, category: { connect: { id: "ownmcat0001" } } } });
+
+  test("pictures go to the pictures model; search runs on the search model, only on numbers it made; the old tools and the plain chat ask the same server", async () => {
+    jobs.length = 0;
+    setOwnModelTransportForTests(allJobs);
+    const png = await sharp({ create: { width: 40, height: 40, channels: 3, background: "#111111" } }).png().toBuffer();
+    setPictureLoaderForTests(async () => ({ buffer: png, mime: "image/png" }));
+    await setServer({ kind: "own", url: "http://127.0.0.1:11434", model: "qwen3:8b", visionModel: "qwen3-vl:4b", embedModel: "bge-m3" }).expect(200);
+    const ai = (await request(app).get("/v1/admin/ai").expect(200)).body;
+    expect(ai).toMatchObject({ visionReady: true, embedReady: true, ready: { productWriter: true, photoStudio: false }, server: { visionModel: "qwen3-vl:4b", embedModel: "bge-m3" } });
+
+    // A picture's description: the pictures model, the picture inside the request.
+    await setAi({ pageWriter: true }).expect(200);
+    await request(app).post("/v1/admin/ai-pages/alt").send({ imageUrl: "https://img.example.com/a.jpg", lang: "ar" }).expect(200);
+    expect(jobs.at(-1)).toEqual({ path: "/v1/chat/completions", model: "qwen3-vl:4b" });
+
+    // Search by meaning: nothing is ready until the products are made again with the search model.
+    await prisma.category.create({ data: { id: "ownmcat0001", name: "عبايات", slug: "own-abayas" } });
+    await product("ownmprod001", "عباية سهرة مطرزة");
+    await product("ownmprod002", "عباية يومية قطن");
+    expect((await request(app).get("/v1/admin/ai/search-index").expect(200)).body).toMatchObject({ model: "own:bge-m3", total: 2, indexed: 0, run: { running: false } });
+    await request(app).post("/v1/admin/ai/search-index").expect(202);
+    await searchIndexSettled();
+    expect((await request(app).get("/v1/admin/ai/search-index").expect(200)).body).toMatchObject({ indexed: 2, run: { running: false, done: 2, failed: 0, lastError: null } });
+    expect(jobs.filter((j) => j.path === "/v1/embeddings").every((j) => j.model === "bge-m3")).toBe(true);
+    // No word of the question is in either title: found by meaning only.
+    const found = (await request(app).get("/v1/catalog/products").query({ q: "بدي إشي للعرس", page: 1, pageSize: 12 }).expect(200)).body;
+    expect(found.items.map((p: { id: string }) => p.id)).toEqual(["ownmprod001"]);
+
+    // Another search model: its numbers aren't the old ones, so nothing counts as ready.
+    await setServer({ kind: "own", url: "http://127.0.0.1:11434", model: "qwen3:8b", visionModel: "qwen3-vl:4b", embedModel: "nomic-embed-text" }).expect(200);
+    expect((await request(app).get("/v1/admin/ai/search-index").expect(200)).body).toMatchObject({ model: "own:nomic-embed-text", indexed: 0 });
+
+    // The page editor's old SEO tool and the plain chat (smart assistant off) ask the words model.
+    const seo = (await request(app).post("/v1/admin/pages/ai/improve-seo").send({ pageName: "العبايات", pageSlug: "/abayas", locale: "ar" }).expect(200)).body;
+    expect(seo).toMatchObject({ source: "openai", seoTitle: "عبايات استبرق للمناسبات" });
+    expect(jobs.at(-1)).toEqual({ path: "/v1/chat/completions", model: "qwen3:8b" });
+    const chat = (await request(app).post("/v1/storefront/chatbot/message").send({ sessionId: "own-old-1", locale: "ar", message: "قديش بياخد الشحن لعندي؟" }).expect(200)).body;
+    expect(chat).toMatchObject({ mode: "openai", reply: "التوصيل من يومين لأربع أيام" });
+    expect((await request(app).get("/v1/admin/ai").expect(200)).body.usage30).toMatchObject({ search: expect.any(Number), pagesTools: 1, oldChat: 1 });
   });
 });

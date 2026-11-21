@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { SITE_ROW_ORDER } from "../../lib/siteRow.js";
-import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
+import { aiAsk } from "../ai/ai.client.js";
 import type { RecommendedProduct } from "../storefront/recommend.service.js";
 import { recommendProducts } from "../storefront/recommend.service.js";
 import { storeName } from "../identity/identity.js";
@@ -185,8 +185,7 @@ export async function generateChatbotReply(opts: {
     return { answer: picked.length ? picked[0].answer : fallbackText(locale, contact), mode: picked.length ? "kb" : "fallback", sources };
   }
 
-  // Try OpenAI (RAG-style) when configured.
-  const model = getDefaultOpenAIModel();
+  // Ask the store's AI (OpenAI or the own model server, ai.client.ts), when there is one.
   const sys = `You are a helpful e-commerce support assistant for a store.
 Return STRICT JSON only: {"answer": string, "shouldHandoff": boolean, "confidence": number}.
 Rules:
@@ -202,15 +201,7 @@ Rules:
     output: { answer: "string", shouldHandoff: "boolean", confidence: "0..1" },
   };
 
-  const result = await openaiResponsesJson<any>({
-    model,
-    input: [
-      { role: "system", content: sys },
-      { role: "user", content: JSON.stringify(user) },
-    ],
-    max_output_tokens: 450,
-    temperature: 0.2,
-  });
+  const result = await aiAsk<any>("oldChat", { system: sys, user: JSON.stringify(user), maxTokens: 450 }, { shopper: true });
 
   if (result.ok) {
     const answer = typeof result.data?.answer === "string" ? result.data.answer.trim() : "";

@@ -11,10 +11,12 @@
  */
 import http from "node:http";
 import https from "node:https";
+import sharp from "sharp";
 import { z } from "zod";
 import type { AiPrompt } from "./ai.client.js";
 import { safeLookup } from "../../lib/fnHttp.js";
 import { open } from "../../lib/secretBox.js";
+import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 
 export const AI_SERVER_KINDS = ["openai", "own"] as const;
 export type AiServerKind = (typeof AI_SERVER_KINDS)[number];
@@ -27,6 +29,10 @@ export const AiServerSchema = z.object({
   model: z.string().trim().max(120).catch("").default(""),
   /** The model reads pictures too (product writer from photos, pictures' descriptions). */
   vision: z.boolean().catch(false).default(false),
+  /** Another model on the same server for pictures (e.g. "qwen3-vl:4b"); "" = the words model when it reads them. */
+  visionModel: z.string().trim().max(120).catch("").default(""),
+  /** A model on the same server for search by meaning (embeddings, e.g. "bge-m3"); "" = none (OpenAI's when its key is there). */
+  embedModel: z.string().trim().max(120).catch("").default(""),
   /** The server's key, sealed; null = none (Ollama and LM Studio need none). */
   key: z.string().max(4000).nullable().catch(null).default(null),
 });
@@ -38,10 +44,16 @@ export const aiServerOf = (header: unknown): AiServer => {
 };
 
 /** What the admin may see of it: never the key, only whether there is one. */
-export const aiServerView = (s: AiServer) => ({ kind: s.kind, url: s.url, model: s.model, vision: s.vision, hasKey: Boolean(s.key) });
+export const aiServerView = (s: AiServer) => ({ kind: s.kind, url: s.url, model: s.model, vision: s.vision, visionModel: s.visionModel, embedModel: s.embedModel, hasKey: Boolean(s.key) });
 
 /** The own server is set up enough to be called. */
 export const ownServerSet = (s: AiServer) => s.kind === "own" && Boolean(s.url) && Boolean(s.model);
+/** The model on the own server that reads pictures: its own, or the words model when it reads them; "" = none. */
+export const ownPicturesModel = (s: AiServer) => (ownServerSet(s) ? s.visionModel || (s.vision ? s.model : "") : "");
+/** The own server makes the numbers search by meaning compares (embeddings). */
+export const ownEmbedSet = (s: AiServer) => s.kind === "own" && Boolean(s.url) && Boolean(s.embedModel);
+/** How a vector made by the own server is named in the database (Product.embeddingModel), apart from OpenAI's. */
+export const ownEmbedName = (s: AiServer) => `own:${s.embedModel}`;
 
 const isProduction = () => process.env.NODE_ENV === "production";
 
@@ -65,7 +77,14 @@ export function ownModelEndpoint(written: string, production = isProduction()): 
   return u;
 }
 
-export const OWN_MODEL_LIMITS = { ms: 90_000, answer: 1_000_000 } as const;
+export const OWN_MODEL_LIMITS = { ms: 90_000, answer: 4_000_000 } as const;
+
+/** The embeddings address next to the chat one (…/v1/embeddings). */
+export function ownEmbedEndpoint(written: string, production = isProduction()): URL {
+  const u = ownModelEndpoint(written, production);
+  u.pathname = u.pathname.replace(/\/chat\/completions$/, "/embeddings");
+  return u;
+}
 
 export type OwnTransport = (req: { url: URL; headers: Record<string, string>; body: string; ms: number }) => Promise<{ status: number; text: string }>;
 
@@ -109,6 +128,74 @@ let transport: OwnTransport = overNetwork;
 /** Tests: the network stood in for (null: the real one again). */
 export function setOwnModelTransportForTests(t: OwnTransport | null) {
   transport = t ?? overNetwork;
+}
+
+/**
+ * A picture sent inside the request (data: URL), not as a link: servers like Ollama read only that,
+ * and the model's server may not reach the shop's pictures anyway. Made smaller (1024 px, JPEG)
+ * to keep the request light. A picture that can't be read is left out (the model gets the words).
+ */
+export type PictureLoader = (url: string) => Promise<{ buffer: Buffer; mime: string } | null>;
+const PICTURE_BYTES = 8 * 1024 * 1024;
+
+/** An https picture fetched by this server: the name must point out on the internet, no redirect, 15 s, 8 MB. */
+const safeGet = (url: URL): Promise<{ buffer: Buffer; mime: string } | null> =>
+  new Promise((done) => {
+    const req = https.request(
+      { method: "GET", host: url.hostname, servername: url.hostname, port: url.port || 443, path: `${url.pathname}${url.search}`, lookup: safeLookup, agent: false, timeout: 15_000 },
+      (res) => {
+        if ((res.statusCode ?? 0) !== 200) {
+          res.resume();
+          return done(null);
+        }
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on("data", (c: Buffer) => {
+          size += c.length;
+          if (size > PICTURE_BYTES) {
+            res.destroy();
+            return done(null);
+          }
+          chunks.push(c);
+        });
+        res.on("end", () => done({ buffer: Buffer.concat(chunks), mime: String(res.headers["content-type"] ?? "").split(";")[0] }));
+        res.on("error", () => done(null));
+      },
+    );
+    req.on("timeout", () => req.destroy());
+    req.on("error", () => done(null));
+    req.end();
+  });
+
+const defaultLoader: PictureLoader = async (url) => {
+  // The shop's own pictures (/uploads on disk or in the database) are read where they are.
+  if (url.startsWith("/uploads/")) return loadImageFromUrl(url);
+  if (!isProduction()) return loadImageFromUrl(url);
+  // On the live server: https only, and never an address inside the network.
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" || u.username || u.password) return null;
+  return safeGet(u);
+};
+let loadPicture: PictureLoader = defaultLoader;
+export function setPictureLoaderForTests(f: PictureLoader | null) {
+  loadPicture = f ?? defaultLoader;
+}
+
+export async function inlinePicture(url: string): Promise<string | null> {
+  if (url.startsWith("data:image/")) return url;
+  const got = await loadPicture(url).catch(() => null);
+  if (!got?.buffer?.length) return null;
+  try {
+    const jpg = await sharp(got.buffer).rotate().resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
+    return `data:image/jpeg;base64,${jpg.toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -168,7 +255,7 @@ const failed = (e: unknown) => {
 };
 
 /** Ask the own server for JSON. Never throws: the reason comes back in words. */
-export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: number } = {}): Promise<{ ok: true; data: T; ms: number } | { ok: false; error: string }> {
+export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: number; model?: string } = {}): Promise<{ ok: true; data: T; ms: number } | { ok: false; error: string }> {
   let url: URL;
   try {
     url = ownModelEndpoint(server.url);
@@ -183,11 +270,12 @@ export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: num
       return { ok: false, error: "The model server's key can't be read: save it again" };
     }
   }
-  const user: unknown = p.images?.length
-    ? [{ type: "text", text: p.user }, ...p.images.map((u) => ({ type: "image_url", image_url: { url: u } }))]
-    : p.user;
+  const pictures = p.images?.length ? (await Promise.all(p.images.slice(0, 4).map(inlinePicture))).filter((x): x is string => Boolean(x)) : [];
+  if (p.images?.length && !pictures.length) return { ok: false, error: "The pictures couldn't be read to send to the model" };
+  const user: unknown = pictures.length ? [{ type: "text", text: p.user }, ...pictures.map((u) => ({ type: "image_url", image_url: { url: u } }))] : p.user;
+  const model = opts.model || server.model;
   const base = {
-    model: server.model,
+    model,
     messages: [
       { role: "system", content: `${p.system}\nAnswer with one JSON object only, no other words.` },
       { role: "user", content: user },
@@ -207,7 +295,7 @@ export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: num
       res = await transport({ url, headers, body: JSON.stringify(base), ms });
     }
     if (res.status === 401 || res.status === 403) return { ok: false, error: `The model server refused the key (${res.status})` };
-    if (res.status === 404) return { ok: false, error: /model/i.test(res.text) ? `The model server doesn't have the model "${server.model}"` : "Nothing answers at that address (404): check the address" };
+    if (res.status === 404) return { ok: false, error: /model/i.test(res.text) ? `The model server doesn't have the model "${model}"` : "Nothing answers at that address (404): check the address" };
     if (res.status < 200 || res.status >= 300) return { ok: false, error: `The model server answered ${res.status}: ${res.text.replace(/\s+/g, " ").slice(0, 200)}` };
     let json: unknown;
     try {
@@ -220,5 +308,39 @@ export async function ownJson<T>(server: AiServer, p: AiPrompt, opts: { ms?: num
     return { ok: true, data: data as T, ms: Date.now() - started };
   } catch (e) {
     return { ok: false, error: failed(e) };
+  }
+}
+
+/** Numbers for search by meaning (embeddings), from the own server's embeddings model. Never throws. */
+export async function ownEmbed(server: AiServer, texts: string[], opts: { ms?: number } = {}): Promise<{ ok: true; vectors: number[][]; model: string } | { ok: false; error: string }> {
+  if (!ownEmbedSet(server)) return { ok: false, error: "No search model is set on the own server" };
+  let url: URL;
+  try {
+    url = ownEmbedEndpoint(server.url);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  let key = "";
+  if (server.key) {
+    try {
+      key = open(server.key);
+    } catch {
+      return { ok: false, error: "The model server's key can't be read: save it again" };
+    }
+  }
+  const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json" };
+  if (key) headers.authorization = `Bearer ${key}`;
+  const input = texts.map((t) => t.slice(0, 8000));
+  try {
+    const res = await transport({ url, headers, body: JSON.stringify({ model: server.embedModel, input }), ms: Math.max(1000, Math.min(opts.ms ?? 60_000, OWN_MODEL_LIMITS.ms)) });
+    if (res.status === 404) return { ok: false, error: /model/i.test(res.text) ? `The model server doesn't have the model "${server.embedModel}"` : "Nothing answers at the embeddings address (404)" };
+    if (res.status < 200 || res.status >= 300) return { ok: false, error: `The model server answered ${res.status}: ${res.text.replace(/\s+/g, " ").slice(0, 200)}` };
+    const json = JSON.parse(res.text) as { data?: Array<{ embedding?: unknown; index?: number }> };
+    const rows = (json.data ?? []).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+    const vectors = rows.map((r) => (Array.isArray(r.embedding) ? r.embedding.map(Number) : []));
+    if (vectors.length !== input.length || vectors.some((v) => !v.length || v.some((n) => !Number.isFinite(n)))) return { ok: false, error: "The model server's numbers came back incomplete" };
+    return { ok: true, vectors, model: ownEmbedName(server) };
+  } catch (e) {
+    return { ok: false, error: e instanceof SyntaxError ? "The model server's answer isn't JSON" : failed(e) };
   }
 }

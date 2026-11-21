@@ -7,8 +7,9 @@ export type AiSettings = Record<AiFeature, boolean> & { dailyLimit: number };
 
 /** Where the AI runs: OpenAI, or the store's own model server (its key is never sent here, only whether there is one). */
 export type AiServerKind = "openai" | "own";
-export type AiServerView = { kind: AiServerKind; url: string; model: string; vision: boolean; hasKey: boolean };
-export type AiServerIn = { kind: AiServerKind; url: string; model: string; vision: boolean; key?: string | null };
+/** visionModel / embedModel: optional models on the same server for pictures and for search by meaning ("" = none; older servers leave them out). */
+export type AiServerView = { kind: AiServerKind; url: string; model: string; vision: boolean; visionModel?: string; embedModel?: string; hasKey: boolean };
+export type AiServerIn = { kind: AiServerKind; url: string; model: string; vision: boolean; visionModel?: string; embedModel?: string; key?: string | null };
 
 export async function getAi() {
   return (await api.get("/admin/ai")).data as {
@@ -19,6 +20,8 @@ export async function getAi() {
     /** Newer servers: OpenAI's key itself, pictures read, pictures made, each feature's readiness, the own server. */
     openaiReady?: boolean;
     visionReady?: boolean;
+    /** Search by meaning can make its numbers (the own server's search model, or OpenAI's). */
+    embedReady?: boolean;
     editReady?: boolean;
     ready?: Partial<Record<AiFeature, boolean>>;
     server?: AiServerView;
@@ -29,9 +32,25 @@ export async function getAi() {
 export async function saveAiServer(body: AiServerIn) {
   return (await api.put("/admin/ai/server", body)).data as { server: AiServerView };
 }
-/** One small question to the server as written (what is left out comes from the saved one); nothing is saved. */
+/** The search model's try: how many numbers came back for one short text. */
+export type SearchTry = { ok: true; size: number } | { ok: false; error: string };
+/** One small question to the server as written (what is left out comes from the saved one), and the search model's too; nothing is saved. */
 export async function tryAiServer(body: AiServerIn) {
-  return (await api.post("/admin/ai/server/try", body, { timeout: 75_000 })).data as { ok: true; ms: number; reply: string } | { ok: false; error: string };
+  return (await api.post("/admin/ai/server/try", body, { timeout: 100_000 })).data as ({ ok: true; ms: number; reply: string } | { ok: false; error: string }) & { search?: SearchTry };
+}
+
+/** Search by meaning with the model now: how many products are ready, and the run that makes the rest. */
+export type SearchIndex = {
+  model: string | null;
+  total: number;
+  indexed: number;
+  run: { running: boolean; model: string | null; done: number; failed: number; startedAt: string | null; finishedAt: string | null; lastError: string | null };
+};
+export async function searchIndex() {
+  return (await api.get("/admin/ai/search-index")).data as SearchIndex;
+}
+export async function startSearchIndex() {
+  return (await api.post("/admin/ai/search-index", {})).data as SearchIndex;
 }
 export async function saveAi(s: AiSettings) {
   return (await api.put("/admin/ai", s)).data as { settings: AiSettings };
