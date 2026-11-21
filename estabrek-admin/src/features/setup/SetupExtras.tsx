@@ -274,7 +274,12 @@ function refusal(e: unknown): string {
 /**
  * `manage` (admin → الاستضافة): a saved account can be changed or taken off too; in the setup it is only made.
  */
-export function MediaStep({ manage = false }: { manage?: boolean } = {}) {
+/**
+ * `saveRef` (the setup): the keys typed and not yet kept, kept when «التالي» is pressed (tried with Cloudinary
+ * first); false when they can't be (it says why here, and the setup stays on this step). Typed and left, they were
+ * lost: the owner thought the account was kept.
+ */
+export function MediaStep({ manage = false, saveRef }: { manage?: boolean; saveRef?: { current: (() => Promise<boolean>) | null } } = {}) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["cloudinary-account"], queryFn: CloudAPI.getCloudinaryAccount, retry: false });
   const [changing, setChanging] = useState(false);
@@ -301,6 +306,29 @@ export function MediaStep({ manage = false }: { manage?: boolean } = {}) {
   });
   const acc = q.data;
   const can = cloudName.trim() && /^\d{6,24}$/.test(apiKey.trim()) && apiSecret.trim().length >= 16;
+  const typed = Boolean(cloudName.trim() || apiKey.trim() || apiSecret.trim());
+  const formShown = !(acc && acc.source !== "none" && !changing);
+  useEffect(() => {
+    if (!saveRef) return;
+    saveRef.current =
+      typed && formShown
+        ? async () => {
+            if (!can) {
+              setFailed(say("كمّل التلاتة (Cloud name، والـ API key أرقام، والـ API secret 16 حرف أو أكتر) أو فضّيهم لتتخطى هالخطوة.|Fill in all three (Cloud name, the API key in digits, the API secret of 16 characters or more), or empty them to skip this step.|מלאו את שלושתם (Cloud name, ה-API key בספרות, ה-API secret באורך 16 תווים לפחות), או רוקנו אותם כדי לדלג על השלב."));
+              return false;
+            }
+            try {
+              await save.mutateAsync();
+              return true;
+            } catch {
+              return false;
+            }
+          }
+        : null;
+    return () => {
+      saveRef.current = null;
+    };
+  });
   return (
     <section className={manage ? "space-y-5" : "mx-auto max-w-2xl space-y-5"} data-testid="setup-media">
       {manage ? null : <h1 className="text-2xl font-bold">{say("وين بتنحفظ الصور|Where the pictures are kept|איפה התמונות נשמרות")}</h1>}

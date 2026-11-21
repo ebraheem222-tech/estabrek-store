@@ -7,5 +7,8 @@ cmds = ["npm ci --legacy-peer-deps --include=dev"]
 [phases.build]
 cmds = ["npx prisma generate", "npm run build"]
 
+# The database's updates first (scripts/migrate-deploy.mjs), then the server, even if they couldn't run: a
+# service made by hand (a client's copy) has no pre-deploy step, and its database stayed without the new
+# tables (its pages answered 500). A service with its own start or pre-deploy command keeps it.
 [start]
-cmd = "(test -f dist/server.js || npm run build) && node dist/server.js"
+cmd = "(test -f dist/server.js || npm run build) && (node scripts/migrate-deploy.mjs || echo '[start] database updates did not run') && node dist/server.js"

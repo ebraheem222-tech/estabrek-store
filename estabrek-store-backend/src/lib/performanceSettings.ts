@@ -8,6 +8,7 @@
  *   jobs        background jobs paused or on another timer (jobs.ts) — المهام بالخلفية
  */
 import { prisma } from "./prisma.js";
+import { mergePerformance } from "./performanceKey.js";
 import { revalidateStorefront } from "./storefrontRevalidate.js";
 import { applyCacheConfig, cacheChanges, mergeCacheConfig, type CacheConfig } from "./cacheConfig.js";
 import { mergeStorefrontMotion, storefrontMotionChanges, type StorefrontMotion } from "./storefrontMotion.js";
@@ -55,14 +56,10 @@ export async function savePerformance(req: any, next: Partial<PerformanceParts>)
   ];
   if (!changed.length) return { ...before, changed };
   const adminUserId = req.user?.bypass ? null : req.access?.adminId ?? null;
-  const nextData = { ...data, ...after };
   await prisma.$transaction([
     prisma.performanceSettingsRevision.create({ data: { data: data as any, changed, adminUserId } }),
-    prisma.performanceSettings.upsert({
-      where: { id: "default" },
-      create: { id: "default", data: nextData as any, updatedById: adminUserId },
-      update: { data: nextData as any, updatedById: adminUserId },
-    }),
+    // Only these five parts: the document's other parts (the Cloudinary account, the shop) as they are now.
+    mergePerformance(after as unknown as Record<string, unknown>, adminUserId),
   ]);
   const old = await prisma.performanceSettingsRevision.findMany({ orderBy: { createdAt: "desc" }, skip: KEEP_REVISIONS, select: { id: true } });
   if (old.length) await prisma.performanceSettingsRevision.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });

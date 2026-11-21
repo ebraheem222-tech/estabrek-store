@@ -5,7 +5,8 @@ import { api } from "./http";
 export type DbProvider = "neon" | "railway" | "local" | "other" | "none";
 export type Hosting = {
   server: { host: "railway" | "other"; project: string | null; environment: string | null; service: string | null; address: string | null; commit: string | null; startedAt: string };
-  database: { provider: DbProvider; region: string | null; pooled: boolean; ok: boolean; ms: number | null };
+  /** pending: the database updates the server's code has and the database hasn't run; null = not known. */
+  database: { provider: DbProvider; region: string | null; pooled: boolean; ok: boolean; ms: number | null; pending?: string[] | null };
   shop: { address: string | null };
 };
 

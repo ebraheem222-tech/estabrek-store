@@ -18,9 +18,9 @@ import { LookView, lookFailText, whenText } from "../connections/LookView";
 import { refusalText } from "../connections/ConnectionsPage";
 import { MediaStep, ShopStep } from "../setup/SetupExtras";
 import { TokenGuide } from "../setup/TokenGuide";
-import { NeonGuide, RailwayGuide } from "./hostingGuides";
+import { CloudflareGuide, NeonGuide, RailwayGuide } from "./hostingGuides";
 
-type Kind = "railway" | "neon" | "vercel";
+type Kind = "railway" | "neon" | "vercel" | "cloudflare";
 const box = "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4";
 const field = "w-full min-w-[12rem] flex-1 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm outline-none focus:border-accent-400";
 
@@ -204,6 +204,29 @@ export default function HostingPage() {
                 {db.pooled ? say("عبر الـ pooler (أسرع لكتير زوار)|Through the pooler (better for many visitors)|דרך ה-pooler (טוב לכמות מבקרים גדולה)") : say("مباشر|Direct|ישיר")}
               </Fact>
             ) : null}
+            {db.pending?.length ? (
+              <div className="mt-3 space-y-2 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm" role="alert" data-testid="hosting-db-pending">
+                <div className="font-medium text-amber-200">
+                  {say(`قاعدة البيانات ناقصها ${db.pending.length} تحديث|The database is missing ${db.pending.length} update(s)|למסד הנתונים חסרים ${db.pending.length} עדכונים`)}
+                </div>
+                <p className="text-xs leading-6 text-white/70">
+                  {say(
+                    "الصفحات اللي بتحتاجها (متل نسخ الزباين والمشروع كملف والصور بدون Cloudinary) بتعطي خطأ لحد ما تنعمل. بتنعمل لحالها مع كل نشر جديد للسيرفر. إذا ضلت: بـ Railway افتح خدمة السيرفر ← Settings ← Deploy ← Pre-deploy Command، حط فيها الأمر هاد، واعمل Redeploy.|The pages that need them (client copies, the project as a file, pictures without Cloudinary) fail until they run. They run by themselves with each new deploy of the server. If they stay: in Railway open the server’s service → Settings → Deploy → Pre-deploy Command, put this command there, and Redeploy.|הדפים שצריכים אותם (עותקי לקוחות, הפרויקט כקובץ, תמונות בלי Cloudinary) נכשלים עד שהם רצים. הם רצים מעצמם עם כל פריסה חדשה של השרת. אם הם נשארים: ב-Railway פתחו את שירות השרת ← Settings ← Deploy ← Pre-deploy Command, שימו שם את הפקודה הזו, ועשו Redeploy.",
+                  )}
+                </p>
+                <code dir="ltr" className="block rounded-lg bg-black/30 px-3 py-2 font-mono text-xs" data-testid="hosting-db-pending-command">
+                  node scripts/migrate-deploy.mjs
+                </code>
+                <details className="text-xs text-white/60">
+                  <summary className="cursor-pointer">{say("شو الناقص|What is missing|מה חסר")}</summary>
+                  <ul className="mt-1 space-y-0.5 font-mono" dir="ltr">
+                    {db.pending.slice(0, 30).map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                </details>
+              </div>
+            ) : null}
           </div>
         ) : null}
         <Account kind="neon" label="Neon" conns={conns.data} canRead={canRead} canWrite={canWrite} guide={<NeonGuide />} />
@@ -216,6 +239,13 @@ export default function HostingPage() {
 
       <Card id="pictures" title="الصور|The pictures|התמונות" service="Cloudinary">
         <MediaStep manage />
+      </Card>
+
+      <Card id="admin" title="لوحة التحكم|The admin|לוח הניהול" service="Cloudflare">
+        <Fact name={say("عنوانها|Its address|הכתובת שלו")} t="hosting-admin-address">
+          <Ltr>{window.location.host}</Ltr>
+        </Fact>
+        <Account kind="cloudflare" label="Cloudflare" conns={conns.data} canRead={canRead} canWrite={canWrite} guide={<CloudflareGuide />} />
       </Card>
     </div>
   );
