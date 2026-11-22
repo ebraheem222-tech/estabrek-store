@@ -88,6 +88,31 @@ export const SET = {
   notifyEmailNote: w("فاضي: الجرس بس. الإيميل بيطلع إذا إرسال الإيميلات مضبوط بالإعدادات.", "Empty: only the bell. The email goes out once sending email is set up in the settings.", "ריק: רק הפעמון. המייל יוצא כשמשלוח מיילים מוגדר בהגדרות."),
 };
 
+/** The words of a whole site's panel (wave 1.2): its pages, its numbers, its queues, its buttons. */
+export const PANEL = {
+  today: w("اليوم", "Today", "היום"),
+  lists: w("القوائم", "Lists", "רשימות"),
+  settings: w("الإعدادات", "Settings", "הגדרות"),
+  quick: w("بكبسة", "In one tap", "בלחיצה"),
+  messagesNew: w("رسائل بتستنّى رد", "Messages waiting for a reply", "הודעות שמחכות לתשובה"),
+  messagesWeek: w("رسائل هالأسبوع", "Messages this week", "הודעות השבוע"),
+  bookingsNew: w("طلبات حجز بتستنّى", "Booking requests waiting", "בקשות הזמנה ממתינות"),
+  bookingsWeek: w("طلبات حجز هالأسبوع", "Booking requests this week", "בקשות הזמנה השבוע"),
+  confirm: w("تأكّد", "Confirm", "לאשר"),
+  done: w("خلص", "Done", "הסתיים"),
+  replied: w("انرد عليه", "Replied", "נענה"),
+  noBookings: w("ما في طلبات حجز بتستنّى.", "No booking requests waiting.", "אין בקשות הזמנה ממתינות."),
+  noMessages: w("ما في رسائل بتستنّى رد.", "No messages waiting for a reply.", "אין הודעות שמחכות לתשובה."),
+  allBookings: w("كل طلبات الحجز", "All booking requests", "כל בקשות ההזמנה"),
+  allMessages: w("كل الرسائل", "All messages", "כל ההודעות"),
+  noticeShow: w("شغّل شريط الإعلان", "Show the notice bar", "להציג את פס ההודעה"),
+  noticeHide: w("طفّي شريط الإعلان", "Hide the notice bar", "להסתיר את פס ההודעה"),
+  noticeNote: w("بكلام «نص الإعلان» بالإعدادات.", "In the words of «the notice» in the settings.", "במילים של «נוסח ההודעה» בהגדרות."),
+  bookingClose: w("سكّر الحجز أونلاين", "Close online booking", "לסגור הזמנה אונליין"),
+  bookingOpen: w("افتح الحجز أونلاين", "Open online booking", "לפתוח הזמנה אונליין"),
+  bookingCloseNote: w("صفحة الحجز بتقول إنه مسكّر وبتعرض التلفون.", "The booking page says it's closed and gives the phone.", "עמוד ההזמנה אומר שהיא סגורה ומציג את הטלפון."),
+};
+
 /** A review's stars, as a choice field's options. */
 export const STARS: Array<[string, W]> = [
   ["s5", w("★★★★★", "★★★★★", "★★★★★")],

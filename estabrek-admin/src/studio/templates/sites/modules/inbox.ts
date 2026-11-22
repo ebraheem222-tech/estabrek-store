@@ -5,7 +5,7 @@
  */
 import { B, CARD, COLS, EL, H, P, SEC, STACK, pop, say, withSkin } from "../../build";
 import { w } from "../../words";
-import { SET, SW } from "../siteWords";
+import { PANEL, SET, SW } from "../siteWords";
 import { branchCard, questionsPart } from "./lists";
 import { LIST, S, T, WRITE_ONLY, f, fromSetting, pageHead, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 
@@ -63,6 +63,10 @@ const bookParts = (b: Built): Part[] => [pageHead(b.use.booking!.title, b.use.bo
 /** A request's state, as the owner moves it along. */
 const status = (more: Array<[string, typeof SW.fresh]>) => f.select("status", SW.status, [["fresh", SW.fresh], ...more], { default: "fresh" });
 
+const fresh = [{ field: "status", op: "is" as const, value: "fresh" }];
+/** The newest first. */
+const newest = { field: "$createdAt", dir: "desc" as const };
+
 export const CONTACT: SiteModule = {
   key: "contact",
   name: w("التواصل", "Contact", "יצירת קשר"),
@@ -71,6 +75,15 @@ export const CONTACT: SiteModule = {
   tables: () => [{ key: "messages", slug: "messages", name: SW.messages, fields: [f.text("name", SW.name, { required: true }), f.phone("phone", SW.phone, { required: true }), f.email("email", SW.email), f.long("message", SW.message, { required: true }), status([["replied", SW.replied]])], api: WRITE_ONLY }],
   inbox: ["messages"],
   counts: () => ({ tables: 1, rows: 0 }),
+  // Its panel: the messages waiting for a reply (a button marks one replied), how many came this week, and all of them.
+  panel: () => ({
+    numbers: [
+      { key: "messagesNew", label: PANEL.messagesNew, table: T("messages"), where: fresh },
+      { key: "messagesWeek", label: PANEL.messagesWeek, table: T("messages"), window: "week", compare: true },
+    ],
+    today: [{ kind: "queue", key: "messages", title: PANEL.messagesNew, table: T("messages"), where: fresh, show: ["name", "phone", "email", "message"], decisions: [{ key: "replied", label: PANEL.replied, set: { status: "replied" }, tone: "good" }], empty: PANEL.noMessages }],
+    lists: [{ kind: "view", key: "messages", title: PANEL.allMessages, table: T("messages"), columns: ["name", "phone", "message", "status", "$createdAt"], sort: newest, limit: 30 }],
+  }),
 };
 
 const BOOKING_NAME = w("الحجز", "Booking", "הזמנה");
@@ -83,6 +96,19 @@ export const BOOKING: SiteModule = {
   tables: (b) => [{ key: "bookings", slug: "bookings", name: SW.bookings, fields: [f.text("name", SW.name, { required: true }), f.phone("phone", SW.phone, { required: true }), f.select("service", b.use.booking!.ask, choicesOf(b)), f.date("day", SW.day), f.long("notes", SW.notes), status([["confirmed", SW.confirmed], ["done", SW.done]])], api: WRITE_ONLY }],
   inbox: ["bookings"],
   counts: () => ({ tables: 1, rows: 0 }),
+  // Its panel: the requests waiting (confirmed or done in one tap), how many came this week, all of them, and booking closed or opened.
+  panel: () => ({
+    numbers: [
+      { key: "bookingsNew", label: PANEL.bookingsNew, table: T("bookings"), where: fresh },
+      { key: "bookingsWeek", label: PANEL.bookingsWeek, table: T("bookings"), window: "week", compare: true },
+    ],
+    today: [{ kind: "queue", key: "bookings", title: PANEL.bookingsNew, table: T("bookings"), where: fresh, show: ["name", "phone", "service", "day", "notes"], decisions: [{ key: "confirm", label: PANEL.confirm, set: { status: "confirmed" }, tone: "good" }, { key: "done", label: PANEL.done, set: { status: "done" } }], empty: PANEL.noBookings }],
+    lists: [{ kind: "view", key: "bookings", title: PANEL.allBookings, table: T("bookings"), columns: ["name", "phone", "service", "day", "status", "$createdAt"], sort: newest, limit: 30 }],
+    actions: [
+      { key: "bookingClose", label: PANEL.bookingClose, note: PANEL.bookingCloseNote, setting: "bookingOpen", value: false },
+      { key: "bookingOpen", label: PANEL.bookingOpen, setting: "bookingOpen", value: true },
+    ],
+  }),
   settings: () => [
     { key: "bookingOpen", kind: "toggle", label: SET.bookingOpen, note: SET.bookingOpenNote, group: BOOKING_NAME, public: true, default: true },
     { key: "bookingClosed", kind: "words", label: SET.bookingClosed, group: BOOKING_NAME, public: true, long: true, default: SET.bookingClosedText },

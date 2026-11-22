@@ -102,6 +102,28 @@ export type SiteSetting = {
   options?: Array<{ id: string; name: W }>;
 };
 
+/**
+ * A whole site's panel (wave 1.2): its own pages in the admin's menu, under its name, made of parts that read its
+ * tables (by their keys, `@table:bookings`) and its settings. The backend's lib/sitePanel.ts checks and draws them,
+ * each part only for a member who may read what it reads.
+ */
+export type PanelCond = { field: string; op: "is" | "isNot" | "empty" | "notEmpty"; value?: string | number | boolean };
+/** A number on the panel: how many rows match, in a window of days (compared with the window before it). */
+export type PanelNumber = { key: string; label: W; table: string; where?: PanelCond[]; window?: "today" | "week" | "month"; compare?: boolean };
+/** A queue's button: the fields it sets on the row ("confirmed"). */
+export type PanelDecision = { key: string; label: W; set: Record<string, string | number | boolean>; tone?: "good" | "bad" };
+/** A quick action: a setting it sets ("close online booking"). */
+export type PanelAction = { key: string; label: W; note?: W; setting: string; value: string | number | boolean };
+export type PanelPart =
+  | { kind: "numbers"; key: string; items: PanelNumber[] }
+  | { kind: "queue"; key: string; title: W; table: string; where: PanelCond[]; show: string[]; decisions: PanelDecision[]; empty?: W; limit?: number }
+  | { kind: "view"; key: string; title: W; table: string; where?: PanelCond[]; columns: string[]; sort?: { field: string; dir: "asc" | "desc" }; limit?: number }
+  | { kind: "settings"; key: string; title?: W; keys: string[] }
+  | { kind: "actions"; key: string; title?: W; items: PanelAction[] };
+export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings"; parts: PanelPart[] };
+/** What a module brings to its site's panel: numbers and actions joined with the others', its own queues and tables. */
+export type PanelBits = { numbers?: PanelNumber[]; today?: PanelPart[]; lists?: PanelPart[]; actions?: PanelAction[] };
+
 /** The modules a site uses, each with its words. Which modules exist, and what each brings, is modules/index.ts. */
 export type SiteModules = {
   offers?: OffersUse;

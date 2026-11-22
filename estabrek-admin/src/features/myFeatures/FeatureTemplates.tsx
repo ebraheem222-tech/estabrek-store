@@ -49,6 +49,7 @@ export function InstallFlow({ id, template }: { id: string; template: unknown })
     onSuccess: (f: Feature) => {
       qc.setQueryData(["my-features", f.id], f);
       void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
+      void qc.invalidateQueries({ queryKey: ["site-panels"] });
       toast.success(say("انثبّتت كمسودة|Installed as a draft|הותקנה כטיוטה"));
       go(`/admin/my-features/${f.id}`);
     },
@@ -288,6 +289,7 @@ export function FeatureRemove({ feature }: { feature: Feature }) {
     onSuccess: () => {
       qc.removeQueries({ queryKey: ["my-features", feature.id] });
       void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
+      void qc.invalidateQueries({ queryKey: ["site-panels"] });
       toast.success(say("انحذفت الميزة مع اللي فيها|The feature is removed with what it held|התכונה הוסרה עם מה שהיה בה"));
       go("/admin/my-features");
     },

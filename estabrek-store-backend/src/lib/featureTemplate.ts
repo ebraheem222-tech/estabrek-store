@@ -30,6 +30,7 @@ import { checkTree, type PageTree } from "./pageTree.js";
 import { storeTarget } from "./storeLinks.js";
 import { isStorePage } from "./featureGate.js";
 import { SettingDeclsSchema } from "./siteSettings.js";
+import { PanelSchema, panelProblems } from "./sitePanel.js";
 
 export const TEMPLATE_FORMAT = "estabrek.feature" as const;
 export const TEMPLATE_FORMAT_VERSION = 1 as const;
@@ -153,6 +154,8 @@ export const TemplateSchema = z
     site: SiteChoicesSchema.optional(),
     /** A whole site's settings (lib/siteSettings.ts): what its owner can change, read by its functions and pages. */
     settings: SettingDeclsSchema.optional(),
+    /** A whole site's own pages in the admin's menu (lib/sitePanel.ts): numbers, queues, saved tables, settings, quick actions. */
+    panel: PanelSchema.optional(),
   })
   .strict()
   .superRefine((t, ctx) => {
@@ -164,6 +167,8 @@ export const TemplateSchema = z
         if (keys.indexOf(k) !== i) ctx.addIssue({ code: "custom", path: [what, i, "key"], message: `Two ${what} have the key "${k}"` });
       });
     }
+    // A site's panel reads only its own tables, their fields, and its own settings.
+    if (t.panel) for (const p of panelProblems(t.panel, t.tables, (t.settings ?? []).map((d) => d.key))) ctx.addIssue({ code: "custom", path: p.at.split(".").map((x) => (/^\d+$/.test(x) ? Number(x) : x)), message: p.message });
     t.pages.forEach((p, i) => {
       if (isStorePage(p.slug)) ctx.addIssue({ code: "custom", path: ["pages", i, "slug"], message: "The home, the shop and the cart are the store's own pages" });
       else if (RESERVED_SLUGS.has(p.slug.split("/")[1] ?? "")) ctx.addIssue({ code: "custom", path: ["pages", i, "slug"], message: "The shop already uses this address" });

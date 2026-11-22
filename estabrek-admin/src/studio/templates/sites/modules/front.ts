@@ -5,8 +5,8 @@
  */
 import { P, SEC, STACK, withSkin } from "../../build";
 import { w } from "../../words";
-import type { SiteBlueprint, SiteSetting } from "../blueprint";
-import { SET, SW } from "../siteWords";
+import type { PanelBits, SiteBlueprint, SiteSetting } from "../blueprint";
+import { PANEL, SET, SW } from "../siteWords";
 import { offersPart, postsPart, questionsPart, reviewsPart, teamPart } from "./lists";
 import { S, callBand, fromSetting, pageHead, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 
@@ -19,6 +19,14 @@ export const frontSettings = (bp: SiteBlueprint): SiteSetting[] => [
   { key: "noticeOn", kind: "toggle", label: SET.noticeOn, note: SET.noticeOnNote, group: SET.site, public: true, default: false },
   { key: "notice", kind: "words", label: SET.notice, group: SET.site, public: true, long: true, default: SET.noticeText },
 ];
+
+/** A business's front's own bits of its panel: the notice bar on and off in one tap. */
+export const frontPanel = (): PanelBits => ({
+  actions: [
+    { key: "noticeShow", label: PANEL.noticeShow, note: PANEL.noticeNote, setting: "noticeOn", value: true },
+    { key: "noticeHide", label: PANEL.noticeHide, setting: "noticeOn", value: false },
+  ],
+});
 
 /** The notice bar over the first page: on the shop only while its switch is on, in the words its owner wrote. */
 const noticePart: Part = (c) => {

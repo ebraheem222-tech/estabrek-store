@@ -49,6 +49,8 @@ export type Feature = {
   siteHome?: { homeId: string | null; on: boolean; other: { id: string; name: string } | null };
   /** A whole site's settings (none: it declares none). */
   settings?: SiteSettingsView | null;
+  /** A whole site's own pages in the admin's menu, as its file declares them (backend lib/sitePanel.ts). */
+  panel?: Array<{ key: string; name: Local; icon: "today" | "lists" | "settings" }>;
   /** What isn't in any feature yet. */
   free: { tables: Array<{ id: string; slug: string; name: Local | null }>; functions: Array<{ id: string; name: string }>; pages: Array<{ id: string; name: string; slug: string }> };
   limits: { features: number; items: number };
