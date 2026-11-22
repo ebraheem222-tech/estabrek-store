@@ -38,6 +38,22 @@ export function cellText(col: PanelColumn, v: unknown, lang: Lang): string {
   return String(v);
 }
 
+/** Each kind of part by its name (a part with no title of its own on the owner's list). */
+export const KIND_NAME: Record<string, string> = {
+  numbers: "أرقام|Numbers|מספרים",
+  queue: "طابور|Queue|תור",
+  view: "جدول|Table|טבלה",
+  settings: "الإعدادات|Settings|הגדרות",
+  actions: "كبسات سريعة|Quick actions|פעולות מהירות",
+  chart: "رسم|Chart|גרף",
+  kanban: "لوح|Board|לוח",
+  calendar: "تقويم|Calendar|לוח שנה",
+  people: "صفحة زبون|A customer's page|דף לקוח",
+  report: "تقرير|Report|דוח",
+  map: "خريطة|Map|מפה",
+  scanner: "ماسح|Scanner|סורק",
+};
+
 const BEFORE: Record<string, string> = {
   today: "مبارح|yesterday|אתמול",
   week: "الأسبوع اللي قبل|the week before|השבוע שלפני",

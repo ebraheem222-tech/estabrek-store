@@ -149,12 +149,50 @@ export function panelProblems(panel: Panel, tables: Array<{ key: string; fields:
 /* ---------------- The panels here ---------------- */
 
 /** A site installed here with a panel: its file's panel, its tables' ids by key, its settings. */
-export type SitePanel = { featureId: string; name: string; enabled: boolean; panel: Panel; tables: Record<string, string>; decls: SettingDecl[]; values: Values };
+/**
+ * A whole site's panel as its owner arranged it (Feature.panelLayout), by page: the parts' order (the keys it
+ * names come first, in its order; the file's parts it doesn't name keep theirs after them, so an upgrade's new parts
+ * show), the parts it hides, and parts of the owner's own (a number, a saved table, a chart… over the site's tables;
+ * their keys start with "my"). The file's own panel is never changed.
+ */
+export const OWN_PART = /^my[a-z0-9]{1,20}$/;
+const PageLayout = z
+  .object({ order: z.array(Key).max(60).optional(), hidden: z.array(Key).max(60).optional(), own: z.array(PanelPartSchema).max(PANEL_LIMITS.parts).optional() })
+  .strict();
+export const PanelLayoutSchema = z.object({ pages: z.record(Key, PageLayout) }).strict();
+export type PanelLayout = z.infer<typeof PanelLayoutSchema>;
+export type PageLayout = z.infer<typeof PageLayout>;
+/** A part as its page is arranged: the owner's own or the file's, hidden or shown. */
+export type Arranged = { part: PanelPart; own: boolean; hidden: boolean };
+
+/** Every part of a page as the owner arranged it, in their order, each said hidden or not. */
+export function arranged(page: PanelPage, layout: PageLayout | undefined): Arranged[] {
+  const own = (layout?.own ?? []).filter((p) => OWN_PART.test(p.key) && !page.parts.some((f) => f.key === p.key));
+  const all = [...page.parts.map((part) => ({ part, own: false })), ...own.map((part) => ({ part, own: true }))];
+  const order = layout?.order ?? [];
+  const hidden = new Set(layout?.hidden ?? []);
+  const at = (key: string, i: number) => (order.includes(key) ? order.indexOf(key) : order.length + i);
+  return all.map((x, i) => ({ ...x, hidden: hidden.has(x.part.key), i })).sort((a, b) => at(a.part.key, a.i) - at(b.part.key, b.i)).map(({ part, own, hidden }) => ({ part, own, hidden }));
+}
+
+export type SitePanel = {
+  featureId: string;
+  name: string;
+  enabled: boolean;
+  /** Its pages as arranged: the parts shown, in the owner's order. */
+  panel: Array<Omit<PanelPage, "parts"> & { parts: PanelPart[] }>;
+  /** Every part of each page as arranged, hidden ones too (for whoever arranges it). */
+  arrange: Record<string, Arranged[]>;
+  layout: PanelLayout | null;
+  tables: Record<string, string>;
+  decls: SettingDecl[];
+  values: Values;
+};
 
 /** Every site installed here with a panel, in the order they were installed. Only the parts of each file it needs are read. */
 export async function sitePanels(featureId?: string): Promise<SitePanel[]> {
-  const rows = await prisma.$queryRaw<Array<{ id: string; name: string; enabled: boolean; panel: unknown; tables: unknown; decls: unknown; settings: unknown }>>`
-    SELECT "id", "name", "enabled", "template"->'file'->'panel' AS "panel", "template"->'ids'->'table' AS "tables", "template"->'file'->'settings' AS "decls", "settings"
+  const rows = await prisma.$queryRaw<Array<{ id: string; name: string; enabled: boolean; panel: unknown; tables: unknown; decls: unknown; settings: unknown; layout: unknown }>>`
+    SELECT "id", "name", "enabled", "template"->'file'->'panel' AS "panel", "template"->'ids'->'table' AS "tables", "template"->'file'->'settings' AS "decls", "settings", "panelLayout" AS "layout"
     FROM "Feature" WHERE jsonb_typeof("template"->'file'->'panel') = 'array' ORDER BY "createdAt" ASC, "id" ASC`;
   const out: SitePanel[] = [];
   for (const r of rows) {
@@ -163,7 +201,12 @@ export async function sitePanels(featureId?: string): Promise<SitePanel[]> {
     if (!panel.success || !panel.data.length) continue;
     const tables = r.tables && typeof r.tables === "object" ? (Object.fromEntries(Object.entries(r.tables as Record<string, unknown>).filter(([, v]) => typeof v === "string")) as Record<string, string>) : {};
     const decls = declsOf(r.decls);
-    out.push({ featureId: r.id, name: r.name, enabled: r.enabled, panel: panel.data, tables, decls, values: valuesOf(decls, r.settings) });
+    // An arrangement that no longer reads (a part's shape changed) is set aside: the file's panel as it is.
+    const read = PanelLayoutSchema.safeParse(r.layout);
+    const layout = read.success ? read.data : null;
+    const arrange = Object.fromEntries(panel.data.map((p) => [p.key, arranged(p, layout?.pages[p.key])]));
+    const shown = panel.data.map((p) => ({ ...p, parts: arrange[p.key].filter((x) => !x.hidden).map((x) => x.part) }));
+    out.push({ featureId: r.id, name: r.name, enabled: r.enabled, panel: shown, arrange, layout, tables, decls, values: valuesOf(decls, r.settings) });
   }
   return out;
 }
@@ -193,7 +236,8 @@ export function partShown(site: SitePanel, part: PanelPart, may: PanelRights): b
   return !!ids && ids.every(may.readTable);
 }
 /** A site's pages this member sees (a page with no part they may see isn't one of them). */
-export const pagesShown = (site: SitePanel, may: PanelRights) => site.panel.filter((p) => p.parts.some((part) => partShown(site, part, may)));
+/** A site's pages this member sees (a page with no part they may see isn't one of them; whoever arranges it still sees a page whose parts are all hidden). */
+export const pagesShown = (site: SitePanel, may: PanelRights) => site.panel.filter((p) => p.parts.some((part) => partShown(site, part, may)) || (may.writeSettings && (site.arrange[p.key] ?? []).length > 0));
 
 /* ---------------- A page's parts with what they show ---------------- */
 
@@ -283,7 +327,7 @@ export function monthRange(month: string | undefined, now: number): { month: str
 export type ViewOpts = { lang: Lang; now?: number; month?: string; period?: string };
 
 /** One page of a site's panel as this member sees it, each part with what it shows now. */
-export async function pageView(site: SitePanel, page: PanelPage, may: PanelRights, opts: ViewOpts) {
+export async function pageView(site: SitePanel, page: SitePanel["panel"][number], may: PanelRights, opts: ViewOpts) {
   const now = opts.now ?? Date.now();
   const parts = page.parts.filter((p) => partShown(site, p, may));
   const ids = parts.flatMap((p) => readsOf(p).map((r) => site.tables[tableKeyOf(r.table) ?? ""])).filter((x): x is string => !!x);
@@ -355,7 +399,56 @@ export async function pageView(site: SitePanel, page: PanelPage, may: PanelRight
       out.push({ kind: "scanner", key: part.key, title: part.title, table: tableView(t), columns: columnsOf(t, part.show), decisions: part.decisions.map((d) => ({ key: d.key, label: d.label, ...(d.tone ? { tone: d.tone } : {}) })), canDecide: may.writeTable(t.id) });
     }
   }
-  return { featureId: site.featureId, name: site.name, enabled: site.enabled, page: { key: page.key, name: page.name, icon: page.icon }, pages: pagesShown(site, may).map((p) => ({ key: p.key, name: p.name, icon: p.icon })), parts: out };
+  return {
+    featureId: site.featureId,
+    name: site.name,
+    enabled: site.enabled,
+    page: { key: page.key, name: page.name, icon: page.icon },
+    pages: pagesShown(site, may).map((p) => ({ key: p.key, name: p.name, icon: p.icon })),
+    parts: out,
+    // Whoever may change the site's settings arranges its panel: every part of the page, and the site's tables to build their own from.
+    ...(may.writeSettings ? { arrange: await arrangeView(site, page.key) } : {}),
+  };
+}
+
+/** A part's name on the owner's list: its title, else its first number's, else none (the admin names it by its kind). */
+const labelOf = (part: PanelPart) => ("title" in part && part.title ? part.title : part.kind === "numbers" ? part.items[0]?.label ?? null : null);
+
+/** What arranging a page needs: its parts (hidden ones too) and the site's tables with their fields, to build a part from. */
+async function arrangeView(site: SitePanel, pageKey: string) {
+  const found = await tablesHere(Object.values(site.tables));
+  const tables = Object.entries(site.tables).flatMap(([key, id]) => {
+    const t = found.get(id);
+    return t ? [{ key, ref: `@table:${key}`, slug: t.slug, name: t.name, fields: t.fields.filter((f) => f.type !== "relation").map((f) => ({ id: f.id, type: f.type, name: (f as { name?: unknown }).name ?? null, ...(Array.isArray((f as { options?: unknown }).options) ? { options: (f as { options: unknown[] }).options } : {}) })) }] : [];
+  });
+  return { parts: (site.arrange[pageKey] ?? []).map((x) => ({ key: x.part.key, kind: x.part.kind, label: labelOf(x.part), hidden: x.hidden, own: x.own, ...(x.own ? { part: x.part } : {}) })), tables };
+}
+
+/** The owner's arrangement of one page, checked: the keys it orders and hides are the page's, its own parts read the site's tables, fields and settings. */
+export async function saveLayout(site: SitePanel, pageKey: string, asked: unknown): Promise<{ ok: true } | { ok: false; problems: Array<{ at: string; message: string }> }> {
+  const read = PageLayout.safeParse(asked);
+  if (!read.success) return { ok: false, problems: read.error.issues.map((i) => ({ at: i.path.join("."), message: i.message })) };
+  const next = read.data;
+  const fileParts = (site.arrange[pageKey] ?? []).filter((x) => !x.own).map((x) => x.part.key);
+  const own = next.own ?? [];
+  const problems: Array<{ at: string; message: string }> = [];
+  own.forEach((p, i) => {
+    if (!OWN_PART.test(p.key)) problems.push({ at: `own.${i}.key`, message: `An own part's key is "my" and small letters or digits` });
+    if (fileParts.includes(p.key) || own.findIndex((x) => x.key === p.key) !== i) problems.push({ at: `own.${i}.key`, message: `Two parts have the key "${p.key}"` });
+    // Only parts that read the site's tables: the settings and the quick actions are the file's.
+    if (p.kind === "settings" || p.kind === "actions") problems.push({ at: `own.${i}.kind`, message: `A "${p.kind}" part is the site's own` });
+  });
+  const keys = new Set([...fileParts, ...own.map((p) => p.key)]);
+  for (const k of [...(next.order ?? []), ...(next.hidden ?? [])]) if (!keys.has(k)) problems.push({ at: "order", message: `This page has no part "${k}"` });
+  if (own.length) {
+    const found = await tablesHere(Object.values(site.tables));
+    const tables = Object.entries(site.tables).map(([key, id]) => ({ key, fields: found.get(id)?.fields ?? [] }));
+    for (const p of panelProblems([{ key: pageKey, name: {}, icon: "today", parts: own }], tables, site.decls.map((d) => d.key))) problems.push({ at: p.at.replace(/^panel\.0\.parts/, "own"), message: p.message });
+  }
+  if (problems.length) return { ok: false, problems };
+  const layout: PanelLayout = { pages: { ...(site.layout?.pages ?? {}), [pageKey]: { ...(next.order?.length ? { order: next.order } : {}), ...(next.hidden?.length ? { hidden: next.hidden } : {}), ...(own.length ? { own } : {}) } } };
+  await prisma.feature.update({ where: { id: site.featureId }, data: { panelLayout: layout as Prisma.InputJsonValue } });
+  return { ok: true };
 }
 
 /* ---------------- A part's own questions ---------------- */

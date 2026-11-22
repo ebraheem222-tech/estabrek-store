@@ -3,6 +3,7 @@
 // queues of rows waiting for a decision (one tap sets the row's fields), saved tables, the site's settings, quick
 // actions that change a setting; and (PanelParts.tsx) charts, boards, calendars, a person's page, reports, maps and
 // a scanner. A calendar's month and a report's period are in the address (?month=, ?period=).
+import { useState } from "react";
 import { Link, NavLink, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
@@ -18,6 +19,7 @@ import type { PanelActions, PanelAsk, PanelNumbers, PanelPageView, PanelQueue, P
 import { SettingsEditor } from "../myFeatures/SiteSettings";
 import { cellText, changeText, inLang } from "./panelText";
 import { CalendarPart, ChartPart, KanbanPart, MapPart, PeoplePart, ReportPart, ScannerPart } from "./PanelParts";
+import { ArrangePanel } from "./ArrangePanel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -32,6 +34,7 @@ export default function SitePanelPage() {
   const key = ["site-panel", featureId, page, lang, ask.month ?? "", ask.period ?? ""];
   const q = useQuery({ queryKey: key, queryFn: () => Panels.getSitePanelPage(featureId, page, lang, ask), enabled: !!featureId && !!page, placeholderData: (before) => before });
   const took = (next: PanelPageView) => qc.setQueryData(key, next);
+  const [arranging, setArranging] = useState(false);
   const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) });
 
   if (q.isLoading) return <Spinner />;
@@ -45,6 +48,11 @@ export default function SitePanelPage() {
           <h1 className="text-xl font-semibold" data-testid="site-panel-name">{v.name}</h1>
           <p className="text-sm text-white/60">{inLang(v.page.name, lang)}</p>
         </div>
+        {v.arrange ? (
+          <Button size="sm" variant={arranging ? "primary" : "secondary"} onClick={() => setArranging((a) => !a)} data-testid="site-panel-arrange">
+            {arranging ? say("خلصت الترتيب|Done arranging|סיימתי לסדר") : say("رتّب الصفحة|Arrange the page|לסדר את העמוד")}
+          </Button>
+        ) : null}
         <nav className="flex flex-wrap gap-1" data-testid="site-panel-pages">
           {v.pages.map((p) => (
             <NavLink key={p.key} to={`/admin/site/${encodeURIComponent(v.featureId)}/${encodeURIComponent(p.key)}`} className={({ isActive }) => `rounded-lg px-3 py-1.5 text-sm ${isActive ? "bg-accent-500/20 text-white" : "text-white/60 hover:bg-white/5"}`} data-testid={`site-panel-tab-${p.key}`}>
@@ -59,6 +67,21 @@ export default function SitePanelPage() {
           {hasPermission("features:read") ? <Link className="underline" to={`/admin/my-features/${encodeURIComponent(v.featureId)}`}>{say("صفحة الموقع|The site's page|עמוד האתר")}</Link> : null}
         </p>
       ) : null}
+      {arranging && v.arrange ? (
+        <ArrangePanel
+          key={`${v.page.key}:${JSON.stringify(v.arrange.parts)}`}
+          view={v}
+          ask={ask}
+          onSaved={(next) => {
+            took(next);
+            setArranging(false);
+            // The page may now be shown, or hidden, in the menu.
+            void qc.invalidateQueries({ queryKey: ["site-panels"] });
+          }}
+          onError={onError}
+        />
+      ) : null}
+      {!v.parts.length && !arranging ? <p className="text-sm text-white/55" data-testid="site-panel-empty">{say("كل قطع هالصفحة مخفية. «رتّب الصفحة» بيرجّعها.|Every part of this page is hidden. «Arrange the page» brings them back.|כל החלקים בעמוד הזה מוסתרים. «לסדר את העמוד» מחזיר אותם.")}</p> : null}
       {v.parts.map((part) => {
         if (part.kind === "numbers") return <Numbers key={part.key} part={part} />;
         if (part.kind === "queue") return <Queue key={part.key} part={part} view={v} took={took} onError={onError} />;

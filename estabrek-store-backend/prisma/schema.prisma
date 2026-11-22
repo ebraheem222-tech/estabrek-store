@@ -693,6 +693,10 @@ model Feature {
   /// A whole site's settings as its owner set them, by key (src/lib/siteSettings.ts; what each is: its file's
   /// `settings`). A key not set here, or set to what no longer fits, is its default.
   settings  Json?
+  /// A whole site's panel as its owner arranged it (src/lib/sitePanel.ts PanelLayout): by page, the parts' order, the
+  /// ones hidden, and parts of the owner's own. Its file's parts it doesn't name keep their place, so an upgrade's new
+  /// parts show.
+  panelLayout Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   items     FeatureItem[]

@@ -6,7 +6,7 @@ import { AppError } from "../../utils/httpError.js";
 import { hasPermission } from "../../middleware/access.js";
 import { tableRight } from "./permissions.js";
 import { tableOf, changeRow } from "../../lib/rowWrites.js";
-import { findByCode, pageView, pagesShown, partShown, peopleSearch, reportCsv, sitePanels, tableIdOf, type PanelPart, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
+import { findByCode, pageView, pagesShown, partShown, peopleSearch, reportCsv, saveLayout, sitePanels, tableIdOf, type PanelPart, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
 import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
 
 /**
@@ -23,6 +23,8 @@ import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
  * GET  /admin/site-panels/:feature/:page/:part/people?q=   — a person's page: their rows across the part's tables
  * GET  /admin/site-panels/:feature/:page/:part/find?code=  — a scanner's code: the row it names
  * GET  /admin/site-panels/:feature/:page/:part/export?period= — a report's period as a CSV file
+ * PUT  /admin/site-panels/:feature/:page/layout             { order?, hidden?, own? } — the page as its owner arranges it (features:write):
+ *                                                           its parts' order, the ones hidden, parts of their own over the site's tables
  */
 const r = Router();
 
@@ -124,6 +126,18 @@ r.post(
     await saveSiteSettings(site.featureId, { [action.setting]: action.value });
     const [now] = await sitePanels(site.featureId);
     res.json(await pageView(now, page, may, optsOf(req, body.lang)));
+  }),
+);
+
+r.put(
+  "/:feature/:page/layout",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    if (!may.writeSettings) throw new AppError(403, "PERMISSION_DENIED", "Arranging the site's panel isn't yours to do", { required: ["features:write"] });
+    const saved = await saveLayout(site, page.key, req.body ?? {});
+    if (!saved.ok) throw new AppError(400, "BAD_LAYOUT", "The page can't be arranged this way", { problems: saved.problems });
+    const [now] = await sitePanels(site.featureId);
+    res.json(await pageView(now, now.panel.find((p) => p.key === page.key)!, may, optsOf(req)));
   }),
 );
 
