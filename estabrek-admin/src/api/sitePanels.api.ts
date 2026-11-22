@@ -31,7 +31,15 @@ export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSetting
 export type PanelPerson = { key: string; by: string; name: string; last: string; tables: Array<{ table: PanelTable; title: Local; columns: PanelColumn[]; rows: PanelRow[] }> };
 /** What a page asks besides its language: a calendar's month ("2026-11"), a report's period. */
 export type PanelAsk = { month?: string; period?: string };
-export type PanelPageView = { featureId: string; name: string; enabled: boolean; page: PanelPageLite; pages: PanelPageLite[]; parts: PanelPartView[] };
+/** A part as the owner's own (sites wave 1.4): what the server keeps, as the site's file writes a part. */
+export type OwnPart = Record<string, unknown> & { kind: "numbers" | "view" | "chart"; key: string };
+/** What arranging a page needs: every part (hidden ones too, the owner's own with what they are) and the site's tables. */
+export type PanelArrange = {
+  parts: Array<{ key: string; kind: string; label: Local | null; hidden: boolean; own: boolean; part?: OwnPart }>;
+  tables: Array<{ key: string; ref: string; slug: string; name: Local | null; fields: Array<{ id: string; type: string; name: Local | null; options?: Array<{ id: string; name?: Local }> }> }>;
+};
+export type PanelLayoutBody = { order: string[]; hidden: string[]; own: OwnPart[] };
+export type PanelPageView = { featureId: string; name: string; enabled: boolean; page: PanelPageLite; pages: PanelPageLite[]; parts: PanelPartView[]; /** Only for whoever may change the site's settings. */ arrange?: PanelArrange };
 
 const BASE = "/admin/site-panels";
 const enc = encodeURIComponent;
@@ -61,6 +69,10 @@ export async function exportReport(featureId: string, page: string, part: string
   const res = await api.get(`${at(featureId, page, part)}/export`, { params: { period, lang }, responseType: "blob" });
   const name = /filename="([^"]+)"/.exec(String(res.headers["content-disposition"] ?? ""))?.[1] ?? "report.csv";
   return { blob: res.data as Blob, name };
+}
+/** The page as its owner arranges it (400: `details.problems`): the page as it is after. */
+export async function saveLayout(featureId: string, page: string, body: PanelLayoutBody, lang: string, ask: PanelAsk = {}) {
+  return (await api.put(`${BASE}/${enc(featureId)}/${enc(page)}/layout`, body, { params: { lang, ...ask } })).data as PanelPageView;
 }
 /** A queue's button pressed on one row: the page as it is after. */
 export async function decide(featureId: string, page: string, part: string, row: string, decision: string, lang: string) {

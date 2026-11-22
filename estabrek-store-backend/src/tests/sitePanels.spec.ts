@@ -245,3 +245,72 @@ describe("A site's panel, its other parts", () => {
     await clean();
   });
 });
+
+describe("A site's panel as its owner arranges it", () => {
+  test("parts reordered, hidden, and one of their own; what can't be arranged is said; an upgrade keeps it and its new parts come after", async () => {
+    const file = sites.siteFile("site-restaurant", { lang: "en" });
+    const res = await request(app).post(`${at}/my-features/templates/install`).send({ template: file, lang: "en" });
+    expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(201);
+    const id = res.body.id as string;
+    made.push(id);
+    const ids: Obj = (await prisma.feature.findUnique({ where: { id }, select: { template: true } }))!.template!.ids;
+    await request(app).put(`${at}/my-features/${id}`).send({ enabled: true }).expect(200);
+
+    // What arranging needs, for whoever may change the site's settings: every part, and the site's tables.
+    const today = (await request(app).get(`${at}/site-panels/${id}/today?lang=en`).expect(200)).body;
+    expect(today.arrange.parts.map((x: Obj) => [x.key, x.kind, x.hidden, x.own])).toEqual([["numbers", "numbers", false, false], ["messages", "queue", false, false], ["bookings", "queue", false, false], ["actions", "actions", false, false]]);
+    expect(today.arrange.tables.map((t: Obj) => t.key)).toContain("offers");
+    expect(today.arrange.tables.find((t: Obj) => t.key === "bookings").fields.map((f: Obj) => f.id)).toContain("status");
+
+    const own = { kind: "view", key: "myoffers", title: { en: "The menu at a glance" }, table: "@table:offers", columns: ["title", "price"], sort: { field: "$createdAt", dir: "desc" }, limit: 20 };
+    const put = (body: Obj, auth?: string) => {
+      const r = request(app).put(`${at}/site-panels/${id}/today/layout?lang=en`);
+      return (auth ? r.set("Authorization", auth) : r).send(body);
+    };
+    // Out of shape: a part that isn't the page's, an own key not "my…", a field the table hasn't, the settings as an own part.
+    for (const [body, said] of [
+      [{ order: ["numbers", "nope"] }, 'This page has no part "nope"'],
+      [{ own: [{ ...own, key: "offers2" }] }, 'An own part\'s key is "my" and small letters or digits'],
+      [{ own: [{ ...own, columns: ["title", "colour"] }] }, '"myoffers": the table "offers" has no field "colour"'],
+      [{ own: [{ kind: "settings", key: "mysettings", keys: ["hours"] }] }, 'A "settings" part is the site\'s own'],
+    ] as Array<[Obj, string]>) {
+      const bad = await put(body).expect(400);
+      expect(bad.body.details.problems.map((p: Obj) => p.message), JSON.stringify(body)).toContain(said);
+    }
+    // Arranged: the quick actions first, the messages hidden, the owner's table after the numbers.
+    const order = ["actions", "bookings", "numbers", "myoffers", "messages"];
+    const after = (await put({ order, hidden: ["messages"], own: [own] }).expect(200)).body;
+    expect(after.parts.map((p: Obj) => p.key)).toEqual(["actions", "bookings", "numbers", "myoffers"]);
+    const mine = after.parts.find((p: Obj) => p.key === "myoffers");
+    expect(mine).toMatchObject({ kind: "view", total: 8 });
+    expect(mine.columns.map((c: Obj) => c.id)).toEqual(["title", "price"]);
+    expect(after.arrange.parts.find((x: Obj) => x.key === "messages")).toMatchObject({ hidden: true, own: false });
+    expect(after.arrange.parts.find((x: Obj) => x.key === "myoffers")).toMatchObject({ own: true, part: own });
+
+    // A member who may only read the bookings: the arranged page, no arranging.
+    const reader = await member("arranger-reader", [tablePermission(ids.table.bookings, "read")]);
+    const seen = (await request(app).get(`${at}/site-panels/${id}/today`).set("Authorization", reader).expect(200)).body;
+    expect(seen.parts.map((p: Obj) => p.key)).toEqual(["bookings", "numbers"]);
+    expect(seen.arrange).toBeUndefined();
+    await put({ order }, reader).expect(403);
+
+    // Every part of a page hidden: whoever arranges still finds it (to bring them back), the others don't.
+    const lists = (await request(app).get(`${at}/site-panels/${id}/lists`).expect(200)).body;
+    const every = lists.arrange.parts.map((x: Obj) => x.key);
+    const empty = (await request(app).put(`${at}/site-panels/${id}/lists/layout`).send({ hidden: every }).expect(200)).body;
+    expect(empty.parts).toEqual([]);
+    expect((await request(app).get(`${at}/site-panels`).expect(200)).body.sites.find((x: Obj) => x.featureId === id).pages.map((p: Obj) => p.key)).toContain("lists");
+    expect((await request(app).get(`${at}/site-panels`).set("Authorization", reader).expect(200)).body.sites.find((x: Obj) => x.featureId === id).pages.map((p: Obj) => p.key)).not.toContain("lists");
+
+    // Upgraded to a newer file with a new part on «today»: the owner's arrangement stays, the new part comes after it.
+    const newer = structuredClone(file);
+    newer.version = "9.0.0";
+    newer.panel[0].parts.push({ kind: "view", key: "extra", title: { en: "Extra" }, table: "@table:offers", columns: ["title"] });
+    const up = await request(app).post(`${at}/my-features/${id}/upgrade`).send({ template: newer, lang: "en" });
+    expect(up.status, JSON.stringify(up.body).slice(0, 300)).toBe(200);
+    const upgraded = (await request(app).get(`${at}/site-panels/${id}/today?lang=en`).expect(200)).body;
+    expect(upgraded.parts.map((p: Obj) => p.key)).toEqual(["actions", "bookings", "numbers", "myoffers", "extra"]);
+    expect((await request(app).get(`${at}/site-panels/${id}/lists`).expect(200)).body.parts).toEqual([]);
+    await clean();
+  });
+});

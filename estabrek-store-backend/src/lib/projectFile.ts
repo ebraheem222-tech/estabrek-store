@@ -107,6 +107,8 @@ const ProjectFeature = z
     template: z.unknown().optional(),
     /** A whole site's settings as its owner set them (lib/siteSettings.ts; checked against its file when read). */
     settings: z.record(z.string().max(40), z.unknown()).optional(),
+    /** A whole site's panel as its owner arranged it (lib/sitePanel.ts; checked when the panel is drawn). */
+    panelLayout: z.unknown().optional(),
   })
   .strict();
 const ProjectNeeds = z
