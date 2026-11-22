@@ -220,4 +220,34 @@ describe("«What kind of site is it?» in the store setup", () => {
     next();
     expect(await screen.findByTestId("setup-pack-fashion")).toBeInTheDocument();
   });
+
+  test("a copy made with a site picked for it (نسخ الزباين): the kind step opens on that site, with the store's name, and another may be picked", async () => {
+    m.status.mockResolvedValue({ needed: true, owner: true, hasHome: false, counts: {}, mainLanguage: "en", startSite: "site-dental-clinic" });
+    m.settings.mockResolvedValue({ siteName: "Shifa", header: { identity: { name: { ar: "", en: "Shifa", he: "" } } }, logoUrl: null });
+    start();
+    await screen.findByTestId("setup-shop-ready");
+    next();
+    const kind = await screen.findByTestId("setup-kind");
+    expect(kind.getAttribute("data-picked")).toBe("site-dental-clinic");
+    expect(screen.getByTestId("setup-kind-site-dental-clinic").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByTestId("setup-kind-suggested").textContent).toContain("picked «Dental clinic» for you");
+    next();
+    expect(((await screen.findByTestId("sites-biz-name")) as HTMLInputElement).value).toBe("Shifa");
+    // Back, and picked otherwise: the pick is the owner's (it isn't put back).
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(await screen.findByTestId("setup-kind-store"));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    await screen.findByTestId("setup-shop-ready");
+    next();
+    expect((await screen.findByTestId("setup-kind")).getAttribute("data-picked")).toBe("store");
+  });
+
+  test("a site key this admin doesn't know, or none: the kind step opens on «an online store»", async () => {
+    m.status.mockResolvedValue({ needed: true, owner: true, hasHome: false, counts: {}, mainLanguage: "en", startSite: "site-moon-base" });
+    start();
+    await screen.findByTestId("setup-shop-ready");
+    next();
+    expect((await screen.findByTestId("setup-kind")).getAttribute("data-picked")).toBe("store");
+    expect(screen.queryByTestId("setup-kind-suggested")).toBeNull();
+  });
 });

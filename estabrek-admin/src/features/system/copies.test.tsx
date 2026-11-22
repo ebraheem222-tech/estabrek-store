@@ -201,6 +201,39 @@ describe("Client copies", () => {
     expect(screen.queryByTestId("copy-welcome")).toBeNull();
   });
 
+  test("a whole site picked for the client: their setup opens on it; the plan, the making and the copies say which", async () => {
+    const opens: CopyPlan = { ...READY, input: { ...READY.input, startSite: "site-restaurant" }, steps: READY.steps.map((s) => (s.id === "owner" ? { ...s, facts: [...s.facts, ["opens", "site-restaurant"]] } : s)) };
+    m.api.planCopy.mockResolvedValue(opens);
+    m.api.makeCopy.mockResolvedValue({ ...copy("making", 2), startSite: "site-restaurant" });
+    m.api.getCopy.mockResolvedValue({ ...copy("making", 2), startSite: "site-restaurant" });
+    show();
+    await screen.findByTestId("copies-form");
+    // None picked: they choose at their first setup.
+    const pick = screen.getByTestId("copies-start-site") as HTMLSelectElement;
+    expect(pick.value).toBe("");
+    expect(screen.getByTestId("copies-start-site-note").textContent).toContain("asks them");
+    // Every whole site, under its field.
+    expect(within(pick).getAllByRole("option").length).toBe(13);
+    expect(pick.querySelector('optgroup[label="Food and drink"] option[value="site-restaurant"]')?.textContent).toBe("Restaurant");
+    fireEvent.change(pick, { target: { value: "site-restaurant" } });
+    expect(screen.getByTestId("copies-start-site-note").textContent).toContain("opens with this site picked");
+    type("copies-label", "Abu Samir");
+    type("copies-server", "rose-api");
+    type("copies-site", "rose");
+    fireEvent.click(screen.getByTestId("copies-plan-ask"));
+    await waitFor(() => expect(m.api.planCopy).toHaveBeenCalledWith(expect.objectContaining({ startSite: "site-restaurant" })));
+    // The owner's step says it by its name.
+    expect((await screen.findByTestId("copies-opens")).textContent).toBe("Restaurant");
+    expect(within(screen.getByTestId("copies-step-owner")).getByText("Its setup opens on")).toBeTruthy();
+    // Made with it.
+    owner();
+    fireEvent.click(screen.getByTestId("copies-agree"));
+    m.api.listCopies.mockResolvedValue([{ ...copy("making", 2), startSite: "site-restaurant" }]);
+    fireEvent.click(screen.getByTestId("copies-make-go"));
+    await waitFor(() => expect(m.api.makeCopy).toHaveBeenCalledWith(expect.objectContaining({ startSite: "site-restaurant", owner: expect.objectContaining({ email: "rana@rose.example" }) })));
+    expect((await screen.findByTestId("copies-made-rose-opens")).textContent).toContain("Restaurant");
+  });
+
   test("a service that says no now: its check shown again, nothing made", async () => {
     m.api.makeCopy.mockRejectedValue({ response: { data: { error: "COPY_NOT_READY", details: { checks: [...READY.checks.slice(0, 2), { id: "railway.domain", kind: "railway", ok: false, why: "Domain is not available" }] } } } });
     await planReady();

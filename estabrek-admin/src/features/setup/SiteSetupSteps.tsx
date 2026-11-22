@@ -7,13 +7,14 @@ import { say } from "../../studio/say";
 import { SITES, SITE_FIELDS, type SiteBlueprint, type SiteField } from "../../studio/templates/sites";
 import { siteLine } from "../myFeatures/sitesText";
 import { runSteps, type SiteRun, type SiteRunStep } from "./siteSetupRun";
+import { siteKindName as kindOf } from "./siteSetup";
 
 const card = (on: boolean) => `flex w-full flex-col items-start gap-1 rounded-2xl border p-4 text-start transition ${on ? "border-accent-400 bg-accent-500/15" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.2]"}`;
-/** "مطعم" out of "مطعم: زيتونة": the kind of site, without the sample business. */
-const kindOf = (bp: SiteBlueprint, lang: "ar" | "en" | "he") => bp.name[lang].split(":")[0].trim();
-
-/** «شو نوع موقعك؟»: an online store (null), or a whole site made for one kind of business. */
-export function KindStep({ picked, onPick }: { picked: SiteBlueprint | null; onPick: (bp: SiteBlueprint | null) => void }) {
+/**
+ * «شو نوع موقعك؟»: an online store (null), or a whole site made for one kind of business. `suggested`: the site
+ * picked for this store when its copy was made (نسخ الزباين), which the step opens on; any other is still a click away.
+ */
+export function KindStep({ picked, onPick, suggested = null }: { picked: SiteBlueprint | null; onPick: (bp: SiteBlueprint | null) => void; suggested?: SiteBlueprint | null }) {
   const lang = adminLang();
   const fields = (Object.keys(SITE_FIELDS) as SiteField[]).filter((f) => SITES.some((s) => s.field === f));
   return (
@@ -23,6 +24,11 @@ export function KindStep({ picked, onPick }: { picked: SiteBlueprint | null; onP
         <p className="mt-1 text-sm text-white/60">
           {say("متجر بيبيع منتجات، أو موقع كامل لشغلك (مطعم، عيادة، صالون…) بصفحاته وجداوله ونماذجه جاهزين، بتفاصيلك إنت. بتقدر تزيد التاني بعدين.|A store that sells products, or a whole site for your business (a restaurant, a clinic, a salon…) with its pages, tables and forms ready, with your own details. You can add the other later.|חנות שמוכרת מוצרים, או אתר שלם לעסק שלכם (מסעדה, מרפאה, סלון…) עם עמודים, טבלאות וטפסים מוכנים, עם הפרטים שלכם. אפשר להוסיף את השני אחר כך.")}
         </p>
+        {suggested ? (
+          <p className="mt-3 rounded-xl border border-accent-400/30 bg-accent-500/10 px-3 py-2 text-sm" data-testid="setup-kind-suggested" data-site={suggested.key}>
+            {say("اللي عمل نسختك اختارلك «{kind}»، وفيك تختار غيره.|Whoever made your copy picked «{kind}» for you; you can pick another.|מי שהכין את העותק שלכם בחר עבורכם «{kind}», ואפשר לבחור אחר.").replace("{kind}", kindOf(suggested, lang))}
+          </p>
+        ) : null}
       </div>
       <div role="radiogroup" aria-label={say("نوع الموقع|Kind of site|סוג האתר")} className="space-y-6">
         <button type="button" role="radio" aria-checked={!picked} onClick={() => onPick(null)} className={card(!picked)} data-testid="setup-kind-store">

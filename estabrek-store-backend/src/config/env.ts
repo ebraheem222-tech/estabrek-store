@@ -115,6 +115,11 @@ const EnvSchema = z.object({
    * press makes one for each client's copy. Unset: one is made when the server starts and written to its log.
    */
   SETUP_CODE: z.string().min(16).optional(),
+  /**
+   * The whole site a client's copy opens its first setup on (the admin's key for it, e.g. site-restaurant),
+   * picked by the press while the copy is made (lib/press.ts startSiteOf). Unset: the setup asks.
+   */
+  SETUP_SITE: z.string().max(200).optional(),
 
   // Backups (admin → النسخ الاحتياطي). The files are encrypted with this key; keep a copy of it
   // somewhere safe — without it a backup can't be opened. Unset: a key made from JWT_SECRET.

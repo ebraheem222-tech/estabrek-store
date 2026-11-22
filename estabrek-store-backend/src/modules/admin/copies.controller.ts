@@ -4,7 +4,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { AppError } from "../../utils/httpError.js";
 import { prisma } from "../../lib/prisma.js";
 import { readyOfKind } from "../../lib/fnReady.js";
-import { BRANCH_RULE, NEON_REGIONS, PRESS_KINDS, PRESS_LIMITS, REPO_RULE, copyPlan, nameProblem, tidyName, type CopyInput, type PressKind } from "../../lib/press.js";
+import { BRANCH_RULE, NEON_REGIONS, PRESS_KINDS, PRESS_LIMITS, REPO_RULE, START_SITE_RULE, copyPlan, nameProblem, tidyName, type CopyInput, type PressKind } from "../../lib/press.js";
 import { checkCopy, type Via } from "../../lib/pressCheck.js";
 import { aliveOf, copyView, isMaking, startCopy, tryCopyAgain } from "../../lib/pressMake.js";
 
@@ -16,7 +16,7 @@ import { aliveOf, copyView, isMaking, startCopy, tryCopyAgain } from "../../lib/
  *
  * GET  /   — the connections of each kind to pick from (never a key), this store's own repository
  *            and branch (what a copy is built from), Neon's regions, the limits
- * POST /plan { label, server, site, repo?, branch?, region?, via? } — what making it will do, each
+ * POST /plan { label, server, site, repo?, branch?, region?, startSite?, via? } — what making it will do, each
  *            service asked whether what it needs is there (only read: nothing is made)
  * POST /make { …the same, owner: { name, email, password }, agree: true } — asked again, and when
  *            every service said yes, made (lib/pressMake.ts; 202: it goes on by itself, the page
@@ -50,6 +50,8 @@ const Fields = {
   repo: z.string().trim().max(160).optional(),
   branch: z.string().trim().max(100).optional(),
   region: z.enum(NEON_REGIONS).optional(),
+  // The whole site its first setup opens on (the admin's key for it); none: it asks, an online store picked.
+  startSite: z.string().trim().max(60).regex(START_SITE_RULE, "A site's key, like site-restaurant").nullable().optional(),
   via: z.object(Object.fromEntries(PRESS_KINDS.map((k) => [k, z.string().max(40).optional()])) as Record<PressKind, z.ZodOptional<z.ZodString>>).strict().optional(),
 };
 const PlanBody = z.object(Fields).strict();
@@ -96,7 +98,7 @@ async function readAsk(body: z.infer<typeof PlanBody>): Promise<{ input: CopyInp
   const branch = body.branch || own?.branch || "main";
   if (!REPO_RULE.test(repo)) throw new AppError(400, "REPO_INVALID", "The repository is owner/name, as GitHub shows it", { at: "repo" });
   if (!BRANCH_RULE.test(branch)) throw new AppError(400, "BRANCH_INVALID", "The branch is a name like main", { at: "branch" });
-  const input: CopyInput = { label: body.label, server, site, repo, branch, region: body.region ?? "aws-eu-central-1" };
+  const input: CopyInput = { label: body.label, server, site, repo, branch, region: body.region ?? "aws-eu-central-1", startSite: body.startSite || null };
   // The picked connection of each kind, or the only one there is.
   const all = await connections();
   const via: Via = {};

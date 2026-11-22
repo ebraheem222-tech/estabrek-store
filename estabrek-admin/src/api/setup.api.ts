@@ -14,6 +14,8 @@ export type SetupStatus = {
   hasDesign?: boolean;
   owner: boolean;
   mainLanguage: "ar" | "en" | "he";
+  /** A client's copy made with a whole site picked for it (its server's SETUP_SITE): the setup opens on it. Null once it is set up. */
+  startSite?: string | null;
 };
 
 export type SetupResult = {

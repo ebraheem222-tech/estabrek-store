@@ -24,7 +24,7 @@ import { AssistantStep, MediaStep, ShopStep } from "./SetupExtras";
 import { followShop, getShopLink } from "../../api/shop.api";
 import { personasFor } from "../../../../estabrek-storefront/src/lib/personas";
 import { say as sayAll } from "../../studio/say";
-import { buildChosen, shellOf, withChoices, type SiteBlueprint } from "../../studio/templates/sites";
+import { buildChosen, shellOf, siteByKey, withChoices, type SiteBlueprint } from "../../studio/templates/sites";
 import { choicesOf, choicesOrNull, siteForm, stillSample, words3, type SiteForm } from "../myFeatures/siteForm";
 import { SiteAbout, SiteLook, SiteRuns } from "../myFeatures/SiteSteps";
 import { KindStep, SiteDone, SiteFinish } from "./SiteSetupSteps";
@@ -132,7 +132,15 @@ export default function SetupWizard() {
   // be, the setup stays there with the reason.
   const mediaSave = useRef<(() => Promise<boolean>) | null>(null);
   const [stepping, setStepping] = useState(false);
+  // A client's copy made with a whole site picked for it (نسخ الزباين, its server's SETUP_SITE): «شو نوع موقعك؟»
+  // opens with that site picked, once (with the store's own name by then); the owner may still pick another.
+  const suggested = !designEntry && status?.startSite ? siteByKey(status.startSite) : null;
+  const offered = useRef(false);
   const next = async () => {
+    if (step === "shop" && suggested && !offered.current) {
+      offered.current = true;
+      if (!site) pickKind(suggested);
+    }
     if (step === "media" && mediaSave.current) {
       setStepping(true);
       const kept = await mediaSave.current().finally(() => setStepping(false));
@@ -278,7 +286,7 @@ export default function SetupWizard() {
 
         {step === "shop" ? <ShopStep onReady={next} onReadyChange={setShopReady} /> : null}
 
-        {step === "kind" ? <KindStep picked={site} onPick={pickKind} /> : null}
+        {step === "kind" ? <KindStep picked={site} onPick={pickKind} suggested={suggested} /> : null}
 
         {step === "about" && site && form ? (
           <section className="mx-auto max-w-3xl space-y-5">

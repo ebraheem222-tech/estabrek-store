@@ -83,7 +83,7 @@ describe("Planning a client's copy", () => {
     await connect("vercel", { team: "team_abc123" });
     await connect("cloudflare", { account: ACCOUNT });
     const out = (await plan({ server: " Rose API ", site: "Rose" })).body;
-    expect(out.input).toEqual({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", branch: "main", region: "aws-eu-central-1" });
+    expect(out.input).toEqual({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", branch: "main", region: "aws-eu-central-1", startSite: null });
     expect(out.urls).toEqual({ api: "https://rose-api.up.railway.app", shop: "https://rose.vercel.app", admin: "https://rose-admin.pages.dev" });
     expect(out.checks.map((c: { id: string; ok: boolean }) => [c.id, c.ok])).toEqual([
       ["neon.reach", true],
@@ -106,6 +106,12 @@ describe("Planning a client's copy", () => {
     expect(of("api.cloudflare.com")[0].url).toBe(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/pages/projects/rose-admin`);
     expect(of("backboard.railway.com").map((s) => JSON.parse(s.body!).variables)).toEqual([{ r: "acme/store" }, { d: "rose-api.up.railway.app" }]);
     expect(of("backboard.railway.com")[0].headers.authorization).toBe(`Bearer ${KEYS.railway}`);
+
+    // A whole site picked for the client: its setup opens on it, and its server is told which.
+    const restaurant = (await plan({ startSite: "site-restaurant" })).body;
+    expect(restaurant.input.startSite).toBe("site-restaurant");
+    expect(restaurant.steps[2].facts).toContainEqual(["opens", "site-restaurant"]);
+    expect(restaurant.steps[1].variables).toContainEqual({ name: "SETUP_SITE", from: "fixed", value: "site-restaurant" });
   });
 
   test("what isn't there is said, each in its own words; the plan still shows", async () => {
@@ -145,6 +151,7 @@ describe("Planning a client's copy", () => {
     expect((await plan({ site: "9shop" }, 400)).body).toMatchObject({ error: "NAME_INVALID", message: "A name starts with a letter", details: { at: "site" } });
     expect((await plan({ repo: "not a repo" }, 400)).body).toMatchObject({ error: "REPO_INVALID" });
     expect((await plan({ region: "mars-1" }, 400)).body.error).toBeDefined();
+    for (const startSite of ["restaurant", "site-../x", "SITE-X", 3]) expect((await plan({ startSite }, 400)).body.error, String(startSite)).toBeDefined();
     expect(sent).toEqual([]);
   });
 
