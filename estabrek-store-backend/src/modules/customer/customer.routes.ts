@@ -8,6 +8,8 @@ import {
   addToWishlist,
   createAddress,
   deleteAddress,
+  discordLogin,
+  discordStart,
   getMe,
   getWishlist,
   googleLogin,
@@ -19,6 +21,9 @@ import {
   refreshLogin,
   removeFromWishlist,
   startLogin,
+  steamLink,
+  steamStart,
+  steamUnlink,
   updateAddress,
   updateMe,
   verifyLogin,
@@ -54,6 +59,19 @@ r.post("/auth/google", validate({ body: z.object({ credential: z.string().min(20
   res.json(await googleLogin(req.body.credential, ctxOf(req)));
 }));
 
+// Discord (sign in) and Steam (link) for a game server's players (lib/socialSignIn.ts); each off until the owner sets it up.
+// The shop's own routes send the shopper there and take them back; only those callbacks are accepted.
+const Back = z.string().trim().max(200).optional();
+r.post("/auth/discord/start", validate({ body: z.object({ redirectUri: z.string().trim().url().max(300), back: Back }) }), asyncHandler(async (req, res) => {
+  res.json(await discordStart(req.body.redirectUri, req.body.back ?? "/"));
+}));
+r.post("/auth/discord", validate({ body: z.object({ code: z.string().trim().min(10).max(200), state: z.string().min(20).max(2000) }) }), asyncHandler(async (req, res) => {
+  res.json(await discordLogin(req.body.code, req.body.state, ctxOf(req)));
+}));
+r.post("/auth/steam", validate({ body: z.object({ params: z.record(z.string().max(80), z.string().max(2000)).refine((p) => Object.keys(p).length <= 20, "Too many"), state: z.string().min(20).max(2000) }) }), asyncHandler(async (req, res) => {
+  res.json(await steamLink(req.body.params, req.body.state));
+}));
+
 r.post("/auth/refresh", validate({ body: z.object({ refreshToken: Token }) }), asyncHandler(async (req, res) => {
   res.json(await refreshLogin(req.body.refreshToken, ctxOf(req)));
 }));
@@ -69,6 +87,14 @@ me.use(authenticateCustomer);
 
 me.get("/", asyncHandler(async (req, res) => {
   res.json(await getMe(req.customer!.id));
+}));
+
+// Their Steam account: linked (sent to Steam and back), or unlinked.
+me.post("/steam/start", validate({ body: z.object({ returnTo: z.string().trim().url().max(300), back: z.string().trim().max(200).optional() }) }), asyncHandler(async (req, res) => {
+  res.json(await steamStart(req.customer!.id, req.body.returnTo, req.body.back ?? "/"));
+}));
+me.delete("/steam", asyncHandler(async (req, res) => {
+  res.json(await steamUnlink(req.customer!.id));
 }));
 
 me.patch(

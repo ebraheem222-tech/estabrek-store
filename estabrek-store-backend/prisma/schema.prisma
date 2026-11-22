@@ -1657,6 +1657,10 @@ model User {
   /// Their Google account's own id, once they signed in with Google (src/lib/googleSignIn.ts): the same
   /// Google account always opens this account, whatever its email becomes.
   googleSub       String?   @unique
+  /// Their Discord account's id, once they signed in with Discord (src/lib/socialSignIn.ts).
+  discordId       String?   @unique
+  /// Their SteamID64, once they linked their Steam account (src/lib/socialSignIn.ts).
+  steamId         String?   @unique
   preferredSize   String?
   /// Hex colour she picked on the site; the rose design opens in it.
   favoriteColor   String?

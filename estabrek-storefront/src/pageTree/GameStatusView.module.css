@@ -10,6 +10,10 @@
 .players span { font-size: .55em; font-weight: 500; opacity: .7; }
 .big .players { font-size: 2.1em; }
 .name { opacity: .75; font-size: .95em; }
+.discord { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .95em; }
+.discord b { font-variant-numeric: tabular-nums; }
+.discordDot { width: 8px; height: 8px; border-radius: 50%; background: #5865f2; }
+.discordOf { opacity: .65; }
 .chart { display: flex; align-items: flex-end; gap: 3px; height: 56px; }
 .bar { flex: 1 1 0; min-width: 2px; border-radius: 3px 3px 0 0; background: var(--accent, currentColor); opacity: .85; }
 .bar[data-off] { background: #ef4444; opacity: .5; }

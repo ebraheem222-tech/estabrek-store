@@ -12,21 +12,26 @@ import { tr } from "@/lib/words";
 import { toneAr } from "@/lib/words";
 import { PushSwitch } from "@/components/PushSwitch";
 import { GoogleSignIn } from "@/components/GoogleSignIn";
+import { DiscordSignIn, GameAccounts, SignInProblem } from "@/components/SocialAccounts";
 
 /**
  * حسابي: sign in with a code sent by email (no password), then her orders,
  * addresses and details. Favourites have their own page and sync on their own.
  */
-/** `googleClientId`: signing in with Google is on (admin → الزبائن → الدخول بحساب Google; lib/googleSignIn.ts). */
-export function RoseAccount({ googleClientId = null }: { googleClientId?: string | null } = {}) {
+/**
+ * `googleClientId`: signing in with Google is on (admin → الزبائن → الدخول بحساب Google; lib/googleSignIn.ts).
+ * `discord` / `steam`: signing in with Discord and linking Steam are on (a game server's site; lib/socialSignIn.ts).
+ */
+type Ways = { googleClientId: string | null; discord: boolean; steam: boolean };
+export function RoseAccount({ googleClientId = null, discord = false, steam = false }: Partial<Ways> = {}) {
   return (
     <Suspense fallback={null}>
-      <AccountInner googleClientId={googleClientId} />
+      <AccountInner googleClientId={googleClientId} discord={discord} steam={steam} />
     </Suspense>
   );
 }
 
-function AccountInner({ googleClientId }: { googleClientId: string | null }) {
+function AccountInner({ googleClientId, discord, steam }: Ways) {
   const { status } = useAccount();
   if (status === "loading") {
     return (
@@ -35,7 +40,7 @@ function AccountInner({ googleClientId }: { googleClientId: string | null }) {
       </section>
     );
   }
-  return status === "signedIn" ? <SignedIn /> : <SignIn googleClientId={googleClientId} />;
+  return status === "signedIn" ? <SignedIn steam={steam} /> : <SignIn googleClientId={googleClientId} discord={discord} />;
 }
 
 /* ============================== Sign in ============================== */
@@ -44,7 +49,7 @@ function safeNext(v: string | null) {
   return v && v.startsWith("/") && !v.startsWith("//") ? v : null;
 }
 
-function SignIn({ googleClientId }: { googleClientId: string | null }) {
+function SignIn({ googleClientId, discord }: { googleClientId: string | null; discord: boolean }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const { sendCode, verifyCode } = useAccount();
@@ -124,9 +129,11 @@ function SignIn({ googleClientId }: { googleClientId: string | null }) {
       </p>
         <p className="rose-account-muted"><Link href="/track">{tr(lang, "طلبتي بدون حساب؟ تابعي طلبكِ من هون", "Ordered without an account? Track your order here")}</Link></p>
 
-      {step === "email" && googleClientId ? (
+      {step === "email" ? <SignInProblem lang={lang} /> : null}
+      {step === "email" && (googleClientId || discord) ? (
         <>
-          <GoogleSignIn clientId={googleClientId} lang={lang} onSignedIn={welcome} />
+          {googleClientId ? <GoogleSignIn clientId={googleClientId} lang={lang} onSignedIn={welcome} /> : null}
+          {discord ? <DiscordSignIn lang={lang} next={next} /> : null}
           <p className="rose-account-or" data-testid="account-or">
             <span>{tr(lang, "أو بكود على الإيميل", "or with an email code")}</span>
           </p>
@@ -193,7 +200,7 @@ function SignIn({ googleClientId }: { googleClientId: string | null }) {
 
 type Tab = "orders" | "addresses" | "details";
 
-function SignedIn() {
+function SignedIn({ steam }: { steam: boolean }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const { user, signOut } = useAccount();
@@ -231,6 +238,7 @@ function SignedIn() {
         </Link>
       </nav>
 
+      <GameAccounts lang={lang} steam={steam} />
       {tab === "orders" ? <Orders /> : tab === "addresses" ? <Addresses /> : <Details />}
     </section>
   );

@@ -10,6 +10,8 @@ import { policy } from "../../lib/securityPolicy.js";
 import { sendEmail } from "../outbox/sender/email.js";
 import { shopperLanguage } from "../../lib/shopperLanguage.js";
 import { GoogleTokenError, googleOf, verifyGoogleToken } from "../../lib/googleSignIn.js";
+import { DISCORD_SECRET, SocialError, discordProfile, discordUrl, readState, socialOf, steamId, steamUrl } from "../../lib/socialSignIn.js";
+import { open as openSecret } from "../../lib/secretBox.js";
 
 /**
  * Shopper accounts: sign in with a 6-digit code sent by email (no password),
@@ -120,6 +122,95 @@ export async function googleLogin(credential: string, ctx: { ip?: string; ua?: s
   return { ...tokens, user: toMe(user), isNew: !existing };
 }
 
+/* ---------- Discord (sign in) and Steam (link): lib/socialSignIn.ts ---------- */
+
+async function socialSettings() {
+  const settings = await prisma.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { header: true } });
+  return socialOf(settings?.header ?? null);
+}
+const socialFail = (e: unknown) => {
+  if (!(e instanceof SocialError)) return fail(503, "SOCIAL_UNREACHABLE", "Discord or Steam couldn't be reached; try again in a moment");
+  const said: Record<string, [number, string]> = {
+    SOCIAL_STATE: [400, "This sign-in ran out or was already used; start again"],
+    SOCIAL_RETURN: [400, "Not this shop's own address to come back to"],
+    DISCORD_EMAIL: [401, "Discord doesn't vouch for this account's email"],
+    DISCORD_REFUSED: [401, "Discord's sign-in didn't check out; try again"],
+    STEAM_REFUSED: [401, "Steam's answer didn't check out; try again"],
+  };
+  const [status, message] = said[e.message] ?? [400, "It didn't check out"];
+  return fail(status, e.message, message);
+};
+
+/** Where the shopper goes to sign in with Discord (404 while it is off). */
+export async function discordStart(redirectUri: string, back: string) {
+  const s = await socialSettings();
+  if (!s.discord.on || !s.discord.clientId) throw fail(404, "DISCORD_OFF", "Signing in with Discord is switched off");
+  try {
+    return { url: discordUrl(s.discord.clientId, redirectUri, back) };
+  } catch (e) {
+    throw socialFail(e);
+  }
+}
+
+/** Discord sent the shopper back with a code: signed in (an account by their Discord, else their verified email, else a new one). */
+export async function discordLogin(code: string, rawState: string, ctx: { ip?: string; ua?: string }) {
+  const s = await socialSettings();
+  if (!s.discord.on || !s.discord.clientId) throw fail(404, "DISCORD_OFF", "Signing in with Discord is switched off");
+  const kept = await prisma.fnSecret.findUnique({ where: { name: DISCORD_SECRET }, select: { sealed: true } });
+  if (!kept) throw fail(409, "DISCORD_SECRET", `The secret ${DISCORD_SECRET} isn't kept yet (admin → الاتصالات والأسرار)`);
+  let profile;
+  let back = "/";
+  try {
+    const state = readState(rawState, "discord");
+    back = state.b;
+    profile = await discordProfile(code, state, s.discord.clientId, openSecret(kept.sealed));
+  } catch (e) {
+    throw socialFail(e);
+  }
+  const linked = await prisma.user.findUnique({ where: { discordId: profile.id } });
+  const byEmail = linked ? null : await prisma.user.findUnique({ where: { email: profile.email } });
+  if (byEmail?.discordId && byEmail.discordId !== profile.id) throw fail(409, "DISCORD_OTHER_ACCOUNT", "This email's account is linked to another Discord account");
+  const existing = linked ?? byEmail;
+  if (existing?.status === "SUSPENDED") throw fail(403, "ACCOUNT_SUSPENDED", "This account is turned off");
+  const user = existing
+    ? await prisma.user.update({ where: { id: existing.id }, data: { lastLoginAt: new Date(), emailVerifiedAt: existing.emailVerifiedAt ?? new Date(), discordId: profile.id, ...(!existing.name.trim() && profile.name ? { name: profile.name } : {}) } })
+    : await prisma.user.create({ data: { email: profile.email, name: profile.name, emailVerifiedAt: new Date(), lastLoginAt: new Date(), discordId: profile.id } });
+  const tokens = await newSession(user.id, ctx);
+  return { ...tokens, user: toMe(user), isNew: !existing, back };
+}
+
+/** Where a signed-in shopper goes to link their Steam account (404 while it is off). */
+export async function steamStart(userId: string, returnTo: string, back: string) {
+  if (!(await socialSettings()).steam.on) throw fail(404, "STEAM_OFF", "Linking a Steam account is switched off");
+  try {
+    return { url: steamUrl(userId, returnTo, back) };
+  } catch (e) {
+    throw socialFail(e);
+  }
+}
+
+/** Steam sent the shopper back: their SteamID kept on the account the state names. */
+export async function steamLink(params: Record<string, string>, rawState: string) {
+  if (!(await socialSettings()).steam.on) throw fail(404, "STEAM_OFF", "Linking a Steam account is switched off");
+  let id;
+  let state;
+  try {
+    state = readState(rawState, "steam");
+    id = await steamId(params, state);
+  } catch (e) {
+    throw socialFail(e);
+  }
+  const other = await prisma.user.findUnique({ where: { steamId: id }, select: { id: true } });
+  if (other && other.id !== state.u) throw fail(409, "STEAM_OTHER_ACCOUNT", "This Steam account is linked to another account");
+  const user = await prisma.user.update({ where: { id: state.u! }, data: { steamId: id } });
+  return { user: toMe(user), back: state.b };
+}
+
+/** Their Steam account unlinked. */
+export async function steamUnlink(userId: string) {
+  return toMe(await prisma.user.update({ where: { id: userId }, data: { steamId: null } }));
+}
+
 export async function refreshLogin(refreshToken: string, ctx: { ip?: string; ua?: string }) {
   const session = await prisma.customerSession.findUnique({
     where: { refreshTokenHash: sha256(refreshToken) },
@@ -176,6 +267,9 @@ export function toMe(u: UserRow) {
     preferredSize: u.preferredSize,
     favoriteColor: u.favoriteColor,
     marketingOptIn: u.marketingOptIn,
+    // The game accounts they play with (a game server's site): linked or not, and which.
+    discordId: (u as { discordId?: string | null }).discordId ?? null,
+    steamId: (u as { steamId?: string | null }).steamId ?? null,
     createdAt: u.createdAt,
   };
 }
