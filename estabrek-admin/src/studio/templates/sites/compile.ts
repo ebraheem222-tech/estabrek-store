@@ -32,8 +32,9 @@ export const settingsOf = (bp: SiteBlueprint): SiteSetting[] => [...(HOME_SETTIN
 
 /**
  * A blueprint's panel (its own pages in the admin's menu): «اليوم» with every number at the top, its modules'
- * queues, and the quick actions; «القوائم» with its modules' tables; «الإعدادات» with every setting. A page with
- * nothing on it is left out.
+ * queues, and the quick actions; «الحجوزات» with its calendars and boards; «الزباين» with one person's page across
+ * the tables that name them; «التقارير» with its charts and reports; «القوائم» with its modules' tables and maps;
+ * «الإعدادات» with every setting. A page with nothing on it is left out.
  */
 export function panelOf(bp: SiteBlueprint): PanelPage[] {
   const bits: PanelBits[] = [HOME_PANEL[bp.archetype]?.(bp) ?? {}, ...used(bp).map((m) => m.panel?.(bp) ?? {})];
@@ -42,8 +43,12 @@ export function panelOf(bp: SiteBlueprint): PanelPage[] {
   const today: PanelPart[] = [...(numbers.length ? [{ kind: "numbers" as const, key: "numbers", items: numbers }] : []), ...bits.flatMap((b) => b.today ?? []), ...(actions.length ? [{ kind: "actions" as const, key: "actions", title: PANEL.quick, items: actions }] : [])];
   const lists = bits.flatMap((b) => b.lists ?? []);
   const keys = settingsOf(bp).map((s) => s.key);
+  const people = bits.flatMap((b) => b.people ?? []);
   const pages: PanelPage[] = [
     { key: "today", name: PANEL.today, icon: "today", parts: today },
+    { key: "board", name: PANEL.board, icon: "calendar", parts: bits.flatMap((b) => b.board ?? []) },
+    { key: "people", name: PANEL.people, icon: "people", parts: people.length ? [{ kind: "people", key: "person", title: PANEL.person, by: "phone", name: "name", tables: people }] : [] },
+    { key: "reports", name: PANEL.reports, icon: "chart", parts: bits.flatMap((b) => b.reports ?? []) },
     { key: "lists", name: PANEL.lists, icon: "lists", parts: lists },
     { key: "settings", name: PANEL.settings, icon: "settings", parts: keys.length ? [{ kind: "settings", key: "settings", keys }] : [] },
   ];

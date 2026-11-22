@@ -69,7 +69,7 @@ describe("A whole site's own page", () => {
     m.getSitePanelPage.mockResolvedValue(today());
     show();
     expect((await screen.findByTestId("site-panel-name")).textContent).toBe("Restaurant: Zaytouna");
-    expect(m.getSitePanelPage).toHaveBeenCalledWith("f9", "today", "en");
+    expect(m.getSitePanelPage).toHaveBeenCalledWith("f9", "today", "en", {});
     expect(screen.getByTestId("site-number-bookingsNew-value").textContent).toBe("2");
     expect(screen.getByTestId("site-number-bookingsWeek-change").textContent).toBe("+2 on the week before");
     expect(within(screen.getByTestId("site-panel-pages")).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/admin/site/f9/today", "/admin/site/f9/lists"]);

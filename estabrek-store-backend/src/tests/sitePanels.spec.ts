@@ -51,18 +51,24 @@ const num = (page: Obj, key: string) => part(page, "numbers").items.find((i: Obj
 describe("A site's file declares its panel", () => {
   test("every site's panel reads only its own tables, their fields and its settings; out of shape is said", () => {
     const file = sites.siteFile("site-restaurant", { lang: "en" });
-    expect(file.panel.map((p: Obj) => p.key)).toEqual(["today", "lists", "settings"]);
+    expect(file.panel.map((p: Obj) => p.key)).toEqual(["today", "board", "people", "reports", "lists", "settings"]);
     expect(readTemplate(file).ok).toBe(true);
     const tables = file.tables.map((t: Obj) => ({ key: t.key, fields: t.fields }));
     const keys = file.settings.map((d: Obj) => d.key);
     expect(panelProblems(file.panel, tables, keys)).toEqual([]);
     const bad = structuredClone(file.panel);
-    bad[0].parts[1].table = "@table:gone";
-    bad[0].parts[1].show = ["name", "nope"];
-    bad[1].parts[0].columns = ["title", "colour"];
-    bad[2].parts[0].keys = ["hours", "commission"];
+    const pageOf = (key: string) => bad.find((p: Obj) => p.key === key);
+    pageOf("today").parts[1].table = "@table:gone";
+    pageOf("today").parts[1].show = ["name", "nope"];
+    pageOf("lists").parts[0].columns = ["title", "colour"];
+    pageOf("settings").parts[0].keys = ["hours", "commission"];
+    // A board by a field that isn't a choice, a calendar by one that isn't a date.
+    pageOf("board").parts[0].date = "name";
+    pageOf("board").parts[1].field = "phone";
     expect(panelProblems(bad, tables, keys).map((p) => p.message)).toEqual([
       '"messages" reads "gone", which isn\'t one of the site\'s tables',
+      '"calendar": "name" isn\'t a date',
+      '"board": "phone" isn\'t a choice',
       '"offers": the table "offers" has no field "colour"',
       '"settings" names "commission", which isn\'t one of the site\'s settings',
     ]);
@@ -80,14 +86,14 @@ describe("A site's panel", () => {
     expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(201);
     const id = res.body.id as string;
     made.push(id);
-    expect(res.body.panel.map((p: Obj) => p.key)).toEqual(["today", "lists", "settings"]);
+    expect(res.body.panel.map((p: Obj) => p.key)).toEqual(["today", "board", "people", "reports", "lists", "settings"]);
     const ids: Obj = (await prisma.feature.findUnique({ where: { id }, select: { template: true } }))!.template!.ids;
     await request(app).put(`${at}/my-features/${id}`).send({ enabled: true }).expect(200);
 
     // In the menu, under its name.
     const listed = (await request(app).get(`${at}/site-panels`).expect(200)).body.sites.find((s: Obj) => s.featureId === id);
     expect(listed).toMatchObject({ name: res.body.name, enabled: true });
-    expect(listed.pages.map((p: Obj) => [p.key, p.icon])).toEqual([["today", "today"], ["lists", "lists"], ["settings", "settings"]]);
+    expect(listed.pages.map((p: Obj) => [p.key, p.icon])).toEqual([["today", "today"], ["board", "calendar"], ["people", "people"], ["reports", "chart"], ["lists", "lists"], ["settings", "settings"]]);
 
     // Two booking requests come in from the shop.
     const bookings = await prisma.collection.findUniqueOrThrow({ where: { id: ids.table.bookings }, select: { slug: true } });
@@ -123,7 +129,7 @@ describe("A site's panel", () => {
 
     // Its lists: the menu, newest bookings first; its settings, as declared.
     const lists = (await request(app).get(`${at}/site-panels/${id}/lists?lang=en`).expect(200)).body;
-    expect(lists.parts.map((p: Obj) => [p.kind, p.key])).toEqual([["view", "offers"], ["view", "messages"], ["view", "bookings"]]);
+    expect(lists.parts.map((p: Obj) => [p.kind, p.key])).toEqual([["view", "offers"], ["map", "branches"], ["view", "messages"], ["view", "bookings"]]);
     expect(part(lists, "bookings").rows.map((r: Obj) => r.cells.name)).toEqual([{ en: "Sami" }, { en: "Rana" }]);
     expect(part(lists, "offers").total).toBeGreaterThan(0);
     const settings = (await request(app).get(`${at}/site-panels/${id}/settings`).expect(200)).body;
@@ -132,7 +138,7 @@ describe("A site's panel", () => {
     // A member given the bookings table only, to read: today's booking numbers and queue (no buttons), no settings, no actions.
     const reader = await member("reader", [tablePermission(ids.table.bookings, "read")]);
     const theirs = (await request(app).get(`${at}/site-panels`).set("Authorization", reader).expect(200)).body.sites.find((s: Obj) => s.featureId === id);
-    expect(theirs.pages.map((p: Obj) => p.key)).toEqual(["today", "lists"]);
+    expect(theirs.pages.map((p: Obj) => p.key)).toEqual(["today", "board", "people", "reports", "lists"]);
     const seen = (await request(app).get(`${at}/site-panels/${id}/today`).set("Authorization", reader).expect(200)).body;
     expect(seen.parts.map((p: Obj) => p.key)).toEqual(["numbers", "bookings"]);
     expect(part(seen, "numbers").items.map((i: Obj) => i.key)).toEqual(["bookingsNew", "bookingsWeek"]);
@@ -147,6 +153,95 @@ describe("A site's panel", () => {
     const other = await member("other", ["dashboard:read"]);
     expect((await request(app).get(`${at}/site-panels`).set("Authorization", other).expect(200)).body.sites.some((s: Obj) => s.featureId === id)).toBe(false);
     await request(app).get(`${at}/site-panels/${id}/today`).set("Authorization", other).expect(404);
+    await clean();
+  });
+});
+
+describe("A site's panel, its other parts", () => {
+  test("a board and a calendar move a booking; a customer's page finds them; charts, reports and their file; the branches' map; a scanner", async () => {
+    const res = await request(app).post(`${at}/my-features/templates/install`).send({ template: sites.siteFile("site-restaurant", { lang: "en" }), lang: "en" });
+    expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(201);
+    const id = res.body.id as string;
+    made.push(id);
+    const ids: Obj = (await prisma.feature.findUnique({ where: { id }, select: { template: true } }))!.template!.ids;
+    await request(app).put(`${at}/my-features/${id}`).send({ enabled: true }).expect(200);
+    const slugOf = async (key: string) => (await prisma.collection.findUniqueOrThrow({ where: { id: ids.table[key] }, select: { slug: true } })).slug;
+    const [bookings, messages] = [await slugOf("bookings"), await slugOf("messages")];
+    const month = new Date().toISOString().slice(0, 7);
+    const day = `${month}-15`;
+    await request(app).post(`/v1/data/${bookings}`).send({ values: { name: "Rana", phone: "050-123-4567", service: "dinner", day }, lang: "en" }).expect(201);
+    await request(app).post(`/v1/data/${bookings}`).send({ values: { name: "Sami", phone: "052-987-6543", service: "lunch" }, lang: "en" }).expect(201);
+    await request(app).post(`/v1/data/${messages}`).send({ values: { name: "Rana", phone: "0501234567", message: "Vegetarian?" }, lang: "en" }).expect(201);
+    const page = async (key: string, q = "") => (await request(app).get(`${at}/site-panels/${id}/${key}?lang=en${q}`).expect(200)).body;
+
+    // The bookings' own page: the month by day, the board by state.
+    const board = await page("board", `&month=${month}`);
+    const cal = part(board, "calendar");
+    expect(cal).toMatchObject({ month, date: "day", color: "status", canMove: true, total: 1 });
+    expect(cal.rows.map((r: Obj) => r.cells.name)).toEqual([{ en: "Rana" }]);
+    const kanban = part(board, "board");
+    expect(kanban.columns.map((c: Obj) => [c.id, c.total])).toEqual([["fresh", 2], ["confirmed", 0], ["done", 0]]);
+    const rana = cal.rows[0].id as string;
+    // Moved along the board, then to another day.
+    const moved = (await request(app).post(`${at}/site-panels/${id}/board/board/move`).send({ row: rana, to: "confirmed" }).expect(200)).body;
+    expect(part(moved, "board").columns.map((c: Obj) => c.total)).toEqual([1, 1, 0]);
+    await request(app).post(`${at}/site-panels/${id}/board/board/move`).send({ row: rana, to: "lost" }).expect(400);
+    await request(app).post(`${at}/site-panels/${id}/board/calendar/move?month=${month}`).send({ row: rana, to: `${month}-20` }).expect(200);
+    const row = (await prisma.collectionItem.findUniqueOrThrow({ where: { id: rana } })).data as Obj;
+    expect([row.status, row.day]).toEqual(["confirmed", `${month}-20`]);
+    await request(app).post(`${at}/site-panels/${id}/board/calendar/move`).send({ row: rana, to: "soon" }).expect(400);
+
+    // A customer's page: their booking and their message, found by some of the phone's digits (written two ways).
+    expect(part(await page("people"), "person")).toMatchObject({ kind: "people", by: "phone" });
+    const found = (await request(app).get(`${at}/site-panels/${id}/people/person/people?q=1234567&lang=en`).expect(200)).body.people;
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ key: "0501234567", name: "Rana" });
+    expect(found[0].tables.map((t: Obj) => [t.table.id, t.rows.length])).toEqual([[ids.table.messages, 1], [ids.table.bookings, 1]]);
+    expect((await request(app).get(`${at}/site-panels/${id}/people/person/people?q=x`).expect(200)).body.people).toEqual([]);
+
+    // Reports: today's bar holds what came in; the month counted by kind; the month as a file.
+    const reports = await page("reports");
+    const today = new Date().toISOString().slice(0, 10);
+    const daily = part(reports, "bookingsDaily");
+    expect(daily.days).toHaveLength(30);
+    expect(daily.days[daily.days.length - 1]).toMatchObject({ day: today, total: 2, parts: { fresh: 1, confirmed: 1 } });
+    expect(daily.options.map((o: Obj) => o.id)).toEqual(["fresh", "confirmed", "done"]);
+    const by = part(reports, "bookingsBy");
+    expect(by).toMatchObject({ period: "month", total: 2 });
+    expect(by.groups.map((g: Obj) => [g.id, g.n])).toEqual([["lunch", 1], ["dinner", 1], ["event", 0]]);
+    expect(part(await page("reports", "&period=lastMonth"), "bookingsBy").total).toBe(0);
+    const file = await request(app).get(`${at}/site-panels/${id}/reports/bookingsBy/export?period=month&lang=en`).expect(200);
+    expect(file.headers["content-type"]).toContain("text/csv");
+    const lines = file.text.replace(String.fromCodePoint(0xfeff), "").trim().split(/\r\n/);
+    expect(lines[0]).toBe("Name,Phone number,What for?,The day that suits you,Notes,Status,Came in");
+    expect(lines.slice(1).map((l: string) => l.split(",")[0]).sort()).toEqual(["Rana", "Sami"]);
+    expect(lines.find((l: string) => l.startsWith("Rana"))).toContain(",Dinner,");
+
+    // The branches on a map: every branch with its address.
+    const map = part(await page("lists"), "branches");
+    expect(map).toMatchObject({ kind: "map", label: "name", address: "address" });
+    expect(map.rows.length).toBeGreaterThan(0);
+    expect(map.rows.every((r: Obj) => r.cells.address)).toBe(true);
+    await clean();
+  });
+
+  test("a scanner finds a row by its code and its buttons decide it", async () => {
+    const file = {
+      format: "estabrek.feature", formatVersion: 1, key: "panel-scan", version: "1.0.0", name: { en: "Door" },
+      tables: [{ key: "tickets", slug: "panel-scan-tickets", name: { en: "Tickets" }, fields: [{ id: "code", type: "text", name: { en: "Code" }, required: true }, { id: "holder", type: "text", name: { en: "Holder" } }, { id: "state", type: "select", name: { en: "State" }, options: [{ id: "valid", name: { en: "Valid" } }, { id: "used", name: { en: "Used" } }] }], rows: [{ slug: "t1", data: { code: { en: "ABCD-2345" }, holder: { en: "Rana" }, state: "valid" } }] }],
+      panel: [{ key: "door", name: { en: "Door" }, icon: "today", parts: [{ kind: "scanner", key: "scan", title: { en: "Scan a ticket" }, table: "@table:tickets", match: "code", show: ["holder", "code", "state"], decisions: [{ key: "in", label: { en: "Let in" }, set: { state: "used" }, tone: "good" }] }] }],
+    };
+    const res = await request(app).post(`${at}/my-features/templates/install`).send({ template: file, lang: "en" });
+    expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(201);
+    const id = res.body.id as string;
+    made.push(id);
+    const door = (await request(app).get(`${at}/site-panels/${id}/door`).expect(200)).body;
+    expect(part(door, "scan")).toMatchObject({ kind: "scanner", canDecide: true });
+    const got = (await request(app).get(`${at}/site-panels/${id}/door/scan/find?code=ABCD-2345`).expect(200)).body.row;
+    expect(got.cells).toEqual({ holder: { en: "Rana" }, code: { en: "ABCD-2345" }, state: "valid" });
+    await request(app).get(`${at}/site-panels/${id}/door/scan/find?code=NOPE`).expect(404);
+    await request(app).post(`${at}/site-panels/${id}/door/scan/decide`).send({ row: got.id, decision: "in" }).expect(200);
+    expect((await request(app).get(`${at}/site-panels/${id}/door/scan/find?code=ABCD-2345`).expect(200)).body.row.cells.state).toBe("used");
     await clean();
   });
 });

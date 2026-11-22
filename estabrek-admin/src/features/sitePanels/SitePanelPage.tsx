@@ -1,8 +1,9 @@
-// A whole site's own page in the admin (sites wave 1.2; backend lib/sitePanel.ts): /admin/site/:featureId/:page.
+// A whole site's own page in the admin (sites wave 1; backend lib/sitePanel.ts): /admin/site/:featureId/:page.
 // Its parts as its file declares them, each only for a member who may read it: numbers (with the window before),
-// queues of rows waiting for a decision (one tap sets the row's fields), saved tables, the site's settings, and
-// quick actions that change a setting.
-import { Link, NavLink, useParams } from "react-router-dom";
+// queues of rows waiting for a decision (one tap sets the row's fields), saved tables, the site's settings, quick
+// actions that change a setting; and (PanelParts.tsx) charts, boards, calendars, a person's page, reports, maps and
+// a scanner. A calendar's month and a report's period are in the address (?month=, ?period=).
+import { Link, NavLink, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
@@ -13,9 +14,10 @@ import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as Panels from "../../api/sitePanels.api";
-import type { PanelActions, PanelNumbers, PanelPageView, PanelQueue, PanelSettings, PanelView } from "../../api/sitePanels.api";
+import type { PanelActions, PanelAsk, PanelNumbers, PanelPageView, PanelQueue, PanelSettings, PanelView } from "../../api/sitePanels.api";
 import { SettingsEditor } from "../myFeatures/SiteSettings";
 import { cellText, changeText, inLang } from "./panelText";
+import { CalendarPart, ChartPart, KanbanPart, MapPart, PeoplePart, ReportPart, ScannerPart } from "./PanelParts";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -24,8 +26,11 @@ export default function SitePanelPage() {
   const lang = adminLang();
   const qc = useQueryClient();
   const { hasPermission } = useAuth();
-  const key = ["site-panel", featureId, page, lang];
-  const q = useQuery({ queryKey: key, queryFn: () => Panels.getSitePanelPage(featureId, page, lang), enabled: !!featureId && !!page });
+  const [params, setParams] = useSearchParams();
+  const ask: PanelAsk = { ...(params.get("month") ? { month: params.get("month")! } : {}), ...(params.get("period") ? { period: params.get("period")! } : {}) };
+  const setAsk = (next: PanelAsk) => setParams(Object.fromEntries(Object.entries(next).filter(([, v]) => !!v)) as Record<string, string>, { replace: true });
+  const key = ["site-panel", featureId, page, lang, ask.month ?? "", ask.period ?? ""];
+  const q = useQuery({ queryKey: key, queryFn: () => Panels.getSitePanelPage(featureId, page, lang, ask), enabled: !!featureId && !!page, placeholderData: (before) => before });
   const took = (next: PanelPageView) => qc.setQueryData(key, next);
   const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) });
 
@@ -59,7 +64,14 @@ export default function SitePanelPage() {
         if (part.kind === "queue") return <Queue key={part.key} part={part} view={v} took={took} onError={onError} />;
         if (part.kind === "view") return <Table key={part.key} part={part} />;
         if (part.kind === "settings") return <Settings key={part.key} part={part} view={v} />;
-        return <Actions key={part.key} part={part} view={v} took={took} onError={onError} />;
+        if (part.kind === "actions") return <Actions key={part.key} part={part} view={v} took={took} onError={onError} />;
+        if (part.kind === "chart") return <ChartPart key={part.key} part={part} />;
+        if (part.kind === "kanban") return <KanbanPart key={part.key} part={part} view={v} took={took} onError={onError} ask={ask} />;
+        if (part.kind === "calendar") return <CalendarPart key={part.key} part={part} view={v} took={took} onError={onError} ask={ask} setAsk={setAsk} />;
+        if (part.kind === "people") return <PeoplePart key={part.key} part={part} view={v} />;
+        if (part.kind === "report") return <ReportPart key={part.key} part={part} view={v} ask={ask} setAsk={setAsk} />;
+        if (part.kind === "map") return <MapPart key={part.key} part={part} />;
+        return <ScannerPart key={part.key} part={part} view={v} took={took} onError={onError} />;
       })}
     </div>
   );

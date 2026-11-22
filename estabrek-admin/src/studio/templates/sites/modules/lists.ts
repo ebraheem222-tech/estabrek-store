@@ -6,7 +6,7 @@
 import { B, CARD, COLS, DIVIDER, H, ICON, IMG, P, SEC, STACK, eyebrow, pop, withSkin, type Ctx, type N, type Skin } from "../../build";
 import { w, type W } from "../../words";
 import { hug } from "../../partsMore";
-import { SET, SW, STARS } from "../siteWords";
+import { PANEL, SET, SW, STARS } from "../siteWords";
 import { LIST, S, T, bound, callBand, f, head, pageHead, picOf, plainPic, shownIf, still, tree, type Built, type Part, type SiteModule } from "./kit";
 
 /* ---------------- The cards, each connected to its table's fields ---------------- */
@@ -248,4 +248,6 @@ export const BRANCHES: SiteModule = {
   note: w("عناوين وساعات وتلفونات.", "Addresses, hours and phone numbers.", "כתובות, שעות ומספרי טלפון."),
   tables: (b) => [{ key: "branches", slug: "branches", name: SW.branches, fields: [f.text("name", SW.branch, { required: true }), f.text("address", SW.address), f.text("hours", SW.hours), f.phone("phone", SW.phone)], rows: b.use.branches!.rows.map((br) => ({ data: { name: br.name, address: br.address, hours: br.hours, phone: br.phone } })) }],
   counts: (bp) => ({ tables: 1, rows: bp.modules.branches!.rows.length }),
+  // Its panel: the branches on a map, each by its address.
+  panel: () => ({ lists: [{ kind: "map", key: "branches", title: PANEL.branchesMap, table: T("branches"), label: "name", address: "address", show: ["hours", "phone"] }] }),
 };

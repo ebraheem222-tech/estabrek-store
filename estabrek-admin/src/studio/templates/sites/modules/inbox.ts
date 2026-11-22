@@ -83,6 +83,11 @@ export const CONTACT: SiteModule = {
     ],
     today: [{ kind: "queue", key: "messages", title: PANEL.messagesNew, table: T("messages"), where: fresh, show: ["name", "phone", "email", "message"], decisions: [{ key: "replied", label: PANEL.replied, set: { status: "replied" }, tone: "good" }], empty: PANEL.noMessages }],
     lists: [{ kind: "view", key: "messages", title: PANEL.allMessages, table: T("messages"), columns: ["name", "phone", "message", "status", "$createdAt"], sort: newest, limit: 30 }],
+    people: [{ table: T("messages"), title: PANEL.theirMessages, show: ["message", "status", "$createdAt"] }],
+    reports: [
+      { kind: "chart", key: "messagesDaily", title: PANEL.messagesDaily, table: T("messages"), days: 30, split: "status" },
+      { kind: "report", key: "messagesBy", title: PANEL.messagesBy, table: T("messages"), by: "status", columns: ["name", "phone", "email", "message", "status", "$createdAt"] },
+    ],
   }),
 };
 
@@ -104,6 +109,16 @@ export const BOOKING: SiteModule = {
     ],
     today: [{ kind: "queue", key: "bookings", title: PANEL.bookingsNew, table: T("bookings"), where: fresh, show: ["name", "phone", "service", "day", "notes"], decisions: [{ key: "confirm", label: PANEL.confirm, set: { status: "confirmed" }, tone: "good" }, { key: "done", label: PANEL.done, set: { status: "done" } }], empty: PANEL.noBookings }],
     lists: [{ kind: "view", key: "bookings", title: PANEL.allBookings, table: T("bookings"), columns: ["name", "phone", "service", "day", "status", "$createdAt"], sort: newest, limit: 30 }],
+    // Its own page: the month's bookings by their day (moved to another), and all of them by their state (moved along).
+    board: [
+      { kind: "calendar", key: "calendar", title: PANEL.calendar, table: T("bookings"), date: "day", show: ["name", "service", "phone"], color: "status" },
+      { kind: "kanban", key: "board", title: PANEL.bookingBoard, table: T("bookings"), field: "status", show: ["name", "phone", "service", "day"] },
+    ],
+    people: [{ table: T("bookings"), title: PANEL.theirBookings, show: ["service", "day", "status", "$createdAt"] }],
+    reports: [
+      { kind: "chart", key: "bookingsDaily", title: PANEL.bookingsDaily, table: T("bookings"), days: 30, split: "status" },
+      { kind: "report", key: "bookingsBy", title: PANEL.bookingsBy, table: T("bookings"), by: "service", columns: ["name", "phone", "service", "day", "notes", "status", "$createdAt"] },
+    ],
     actions: [
       { key: "bookingClose", label: PANEL.bookingClose, note: PANEL.bookingCloseNote, setting: "bookingOpen", value: false },
       { key: "bookingOpen", label: PANEL.bookingOpen, setting: "bookingOpen", value: true },
