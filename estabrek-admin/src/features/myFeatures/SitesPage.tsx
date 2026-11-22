@@ -9,7 +9,7 @@ import { Badge } from "../../components/ui/Badge";
 import { adminLang } from "../../lib/lang";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
-import { SITES, SITE_FIELDS, buildSite, slugsOf, type SiteField, type SiteSpec } from "../../studio/templates/sites";
+import { SITES, SITE_FIELDS, buildSite, modulesOf, slugsOf, type SiteBlueprint, type SiteField } from "../../studio/templates/sites";
 import { InstallFlow } from "./FeatureTemplates";
 import { siteLine, siteMatches } from "./sitesText";
 
@@ -22,7 +22,7 @@ export default function SitesPage() {
   const canInstall = hasPermission("features:write") && hasPermission("functions:write") && hasPermission("pages:write");
   const [kind, setKind] = useState<SiteField | "all">("all");
   const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState<SiteSpec | null>(null);
+  const [picked, setPicked] = useState<SiteBlueprint | null>(null);
   const fields = useMemo(() => (Object.keys(SITE_FIELDS) as SiteField[]).filter((f) => SITES.some((s) => s.field === f)), []);
   // Built once for what is picked (a site is some 70 KB of pages).
   const file = useMemo(() => (picked ? buildSite(picked, { lang }) : null), [picked, lang]);
@@ -55,6 +55,16 @@ export default function SitesPage() {
           <p className="mt-1 text-xs text-white/60" data-testid="sites-home-note">
             {say("صفحة الموقع الأولى عنوانها {home}، وصفحة متجرك الرئيسية ما بتتغيّر.|The site's first page is at {home}; your store's home doesn't change.|העמוד הראשון של האתר בכתובת {home}, ודף הבית של החנות לא משתנה.").replace("{home}", slugsOf(picked).home)}
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-white/60">{say("مبني من:|Built from:|בנוי מ:")}</span>
+            <ul className="flex flex-wrap gap-1.5" data-testid="sites-modules">
+              {modulesOf(picked).map((m) => (
+                <li key={m.key} title={m.note[lang]} className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/80" data-testid={`sites-module-${m.key}`}>
+                  {m.name[lang]}
+                </li>
+              ))}
+            </ul>
+          </div>
           <InstallFlow key={`${picked.key}:${picked.version}:${lang}`} id={`site:${picked.key}:${picked.version}:${lang}`} template={file} />
         </section>
       ) : null}
@@ -78,7 +88,6 @@ export default function SitesPage() {
         <input className={`${field} mt-3 w-full`} value={search} placeholder={say("دوّر: مطعم، عيادة، أعراس، دورات…|Search: restaurant, clinic, weddings, courses…|חיפוש: מסעדה, מרפאה, חתונות, קורסים…")} onChange={(e) => setSearch(e.target.value)} data-testid="sites-search" />
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="sites-list">
           {shown.map((s) => {
-            const slugs = slugsOf(s);
             return (
               <li key={s.key} className="flex flex-col gap-2 rounded-xl border border-white/10 p-4" data-testid={`sites-item-${s.key}`}>
                 <div className="flex flex-wrap items-center gap-2">
@@ -94,7 +103,7 @@ export default function SitesPage() {
                 <div className="mt-auto space-y-1 text-xs text-white/50">
                   <div data-testid={`sites-holds-${s.key}`}>{siteLine(s, lang)}</div>
                   <bdi dir="ltr" className="block truncate font-mono">
-                    {[slugs.home, slugs.offers, slugs.story, slugs.news, slugs.questions, slugs.contact, ...(slugs.book ? [slugs.book] : [])].join(" · ")}
+                    {Object.values(slugsOf(s)).join(" · ")}
                   </bdi>
                 </div>
                 {canInstall ? (
