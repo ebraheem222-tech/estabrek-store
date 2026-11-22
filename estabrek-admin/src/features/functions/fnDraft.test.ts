@@ -91,6 +91,12 @@ describe("Names", () => {
     expect(offers(def, ["fail", 0], tables)).toContain("error");
   });
 
+  test("a whole site's function is offered its site's settings, and can't keep anything under «settings»", () => {
+    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"];
+    expect(offers(def, ["do", 0], tables, [], ["notifyOn", "notifyEmail"])).toEqual([...always, "settings.notifyOn", "settings.notifyEmail"]);
+    expect(nameOk("settings")).toBe(false);
+  });
+
   test("names that can be taken; a new step takes one nobody uses", () => {
     expect(["rows", "row2", "a_b"].map(nameOk)).toEqual([true, true, true]);
     expect(["Rows", "2row", "", "my-row", "input", "error", "index", "now", "caller"].map(nameOk)).toEqual([false, false, false, false, false, false, false, false, false]);

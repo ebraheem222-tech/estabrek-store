@@ -33,6 +33,7 @@ import { versionDef } from "../../lib/fnVersions.js";
 import { answerProblem } from "../../lib/fnGives.js";
 import { TEST_LIMITS, verdict, type FnTest, type TestWhy } from "../../lib/fnTests.js";
 import { switchedOff } from "../../lib/featureGate.js";
+import { settingsFor, valuesIn } from "../../lib/siteSettings.js";
 import { emitRow, inChain, type FnTask } from "../../lib/fnTriggers.js";
 import { registerTask } from "../../lib/tasks.js";
 import { allHold, fill, numberOf, words, type Scope } from "../../lib/fnValues.js";
@@ -400,7 +401,8 @@ async function plain(s: PlainStep, scope: Scope, at: string, ctx: Ctx): Promise<
       if (!fn) throw new Failure("The function it calls isn't there any more", at);
       if (!def) throw new Failure(`"${fn.name}" isn't published`, at);
       if (!fn.enabled) throw new Failure(`"${fn.name}" is switched off`, at);
-      const inner = await runDef(def, filled(s.input ?? {}), { dry, depth: ctx.depth + 1, budget, caller: ctx.caller, fnId: s.fn });
+      // The one called reads its own site's settings (if it is part of one).
+      const inner = await runDef(def, filled(s.input ?? {}), { dry, depth: ctx.depth + 1, budget, caller: ctx.caller, fnId: s.fn, settings: await fnSettings(s.fn) });
       if (!inner.ok) throw new Failure(`${fn.name}: ${inner.error}`, at);
       if (s.as) scope[s.as] = inner.value;
       return ["called", fn.name];
@@ -577,7 +579,7 @@ function readInputs(inputs: FnInput[], raw: Record<string, unknown>): Record<str
 const newBudget = (ms: number = FN_LIMITS.ms): Budget => ({ deadline: Date.now() + ms, ms, used: { writes: 0, messages: 0, http: 0, store: 0 }, trace: [], counts: { steps: 0, found: 0, added: 0, changed: 0, deleted: 0, sent: 0, store: 0 }, pretend: new Map(), stock: new Map() });
 
 /** A definition run with what it was handed. Never throws: a failure is the outcome. `ms`: a shorter time than a run's own (a test's). */
-export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number; /** The saved function it is (a payment it asks for says which). */ fnId?: string } = {}): Promise<Outcome> {
+export async function runDef(def: FnDef, input: Record<string, unknown>, opts: { dry?: boolean; depth?: number; budget?: Budget; caller?: FnCaller; ms?: number; /** The saved function it is (a payment it asks for says which). */ fnId?: string; /** Its whole site's settings, private ones too (lib/siteSettings.ts): "{{settings.x}}". */ settings?: RunSettings | null } = {}): Promise<Outcome> {
   const t0 = Date.now();
   const budget = opts.budget ?? newBudget(opts.ms ? Math.min(opts.ms, FN_LIMITS.ms) : undefined);
   // A function inside another keeps its own steps' lines to itself; the limits and counts are shared.
@@ -585,6 +587,8 @@ export async function runDef(def: FnDef, input: Record<string, unknown>, opts: {
   const caller = opts.caller ?? SYSTEM;
   const ctx: Ctx = { dry: !!opts.dry, lang: def.lang ?? "ar", depth: opts.depth ?? 0, budget: own, tables: new Map(), caller, fnId: opts.fnId };
   const scope: Scope = { now: new Date().toISOString(), caller: { kind: caller.kind, id: caller.id ?? null, name: caller.name ?? null, email: caller.email ?? null, roles: caller.roles ?? [], groups: caller.groups ?? [] } };
+  // A whole site's function reads its site's settings, words in its own language.
+  if (opts.settings) scope.settings = valuesIn(opts.settings.values, opts.settings.decls, ctx.lang);
   const done = (ok: boolean, value: unknown, error: string | null, failedAt: string | null): Outcome => {
     // What it promises to give back is looked at, never enforced on a run: what the run did is done.
     const shape = ok ? answerProblem(def.gives, value) : null;
@@ -610,6 +614,11 @@ export async function runDef(def: FnDef, input: Record<string, unknown>, opts: {
   return done(false, null, failure.message, failure.at || null);
 }
 
+/** A whole site's settings as a run is handed them. */
+type RunSettings = NonNullable<Awaited<ReturnType<typeof settingsFor>>>;
+/** The settings of the whole site a function is part of (none: it is in no site that has any). */
+export const fnSettings = (fnId: string) => settingsFor("function", fnId);
+
 const some = (counts: Counts) => Object.fromEntries(Object.entries(counts).filter(([k, n]) => k !== "steps" && n > 0));
 
 /* ---------------- Its own tests (F4; lib/fnTests.ts) ---------------- */
@@ -623,7 +632,7 @@ export type TestsOutcome = { results: TestResult[]; passed: number; failed: numb
  * written or sent). Each has its own few seconds, and all of them together a limit: a test that
  * never got its turn didn't pass.
  */
-export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller): Promise<TestsOutcome> {
+export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller, settings?: RunSettings | null): Promise<TestsOutcome> {
   const t0 = Date.now();
   const results: TestResult[] = [];
   for (const test of tests) {
@@ -634,7 +643,7 @@ export async function runTests(def: FnDef, tests: FnTest[], caller: FnCaller): P
     }
     // Run as the member who asked, under the name and address the test says (where the steps name the caller).
     const as: FnCaller = { ...caller, ...(test.caller?.name ? { name: test.caller.name } : {}), ...(test.caller?.email ? { email: test.caller.email.toLowerCase() } : {}) };
-    const out = await runDef(def, test.input, { dry: true, caller: as, ms: Math.min(TEST_LIMITS.ms, left) });
+    const out = await runDef(def, test.input, { dry: true, caller: as, ms: Math.min(TEST_LIMITS.ms, left), settings });
     const why = verdict(test, out);
     // What it gave back is shown beside what was expected: the beginning of a long one.
     const big = JSON.stringify(out.value ?? null).length > 4000;
@@ -691,7 +700,7 @@ export async function runFn(id: string, input: Record<string, unknown>, opts: { 
   // Off by itself, or as part of a feature that is switched off (admin → ميزاتي).
   if (opts.needOn && (!fn.enabled || (await switchedOff()).fns.has(fn.id))) throw new AppError(409, "FN_OFF", "This function is switched off");
   const t0 = Date.now();
-  const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller, fnId: fn.id });
+  const out = await runDef(def, input, { dry: opts.dry, caller: opts.caller, fnId: fn.id, settings: await fnSettings(fn.id) });
   // Its line in the run log, said to who asked for the run: with it the owner finds what each step did.
   const runId = opts.dry ? undefined : newRunId();
   if (!opts.dry) {

@@ -3,16 +3,35 @@
  * compositions, the library's openings and stories with the site's lists between them, and its story
  * page. A module the site doesn't use leaves its section out.
  */
+import { P, SEC, STACK, withSkin } from "../../build";
 import { w } from "../../words";
-import { SW } from "../siteWords";
+import type { SiteBlueprint, SiteSetting } from "../blueprint";
+import { SET, SW } from "../siteWords";
 import { offersPart, postsPart, questionsPart, reviewsPart, teamPart } from "./lists";
-import { S, callBand, pageHead, type Built, type Part, type SiteModule } from "./kit";
+import { S, callBand, fromSetting, pageHead, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 
 /** Each of a module's sections, only when the site uses it. */
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
-/** The home of a business's front, in its look's composition. */
+/** A business's front's own settings: its hours (wherever its pages give them) and a notice over its first page. */
+export const frontSettings = (bp: SiteBlueprint): SiteSetting[] => [
+  { key: "hours", kind: "words", label: SET.hours, note: SET.hoursNote, group: SET.site, public: true, default: bp.biz.hours },
+  { key: "noticeOn", kind: "toggle", label: SET.noticeOn, note: SET.noticeOnNote, group: SET.site, public: true, default: false },
+  { key: "notice", kind: "words", label: SET.notice, group: SET.site, public: true, long: true, default: SET.noticeText },
+];
+
+/** The notice bar over the first page: on the shop only while its switch is on, in the words its owner wrote. */
+const noticePart: Part = (c) => {
+  const k = withSkin(c, "bold");
+  const line = fromSetting(P(k, SET.noticeText, { ...still, quiet: false, style: { size: 16, weight: 600, lineHeight: 1.5 } }), { text: "notice" });
+  return shownIf(SEC(k, [STACK(k, [line], { align: "center", textAlign: "center" })], { name: SET.noticeName, full: true, pad: [14, 20, 14, 20], phone: { pad: [12, 16, 12, 16] } }), "noticeOn");
+};
+
+/** The home of a business's front: the notice bar, then its look's composition. */
 export function frontHome(b: Built): Part[] {
+  return [noticePart, ...composition(b)];
+}
+function composition(b: Built): Part[] {
   const u = b.use;
   const featured = when(u.offers, () => offersPart(b, b.bp.look % 6 === 1 ? "surface" : b.bp.look % 6 === 0 || b.bp.look % 6 === 5 ? "soft" : "plain", { featured: true }));
   const team = when(u.team, () => teamPart(b, "plain"));

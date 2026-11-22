@@ -6,15 +6,16 @@
 import { B, CARD, COLS, DIVIDER, H, ICON, IMG, P, SEC, STACK, eyebrow, pop, withSkin, type Ctx, type N, type Skin } from "../../build";
 import { w, type W } from "../../words";
 import { hug } from "../../partsMore";
-import { SW, STARS } from "../siteWords";
-import { LIST, S, bound, callBand, f, head, pageHead, picOf, plainPic, still, tree, type Built, type Part, type SiteModule } from "./kit";
+import { SET, SW, STARS } from "../siteWords";
+import { LIST, S, bound, callBand, f, head, pageHead, picOf, plainPic, shownIf, still, tree, type Built, type Part, type SiteModule } from "./kit";
 
 /* ---------------- The cards, each connected to its table's fields ---------------- */
 
 function offerCard(c: Ctx, b: Built): N {
   const o = b.use.offers!;
   const first = o.rows[0];
-  const price = o.price && first.price !== undefined ? [bound(P(c, w(String(first.price), String(first.price), String(first.price)), { ...still, quiet: false, style: { weight: 700, color: pop(c), size: 17 } }), { text: "price" })] : [];
+  // Shown while the owner shows prices (the "showPrices" setting).
+  const price = o.price && first.price !== undefined ? [shownIf(bound(P(c, w(String(first.price), String(first.price), String(first.price)), { ...still, quiet: false, style: { weight: 700, color: pop(c), size: 17 } }), { text: "price" }), "showPrices")] : [];
   const extra = o.extra && first.extra ? [bound(P(c, first.extra, { ...still, style: { size: 14 } }), { text: "extra" })] : [];
   const title = bound(H(c, first.title, 4, still), { text: "title" });
   const text = bound(P(c, first.text, { ...still, style: { size: 15 } }), { text: "summary" });
@@ -120,7 +121,7 @@ function offerPage(c: Ctx, b: Built): N {
         bound(eyebrow(k, o.groups[0][1], still), { text: "group" }),
         bound(H(k, first.title, 1, still), { text: "title" }),
         ...(o.extra && first.extra ? [bound(P(k, first.extra, { ...still, quiet: false, style: { weight: 600 } }), { text: "extra" })] : []),
-        ...(o.price && first.price !== undefined ? [bound(P(k, w(String(first.price), String(first.price), String(first.price)), { ...still, quiet: false, style: { size: 26, weight: 800, color: pop(k) } }), { text: "price" })] : []),
+        ...(o.price && first.price !== undefined ? [shownIf(bound(P(k, w(String(first.price), String(first.price), String(first.price)), { ...still, quiet: false, style: { size: 26, weight: 800, color: pop(k) } }), { text: "price" }), "showPrices")] : []),
         bound(P(k, first.text, { ...still, style: { size: 18 } }), { text: "summary" }),
         hug(go),
       ],
@@ -155,9 +156,10 @@ const questionsParts = (b: Built): Part[] => [pageHead(SW.questions, SW.question
 
 /* ---------------- The modules ---------------- */
 
+const OFFERS_NAME = w("القائمة الرئيسية", "The main list", "הרשימה הראשית");
 export const OFFERS: SiteModule = {
   key: "offers",
-  name: w("القائمة الرئيسية", "The main list", "הרשימה הראשית"),
+  name: OFFERS_NAME,
   note: w("منيو، خدمات، غرف أو باقات: جدول بأقسام وأسعار، وصفحة لكل عنصر.", "A menu, services, rooms or packages: a table with sections and prices, and a page for each.", "תפריט, שירותים, חדרים או חבילות: טבלה עם קטגוריות ומחירים, ועמוד לכל פריט."),
   pages: (bp) => [{ key: "offers", slug: bp.modules.offers!.page, order: 10, name: bp.modules.offers!.title, seo: bp.modules.offers!.sub, parts: offersParts }],
   tables: (b, c) => {
@@ -183,6 +185,8 @@ export const OFFERS: SiteModule = {
     }];
   },
   counts: (bp) => ({ tables: 1, rows: bp.modules.offers!.rows.length }),
+  // A list with prices: its owner may hide them (they change often, or are given by phone).
+  settings: (bp) => (bp.modules.offers?.price ? [{ key: "showPrices", kind: "toggle" as const, label: SET.showPrices, note: SET.showPricesNote, group: OFFERS_NAME, public: true, default: true }] : []),
 };
 
 export const TEAM: SiteModule = {

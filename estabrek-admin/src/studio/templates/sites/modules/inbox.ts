@@ -3,11 +3,11 @@
  * (into a bookings table), and the bell telling the owner of each new one. Visitors may only add rows
  * to these tables; nobody reads them but the store's own members.
  */
-import { CARD, COLS, EL, H, P, SEC, STACK, pop, say, withSkin } from "../../build";
+import { B, CARD, COLS, EL, H, P, SEC, STACK, pop, say, withSkin } from "../../build";
 import { w } from "../../words";
-import { SW } from "../siteWords";
+import { SET, SW } from "../siteWords";
 import { branchCard, questionsPart } from "./lists";
-import { LIST, S, T, WRITE_ONLY, f, pageHead, still, type Built, type Part, type SiteModule } from "./kit";
+import { LIST, S, T, WRITE_ONLY, f, fromSetting, pageHead, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 
 /** What a booking asks the visitor to pick: its own options, else the main list's groups. */
 const choicesOf = (b: Built) => b.use.booking?.options ?? b.use.offers?.groups ?? [];
@@ -48,11 +48,13 @@ const bookingPart = (b: Built): Part => (c) => {
     button: say(k, bk.button),
     done: say(k, bk.done),
   }, { style: { self: "stretch" } })], { gap: 16, pad: [32, 28, 32, 28] });
+  // While online booking is closed (the "bookingOpen" setting off), the owner's words and a call in the form's place.
+  const closed = CARD(k, [fromSetting(P(k, SET.bookingClosedText, { ...still, quiet: false, style: { size: 18, weight: 600 } }), { text: "bookingClosed" }), STACK(k, [B(k, SET.callUs, "tel:0", "solid", still)], { direction: "row" })], { gap: 20, pad: [32, 28, 32, 28] });
   const steps = STACK(k, [H(k, SW.howBook, 3), ...SW.bookSteps.map(([t, line], i) => STACK(k, [
     P(k, w(String(i + 1), String(i + 1), String(i + 1)), { ...still, quiet: false, style: { size: 28, weight: 800, color: pop(k), width: "44px" } }),
     STACK(k, [H(k, t, 4, still), P(k, line, still)], { gap: 4 }),
   ], { direction: "row", gap: 16, align: "start" }))], { gap: 20 });
-  return SEC(k, [COLS(k, [2, 3], [[steps], [formCard]], { gap: 48, align: "start", phone: "stack" })], { name: bk.title });
+  return SEC(k, [COLS(k, [2, 3], [[steps], [shownIf(formCard, "bookingOpen"), shownIf(closed, "bookingOpen", false)]], { gap: 48, align: "start", phone: "stack" })], { name: bk.title });
 };
 
 const contactParts = (b: Built): Part[] => [pageHead(SW.contact, SW.contactSub, "soft"), contactPart(b), S("contact-map", "surface")];
@@ -71,27 +73,47 @@ export const CONTACT: SiteModule = {
   counts: () => ({ tables: 1, rows: 0 }),
 };
 
+const BOOKING_NAME = w("الحجز", "Booking", "הזמנה");
 export const BOOKING: SiteModule = {
   key: "booking",
-  name: w("الحجز", "Booking", "הזמנה"),
+  name: BOOKING_NAME,
   note: w("فورم طلب حجز بجدول إله، وخطوات الحجز.", "A booking request form writing into a table of its own, with the steps after.", "טופס בקשת הזמנה שכותב לטבלה משלו, עם השלבים שאחריו."),
   needs: (bp) => (bp.modules.booking?.options ? [] : ["offers"]),
   pages: (bp) => [{ key: "book", slug: "/book", order: 60, name: bp.modules.booking!.title, seo: bp.modules.booking!.sub, parts: bookParts }],
   tables: (b) => [{ key: "bookings", slug: "bookings", name: SW.bookings, fields: [f.text("name", SW.name, { required: true }), f.phone("phone", SW.phone, { required: true }), f.select("service", b.use.booking!.ask, choicesOf(b)), f.date("day", SW.day), f.long("notes", SW.notes), status([["confirmed", SW.confirmed], ["done", SW.done]])], api: WRITE_ONLY }],
   inbox: ["bookings"],
   counts: () => ({ tables: 1, rows: 0 }),
+  settings: () => [
+    { key: "bookingOpen", kind: "toggle", label: SET.bookingOpen, note: SET.bookingOpenNote, group: BOOKING_NAME, public: true, default: true },
+    { key: "bookingClosed", kind: "words", label: SET.bookingClosed, group: BOOKING_NAME, public: true, long: true, default: SET.bookingClosedText },
+  ],
 };
 
 /** The owner is told of each new row the visitors write (a draft: they publish it to switch it on). */
+const NOTIFY_NAME = w("خبّرني", "Tell me", "תודיעו לי");
 export const NOTIFY: SiteModule = {
   key: "notify",
-  name: w("خبّرني", "Tell me", "תודיעו לי"),
+  name: NOTIFY_NAME,
   note: w("جرس بلوحة الإدارة مع كل رسالة أو حجز.", "A bell in the admin with each message or booking.", "פעמון בניהול עם כל הודעה או הזמנה."),
+  // Read by its function only: they stay on the server.
+  settings: () => [
+    { key: "notifyOn", kind: "toggle", label: SET.notifyOn, note: SET.notifyOnNote, group: NOTIFY_NAME, default: true },
+    { key: "notifyEmail", kind: "text", label: SET.notifyEmail, note: SET.notifyEmailNote, group: NOTIFY_NAME, default: "" },
+  ],
   functions: (b) => [{
     key: "notify",
     name: SW.notify,
-    note: "بيوصلك جرس بلوحة الإدارة مع كل رسالة أو طلب حجز بيجي من الموقع.",
-    def: { lang: "ar", inputs: [{ name: "row", type: "any" }], do: [{ act: "notify", title: `${SW.newRequest}: {{input.row.phone}}`, text: "افتح الجدول لتشوف التفاصيل وترد.", link: "/admin/data" }] },
+    note: "بيوصلك جرس بلوحة الإدارة مع كل رسالة أو طلب حجز بيجي من الموقع، وإيميل كمان إذا كتبت عنوان بإعدادات الموقع.",
+    def: {
+      lang: "ar",
+      inputs: [{ name: "row", type: "any" }],
+      // While the bell is on (the site's settings), and an email too when an address is written there.
+      if: [{ left: "{{settings.notifyOn}}", cmp: "eq", right: true }],
+      do: [
+        { act: "notify", title: `${SW.newRequest}: {{input.row.phone}}`, text: "افتح الجدول لتشوف التفاصيل وترد.", link: "/admin/data" },
+        { act: "if", if: [{ left: "{{settings.notifyEmail}}", cmp: "notEmpty" }], do: [{ act: "email", to: "{{settings.notifyEmail}}", subject: `${SW.newRequest}: {{input.row.phone}}`, text: "وصل طلب جديد من الموقع: {{input.row.name}}، {{input.row.phone}}.\nافتح لوحة الإدارة لتشوف التفاصيل وترد." }] },
+      ],
+    },
     triggers: b.inbox.map((table) => ({ kind: "row" as const, config: { table: T(table), on: ["added"] } })),
   }],
 };

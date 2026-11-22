@@ -690,6 +690,9 @@ model Feature {
   /// Made by installing a template (src/lib/featureInstall.ts): { key, version, name, installedAt, file, ids }:
   /// the file it came from, and which of its things is which here (an upgrade tells the owner's changes by it).
   template  Json?
+  /// A whole site's settings as its owner set them, by key (src/lib/siteSettings.ts; what each is: its file's
+  /// `settings`). A key not set here, or set to what no longer fits, is its default.
+  settings  Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   items     FeatureItem[]

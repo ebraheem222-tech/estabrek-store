@@ -65,6 +65,29 @@ export const SW = {
   notify: "خبّرني بكل رسالة وحجز من الموقع",
 };
 
+/** The words of a whole site's settings (wave 1): their names on the owner's form, and the samples they start with. */
+export const SET = {
+  site: w("الموقع", "The site", "האתר"),
+  hours: w("ساعات الدوام", "Opening hours", "שעות פתיחה"),
+  hoursNote: w("بتطلع بكل مكان بالموقع فيه الساعات.", "Shown wherever the site gives its hours.", "מוצג בכל מקום שבו האתר מציג את השעות."),
+  noticeOn: w("شريط إعلان فوق الصفحة الأولى", "A notice bar over the first page", "פס הודעה מעל העמוד הראשון"),
+  noticeOnNote: w("لعطلة، عرض، أو تغيير بالدوام.", "For a holiday, an offer or a change of hours.", "לחג, למבצע או לשינוי בשעות."),
+  notice: w("نص الإعلان", "The notice's words", "נוסח ההודעה"),
+  noticeName: w("شريط الإعلان", "Notice bar", "פס הודעה"),
+  noticeText: w("بالأعياد بتتغيّر ساعات الدوام: اتصلوا فينا قبل ما تيجوا.", "Our hours change on holidays: call us before you come.", "בחגים השעות משתנות: התקשרו לפני שאתם מגיעים."),
+  showPrices: w("بيّن الأسعار", "Show the prices", "להציג מחירים"),
+  showPricesNote: w("طفّيها إذا الأسعار بتتغيّر كتير أو بتنحكى بالتلفون.", "Switch it off when prices change often or are given by phone.", "כבו כשהמחירים משתנים הרבה או נמסרים בטלפון."),
+  bookingOpen: w("الحجز أونلاين مفتوح", "Online booking is open", "ההזמנה אונליין פתוחה"),
+  bookingOpenNote: w("مسكّر: صفحة الحجز بتقول هيك بدل الفورم.", "Closed: the booking page says so instead of showing the form.", "סגורה: עמוד ההזמנה אומר זאת במקום הטופס."),
+  bookingClosed: w("شو بتقول صفحة الحجز وهو مسكّر", "What the booking page says while it's closed", "מה עמוד ההזמנה אומר כשהיא סגורה"),
+  bookingClosedText: w("الحجز أونلاين مسكّر هلّق. اتصلوا فينا ومنرتّبلكم موعد.", "Online booking is closed for now. Call us and we'll find you a time.", "ההזמנה אונליין סגורה כרגע. התקשרו ונמצא לכם זמן."),
+  callUs: w("اتصلوا فينا", "Call us", "התקשרו אלינו"),
+  notifyOn: w("جرس مع كل طلب جديد", "A bell with each new request", "פעמון עם כל בקשה חדשה"),
+  notifyOnNote: w("بلوحة الإدارة، مع كل رسالة أو حجز بيجي من الموقع.", "In the admin, with each message or booking from the site.", "בניהול, עם כל הודעה או הזמנה מהאתר."),
+  notifyEmail: w("وابعتلي إيميل كمان على", "Email me too at", "שלחו לי גם מייל לכתובת"),
+  notifyEmailNote: w("فاضي: الجرس بس. الإيميل بيطلع إذا إرسال الإيميلات مضبوط بالإعدادات.", "Empty: only the bell. The email goes out once sending email is set up in the settings.", "ריק: רק הפעמון. המייל יוצא כשמשלוח מיילים מוגדר בהגדרות."),
+};
+
 /** A review's stars, as a choice field's options. */
 export const STARS: Array<[string, W]> = [
   ["s5", w("★★★★★", "★★★★★", "★★★★★")],

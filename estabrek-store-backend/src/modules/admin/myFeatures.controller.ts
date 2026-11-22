@@ -15,6 +15,7 @@ import { galleryFile, galleryList } from "../../lib/gallery/index.js";
 import { previewUpgrade, upgradeFeature } from "../../lib/featureUpgrade.js";
 import { adminIdOf } from "./settings.controller.js";
 import { SiteHomeBody, makeSiteHome, siteHomeView, undoSiteHome } from "./siteHome.js";
+import { declsOf, readValues, valuesOf } from "../../lib/siteSettings.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -31,6 +32,8 @@ import { SiteHomeBody, makeSiteHome, siteHomeView, undoSiteHome } from "./siteHo
  * POST   /admin/my-features                       { name, note? }
  * GET    /admin/my-features/:id                   — one, with its things as they are now, and what could be added
  * PUT    /admin/my-features/:id                   { name?, note?, enabled? }
+ * PUT    /admin/my-features/:id/settings          { values: { key: value } } — a whole site's settings (lib/siteSettings.ts): the
+ *                                                    ones named change, each checked against what its file declares
  * DELETE /admin/my-features/:id                   — the name goes; its things stay
  * POST   /admin/my-features/:id/items             { kind, refId } — a table, a function or a page joins it
  * DELETE /admin/my-features/:id/items/:kind/:ref  — it leaves (and stays where it was made)
@@ -95,6 +98,12 @@ async function changed(pages: string[] = []) {
 }
 const pagesOf = (feature: Held) => feature.items.filter((i) => i.kind === "page").map((i) => i.refId);
 
+/** A whole site's settings as its file declares them (lib/siteSettings.ts), and their values now: none, it declares none. */
+function settingsView(feature: { template: unknown; settings: unknown }) {
+  const decls = declsOf(installedOf(feature.template)?.file.settings);
+  return decls.length ? { declared: decls, values: valuesOf(decls, feature.settings) } : null;
+}
+
 /** A feature with its things as they are now. A thing deleted where it was made is dropped from the feature here. */
 async function full(feature: Held) {
   const ids = (kind: FeatureKind) => feature.items.filter((i) => i.kind === kind).map((i) => i.refId);
@@ -130,6 +139,8 @@ async function full(feature: Held) {
     template: installedView(feature.template),
     // A whole site's first page, and whether it is shown as the store's home (or another site is).
     siteHome: await siteHomeView(feature.id, pageKeys.get("home") ?? null),
+    // A whole site's settings: what each is, and its value now.
+    settings: settingsView(feature),
     createdAt: feature.createdAt,
     updatedAt: feature.updatedAt,
     tables: by(tables, "table").map((t) => ({ id: t.id, slug: t.slug, name: t.name, fields: Array.isArray(t.fields) ? t.fields.length : 0, rows: t._count.items, api: accessOf(t.api) })),
@@ -300,6 +311,23 @@ r.put(
     });
     // Switched: its pages show, or hide, on the shop from now.
     if (body.enabled !== undefined) await changed(body.enabled !== feature.enabled ? pagesOf(feature) : []);
+    res.json(await full(saved));
+  }),
+);
+
+const SettingsBody = z.object({ values: z.record(z.string().max(40), z.unknown()) }).strict();
+r.put(
+  "/:id/settings",
+  asyncHandler(async (req, res) => {
+    const feature = await featureOf(req);
+    const body = SettingsBody.parse(req.body ?? {});
+    const decls = declsOf(installedOf(feature.template)?.file.settings);
+    if (!decls.length) throw new AppError(409, "NO_SETTINGS", "This feature has no settings");
+    const read = readValues(decls, feature.settings, body.values);
+    if (!read.ok) throw new AppError(400, "BAD_SETTINGS", "Some settings can't take these values", { problems: read.problems });
+    const saved = await prisma.feature.update({ where: { id: feature.id }, data: { settings: read.values as Prisma.InputJsonValue }, include: { items: { orderBy: { createdAt: "asc" } } } });
+    // Its functions read them from their next run; its pages are drawn again on the shop.
+    await changed(pagesOf(feature));
     res.json(await full(saved));
   }),
 );

@@ -11,6 +11,7 @@
  * once every few seconds (and at once after a feature changes: `forgetFeatureGate`).
  */
 import { prisma } from "./prisma.js";
+import { forgetSiteSettings } from "./siteSettings.js";
 
 export const FEATURE_KINDS = ["table", "function", "page"] as const;
 export type FeatureKind = (typeof FEATURE_KINDS)[number];
@@ -24,6 +25,8 @@ let cache: Off | null = null;
 
 export function forgetFeatureGate() {
   cache = null;
+  // What a feature holds or its file changed: its settings are read again too.
+  forgetSiteSettings();
 }
 
 /** The tables, functions and pages that belong to a feature that is switched off. */

@@ -81,7 +81,7 @@ export async function hereNow(): Promise<Here> {
     }),
     roles: roles.map((r) => ({ key: r.key, name: r.name, note: r.note })),
     groups: groups.map((g) => ({ id: g.id, name: g.name, note: g.note })),
-    features: features.map((f) => ({ id: f.id, name: f.name, note: f.note, enabled: f.enabled, items: f.items.map((i) => ({ kind: i.kind, refId: i.refId })), template: f.template })),
+    features: features.map((f) => ({ id: f.id, name: f.name, note: f.note, enabled: f.enabled, items: f.items.map((i) => ({ kind: i.kind, refId: i.refId })), template: f.template, ...(f.settings && typeof f.settings === "object" ? { settings: f.settings } : {}) })),
     connections,
   };
 }
@@ -469,7 +469,7 @@ async function write(p: Planned, opts: { lang: Lang; by: string | null }) {
       for (const f of file.features) {
         const ref = `feature:${f.id}`;
         if (!doing(ref)) continue;
-        const data = { name: f.name, note: f.note ?? null, enabled: f.enabled, template: (f.template ?? Prisma.JsonNull) as Prisma.InputJsonValue };
+        const data = { name: f.name, note: f.note ?? null, enabled: f.enabled, template: (f.template ?? Prisma.JsonNull) as Prisma.InputJsonValue, settings: (f.settings ?? Prisma.JsonNull) as Prisma.InputJsonValue };
         await tx.feature.upsert({ where: { id: f.id }, create: { id: f.id, ...data }, update: data });
         const things = f.items.filter((i) => exists[i.kind].has(i.id));
         await tx.featureItem.deleteMany({ where: { OR: [{ featureId: f.id }, ...things.map((i) => ({ kind: i.kind, refId: i.id }))] } });

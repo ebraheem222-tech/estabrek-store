@@ -5,7 +5,7 @@
 import { B, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type Ctx, type N, type Skin } from "../../build";
 import { RECIPES } from "../../sections";
 import type { W } from "../../words";
-import type { ModuleKey, SiteBlueprint, SiteModules } from "../blueprint";
+import type { ModuleKey, SiteBlueprint, SiteModules, SiteSetting } from "../blueprint";
 
 /* ---------------- The file a site becomes ---------------- */
 
@@ -21,6 +21,8 @@ export type SiteFile = {
   functions: Array<{ key: string; name: string; note?: string; def: Record<string, unknown>; triggers: Array<{ kind: "row"; config: Record<string, unknown> }> }>;
   pages: Array<{ key: string; name: string; slug: string; tree: Tree; seo?: { title?: string; description?: string } }>;
   needs: { secrets: string[]; sites: string[] };
+  /** What its owner can change (blueprint.ts SiteSetting); none: the key is left out. */
+  settings?: SiteSetting[];
 };
 export type SiteTable = { key: string; slug: string; name: W; fields: Field[]; api?: Record<string, unknown>; itemPage?: Tree; rows?: Array<{ slug?: string; data: Record<string, unknown> }> };
 export type Field = Record<string, unknown> & { id: string; type: string };
@@ -57,6 +59,8 @@ export type SiteModule = {
   functions?: (b: Built) => SiteFile["functions"];
   /** How many tables and ready rows it brings (the gallery's line, without building it). */
   counts?: (bp: SiteBlueprint) => { tables: number; rows: number };
+  /** What its owner can change: read by its pages (`showIf`, `fromSetting`) and its functions ("{{settings.key}}"). */
+  settings?: (bp: SiteBlueprint) => SiteSetting[];
 };
 
 /* ---------------- Building pieces ---------------- */
@@ -73,6 +77,10 @@ export const T = (key: string) => `@table:${key}`;
 /** An element whose props take a row's values (`{ text: "title" }`). */
 export const bound = (n: N, bind: Record<string, string>): N => ({ ...n, props: { ...n.props, bind } });
 export const still = { motion: false } as const;
+/** An element shown on the shop only while one of the site's settings is `is` (a switch on, unless said). */
+export const shownIf = (n: N, setting: string, is: boolean | string | number = true): N => ({ ...n, props: { ...n.props, showIf: is === true ? { setting } : { setting, is } } });
+/** An element whose words on the shop are one of the site's settings (its text, a button's label). */
+export const fromSetting = (n: N, take: { text?: string; label?: string }): N => ({ ...n, props: { ...n.props, fromSetting: take } });
 
 /** A list of a table's rows drawn with the page (its card repeated once a row, in the owner's order). */
 export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W }): N {

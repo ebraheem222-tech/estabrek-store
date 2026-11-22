@@ -17,7 +17,7 @@ import { CMPS } from "../../lib/fnValues.js";
 import { CALL_PER_MINUTE, CALL_SLUG, FN_EVENTS, HANDS, ROUTE_BASE, ROUTE_LIMITS, ROUTE_METHODS, ROUTE_STATUS, TRIGGER_KINDS, TRIGGER_LIMITS, configOf, forgetTriggers, newToken, nextRun, routePath, routeSlug, type RouteConfig, type ScheduleConfig, type TriggerKind } from "../../lib/fnTriggers.js";
 import { INPUT_FORMATS, INPUT_RULE_LIMITS } from "../../lib/fnInputs.js";
 import { hasPermission } from "../../middleware/access.js";
-import { runFn, runTests } from "../functions/functions.service.js";
+import { fnSettings, runFn, runTests } from "../functions/functions.service.js";
 
 /**
  * /v1/admin/functions — الـ Functions (F1): logic the owner builds from steps (lib/fnDef.ts), tries,
@@ -54,16 +54,19 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stri
 
 /** What the steps may talk about: the tables with their fields, and the functions. */
 async function known(self?: string): Promise<Known> {
-  const [tables, fns, outside, ready, roles, groups] = await Promise.all([
+  const [tables, fns, outside, ready, roles, groups, site] = await Promise.all([
     prisma.collection.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, slug: true, name: true, fields: true } }),
     prisma.fn.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, live: true } }),
     connectionNames(),
     readyNames(),
     prisma.shopperRole.findMany({ orderBy: { createdAt: "asc" }, select: { key: true } }),
     prisma.shopperGroup.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    self ? fnSettings(self) : null,
   ]);
   return {
     self,
+    // Its whole site's settings by key (lib/siteSettings.ts): what "{{settings.x}}" may name.
+    ...(site ? { settings: site.decls.map((d) => d.key) } : {}),
     // What a customer step may give or take (admin → الزبائن → الأدوار والمجموعات).
     roles: roles.map((x) => x.key),
     groups,
@@ -141,14 +144,17 @@ function routeParams(config: unknown): string[] {
 
 async function full(fn: Row, req: Request) {
   const draft = defOf(fn.draft) ?? EMPTY_DEF;
-  const [triggers, part, versions] = await Promise.all([
+  const [triggers, part, versions, site] = await Promise.all([
     prisma.fnTrigger.findMany({ where: { fnId: fn.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
     prisma.featureItem.findUnique({ where: { kind_refId: { kind: "function", refId: fn.id } }, select: { feature: { select: { id: true, name: true, enabled: true } } } }),
     versionsOf(fn.id),
+    fnSettings(fn.id),
   ]);
   const write = hasPermission(req, "functions:write");
+  // Its whole site's settings, for the editor to offer as "{{settings.x}}" (their keys, names and kinds; values aren't the editor's).
+  const settings = site ? site.decls.map((d) => ({ key: d.key, kind: d.kind, label: d.label, public: !!d.public })) : [];
   // The feature it is part of (admin → ميزاتي): one that is off keeps the function from being started.
-  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null, tests: testsOf(fn.tests), versions, versionsKept: VERSION_LIMITS.kept };
+  return { ...lite(fn), draft, live: defOf(fn.live), problems: [...problemsOf(draft, await known(fn.id)), ...(await codeProblems(draft))], triggers: triggers.map((t) => triggerView(t, write)), feature: part?.feature ?? null, settings, tests: testsOf(fn.tests), versions, versionsKept: VERSION_LIMITS.kept };
 }
 /** The member trying, testing or running a function from the admin. */
 const adminCaller = (req: Request) => ({ kind: "admin" as const, id: req.access?.adminId, email: req.access?.email ?? undefined });
@@ -244,7 +250,7 @@ r.post(
     // Its own tests, run against what is about to go live: one that doesn't pass stops the publish.
     const tests = testsOf(fn.tests);
     if (tests.length) {
-      const ran = await runTests(draft, tests, adminCaller(req));
+      const ran = await runTests(draft, tests, adminCaller(req), await fnSettings(fn.id));
       if (ran.failed) throw new AppError(409, "FN_TESTS_FAILED", "Its own tests don't pass", ran);
     }
     // Kept as a version of its own, which is what the function runs from now on.
@@ -297,7 +303,7 @@ r.post(
     const fn = await fnOf(req);
     const draft = defOf(fn.draft);
     if (!draft) throw new AppError(409, "FN_INVALID", "The draft can't be read");
-    res.json(await runTests(draft, testsOf(fn.tests), adminCaller(req)));
+    res.json(await runTests(draft, testsOf(fn.tests), adminCaller(req), await fnSettings(fn.id)));
   }),
 );
 

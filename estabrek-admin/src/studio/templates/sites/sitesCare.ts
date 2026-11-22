@@ -4,7 +4,7 @@ import { site } from "./blueprint";
 
 export const CLINIC = site({
   key: "site-dental-clinic",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "health",
   archetype: "front",
   fam: "general",
@@ -96,7 +96,7 @@ export const CLINIC = site({
 
 export const SALON = site({
   key: "site-beauty-salon",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "beauty",
   archetype: "front",
   fam: "beauty",
@@ -188,7 +188,7 @@ export const SALON = site({
 
 export const GYM = site({
   key: "site-gym",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "fitness",
   archetype: "front",
   fam: "sports",

@@ -111,7 +111,7 @@ export type FnLite = {
 export type FnVersion = { n: number; at: string; by: string | null; back: number | null; steps: number; inputs: number };
 /** Where a problem is ("do.2", "do.2.else.0", "if.0", "fail.1") and what it is. */
 export type Problem = { at: string; message: string };
-export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** Its versions, newest first, and how many are kept. */ versions?: FnVersion[]; versionsKept?: number; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null; /** Its own tests (F4): run before every publish. */ tests?: FnTest[] };
+export type FnFull = FnLite & { draft: FnDef; live: FnDef | null; problems: Problem[]; triggers: FnTrigger[]; /** Its versions, newest first, and how many are kept. */ versions?: FnVersion[]; versionsKept?: number; /** The feature it is part of (admin → ميزاتي); one that is off keeps it from being started. */ feature?: { id: string; name: string; enabled: boolean } | null; /** Its own tests (F4): run before every publish. */ tests?: FnTest[]; /** Its whole site's settings (backend lib/siteSettings.ts): what "{{settings.key}}" may name. */ settings?: Array<{ key: string; kind: string; label: Partial<Record<"ar" | "en" | "he", string>>; public: boolean }> };
 
 /** What starts a function (backend lib/fnTriggers.ts). It fires only while the function is published and switched on. */
 export type TriggerKind = "row" | "schedule" | "event" | "call" | "webhook" | "route";

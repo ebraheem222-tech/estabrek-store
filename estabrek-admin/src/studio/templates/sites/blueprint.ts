@@ -77,6 +77,31 @@ export type BookingUse = { title: W; sub: W; ask: W; button: W; done: W; /** Wha
 /** A module that takes no words of its own. */
 export type Bare = Record<string, never>;
 
+/**
+ * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
+ * function (admin → ميزاتي → the site → إعدادات الموقع). Its functions read it as "{{settings.key}}"; its
+ * pages show an element only while a switch is on (`showIf`) and take an element's words from it
+ * (`fromSetting`). Only a public one reaches the shop. The backend's lib/siteSettings.ts checks each.
+ */
+export type SettingKind = "toggle" | "number" | "text" | "words" | "choice" | "color";
+export type SiteSetting = {
+  key: string;
+  kind: SettingKind;
+  label: W;
+  note?: W;
+  /** Its section on the owner's form (the module's name). */
+  group?: W;
+  /** The shop's pages read it (else it stays on the server). */
+  public?: boolean;
+  default?: boolean | number | string | W;
+  min?: number;
+  max?: number;
+  whole?: boolean;
+  unit?: W;
+  long?: boolean;
+  options?: Array<{ id: string; name: W }>;
+};
+
 /** The modules a site uses, each with its words. Which modules exist, and what each brings, is modules/index.ts. */
 export type SiteModules = {
   offers?: OffersUse;
