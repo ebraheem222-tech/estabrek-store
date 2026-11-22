@@ -43,23 +43,37 @@ function problemsOf(e: unknown): Record<string, string> {
 }
 
 export function SiteSettings({ feature: f }: { feature: Feature }) {
+  const qc = useQueryClient();
   if (!f.settings?.declared.length) return null;
   // Saved (or changed elsewhere), the form starts again from the values kept.
-  return <SettingsForm key={`${f.id}:${f.updatedAt}:${JSON.stringify(f.settings.values)}`} feature={f} view={f.settings} />;
+  return (
+    <SettingsEditor
+      key={`${f.id}:${f.updatedAt}:${JSON.stringify(f.settings.values)}`}
+      featureId={f.id}
+      view={f.settings}
+      onSaved={(saved) => {
+        qc.setQueryData(["my-features", f.id], saved);
+        void qc.invalidateQueries({ queryKey: ["site-panel"] });
+      }}
+    />
+  );
 }
 
-function SettingsForm({ feature: f, view }: { feature: Feature; view: NonNullable<Feature["settings"]> }) {
+/**
+ * The form of a whole site's settings (all of them, or those a panel part names): only what changed is sent.
+ * Give it a `key` that changes with the values kept, so it starts again from them once saved.
+ */
+export function SettingsEditor({ featureId, view, onSaved, title }: { featureId: string; view: { declared: SiteSettingDecl[]; values: Values }; onSaved: (saved: Feature) => void; title?: string | null }) {
   const lang = adminLang();
-  const qc = useQueryClient();
   const { hasPermission } = useAuth();
   const may = hasPermission("features:write");
   const [draft, setDraft] = useState<Values>(view.values);
   const [wrong, setWrong] = useState<Record<string, string>>({});
   const changed = useMemo(() => Object.fromEntries(Object.entries(draft).filter(([k, v]) => !same(v, view.values[k]))), [draft, view]);
   const save = useMutation({
-    mutationFn: () => FeaturesAPI.saveFeatureSettings(f.id, changed),
+    mutationFn: () => FeaturesAPI.saveFeatureSettings(featureId, changed),
     onSuccess: (saved) => {
-      qc.setQueryData(["my-features", f.id], saved);
+      onSaved(saved);
       setWrong({});
       toast.success(say("انحفظت الإعدادات: الموقع بيقرأها من هلّق|The settings are saved: the site reads them from now|ההגדרות נשמרו: האתר קורא אותן מעכשיו"));
     },
@@ -150,7 +164,7 @@ function SettingsForm({ feature: f, view }: { feature: Feature; view: NonNullabl
 
   return (
     <section className={box} data-testid="site-settings">
-      <h2 className="font-medium">{say("إعدادات الموقع|The site's settings|הגדרות האתר")}</h2>
+      <h2 className="font-medium">{title ?? say("إعدادات الموقع|The site's settings|הגדרות האתר")}</h2>
       <p className="mt-1 text-sm text-white/70">
         {say("بتغيّرها من هون بدون ما تفتح صفحة أو منطق. صفحات الموقع على المتجر بتقرأ العامة منها بس، والمنطق تبعه بيقرأها كلها بالاسم المكتوب تحت كل وحدة.|Change them here without opening a page or a function. The site's pages on the shop read only the public ones; its functions read them all, by the name written under each.|משנים אותן כאן בלי לפתוח עמוד או פונקציה. עמודי האתר בחנות קוראים רק את הציבוריות; הפונקציות שלו קוראות את כולן, לפי השם שכתוב מתחת לכל אחת.")}
       </p>

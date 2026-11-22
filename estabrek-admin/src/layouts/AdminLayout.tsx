@@ -14,6 +14,9 @@ import { applyCursorTheme } from "../theme/cursorTheme";
 import { applyButtonTheme, clearButtonTheme } from "../theme/buttonTheme";
 import { applySkin, useSkin } from "../theme/skin";
 import { Icons, NAV_GROUPS, type NavItem } from "./adminNav";
+import { useQuery } from "@tanstack/react-query";
+import { listSitePanels, type PanelIcon } from "../api/sitePanels.api";
+import { adminLang } from "../lib/lang";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MobileTabBar } from "./shell/MobileTabBar";
 import { SkinPicker, SkinToggleButton } from "./shell/SkinSwitch";
@@ -284,7 +287,18 @@ export default function AdminLayout() {
   );
   const can = useCallback((p: "orders:read" | "catalog:read" | "catalog:write") => hasPermission(p), [hasPermission]);
 
-  const navGroups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter(canViewNavItem) })).filter((group) => group.items.length > 0);
+  // Each whole site installed here with a panel: a group under its name, with the pages this member sees (sites wave 1.2).
+  const panels = useQuery({ queryKey: ["site-panels"], queryFn: listSitePanels, staleTime: 30_000, retry: false });
+  const lang = adminLang();
+  const PANEL_ICON: Record<PanelIcon, React.ReactNode> = { today: Icons.dashboard, lists: Icons.pages, settings: Icons.settings };
+  const siteGroups = (panels.data?.sites ?? []).map((s) => ({
+    id: `site-${s.featureId}`,
+    title: s.name,
+    items: s.pages.map((p): NavItem => ({ to: `/admin/site/${encodeURIComponent(s.featureId)}/${encodeURIComponent(p.key)}`, label: p.name[lang] || p.name.ar || p.name.en || p.key, icon: PANEL_ICON[p.icon] ?? Icons.pages })),
+  }));
+  const staticGroups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter(canViewNavItem) })).filter((group) => group.items.length > 0);
+  // Right after the overview: a site's day-to-day is the first thing its owner opens.
+  const navGroups = staticGroups[0]?.id === "main" ? [staticGroups[0], ...siteGroups, ...staticGroups.slice(1)] : [...siteGroups, ...staticGroups];
 
   const renderShell = (ordersBadge: number) => (
     <SidebarContext.Provider value={{ collapsed, setCollapsed }}>

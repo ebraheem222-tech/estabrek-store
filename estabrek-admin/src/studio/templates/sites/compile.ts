@@ -5,8 +5,9 @@
  */
 import { ctxOf, say, type Ctx, type MotionLevel, type N } from "../build";
 import { C, w, type W } from "../words";
-import { SITE_FORMAT, SITE_FORMAT_VERSION, type SiteBlueprint, type SiteSetting } from "./blueprint";
-import { HOME_SETTINGS, HOMES, MODULES } from "./modules";
+import { SITE_FORMAT, SITE_FORMAT_VERSION, type PanelBits, type PanelPage, type PanelPart, type SiteBlueprint, type SiteSetting } from "./blueprint";
+import { HOME_PANEL, HOME_SETTINGS, HOMES, MODULES } from "./modules";
+import { PANEL } from "./siteWords";
 import type { Built, Lang, SiteFile, SiteModule, SitePage, Slugs } from "./modules/kit";
 import { SW } from "./siteWords";
 
@@ -28,6 +29,26 @@ export const slugsOf = (bp: SiteBlueprint): Slugs => slugsFrom(pagesOf(bp));
 
 /** A blueprint's settings, in its form's order: its archetype's, then its modules' (in the modules' order). */
 export const settingsOf = (bp: SiteBlueprint): SiteSetting[] => [...(HOME_SETTINGS[bp.archetype]?.(bp) ?? []), ...used(bp).flatMap((m) => m.settings?.(bp) ?? [])];
+
+/**
+ * A blueprint's panel (its own pages in the admin's menu): «اليوم» with every number at the top, its modules'
+ * queues, and the quick actions; «القوائم» with its modules' tables; «الإعدادات» with every setting. A page with
+ * nothing on it is left out.
+ */
+export function panelOf(bp: SiteBlueprint): PanelPage[] {
+  const bits: PanelBits[] = [HOME_PANEL[bp.archetype]?.(bp) ?? {}, ...used(bp).map((m) => m.panel?.(bp) ?? {})];
+  const numbers = bits.flatMap((b) => b.numbers ?? []);
+  const actions = bits.flatMap((b) => b.actions ?? []);
+  const today: PanelPart[] = [...(numbers.length ? [{ kind: "numbers" as const, key: "numbers", items: numbers }] : []), ...bits.flatMap((b) => b.today ?? []), ...(actions.length ? [{ kind: "actions" as const, key: "actions", title: PANEL.quick, items: actions }] : [])];
+  const lists = bits.flatMap((b) => b.lists ?? []);
+  const keys = settingsOf(bp).map((s) => s.key);
+  const pages: PanelPage[] = [
+    { key: "today", name: PANEL.today, icon: "today", parts: today },
+    { key: "lists", name: PANEL.lists, icon: "lists", parts: lists },
+    { key: "settings", name: PANEL.settings, icon: "settings", parts: keys.length ? [{ kind: "settings", key: "settings", keys }] : [] },
+  ];
+  return pages.filter((p) => p.parts.length);
+}
 
 /** What a site holds, for its card in the gallery (without building it). */
 export function siteCounts(bp: SiteBlueprint) {
@@ -134,5 +155,6 @@ export function buildSite(bp: SiteBlueprint, o: BuildSite): SiteFile {
   }));
   const tables = mods.flatMap((m) => m.tables?.(b, c) ?? []).map((t) => (t.itemPage ? { ...t, itemPage: { ...t.itemPage, root: ownWords(t.itemPage.root, b, c, set) } } : t));
   const functions = mods.flatMap((m) => m.functions?.(b) ?? []);
-  return { format: "estabrek.feature", formatVersion: 1, key: bp.key, version: bp.version, name: bp.name, note: bp.note, tables, functions, pages, needs: { secrets: [], sites: [] }, ...(settings.length ? { settings } : {}) };
+  const panel = panelOf(bp);
+  return { format: "estabrek.feature", formatVersion: 1, key: bp.key, version: bp.version, name: bp.name, note: bp.note, tables, functions, pages, needs: { secrets: [], sites: [] }, ...(settings.length ? { settings } : {}), ...(panel.length ? { panel } : {}) };
 }

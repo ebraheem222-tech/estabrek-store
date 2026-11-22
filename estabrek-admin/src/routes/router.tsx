@@ -100,6 +100,7 @@ const ConnectionsPage = lazy(() => import("../features/connections/ConnectionsPa
 const WebhooksPage = lazy(() => import("../features/webhooks/WebhooksPage"));
 const MyFeaturesPage = lazy(() => import("../features/myFeatures/MyFeaturesPage"));
 const FeaturePage = lazy(() => import("../features/myFeatures/FeaturePage"));
+const SitePanelPage = lazy(() => import("../features/sitePanels/SitePanelPage"));
 const GalleryPage = lazy(() => import("../features/myFeatures/GalleryPage"));
 const SitesPage = lazy(() => import("../features/myFeatures/SitesPage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
@@ -359,6 +360,8 @@ export default function AppRouter() {
           <Route path="my-features/gallery" element={withPermissions(<ErrorBoundary title="Gallery"><GalleryPage /></ErrorBoundary>, ["features:read"])} />
           <Route path="my-features/sites" element={withPermissions(<ErrorBoundary title="Whole sites"><SitesPage /></ErrorBoundary>, ["features:read"])} />
           <Route path="my-features/:id" element={withPermissions(<ErrorBoundary title="My features"><FeaturePage /></ErrorBoundary>, ["features:read"])} />
+          {/* A whole site's own pages (sites wave 1.2): open to every member; the server sends each only the parts they may read. */}
+          <Route path="site/:featureId/:page" element={<ErrorBoundary title="Site"><SitePanelPage /></ErrorBoundary>} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}
           <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
           <Route path="pages/:id/classic" element={withPermissions(<OpenInStudio />, ["pages:read"])} />

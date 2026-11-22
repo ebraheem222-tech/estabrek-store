@@ -108,6 +108,8 @@ export async function exportFeature(featureId: string, opts: { key?: string; ver
   });
   // A whole site's settings go with it as its file declared them (lib/siteSettings.ts); the owner's values stay here.
   if (came?.file.settings?.length) out.template.settings = came.file.settings;
+  // Its panel too (lib/sitePanel.ts): it names the tables by their keys, which the export keeps.
+  if (came?.file.panel?.length) out.template.panel = came.file.panel;
   return out;
 }
 

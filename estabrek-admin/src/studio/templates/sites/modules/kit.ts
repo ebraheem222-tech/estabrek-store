@@ -5,7 +5,7 @@
 import { B, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type Ctx, type N, type Skin } from "../../build";
 import { RECIPES } from "../../sections";
 import type { W } from "../../words";
-import type { ModuleKey, SiteBlueprint, SiteModules, SiteSetting } from "../blueprint";
+import type { ModuleKey, PanelBits, PanelPage, SiteBlueprint, SiteModules, SiteSetting } from "../blueprint";
 
 /* ---------------- The file a site becomes ---------------- */
 
@@ -23,6 +23,8 @@ export type SiteFile = {
   needs: { secrets: string[]; sites: string[] };
   /** What its owner can change (blueprint.ts SiteSetting); none: the key is left out. */
   settings?: SiteSetting[];
+  /** Its own pages in the admin's menu (blueprint.ts PanelPage); none: the key is left out. */
+  panel?: PanelPage[];
 };
 export type SiteTable = { key: string; slug: string; name: W; fields: Field[]; api?: Record<string, unknown>; itemPage?: Tree; rows?: Array<{ slug?: string; data: Record<string, unknown> }> };
 export type Field = Record<string, unknown> & { id: string; type: string };
@@ -61,6 +63,8 @@ export type SiteModule = {
   counts?: (bp: SiteBlueprint) => { tables: number; rows: number };
   /** What its owner can change: read by its pages (`showIf`, `fromSetting`) and its functions ("{{settings.key}}"). */
   settings?: (bp: SiteBlueprint) => SiteSetting[];
+  /** What it brings to its site's panel in the admin. */
+  panel?: (bp: SiteBlueprint) => PanelBits;
 };
 
 /* ---------------- Building pieces ---------------- */

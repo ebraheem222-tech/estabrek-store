@@ -15,7 +15,8 @@ import { galleryFile, galleryList } from "../../lib/gallery/index.js";
 import { previewUpgrade, upgradeFeature } from "../../lib/featureUpgrade.js";
 import { adminIdOf } from "./settings.controller.js";
 import { SiteHomeBody, makeSiteHome, siteHomeView, undoSiteHome } from "./siteHome.js";
-import { declsOf, readValues, valuesOf } from "../../lib/siteSettings.js";
+import { declsOf, valuesOf } from "../../lib/siteSettings.js";
+import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -141,6 +142,8 @@ async function full(feature: Held) {
     siteHome: await siteHomeView(feature.id, pageKeys.get("home") ?? null),
     // A whole site's settings: what each is, and its value now.
     settings: settingsView(feature),
+    // A whole site's own pages in the admin's menu (lib/sitePanel.ts), as its file declares them.
+    panel: (installedOf(feature.template)?.file.panel ?? []).map((p) => ({ key: p.key, name: p.name, icon: p.icon })),
     createdAt: feature.createdAt,
     updatedAt: feature.updatedAt,
     tables: by(tables, "table").map((t) => ({ id: t.id, slug: t.slug, name: t.name, fields: Array.isArray(t.fields) ? t.fields.length : 0, rows: t._count.items, api: accessOf(t.api) })),
@@ -321,14 +324,9 @@ r.put(
   asyncHandler(async (req, res) => {
     const feature = await featureOf(req);
     const body = SettingsBody.parse(req.body ?? {});
-    const decls = declsOf(installedOf(feature.template)?.file.settings);
-    if (!decls.length) throw new AppError(409, "NO_SETTINGS", "This feature has no settings");
-    const read = readValues(decls, feature.settings, body.values);
-    if (!read.ok) throw new AppError(400, "BAD_SETTINGS", "Some settings can't take these values", { problems: read.problems });
-    const saved = await prisma.feature.update({ where: { id: feature.id }, data: { settings: read.values as Prisma.InputJsonValue }, include: { items: { orderBy: { createdAt: "asc" } } } });
-    // Its functions read them from their next run; its pages are drawn again on the shop.
-    await changed(pagesOf(feature));
-    res.json(await full(saved));
+    // Checked, kept; its functions read them from their next run, its pages are drawn again on the shop.
+    await saveSiteSettings(feature.id, body.values);
+    res.json(await full(await featureById(feature.id)));
   }),
 );
 

@@ -4,7 +4,7 @@ import { site } from "./blueprint";
 
 export const ACADEMY = site({
   key: "site-academy",
-  version: "1.1.0",
+  version: "1.2.0",
   field: "learning",
   archetype: "front",
   fam: "books",
@@ -96,7 +96,7 @@ export const ACADEMY = site({
 
 export const LAW = site({
   key: "site-law-office",
-  version: "1.1.0",
+  version: "1.2.0",
   field: "services",
   archetype: "front",
   fam: "general",
@@ -186,7 +186,7 @@ export const LAW = site({
 
 export const AGENCY = site({
   key: "site-creative-agency",
-  version: "1.1.0",
+  version: "1.2.0",
   field: "services",
   archetype: "front",
   fam: "art",

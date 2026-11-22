@@ -34,6 +34,7 @@ export default function MyFeaturesPage() {
     onSuccess: (f) => {
       qc.setQueryData(["my-features", f.id], f);
       void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
+      void qc.invalidateQueries({ queryKey: ["site-panels"] });
       go(`/admin/my-features/${f.id}`);
     },
     onError: (e) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) }),

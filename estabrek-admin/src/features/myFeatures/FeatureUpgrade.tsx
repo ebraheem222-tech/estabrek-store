@@ -87,6 +87,7 @@ function UpgradeFlow({ featureId, id, template, onDone }: { featureId: string; i
     onSuccess: (r) => {
       qc.setQueryData(["my-features", featureId], r.feature);
       void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
+      void qc.invalidateQueries({ queryKey: ["site-panels"] });
       void qc.invalidateQueries({ queryKey: ["functions"] });
       toast.success(say("رقّيت لـ {v}|Upgraded to {v}|שודרג ל-{v}").replace("{v}", r.to), { description: summaryLine(r.items, lang) });
       onDone();

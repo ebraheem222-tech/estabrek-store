@@ -7,7 +7,7 @@ import { B, CARD, COLS, DIVIDER, H, ICON, IMG, P, SEC, STACK, eyebrow, pop, with
 import { w, type W } from "../../words";
 import { hug } from "../../partsMore";
 import { SET, SW, STARS } from "../siteWords";
-import { LIST, S, bound, callBand, f, head, pageHead, picOf, plainPic, shownIf, still, tree, type Built, type Part, type SiteModule } from "./kit";
+import { LIST, S, T, bound, callBand, f, head, pageHead, picOf, plainPic, shownIf, still, tree, type Built, type Part, type SiteModule } from "./kit";
 
 /* ---------------- The cards, each connected to its table's fields ---------------- */
 
@@ -185,6 +185,11 @@ export const OFFERS: SiteModule = {
     }];
   },
   counts: (bp) => ({ tables: 1, rows: bp.modules.offers!.rows.length }),
+  // Its panel: the list itself, as a table to read at a glance.
+  panel: (bp) => {
+    const o = bp.modules.offers!;
+    return { lists: [{ kind: "view", key: "offers", title: o.title, table: T("offers"), columns: ["title", "group", ...(o.price ? ["price"] : []), ...(o.extra ? ["extra"] : []), "featured", "$status"] }] };
+  },
   // A list with prices: its owner may hide them (they change often, or are given by phone).
   settings: (bp) => (bp.modules.offers?.price ? [{ key: "showPrices", kind: "toggle" as const, label: SET.showPrices, note: SET.showPricesNote, group: OFFERS_NAME, public: true, default: true }] : []),
 };

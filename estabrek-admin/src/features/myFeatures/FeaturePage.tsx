@@ -57,6 +57,7 @@ export default function FeaturePage() {
   const took = (saved: Feature) => {
     qc.setQueryData(["my-features", id], saved);
     void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
+    void qc.invalidateQueries({ queryKey: ["site-panels"] });
   };
   const onError = (e: unknown) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) });
   const save = useMutation({ mutationFn: (body: { name?: string; note?: string | null; enabled?: boolean }) => FeaturesAPI.saveFeature(id, body), onSuccess: took, onError });
@@ -68,6 +69,7 @@ export default function FeaturePage() {
       // It is gone: its own page isn't asked for again, the list is.
       qc.removeQueries({ queryKey: ["my-features", id] });
       void qc.invalidateQueries({ queryKey: ["my-features"], exact: true });
+      void qc.invalidateQueries({ queryKey: ["site-panels"] });
       go("/admin/my-features");
     },
     onError,
@@ -148,6 +150,17 @@ export default function FeaturePage() {
 
       {/* ---------------- 1. Its tables ---------------- */}
       {/* A whole site: its first page as the store's home. */}
+      {f.panel?.length ? (
+        <section className={`${box} flex flex-wrap items-center justify-between gap-3`} data-testid="feature-panel">
+          <div>
+            <h2 className="font-medium">{say("لوحة الموقع|The site's panel|לוח האתר")}</h2>
+            <p className="mt-1 text-sm text-white/70">{say("صفحاته بقائمة الإدارة تحت اسمه: شغل اليوم، القوائم، والإعدادات.|Its own pages in the admin's menu, under its name: today's work, its lists and its settings.|העמודים שלו בתפריט הניהול, תחת השם שלו: העבודה של היום, הרשימות וההגדרות.")}</p>
+          </div>
+          <Link className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15" to={`/admin/site/${encodeURIComponent(f.id)}/${encodeURIComponent(f.panel[0].key)}`} data-testid="feature-panel-open">
+            {say("افتح لوحة الموقع|Open the site's panel|לפתוח את לוח האתר")}
+          </Link>
+        </section>
+      ) : null}
       <SiteHome feature={f} />
       <SiteSettings feature={f} />
 

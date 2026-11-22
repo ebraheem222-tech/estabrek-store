@@ -3,7 +3,7 @@
 // the same files (siteTemplates.unit.spec.ts, sites.spec.ts) and installs them for real.
 import { describe, expect, test } from "vitest";
 import { createHash } from "node:crypto";
-import { ARCHETYPES, FRONT_LOOKS, MODULES, SITES, blueprintProblems, buildChosen, buildSite, keepModules, modulesOf, pagesOf, settingsOf, siteByKey, siteCounts, slugsOf, withChoices, type SiteBlueprint } from "./index";
+import { ARCHETYPES, FRONT_LOOKS, MODULES, SITES, blueprintProblems, buildChosen, buildSite, keepModules, modulesOf, pagesOf, panelOf, settingsOf, siteByKey, siteCounts, slugsOf, withChoices, type SiteBlueprint } from "./index";
 
 const LANGS = ["ar", "en", "he"] as const;
 
@@ -13,20 +13,21 @@ const LANGS = ["ar", "en", "he"] as const;
  * only when a site's output changes on purpose, and say why in the change:
  *   1.1.0 (wave 1): the sites' settings (the hours, the notice bar over the first page, showing prices,
  *   online booking open or closed, the bell and an email), read by their pages and their function.
+ *   1.2.0 (wave 1.2): the sites' panels (today's numbers, queues and quick actions; their lists; their settings).
  */
 const BUILT: Record<string, string[]> = {
-  "site-restaurant": ["019d53be8ebc29d2", "eb5f482f7af7c974", "4792699fbcfae722", "61700832b6339859", "6497d34d8cc5fb7c", "9ba3c76514d6dcc6"],
-  "site-bakery-cafe": ["f4fbb9e40d19107c", "b75d0c9639dfacec", "7c7e1739c6e3f5d4", "a8a5b2b2f75296d6", "a31e9498c30dff3c", "53bcb6ce1342c1d8"],
-  "site-dental-clinic": ["3895436f9f30cf8f", "02160ab90ef81a40", "8c8cb07e142f344e", "4596554a29ff377c", "03b228e6ff0a30fc", "7ebcb74be7f80a1b"],
-  "site-beauty-salon": ["8a1f7a674c7944fa", "b97b46175c189387", "cb35def263153382", "97c113661b9c39ac", "046d269617a8010f", "8b0c0f06f0b12e51"],
-  "site-gym": ["075960ef809e978d", "745922c392636c6d", "d836838e51140470", "4ce38929ab730774", "74c2d1cd74af2a68", "9ae44ef4d64ab0fa"],
-  "site-academy": ["07f4d44aa504222b", "692d85f57c4b49be", "79f5eb8e694c8565", "61a05c7db7433de7", "fb17afcffdf7faee", "cd276024d3298b36"],
-  "site-real-estate": ["dcee46f821a5931c", "55b29b300a45225b", "c23997d17b0b4b23", "f8ac51a9b603785b", "ec96b06faa96c630", "70d967c52d435cb6"],
-  "site-guest-house": ["104872ab3229ddcf", "7172d5970b896068", "12600e5593251c32", "53ca0183b39097f1", "347715432c42343d", "3e743a18391f9d67"],
-  "site-events-hall": ["3de9bd3078c8956c", "2cf64437fb7cd710", "7f38c108f6eb9f51", "3699c6f43e0cb89c", "2830e9aac58e5f7a", "f438530f6d9f22ff"],
-  "site-photographer": ["68e6932a6e0a5ebe", "de3fd5b0148d0457", "53abb56af15b4949", "0751574d0305a508", "ee5449c91a515eb7", "e0fc1ba99ea31d5c"],
-  "site-law-office": ["eca9748479f03948", "4b4030e866ef2ec7", "c8cb64e43fc19e49", "db6de6433af224a9", "4779349b1112e6cf", "948993299b83d4a2"],
-  "site-creative-agency": ["3cd6f82390f1f120", "81fe60bc282ed644", "99c4d2f096a112d6", "3bc4a374d7fda0d5", "5dc336410708b2fd", "01442c0b7ead4c0c"],
+  "site-restaurant": ["8004cba75b2869ba", "ee98893bdf35d4be", "8639c8f8075dbe51", "a5b717a6732b0544", "952853f098d62496", "698b1ec22907de0f"],
+  "site-bakery-cafe": ["ad88c7f9d591a8fc", "a57ffbdd4992b665", "e0bd1de20c589987", "11e4ad69c480ff94", "f3722253046bc5a8", "ecf68f8a465da549"],
+  "site-dental-clinic": ["66051bb249b05154", "2494c3a44c48a4b8", "50b1077c0c7f53ff", "ad890426505eb218", "f4c9139cade20d2f", "f3f22f75cd276312"],
+  "site-beauty-salon": ["0d8e7518dbf5cabf", "f63c74f80a94c52c", "a75fb2f2e27ae8a2", "e261513c36ad0d63", "f4d13e155e8fcabf", "e5bd6a80af8359cd"],
+  "site-gym": ["8ec65fbfa9c54e8e", "c9146f36736b387a", "eeb8582580a85df5", "906c79bd56a0ecaf", "c838548bdce94932", "6f1001933568645d"],
+  "site-academy": ["dc9a35c0ea3e5700", "da20ec88c51f73ae", "4ea74c8b38f4667a", "ca277bd4bf697c7d", "7ef4708f40e53cfb", "69567f91b6880a52"],
+  "site-real-estate": ["9e7debf00fb0f108", "a192202f434e6f5d", "8622b5a3d632a078", "57ee18d8b142a54f", "ad4e7f0a62a825d5", "e1e5526b822b1bfa"],
+  "site-guest-house": ["c915f4808a53247c", "869047959ba485df", "8692b83ce0b57d64", "ef8eac3b1dc8c7e0", "363b67f387c33c39", "9d3ea7db5ed4d1fa"],
+  "site-events-hall": ["9df170e67d72e9c0", "84b8df4c9b1d0e69", "124e4aa01c18f067", "261fcee5d2159f52", "3b4b8216106930cd", "82640458df8ab11a"],
+  "site-photographer": ["bca3b3d1ea409f96", "615f99839af277b3", "bdfecff6b7a961ba", "1f88234da6acb464", "be0b319f7f4c7b91", "7b48b1b8edf3d74f"],
+  "site-law-office": ["a8e2d90cd1442ff5", "3373e41ee63155bb", "5d639684827f5c04", "8a2164471874afa9", "5222ad5b6048f8a8", "74db1b5a158db8e7"],
+  "site-creative-agency": ["7aea0bc6e40fe46d", "f8e220853764adbf", "ace18ad4357aa8e0", "8b7b0ce308d5edf5", "316aa42482743934", "1400e8ee6f15898d"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -248,5 +249,48 @@ describe("A site's settings (wave 1)", () => {
     const lean = buildChosen(clinic, { modules: all.filter((k) => k !== "booking" && k !== "notify") }, "ar");
     expect(lean.settings!.map((x) => x.key)).toEqual(["hours", "noticeOn", "notice", "showPrices"]);
     expect(marks(lean).some((m) => m.key.startsWith("booking"))).toBe(false);
+  });
+});
+
+describe("A site's panel (wave 1.2)", () => {
+  test("today, its lists and its settings: every part reads the site's own tables and fields, and names its own settings", () => {
+    for (const s of SITES) {
+      const f = buildSite(s, { lang: "en" });
+      const panel = panelOf(s);
+      expect(f.panel).toEqual(panel);
+      expect(panel.map((p) => p.key), s.key).toEqual(["today", "lists", "settings"]);
+      for (const p of panel) for (const lang of LANGS) expect(p.name[lang].trim()).toBeTruthy();
+      const tables = new Map(f.tables.map((t) => [`@table:${t.key}`, new Set(t.fields.map((x) => x.id))]));
+      const keys = new Set((f.settings ?? []).map((x) => x.key));
+      for (const page of panel)
+        for (const part of page.parts) {
+          const reads = part.kind === "numbers" ? part.items.map((i) => ({ table: i.table, fields: (i.where ?? []).map((c) => c.field) })) : part.kind === "queue" ? [{ table: part.table, fields: [...part.show, ...part.where.map((c) => c.field), ...part.decisions.flatMap((d) => Object.keys(d.set))] }] : part.kind === "view" ? [{ table: part.table, fields: part.columns }] : [];
+          for (const r of reads) {
+            expect(tables.has(r.table), `${s.key} ${part.key} ${r.table}`).toBe(true);
+            for (const field of r.fields.filter((x) => !x.startsWith("$"))) expect(tables.get(r.table)!.has(field), `${s.key} ${part.key} ${field}`).toBe(true);
+          }
+          if (part.kind === "settings") expect(part.keys).toEqual([...keys]);
+          if (part.kind === "actions") for (const a of part.items) expect(keys.has(a.setting), `${s.key} ${a.key}`).toBe(true);
+          if (part.kind === "queue") for (const d of part.decisions) for (const [field, value] of Object.entries(d.set)) {
+            // A queue's button sets a choice to one of its options.
+            const t = f.tables.find((x) => `@table:${x.key}` === part.table)!;
+            const options = (t.fields.find((x) => x.id === field)?.options as Array<{ id: string }> | undefined)?.map((o) => o.id);
+            expect(options, `${s.key} ${d.key}`).toContain(value);
+          }
+        }
+      // Today: the numbers first, the quick actions last.
+      const today = panel[0].parts;
+      expect(today[0].kind).toBe("numbers");
+      expect(today[today.length - 1].kind).toBe("actions");
+    }
+  });
+
+  test("a module left out takes its numbers, queues, tables and actions with it", () => {
+    const clinic = siteByKey("site-dental-clinic")!;
+    const lean = withChoices(clinic, { modules: modulesOf(clinic).map((m) => m.key).filter((k) => k !== "booking") });
+    const text = JSON.stringify(panelOf(lean));
+    expect(text).not.toContain("@table:bookings");
+    expect(text).not.toContain('"setting":"bookingOpen"');
+    expect(text).toContain('"key":"messages"');
   });
 });

@@ -65,6 +65,7 @@ import shopperRoles from "./shopperRoles.controller.js";
 import dataApi from "./api.controller.js";
 import functions from "./functions.controller.js";
 import myFeatures from "./myFeatures.controller.js";
+import sitePanels from "./sitePanels.controller.js";
 import connections from "./connections.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
@@ -149,6 +150,8 @@ r.use("/connections", areaAccess({ read: "connections:read", write: "connections
 r.use("/webhooks", areaAccess({ read: "connections:read", write: "connections:write" }), webhooksOut);
 // ميزاتي (M): a feature the owner built: its tables, functions and pages under one name, on or off together.
 r.use("/my-features", areaAccess({ read: "features:read", write: "features:write" }), myFeatures);
+// A whole site's own pages (lib/sitePanel.ts): any member signed in; each part asks its own permissions.
+r.use("/site-panels", sitePanels);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);
 // Codes sold one per piece (game keys, gift cards).
 r.use("/catalog/products/:productId/codes", areaAccess({ read: "catalog:read", write: "catalog:write" }), productCodes);
