@@ -6,6 +6,7 @@
 import { ARCHETYPES, SITE_FIELDS, type Archetype, type ModuleKey, type SiteBlueprint, type SiteField } from "./blueprint";
 import { blueprintProblems, buildSite, modulesOf, pagesOf, siteCounts, slugsOf, type BuildSite } from "./compile";
 import { MODULES, type SiteFile, type SiteModule } from "./modules";
+import { shellOf, type Shell, type ShellLink } from "./shell";
 import { BAKERY, RESTAURANT } from "./sitesFood";
 import { CLINIC, GYM, SALON } from "./sitesCare";
 import { ACADEMY, AGENCY, LAW } from "./sitesWork";
@@ -21,5 +22,5 @@ export function siteFile(key: string, o: BuildSite): SiteFile | null {
   return bp ? buildSite(bp, o) : null;
 }
 
-export { ARCHETYPES, MODULES, SITE_FIELDS, blueprintProblems, buildSite, modulesOf, pagesOf, siteCounts, slugsOf };
-export type { Archetype, BuildSite, ModuleKey, SiteBlueprint, SiteField, SiteFile, SiteModule };
+export { ARCHETYPES, MODULES, SITE_FIELDS, blueprintProblems, buildSite, modulesOf, pagesOf, shellOf, siteCounts, slugsOf };
+export type { Archetype, BuildSite, ModuleKey, Shell, ShellLink, SiteBlueprint, SiteField, SiteFile, SiteModule };

@@ -3,7 +3,7 @@ import { paramsToSlug } from "@/lib/slug";
 import FallbackHome from "@/components/FallbackHome";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import { routeLang, seoAlternates } from "@/lib/seoLang";
-import { independentDesign } from "@/storeThemes/snapshot";
+import { independentDesign, siteHomeOn } from "@/storeThemes/snapshot";
 
 export const revalidate = 60;
 
@@ -23,7 +23,8 @@ export default async function CmsPageRoute({
   if (slug === "/") {
     const settings = await getPublicSettings().catch(() => null);
     const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
-    if (!independentDesign((settings?.site as any)?.header) && storefrontCfg.cmsOverrideHome === false) {
+    // A whole site made the home is drawn as its page, whatever the store's own home would be.
+    if (!independentDesign((settings?.site as any)?.header) && !siteHomeOn((settings?.site as any)?.header) && storefrontCfg.cmsOverrideHome === false) {
       return <FallbackHome lang={lang} />;
     }
   }

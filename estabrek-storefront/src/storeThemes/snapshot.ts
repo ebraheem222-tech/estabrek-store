@@ -30,3 +30,5 @@ export function independentDesign(header: unknown): boolean {
   return (header as { storeDesign?: { mode?: unknown } } | null)?.storeDesign?.mode === "cms";
 }
 export const cinematicEnabled = (header: unknown, homeMode?: string) => !independentDesign(header) && homeMode !== "cms";
+/** A whole site shown as the store's home (admin «خلّيه الرئيسية», backend lib/siteHome.ts): "/" draws its first page as a page. */
+export const siteHomeOn = (header: unknown) => typeof (header as { siteHome?: { pageId?: unknown } } | null)?.siteHome?.pageId === "string";

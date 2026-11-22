@@ -10,9 +10,11 @@ import { forgetTriggers } from "../../lib/fnTriggers.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
 import { hasPermission } from "../../middleware/access.js";
 import { TEMPLATE_KEY, TEMPLATE_VERSION } from "../../lib/featureTemplate.js";
-import { REMOVE_ROWS, exportFeature, installTemplate, installedView, previewInstall, removalOf, removeFeature } from "../../lib/featureInstall.js";
+import { REMOVE_ROWS, exportFeature, installTemplate, installedOf, installedView, previewInstall, removalOf, removeFeature } from "../../lib/featureInstall.js";
 import { galleryFile, galleryList } from "../../lib/gallery/index.js";
 import { previewUpgrade, upgradeFeature } from "../../lib/featureUpgrade.js";
+import { adminIdOf } from "./settings.controller.js";
+import { SiteHomeBody, makeSiteHome, siteHomeView, undoSiteHome } from "./siteHome.js";
 
 /**
  * /v1/admin/my-features — ميزاتي (M): a feature the owner built. It is a name over things made
@@ -44,6 +46,11 @@ import { previewUpgrade, upgradeFeature } from "../../lib/featureUpgrade.js";
  * GET    /admin/my-features/:id/removal              — what removing it with its things would take, what stops it
  * POST   /admin/my-features/:id/remove { rows: "keep" | "delete" } — the feature and its functions, pages and
  *                                                    tables (their rows kept, in no feature, or deleted)
+ *
+ * A whole site as the store's face («خلّيه الرئيسية», ./siteHome.ts; also settings:write: the menus and the home):
+ * POST   /admin/my-features/:id/site-home { header, footer } — its first page at "/", the store's menus made of its pages
+ * DELETE /admin/my-features/site-home                       — the store's own home and menus back
+ * Switching the site off, ungrouping it or removing it puts the store's own home back first.
  * Exporting reads functions and pages too (functions:read, pages:read); installing and removing write
  * them (functions:write, pages:write: the tables are the pages' area).
  */
@@ -105,6 +112,9 @@ async function full(feature: Held) {
   const gone = feature.items.filter((i) => !there.has(`${i.kind}:${i.refId}`));
   if (gone.length) await prisma.featureItem.deleteMany({ where: { OR: gone.map((i) => ({ kind: i.kind, refId: i.refId })) } });
   const inOne = new Set(taken.map((i) => `${i.kind}:${i.refId}`));
+  // The pages' keys in the template it was installed from, both ways.
+  const pageKeys = new Map(Object.entries(installedOf(feature.template)?.ids.page ?? {}).filter(([, pid]) => pages.some((p) => p.id === pid)));
+  const pageKey = new Map([...pageKeys].map(([key, pid]) => [pid, key]));
   // In the order they joined.
   const order = (kind: FeatureKind) => new Map(ids(kind).map((id, k) => [id, k]));
   const by = <T extends { id: string }>(list: T[], kind: FeatureKind) => {
@@ -118,12 +128,15 @@ async function full(feature: Held) {
     enabled: feature.enabled,
     // Made by installing a template: which one, and its version.
     template: installedView(feature.template),
+    // A whole site's first page, and whether it is shown as the store's home (or another site is).
+    siteHome: await siteHomeView(feature.id, pageKeys.get("home") ?? null),
     createdAt: feature.createdAt,
     updatedAt: feature.updatedAt,
     tables: by(tables, "table").map((t) => ({ id: t.id, slug: t.slug, name: t.name, fields: Array.isArray(t.fields) ? t.fields.length : 0, rows: t._count.items, api: accessOf(t.api) })),
     functions: by(fns, "function").map((f) => ({ id: f.id, name: f.name, note: f.note, enabled: f.enabled, published: !!f.live, changed: !same(f.draft, f.live), triggers: f._count.triggers, runs: f.runs, lastRunAt: f.lastRunAt })),
     // `hidden`: the feature is off, so the shop answers this page as one that isn't there.
-    pages: by(pages, "page").map((p) => ({ id: p.id, name: p.name, slug: p.slug, status: p.status, hasDraft: !!p.draft, hidden: !feature.enabled && !isStorePage(p.slug) })),
+    // `key`: its key in the template the feature was installed from (none: added by hand).
+    pages: by(pages, "page").map((p) => ({ id: p.id, key: pageKey.get(p.id) ?? null, name: p.name, slug: p.slug, status: p.status, hasDraft: !!p.draft, hidden: !feature.enabled && !isStorePage(p.slug) })),
     // What isn't in any feature yet, to be added to this one.
     free: {
       tables: allTables.filter((t) => !inOne.has(`table:${t.id}`)),
@@ -196,6 +209,26 @@ r.post(
   }),
 );
 
+/* ---------------- A whole site as the store's home ---------------- */
+
+r.delete(
+  "/site-home",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "pages:write", "settings:write");
+    res.json({ ok: true, ...(await undoSiteHome(await adminIdOf(req))) });
+  }),
+);
+
+r.post(
+  "/:id/site-home",
+  asyncHandler(async (req, res) => {
+    mayAlso(req, "pages:write", "settings:write");
+    const body = SiteHomeBody.parse(req.body ?? {});
+    const made = await makeSiteHome(String(req.params.id), body, await adminIdOf(req));
+    res.json({ ...made, feature: await full(await featureOf(req)) });
+  }),
+);
+
 r.get(
   "/:id",
   asyncHandler(async (req, res) => {
@@ -247,6 +280,8 @@ r.post(
   asyncHandler(async (req, res) => {
     mayAlso(req, "functions:write", "pages:write");
     const body = z.object({ rows: z.enum(REMOVE_ROWS), lang: z.enum(["ar", "en", "he"]).optional() }).strict().parse(req.body ?? {});
+    // A site that is the store's home: the store's own home and menus come back before its pages go.
+    await undoSiteHome(await adminIdOf(req), String(req.params.id));
     res.json({ ok: true, removed: await removeFeature(String(req.params.id), body.rows, body.lang ?? langOf(req)) });
   }),
 );
@@ -256,6 +291,8 @@ r.put(
   asyncHandler(async (req, res) => {
     const feature = await featureOf(req);
     const body = SaveBody.parse(req.body ?? {});
+    // Switched off, a site that is the store's home would leave "/" to a hidden page: the store's own comes back.
+    if (body.enabled === false) await undoSiteHome(await adminIdOf(req), feature.id);
     const saved = await prisma.feature.update({
       where: { id: feature.id },
       data: { ...(body.name !== undefined ? { name: body.name } : {}), ...(body.note !== undefined ? { note: body.note || null } : {}), ...(body.enabled !== undefined ? { enabled: body.enabled } : {}) },
@@ -272,6 +309,8 @@ r.delete(
   asyncHandler(async (req, res) => {
     const feature = await featureOf(req);
     // Only the name goes: the tables, functions and pages stay where they were made (and are on again, if the feature was off).
+    // A site that was the store's home stops being it (with the name goes the way to undo it).
+    await undoSiteHome(await adminIdOf(req), feature.id);
     await prisma.feature.delete({ where: { id: feature.id } });
     await changed(feature.enabled ? [] : pagesOf(feature));
     res.json({ ok: true });
