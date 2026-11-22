@@ -12,7 +12,7 @@ import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import * as FeaturesAPI from "../../api/myFeatures.api";
 import type { Feature, UpgradeAction } from "../../api/myFeatures.api";
-import { buildSite, siteByKey } from "../../studio/templates/sites";
+import { buildChosen, siteByKey } from "../../studio/templates/sites";
 import { problemText, readJson } from "./templatesText";
 import { actionMeans, actionName, compareVersions, inOrder, kindName, summaryLine, withChoices } from "./upgradeText";
 
@@ -32,7 +32,8 @@ export function FeatureUpgrade({ feature }: { feature: Feature }) {
   const [source, setSource] = useState<{ id: string; template: unknown } | null>(null);
   const [bad, setBad] = useState<string | null>(null);
   const fromGallery = useMutation({
-    mutationFn: async () => (site && !inGallery ? { template: buildSite(site, { lang: adminLang() }) as unknown } : FeaturesAPI.galleryFile(t.key)),
+    // Built with the choices its install wizard made (the owner's details, the modules it kept, its look), not the sample's.
+    mutationFn: async () => (site && !inGallery ? { template: buildChosen(site, t.site ?? null, adminLang()) as unknown } : FeaturesAPI.galleryFile(t.key)),
     onSuccess: (r) => setSource({ id: `gallery:${t.key}:${newer!.version}`, template: r.template }),
     onError: (e) => toast.error(say("ما زبط|It didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) }),
   });

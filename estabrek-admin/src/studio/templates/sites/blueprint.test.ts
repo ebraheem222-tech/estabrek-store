@@ -3,7 +3,7 @@
 // the same files (siteTemplates.unit.spec.ts, sites.spec.ts) and installs them for real.
 import { describe, expect, test } from "vitest";
 import { createHash } from "node:crypto";
-import { ARCHETYPES, MODULES, SITES, blueprintProblems, buildSite, modulesOf, pagesOf, siteCounts, slugsOf, type SiteBlueprint } from "./index";
+import { ARCHETYPES, FRONT_LOOKS, MODULES, SITES, blueprintProblems, buildChosen, buildSite, keepModules, modulesOf, pagesOf, siteByKey, siteCounts, slugsOf, withChoices, type SiteBlueprint } from "./index";
 
 const LANGS = ["ar", "en", "he"] as const;
 
@@ -105,5 +105,58 @@ describe("The modules", () => {
     expect(say({ home: "/news" })).toEqual(['Two pages at "/news"']);
     expect(say({ home: "/Restaurant" })).toEqual(['The page address "/Restaurant" isn\'t /small-words']);
     expect(() => buildSite({ ...r, archetype: "social" }, { lang: "ar" })).toThrow("no home yet");
+  });
+});
+
+describe("The install wizard's choices (choices.ts)", () => {
+  test("nothing chosen: the gallery's own file, without choices in it", () => {
+    for (const s of SITES) {
+      const f = buildChosen(s, null, "ar");
+      expect(createHash("sha256").update(JSON.stringify(f)).digest("hex").slice(0, 16), s.key).toBe(BUILT[s.key][0]);
+      expect("site" in f).toBe(false);
+      expect(withChoices(s, {})).toEqual(s);
+    }
+  });
+
+  test("the owner's details take the sample's place on every page, and the sample's own branch takes the number", () => {
+    const r = siteByKey("site-restaurant")!;
+    const c = { biz: { name: { ar: "أبو سمير", en: "Abu Samir", he: "אבו סמיר" }, phone: "050-123-4567", email: "hi@abusamir.example", city: "Akko", address: { ar: "شارع السوق 3، عكا", en: "3 Market St, Akko", he: "רחוב השוק 3, עכו" } } };
+    const f = buildChosen(r, c, "ar");
+    expect(f.site).toEqual(c);
+    const text = JSON.stringify(f);
+    for (const gone of [r.biz.name.ar, r.biz.name.en, r.biz.email, r.biz.address.ar]) expect(text, gone).not.toContain(gone);
+    for (const there of ["أبو سمير", "Abu Samir", "hi@abusamir.example", "شارع السوق 3، عكا", "tel:0501234567", '"query":"Akko"']) expect(text, there).toContain(there);
+    // The branches table: the one that was the sample business has the owner's number; the others keep theirs.
+    const branches = f.tables.find((t) => t.key === "branches")!.rows!.map((row) => row.data.phone);
+    expect(branches[0]).toBe("050-123-4567");
+    expect(branches.slice(1)).toEqual(r.modules.branches!.rows.slice(1).map((row) => row.phone));
+    // A word left empty keeps the sample's in that language.
+    expect(withChoices(r, { biz: { name: { ar: "أبو سمير", en: "", he: "" } } }).biz.name).toEqual({ ar: "أبو سمير", en: r.biz.name.en, he: r.biz.name.he });
+  });
+
+  test("a module that needs one the owner took out goes with it; «tell me» goes when nobody can write", () => {
+    const clinic = siteByKey("site-dental-clinic")!;
+    const all = modulesOf(clinic).map((m) => m.key);
+    expect(keepModules(clinic, all.filter((k) => k !== "offers"))).toEqual({ kept: all.filter((k) => k !== "offers" && k !== "booking"), dropped: ["booking"] });
+    expect(keepModules(clinic, all.filter((k) => k !== "contact" && k !== "booking")).dropped).toEqual(["notify"]);
+    // Every site, without any one of its modules: it builds, with no link to a page it doesn't have.
+    for (const s of SITES)
+      for (const m of modulesOf(s)) {
+        const kept = keepModules(s, modulesOf(s).map((x) => x.key).filter((k) => k !== m.key)).kept;
+        const chosen = withChoices(s, { modules: kept });
+        expect(blueprintProblems(chosen), `${s.key} without ${m.key}`).toEqual([]);
+        const f = buildChosen(s, { modules: kept }, "en");
+        const pages = new Set(f.pages.map((p) => p.slug));
+        for (const hit of JSON.stringify(f.pages).matchAll(/"href":"(\/[^"#]*)"/g)) expect(pages.has(hit[1]), `${s.key} without ${m.key}: ${hit[1]}`).toBe(true);
+      }
+  });
+
+  test("its home's six compositions, named in three languages; the look and motion it picks build", () => {
+    expect(FRONT_LOOKS).toHaveLength(6);
+    for (const l of FRONT_LOOKS) for (const lang of LANGS) expect(l.name[lang] && l.note[lang]).toBeTruthy();
+    const r = SITES[0];
+    const homes = new Set(FRONT_LOOKS.map((_, k) => JSON.stringify(buildChosen(r, { look: k }, "en").pages[0].tree)));
+    expect(homes.size).toBe(6);
+    expect(JSON.stringify(buildChosen(r, { motion: "rich" }, "en"))).not.toBe(JSON.stringify(buildChosen(r, null, "en")));
   });
 });

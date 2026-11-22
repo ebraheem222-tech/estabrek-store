@@ -11,7 +11,7 @@ import { expandLists, rowMatches, type CollectionLite, type ItemLite } from "../
 // fields), and its lists must name its own tables.
 
 type Site = { key: string; version: string };
-type Sites = { SITES: Site[]; siteFile: (key: string, o: { lang: "ar" | "en" | "he"; motion?: "calm" | "rich" }) => unknown };
+type Sites = { SITES: Site[]; siteFile: (key: string, o: { lang: "ar" | "en" | "he"; motion?: "calm" | "rich" }) => unknown; siteByKey: (key: string) => unknown; buildChosen: (bp: unknown, c: unknown, lang: "ar" | "en" | "he") => Record<string, unknown> };
 
 const SITES_FILE = path.resolve(__dirname, "../../../estabrek-admin/src/studio/templates/sites/index.ts");
 let sites: Sites;
@@ -22,6 +22,20 @@ beforeAll(async () => {
 const none = () => ({ tables: new Set<string>(), pages: new Set<string>(), calls: new Set<string>(), routes: new Set<string>() });
 let n = 0;
 const ids = () => `c${(n++).toString(16).padStart(24, "0")}`;
+
+describe("A site as its install wizard chose it", () => {
+  test("its file carries the choices (kept for its upgrades) and every site still plans with them; choices out of shape are refused", () => {
+    const choices = { biz: { name: { ar: "أبو سمير", en: "Abu Samir", he: "אבו סמיר" }, phone: "050-123-4567" }, modules: ["story", "reviews", "contact", "notify"], look: 3, motion: "rich" };
+    for (const s of sites.SITES) {
+      const read = readTemplate(sites.buildChosen(sites.siteByKey(s.key), choices, "ar"));
+      if (!read.ok) throw new Error(`${s.key}: ${JSON.stringify(read.problems.slice(0, 3))}`);
+      expect(read.template.site).toEqual(choices);
+      expect(planInstall(read.template, none(), ids).problems, s.key).toEqual([]);
+    }
+    const file = sites.buildChosen(sites.siteByKey(sites.SITES[0].key), choices, "ar");
+    for (const site of [{ ...choices, colour: "red" }, { ...choices, look: -1 }, { ...choices, motion: "wild" }, { ...choices, biz: { phone: "x".repeat(41) } }]) expect(readTemplate({ ...file, site }).ok, JSON.stringify(site).slice(0, 60)).toBe(false);
+  });
+});
 
 describe("Whole sites", () => {
   test("every site reads as a template and plans its install with no problem, in every language and motion", () => {

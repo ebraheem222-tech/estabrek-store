@@ -2,6 +2,7 @@
 // lib/featureGate.ts): a feature the owner built is a name over tables, functions and pages
 // made elsewhere in the studio, found together and switched off together.
 import { api } from "./http";
+import type { SiteChoices } from "../studio/templates/sites";
 
 type Local = Partial<Record<"ar" | "en" | "he", string>>;
 export type FeatureKind = "table" | "function" | "page";
@@ -19,7 +20,7 @@ export type Feature = {
   /** Off: its functions aren't started, its tables' API answers as closed, and its pages are hidden from the shop. */
   enabled: boolean;
   /** Made by installing a template: which one and its version. */
-  template?: { key: string; version: string; name: Local; installedAt: string; /** Upgraded since: when, and from which version. */ upgradedAt?: string; from?: string | null } | null;
+  template?: { key: string; version: string; name: Local; installedAt: string; /** Upgraded since: when, and from which version. */ upgradedAt?: string; from?: string | null; /** A whole site's install wizard choices (studio/templates/sites/choices.ts). */ site?: SiteChoices } | null;
   createdAt: string;
   updatedAt: string;
   tables: FeatureTable[];

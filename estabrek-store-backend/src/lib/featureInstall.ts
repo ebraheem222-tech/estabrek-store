@@ -58,7 +58,8 @@ export function installedOf(raw: unknown): Installed | null {
 /** What the feature's page says about where it came from. */
 export const installedView = (raw: unknown) => {
   const t = installedOf(raw);
-  return t ? { key: t.key, version: t.version, name: t.name, installedAt: t.installedAt, ...(t.upgradedAt ? { upgradedAt: t.upgradedAt, from: t.from ?? null } : {}) } : null;
+  // A whole site's wizard choices: the admin builds its upgrades with them.
+  return t ? { key: t.key, version: t.version, name: t.name, installedAt: t.installedAt, ...(t.upgradedAt ? { upgradedAt: t.upgradedAt, from: t.from ?? null } : {}), ...(t.file.site ? { site: t.file.site } : {}) } : null;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);

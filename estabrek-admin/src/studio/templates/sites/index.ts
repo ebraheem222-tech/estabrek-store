@@ -7,6 +7,7 @@ import { ARCHETYPES, SITE_FIELDS, type Archetype, type ModuleKey, type SiteBluep
 import { blueprintProblems, buildSite, modulesOf, pagesOf, siteCounts, slugsOf, type BuildSite } from "./compile";
 import { MODULES, type SiteFile, type SiteModule } from "./modules";
 import { shellOf, type Shell, type ShellLink } from "./shell";
+import { FRONT_LOOKS, buildChosen, choosable, keepModules, withChoices, type ChosenFile, type SiteBiz, type SiteChoices } from "./choices";
 import { BAKERY, RESTAURANT } from "./sitesFood";
 import { CLINIC, GYM, SALON } from "./sitesCare";
 import { ACADEMY, AGENCY, LAW } from "./sitesWork";
@@ -22,5 +23,5 @@ export function siteFile(key: string, o: BuildSite): SiteFile | null {
   return bp ? buildSite(bp, o) : null;
 }
 
-export { ARCHETYPES, MODULES, SITE_FIELDS, blueprintProblems, buildSite, modulesOf, pagesOf, shellOf, siteCounts, slugsOf };
-export type { Archetype, BuildSite, ModuleKey, Shell, ShellLink, SiteBlueprint, SiteField, SiteFile, SiteModule };
+export { ARCHETYPES, FRONT_LOOKS, MODULES, SITE_FIELDS, blueprintProblems, buildChosen, buildSite, choosable, keepModules, modulesOf, pagesOf, shellOf, siteCounts, slugsOf, withChoices };
+export type { Archetype, BuildSite, ChosenFile, ModuleKey, Shell, ShellLink, SiteBiz, SiteBlueprint, SiteChoices, SiteField, SiteFile, SiteModule };
