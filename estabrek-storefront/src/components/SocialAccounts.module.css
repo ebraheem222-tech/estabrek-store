@@ -1,0 +1,16 @@
+/* Discord and Steam on the account page (SocialAccounts.tsx): the two brands' own colours, the rest from the store. */
+.discord { display: flex; align-items: center; justify-content: center; gap: 10px; width: min(300px, 100%); min-height: 44px; margin: 14px auto 0; padding: 0 22px; border-radius: 999px; background: #5865f2; color: #fff; font-weight: 600; font-size: 15px; text-decoration: none; }
+.discord:hover { background: #4752c4; }
+.discord:focus-visible, .steam:focus-visible, .quiet:focus-visible { outline: 3px solid #5865f2; outline-offset: 3px; }
+
+.games { display: grid; gap: 12px; margin: 0 0 24px; padding: 18px 20px; border-radius: 22px; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.games h2 { margin: 0; font-size: 15px; letter-spacing: .02em; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; font-size: 14px; }
+.row code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; opacity: .8; }
+.brand { display: inline-flex; align-items: center; gap: 8px; min-width: 96px; font-weight: 700; }
+.brand[data-brand="discord"] svg { color: #5865f2; }
+.steam { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: #171a21; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.steam:hover { background: #2a475e; }
+.quiet { min-height: 36px; padding: 0 12px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.steam:disabled, .quiet:disabled { opacity: .6; cursor: wait; }
+.note { margin: 0; font-size: 13px; opacity: .8; }

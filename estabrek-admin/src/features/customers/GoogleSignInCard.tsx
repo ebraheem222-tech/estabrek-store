@@ -8,7 +8,7 @@ import { getSettings, updateSettings } from "../../api/settings.api";
 import { getApiErrorMessage } from "../../api/http";
 import { useSettings } from "../../hooks/useSettings";
 import { useAuth } from "../../hooks/useAuth";
-import { env } from "../../config/env";
+import { shopOrigin } from "./signInSettings";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 
@@ -23,14 +23,6 @@ export function googleSettingOf(header: unknown): GoogleSetting {
   return { enabled: g?.enabled === true, clientId: typeof g?.clientId === "string" ? g.clientId : "" };
 }
 
-/** The shop's own address, as Google asks for it ("Authorized JavaScript origins"). */
-const shopOrigin = () => {
-  try {
-    return new URL(env.VITE_STOREFRONT_BASE_URL).origin;
-  } catch {
-    return "https://…";
-  }
-};
 
 export function GoogleSignInCard({ accountsOn }: { accountsOn: boolean }) {
   const qc = useQueryClient();

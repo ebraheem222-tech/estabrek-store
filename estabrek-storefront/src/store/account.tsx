@@ -20,6 +20,9 @@ export type Customer = {
   preferredSize: string | null;
   favoriteColor: string | null;
   marketingOptIn: boolean;
+  /** The accounts they play with (a game server's site; components/SocialAccounts.tsx): null until linked. */
+  discordId?: string | null;
+  steamId?: string | null;
 };
 
 type Status = "loading" | "guest" | "signedIn";
@@ -238,6 +241,29 @@ export function accountErrorText(e: unknown, lang: Lang = "ar"): string {
     case "GOOGLE_OFF":
     case "GOOGLE_UNREACHABLE":
       return tr(lang, "الدخول بـ Google مش متاح هلّق. الدخول بالإيميل والكود بيضل متاح.", "Signing in with Google isn't available right now. Signing in with an email code still works.");
+    // Discord and Steam (lib/socialSignIn.ts): the shop's routes come back with these.
+    case "DISCORD_OFF":
+    case "DISCORD_SECRET":
+      return tr(lang, "الدخول بحساب Discord مش متاح هلّق. الدخول بالإيميل والكود بيضل متاح.", "Signing in with Discord isn't available right now. Signing in with an email code still works.");
+    case "DISCORD_DECLINED":
+      return tr(lang, "الدخول بحساب Discord ما كمل. الدخول بالإيميل والكود بيضل متاح.", "Signing in with Discord wasn't finished. Signing in with an email code still works.");
+    case "DISCORD_REFUSED":
+      return tr(lang, "الدخول بحساب Discord ما زبط هالمرة. ممكن المحاولة كمان مرة.", "Signing in with Discord didn't work this time. It can be tried again.");
+    case "DISCORD_EMAIL":
+      return tr(lang, "Discord ما أكّد إيميل هالحساب. بعد ما يتأكد عند Discord بيزبط، والدخول بالإيميل والكود بيضل متاح.", "Discord hasn't confirmed this account's email. Once it is confirmed there it works, and signing in with an email code still does.");
+    case "DISCORD_OTHER_ACCOUNT":
+      return tr(lang, "هالإيميل مربوط بحساب Discord تاني. الدخول بالإيميل والكود بيضل متاح.", "This email is linked to another Discord account. Signing in with an email code still works.");
+    case "SOCIAL_STATE":
+      return tr(lang, "هالرابط خلص وقته أو انستعمل قبل. ممكن نبلّش من جديد.", "That link ran out or was already used. It can be started again.");
+    case "SOCIAL_RETURN":
+    case "SOCIAL_UNREACHABLE":
+      return tr(lang, "Discord أو Steam مش عم يردّوا هلّق. ممكن المحاولة بعد شوي.", "Discord or Steam isn't answering right now. It can be tried again in a moment.");
+    case "STEAM_OFF":
+      return tr(lang, "ربط حساب Steam مش متاح هلّق.", "Linking a Steam account isn't available right now.");
+    case "STEAM_REFUSED":
+      return tr(lang, "Steam ما أكّد الربط هالمرة. ممكن المحاولة كمان مرة.", "Steam didn't confirm the link this time. It can be tried again.");
+    case "STEAM_OTHER_ACCOUNT":
+      return tr(lang, "حساب Steam هذا مربوط بحساب تاني.", "This Steam account is linked to another account.");
     default:
       return tr(lang, "صار خطأ. جرّبي كمان مرة.", "Something went wrong. Please try again.");
   }

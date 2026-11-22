@@ -851,7 +851,7 @@ const home = {
     },
   ],
 };
-const customerState = { user: null, tokens: new Set(), refresh: new Set(), orders: [], wishlist: new Set(), addresses: [] };
+const customerState = { user: null, tokens: new Set(), refresh: new Set(), orders: [], wishlist: new Set(), addresses: [], states: new Set() };
 // Notifications (push.spec.ts): the shop's public key, and what phones said.
 const newPushKey = () => {
   const e = createECDH("prime256v1");
@@ -1958,7 +1958,50 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           return send(200, { ...tokens(), user: customerState.user });
         }
         if (pathname === "/v1/customer/auth/logout") { customerState.refresh.delete(data.refreshToken); return send(200, { ok: true }); }
+        // Discord and Steam (social-sign-in.spec.ts), played: the states are the stand-in's own, each used once.
+        const stateFor = (k, r, b, u) => {
+          const body = Buffer.from(JSON.stringify({ k, r, b: /^\/(?!\/)/.test(b || "") ? b : "/", u, n: `n${Math.random().toString(36).slice(2, 14)}`, e: Date.now() + 600000 })).toString("base64url");
+          customerState.states.add(body);
+          return `${body}.${"s".repeat(43)}`;
+        };
+        const stateOf = (raw) => {
+          const body = String(raw || "").split(".")[0];
+          if (!customerState.states.has(body)) return null;
+          customerState.states.delete(body);
+          return JSON.parse(Buffer.from(body, "base64url").toString());
+        };
+        if (pathname === "/v1/customer/auth/discord/start") {
+          const d = site.header.signIn?.discord;
+          if (d?.enabled !== true) return send(404, { error: "DISCORD_OFF" });
+          if (!/\/api\/account\/discord\/callback$/.test(data.redirectUri || "")) return send(400, { error: "SOCIAL_RETURN" });
+          globalThis.discordStarts = [...(globalThis.discordStarts ?? []), data];
+          const q = new URLSearchParams({ client_id: d.clientId, response_type: "code", scope: "identify email", redirect_uri: data.redirectUri, state: stateFor("discord", data.redirectUri, data.back) });
+          return send(200, { url: `https://discord.com/oauth2/authorize?${q}` });
+        }
+        if (pathname === "/v1/customer/auth/discord") {
+          const s = stateOf(data.state);
+          if (!s || s.k !== "discord") return send(400, { error: "SOCIAL_STATE" });
+          if (data.code !== "fixture-discord-ok-code") return send(401, { error: "DISCORD_REFUSED" });
+          const isNew = !customerState.user;
+          customerState.user ??= { id: "cust1", email: "discord.player@example.com", name: "Noor", phone: null, preferredSize: null, favoriteColor: null, marketingOptIn: false, steamId: null };
+          customerState.user.discordId = "80351110224678912";
+          return send(200, { ...tokens(), user: customerState.user, isNew, back: s.b });
+        }
+        if (pathname === "/v1/customer/auth/steam") {
+          const s = stateOf(data.state);
+          if (!s || s.k !== "steam") return send(400, { error: "SOCIAL_STATE" });
+          const id = /^https:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/.exec(data.params?.["openid.claimed_id"] || "");
+          if (!id || data.params["openid.mode"] !== "id_res") return send(401, { error: "STEAM_REFUSED" });
+          customerState.user.steamId = id[1];
+          return send(200, { user: customerState.user, back: s.b });
+        }
         if (!signedIn) return send(401, { error: "INVALID_TOKEN" });
+        if (pathname === "/v1/customer/me/steam/start") {
+          if (site.header.signIn?.steam?.enabled !== true) return send(404, { error: "STEAM_OFF" });
+          const ret = `${data.returnTo}?state=${encodeURIComponent(stateFor("steam", data.returnTo, data.back, customerState.user.id))}`;
+          return send(200, { url: `https://steamcommunity.com/openid/login?${new URLSearchParams({ "openid.mode": "checkid_setup", "openid.return_to": ret })}` });
+        }
+        if (pathname === "/v1/customer/me/steam" && req.method === "DELETE") { customerState.user.steamId = null; return send(200, customerState.user); }
         if (pathname === "/v1/customer/me" && req.method === "GET") return send(200, customerState.user);
         if (pathname === "/v1/customer/me" && req.method === "PATCH") { Object.assign(customerState.user, data); return send(200, customerState.user); }
         if (pathname === "/v1/customer/me/orders") return send(200, { orders: customerState.orders });
@@ -1992,7 +2035,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
     }
     if (pathname === "/__test/customer-state") return res.end(JSON.stringify({ wishlist: [...customerState.wishlist], orders: customerState.orders.length, user: customerState.user }));
     if (pathname === "/__test/customer-reset") {
-      customerState.user = null; customerState.tokens.clear(); customerState.refresh.clear(); customerState.orders = []; customerState.wishlist.clear(); customerState.addresses = [];
+      customerState.user = null; customerState.tokens.clear(); customerState.refresh.clear(); customerState.orders = []; customerState.wishlist.clear(); customerState.addresses = []; customerState.states.clear();
       return res.end(JSON.stringify({ ok: true }));
     }
     // The private order page (fulfillment.spec.ts).

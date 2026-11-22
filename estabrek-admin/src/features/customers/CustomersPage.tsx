@@ -24,6 +24,7 @@ import { say } from "../../studio/say";
 import { setShopper } from "../../api/shopperRoles.api";
 import { RolesGroupsCard } from "./RolesGroupsCard";
 import { GoogleSignInCard } from "./GoogleSignInCard";
+import { GameSignInCard } from "./GameSignInCard";
 import { ROLES_KEY, RolePicker, roleName, useShopperRoles } from "./rolesUi";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -48,6 +49,7 @@ export default function CustomersPage() {
     <div className="space-y-4" data-testid="customers-page">
       {first ? <AccountsSwitch enabled={first.accountsEnabled === true} emailReady={first.emailReady !== false} /> : null}
       {first ? <GoogleSignInCard accountsOn={first.accountsEnabled === true} /> : null}
+      {first ? <GameSignInCard accountsOn={first.accountsEnabled === true} /> : null}
       <RolesGroupsCard />
       <div className={box}>
         <h1 className="text-lg font-semibold">{tr("الزبائن", "Customers")}</h1>

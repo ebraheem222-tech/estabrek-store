@@ -18,12 +18,14 @@ type Live = {
   at: string | null;
   join: { href: string | null; address: string };
   history: Array<{ hour: string; players: number | null; online: boolean | null }>;
+  /** Its Discord, while its owner shows it: how many are on now, and in it. */
+  discord?: { online: number; members: number } | null;
 };
 
 const WORDS = {
-  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت هلّق", copy: "انسخ العنوان", copied: "انتسخ", last: "آخر 24 ساعة", sample: "حالة السيرفر بتطلع هون" },
-  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join now", copy: "Copy the address", copied: "Copied", last: "The last 24 hours", sample: "The server's status shows here" },
-  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר עכשיו", copy: "להעתיק את הכתובת", copied: "הועתק", last: "24 השעות האחרונות", sample: "מצב השרת יופיע כאן" },
+  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت هلّق", copy: "انسخ العنوان", copied: "انتسخ", last: "آخر 24 ساعة", sample: "حالة السيرفر بتطلع هون", discordNow: "هلّق على الديسكورد", discordOf: "من" },
+  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join now", copy: "Copy the address", copied: "Copied", last: "The last 24 hours", sample: "The server's status shows here", discordNow: "on Discord now", discordOf: "of" },
+  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר עכשיו", copy: "להעתיק את הכתובת", copied: "הועתק", last: "24 השעות האחרונות", sample: "מצב השרת יופיע כאן", discordNow: "ב-Discord עכשיו", discordOf: "מתוך" },
 } as const;
 
 const isLive = (v: unknown): v is Live => !!v && typeof v === "object" && typeof (v as Live).featureId === "string" && Array.isArray((v as Live).history);
@@ -80,6 +82,15 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
         ) : null}
       </div>
       {live?.name || live?.map ? <div className={css.name}>{[live.name, live.map].filter(Boolean).join(" · ")}</div> : null}
+      {live?.discord ? (
+        <div className={css.discord} data-testid="game-discord">
+          <span className={css.discordDot} aria-hidden="true" />
+          <b dir="ltr">{live.discord.online.toLocaleString("en")}</b> {t.discordNow}
+          <span className={css.discordOf}>
+            {t.discordOf} <span dir="ltr">{live.discord.members.toLocaleString("en")}</span>
+          </span>
+        </div>
+      ) : null}
       {chart && live ? (
         <div className={css.chart} role="img" aria-label={t.last} dir="ltr">
           {live.history.map((h) => (

@@ -8,6 +8,7 @@
 import { prisma } from "./prisma.js";
 import { allSiteSettings, settingsFor, settingsOfFeature, type SiteSettings } from "./siteSettings.js";
 import { GAME_LIMITS, isGame, joinOf, readStatus, type Game, type GameStatus } from "./gameStatus.js";
+import { discordCounts } from "./socialSignIn.js";
 
 const HOUR = 3_600_000;
 /** A game site's game and address, as its owner set them (null: not a game site, or no address yet). */
@@ -67,6 +68,8 @@ export type GameView = {
   join: { href: string | null; address: string };
   /** The last 24 hours, an hour each (the most that played; null: not read that hour). */
   history: Array<{ hour: string; players: number | null; online: boolean | null }>;
+  /** Its Discord while its owner shows it: how many are on now and in it (Discord's public invite answer). */
+  discord: { online: number; members: number } | null;
 };
 
 const views = new Map<string, { at: number; view: GameView }>();
@@ -76,7 +79,8 @@ const forgetView = (featureId: string) => views.delete(featureId);
 export async function gameView(featureId: string, now = Date.now()): Promise<GameView | null> {
   const kept = views.get(featureId);
   if (kept && now - kept.at < 20_000) return kept.view;
-  const site = gameOf(await settingsOfFeature(featureId));
+  const s = await settingsOfFeature(featureId);
+  const site = gameOf(s);
   if (!site) return null;
   const since = new Date(Math.floor(now / HOUR) * HOUR - 23 * HOUR);
   const samples = await prisma.gameSample.findMany({ where: { featureId, at: { gte: since } }, orderBy: { at: "asc" }, select: { at: true, online: true, players: true, max: true, name: true, map: true, version: true } });
@@ -98,6 +102,7 @@ export async function gameView(featureId: string, now = Date.now()): Promise<Gam
     at: last ? last.at.toISOString() : null,
     join: joinOf(site.game, site.address),
     history,
+    discord: s?.values.discordOn === true ? await discordCounts(s.values.discordUrl, now) : null,
   };
   views.set(featureId, { at: now, view });
   return view;

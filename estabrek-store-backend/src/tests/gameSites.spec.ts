@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import path from "node:path";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -9,6 +9,7 @@ import { prisma } from "./helpers/db.js";
 import { forgetFeatureGate } from "../lib/featureGate.js";
 import { forgetTriggers } from "../lib/fnTriggers.js";
 import { readGameServers } from "../lib/gameSites.js";
+import { forgetDiscordCounts } from "../lib/socialSignIn.js";
 
 // A game server's whole site (wave G1 of docs/sites-300-plan.ar.md), with the database: the FiveM roleplay site
 // installed from the admin's own files, its address set to a small FiveM of our own on this computer (asked because
@@ -43,9 +44,16 @@ beforeAll(async () => {
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   port = (server.address() as AddressInfo).port;
+  // Its Discord's count, played (Discord's public invite answer): nothing reaches Discord.
+  forgetDiscordCounts();
+  const real = globalThis.fetch;
+  vi.stubGlobal("fetch", async (url: string | URL, init?: RequestInit) =>
+    String(url).startsWith("https://discord.com/api/v10/invites/dewcity?") ? Response.json({ approximate_presence_count: 340, approximate_member_count: 2100 }) : real(url, init),
+  );
   await clean();
 });
 afterAll(async () => {
+  vi.unstubAllGlobals();
   delete process.env.GAME_STATUS_PRIVATE;
   server.close();
   await clean();
@@ -75,6 +83,8 @@ describe("A game server's site", () => {
     expect(status).toMatchObject({ featureId: id, game: "fivem", online: true, players: 87, max: 128, name: "Dew City RP", map: "Los Santos", join: { href: `fivem://connect/127.0.0.1:${port}`, address: `127.0.0.1:${port}` } });
     expect(status.history).toHaveLength(24);
     expect(status.history[23]).toMatchObject({ players: 87, online: true });
+    // Its Discord while the owner shows it: how many are on now, and in it.
+    expect(status.discord).toEqual({ online: 340, members: 2100 });
     // The address the owner set is never a setting the shop reads.
     expect(JSON.stringify(status)).not.toContain("serverAddress");
 
