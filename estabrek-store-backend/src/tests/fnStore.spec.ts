@@ -201,7 +201,7 @@ describe("Mark a customer", () => {
     expect(out.ok).toBe(true);
     const group = await prisma.shopperGroup.findUniqueOrThrow({ where: { name: GROUP } });
     const { id } = await sara();
-    expect(out.value).toEqual({ id, name: "Sara", email: EMAIL, phone: "+970 599-123-456", roles: [ROLE], groups: [] });
+    expect(out.value).toEqual({ id, name: "Sara", email: EMAIL, phone: "+970 599-123-456", roles: [ROLE], groups: [], discordId: null, steamId: null });
     expect(out.trace.map((l) => l.say)).toEqual([["gaveRole", "VIP", "Sara"], ["joined", GROUP, "Sara"], ["returned"]]);
     expect(await sara()).toEqual({ id, roles: [ROLE], groups: [group.id] });
     // (A role is said by its name in the function's language.) Again: nothing more to do, and nothing counted as changed.

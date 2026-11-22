@@ -81,7 +81,7 @@ export type Known = { name: string; kind: "rows" | "row" | "value" | "answer"; t
 export const STORE_KEEPS = {
   coupon: ["code", "value", "endsAt", "uses", "phone", "id"],
   stock: ["after", "before", "sku", "product", "color", "size"],
-  customer: ["id", "name", "email", "phone", "roles", "groups"],
+  customer: ["id", "name", "email", "phone", "roles", "groups", "discordId", "steamId"],
   pay: ["link", "amount", "currency", "endsAt", "title", "ref", "id"],
 } as const;
 
@@ -156,7 +156,7 @@ export function namesBefore(def: FnDef, target: Path): Known[] {
  */
 export function offers(def: FnDef, target: Path, tables: FnTable[], /** The other functions: one that says what it gives back has its answer's fields offered. */ fns: FnLite[] = [], /** Its whole site's settings (their keys), when it is part of a site that has some. */ settings: string[] = []): string[] {
   // Who started the run: a shopper's button, a key, the admin, or (a row event, a schedule) the system.
-  const out = [...def.inputs.map((i) => `input.${i.name}`), "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", ...settings.map((k) => `settings.${k}`)];
+  const out = [...def.inputs.map((i) => `input.${i.name}`), "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "caller.discordId", "caller.steamId", ...settings.map((k) => `settings.${k}`)];
   const fieldsOf = (id?: string) => tables.find((t) => t.id === id)?.fields ?? [];
   for (const k of namesBefore(def, target)) {
     if (k.kind === "rows") out.push(k.name, `${k.name}.length`, ...fieldsOf(k.table).map((f) => `${k.name}.first.${f.id}`));

@@ -19,7 +19,7 @@ import type { HttpMethod } from "./fnHttp.js";
 import { INFRA_KINDS } from "./fnKindsInfra.js";
 
 /** (neon, railway, vercel, cloudflare: where the store itself is hosted, read and never changed; lib/fnKindsInfra.ts.) */
-export const READY_KINDS = ["telegram", "slack", "google", "api", "neon", "railway", "vercel", "cloudflare"] as const;
+export const READY_KINDS = ["telegram", "slack", "discord", "google", "api", "neon", "railway", "vercel", "cloudflare"] as const;
 export type ReadyKind = (typeof READY_KINDS)[number];
 /** The name a connection's key goes by inside its own calls. It is never one of the owner's secrets. */
 export const READY_KEY = "CONNECTION_KEY";
@@ -237,6 +237,10 @@ export function sheetId(typed: string): string | null {
   const id = /\/spreadsheets\/d\/([A-Za-z0-9_-]+)/.exec(v)?.[1] ?? v;
   return /^[A-Za-z0-9_-]{20,100}$/.test(id) ? id : null;
 }
+/** Discord's API, the version its calls are written for. */
+const DISCORD = "https://discord.com/api/v10";
+/** A Discord ID (a server's, a channel's, a role's, a member's) as kept: 15 to 22 digits; null when it isn't one. */
+const snowflake = (typed: string): string | null => (/^\d{15,22}$/.test(typed.trim()) ? typed.trim() : null);
 /** A tab as A1 notation names it: in quotes, a quote in it doubled ("It's" → 'It''s'). */
 export const tabRef = (tab: string) => `'${tab.replace(/'/g, "''")}'`;
 /** Part of an address: what is written is made safe for it; a run's name in it ({{input.tab}}) is left for the call to fill. */
@@ -354,6 +358,66 @@ const KINDS: Record<ReadyKind, KindDef> = {
     test: { sends: true, call: (_settings, line) => ({ method: "POST", url: `https://hooks.slack.com/services/${KEY}`, body: { text: line } }), said: () => null },
     // Slack answers a word or two as plain text: "invalid_payload", "no_service".
     why: (body) => text(body),
+  },
+  /**
+   * A Discord bot (discord.com/developers → the application → Bot → Reset Token), added to the owner's Discord server
+   * with the rights to send messages and manage roles (a game server's site: a new application in a channel, a role
+   * given to whoever is accepted, taken back). Its token goes in a header ("Bot …"), only to discord.com.
+   */
+  discord: {
+    kind: "discord",
+    label: "Discord",
+    host: "discord.com",
+    key: (typed) => {
+      const t = typed.trim().replace(/^Bot\s+/i, "");
+      return /^[A-Za-z0-9_-]{20,40}\.[A-Za-z0-9_-]{4,12}\.[A-Za-z0-9_-]{20,60}$/.test(t) ? t : null;
+    },
+    keyLooks: "A Discord bot's token has three parts with dots between them (the application → Bot → Reset Token)",
+    // The server (guild) its roles are in, and the channel it usually writes in: Discord's numbers (Developer Mode → Copy ID).
+    settings: [
+      { id: "guild", max: 22, tidy: snowflake, what: "The server's ID", looks: "A Discord ID is a number of 15 to 22 digits (Developer Mode → right click → Copy ID)" },
+      { id: "channel", max: 22, tidy: snowflake, what: "The channel's ID", looks: "A Discord ID is a number of 15 to 22 digits (Developer Mode → right click → Copy ID)" },
+    ],
+    actions: [
+      {
+        id: "message",
+        fields: [
+          { id: "channel", what: "The channel", required: true, or: "channel" },
+          { id: "text", what: "The text", required: true, long: true },
+        ],
+        // Mentions written in it stay words: nobody is pinged by what a shopper typed.
+        call: (settings, give) => ({
+          method: "POST",
+          url: `${DISCORD}/channels/${inPath(give.channel?.trim() ? give.channel.trim() : (settings.channel ?? ""))}/messages`,
+          headers: { authorization: `Bot ${KEY}` },
+          body: { content: give.text ?? "", allowed_mentions: { parse: [] } },
+          finish: (body) => ({ ...(body as Record<string, unknown>), content: String((body as { content?: unknown }).content ?? "").slice(0, 2000) }),
+        }),
+        answer: (body) => ({ id: text(part(body, "id"), 30) }),
+      },
+      ...(["giveRole", "takeRole"] as const).map((id) => ({
+        id,
+        fields: [
+          { id: "member", what: "The member", required: true },
+          { id: "role", what: "The role", required: true },
+          { id: "guild", what: "The server", required: true, or: "guild" },
+        ],
+        // The member: a Discord account's ID ({{caller.discordId}}, or a customer step's {{player.discordId}}).
+        call: (settings: Record<string, string>, give: Record<string, string>): ReadyCall => ({
+          method: id === "giveRole" ? "PUT" : "DELETE",
+          url: `${DISCORD}/guilds/${inPath(give.guild?.trim() ? give.guild.trim() : (settings.guild ?? ""))}/members/${inPath((give.member ?? "").trim())}/roles/${inPath((give.role ?? "").trim())}`,
+          headers: { authorization: `Bot ${KEY}` },
+        }),
+        answer: () => ({ done: true }),
+      })),
+    ],
+    test: {
+      sends: false,
+      call: () => ({ method: "GET", url: `${DISCORD}/users/@me`, headers: { authorization: `Bot ${KEY}` } }),
+      said: (body) => text(part(body, "username"), 60),
+    },
+    // Discord says why in words ("Missing Permissions", "Unknown Member"), with a number.
+    why: (body) => text(part(body, "message")),
   },
   /**
    * Google Sheets, through a service account (Google Cloud → a service account → a key, as a JSON
