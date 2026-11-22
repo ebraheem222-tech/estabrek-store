@@ -32,6 +32,7 @@ export const SW = {
   seeAll: w("شوفوا الكل", "See everything", "לכל הרשימה"),
   picked: w("اختياراتنا", "Our picks", "הבחירות שלנו"),
   home: w("الصفحة الأولى", "First page", "עמוד ראשון"),
+  homeLink: w("الرئيسية", "Home", "דף הבית"),
   team: w("الفريق", "The team", "הצוות"),
   messages: w("رسائل الموقع", "The site's messages", "הודעות מהאתר"),
   bookings: w("طلبات الحجز", "Booking requests", "בקשות הזמנה"),

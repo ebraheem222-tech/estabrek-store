@@ -104,7 +104,7 @@ describe("A feature", () => {
       { id: friends, slug: `${PREFIX}friends`, name: { en: "friends" }, fields: 1, rows: 0, api: { read: "off", create: "off", update: "off", delete: "off" } },
     ]);
     expect(full.functions.map((x) => [x.id, x.published, x.changed, x.triggers])).toEqual([[send, true, false, 1], [accept, false, true, 0]]);
-    expect(full.pages).toEqual([{ id: page, name: `${PREFIX}my-friends`, slug: `/${PREFIX}my-friends`, status: "DRAFT", hasDraft: false, hidden: false }]);
+    expect(full.pages).toEqual([{ id: page, key: null, name: `${PREFIX}my-friends`, slug: `/${PREFIX}my-friends`, status: "DRAFT", hasDraft: false, hidden: false }]);
     // What is in a feature isn't offered again.
     expect(ids(full.free.tables)).not.toEqual(expect.arrayContaining([requests]));
     expect(ids(full.free.functions)).not.toEqual(expect.arrayContaining([send]));

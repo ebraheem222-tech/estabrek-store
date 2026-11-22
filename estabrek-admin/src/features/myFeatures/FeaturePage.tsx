@@ -24,6 +24,7 @@ import { STATE_NAME, stateOf } from "../functions/fnText";
 import { OFF_TEXT, PAGE_STATUS, SLUG, STEPS, apiLine, fieldsText, rowsText, slugFrom, stepsDone, triggersText } from "./featuresText";
 import { FeatureRemove, TemplateExport, TemplateLine } from "./FeatureTemplates";
 import { FeatureUpgrade } from "./FeatureUpgrade";
+import { SiteHome } from "./SiteHome";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -145,6 +146,9 @@ export default function FeaturePage() {
       </section>
 
       {/* ---------------- 1. Its tables ---------------- */}
+      {/* A whole site: its first page as the store's home. */}
+      <SiteHome feature={f} />
+
       <section className={box} data-testid="feature-tables">
         <h2 className="font-medium">{say("١. الجداول|1. Tables|1. טבלאות")}</h2>
         <p className="mt-1 text-xs text-white/60">{say("البيانات اللي بتحفظها الميزة: كل جدول بحقوله وسطوره. ومن «الـ API» بتحدد مين بيقرأ وبيكتب فيه (مثلاً: الزبون سطوره هو بس).|The data the feature keeps: each table with its fields and rows. From “the API” you say who reads and writes it (for one, a shopper their own rows only).|הנתונים שהתכונה שומרת: כל טבלה עם השדות והשורות שלה. מ«ה-API» קובעים מי קורא וכותב בה (למשל: לקוח רק את השורות שלו).")}</p>

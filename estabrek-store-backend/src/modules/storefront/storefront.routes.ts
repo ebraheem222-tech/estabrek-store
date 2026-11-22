@@ -39,6 +39,7 @@ import { previewPageId } from "../../lib/previewToken.js";
 import { storedDraft } from "../../lib/pageDraft.js";
 import { publishedDesignRegions } from "../../lib/storeDesign.js";
 import { shownPagesWhere, switchedOff } from "../../lib/featureGate.js";
+import { readSiteHome } from "../../lib/siteHome.js";
 
 const r = Router();
 
@@ -129,21 +130,19 @@ async function getPageBySlugCached(slug: string, locale: "ar" | "he" | "en") {
   const cached = await cacheGet<any>(key);
   if (cached) return cached;
   const now = new Date();
-
-  const page = await prisma.page.findFirst({
-    where: {
-      slug,
-      ...buildPublishedWindowWhere(now, (await switchedOff()).pages),
+  const shown = buildPublishedWindowWhere(now, (await switchedOff()).pages);
+  const include = {
+    translations: { where: { locale } },
+    sections: {
+      where: { isVisible: true },
+      orderBy: { order: "asc" as const },
+      include: { translations: { where: { locale } } },
     },
-    include: {
-      translations: { where: { locale } },
-      sections: {
-        where: { isVisible: true },
-        orderBy: { order: "asc" },
-        include: { translations: { where: { locale } } },
-      },
-    },
-  });
+  };
+  // «خلّيه الرئيسية» (admin siteHome.ts): a whole site's first page at the store's own address, while it is
+  // shown (published, its site on). Else, as always, the page at "/" (which waits behind it meanwhile).
+  const home = slug === "/" ? readSiteHome((await getPublicSettings()).site.header) : null;
+  const page = (home ? await prisma.page.findFirst({ where: { id: home.pageId, ...shown }, include }) : null) ?? (await prisma.page.findFirst({ where: { slug, ...shown }, include }));
   if (page) {
     await cacheSet(key, page, PAGE_BY_SLUG_TTL_MS);
   }

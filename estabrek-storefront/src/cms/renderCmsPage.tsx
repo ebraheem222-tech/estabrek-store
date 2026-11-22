@@ -60,7 +60,7 @@ import { TreeTriggers } from "@/pageTree/TreeTriggers";
 // Elements' own speed settings at work, a script of its own (lazyParts.tsx).
 import { TreePerf, TreePhysics } from "@/pageTree/lazyParts";
 import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
-import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
+import { cinematicEnabled, independentDesign, readThemeSnapshot, siteHomeOn } from "@/storeThemes/snapshot";
 import { commerceNeeds, commercePageValid } from "@/pageTree/commerce";
 import { CommerceCartProvider } from "@/pageTree/CommerceCart";
 
@@ -124,7 +124,8 @@ export async function renderCmsPageBySlug(
   const settings = await settingsPromise;
   const earlyHeader = (settings?.site as any)?.header ?? (await bootstrapPromise).site.header;
   const cinematic = cinematicEnabled(earlyHeader, process.env.ESTABREK_HOME_MODE);
-  let roseHome = slug === "/" && cinematic;
+  // A whole site made the home (siteHomeOn) is its own page at "/", not the store's home scenes.
+  let roseHome = slug === "/" && cinematic && !siteHomeOn(earlyHeader);
   const homeDataPromise = roseHome
     ? Promise.all([listCategories(), bootstrapPromise])
         .then(async ([cats, boot]) => {
