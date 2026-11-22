@@ -12,9 +12,10 @@ import { BAKERY, RESTAURANT } from "./sitesFood";
 import { CLINIC, GYM, SALON } from "./sitesCare";
 import { ACADEMY, AGENCY, LAW } from "./sitesWork";
 import { GUESTHOUSE, HALL, PHOTOGRAPHER, PROPERTY } from "./sitesPlace";
+import { FIVEM_RP } from "./sitesGames";
 
 /** Every site, in the order the gallery shows them. */
-export const SITES: SiteBlueprint[] = [RESTAURANT, BAKERY, CLINIC, SALON, GYM, ACADEMY, PROPERTY, GUESTHOUSE, HALL, PHOTOGRAPHER, LAW, AGENCY];
+export const SITES: SiteBlueprint[] = [RESTAURANT, BAKERY, CLINIC, SALON, GYM, ACADEMY, PROPERTY, GUESTHOUSE, HALL, PHOTOGRAPHER, LAW, AGENCY, FIVEM_RP];
 
 export const siteByKey = (key: string): SiteBlueprint | null => SITES.find((s) => s.key === key) ?? null;
 /** A site's file by its key, or null. */

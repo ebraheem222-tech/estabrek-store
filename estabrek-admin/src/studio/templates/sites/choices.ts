@@ -40,7 +40,8 @@ const LANG_KEYS = ["ar", "en", "he"] as const;
  * the ones that went with another, to say so.
  */
 export function keepModules(bp: SiteBlueprint, wanted: ModuleKey[]): { kept: ModuleKey[]; dropped: ModuleKey[] } {
-  const want = new Set(wanted);
+  // The site's core modules stay whatever was asked.
+  const want = new Set([...wanted, ...MODULES.filter((m) => has(bp.modules, m.key) && m.core?.(bp)).map((m) => m.key)]);
   let kept = MODULES.filter((m) => has(bp.modules, m.key) && want.has(m.key));
   for (let changed = true; changed; ) {
     changed = false;
@@ -99,4 +100,4 @@ export function buildChosen(bp: SiteBlueprint, c: SiteChoices | null | undefined
 }
 
 /** The modules a site can be installed without (all of its own), in the modules' order. */
-export const choosable = (bp: SiteBlueprint): SiteModule[] => modulesOf(bp);
+export const choosable = (bp: SiteBlueprint): SiteModule[] => modulesOf(bp).filter((m) => !m.core?.(bp));

@@ -57,7 +57,8 @@ const bookingPart = (b: Built): Part => (c) => {
   return SEC(k, [COLS(k, [2, 3], [[steps], [shownIf(formCard, "bookingOpen"), shownIf(closed, "bookingOpen", false)]], { gap: 48, align: "start", phone: "stack" })], { name: bk.title });
 };
 
-const contactParts = (b: Built): Part[] => [pageHead(SW.contact, SW.contactSub, "soft"), contactPart(b), S("contact-map", "surface")];
+// The map only for a business with a town (a game server is online, nowhere on a map).
+const contactParts = (b: Built): Part[] => [pageHead(SW.contact, SW.contactSub, "soft"), contactPart(b), ...(b.bp.biz.city ? [S("contact-map", "surface")] : [])];
 const bookParts = (b: Built): Part[] => [pageHead(b.use.booking!.title, b.use.booking!.sub, "soft"), bookingPart(b), ...(b.use.questions ? [questionsPart(b, "surface", 4)] : [])];
 
 /** A request's state, as the owner moves it along. */

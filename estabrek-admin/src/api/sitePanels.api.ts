@@ -26,7 +26,10 @@ export type PanelReport = { kind: "report"; key: string; title: Local; table: Pa
 export type PanelMap = { kind: "map"; key: string; title: Local; table: PanelTable; label: string; address: string; columns: PanelColumn[]; rows: PanelRow[] };
 export type PanelScanner = { kind: "scanner"; key: string; title: Local; table: PanelTable; columns: PanelColumn[]; decisions: Array<{ key: string; label: Local; tone?: "good" | "bad" }>; canDecide: boolean };
 export type ReportPeriod = "week" | "month" | "lastMonth" | "quarter";
-export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner;
+/** A game server site's status (backend lib/gameSites.ts GameView). */
+export type GameView = { featureId: string; game: "fivem" | "minecraft" | "bedrock" | "steam"; online: boolean | null; players: number | null; max: number | null; name: string | null; map: string | null; version: string | null; at: string | null; join: { href: string | null; address: string }; history: Array<{ hour: string; players: number | null; online: boolean | null }> };
+export type PanelGame = { kind: "game"; key: string; title: Local; status: GameView | null; canCheck: boolean };
+export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame;
 /** One person (by their phone or email) with their rows in each of the part's tables. */
 export type PanelPerson = { key: string; by: string; name: string; last: string; tables: Array<{ table: PanelTable; title: Local; columns: PanelColumn[]; rows: PanelRow[] }> };
 /** What a page asks besides its language: a calendar's month ("2026-11"), a report's period. */
@@ -73,6 +76,10 @@ export async function exportReport(featureId: string, page: string, part: string
 /** The page as its owner arranges it (400: `details.problems`): the page as it is after. */
 export async function saveLayout(featureId: string, page: string, body: PanelLayoutBody, lang: string, ask: PanelAsk = {}) {
   return (await api.put(`${BASE}/${enc(featureId)}/${enc(page)}/layout`, body, { params: { lang, ...ask } })).data as PanelPageView;
+}
+/** A game server asked now (429: asked a moment ago): the page as it is after. */
+export async function checkGame(featureId: string, page: string, part: string, lang: string) {
+  return (await api.post(`${BASE}/${enc(featureId)}/${enc(page)}/${enc(part)}/check`, {}, { params: { lang } })).data as PanelPageView;
 }
 /** A queue's button pressed on one row: the page as it is after. */
 export async function decide(featureId: string, page: string, part: string, row: string, decision: string, lang: string) {

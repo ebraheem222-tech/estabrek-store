@@ -50,6 +50,8 @@ export type SiteModule = {
   key: ModuleKey;
   name: W;
   note: W;
+  /** A module its site can't be without (a game server's status): always kept, never offered to take out. */
+  core?: (bp: SiteBlueprint) => boolean;
   /** Other modules it can't work without (a booking with no options of its own picks from the main list). */
   needs?: (bp: SiteBlueprint) => ModuleKey[];
   /** Its pages. */
@@ -83,8 +85,8 @@ export const bound = (n: N, bind: Record<string, string>): N => ({ ...n, props: 
 export const still = { motion: false } as const;
 /** An element shown on the shop only while one of the site's settings is `is` (a switch on, unless said). */
 export const shownIf = (n: N, setting: string, is: boolean | string | number = true): N => ({ ...n, props: { ...n.props, showIf: is === true ? { setting } : { setting, is } } });
-/** An element whose words on the shop are one of the site's settings (its text, a button's label). */
-export const fromSetting = (n: N, take: { text?: string; label?: string }): N => ({ ...n, props: { ...n.props, fromSetting: take } });
+/** An element whose words on the shop are one of the site's settings (its text, a button's label), or its link (a Discord invite). */
+export const fromSetting = (n: N, take: { text?: string; label?: string; href?: string }): N => ({ ...n, props: { ...n.props, fromSetting: take } });
 
 /** A list of a table's rows drawn with the page (its card repeated once a row, in the owner's order). */
 export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W }): N {

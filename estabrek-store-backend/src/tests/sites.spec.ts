@@ -84,7 +84,8 @@ describe("Whole sites", () => {
       expect(pages.every((p) => p.status === "DRAFT"), s.key).toBe(true);
       // The home's chosen ones and the main page's sections, filled from the rows (as the editor sees them).
       const offers = file.tables.find((t: Obj) => t.key === "offers");
-      for (const key of ["home", "offers"]) {
+      // (A site with no main list, a game server's, has none.)
+      for (const key of offers ? ["home", "offers"] : []) {
         const tree = pages.find((p) => p.id === ids.ids.page[key])!.tree as PageTree;
         const lists = listsOf(tree).filter((l) => l.props.collectionId === ids.ids.table.offers);
         expect(lists.length, `${s.key} ${key}`).toBeGreaterThan(0);

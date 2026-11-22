@@ -213,7 +213,7 @@ describe("Client copies", () => {
     expect(pick.value).toBe("");
     expect(screen.getByTestId("copies-start-site-note").textContent).toContain("asks them");
     // Every whole site, under its field.
-    expect(within(pick).getAllByRole("option").length).toBe(13);
+    expect(within(pick).getAllByRole("option").length).toBe(14);
     expect(pick.querySelector('optgroup[label="Food and drink"] option[value="site-restaurant"]')?.textContent).toBe("Restaurant");
     fireEvent.change(pick, { target: { value: "site-restaurant" } });
     expect(screen.getByTestId("copies-start-site-note").textContent).toContain("opens with this site picked");

@@ -18,7 +18,7 @@ import * as Panels from "../../api/sitePanels.api";
 import type { PanelActions, PanelAsk, PanelNumbers, PanelPageView, PanelQueue, PanelSettings, PanelView } from "../../api/sitePanels.api";
 import { SettingsEditor } from "../myFeatures/SiteSettings";
 import { cellText, changeText, inLang } from "./panelText";
-import { CalendarPart, ChartPart, KanbanPart, MapPart, PeoplePart, ReportPart, ScannerPart } from "./PanelParts";
+import { CalendarPart, ChartPart, GamePart, KanbanPart, MapPart, PeoplePart, ReportPart, ScannerPart } from "./PanelParts";
 import { ArrangePanel } from "./ArrangePanel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -94,6 +94,7 @@ export default function SitePanelPage() {
         if (part.kind === "people") return <PeoplePart key={part.key} part={part} view={v} />;
         if (part.kind === "report") return <ReportPart key={part.key} part={part} view={v} ask={ask} setAsk={setAsk} />;
         if (part.kind === "map") return <MapPart key={part.key} part={part} />;
+        if (part.kind === "game") return <GamePart key={part.key} part={part} view={v} took={took} onError={onError} />;
         return <ScannerPart key={part.key} part={part} view={v} took={took} onError={onError} />;
       })}
     </div>

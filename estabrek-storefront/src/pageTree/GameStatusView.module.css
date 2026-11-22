@@ -1,0 +1,23 @@
+/* A game server's live status (GameStatusView.tsx): in the theme's colours, readable on a dark or a light section. */
+.box { display: grid; gap: 14px; width: 100%; padding: 22px; border-radius: 20px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); background: color-mix(in srgb, currentColor 6%, transparent); text-align: start; }
+.small { padding: 14px; gap: 10px; border-radius: 14px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: #9ca3af; box-shadow: 0 0 0 4px color-mix(in srgb, #9ca3af 25%, transparent); }
+.box[data-state="on"] .dot { background: #22c55e; box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 30%, transparent); animation: beat 2s ease-in-out infinite; }
+.box[data-state="off"] .dot { background: #ef4444; box-shadow: 0 0 0 4px color-mix(in srgb, #ef4444 30%, transparent); }
+.state { font-size: 1.15em; }
+.players { margin-inline-start: auto; font-size: 1.6em; font-weight: 800; font-variant-numeric: tabular-nums; }
+.players span { font-size: .55em; font-weight: 500; opacity: .7; }
+.big .players { font-size: 2.1em; }
+.name { opacity: .75; font-size: .95em; }
+.chart { display: flex; align-items: flex-end; gap: 3px; height: 56px; }
+.bar { flex: 1 1 0; min-width: 2px; border-radius: 3px 3px 0 0; background: var(--accent, currentColor); opacity: .85; }
+.bar[data-off] { background: #ef4444; opacity: .5; }
+.ways { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.join { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 24px; border-radius: 999px; background: var(--accent, #111); color: var(--accent-contrast, #fff); font-weight: 700; text-decoration: none; }
+.copy { display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.copy code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+.copy span { opacity: .75; font-size: .9em; }
+.join:focus-visible, .copy:focus-visible { outline: 3px solid var(--accent, currentColor); outline-offset: 3px; }
+@keyframes beat { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, #22c55e 10%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .box[data-state="on"] .dot { animation: none; } }

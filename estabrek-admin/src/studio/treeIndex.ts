@@ -51,6 +51,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   instrument: () => tr("آلة موسيقية", "Instrument"),
   chart: () => tr("رسم بياني", "Chart"),
   clock: () => tr("ساعة حية", "Live clock"),
+  gameStatus: () => say("حالة السيرفر|Server status|מצב השרת"),
   svg: () => tr("رسمة", "Drawing"),
   product360: () => tr("منتج 360°", "Product 360°"),
   spacer: () => tr("مسافة", "Spacer"),

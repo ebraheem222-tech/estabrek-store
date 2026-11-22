@@ -29,6 +29,7 @@ export const SpinView = early("@/components/cinematic/ProductSpin", () => import
 export const SliderControls = early("./SliderControls", () => import("./SliderControls").then((m) => m.SliderControls));
 export const InstrumentView = early("./InstrumentView", () => import("./InstrumentView").then((m) => m.InstrumentView));
 export const ClockView = early("./ClockView", () => import("./ClockView").then((m) => m.ClockView));
+export const GameStatusView = early("./GameStatusView", () => import("./GameStatusView").then((m) => m.GameStatusView));
 export const FormView = early("./FormView", () => import("./FormView").then((m) => m.FormView));
 export const RowsView = early("./RowsView", () => import("./RowsView").then((m) => m.RowsView));
 export const ScheduleView = early("./ReferenceDataViews", () => import("./ReferenceDataViews").then((m) => m.ScheduleView));

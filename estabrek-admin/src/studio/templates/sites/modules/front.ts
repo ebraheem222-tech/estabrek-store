@@ -29,7 +29,7 @@ export const frontPanel = (): PanelBits => ({
 });
 
 /** The notice bar over the first page: on the shop only while its switch is on, in the words its owner wrote. */
-const noticePart: Part = (c) => {
+export const noticePart: Part = (c) => {
   const k = withSkin(c, "bold");
   const line = fromSetting(P(k, SET.noticeText, { ...still, quiet: false, style: { size: 16, weight: 600, lineHeight: 1.5 } }), { text: "notice" });
   return shownIf(SEC(k, [STACK(k, [line], { align: "center", textAlign: "center" })], { name: SET.noticeName, full: true, pad: [14, 20, 14, 20], phone: { pad: [12, 16, 12, 16] } }), "noticeOn");

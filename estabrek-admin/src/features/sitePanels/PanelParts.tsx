@@ -12,7 +12,7 @@ import { adminLang, loc } from "../../lib/lang";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import * as Panels from "../../api/sitePanels.api";
-import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelReport, PanelRow, PanelScanner, ReportPeriod } from "../../api/sitePanels.api";
+import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelReport, PanelRow, PanelScanner, ReportPeriod } from "../../api/sitePanels.api";
 import { cellText, inLang } from "./panelText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -395,6 +395,44 @@ export function ScannerPart({ part, view, onError }: { part: PanelScanner } & Co
           ) : null}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/* ---------------- A game server: its status now, the last 24 hours ---------------- */
+
+const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam" } as const;
+export function GamePart({ part, view, took, onError }: { part: PanelGame } & Common) {
+  const lang = adminLang();
+  const s = part.status;
+  const check = useMutation({ mutationFn: () => Panels.checkGame(view.featureId, view.page.key, part.key, lang), onSuccess: took, onError });
+  const most = Math.max(1, s?.max ?? 0, ...(s?.history ?? []).map((h) => h.players ?? 0));
+  const state = !s || s.online === null ? "unknown" : s.online ? "on" : "off";
+  return (
+    <section className={box} data-testid={`site-part-${part.key}`} data-kind="game" data-state={state}>
+      <Head
+        title={inLang(part.title, lang)}
+        more={part.canCheck ? <Button size="xs" variant="secondary" isLoading={check.isPending} onClick={() => check.mutate()} data-testid={`site-game-${part.key}-check`}>{say("اسأل هلّق|Ask now|לבדוק עכשיו")}</Button> : null}
+      />
+      {!s ? (
+        <p className="text-sm text-white/60" data-testid={`site-game-${part.key}-none`}>{say("لسّا ما في عنوان للسيرفر: اكتبه بإعدادات الموقع.|No server address yet: write it in the site's settings.|עוד אין כתובת לשרת: כתבו אותה בהגדרות האתר.")}</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`h-3 w-3 rounded-full ${state === "on" ? "bg-emerald-400" : state === "off" ? "bg-red-400" : "bg-white/30"}`} />
+            <strong data-testid={`site-game-${part.key}-state`}>{state === "on" ? say("شغّال|Online|מחובר") : state === "off" ? say("طافي|Offline|כבוי") : say("لسّا ما انسأل|Not checked yet|עוד לא נבדק")}</strong>
+            {s.online && s.players !== null ? <span className="text-2xl font-semibold tabular-nums" dir="ltr" data-testid={`site-game-${part.key}-players`}>{s.players}{s.max ? ` / ${s.max}` : ""}</span> : null}
+            <span className="text-xs text-white/50">{GAME_NAME[s.game]} · <span dir="ltr">{s.join.address}</span></span>
+          </div>
+          {s.name || s.map ? <p className="mt-1 text-sm text-white/65">{[s.name, s.map, s.version].filter(Boolean).join(" · ")}</p> : null}
+          <div className="mt-3 flex h-24 items-end gap-[3px]" dir="ltr" role="img" aria-label={say("آخر 24 ساعة|The last 24 hours|24 השעות האחרונות")}>
+            {s.history.map((h) => (
+              <div key={h.hour} className={`flex-1 rounded-t ${h.online === false ? "bg-red-400/50" : "bg-accent-500"}`} style={{ height: `${h.players === null ? 3 : Math.max(3, (h.players / most) * 100)}%` }} title={`${new Date(h.hour).toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit" })} · ${h.players ?? "—"}`} data-testid={`site-game-${part.key}-hour`} />
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-white/45">{say("آخر 24 ساعة، أكتر عدد لاعبين بكل ساعة.|The last 24 hours, the most players each hour.|24 השעות האחרונות, הכי הרבה שחקנים בכל שעה.")}{s.at ? ` · ${say("آخر سؤال|Last asked|נבדק לאחרונה")}: ${new Date(s.at).toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit" })}` : ""}</p>
+        </>
+      )}
     </section>
   );
 }
