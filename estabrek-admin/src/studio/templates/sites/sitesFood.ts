@@ -1,11 +1,12 @@
 /** Whole sites for food and drink: a restaurant and a bakery with a café. */
 import { w } from "../words";
-import type { SiteSpec } from "./siteKit";
+import { site } from "./blueprint";
 
-export const RESTAURANT: SiteSpec = {
+export const RESTAURANT = site({
   key: "site-restaurant",
   version: "1.0.0",
   field: "food",
+  archetype: "front",
   fam: "food",
   pics: "food",
   look: 0,
@@ -24,74 +25,80 @@ export const RESTAURANT: SiteSpec = {
     icon: "heart",
   },
   home: "/restaurant",
-  offers: {
-    table: "dishes",
-    page: "/menu",
-    title: w("المنيو", "The menu", "התפריט"),
-    sub: w("كل شي بينطبخ هون، اليوم. اسألونا عن الأطباق النباتية.", "Everything is cooked here, today. Ask us about plant-based dishes.", "הכול מבושל כאן, היום. שאלו אותנו על מנות טבעוניות."),
-    item: w("الطبق", "Dish", "מנה"),
-    look: "menu",
-    groups: [["starters", w("مقبلات", "Starters", "ראשונות")], ["mains", w("أطباق رئيسية", "Mains", "עיקריות")], ["desserts", w("حلويات", "Desserts", "קינוחים")]],
-    price: w("السعر", "Price", "מחיר"),
-    rows: [
-      { slug: "hummus", group: "starters", price: 32, featured: true, title: w("حمّص بالصنوبر", "Hummus with pine nuts", "חומוס עם צנוברים"), text: w("حمّص ناعم بالطحينة وزيت الزيتون وصنوبر محمّص.", "Smooth hummus with tahini, olive oil and toasted pine nuts.", "חומוס חלק עם טחינה, שמן זית וצנוברים קלויים.") },
-      { slug: "fattoush", group: "starters", price: 36, title: w("فتّوش", "Fattoush", "פתוש"), text: w("خضرة طازة، خبز محمّص، سماق ودبس رمّان.", "Fresh greens, toasted bread, sumac and pomegranate molasses.", "ירקות טריים, לחם קלוי, סומאק וסילאן רימונים.") },
-      { slug: "kibbeh", group: "starters", price: 38, title: w("كبّة مقلية", "Fried kibbeh", "קובה מטוגנת"), text: w("أربع حبّات محشية لحمة وجوز، مع لبن.", "Four pieces filled with meat and walnuts, with yoghurt.", "ארבע יחידות ממולאות בשר ואגוזים, עם יוגורט.") },
-      { slug: "musakhan", group: "mains", price: 78, featured: true, title: w("مسخّن", "Musakhan", "מוסחן"), text: w("دجاج بالسماق والبصل على خبز طابون.", "Chicken with sumac and onions on taboon bread.", "עוף עם סומאק ובצל על לחם טאבון.") },
-      { slug: "maqluba", group: "mains", price: 72, featured: true, title: w("مقلوبة", "Maqluba", "מקלובה"), text: w("رز وباذنجان وزهرة ولحمة، مقلوبة قدّامكم.", "Rice, aubergine, cauliflower and meat, turned over at your table.", "אורז, חציל, כרובית ובשר, הפוכים מול העיניים.") },
-      { slug: "fish", group: "mains", price: 94, title: w("سمك بالطحينة", "Fish in tahini", "דג בטחינה"), text: w("سمكة اليوم بالفرن مع طحينة وبصل مكرمل.", "The day's fish from the oven with tahini and caramelised onion.", "דג היום מהתנור עם טחינה ובצל מקורמל.") },
-      { slug: "knafeh", group: "desserts", price: 34, featured: true, title: w("كنافة نابلسية", "Nablus knafeh", "כנאפה שכמית"), text: w("جبنة سخنة وقطر خفيف، طالعة هلّق.", "Warm cheese and light syrup, straight from the tray.", "גבינה חמה וסירופ קל, ישר מהמגש.") },
-      { slug: "muhallabia", group: "desserts", price: 26, title: w("مهلّبية", "Muhallabia", "מהלבייה"), text: w("حليب بماء الورد وفستق حلبي.", "Milk pudding with rose water and pistachio.", "פודינג חלב במי ורדים ופיסטוק.") },
-    ],
+  modules: {
+    offers: {
+      table: "dishes",
+      page: "/menu",
+      title: w("المنيو", "The menu", "התפריט"),
+      sub: w("كل شي بينطبخ هون، اليوم. اسألونا عن الأطباق النباتية.", "Everything is cooked here, today. Ask us about plant-based dishes.", "הכול מבושל כאן, היום. שאלו אותנו על מנות טבעוניות."),
+      item: w("الطبق", "Dish", "מנה"),
+      look: "menu",
+      groups: [["starters", w("مقبلات", "Starters", "ראשונות")], ["mains", w("أطباق رئيسية", "Mains", "עיקריות")], ["desserts", w("حلويات", "Desserts", "קינוחים")]],
+      price: w("السعر", "Price", "מחיר"),
+      rows: [
+        { slug: "hummus", group: "starters", price: 32, featured: true, title: w("حمّص بالصنوبر", "Hummus with pine nuts", "חומוס עם צנוברים"), text: w("حمّص ناعم بالطحينة وزيت الزيتون وصنوبر محمّص.", "Smooth hummus with tahini, olive oil and toasted pine nuts.", "חומוס חלק עם טחינה, שמן זית וצנוברים קלויים.") },
+        { slug: "fattoush", group: "starters", price: 36, title: w("فتّوش", "Fattoush", "פתוש"), text: w("خضرة طازة، خبز محمّص، سماق ودبس رمّان.", "Fresh greens, toasted bread, sumac and pomegranate molasses.", "ירקות טריים, לחם קלוי, סומאק וסילאן רימונים.") },
+        { slug: "kibbeh", group: "starters", price: 38, title: w("كبّة مقلية", "Fried kibbeh", "קובה מטוגנת"), text: w("أربع حبّات محشية لحمة وجوز، مع لبن.", "Four pieces filled with meat and walnuts, with yoghurt.", "ארבע יחידות ממולאות בשר ואגוזים, עם יוגורט.") },
+        { slug: "musakhan", group: "mains", price: 78, featured: true, title: w("مسخّن", "Musakhan", "מוסחן"), text: w("دجاج بالسماق والبصل على خبز طابون.", "Chicken with sumac and onions on taboon bread.", "עוף עם סומאק ובצל על לחם טאבון.") },
+        { slug: "maqluba", group: "mains", price: 72, featured: true, title: w("مقلوبة", "Maqluba", "מקלובה"), text: w("رز وباذنجان وزهرة ولحمة، مقلوبة قدّامكم.", "Rice, aubergine, cauliflower and meat, turned over at your table.", "אורז, חציל, כרובית ובשר, הפוכים מול העיניים.") },
+        { slug: "fish", group: "mains", price: 94, title: w("سمك بالطحينة", "Fish in tahini", "דג בטחינה"), text: w("سمكة اليوم بالفرن مع طحينة وبصل مكرمل.", "The day's fish from the oven with tahini and caramelised onion.", "דג היום מהתנור עם טחינה ובצל מקורמל.") },
+        { slug: "knafeh", group: "desserts", price: 34, featured: true, title: w("كنافة نابلسية", "Nablus knafeh", "כנאפה שכמית"), text: w("جبنة سخنة وقطر خفيف، طالعة هلّق.", "Warm cheese and light syrup, straight from the tray.", "גבינה חמה וסירופ קל, ישר מהמגש.") },
+        { slug: "muhallabia", group: "desserts", price: 26, title: w("مهلّبية", "Muhallabia", "מהלבייה"), text: w("حليب بماء الورد وفستق حلبي.", "Milk pudding with rose water and pistachio.", "פודינג חלב במי ורדים ופיסטוק.") },
+      ],
+    },
+    team: {
+      title: w("مين بالمطبخ", "Who's in the kitchen", "מי במטבח"),
+      sub: w("ناس بتحب الأكل قبل ما تطبخه.", "People who love food before they cook it.", "אנשים שאוהבים אוכל עוד לפני שהם מבשלים."),
+      rows: [
+        { name: w("سلمى خوري", "Salma Khoury", "סלמה ח׳ורי"), role: w("الشيف", "Head chef", "שפית ראשית"), bio: w("عشرين سنة بالمطابخ، وما زالت بتذوق كل طنجرة.", "Twenty years in kitchens, and she still tastes every pot.", "עשרים שנה במטבחים, ועדיין טועמת מכל סיר.") },
+        { name: w("أمير حداد", "Amir Haddad", "אמיר חדאד"), role: w("الطابون والخبز", "Taboon and bread", "טאבון ולחם"), bio: w("بيصحى قبل الكل ليكون الخبز سخن عالفتحة.", "Up before everyone so the bread is warm when we open.", "קם לפני כולם כדי שהלחם יהיה חם בפתיחה.") },
+        { name: w("رنا سعيد", "Rana Said", "ראנה סעיד"), role: w("الحلويات", "Desserts", "קינוחים"), bio: w("كنافتها صارت سبب لحالها لزيارتنا.", "Her knafeh became a reason to visit on its own.", "הכנאפה שלה הפכה לסיבה לבוא בפני עצמה.") },
+      ],
+    },
+    story: {},
+    reviews: { rows: [
+      { name: w("هبة", "Hiba", "היבא"), place: w("من الناصرة", "From Nazareth", "מנצרת"), text: w("المقلوبة متل تبعت ستّي بالزبط. رجعنا تاني أسبوع.", "The maqluba is just like my grandmother's. We came back the next week.", "המקלובה בדיוק כמו של סבתא. חזרנו שבוע אחרי.") },
+      { name: w("دانيال", "Daniel", "דניאל"), place: w("من حيفا", "From Haifa", "מחיפה"), text: w("خدمة دافية وأكل كريم. الكنافة لازم.", "Warm service and generous food. The knafeh is a must.", "שירות חם ואוכל נדיב. הכנאפה חובה.") },
+      { name: w("لينا", "Lina", "לינה"), place: w("من عكا", "From Akko", "מעכו"), text: w("احتفلنا بعيد ميلاد ماما هون، والكل كان مبسوط.", "We celebrated Mum's birthday here and everyone loved it.", "חגגנו פה יום הולדת לאמא וכולם נהנו.") , stars: 4 },
+      { name: w("يوسف", "Yousef", "יוסף"), place: w("من شفاعمرو", "From Shefa-'Amr", "משפרעם"), text: w("أحلى حمّص أكلته من زمان، والأسعار معقولة.", "The best hummus I've had in a long time, at fair prices.", "החומוס הכי טוב שאכלתי מזמן, במחירים הוגנים.") },
+    ] },
+    questions: { rows: [
+      { q: w("لازم نحجز قبل؟", "Do we need to book?", "צריך להזמין מראש?"), a: w("مش لازم، بس بالويك إند منفضّل تحجزوا لتضمنوا طاولة.", "No, but at weekends we'd book to be sure of a table.", "לא חובה, אבל בסופי שבוע עדיף להזמין כדי להבטיח שולחן.") },
+      { q: w("في أطباق نباتية؟", "Are there plant-based dishes?", "יש מנות טבעוניות?"), a: w("أكيد: المقبلات كلها تقريباً، ومنعمل مقلوبة نباتية عالطلب.", "Yes: nearly all the starters, and a plant-based maqluba on request.", "בטח: כמעט כל הראשונות, ומקלובה טבעונית לפי בקשה.") },
+      { q: w("بتعملوا مناسبات؟", "Do you host events?", "אתם מארחים אירועים?"), a: w("في عنّا قاعة لـ 40 شخص لأعياد الميلاد والخطبات.", "We have a room for 40 for birthdays and engagements.", "יש לנו חדר ל־40 איש לימי הולדת ואירוסין.") },
+      { q: w("في موقف سيارات؟", "Is there parking?", "יש חניה?"), a: w("في موقف ببلاش ورا المطعم.", "There's free parking behind the restaurant.", "יש חניה חינם מאחורי המסעדה.") },
+    ] },
+    news: {
+      title: w("أخبار المطبخ", "News from the kitchen", "חדשות מהמטבח"),
+      sub: w("أطباق جديدة، مواسم، وسهرات.", "New dishes, seasons and evenings.", "מנות חדשות, עונות וערבים מיוחדים."),
+      rows: [
+        { slug: "olive-season", date: "2026-10-20", title: w("موسم الزيت الجديد", "The new oil season", "עונת השמן החדשה"), text: w("وصل زيت الجليل الجديد، وبلّشنا فيه بكل الأطباق.", "The Galilee's new oil is in, in every dish.", "השמן החדש מהגליל הגיע, ונכנס לכל המנות."), body: w("كل سنة بنستنى هالأسبوع. هالسنة اخترنا زيت من معصرة صغيرة بعرّابة، وعملنا معه طبقين جداد على المنيو.", "Every year we wait for this week. This year we chose oil from a small press in Arraba and made two new dishes with it.", "כל שנה אנחנו מחכים לשבוע הזה. השנה בחרנו שמן מבית בד קטן בעראבה ויצרנו איתו שתי מנות חדשות.") },
+        { slug: "thursday-nights", date: "2026-09-12", title: w("سهرات الخميس", "Thursday nights", "ערבי חמישי"), text: w("عود حيّ ومنيو صغير خاص كل خميس.", "A live oud and a small special menu every Thursday.", "עוד חי ותפריט מיוחד קטן בכל יום חמישי."), body: w("من الساعة 8، عزف عود حيّ ومنيو من أربع أطباق بتتغيّر كل أسبوع. الأماكن محدودة.", "From 8pm, a live oud and a four-dish menu that changes weekly. Places are limited.", "משמונה בערב, נגינת עוד חיה ותפריט של ארבע מנות שמתחלף כל שבוע. המקומות מוגבלים.") },
+        { slug: "new-branch", date: "2026-07-01", title: w("فرع جديد بعكا", "A new branch in Akko", "סניף חדש בעכו"), text: w("فتحنا عالسور، مع نفس المنيو ونفس الطابون.", "We've opened by the walls, with the same menu and the same taboon.", "פתחנו ליד החומות, עם אותו תפריט ואותו טאבון."), body: w("بعد طلبات كتير، صار إلنا بيت تاني بعكا القديمة. تعالوا اتعرّفوا عالمكان.", "After many requests we have a second home in Old Akko. Come and see it.", "אחרי הרבה בקשות, יש לנו בית שני בעכו העתיקה. בואו להכיר.") },
+      ],
+    },
+    branches: { rows: [
+      { name: w("حيفا", "Haifa", "חיפה"), address: w("شارع البحر 8", "8 Sea Road", "דרך הים 8"), hours: w("كل يوم 12:00–23:00", "Daily 12:00–23:00", "כל יום 12:00–23:00"), phone: "04-600-1234" },
+      { name: w("عكا القديمة", "Old Akko", "עכו העתיקה"), address: w("شارع السور 3", "3 Wall Street", "רחוב החומה 3"), hours: w("كل يوم 13:00–23:00", "Daily 13:00–23:00", "כל יום 13:00–23:00"), phone: "04-600-5678" },
+    ] },
+    contact: {},
+    booking: {
+      title: w("احجزوا طاولة", "Book a table", "הזמנת שולחן"),
+      sub: w("قولولنا إيمتى وكم واحد، ومنأكّدلكم بتلفون.", "Tell us when and how many, and we'll confirm by phone.", "ספרו לנו מתי וכמה, ונאשר בטלפון."),
+      ask: w("شو الطلب؟", "What for?", "לאיזה צורך?"),
+      button: w("احجزوا", "Book", "להזמין"),
+      done: w("وصل طلبكم، ومنتصل فيكم لنأكّد الطاولة.", "Your request is in: we'll call to confirm the table.", "הבקשה התקבלה: נתקשר לאשר את השולחן."),
+      options: [["lunch", w("غدا", "Lunch", "צהריים")], ["dinner", w("عشا", "Dinner", "ערב")], ["event", w("مناسبة", "An event", "אירוע")]],
+    },
+    notify: {},
   },
-  team: {
-    title: w("مين بالمطبخ", "Who's in the kitchen", "מי במטבח"),
-    sub: w("ناس بتحب الأكل قبل ما تطبخه.", "People who love food before they cook it.", "אנשים שאוהבים אוכל עוד לפני שהם מבשלים."),
-    rows: [
-      { name: w("سلمى خوري", "Salma Khoury", "סלמה ח׳ורי"), role: w("الشيف", "Head chef", "שפית ראשית"), bio: w("عشرين سنة بالمطابخ، وما زالت بتذوق كل طنجرة.", "Twenty years in kitchens, and she still tastes every pot.", "עשרים שנה במטבחים, ועדיין טועמת מכל סיר.") },
-      { name: w("أمير حداد", "Amir Haddad", "אמיר חדאד"), role: w("الطابون والخبز", "Taboon and bread", "טאבון ולחם"), bio: w("بيصحى قبل الكل ليكون الخبز سخن عالفتحة.", "Up before everyone so the bread is warm when we open.", "קם לפני כולם כדי שהלחם יהיה חם בפתיחה.") },
-      { name: w("رنا سعيد", "Rana Said", "ראנה סעיד"), role: w("الحلويات", "Desserts", "קינוחים"), bio: w("كنافتها صارت سبب لحالها لزيارتنا.", "Her knafeh became a reason to visit on its own.", "הכנאפה שלה הפכה לסיבה לבוא בפני עצמה.") },
-    ],
-  },
-  reviews: [
-    { name: w("هبة", "Hiba", "היבא"), place: w("من الناصرة", "From Nazareth", "מנצרת"), text: w("المقلوبة متل تبعت ستّي بالزبط. رجعنا تاني أسبوع.", "The maqluba is just like my grandmother's. We came back the next week.", "המקלובה בדיוק כמו של סבתא. חזרנו שבוע אחרי.") },
-    { name: w("دانيال", "Daniel", "דניאל"), place: w("من حيفا", "From Haifa", "מחיפה"), text: w("خدمة دافية وأكل كريم. الكنافة لازم.", "Warm service and generous food. The knafeh is a must.", "שירות חם ואוכל נדיב. הכנאפה חובה.") },
-    { name: w("لينا", "Lina", "לינה"), place: w("من عكا", "From Akko", "מעכו"), text: w("احتفلنا بعيد ميلاد ماما هون، والكل كان مبسوط.", "We celebrated Mum's birthday here and everyone loved it.", "חגגנו פה יום הולדת לאמא וכולם נהנו.") , stars: 4 },
-    { name: w("يوسف", "Yousef", "יוסף"), place: w("من شفاعمرو", "From Shefa-'Amr", "משפרעם"), text: w("أحلى حمّص أكلته من زمان، والأسعار معقولة.", "The best hummus I've had in a long time, at fair prices.", "החומוס הכי טוב שאכלתי מזמן, במחירים הוגנים.") },
-  ],
-  questions: [
-    { q: w("لازم نحجز قبل؟", "Do we need to book?", "צריך להזמין מראש?"), a: w("مش لازم، بس بالويك إند منفضّل تحجزوا لتضمنوا طاولة.", "No, but at weekends we'd book to be sure of a table.", "לא חובה, אבל בסופי שבוע עדיף להזמין כדי להבטיח שולחן.") },
-    { q: w("في أطباق نباتية؟", "Are there plant-based dishes?", "יש מנות טבעוניות?"), a: w("أكيد: المقبلات كلها تقريباً، ومنعمل مقلوبة نباتية عالطلب.", "Yes: nearly all the starters, and a plant-based maqluba on request.", "בטח: כמעט כל הראשונות, ומקלובה טבעונית לפי בקשה.") },
-    { q: w("بتعملوا مناسبات؟", "Do you host events?", "אתם מארחים אירועים?"), a: w("في عنّا قاعة لـ 40 شخص لأعياد الميلاد والخطبات.", "We have a room for 40 for birthdays and engagements.", "יש לנו חדר ל־40 איש לימי הולדת ואירוסין.") },
-    { q: w("في موقف سيارات؟", "Is there parking?", "יש חניה?"), a: w("في موقف ببلاش ورا المطعم.", "There's free parking behind the restaurant.", "יש חניה חינם מאחורי המסעדה.") },
-  ],
-  posts: {
-    title: w("أخبار المطبخ", "News from the kitchen", "חדשות מהמטבח"),
-    sub: w("أطباق جديدة، مواسم، وسهرات.", "New dishes, seasons and evenings.", "מנות חדשות, עונות וערבים מיוחדים."),
-    rows: [
-      { slug: "olive-season", date: "2026-10-20", title: w("موسم الزيت الجديد", "The new oil season", "עונת השמן החדשה"), text: w("وصل زيت الجليل الجديد، وبلّشنا فيه بكل الأطباق.", "The Galilee's new oil is in, in every dish.", "השמן החדש מהגליל הגיע, ונכנס לכל המנות."), body: w("كل سنة بنستنى هالأسبوع. هالسنة اخترنا زيت من معصرة صغيرة بعرّابة، وعملنا معه طبقين جداد على المنيو.", "Every year we wait for this week. This year we chose oil from a small press in Arraba and made two new dishes with it.", "כל שנה אנחנו מחכים לשבוע הזה. השנה בחרנו שמן מבית בד קטן בעראבה ויצרנו איתו שתי מנות חדשות.") },
-      { slug: "thursday-nights", date: "2026-09-12", title: w("سهرات الخميس", "Thursday nights", "ערבי חמישי"), text: w("عود حيّ ومنيو صغير خاص كل خميس.", "A live oud and a small special menu every Thursday.", "עוד חי ותפריט מיוחד קטן בכל יום חמישי."), body: w("من الساعة 8، عزف عود حيّ ومنيو من أربع أطباق بتتغيّر كل أسبوع. الأماكن محدودة.", "From 8pm, a live oud and a four-dish menu that changes weekly. Places are limited.", "משמונה בערב, נגינת עוד חיה ותפריט של ארבע מנות שמתחלף כל שבוע. המקומות מוגבלים.") },
-      { slug: "new-branch", date: "2026-07-01", title: w("فرع جديد بعكا", "A new branch in Akko", "סניף חדש בעכו"), text: w("فتحنا عالسور، مع نفس المنيو ونفس الطابون.", "We've opened by the walls, with the same menu and the same taboon.", "פתחנו ליד החומות, עם אותו תפריט ואותו טאבון."), body: w("بعد طلبات كتير، صار إلنا بيت تاني بعكا القديمة. تعالوا اتعرّفوا عالمكان.", "After many requests we have a second home in Old Akko. Come and see it.", "אחרי הרבה בקשות, יש לנו בית שני בעכו העתיקה. בואו להכיר.") },
-    ],
-  },
-  branches: [
-    { name: w("حيفا", "Haifa", "חיפה"), address: w("شارع البحر 8", "8 Sea Road", "דרך הים 8"), hours: w("كل يوم 12:00–23:00", "Daily 12:00–23:00", "כל יום 12:00–23:00"), phone: "04-600-1234" },
-    { name: w("عكا القديمة", "Old Akko", "עכו העתיקה"), address: w("شارع السور 3", "3 Wall Street", "רחוב החומה 3"), hours: w("كل يوم 13:00–23:00", "Daily 13:00–23:00", "כל יום 13:00–23:00"), phone: "04-600-5678" },
-  ],
-  booking: {
-    title: w("احجزوا طاولة", "Book a table", "הזמנת שולחן"),
-    sub: w("قولولنا إيمتى وكم واحد، ومنأكّدلكم بتلفون.", "Tell us when and how many, and we'll confirm by phone.", "ספרו לנו מתי וכמה, ונאשר בטלפון."),
-    ask: w("شو الطلب؟", "What for?", "לאיזה צורך?"),
-    button: w("احجزوا", "Book", "להזמין"),
-    done: w("وصل طلبكم، ومنتصل فيكم لنأكّد الطاولة.", "Your request is in: we'll call to confirm the table.", "הבקשה התקבלה: נתקשר לאשר את השולחן."),
-    options: [["lunch", w("غدا", "Lunch", "צהריים")], ["dinner", w("عشا", "Dinner", "ערב")], ["event", w("مناسبة", "An event", "אירוע")]],
-  },
-};
+});
 
-export const BAKERY: SiteSpec = {
+export const BAKERY = site({
   key: "site-bakery-cafe",
   version: "1.0.0",
   field: "food",
+  archetype: "front",
   fam: "food",
   pics: "coffee",
   look: 4,
@@ -110,65 +117,70 @@ export const BAKERY: SiteSpec = {
     icon: "sparkle",
   },
   home: "/bakery",
-  offers: {
-    table: "bakes",
-    page: "/today",
-    title: w("بالفرن والمقهى", "In the oven and the café", "בתנור ובבית הקפה"),
-    sub: w("الكمية محدودة كل يوم، وبنخبز من جديد الظهر.", "Limited every day; we bake again at noon.", "כמות מוגבלת כל יום, ואופים שוב בצהריים."),
-    item: w("الصنف", "Item", "פריט"),
-    look: "tiles",
-    groups: [["bread", w("خبز", "Bread", "לחם")], ["pastry", w("معجنات", "Pastries", "מאפים")], ["drinks", w("مشروبات", "Drinks", "משקאות")]],
-    price: w("السعر", "Price", "מחיר"),
-    rows: [
-      { slug: "sourdough", group: "bread", price: 24, featured: true, title: w("خبز بالخميرة الطبيعية", "Sourdough loaf", "לחם מחמצת"), text: w("قشرة مقرمشة وقلب طري، 24 ساعة تخمير.", "A crisp crust and soft heart, fermented 24 hours.", "קרום פריך ופנים רך, תסיסה של 24 שעות.") },
-      { slug: "taboon", group: "bread", price: 8, title: w("خبز طابون", "Taboon bread", "לחם טאבון"), text: w("رغيف على الحصى، متل ما بنحب.", "A loaf baked on the stones, the way we like it.", "כיכר על האבנים, כמו שאנחנו אוהבים.") },
-      { slug: "zaatar-croissant", group: "pastry", price: 14, featured: true, title: w("كرواسون بالزعتر", "Za'atar croissant", "קרואסון זעתר"), text: w("زبدة وزعتر بلدي وزيت زيتون.", "Butter, wild za'atar and olive oil.", "חמאה, זעתר בר ושמן זית.") },
-      { slug: "cheese-manakish", group: "pastry", price: 16, title: w("منقوشة جبنة", "Cheese manakish", "מנאקיש גבינה"), text: w("جبنة عكاوي وحبة البركة.", "Akkawi cheese and nigella seeds.", "גבינת עכאווי וקצח.") },
-      { slug: "date-maamoul", group: "pastry", price: 6, title: w("معمول بالتمر", "Date maamoul", "מעמול תמרים"), text: w("بالسميد وماء الزهر، بالحبّة.", "Semolina and orange blossom, by the piece.", "סולת ומי זהר, ליחידה.") },
-      { slug: "cardamom-coffee", group: "drinks", price: 10, featured: true, title: w("قهوة بالهيل", "Cardamom coffee", "קפה עם הל"), text: w("محمّصة عنّا ومطحونة عالطلب.", "Roasted here and ground to order.", "נקלה אצלנו ונטחן לפי הזמנה.") },
-      { slug: "flat-white", group: "drinks", price: 14, title: w("فلات وايت", "Flat white", "פלאט וייט"), text: w("إسبريسو مزدوج وحليب ناعم.", "A double espresso with silky milk.", "אספרסו כפול וחלב קטיפתי.") },
-      { slug: "sage-tea", group: "drinks", price: 9, title: w("شاي بالميرمية", "Sage tea", "תה מרווה"), text: w("ميرمية من الجبل، سخن أو بارد.", "Mountain sage, hot or iced.", "מרווה מההר, חם או קר.") },
-    ],
+  modules: {
+    offers: {
+      table: "bakes",
+      page: "/today",
+      title: w("بالفرن والمقهى", "In the oven and the café", "בתנור ובבית הקפה"),
+      sub: w("الكمية محدودة كل يوم، وبنخبز من جديد الظهر.", "Limited every day; we bake again at noon.", "כמות מוגבלת כל יום, ואופים שוב בצהריים."),
+      item: w("الصنف", "Item", "פריט"),
+      look: "tiles",
+      groups: [["bread", w("خبز", "Bread", "לחם")], ["pastry", w("معجنات", "Pastries", "מאפים")], ["drinks", w("مشروبات", "Drinks", "משקאות")]],
+      price: w("السعر", "Price", "מחיר"),
+      rows: [
+        { slug: "sourdough", group: "bread", price: 24, featured: true, title: w("خبز بالخميرة الطبيعية", "Sourdough loaf", "לחם מחמצת"), text: w("قشرة مقرمشة وقلب طري، 24 ساعة تخمير.", "A crisp crust and soft heart, fermented 24 hours.", "קרום פריך ופנים רך, תסיסה של 24 שעות.") },
+        { slug: "taboon", group: "bread", price: 8, title: w("خبز طابون", "Taboon bread", "לחם טאבון"), text: w("رغيف على الحصى، متل ما بنحب.", "A loaf baked on the stones, the way we like it.", "כיכר על האבנים, כמו שאנחנו אוהבים.") },
+        { slug: "zaatar-croissant", group: "pastry", price: 14, featured: true, title: w("كرواسون بالزعتر", "Za'atar croissant", "קרואסון זעתר"), text: w("زبدة وزعتر بلدي وزيت زيتون.", "Butter, wild za'atar and olive oil.", "חמאה, זעתר בר ושמן זית.") },
+        { slug: "cheese-manakish", group: "pastry", price: 16, title: w("منقوشة جبنة", "Cheese manakish", "מנאקיש גבינה"), text: w("جبنة عكاوي وحبة البركة.", "Akkawi cheese and nigella seeds.", "גבינת עכאווי וקצח.") },
+        { slug: "date-maamoul", group: "pastry", price: 6, title: w("معمول بالتمر", "Date maamoul", "מעמול תמרים"), text: w("بالسميد وماء الزهر، بالحبّة.", "Semolina and orange blossom, by the piece.", "סולת ומי זהר, ליחידה.") },
+        { slug: "cardamom-coffee", group: "drinks", price: 10, featured: true, title: w("قهوة بالهيل", "Cardamom coffee", "קפה עם הל"), text: w("محمّصة عنّا ومطحونة عالطلب.", "Roasted here and ground to order.", "נקלה אצלנו ונטחן לפי הזמנה.") },
+        { slug: "flat-white", group: "drinks", price: 14, title: w("فلات وايت", "Flat white", "פלאט וייט"), text: w("إسبريسو مزدوج وحليب ناعم.", "A double espresso with silky milk.", "אספרסו כפול וחלב קטיפתי.") },
+        { slug: "sage-tea", group: "drinks", price: 9, title: w("شاي بالميرمية", "Sage tea", "תה מרווה"), text: w("ميرمية من الجبل، سخن أو بارد.", "Mountain sage, hot or iced.", "מרווה מההר, חם או קר.") },
+      ],
+    },
+    team: {
+      title: w("الخبّازين", "The bakers", "האופים"),
+      sub: w("الإيدين ورا كل رغيف.", "The hands behind every loaf.", "הידיים מאחורי כל כיכר."),
+      rows: [
+        { name: w("نادر عبود", "Nader Abboud", "נאדר עבוד"), role: w("صاحب الفرن", "The baker-owner", "האופה והבעלים"), bio: w("تعلّم العجين من أبوه، وبيعلّمه هلّق لأولاده.", "He learnt dough from his father and teaches it to his children.", "למד בצק מאביו ומלמד אותו את ילדיו.") },
+        { name: w("مي حنا", "May Hanna", "מאי חנא"), role: w("المعجنات", "Pastry", "מאפים"), bio: w("الكرواسون بالزعتر كان فكرتها.", "The za'atar croissant was her idea.", "קרואסון הזעתר היה הרעיון שלה.") },
+        { name: w("طارق", "Tareq", "טארק"), role: w("القهوة", "Coffee", "קפה"), bio: w("بيحمّص كل ثلاثاء، وبيعرف قهوة كل زبون.", "Roasts every Tuesday and knows every regular's coffee.", "קולה כל יום שלישי ומכיר את הקפה של כל קבוע.") },
+      ],
+    },
+    story: {},
+    reviews: { rows: [
+      { name: w("ريم", "Reem", "רים"), place: w("جارة", "A neighbour", "שכנה"), text: w("بنزل كل يوم الصبح عالكرواسون، ما بقدر أبلّش نهاري بدونه.", "I come down every morning for the croissant; my day can't start without it.", "יורדת כל בוקר לקרואסון, היום לא מתחיל בלעדיו.") },
+      { name: w("آدم", "Adam", "אדם"), place: w("من يافة", "From Yafa", "מיפיע"), text: w("أطيب خبز بالمنطقة، والقهوة عالأصول.", "The best bread around, and proper coffee.", "הלחם הכי טוב באזור, וקפה כמו שצריך.") },
+      { name: w("سهى", "Suha", "סוהא"), place: w("طلبت لعرس", "Ordered for a wedding", "הזמינה לחתונה"), text: w("طلبت 300 معمول لعرس بنتي وكانوا مزبوطين.", "I ordered 300 maamoul for my daughter's wedding and they were perfect.", "הזמנתי 300 מעמול לחתונה של הבת שלי והם היו מושלמים.") },
+      { name: w("مايكل", "Michael", "מייקל"), place: w("زائر", "A visitor", "מבקר"), text: w("مكان صغير ودافي، والناس بتضحكلك.", "A small, warm place where people smile at you.", "מקום קטן וחם, ואנשים מחייכים אליך."), stars: 4 },
+    ] },
+    questions: { rows: [
+      { q: w("بتاخدوا طلبيات كبيرة؟", "Do you take large orders?", "אתם מקבלים הזמנות גדולות?"), a: w("أكيد، لأعراس ومناسبات. ابعتولنا قبل ثلاث أيام عالأقل.", "Yes, for weddings and events. Send us at least three days ahead.", "כן, לחתונות ואירועים. שלחו לפחות שלושה ימים מראש.") },
+      { q: w("في خبز بدون غلوتين؟", "Is there gluten-free bread?", "יש לחם ללא גלוטן?"), a: w("يوم الخميس منخبز رغيف بدون غلوتين، احجزوه من قبل.", "On Thursdays we bake a gluten-free loaf: reserve one ahead.", "בימי חמישי אופים כיכר ללא גלוטן, כדאי לשריין.") },
+      { q: w("في مكان للقعدة؟", "Is there seating?", "יש מקום לשבת?"), a: w("عنّا ست طاولات جوّا وأربعة برّا تحت العريشة.", "Six tables inside and four outside under the vine.", "שישה שולחנות בפנים וארבעה בחוץ מתחת לגפן.") },
+      { q: w("إيمتى بيخلص الخبز؟", "When does the bread run out?", "מתי הלחם נגמר?"), a: w("عادةً قبل الظهر، وبنخبز دفعة تانية الساعة 12.", "Usually before noon; we bake a second batch at 12.", "בדרך כלל לפני הצהריים, ואופים סבב שני ב־12.") },
+    ] },
+    news: {
+      title: w("من الفرن", "From the oven", "מהתנור"),
+      sub: w("أصناف جديدة ومواسم.", "New bakes and seasons.", "מאפים חדשים ועונות."),
+      rows: [
+        { slug: "eid-maamoul", date: "2026-10-28", title: w("معمول العيد", "Maamoul for the feast", "מעמול לחג"), text: w("بلّشنا نستقبل طلبات معمول العيد.", "We've started taking feast maamoul orders.", "התחלנו לקבל הזמנות מעמול לחג."), body: w("تمر، جوز وفستق. اطلبوا قبل أسبوع لنضمنلكم الكمية، وبنغلّف للهدايا.", "Date, walnut and pistachio. Order a week ahead to be sure, and we wrap them as gifts.", "תמרים, אגוזים ופיסטוק. הזמינו שבוע מראש, ואנחנו אורזים למתנה.") },
+        { slug: "new-roast", date: "2026-09-30", title: w("تحميصة جديدة", "A new roast", "קלייה חדשה"), text: w("حبوب من إثيوبيا بطعم التوت.", "Ethiopian beans with notes of berries.", "פולים מאתיופיה עם טעמי פירות יער."), body: w("جرّبوها فلتر أو إسبريسو، وقولولنا رأيكم. موجودة كمان بأكياس للبيت.", "Try it as filter or espresso and tell us what you think. Also in bags for home.", "נסו כפילטר או אספרסו וספרו לנו. יש גם שקיות לבית.") },
+        { slug: "baking-class", date: "2026-08-14", title: w("ورشة خبز للأولاد", "A baking class for children", "סדנת אפייה לילדים"), text: w("كل سبت الصبح، ساعة مع العجين.", "Every Saturday morning, an hour with the dough.", "כל שבת בבוקר, שעה עם הבצק."), body: w("الأولاد بيعجنوا وبيشكّلوا وبيروّحوا خبزهم معهم. الأماكن عشرة بس.", "Children knead, shape and take their bread home. Only ten places.", "הילדים לשים, מעצבים ולוקחים את הלחם הביתה. רק עשרה מקומות.") },
+      ],
+    },
+    branches: { rows: [
+      { name: w("الناصرة", "Nazareth", "נצרת"), address: w("ساحة العين 4", "4 Spring Square", "כיכר המעיין 4"), hours: w("كل يوم 6:30–19:00", "Daily 6:30–19:00", "כל יום 6:30–19:00"), phone: "04-655-2020" },
+      { name: w("كفركنا", "Kafr Kanna", "כפר כנא"), address: w("الشارع الرئيسي 21", "21 Main Street", "הרחוב הראשי 21"), hours: w("الإثنين–السبت 7:00–17:00", "Mon–Sat 7:00–17:00", "שני–שבת 7:00–17:00"), phone: "04-655-3030" },
+    ] },
+    contact: {},
+    booking: {
+      title: w("طلبية خاصة", "A special order", "הזמנה מיוחדת"),
+      sub: w("لمناسبة أو لمكتب: قولولنا شو بدكم وإيمتى.", "For an event or an office: tell us what and when.", "לאירוע או למשרד: ספרו לנו מה ומתי."),
+      ask: w("شو بدكم؟", "What would you like?", "מה תרצו?"),
+      button: w("ابعتوا الطلبية", "Send the order", "שליחת ההזמנה"),
+      done: w("وصلت طلبيتكم، ومنتصل فيكم لنأكّد التفاصيل.", "Your order is in: we'll call to confirm the details.", "ההזמנה התקבלה: נתקשר לאשר פרטים."),
+    },
+    notify: {},
   },
-  team: {
-    title: w("الخبّازين", "The bakers", "האופים"),
-    sub: w("الإيدين ورا كل رغيف.", "The hands behind every loaf.", "הידיים מאחורי כל כיכר."),
-    rows: [
-      { name: w("نادر عبود", "Nader Abboud", "נאדר עבוד"), role: w("صاحب الفرن", "The baker-owner", "האופה והבעלים"), bio: w("تعلّم العجين من أبوه، وبيعلّمه هلّق لأولاده.", "He learnt dough from his father and teaches it to his children.", "למד בצק מאביו ומלמד אותו את ילדיו.") },
-      { name: w("مي حنا", "May Hanna", "מאי חנא"), role: w("المعجنات", "Pastry", "מאפים"), bio: w("الكرواسون بالزعتر كان فكرتها.", "The za'atar croissant was her idea.", "קרואסון הזעתר היה הרעיון שלה.") },
-      { name: w("طارق", "Tareq", "טארק"), role: w("القهوة", "Coffee", "קפה"), bio: w("بيحمّص كل ثلاثاء، وبيعرف قهوة كل زبون.", "Roasts every Tuesday and knows every regular's coffee.", "קולה כל יום שלישי ומכיר את הקפה של כל קבוע.") },
-    ],
-  },
-  reviews: [
-    { name: w("ريم", "Reem", "רים"), place: w("جارة", "A neighbour", "שכנה"), text: w("بنزل كل يوم الصبح عالكرواسون، ما بقدر أبلّش نهاري بدونه.", "I come down every morning for the croissant; my day can't start without it.", "יורדת כל בוקר לקרואסון, היום לא מתחיל בלעדיו.") },
-    { name: w("آدم", "Adam", "אדם"), place: w("من يافة", "From Yafa", "מיפיע"), text: w("أطيب خبز بالمنطقة، والقهوة عالأصول.", "The best bread around, and proper coffee.", "הלחם הכי טוב באזור, וקפה כמו שצריך.") },
-    { name: w("سهى", "Suha", "סוהא"), place: w("طلبت لعرس", "Ordered for a wedding", "הזמינה לחתונה"), text: w("طلبت 300 معمول لعرس بنتي وكانوا مزبوطين.", "I ordered 300 maamoul for my daughter's wedding and they were perfect.", "הזמנתי 300 מעמול לחתונה של הבת שלי והם היו מושלמים.") },
-    { name: w("مايكل", "Michael", "מייקל"), place: w("زائر", "A visitor", "מבקר"), text: w("مكان صغير ودافي، والناس بتضحكلك.", "A small, warm place where people smile at you.", "מקום קטן וחם, ואנשים מחייכים אליך."), stars: 4 },
-  ],
-  questions: [
-    { q: w("بتاخدوا طلبيات كبيرة؟", "Do you take large orders?", "אתם מקבלים הזמנות גדולות?"), a: w("أكيد، لأعراس ومناسبات. ابعتولنا قبل ثلاث أيام عالأقل.", "Yes, for weddings and events. Send us at least three days ahead.", "כן, לחתונות ואירועים. שלחו לפחות שלושה ימים מראש.") },
-    { q: w("في خبز بدون غلوتين؟", "Is there gluten-free bread?", "יש לחם ללא גלוטן?"), a: w("يوم الخميس منخبز رغيف بدون غلوتين، احجزوه من قبل.", "On Thursdays we bake a gluten-free loaf: reserve one ahead.", "בימי חמישי אופים כיכר ללא גלוטן, כדאי לשריין.") },
-    { q: w("في مكان للقعدة؟", "Is there seating?", "יש מקום לשבת?"), a: w("عنّا ست طاولات جوّا وأربعة برّا تحت العريشة.", "Six tables inside and four outside under the vine.", "שישה שולחנות בפנים וארבעה בחוץ מתחת לגפן.") },
-    { q: w("إيمتى بيخلص الخبز؟", "When does the bread run out?", "מתי הלחם נגמר?"), a: w("عادةً قبل الظهر، وبنخبز دفعة تانية الساعة 12.", "Usually before noon; we bake a second batch at 12.", "בדרך כלל לפני הצהריים, ואופים סבב שני ב־12.") },
-  ],
-  posts: {
-    title: w("من الفرن", "From the oven", "מהתנור"),
-    sub: w("أصناف جديدة ومواسم.", "New bakes and seasons.", "מאפים חדשים ועונות."),
-    rows: [
-      { slug: "eid-maamoul", date: "2026-10-28", title: w("معمول العيد", "Maamoul for the feast", "מעמול לחג"), text: w("بلّشنا نستقبل طلبات معمول العيد.", "We've started taking feast maamoul orders.", "התחלנו לקבל הזמנות מעמול לחג."), body: w("تمر، جوز وفستق. اطلبوا قبل أسبوع لنضمنلكم الكمية، وبنغلّف للهدايا.", "Date, walnut and pistachio. Order a week ahead to be sure, and we wrap them as gifts.", "תמרים, אגוזים ופיסטוק. הזמינו שבוע מראש, ואנחנו אורזים למתנה.") },
-      { slug: "new-roast", date: "2026-09-30", title: w("تحميصة جديدة", "A new roast", "קלייה חדשה"), text: w("حبوب من إثيوبيا بطعم التوت.", "Ethiopian beans with notes of berries.", "פולים מאתיופיה עם טעמי פירות יער."), body: w("جرّبوها فلتر أو إسبريسو، وقولولنا رأيكم. موجودة كمان بأكياس للبيت.", "Try it as filter or espresso and tell us what you think. Also in bags for home.", "נסו כפילטר או אספרסו וספרו לנו. יש גם שקיות לבית.") },
-      { slug: "baking-class", date: "2026-08-14", title: w("ورشة خبز للأولاد", "A baking class for children", "סדנת אפייה לילדים"), text: w("كل سبت الصبح، ساعة مع العجين.", "Every Saturday morning, an hour with the dough.", "כל שבת בבוקר, שעה עם הבצק."), body: w("الأولاد بيعجنوا وبيشكّلوا وبيروّحوا خبزهم معهم. الأماكن عشرة بس.", "Children knead, shape and take their bread home. Only ten places.", "הילדים לשים, מעצבים ולוקחים את הלחם הביתה. רק עשרה מקומות.") },
-    ],
-  },
-  branches: [
-    { name: w("الناصرة", "Nazareth", "נצרת"), address: w("ساحة العين 4", "4 Spring Square", "כיכר המעיין 4"), hours: w("كل يوم 6:30–19:00", "Daily 6:30–19:00", "כל יום 6:30–19:00"), phone: "04-655-2020" },
-    { name: w("كفركنا", "Kafr Kanna", "כפר כנא"), address: w("الشارع الرئيسي 21", "21 Main Street", "הרחוב הראשי 21"), hours: w("الإثنين–السبت 7:00–17:00", "Mon–Sat 7:00–17:00", "שני–שבת 7:00–17:00"), phone: "04-655-3030" },
-  ],
-  booking: {
-    title: w("طلبية خاصة", "A special order", "הזמנה מיוחדת"),
-    sub: w("لمناسبة أو لمكتب: قولولنا شو بدكم وإيمتى.", "For an event or an office: tell us what and when.", "לאירוע או למשרד: ספרו לנו מה ומתי."),
-    ask: w("شو بدكم؟", "What would you like?", "מה תרצו?"),
-    button: w("ابعتوا الطلبية", "Send the order", "שליחת ההזמנה"),
-    done: w("وصلت طلبيتكم، ومنتصل فيكم لنأكّد التفاصيل.", "Your order is in: we'll call to confirm the details.", "ההזמנה התקבלה: נתקשר לאשר פרטים."),
-  },
-};
+});

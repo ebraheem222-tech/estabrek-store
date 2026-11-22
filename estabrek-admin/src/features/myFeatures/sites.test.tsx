@@ -118,6 +118,8 @@ describe("The sites page", () => {
 
     fireEvent.click(screen.getByTestId("sites-pick-site-restaurant"));
     expect(screen.getByTestId("sites-home-note").textContent).toContain("/restaurant");
+    // What it is built from: its modules, in the modules' order.
+    expect(within(screen.getByTestId("sites-modules")).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["The main list", "The team", "Our story", "Reviews", "Questions", "News", "Branches", "Contact", "Booking", "Tell me"]);
     // What it would make: its tables with their ready rows.
     expect((await screen.findByTestId("template-table-rows-offers")).textContent).toBe("8 ready rows");
     const sent = m.previewTemplate.mock.calls[0][0] as ReturnType<typeof buildSite>;

@@ -1,11 +1,12 @@
 /** Whole sites for learning and offices: a course academy, a law office and a creative agency. */
 import { w } from "../words";
-import type { SiteSpec } from "./siteKit";
+import { site } from "./blueprint";
 
-export const ACADEMY: SiteSpec = {
+export const ACADEMY = site({
   key: "site-academy",
   version: "1.0.0",
   field: "learning",
+  archetype: "front",
   fam: "books",
   pics: "books",
   look: 3,
@@ -24,74 +25,80 @@ export const ACADEMY: SiteSpec = {
     icon: "star",
   },
   home: "/academy",
-  offers: {
-    table: "courses",
-    page: "/courses",
-    title: w("الدورات", "Courses", "קורסים"),
-    sub: w("كل دورة إلها مستوى، مدة، وسعر واضح.", "Each course has a level, a length and a clear price.", "לכל קורס רמה, משך ומחיר ברור."),
-    item: w("الدورة", "Course", "קורס"),
-    look: "cards",
-    groups: [["tech", w("تكنولوجيا", "Technology", "טכנולוגיה")], ["languages", w("لغات", "Languages", "שפות")], ["business", w("إدارة وأعمال", "Business", "עסקים")]],
-    price: w("السعر", "Price", "מחיר"),
-    extra: w("المدة والمستوى", "Length and level", "משך ורמה"),
-    rows: [
-      { slug: "web-basics", group: "tech", price: 1900, featured: true, extra: w("10 أسابيع · مبتدئ", "10 weeks · beginner", "10 שבועות · מתחילים"), title: w("أساسيات تصميم المواقع", "Web design basics", "יסודות בניית אתרים"), text: w("HTML وCSS وأول موقع إلكم.", "HTML, CSS and your first site.", "HTML, CSS והאתר הראשון שלכם.") },
-      { slug: "python", group: "tech", price: 2400, featured: true, extra: w("12 أسبوع · مبتدئ", "12 weeks · beginner", "12 שבועות · מתחילים"), title: w("برمجة بايثون", "Python programming", "תכנות בפייתון"), text: w("من الصفر لبرامج بتشتغل.", "From zero to programs that work.", "מאפס לתוכנות שעובדות.") },
-      { slug: "data", group: "tech", price: 2800, extra: w("8 أسابيع · متوسط", "8 weeks · intermediate", "8 שבועות · בינוני"), title: w("تحليل بيانات", "Data analysis", "ניתוח נתונים"), text: w("جداول، رسومات وأسئلة صح.", "Spreadsheets, charts and the right questions.", "גיליונות, גרפים והשאלות הנכונות.") },
-      { slug: "english", group: "languages", price: 1200, featured: true, extra: w("16 أسبوع · كل المستويات", "16 weeks · all levels", "16 שבועות · כל הרמות"), title: w("إنجليزي للمحادثة", "Conversational English", "אנגלית מדוברת"), text: w("حكي من أول درس.", "Speaking from the first lesson.", "מדברים מהשיעור הראשון.") },
-      { slug: "hebrew", group: "languages", price: 1100, extra: w("12 أسبوع · مبتدئ", "12 weeks · beginner", "12 שבועות · מתחילים"), title: w("عبري للعمل", "Hebrew for work", "עברית לעבודה"), text: w("مقابلات، إيميلات وجلسات.", "Interviews, emails and meetings.", "ראיונות, מיילים ופגישות.") },
-      { slug: "marketing", group: "business", price: 1600, featured: true, extra: w("6 أسابيع · مبتدئ", "6 weeks · beginner", "6 שבועות · מתחילים"), title: w("تسويق رقمي", "Digital marketing", "שיווק דיגיטלי"), text: w("إعلانات، محتوى، وقياس.", "Ads, content and measuring.", "מודעות, תוכן ומדידה.") },
-      { slug: "bookkeeping", group: "business", price: 1400, extra: w("8 أسابيع · مبتدئ", "8 weeks · beginner", "8 שבועות · מתחילים"), title: w("مسك دفاتر", "Bookkeeping", "הנהלת חשבונות"), text: w("لمصلحتكم أو لشغل جديد.", "For your own business or a new job.", "לעסק שלכם או לעבודה חדשה.") },
-      { slug: "small-business", group: "business", price: 900, extra: w("4 أسابيع · مبتدئ", "4 weeks · beginner", "4 שבועות · מתחילים"), title: w("افتح مصلحتك", "Start your business", "לפתוח עסק"), text: w("من الفكرة لأول زبون.", "From the idea to the first customer.", "מהרעיון ללקוח הראשון.") },
-    ],
+  modules: {
+    offers: {
+      table: "courses",
+      page: "/courses",
+      title: w("الدورات", "Courses", "קורסים"),
+      sub: w("كل دورة إلها مستوى، مدة، وسعر واضح.", "Each course has a level, a length and a clear price.", "לכל קורס רמה, משך ומחיר ברור."),
+      item: w("الدورة", "Course", "קורס"),
+      look: "cards",
+      groups: [["tech", w("تكنولوجيا", "Technology", "טכנולוגיה")], ["languages", w("لغات", "Languages", "שפות")], ["business", w("إدارة وأعمال", "Business", "עסקים")]],
+      price: w("السعر", "Price", "מחיר"),
+      extra: w("المدة والمستوى", "Length and level", "משך ורמה"),
+      rows: [
+        { slug: "web-basics", group: "tech", price: 1900, featured: true, extra: w("10 أسابيع · مبتدئ", "10 weeks · beginner", "10 שבועות · מתחילים"), title: w("أساسيات تصميم المواقع", "Web design basics", "יסודות בניית אתרים"), text: w("HTML وCSS وأول موقع إلكم.", "HTML, CSS and your first site.", "HTML, CSS והאתר הראשון שלכם.") },
+        { slug: "python", group: "tech", price: 2400, featured: true, extra: w("12 أسبوع · مبتدئ", "12 weeks · beginner", "12 שבועות · מתחילים"), title: w("برمجة بايثون", "Python programming", "תכנות בפייתון"), text: w("من الصفر لبرامج بتشتغل.", "From zero to programs that work.", "מאפס לתוכנות שעובדות.") },
+        { slug: "data", group: "tech", price: 2800, extra: w("8 أسابيع · متوسط", "8 weeks · intermediate", "8 שבועות · בינוני"), title: w("تحليل بيانات", "Data analysis", "ניתוח נתונים"), text: w("جداول، رسومات وأسئلة صح.", "Spreadsheets, charts and the right questions.", "גיליונות, גרפים והשאלות הנכונות.") },
+        { slug: "english", group: "languages", price: 1200, featured: true, extra: w("16 أسبوع · كل المستويات", "16 weeks · all levels", "16 שבועות · כל הרמות"), title: w("إنجليزي للمحادثة", "Conversational English", "אנגלית מדוברת"), text: w("حكي من أول درس.", "Speaking from the first lesson.", "מדברים מהשיעור הראשון.") },
+        { slug: "hebrew", group: "languages", price: 1100, extra: w("12 أسبوع · مبتدئ", "12 weeks · beginner", "12 שבועות · מתחילים"), title: w("عبري للعمل", "Hebrew for work", "עברית לעבודה"), text: w("مقابلات، إيميلات وجلسات.", "Interviews, emails and meetings.", "ראיונות, מיילים ופגישות.") },
+        { slug: "marketing", group: "business", price: 1600, featured: true, extra: w("6 أسابيع · مبتدئ", "6 weeks · beginner", "6 שבועות · מתחילים"), title: w("تسويق رقمي", "Digital marketing", "שיווק דיגיטלי"), text: w("إعلانات، محتوى، وقياس.", "Ads, content and measuring.", "מודעות, תוכן ומדידה.") },
+        { slug: "bookkeeping", group: "business", price: 1400, extra: w("8 أسابيع · مبتدئ", "8 weeks · beginner", "8 שבועות · מתחילים"), title: w("مسك دفاتر", "Bookkeeping", "הנהלת חשבונות"), text: w("لمصلحتكم أو لشغل جديد.", "For your own business or a new job.", "לעסק שלכם או לעבודה חדשה.") },
+        { slug: "small-business", group: "business", price: 900, extra: w("4 أسابيع · مبتدئ", "4 weeks · beginner", "4 שבועות · מתחילים"), title: w("افتح مصلحتك", "Start your business", "לפתוח עסק"), text: w("من الفكرة لأول زبون.", "From the idea to the first customer.", "מהרעיון ללקוח הראשון.") },
+      ],
+    },
+    team: {
+      title: w("المحاضرين", "The teachers", "המרצים"),
+      sub: w("بيعلّموا اللي بيشتغلوه كل يوم.", "They teach what they do every day.", "מלמדים את מה שהם עושים כל יום."),
+      rows: [
+        { name: w("م. يارا مصاروة", "Yara Masarwa", "יארא מסארוה"), role: w("برمجة", "Programming", "תכנות"), bio: w("مطوّرة بشركة تكنولوجيا من عشر سنين.", "A developer at a tech company for ten years.", "מפתחת בחברת הייטק עשר שנים.") },
+        { name: w("أ. مروان", "Marwan", "מרואן"), role: w("لغات", "Languages", "שפות"), bio: w("بيعلّم بالحكي والقصص، مش بالحفظ.", "Teaches through talk and stories, not by rote.", "מלמד דרך שיחה וסיפורים, לא בשינון.") },
+        { name: w("أ. ديما", "Dima", "דימה"), role: w("تسويق", "Marketing", "שיווק"), bio: w("بنت حملات لعشرات المصالح الصغيرة.", "She's built campaigns for dozens of small businesses.", "בנתה קמפיינים לעשרות עסקים קטנים.") },
+      ],
+    },
+    story: {},
+    reviews: { rows: [
+      { name: w("محمد", "Mohammad", "מוחמד"), place: w("خرّيج بايثون", "Python graduate", "בוגר פייתון"), text: w("بعد الدورة لقيت أول شغل بالبرمجة.", "After the course I found my first programming job.", "אחרי הקורס מצאתי עבודה ראשונה בתכנות.") },
+      { name: w("سلام", "Salam", "סלאם"), place: w("إنجليزي", "English", "אנגלית"), text: w("صرت أحكي بالجلسات بدون خوف.", "Now I speak up in meetings without fear.", "עכשיו אני מדברת בפגישות בלי פחד.") },
+      { name: w("رنين", "Raneen", "רנין"), place: w("تسويق رقمي", "Digital marketing", "שיווק דיגיטלי"), text: w("طبّقت كل درس عمصلحتي الصغيرة.", "I used every lesson in my small business.", "יישמתי כל שיעור בעסק הקטן שלי.") },
+      { name: w("عمر", "Omar", "עומר"), place: w("تحليل بيانات", "Data analysis", "ניתוח נתונים"), text: w("المحاضرة صبورة والمواد واضحة.", "A patient teacher and clear material.", "מרצה סבלנית וחומר ברור."), stars: 4 },
+    ] },
+    questions: { rows: [
+      { q: w("لازم يكون عندي خبرة؟", "Do I need experience?", "צריך ניסיון קודם?"), a: w("أغلب الدورات للمبتدئين، والمستوى مكتوب عند كل دورة.", "Most courses are for beginners; the level is written on each.", "רוב הקורסים למתחילים, והרמה כתובה ליד כל קורס.") },
+      { q: w("في دورات أونلاين؟", "Are there online courses?", "יש קורסים אונליין?"), a: w("كل دورة إلها صف بالمركز وصف أونلاين بنفس الوقت.", "Every course runs in the centre and online at the same time.", "כל קורס מתקיים במרכז ואונליין באותו זמן.") },
+      { q: w("بتعطوا شهادة؟", "Do you give a certificate?", "יש תעודה?"), a: w("شهادة مدى بنهاية كل دورة، ولبعضها شهادة معترف فيها.", "A Mada certificate after every course, and a recognised one for some.", "תעודת מדא בסוף כל קורס, ולחלקם תעודה מוכרת.") },
+      { q: w("بقدر أقسّط؟", "Can I pay in instalments?", "אפשר לשלם בתשלומים?"), a: w("لحد 10 دفعات بدون فوائد.", "Up to 10 payments without interest.", "עד 10 תשלומים ללא ריבית.") },
+    ] },
+    news: {
+      title: w("أخبار مدى", "Mada news", "חדשות מדא"),
+      sub: w("دورات جديدة، أيام مفتوحة وقصص خرّيجين.", "New courses, open days and graduates' stories.", "קורסים חדשים, ימים פתוחים וסיפורי בוגרים."),
+      rows: [
+        { slug: "open-day", date: "2026-11-12", title: w("يوم مفتوح", "An open day", "יום פתוח"), text: w("تعرّفوا عالمحاضرين وجرّبوا درس.", "Meet the teachers and try a lesson.", "הכירו את המרצים ונסו שיעור."), body: w("يوم الخميس من 5 لـ 8 المسا. دروس تجربة قصيرة بكل المواضيع، وخصم للي بيسجّل نفس اليوم.", "Thursday from 5 to 8pm. Short trial lessons in every subject, and a discount for signing up that day.", "ביום חמישי מ־17:00 עד 20:00. שיעורי ניסיון קצרים בכל הנושאים, והנחה למי שנרשם באותו יום.") },
+        { slug: "ai-course", date: "2026-10-01", title: w("دورة ذكاء اصطناعي", "An AI course", "קורס בינה מלאכותית"), text: w("كيف تستعملوه بشغلكم من بكرا.", "How to use it at work from tomorrow.", "איך להשתמש בה בעבודה כבר מחר."), body: w("دورة قصيرة لكل الناس، مش بس للمبرمجين: كتابة، تلخيص، وأتمتة مهام.", "A short course for everyone, not only coders: writing, summarising and automating tasks.", "קורס קצר לכולם, לא רק למתכנתים: כתיבה, סיכום ואוטומציה של משימות.") },
+        { slug: "graduates", date: "2026-07-20", title: w("200 خرّيج هالسنة", "200 graduates this year", "200 בוגרים השנה"), text: w("وكل واحد إله قصة.", "And each has a story.", "ולכל אחד סיפור."), body: w("احتفلنا بالخرّيجين ومنهم 60 لقوا شغل جديد خلال ثلاث شهور.", "We celebrated our graduates, 60 of whom found new jobs within three months.", "חגגנו לבוגרים, ו־60 מהם מצאו עבודה חדשה תוך שלושה חודשים.") },
+      ],
+    },
+    branches: { rows: [
+      { name: w("الطيبة", "Tayibe", "טייבה"), address: w("شارع الكلية 9", "9 College Street", "רחוב המכללה 9"), hours: w("الأحد–الخميس 8:00–21:00", "Sun–Thu 8:00–21:00", "א׳–ה׳ 8:00–21:00"), phone: "09-799-3344" },
+      { name: w("أونلاين", "Online", "אונליין"), address: w("من أي مكان", "From anywhere", "מכל מקום"), hours: w("حسب جدول الدورة", "As the course's timetable", "לפי מערכת הקורס"), phone: "09-799-3345" },
+    ] },
+    contact: {},
+    booking: {
+      title: w("سجّلوا لدورة", "Sign up for a course", "הרשמה לקורס"),
+      sub: w("اختاروا المجال، ومنرجعلكم بالمواعيد والتفاصيل.", "Choose the field and we'll come back with dates and details.", "בחרו תחום ונחזור עם מועדים ופרטים."),
+      ask: w("المجال", "Field", "תחום"),
+      button: w("سجّلوا", "Sign up", "להירשם"),
+      done: w("وصل طلبكم، ومنتصل فيكم بالتفاصيل.", "Your request is in: we'll call with the details.", "הבקשה התקבלה: נתקשר עם הפרטים."),
+    },
+    notify: {},
   },
-  team: {
-    title: w("المحاضرين", "The teachers", "המרצים"),
-    sub: w("بيعلّموا اللي بيشتغلوه كل يوم.", "They teach what they do every day.", "מלמדים את מה שהם עושים כל יום."),
-    rows: [
-      { name: w("م. يارا مصاروة", "Yara Masarwa", "יארא מסארוה"), role: w("برمجة", "Programming", "תכנות"), bio: w("مطوّرة بشركة تكنولوجيا من عشر سنين.", "A developer at a tech company for ten years.", "מפתחת בחברת הייטק עשר שנים.") },
-      { name: w("أ. مروان", "Marwan", "מרואן"), role: w("لغات", "Languages", "שפות"), bio: w("بيعلّم بالحكي والقصص، مش بالحفظ.", "Teaches through talk and stories, not by rote.", "מלמד דרך שיחה וסיפורים, לא בשינון.") },
-      { name: w("أ. ديما", "Dima", "דימה"), role: w("تسويق", "Marketing", "שיווק"), bio: w("بنت حملات لعشرات المصالح الصغيرة.", "She's built campaigns for dozens of small businesses.", "בנתה קמפיינים לעשרות עסקים קטנים.") },
-    ],
-  },
-  reviews: [
-    { name: w("محمد", "Mohammad", "מוחמד"), place: w("خرّيج بايثون", "Python graduate", "בוגר פייתון"), text: w("بعد الدورة لقيت أول شغل بالبرمجة.", "After the course I found my first programming job.", "אחרי הקורס מצאתי עבודה ראשונה בתכנות.") },
-    { name: w("سلام", "Salam", "סלאם"), place: w("إنجليزي", "English", "אנגלית"), text: w("صرت أحكي بالجلسات بدون خوف.", "Now I speak up in meetings without fear.", "עכשיו אני מדברת בפגישות בלי פחד.") },
-    { name: w("رنين", "Raneen", "רנין"), place: w("تسويق رقمي", "Digital marketing", "שיווק דיגיטלי"), text: w("طبّقت كل درس عمصلحتي الصغيرة.", "I used every lesson in my small business.", "יישמתי כל שיעור בעסק הקטן שלי.") },
-    { name: w("عمر", "Omar", "עומר"), place: w("تحليل بيانات", "Data analysis", "ניתוח נתונים"), text: w("المحاضرة صبورة والمواد واضحة.", "A patient teacher and clear material.", "מרצה סבלנית וחומר ברור."), stars: 4 },
-  ],
-  questions: [
-    { q: w("لازم يكون عندي خبرة؟", "Do I need experience?", "צריך ניסיון קודם?"), a: w("أغلب الدورات للمبتدئين، والمستوى مكتوب عند كل دورة.", "Most courses are for beginners; the level is written on each.", "רוב הקורסים למתחילים, והרמה כתובה ליד כל קורס.") },
-    { q: w("في دورات أونلاين؟", "Are there online courses?", "יש קורסים אונליין?"), a: w("كل دورة إلها صف بالمركز وصف أونلاين بنفس الوقت.", "Every course runs in the centre and online at the same time.", "כל קורס מתקיים במרכז ואונליין באותו זמן.") },
-    { q: w("بتعطوا شهادة؟", "Do you give a certificate?", "יש תעודה?"), a: w("شهادة مدى بنهاية كل دورة، ولبعضها شهادة معترف فيها.", "A Mada certificate after every course, and a recognised one for some.", "תעודת מדא בסוף כל קורס, ולחלקם תעודה מוכרת.") },
-    { q: w("بقدر أقسّط؟", "Can I pay in instalments?", "אפשר לשלם בתשלומים?"), a: w("لحد 10 دفعات بدون فوائد.", "Up to 10 payments without interest.", "עד 10 תשלומים ללא ריבית.") },
-  ],
-  posts: {
-    title: w("أخبار مدى", "Mada news", "חדשות מדא"),
-    sub: w("دورات جديدة، أيام مفتوحة وقصص خرّيجين.", "New courses, open days and graduates' stories.", "קורסים חדשים, ימים פתוחים וסיפורי בוגרים."),
-    rows: [
-      { slug: "open-day", date: "2026-11-12", title: w("يوم مفتوح", "An open day", "יום פתוח"), text: w("تعرّفوا عالمحاضرين وجرّبوا درس.", "Meet the teachers and try a lesson.", "הכירו את המרצים ונסו שיעור."), body: w("يوم الخميس من 5 لـ 8 المسا. دروس تجربة قصيرة بكل المواضيع، وخصم للي بيسجّل نفس اليوم.", "Thursday from 5 to 8pm. Short trial lessons in every subject, and a discount for signing up that day.", "ביום חמישי מ־17:00 עד 20:00. שיעורי ניסיון קצרים בכל הנושאים, והנחה למי שנרשם באותו יום.") },
-      { slug: "ai-course", date: "2026-10-01", title: w("دورة ذكاء اصطناعي", "An AI course", "קורס בינה מלאכותית"), text: w("كيف تستعملوه بشغلكم من بكرا.", "How to use it at work from tomorrow.", "איך להשתמש בה בעבודה כבר מחר."), body: w("دورة قصيرة لكل الناس، مش بس للمبرمجين: كتابة، تلخيص، وأتمتة مهام.", "A short course for everyone, not only coders: writing, summarising and automating tasks.", "קורס קצר לכולם, לא רק למתכנתים: כתיבה, סיכום ואוטומציה של משימות.") },
-      { slug: "graduates", date: "2026-07-20", title: w("200 خرّيج هالسنة", "200 graduates this year", "200 בוגרים השנה"), text: w("وكل واحد إله قصة.", "And each has a story.", "ולכל אחד סיפור."), body: w("احتفلنا بالخرّيجين ومنهم 60 لقوا شغل جديد خلال ثلاث شهور.", "We celebrated our graduates, 60 of whom found new jobs within three months.", "חגגנו לבוגרים, ו־60 מהם מצאו עבודה חדשה תוך שלושה חודשים.") },
-    ],
-  },
-  branches: [
-    { name: w("الطيبة", "Tayibe", "טייבה"), address: w("شارع الكلية 9", "9 College Street", "רחוב המכללה 9"), hours: w("الأحد–الخميس 8:00–21:00", "Sun–Thu 8:00–21:00", "א׳–ה׳ 8:00–21:00"), phone: "09-799-3344" },
-    { name: w("أونلاين", "Online", "אונליין"), address: w("من أي مكان", "From anywhere", "מכל מקום"), hours: w("حسب جدول الدورة", "As the course's timetable", "לפי מערכת הקורס"), phone: "09-799-3345" },
-  ],
-  booking: {
-    title: w("سجّلوا لدورة", "Sign up for a course", "הרשמה לקורס"),
-    sub: w("اختاروا المجال، ومنرجعلكم بالمواعيد والتفاصيل.", "Choose the field and we'll come back with dates and details.", "בחרו תחום ונחזור עם מועדים ופרטים."),
-    ask: w("المجال", "Field", "תחום"),
-    button: w("سجّلوا", "Sign up", "להירשם"),
-    done: w("وصل طلبكم، ومنتصل فيكم بالتفاصيل.", "Your request is in: we'll call with the details.", "הבקשה התקבלה: נתקשר עם הפרטים."),
-  },
-};
+});
 
-export const LAW: SiteSpec = {
+export const LAW = site({
   key: "site-law-office",
   version: "1.0.0",
   field: "services",
+  archetype: "front",
   fam: "general",
   pics: "",
   look: 1,
@@ -110,72 +117,78 @@ export const LAW: SiteSpec = {
     icon: "shield",
   },
   home: "/law",
-  offers: {
-    table: "practice",
-    page: "/practice",
-    title: w("مجالات العمل", "Practice areas", "תחומי עיסוק"),
-    sub: w("لكل ملف محامي مسؤول، وبتعرفوا وين واصل كل أسبوع.", "Every case has a lawyer in charge, and you hear how it's going every week.", "לכל תיק עורך דין אחראי, ואתם מעודכנים כל שבוע."),
-    item: w("المجال", "Area", "תחום"),
-    look: "cards",
-    groups: [["family", w("عائلة وميراث", "Family and inheritance", "משפחה וירושה")], ["property", w("عقارات", "Property", "מקרקעין")], ["business", w("شركات وعمل", "Business and employment", "עסקים ועבודה")]],
-    rows: [
-      { slug: "inheritance", group: "family", featured: true, title: w("حصر إرث ووصايا", "Inheritance and wills", "ירושות וצוואות"), text: w("بنرتّب الأوراق وبنحمي العيلة من الخلاف.", "We order the papers and keep the family out of disputes.", "מסדרים את המסמכים ושומרים על המשפחה ממחלוקות.") },
-      { slug: "divorce", group: "family", title: w("طلاق وحضانة", "Divorce and custody", "גירושין ומשמורת"), text: w("بحساسية، ومصلحة الأولاد أول شي.", "With care, children's interests first.", "ברגישות, טובת הילדים קודם.") },
-      { slug: "buying", group: "property", featured: true, title: w("بيع وشراء بيت", "Buying and selling a home", "קנייה ומכירה של דירה"), text: w("فحص، عقد، وتسجيل بالطابو.", "Checks, the contract and land registry.", "בדיקות, חוזה ורישום בטאבו.") },
-      { slug: "building", group: "property", title: w("رخص بناء", "Building permits", "היתרי בנייה"), text: w("من الطلب للتنفيذ، مع المهندسين.", "From the application to the build, with the engineers.", "מהבקשה ועד הביצוע, עם המהנדסים.") },
-      { slug: "company", group: "business", featured: true, title: w("تأسيس شركة", "Setting up a company", "הקמת חברה"), text: w("عقود شراكة واضحة من البداية.", "Clear partnership agreements from the start.", "הסכמי שותפות ברורים מההתחלה.") },
-      { slug: "contracts", group: "business", title: w("عقود ومراجعة", "Contracts and review", "חוזים ובדיקתם"), text: w("قبل ما توقّعوا، منقرأ معكم.", "Before you sign, we read with you.", "לפני שחותמים, קוראים איתכם.") },
-      { slug: "employment", group: "business", title: w("حقوق عمال", "Employees' rights", "זכויות עובדים"), text: w("فصل، رواتب، وتعويضات.", "Dismissal, wages and compensation.", "פיטורים, שכר ופיצויים.") },
-      { slug: "debts", group: "business", title: w("تحصيل ديون", "Debt collection", "גביית חובות"), text: w("بخطوات قانونية وبأسرع وقت.", "Lawfully and as fast as possible.", "בצעדים חוקיים ובמהירות.") },
-    ],
+  modules: {
+    offers: {
+      table: "practice",
+      page: "/practice",
+      title: w("مجالات العمل", "Practice areas", "תחומי עיסוק"),
+      sub: w("لكل ملف محامي مسؤول، وبتعرفوا وين واصل كل أسبوع.", "Every case has a lawyer in charge, and you hear how it's going every week.", "לכל תיק עורך דין אחראי, ואתם מעודכנים כל שבוע."),
+      item: w("المجال", "Area", "תחום"),
+      look: "cards",
+      groups: [["family", w("عائلة وميراث", "Family and inheritance", "משפחה וירושה")], ["property", w("عقارات", "Property", "מקרקעין")], ["business", w("شركات وعمل", "Business and employment", "עסקים ועבודה")]],
+      rows: [
+        { slug: "inheritance", group: "family", featured: true, title: w("حصر إرث ووصايا", "Inheritance and wills", "ירושות וצוואות"), text: w("بنرتّب الأوراق وبنحمي العيلة من الخلاف.", "We order the papers and keep the family out of disputes.", "מסדרים את המסמכים ושומרים על המשפחה ממחלוקות.") },
+        { slug: "divorce", group: "family", title: w("طلاق وحضانة", "Divorce and custody", "גירושין ומשמורת"), text: w("بحساسية، ومصلحة الأولاد أول شي.", "With care, children's interests first.", "ברגישות, טובת הילדים קודם.") },
+        { slug: "buying", group: "property", featured: true, title: w("بيع وشراء بيت", "Buying and selling a home", "קנייה ומכירה של דירה"), text: w("فحص، عقد، وتسجيل بالطابو.", "Checks, the contract and land registry.", "בדיקות, חוזה ורישום בטאבו.") },
+        { slug: "building", group: "property", title: w("رخص بناء", "Building permits", "היתרי בנייה"), text: w("من الطلب للتنفيذ، مع المهندسين.", "From the application to the build, with the engineers.", "מהבקשה ועד הביצוע, עם המהנדסים.") },
+        { slug: "company", group: "business", featured: true, title: w("تأسيس شركة", "Setting up a company", "הקמת חברה"), text: w("عقود شراكة واضحة من البداية.", "Clear partnership agreements from the start.", "הסכמי שותפות ברורים מההתחלה.") },
+        { slug: "contracts", group: "business", title: w("عقود ومراجعة", "Contracts and review", "חוזים ובדיקתם"), text: w("قبل ما توقّعوا، منقرأ معكم.", "Before you sign, we read with you.", "לפני שחותמים, קוראים איתכם.") },
+        { slug: "employment", group: "business", title: w("حقوق عمال", "Employees' rights", "זכויות עובדים"), text: w("فصل، رواتب، وتعويضات.", "Dismissal, wages and compensation.", "פיטורים, שכר ופיצויים.") },
+        { slug: "debts", group: "business", title: w("تحصيل ديون", "Debt collection", "גביית חובות"), text: w("بخطوات قانونية وبأسرع وقت.", "Lawfully and as fast as possible.", "בצעדים חוקיים ובמהירות.") },
+      ],
+    },
+    team: {
+      title: w("المحامين", "The lawyers", "עורכי הדין"),
+      sub: w("كل واحد بمجاله.", "Each in their own field.", "כל אחד בתחומו."),
+      rows: [
+        { name: w("المحامي فادي جبران", "Fadi Jubran, Adv.", "עו״ד פאדי ג׳ובראן"), role: w("عقارات", "Property", "מקרקעין"), bio: w("سجّل أكتر من ألف صفقة بالطابو.", "Has registered over a thousand deals.", "רשם יותר מאלף עסקאות בטאבו.") },
+        { name: w("المحامية عبير", "Abeer, Adv.", "עו״ד עביר"), role: w("عائلة", "Family", "משפחה"), bio: w("بتعرف كيف تحكي مع العيلة كلها.", "Knows how to talk with the whole family.", "יודעת לדבר עם כל המשפחה.") },
+        { name: w("المحامي رامي", "Rami, Adv.", "עו״ד ראמי"), role: w("شركات", "Business", "עסקים"), bio: w("بيرافق المصالح من أول يوم.", "Stays with businesses from day one.", "מלווה עסקים מהיום הראשון.") },
+      ],
+    },
+    story: {},
+    reviews: { rows: [
+      { name: w("عائلة ح.", "The H. family", "משפחת ח׳"), place: w("حصر إرث", "An inheritance", "ירושה"), text: w("خلّصوا موضوع عمره عشر سنين بأشهر.", "They settled a ten-year-old matter in months.", "סגרו עניין בן עשר שנים בתוך חודשים.") },
+      { name: w("نزار", "Nizar", "ניזאר"), place: w("شراء بيت", "Buying a home", "קניית דירה"), text: w("فهّموني كل بند بالعقد.", "They explained every clause of the contract.", "הסבירו לי כל סעיף בחוזה.") },
+      { name: w("ميسا", "Maysa", "מייסא"), place: w("تأسيس شركة", "A new company", "הקמת חברה"), text: w("أتعاب واضحة وجواب عالتلفون دايماً.", "Clear fees and they always answer the phone.", "שכר טרחה ברור ותמיד עונים לטלפון.") },
+      { name: w("أفيف", "Aviv", "אביב"), place: w("حقوق عمال", "Employment", "דיני עבודה"), text: w("تعاملوا بجدية مع ملفي الصغير.", "They took my small case seriously.", "התייחסו ברצינות לתיק הקטן שלי."), stars: 4 },
+    ] },
+    questions: { rows: [
+      { q: w("أول استشارة بتكلّف؟", "Does a first consultation cost?", "הייעוץ הראשון בתשלום?"), a: w("أول نص ساعة ببلاش لنفهم الموضوع ونقلّكم إذا بنقدر نساعد.", "The first half hour is free, to understand the matter and tell you if we can help.", "חצי השעה הראשונה חינם, כדי להבין ולומר אם נוכל לעזור.") },
+      { q: w("كيف بتحسبوا الأتعاب؟", "How are fees set?", "איך נקבע שכר הטרחה?"), a: w("بنتفق مسبقاً، مكتوب: سعر ثابت أو بالساعة.", "Agreed in advance, in writing: fixed or by the hour.", "מסכמים מראש ובכתב: מחיר קבוע או לפי שעה.") },
+      { q: w("بتشتغلوا بالعربي؟", "Do you work in Arabic?", "אתם עובדים בערבית?"), a: w("بالعربي والعبري والإنجليزي.", "In Arabic, Hebrew and English.", "בערבית, בעברית ובאנגלית.") },
+      { q: w("بقدر أتابع ملفي؟", "Can I follow my case?", "אפשר לעקוב אחרי התיק?"), a: w("بيوصلكم تحديث كل أسبوع، وبتقدروا تسألوا وقت ما بدكم.", "You get an update every week, and you can ask any time.", "מקבלים עדכון כל שבוע, ואפשר לשאול מתי שרוצים.") },
+    ] },
+    news: {
+      title: w("مقالات", "Articles", "מאמרים"),
+      sub: w("أسئلة قانونية بلغة بسيطة.", "Legal questions in plain words.", "שאלות משפטיות בשפה פשוטה."),
+      rows: [
+        { slug: "before-buying", date: "2026-10-25", title: w("قبل ما تشتروا بيت", "Before you buy a home", "לפני שקונים דירה"), text: w("خمس أشياء لازم تفحصوها.", "Five things to check.", "חמישה דברים שחייבים לבדוק."), body: w("الطابو، الرخصة، الديون عالبيت، الحدود، وشروط الدفع. كل واحدة ممكن توفّر عليكم كتير.", "The registry, the permit, debts on the home, the boundaries and the payment terms. Each can save you a lot.", "הטאבו, ההיתר, חובות על הנכס, הגבולות ותנאי התשלום. כל אחד יכול לחסוך הרבה.") },
+        { slug: "wills", date: "2026-09-08", title: w("ليش وصية؟", "Why a will?", "למה צוואה?"), text: w("ورقة وحدة بتمنع سنين خلاف.", "One paper prevents years of dispute.", "דף אחד מונע שנים של מחלוקת."), body: w("الوصية مش بس للأغنياء. بتحمي العيلة وبتخلّي رغبتكم واضحة.", "A will isn't only for the rich. It protects the family and makes your wishes clear.", "צוואה היא לא רק לעשירים. היא מגינה על המשפחה ומבהירה את הרצון שלכם.") },
+        { slug: "freelancers", date: "2026-06-11", title: w("عقد للعامل الحر", "A contract for freelancers", "חוזה לפרילנסרים"), text: w("ثلاث بنود بتحمي حقكم.", "Three clauses that protect you.", "שלושה סעיפים שמגינים עליכם."), body: w("موعد الدفع، حدود الشغل، ومين بيملك الشغل بالآخر. اكتبوهم قبل ما تبلّشوا.", "When you're paid, the scope of work and who owns it in the end. Write them before you start.", "מועד התשלום, היקף העבודה ולמי שייכת התוצאה. כתבו אותם לפני שמתחילים.") },
+      ],
+    },
+    branches: { rows: [
+      { name: w("الناصرة", "Nazareth", "נצרת"), address: w("برج المدينة، الطابق 6", "City Tower, 6th floor", "מגדל העיר, קומה 6"), hours: w("الأحد–الخميس 8:30–17:30", "Sun–Thu 8:30–17:30", "א׳–ה׳ 8:30–17:30"), phone: "04-650-7700" },
+      { name: w("حيفا", "Haifa", "חיפה"), address: w("شارع هرتسل 30", "30 Herzl Street", "רחוב הרצל 30"), hours: w("الإثنين والأربعاء 9:00–16:00", "Mon and Wed 9:00–16:00", "ב׳ ו־ד׳ 9:00–16:00"), phone: "04-650-7711" },
+    ] },
+    contact: {},
+    booking: {
+      title: w("اطلبوا استشارة", "Ask for a consultation", "בקשת ייעוץ"),
+      sub: w("قولولنا بأي موضوع، ومحامي المجال بيتصل فيكم.", "Tell us the subject and a lawyer in that field will call you.", "ספרו על הנושא, ועורך דין מהתחום יתקשר אליכם."),
+      ask: w("الموضوع", "Subject", "נושא"),
+      button: w("اطلبوا", "Ask", "לבקש"),
+      done: w("وصل طلبكم، ومنتصل فيكم بيوم عمل.", "Your request is in: we'll call within a working day.", "הבקשה התקבלה: נתקשר תוך יום עסקים."),
+    },
+    notify: {},
   },
-  team: {
-    title: w("المحامين", "The lawyers", "עורכי הדין"),
-    sub: w("كل واحد بمجاله.", "Each in their own field.", "כל אחד בתחומו."),
-    rows: [
-      { name: w("المحامي فادي جبران", "Fadi Jubran, Adv.", "עו״ד פאדי ג׳ובראן"), role: w("عقارات", "Property", "מקרקעין"), bio: w("سجّل أكتر من ألف صفقة بالطابو.", "Has registered over a thousand deals.", "רשם יותר מאלף עסקאות בטאבו.") },
-      { name: w("المحامية عبير", "Abeer, Adv.", "עו״ד עביר"), role: w("عائلة", "Family", "משפחה"), bio: w("بتعرف كيف تحكي مع العيلة كلها.", "Knows how to talk with the whole family.", "יודעת לדבר עם כל המשפחה.") },
-      { name: w("المحامي رامي", "Rami, Adv.", "עו״ד ראמי"), role: w("شركات", "Business", "עסקים"), bio: w("بيرافق المصالح من أول يوم.", "Stays with businesses from day one.", "מלווה עסקים מהיום הראשון.") },
-    ],
-  },
-  reviews: [
-    { name: w("عائلة ح.", "The H. family", "משפחת ח׳"), place: w("حصر إرث", "An inheritance", "ירושה"), text: w("خلّصوا موضوع عمره عشر سنين بأشهر.", "They settled a ten-year-old matter in months.", "סגרו עניין בן עשר שנים בתוך חודשים.") },
-    { name: w("نزار", "Nizar", "ניזאר"), place: w("شراء بيت", "Buying a home", "קניית דירה"), text: w("فهّموني كل بند بالعقد.", "They explained every clause of the contract.", "הסבירו לי כל סעיף בחוזה.") },
-    { name: w("ميسا", "Maysa", "מייסא"), place: w("تأسيس شركة", "A new company", "הקמת חברה"), text: w("أتعاب واضحة وجواب عالتلفون دايماً.", "Clear fees and they always answer the phone.", "שכר טרחה ברור ותמיד עונים לטלפון.") },
-    { name: w("أفيف", "Aviv", "אביב"), place: w("حقوق عمال", "Employment", "דיני עבודה"), text: w("تعاملوا بجدية مع ملفي الصغير.", "They took my small case seriously.", "התייחסו ברצינות לתיק הקטן שלי."), stars: 4 },
-  ],
-  questions: [
-    { q: w("أول استشارة بتكلّف؟", "Does a first consultation cost?", "הייעוץ הראשון בתשלום?"), a: w("أول نص ساعة ببلاش لنفهم الموضوع ونقلّكم إذا بنقدر نساعد.", "The first half hour is free, to understand the matter and tell you if we can help.", "חצי השעה הראשונה חינם, כדי להבין ולומר אם נוכל לעזור.") },
-    { q: w("كيف بتحسبوا الأتعاب؟", "How are fees set?", "איך נקבע שכר הטרחה?"), a: w("بنتفق مسبقاً، مكتوب: سعر ثابت أو بالساعة.", "Agreed in advance, in writing: fixed or by the hour.", "מסכמים מראש ובכתב: מחיר קבוע או לפי שעה.") },
-    { q: w("بتشتغلوا بالعربي؟", "Do you work in Arabic?", "אתם עובדים בערבית?"), a: w("بالعربي والعبري والإنجليزي.", "In Arabic, Hebrew and English.", "בערבית, בעברית ובאנגלית.") },
-    { q: w("بقدر أتابع ملفي؟", "Can I follow my case?", "אפשר לעקוב אחרי התיק?"), a: w("بيوصلكم تحديث كل أسبوع، وبتقدروا تسألوا وقت ما بدكم.", "You get an update every week, and you can ask any time.", "מקבלים עדכון כל שבוע, ואפשר לשאול מתי שרוצים.") },
-  ],
-  posts: {
-    title: w("مقالات", "Articles", "מאמרים"),
-    sub: w("أسئلة قانونية بلغة بسيطة.", "Legal questions in plain words.", "שאלות משפטיות בשפה פשוטה."),
-    rows: [
-      { slug: "before-buying", date: "2026-10-25", title: w("قبل ما تشتروا بيت", "Before you buy a home", "לפני שקונים דירה"), text: w("خمس أشياء لازم تفحصوها.", "Five things to check.", "חמישה דברים שחייבים לבדוק."), body: w("الطابو، الرخصة، الديون عالبيت، الحدود، وشروط الدفع. كل واحدة ممكن توفّر عليكم كتير.", "The registry, the permit, debts on the home, the boundaries and the payment terms. Each can save you a lot.", "הטאבו, ההיתר, חובות על הנכס, הגבולות ותנאי התשלום. כל אחד יכול לחסוך הרבה.") },
-      { slug: "wills", date: "2026-09-08", title: w("ليش وصية؟", "Why a will?", "למה צוואה?"), text: w("ورقة وحدة بتمنع سنين خلاف.", "One paper prevents years of dispute.", "דף אחד מונע שנים של מחלוקת."), body: w("الوصية مش بس للأغنياء. بتحمي العيلة وبتخلّي رغبتكم واضحة.", "A will isn't only for the rich. It protects the family and makes your wishes clear.", "צוואה היא לא רק לעשירים. היא מגינה על המשפחה ומבהירה את הרצון שלכם.") },
-      { slug: "freelancers", date: "2026-06-11", title: w("عقد للعامل الحر", "A contract for freelancers", "חוזה לפרילנסרים"), text: w("ثلاث بنود بتحمي حقكم.", "Three clauses that protect you.", "שלושה סעיפים שמגינים עליכם."), body: w("موعد الدفع، حدود الشغل، ومين بيملك الشغل بالآخر. اكتبوهم قبل ما تبلّشوا.", "When you're paid, the scope of work and who owns it in the end. Write them before you start.", "מועד התשלום, היקף העבודה ולמי שייכת התוצאה. כתבו אותם לפני שמתחילים.") },
-    ],
-  },
-  branches: [
-    { name: w("الناصرة", "Nazareth", "נצרת"), address: w("برج المدينة، الطابق 6", "City Tower, 6th floor", "מגדל העיר, קומה 6"), hours: w("الأحد–الخميس 8:30–17:30", "Sun–Thu 8:30–17:30", "א׳–ה׳ 8:30–17:30"), phone: "04-650-7700" },
-    { name: w("حيفا", "Haifa", "חיפה"), address: w("شارع هرتسل 30", "30 Herzl Street", "רחוב הרצל 30"), hours: w("الإثنين والأربعاء 9:00–16:00", "Mon and Wed 9:00–16:00", "ב׳ ו־ד׳ 9:00–16:00"), phone: "04-650-7711" },
-  ],
-  booking: {
-    title: w("اطلبوا استشارة", "Ask for a consultation", "בקשת ייעוץ"),
-    sub: w("قولولنا بأي موضوع، ومحامي المجال بيتصل فيكم.", "Tell us the subject and a lawyer in that field will call you.", "ספרו על הנושא, ועורך דין מהתחום יתקשר אליכם."),
-    ask: w("الموضوع", "Subject", "נושא"),
-    button: w("اطلبوا", "Ask", "לבקש"),
-    done: w("وصل طلبكم، ومنتصل فيكم بيوم عمل.", "Your request is in: we'll call within a working day.", "הבקשה התקבלה: נתקשר תוך יום עסקים."),
-  },
-};
+});
 
-export const AGENCY: SiteSpec = {
+export const AGENCY = site({
   key: "site-creative-agency",
   version: "1.0.0",
   field: "services",
+  archetype: "front",
   fam: "art",
   pics: "art",
   look: 5,
@@ -194,66 +207,71 @@ export const AGENCY: SiteSpec = {
     icon: "sparkle",
   },
   home: "/agency",
-  offers: {
-    table: "packages",
-    page: "/services",
-    title: w("الخدمات والباقات", "Services and packages", "שירותים וחבילות"),
-    sub: w("أسعار بتبلّش من، وعرض سعر كامل بعد أول جلسة.", "Starting prices, and a full quote after the first meeting.", "מחירים החל מ־, והצעה מלאה אחרי הפגישה הראשונה."),
-    item: w("الخدمة", "Service", "שירות"),
-    look: "cards",
-    groups: [["brand", w("هوية", "Branding", "מיתוג")], ["web", w("مواقع", "Websites", "אתרים")], ["social", w("سوشال وحملات", "Social and campaigns", "סושיאל וקמפיינים")]],
-    price: w("من", "From", "החל מ־"),
-    extra: w("المدة", "Time", "זמן"),
-    rows: [
-      { slug: "logo", group: "brand", price: 3500, featured: true, extra: w("3 أسابيع", "3 weeks", "3 שבועות"), title: w("شعار وهوية", "Logo and identity", "לוגו וזהות"), text: w("شعار، ألوان، خطوط ودليل استعمال.", "A logo, colours, fonts and a guide.", "לוגו, צבעים, גופנים וספר מותג.") },
-      { slug: "packaging", group: "brand", price: 4500, extra: w("4 أسابيع", "4 weeks", "4 שבועות"), title: w("تغليف", "Packaging", "אריזה"), text: w("علبة بتنباع لحالها عالرف.", "A box that sells itself on the shelf.", "אריזה שמוכרת את עצמה על המדף.") },
-      { slug: "landing", group: "web", price: 5000, featured: true, extra: w("أسبوعين", "2 weeks", "שבועיים"), title: w("صفحة هبوط", "A landing page", "דף נחיתה"), text: w("صفحة وحدة بتجيب زباين.", "One page that brings customers.", "עמוד אחד שמביא לקוחות.") },
-      { slug: "website", group: "web", price: 12000, featured: true, extra: w("6 أسابيع", "6 weeks", "6 שבועות"), title: w("موقع كامل", "A whole website", "אתר שלם"), text: w("تصميم، كتابة، وبرمجة بتتحرّك.", "Design, writing and build that moves.", "עיצוב, כתיבה ופיתוח שזז.") },
-      { slug: "store", group: "web", price: 15000, extra: w("8 أسابيع", "8 weeks", "8 שבועות"), title: w("متجر أونلاين", "An online store", "חנות אונליין"), text: w("منتجات، دفع، وتوصيل جاهزين.", "Products, payments and delivery, ready.", "מוצרים, תשלום ומשלוחים, מוכנים.") },
-      { slug: "social-month", group: "social", price: 2500, featured: true, extra: w("شهري", "Monthly", "חודשי"), title: w("إدارة سوشال", "Social media management", "ניהול סושיאל"), text: w("12 منشور وتقرير شهري.", "12 posts and a monthly report.", "12 פוסטים ודוח חודשי.") },
-      { slug: "campaign", group: "social", price: 6000, extra: w("شهر", "A month", "חודש"), title: w("حملة إعلانية", "An ad campaign", "קמפיין פרסומי"), text: w("فكرة، تصوير، ونشر مدفوع.", "An idea, a shoot and paid reach.", "רעיון, צילום והפצה ממומנת.") },
-      { slug: "video", group: "social", price: 3000, extra: w("أسبوعين", "2 weeks", "שבועיים"), title: w("فيديو قصير", "A short video", "סרטון קצר"), text: w("30 ثانية بتنحفظ.", "30 seconds people remember.", "30 שניות שזוכרים.") },
-    ],
+  modules: {
+    offers: {
+      table: "packages",
+      page: "/services",
+      title: w("الخدمات والباقات", "Services and packages", "שירותים וחבילות"),
+      sub: w("أسعار بتبلّش من، وعرض سعر كامل بعد أول جلسة.", "Starting prices, and a full quote after the first meeting.", "מחירים החל מ־, והצעה מלאה אחרי הפגישה הראשונה."),
+      item: w("الخدمة", "Service", "שירות"),
+      look: "cards",
+      groups: [["brand", w("هوية", "Branding", "מיתוג")], ["web", w("مواقع", "Websites", "אתרים")], ["social", w("سوشال وحملات", "Social and campaigns", "סושיאל וקמפיינים")]],
+      price: w("من", "From", "החל מ־"),
+      extra: w("المدة", "Time", "זמן"),
+      rows: [
+        { slug: "logo", group: "brand", price: 3500, featured: true, extra: w("3 أسابيع", "3 weeks", "3 שבועות"), title: w("شعار وهوية", "Logo and identity", "לוגו וזהות"), text: w("شعار، ألوان، خطوط ودليل استعمال.", "A logo, colours, fonts and a guide.", "לוגו, צבעים, גופנים וספר מותג.") },
+        { slug: "packaging", group: "brand", price: 4500, extra: w("4 أسابيع", "4 weeks", "4 שבועות"), title: w("تغليف", "Packaging", "אריזה"), text: w("علبة بتنباع لحالها عالرف.", "A box that sells itself on the shelf.", "אריזה שמוכרת את עצמה על המדף.") },
+        { slug: "landing", group: "web", price: 5000, featured: true, extra: w("أسبوعين", "2 weeks", "שבועיים"), title: w("صفحة هبوط", "A landing page", "דף נחיתה"), text: w("صفحة وحدة بتجيب زباين.", "One page that brings customers.", "עמוד אחד שמביא לקוחות.") },
+        { slug: "website", group: "web", price: 12000, featured: true, extra: w("6 أسابيع", "6 weeks", "6 שבועות"), title: w("موقع كامل", "A whole website", "אתר שלם"), text: w("تصميم، كتابة، وبرمجة بتتحرّك.", "Design, writing and build that moves.", "עיצוב, כתיבה ופיתוח שזז.") },
+        { slug: "store", group: "web", price: 15000, extra: w("8 أسابيع", "8 weeks", "8 שבועות"), title: w("متجر أونلاين", "An online store", "חנות אונליין"), text: w("منتجات، دفع، وتوصيل جاهزين.", "Products, payments and delivery, ready.", "מוצרים, תשלום ומשלוחים, מוכנים.") },
+        { slug: "social-month", group: "social", price: 2500, featured: true, extra: w("شهري", "Monthly", "חודשי"), title: w("إدارة سوشال", "Social media management", "ניהול סושיאל"), text: w("12 منشور وتقرير شهري.", "12 posts and a monthly report.", "12 פוסטים ודוח חודשי.") },
+        { slug: "campaign", group: "social", price: 6000, extra: w("شهر", "A month", "חודש"), title: w("حملة إعلانية", "An ad campaign", "קמפיין פרסומי"), text: w("فكرة، تصوير، ونشر مدفوع.", "An idea, a shoot and paid reach.", "רעיון, צילום והפצה ממומנת.") },
+        { slug: "video", group: "social", price: 3000, extra: w("أسبوعين", "2 weeks", "שבועיים"), title: w("فيديو قصير", "A short video", "סרטון קצר"), text: w("30 ثانية بتنحفظ.", "30 seconds people remember.", "30 שניות שזוכרים.") },
+      ],
+    },
+    team: {
+      title: w("الفريق", "The team", "הצוות"),
+      sub: w("ناس بتحب شغلها.", "People who love their work.", "אנשים שאוהבים את העבודה."),
+      rows: [
+        { name: w("لؤي", "Louay", "לואי"), role: w("مدير إبداعي", "Creative director", "מנהל קריאייטיב"), bio: w("بيسأل «ليش» قبل ما يرسم.", "He asks “why” before he draws.", "שואל ״למה״ לפני שמצייר.") },
+        { name: w("نادين", "Nadine", "נדין"), role: w("تصميم مواقع", "Web design", "עיצוב אתרים"), bio: w("مواقعها سريعة وحلوة عالتلفون.", "Her sites are fast and lovely on phones.", "האתרים שלה מהירים ויפים בטלפון.") },
+        { name: w("سامي", "Sami", "סאמי"), role: w("محتوى وسوشال", "Content and social", "תוכן וסושיאל"), bio: w("بيكتب جمل بتضل بالراس.", "Writes lines that stick.", "כותב משפטים שנשארים בראש.") },
+      ],
+    },
+    story: {},
+    reviews: { rows: [
+      { name: w("مطعم زيتونة", "Zaytouna restaurant", "מסעדת זיתונה"), place: w("هوية وموقع", "Identity and site", "זהות ואתר"), text: w("الحجوزات زادت من أول شهر للموقع الجديد.", "Bookings went up from the new site's first month.", "ההזמנות עלו מהחודש הראשון של האתר החדש.") },
+      { name: w("لمى", "Lama", "למא"), place: w("متجر أونلاين", "An online store", "חנות אונליין"), text: w("فهموا ماركتي أحسن مني.", "They understood my brand better than I did.", "הבינו את המותג שלי יותר טוב ממני.") },
+      { name: w("شركة نور", "Noor Ltd", "נור בע״מ"), place: w("حملة", "A campaign", "קמפיין"), text: w("مواعيد مزبوطة وتقارير واضحة.", "On time, with clear reports.", "עמידה בזמנים ודוחות ברורים.") },
+      { name: w("غاي", "Guy", "גיא"), place: w("صفحة هبوط", "A landing page", "דף נחיתה"), text: w("سريعين وبيسمعوا.", "Fast, and they listen.", "מהירים ומקשיבים."), stars: 4 },
+    ] },
+    questions: { rows: [
+      { q: w("كم بياخد مشروع؟", "How long does a project take?", "כמה זמן לוקח פרויקט?"), a: w("المدة مكتوبة عند كل خدمة، ومنتفق على جدول من أول جلسة.", "The time is written by each service; we agree a schedule at the first meeting.", "הזמן כתוב ליד כל שירות, וסוגרים לוח זמנים בפגישה הראשונה.") },
+      { q: w("بتشتغلوا مع مصالح صغيرة؟", "Do you work with small businesses?", "אתם עובדים עם עסקים קטנים?"), a: w("أغلب عملائنا مصالح صغيرة، والباقات معمولة إلهم.", "Most of our clients are small businesses; the packages are made for them.", "רוב הלקוחות שלנו עסקים קטנים, והחבילות בנויות בשבילם.") },
+      { q: w("بملك الشغل بالآخر؟", "Do I own the work in the end?", "העבודה שלי בסוף?"), a: w("أكيد، كل الملفات إلكم بعد الدفع الأخير.", "Yes, all the files are yours after the final payment.", "כן, כל הקבצים שלכם אחרי התשלום האחרון.") },
+      { q: w("كم تعديل في؟", "How many revisions are there?", "כמה סבבי תיקונים?"), a: w("جولتين تعديل بكل مرحلة، مكتوبين بالعرض.", "Two rounds at every stage, written in the quote.", "שני סבבים בכל שלב, כתובים בהצעה.") },
+    ] },
+    news: {
+      title: w("مشاريع وأفكار", "Work and ideas", "פרויקטים ורעיונות"),
+      sub: w("شو عملنا مؤخراً، وشو تعلّمنا.", "What we made lately, and what we learnt.", "מה עשינו לאחרונה, ומה למדנו."),
+      rows: [
+        { slug: "zaytouna-rebrand", date: "2026-10-30", title: w("هوية جديدة لمطعم", "A new identity for a restaurant", "זהות חדשה למסעדה"), text: w("من شعار قديم لماركة دافية.", "From an old logo to a warm brand.", "מלוגו ישן למותג חם."), body: w("اشتغلنا مع العيلة صاحبة المطعم عالقصة أولاً، وبعدين عالألوان، والنتيجة بتشبههم.", "We worked with the owning family on the story first, then the colours, and the result looks like them.", "עבדנו עם המשפחה על הסיפור קודם, אחר כך על הצבעים, והתוצאה דומה להם.") },
+        { slug: "fast-sites", date: "2026-09-14", title: w("ليش السرعة مهمة", "Why speed matters", "למה מהירות חשובה"), text: w("كل ثانية بتفرق بالمبيعات.", "Every second counts in sales.", "כל שנייה משנה במכירות."), body: w("موقع بيفتح بثانيتين بيبيع أكتر من موقع بيفتح بخمسة. هيك منبني مواقعنا.", "A site that opens in two seconds sells more than one that takes five. That's how we build.", "אתר שנפתח בשתי שניות מוכר יותר מאתר שנפתח בחמש. ככה אנחנו בונים.") },
+        { slug: "award", date: "2026-05-02", title: w("جايزة تصميم", "A design award", "פרס עיצוב"), text: w("عن تغليف لمنتج محلي.", "For packaging a local product.", "על אריזה למוצר מקומי."), body: w("فرحانين بالجايزة، وفرحانين أكتر إنه المنتج صار ينباع ببلاد تانية.", "Glad of the award, and gladder the product now sells abroad.", "שמחים בפרס, ושמחים עוד יותר שהמוצר נמכר עכשיו בחו״ל.") },
+      ],
+    },
+    branches: { rows: [
+      { name: w("حيفا", "Haifa", "חיפה"), address: w("شارع الصناعة 5", "5 Industry Street", "רחוב התעשייה 5"), hours: w("الأحد–الخميس 9:00–18:00", "Sun–Thu 9:00–18:00", "א׳–ה׳ 9:00–18:00"), phone: "04-670-2525" },
+      { name: w("رام الله", "Ramallah", "רמאללה"), address: w("شارع الإرسال 18", "18 Irsal Street", "רחוב אל־ארסאל 18"), hours: w("السبت–الخميس 9:00–17:00", "Sat–Thu 9:00–17:00", "ש׳–ה׳ 9:00–17:00"), phone: "02-295-1100" },
+    ] },
+    contact: {},
+    booking: {
+      title: w("احكولنا عن مشروعكم", "Tell us about your project", "ספרו לנו על הפרויקט"),
+      sub: w("كم سطر بيكفّوا. منرجعلكم بأفكار وبعرض سعر.", "A few lines are enough. We'll come back with ideas and a quote.", "כמה שורות מספיקות. נחזור עם רעיונות והצעת מחיר."),
+      ask: w("شو بتحتاجوا", "What you need", "מה אתם צריכים"),
+      button: w("ابعتوا", "Send", "שליחה"),
+      done: w("وصلنا مشروعكم، ومنتصل فيكم خلال يومين.", "Your project is in: we'll be in touch within two days.", "הפרויקט התקבל: ניצור קשר תוך יומיים."),
+    },
+    notify: {},
   },
-  team: {
-    title: w("الفريق", "The team", "הצוות"),
-    sub: w("ناس بتحب شغلها.", "People who love their work.", "אנשים שאוהבים את העבודה."),
-    rows: [
-      { name: w("لؤي", "Louay", "לואי"), role: w("مدير إبداعي", "Creative director", "מנהל קריאייטיב"), bio: w("بيسأل «ليش» قبل ما يرسم.", "He asks “why” before he draws.", "שואל ״למה״ לפני שמצייר.") },
-      { name: w("نادين", "Nadine", "נדין"), role: w("تصميم مواقع", "Web design", "עיצוב אתרים"), bio: w("مواقعها سريعة وحلوة عالتلفون.", "Her sites are fast and lovely on phones.", "האתרים שלה מהירים ויפים בטלפון.") },
-      { name: w("سامي", "Sami", "סאמי"), role: w("محتوى وسوشال", "Content and social", "תוכן וסושיאל"), bio: w("بيكتب جمل بتضل بالراس.", "Writes lines that stick.", "כותב משפטים שנשארים בראש.") },
-    ],
-  },
-  reviews: [
-    { name: w("مطعم زيتونة", "Zaytouna restaurant", "מסעדת זיתונה"), place: w("هوية وموقع", "Identity and site", "זהות ואתר"), text: w("الحجوزات زادت من أول شهر للموقع الجديد.", "Bookings went up from the new site's first month.", "ההזמנות עלו מהחודש הראשון של האתר החדש.") },
-    { name: w("لمى", "Lama", "למא"), place: w("متجر أونلاين", "An online store", "חנות אונליין"), text: w("فهموا ماركتي أحسن مني.", "They understood my brand better than I did.", "הבינו את המותג שלי יותר טוב ממני.") },
-    { name: w("شركة نور", "Noor Ltd", "נור בע״מ"), place: w("حملة", "A campaign", "קמפיין"), text: w("مواعيد مزبوطة وتقارير واضحة.", "On time, with clear reports.", "עמידה בזמנים ודוחות ברורים.") },
-    { name: w("غاي", "Guy", "גיא"), place: w("صفحة هبوط", "A landing page", "דף נחיתה"), text: w("سريعين وبيسمعوا.", "Fast, and they listen.", "מהירים ומקשיבים."), stars: 4 },
-  ],
-  questions: [
-    { q: w("كم بياخد مشروع؟", "How long does a project take?", "כמה זמן לוקח פרויקט?"), a: w("المدة مكتوبة عند كل خدمة، ومنتفق على جدول من أول جلسة.", "The time is written by each service; we agree a schedule at the first meeting.", "הזמן כתוב ליד כל שירות, וסוגרים לוח זמנים בפגישה הראשונה.") },
-    { q: w("بتشتغلوا مع مصالح صغيرة؟", "Do you work with small businesses?", "אתם עובדים עם עסקים קטנים?"), a: w("أغلب عملائنا مصالح صغيرة، والباقات معمولة إلهم.", "Most of our clients are small businesses; the packages are made for them.", "רוב הלקוחות שלנו עסקים קטנים, והחבילות בנויות בשבילם.") },
-    { q: w("بملك الشغل بالآخر؟", "Do I own the work in the end?", "העבודה שלי בסוף?"), a: w("أكيد، كل الملفات إلكم بعد الدفع الأخير.", "Yes, all the files are yours after the final payment.", "כן, כל הקבצים שלכם אחרי התשלום האחרון.") },
-    { q: w("كم تعديل في؟", "How many revisions are there?", "כמה סבבי תיקונים?"), a: w("جولتين تعديل بكل مرحلة، مكتوبين بالعرض.", "Two rounds at every stage, written in the quote.", "שני סבבים בכל שלב, כתובים בהצעה.") },
-  ],
-  posts: {
-    title: w("مشاريع وأفكار", "Work and ideas", "פרויקטים ורעיונות"),
-    sub: w("شو عملنا مؤخراً، وشو تعلّمنا.", "What we made lately, and what we learnt.", "מה עשינו לאחרונה, ומה למדנו."),
-    rows: [
-      { slug: "zaytouna-rebrand", date: "2026-10-30", title: w("هوية جديدة لمطعم", "A new identity for a restaurant", "זהות חדשה למסעדה"), text: w("من شعار قديم لماركة دافية.", "From an old logo to a warm brand.", "מלוגו ישן למותג חם."), body: w("اشتغلنا مع العيلة صاحبة المطعم عالقصة أولاً، وبعدين عالألوان، والنتيجة بتشبههم.", "We worked with the owning family on the story first, then the colours, and the result looks like them.", "עבדנו עם המשפחה על הסיפור קודם, אחר כך על הצבעים, והתוצאה דומה להם.") },
-      { slug: "fast-sites", date: "2026-09-14", title: w("ليش السرعة مهمة", "Why speed matters", "למה מהירות חשובה"), text: w("كل ثانية بتفرق بالمبيعات.", "Every second counts in sales.", "כל שנייה משנה במכירות."), body: w("موقع بيفتح بثانيتين بيبيع أكتر من موقع بيفتح بخمسة. هيك منبني مواقعنا.", "A site that opens in two seconds sells more than one that takes five. That's how we build.", "אתר שנפתח בשתי שניות מוכר יותר מאתר שנפתח בחמש. ככה אנחנו בונים.") },
-      { slug: "award", date: "2026-05-02", title: w("جايزة تصميم", "A design award", "פרס עיצוב"), text: w("عن تغليف لمنتج محلي.", "For packaging a local product.", "על אריזה למוצר מקומי."), body: w("فرحانين بالجايزة، وفرحانين أكتر إنه المنتج صار ينباع ببلاد تانية.", "Glad of the award, and gladder the product now sells abroad.", "שמחים בפרס, ושמחים עוד יותר שהמוצר נמכר עכשיו בחו״ל.") },
-    ],
-  },
-  branches: [
-    { name: w("حيفا", "Haifa", "חיפה"), address: w("شارع الصناعة 5", "5 Industry Street", "רחוב התעשייה 5"), hours: w("الأحد–الخميس 9:00–18:00", "Sun–Thu 9:00–18:00", "א׳–ה׳ 9:00–18:00"), phone: "04-670-2525" },
-    { name: w("رام الله", "Ramallah", "רמאללה"), address: w("شارع الإرسال 18", "18 Irsal Street", "רחוב אל־ארסאל 18"), hours: w("السبت–الخميس 9:00–17:00", "Sat–Thu 9:00–17:00", "ש׳–ה׳ 9:00–17:00"), phone: "02-295-1100" },
-  ],
-  booking: {
-    title: w("احكولنا عن مشروعكم", "Tell us about your project", "ספרו לנו על הפרויקט"),
-    sub: w("كم سطر بيكفّوا. منرجعلكم بأفكار وبعرض سعر.", "A few lines are enough. We'll come back with ideas and a quote.", "כמה שורות מספיקות. נחזור עם רעיונות והצעת מחיר."),
-    ask: w("شو بتحتاجوا", "What you need", "מה אתם צריכים"),
-    button: w("ابعتوا", "Send", "שליחה"),
-    done: w("وصلنا مشروعكم، ومنتصل فيكم خلال يومين.", "Your project is in: we'll be in touch within two days.", "הפרויקט התקבל: ניצור קשר תוך יומיים."),
-  },
-};
+});
