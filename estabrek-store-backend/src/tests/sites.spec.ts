@@ -20,7 +20,7 @@ import type { PageTree } from "../lib/pageTree.js";
 const at = "/v1/admin/my-features";
 const SITES_FILE = path.resolve(__dirname, "../../../estabrek-admin/src/studio/templates/sites/index.ts");
 type Obj = Record<string, any>;
-type Sites = { SITES: Array<{ key: string }>; siteFile: (key: string, o: { lang: "ar" | "en" | "he" }) => Obj };
+type Sites = { SITES: Array<{ key: string }>; siteFile: (key: string, o: { lang: "ar" | "en" | "he" }) => Obj; siteByKey: (key: string) => Obj; buildChosen: (bp: Obj, c: Obj, lang: "ar" | "en" | "he") => Obj };
 let sites: Sites;
 const made: string[] = [];
 
@@ -154,5 +154,23 @@ describe("Whole sites", () => {
     expect(home).toContain('"href":"/our-story-2"');
     expect(home).not.toContain('"href":"/our-story"');
     await clean();
+  });
+});
+
+describe("A site as its install wizard chose it", () => {
+  test("installs with only the modules kept and the owner's details, and the feature keeps the choices for its upgrades", async () => {
+    const choices = { biz: { name: { ar: "أبو سمير", en: "Abu Samir", he: "אבו סמיר" }, phone: "050-123-4567" }, modules: ["story", "reviews", "contact", "notify"], look: 2 };
+    const file = sites.buildChosen(sites.siteByKey("site-restaurant"), choices, "ar");
+    const res = await request(app).post(`${at}/templates/install`).send({ template: file, lang: "ar" });
+    expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(201);
+    made.push(res.body.id);
+    expect(res.body.template.site).toEqual(choices);
+    expect(res.body.name).toBe("مطعم: أبو سمير");
+    expect(res.body.pages.map((p: Obj) => p.key)).toEqual(["home", "story", "contact"]);
+    expect(res.body.tables.map((t: Obj) => t.slug).sort()).toEqual(file.tables.map((t: Obj) => t.slug).sort());
+    const contact = await prisma.page.findUnique({ where: { id: res.body.pages.find((p: Obj) => p.key === "contact").id }, select: { tree: true } });
+    // Its business line says the owner's number (no branches kept: no branch card calling it).
+    expect(JSON.stringify(contact!.tree)).toContain("050-123-4567");
+    expect(JSON.stringify(contact!.tree)).not.toContain("04-600-1234");
   });
 });

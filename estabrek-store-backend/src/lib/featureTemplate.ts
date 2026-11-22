@@ -118,6 +118,22 @@ const TemplatePage = z
   })
   .strict();
 
+/**
+ * A whole site's choices as its install wizard made them (admin studio/templates/sites/choices.ts): the
+ * business's own details, the modules it runs with, its home's composition and how much it moves. Kept
+ * with the file it installed, so an upgrade builds the newer version with the same choices.
+ */
+const Short = z.string().trim().max(120);
+export const SiteChoicesSchema = z
+  .object({
+    biz: z.object({ name: LocalSchema, address: LocalSchema, hours: LocalSchema, phone: z.string().trim().max(40), email: Short, city: Short }).partial().strict().optional(),
+    modules: z.array(Key).max(40).optional(),
+    look: z.number().int().min(0).max(99).optional(),
+    motion: z.enum(["calm", "rich"]).optional(),
+  })
+  .strict();
+export type SiteChoices = z.infer<typeof SiteChoicesSchema>;
+
 export const TemplateSchema = z
   .object({
     format: z.literal(TEMPLATE_FORMAT),
@@ -132,6 +148,8 @@ export const TemplateSchema = z
     /** What its functions name and the other store keeps for itself: secrets by name, sites by host. */
     needs: z.object({ secrets: z.array(z.string().regex(SECRET_NAME)).max(TEMPLATE_LIMITS.needs).default([]), sites: z.array(z.string().max(253)).max(TEMPLATE_LIMITS.needs).default([]) }).strict().optional(),
     exportedAt: z.string().max(40).optional(),
+    /** A whole site's wizard choices (kept, never acted on here: the pages already carry them). */
+    site: SiteChoicesSchema.optional(),
   })
   .strict()
   .superRefine((t, ctx) => {

@@ -9,8 +9,8 @@ import { Badge } from "../../components/ui/Badge";
 import { adminLang } from "../../lib/lang";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
-import { SITES, SITE_FIELDS, buildSite, modulesOf, slugsOf, type SiteBlueprint, type SiteField } from "../../studio/templates/sites";
-import { InstallFlow } from "./FeatureTemplates";
+import { SITES, SITE_FIELDS, slugsOf, type SiteBlueprint, type SiteField } from "../../studio/templates/sites";
+import { SiteWizard } from "./SiteWizard";
 import { siteLine, siteMatches } from "./sitesText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -24,8 +24,6 @@ export default function SitesPage() {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<SiteBlueprint | null>(null);
   const fields = useMemo(() => (Object.keys(SITE_FIELDS) as SiteField[]).filter((f) => SITES.some((s) => s.field === f)), []);
-  // Built once for what is picked (a site is some 70 KB of pages).
-  const file = useMemo(() => (picked ? buildSite(picked, { lang }) : null), [picked, lang]);
   const shown = SITES.filter((s) => (kind === "all" || s.field === kind) && siteMatches(s, search, SITE_FIELDS));
   return (
     <div className="space-y-4 pb-24" data-testid="sites-page">
@@ -52,20 +50,8 @@ export default function SitesPage() {
               {say("سكّر|Close|סגירה")}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-white/60" data-testid="sites-home-note">
-            {say("صفحة الموقع الأولى عنوانها {home}، وصفحة متجرك الرئيسية ما بتتغيّر.|The site's first page is at {home}; your store's home doesn't change.|העמוד הראשון של האתר בכתובת {home}, ודף הבית של החנות לא משתנה.").replace("{home}", slugsOf(picked).home)}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-white/60">{say("مبني من:|Built from:|בנוי מ:")}</span>
-            <ul className="flex flex-wrap gap-1.5" data-testid="sites-modules">
-              {modulesOf(picked).map((m) => (
-                <li key={m.key} title={m.note[lang]} className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/80" data-testid={`sites-module-${m.key}`}>
-                  {m.name[lang]}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <InstallFlow key={`${picked.key}:${picked.version}:${lang}`} id={`site:${picked.key}:${picked.version}:${lang}`} template={file} />
+          {/* Its install wizard: about you, what it runs, its look, then install as a draft. */}
+          <SiteWizard key={`${picked.key}:${picked.version}`} site={picked} />
         </section>
       ) : null}
 
