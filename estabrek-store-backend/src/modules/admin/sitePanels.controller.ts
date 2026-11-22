@@ -8,6 +8,7 @@ import { tableRight } from "./permissions.js";
 import { tableOf, changeRow } from "../../lib/rowWrites.js";
 import { findByCode, pageView, pagesShown, partShown, peopleSearch, reportCsv, saveLayout, sitePanels, tableIdOf, type PanelPart, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
 import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
+import { readSite } from "../../lib/gameSites.js";
 
 /**
  * /v1/admin/site-panels — a whole site's own pages in the admin's menu (sites wave 1; lib/sitePanel.ts): its parts as
@@ -23,6 +24,7 @@ import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
  * GET  /admin/site-panels/:feature/:page/:part/people?q=   — a person's page: their rows across the part's tables
  * GET  /admin/site-panels/:feature/:page/:part/find?code=  — a scanner's code: the row it names
  * GET  /admin/site-panels/:feature/:page/:part/export?period= — a report's period as a CSV file
+ * POST /admin/site-panels/:feature/:page/:part/check       — a game server's status asked now (features:write; once in 10 seconds a site)
  * PUT  /admin/site-panels/:feature/:page/layout             { order?, hidden?, own? } — the page as its owner arranges it (features:write):
  *                                                           its parts' order, the ones hidden, parts of their own over the site's tables
  */
@@ -126,6 +128,22 @@ r.post(
     await saveSiteSettings(site.featureId, { [action.setting]: action.value });
     const [now] = await sitePanels(site.featureId);
     res.json(await pageView(now, page, may, optsOf(req, body.lang)));
+  }),
+);
+
+const checked = new Map<string, number>();
+r.post(
+  "/:feature/:page/:part/check",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    partOf(site, page, String(req.params.part), ["game"], may);
+    if (!may.writeSettings) throw new AppError(403, "PERMISSION_DENIED", "Asking the game server isn't yours to do", { required: ["features:write"] });
+    // Not a way to hammer a server: once in 10 seconds for a site.
+    const last = checked.get(site.featureId) ?? 0;
+    if (Date.now() - last < 10_000) throw new AppError(429, "TOO_SOON", "Asked a moment ago: try again in a few seconds");
+    checked.set(site.featureId, Date.now());
+    await readSite(site.featureId);
+    res.json(await pageView(site, page, may, optsOf(req)));
   }),
 );
 

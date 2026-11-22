@@ -704,6 +704,23 @@ model Feature {
   @@index([createdAt])
 }
 
+/// A whole site's game server as our server read it, once a minute (src/lib/gameStatus.ts, src/lib/gameSites.ts):
+/// kept two days, for the site's live status and its last 24 hours. A reading that got no answer is offline.
+model GameSample {
+  id        String   @id @default(cuid())
+  featureId String
+  at        DateTime @default(now())
+  online    Boolean
+  players   Int?
+  max       Int?
+  name      String?
+  map       String?
+  version   String?
+  ms        Int?
+
+  @@index([featureId, at])
+}
+
 /// One thing of a feature. A thing belongs to one feature at most.
 model FeatureItem {
   featureId String

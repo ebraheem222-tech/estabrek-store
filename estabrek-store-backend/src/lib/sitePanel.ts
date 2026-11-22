@@ -13,6 +13,7 @@
  *   report    rows in a period counted by a choice's options, and the period's rows as a file
  *   map       rows with an address, each on a map
  *   scanner   a code read by the camera (or typed) finds a row, and buttons decide it
+ *   game      a game server site's status now and its last 24 hours (lib/gameSites.ts), asked again in one tap
  *
  * A part names its site's tables by their keys in the file (`@table:bookings`); installed, they are the ids the
  * feature keeps (Installed.ids.table). Each part is shown only to a member who may read what it reads (a table's
@@ -26,6 +27,7 @@ import { gridWhere, parseGridQuery, queryRows, type GridFilter, type GridRow } f
 import { csvCell } from "./dataRows.js";
 import { declsOf, valuesOf, type SettingDecl, type Values } from "./siteSettings.js";
 import type { Field } from "./collectionTree.js";
+import { gameView } from "./gameSites.js";
 
 export const PANEL_LIMITS = { pages: 8, parts: 12, numbers: 8, conds: 6, columns: 8, decisions: 4, actions: 8, rows: 50, people: 4, days: 90, month: 200, exportRows: 5000 } as const;
 export const PANEL_ICONS = ["today", "lists", "settings", "calendar", "people", "chart"] as const;
@@ -61,6 +63,7 @@ export const PanelPartSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("report"), key: Key, title: Label, table: TableRef, where: Conds.optional(), by: FieldId, columns: Columns }).strict(),
   z.object({ kind: z.literal("map"), key: Key, title: Label, table: TableRef, where: Conds.optional(), label: FieldId, address: FieldId, show: z.array(FieldId).max(PANEL_LIMITS.columns).optional() }).strict(),
   z.object({ kind: z.literal("scanner"), key: Key, title: Label, table: TableRef, match: FieldId, show: Columns, decisions: Decisions }).strict(),
+  z.object({ kind: z.literal("game"), key: Key, title: Label }).strict(),
 ]);
 export type PanelPart = z.infer<typeof PanelPartSchema>;
 const PanelPage = z.object({ key: Key, name: Label, icon: z.enum(PANEL_ICONS), parts: z.array(PanelPartSchema).min(1).max(PANEL_LIMITS.parts) }).strict();
@@ -225,6 +228,8 @@ export const tableIdOf = (site: SitePanel, ref: string) => site.tables[tableKeyO
 export function partShown(site: SitePanel, part: PanelPart, may: PanelRights): boolean {
   if (part.kind === "settings") return may.readSettings;
   if (part.kind === "actions") return may.writeSettings;
+  // A game server's status is the server's own news, not a table's rows: every member who opens the panel.
+  if (part.kind === "game") return true;
   if (part.kind === "numbers" || part.kind === "people") {
     const refs = part.kind === "numbers" ? part.items.map((i) => i.table) : part.tables.map((t) => t.table);
     return refs.some((ref) => {
@@ -395,6 +400,8 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
       const shown = [part.label, part.address, ...(part.show ?? [])];
       const got = await rowsOf(t, { pageSize: PANEL_LIMITS.rows, filters: [...filtersOf(part.where), { field: part.address, op: "notEmpty" }], lang: opts.lang });
       out.push({ kind: "map", key: part.key, title: part.title, table: tableView(t), label: part.label, address: part.address, columns: columnsOf(t, shown), rows: got?.rows.map((r) => cellsOf(r, shown)) ?? [] });
+    } else if (part.kind === "game") {
+      out.push({ kind: "game", key: part.key, title: part.title, status: await gameView(site.featureId), canCheck: may.writeSettings });
     } else if (part.kind === "scanner" && t) {
       out.push({ kind: "scanner", key: part.key, title: part.title, table: tableView(t), columns: columnsOf(t, part.show), decisions: part.decisions.map((d) => ({ key: d.key, label: d.label, ...(d.tone ? { tone: d.tone } : {}) })), canDecide: may.writeTable(t.id) });
     }

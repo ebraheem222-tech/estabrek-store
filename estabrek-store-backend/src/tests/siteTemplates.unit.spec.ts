@@ -54,7 +54,8 @@ describe("Whole sites", () => {
           for (const t of plan.tables) expect(t.rows.length > 0 || ["messages", "bookings"].includes(t.key), `${s.key} ${t.key}`).toBe(true);
         }
     }
-  });
+    // Every site, in three languages and two motions: more than vitest's 5 seconds on a cold run.
+  }, 30_000);
 
   test("a site's lists read its own tables, its forms write into its own, its buttons go to its own pages", () => {
     for (const s of sites.SITES) {

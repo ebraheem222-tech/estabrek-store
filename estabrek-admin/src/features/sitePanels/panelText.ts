@@ -52,6 +52,7 @@ export const KIND_NAME: Record<string, string> = {
   report: "تقرير|Report|דוח",
   map: "خريطة|Map|מפה",
   scanner: "ماسح|Scanner|סורק",
+  game: "حالة السيرفر|Server status|מצב השרת",
 };
 
 const BEFORE: Record<string, string> = {

@@ -126,6 +126,26 @@ export const PANEL = {
   branchesMap: w("الفروع عالخريطة", "The branches on the map", "הסניפים במפה"),
 };
 
+/** The words of a game server's site (wave G1). */
+export const SERVER = {
+  statusSection: w("حالة السيرفر", "Server status", "מצב השרת"),
+  statusTitle: w("السيرفر هلّق", "The server now", "השרת עכשיו"),
+  copy: w("انسخ العنوان", "Copy the address", "להעתיק את הכתובת"),
+  howJoin: w("كيف بتفوت", "How to join", "איך מתחברים"),
+  discord: w("الديسكورد", "Discord", "דיסקורד"),
+  discordTitle: w("الحياة كلها عالديسكورد", "Everything happens on Discord", "הכול קורה בדיסקורד"),
+  discordLine: w("إعلانات، فعاليات، تقديم، ودعم: تعال احكي معنا.", "News, events, applications and support: come and talk to us.", "הודעות, אירועים, הגשות ותמיכה: בואו לדבר איתנו."),
+  discordJoin: w("فوت عالديسكورد", "Join the Discord", "להצטרף לדיסקורד"),
+  noticeText: w("ريستارت يومي الساعة 8 المسا. خلّصوا شغلكم قبلها بدقيقتين.", "Daily restart at 8 pm. Wrap up a couple of minutes before.", "ריסטרט יומי ב־20:00. סיימו כמה דקות לפני."),
+  game: w("اللعبة", "The game", "המשחק"),
+  gameNote: w("عشان نعرف كيف نسأل سيرفرك عن حالته.", "So we know how to ask your server how it is.", "כדי שנדע איך לשאול את השרת שלכם מה המצב."),
+  address: w("عنوان السيرفر", "The server's address", "כתובת השרת"),
+  addressNote: w("متل play.example.com أو 1.2.3.4:30120، أو كود cfx.re/join لـ FiveM. لازم يكون عنوان عام.", "Like play.example.com or 1.2.3.4:30120, or a cfx.re/join code for FiveM. It must be a public address.", "כמו play.example.com או 1.2.3.4:30120, או קוד cfx.re/join ל־FiveM. חייבת להיות כתובת ציבורית."),
+  discordOn: w("بيّن الديسكورد", "Show the Discord", "להציג את הדיסקורד"),
+  discordUrl: w("رابط الديسكورد", "The Discord invite", "קישור ההזמנה לדיסקורד"),
+  discordUrlNote: w("رابط دعوة متل https://discord.gg/abc.", "An invite link like https://discord.gg/abc.", "קישור הזמנה כמו https://discord.gg/abc."),
+};
+
 /** A review's stars, as a choice field's options. */
 export const STARS: Array<[string, W]> = [
   ["s5", w("★★★★★", "★★★★★", "★★★★★")],

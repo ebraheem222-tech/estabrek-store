@@ -35,7 +35,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell", "deck", "scrollScene",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
-  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
+  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
   "toc", "flipBox", "share", "progress", "headline", "storyBar",
@@ -145,8 +145,10 @@ export const SETTING_KEY = /^[a-z][a-zA-Z0-9]{0,30}$/;
  */
 export const NodeShowIf = z.object({ setting: z.string().regex(SETTING_KEY, "A setting's key"), is: z.union([z.boolean(), z.number().finite(), z.string().max(40)]).optional() }).strict();
 /** A whole site's element whose words are one of its site's settings (props.fromSetting): its text, a button's label. */
-export const NodeFromSetting = z.object({ text: z.string().regex(SETTING_KEY, "A setting's key").optional(), label: z.string().regex(SETTING_KEY, "A setting's key").optional() }).strict()
-  .refine((f) => !!f.text || !!f.label, "It names a setting");
+export const NodeFromSetting = z.object({ text: z.string().regex(SETTING_KEY, "A setting's key").optional(), label: z.string().regex(SETTING_KEY, "A setting's key").optional(), href: z.string().regex(SETTING_KEY, "A setting's key").optional() }).strict()
+  .refine((f) => !!f.text || !!f.label || !!f.href, "It names a setting");
+/** A link a setting may give an element (props.fromSetting.href): the same safe links an element may hold itself. */
+export const isSafeHref = (v: unknown): v is string => typeof v === "string" && v.length <= 500 && NO_ODD_CHARS.test(v) && /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)/i.test(v.trim());
 
 /** How a motion speeds up and slows down (also a state change's). */
 // "fall" speeds up as it goes (a fall; a world baked into keyframes uses it), the rest slow down as they arrive or glide.
@@ -998,6 +1000,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   }),
   instrument: z.object({ kind: z.enum(["piano", "guitar"]).default("piano"), label: local(160).optional(), sound: z.boolean().optional(), volume: z.number().finite().min(0).max(1).optional(), octave: z.number().int().min(2).max(6).optional(), octaves: z.number().int().min(1).max(2).optional(), frets: z.number().int().min(4).max(12).optional(), sustain: z.number().finite().min(.1).max(3).optional(), waveform: z.enum(["sine", "triangle", "sawtooth"]).optional(), theme: z.enum(["dark", "light"]).optional(), showNotes: z.boolean().optional(), melody: z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"]).optional(), playlist: z.array(z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"])).min(1).max(6).optional(), showPlayer: z.boolean().optional(), tempo: z.number().int().min(40).max(200).optional(), repeat: z.boolean().optional() }),
   chart: z.object({ kind: z.enum(["bar", "line", "donut"]).default("bar"), label: local(160).optional(), items: z.array(z.object({ label: local(80), value: z.number().finite().min(0).max(1000000), color: color.optional() })).min(1).max(24), showValues: z.boolean().optional() }),
+  // A whole game server site's live status (lib/gameSites.ts fills it as the page is served; the shop asks again every
+  // minute): up or down, players, name and map, the last 24 hours, and a way in (the game's own link, or the address to copy).
+  gameStatus: z.object({ join: local(40).optional(), copy: local(40).optional(), chart: z.boolean().optional(), size: z.enum(["big", "small"]).optional() }),
   clock: z.object({ label: local(160).optional(), timezone: z.string().trim().max(80).refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }).default("UTC"), format: z.enum(["12", "24"]).optional(), seconds: z.boolean().optional(), date: z.boolean().optional() }),
   spacer: z.object({ size: px(0, 400).default(32) }),
   divider: none,

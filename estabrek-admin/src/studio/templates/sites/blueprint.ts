@@ -26,6 +26,7 @@ export const SITE_FIELDS = {
   creative: w("تصوير وإبداع", "Photography and creative work", "צילום ויצירה"),
   events: w("مناسبات وأفراح", "Events and weddings", "אירועים וחתונות"),
   services: w("خدمات ومكاتب", "Services and offices", "שירותים ומשרדים"),
+  games: w("سيرفرات ألعاب", "Game servers", "שרתי משחקים"),
 } as const;
 export type SiteField = keyof typeof SITE_FIELDS;
 
@@ -44,6 +45,7 @@ export const ARCHETYPES = {
   directory: { name: w("دليل", "Directory", "מדריך"), note: w("دليل مدينة، عقارات، سيارات: إدراجات وفلاتر وخريطة.", "A city guide, property, cars: listings, filters and a map.", "מדריך עיר, נדל״ן, רכבים: רשומות, מסננים ומפה.") },
   work: { name: w("شغل", "Work", "עבודה"), note: w("CRM، دعم، مشاريع: سجلات بحالات ومهام.", "A CRM, support, projects: records with states and tasks.", "CRM, תמיכה, פרויקטים: רשומות עם מצבים ומשימות.") },
   portfolio: { name: w("معرض", "Portfolio", "תיק עבודות"), note: w("مصوّر، مصمم، معماري: أعمال وطلبات بمراحل.", "A photographer, a designer, an architect: work and requests in stages.", "צלם, מעצב, אדריכל: עבודות ובקשות בשלבים.") },
+  server: { name: w("سيرفر", "Game server", "שרת משחק"), note: w("FiveM، ماينكرافت، Rust: حالة السيرفر الحيّة، «فوت هلّق»، ديسكورد، تحديثات وطاقم.", "FiveM, Minecraft, Rust: the server's live status, «join now», Discord, updates and staff.", "FiveM, Minecraft, Rust: מצב השרת החי, «להתחבר עכשיו», דיסקורד, עדכונים וצוות.") },
 } as const;
 export type Archetype = keyof typeof ARCHETYPES;
 
@@ -76,6 +78,8 @@ export type BranchesUse = { rows: Array<{ name: W; address: W; hours: W; phone: 
 export type BookingUse = { title: W; sub: W; ask: W; button: W; done: W; /** What the visitor picks (else the main list's groups). */ options?: Array<[string, W]> };
 /** A module that takes no words of its own. */
 export type Bare = Record<string, never>;
+/** A game server: its game and its address (the sample's; its owner sets theirs), its Discord, how a player gets in. */
+export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam"; address: string; discord: string; join: W; steps: Array<[W, W]> };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -133,7 +137,9 @@ export type PanelPart =
   /** Rows with an address, each on a map. */
   | { kind: "map"; key: string; title: W; table: string; where?: PanelCond[]; label: string; address: string; show?: string[] }
   /** A code read by the camera (or typed) finds a row; buttons decide it. */
-  | { kind: "scanner"; key: string; title: W; table: string; match: string; show: string[]; decisions: PanelDecision[] };
+  | { kind: "scanner"; key: string; title: W; table: string; match: string; show: string[]; decisions: PanelDecision[] }
+  /** A game server site's status now and its last 24 hours (wave G1). */
+  | { kind: "game"; key: string; title: W };
 export type PanelPeopleTable = { table: string; title: W; show: string[] };
 export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings" | "calendar" | "people" | "chart"; parts: PanelPart[] };
 /**
@@ -144,6 +150,7 @@ export type PanelBits = { numbers?: PanelNumber[]; today?: PanelPart[]; board?: 
 
 /** The modules a site uses, each with its words. Which modules exist, and what each brings, is modules/index.ts. */
 export type SiteModules = {
+  status?: StatusUse;
   offers?: OffersUse;
   team?: TeamUse;
   story?: Bare;

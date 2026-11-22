@@ -29,6 +29,7 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
+  "site-fivem-rp": ["56619ee488171aee", "9457cd24eb9793ee", "63355bb5b2dc823a", "0e6f67f5bd6dc408", "c0c8d5f9b5ccb6a3", "85eee71fad03981b"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -39,13 +40,13 @@ describe("The twelve sites as blueprints", () => {
     for (const s of SITES) expect(LANGS.flatMap((lang) => [print(s, lang, "calm"), print(s, lang, "rich")]), s.key).toEqual(BUILT[s.key]);
   });
 
-  test("every one is a blueprint with nothing wrong, of the front archetype, using known modules", () => {
+  test("every one is a blueprint with nothing wrong, of the front or the server archetype, using known modules", () => {
     const known = new Set(MODULES.map((m) => m.key));
     for (const s of SITES) {
       expect(s.format).toBe("estabrek.site");
       expect(s.formatVersion).toBe(2);
       expect(blueprintProblems(s), s.key).toEqual([]);
-      expect(s.archetype).toBe("front");
+      expect(["front", "server"]).toContain(s.archetype);
       for (const key of Object.keys(s.modules)) expect(known.has(key as never), `${s.key} ${key}`).toBe(true);
     }
   });
@@ -67,7 +68,7 @@ describe("The modules", () => {
   test("each named and told in three languages, once; the thirteen archetypes too", () => {
     expect(new Set(MODULES.map((m) => m.key)).size).toBe(MODULES.length);
     for (const m of [...MODULES, ...Object.values(ARCHETYPES)]) for (const lang of LANGS) expect(m.name[lang].trim() && m.note[lang].trim(), `${"key" in m ? m.key : m.name.en} ${lang}`).toBeTruthy();
-    expect(Object.keys(ARCHETYPES)).toHaveLength(13);
+    expect(Object.keys(ARCHETYPES)).toHaveLength(14);
   });
 
   test("a site leaves out what it doesn't use: no page, no table, no section, no link to it", () => {
@@ -185,8 +186,8 @@ describe("A site's settings (wave 1)", () => {
       const list = settingsOf(s);
       const keys = list.map((x) => x.key);
       expect(new Set(keys).size, s.key).toBe(keys.length);
-      // The front's own, then each module's that the site uses.
-      expect(keys.slice(0, 3)).toEqual(["hours", "noticeOn", "notice"]);
+      // The archetype's own, then each module's that the site uses.
+      expect(keys.slice(0, s.archetype === "server" ? 2 : 3)).toEqual(s.archetype === "server" ? ["noticeOn", "notice"] : ["hours", "noticeOn", "notice"]);
       expect(keys.includes("showPrices"), s.key).toBe(!!s.modules.offers?.price);
       expect(keys.includes("bookingOpen") && keys.includes("bookingClosed"), s.key).toBe(!!s.modules.booking);
       expect(keys.includes("notifyOn") && keys.includes("notifyEmail"), s.key).toBe(!!s.modules.notify);
@@ -198,7 +199,7 @@ describe("A site's settings (wave 1)", () => {
         if (x.kind === "text") expect(typeof d).toBe("string");
       }
       // The hours start as the business's own.
-      expect(list[0].default).toEqual(s.biz.hours);
+      if (s.archetype === "front") expect(list[0].default).toEqual(s.biz.hours);
       expect(buildSite(s, { lang: "en" }).settings).toEqual(list);
     }
   });
@@ -218,8 +219,8 @@ describe("A site's settings (wave 1)", () => {
         const top = f.pages[0].tree.root.children![0];
         expect(top.props.showIf).toEqual({ setting: "noticeOn" });
         expect(JSON.stringify(top)).toContain('"fromSetting":{"text":"notice"}');
-        // The hours, wherever the pages give them.
-        expect(read.filter((m) => m.key === "hours").length, `${s.key} hours`).toBeGreaterThan(0);
+        // The hours, wherever the pages give them (a game server runs all the time: it has none).
+        if (s.archetype === "front") expect(read.filter((m) => m.key === "hours").length, `${s.key} hours`).toBeGreaterThan(0);
         // The prices go with their switch, in the lists and on each row's own page.
         if (s.modules.offers?.price) expect(read.filter((m) => m.key === "showPrices").length, s.key).toBeGreaterThanOrEqual(2);
         // The booking form while it is open, the owner's words and a call while it is closed.

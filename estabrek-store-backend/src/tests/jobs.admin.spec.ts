@@ -33,6 +33,7 @@ describe("Background jobs", () => {
       "outbox",
       "push",
       "dataFiles",
+      "gameStatus",
       "stockAlerts",
       "backup",
       "requestPhotos",

@@ -41,6 +41,7 @@ import { publishedDesignRegions } from "../../lib/storeDesign.js";
 import { shownPagesWhere, switchedOff } from "../../lib/featureGate.js";
 import { readSiteHome } from "../../lib/siteHome.js";
 import { shopTree } from "../../lib/siteSettings.js";
+import { gameView, withGameStatus } from "../../lib/gameSites.js";
 
 const r = Router();
 
@@ -357,6 +358,20 @@ return {
   };
 }
 
+/**
+ * GET /storefront/game-status/:feature — a whole game server site's status now (lib/gameSites.ts): up or down, players,
+ * name, map, the last 24 hours and a way in. The shop's «حالة السيرفر» asks it every minute. A site that is off, or
+ * isn't a game server, answers 404.
+ */
+r.get("/game-status/:feature", asyncHandler(async (req, res) => {
+  const id = String(req.params.feature).slice(0, 40);
+  const on = await prisma.feature.findFirst({ where: { id, enabled: true }, select: { id: true } });
+  const view = on ? await gameView(id) : null;
+  if (!view) return res.status(404).json({ error: "NOT_FOUND" });
+  res.setHeader("Cache-Control", "public, max-age=30");
+  res.json(view);
+}));
+
 r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asyncHandler(async (req, res) => {
   const slug = String((req.query as any).slug);
   const locale = String((req.query as any).locale ?? "ar") as ("ar"|"he"|"en");
@@ -370,13 +385,13 @@ r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asy
     if (!item || (await switchedOff()).tables.has(item.collection.id)) return res.status(404).json({ error: "NOT_FOUND" });
     const words = (v: Record<string, string> | undefined) => (v ? v[locale] ?? v.ar ?? v.en ?? v.he ?? null : null);
     // Its site's public settings (lib/siteSettings.ts): the table's, as its rows' pages are the table's.
-    const out = pageForShop({ ...item.template, slug, sections: [], translations: [] }, { tree: await shopTree(await withCollections(await withComponents(await withBlocks(item.tree))), { kind: "table", id: item.collection.id }) });
+    const out = pageForShop({ ...item.template, slug, sections: [], translations: [] }, { tree: await withGameStatus(await shopTree(await withCollections(await withComponents(await withBlocks(item.tree))), { kind: "table", id: item.collection.id }), { kind: "table", id: item.collection.id }) });
     return res.json({ ...out, name: words(item.seo.title) ?? item.template.name, seoTitle: words(item.seo.title), seoDescription: words(item.seo.description)?.slice(0, 300) ?? null, ogImageUrl: item.seo.image ?? null, collectionItem: { collection: item.collection.slug, item: item.item.slug } });
   }
 
   const out = pageForShop(page);
   // A whole site's page with its site's public settings (lib/siteSettings.ts): what a switch hides is left out, words bound to a setting are its own.
-  res.json({ ...out, tree: await shopTree(await withCollections(await withComponents(await withBlocks(out.tree as PageTree | null))), { kind: "page", id: page.id }) });
+  res.json({ ...out, tree: await withGameStatus(await shopTree(await withCollections(await withComponents(await withBlocks(out.tree as PageTree | null))), { kind: "page", id: page.id }), { kind: "page", id: page.id }) });
 }));
 
 /** GET /storefront/store-template?kind=product|category — the store's product or category page design, as published (404: none, the shop's own page then). */

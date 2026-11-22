@@ -15,7 +15,7 @@
  */
 import { z } from "zod";
 import { prisma } from "./prisma.js";
-import { SETTING_KEY } from "./pageTree.js";
+import { SETTING_KEY, isSafeHref } from "./pageTree.js";
 
 export { SETTING_KEY };
 export const SETTING_KINDS = ["toggle", "number", "text", "words", "choice", "color"] as const;
@@ -200,6 +200,10 @@ async function index(now = Date.now()): Promise<Index> {
   return cache;
 }
 
+/** Every feature that declares settings, with them (read every few seconds). */
+export async function allSiteSettings(): Promise<SiteSettings[]> {
+  return [...(await index()).features.values()];
+}
 /** A feature's settings, or null when it declares none. */
 export async function settingsOfFeature(featureId: string): Promise<SiteSettings | null> {
   return (await index()).features.get(featureId) ?? null;
@@ -254,6 +258,9 @@ export function withSettings<T>(tree: T, values: Values): T {
           const words = typeof key === "string" && Object.prototype.hasOwnProperty.call(values, key) ? asWords(values[key]) : null;
           if (words) rest[prop] = words;
         }
+        // A link from a setting (a Discord invite): only a safe one, else the element keeps its own.
+        const link = typeof fromSetting.href === "string" ? values[fromSetting.href] : undefined;
+        if (isSafeHref(link)) rest.href = (link as string).trim();
       }
       next = { ...n, props: rest };
     }

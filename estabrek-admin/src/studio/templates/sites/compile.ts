@@ -72,6 +72,7 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
   if (!/^site-[a-z0-9][a-z0-9-]{0,38}$/.test(bp.key)) out.push(`The key "${bp.key}" isn't site-<small letters, digits and ->`);
   if (!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(bp.version)) out.push(`The version "${bp.version}" isn't three numbers`);
   if (!HOMES[bp.archetype]) out.push(`The "${bp.archetype}" archetype has no home yet`);
+  if (bp.archetype === "server" && !bp.modules.status) out.push(`A game server's site needs "status"`);
   const known = new Set(MODULES.map((m) => m.key as string));
   for (const key of Object.keys(bp.modules)) if (!known.has(key)) out.push(`No module "${key}"`);
   const on = new Set(used(bp).map((m) => m.key));

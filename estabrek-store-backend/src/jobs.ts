@@ -23,6 +23,7 @@ import { checkProcessingVideos } from "./modules/admin/videos.controller.js";
 import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
 import { checkDeploy, deployWatchOff } from "./lib/deployWatch.js";
 import { purgeTrash } from "./lib/collections.js";
+import { readGameServers } from "./lib/gameSites.js";
 import { cleanRuns } from "./lib/runs.js";
 import { cleanCallKeys } from "./lib/fnCallKeys.js";
 import { cleanTasks, runTasks } from "./lib/tasks.js";
@@ -62,6 +63,8 @@ export function registerBackgroundJobs() {
   registerJob({ name: "push", group: "messages", everyMs: MIN, limits: { min: 15_000, max: HOUR }, firstMs: 20_000, run: () => sendQueuedPushes() });
   // Files shoppers uploaded that no row holds a day later (lib/shopperFiles.ts).
   registerJob({ name: "dataFiles", group: "data", everyMs: HOUR, limits: { min: 10 * MIN, max: 24 * HOUR }, firstMs: 10 * MIN, run: () => cleanFiles() });
+  // Whole game server sites (lib/gameSites.ts): each one that is on, asked once a minute; readings kept two days.
+  registerJob({ name: "gameStatus", group: "data", everyMs: MIN, limits: { min: 30_000, max: 15 * MIN }, firstMs: 30_000, run: () => readGameServers() });
 
   const stockEvery = envMs("STOCK_ALERT_INTERVAL_MS", 2 * MIN);
   registerJob({
