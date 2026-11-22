@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { COPY_FOLDERS, NAME_RULE, PRE_DEPLOY, adminName, copyPlan, copyUrls, copyVariables, madeSecret, nameProblem, tidyName } from "../lib/press.js";
+import { COPY_FOLDERS, NAME_RULE, PRE_DEPLOY, START_SITE_VAR, adminName, copyPlan, copyUrls, copyVariables, madeSecret, nameProblem, startSiteOf, tidyName } from "../lib/press.js";
 import { PRESS_QUERIES } from "../lib/pressCheck.js";
 
 // A client's copy at the press, by itself: the names it is asked for, the addresses they give,
@@ -73,6 +73,20 @@ describe("A copy's variables", () => {
     expect(statSync(join(ROOT, COPY_FOLDERS.api, PRE_DEPLOY.replace(/^node /, ""))).isFile()).toBe(true);
   });
 
+  test("a copy with a whole site picked for it: its server alone is told which, in a variable its code reads", () => {
+    const withSite = copyVariables(copyUrls("rose-api", "rose"), "site-restaurant");
+    expect(withSite.api.filter((v) => !vars.api.some((w) => w.name === v.name))).toEqual([{ name: "SETUP_SITE", from: "fixed", value: "site-restaurant" }]);
+    expect(START_SITE_VAR).toBe("SETUP_SITE");
+    expect(vars.api.some((v) => v.name === START_SITE_VAR)).toBe(false);
+    expect(withSite.shop).toEqual(vars.shop);
+    expect(withSite.admin).toEqual(vars.admin);
+    expect(readFileSync(join(ROOT, COPY_FOLDERS.api, "src/config/env.ts"), "utf8")).toMatch(/\bSETUP_SITE:/);
+    // As the server reads it back: a site's key, or nothing (a key its admin doesn't know opens the setup as a store).
+    expect(startSiteOf(" site-restaurant ")).toBe("site-restaurant");
+    expect(startSiteOf("site-dental-clinic")).toBe("site-dental-clinic");
+    for (const bad of [undefined, null, "", "restaurant", "site-", "site--x", "site-Rest", "site-x/../y", `site-${"x".repeat(60)}`]) expect(startSiteOf(bad), String(bad)).toBeNull();
+  });
+
   test("a secret made for a copy is long, and new each time", () => {
     const a = madeSecret();
     expect(a).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -82,12 +96,19 @@ describe("A copy's variables", () => {
 
 describe("The plan", () => {
   test("in order: the database, the server, its owner's account, the shop, the admin", () => {
-    const plan = copyPlan({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", branch: "main", region: "aws-eu-central-1" });
+    const plan = copyPlan({ label: "Rose", server: "rose-api", site: "rose", repo: "acme/store", branch: "main", region: "aws-eu-central-1", startSite: null });
     expect(plan.steps.map((s) => s.id)).toEqual(["neon", "railway", "owner", "vercel", "cloudflare"]);
     expect(plan.steps[2].facts).toEqual([["account", "https://rose-api.up.railway.app"], ["signin", "https://rose-admin.pages.dev/"]]);
     expect(plan.steps[1].facts).toEqual([["project", "Rose"], ["service", "api"], ["from", "acme/store (main)"], ["folder", "estabrek-store-backend"], ["before", "node scripts/migrate-deploy.mjs"], ["address", "https://rose-api.up.railway.app"]]);
     expect(plan.steps[4].facts).toContainEqual(["project", "rose-admin"]);
     expect(plan.steps.map((s) => s.variables?.length)).toEqual([undefined, 11, undefined, 5, 2]);
+  });
+
+  test("a whole site picked for it: its owner's setup opens on it, and its server is told", () => {
+    const plan = copyPlan({ label: "Abu Samir", server: "samir-api", site: "samir", repo: "acme/store", branch: "main", region: "aws-eu-central-1", startSite: "site-restaurant" });
+    expect(plan.steps[2].facts).toEqual([["account", "https://samir-api.up.railway.app"], ["signin", "https://samir-admin.pages.dev/"], ["opens", "site-restaurant"]]);
+    expect(plan.steps[1].variables).toContainEqual({ name: "SETUP_SITE", from: "fixed", value: "site-restaurant" });
+    expect(plan.steps.map((s) => s.variables?.length)).toEqual([undefined, 12, undefined, 5, 2]);
   });
 
   test("its questions only read: queries of its own, with the names as values", () => {

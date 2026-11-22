@@ -363,7 +363,7 @@ const STEPS: Record<StepId, (c: Ctx) => Promise<void>> = {
     const got = await c.ask("neon", call("GET", `${NEON}/projects/${encodeURIComponent(c.made.neon!.project!)}/connection_uri${qs([["database_name", NEON_DB.database], ["role_name", NEON_DB.role], ["pooled", "true"]])}`));
     const database = text(part(got.body, "uri")) ?? undefined;
     // The shop and the admin aren't made yet: the addresses their names give (each checked free beforehand; told again at the end if they came out otherwise).
-    const variables: Record<string, string> = Object.fromEntries(copyVariables(addressesOf(c.input, c.made)).api.map((v) => [v.name, valueOf(v, c.secrets, database)]));
+    const variables: Record<string, string> = Object.fromEntries(copyVariables(addressesOf(c.input, c.made), c.input.startSite).api.map((v) => [v.name, valueOf(v, c.secrets, database)]));
     // Its owner's way in: the setup opens with this code alone, then closes for good.
     variables.SETUP_CODE = c.secrets.SETUP_CODE;
     await c.ask("railway", rail(MAKE_QUERIES.variables, { i: { projectId: m.project, environmentId: m.environment, serviceId: m.service, variables, skipDeploys: true } }));
@@ -468,7 +468,7 @@ export async function makeShopSteps(o: {
   ask: (c: ReadyCall) => Promise<Asked>;
 }): Promise<NonNullable<Made["vercel"]>> {
   const ctx: Ctx = {
-    input: { label: o.site, server: o.site, site: o.site, repo: o.repo, branch: o.branch, region: "" },
+    input: { label: o.site, server: o.site, site: o.site, repo: o.repo, branch: o.branch, region: "", startSite: null },
     began: o.began,
     made: { railway: { address: o.api }, cloudflare: { address: o.admin }, vercel: o.vercel },
     secrets: { REVALIDATE_SECRET: o.secret } as CopySecrets,
@@ -500,7 +500,7 @@ export async function startCopy(input: CopyInput, via: Via, by: string | null, o
   const secrets: CopySecrets = { ...newCopySecrets(), OWNER_PASSWORD: owner.password };
   const made: Made = { owner: { name: owner.name, email: owner.email } };
   const row = await prisma.clientCopy.create({
-    data: { label: input.label, server: input.server, site: input.site, repo: input.repo, branch: input.branch, region: input.region, via: asJson(via), steps: asJson(freshSteps()), made: asJson(made), sealed: seal(JSON.stringify(secrets)), byEmail: by },
+    data: { label: input.label, server: input.server, site: input.site, repo: input.repo, branch: input.branch, region: input.region, startSite: input.startSite, via: asJson(via), steps: asJson(freshSteps()), made: asJson(made), sealed: seal(JSON.stringify(secrets)), byEmail: by },
   });
   making.add(row.id);
   void makeCopy(row.id);
@@ -549,7 +549,7 @@ export async function makeCopy(id: string): Promise<void> {
       }
     };
     const ctx: Ctx = {
-      input: { label: row.label, server: row.server, site: row.site, repo: row.repo, branch: row.branch, region: row.region },
+      input: { label: row.label, server: row.server, site: row.site, repo: row.repo, branch: row.branch, region: row.region, startSite: row.startSite },
       began: row.createdAt.getTime(),
       made,
       secrets,
@@ -617,6 +617,8 @@ export type CopyView = {
   repo: string;
   branch: string;
   region: string;
+  /** The whole site its first setup opens on (null: it asks). */
+  startSite: string | null;
   /** "stopped" also when it says making and no one is: the server stopped while making it. */
   state: CopyState;
   steps: MakeStep[];
@@ -657,6 +659,7 @@ export async function copyView(row: Row, withCode = false): Promise<CopyView> {
     repo: row.repo,
     branch: row.branch,
     region: row.region,
+    startSite: row.startSite,
     state,
     steps,
     addresses,

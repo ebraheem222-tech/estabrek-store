@@ -725,6 +725,8 @@ model ClientCopy {
   repo      String
   branch    String
   region    String
+  /// The whole site its first setup opens on (the admin's site key, e.g. site-restaurant), or null: it asks.
+  startSite String?
   /// The ready connection each part is made through: { neon, railway, vercel, cloudflare }.
   via       Json
   /// "making" | "stopped" (a step said no: tried again from there) | "made"

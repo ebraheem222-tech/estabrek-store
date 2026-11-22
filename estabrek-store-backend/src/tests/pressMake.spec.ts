@@ -286,6 +286,8 @@ describe("Making a client's copy", () => {
     for (const name of ["JWT_SECRET", "WEBHOOK_TOKEN", "CODES_ENCRYPTION_KEY", "BACKUP_ENCRYPTION_KEY", "STOREFRONT_REVALIDATE_SECRET"]) expect(vars[name], name).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(new Set(["JWT_SECRET", "WEBHOOK_TOKEN", "CODES_ENCRYPTION_KEY", "BACKUP_ENCRYPTION_KEY", "STOREFRONT_REVALIDATE_SECRET"].map((n) => vars[n])).size).toBe(5);
     expect(vars.SETUP_CODE).toMatch(/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/);
+    // No site picked for it: its setup asks.
+    expect(vars).not.toHaveProperty("SETUP_SITE");
     // Built from the same repository, set to the server's real address; the shop and the server share one secret.
     const shopEnv = Object.fromEntries((world.vercel!.env as Array<{ key: string; value: string; type: string }>).map((e) => [e.key, e]));
     expect(sent.find((s) => s.path.startsWith("/v11/projects"))!.body).toEqual({ name: "rose", framework: "nextjs", rootDirectory: "estabrek-storefront", gitRepository: { type: "github", repo: "acme/store" } });
@@ -396,6 +398,15 @@ describe("Making a client's copy", () => {
     }
     expect(v.state).toBe("stopped");
     expect(v.steps.find((s) => s.id === "owner.account")).toMatchObject({ state: "failed", why: "The setup code isn't right" });
+  });
+
+  test("a whole site picked for it: kept with the copy, its server told which, its page saying it", async () => {
+    await connectAll();
+    const v = await settled((await make({ startSite: "site-dental-clinic" })).body.id);
+    expect(v.state).toBe("made");
+    expect(world.railway.variables!.SETUP_SITE).toBe("site-dental-clinic");
+    expect((v as View & { startSite: string | null }).startSite).toBe("site-dental-clinic");
+    expect((await prisma.clientCopy.findUniqueOrThrow({ where: { id: v.id } })).startSite).toBe("site-dental-clinic");
   });
 
   test("a shop that came out at another address: the server is told it, and starts again with it", async () => {

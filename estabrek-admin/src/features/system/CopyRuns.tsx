@@ -11,7 +11,7 @@ import { say } from "../../studio/say";
 import * as API from "../../api/copies.api";
 import { PRESS_KINDS, type CopyView, type MakeStep } from "../../api/copies.api";
 import { kindName } from "../connections/readyText";
-import { copyStateName, makeRefusedText, makeStepName, stepStateName, whyText } from "./copiesText";
+import { copyStateName, makeRefusedText, makeStepName, startSiteName, stepStateName, whyText } from "./copiesText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const tone: Record<string, string> = { made: "text-emerald-300", stopped: "text-amber-300", making: "text-sky-300" };
@@ -40,6 +40,12 @@ export function CopyRuns({ open, onOpen }: { open: string | null; onOpen: (id: s
               <button type="button" className="flex w-full flex-wrap items-baseline justify-between gap-2 text-start" onClick={() => onOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
                 <span className="min-w-0">
                   <bdi className="font-medium">{c.label}</bdi> <bdi dir="ltr" className="text-xs text-white/60">{c.site}</bdi>
+                  {c.startSite ? (
+                    <span className="text-xs text-white/60" data-testid={`copies-made-${c.site}-opens`}>
+                      {" · "}
+                      {startSiteName(c.startSite)}
+                    </span>
+                  ) : null}
                 </span>
                 <span className={`text-sm ${tone[c.state] ?? ""}`}>
                   {copyStateName(c.state)}

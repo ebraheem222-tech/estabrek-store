@@ -14,7 +14,10 @@ import { say } from "../../studio/say";
 import * as API from "../../api/copies.api";
 import { PRESS_KINDS, type CopyPlan, type PlanAsk, type PressKind } from "../../api/copies.api";
 import { kindName } from "../connections/readyText";
-import { checkName, factName, fromText, makeRefusedText, refusedText, stepName, tidyName, whyText } from "./copiesText";
+import { checkName, factName, fromText, makeRefusedText, refusedText, startSiteName, stepName, tidyName, whyText } from "./copiesText";
+import { adminLang } from "../../lib/lang";
+import { SITES, SITE_FIELDS, type SiteField } from "../../studio/templates/sites";
+import { siteKindName } from "../setup/siteSetup";
 import { CopyRuns } from "./CopyRuns";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
@@ -37,6 +40,8 @@ export default function CopiesPage() {
   const [server, setServer] = useState("");
   const [site, setSite] = useState("");
   const [region, setRegion] = useState("aws-eu-central-1");
+  // The whole site the client's first setup opens on ("": they pick it there, an online store or a site).
+  const [startSite, setStartSite] = useState("");
   const [repo, setRepo] = useState<string | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
   const [via, setVia] = useState<Partial<Record<PressKind, string>>>({});
@@ -140,7 +145,7 @@ export default function CopiesPage() {
           e.preventDefault();
           if (!can) return;
           const chosen = Object.fromEntries(PRESS_KINDS.map((k) => [k, picked(k)]).filter(([, id]) => id));
-          planning.mutate({ label: name.trim(), server: serverName, site: siteName, region, repo: repoNow.trim(), branch: branchNow.trim() || "main", via: chosen });
+          planning.mutate({ label: name.trim(), server: serverName, site: siteName, region, repo: repoNow.trim(), branch: branchNow.trim() || "main", ...(startSite ? { startSite } : {}), via: chosen });
         }}
         data-testid="copies-form"
       >
@@ -171,6 +176,7 @@ export default function CopiesPage() {
             </span>
           </label>
         </div>
+        <StartSitePicker value={startSite} onChange={setStartSite} />
         <label className="block space-y-1">
           <span className={label}>{say("منطقة قاعدة البيانات|The database's region|האזור של מסד הנתונים")}</span>
           <select className={field} dir="ltr" value={region} onChange={(e) => setRegion(e.target.value)} data-testid="copies-region">
@@ -225,6 +231,34 @@ export default function CopiesPage() {
   );
 }
 
+/** What the client's first setup opens on: they pick it there (an online store or a whole site), or a site picked now. */
+function StartSitePicker({ value, onChange }: { value: string; onChange: (key: string) => void }) {
+  const lang = adminLang();
+  const fields = (Object.keys(SITE_FIELDS) as SiteField[]).filter((f) => SITES.some((s) => s.field === f));
+  return (
+    <label className="block space-y-1">
+      <span className={label}>{say("شو بيكون موقع الزبون؟|What will the client's site be?|מה יהיה האתר של הלקוח?")}</span>
+      <select className={field} value={value} onChange={(e) => onChange(e.target.value)} data-testid="copies-start-site">
+        <option value="">{say("بيختاره هو بأول إعداد (متجر أونلاين أو موقع كامل)|They pick it at their first setup (an online store or a whole site)|הוא יבחר בהגדרה הראשונה (חנות אונליין או אתר שלם)")}</option>
+        {fields.map((f) => (
+          <optgroup key={f} label={SITE_FIELDS[f][lang]}>
+            {SITES.filter((s) => s.field === f).map((s) => (
+              <option key={s.key} value={s.key}>
+                {siteKindName(s, lang)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <span className="block text-xs text-white/60" data-testid="copies-start-site-note">
+        {value
+          ? say("أول إعداد إله بيفتح على هالموقع مختار، وهو بيكتب تفاصيله (الاسم، التلفون…) وبيقدر يغيّره.|Their first setup opens with this site picked; they type their own details (name, phone…) and may still change it.|ההגדרה הראשונה שלו נפתחת עם האתר הזה בחור; הוא כותב את הפרטים שלו (שם, טלפון…) ועדיין יכול לשנות.")
+          : say("أول إعداد إله بيسأله «شو نوع موقعك؟».|Their first setup asks them «What kind of site is it?».|ההגדרה הראשונה שלו שואלת «איזה סוג אתר זה?».")}
+      </span>
+    </label>
+  );
+}
+
 function PlanView({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAsk | null; onChecks: (checks: CopyPlan["checks"]) => void; onMade: (id: string) => void }) {
   return (
     <section className={`${box} space-y-4`} data-testid="copies-plan">
@@ -258,7 +292,7 @@ function PlanView({ plan, ask, onChecks, onMade }: { plan: CopyPlan; ask: PlanAs
                 <div key={k} className="contents">
                   <dt className="text-white/60">{factName(k)}</dt>
                   <dd>
-                    <bdi dir={k === "project" ? "auto" : "ltr"}>{val}</bdi>
+                    {k === "opens" ? <bdi data-testid="copies-opens">{startSiteName(val)}</bdi> : <bdi dir={k === "project" ? "auto" : "ltr"}>{val}</bdi>}
                   </dd>
                 </div>
               ))}

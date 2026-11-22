@@ -51,7 +51,22 @@ export const COPY_FOLDERS = { api: "estabrek-store-backend", shop: "estabrek-sto
 /** Run before each of the server's deploys: the database brought up to date (an empty one included). */
 export const PRE_DEPLOY = "node scripts/migrate-deploy.mjs";
 
-export type CopyInput = { label: string; server: string; site: string; repo: string; branch: string; region: string };
+/**
+ * A whole site's key (the admin's studio/templates/sites, e.g. site-restaurant): the site a copy's first setup
+ * opens on, picked for the client while the copy is made. Only its shape is checked here: a key the copy's admin
+ * doesn't know opens the setup as an online store, as it would have without one.
+ */
+export const START_SITE_RULE = /^site-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/** The server variable that carries it to the copy (read by its setup's status, modules/admin/setup.controller.ts). */
+export const START_SITE_VAR = "SETUP_SITE";
+/** The site a server's own first setup opens on, from its START_SITE_VAR as it is set (null: none, or not a site's key). */
+export function startSiteOf(raw: string | null | undefined): string | null {
+  const key = raw?.trim() ?? "";
+  return key.length <= 60 && START_SITE_RULE.test(key) ? key : null;
+}
+
+/** `startSite`: the whole site the copy's first setup opens on (null: it asks, an online store picked). */
+export type CopyInput = { label: string; server: string; site: string; repo: string; branch: string; region: string; startSite: string | null };
 export type CopyUrls = { api: string; shop: string; admin: string };
 
 /**
@@ -73,9 +88,13 @@ export type VarFrom = "fixed" | "url" | "made" | "shared" | "neon";
 export type CopyVar = { name: string; from: VarFrom; /** Shown only for fixed and url values: the rest are secrets. */ value?: string };
 export type CopyVars = { api: CopyVar[]; shop: CopyVar[]; admin: CopyVar[] };
 
-/** Every variable each part of a copy gets, linking the three to each other and to their database. */
-export function copyVariables(urls: CopyUrls): CopyVars {
+/**
+ * Every variable each part of a copy gets, linking the three to each other and to their database.
+ * `startSite`: the whole site its first setup opens on, given to the server when one was picked.
+ */
+export function copyVariables(urls: CopyUrls, startSite: string | null = null): CopyVars {
   const v1 = `${urls.api}/v1`;
+  const opens: CopyVar[] = startSite ? [{ name: START_SITE_VAR, from: "fixed", value: startSite }] : [];
   return {
     api: [
       { name: "NODE_ENV", from: "fixed", value: "production" },
@@ -90,6 +109,7 @@ export function copyVariables(urls: CopyUrls): CopyVars {
       { name: "STOREFRONT_REVALIDATE_URL", from: "url", value: `${urls.shop}/api/revalidate` },
       { name: "STOREFRONT_REVALIDATE_SECRET", from: "shared" },
       { name: "ADMIN_APP_URL", from: "url", value: urls.admin },
+      ...opens,
     ],
     shop: [
       { name: "API_BASE_URL", from: "url", value: v1 },
@@ -114,15 +134,17 @@ export type PlanStep = { id: PressKind | "owner"; facts: Array<[string, string]>
 /** What making the copy will do, in the order it is done (lib/pressMake.ts), before anything is done. */
 export function copyPlan(input: CopyInput): { urls: CopyUrls; steps: PlanStep[] } {
   const urls = copyUrls(input.server, input.site);
-  const vars = copyVariables(urls);
+  const vars = copyVariables(urls, input.startSite);
   const from = `${input.repo} (${input.branch})`;
+  // The site its setup opens on, when one was picked (the page says it by its name).
+  const opens: Array<[string, string]> = input.startSite ? [["opens", input.startSite]] : [];
   return {
     urls,
     steps: [
       { id: "neon", facts: [["project", input.label], ["region", input.region], ["postgres", "17"]] },
       { id: "railway", facts: [["project", input.label], ["service", "api"], ["from", from], ["folder", COPY_FOLDERS.api], ["before", PRE_DEPLOY], ["address", urls.api]], variables: vars.api },
       // The new store's owner account, made on its server once it answers, with the email and password typed when it is made.
-      { id: "owner", facts: [["account", urls.api], ["signin", `${urls.admin}/`]] },
+      { id: "owner", facts: [["account", urls.api], ["signin", `${urls.admin}/`], ...opens] },
       { id: "vercel", facts: [["project", input.site], ["from", from], ["folder", COPY_FOLDERS.shop], ["framework", "Next.js"], ["address", urls.shop]], variables: vars.shop },
       { id: "cloudflare", facts: [["project", adminName(input.site)], ["from", from], ["folder", COPY_FOLDERS.admin], ["build", "npm run build"], ["output", "dist"], ["address", urls.admin]], variables: vars.admin },
     ],

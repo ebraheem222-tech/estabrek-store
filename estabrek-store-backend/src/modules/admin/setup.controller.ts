@@ -9,6 +9,8 @@ import { SetupBody, SetupError, otherLangs, sectionRows, wordIn, type CategorySp
 import { adminIdOf, getOrCreateSettings, keepRevision, triggerSettingsRevalidate } from "./settings.controller.js";
 import { capturePageRevision, triggerCmsRevalidate } from "./pages.controller.js";
 import { blockSlug } from "../../lib/pageBlocks.js";
+import { startSiteOf } from "../../lib/press.js";
+import { env } from "../../config/env.js";
 
 /**
  * /v1/admin/setup — setting up a new store (settings:read to look; the owner applies).
@@ -40,6 +42,8 @@ r.get(
       hasDesign: Boolean(header.storeDesign && typeof header.storeDesign === "object" && ((header.storeDesign as { headerId?: string; footerId?: string }).headerId || (header.storeDesign as { footerId?: string }).footerId)),
       owner: Boolean((req as any).access?.owner),
       mainLanguage: mainLanguage(header),
+      // A client's copy made with a whole site picked for it (lib/press.ts): its first setup opens on that site.
+      startSite: setup?.done ? null : startSiteOf(env.SETUP_SITE),
     });
   }),
 );

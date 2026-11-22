@@ -8,6 +8,7 @@ import { getOrCreateSiteRow } from "../lib/siteRow.js";
 import { forgetFeatureGate } from "../lib/featureGate.js";
 import { forgetTriggers } from "../lib/fnTriggers.js";
 import { cacheDel } from "../lib/cache.js";
+import { env } from "../config/env.js";
 
 // The store setup's «شو نوع موقعك؟» → a whole site (sites wave 0.4), with the database: the admin's own calls
 // in the wizard's order (estabrek-admin features/setup/siteSetupRun.ts), built by the admin's own code: the
@@ -48,6 +49,7 @@ beforeAll(async () => {
   before = { header: s.header, siteName: s.siteName, logoUrl: s.logoUrl, primaryNavId: s.primaryNavId, footerNavId: s.footerNavId };
 });
 afterAll(async () => {
+  env.SETUP_SITE = undefined;
   await clean();
   const s = await getOrCreateSiteRow();
   await prisma.siteSettings.update({ where: { id: s.id }, data: { header: before.header as never, siteName: before.siteName ?? undefined, logoUrl: before.logoUrl, primaryNavId: before.primaryNavId, footerNavId: before.footerNavId } });
@@ -60,11 +62,23 @@ describe("A new store set up as a whole site", () => {
     const name = { ar: "أبو سمير", en: "Abu Samir's", he: "Abu Samir's" };
     const choices = { biz: { name, phone: "050-123-4567" }, modules: sites.choosable(bp).map((m) => m.key).filter((k) => k !== "reviews"), look: 2, motion: "rich" };
 
+    // A client's copy made with the restaurant picked for it (lib/press.ts): its setup says so until it is done.
+    const row = await getOrCreateSiteRow();
+    const { setup: _done, ...unset } = (row.header ?? {}) as Obj;
+    await prisma.siteSettings.update({ where: { id: row.id }, data: { header: unset as never } });
+    env.SETUP_SITE = "site-restaurant";
+    expect((await request(app).get("/v1/admin/setup/status")).body.startSite).toBe("site-restaurant");
+    env.SETUP_SITE = "not a site";
+    expect((await request(app).get("/v1/admin/setup/status")).body.startSite).toBeNull();
+    env.SETUP_SITE = "site-restaurant";
+
     // The store's part: its name and a theme that fits, nothing to sell.
     const res = await request(app).post("/v1/admin/setup/apply").send(setup.siteSetupRequest({ bp, name, assistant: { enabled: true, persona: null } }));
     expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(200);
     expect(res.body.made).toEqual({ categories: 0, types: 0, pages: 0, menuItems: 0 });
-    expect((await request(app).get("/v1/admin/setup/status")).body.setup).toMatchObject({ done: true, industry: "food" });
+    const status = (await request(app).get("/v1/admin/setup/status")).body;
+    expect(status.setup).toMatchObject({ done: true, industry: "food" });
+    expect(status.startSite).toBeNull();
     const s = await getOrCreateSiteRow();
     expect((s.header as Obj).storeTheme).toMatchObject({ id: "coffee-roast" });
     expect((s.header as Obj).identity.name).toMatchObject({ ar: "أبو سمير", en: "Abu Samir's" });

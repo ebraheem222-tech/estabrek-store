@@ -18,9 +18,10 @@ export type CopiesView = {
 export type CopyVar = { name: string; from: "fixed" | "url" | "made" | "shared" | "neon"; value?: string };
 export type PlanStep = { id: PressKind | "owner"; facts: Array<[string, string]>; variables?: CopyVar[] };
 export type CopyCheck = { id: string; kind: PressKind; ok: boolean; why: string | null };
-export type CopyInput = { label: string; server: string; site: string; repo: string; branch: string; region: string };
+/** `startSite`: the whole site the copy's first setup opens on (a site's key, studio/templates/sites), or null: it asks. */
+export type CopyInput = { label: string; server: string; site: string; repo: string; branch: string; region: string; startSite?: string | null };
 export type CopyPlan = { input: CopyInput; via: Partial<Record<PressKind, string>>; urls: { api: string; shop: string; admin: string }; steps: PlanStep[]; checks: CopyCheck[]; ready: boolean };
-export type PlanAsk = { label: string; server: string; site: string; repo?: string; branch?: string; region?: string; via?: Partial<Record<PressKind, string>> };
+export type PlanAsk = { label: string; server: string; site: string; repo?: string; branch?: string; region?: string; startSite?: string | null; via?: Partial<Record<PressKind, string>> };
 
 const BASE = "/admin/system/copies";
 
@@ -43,6 +44,8 @@ export type CopyView = {
   repo: string;
   branch: string;
   region: string;
+  /** The whole site its first setup opens on (null: it asks). */
+  startSite?: string | null;
   state: CopyState;
   steps: MakeStep[];
   addresses: { api: string; shop: string; admin: string };

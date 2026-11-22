@@ -26,6 +26,9 @@ export const SITE_THEMES: Record<string, string> = {
   "site-creative-agency": "white-gallery",
 };
 
+/** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */
+export const siteKindName = (bp: SiteBlueprint, lang: "ar" | "en" | "he") => bp.name[lang].split(":")[0].trim();
+
 /** The kind of store a site is set up as (what the assistant fits and the identity says): its library family's. */
 export const packOfSite = (bp: SiteBlueprint): Pack => PACKS.find((p) => p.id === bp.fam) ?? PACKS.find((p) => p.id === "general") ?? PACKS[0];
 

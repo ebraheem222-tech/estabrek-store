@@ -1,6 +1,9 @@
 // نسخ الزباين's words (the page is features/system/CopiesPage.tsx; the plan comes from backend lib/press.ts). A word
 // the page has none for is shown as the server says it, so a fact or a check added there still shows.
 import { say } from "../../studio/say";
+import { adminLang } from "../../lib/lang";
+import { siteByKey } from "../../studio/templates/sites";
+import { siteKindName } from "../setup/siteSetup";
 
 /** Each part of a copy, by the service that holds it. */
 const STEP: Record<string, string> = {
@@ -25,7 +28,14 @@ const FACT: Record<string, string> = {
   setup: "بتفتح على الإعداد (حسابه، وبعدين متجره)|Opens on its setup (their account, then the store)|נפתח על ההגדרה (החשבון שלו, ואז החנות)",
   account: "بينعمل على السيرفر أول ما يشتغل، بالإيميل وكلمة السر اللي بتكتبهم تحت|Made on the server as soon as it runs, with the email and password you type below|נוצר בשרת ברגע שהוא עולה, עם האימייל והסיסמה שתכתבו למטה",
   signin: "بيفوت من هون|Signs in here|נכנס מכאן",
+  opens: "إعداده بيفتح على|Its setup opens on|ההגדרה שלו נפתחת על",
 };
+/** The site a copy's setup opens on, by its kind («مطعم»); a key this admin doesn't know, as it is. */
+export function startSiteName(key: string): string {
+  const bp = siteByKey(key);
+  return bp ? siteKindName(bp, adminLang()) : key;
+}
+
 /** Where a secret's value comes from (a shown value needs no words). */
 const FROM: Record<string, string> = {
   made: "سر جديد بينعمل للنسخة، وما بينعرض لحدا|A new secret made for the copy, shown to no one|סוד חדש שנוצר לעותק, לא מוצג לאף אחד",
