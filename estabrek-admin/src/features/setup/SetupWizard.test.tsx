@@ -4,11 +4,12 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SetupWizard from "./SetupWizard";
 
-const m = vi.hoisted(() => ({ status: vi.fn(), settings: vi.fn(), apply: vi.fn(), pages: vi.fn(), imported: vi.fn(), templates: vi.fn(), cloud: vi.fn(), cloudSave: vi.fn(), shop: vi.fn(), opens: vi.fn() }));
+const m = vi.hoisted(() => ({ status: vi.fn(), settings: vi.fn(), apply: vi.fn(), pages: vi.fn(), imported: vi.fn(), templates: vi.fn(), cloud: vi.fn(), cloudSave: vi.fn(), shop: vi.fn(), opens: vi.fn(), install: vi.fn(), save: vi.fn(), home: vi.fn(), publish: vi.fn() }));
 vi.mock("../../api/shop.api", () => ({ getShopLink: m.shop, makeShopLink: vi.fn(), followShop: vi.fn(), shopOpensHere: m.opens }));
 vi.mock("../../api/setup.api", () => ({ SETUP_LATER_KEY: "setup-later", getSetupStatus: m.status, applySetup: m.apply }));
 vi.mock("../../api/settings.api", () => ({ getSettings: m.settings }));
-vi.mock("../../api/pages.api", () => ({ listPages: m.pages }));
+vi.mock("../../api/pages.api", () => ({ listPages: m.pages, updatePage: m.publish }));
+vi.mock("../../api/myFeatures.api", () => ({ installTemplate: m.install, saveFeature: m.save, makeSiteHome: m.home }));
 vi.mock("../../api/storeTemplates.api", () => ({ getStoreTemplateImport: m.imported, getStoreTemplates: m.templates }));
 vi.mock("../../api/http", () => ({ getApiErrorMessage: (e: Error) => e.message }));
 vi.mock("../../studio/storeThemes", () => ({ shopOrigin: () => "https://shop.example.com" }));
@@ -65,15 +66,21 @@ test("the exact reference selected in the editor is preselected without importin
   expect(await screen.findByText("reference-neural-glass")).toBeInTheDocument();
   expect(m.imported).not.toHaveBeenCalled();expect(m.apply).not.toHaveBeenCalled();
 });
-/** The first step: the store's own shop, here one that opens to this admin. */
+/** The first steps: the store's own shop, here one that opens to this admin, then «شو نوع موقعك؟» (a store). */
 async function pastShop() {
   await screen.findByTestId("setup-shop-ready");
   fireEvent.click(screen.getByTestId("setup-next"));
+  expect((await screen.findByTestId("setup-kind")).getAttribute("data-picked")).toBe("store");
+  fireEvent.click(screen.getByTestId("setup-next"));
 }
-test("the store's own shop comes first; one that opens to this admin is said so, then what it sells", async () => {
+test("the store's own shop comes first; one that opens to this admin is said so, then what kind of site, then what it sells", async () => {
   start();
   expect((await screen.findByTestId("setup-shop-ready")).textContent).toContain("shop.example.com");
   expect(screen.getAllByRole("listitem")[0].textContent).toMatch(/1\. (Your shop|متجرك)/);
+  fireEvent.click(screen.getByTestId("setup-next"));
+  // An online store unless a whole site is picked.
+  expect(await screen.findByTestId("setup-kind")).toBeInTheDocument();
+  expect(screen.getByTestId("setup-kind-store").getAttribute("aria-checked")).toBe("true");
   fireEvent.click(screen.getByTestId("setup-next"));
   expect(await screen.findByTestId("setup-pack-fashion")).toBeInTheDocument();
 });
