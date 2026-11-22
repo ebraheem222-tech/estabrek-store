@@ -111,6 +111,19 @@ export const PANEL = {
   bookingClose: w("سكّر الحجز أونلاين", "Close online booking", "לסגור הזמנה אונליין"),
   bookingOpen: w("افتح الحجز أونلاين", "Open online booking", "לפתוח הזמנה אונליין"),
   bookingCloseNote: w("صفحة الحجز بتقول إنه مسكّر وبتعرض التلفون.", "The booking page says it's closed and gives the phone.", "עמוד ההזמנה אומר שהיא סגורה ומציג את הטלפון."),
+  board: w("الحجوزات", "Bookings", "הזמנות"),
+  people: w("الزباين", "Customers", "לקוחות"),
+  reports: w("التقارير", "Reports", "דוחות"),
+  person: w("صفحة زبون", "A customer's page", "דף לקוח"),
+  theirMessages: w("رسائله", "Their messages", "ההודעות שלהם"),
+  theirBookings: w("حجوزاته", "Their bookings", "ההזמנות שלהם"),
+  calendar: w("تقويم الحجوزات", "Bookings calendar", "לוח ההזמנות"),
+  bookingBoard: w("الحجوزات حسب حالتها", "Bookings by their state", "הזמנות לפי מצב"),
+  messagesDaily: w("رسائل كل يوم", "Messages a day", "הודעות ביום"),
+  bookingsDaily: w("طلبات حجز كل يوم", "Booking requests a day", "בקשות הזמנה ביום"),
+  bookingsBy: w("الحجوزات حسب النوع", "Bookings by kind", "הזמנות לפי סוג"),
+  messagesBy: w("الرسائل حسب حالتها", "Messages by their state", "הודעות לפי מצב"),
+  branchesMap: w("الفروع عالخريطة", "The branches on the map", "הסניפים במפה"),
 };
 
 /** A review's stars, as a choice field's options. */

@@ -119,10 +119,28 @@ export type PanelPart =
   | { kind: "queue"; key: string; title: W; table: string; where: PanelCond[]; show: string[]; decisions: PanelDecision[]; empty?: W; limit?: number }
   | { kind: "view"; key: string; title: W; table: string; where?: PanelCond[]; columns: string[]; sort?: { field: string; dir: "asc" | "desc" }; limit?: number }
   | { kind: "settings"; key: string; title?: W; keys: string[] }
-  | { kind: "actions"; key: string; title?: W; items: PanelAction[] };
-export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings"; parts: PanelPart[] };
-/** What a module brings to its site's panel: numbers and actions joined with the others', its own queues and tables. */
-export type PanelBits = { numbers?: PanelNumber[]; today?: PanelPart[]; lists?: PanelPart[]; actions?: PanelAction[] };
+  | { kind: "actions"; key: string; title?: W; items: PanelAction[] }
+  /** Rows a day over the last days, split by a choice's options. */
+  | { kind: "chart"; key: string; title: W; table: string; where?: PanelCond[]; days?: number; split?: string }
+  /** Rows in columns by a choice's options; a card moves to another column. */
+  | { kind: "kanban"; key: string; title: W; table: string; where?: PanelCond[]; field: string; show: string[]; limit?: number }
+  /** Rows on a month by a date; a row moves to another day. */
+  | { kind: "calendar"; key: string; title: W; table: string; where?: PanelCond[]; date: string; show: string[]; color?: string }
+  /** Everything about one person (by a phone or an email) across the site's tables. */
+  | { kind: "people"; key: string; title: W; by: string; name?: string; tables: PanelPeopleTable[] }
+  /** A period's rows counted by a choice's options, and the period's rows as a file. */
+  | { kind: "report"; key: string; title: W; table: string; where?: PanelCond[]; by: string; columns: string[] }
+  /** Rows with an address, each on a map. */
+  | { kind: "map"; key: string; title: W; table: string; where?: PanelCond[]; label: string; address: string; show?: string[] }
+  /** A code read by the camera (or typed) finds a row; buttons decide it. */
+  | { kind: "scanner"; key: string; title: W; table: string; match: string; show: string[]; decisions: PanelDecision[] };
+export type PanelPeopleTable = { table: string; title: W; show: string[] };
+export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings" | "calendar" | "people" | "chart"; parts: PanelPart[] };
+/**
+ * What a module brings to its site's panel: numbers, actions and a person's tables joined with the others', its
+ * own parts on «اليوم», «الحجوزات» (a calendar, a board), «التقارير» and «القوائم».
+ */
+export type PanelBits = { numbers?: PanelNumber[]; today?: PanelPart[]; board?: PanelPart[]; reports?: PanelPart[]; lists?: PanelPart[]; actions?: PanelAction[]; people?: PanelPeopleTable[] };
 
 /** The modules a site uses, each with its words. Which modules exist, and what each brings, is modules/index.ts. */
 export type SiteModules = {

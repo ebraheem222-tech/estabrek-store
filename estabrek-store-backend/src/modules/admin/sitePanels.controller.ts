@@ -6,19 +6,23 @@ import { AppError } from "../../utils/httpError.js";
 import { hasPermission } from "../../middleware/access.js";
 import { tableRight } from "./permissions.js";
 import { tableOf, changeRow } from "../../lib/rowWrites.js";
-import { pageView, pagesShown, partShown, sitePanels, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
+import { findByCode, pageView, pagesShown, partShown, peopleSearch, reportCsv, sitePanels, tableIdOf, type PanelPart, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
 import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
 
 /**
- * /v1/admin/site-panels — a whole site's own pages in the admin's menu (sites wave 1.2; lib/sitePanel.ts): its
- * numbers, its queues, its saved tables, its settings and quick actions, as its file declares them. Any member
- * signed in may ask; each sees only the parts they may read (a table's rows: pages:read, or that one table given
- * to their role; the settings: features:read), and changes only what they may change.
+ * /v1/admin/site-panels — a whole site's own pages in the admin's menu (sites wave 1; lib/sitePanel.ts): its parts as
+ * its file declares them. Any member signed in may ask; each sees only the parts they may read (a table's rows:
+ * pages:read, or that one table given to their role; the settings: features:read), and changes only what they may
+ * change. A part they don't see answers as one that isn't there.
  *
- * GET  /admin/site-panels                                 — the sites here with a panel, each with the pages this member sees
- * GET  /admin/site-panels/:feature/:page?lang=            — one page, each part with what it shows now
- * POST /admin/site-panels/:feature/:page/:part/decide     { row, decision, lang? } — a queue's button: the row's fields set
- * POST /admin/site-panels/:feature/:page/:part/act        { action } — a quick action: the setting it names set (features:write)
+ * GET  /admin/site-panels                                  — the sites here with a panel, each with the pages this member sees
+ * GET  /admin/site-panels/:feature/:page?lang&month&period — one page, each part with what it shows now (a calendar's month, a report's period)
+ * POST /admin/site-panels/:feature/:page/:part/decide      { row, decision, lang? } — a queue's or a scanner's button: the row's fields set
+ * POST /admin/site-panels/:feature/:page/:part/move        { row, to, lang? } — a kanban's card to another column, a calendar's row to another day
+ * POST /admin/site-panels/:feature/:page/:part/act         { action } — a quick action: the setting it names set (features:write)
+ * GET  /admin/site-panels/:feature/:page/:part/people?q=   — a person's page: their rows across the part's tables
+ * GET  /admin/site-panels/:feature/:page/:part/find?code=  — a scanner's code: the row it names
+ * GET  /admin/site-panels/:feature/:page/:part/export?period= — a report's period as a CSV file
  */
 const r = Router();
 
@@ -27,6 +31,8 @@ const rightsOf = (req: Request): PanelRights => {
   return { readTable: (id) => tableRight(has, id, "read"), writeTable: (id) => tableRight(has, id, "write"), readSettings: has("features:read"), writeSettings: has("features:write") };
 };
 const langOf = (v: unknown): "ar" | "en" | "he" => (v === "en" || v === "he" ? v : "ar");
+const text = (v: unknown) => (typeof v === "string" ? v : undefined);
+const optsOf = (req: Request, lang?: unknown) => ({ lang: langOf(lang ?? req.query.lang), month: text(req.query.month), period: text(req.query.period) });
 
 /** The site and the page asked for, if this member sees that page. */
 async function pageOf(req: Request) {
@@ -36,12 +42,21 @@ async function pageOf(req: Request) {
   if (!site || !page) throw new AppError(404, "PANEL_NOT_FOUND", "No such page in a site's panel");
   return { site, page, may };
 }
-/** One of the page's parts this member sees, of the kind asked. */
-function partOf<K extends string>(site: SitePanel, page: SitePanel["panel"][number], key: string, kind: K, may: PanelRights) {
+/** One of the page's parts this member sees, of one of the kinds asked (one they don't see isn't there for them). */
+function partOf<K extends PanelPart["kind"]>(site: SitePanel, page: SitePanel["panel"][number], key: string, kinds: K[], may: PanelRights) {
   const part = page.parts.find((p) => p.key === key);
-  // One this member doesn't see isn't there for them.
-  if (!part || part.kind !== kind || !partShown(site, part, may)) throw new AppError(404, "PART_NOT_FOUND", "No such part on this page");
-  return part as Extract<typeof part, { kind: K }>;
+  if (!part || !(kinds as string[]).includes(part.kind) || !partShown(site, part, may)) throw new AppError(404, "PART_NOT_FOUND", "No such part on this page");
+  return part as Extract<PanelPart, { kind: K }>;
+}
+/** A part's table and one of its rows, for a member who may change them. */
+async function rowToChange(site: SitePanel, ref: string, rowId: string, may: PanelRights) {
+  const tableId = tableIdOf(site, ref);
+  if (!tableId || !may.readTable(tableId)) throw new AppError(404, "PART_NOT_FOUND", "No such part on this page");
+  if (!may.writeTable(tableId)) throw new AppError(403, "PERMISSION_DENIED", "Changing this table's rows isn't yours to do", { required: [`data:${tableId}:write`] });
+  const table = await tableOf(tableId);
+  const was = await prisma.collectionItem.findFirst({ where: { id: rowId, collectionId: table.id } });
+  if (!was || was.deletedAt) throw new AppError(404, "NOT_FOUND", "No such row");
+  return { table, was };
 }
 
 r.get(
@@ -57,7 +72,7 @@ r.get(
   "/:feature/:page",
   asyncHandler(async (req, res) => {
     const { site, page, may } = await pageOf(req);
-    res.json(await pageView(site, page, may, { lang: langOf(req.query.lang) }));
+    res.json(await pageView(site, page, may, optsOf(req)));
   }),
 );
 
@@ -66,19 +81,33 @@ r.post(
   "/:feature/:page/:part/decide",
   asyncHandler(async (req, res) => {
     const { site, page, may } = await pageOf(req);
-    const part = partOf(site, page, String(req.params.part), "queue", may);
+    const part = partOf(site, page, String(req.params.part), ["queue", "scanner"], may);
     const body = DecideBody.parse(req.body ?? {});
     const decision = part.decisions.find((d) => d.key === body.decision);
-    if (!decision) throw new AppError(404, "DECISION_NOT_FOUND", "No such button on this queue");
-    const tableId = site.tables[part.table.replace(/^@table:/, "")];
-    if (!tableId || !may.readTable(tableId)) throw new AppError(404, "PART_NOT_FOUND", "No such part on this page");
-    if (!may.writeTable(tableId)) throw new AppError(403, "PERMISSION_DENIED", "Changing this table's rows isn't yours to do", { required: [`data:${tableId}:write`] });
-    const table = await tableOf(tableId);
-    const was = await prisma.collectionItem.findFirst({ where: { id: body.row, collectionId: table.id } });
-    if (!was || was.deletedAt) throw new AppError(404, "NOT_FOUND", "No such row");
+    if (!decision) throw new AppError(404, "DECISION_NOT_FOUND", "No such button here");
+    const { table, was } = await rowToChange(site, part.table, body.row, may);
     // Like a cell changed in the grid: checked against the fields, and the functions waiting for a change are told.
-    await changeRow(table, was, { values: decision.set, lang: body.lang ?? "ar" });
-    res.json(await pageView(site, page, may, { lang: langOf(body.lang) }));
+    const saved = await changeRow(table, was, { values: decision.set, lang: body.lang ?? "ar" });
+    res.json({ ...(await pageView(site, page, may, optsOf(req, body.lang))), row: saved.id });
+  }),
+);
+
+const MoveBody = z.object({ row: z.string().min(1).max(40), to: z.string().min(1).max(60), lang: z.enum(["ar", "en", "he"]).optional() }).strict();
+r.post(
+  "/:feature/:page/:part/move",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    const part = partOf(site, page, String(req.params.part), ["kanban", "calendar"], may);
+    const body = MoveBody.parse(req.body ?? {});
+    const { table, was } = await rowToChange(site, part.table, body.row, may);
+    const field = part.kind === "kanban" ? part.field : part.date;
+    if (field.startsWith("$")) throw new AppError(400, "CANT_MOVE", "This calendar's date is when the row came in: it doesn't move");
+    if (part.kind === "kanban") {
+      const options = ((table.fields.find((f) => f.id === field) as { options?: Array<{ id: string }> } | undefined)?.options ?? []).map((o) => o.id);
+      if (!options.includes(body.to)) throw new AppError(400, "BAD_COLUMN", "No such column");
+    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(body.to)) throw new AppError(400, "BAD_DAY", "A day like 2026-11-27");
+    await changeRow(table, was, { values: { [field]: body.to }, lang: body.lang ?? "ar" });
+    res.json(await pageView(site, page, may, optsOf(req, body.lang)));
   }),
 );
 
@@ -87,14 +116,46 @@ r.post(
   "/:feature/:page/:part/act",
   asyncHandler(async (req, res) => {
     const { site, page, may } = await pageOf(req);
-    const part = partOf(site, page, String(req.params.part), "actions", may);
+    const part = partOf(site, page, String(req.params.part), ["actions"], may);
     const body = ActBody.parse(req.body ?? {});
     const action = part.items.find((a) => a.key === body.action);
     if (!action) throw new AppError(404, "ACTION_NOT_FOUND", "No such action on this page");
     if (!may.writeSettings) throw new AppError(403, "PERMISSION_DENIED", "Changing the site's settings isn't yours to do", { required: ["features:write"] });
     await saveSiteSettings(site.featureId, { [action.setting]: action.value });
     const [now] = await sitePanels(site.featureId);
-    res.json(await pageView(now, page, may, { lang: langOf(body.lang) }));
+    res.json(await pageView(now, page, may, optsOf(req, body.lang)));
+  }),
+);
+
+r.get(
+  "/:feature/:page/:part/people",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    const part = partOf(site, page, String(req.params.part), ["people"], may);
+    res.json(await peopleSearch(site, part, may, String(req.query.q ?? ""), langOf(req.query.lang)));
+  }),
+);
+
+r.get(
+  "/:feature/:page/:part/find",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    const part = partOf(site, page, String(req.params.part), ["scanner"], may);
+    const row = await findByCode(site, part, String(req.query.code ?? ""));
+    if (!row) throw new AppError(404, "CODE_NOT_FOUND", "No row has this code");
+    res.json({ row });
+  }),
+);
+
+r.get(
+  "/:feature/:page/:part/export",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    const part = partOf(site, page, String(req.params.part), ["report"], may);
+    const file = await reportCsv(site, part, text(req.query.period), langOf(req.query.lang));
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${file.name.replace(/[^A-Za-z0-9._-]/g, "_")}"`);
+    res.send(file.body);
   }),
 );
 

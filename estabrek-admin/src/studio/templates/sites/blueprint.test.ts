@@ -14,20 +14,21 @@ const LANGS = ["ar", "en", "he"] as const;
  *   1.1.0 (wave 1): the sites' settings (the hours, the notice bar over the first page, showing prices,
  *   online booking open or closed, the bell and an email), read by their pages and their function.
  *   1.2.0 (wave 1.2): the sites' panels (today's numbers, queues and quick actions; their lists; their settings).
+ *   1.3.0 (wave 1.3): their bookings' calendar and board, a customer's page, charts and reports, the branches' map.
  */
 const BUILT: Record<string, string[]> = {
-  "site-restaurant": ["8004cba75b2869ba", "ee98893bdf35d4be", "8639c8f8075dbe51", "a5b717a6732b0544", "952853f098d62496", "698b1ec22907de0f"],
-  "site-bakery-cafe": ["ad88c7f9d591a8fc", "a57ffbdd4992b665", "e0bd1de20c589987", "11e4ad69c480ff94", "f3722253046bc5a8", "ecf68f8a465da549"],
-  "site-dental-clinic": ["66051bb249b05154", "2494c3a44c48a4b8", "50b1077c0c7f53ff", "ad890426505eb218", "f4c9139cade20d2f", "f3f22f75cd276312"],
-  "site-beauty-salon": ["0d8e7518dbf5cabf", "f63c74f80a94c52c", "a75fb2f2e27ae8a2", "e261513c36ad0d63", "f4d13e155e8fcabf", "e5bd6a80af8359cd"],
-  "site-gym": ["8ec65fbfa9c54e8e", "c9146f36736b387a", "eeb8582580a85df5", "906c79bd56a0ecaf", "c838548bdce94932", "6f1001933568645d"],
-  "site-academy": ["dc9a35c0ea3e5700", "da20ec88c51f73ae", "4ea74c8b38f4667a", "ca277bd4bf697c7d", "7ef4708f40e53cfb", "69567f91b6880a52"],
-  "site-real-estate": ["9e7debf00fb0f108", "a192202f434e6f5d", "8622b5a3d632a078", "57ee18d8b142a54f", "ad4e7f0a62a825d5", "e1e5526b822b1bfa"],
-  "site-guest-house": ["c915f4808a53247c", "869047959ba485df", "8692b83ce0b57d64", "ef8eac3b1dc8c7e0", "363b67f387c33c39", "9d3ea7db5ed4d1fa"],
-  "site-events-hall": ["9df170e67d72e9c0", "84b8df4c9b1d0e69", "124e4aa01c18f067", "261fcee5d2159f52", "3b4b8216106930cd", "82640458df8ab11a"],
-  "site-photographer": ["bca3b3d1ea409f96", "615f99839af277b3", "bdfecff6b7a961ba", "1f88234da6acb464", "be0b319f7f4c7b91", "7b48b1b8edf3d74f"],
-  "site-law-office": ["a8e2d90cd1442ff5", "3373e41ee63155bb", "5d639684827f5c04", "8a2164471874afa9", "5222ad5b6048f8a8", "74db1b5a158db8e7"],
-  "site-creative-agency": ["7aea0bc6e40fe46d", "f8e220853764adbf", "ace18ad4357aa8e0", "8b7b0ce308d5edf5", "316aa42482743934", "1400e8ee6f15898d"],
+  "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
+  "site-bakery-cafe": ["e42355ec9e8583e5", "d7d3d17b8b1d2ba9", "583f3674ec5d94ba", "c6123fa1483d53ee", "005df78e83cdc4e1", "90a3254aca5a6115"],
+  "site-dental-clinic": ["68de3d12904b4bf0", "c7fcdf8cc26e29fa", "106cff0b9156d7bd", "9b390f2a60cc27a4", "1705a14d29014e31", "f91ca00e11a9260e"],
+  "site-beauty-salon": ["8efb6b490a17a0b3", "1ddd94f0c5105972", "addac2db9cf5bf29", "9b663a7180d15e8d", "f66504346eae5484", "e47a4503d92a9f0e"],
+  "site-gym": ["7b5d502eed6dd1d6", "ef1b153c861796de", "71c42519a9b68201", "77e09922a1e0dde0", "dbde6f6c4553bcb3", "cc29cc11411c0953"],
+  "site-academy": ["0566e46fc4fade86", "ed688ae155877c0b", "eea90f4fd0b4d59c", "1bb3557e128231d5", "f650c88c468a8f0a", "14b7167b9c7899ca"],
+  "site-real-estate": ["9ad20c9b1475dabc", "c05f9b8ac321d76c", "b9c42bc0026e738c", "25a887d268e3cf4b", "5baa70c467a23782", "eb6c21be879aac1e"],
+  "site-guest-house": ["b03d0ba3d2f19139", "ccd00d638b3362f6", "f8e660406181c970", "96b5c7632cea9184", "0da7cc3bbaf4e1b7", "571253cf1a2bdb73"],
+  "site-events-hall": ["845c64542522ae5b", "0e2e8b0d16bc1fc0", "45c1ea65a9a9eeca", "962c23542ecabb9f", "3eff321a46ebb7d8", "58ef89547beb0ca9"],
+  "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
+  "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
+  "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -258,7 +259,7 @@ describe("A site's panel (wave 1.2)", () => {
       const f = buildSite(s, { lang: "en" });
       const panel = panelOf(s);
       expect(f.panel).toEqual(panel);
-      expect(panel.map((p) => p.key), s.key).toEqual(["today", "lists", "settings"]);
+      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
       for (const p of panel) for (const lang of LANGS) expect(p.name[lang].trim()).toBeTruthy();
       const tables = new Map(f.tables.map((t) => [`@table:${t.key}`, new Set(t.fields.map((x) => x.id))]));
       const keys = new Set((f.settings ?? []).map((x) => x.key));

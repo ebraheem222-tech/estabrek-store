@@ -290,7 +290,7 @@ export default function AdminLayout() {
   // Each whole site installed here with a panel: a group under its name, with the pages this member sees (sites wave 1.2).
   const panels = useQuery({ queryKey: ["site-panels"], queryFn: listSitePanels, staleTime: 30_000, retry: false });
   const lang = adminLang();
-  const PANEL_ICON: Record<PanelIcon, React.ReactNode> = { today: Icons.dashboard, lists: Icons.pages, settings: Icons.settings };
+  const PANEL_ICON: Record<PanelIcon, React.ReactNode> = { today: Icons.dashboard, lists: Icons.pages, settings: Icons.settings, calendar: Icons.calendar, people: Icons.profile, chart: Icons.forecast };
   const siteGroups = (panels.data?.sites ?? []).map((s) => ({
     id: `site-${s.featureId}`,
     title: s.name,
