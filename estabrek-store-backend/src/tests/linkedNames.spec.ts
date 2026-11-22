@@ -152,7 +152,8 @@ describe("A member given some of the tables", () => {
     expect(no.body).toMatchObject({ error: "ROWS_LINKED", details: { blockers: [{ table: notes, slug: NOTES, field: "order", rows: 1, sample: "" }] } });
     const old = await as(request(app).delete(`${at(orders)}/items/${o1}`), clerk).expect(409);
     expect(old.body).toMatchObject({ error: "ROWS_LINKED", blockers: [{ table: notes, field: "order", rows: 1, sample: "" }] });
-    expect(said(no.body)).not.toContain("n1");
+    // The row's name as a whole value: a table's random id may hold the letters "n1".
+    expect(said(no.body)).not.toContain('"n1"');
     // The owner is told the row.
     expect((await bulk({ ids: [o1], op: "trash" }).expect(409)).body.details.blockers[0].sample).toBe("n1");
     expect(await prisma.collectionItem.count({ where: { id: o1, deletedAt: null } })).toBe(1);
