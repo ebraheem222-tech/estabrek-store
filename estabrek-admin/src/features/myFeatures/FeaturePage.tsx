@@ -25,6 +25,7 @@ import { OFF_TEXT, PAGE_STATUS, SLUG, STEPS, apiLine, fieldsText, rowsText, slug
 import { FeatureRemove, TemplateExport, TemplateLine } from "./FeatureTemplates";
 import { FeatureUpgrade } from "./FeatureUpgrade";
 import { SiteHome } from "./SiteHome";
+import { SiteSettings } from "./SiteSettings";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
@@ -148,6 +149,7 @@ export default function FeaturePage() {
       {/* ---------------- 1. Its tables ---------------- */}
       {/* A whole site: its first page as the store's home. */}
       <SiteHome feature={f} />
+      <SiteSettings feature={f} />
 
       <section className={box} data-testid="feature-tables">
         <h2 className="font-medium">{say("١. الجداول|1. Tables|1. טבלאות")}</h2>

@@ -105,6 +105,8 @@ const ProjectFeature = z
     items: z.array(z.object({ kind: z.enum(FEATURE_KINDS), id: Id }).strict()).max(60).default([]),
     /** The template it was installed from (lib/featureInstall.ts Installed), so it can still be upgraded. */
     template: z.unknown().optional(),
+    /** A whole site's settings as its owner set them (lib/siteSettings.ts; checked against its file when read). */
+    settings: z.record(z.string().max(40), z.unknown()).optional(),
   })
   .strict();
 const ProjectNeeds = z

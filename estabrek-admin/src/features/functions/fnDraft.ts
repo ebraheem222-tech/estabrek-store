@@ -27,7 +27,8 @@ export const CUSTOMER_MARKS: CustomerMark[] = ["giveRole", "takeRole", "join", "
 /** After a failure a function tells someone or writes it down, nothing else. */
 export const FAIL_ACTS: StepKind[] = ["notify", "push", "email", "whatsapp", "sms", "add", "change", "set", "ready", "http"];
 export const NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;
-export const RESERVED = ["input", "now", "error", "index", "caller", "secret"];
+/** Names a step can't keep things under: what every run already has ("settings": its whole site's settings). */
+export const RESERVED = ["input", "now", "error", "index", "caller", "secret", "settings"];
 export const nameOk = (name: string) => NAME.test(name) && !RESERVED.includes(name);
 
 /* ---------------- Changing the tree (nothing is changed in place) ---------------- */
@@ -153,9 +154,9 @@ export function namesBefore(def: FnDef, target: Path): Known[] {
  * The names a value can be given at a step, ready to put in a text: the function's inputs, the
  * moment, and what is kept (a row with its fields, rows with how many and the first).
  */
-export function offers(def: FnDef, target: Path, tables: FnTable[], /** The other functions: one that says what it gives back has its answer's fields offered. */ fns: FnLite[] = []): string[] {
+export function offers(def: FnDef, target: Path, tables: FnTable[], /** The other functions: one that says what it gives back has its answer's fields offered. */ fns: FnLite[] = [], /** Its whole site's settings (their keys), when it is part of a site that has some. */ settings: string[] = []): string[] {
   // Who started the run: a shopper's button, a key, the admin, or (a row event, a schedule) the system.
-  const out = [...def.inputs.map((i) => `input.${i.name}`), "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"];
+  const out = [...def.inputs.map((i) => `input.${i.name}`), "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", ...settings.map((k) => `settings.${k}`)];
   const fieldsOf = (id?: string) => tables.find((t) => t.id === id)?.fields ?? [];
   for (const k of namesBefore(def, target)) {
     if (k.kind === "rows") out.push(k.name, `${k.name}.length`, ...fieldsOf(k.table).map((f) => `${k.name}.first.${f.id}`));

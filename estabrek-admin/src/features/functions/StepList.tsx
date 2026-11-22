@@ -32,6 +32,8 @@ export type Builder = {
   outside?: Outside;
   /** What the store steps pick from: the shoppers' roles and groups. */
   store?: StoreMeta;
+  /** Its whole site's settings (their keys): offered as "{{settings.key}}". */
+  settings?: string[];
 };
 const BuilderContext = createContext<Builder | null>(null);
 export const BuilderProvider = BuilderContext.Provider;
@@ -50,7 +52,7 @@ const SYSTEM = ["$slug", "$status", "$createdAt", "$updatedAt", "$publishedAt"] 
 /** The names a value can use here, as a menu that puts one in. */
 function NameMenu({ at, onPick, testid }: { at: Path; onPick: (name: string) => void; testid?: string }) {
   const b = useBuilder();
-  const names = offers(b.def, at, b.tables, b.fns);
+  const names = offers(b.def, at, b.tables, b.fns, b.settings);
   if (!b.canWrite || !names.length) return null;
   return (
     <select

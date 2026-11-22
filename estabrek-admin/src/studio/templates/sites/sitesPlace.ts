@@ -4,7 +4,7 @@ import { site } from "./blueprint";
 
 export const PROPERTY = site({
   key: "site-real-estate",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "property",
   archetype: "front",
   fam: "home",
@@ -96,7 +96,7 @@ export const PROPERTY = site({
 
 export const GUESTHOUSE = site({
   key: "site-guest-house",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "property",
   archetype: "front",
   fam: "home",
@@ -178,7 +178,7 @@ export const GUESTHOUSE = site({
 
 export const HALL = site({
   key: "site-events-hall",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "events",
   archetype: "front",
   fam: "flowers",
@@ -270,7 +270,7 @@ export const HALL = site({
 
 export const PHOTOGRAPHER = site({
   key: "site-photographer",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "creative",
   archetype: "front",
   fam: "art",

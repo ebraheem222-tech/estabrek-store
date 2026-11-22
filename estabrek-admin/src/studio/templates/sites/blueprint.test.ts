@@ -3,28 +3,30 @@
 // the same files (siteTemplates.unit.spec.ts, sites.spec.ts) and installs them for real.
 import { describe, expect, test } from "vitest";
 import { createHash } from "node:crypto";
-import { ARCHETYPES, FRONT_LOOKS, MODULES, SITES, blueprintProblems, buildChosen, buildSite, keepModules, modulesOf, pagesOf, siteByKey, siteCounts, slugsOf, withChoices, type SiteBlueprint } from "./index";
+import { ARCHETYPES, FRONT_LOOKS, MODULES, SITES, blueprintProblems, buildChosen, buildSite, keepModules, modulesOf, pagesOf, settingsOf, siteByKey, siteCounts, slugsOf, withChoices, type SiteBlueprint } from "./index";
 
 const LANGS = ["ar", "en", "he"] as const;
 
 /**
- * Each site's file, as it was built before the sites were made of modules (#177's builder), in ar/en/he
- * with calm then rich motion. The modules must build exactly the same files: change a line here only
- * when a site's output changes on purpose, and say why in the change.
+ * Each site's file, in ar/en/he with calm then rich motion. Until 1.0.0 these were the files #177's builder
+ * made before the sites were made of modules, and the modules built exactly the same. Change a line here
+ * only when a site's output changes on purpose, and say why in the change:
+ *   1.1.0 (wave 1): the sites' settings (the hours, the notice bar over the first page, showing prices,
+ *   online booking open or closed, the bell and an email), read by their pages and their function.
  */
 const BUILT: Record<string, string[]> = {
-  "site-restaurant": ["1ede22fe85b15845", "e2a114b831a7fa12", "1b990730cef4a895", "be14fa2d0d0738e7", "9f2be1905f17c95d", "eecad930ce0958ff"],
-  "site-bakery-cafe": ["c3120d297911d570", "7119396c11f84213", "21f6ad887da897d0", "13e558d607bdd752", "0457a4bbf027c675", "c6863083998a8a1b"],
-  "site-dental-clinic": ["43fa9ecfe27366fd", "f302a29669e4de89", "a3ebd320cfffe40d", "8f1d4a677f45c5ff", "298881c231f8116b", "eb4407620c7d2f52"],
-  "site-beauty-salon": ["dc5249a39ae44fc5", "21d60141d2c1988c", "4b833c4646496f57", "0a99826f1f885efc", "84e4ce37a858261d", "8a25c35f5191b4af"],
-  "site-gym": ["0ac4f24cd596e074", "d5a174131758c6dd", "3a15fd64c89f1bb8", "5a0c319bdda4377b", "3624f3eb996955c4", "57d321a2e1667df6"],
-  "site-academy": ["44d31d3946649343", "f68f1043206b1dc9", "00cd111400d28334", "75254ea460024ccb", "a410b02cb614a8cb", "02b589b426ef6f8e"],
-  "site-real-estate": ["60842adce4f57909", "3a56e6466e99f62d", "e7c7e378b5f8cec0", "489476523a629349", "4082c319b44f0be3", "c07f7be2b0102275"],
-  "site-guest-house": ["6d42e3f6c52c2fcf", "ba1ceb5955645c9b", "883d082940fd9271", "1e71fb512bd41b69", "8faeeaa0c1828d45", "c82c5651e977e227"],
-  "site-events-hall": ["59d12c69da2fc3e1", "db708b39e5ae1b6a", "eb389bf7e54d9877", "78da5c268270953c", "256d74e31884a341", "cee910943cb94e52"],
-  "site-photographer": ["352c6db37caa685b", "bfe2948f088d0f3f", "040d2ac6bd460e63", "e2b3c28f07012adc", "ee9846a1f7f7c62e", "126363f588f9d957"],
-  "site-law-office": ["ff5dd73b93c46eb0", "7fb7a5dbba140fa9", "7de9192bb071bc79", "81dce3a081843396", "e3a9747fbf9f5b1c", "d7a77a6d1b4298e9"],
-  "site-creative-agency": ["89f0ebdd97a0468d", "7ac1b8a144e24cfb", "e794dee8e4140053", "a5cc30ecce895306", "57119028757aac0a", "92e0eb7e78ede220"],
+  "site-restaurant": ["019d53be8ebc29d2", "eb5f482f7af7c974", "4792699fbcfae722", "61700832b6339859", "6497d34d8cc5fb7c", "9ba3c76514d6dcc6"],
+  "site-bakery-cafe": ["f4fbb9e40d19107c", "b75d0c9639dfacec", "7c7e1739c6e3f5d4", "a8a5b2b2f75296d6", "a31e9498c30dff3c", "53bcb6ce1342c1d8"],
+  "site-dental-clinic": ["3895436f9f30cf8f", "02160ab90ef81a40", "8c8cb07e142f344e", "4596554a29ff377c", "03b228e6ff0a30fc", "7ebcb74be7f80a1b"],
+  "site-beauty-salon": ["8a1f7a674c7944fa", "b97b46175c189387", "cb35def263153382", "97c113661b9c39ac", "046d269617a8010f", "8b0c0f06f0b12e51"],
+  "site-gym": ["075960ef809e978d", "745922c392636c6d", "d836838e51140470", "4ce38929ab730774", "74c2d1cd74af2a68", "9ae44ef4d64ab0fa"],
+  "site-academy": ["07f4d44aa504222b", "692d85f57c4b49be", "79f5eb8e694c8565", "61a05c7db7433de7", "fb17afcffdf7faee", "cd276024d3298b36"],
+  "site-real-estate": ["dcee46f821a5931c", "55b29b300a45225b", "c23997d17b0b4b23", "f8ac51a9b603785b", "ec96b06faa96c630", "70d967c52d435cb6"],
+  "site-guest-house": ["104872ab3229ddcf", "7172d5970b896068", "12600e5593251c32", "53ca0183b39097f1", "347715432c42343d", "3e743a18391f9d67"],
+  "site-events-hall": ["3de9bd3078c8956c", "2cf64437fb7cd710", "7f38c108f6eb9f51", "3699c6f43e0cb89c", "2830e9aac58e5f7a", "f438530f6d9f22ff"],
+  "site-photographer": ["68e6932a6e0a5ebe", "de3fd5b0148d0457", "53abb56af15b4949", "0751574d0305a508", "ee5449c91a515eb7", "e0fc1ba99ea31d5c"],
+  "site-law-office": ["eca9748479f03948", "4b4030e866ef2ec7", "c8cb64e43fc19e49", "db6de6433af224a9", "4779349b1112e6cf", "948993299b83d4a2"],
+  "site-creative-agency": ["3cd6f82390f1f120", "81fe60bc282ed644", "99c4d2f096a112d6", "3bc4a374d7fda0d5", "5dc336410708b2fd", "01442c0b7ead4c0c"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -158,5 +160,93 @@ describe("The install wizard's choices (choices.ts)", () => {
     const homes = new Set(FRONT_LOOKS.map((_, k) => JSON.stringify(buildChosen(r, { look: k }, "en").pages[0].tree)));
     expect(homes.size).toBe(6);
     expect(JSON.stringify(buildChosen(r, { motion: "rich" }, "en"))).not.toBe(JSON.stringify(buildChosen(r, null, "en")));
+  });
+});
+
+describe("A site's settings (wave 1)", () => {
+  /** Every element's marks in a file: the settings its pages and its rows' pages read. */
+  const marks = (f: ReturnType<typeof buildSite>) => {
+    const out: Array<{ prop: "showIf" | "fromSetting"; key: string; is?: unknown }> = [];
+    const walk = (n: { props?: Record<string, unknown>; children?: unknown[] }) => {
+      const show = n.props?.showIf as { setting: string; is?: unknown } | undefined;
+      if (show) out.push({ prop: "showIf", key: show.setting, is: show.is });
+      for (const key of Object.values((n.props?.fromSetting ?? {}) as Record<string, string>)) out.push({ prop: "fromSetting", key });
+      for (const c of n.children ?? []) walk(c as never);
+    };
+    for (const p of f.pages) walk(p.tree.root);
+    for (const t of f.tables) if (t.itemPage) walk(t.itemPage.root);
+    return out;
+  };
+
+  test("every site declares its own, each named in three languages with a default that fits", () => {
+    for (const s of SITES) {
+      const list = settingsOf(s);
+      const keys = list.map((x) => x.key);
+      expect(new Set(keys).size, s.key).toBe(keys.length);
+      // The front's own, then each module's that the site uses.
+      expect(keys.slice(0, 3)).toEqual(["hours", "noticeOn", "notice"]);
+      expect(keys.includes("showPrices"), s.key).toBe(!!s.modules.offers?.price);
+      expect(keys.includes("bookingOpen") && keys.includes("bookingClosed"), s.key).toBe(!!s.modules.booking);
+      expect(keys.includes("notifyOn") && keys.includes("notifyEmail"), s.key).toBe(!!s.modules.notify);
+      for (const x of list) {
+        for (const lang of LANGS) expect(x.label[lang].trim() && x.group?.[lang].trim(), `${s.key} ${x.key} ${lang}`).toBeTruthy();
+        const d = x.default;
+        if (x.kind === "toggle") expect(typeof d).toBe("boolean");
+        if (x.kind === "words") for (const lang of LANGS) expect((d as Record<string, string>)[lang].trim(), `${x.key} ${lang}`).toBeTruthy();
+        if (x.kind === "text") expect(typeof d).toBe("string");
+      }
+      // The hours start as the business's own.
+      expect(list[0].default).toEqual(s.biz.hours);
+      expect(buildSite(s, { lang: "en" }).settings).toEqual(list);
+    }
+  });
+
+  test("a page reads only settings the site declares, and only public ones (the shop never gets the others)", () => {
+    for (const s of SITES)
+      for (const lang of LANGS) {
+        const f = buildSite(s, { lang });
+        const byKey = new Map((f.settings ?? []).map((x) => [x.key, x]));
+        const read = marks(f);
+        for (const m of read) {
+          expect(byKey.has(m.key), `${s.key} ${m.prop} ${m.key}`).toBe(true);
+          expect(byKey.get(m.key)!.public, `${s.key} ${m.key} isn't public`).toBe(true);
+          if (m.prop === "showIf") expect(byKey.get(m.key)!.kind, m.key).toBe("toggle");
+        }
+        // The notice bar opens the first page, hidden until switched on, in the words its owner writes.
+        const top = f.pages[0].tree.root.children![0];
+        expect(top.props.showIf).toEqual({ setting: "noticeOn" });
+        expect(JSON.stringify(top)).toContain('"fromSetting":{"text":"notice"}');
+        // The hours, wherever the pages give them.
+        expect(read.filter((m) => m.key === "hours").length, `${s.key} hours`).toBeGreaterThan(0);
+        // The prices go with their switch, in the lists and on each row's own page.
+        if (s.modules.offers?.price) expect(read.filter((m) => m.key === "showPrices").length, s.key).toBeGreaterThanOrEqual(2);
+        // The booking form while it is open, the owner's words and a call while it is closed.
+        if (s.modules.booking) {
+          expect(read.filter((m) => m.key === "bookingOpen").map((m) => m.is ?? true).sort()).toEqual([false, true]);
+          expect(read.some((m) => m.key === "bookingClosed")).toBe(true);
+        }
+      }
+  });
+
+  test("the bell reads its switch and the address to email, names its site declares", () => {
+    for (const s of SITES) {
+      const f = buildSite(s, { lang: "ar" });
+      const keys = new Set((f.settings ?? []).map((x) => x.key));
+      for (const fn of f.functions) for (const hit of JSON.stringify(fn.def).matchAll(/\{\{settings\.([A-Za-z0-9]+)\}\}/g)) expect(keys.has(hit[1]), `${s.key} ${fn.key} ${hit[1]}`).toBe(true);
+      const bell = f.functions.find((fn) => fn.key === "notify")!;
+      expect(bell.def.if).toEqual([{ left: "{{settings.notifyOn}}", cmp: "eq", right: true }]);
+      expect(JSON.stringify(bell.def.do)).toContain('"act":"email","to":"{{settings.notifyEmail}}"');
+    }
+  });
+
+  test("as the owner chose the site: the hours they wrote are the setting's start, a module left out takes its settings", () => {
+    const clinic = siteByKey("site-dental-clinic")!;
+    const hours = { ar: "كل يوم ٩–٥", en: "Daily 9–5", he: "כל יום 9–5" };
+    const f = buildChosen(clinic, { biz: { hours } }, "ar");
+    expect(f.settings![0]).toMatchObject({ key: "hours", default: hours });
+    const all = modulesOf(clinic).map((m) => m.key);
+    const lean = buildChosen(clinic, { modules: all.filter((k) => k !== "booking" && k !== "notify") }, "ar");
+    expect(lean.settings!.map((x) => x.key)).toEqual(["hours", "noticeOn", "notice", "showPrices"]);
+    expect(marks(lean).some((m) => m.key.startsWith("booking"))).toBe(false);
   });
 });

@@ -415,7 +415,7 @@ export function defOf(raw: unknown): FnDef | null {
 export type Problem = { /** Where: "do.2", "do.2.else.0", "if.0", "fail.1". */ at: string; message: string };
 export type KnownTable = { id: string; slug: string; fields: Field[]; name?: unknown };
 export type KnownFn = { id: string; name: string; live: boolean; inputs: FnInput[] };
-export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]>; /** The ready connections: which, of what kind, and which of their settings are set (a setting can stand in for what a step leaves empty). */ ready?: Array<{ id: string; name: string; kind: string; set: string[] }>; /** The shoppers' roles (their keys) and groups: a customer step naming one that isn't there is said before publishing. */ roles?: string[]; groups?: Array<{ id: string; name: string }> };
+export type Known = { tables: KnownTable[]; fns: KnownFn[]; /** This function's own id (it can't call itself). */ self?: string; /** The sites functions may call and the secrets kept (their names): checked when given. */ sites?: string[]; secrets?: string[]; /** The sites each secret is for, by its name: a secret named for another site is said before publishing, not found out at the run. */ secretSites?: Record<string, string[]>; /** The ready connections: which, of what kind, and which of their settings are set (a setting can stand in for what a step leaves empty). */ ready?: Array<{ id: string; name: string; kind: string; set: string[] }>; /** The shoppers' roles (their keys) and groups: a customer step naming one that isn't there is said before publishing. */ roles?: string[]; groups?: Array<{ id: string; name: string }>; /** Its whole site's settings by key (lib/siteSettings.ts): none, it is in no site that has any. */ settings?: string[] };
 
 /**
  * What stands in the way of publishing: a table or field that isn't there, a question a field's
@@ -443,6 +443,11 @@ export function problemsOf(def: FnDef, known: Known): Problem[] {
           if (next && !inputs.has(next)) out.push({ at, message: `No input called "${next}"` });
         } else if (root === "caller") {
           if (next && !(CALLER_KEYS as readonly string[]).includes(next)) out.push({ at, message: `The caller has no "${next}"` });
+        } else if (root === "settings" && !have.has(root)) {
+          // Its whole site's settings (a name of the function's own kept under "settings" comes first).
+          if (!known.settings) out.push({ at, message: "This function isn't part of a site that has settings" });
+          else if (!next) out.push({ at, message: "Name one setting: {{settings.its-key}}" });
+          else if (!known.settings.includes(next)) out.push({ at, message: `Its site has no setting called "${next}"` });
         } else if (root !== "now" && !have.has(root)) out.push({ at, message: `Nothing is kept under "${root}" before this step` });
       }
     }

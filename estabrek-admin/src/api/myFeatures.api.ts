@@ -13,6 +13,25 @@ export type FeatureLite = { id: string; name: string; note: string | null; enabl
 export type FeatureTable = { id: string; slug: string; name: Local | null; fields: number; rows: number; api: TableAccess };
 export type FeatureFn = { id: string; name: string; note: string | null; enabled: boolean; published: boolean; changed: boolean; triggers: number; runs: number; lastRunAt: string | null };
 export type FeaturePage = { id: string; /** Its key in the template the feature was installed from (none: added by hand). */ key?: string | null; name: string; slug: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; hasDraft: boolean; /** The feature is off: the shop answers this page as one that isn't there. */ hidden?: boolean };
+/** A whole site's setting as its file declares it (backend lib/siteSettings.ts; admin studio/templates/sites SiteSetting). */
+export type SiteSettingDecl = {
+  key: string;
+  kind: "toggle" | "number" | "text" | "words" | "choice" | "color";
+  label: Local;
+  note?: Local;
+  group?: Local;
+  public?: boolean;
+  default?: unknown;
+  min?: number;
+  max?: number;
+  whole?: boolean;
+  unit?: Local;
+  long?: boolean;
+  options?: Array<{ id: string; name: Local }>;
+};
+/** A whole site's settings: what each is, and its value now. */
+export type SiteSettingsView = { declared: SiteSettingDecl[]; values: Record<string, unknown> };
+
 export type Feature = {
   id: string;
   name: string;
@@ -28,6 +47,8 @@ export type Feature = {
   pages: FeaturePage[];
   /** A whole site's first page (`homeId`, null for anything else), and whether it is the store's home now, or which other site is. */
   siteHome?: { homeId: string | null; on: boolean; other: { id: string; name: string } | null };
+  /** A whole site's settings (none: it declares none). */
+  settings?: SiteSettingsView | null;
   /** What isn't in any feature yet. */
   free: { tables: Array<{ id: string; slug: string; name: Local | null }>; functions: Array<{ id: string; name: string }>; pages: Array<{ id: string; name: string; slug: string }> };
   limits: { features: number; items: number };
@@ -47,6 +68,10 @@ export async function createFeature(body: { name: string; note?: string }) {
 }
 export async function saveFeature(id: string, body: { name?: string; note?: string | null; enabled?: boolean }) {
   return (await api.put(at(id), body)).data as Feature;
+}
+/** A whole site's settings changed: only the ones named, each checked against what its file declares (400: `details.problems` by key). */
+export async function saveFeatureSettings(id: string, values: Record<string, unknown>) {
+  return (await api.put(`${at(id)}/settings`, { values })).data as Feature;
 }
 /** Only the name goes: its tables, functions and pages stay where they were made. */
 export async function deleteFeature(id: string) {

@@ -96,7 +96,7 @@ export async function exportFeature(featureId: string, opts: { key?: string; ver
   if (came) for (const kind of ["table", "function", "page"] as const) for (const [key, id] of Object.entries(came.ids[kind] ?? {})) keys.set(`${kind}:${id}`, key);
   const lang = opts.lang ?? "ar";
   const name: Local = came && nameIn(came.name, lang) === feature.name ? came.name : { [lang]: feature.name };
-  return toTemplate({
+  const out = toTemplate({
     key: opts.key ?? came?.key ?? keyFrom(feature.name, feature.id),
     version: opts.version ?? (came ? nextMinor(came.version) : "1.0.0"),
     name,
@@ -106,6 +106,9 @@ export async function exportFeature(featureId: string, opts: { key?: string; ver
     pages: sorted(pages, "page").map((p) => ({ id: p.id, name: p.name, slug: p.slug, tree: treeOf(p), seoTitle: p.seoTitle, seoDescription: p.seoDescription })),
     keyOf: (kind, id) => keys.get(`${kind}:${id}`) ?? id,
   });
+  // A whole site's settings go with it as its file declared them (lib/siteSettings.ts); the owner's values stay here.
+  if (came?.file.settings?.length) out.template.settings = came.file.settings;
+  return out;
 }
 
 /* ---------------- Preview and install ---------------- */

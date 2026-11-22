@@ -136,6 +136,18 @@ export const HEADLINE_SHAPES = ["circle", "underline", "curly", "double", "strik
 export const NodeWhen = z.object({ from: MOMENT.optional(), until: MOMENT.optional() })
   .refine((w) => !w.from || !w.until || Date.parse(w.from) < Date.parse(w.until), { message: "It ends before it starts", path: ["until"] });
 
+/** A whole site's setting, by its key (lib/siteSettings.ts). */
+export const SETTING_KEY = /^[a-z][a-zA-Z0-9]{0,30}$/;
+/**
+ * A whole site's element that shows only while one of its site's settings is a value (props.showIf, on any kind
+ * but the page): a switch on (`is` true, the default) or off, a choice's option, a number. Worked out on the
+ * server with the site's public settings (lib/siteSettings.ts); the shop never sees the mark.
+ */
+export const NodeShowIf = z.object({ setting: z.string().regex(SETTING_KEY, "A setting's key"), is: z.union([z.boolean(), z.number().finite(), z.string().max(40)]).optional() }).strict();
+/** A whole site's element whose words are one of its site's settings (props.fromSetting): its text, a button's label. */
+export const NodeFromSetting = z.object({ text: z.string().regex(SETTING_KEY, "A setting's key").optional(), label: z.string().regex(SETTING_KEY, "A setting's key").optional() }).strict()
+  .refine((f) => !!f.text || !!f.label, "It names a setting");
+
 /** How a motion speeds up and slows down (also a state change's). */
 // "fall" speeds up as it goes (a fall; a world baked into keyframes uses it), the rest slow down as they arrive or glide.
 export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear", "fall"] as const;
@@ -1469,6 +1481,15 @@ export function checkTree(input: unknown): TreeCheck {
       if (type === "page") add(`${path}.props.when`, "The page itself always shows");
       else if (!when.success) for (const i of when.error.issues) add(`${path}.props.when${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
       else if (when.data.from || when.data.until) node.props.when = when.data;
+    }
+    // A whole site's marks: shown by one of its settings, words from one (the same on every kind but the page).
+    for (const [prop, schema] of [["showIf", NodeShowIf], ["fromSetting", NodeFromSetting]] as const) {
+      const markRaw = isObject(raw.props) ? (raw.props as Record<string, unknown>)[prop] : undefined;
+      if (markRaw === undefined || markRaw === null) continue;
+      const mark = schema.safeParse(markRaw);
+      if (type === "page") add(`${path}.props.${prop}`, "The page itself always shows");
+      else if (!mark.success) for (const i of mark.error.issues) add(`${path}.props.${prop}${i.path.map((p) => `.${String(p)}`).join("")}`, i.message);
+      else node.props[prop] = mark.data;
     }
     // Its own CSS: what the editor made from it must stay on this element (lib/cssCode.ts).
     const codeRaw = isObject(raw.props) ? (raw.props as Record<string, unknown>).code : undefined;

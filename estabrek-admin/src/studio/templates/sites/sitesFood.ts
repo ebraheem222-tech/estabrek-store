@@ -4,7 +4,7 @@ import { site } from "./blueprint";
 
 export const RESTAURANT = site({
   key: "site-restaurant",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "food",
   archetype: "front",
   fam: "food",
@@ -96,7 +96,7 @@ export const RESTAURANT = site({
 
 export const BAKERY = site({
   key: "site-bakery-cafe",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "food",
   archetype: "front",
   fam: "food",

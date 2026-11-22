@@ -29,6 +29,7 @@ import { SettingsSchema } from "./dataApi.js";
 import { checkTree, type PageTree } from "./pageTree.js";
 import { storeTarget } from "./storeLinks.js";
 import { isStorePage } from "./featureGate.js";
+import { SettingDeclsSchema } from "./siteSettings.js";
 
 export const TEMPLATE_FORMAT = "estabrek.feature" as const;
 export const TEMPLATE_FORMAT_VERSION = 1 as const;
@@ -150,6 +151,8 @@ export const TemplateSchema = z
     exportedAt: z.string().max(40).optional(),
     /** A whole site's wizard choices (kept, never acted on here: the pages already carry them). */
     site: SiteChoicesSchema.optional(),
+    /** A whole site's settings (lib/siteSettings.ts): what its owner can change, read by its functions and pages. */
+    settings: SettingDeclsSchema.optional(),
   })
   .strict()
   .superRefine((t, ctx) => {
