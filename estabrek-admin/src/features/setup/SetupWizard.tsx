@@ -24,10 +24,21 @@ import { AssistantStep, MediaStep, ShopStep } from "./SetupExtras";
 import { followShop, getShopLink } from "../../api/shop.api";
 import { personasFor } from "../../../../estabrek-storefront/src/lib/personas";
 import { say as sayAll } from "../../studio/say";
+import { buildChosen, shellOf, withChoices, type SiteBlueprint } from "../../studio/templates/sites";
+import { choicesOf, choicesOrNull, siteForm, stillSample, words3, type SiteForm } from "../myFeatures/siteForm";
+import { SiteAbout, SiteLook, SiteRuns } from "../myFeatures/SiteSteps";
+import { KindStep, SiteDone, SiteFinish } from "./SiteSetupSteps";
+import { packOfSite, siteSetupRequest } from "./siteSetup";
+import { runSiteSetup, siteRunStart, type SiteRun } from "./siteSetupRun";
 
-// The store's own shop first: what it sells and its design are read from it.
-const STEPS = ["shop", "industry", "theme", "name", "assistant", "media", "content", "done"] as const;
-type Step = (typeof STEPS)[number];
+// The store's own shop first: what it sells and its design are read from it. Then «شو نوع موقعك؟»: an online
+// store goes on as before; a whole site (sites wave 0.4) takes the install wizard's steps instead of what a
+// store sells, and is set up live from the first day (siteSetupRun.ts).
+const STEPS = ["shop", "kind", "industry", "theme", "name", "assistant", "media", "content", "done"] as const;
+const SITE_STEPS = ["shop", "kind", "about", "runs", "look", "assistant", "media", "finish", "done"] as const;
+type Step = (typeof STEPS)[number] | (typeof SITE_STEPS)[number];
+/** The site's details, by name (those still the sample's are said before it is set up). */
+const SAMPLE_NAMES: Record<keyof SiteBlueprint["biz"], string> = { name: "الاسم|The name|השם", phone: "التلفون|The phone|הטלפון", email: "الإيميل|The email|האימייל", city: "البلد|The town|העיר", address: "العنوان|The address|הכתובת", hours: "ساعات الدوام|The hours|שעות הפתיחה" };
 
 
 export default function SetupWizard() {
@@ -60,6 +71,11 @@ export default function SetupWizard() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SetupResult | null>(null);
   const [homeId, setHomeId] = useState<string | null>(null);
+  // A whole site instead of a store: which, its choices (the install wizard's), live now or a draft, how far it got.
+  const [site, setSite] = useState<SiteBlueprint | null>(null);
+  const [form, setForm] = useState<SiteForm | null>(null);
+  const [live, setLive] = useState(true);
+  const [siteRun, setSiteRun] = useState<SiteRun | null>(null);
 
   useEffect(() => {
     // A shop made from this setup earlier: its designs are read from it (also when only the design is changed).
@@ -99,8 +115,19 @@ export default function SetupWizard() {
     setMode(null);
   };
 
+  // A site picked: its form starts with the store's own name when it has one (never the sample's), else empty.
+  const pickKind = (bp: SiteBlueprint | null) => {
+    setSite(bp);
+    if (!bp) return setForm(null);
+    if (form?.key === bp.key) return;
+    const known = (["ar", "en", "he"] as const).some((l) => name[l].trim()) ? name : null;
+    const f = siteForm(bp, known);
+    setForm(known ? f : { ...f, name: words3({ ar: "", en: "", he: "" }) });
+  };
+
   // Changing only the design (from Settings) skips what the store set up already.
-  const steps = designEntry ? STEPS.filter((s) => s !== "assistant" && s !== "media" && s !== "shop") : [...STEPS];
+  const steps: Step[] = designEntry ? STEPS.filter((s) => s !== "assistant" && s !== "media" && s !== "shop" && s !== "kind") : site ? [...SITE_STEPS] : [...STEPS];
+  const activePack = site ? packOfSite(site) : pack;
   // The pictures step: Cloudinary keys typed and not yet kept are kept first (MediaStep's saveRef); if they can't
   // be, the setup stays there with the reason.
   const mediaSave = useRef<(() => Promise<boolean>) | null>(null);
@@ -114,9 +141,10 @@ export default function SetupWizard() {
     setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)]);
   };
   const back = () => setStep(steps[Math.max(0, steps.indexOf(step) - 1)]);
-  const personaNow = persona ?? personasFor(pack?.industry ?? null)[0]?.id ?? "";
+  const personaNow = persona ?? personasFor(activePack?.industry ?? null)[0]?.id ?? "";
   const logoError = logoUrl?.trim() && !/^https?:\/\/[^\s]+$/i.test(logoUrl.trim()) ? tr("استخدم رابط صورة يبدأ بـ http أو https.", "Use an image URL starting with http or https.") : undefined;
-  const canNext = (!designEntry || previousIdentity !== null) && (step === "shop" ? shopReady : step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true);
+  const siteNamed = Boolean(form && (["ar", "en", "he"] as const).some((l) => form.name.v[l].trim()));
+  const canNext = (!designEntry || previousIdentity !== null) && (step === "shop" ? shopReady : step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "about" ? siteNamed && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true);
 
   async function apply() {
     if (!pack || designEntry && !previousIdentity) return;
@@ -147,6 +175,30 @@ export default function SetupWizard() {
     }
   }
 
+  // A whole site: the store's part, the site installed, and (live) switched on, published and made the home.
+  // What is done stays done: pressed again after a failure, it goes on from there.
+  async function applySite() {
+    if (!site || !form) return;
+    setBusy(true);
+    const choices = choicesOf(site, form);
+    const input = {
+      request: siteSetupRequest({ bp: site, name: form.name.v, logoUrl, assistant: { enabled: assistantOn, persona: assistantOn && personaNow ? personaNow : null } }),
+      file: buildChosen(site, choicesOrNull(choices), lang),
+      lang,
+      shell: shellOf(withChoices(site, choices)),
+    };
+    const run = await runSiteSetup(input, siteRun ?? siteRunStart(live), setSiteRun).finally(() => setBusy(false));
+    await Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), qc.invalidateQueries({ queryKey: ["pages"] }), qc.invalidateQueries({ queryKey: ["my-features"] })]);
+    if (run.failed) return;
+    try {
+      sessionStorage.removeItem(SETUP_LATER_KEY);
+    } catch {
+      /* storage off */
+    }
+    setStep("done");
+  }
+  const siteSample = site && form ? [...stillSample(site, form)].map((k) => sayAll(SAMPLE_NAMES[k])) : [];
+
   const later = () => {
     try {
       sessionStorage.setItem(SETUP_LATER_KEY, "1");
@@ -158,6 +210,11 @@ export default function SetupWizard() {
 
   const stepLabel: Record<Step, string> = {
     shop: sayAll("متجرك|Your shop|החנות שלך"),
+    kind: sayAll("نوع الموقع|Kind of site|סוג האתר"),
+    about: sayAll("عنّك|About you|עליכם"),
+    runs: sayAll("شو بيشتغل|What it runs|מה פועל"),
+    look: sayAll("الشكل|The look|המראה"),
+    finish: sayAll("جهّزه|Set it up|הקמה"),
     name: tr("اسم المتجر", "Store name"),
     assistant: sayAll("المساعد|Assistant|העוזר"),
     media: sayAll("الصور|Pictures|תמונות"),
@@ -215,11 +272,39 @@ export default function SetupWizard() {
           </section>
         ) : null}
 
-        {step === "assistant" ? <AssistantStep on={assistantOn} onToggle={setAssistantOn} persona={personaNow} onPersona={setPersona} industry={pack?.industry ?? null} /> : null}
+        {step === "assistant" ? <AssistantStep on={assistantOn} onToggle={setAssistantOn} persona={personaNow} onPersona={setPersona} industry={activePack?.industry ?? null} /> : null}
 
         {step === "media" ? <MediaStep saveRef={mediaSave} /> : null}
 
         {step === "shop" ? <ShopStep onReady={next} onReadyChange={setShopReady} /> : null}
+
+        {step === "kind" ? <KindStep picked={site} onPick={pickKind} /> : null}
+
+        {step === "about" && site && form ? (
+          <section className="mx-auto max-w-3xl space-y-5">
+            <h1 className="text-2xl font-bold">{sayAll("عنّك|About you|עליכם")}</h1>
+            <SiteAbout bp={site} form={form} onChange={setForm} />
+            <MediaUrlInput label={tr("لوجو المتجر (اختياري)", "Store logo (optional)")} value={logoUrl ?? ""} onChange={setLogoUrl} error={logoError} placeholder="https://…/logo.png" showPreview />
+          </section>
+        ) : null}
+
+        {step === "runs" && site && form ? (
+          <section className="mx-auto max-w-3xl space-y-5">
+            <h1 className="text-2xl font-bold">{sayAll("شو بدّك يشتغل؟|What should it run?|מה צריך לפעול?")}</h1>
+            <SiteRuns bp={site} form={form} onChange={setForm} />
+          </section>
+        ) : null}
+
+        {step === "look" && site && form ? (
+          <section className="mx-auto max-w-3xl space-y-5">
+            <h1 className="text-2xl font-bold">{sayAll("الشكل|The look|המראה")}</h1>
+            <SiteLook bp={site} form={form} onChange={setForm} themeNote={sayAll("الثيم: واحد مختار لهاد النوع من المواقع، وبتغيّره من الثيمات بأي وقت. الثيمات المصمّمة لكل نوع موقع جاية بموجة لحالها.|The theme: one picked for this kind of site, which you can change in Themes any time. Themes designed for each kind of site come in a wave of their own.|ערכת הנושא: אחת שנבחרה לסוג האתר הזה, ואפשר להחליף אותה בערכות הנושא בכל זמן. ערכות שעוצבו לכל סוג אתר יגיעו בגל משלהן.")} />
+          </section>
+        ) : null}
+
+        {step === "finish" && site && form ? <SiteFinish bp={site} chosen={withChoices(site, choicesOf(site, form))} sample={siteSample} live={siteRun?.live ?? live} onLive={setLive} run={siteRun} owner={status ? status.owner : true} /> : null}
+
+        {step === "done" && siteRun ? <SiteDone run={siteRun} shop={shopOrigin()} /> : null}
 
         {step === "industry" ? (
           <section className="space-y-5">
@@ -340,10 +425,14 @@ export default function SetupWizard() {
 
       {step !== "done" ? (
         <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/[0.08] bg-surface-950/90 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="sm" onClick={back} disabled={step === steps[0] || busy}>
+          <Button variant="ghost" size="sm" onClick={back} disabled={step === steps[0] || busy || Boolean(siteRun?.done.length)}>
             {tr("رجوع", "Back")}
           </Button>
-          {step === "content" ? (
+          {step === "finish" ? (
+            <Button variant="accent" size="sm" onClick={() => void applySite()} isLoading={busy} disabled={busy || (status ? !status.owner : false)} data-testid="setup-apply">
+              {siteRun?.failed ? sayAll("جرّب كمان مرة من هون|Try again from here|לנסות שוב מכאן") : sayAll("جهّز الموقع|Set up the site|הקמת האתר")}
+            </Button>
+          ) : step === "content" ? (
             <Button variant="accent" size="sm" onClick={() => void apply()} isLoading={busy} disabled={busy || (status ? !status.owner : false) || Boolean(include.home && (template || blank) && (status?.hasHome || status?.hasDesign) && !replaceHome)} data-testid="setup-apply">
               {tr("جهّز المتجر", "Set up the store")}
             </Button>
