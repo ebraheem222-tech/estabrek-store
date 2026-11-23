@@ -84,7 +84,7 @@ describe("Names", () => {
 
   test("what a value is offered: the inputs, the moment, a row's fields, how many rows", () => {
     // What it is handed, the moment, and who started the run.
-    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"];
+    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "caller.discordId", "caller.steamId"];
     expect(offers(def, ["do", 0], tables)).toEqual(always);
     expect(offers(def, ["do", 1], tables)).toEqual([...always, "orders", "orders.length", "orders.first.title", "orders.first.total"]);
     expect(offers(def, ["do", 2, "do", 0], tables)).toEqual(expect.arrayContaining(["order", "order.$id", "order.$slug", "order.title", "order.total", "index", "sum", "made.email"]));
@@ -92,7 +92,7 @@ describe("Names", () => {
   });
 
   test("a whole site's function is offered its site's settings, and can't keep anything under «settings»", () => {
-    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"];
+    const always = ["input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "caller.discordId", "caller.steamId"];
     expect(offers(def, ["do", 0], tables, [], ["notifyOn", "notifyEmail"])).toEqual([...always, "settings.notifyOn", "settings.notifyEmail"]);
     expect(nameOk("settings")).toBe(false);
   });

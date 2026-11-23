@@ -142,13 +142,13 @@ export async function changeStock(ask: StockAsk, dry: boolean, /** A dry run's q
 
 export type CustomerAsk = { who: string; mark: (typeof CUSTOMER_MARKS)[number]; what: string };
 /** A customer as the steps after it see them ({{buyer.phone}}). */
-export type CustomerSeen = { id: string; name: string; email: string; phone: string | null; roles: string[]; groups: string[] };
+export type CustomerSeen = { id: string; name: string; email: string; phone: string | null; roles: string[]; groups: string[]; /** The accounts they play with, once linked (lib/socialSignIn.ts): {{player.discordId}}. */ discordId: string | null; steamId: string | null };
 export type CustomerDone = { customer: CustomerSeen; /** The role's key or the group's name the step was about. */ what: string; /** It as the run's line says it: a role by its name in the function's language. */ shown: string; /** Whether anything changed (a role they had already: nothing). */ changed: boolean };
 
 export async function markCustomer(ask: CustomerAsk, dry: boolean, lang: "ar" | "en" | "he" = "ar"): Promise<CustomerDone> {
   const who = ask.who.trim();
   if (!who) throw new StoreError("Which customer? (nobody here)");
-  const user = who.length > 200 ? null : await prisma.user.findFirst({ where: EMAIL.test(who) ? { email: who.toLowerCase() } : { id: who }, select: { id: true, name: true, email: true, phone: true, roles: true, groups: true } });
+  const user = who.length > 200 ? null : await prisma.user.findFirst({ where: EMAIL.test(who) ? { email: who.toLowerCase() } : { id: who }, select: { id: true, name: true, email: true, phone: true, roles: true, groups: true, discordId: true, steamId: true } });
   if (!user) throw new StoreError(`No customer "${who.slice(0, 60)}"`);
   let { roles, groups } = user;
   let what = "";
@@ -185,5 +185,5 @@ export async function markCustomer(ask: CustomerAsk, dry: boolean, lang: "ar" | 
     // A shopper's roles and groups are kept a moment with their sign-in (middleware/apiCaller.ts).
     forgetShoppers();
   }
-  return { customer: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? null, roles, groups }, what, shown, changed };
+  return { customer: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? null, roles, groups, discordId: user.discordId ?? null, steamId: user.steamId ?? null }, what, shown, changed };
 }

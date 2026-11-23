@@ -7,6 +7,7 @@ import { say } from "../../studio/say";
 const KIND_NAME: Record<string, string> = {
   telegram: "تلغرام|Telegram|טלגרם",
   slack: "Slack|Slack|Slack",
+  discord: "ديسكورد|Discord|Discord",
   google: "Google Sheets|Google Sheets|Google Sheets",
   api: "نظام تاني (API)|Another system (API)|מערכת אחרת (API)",
   neon: "Neon|Neon|Neon",
@@ -18,6 +19,7 @@ const KIND_NAME: Record<string, string> = {
 const KEY_NAME: Record<string, string> = {
   telegram: "توكن البوت|The bot's token|הטוקן של הבוט",
   slack: "عنوان الـ webhook|The webhook's address|כתובת ה-webhook",
+  discord: "توكن البوت|The bot's token|הטוקן של הבוט",
   google: "ملف مفتاح حساب الخدمة (JSON)|The service account's key file (JSON)|קובץ המפתח של חשבון השירות (JSON)",
   api: "مفتاح الـ API|The API key|מפתח ה-API",
   neon: "مفتاح الـ API تبع Neon|Neon's API key|מפתח ה-API של Neon",
@@ -28,6 +30,7 @@ const KEY_NAME: Record<string, string> = {
 const KEY_LOOKS: Record<string, string> = {
   telegram: "123456789:AAH…",
   slack: "https://hooks.slack.com/services/…",
+  discord: "MTA…‎.Gx…‎.…",
   google: '{"type": "service_account", …}',
   api: "المفتاح اللي أعطاك ياه النظام (لـ Basic: name:password)",
   neon: "napi_…",
@@ -39,6 +42,8 @@ const KIND_HOW: Record<string, string> = {
     "بتلغرام افتح @BotFather، اكتب ‎/newbot، وانسخ التوكن اللي بيعطيك ياه. بعدها ضيف البوت على المجموعة أو القناة اللي بدك يكتب فيها (أو ابعتله رسالة أول لو بدك يكتبلك إنت).|In Telegram open @BotFather, write /newbot, and copy the token it gives you. Then add the bot to the group or channel it should write in (or write to it first, if it should write to you).|בטלגרם פתחו את @BotFather, כתבו ‎/newbot והעתיקו את הטוקן שהוא נותן. אחר כך הוסיפו את הבוט לקבוצה או לערוץ שבו הוא אמור לכתוב (או כתבו לו קודם, אם הוא אמור לכתוב אליכם).",
   slack:
     "بـ Slack: ‏Apps ← Incoming Webhooks ← Add to Slack، اختار القناة، وانسخ العنوان (Webhook URL). كل عنوان لقناة وحدة.|In Slack: Apps → Incoming Webhooks → Add to Slack, pick the channel, and copy the address (Webhook URL). Each address is for one channel.|ב-Slack: ‏Apps ← Incoming Webhooks ← Add to Slack, בחרו ערוץ והעתיקו את הכתובת (Webhook URL). כל כתובת מיועדת לערוץ אחד.",
+  discord:
+    "بـ discord.com/developers/applications: افتح تطبيقك (أو «New Application») ← Bot ← «Reset Token» وانسخ التوكن. بعدها OAuth2 ← URL Generator: علّم bot، ومن تحت «Send Messages» و«Manage Roles»، وافتح الرابط وضيف البوت على سيرفرك. رتبة البوت لازم تكون فوق الرتب اللي بدّه يعطيها. الأرقام (السيرفر، القناة، الرتبة): شغّل Developer Mode بإعدادات ديسكورد، وكبسة يمين ← Copy ID.|At discord.com/developers/applications: open your application (or “New Application”) → Bot → “Reset Token”, and copy the token. Then OAuth2 → URL Generator: tick bot, and below it “Send Messages” and “Manage Roles”, open the link and add the bot to your server. The bot's role has to be above the roles it gives. The IDs (server, channel, role): turn on Developer Mode in Discord's settings, then right click → Copy ID.|ב-discord.com/developers/applications: פתחו את האפליקציה שלכם (או «New Application») ← Bot ← «Reset Token» והעתיקו את הטוקן. אחר כך OAuth2 ← URL Generator: סמנו bot, ומתחת «Send Messages» ו-«Manage Roles», פתחו את הקישור והוסיפו את הבוט לשרת שלכם. התפקיד של הבוט צריך להיות מעל התפקידים שהוא נותן. המספרים (שרת, ערוץ, תפקיד): הפעילו Developer Mode בהגדרות של Discord, ואז לחיצה ימנית ← Copy ID.",
   google:
     "مرة وحدة بـ Google Cloud Console: اعمل مشروع، شغّل فيه «Google Sheets API»، وبعدين IAM ← Service Accounts ← Create، وجوّا الحساب Keys ← Add key ← JSON: بينزل ملف، اختاره هون. بعد ما توصل، المتجر بيعطيك إيميل الحساب: افتح الشيت ← Share ← حط الإيميل كـ Editor، متل ما بتشارك مع شخص.|Once, in Google Cloud Console: make a project, turn on “Google Sheets API” in it, then IAM → Service Accounts → Create, and in the account Keys → Add key → JSON: a file is downloaded, pick it here. Once connected, the store shows the account's email: open the sheet → Share → add that email as an Editor, as you would share with a person.|פעם אחת ב-Google Cloud Console: צור פרויקט, הפעל בו «Google Sheets API», ואז IAM ← Service Accounts ← Create, ובתוך החשבון Keys ← Add key ← JSON: יורד קובץ, בחר אותו כאן. אחרי החיבור החנות מציגה את האימייל של החשבון: פתח את הגיליון ← Share ← הוסף את האימייל כ-Editor, כמו שמשתפים עם אדם.",
   api:
@@ -64,6 +69,8 @@ const SETTING_NAME: Record<string, string> = {
   "vercel.team": "الفريق|The team|הצוות",
   "cloudflare.account": "رقم الحساب (Account ID)|The Account ID|ה-Account ID",
   "telegram.chat": "المحادثة المعتادة|The usual chat|הצ׳אט הרגיל",
+  "discord.guild": "رقم السيرفر|The server's ID|המספר של השרת",
+  "discord.channel": "القناة المعتادة|The usual channel|הערוץ הרגיל",
   "google.sheet": "الشيت المعتاد|The usual spreadsheet|הגיליון הרגיל",
   "google.tab": "الورقة المعتادة|The usual tab|הלשונית הרגילה",
   "google.account": "شارك الشيت مع|Share the sheet with|שתף את הגיליון עם",
@@ -74,6 +81,8 @@ const SETTING_NAME: Record<string, string> = {
 };
 const SETTING_HINT: Record<string, string> = {
   "telegram.chat": "رقمها أو @اسم القناة (اختياري)|its number, or @channelname (optional)|המספר שלו, או @שם_הערוץ (לא חובה)",
+  "discord.guild": "رقم من 15 لـ 22 خانة (Copy ID على اسم السيرفر)|15 to 22 digits (Copy ID on the server's name)|15 עד 22 ספרות (Copy ID על שם השרת)",
+  "discord.channel": "رقم القناة (اختياري)|the channel's ID (optional)|המספר של הערוץ (לא חובה)",
   "google.sheet": "رابط الشيت من المتصفح (اختياري)|the sheet's link from the browser (optional)|הקישור לגיליון מהדפדפן (לא חובה)",
   "google.tab": "اسم الورقة تحت، متل Sheet1 (اختياري)|the tab's name at the bottom, like Sheet1 (optional)|שם הלשונית למטה, כמו Sheet1 (לא חובה)",
   "api.base": "https://erp.example.com/api",
@@ -98,6 +107,9 @@ const CHOICE_NAME: Record<string, string> = {
 const ACTION_NAME: Record<string, string> = {
   "telegram.message": "ابعت رسالة|Send a message|שליחת הודעה",
   "slack.message": "ابعت رسالة|Send a message|שליחת הודעה",
+  "discord.message": "ابعت رسالة بقناة|Send a message in a channel|שליחת הודעה בערוץ",
+  "discord.giveRole": "أعطي رتبة|Give a role|מתן תפקיד",
+  "discord.takeRole": "شيل رتبة|Take a role away|הסרת תפקיד",
   "google.append": "ضيف سطر|Add a row|הוספת שורה",
   "google.read": "اقرأ سطور|Read rows|קריאת שורות",
   "api.get": "اجلب (GET)|Fetch (GET)|שליפה (GET)",
@@ -123,6 +135,11 @@ const FIELD_NAME: Record<string, string> = {
   "telegram.chat": "لأي محادثة|To which chat|לאיזה צ׳אט",
   "telegram.text": "نص الرسالة|The message|ההודעה",
   "slack.text": "نص الرسالة|The message|ההודעה",
+  "discord.channel": "بأي قناة (رقمها؛ فاضي = المعتادة)|Which channel (its ID; empty = the usual one)|באיזה ערוץ (המספר; ריק = הרגיל)",
+  "discord.text": "نص الرسالة|The message|ההודעה",
+  "discord.member": "مين (رقم حسابه بديسكورد، متل {{caller.discordId}})|Who (their Discord account's ID, like {{caller.discordId}})|מי (המספר של החשבון שלו ב-Discord, כמו {{caller.discordId}})",
+  "discord.role": "أي رتبة (رقمها)|Which role (its ID)|איזה תפקיד (המספר שלו)",
+  "discord.guild": "بأي سيرفر (رقمه؛ فاضي = المعتاد)|Which server (its ID; empty = the usual one)|באיזה שרת (המספר; ריק = הרגיל)",
   "google.sheet": "بأي شيت|Which spreadsheet|איזה גיליון",
   "google.tab": "بأي ورقة|Which tab|איזו לשונית",
   "google.cells": "خانات السطر (كل سطر هون خانة)|The row's cells (one a line)|תאי השורה (תא בכל שורה)",

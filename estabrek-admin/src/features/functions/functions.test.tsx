@@ -135,7 +135,7 @@ describe("The builder", () => {
     expect([...screen.getByTestId("filter-do.0-0-op").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["is", "contains"]);
     expect((screen.getByTestId("filter-do.0-0-op") as HTMLSelectElement).value).toBe("contains");
     pick("filter-do.0-0-op", "is");
-    expect([...screen.getByTestId("filter-do.0-0-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups"]);
+    expect([...screen.getByTestId("filter-do.0-0-value-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "input.email", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "caller.discordId", "caller.steamId"]);
     pick("filter-do.0-0-value-names", "input.email");
     expect((screen.getByTestId("filter-do.0-0-value") as HTMLInputElement).value).toBe("{{input.email}}");
     type("step-do.0-as", "found");
@@ -212,7 +212,7 @@ describe("The builder", () => {
     expect(screen.getByTestId("step-do.0-line").textContent).toBe("Greet ← said");
     expect([...screen.getByTestId("steps-fail-add").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "add", "change", "set", "notify", "push", "email", "whatsapp", "sms", "ready", "http"]);
     pick("steps-fail-add", "notify");
-    expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "said", "error"]);
+    expect([...screen.getByTestId("step-fail.0-title-names").querySelectorAll("option")].map((o) => o.getAttribute("value"))).toEqual(["", "now", "caller", "caller.id", "caller.name", "caller.email", "caller.kind", "caller.roles", "caller.groups", "caller.discordId", "caller.steamId", "said", "error"]);
     type("step-fail.0-title", "It failed: {{error}}");
     fireEvent.click(screen.getByTestId("fn-save"));
     await waitFor(() => expect(lastDraft()).toEqual({ inputs: [], do: [{ act: "call", fn: "f2", input: { who: "Amal" }, as: "said" }], fail: [{ act: "notify", title: "It failed: {{error}}" }] }));
@@ -391,7 +391,7 @@ describe("The builder", () => {
     expect((await screen.findByTestId("step-do.0-problems")).textContent).toBe("This connection isn't there any more");
     fireEvent.click(screen.getByTestId("step-do.0-head"));
     expect(screen.getByTestId("step-do.0-via").querySelector("option")?.textContent).toBe("A deleted connection");
-    expect(screen.getByTestId("step-do.0-ready-none").textContent).toContain("No ready connections yet (Telegram, Slack, Google Sheets, any API, or where the store is hosted: Neon, Railway, Vercel, Cloudflare)");
+    expect(screen.getByTestId("step-do.0-ready-none").textContent).toContain("No ready connections yet (Telegram, Slack, Discord, Google Sheets, any API, or where the store is hosted: Neon, Railway, Vercel, Cloudflare)");
     expect(within(screen.getByTestId("step-do.0-ready-none")).getByRole("link").getAttribute("href")).toBe("/admin/connections");
     // A new one starts with nothing picked.
     pick("steps-do-add", "ready");

@@ -147,7 +147,7 @@ export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
  * Who started the run, as its steps name them: {{caller.kind}} is "customer", "key", "public", "admin" or "system";
  * a shopper's {{caller.roles}} and {{caller.groups}} are lists (lib/shopperRoles.ts), empty for anyone else.
  */
-export const CALLER_KEYS = ["kind", "id", "name", "email", "roles", "groups"] as const;
+export const CALLER_KEYS = ["kind", "id", "name", "email", "roles", "groups", "discordId", "steamId"] as const;
 
 /* ---------------- The shape ---------------- */
 

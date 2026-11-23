@@ -45,8 +45,8 @@ const tooMany = (res: Response, resetAt: number) => {
   res.status(429).json({ error: "RATE_LIMIT", message: "Too many requests this minute", retryAt: resetAt });
 };
 
-const SHOPPER = { id: true, name: true, email: true, roles: true, groups: true } as const;
-const asShopper = (user: { id: string; name: string | null; email: string | null; roles: string[]; groups: string[] }): FnCaller => ({ kind: "customer", id: user.id, name: user.name ?? "", email: user.email ?? "", roles: user.roles, groups: user.groups });
+const SHOPPER = { id: true, name: true, email: true, roles: true, groups: true, discordId: true, steamId: true } as const;
+const asShopper = (user: { id: string; name: string | null; email: string | null; roles: string[]; groups: string[]; discordId: string | null; steamId: string | null }): FnCaller => ({ kind: "customer", id: user.id, name: user.name ?? "", email: user.email ?? "", roles: user.roles, groups: user.groups, discordId: user.discordId, steamId: user.steamId });
 
 /**
  * Who is calling, as the trigger asks for it (`who`; `roles`: a shopper holding one of them only), and what their
