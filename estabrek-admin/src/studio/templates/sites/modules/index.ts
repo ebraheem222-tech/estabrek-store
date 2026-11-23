@@ -13,9 +13,11 @@ import { PACKAGES } from "./packages";
 import { MCSTORE } from "./mcstore";
 import { LINK } from "./link";
 import { RANKING } from "./ranking";
+import { WIPE } from "./wipe";
+import { STREAMERS } from "./streamers";
 import type { Built, Part, SiteModule } from "./kit";
 
-export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, CONTACT, BOOKING, NOTIFY];
+export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, CONTACT, BOOKING, NOTIFY];
 
 /** Each archetype's home page; one with none can't be built yet. */
 export const HOMES: Partial<Record<Archetype, (b: Built) => Part[]>> = { front: frontHome, server: serverHome };

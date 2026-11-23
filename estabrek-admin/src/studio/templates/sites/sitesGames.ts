@@ -1,11 +1,11 @@
-/** Whole sites for game servers (wave G of docs/sites-300-plan.ar.md): a FiveM roleplay city first. */
+/** Whole sites for game servers (wave G of docs/sites-300-plan.ar.md): a FiveM roleplay city, a Minecraft survival valley, a Rust island. */
 import { w } from "../words";
 import { site } from "./blueprint";
 import { RANK_W } from "./siteWords";
 
 export const FIVEM_RP = site({
   key: "site-fivem-rp",
-  version: "1.5.0",
+  version: "1.6.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -119,6 +119,15 @@ export const FIVEM_RP = site({
       boards: [
         { key: "playtime", title: RANK_W.playtime, sub: RANK_W.playtimeSub, unit: "minutes", how: "sum", best: "high" },
         { key: "money", title: w("أغنى السكان", "The richest residents", "התושבים העשירים"), sub: w("مصاري الجيبة والبنك، حسب آخر مرّة شافها السيرفر.", "Cash and bank, as the server last saw them.", "מזומן ובנק, כפי שהשרת ראה לאחרונה."), unit: "number", how: "latest", best: "high" },
+      ],
+    },
+    streamers: {
+      title: w("ستريمرز المدينة", "The city's streamers", "הסטרימרים של העיר"),
+      sub: w("ناس بتبث حياتها بمدينة الندى. اللي لايف هلّق أول.", "People streaming their lives in Dew City. Those live now come first.", "אנשים שמשדרים את החיים שלהם בעיר הטל. מי שבשידור עכשיו ראשון."),
+      rows: [
+        { slug: "officer-nour", name: w("الضابط نور", "Officer Nour", "השוטרת נור"), twitch: "", about: w("دوريات الليل بشرطة المدينة، كل يوم بعد العشا.", "Night patrols with the city police, every day after dinner.", "סיורי לילה עם משטרת העיר, כל יום אחרי ארוחת הערב.") },
+        { slug: "mechanic-sami", name: w("سامي الميكانيكي", "Sami the mechanic", "סמי המכונאי"), twitch: "", about: w("كراج سامي: تصليح، تعديل، وقصص الزباين.", "Sami's garage: repairs, mods, and the customers' stories.", "המוסך של סמי: תיקונים, שיפורים וסיפורי הלקוחות.") },
+        { slug: "doctor-lina", name: w("الدكتورة لينا", "Doctor Lina", "ד\"ר לינה"), twitch: "", about: w("مناوبات الإسعاف، والليالي الطويلة بالمستشفى.", "Paramedic shifts, and long nights at the hospital.", "משמרות פרמדיקים ולילות ארוכים בבית החולים.") },
       ],
     },
     contact: {},
@@ -239,6 +248,121 @@ export const MC_SURVIVAL = site({
         ["cheating", w("غش (X-ray، طيران…)", "Cheating (X-ray, flying…)", "רמאות (X-ray, תעופה…)")],
         ["grief", w("تخريب أو سرقة", "Griefing or stealing", "הרס או גניבה")],
         ["toxic", w("شتائم أو تحرّش", "Insults or harassment", "קללות או הטרדה")],
+        ["other", w("شي تاني", "Something else", "משהו אחר")],
+      ],
+    },
+    contact: {},
+    notify: {},
+  },
+});
+
+/**
+ * A Rust server (wave G6b): its live status (Steam's A2S; the console's connect command to copy), its wipes (the first
+ * Thursday of each month, Rust's forced wipe, with what each takes), rules, streamers, news, questions, appeals and
+ * reports, messages. No store: Rust's own rules on selling aren't in the gate yet (docs/sites-300-plan.ar.md).
+ */
+export const RUST_WIPE = site({
+  key: "site-rust-wipe",
+  version: "1.0.0",
+  field: "games",
+  archetype: "server",
+  fam: "gaming",
+  pics: "gaming",
+  look: 0,
+  name: w("سيرفر Rust: جزيرة الرماد", "Rust server: Ash Island", "שרת Rust: אי האפר"),
+  note: w("موقع سيرفر Rust كامل: الحالة الحيّة وأمر الدخول للنسخ، عدّاد المسح الجاي وشو بينمسح، القوانين، الستريمرز ومين لايف، الأخبار، الاستئناف والبلاغ، ورسائل.", "A whole Rust server site: the live status and the connect command to copy, the next wipe's countdown and what it takes, rules, the streamers and who is live, news, appeals and reports, and messages.", "אתר שלם לשרת Rust: המצב החי ופקודת החיבור להעתקה, ספירה למחיקה הבאה ומה נמחק, חוקים, הסטרימרים ומי בשידור, חדשות, ערעורים ודיווחים והודעות."),
+  biz: { name: w("جزيرة الرماد", "Ash Island", "אי האפר"), address: w("أونلاين", "Online", "אונליין"), hours: w("السيرفر شغّال 24/7", "The server runs 24/7", "השרת פועל 24/7"), phone: "0", email: "team@ashisland.example", city: "" },
+  pack: {
+    label: w("جزيرة الرماد", "Ash Island", "אי האפר"),
+    eyebrow: w("سيرفر Rust، فانيلا ×2", "A Rust server, vanilla ×2", "שרת Rust, וניל ×2"),
+    title: w("ابنِ، دافع، وابدأ من جديد كل شهر", "Build, defend, and start over every month", "לבנות, להגן ולהתחיל מחדש כל חודש"),
+    sub: w("جمع ×2، فرق لحد 4، ومسح كبير أول خميس بالشهر.", "×2 gather, teams of up to 4, and a full wipe on the first Thursday of the month.", "איסוף ×2, קבוצות של עד 4 ומחיקה מלאה ביום חמישי הראשון בחודש."),
+    cta: w("انسخ أمر الدخول", "Copy the connect command", "להעתיק את פקודת החיבור"),
+    product: w("الجزيرة", "The island", "האי"),
+    story: w("عملنا الجزيرة لناس بدها Rust نضيف: إدارة صاحية، بلا غش، وبداية جديدة كل شهر.", "We made the island for people who want clean Rust: awake admins, no cheating, and a fresh start every month.", "יצרנו את האי לאנשים שרוצים Rust נקי: מנהלים ערניים, בלי רמאות והתחלה חדשה כל חודש."),
+    collection: w("آخر الأخبار", "Latest news", "החדשות האחרונות"),
+    icon: "star",
+  },
+  home: "/island",
+  modules: {
+    status: {
+      game: "steam",
+      address: "play.ashisland.example:28015",
+      discord: "https://discord.gg/ashisland",
+      join: w("فوت هلّق", "Join now", "להתחבר עכשיו"),
+      steps: [
+        [w("افتح Rust", "Open Rust", "לפתוח את Rust"), w("من Steam، على نفس نسخة السيرفر.", "From Steam, on the server's version.", "מ-Steam, באותה גרסה כמו השרת.")],
+        [w("افتح الكونسول بـ F1", "Open the console with F1", "לפתוח את הקונסול עם F1"), w("والصق: client.connect play.ashisland.example:28015", "And paste: client.connect play.ashisland.example:28015", "ולהדביק: client.connect play.ashisland.example:28015")],
+        [w("اقرأ القوانين", "Read the rules", "לקרוא את החוקים"), w("فرق لحد 4، بلا غش ولا شتائم.", "Teams of up to 4, no cheating and no insults.", "קבוצות של עד 4, בלי רמאות ובלי קללות.")],
+      ],
+    },
+    wipe: {
+      title: w("مواعيد المسح", "Wipe days", "מועדי המחיקה"),
+      sub: w("إمتى الجزيرة بتبلّش من جديد، وشو بيروح معها.", "When the island starts over, and what goes with it.", "מתי האי מתחיל מחדש, ומה הולך איתו."),
+      line: w("المسح الكبير أول خميس بكل شهر، مع تحديث Rust الشهري.", "The full wipe is the first Thursday of each month, with Rust's monthly update.", "המחיקה המלאה ביום חמישי הראשון בכל חודש, עם העדכון החודשי של Rust."),
+      every: "monthly",
+      day: "thu",
+      time: "19:00",
+      zone: "london",
+      note: w("السيرفر بيرجع خلال ربع ساعة من المسح، والخريطة الجديدة بتنزل بالديسكورد قبلها بساعة.", "The server is back within a quarter of an hour of the wipe, and the new map goes up on Discord an hour before.", "השרת חוזר תוך רבע שעה מהמחיקה, והמפה החדשה עולה בדיסקורד שעה לפני."),
+      what: [
+        [w("الخريطة", "The map", "המפה"), w("جزيرة جديدة كل مسح: كل البيوت والصناديق بتروح.", "A new island each wipe: every base and box goes.", "אי חדש בכל מחיקה: כל הבסיסים והתיבות הולכים.")],
+        [w("البلوبرنت", "Blueprints", "שרטוטים"), w("بتنمسح مع المسح الكبير كل شهر.", "They go with the full wipe each month.", "נמחקים עם המחיקה המלאה כל חודש.")],
+        [w("اللي بيضل", "What stays", "מה נשאר"), w("حسابك بالموقع ورتبتك بالديسكورد.", "Your account on the site and your Discord role.", "החשבון שלכם באתר והתפקיד בדיסקורד.")],
+      ],
+    },
+    rules: {
+      title: w("القوانين", "The rules", "החוקים"),
+      sub: w("الجزيرة قاسية، بس اللعب نضيف. اقراها قبل أول ليلة.", "The island is harsh, but the game is clean. Read them before your first night.", "האי קשוח, אבל המשחק נקי. קראו לפני הלילה הראשון."),
+      changed: w("آخر تعديل 22 تشرين التاني: صارت الفرق لحد 4.", "Last changed on 22 November: teams are now up to 4.", "שינוי אחרון ב־22 בנובמבר: קבוצות עכשיו עד 4."),
+      date: "2026-11-22",
+      sections: [
+        { key: "general", name: w("عام", "General", "כללי"), rows: [
+          { n: "1.1", title: w("بلا غش", "No cheating", "בלי רמאות"), text: w("لا aimbot ولا ESP ولا ماكرو. الباند دائم من أول مرّة.", "No aimbot, no ESP, no macros. The ban is for good, the first time.", "בלי aimbot, בלי ESP, בלי מאקרו. הבאן לתמיד, מהפעם הראשונה.") },
+          { n: "1.2", title: w("احترم الكل", "Respect everyone", "כבוד לכולם"), text: w("ما في عنصرية ولا شتائم بالشات أو بالصوت.", "No racism or insults, in chat or on voice.", "בלי גזענות או קללות, בצ'אט או בקול.") },
+          { n: "1.3", title: w("حساب واحد", "One account", "חשבון אחד"), text: w("كل لاعب بحساب Steam واحد.", "Each player plays on one Steam account.", "כל שחקן משחק בחשבון Steam אחד.") },
+        ] },
+        { key: "teams", name: w("الفرق", "Teams", "קבוצות"), rows: [
+          { n: "2.1", title: w("لحد 4", "Up to 4", "עד 4"), text: w("الفرقة 4 بالأكتر، وما في تحالفات بين الفرق.", "A team is 4 at most, and no alliances between teams.", "קבוצה של 4 לכל היותר, ובלי בריתות בין קבוצות.") },
+          { n: "2.2", title: w("بلا تبديل", "No swapping", "בלי החלפות"), text: w("ما بتبدّل حدا من فرقتك بنص المسح.", "Don't swap anyone in your team in the middle of a wipe.", "לא מחליפים אף אחד בקבוצה באמצע מחיקה.") },
+        ] },
+        { key: "building", name: w("البناء", "Building", "בנייה"), rows: [
+          { n: "3.1", title: w("بلا سدّ المعالم", "Don't block monuments", "לא לחסום אתרים"), text: w("ما بتبني على طريق المعالم ولا بتسكّر مداخلها.", "Don't build in a monument's way or close its doors.", "לא בונים בדרך לאתרים ולא סוגרים את הכניסות.") },
+          { n: "3.2", title: w("بلا حيطان بالبحر", "No walls in the sea", "בלי חומות בים"), text: w("الحيطان الطويلة بالمي بتعمل لاغ للكل.", "Long walls in the water lag everyone.", "חומות ארוכות במים יוצרות לאג לכולם.") },
+        ] },
+      ],
+    },
+    streamers: {
+      title: w("الستريمرز", "Streamers", "סטרימרים"),
+      sub: w("مين بيبث الجزيرة. اللي لايف هلّق أول.", "Who streams the island. Those live now come first.", "מי משדר את האי. מי שבשידור עכשיו ראשון."),
+      rows: [
+        { slug: "abu-sakhr", name: w("أبو صخر", "Abu Sakhr", "אבו סח'ר"), twitch: "", about: w("بيبث أول ليلة بعد كل مسح، من الصفر.", "Streams the first night after every wipe, from nothing.", "משדר את הלילה הראשון אחרי כל מחיקה, מאפס.") },
+        { slug: "layla-builds", name: w("ليلى بتبني", "Layla builds", "ליילה בונה"), twitch: "", about: w("بيوت ما بتنكسر، وكيف بتبنيها.", "Bases that don't break, and how to build them.", "בסיסים שלא נשברים, ואיך לבנות אותם.") },
+        { slug: "rami-raids", name: w("رامي والغارات", "Rami raids", "ראמי פושט"), twitch: "", about: w("غارات بالليل، بالقوانين.", "Raids at night, by the rules.", "פשיטות בלילה, לפי החוקים.") },
+      ],
+    },
+    news: {
+      title: w("الأخبار", "News", "חדשות"),
+      sub: w("المسح والتحديثات والفعاليات.", "Wipes, updates and events.", "מחיקות, עדכונים ואירועים."),
+      rows: [
+        { slug: "december-wipe", date: "2026-11-20", title: w("مسح كانون الأول: خريطة جديدة", "December's wipe: a new map", "המחיקה של דצמבר: מפה חדשה"), text: w("جزيرة أكبر بمعالم أكتر.", "A bigger island with more monuments.", "אי גדול יותר עם יותר אתרים."), body: w("أول خميس بكانون الأول بننزل خريطة أكبر بـ 4,500، مع معلمين جداد عالشط.", "On December's first Thursday we put up a bigger 4,500 map, with two new monuments on the coast.", "ביום חמישי הראשון של דצמבר נעלה מפה גדולה יותר בגודל 4,500, עם שני אתרים חדשים על החוף.") },
+        { slug: "teams-of-four", date: "2026-11-22", title: w("الفرق صارت لحد 4", "Teams are now up to 4", "הקבוצות עכשיו עד 4"), text: w("بدل 3، من المسح الجاي.", "Instead of 3, from the next wipe.", "במקום 3, מהמחיקה הבאה."), body: w("سمعناكم: من المسح الجاي الفرقة بتكون لحد 4 لاعبين.", "We heard you: from the next wipe a team can be up to 4 players.", "שמענו אתכם: מהמחיקה הבאה קבוצה יכולה להיות עד 4 שחקנים.") },
+        { slug: "airdrop-friday", date: "2026-11-14", title: w("فعالية الطيارة الجمعة", "The airdrop event on Friday", "אירוע ההצנחה ביום שישי"), text: w("3 طيارات بنص الخريطة.", "Three drops in the middle of the map.", "שלוש הצנחות במרכז המפה."), body: w("الجمعة الساعة 9 المسا، 3 طيارات ورا بعض بنص الخريطة. خليكم مستعدّين.", "Friday at 9 pm, three drops one after the other in the middle of the map. Be ready.", "שישי ב־21:00, שלוש הצנחות ברצף במרכז המפה. היו מוכנים.") },
+      ],
+    },
+    questions: { rows: [
+      { q: w("إمتى المسح؟", "When is the wipe?", "מתי המחיקה?"), a: w("أول خميس بكل شهر الساعة 7 المسا بتوقيت لندن. العدّاد بالصفحة الأولى.", "The first Thursday of each month at 7 pm London time. The countdown is on the first page.", "ביום חמישי הראשון בכל חודש ב־19:00 לפי שעון לונדון. הספירה בעמוד הראשון.") },
+      { q: w("كم واحد بالفرقة؟", "How many in a team?", "כמה בקבוצה?"), a: w("4 بالأكتر.", "4 at most.", "4 לכל היותר.") },
+      { q: w("في متجر؟", "Is there a store?", "יש חנות?"), a: w("لسّا لأ. ولما يصير، ولا شي فيه رح يعطي أفضلية باللعب.", "Not yet. And when there is, nothing in it will give an advantage in the game.", "עדיין לא. וכשתהיה, שום דבר בה לא ייתן יתרון במשחק.") },
+      { q: w("انبنّدت، شو بعمل؟", "I was banned, what do I do?", "קיבלתי באן, מה עושים?"), a: w("قدّم استئناف من صفحة «الاستئناف والبلاغ» برقم الباند.", "Appeal it on the appeals and reports page with the ban's number.", "הגישו ערעור בעמוד הערעורים והדיווחים עם מספר הבאן.") },
+    ] },
+    appeals: {
+      title: w("الاستئناف والبلاغ", "Appeals and reports", "ערעורים ודיווחים"),
+      sub: w("انبنّدت وشايف إنه غلط، أو شفت حدا عم يغش؟ من هون.", "Banned and think it was wrong, or saw someone cheating? Here.", "קיבלתם באן וחושבים שזו טעות, או ראיתם מישהו מרמה? כאן."),
+      reasons: [
+        ["cheating", w("غش (aimbot، ESP…)", "Cheating (aimbot, ESP…)", "רמאות (aimbot, ESP…)")],
+        ["teaming", w("فرقة أكبر من 4", "A team bigger than 4", "קבוצה גדולה מ־4")],
+        ["toxic", w("شتائم أو عنصرية", "Insults or racism", "קללות או גזענות")],
         ["other", w("شي تاني", "Something else", "משהו אחר")],
       ],
     },

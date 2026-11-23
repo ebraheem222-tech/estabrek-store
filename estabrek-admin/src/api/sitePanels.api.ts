@@ -38,7 +38,11 @@ export type PanelGame = { kind: "game"; key: string; title: Local; status: GameV
 export type PanelTebex = { kind: "tebex"; key: string; title: Local; token: boolean; store: { name: string; url: string; currency: string; categories: Array<{ name: string; packages: number }> } | null };
 /** A game server site's link (backend lib/gameLink.ts): downloaded or not, its last hello, its whitelist switch. */
 export type PanelLink = { kind: "link"; key: string; title: Local; game: "fivem" | "minecraft" | null; made: boolean; keyHint: string | null; lastSeenAt: string | null; lastVersion: string | null; lastPlayers: number | null; whitelist: boolean; whitelistable: boolean; canDownload: boolean };
-export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame | PanelTebex | PanelLink;
+/** A game server site's streamers (backend lib/twitch.ts): whether its Twitch keys are set and answer, and who is live. */
+export type PanelStreamers = { kind: "streamers"; key: string; title: Local; connected: boolean; failed: boolean; total: number; live: Array<{ name: string; url: string | null; title: string; viewers: number }> };
+/** A game server site's next wipe and its last, by its schedule (backend lib/wipes.ts; null: none set). */
+export type PanelWipe = { kind: "wipe"; key: string; title: Local; wipe: { next: string | null; last: string | null; every: "weekly" | "biweekly" | "monthly" | "date"; day: string; time: string; zone: string } | null };
+export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame | PanelTebex | PanelLink | PanelStreamers | PanelWipe;
 /** One person (by their phone or email) with their rows in each of the part's tables. */
 export type PanelPerson = { key: string; by: string; name: string; last: string; tables: Array<{ table: PanelTable; title: Local; columns: PanelColumn[]; rows: PanelRow[] }> };
 /** What a page asks besides its language: a calendar's month ("2026-11"), a report's period. */

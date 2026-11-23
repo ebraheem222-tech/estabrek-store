@@ -27,6 +27,7 @@ export const SITE_THEMES: Record<string, string> = {
   // Until wave G6's own game themes: the dark gaming PC one.
   "site-fivem-rp": "pc-builder",
   "site-minecraft-survival": "pc-builder",
+  "site-rust-wipe": "pc-builder",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */

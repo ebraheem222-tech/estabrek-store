@@ -18,6 +18,8 @@
  *   game      a game server site's status now and its last 24 hours (lib/gameSites.ts), asked again in one tap
  *   tebex     a game server site's Tebex webstore as its pages show it: connected or not, its categories and packages
  *   link      a game server site's «إستبرق لينك»: downloaded or not, when it last said hello, and its download
+ *   streamers a game server site's streamers: whether Twitch answers its keys, and who of them is live now
+ *   wipe      a game server site's next wipe and its last, by its schedule
  *
  * A part names its site's tables by their keys in the file (`@table:bookings`); installed, they are the ids the
  * feature keeps (Installed.ids.table). Each part is shown only to a member who may read what it reads (a table's
@@ -29,10 +31,12 @@ import { prisma } from "./prisma.js";
 import { SETTING_KEY } from "./pageTree.js";
 import { gridWhere, parseGridQuery, queryRows, type GridFilter, type GridRow } from "./dataQuery.js";
 import { csvCell } from "./dataRows.js";
-import { declsOf, valuesOf, type SettingDecl, type Values } from "./siteSettings.js";
+import { declsOf, settingsOfFeature, valuesOf, type SettingDecl, type Values } from "./siteSettings.js";
 import type { Field } from "./collectionTree.js";
 import { gameView } from "./gameSites.js";
 import { siteTebex } from "./tebex.js";
+import { siteCrew } from "./twitch.js";
+import { wipeView } from "./wipes.js";
 import { linkView } from "./gameLink.js";
 import { votesOn, type VoteView } from "./siteVotes.js";
 
@@ -76,6 +80,8 @@ export const PanelPartSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("game"), key: Key, title: Label }).strict(),
   z.object({ kind: z.literal("tebex"), key: Key, title: Label }).strict(),
   z.object({ kind: z.literal("link"), key: Key, title: Label }).strict(),
+  z.object({ kind: z.literal("streamers"), key: Key, title: Label }).strict(),
+  z.object({ kind: z.literal("wipe"), key: Key, title: Label }).strict(),
 ]);
 export type PanelPart = z.infer<typeof PanelPartSchema>;
 const PanelPage = z.object({ key: Key, name: Label, icon: z.enum(PANEL_ICONS), parts: z.array(PanelPartSchema).min(1).max(PANEL_LIMITS.parts) }).strict();
@@ -247,6 +253,8 @@ export function partShown(site: SitePanel, part: PanelPart, may: PanelRights): b
   if (part.kind === "tebex") return true;
   // What the game server said: every member; its download (a new key) only for who changes the site's settings.
   if (part.kind === "link") return true;
+  // Who streams and when the world starts over: what its pages show anyone.
+  if (part.kind === "streamers" || part.kind === "wipe") return true;
   if (part.kind === "numbers" || part.kind === "people") {
     const refs = part.kind === "numbers" ? part.items.map((i) => i.table) : part.tables.map((t) => t.table);
     return refs.some((ref) => {
@@ -444,6 +452,11 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
       out.push({ kind: "map", key: part.key, title: part.title, table: tableView(t), label: part.label, address: part.address, columns: columnsOf(t, shown), rows: shape(got?.rows, shown) });
     } else if (part.kind === "link") {
       out.push({ kind: "link", key: part.key, title: part.title, ...(await linkView(site.featureId)), canDownload: may.writeSettings });
+    } else if (part.kind === "streamers") {
+      const crew = await siteCrew(site.featureId);
+      out.push({ kind: "streamers", key: part.key, title: part.title, connected: !!crew?.connected, failed: !!crew?.failed, total: crew?.list.length ?? 0, live: (crew?.list ?? []).filter((p) => p.live).map((p) => ({ name: p.name, url: p.url, title: p.live!.title, viewers: p.live!.viewers })) });
+    } else if (part.kind === "wipe") {
+      out.push({ kind: "wipe", key: part.key, title: part.title, wipe: wipeView(await settingsOfFeature(site.featureId)) });
     } else if (part.kind === "tebex") {
       const t = await siteTebex(site.featureId);
       const s = t.store;

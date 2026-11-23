@@ -106,6 +106,13 @@ export type McStoreUse = { title: W; sub: W; kinds: Array<[string, W]>; rows: Mc
  */
 export type RankBoard = { key: string; title: W; sub?: W; unit: "minutes" | "number" | "lap"; how: "sum" | "best" | "latest"; best: "high" | "low" };
 export type RankingUse = { title: W; sub: W; boards: RankBoard[] };
+/**
+ * A game server's wipes (wave G6b): its schedule as the settings start (every week, every two weeks from `from`, the
+ * first `day` of each month, or once on `from`), the hour and the server's time zone (an id of modules/wipe.ts ZONES: "london"), and what each wipe takes.
+ */
+export type WipeUse = { title: W; sub: W; line: W; every: "weekly" | "biweekly" | "monthly" | "date"; day: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"; time: string; zone: string; from?: string; note: W; what: Array<[W, W]> };
+/** A game server's streamers (wave G6b): ready rows (a Twitch channel the owner fills in; empty, no channel shows). */
+export type StreamersUse = { title: W; sub: W; rows: Array<{ slug: string; name: W; twitch: string; about: W }> };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -170,7 +177,11 @@ export type PanelPart =
   /** A game server site's Tebex webstore as its pages show it (wave G4). */
   | { kind: "tebex"; key: string; title: W }
   /** A game server site's link (wave G5): downloaded or not, its last hello, its download. */
-  | { kind: "link"; key: string; title: W };
+  | { kind: "link"; key: string; title: W }
+  /** A game server site's streamers (wave G6b): whether Twitch answers its keys, and who is live now. */
+  | { kind: "streamers"; key: string; title: W }
+  /** A game server site's next wipe and its last (wave G6b). */
+  | { kind: "wipe"; key: string; title: W };
 export type PanelPeopleTable = { table: string; title: W; show: string[] };
 export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings" | "calendar" | "people" | "chart"; parts: PanelPart[] };
 /**
@@ -203,6 +214,8 @@ export type SiteModules = {
   mcstore?: McStoreUse;
   link?: Bare;
   ranking?: RankingUse;
+  wipe?: WipeUse;
+  streamers?: StreamersUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

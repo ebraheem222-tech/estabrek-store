@@ -411,6 +411,53 @@ export const RANK_W = {
   playtimeSub: w("مين لعب أكتر. بتنحسب لحالها، دقيقة لكل دقيقة جوّا السيرفر.", "Who played the most. Counted by itself, a minute for each minute on the server.", "מי שיחק הכי הרבה. נספר מעצמו, דקה על כל דקה בשרת."),
 };
 
+export const WIPE_W = {
+  next: w("المسح الجاي", "The next wipe", "המחיקה הבאה"),
+  done: w("المسح صار! العالم الجديد ناطركم.", "The wipe is here! The new world is waiting.", "המחיקה כאן! העולם החדש מחכה."),
+  none: w("موعد المسح الجاي بيطلع هون قريباً.", "The next wipe's date shows here soon.", "מועד המחיקה הבאה יופיע כאן בקרוב."),
+  whatTitle: w("شو بينمسح", "What each wipe takes", "מה נמחק"),
+  whatSub: w("عشان تعرف شو بيضل وشو بيروح.", "So you know what stays and what goes.", "כדי שתדעו מה נשאר ומה הולך."),
+  every: w("كل قدّيش", "How often", "באיזו תדירות"),
+  monthly: w("أول يوم منه بكل شهر (متل مسح Rust الإجباري)", "Its first one each month (like Rust's forced wipe)", "הראשון בכל חודש (כמו המחיקה הכפויה של Rust)"),
+  weekly: w("كل أسبوع", "Every week", "כל שבוע"),
+  biweekly: w("كل أسبوعين", "Every two weeks", "כל שבועיים"),
+  once: w("مرّة وحدة (بيوم بتختاره)", "Once (on a day you pick)", "פעם אחת (ביום שתבחרו)"),
+  day: w("اليوم", "Day", "יום"),
+  mon: w("الاتنين", "Monday", "שני"),
+  tue: w("التلاتا", "Tuesday", "שלישי"),
+  wed: w("الأربعا", "Wednesday", "רביעי"),
+  thu: w("الخميس", "Thursday", "חמישי"),
+  fri: w("الجمعة", "Friday", "שישי"),
+  sat: w("السبت", "Saturday", "שבת"),
+  sun: w("الأحد", "Sunday", "ראשון"),
+  time: w("الساعة", "Time", "שעה"),
+  timeNote: w("بالـ 24 ساعة، متل 19:00.", "On the 24-hour clock, like 19:00.", "בשעון של 24 שעות, למשל 19:00."),
+  zone: w("توقيت السيرفر", "The server's time zone", "אזור הזמן של השרת"),
+  zoneNote: w("العدّاد بيحسب الساعة بهالتوقيت، وكل لاعب بيشوف كم ضل لعنده.", "The countdown takes the hour in this zone; each player sees how long is left from where they are.", "הספירה לאחור לוקחת את השעה באזור הזה; כל שחקן רואה כמה נשאר מאיפה שהוא."),
+  from: w("أول يوم (سنة-شهر-يوم)", "The first day (year-month-day)", "היום הראשון (שנה-חודש-יום)"),
+  fromNote: w("لكل أسبوعين: أول مسح منهم. لمرّة وحدة: يومها. متل 2026-12-03.", "Every two weeks: the first of them. Once: its day. Like 2026-12-03.", "כל שבועיים: הראשונה מהן. פעם אחת: היום שלה. למשל 2026-12-03."),
+  note: w("كلمة تحت العدّاد", "A note under the countdown", "הערה מתחת לספירה"),
+};
+
+export const STREAM_W = {
+  name: w("الستريمرز", "Streamers", "סטרימרים"),
+  note: w("الناس اللي بيبثّوا السيرفر: جدول بتعدّله، ومين لايف هلّق من Twitch بمفاتيحك، اللايف أول، مع صفحة وشريط بالرئيسية.", "The people who stream the server: a table you edit, and who is live now from Twitch with your keys, the live first, with a page and a band on the home page.", "האנשים שמשדרים את השרת: טבלה שאתם עורכים, ומי בשידור עכשיו מ-Twitch עם המפתחות שלכם, החיים קודם, עם עמוד ופס בדף הבית."),
+  who: w("الاسم", "Name", "שם"),
+  twitch: w("قناة Twitch", "Twitch channel", "ערוץ Twitch"),
+  twitchHelp: w("اسم القناة أو رابطها (twitch.tv/…).", "The channel's name or its address (twitch.tv/…).", "שם הערוץ או הכתובת שלו (twitch.tv/…)."),
+  picture: w("الصورة", "Picture", "תמונה"),
+  about: w("كلمتين عنه", "A line about them", "שורה עליהם"),
+  live: w("لايف", "Live", "בשידור"),
+  watch: w("شوف البث", "Watch the stream", "לצפות בשידור"),
+  channel: w("القناة", "Channel", "ערוץ"),
+  empty: w("الستريمرز بيطلعوا هون قريباً.", "The streamers show here soon.", "הסטרימרים יופיעו כאן בקרוב."),
+  bandSub: w("اللي لايف هلّق أول.", "Those live now come first.", "מי שבשידור עכשיו מופיע ראשון."),
+  clientId: w("Twitch: الـ Client ID", "Twitch: the Client ID", "Twitch: ה-Client ID"),
+  secret: w("Twitch: الـ Client Secret", "Twitch: the Client Secret", "Twitch: ה-Client Secret"),
+  keysNote: w("من dev.twitch.tv/console: اعمل تطبيق وانسخ مفاتيحه لهون. بلاهم بتطلع القنوات بس، بدون مين لايف.", "From dev.twitch.tv/console: make an app and copy its keys here. Without them the channels show, but not who is live.", "מ-dev.twitch.tv/console: צרו אפליקציה והעתיקו לכאן את המפתחות. בלעדיהם יופיעו הערוצים, בלי מי שבשידור."),
+  panel: w("الستريمرز هلّق", "The streamers now", "הסטרימרים עכשיו"),
+};
+
 export const LINK_W = {
   panel: w("لينك السيرفر", "The server's link", "הקישור לשרת"),
   whitelistOn: w("الوايتلست شغّال", "The whitelist is on", "הרשימה הלבנה פעילה"),

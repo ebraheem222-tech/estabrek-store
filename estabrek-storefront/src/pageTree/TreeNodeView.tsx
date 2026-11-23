@@ -52,7 +52,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, GameStatusView, LeaderboardView, TebexPackagesView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, GameStatusView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -426,6 +426,12 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "leaderboard":
       // A game server site's ranking on one of its boards (the server fills props.ranks as the page is served).
       return <div className={cls(node)} {...mark}><LeaderboardView ranks={p.ranks} lang={ctx.lang} empty={say(p.empty)} labels={{ day: say(p.day), week: say(p.week), month: say(p.month), all: say(p.all) }} /></div>;
+    case "wipeCountdown":
+      // A game server site's next wipe (the server fills props.wipe from the site's schedule as the page is served).
+      return <div className={cls(node)} {...mark}><WipeCountdownView wipe={p.wipe} lang={ctx.lang} title={say(p.title)} done={say(p.done)} none={say(p.none)} size={p.size === "small" ? "small" : "big"} /></div>;
+    case "streamers":
+      // A game server site's streamers (the server fills props.crew as the page is served, the live first).
+      return <div className={cls(node)} {...mark}><StreamersView crew={p.crew} lang={ctx.lang} liveLabel={say(p.live)} watch={say(p.watch)} channel={say(p.channel)} empty={say(p.empty)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} onlyLive={p.onlyLive === true} /></div>;
     case "gameStatus":
       // A game server site's live status (the server fills props.live as the page is served).
       return <div className={cls(node)} {...mark}><GameStatusView live={p.live} lang={ctx.lang} joinLabel={say(p.join)} copyLabel={say(p.copy)} chart={p.chart === true} size={p.size === "small" ? "small" : "big"} /></div>;
