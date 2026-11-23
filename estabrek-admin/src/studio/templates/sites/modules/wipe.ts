@@ -31,7 +31,7 @@ const wipeParts = (b: Built): Part[] => {
     ], { name: WIPE_W.whatTitle });
   };
   const big: Part = (c) => {
-    const k = withSkin(c, "dark");
+    const k = withSkin(c, "night");
     return SEC(k, [STACK(k, [P(k, u.line, { ...still, style: { size: 18, maxWidth: "620px", color: pop(k) } }), countdown(k, "big")], { gap: 24, align: "center", textAlign: "center", width: "100%", maxWidth: "820px", self: "center" })], { name: WIPE_W.next, pad: [72, 24, 72, 24] });
   };
   return [pageHead(u.title, u.sub, "soft"), big, what];

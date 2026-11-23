@@ -55,12 +55,12 @@ export function WipeCountdownView({ wipe, lang, title, done, none, size }: { wip
       {wipe.next ? (
         <>
           {left === 0 ? (
-            <p className={css.done} data-wipe-done>{done || w.done}</p>
+            <p className={css.done} data-wipe-done data-gp="go">{done || w.done}</p>
           ) : (
             <div className={css.boxes} dir="ltr" aria-live="off" data-wipe-left={parts ? "" : undefined}>
               {(parts ?? [null, null, null, null]).map((n, i) => (
-                <span key={i} className={css.box}>
-                  <b>{n === null ? "–" : String(n).padStart(i ? 2 : 1, "0")}</b>
+                <span key={i} className={css.box} data-gp="tile">
+                  <b data-gp="num">{n === null ? "–" : String(n).padStart(i ? 2 : 1, "0")}</b>
                   <small>{w.units[i]}</small>
                 </span>
               ))}

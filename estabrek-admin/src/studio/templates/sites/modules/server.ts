@@ -21,7 +21,8 @@ const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
 /** The opening: the server's name and line, its live status with the way in, and the Discord. */
 const statusHero = (b: Built): Part => (c) => {
-  const k = withSkin(c, "dark");
+  // The theme's deepest band: dark on a light theme, a night under the page on a dark one (G6c's themes).
+  const k = withSkin(c, "night");
   const s = b.use.status!;
   const discord = shownIf(fromSetting(B(k, SERVER.discord, "https://discord.com", "outline", still), { href: "discordUrl" }), "discordOn");
   return SEC(k, [

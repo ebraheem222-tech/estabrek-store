@@ -25,6 +25,10 @@ const TOKENS: Record<string, string> = {
   accent: "var(--accent)",
   "accent-soft": "var(--accent-soft)",
   "accent-contrast": "var(--accent-contrast,#fff)",
+  // The deepest band (a «night» section): a store theme's own (storeThemes/css.ts deepOf), else the text colour.
+  deep: "var(--deep,var(--text))",
+  "on-deep": "var(--on-deep,var(--bg))",
+  "deep-pop": "var(--deep-pop,var(--accent-soft))",
   bg: "var(--bg)",
   surface: "var(--surface)",
   border: "var(--border)",
@@ -1438,7 +1442,8 @@ export const BASE_CSS = [
   ".pt-edge-front{z-index:2}",
   `@media (max-width:${PHONE_MAX}px){.pt-edge{height:var(--pt-ehp,var(--pt-eh))}}`,
   ".pt-icon>svg{width:var(--pt-isz,24px);height:var(--pt-isz,24px);flex:none}",
-  ".pt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;border-radius:999px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .2s ease,background-color .2s ease}",
+  // A theme may give buttons its own shape (app/server-themes.css: --pt-btn-radius, -shadow, -clip); a button's own wins.
+  ".pt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;border-radius:var(--pt-btn-radius,999px);box-shadow:var(--pt-btn-shadow,none);clip-path:var(--pt-btn-clip,none);font-weight:600;text-decoration:none;cursor:pointer;transition:filter .2s ease,background-color .2s ease}",
   ".pt-btn-solid{background:var(--accent);color:var(--accent-contrast,#fff)}",
   // Formatted words (RichWords.tsx): their blocks apart, lists and quotes drawn (the page's reset takes them off).
   ".pt-rich :is(p,ul,ol,blockquote,h3,h4,hr)+:is(p,ul,ol,blockquote,h3,h4,hr){margin-top:.75em}",
@@ -1448,7 +1453,7 @@ export const BASE_CSS = [
   ".pt-rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;padding:.05em .35em;border-radius:4px;background:rgba(127,127,127,.15)}",
   ".pt-rich a{color:inherit;text-decoration:underline;text-underline-offset:3px}.pt-rich hr{border:0;border-top:1px solid currentColor;opacity:.25}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",
-  ".pt-btn-link{min-height:0;padding:0;color:var(--pt-link,var(--accent));text-decoration:underline;text-underline-offset:4px}",
+  ".pt-btn-link{min-height:0;padding:0;box-shadow:none;clip-path:none;color:var(--pt-link,var(--accent));text-decoration:underline;text-underline-offset:4px}",
   ".pt-btn:hover{filter:brightness(1.06)}",
   ".pt-btn:focus-visible,.pt-tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}",
   ".pt-block-title{margin:0 0 20px;font-family:var(--pt-font-heading);font-size:28px;line-height:1.2}",

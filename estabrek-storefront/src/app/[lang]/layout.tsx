@@ -9,6 +9,7 @@ import "../rose-showcase.css";
 // The home's showpieces: particles, rooms, the secret, the world, the page hero, story mode (app/rose-wonders.css).
 import "../rose-wonders.css";
 import "../store-themes.css";
+import "../server-themes.css";
 // The small bag's 100 designs (lib/miniBagDesigns.ts): app/minibag-designs.css, after the rose bag's own.
 import "../minibag-designs.css";
 import "@/pageTree/commerce.css";

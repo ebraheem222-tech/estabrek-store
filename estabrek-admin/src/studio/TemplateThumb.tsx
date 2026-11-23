@@ -43,7 +43,7 @@ const SHADOWS: Obj = { sm: "0 2px 8px rgba(0,0,0,.10)", md: "0 8px 24px rgba(0,0
 /** A node's look as the drawing's CSS (exported for the tests). */
 export function css(n: PageTreeNode, c: ThumbColours, rtl = false): CSSProperties {
   const s = obj(obj(n.style).base);
-  const paint = (v: unknown): string | undefined => (typeof v !== "string" ? undefined : v.startsWith("#") ? v : v === "white" ? "#ffffff" : v === "black" ? "#000000" : v === "transparent" ? "transparent" : c[v as keyof ThumbColours]);
+  const paint = (v: unknown): string | undefined => (typeof v !== "string" ? undefined : v.startsWith("#") ? v : v === "white" ? "#ffffff" : v === "black" ? "#000000" : v === "transparent" ? "transparent" : v === "deep" ? c.text : v === "on-deep" ? c.bg : v === "deep-pop" ? c["accent-soft"] : c[v as keyof ThumbColours]);
   const out: CSSProperties = {};
   const pad = Array.isArray(s.pad) ? (s.pad as number[]) : null;
   if (pad) Object.assign(out, { paddingTop: pad[0], paddingInlineEnd: pad[1], paddingBottom: pad[2], paddingInlineStart: pad[3] });

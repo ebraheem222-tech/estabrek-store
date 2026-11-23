@@ -33,6 +33,8 @@ export const SKIN_NAMES: Record<Skin, W> = {
   bold: w("بلون المتجر", "In the store's colour", "בצבע החנות"),
   // The theme's text colour as the ground: dark in a light theme, light in a dark one.
   dark: w("ألوان معكوسة", "Inverted", "צבעים הפוכים"),
+  // The theme's deepest band: dark in a light theme, a night under the page in a dark one (a game site's opening).
+  night: w("ليلي", "Night", "לילי"),
   campaign: w("بألوان المناسبة", "In the occasion's colours", "בצבעי האירוע"),
 };
 export { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, SECTION_CATS };

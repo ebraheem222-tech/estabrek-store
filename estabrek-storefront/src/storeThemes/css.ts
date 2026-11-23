@@ -46,6 +46,18 @@ export function wordsOn(p: Palette, mode: "light" | "dark"): { dark: string; lig
 }
 
 /**
+ * The theme's deepest band («night», a game site's opening: pageTree/css.ts tokens deep, on-deep, deep-pop) and the
+ * words and the colour that stands out on it. In a light mode that is its text colour, as a «dark» section is; in a
+ * dark one a night under its page, not its (light) text colour, so a dark theme's opening stays dark.
+ */
+export function deepOf(p: Palette, mode: "light" | "dark"): { deep: string; on: string; pop: string } {
+  const deep = mode === "dark" ? mix(p.bg, "#000000", 0.45) : p.ink;
+  const on = mode === "dark" ? p.ink : p.bg;
+  const pop = [p.strong, p.accent, p.soft, p.glow, on].find((c) => /^#[0-9a-f]{6}$/i.test(c) && contrast(c, deep) >= 4.5) ?? on;
+  return { deep, on, pop: mode === "dark" ? pop : [p.soft, p.glow, on].find((c) => /^#[0-9a-f]{6}$/i.test(c) && contrast(c, deep) >= 4.5) ?? on };
+}
+
+/**
  * The theme's colour for a link (a link button) on a dark box and on a light one: its strong colour, else its accent,
  * else the words' colour there (wordsOn), whichever first reads (3 : 1) on any box pageTree/css.ts toneOf calls so
  * (dark: light no more than 0.18, light: at least 0.5); white or black when none does. Many themes' strong colour is
@@ -66,7 +78,9 @@ export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null)
   const { palette: p, mode: resolved } = themePalette(theme, mode);
   const on = wordsOn(p, resolved);
   const links = linksOn(p, resolved);
+  const deep = deepOf(p, resolved);
   return {
+    "--deep": deep.deep, "--on-deep": deep.on, "--deep-pop": deep.pop,
     "--bg": p.bg, "--surface": p.surface, "--text": p.ink, "--muted": p.muted,
     "--accent": p.strong, "--accent-soft": p.soft, "--accent-contrast": p.onStrong, "--border": p.line,
     "--pt-on-dark": on.dark, "--pt-on-light": on.light, "--pt-link-on-dark": links.dark, "--pt-link-on-light": links.light,
@@ -77,6 +91,7 @@ export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null)
 
 /** Global regions follow the same live preview variables as the customer page. */
 export const liveTreeThemeVars = {
+  "--deep": "var(--th-deep)", "--on-deep": "var(--th-on-deep)", "--deep-pop": "var(--th-deep-pop)",
   "--bg": "var(--th-bg)", "--surface": "var(--th-surface)", "--text": "var(--th-ink)", "--muted": "var(--th-muted)",
   "--accent": "var(--th-strong)", "--accent-soft": "var(--th-soft)", "--accent-contrast": "var(--th-on-strong)", "--border": "var(--th-line)",
   "--pt-on-dark": "var(--th-on-dark)", "--pt-on-light": "var(--th-on-light)", "--pt-link-on-dark": "var(--th-link-on-dark)", "--pt-link-on-light": "var(--th-link-on-light)",
@@ -89,6 +104,7 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
   const [shadow, shadowLift] = SHADOW[theme.shadow](p);
   const on = wordsOn(p, m);
   const links = linksOn(p, m);
+  const deep = deepOf(p, m);
   const vars: Record<string, string> = {
     ...Object.fromEntries(Object.entries(rose).map(([hex, to]) => [`--st-${hex}`, to])),
     "--st-font-display": stack(theme.fonts.display),
@@ -110,6 +126,12 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
     "--th-on-light": on.light,
     "--th-link-on-dark": links.dark,
     "--th-link-on-light": links.light,
+    "--th-deep": deep.deep,
+    "--th-on-deep": deep.on,
+    "--th-deep-pop": deep.pop,
+    "--deep": "var(--th-deep)",
+    "--on-deep": "var(--th-on-deep)",
+    "--deep-pop": "var(--th-deep-pop)",
     "--th-display": stack(theme.fonts.display),
     "--th-text": stack(theme.fonts.text),
     "--th-radius": `${Math.round(16 * theme.round)}px`,

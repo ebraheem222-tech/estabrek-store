@@ -148,7 +148,9 @@ export default function ThemesPage() {
   }, [themes]);
   const words = find.trim().toLowerCase();
   const matches = (t: StoreThemeInfo) => !words || [t.name, t.blurb, ...(t.design ? [t.design.sectorName, t.design.signature] : [])].some((x) => [x.ar, x.en, x.he].join(" ").toLowerCase().includes(words));
-  const list = (group === "classic" ? themes.filter((t) => t.classic) : all.filter((t) => t.id === ROSE_ID || (t.design?.variant === "first" && (group === "all" || t.design.sector === group)) || (!t.design && !t.classic))).filter((t) => t.id === ROSE_ID || matches(t));
+  // The game servers' family (the shop's themes/servers.ts) is a group of its own, and shows among every design too.
+  const servers = themes.some((t) => t.family === "servers");
+  const list = (group === "classic" ? themes.filter((t) => t.classic) : group === "servers" ? themes.filter((t) => t.family === "servers") : all.filter((t) => t.id === ROSE_ID || (t.design?.variant === "first" && (group === "all" || t.design.sector === group)) || (!t.design && !t.classic && (t.family !== "servers" || group === "all")))).filter((t) => t.id === ROSE_ID || matches(t));
   const variants = shown.design ? themes.filter((t) => t.design?.kind === shown.design!.kind) : [];
   const VARIANT_LABEL: Record<string, () => string> = { first: () => tr("الأصلي", "Original"), soft: () => tr("ناعم", "Soft"), bold: () => tr("جريء", "Bold"), layout: () => tr("ترتيب تاني", "Another layout") };
   const pickTheme = (id: string) => {
@@ -240,9 +242,9 @@ export default function ThemesPage() {
           </p>
         </div>
         <div className="flex max-w-3xl flex-wrap gap-1" role="group" aria-label={tr("نوع المتجر", "Kind of store")}>
-          {[["all", null] as const, ...sectors, ["classic", null] as const].map(([g, name]) => (
+          {[["all", null] as const, ...sectors, ...(servers ? [["servers", null] as const] : []), ["classic", null] as const].map(([g, name]) => (
             <button key={g} type="button" onClick={() => setGroup(g)} aria-pressed={group === g} className={`rounded-lg px-3 py-1.5 text-xs ${group === g ? "bg-accent-500/25 text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"}`} data-testid="themes-group" data-group={g}>
-              {g === "all" ? tr("كل التصاميم", "Every design") : g === "classic" ? tr("الثيمات الكلاسيكية", "Classic themes") : name?.[lang] || name?.en}
+              {g === "all" ? tr("كل التصاميم", "Every design") : g === "classic" ? tr("الثيمات الكلاسيكية", "Classic themes") : g === "servers" ? FAMILY_LABEL.servers() : name?.[lang] || name?.en}
             </button>
           ))}
         </div>

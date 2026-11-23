@@ -24,10 +24,10 @@ export const SITE_THEMES: Record<string, string> = {
   "site-photographer": "camera-room",
   "site-law-office": "silver-line",
   "site-creative-agency": "white-gallery",
-  // Until wave G6's own game themes: the dark gaming PC one.
-  "site-fivem-rp": "pc-builder",
-  "site-minecraft-survival": "pc-builder",
-  "site-rust-wipe": "pc-builder",
+  // The game servers' own family (wave G6c, the shop's themes/servers.ts): a city at night, squares, ash and embers.
+  "site-fivem-rp": "night-neon",
+  "site-minecraft-survival": "square-pixel",
+  "site-rust-wipe": "rough-survival",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */

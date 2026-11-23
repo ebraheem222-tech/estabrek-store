@@ -63,8 +63,12 @@ export const OVERLAY_LIMIT = 40;
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
 /** An icon from the editor's library ("lucide:heart", "ph-duotone:gift"): it carries its own drawing. */
 export const ICON_REF = /^(lucide|tabler|tabler-filled|ph-(regular|thin|light|bold|fill|duotone)):[a-z0-9][a-z0-9-]{0,60}$/;
-/** Theme colours (the shop maps them to its CSS variables); anything else must be a hex colour. */
-export const COLOR_TOKENS = ["text", "muted", "accent", "accent-soft", "accent-contrast", "bg", "surface", "border", "white", "black", "transparent"] as const;
+/**
+ * Theme colours (the shop maps them to its CSS variables); anything else must be a hex colour. deep, on-deep and
+ * deep-pop: the deepest band (a «night» section, a game site's opening), its words and what stands out on it; in a
+ * dark theme a night under its page rather than its (light) text colour.
+ */
+export const COLOR_TOKENS = ["text", "muted", "accent", "accent-soft", "accent-contrast", "bg", "surface", "border", "white", "black", "transparent", "deep", "on-deep", "deep-pop"] as const;
 
 const LANGS = ["ar", "en", "he"] as const;
 /** How a colour layer mixes with what's under it. */

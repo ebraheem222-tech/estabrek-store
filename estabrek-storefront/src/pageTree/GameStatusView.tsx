@@ -70,12 +70,12 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
   };
 
   return (
-    <div className={`${css.box} ${size === "big" ? css.big : css.small}`} data-state={state} data-testid="game-status" role="status" aria-live="polite">
+    <div className={`${css.box} ${size === "big" ? css.big : css.small}`} data-state={state} data-testid="game-status" data-gp="panel" role="status" aria-live="polite">
       <div className={css.top}>
         <span className={css.dot} aria-hidden="true" />
         <strong className={css.state}>{live ? t[state] : t.sample}</strong>
         {live?.online && live.players !== null ? (
-          <span className={css.players} dir="ltr" data-testid="game-players">
+          <span className={css.players} dir="ltr" data-testid="game-players" data-gp="num">
             {live.players}
             {live.max ? ` / ${live.max}` : ""} <span>{t.players}</span>
           </span>
@@ -94,18 +94,18 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
       {chart && live ? (
         <div className={css.chart} role="img" aria-label={t.last} dir="ltr">
           {live.history.map((h) => (
-            <span key={h.hour} className={css.bar} data-off={h.online === false ? "" : undefined} style={{ height: `${h.players === null ? 4 : Math.max(4, (h.players / most) * 100)}%` }} title={`${new Date(h.hour).getHours()}:00 · ${h.players ?? "—"}`} />
+            <span key={h.hour} className={css.bar} data-gp="bar" data-off={h.online === false ? "" : undefined} style={{ height: `${h.players === null ? 4 : Math.max(4, (h.players / most) * 100)}%` }} title={`${new Date(h.hour).getHours()}:00 · ${h.players ?? "—"}`} />
           ))}
         </div>
       ) : null}
       {live ? (
         <div className={css.ways}>
           {live.join.href ? (
-            <a className={css.join} href={live.join.href} rel="nofollow" data-testid="game-join">
+            <a className={css.join} href={live.join.href} rel="nofollow" data-testid="game-join" data-gp="go">
               {joinLabel || t.join}
             </a>
           ) : null}
-          <button type="button" className={css.copy} onClick={copy} data-testid="game-copy">
+          <button type="button" className={css.copy} onClick={copy} data-testid="game-copy" data-gp="ghost">
             <code dir="ltr">{live.join.address}</code>
             <span>{copied ? t.copied : copyLabel || t.copy}</span>
           </button>

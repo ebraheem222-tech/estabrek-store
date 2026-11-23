@@ -14626,6 +14626,12 @@ html[data-ab-hero="film"] .rose-opening {
   --accent-secondary: var(--th-accent);
   --accent-contrast: var(--th-on-strong);
 }
+/* A store theme's deepest band (a «night» section: pageTree/css.ts deep): what stands out in it (a button, the countdown's
+   numbers) takes the colour that reads on it (storeThemes/css.ts deepOf), not the page's, which may be the band's own. */
+:root[data-store-theme] [data-pt-deep] {
+  --accent: var(--deep-pop);
+  --accent-contrast: var(--deep);
+}
 :root[data-store-theme] .scroll-progress-bar {
   background: linear-gradient(90deg, var(--th-strong), var(--th-accent));
   box-shadow: none;

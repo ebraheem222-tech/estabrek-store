@@ -120,7 +120,7 @@ const BY_CARD: Record<CardStyle, { box: PackKit["box"]["look"]; button: PackKit[
 };
 
 /** The finish its 3D models take, by kind of store. */
-const FINISH: Record<string, PackKit["model"]["finish"]> = { gaming: "neon", electronics: "metal", jewelry: "gold", beauty: "glass", kids: "toy", pets: "toy", food: "matte", art: "matte", books: "matte", music: "metal", sports: "metal" };
+const FINISH: Record<string, PackKit["model"]["finish"]> = { gaming: "neon", servers: "neon", electronics: "metal", jewelry: "gold", beauty: "glass", kids: "toy", pets: "toy", food: "matte", art: "matte", books: "matte", music: "metal", sports: "metal" };
 
 /** A theme's kit: worked out from the theme, with any part the theme sets itself. */
 export function themeKit(t: StoreTheme): PackKit {

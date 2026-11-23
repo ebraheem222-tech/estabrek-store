@@ -5,7 +5,7 @@ import { RANK_W } from "./siteWords";
 
 export const FIVEM_RP = site({
   key: "site-fivem-rp",
-  version: "1.6.0",
+  version: "1.7.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -142,7 +142,7 @@ export const FIVEM_RP = site({
  */
 export const MC_SURVIVAL = site({
   key: "site-minecraft-survival",
-  version: "1.2.0",
+  version: "1.3.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -263,7 +263,7 @@ export const MC_SURVIVAL = site({
  */
 export const RUST_WIPE = site({
   key: "site-rust-wipe",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "games",
   archetype: "server",
   fam: "gaming",

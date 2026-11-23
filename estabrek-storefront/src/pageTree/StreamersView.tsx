@@ -28,7 +28,7 @@ export function StreamersView({ crew, lang, liveLabel, watch, channel, empty, co
     return (
       <div className={css.grid} style={{ ["--cols" as string]: String(columns) }} data-streamers="sample">
         {[1, 2, 3].slice(0, columns).map((n) => (
-          <article key={n} className={css.card}>
+          <article key={n} className={css.card} data-gp="panel">
             <span className={css.avatar} aria-hidden>{n}</span>
             <h3 className={css.name}>{w.sample} {n}</h3>
           </article>
@@ -42,7 +42,7 @@ export function StreamersView({ crew, lang, liveLabel, watch, channel, empty, co
   return (
     <div className={css.grid} style={{ ["--cols" as string]: String(columns) }} data-streamers="list">
       {list.map((s, i) => (
-        <article key={`${s.login ?? s.name}-${i}`} className={css.card} data-live={s.live ? "yes" : undefined} data-login={s.login ?? undefined}>
+        <article key={`${s.login ?? s.name}-${i}`} className={css.card} data-gp="panel" data-live={s.live ? "yes" : undefined} data-login={s.login ?? undefined}>
           {s.live ? (
             <div className={css.shot}>
               {s.live.thumb ? <img src={s.live.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" /> : null}
@@ -61,7 +61,7 @@ export function StreamersView({ crew, lang, liveLabel, watch, channel, empty, co
           </div>
           {s.live?.title ? <p className={css.title}>{s.live.title}</p> : wordsIn(s.about, lang) ? <p className={css.about}>{wordsIn(s.about, lang)}</p> : null}
           {s.url ? (
-            <a className={s.live ? css.watch : css.channel} href={s.url} target="_blank" rel="noopener noreferrer">
+            <a className={s.live ? css.watch : css.channel} data-gp={s.live ? "go" : "ghost"} href={s.url} target="_blank" rel="noopener noreferrer">
               {s.live ? watch || w.watch : channel || w.channel}
             </a>
           ) : null}
