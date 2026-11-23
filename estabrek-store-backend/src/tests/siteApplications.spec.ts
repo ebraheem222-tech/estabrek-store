@@ -148,7 +148,9 @@ describe("Applying to a game server", () => {
     const two = queue((await vote("yes", nour).expect(200)).body).rows.find((r: Obj) => r.id === row.id);
     expect(two.votes.yes).toBe(2);
     expect(two.votes.mine).toBe("yes");
-    expect(two.votes.by.map((v: Obj) => v.name)).toEqual(["test@local", "Nour"]);
+    // The test owner by their name where another spec made them a member, else by the email they sign in with.
+    const owner = await prisma.adminUser.findUnique({ where: { id: "test-superadmin" }, select: { name: true, email: true } });
+    expect(two.votes.by.map((v: Obj) => v.name)).toEqual([owner?.name || owner?.email || "test@local", "Nour"]);
     // Taken back and given again: still two.
     await vote("none", nour).expect(200);
     expect(await prisma.rowVote.count({ where: { itemId: row.id } })).toBe(1);
