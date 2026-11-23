@@ -86,6 +86,14 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
     if (kinds.indexOf(k) !== i) out.push(`Two kinds called "${k}"`);
   });
   if (bp.modules.apply && !kinds.length) out.push(`"apply" needs a kind to apply for`);
+  // A board's key is what the server sends its numbers by (lib/ranking.ts); play time is counted, so it is summed minutes.
+  const boards = bp.modules.ranking?.boards ?? [];
+  boards.forEach((b, i) => {
+    if (!/^[a-z][a-z0-9_-]{0,39}$/.test(b.key)) out.push(`The board "${b.key}" isn't small letters, digits, - and _`);
+    if (boards.findIndex((x) => x.key === b.key) !== i) out.push(`Two boards called "${b.key}"`);
+    if (b.key === "playtime" && (b.how !== "sum" || b.unit !== "minutes")) out.push(`The "playtime" board is counted: summed minutes`);
+  });
+  if (bp.modules.ranking && !boards.length) out.push(`"ranking" needs a board`);
   const known = new Set(MODULES.map((m) => m.key as string));
   for (const key of Object.keys(bp.modules)) if (!known.has(key)) out.push(`No module "${key}"`);
   const on = new Set(used(bp).map((m) => m.key));

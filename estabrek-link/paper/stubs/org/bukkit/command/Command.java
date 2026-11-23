@@ -3,4 +3,5 @@ package org.bukkit.command;
 
 public abstract class Command {
   protected Command(String name) {}
+  public String getName() { throw new UnsupportedOperationException(); }
 }

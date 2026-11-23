@@ -100,6 +100,12 @@ export type McPackage = { slug: string; title: W; kind: string; price: number; t
  * selling what gives an advantage in the game, so a package that does is never shown or sold, and says why.
  */
 export type McStoreUse = { title: W; sub: W; kinds: Array<[string, W]>; rows: McPackage[] };
+/**
+ * One of a game server's ranking boards (wave G6a): its key (what the server sends its numbers by; "playtime" is
+ * counted by the server's link by itself), its unit, how a player's numbers add up, and who is first.
+ */
+export type RankBoard = { key: string; title: W; sub?: W; unit: "minutes" | "number" | "lap"; how: "sum" | "best" | "latest"; best: "high" | "low" };
+export type RankingUse = { title: W; sub: W; boards: RankBoard[] };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -196,6 +202,7 @@ export type SiteModules = {
   packages?: PackagesUse;
   mcstore?: McStoreUse;
   link?: Bare;
+  ranking?: RankingUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

@@ -21,6 +21,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { settingsOfFeature } from "./siteSettings.js";
 import { plainZip, readPlainZip } from "./plainZip.js";
+import { countPlaytime } from "./ranking.js";
 
 export const LINK_GAMES = ["fivem", "minecraft"] as const;
 export type LinkGame = (typeof LINK_GAMES)[number];
@@ -57,11 +58,14 @@ export async function siteOfKey(key: unknown): Promise<string | null> {
 /* ---------------- Hello ---------------- */
 
 /** A game server's hello: kept for the panel; the site says whether its whitelist is on. */
-export async function linkHello(featureId: string, said: { game?: unknown; version?: unknown; players?: unknown }) {
+export async function linkHello(featureId: string, said: { game?: unknown; version?: unknown; players?: unknown; online?: unknown }) {
   const game = LINK_GAMES.find((g) => g === said.game) ?? null;
   const players = typeof said.players === "number" && Number.isInteger(said.players) && said.players >= 0 && said.players < 100_000 ? said.players : null;
   const version = typeof said.version === "string" ? said.version.slice(0, 20) : null;
+  const before = await prisma.siteLink.findUnique({ where: { featureId }, select: { lastSeenAt: true } });
   await prisma.siteLink.update({ where: { featureId }, data: { lastSeenAt: new Date(), lastGame: game, lastVersion: version, lastPlayers: players } });
+  // Those online now (each { id, name }) get a minute on the site's play time board, if it has one (lib/ranking.ts).
+  await countPlaytime(featureId, said.online, before?.lastSeenAt ?? null);
   const s = await settingsOfFeature(featureId);
   return { whitelist: s?.values.whitelistOn === true };
 }

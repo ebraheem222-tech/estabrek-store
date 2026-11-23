@@ -53,6 +53,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   clock: () => tr("ساعة حية", "Live clock"),
   gameStatus: () => say("حالة السيرفر|Server status|מצב השרת"),
   tebexPackages: () => say("باقات Tebex|Tebex packages|חבילות Tebex"),
+  leaderboard: () => say("الترتيب|Ranking|דירוג"),
   svg: () => tr("رسمة", "Drawing"),
   product360: () => tr("منتج 360°", "Product 360°"),
   spacer: () => tr("مسافة", "Spacer"),

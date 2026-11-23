@@ -1,9 +1,17 @@
 name: SiteLink
-version: '1.0.0'
+version: '1.1.0'
 main: site.link.SiteLink
 api-version: '1.20'
-description: The whitelist, account linking and giving purchases from your site.
+description: The whitelist, account linking, rankings and giving purchases from your site.
 commands:
   link:
     description: Link your game account to your account on the site.
     usage: /link <code>
+  linkscore:
+    description: Send a number to one of your site's ranking boards.
+    usage: /linkscore <board> <online player> <number>
+    permission: sitelink.score
+permissions:
+  sitelink.score:
+    description: Send numbers to the site's rankings.
+    default: op

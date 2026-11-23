@@ -27,6 +27,13 @@ The plugin only makes outgoing HTTPS calls, so no port opens on the game server:
   applications module on one.
 - **`/link 482913`** claims the code a player took from «حسابي» on the site (`POST /claim`). Their Minecraft account is
   then linked to their account on the site.
+- **Rankings** (wave G6a). Every 10 seconds, on the server's own thread, the plugin notes who is online. The hello
+  carries that list, and the site adds a minute of play time for each player on a board keyed `playtime`.
+  `/linkscore <board> <online player> <number>` queues any other number, such as money or a parkour time in
+  milliseconds. It is meant for the console, command blocks and other plugins, and needs the `sitelink.score`
+  permission, which operators have. The queue goes to `POST /scores` with the next hello. The board decides how
+  numbers add up: summed, the player's best, or their latest (`src/lib/ranking.ts`). The FiveM resource does the same
+  through `exports['site-link']:score(board, source, value)`.
 
 A purchase is given only once its buyer has linked a Minecraft account. The site hands each purchase over once:
 
