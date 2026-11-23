@@ -12,7 +12,7 @@ import { adminLang, loc } from "../../lib/lang";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import * as Panels from "../../api/sitePanels.api";
-import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelReport, PanelRow, PanelScanner, ReportPeriod } from "../../api/sitePanels.api";
+import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelReport, PanelRow, PanelScanner, PanelTebex, ReportPeriod } from "../../api/sitePanels.api";
 import { cellText, inLang } from "./panelText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -402,6 +402,33 @@ export function ScannerPart({ part, view, onError }: { part: PanelScanner } & Co
 /* ---------------- A game server: its status now, the last 24 hours ---------------- */
 
 const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam" } as const;
+/** A game server site's Tebex webstore as its pages show it: connected, with its categories and packages, or why not. */
+export function TebexPart({ part }: { part: PanelTebex }) {
+  const lang = adminLang();
+  const s = part.store;
+  const packages = s ? s.categories.reduce((n, c) => n + c.packages, 0) : 0;
+  return (
+    <section className={box} data-testid={`site-part-${part.key}`} data-kind="tebex" data-state={s ? "on" : part.token ? "failed" : "none"}>
+      <Head title={inLang(part.title, lang)} more={s ? <a className="text-xs text-white/60 underline" href={s.url} target="_blank" rel="noreferrer">{say("افتح المتجر ↗|Open the store ↗|לפתוח את החנות ↗")}</a> : null} />
+      {s ? (
+        <>
+          <p className="text-sm" data-testid={`site-tebex-${part.key}-line`}>
+            {say("متصل بمتجر «{name}»: {n} باقة بـ {c} أقسام، بالـ {cur}.|Connected to «{name}»: {n} packages in {c} categories, in {cur}.|מחובר ל«{name}»: {n} חבילות ב־{c} קטגוריות, ב־{cur}.").replace("{name}", s.name).replace("{n}", String(packages)).replace("{c}", String(s.categories.length)).replace("{cur}", s.currency)}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-xs text-white/70">
+            {s.categories.map((c) => <li key={c.name} className="rounded-lg bg-white/5 px-2 py-1">{c.name} · {c.packages}</li>)}
+          </ul>
+          <p className="mt-2 text-xs text-white/45">{say("الأسعار والدفع والتسليم عند Tebex. بتتغيّر من لوحة Tebex، والموقع بيتبعها خلال 5 دقايق.|Prices, payment and delivery are Tebex's. Change them in Tebex's panel; the site follows within 5 minutes.|המחירים, התשלום והמסירה אצל Tebex. משנים אותם בלוח של Tebex, והאתר מתעדכן תוך 5 דקות.")}</p>
+        </>
+      ) : part.token ? (
+        <p className="text-sm text-amber-200" data-testid={`site-tebex-${part.key}-failed`}>{say("Tebex ما ردّ على هالتوكن: يا إما مش الـ Public Token تبع متجرك، يا إما Tebex مش رادد هلّق. تأكّد منه بإعدادات الموقع.|Tebex didn't answer this token: either it isn't your store's Public Token, or Tebex isn't answering now. Check it in the site's settings.|Tebex לא ענה לטוקן הזה: או שזה לא ה-Public Token של החנות, או ש-Tebex לא עונה כרגע. בדקו אותו בהגדרות האתר.")}</p>
+      ) : (
+        <p className="text-sm text-white/60" data-testid={`site-tebex-${part.key}-none`}>{say("لسّا ما في متجر Tebex: حط الـ Public Token تبعه بإعدادات الموقع.|No Tebex store yet: put its Public Token in the site's settings.|עוד אין חנות Tebex: הכניסו את ה-Public Token שלה בהגדרות האתר.")}</p>
+      )}
+    </section>
+  );
+}
+
 export function GamePart({ part, view, took, onError }: { part: PanelGame } & Common) {
   const lang = adminLang();
   const s = part.status;

@@ -4,14 +4,14 @@ import { site } from "./blueprint";
 
 export const FIVEM_RP = site({
   key: "site-fivem-rp",
-  version: "1.2.0",
+  version: "1.3.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
   pics: "gaming",
   look: 0,
   name: w("سيرفر رول بلاي FiveM: مدينة الندى", "FiveM roleplay server: Dew City", "שרת רולפליי FiveM: עיר הטל"),
-  note: w("موقع سيرفر FiveM كامل: حالة السيرفر الحيّة وعدد اللاعبين، «فوت هلّق»، الديسكورد، التحديثات، القوانين، التقديم على الوظائف بتصويت الطاقم، الاستئناف والبلاغ، الطاقم، أسئلة ورسائل.", "A whole FiveM server site: the server's live status and players, «join now», Discord, updates, the rules, applying for jobs with the staff's votes, appeals and reports, staff, questions and messages.", "אתר שרת FiveM שלם: מצב השרת החי והשחקנים, «להתחבר עכשיו», דיסקורד, עדכונים, חוקים, הגשה לעבודות בהצבעת הצוות, ערעורים ודיווחים, צוות, שאלות והודעות."),
+  note: w("موقع سيرفر FiveM كامل: حالة السيرفر الحيّة وعدد اللاعبين، «فوت هلّق»، الديسكورد، التحديثات، القوانين، التقديم على الوظائف بتصويت الطاقم، الاستئناف والبلاغ، باقات Tebex، الطاقم، أسئلة ورسائل.", "A whole FiveM server site: the server's live status and players, «join now», Discord, updates, the rules, applying for jobs with the staff's votes, appeals and reports, Tebex packages, staff, questions and messages.", "אתר שרת FiveM שלם: מצב השרת החי והשחקנים, «להתחבר עכשיו», דיסקורד, עדכונים, חוקים, הגשה לעבודות בהצבעת הצוות, ערעורים ודיווחים, חבילות Tebex, צוות, שאלות והודעות."),
   biz: { name: w("مدينة الندى", "Dew City", "עיר הטל"), address: w("أونلاين", "Online", "אונליין"), hours: w("السيرفر شغّال 24/7", "The server runs 24/7", "השרת פועל 24/7"), phone: "0", email: "staff@dewcity.example", city: "" },
   pack: {
     label: w("مدينة الندى", "Dew City", "עיר הטל"),
@@ -106,6 +106,10 @@ export const FIVEM_RP = site({
         ["toxic", w("شتائم أو تحرّش", "Insults or harassment", "קללות או הטרדה")],
         ["other", w("شي تاني", "Something else", "משהו אחר")],
       ],
+    },
+    packages: {
+      title: w("الباقات", "Packages", "חבילות"),
+      sub: w("VIP، سيارات، ومنازل: ادعم المدينة وخود شي حلو جوّا اللعبة.", "VIP, cars and houses: support the city and get something nice in the game.", "VIP, מכוניות ובתים: תמכו בעיר וקבלו משהו נחמד במשחק."),
     },
     contact: {},
     notify: {},

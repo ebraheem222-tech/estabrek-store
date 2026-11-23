@@ -34,7 +34,9 @@ export type ReportPeriod = "week" | "month" | "lastMonth" | "quarter";
 /** A game server site's status (backend lib/gameSites.ts GameView). */
 export type GameView = { featureId: string; game: "fivem" | "minecraft" | "bedrock" | "steam"; online: boolean | null; players: number | null; max: number | null; name: string | null; map: string | null; version: string | null; at: string | null; join: { href: string | null; address: string }; history: Array<{ hour: string; players: number | null; online: boolean | null }> };
 export type PanelGame = { kind: "game"; key: string; title: Local; status: GameView | null; canCheck: boolean };
-export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame;
+/** A game server site's Tebex webstore as its pages show it (backend lib/tebex.ts): `token`, whether one is set. */
+export type PanelTebex = { kind: "tebex"; key: string; title: Local; token: boolean; store: { name: string; url: string; currency: string; categories: Array<{ name: string; packages: number }> } | null };
+export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame | PanelTebex;
 /** One person (by their phone or email) with their rows in each of the part's tables. */
 export type PanelPerson = { key: string; by: string; name: string; last: string; tables: Array<{ table: PanelTable; title: Local; columns: PanelColumn[]; rows: PanelRow[] }> };
 /** What a page asks besides its language: a calendar's month ("2026-11"), a report's period. */

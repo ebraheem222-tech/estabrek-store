@@ -35,7 +35,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell", "deck", "scrollScene",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
-  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus",
+  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "tebexPackages",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
   "toc", "flipBox", "share", "progress", "headline", "storyBar",
@@ -1004,6 +1004,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // A whole game server site's live status (lib/gameSites.ts fills it as the page is served; the shop asks again every
   // minute): up or down, players, name and map, the last 24 hours, and a way in (the game's own link, or the address to copy).
   gameStatus: z.object({ join: local(40).optional(), copy: local(40).optional(), chart: z.boolean().optional(), size: z.enum(["big", "small"]).optional() }),
+  // A game server site's packages on its Tebex webstore (lib/tebex.ts fills them as the page is served): each with its
+  // price, and a button to it on the webstore, where the player pays (the site never takes the payment).
+  tebexPackages: z.object({ buy: local(40).optional(), all: local(60).optional(), empty: local(200).optional(), note: local(200).optional(), columns: z.number().int().min(1).max(4).optional() }),
   clock: z.object({ label: local(160).optional(), timezone: z.string().trim().max(80).refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }).default("UTC"), format: z.enum(["12", "24"]).optional(), seconds: z.boolean().optional(), date: z.boolean().optional() }),
   spacer: z.object({ size: px(0, 400).default(32) }),
   divider: none,

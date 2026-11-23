@@ -59,6 +59,7 @@ export const KIND_NAME: Record<string, string> = {
   map: "خريطة|Map|מפה",
   scanner: "ماسح|Scanner|סורק",
   game: "حالة السيرفر|Server status|מצב השרת",
+  tebex: "متجر Tebex|Tebex store|חנות Tebex",
 };
 
 const BEFORE: Record<string, string> = {
