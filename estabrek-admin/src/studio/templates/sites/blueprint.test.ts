@@ -36,7 +36,7 @@ const BUILT: Record<string, string[]> = {
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
   "site-fivem-rp": ["c4819073c5315e50", "3f37e33dc5030b03", "9327f4472f72a535", "7087d5060fcf2c2c", "e83d45205686d990", "36fc0595c979bfd7"],
-  "site-minecraft-survival": ["5820a4b9f8a1d7a1", "0889fba26f09d15e", "fc00429679a1d018", "bb734026b4ee175b", "9ddd1904047d6843", "1b4cde9ec6ba156a"],
+  "site-minecraft-survival": ["fe50d3a564011062", "f54c0ed2e993777c", "e3c3aa6d3ee37f6d", "79bc55692f433695", "429ceb228edc986e", "fec1429ecc09e269"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
