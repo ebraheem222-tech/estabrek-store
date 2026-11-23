@@ -98,12 +98,12 @@ export const fromSetting = (n: N, take: { text?: string; label?: string; href?: 
  * the visitor's browser instead: "added", the rows the signed-in shopper added (their applications), with `signin`
  * said to a visitor who isn't signed in.
  */
-export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added" | "live"; signin?: W; sort?: "order" | "newest"; by?: Array<{ field: string; dir?: "asc" | "desc" }> }): N {
+export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added" | "live"; signin?: W; sort?: "order" | "newest"; by?: Array<{ field: string; dir?: "asc" | "desc" }>; /** Read in the browser: read again by itself when a row comes or changes. */ stream?: true }): N {
   return {
     id: c.ids("list"),
     type: "collectionList",
     // `by`: the table's own fields first (the coming events by their day, then their hour; the backend's listSortBy).
-    props: { collectionId: T(table), sort: o.sort ?? "order", ...(o.by?.length ? { sortBy: o.by } : {}), limit: o.limit ?? 24, columns: o.columns, ...(o.where?.length ? { where: o.where } : {}), ...(o.empty ? { empty: say(c, o.empty) } : {}), ...(o.feed ? { feed: o.feed } : {}), ...(o.signin ? { signin: say(c, o.signin) } : {}) },
+    props: { collectionId: T(table), sort: o.sort ?? "order", ...(o.by?.length ? { sortBy: o.by } : {}), limit: o.limit ?? 24, columns: o.columns, ...(o.where?.length ? { where: o.where } : {}), ...(o.empty ? { empty: say(c, o.empty) } : {}), ...(o.feed ? { feed: o.feed } : {}), ...(o.signin ? { signin: say(c, o.signin) } : {}), ...(o.stream ? { stream: true } : {}) },
     style: { base: { gap: 24, self: "stretch" } },
     motion: mo.group(c),
     children: [card],

@@ -60,6 +60,22 @@ test.describe("a community's pulse and its codes", () => {
     await expect(node(page, "dead")).toContainText("The invite doesn't work");
   });
 
+  test("a streamer's channel: live with who watch, its title and game, or not live; watched by its link", async ({ page }) => {
+    const on = live("twitch", { players: 1204, name: "Building the castle with followers", map: "Minecraft", join: { href: "https://www.twitch.tv/laithplays", address: "twitch.tv/laithplays" } });
+    const off = live("twitch", { online: false, join: { href: "https://www.twitch.tv/laithplays", address: "twitch.tv/laithplays" }, history: hours.map((h, i) => ({ ...h, online: i > 20 ? false : true })) });
+    expect((await publish(page, pageWith([status("on", on), status("off", off)]))).ok()).toBeTruthy();
+    await page.setViewportSize({ width: 1280, height: 1100 });
+    await page.goto("/en/publication-fixture-en");
+    const tv = node(page, "on");
+    await expect(tv).toContainText("Live now");
+    await expect(tv.getByTestId("game-players")).toHaveText("1,204 watching");
+    await expect(tv).toContainText("Building the castle with followers · Minecraft");
+    await expect(tv.getByTestId("game-join")).toHaveAttribute("href", "https://www.twitch.tv/laithplays");
+    await expect(tv.getByTestId("game-copy")).toHaveCount(0);
+    await expect(node(page, "off")).toContainText("Not live right now");
+    await expect(node(page, "off").getByTestId("game-players")).toHaveCount(0);
+  });
+
   test("the working codes, each copied by its own button; a code with no last day says so; the expired ones apart", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     expect((await publish(page, pageWith([codesList("working", "active"), codesList("over", "expired")]))).ok()).toBeTruthy();

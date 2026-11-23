@@ -11,7 +11,7 @@
 import { B, EL, GRID, H, P, SEC, STACK, eyebrow, pop, say, withSkin } from "../../build";
 import { w } from "../../words";
 import type { PanelBits, SiteBlueprint, SiteSetting } from "../blueprint";
-import { SET, SERVER } from "../siteWords";
+import { SET, SERVER, STREAM_W } from "../siteWords";
 import { noticePart } from "./front";
 import { postsPart, questionsPart, teamPart } from "./lists";
 import { fromSetting, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
@@ -24,6 +24,8 @@ import { codesBand } from "./codes";
 import { eventsBand } from "./events";
 import { rosterBand } from "./roster";
 import { membersBand } from "./members";
+import { lfgBand } from "./lfg";
+import { clipsBand, scheduleBand, sponsorsBand } from "./streamer";
 
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
@@ -80,7 +82,7 @@ const robloxNoticePart: Part = (c) => {
 export function serverHome(b: Built): Part[] {
   const u = b.use;
   const ends = [...(u.mcstore ? [mcNoticePart] : []), ...(u.status?.game === "roblox" ? [robloxNoticePart] : [])];
-  return [noticePart, statusHero(b), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...ends];
+  return [noticePart, statusHero(b), ...when(u.lfg, () => lfgBand(b)), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), ...when(u.schedule, () => scheduleBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.clips, () => clipsBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.sponsors, () => sponsorsBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...ends];
 }
 
 /** A server's own settings: the notice over its first page ("restart at 20:00"). */
@@ -105,14 +107,23 @@ export const STATUS: SiteModule = {
   // The game and the address the backend reads the status by (they stay on the server); the Discord link the pages show.
   settings: (bp: SiteBlueprint) => {
     const s = bp.modules.status!;
-    // A community (a Roblox game, a Discord server) may also be read as either; a game server's choices stay its own.
-    const community = s.game === "roblox" || s.game === "discord" ? [{ id: "roblox", name: w("لعبة على Roblox", "A Roblox game", "משחק ב־Roblox") }, { id: "discord", name: w("سيرفر ديسكورد (مجتمع)", "A Discord server (a community)", "שרת דיסקורד (קהילה)") }] : [];
+    // A community (a Roblox game, a Discord server) may also be read as either, a streamer's as their Twitch channel too; a game server's choices stay its own.
+    const community = s.game === "roblox" || s.game === "discord" || s.game === "twitch" ? [{ id: "roblox", name: w("لعبة على Roblox", "A Roblox game", "משחק ב־Roblox") }, { id: "discord", name: w("سيرفر ديسكورد (مجتمع)", "A Discord server (a community)", "שרת דיסקורד (קהילה)") }] : [];
+    const streamer = s.game === "twitch";
+    const choices = streamer ? [...community, { id: "twitch", name: w("قناة على Twitch (ستريمر)", "A Twitch channel (a streamer)", "ערוץ ב־Twitch (סטרימר)") }] : community;
     return [
-      { key: "game", kind: "choice", label: SERVER.game, note: SERVER.gameNote, group: STATUS_NAME, default: s.game, options: [{ id: "fivem", name: w("FiveM (GTA V)", "FiveM (GTA V)", "FiveM (GTA V)") }, { id: "minecraft", name: w("ماينكرافت Java", "Minecraft Java", "Minecraft Java") }, { id: "bedrock", name: w("ماينكرافت Bedrock", "Minecraft Bedrock", "Minecraft Bedrock") }, { id: "steam", name: w("لعبة على Steam (Rust، CS2، GMod…)", "A Steam game (Rust, CS2, GMod…)", "משחק ב־Steam (Rust, CS2, GMod…)") }, ...community] },
-      { key: "serverAddress", kind: "text", label: SERVER.address, note: community.length ? SERVER.communityAddressNote : SERVER.addressNote, group: STATUS_NAME, default: s.address },
+      { key: "game", kind: "choice", label: SERVER.game, note: SERVER.gameNote, group: STATUS_NAME, default: s.game, options: [{ id: "fivem", name: w("FiveM (GTA V)", "FiveM (GTA V)", "FiveM (GTA V)") }, { id: "minecraft", name: w("ماينكرافت Java", "Minecraft Java", "Minecraft Java") }, { id: "bedrock", name: w("ماينكرافت Bedrock", "Minecraft Bedrock", "Minecraft Bedrock") }, { id: "steam", name: w("لعبة على Steam (Rust، CS2، GMod…)", "A Steam game (Rust, CS2, GMod…)", "משחק ב־Steam (Rust, CS2, GMod…)") }, ...choices] },
+      { key: "serverAddress", kind: "text", label: SERVER.address, note: streamer ? SERVER.streamerAddressNote : community.length ? SERVER.communityAddressNote : SERVER.addressNote, group: STATUS_NAME, default: s.address },
       // A server with no Discord (a children's one) starts with its button and band off.
       { key: "discordOn", kind: "toggle", label: SERVER.discordOn, group: STATUS_NAME, public: true, default: Boolean(s.discord.trim()) },
       { key: "discordUrl", kind: "text", label: SERVER.discordUrl, note: SERVER.discordUrlNote, group: STATUS_NAME, public: true, default: s.discord },
+      // A streamer's channel is read with their own Twitch keys (unless the streamers module brings them already).
+      ...(streamer && !bp.modules.streamers
+        ? [
+            { key: "twitchClientId", kind: "text" as const, label: STREAM_W.clientId, note: STREAM_W.keysNote, group: STATUS_NAME, default: "" },
+            { key: "twitchSecret", kind: "text" as const, label: STREAM_W.secret, group: STATUS_NAME, default: "" },
+          ]
+        : []),
       // A Roblox game's group: its button beside the Discord's.
       ...(s.game === "roblox"
         ? [

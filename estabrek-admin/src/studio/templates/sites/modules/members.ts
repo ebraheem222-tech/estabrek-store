@@ -12,7 +12,7 @@ import { MEMBERS_W } from "../siteWords";
 import { LIST, T, bound, f, head, pageHead, still, type Built, type Part, type SiteModule } from "./kit";
 
 const plain = (v: string) => ({ ar: v, en: v, he: v });
-const PLATFORMS: Array<[string, W]> = [["pc", MEMBERS_W.pc], ["playstation", MEMBERS_W.playstation], ["xbox", MEMBERS_W.xbox], ["switch", MEMBERS_W.switch], ["mobile", MEMBERS_W.mobile]];
+export const PLATFORMS: Array<[string, W]> = [["pc", MEMBERS_W.pc], ["playstation", MEMBERS_W.playstation], ["xbox", MEMBERS_W.xbox], ["switch", MEMBERS_W.switch], ["mobile", MEMBERS_W.mobile]];
 const STATES: Array<[string, W]> = [["waiting", MEMBERS_W.waiting], ["shown", MEMBERS_W.shown], ["hidden", MEMBERS_W.hidden]];
 const listed = [{ field: "state", op: "is" as const, value: "shown" }];
 

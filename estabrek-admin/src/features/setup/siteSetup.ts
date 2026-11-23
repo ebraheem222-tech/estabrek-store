@@ -40,6 +40,8 @@ export const SITE_THEMES: Record<string, string> = {
   "site-roblox-community": "square-pixel",
   "site-discord-community": "night-neon",
   "site-gaming-clan": "fantasy-guild",
+  "site-lfg-board": "clean-esports",
+  "site-gaming-streamer": "night-neon",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */

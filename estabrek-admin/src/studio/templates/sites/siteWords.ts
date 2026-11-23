@@ -152,6 +152,7 @@ export const SERVER = {
   groupOn: w("بيّن المجموعة", "Show the group", "להציג את הקבוצה"),
   groupUrl: w("رابط المجموعة", "The group's link", "הקישור לקבוצה"),
   groupUrlNote: w("رابط مجموعة اللعبة على Roblox، متل https://www.roblox.com/communities/123/Name.", "The game's group on Roblox, like https://www.roblox.com/communities/123/Name.", "הקבוצה של המשחק ב־Roblox, כמו https://www.roblox.com/communities/123/Name."),
+  streamerAddressNote: w("اسم قناتك على Twitch أو رابطها (twitch.tv/…). بتبيّن إذا إنت لايف وكم واحد عم يتفرّج، وبدها مفاتيح Twitch تحت.", "Your Twitch channel's name or link (twitch.tv/…). It shows whether you're live and how many watch, and needs the Twitch keys below.", "השם או הקישור של הערוץ שלכם ב־Twitch (twitch.tv/…). מוצג אם אתם בשידור וכמה צופים, וצריך את מפתחות Twitch למטה."),
   robloxNotice: w("موقع مجتمع اللعبة، مش تابع لـ Roblox Corporation ولا مدعوم منها. الشراء باللعبة بيصير جوّا Roblox بس.", "The game's community site, not part of or endorsed by Roblox Corporation. Anything bought for the game is bought inside Roblox only.", "אתר הקהילה של המשחק, לא חלק מ־Roblox Corporation ולא בחסותה. קניות למשחק נעשות רק בתוך Roblox."),
 };
 
@@ -525,6 +526,109 @@ export const BANS_W = {
   activeCount: w("باندات سارية", "Bans in force", "באנים בתוקף"),
   newest: w("آخر الباندات", "The latest bans", "הבאנים האחרונים"),
   liftedFn: w("استئناف انقبل: الباند بينشال", "An appeal accepted: the ban is lifted", "ערעור התקבל: הבאן מוסר"),
+};
+
+/** The words of «دوّر على فريق» (wave G7c2): posts by game, rank and time, closing by themselves. */
+export const LFG_W = {
+  name: w("دوّر على فريق", "Looking for a group", "מחפשים קבוצה"),
+  note: w("اللاعب الفايت بحسابه بيحط طلب (اللعبة، النمط، رتبته، جهازه، منطقته، إمتى، والمايك) وبيطلع على اللوحة على طول، مقسوم حسب اللعبة وبيتحدّث لحاله. الطلب بيسكّر لحاله بعد وقته (3 ساعات لـ «هلّق»، 8 لـ «الليلة»، 3 أيام لـ «الويكند»)، وطلب واحد مفتوح لكل لاعب.", "A signed-in player puts up a post (the game, the mode, their rank, platform, region, when, and the mic) and it shows on the board at once, by game, updating by itself. A post closes by itself after its time (3 hours for «now», 8 for «tonight», 3 days for «the weekend»), and one open post per player.", "שחקן מחובר מעלה פוסט (המשחק, המצב, הדרגה, הפלטפורמה, האזור, מתי והמיקרופון) והוא מופיע בלוח מיד, לפי משחק, ומתעדכן לבד. פוסט נסגר לבד אחרי הזמן שלו (3 שעות ל«עכשיו», 8 ל«הלילה», 3 ימים ל«סוף השבוע»), ופוסט פתוח אחד לכל שחקן."),
+  posts: w("الطلبات", "Posts", "פוסטים"),
+  game: w("اللعبة", "Game", "משחק"),
+  mode: w("النمط", "Mode", "מצב"),
+  modeHint: w("متل: رانكد، 2 ضد 2، رِيد", "Like: ranked, 2v2, a raid", "למשל: דירוג, 2 נגד 2, רייד"),
+  rank: w("رتبتك", "Your rank", "הדרגה שלכם"),
+  rankField: w("الرتبة", "Rank", "דרגה"),
+  region: w("المنطقة", "Region", "אזור"),
+  platform: w("الجهاز", "Platform", "פלטפורמה"),
+  when: w("إمتى", "When", "מתי"),
+  now: w("هلّق", "Now", "עכשיו"),
+  tonight: w("الليلة", "Tonight", "הלילה"),
+  weekend: w("الويكند", "The weekend", "סוף השבוע"),
+  mic: w("المايك", "Mic", "מיקרופון"),
+  micYes: w("معي مايك", "With a mic", "עם מיקרופון"),
+  micNo: w("بلا مايك", "No mic", "בלי מיקרופון"),
+  discordName: w("اسمك عالديسكورد", "Your Discord name", "השם שלכם בדיסקורד"),
+  discordField: w("اسم الديسكورد", "Discord name", "שם בדיסקורד"),
+  onDiscord: w("عالديسكورد:", "On Discord:", "בדיסקורד:"),
+  words: w("كلمتين", "A few words", "כמה מילים"),
+  noteHint: w("شو بدّك: لاعب واحد، فريق كامل، حدا يعلّمك…", "What you want: one player, a whole team, someone to teach you…", "מה אתם מחפשים: שחקן אחד, קבוצה שלמה, מישהו שילמד…"),
+  status: w("الحالة", "State", "מצב"),
+  open: w("مفتوح", "Open", "פתוח"),
+  closed: w("سكّر", "Closed", "נסגר"),
+  copy: w("انسخ اسمه", "Copy their name", "להעתיק את השם"),
+  copied: w("انتسخ! ابعتله على الديسكورد.", "Copied! Message them on Discord.", "הועתק! שלחו לו הודעה בדיסקורד."),
+  formTitle: w("حط طلبك", "Put up your post", "העלו פוסט"),
+  formSub: w("بيطلع للكل على طول، وبيسكّر لحاله بعد وقته. طلب واحد مفتوح لكل لاعب، ولازم تكون فايت بحسابك.", "Everyone sees it at once, and it closes by itself after its time. One open post per player, and you must be signed in.", "כולם רואים אותו מיד, והוא נסגר לבד אחרי הזמן שלו. פוסט פתוח אחד לכל שחקן, וצריך להיות מחוברים."),
+  send: w("حط الطلب", "Post it", "לפרסם"),
+  sent: w("طلبك طلع عاللوحة! اللي بدّه يلعب معك رح يبعتلك عالديسكورد.", "Your post is on the board! Whoever wants to play with you will message you on Discord.", "הפוסט שלכם בלוח! מי שרוצה לשחק איתכם ישלח לכם הודעה בדיסקורד."),
+  empty: w("ما في حدا عم يدوّر هلّق. حط طلبك وكون الأول.", "Nobody is looking right now. Put up your post and be the first.", "אף אחד לא מחפש כרגע. העלו פוסט והיו הראשונים."),
+  mine: w("طلباتك", "Your posts", "הפוסטים שלכם"),
+  mineEmpty: w("لسّا ما حطّيت طلب.", "You haven't posted yet.", "עוד לא פרסמתם."),
+  mineSignin: w("فوت بحسابك لتحط طلب.", "Sign in to put up a post.", "התחברו כדי לפרסם."),
+  bandSub: w("آخر الطلبات المفتوحة. لاقي حدا يلعب معك هلّق.", "The latest open posts. Find someone to play with now.", "הפוסטים הפתוחים האחרונים. מצאו עם מי לשחק עכשיו."),
+  all: w("كل الطلبات", "All the posts", "כל הפוסטים"),
+  openCount: w("طلبات مفتوحة", "Open posts", "פוסטים פתוחים"),
+  weekCount: w("طلبات هالأسبوع", "Posts this week", "פוסטים השבוע"),
+  queue: w("الطلبات المفتوحة", "Open posts", "פוסטים פתוחים"),
+  close: w("سكّره", "Close it", "לסגור"),
+  none: w("ما في طلبات مفتوحة.", "No open posts.", "אין פוסטים פתוחים."),
+  daily: w("الطلبات كل يوم", "Posts each day", "פוסטים בכל יום"),
+  publishFn: w("طلب جديد: بيطلع عاللوحة", "A new post goes on the board", "פוסט חדש עולה ללוח"),
+  closeFn: w("طلب خلص وقته: بيسكّر", "A post past its time closes", "פוסט שעבר זמנו נסגר"),
+};
+
+/** The words of a streamer's weekly schedule (wave G7c2). */
+export const SCHED_W = {
+  name: w("جدول البث", "Stream schedule", "לוח השידורים"),
+  note: w("أيام البث وساعاته كل أسبوع، وشو بيلعب كل يوم، بترتيب الأسبوع.", "The stream's days and hours each week, and what is played each day, in the week's order.", "ימי השידור והשעות בכל שבוע, ובמה משחקים בכל יום, לפי סדר השבוע."),
+  day: w("اليوم", "Day", "יום"),
+  time: w("الساعة", "Time", "שעה"),
+  timeHelp: w("متل 20:00، بتوقيتك.", "Like 20:00, in your time.", "כמו 20:00, לפי השעה שלכם."),
+  game: w("اللعبة", "Game", "משחק"),
+  title: w("شو فيه", "What's on", "מה בשידור"),
+  sat: w("السبت", "Saturday", "שבת"),
+  sun: w("الأحد", "Sunday", "ראשון"),
+  mon: w("الاتنين", "Monday", "שני"),
+  tue: w("التلاتا", "Tuesday", "שלישי"),
+  wed: w("الأربعا", "Wednesday", "רביעי"),
+  thu: w("الخميس", "Thursday", "חמישי"),
+  fri: w("الجمعة", "Friday", "שישי"),
+  bandSub: w("إمتى بنكون لايف هالأسبوع.", "When we're live this week.", "מתי אנחנו בשידור השבוע."),
+  empty: w("الجدول بيطلع هون قريباً.", "The schedule shows here soon.", "הלוח יופיע כאן בקרוב."),
+  all: w("كل الجدول", "The whole schedule", "כל הלוח"),
+};
+
+/** The words of a streamer's clips (wave G7c2). */
+export const CLIPS_W = {
+  name: w("الكليبات", "Clips", "קליפים"),
+  note: w("أحلى اللحظات من البث: كل كليب بصورته ورابطه (Twitch أو يوتيوب)، الأحدث أول.", "The best moments from the stream: each clip with its picture and link (Twitch or YouTube), newest first.", "הרגעים הכי טובים מהשידור: כל קליפ עם התמונה והקישור (Twitch או YouTube), החדשים קודם."),
+  clips: w("الكليبات", "Clips", "קליפים"),
+  title: w("الكليب", "Clip", "קליפ"),
+  link: w("الرابط", "Link", "קישור"),
+  linkHelp: w("رابط الكليب على Twitch أو يوتيوب.", "The clip's link on Twitch or YouTube.", "הקישור לקליפ ב־Twitch או ב־YouTube."),
+  game: w("اللعبة", "Game", "משחק"),
+  date: w("التاريخ", "Date", "תאריך"),
+  picture: w("صورة", "Picture", "תמונה"),
+  watch: w("شوف الكليب", "Watch the clip", "לצפות בקליפ"),
+  bandSub: w("آخر اللحظات اللي ما لازم تفوتك.", "The latest moments you shouldn't miss.", "הרגעים האחרונים שאסור לפספס."),
+  empty: w("الكليبات بتطلع هون قريباً.", "The clips show here soon.", "הקליפים יופיעו כאן בקרוב."),
+  all: w("كل الكليبات", "All the clips", "כל הקליפים"),
+};
+
+/** The words of a streamer's sponsors (wave G7c2). */
+export const SPONSORS_W = {
+  name: w("الرعاة", "Sponsors", "נותני חסות"),
+  note: w("اللي بيدعموا البث: لوغو كل واحد ورابطه، كلمتين، وكود الخصم للمتابعين.", "Those who back the stream: each one's logo and link, a few words, and the followers' discount code.", "מי שתומכים בשידור: הלוגו והקישור של כל אחד, כמה מילים, וקוד ההנחה לעוקבים."),
+  sponsors: w("الرعاة", "Sponsors", "נותני חסות"),
+  sponsor: w("الراعي", "Sponsor", "נותן חסות"),
+  logo: w("اللوغو", "Logo", "לוגו"),
+  link: w("رابطه", "Their link", "הקישור שלו"),
+  code: w("كود الخصم", "Discount code", "קוד הנחה"),
+  line: w("كلمتين", "A few words", "כמה מילים"),
+  codeLabel: w("كودك:", "Your code:", "הקוד שלכם:"),
+  visit: w("زورهم", "Visit them", "לבקר אצלם"),
+  bandSub: w("بفضلهم البث مستمر. استعمل الكود وادعمنا.", "Thanks to them the stream goes on. Use the code and support us.", "בזכותם השידור ממשיך. השתמשו בקוד ותמכו בנו."),
+  empty: w("الرعاة بيطلعوا هون قريباً.", "The sponsors show here soon.", "נותני החסות יופיעו כאן בקרוב."),
 };
 
 /** A clan's applying words (wave G7c): the player themself, not a character (APPLY_W's in their place). */

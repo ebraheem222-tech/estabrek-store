@@ -81,9 +81,10 @@ export type Bare = Record<string, never>;
 /**
  * A game server: its game and its address (the sample's; its owner sets theirs), its Discord, how a player gets in. A
  * community's status (wave G7c) is its Roblox game (the game's link; `group`, its Roblox group) or its Discord server
- * (the invite, and `discord` empty: the status is the Discord).
+ * (the invite, and `discord` empty: the status is the Discord). A streamer's (wave G7c2) is their Twitch channel (live or
+ * not, how many watch), read with the site's own Twitch keys.
  */
-export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord"; address: string; discord: string; join: W; steps: Array<[W, W]>; group?: string };
+export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord" | "twitch"; address: string; discord: string; join: W; steps: Array<[W, W]>; group?: string };
 /** A game server's rules (wave G3): numbered sections ("1.1"), and what changed last ("آخر تعديل"). */
 export type RulesUse = { title: W; sub: W; changed: W; /** The day they last changed ("2026-11-20"), on each ready rule. */ date: string; sections: Array<{ key: string; name: W; rows: Array<{ n: string; title: W; text: W }> }> };
 /** One kind a player applies for: the whitelist, a job (police, paramedics…) or the staff, with its own question. */
@@ -152,6 +153,17 @@ export type RosterUse = { title: W; sub: W; roles: Array<[string, W]>; rows: Ros
 export type Platform = "pc" | "playstation" | "xbox" | "switch" | "mobile";
 /** A community's members' directory (wave G7c): its ready cards (shown; a member's own waits for the staff's yes). */
 export type MembersUse = { title: W; sub: W; rows: Array<{ tag: string; games: W; platform: Platform; discordName: string; about: W }> };
+/** One post on a looking-for-a-group board (wave G7c2): which game, the mode and rank, where and when, the mic, and who to message. */
+export type LfgRow = { game: string; mode: W; rank: W; region: string; platform: Platform; when: "now" | "tonight" | "weekend"; mic: boolean; discordName: string; note: W };
+/** A looking-for-a-group board: the games it has a section for, the regions a post picks from, and its ready posts. */
+export type LfgUse = { title: W; sub: W; games: Array<[string, W]>; regions: Array<[string, W]>; rows: LfgRow[] };
+export type Weekday = "sat" | "sun" | "mon" | "tue" | "wed" | "thu" | "fri";
+/** A streamer's week (wave G7c2): each stream's day, hour, game and what's on, in the week's order. */
+export type ScheduleUse = { title: W; sub: W; rows: Array<{ day: Weekday; time: string; game: W; title: W }> };
+/** A streamer's clips: each one's link (Twitch or YouTube), its game and day. */
+export type ClipsUse = { title: W; sub: W; rows: Array<{ slug: string; title: W; link: string; game: W; date: string }> };
+/** A streamer's sponsors: their link and their discount code for the followers. */
+export type SponsorsUse = { title: W; sub: W; rows: Array<{ name: string; link: string; code: string; line: W }> };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -261,6 +273,10 @@ export type SiteModules = {
   events?: EventsUse;
   roster?: RosterUse;
   members?: MembersUse;
+  lfg?: LfgUse;
+  schedule?: ScheduleUse;
+  clips?: ClipsUse;
+  sponsors?: SponsorsUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;
