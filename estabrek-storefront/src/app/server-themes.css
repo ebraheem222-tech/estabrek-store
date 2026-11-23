@@ -1,0 +1,159 @@
+/*
+ * The game servers' family of themes (storeThemes/themes/servers.ts, wave G6c of docs/sites-300-plan.ar.md): each
+ * gives a game server's own parts their shape (its live status, the wipe countdown, rankings, streamers, the store's
+ * packages: pageTree/*View.tsx mark their pieces data-gp) and the page's buttons theirs, through the variables
+ * pageTree/css.ts .pt-btn reads, so a button's own corners and shadow still win. Colours are only the theme's own
+ * (--th-*) and the words' colour where the part stands, so every piece reads on a light, dark or night section alike.
+ */
+
+/* Every server theme: numbers in its display letters. */
+:root:is([data-store-theme="night-neon"], [data-store-theme="square-pixel"], [data-store-theme="rough-survival"], [data-store-theme="race-stripes"], [data-store-theme="clean-esports"], [data-store-theme="fantasy-guild"]) [data-game-part] [data-gp="num"] {
+  font-family: var(--th-display);
+}
+
+/* ---------------------------------------------------------------- night neon: lines that glow */
+:root[data-store-theme="night-neon"] {
+  --pt-btn-shadow: 0 0 0 1px color-mix(in srgb, var(--th-strong) 60%, transparent), 0 0 22px -6px var(--th-accent);
+}
+:root[data-store-theme="night-neon"] [data-game-part] :is([data-gp="panel"], [data-gp="tile"]) {
+  border-color: color-mix(in srgb, var(--th-accent) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--th-accent) 22%, transparent), 0 0 30px -12px var(--th-accent), inset 0 0 26px -18px var(--th-accent);
+}
+:root[data-store-theme="night-neon"] [data-game-part] [data-gp="num"] {
+  text-shadow: 0 0 16px color-mix(in srgb, var(--th-accent) 60%, transparent);
+}
+:root[data-store-theme="night-neon"] [data-game-part] [data-gp="go"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--th-strong) 50%, transparent), 0 0 24px -6px var(--th-strong);
+}
+:root[data-store-theme="night-neon"] [data-game-part] [data-gp="bar"] {
+  box-shadow: 0 0 10px -2px var(--th-accent);
+}
+
+/* ---------------------------------------------------------------- square pixel: blocks and a hard shadow */
+:root[data-store-theme="square-pixel"] {
+  --pt-btn-radius: 0;
+  --pt-btn-shadow: calc(var(--pt-flip, 1) * 4px) 4px 0 var(--th-ink);
+}
+:root[data-store-theme="square-pixel"] [data-game-part] * {
+  border-radius: 0;
+}
+:root[data-store-theme="square-pixel"] [data-game-part] :is([data-gp="panel"], [data-gp="tile"]) {
+  border: 3px solid currentColor;
+  box-shadow: calc(var(--pt-flip, 1) * 6px) 6px 0 color-mix(in srgb, currentColor 80%, transparent);
+}
+:root[data-store-theme="square-pixel"] [data-game-part] :is([data-gp="go"], [data-gp="ghost"], [role="tab"]) {
+  border: 2px solid currentColor;
+  box-shadow: calc(var(--pt-flip, 1) * 4px) 4px 0 currentColor;
+  transition: transform 0.08s steps(2), box-shadow 0.08s steps(2);
+}
+:root[data-store-theme="square-pixel"] [data-game-part] :is([data-gp="go"], [data-gp="ghost"], [role="tab"]):active {
+  transform: translate(calc(var(--pt-flip, 1) * 4px), 4px);
+  box-shadow: none;
+}
+:root[data-store-theme="square-pixel"] .pt-btn:active {
+  transform: translate(calc(var(--pt-flip, 1) * 4px), 4px);
+  --pt-btn-shadow: none;
+}
+
+/* ---------------------------------------------------------------- rough survival: torn edges, scratched lines */
+:root[data-store-theme="rough-survival"] {
+  --pt-btn-radius: 2px;
+  --pt-btn-clip: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+:root[data-store-theme="rough-survival"] [data-game-part] :is([data-gp="panel"], [data-gp="tile"]) {
+  border-radius: 2px;
+  border: 2px solid color-mix(in srgb, currentColor 26%, transparent);
+  background: repeating-linear-gradient(-45deg, color-mix(in srgb, currentColor 6%, transparent) 0 2px, transparent 2px 10px), color-mix(in srgb, currentColor 4%, transparent);
+}
+:root[data-store-theme="rough-survival"] [data-game-part] [data-gp="panel"] {
+  clip-path: polygon(0 5px, 4% 0, 19% 4px, 38% 0, 61% 5px, 83% 1px, 100% 4px, 100% calc(100% - 5px), 94% 100%, 72% calc(100% - 4px), 49% 100%, 27% calc(100% - 5px), 8% 100%, 0 calc(100% - 3px));
+}
+:root[data-store-theme="rough-survival"] [data-game-part] :is([data-gp="go"], [data-gp="ghost"], [role="tab"]) {
+  border-radius: 2px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+:root[data-store-theme="rough-survival"] [data-game-part] [data-gp="ghost"] {
+  border-style: dashed;
+}
+:root[data-store-theme="rough-survival"] [data-game-part] [data-gp="num"] {
+  letter-spacing: 0.03em;
+}
+
+/* ---------------------------------------------------------------- race stripes: a stripe, a slant, a chequered strip */
+:root[data-store-theme="race-stripes"] {
+  --pt-btn-radius: 0;
+  --pt-btn-clip: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+:root[data-store-theme="race-stripes"] [data-game-part] [data-gp="panel"] {
+  border-radius: 4px;
+  border-inline-start: 6px solid var(--th-strong);
+  background: linear-gradient(var(--th-accent), var(--th-accent)) 0 0 / 100% 4px no-repeat, linear-gradient(var(--th-strong), var(--th-strong)) 0 7px / 100% 2px no-repeat, color-mix(in srgb, currentColor 4%, transparent);
+}
+:root[data-store-theme="race-stripes"] [data-game-part] [data-gp="tile"] {
+  border-radius: 2px;
+  border-inline-start: 4px solid var(--th-strong);
+}
+:root[data-store-theme="race-stripes"] [data-game-part] :is([data-gp="go"], [data-gp="ghost"], [role="tab"]) {
+  border-radius: 0;
+  padding-inline: 28px;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+:root[data-store-theme="race-stripes"] [data-game-part] [data-gp="num"] {
+  font-style: italic;
+}
+:root[data-store-theme="race-stripes"] [data-game-part="wipeCountdown"] :is([data-wipe="next"], [data-wipe="past"])::before {
+  content: "";
+  justify-self: stretch;
+  height: 10px;
+  background: repeating-conic-gradient(currentColor 0 25%, transparent 0 50%) 0 0 / 10px 10px;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------- clean e-sports: thin lines, a bar on top */
+:root[data-store-theme="clean-esports"] {
+  --pt-btn-radius: 6px;
+}
+:root[data-store-theme="clean-esports"] [data-game-part] :is([data-gp="panel"], [data-gp="tile"]) {
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  background: color-mix(in srgb, currentColor 3%, transparent);
+}
+:root[data-store-theme="clean-esports"] [data-game-part] [data-gp="panel"] {
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+:root[data-store-theme="clean-esports"] [data-game-part] :is([data-gp="go"], [data-gp="ghost"], [role="tab"]) {
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+:root[data-store-theme="clean-esports"] [data-game-part] [data-gp="num"] {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------- fantasy guild: a double gold frame, carved corners */
+:root[data-store-theme="fantasy-guild"] {
+  --pt-btn-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-contrast) 30%, transparent), 0 0 0 1px color-mix(in srgb, var(--th-accent) 60%, transparent);
+}
+:root[data-store-theme="fantasy-guild"] [data-game-part] [data-gp="panel"] {
+  border: 3px double color-mix(in srgb, var(--th-accent) 70%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 10px 10px, var(--th-accent) 0 2.5px, transparent 3px) no-repeat,
+    radial-gradient(circle at calc(100% - 10px) 10px, var(--th-accent) 0 2.5px, transparent 3px) no-repeat,
+    radial-gradient(circle at 10px calc(100% - 10px), var(--th-accent) 0 2.5px, transparent 3px) no-repeat,
+    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), var(--th-accent) 0 2.5px, transparent 3px) no-repeat,
+    color-mix(in srgb, currentColor 4%, transparent);
+}
+:root[data-store-theme="fantasy-guild"] [data-game-part] [data-gp="tile"] {
+  border: 1px solid color-mix(in srgb, var(--th-accent) 45%, transparent);
+  border-radius: 10px;
+}
+:root[data-store-theme="fantasy-guild"] [data-game-part] [data-gp="go"] {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-contrast) 30%, transparent), 0 0 0 1px color-mix(in srgb, var(--th-accent) 60%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-store-theme="square-pixel"] [data-game-part] :is([data-gp="go"], [data-gp="ghost"], [role="tab"]) {
+    transition: none;
+  }
+}

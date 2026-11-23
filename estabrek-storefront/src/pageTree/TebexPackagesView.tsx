@@ -36,11 +36,11 @@ export function TebexPackagesView({ store, lang, buy, all, empty, note, columns 
     return (
       <div className={css.grid} style={{ ["--cols" as string]: String(columns) }} data-tebex="sample">
         {[1, 2, 3].slice(0, columns).map((n) => (
-          <article key={n} className={css.card}>
+          <article key={n} className={css.card} data-gp="panel">
             <div className={css.pic} aria-hidden />
             <h3 className={css.name}>{w.sample} {n}</h3>
             <p className={css.text}>{w.sampleText}</p>
-            <span className={css.buy}>{buy || w.buy}</span>
+            <span className={css.buy} data-gp="go">{buy || w.buy}</span>
           </article>
         ))}
       </div>
@@ -60,11 +60,11 @@ export function TebexPackagesView({ store, lang, buy, all, empty, note, columns 
       ) : null}
       <div className={css.grid} style={{ ["--cols" as string]: String(columns) }} role={store.categories.length > 1 ? "tabpanel" : undefined}>
         {cat.packages.map((p) => (
-          <article key={p.id} className={css.card} data-package={p.id}>
+          <article key={p.id} className={css.card} data-gp="panel" data-package={p.id}>
             {p.image ? <img className={css.pic} src={p.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : null}
             <h3 className={css.name}>{p.name}</h3>
             <div className={css.price}>
-              <b>{money(p.price, p.currency, lang)}</b>
+              <b data-gp="num">{money(p.price, p.currency, lang)}</b>
               {p.base > p.price ? (
                 <>
                   <s>{money(p.base, p.currency, lang)}</s> <span className={css.sale}>{w.sale}</span>
@@ -72,12 +72,12 @@ export function TebexPackagesView({ store, lang, buy, all, empty, note, columns 
               ) : null}
             </div>
             {p.text ? <p className={css.text}>{p.text}</p> : null}
-            <a className={css.buy} href={p.href} target="_blank" rel="noopener noreferrer">{buy || w.buy}</a>
+            <a className={css.buy} data-gp="go" href={p.href} target="_blank" rel="noopener noreferrer">{buy || w.buy}</a>
           </article>
         ))}
       </div>
       <div className={css.foot}>
-        <a className={css.all} href={store.url} target="_blank" rel="noopener noreferrer">{all || w.all}</a>
+        <a className={css.all} data-gp="ghost" href={store.url} target="_blank" rel="noopener noreferrer">{all || w.all}</a>
         {note ? <p className={css.note}>{note}</p> : null}
       </div>
     </div>

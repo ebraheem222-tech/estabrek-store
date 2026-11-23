@@ -10,6 +10,7 @@
  */
 import { LIFE_THEMES } from "./themes/life";
 import { MORE_THEMES } from "./themes/more";
+import { SERVER_THEMES } from "./themes/servers";
 import { STYLE_THEMES } from "./themes/style";
 import { TECH_THEMES } from "./themes/tech";
 import type { StoreTheme } from "./types";
@@ -916,8 +917,8 @@ const CLASSIC_THEMES: StoreTheme[] = [
   ...MORE_THEMES,
 ];
 
-/** Every theme: a design of its own for each kind of store in its variants (dna/), then the classic ones. */
-export const STORE_THEMES: StoreTheme[] = [...DESIGN_THEMES, ...CLASSIC_THEMES.map((t) => ({ ...t, classic: true }))];
+/** Every theme: a design of its own for each kind of store in its variants (dna/), the game servers' family (themes/servers.ts), then the classic ones. */
+export const STORE_THEMES: StoreTheme[] = [...DESIGN_THEMES, ...SERVER_THEMES, ...CLASSIC_THEMES.map((t) => ({ ...t, classic: true }))];
 
 // A ready template's theme (kits/themes.ts) is found too: a store that used a template wears it.
 export const themeById = (id?: string | null) => (id ? STORE_THEMES.find((t) => t.id === id) ?? TEMPLATE_THEMES.find((t) => t.id === id) ?? null : null);

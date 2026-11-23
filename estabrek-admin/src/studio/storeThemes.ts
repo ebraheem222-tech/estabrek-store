@@ -239,6 +239,7 @@ export const FAMILY_LABEL: Record<string, () => string> = {
   pets: () => tr("حيوانات أليفة", "Pets"),
   flowers: () => tr("زهور ونباتات", "Flowers & plants"),
   music: () => tr("موسيقى", "Music"),
+  servers: () => tr("سيرفرات ألعاب", "Game servers"),
   general: () => tr("عام", "General"),
 };
 

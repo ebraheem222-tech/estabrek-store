@@ -13,8 +13,12 @@ export type N = PageTreeNode;
 type S = Record<string, unknown>;
 export type Ids = (prefix: string) => string;
 
-/** A section's colours: none, the accent's soft tint, the surface, the accent, dark (the theme's text colour), or a campaign's own. */
-export const SKINS = ["plain", "soft", "surface", "bold", "dark", "campaign"] as const;
+/**
+ * A section's colours: none, the accent's soft tint, the surface, the accent, dark (the theme's text colour), night (the
+ * theme's deepest band: as dark in a light theme, a night under the page in a dark one; a game site's opening), or a
+ * campaign's own.
+ */
+export const SKINS = ["plain", "soft", "surface", "bold", "dark", "night", "campaign"] as const;
 export type Skin = (typeof SKINS)[number];
 export type MotionLevel = "calm" | "rich";
 export type Paint = { bg: string; fg: string; pop: string };
@@ -67,6 +71,8 @@ function skinStyle(c: Ctx): S {
       return { bg: "accent", color: "accent-contrast" };
     case "dark":
       return { bg: "text", color: "bg" };
+    case "night":
+      return { bg: "deep", color: "on-deep" };
     case "campaign":
       return c.paint ? { bg: c.paint.bg, color: c.paint.fg } : { bg: "accent", color: "accent-contrast" };
     default:
@@ -74,7 +80,7 @@ function skinStyle(c: Ctx): S {
   }
 }
 /** What stands out on the skin (an eyebrow, a number, an icon). */
-export const pop = (c: Ctx): string => (c.skin === "campaign" && c.paint ? c.paint.pop : c.skin === "bold" ? "accent-contrast" : c.skin === "dark" ? "accent-soft" : "accent");
+export const pop = (c: Ctx): string => (c.skin === "campaign" && c.paint ? c.paint.pop : c.skin === "bold" ? "accent-contrast" : c.skin === "dark" ? "accent-soft" : c.skin === "night" ? "deep-pop" : "accent");
 /** A quieter line on the skin. */
 const quiet = (c: Ctx): S => (c.skin === "plain" || c.skin === "soft" || c.skin === "surface" ? { color: "muted" } : { opacity: 0.85 });
 
@@ -127,7 +133,9 @@ export function B(c: Ctx, t: W, href: string, variant: "solid" | "outline" | "li
       : { color: c.skin === "campaign" && c.paint ? c.paint.fg : "accent-contrast" }
     : c.skin === "dark" && variant !== "solid"
       ? { color: "bg" }
-      : {};
+      : c.skin === "night" && variant !== "solid"
+        ? { color: "on-deep" }
+        : {};
   return node(c, "b", "button", { label: say(c, t), href, variant }, styled({ ...look, ...o?.style }, o?.phone), motionOr(o, mo.btn(c, o?.delay)));
 }
 /** A picture; `shaped` = cut to the pack's shape when it has one. */
@@ -142,7 +150,7 @@ export const SPACER = (c: Ctx, size = 24): N => node(c, "sp", "spacer", { size }
 export const DIVIDER = (c: Ctx, o?: Opts): N => node(c, "dv", "divider", {}, styled(o?.style, o?.phone));
 /** A built-in 3D model of the store's kind, in the theme's colours. */
 export function MODEL(c: Ctx, o?: Opts & { model?: string; props?: S }): N {
-  const lights = c.kit?.lights ?? (c.skin === "dark" || c.skin === "campaign" ? "night" : "studio");
+  const lights = c.kit?.lights ?? (c.skin === "dark" || c.skin === "night" || c.skin === "campaign" ? "night" : "studio");
   const props: S = { model: o?.model ?? c.pack.model, finish: c.kit?.finish ?? "matte", lights: { preset: lights }, floor: c.kit?.floor ?? "shadow", anim: { type: "float", speed: 1 }, drag: true, auto: 0.4, label: say(c, c.pack.product), ...o?.props };
   return node(c, "m3d", "model3d", props, styled({ width: "100%", aspect: "1 / 1", ...o?.style }, o?.phone), motionOr(o, mo.model(c)));
 }
@@ -175,7 +183,7 @@ const BOXES: Record<string, S> = {
 };
 export function CARD(c: Ctx, children: N[], style?: S): N {
   const plain = (c.kit && BOXES[c.kit.box]) ?? { bg: "surface", border: { width: 1, color: "border" } };
-  const frame: S = c.skin === "plain" ? plain : c.skin === "surface" ? { bg: "bg" } : c.skin === "soft" ? { bg: "bg" } : { bg: "transparent", border: { width: 1, color: c.skin === "campaign" && c.paint ? c.paint.pop : c.skin === "dark" ? "muted" : "accent-contrast" } };
+  const frame: S = c.skin === "plain" ? plain : c.skin === "surface" ? { bg: "bg" } : c.skin === "soft" ? { bg: "bg" } : { bg: "transparent", border: { width: 1, color: c.skin === "campaign" && c.paint ? c.paint.pop : c.skin === "dark" ? "muted" : c.skin === "night" ? "deep-pop" : "accent-contrast" } };
   return STACK(c, children, { gap: 12, pad: [28, 24, 28, 24], radius: 20, ...frame, ...style }, mo.card(c));
 }
 

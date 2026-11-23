@@ -3522,6 +3522,7 @@ export const HE: Record<string, string> = {
   "Pets": "חיות מחמד",
   "Flowers & plants": "פרחים וצמחים",
   "Music": "מוזיקה",
+  "Game servers": "שרתי משחקים",
   "Models and collections": "דגמים וקולקציות",
   "Collection": "קולקציה",
   "Collection name": "שם הקולקציה",

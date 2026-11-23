@@ -51,10 +51,10 @@ export function LeaderboardView({ ranks, lang, empty, labels }: { ranks: unknown
     return (
       <ol className={css.list} data-ranks="sample">
         {[1, 2, 3, 4, 5].map((n) => (
-          <li key={n} className={css.row} data-top={n <= 3 ? n : undefined}>
+          <li key={n} className={css.row} data-gp="tile" data-top={n <= 3 ? n : undefined}>
             <span className={css.n}>{n}</span>
             <span className={css.name}>{w.player} {n}</span>
-            <span className={css.value} dir="ltr">{scoreText((6 - n) * 437, "minutes", lang)}</span>
+            <span className={css.value} dir="ltr" data-gp="num">{scoreText((6 - n) * 437, "minutes", lang)}</span>
           </li>
         ))}
       </ol>
@@ -77,10 +77,10 @@ export function LeaderboardView({ ranks, lang, empty, labels }: { ranks: unknown
         {rows.length ? (
           <ol className={css.list} aria-label={labels[current] || w[current]}>
             {rows.map((r) => (
-              <li key={`${r.n}-${r.name}`} className={css.row} data-top={r.n <= 3 ? r.n : undefined}>
+              <li key={`${r.n}-${r.name}`} className={css.row} data-gp="tile" data-top={r.n <= 3 ? r.n : undefined}>
                 <span className={css.n} aria-label={`${w.rank} ${r.n}`}>{r.n}</span>
                 <bdi className={css.name}>{r.name}</bdi>
-                <span className={css.value} dir="ltr">{scoreText(r.value, ranks.unit, lang)}</span>
+                <span className={css.value} dir="ltr" data-gp="num">{scoreText(r.value, ranks.unit, lang)}</span>
               </li>
             ))}
           </ol>

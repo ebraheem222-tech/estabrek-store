@@ -22,6 +22,7 @@ export type ThemeFamily =
   | "pets"
   | "flowers"
   | "music"
+  | "servers"
   | "general";
 
 /** The home page's opening, each a different composition (storeThemes/home/heroes). */

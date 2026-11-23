@@ -158,7 +158,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const live = !ctx.inRows;
   // Its time to show (TreeWhen marks it when that's now; the stylesheet leaves it out until then).
   const when = node.type === "page" ? undefined : whenOf(p.when);
-  const mark = { ...perfMarks(perf, endless), ...(live ? physicsMarks : {}), ...(when ? { "data-pt-when": JSON.stringify(when) } : {}), "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion && live ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue && live ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 && live ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
+  const mark = { ...perfMarks(perf, endless), ...(live ? physicsMarks : {}), ...(when ? { "data-pt-when": JSON.stringify(when) } : {}), "data-tree-node": node.id, ...(node.style?.base?.bg === "deep" ? { "data-pt-deep": "" } : {}), ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion && live ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue && live ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(hiddenFrom(triggers) ? { "data-pt-who": hiddenFrom(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 && live ? { "data-pt-cue-wait": "" } : {}), ...(p.cursorText && say(p.cursorText) ? { "data-pt-cursor-text": say(p.cursorText).slice(0, 24) } : {}) };
   // What the row fills in each copy of the card: the element's connections to the table's fields (rowsSpec.ts).
   const row = ctx.inRows ? rowBind(p.bind) : {};
   const rowWords = (ref: string | undefined, content: ReactNode) => (ref ? <span data-pt-row-text={ref}>{content}</span> : content);
@@ -422,19 +422,19 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       return <div className={cls(node)} {...mark}><ClockView timezone={typeof p.timezone === "string" ? p.timezone.slice(0, 80) : "UTC"} format={p.format === "12" ? "12" : "24"} seconds={p.seconds !== false} date={p.date === true} lang={ctx.lang} label={say(p.label)} /></div>;
     case "tebexPackages":
       // A game server site's packages on its Tebex webstore (the server fills props.store as the page is served).
-      return <div className={cls(node)} {...mark}><TebexPackagesView store={p.store} lang={ctx.lang} buy={say(p.buy)} all={say(p.all)} empty={say(p.empty)} note={say(p.note)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} /></div>;
+      return <div className={cls(node)} {...mark} data-game-part="tebexPackages"><TebexPackagesView store={p.store} lang={ctx.lang} buy={say(p.buy)} all={say(p.all)} empty={say(p.empty)} note={say(p.note)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} /></div>;
     case "leaderboard":
       // A game server site's ranking on one of its boards (the server fills props.ranks as the page is served).
-      return <div className={cls(node)} {...mark}><LeaderboardView ranks={p.ranks} lang={ctx.lang} empty={say(p.empty)} labels={{ day: say(p.day), week: say(p.week), month: say(p.month), all: say(p.all) }} /></div>;
+      return <div className={cls(node)} {...mark} data-game-part="leaderboard"><LeaderboardView ranks={p.ranks} lang={ctx.lang} empty={say(p.empty)} labels={{ day: say(p.day), week: say(p.week), month: say(p.month), all: say(p.all) }} /></div>;
     case "wipeCountdown":
       // A game server site's next wipe (the server fills props.wipe from the site's schedule as the page is served).
-      return <div className={cls(node)} {...mark}><WipeCountdownView wipe={p.wipe} lang={ctx.lang} title={say(p.title)} done={say(p.done)} none={say(p.none)} size={p.size === "small" ? "small" : "big"} /></div>;
+      return <div className={cls(node)} {...mark} data-game-part="wipeCountdown"><WipeCountdownView wipe={p.wipe} lang={ctx.lang} title={say(p.title)} done={say(p.done)} none={say(p.none)} size={p.size === "small" ? "small" : "big"} /></div>;
     case "streamers":
       // A game server site's streamers (the server fills props.crew as the page is served, the live first).
-      return <div className={cls(node)} {...mark}><StreamersView crew={p.crew} lang={ctx.lang} liveLabel={say(p.live)} watch={say(p.watch)} channel={say(p.channel)} empty={say(p.empty)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} onlyLive={p.onlyLive === true} /></div>;
+      return <div className={cls(node)} {...mark} data-game-part="streamers"><StreamersView crew={p.crew} lang={ctx.lang} liveLabel={say(p.live)} watch={say(p.watch)} channel={say(p.channel)} empty={say(p.empty)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} onlyLive={p.onlyLive === true} /></div>;
     case "gameStatus":
       // A game server site's live status (the server fills props.live as the page is served).
-      return <div className={cls(node)} {...mark}><GameStatusView live={p.live} lang={ctx.lang} joinLabel={say(p.join)} copyLabel={say(p.copy)} chart={p.chart === true} size={p.size === "small" ? "small" : "big"} /></div>;
+      return <div className={cls(node)} {...mark} data-game-part="gameStatus"><GameStatusView live={p.live} lang={ctx.lang} joinLabel={say(p.join)} copyLabel={say(p.copy)} chart={p.chart === true} size={p.size === "small" ? "small" : "big"} /></div>;
     case "filterGallery":
       return <FilterGalleryBlock props={p} className={cls(node)} mark={mark} say={say} link={link} lang={ctx.lang} />;
     case "schedule": {

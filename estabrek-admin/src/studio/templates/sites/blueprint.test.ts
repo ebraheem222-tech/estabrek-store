@@ -28,6 +28,8 @@ const LANGS = ["ar", "en", "he"] as const;
  *   board, the boards and the players' numbers as tables, both on the panel's lists).
  *   site-fivem-rp 1.6.0 (wave G6b): its streamers (a page, a band on the home page, the table, Twitch's keys, the panel).
  *   site-rust-wipe 1.0.0 (wave G6b): the first Rust server, with its wipe countdown and schedule, and its streamers.
+ *   site-fivem-rp 1.7.0, site-minecraft-survival 1.3.0 and site-rust-wipe 1.1.0 (wave G6c): their openings (and the
+ *   wipe's own band) on the theme's deepest band («night»), so a dark game theme's opening stays dark.
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -42,9 +44,9 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
-  "site-fivem-rp": ["5c90c291964eae18", "44faec85531fa660", "acd941a1921e8c06", "fbdf6a66fee5bc24", "16e9674362f36cd1", "07249e9b5a2d2759"],
-  "site-minecraft-survival": ["8f471a35147d85eb", "5c2b419517985e07", "b9ec7acd65315298", "308a6aee1d775597", "088830f36051e6ae", "26dc1c422fbaede6"],
-  "site-rust-wipe": ["7e0ac7cf6b0d630c", "c9f1f196a77fb95f", "a72cd62541d98348", "31ec75ed3597cc94", "39b41dc5f773301a", "c548b67346f29307"],
+  "site-fivem-rp": ["12936beff6d0fa7e", "9f096dd7e6120566", "2e513254c68b749e", "967e7a2aeeb3ff64", "05ea4a87244a15d7", "7910a1a7d7fdcd52"],
+  "site-minecraft-survival": ["b19de4f303307809", "ca289819666c50b8", "0b0cc53f09bbbfc8", "38dd61e87ee29b0e", "b7d1b5a233e48ac8", "4ae2db202bf4dcd8"],
+  "site-rust-wipe": ["b89e427978bdceeb", "416c386b1ac51304", "4c39e38b5c0dab90", "dfd19462f774f9ab", "09f0e98ca3d48750", "6e899b3cecdcd025"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
