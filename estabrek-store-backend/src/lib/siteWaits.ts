@@ -64,7 +64,16 @@ async function sitesWithWaits() {
 }
 
 const DAY = 86_400_000;
-const str = (v: unknown) => (v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v));
+/**
+ * A row holds the same value in a field: a choice by its id, words in any of their languages (a player's name as
+ * it was written, {"ar": "Zed"}), trimmed and in any case, as a field's "only value" rule compares them.
+ */
+function sameAs(field: string, value: unknown): Prisma.Sql {
+  const texts = value && typeof value === "object" && !Array.isArray(value) ? Object.values(value as Record<string, unknown>).filter((x): x is string => typeof x === "string") : [value === null || value === undefined ? "" : String(value)];
+  const wanted = [...new Set(texts.map((t) => t.trim().toLowerCase()))];
+  if (!wanted.length) wanted.push("");
+  return Prisma.sql`(lower(btrim(coalesce(i."data"->>${field}, ''))) IN (${Prisma.join(wanted)}) OR (jsonb_typeof(i."data"->${field}) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(i."data"->${field}) AS w(k, v) WHERE lower(btrim(w.v)) IN (${Prisma.join(wanted)}))))`;
+}
 
 /** Whether a shopper's new row in this table waits, by the rules of the site it belongs to (null: it may be added). */
 export async function heldBack(tableId: string, ownerId: string, values: Record<string, unknown>, now = Date.now()): Promise<{ wait: Wait; held: Held } | null> {
@@ -73,7 +82,7 @@ export async function heldBack(tableId: string, ownerId: string, values: Record<
       if (site.tables[keyOf(wait.table)] !== tableId) continue;
       const set = wait.setting ? site.values[wait.setting] : undefined;
       const days = typeof set === "number" && Number.isFinite(set) && set >= 0 ? Math.min(Math.floor(set), WAIT_LIMITS.days) : wait.days;
-      const same = wait.same.map((f) => Prisma.sql`coalesce(i."data"->>${f}, '') = ${str(values[f])}`);
+      const same = wait.same.map((f) => sameAs(f, values[f]));
       const state = wait.open ? Prisma.sql`i."data"->>${wait.open.field}` : Prisma.sql`NULL`;
       const theirs = await prisma.$queryRaw<Array<{ createdAt: Date; state: string | null }>>(Prisma.sql`
         SELECT i."createdAt", ${state} AS "state" FROM "CollectionItem" i

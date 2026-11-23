@@ -3,6 +3,7 @@
 // the same files (siteTemplates.unit.spec.ts, sites.spec.ts) and installs them for real.
 import { describe, expect, test } from "vitest";
 import { createHash } from "node:crypto";
+import { shellOf } from "./shell";
 import { ARCHETYPES, FRONT_LOOKS, MODULES, SITES, blueprintProblems, buildChosen, buildSite, keepModules, modulesOf, pagesOf, panelOf, settingsOf, siteByKey, siteCounts, slugsOf, withChoices, type SiteBlueprint } from "./index";
 
 const LANGS = ["ar", "en", "he"] as const;
@@ -16,6 +17,8 @@ const LANGS = ["ar", "en", "he"] as const;
  *   1.2.0 (wave 1.2): the sites' panels (today's numbers, queues and quick actions; their lists; their settings).
  *   1.3.0 (wave 1.3): their bookings' calendar and board, a customer's page, charts and reports, the branches' map.
  *   site-fivem-rp 1.1.0 (wave G3): its rules, and applying for its jobs (a page and a form each, the staff's votes).
+ *   site-fivem-rp 1.2.0 (wave G3): its appeals (one for each ban) and reports on a player; its tables' fields named
+ *   about the player, as the staff read them (its forms still speak to the player).
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -30,7 +33,7 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
-  "site-fivem-rp": ["6adbdae5fd80f834", "4fcea42efb3dc452", "1819904bda00064e", "6c4c523a35e3fa55", "b0d123513052548b", "36d7b74ee6a446b0"],
+  "site-fivem-rp": ["9f3d381986d3cfa7", "0607a9fbf1022cb2", "c74651b97147afec", "cc65cd466b7a620f", "9b1de714c228eeaa", "0e9de0e84eb9f7ef"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -339,7 +342,7 @@ describe("A game server's rules and applications (wave G3)", () => {
     const f = buildSite(rp(), { lang: "en" });
     const apps = f.tables.find((t) => t.key === "applications")!;
     expect(apps.api).toEqual({ read: "customer", create: "customer", update: "off", delete: "off", private: ["notes"], locked: ["status", "reply"] });
-    expect(f.waits).toEqual([{ table: "@table:applications", same: ["kind"], days: 7, setting: "applyWaitDays", open: { field: "status", values: ["fresh", "review", "interview"] } }]);
+    expect(f.waits![0]).toEqual({ table: "@table:applications", same: ["kind"], days: 7, setting: "applyWaitDays", open: { field: "status", values: ["fresh", "review", "interview"] } });
     expect(f.settings!.find((x) => x.key === "applyWaitDays")).toMatchObject({ kind: "number", default: 7, min: 0 });
     // Each kind's Discord role, kept on the server (the functions read it).
     for (const k of ["rolePolice", "roleEms", "roleMechanic", "roleStaff"]) expect(f.settings!.find((x) => x.key === k)).toMatchObject({ kind: "text", default: "" });
@@ -360,7 +363,7 @@ describe("A game server's rules and applications (wave G3)", () => {
   test("its functions: a bell for each, the player told and whitelisted when decided, Discord once its owner picks the connection", () => {
     const f = buildSite(rp(), { lang: "ar" });
     const fn = (key: string) => f.functions.find((x) => x.key === key)!;
-    expect(f.functions.map((x) => x.key)).toEqual(["applyNew", "applyDecided", "applyDiscord", "notify"]);
+    expect(f.functions.map((x) => x.key)).toEqual(["applyNew", "applyDecided", "applyDiscord", "appealsBell", "appealDecided", "reportDecided", "notify"]);
     expect(fn("applyNew").triggers).toEqual([{ kind: "row", config: { table: "@table:applications", on: ["added"] } }]);
     const decided = JSON.stringify(fn("applyDecided").def);
     expect(decided).toContain('"who":"{{input.row.$owner}}"');
@@ -372,5 +375,39 @@ describe("A game server's rules and applications (wave G3)", () => {
     expect(discord).toContain('"role":"{{settings.rolePolice}}"');
     // The bell for messages stays the messages'; applications have their own.
     expect(fn("notify").triggers.map((t) => t.config.table)).toEqual(["@table:messages"]);
+  });
+});
+
+describe("A game server's appeals and reports (wave G3)", () => {
+  const rp = () => siteByKey("site-fivem-rp")!;
+  test("an appeal for each ban, a report with a clip and a private picture; theirs to add and read, never to decide", () => {
+    const f = buildSite(rp(), { lang: "en" });
+    const appeals = f.tables.find((t) => t.key === "appeals")!;
+    const reports = f.tables.find((t) => t.key === "reports")!;
+    // One appeal for each ban, whoever sends it, with the owner's words when it is taken.
+    expect(appeals.fields.find((x) => x.id === "ban")).toMatchObject({ type: "text", required: true, unique: true, message: { en: "There is an appeal on this ban already: each ban has one." } });
+    expect(reports.fields.find((x) => x.id === "clip")).toMatchObject({ type: "link" });
+    expect(reports.fields.find((x) => x.id === "shot")).toMatchObject({ type: "file", upload: { maxMb: 8, kinds: ["image"], private: true } });
+    expect((reports.fields.find((x) => x.id === "reason")!.options as Array<{ id: string }>).map((o) => o.id)).toEqual(["cheating", "rdm", "meta", "toxic", "other"]);
+    for (const t of [appeals, reports]) expect(t.api).toEqual({ read: "customer", create: "customer", update: "off", delete: "off", private: ["notes"], locked: ["status", "reply"] });
+    // A report on a player waits while the last one on them is being looked at.
+    expect(f.waits).toContainEqual({ table: "@table:reports", same: ["who"], days: 0, open: { field: "status", values: ["fresh", "review"] } });
+    // One page with both forms and what the player sent.
+    const page = JSON.stringify(f.pages.find((p) => p.slug === "/appeal")!.tree);
+    for (const t of ["appeals", "reports"]) expect(page).toContain(`"send":{"to":"table","table":"${t}"}`);
+    expect(page.match(/"feed":"added"/g)?.length).toBe(2);
+    expect(shellOf(rp()).header.map((l) => l.page)).toContain("appeal");
+  });
+
+  test("a queue for each in the panel, and the player told by email once decided", () => {
+    const today = panelOf(rp())[0].parts;
+    const queue = (key: string) => today.find((p) => p.key === key)!;
+    expect(queue("appeals")).toMatchObject({ kind: "queue", where: [{ field: "status", op: "isNot", value: "lifted" }, { field: "status", op: "isNot", value: "kept" }] });
+    expect(queue("reports")).toMatchObject({ kind: "queue", show: ["$by", "who", "reason", "when", "story", "clip", "shot", "status"] });
+    const f = buildSite(rp(), { lang: "ar" });
+    const fn = (key: string) => f.functions.find((x) => x.key === key)!;
+    expect(fn("appealsBell").triggers.map((t) => t.config.table)).toEqual(["@table:appeals", "@table:reports"]);
+    expect(JSON.stringify(fn("appealDecided").def)).toContain("{{input.row.ban}}");
+    expect(JSON.stringify(fn("reportDecided").def)).toContain('"who":"{{input.row.$owner}}"');
   });
 });

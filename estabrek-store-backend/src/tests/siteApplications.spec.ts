@@ -148,7 +148,9 @@ describe("Applying to a game server", () => {
     const two = queue((await vote("yes", nour).expect(200)).body).rows.find((r: Obj) => r.id === row.id);
     expect(two.votes.yes).toBe(2);
     expect(two.votes.mine).toBe("yes");
-    expect(two.votes.by.map((v: Obj) => v.name)).toEqual(["test@local", "Nour"]);
+    // The test owner by their name where another spec made them a member, else by the email they sign in with.
+    const owner = await prisma.adminUser.findUnique({ where: { id: "test-superadmin" }, select: { name: true, email: true } });
+    expect(two.votes.by.map((v: Obj) => v.name)).toEqual([owner?.name || owner?.email || "test@local", "Nour"]);
     // Taken back and given again: still two.
     await vote("none", nour).expect(200);
     expect(await prisma.rowVote.count({ where: { itemId: row.id } })).toBe(1);
@@ -169,4 +171,37 @@ describe("Applying to a game server", () => {
     const mine = (await request(app).get("/v1/data/applications?mine=added").set("Authorization", `Bearer ${sara}`).expect(200)).body.data;
     expect(mine.filter((r: Obj) => r.values.kind === "police").map((r: Obj) => r.values.status).sort()).toEqual(["accepted", "rejected"]);
   }, 30_000);
+});
+
+describe("Appeals and reports", () => {
+  const send = (table: string, token: string, values: Obj) => request(app).post(`/v1/data/${table}`).set("Authorization", `Bearer ${token}`).send({ values, lang: "ar" });
+  test("one appeal for each ban, whoever sends it, in the owner's words; theirs to read, never to decide", async () => {
+    const appeal = { ban: "4821", character: "Omar", what: "Banned at the bank.", why: "It wasn't me." };
+    const made = (await send("appeals", sara, appeal).expect(201)).body;
+    expect(made.values).toMatchObject({ ban: { ar: "4821" }, status: "fresh" });
+    // The same ban again, however it is written: taken.
+    const taken = (await send("appeals", sara, { ...appeal, ban: " 4821 " }).expect(400)).body.details.issues;
+    expect(taken).toEqual([{ field: "ban", message: "Already used", say: { ar: "في استئناف على هالباند من قبل: كل باند إله استئناف واحد.", en: "There is an appeal on this ban already: each ban has one.", he: "כבר יש ערעור על הבאן הזה: לכל באן ערעור אחד." } }]);
+    // Its state is the store's.
+    expect((await send("appeals", sara, { ...appeal, ban: "4822", status: "lifted" }).expect(400)).body.details.issues).toEqual([{ field: "status", message: "Only the store sets this" }]);
+    // In the panel's queue, with who sent it; lifted, out of it.
+    const today = (await request(app).get(`${at}/site-panels/${featureId}/today?lang=en`).expect(200)).body;
+    const queue = today.parts.find((p: Obj) => p.key === "appeals");
+    expect(queue.rows.map((r: Obj) => r.id)).toEqual([made.id]);
+    expect(queue.rows[0].cells.$by).toMatchObject({ name: "Sara Khalil" });
+    const after = (await request(app).post(`${at}/site-panels/${featureId}/today/appeals/decide`).send({ row: made.id, decision: "lift" }).expect(200)).body;
+    expect(after.parts.find((p: Obj) => p.key === "appeals").rows).toEqual([]);
+  });
+
+  test("a report on a player waits while the last one on them is looked at; another player's is another", async () => {
+    const report = { who: "Zed", reason: "rdm", story: "Shot me at the hospital.", clip: "https://streamable.com/abc" };
+    await send("reports", sara, report).expect(201);
+    const held = (await send("reports", sara, report).expect(400)).body.details.issues[0];
+    expect(held).toMatchObject({ field: "who", say: { ar: "طلبك اللي قبل لسّا عم ينراجع. بيوصلك الرد عليه قبل ما تقدّم مرة تانية." } });
+    // The same player however their name is typed.
+    await send("reports", sara, { ...report, who: " zed " }).expect(400);
+    await send("reports", sara, { ...report, who: "Kai" }).expect(201);
+    // A reason that isn't one of the site's: said under its field.
+    expect((await send("reports", sara, { ...report, who: "Lee", reason: "spam" }).expect(400)).body.details.issues.map((i: Obj) => i.field)).toEqual(["reason"]);
+  });
 });
