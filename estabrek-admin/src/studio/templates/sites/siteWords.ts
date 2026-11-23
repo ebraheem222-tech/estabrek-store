@@ -115,6 +115,7 @@ export const PANEL = {
   boardServer: w("الطلبات", "Applications", "בקשות"),
   boardCalendar: w("التقويم", "Calendar", "לוח שנה"),
   boardServerCalendar: w("الطلبات والتقويم", "Applications and calendar", "בקשות ולוח שנה"),
+  boardTickets: w("التذاكر", "Tickets", "פניות"),
   people: w("الزباين", "Customers", "לקוחות"),
   reports: w("التقارير", "Reports", "דוחות"),
   person: w("صفحة زبون", "A customer's page", "דף לקוח"),
@@ -629,6 +630,91 @@ export const SPONSORS_W = {
   visit: w("زورهم", "Visit them", "לבקר אצלם"),
   bandSub: w("بفضلهم البث مستمر. استعمل الكود وادعمنا.", "Thanks to them the stream goes on. Use the code and support us.", "בזכותם השידור ממשיך. השתמשו בקוד ותמכו בנו."),
   empty: w("الرعاة بيطلعوا هون قريباً.", "The sponsors show here soon.", "נותני החסות יופיעו כאן בקרוב."),
+};
+
+/** The words of a studio's documentation (wave G7d1): pages for each product, by version. */
+export const DOCS_W = {
+  name: w("التوثيق", "Documentation", "תיעוד"),
+  note: w("صفحات شرح لكل منتج (تنزيل، إعداد، أوامر، أسئلة)، كل صفحة بنسختها وبترتيبها، وصفحة لكل وحدة.", "Pages explaining each product (installing, setting up, commands, questions), each with its version and in its order, and a page of its own.", "עמודי הסבר לכל מוצר (התקנה, הגדרה, פקודות, שאלות), כל עמוד עם הגרסה שלו ובסדר שלו, ועמוד לכל אחד."),
+  docs: w("التوثيق", "Docs", "תיעוד"),
+  product: w("المنتج", "Product", "מוצר"),
+  title: w("العنوان", "Title", "כותרת"),
+  version: w("للنسخة", "For version", "לגרסה"),
+  body: w("الشرح", "The explanation", "ההסבר"),
+  order: w("الترتيب", "Order", "סדר"),
+  read: w("اقرا", "Read", "לקרוא"),
+  back: w("كل التوثيق", "All the docs", "כל התיעוד"),
+  empty: w("التوثيق بيطلع هون قريباً.", "The docs show here soon.", "התיעוד יופיע כאן בקרוב."),
+  bandTitle: w("كل شي مشروح", "Everything explained", "הכול מוסבר"),
+  bandSub: w("تنزيل، إعداد وأوامر لكل منتج، بنسخته.", "Installing, setting up and commands for each product, by its version.", "התקנה, הגדרה ופקודות לכל מוצר, לפי הגרסה."),
+  open: w("افتح التوثيق", "Open the docs", "לפתוח את התיעוד"),
+  all: w("كل صفحات التوثيق", "Every docs page", "כל עמודי התיעוד"),
+};
+
+/** The words of a studio's changelog (wave G7d1): each product's versions, with what was added, changed and fixed. */
+export const RELEASES_W = {
+  name: w("التحديثات", "Changelog", "יומן שינויים"),
+  note: w("كل نسخة جديدة لكل منتج: رقمها، يومها، و«انضاف / تغيّر / تصلّح»، الأحدث أول.", "Each product's every new version: its number, its day, and «added / changed / fixed», newest first.", "כל גרסה חדשה של כל מוצר: המספר, היום, ו«נוסף / שונה / תוקן», החדשות קודם."),
+  releases: w("النسخ", "Versions", "גרסאות"),
+  product: w("المنتج", "Product", "מוצר"),
+  version: w("النسخة", "Version", "גרסה"),
+  date: w("اليوم", "Day", "יום"),
+  kind: w("النوع", "Kind", "סוג"),
+  added: w("انضاف", "Added", "נוסף"),
+  changed: w("تغيّر", "Changed", "שונה"),
+  fixed: w("تصلّح", "Fixed", "תוקן"),
+  changes: w("شو فيها", "What's in it", "מה יש בה"),
+  empty: w("أول نسخة بتطلع هون.", "The first version shows here.", "הגרסה הראשונה תופיע כאן."),
+  bandSub: w("آخر النسخ، وشو تغيّر فيها.", "The latest versions, and what changed in them.", "הגרסאות האחרונות, ומה השתנה בהן."),
+  all: w("كل التحديثات", "The whole changelog", "כל יומן השינויים"),
+};
+
+/** The words of a studio's support tickets (wave G7d1). */
+export const TICKETS_W = {
+  name: w("الدعم", "Support", "תמיכה"),
+  note: w("الزبون الفايت بحسابه بيفتح تذكرة دعم لمنتج (شو المشكلة، ومعها صورة إذا بدّه)، وبيشوف تذاكره وردّ الفريق عليها. تذكرة مفتوحة وحدة لكل منتج، والرد بيوصله عالإيميل.", "A signed-in customer opens a support ticket for a product (what's wrong, with a picture if they like), and sees their tickets and the team's answer. One open ticket per product, and the answer reaches them by email.", "לקוח מחובר פותח פנייה לתמיכה על מוצר (מה הבעיה, עם תמונה אם רוצה), ורואה את הפניות שלו ואת תשובת הצוות. פנייה פתוחה אחת לכל מוצר, והתשובה מגיעה במייל."),
+  tickets: w("التذاكر", "Tickets", "פניות"),
+  product: w("المنتج", "Product", "מוצר"),
+  subject: w("الموضوع", "Subject", "נושא"),
+  body: w("شو المشكلة؟", "What's wrong?", "מה הבעיה?"),
+  bodyField: w("المشكلة", "The problem", "הבעיה"),
+  bodyHint: w("شو عملت، شو صار، وشو كنت متوقّع. والنسخة اللي عندك.", "What you did, what happened, and what you expected. And your version.", "מה עשיתם, מה קרה ומה ציפיתם. והגרסה שלכם."),
+  picture: w("صورة (إذا بدّك)", "A picture (if you like)", "תמונה (אם רוצים)"),
+  pictureField: w("صورة", "Picture", "תמונה"),
+  status: w("الحالة", "State", "מצב"),
+  open: w("مفتوحة", "Open", "פתוחה"),
+  answered: w("انردّ عليها", "Answered", "נענתה"),
+  closed: w("تسكّرت", "Closed", "נסגרה"),
+  reply: w("ردّ الفريق", "The team's answer", "תשובת הצוות"),
+  notes: w("ملاحظات الفريق", "Team notes", "הערות הצוות"),
+  formTitle: w("افتح تذكرة", "Open a ticket", "לפתוח פנייה"),
+  formSub: w("قبل ما تفتح: شوف التوثيق، يمكن الجواب هناك. تذكرة مفتوحة وحدة لكل منتج، ولازم تكون فايت بحسابك.", "Before you open one: check the docs, the answer may be there. One open ticket per product, and you must be signed in.", "לפני שפותחים: בדקו את התיעוד, אולי התשובה שם. פנייה פתוחה אחת לכל מוצר, וצריך להיות מחוברים."),
+  send: w("ابعت التذكرة", "Send the ticket", "לשלוח את הפנייה"),
+  sent: w("وصلت تذكرتك! الرد بيوصلك عالإيميل، وبتشوفه هون كمان.", "Your ticket is in! The answer reaches you by email, and shows here too.", "הפנייה התקבלה! התשובה תגיע במייל, ותופיע גם כאן."),
+  mine: w("تذاكري", "My tickets", "הפניות שלי"),
+  mineEmpty: w("ما فتحت ولا تذكرة.", "You haven't opened a ticket.", "לא פתחתם פנייה."),
+  mineSignin: w("فوت بحسابك لتشوف تذاكرك.", "Sign in to see your tickets.", "התחברו כדי לראות את הפניות."),
+  noReply: w("لسّا ما في رد.", "No answer yet.", "עוד אין תשובה."),
+  waiting: w("تذاكر مفتوحة", "Open tickets", "פניות פתוחות"),
+  week: w("تذاكر هالأسبوع", "Tickets this week", "פניות השבוע"),
+  queue: w("التذاكر المفتوحة", "Open tickets", "פניות פתוחות"),
+  answer: w("انردّ عليها", "Answered", "נענתה"),
+  close: w("سكّرها", "Close it", "לסגור"),
+  none: w("ما في تذاكر مفتوحة.", "No open tickets.", "אין פניות פתוחות."),
+  board: w("التذاكر حسب حالتها", "Tickets by their state", "פניות לפי מצב"),
+  all: w("كل التذاكر", "Every ticket", "כל הפניות"),
+  byProduct: w("التذاكر حسب المنتج", "Tickets by product", "פניות לפי מוצר"),
+  newBell: w("تذكرة دعم جديدة", "A new support ticket", "פנייה חדשה לתמיכה"),
+  answeredFn: w("تذكرة انردّ عليها: إيميل للزبون", "A ticket answered: an email to the customer", "פנייה שנענתה: מייל ללקוח"),
+  bandTitle: w("علقت بشي؟", "Stuck on something?", "נתקעתם?"),
+  bandSub: w("افتح تذكرة، والفريق بيرد خلال يوم شغل.", "Open a ticket, and the team answers within a working day.", "פתחו פנייה, והצוות יענה תוך יום עבודה."),
+};
+
+/** The words of the store's own products shown on a site (wave G7d1: a studio's plugins, sold with the store's serials and licences). */
+export const GOODS_W = {
+  name: w("منتجات المتجر", "The store's products", "מוצרי החנות"),
+  note: w("منتجات المتجر نفسه على صفحة الموقع وبشكله: كل وحدة بصفحتها بالمتجر، والدفع والتسليم (الكود والرخصة والتنزيل) من المتجر.", "The store's own products on the site's page, in its look: each one on its page in the store, and the payment and delivery (the code, the licence and the download) through the store.", "המוצרים של החנות עצמה בעמוד האתר ובעיצוב שלו: כל מוצר בעמוד שלו בחנות, והתשלום והמסירה (הקוד, הרישיון וההורדה) דרך החנות."),
+  how: w("كيف بتوصلك", "How you get it", "איך זה מגיע אליכם"),
 };
 
 /** A clan's applying words (wave G7c): the player themself, not a character (APPLY_W's in their place). */

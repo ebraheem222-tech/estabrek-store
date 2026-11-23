@@ -72,7 +72,7 @@ afterEach(() => {
 
 describe("The sites themselves", () => {
   test("every site, one key each, every one built in each language with its pages, tables and ready rows", () => {
-    expect(SITES.length).toBe(28);
+    expect(SITES.length).toBe(30);
     expect(new Set(SITES.map((s) => s.key)).size).toBe(SITES.length);
     for (const s of SITES)
       for (const lang of ["ar", "en", "he"] as const) {
@@ -85,7 +85,7 @@ describe("The sites themselves", () => {
         expect(words).toContain(s.pack.title.ar);
         expect(words).toContain(s.pack.title.he);
         // The tables visitors and the site's functions write into start empty.
-        for (const t of f.tables) if (!["messages", "bookings", "applications", "whitelist", "appeals", "reports", "purchases", "scores"].includes(t.key)) expect(t.rows?.length, `${s.key} ${t.key}`).toBeGreaterThan(0);
+        for (const t of f.tables) if (!["messages", "bookings", "applications", "whitelist", "appeals", "reports", "purchases", "scores", "tickets"].includes(t.key)) expect(t.rows?.length, `${s.key} ${t.key}`).toBeGreaterThan(0);
         // The library's sample store details gave way to the site's own.
         expect(words).not.toContain("hello@example.com");
         expect(words).toContain(s.biz.email);
@@ -107,8 +107,8 @@ describe("The sites page", () => {
   test("reached from My features; filtered by field and words; a pick is shown with its rows, then installed as a draft", async () => {
     show("/admin/my-features");
     fireEvent.click(await screen.findByTestId("features-sites-link"));
-    expect((await screen.findByTestId("sites-totals")).textContent).toBe("28 ready sites");
-    expect(within(screen.getByTestId("sites-list")).getAllByRole("listitem")).toHaveLength(28);
+    expect((await screen.findByTestId("sites-totals")).textContent).toBe("30 ready sites");
+    expect(within(screen.getByTestId("sites-list")).getAllByRole("listitem")).toHaveLength(30);
     fireEvent.click(screen.getByTestId("sites-field-health"));
     expect(within(screen.getByTestId("sites-list")).getAllByRole("listitem").map((li) => li.getAttribute("data-testid"))).toEqual(["sites-item-site-dental-clinic"]);
     fireEvent.click(screen.getByTestId("sites-field-all"));

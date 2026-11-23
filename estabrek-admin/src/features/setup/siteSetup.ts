@@ -42,6 +42,9 @@ export const SITE_THEMES: Record<string, string> = {
   "site-gaming-clan": "fantasy-guild",
   "site-lfg-board": "clean-esports",
   "site-gaming-streamer": "night-neon",
+  // The studios (wave G7d1).
+  "site-fivem-studio": "clean-esports",
+  "site-minecraft-studio": "square-pixel",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */
