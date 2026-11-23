@@ -15,7 +15,7 @@ const packagesPart = (b: Built): Part => (c) => {
   const k = withSkin(c, "plain");
   const p = b.use.packages!;
   return SEC(k, [
-    head(k, PACKAGES_W.pick, PACKAGES_W.pickSub),
+    head(k, p.pick ?? PACKAGES_W.pick, p.pickSub ?? PACKAGES_W.pickSub),
     STACK(k, [EL(k, "tebexPackages", { buy: say(k, PACKAGES_W.buy), all: say(k, PACKAGES_W.all), empty: say(k, PACKAGES_W.empty), note: say(k, PACKAGES_W.note), columns: 3 }, { style: { self: "stretch" } })], { width: "100%" }),
   ], { name: p.title });
 };

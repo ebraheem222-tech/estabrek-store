@@ -97,7 +97,7 @@ export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; vot
 /** A game server's appeals (one for each ban, by its number) and reports on a player (wave G3), with the reasons a report picks from. */
 export type AppealsUse = { title: W; sub: W; reasons: Array<[string, W]> };
 /** A game server's packages from its own Tebex webstore (wave G4): the page's words; its token is its owner's setting. */
-export type PackagesUse = { title: W; sub: W };
+export type PackagesUse = { title: W; sub: W; /** The packages' heading, where they aren't a server's support (a studio's scripts, wave G7d1). */ pick?: W; pickSub?: W };
 /** One of a Minecraft server's packages: what it is, its price, and whether it gives an advantage in the game (never sold then). */
 export type McPackage = { slug: string; title: W; kind: string; price: number; text: W; advantage: boolean; command: string };
 /**
@@ -162,6 +162,14 @@ export type Weekday = "sat" | "sun" | "mon" | "tue" | "wed" | "thu" | "fri";
 export type ScheduleUse = { title: W; sub: W; rows: Array<{ day: Weekday; time: string; game: W; title: W }> };
 /** A streamer's clips: each one's link (Twitch or YouTube), its game and day. */
 export type ClipsUse = { title: W; sub: W; rows: Array<{ slug: string; title: W; link: string; game: W; date: string }> };
+/** A studio's docs (wave G7d1): pages for each of its products, each with the version it is for. */
+export type DocsUse = { title: W; sub: W; products: Array<[string, W]>; rows: Array<{ slug: string; product: string; title: W; version: string; body: W }> };
+/** A studio's changelog: each product's versions, each with its day and whether it added, changed or fixed. */
+export type ReleasesUse = { title: W; sub: W; products: Array<[string, W]>; rows: Array<{ product: string; version: string; date: string; kind: "added" | "changed" | "fixed"; changes: W }> };
+/** A studio's support tickets, for its products. */
+export type TicketsUse = { title: W; sub: W; products: Array<[string, W]> };
+/** The store's own products on a site's page (a studio's plugins, sold with the store's serials and licences): how they arrive. */
+export type GoodsUse = { title: W; sub: W; page: string; how: W; /** Minecraft's: its pages end with Mojang's line (not an official Minecraft product). */ minecraft?: boolean };
 /** A streamer's sponsors: their link and their discount code for the followers. */
 export type SponsorsUse = { title: W; sub: W; rows: Array<{ name: string; link: string; code: string; line: W }> };
 
@@ -277,6 +285,10 @@ export type SiteModules = {
   schedule?: ScheduleUse;
   clips?: ClipsUse;
   sponsors?: SponsorsUse;
+  goods?: GoodsUse;
+  docs?: DocsUse;
+  releases?: ReleasesUse;
+  tickets?: TicketsUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

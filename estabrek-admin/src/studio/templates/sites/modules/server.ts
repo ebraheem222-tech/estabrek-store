@@ -26,6 +26,7 @@ import { rosterBand } from "./roster";
 import { membersBand } from "./members";
 import { lfgBand } from "./lfg";
 import { clipsBand, scheduleBand, sponsorsBand } from "./streamer";
+import { docsBand, goodsBand, releasesBand, ticketsBand } from "./studio";
 
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
@@ -81,8 +82,8 @@ const robloxNoticePart: Part = (c) => {
  */
 export function serverHome(b: Built): Part[] {
   const u = b.use;
-  const ends = [...(u.mcstore ? [mcNoticePart] : []), ...(u.status?.game === "roblox" ? [robloxNoticePart] : [])];
-  return [noticePart, statusHero(b), ...when(u.lfg, () => lfgBand(b)), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), ...when(u.schedule, () => scheduleBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.clips, () => clipsBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.sponsors, () => sponsorsBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...ends];
+  const ends = [...(u.mcstore || u.goods?.minecraft ? [mcNoticePart] : []), ...(u.status?.game === "roblox" ? [robloxNoticePart] : [])];
+  return [noticePart, statusHero(b), ...when(u.lfg, () => lfgBand(b)), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), ...when(u.schedule, () => scheduleBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.clips, () => clipsBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.goods, () => goodsBand(b)), ...when(u.releases, () => releasesBand(b)), ...when(u.docs, () => docsBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.sponsors, () => sponsorsBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), ...when(u.tickets, () => ticketsBand(b)), discordBand, ...ends];
 }
 
 /** A server's own settings: the notice over its first page ("restart at 20:00"). */

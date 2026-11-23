@@ -36,7 +36,7 @@ export const waitsOf = (bp: SiteBlueprint): SiteWait[] => used(bp).flatMap((m) =
 /** The board page's name where it isn't bookings (a game server's: its applications by their state). */
 const BOARD_NAME: Partial<Record<Archetype, typeof PANEL.board>> = { server: PANEL.boardServer };
 /** A community's board has its events' calendar (wave G7c), beside its applications if it has them. */
-const boardName = (bp: SiteBlueprint) => (bp.archetype === "server" && bp.modules.events ? (bp.modules.apply || bp.modules.mcstore ? PANEL.boardServerCalendar : PANEL.boardCalendar) : BOARD_NAME[bp.archetype] ?? PANEL.board);
+const boardName = (bp: SiteBlueprint) => (bp.archetype === "server" && bp.modules.tickets && !bp.modules.events && !bp.modules.apply && !bp.modules.mcstore ? PANEL.boardTickets : bp.archetype === "server" && bp.modules.events ? (bp.modules.apply || bp.modules.mcstore ? PANEL.boardServerCalendar : PANEL.boardCalendar) : BOARD_NAME[bp.archetype] ?? PANEL.board);
 
 /**
  * A blueprint's panel (its own pages in the admin's menu): «اليوم» with every number at the top, its modules'
@@ -103,6 +103,13 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
   if (wipe && !/^([01]\d|2[0-3]):[0-5]\d$/.test(wipe.time)) out.push(`The wipe's time "${wipe.time}" isn't HH:MM`);
   if (wipe && wipe.from !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(wipe.from)) out.push(`The wipe's first day "${wipe.from}" isn't YYYY-MM-DD`);
   if (wipe?.every === "date" && !wipe.from) out.push(`A wipe once needs its day`);
+  // A choice's options are the backend's field option ids (lib/collections.ts): a small letter, then letters and digits.
+  const u = bp.modules;
+  const choices: Array<[string, Array<[string, unknown]>]> = [
+    ["docs", u.docs?.products ?? []], ["releases", u.releases?.products ?? []], ["tickets", u.tickets?.products ?? []],
+    ["lfg games", u.lfg?.games ?? []], ["lfg regions", u.lfg?.regions ?? []], ["events", u.events?.kinds ?? []], ["roster", u.roster?.roles ?? []],
+  ];
+  for (const [where, list] of choices) for (const [id] of list) if (!/^[a-z][a-zA-Z0-9]{0,30}$/.test(id)) out.push(`The ${where} option "${id}" isn't a small letter, then letters and digits`);
   const known = new Set(MODULES.map((m) => m.key as string));
   for (const key of Object.keys(bp.modules)) if (!known.has(key)) out.push(`No module "${key}"`);
   const on = new Set(used(bp).map((m) => m.key));

@@ -43,6 +43,9 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-lfg-board and site-gaming-streamer 1.0.0 (wave G7c2): a looking-for-a-group board (posts by game published at
  *   once, read live, closing by themselves after their time, one open post a player) and a streamer opening with their
  *   Twitch channel (live or not, viewers), with the week's streams, clips, sponsors and their followers' server.
+ *   site-fivem-studio and site-minecraft-studio 1.0.0 (wave G7d1): game studios (FiveM scripts on Tebex, Minecraft plugins
+ *   sold by the store with serials and licences, ending with Mojang's line), with docs for each product by version, a
+ *   changelog, and support tickets (one open a product, an answer by email).
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -73,6 +76,8 @@ const BUILT: Record<string, string[]> = {
   "site-gaming-clan": ["00fe49f84e9204f5", "932636f6d757d777", "b1e46d5c819e8763", "d7884c89d637577b", "2dee16342bd01924", "ac4aa61747f96f00"],
   "site-lfg-board": ["1289c40c1226199e", "233a76d45f1d226f", "a704b73a4cd00a93", "5199b9ee79ab7785", "25bd6819fda4b171", "8106689a9446702d"],
   "site-gaming-streamer": ["8524ffc410bd3655", "50161df566f39e58", "58d680a0c3c96f45", "319ddd40c0354d65", "a1b717dc22dd1f28", "d85c1ea7c6b30b54"],
+  "site-fivem-studio": ["f7d421d4e9be9f31", "a9f8ea8ca8d62d3e", "413f82eb2e5cbb3c", "c87ba4cdd4b2a52c", "c972424b6da21203", "b73a72719fd6217f"],
+  "site-minecraft-studio": ["c4680aa130f4401d", "21d811b6be43c1c2", "860433148ae1abc7", "723f9248872ed61d", "14360ed7dd9bd60f", "92de63b05804b3dd"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -303,7 +308,7 @@ describe("A site's panel (wave 1.2)", () => {
       const f = buildSite(s, { lang: "en" });
       const panel = panelOf(s);
       expect(f.panel).toEqual(panel);
-      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply || s.modules.mcstore || s.modules.events ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
+      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply || s.modules.mcstore || s.modules.events || s.modules.tickets ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
       for (const p of panel) for (const lang of LANGS) expect(p.name[lang].trim()).toBeTruthy();
       const tables = new Map(f.tables.map((t) => [`@table:${t.key}`, new Set(t.fields.map((x) => x.id))]));
       const keys = new Set((f.settings ?? []).map((x) => x.key));
