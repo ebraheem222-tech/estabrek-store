@@ -6,7 +6,7 @@
  *    are in), and Discord once they came in with it.
  * The shop's routes come back with ?signin=CODE or ?steam=linked|CODE, said here in words.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Lang } from "@/lib/i18n";
 import { tr } from "@/lib/words";
@@ -117,6 +117,90 @@ export function GameAccounts({ lang, steam }: { lang: Lang; steam: boolean }) {
         </p>
       ) : said && CODE.test(said) ? (
         <p className="rose-form-error" role="alert">{accountErrorText(new AccountError(said, 0), lang)}</p>
+      ) : null}
+      {err ? <p className="rose-form-error" role="alert">{err}</p> : null}
+    </section>
+  );
+}
+
+type GameLinkState = { available: boolean; fivem: string | null; minecraft: string | null };
+type LinkCode = { code: string; expiresAt: string };
+const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft" } as const;
+
+/**
+ * A player's game accounts on a store with a game server (the server's link, backend lib/gameLink.ts): the ones
+ * linked, each let go in one tap, and a code to type in the game (/link 482913) for the next, good for 10 minutes.
+ * Nothing shows on a store without a game server.
+ */
+export function GameLink({ lang }: { lang: Lang }) {
+  const { user, api } = useAccount();
+  const [state, setState] = useState<GameLinkState | null>(null);
+  const [code, setCode] = useState<LinkCode | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const signedIn = !!user;
+  useEffect(() => {
+    if (!signedIn) return;
+    let live = true;
+    api<GameLinkState>("/customer/me/game-link")
+      .then((s) => live && setState(s))
+      .catch(() => live && setState(null));
+    return () => {
+      live = false;
+    };
+  }, [signedIn, api]);
+  if (!user || !state || (!state.available && !state.fivem && !state.minecraft)) return null;
+
+  const ask = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      setCode(await api<LinkCode>("/customer/me/game-link", { method: "POST" }));
+    } catch (x) {
+      setErr(accountErrorText(x, lang));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const unlink = async (game: "fivem" | "minecraft") => {
+    setBusy(true);
+    setErr(null);
+    try {
+      setState(await api<GameLinkState>(`/customer/me/game-link/${game}`, { method: "DELETE" }));
+    } catch (x) {
+      setErr(accountErrorText(x, lang));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const minutes = code ? Math.max(1, Math.round((new Date(code.expiresAt).getTime() - Date.now()) / 60_000)) : 0;
+
+  return (
+    <section className={css.games} data-testid="game-link" aria-label={tr(lang, "حساب اللعبة", "Your game account")}>
+      <h2>{tr(lang, "حساب اللعبة", "Your game account")}</h2>
+      {(["fivem", "minecraft"] as const).map((game) =>
+        state[game] ? (
+          <div key={game} className={css.row} data-testid={`game-link-${game}`}>
+            <span className={css.brand}>{GAME_NAME[game]}</span>
+            <b dir="ltr">{state[game]}</b>
+            <button type="button" className={css.quiet} onClick={() => void unlink(game)} disabled={busy}>
+              {tr(lang, "فك الربط", "Unlink")}
+            </button>
+          </div>
+        ) : null,
+      )}
+      {state.available ? (
+        code ? (
+          <div className={css.code} data-testid="game-link-code">
+            <p className={css.note}>{tr(lang, "فوت عالسيرفر واكتب بالشات:", "Join the server and type in the chat:")}</p>
+            <code dir="ltr">/link {code.code}</code>
+            <p className={css.note}>{tr(lang, "الكود بيخلص بعد {n} دقيقة.", "The code runs out in {n} minutes.").replace("{n}", String(minutes))}</p>
+          </div>
+        ) : (
+          <button type="button" className={css.steam} onClick={() => void ask()} disabled={busy} data-testid="game-link-ask">
+            {busy ? tr(lang, "لحظة…", "One moment…") : tr(lang, "اربط حسابك باللعبة", "Link your game account")}
+          </button>
+        )
       ) : null}
       {err ? <p className="rose-form-error" role="alert">{err}</p> : null}
     </section>

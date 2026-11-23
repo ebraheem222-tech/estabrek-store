@@ -998,4 +998,8 @@ export const HE: Record<string, string> = {
   "Unlink": "ביטול הקישור",
   "Link your Steam account": "קישור חשבון Steam",
   "Your Steam account is linked.": "חשבון ה-Steam שלך קושר.",
+  "Your game account": "חשבון המשחק שלך",
+  "Join the server and type in the chat:": "היכנסו לשרת והקלידו בצ'אט:",
+  "The code runs out in {n} minutes.": "הקוד יפוג בעוד {n} דקות.",
+  "Link your game account": "קישור חשבון המשחק",
 };

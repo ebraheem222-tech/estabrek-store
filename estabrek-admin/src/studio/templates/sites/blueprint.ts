@@ -162,7 +162,9 @@ export type PanelPart =
   /** A game server site's status now and its last 24 hours (wave G1). */
   | { kind: "game"; key: string; title: W }
   /** A game server site's Tebex webstore as its pages show it (wave G4). */
-  | { kind: "tebex"; key: string; title: W };
+  | { kind: "tebex"; key: string; title: W }
+  /** A game server site's link (wave G5): downloaded or not, its last hello, its download. */
+  | { kind: "link"; key: string; title: W };
 export type PanelPeopleTable = { table: string; title: W; show: string[] };
 export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings" | "calendar" | "people" | "chart"; parts: PanelPart[] };
 /**
@@ -193,6 +195,7 @@ export type SiteModules = {
   appeals?: AppealsUse;
   packages?: PackagesUse;
   mcstore?: McStoreUse;
+  link?: Bare;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

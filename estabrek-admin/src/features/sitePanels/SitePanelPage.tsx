@@ -18,7 +18,7 @@ import * as Panels from "../../api/sitePanels.api";
 import type { PanelActions, PanelAsk, PanelNumbers, PanelPageView, PanelQueue, PanelSettings, PanelView, PanelVotes } from "../../api/sitePanels.api";
 import { SettingsEditor } from "../myFeatures/SiteSettings";
 import { cellText, changeText, inLang } from "./panelText";
-import { CalendarPart, ChartPart, GamePart, KanbanPart, MapPart, PeoplePart, ReportPart, ScannerPart, TebexPart } from "./PanelParts";
+import { CalendarPart, ChartPart, GamePart, KanbanPart, LinkPart, MapPart, PeoplePart, ReportPart, ScannerPart, TebexPart } from "./PanelParts";
 import { ArrangePanel } from "./ArrangePanel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -96,6 +96,7 @@ export default function SitePanelPage() {
         if (part.kind === "map") return <MapPart key={part.key} part={part} />;
         if (part.kind === "game") return <GamePart key={part.key} part={part} view={v} took={took} onError={onError} />;
         if (part.kind === "tebex") return <TebexPart key={part.key} part={part} />;
+        if (part.kind === "link") return <LinkPart key={part.key} part={part} view={v} />;
         return <ScannerPart key={part.key} part={part} view={v} took={took} onError={onError} />;
       })}
     </div>

@@ -12,7 +12,7 @@ import { tr } from "@/lib/words";
 import { toneAr } from "@/lib/words";
 import { PushSwitch } from "@/components/PushSwitch";
 import { GoogleSignIn } from "@/components/GoogleSignIn";
-import { DiscordSignIn, GameAccounts, SignInProblem } from "@/components/SocialAccounts";
+import { DiscordSignIn, GameAccounts, GameLink, SignInProblem } from "@/components/SocialAccounts";
 
 /**
  * حسابي: sign in with a code sent by email (no password), then her orders,
@@ -239,6 +239,7 @@ function SignedIn({ steam }: { steam: boolean }) {
       </nav>
 
       <GameAccounts lang={lang} steam={steam} />
+      <GameLink lang={lang} />
       {tab === "orders" ? <Orders /> : tab === "addresses" ? <Addresses /> : <Details />}
     </section>
   );

@@ -21,6 +21,7 @@ const LANGS = ["ar", "en", "he"] as const;
  *   about the player, as the staff read them (its forms still speak to the player).
  *   site-fivem-rp 1.3.0 (wave G4): its packages from its owner's Tebex webstore, and the webstore on its panel.
  *   site-minecraft-survival 1.0.0 (wave G4): the first Minecraft server, with its own store behind the advantage gate.
+ *   site-fivem-rp 1.4.0 (wave G5): the server's link (its whitelist switch, words and quick actions; the panel's part).
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -35,7 +36,7 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
-  "site-fivem-rp": ["c4819073c5315e50", "3f37e33dc5030b03", "9327f4472f72a535", "7087d5060fcf2c2c", "e83d45205686d990", "36fc0595c979bfd7"],
+  "site-fivem-rp": ["00e929a7ee93be47", "17d668e392f9cead", "4be3196e73ee779b", "555d02fd4f2caf4c", "0071d4bcf64d0195", "51c1935a3172ef6d"],
   "site-minecraft-survival": ["fe50d3a564011062", "f54c0ed2e993777c", "e3c3aa6d3ee37f6d", "79bc55692f433695", "429ceb228edc986e", "fec1429ecc09e269"],
 };
 
@@ -461,5 +462,22 @@ describe("A Minecraft server's own store behind the advantage gate (wave G4)", (
     expect(f.functions.find((x) => x.key === "packagePaid")!.triggers).toEqual([{ kind: "event", config: { event: "payment.paid" } }]);
     const lists = panelOf(mc()).find((p) => p.key === "lists")!.parts;
     expect(lists.find((p) => p.key === "packagesHeld")).toMatchObject({ kind: "view", where: [{ field: "advantage", op: "is", value: true }] });
+  });
+});
+
+describe("A game server's link (wave G5)", () => {
+  test("the whitelist switch and its words stay on the server; the panel's first page has the link and the quick actions", () => {
+    const rp = siteByKey("site-fivem-rp")!;
+    const f = buildSite(rp, { lang: "ar" });
+    const on = f.settings!.find((x) => x.key === "whitelistOn")!;
+    expect(on).toMatchObject({ kind: "toggle", default: false });
+    expect(on.public).toBeUndefined();
+    expect(f.settings!.find((x) => x.key === "whitelistMessage")!.public).toBeUndefined();
+    const today = panelOf(rp)[0].parts;
+    expect(today.find((p) => p.kind === "link")).toMatchObject({ key: "link" });
+    const actions = today.find((p) => p.kind === "actions");
+    expect(actions && actions.kind === "actions" ? actions.items.map((a) => a.key) : []).toEqual(expect.arrayContaining(["whitelistShow", "whitelistHide"]));
+    // A site with no game server has no link.
+    expect(blueprintProblems({ ...siteByKey("site-restaurant")!, modules: { ...siteByKey("site-restaurant")!.modules, link: {} } })).toContain('"link" needs "status"');
   });
 });

@@ -6,13 +6,14 @@ import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "../../components/ui/Button";
 import { QrScanner } from "../../components/QrScanner";
+import { useConfirm } from "../../components/useConfirm";
 import { canScanQr } from "../../lib/qr";
 import { getApiErrorMessage } from "../../api/http";
 import { adminLang, loc } from "../../lib/lang";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import * as Panels from "../../api/sitePanels.api";
-import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelReport, PanelRow, PanelScanner, PanelTebex, ReportPeriod } from "../../api/sitePanels.api";
+import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelLink, PanelReport, PanelRow, PanelScanner, PanelTebex, ReportPeriod } from "../../api/sitePanels.api";
 import { cellText, inLang } from "./panelText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -402,6 +403,64 @@ export function ScannerPart({ part, view, onError }: { part: PanelScanner } & Co
 /* ---------------- A game server: its status now, the last 24 hours ---------------- */
 
 const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam" } as const;
+/** How to put the link on the game server, by game. */
+const LINK_STEPS: Record<string, string[]> = {
+  fivem: [
+    "فك الملف وحط مجلّد site-link بمجلّد resources تبع سيرفرك.|Unzip it and put the site-link folder in your server's resources.|חלצו את הקובץ ושימו את התיקייה site-link בתיקיית resources של השרת.",
+    "زيد السطر ensure site-link بـ server.cfg، وأعد تشغيل السيرفر.|Add the line ensure site-link to server.cfg, and restart the server.|הוסיפו את השורה ensure site-link ל-server.cfg והפעילו את השרת מחדש.",
+    "خلال دقيقة بيطلع هون إنه حكى. اللاعبين بيربطوا حساباتهم بـ /link والكود من «حسابي».|Within a minute it shows here that it spoke. Players link their accounts with /link and the code from «My account».|תוך דקה יופיע כאן שהוא דיבר. שחקנים מקשרים חשבונות עם /link והקוד מ«החשבון שלי».",
+  ],
+};
+/** A game server site's link: downloaded or not, its last hello, and a new download (a new key; the old one stops). */
+export function LinkPart({ part, view }: { part: PanelLink; view: PanelPageView }) {
+  const lang = adminLang();
+  const [confirm, dialog] = useConfirm();
+  // When the page was drawn (a hello in the last 5 minutes counts as speaking now).
+  const [now] = useState(() => Date.now());
+  const file = useMutation({
+    mutationFn: () => Panels.downloadLink(view.featureId, view.page.key, part.key, lang),
+    onSuccess: ({ blob, name }) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+  const download = async () => {
+    if (part.made && !(await confirm({ title: say("تنزيل جديد؟|A new download?|הורדה חדשה?"), message: say("التنزيل الجديد بيعمل مفتاح جديد، والنسخة اللي على سيرفرك هلّق بتوقف لحد ما تحط الجديدة.|A new download makes a new key, and the copy on your server now stops until you put the new one in.|הורדה חדשה יוצרת מפתח חדש, והעותק שעל השרת שלכם מפסיק לעבוד עד שתשימו את החדש."), confirmText: say("نزّل|Download|להוריד") }))) return;
+    file.mutate();
+  };
+  const seen = part.lastSeenAt ? new Date(part.lastSeenAt) : null;
+  const fresh = !!seen && now - seen.getTime() < 5 * 60_000;
+  const steps = part.game ? LINK_STEPS[part.game] : undefined;
+  return (
+    <section className={box} data-testid={`site-part-${part.key}`} data-kind="link" data-state={!part.made ? "none" : fresh ? "on" : "quiet"}>
+      <Head
+        title={inLang(part.title, lang)}
+        more={part.canDownload && steps ? <Button size="xs" variant={part.made ? "secondary" : "primary"} isLoading={file.isPending} onClick={() => void download()} data-testid={`site-link-${part.key}-download`}>{part.made ? say("نزّل من جديد|Download again|להוריד שוב") : say("نزّل|Download|להוריד")}</Button> : null}
+      />
+      {!steps ? (
+        <p className="text-sm text-white/60" data-testid={`site-link-${part.key}-later`}>{say("لهاللعبة لسّا ما في لينك. FiveM هلّق، وماينكرافت قريباً.|This game has no link yet. FiveM now, Minecraft soon.|למשחק הזה עוד אין קישור. FiveM עכשיו, מיינקראפט בקרוב.")}</p>
+      ) : !part.made ? (
+        <p className="text-sm text-white/60" data-testid={`site-link-${part.key}-none`}>{say("لسّا ما نزّلته. نزّله وحطّه على سيرفرك: بيحكي مع الموقع لحاله، وما في ولا منفذ بينفتح.|Not downloaded yet. Download it and put it on your server: it talks to the site by itself, and no port opens.|עוד לא הורד. הורידו ושימו על השרת: הוא מדבר עם האתר בעצמו, ושום פורט לא נפתח.")}</p>
+      ) : (
+        <p className="text-sm" data-testid={`site-link-${part.key}-state`}>
+          {seen
+            ? say("آخر مرّة حكى: {when}{players}.|Last spoke: {when}{players}.|דיבר לאחרונה: {when}{players}.").replace("{when}", seen.toLocaleString(loc(), { dateStyle: "medium", timeStyle: "short" })).replace("{players}", part.lastPlayers !== null ? say(" · {n} لاعب| · {n} playing| · {n} משחקים").replace("{n}", String(part.lastPlayers)) : "")
+            : say("نزّلته، بس لسّا ما حكى. حطّه على السيرفر وشغّله.|Downloaded, but it hasn't spoken yet. Put it on the server and start it.|הורד, אבל עוד לא דיבר. שימו אותו על השרת והפעילו.")}
+          {part.keyHint ? <span className="text-white/45"> · {say("المفتاح بيخلص بـ|The key ends in|המפתח מסתיים ב")} <code dir="ltr">…{part.keyHint}</code></span> : null}
+        </p>
+      )}
+      {steps ? <ol className="mt-3 list-decimal space-y-1 ps-5 text-xs text-white/60">{steps.map((s) => <li key={s}>{say(s)}</li>)}</ol> : null}
+      {dialog}
+      <p className="mt-2 text-xs text-white/50" data-testid={`site-link-${part.key}-whitelist`}>{part.whitelist ? say("الوايتلست شغّال: بيفوت بس اللي بجدول الوايتلست.|The whitelist is on: only those in the whitelist table come in.|הרשימה הלבנה פעילה: נכנסים רק מי שבטבלה.") : say("الوايتلست طافي: الكل بيفوت. بتشغّله من إعدادات الموقع.|The whitelist is off: everyone comes in. Switch it on in the site's settings.|הרשימה הלבנה כבויה: כולם נכנסים. מפעילים אותה בהגדרות האתר.")}</p>
+    </section>
+  );
+}
+
 /** A game server site's Tebex webstore as its pages show it: connected, with its categories and packages, or why not. */
 export function TebexPart({ part }: { part: PanelTebex }) {
   const lang = adminLang();

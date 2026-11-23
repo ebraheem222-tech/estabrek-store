@@ -721,6 +721,28 @@ model GameSample {
   @@index([featureId, at])
 }
 
+/// A whole game server site's «إستبرق لينك» (sites wave G5, src/lib/gameLink.ts): the key its resource or plugin
+/// was stamped with (kept hashed; a new download makes a new one), and what the game server last said.
+model SiteLink {
+  featureId   String    @id
+  keyHash     String    @unique
+  keyHint     String
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime?
+  lastGame    String?
+  lastVersion String?
+  lastPlayers Int?
+}
+
+/// A short code a signed-in player types in the game (/link 482913) to link their game account to their shop
+/// account (src/lib/gameLink.ts): one live code a player, for 10 minutes.
+model GameLinkCode {
+  code      String   @id
+  userId    String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
 /// A reviewer's vote on a row waiting in a site panel's queue (sites wave G3, src/lib/siteVotes.ts): an application
 /// to a game server, one vote for each member of the staff (with a note if they like), changed or taken back by them.
 /// The member's name is kept as it was when they voted.
@@ -1680,6 +1702,12 @@ model User {
   discordId       String?   @unique
   /// Their SteamID64, once they linked their Steam account (src/lib/socialSignIn.ts).
   steamId         String?   @unique
+  /// Their game accounts, linked by a code typed in the game (src/lib/gameLink.ts, «إستبرق لينك»): FiveM's
+  /// license identifier and name; Minecraft's UUID and name.
+  fivemLicense    String?   @unique
+  fivemName       String?
+  minecraftUuid   String?   @unique
+  minecraftName   String?
   preferredSize   String?
   /// Hex colour she picked on the site; the rose design opens in it.
   favoriteColor   String?
