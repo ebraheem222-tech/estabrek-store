@@ -36,7 +36,8 @@ import { WaitsSchema, waitProblems } from "./siteWaits.js";
 export const TEMPLATE_FORMAT = "estabrek.feature" as const;
 export const TEMPLATE_FORMAT_VERSION = 1 as const;
 /** A file's size, and what one feature can hold (60 things in all: myFeatures FEATURE_LIMITS.items). */
-export const TEMPLATE_LIMITS = { tables: 20, functions: 30, pages: 10, bytes: 1_500_000, needs: 20, notes: 60, /** Ready rows per table (a whole site's menu, team, questions…). */ rows: 60 } as const;
+// pages: a whole site (a game server: its home, rules, applications and a page for each job, appeals…) takes more than ten.
+export const TEMPLATE_LIMITS = { tables: 20, functions: 30, pages: 24, bytes: 1_500_000, needs: 20, notes: 60, /** Ready rows per table (a whole site's menu, team, questions…). */ rows: 60 } as const;
 
 /** A thing's name inside the file: how its steps, lists and upgrades find it. */
 export const TEMPLATE_KEY = /^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$/;

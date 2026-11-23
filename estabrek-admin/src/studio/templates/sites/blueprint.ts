@@ -89,6 +89,8 @@ export type ApplyKind = { key: string; name: W; line: W; needs: W; question: W }
  * same kind again, and how many of the staff say yes before one is accepted (both its owner's settings after).
  */
 export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; votes: number };
+/** A game server's appeals (one for each ban, by its number) and reports on a player (wave G3), with the reasons a report picks from. */
+export type AppealsUse = { title: W; sub: W; reasons: Array<[string, W]> };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -177,6 +179,7 @@ export type SiteModules = {
   branches?: BranchesUse;
   rules?: RulesUse;
   apply?: ApplyUse;
+  appeals?: AppealsUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

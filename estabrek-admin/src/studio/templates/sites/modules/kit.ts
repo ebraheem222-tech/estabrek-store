@@ -134,6 +134,9 @@ export const f = {
   image: (id: string, name: W): Field => ({ id, type: "image", name }),
   money: (id: string, name: W): Field => ({ id, type: "money", name, currency: "ILS" }),
   num: (id: string, name: W, more: Obj = {}): Field => ({ id, type: "number", name, ...more }),
+  link: (id: string, name: W): Field => ({ id, type: "link", name }),
+  /** A file shoppers may upload into (its size, its kinds, kept private or not). */
+  file: (id: string, name: W, upload: { maxMb: number; kinds?: string[]; private?: boolean }): Field => ({ id, type: "file", name, upload }),
   bool: (id: string, name: W): Field => ({ id, type: "boolean", name }),
   date: (id: string, name: W): Field => ({ id, type: "date", name }),
   phone: (id: string, name: W, more: Obj = {}): Field => ({ id, type: "phone", name, ...more }),
