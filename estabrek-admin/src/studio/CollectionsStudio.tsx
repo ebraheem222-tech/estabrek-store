@@ -80,7 +80,7 @@ export function CollectionListPanel({ node, collections, lang, busy, onProps }: 
       {trouble ? <p className={trouble.level === "warn" ? warn : note} data-testid="list-trouble">{trouble.level === "warn" ? "⚠ " : ""}{say(trouble.text)}</p> : null}
       <div className="grid grid-cols-3 gap-2">
         <label className="block text-[11px] text-white/55">{say("الترتيب|Order|סדר")}
-          <select className={control} disabled={busy} value={feed ? (p.sort === "oldest" ? "oldest" : "newest") : String(p.sort ?? "newest")} onChange={(e) => set({ sort: e.target.value })} data-testid="list-sort">
+          <select className={control} disabled={busy} value={feed ? (p.sort === "oldest" ? "oldest" : "newest") : String(p.sort ?? "newest")} onChange={(e) => set({ sort: e.target.value, sortBy: undefined })} data-testid="list-sort">
             <option value="newest">{say("الأحدث|Newest|החדש ביותר")}</option><option value="oldest">{say("الأقدم|Oldest|הישן ביותר")}</option>{feed ? null : <><option value="order">{say("ترتيبي|My order|הסדר שלי")}</option><option value="title">{say("أبجدي|A–Z|א–ת")}</option></>}
           </select>
         </label>

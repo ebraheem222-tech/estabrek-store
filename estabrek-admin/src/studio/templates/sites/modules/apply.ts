@@ -15,7 +15,7 @@
 import { B, CARD, COLS, EL, GRID, H, P, SEC, STACK, eyebrow, pop, say, withSkin, type Ctx, type N } from "../../build";
 import { w, type W } from "../../words";
 import type { ApplyKind, SiteBlueprint, SiteSetting } from "../blueprint";
-import { APPLY_W, RULES_W } from "../siteWords";
+import { APPLY_PLAYER_W, APPLY_W, RULES_W } from "../siteWords";
 import { LIST, T, bound, callBand, f, fromSetting, pageHead, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 
 /* ---------------- The rules ---------------- */
@@ -67,6 +67,9 @@ export const RULES: SiteModule = {
 
 /* ---------------- Applying ---------------- */
 
+/** The form's words: a clan's ask for the player themself (their name in games, their experience), a server's for a character. */
+const wordsOf = (b: Built) => (b.use.apply!.player ? { ...APPLY_W, ...APPLY_PLAYER_W } : APPLY_W);
+
 /** A kind's own page, under the applications' page (not in the site's menu). */
 const kindSlug = (kind: ApplyKind) => `/apply/${kind.key}`;
 /** A kind's Discord role setting ("rolePolice"). */
@@ -91,11 +94,11 @@ const kindsPart = (b: Built): Part => (c) => {
   ], { name: APPLY_W.pick });
 };
 /** The player's own applications, read in their browser: what each was for, where it stands, the staff's answer. */
-const minePart: Part = (c) => {
+const minePart = (b: Built): Part => (c) => {
   const k = withSkin(c, "surface");
   const card = CARD(k, [
     STACK(k, [bound(H(k, APPLY_W.kind, 4, still), { text: "kind" }), bound(P(k, APPLY_W.fresh, { ...still, quiet: false, style: { weight: 700, color: pop(k) } }), { text: "status" })], { direction: "row", justify: "between", align: "center", gap: 12, wrap: true }),
-    bound(P(k, APPLY_W.character, still), { text: "character" }),
+    bound(P(k, wordsOf(b).character, still), { text: "character" }),
     bound(P(k, APPLY_W.reply, { ...still, style: { size: 15 } }), { text: "reply" }),
   ], { gap: 8, pad: [20, 22, 20, 22] });
   return SEC(k, [STACK(k, [
@@ -109,9 +112,9 @@ const kindForm = (b: Built, kind: ApplyKind): Part => (c) => {
   const form = CARD(k, [EL(k, "form", {
     kind: "custom",
     fields: [
-      { name: "character", kind: "text", label: say(k, APPLY_W.character), required: true },
+      { name: "character", kind: "text", label: say(k, wordsOf(b).character), required: true },
       { name: "age", kind: "number", label: say(k, APPLY_W.age), required: true, min: 10, max: 99 },
-      { name: "story", kind: "long", label: say(k, APPLY_W.story), hint: say(k, APPLY_W.storyHint), required: true },
+      { name: "story", kind: "long", label: say(k, wordsOf(b).story), hint: say(k, wordsOf(b).storyHint), required: true },
       { name: "why", kind: "long", label: say(k, APPLY_W.why), required: true },
       { name: "question", kind: "long", label: say(k, APPLY_W.question), hint: say(k, kind.question), required: true },
       { name: "rules", kind: "check", label: say(k, APPLY_W.rules), required: true },
@@ -149,7 +152,7 @@ export const APPLY: SiteModule = {
   pages: (bp) => {
     const a = bp.modules.apply!;
     return [
-      { key: "apply", slug: "/apply", order: 25, name: a.title, seo: a.sub, parts: (b) => [pageHead(a.title, a.sub, "soft"), kindsPart(b), minePart] },
+      { key: "apply", slug: "/apply", order: 25, name: a.title, seo: a.sub, parts: (b) => [pageHead(a.title, a.sub, "soft"), kindsPart(b), minePart(b)] },
       ...a.kinds.map((kind, i) => ({ key: `apply-${kind.key}`, slug: kindSlug(kind), order: 26 + i, name: kind.name, seo: kind.line, menu: false as const, parts: (b: Built) => [pageHead(w(`${APPLY_W.applyFor.ar} ${kind.name.ar}`, `${APPLY_W.applyFor.en} ${kind.name.en}`, `${APPLY_W.applyFor.he}${kind.name.he}`), kind.line, "soft"), kindForm(b, kind)] })),
     ];
   },
@@ -162,9 +165,9 @@ export const APPLY: SiteModule = {
         name: APPLY_W.applications,
         fields: [
           f.select("kind", APPLY_W.kind, a.kinds.map((x): [string, W] => [x.key, x.name]), { required: true }),
-          f.text("character", APPLY_W.characterField, { required: true }),
+          f.text("character", wordsOf(b).characterField, { required: true }),
           f.num("age", APPLY_W.ageField, { min: 10, max: 99 }),
-          f.long("story", APPLY_W.storyField, { required: true }),
+          f.long("story", wordsOf(b).storyField, { required: true }),
           f.long("why", APPLY_W.whyField, { required: true }),
           f.long("question", APPLY_W.question, { required: true }),
           f.bool("rules", APPLY_W.rulesField),
@@ -256,7 +259,7 @@ export const APPLY: SiteModule = {
               if: became("accepted"),
               do: [
                 { act: "add", table: T("whitelist"), values: { player: "{{input.row.character}}", email: "{{player.email}}", discordId: "{{player.discordId}}", steamId: "{{player.steamId}}", kind: "{{input.row.kind}}" } },
-                { act: "email", to: "{{player.email}}", subject: "انقبلت!", text: "مبروك {{player.name}}،\nطلبك ({{input.row.character}}) انقبل. منستنّاك بالمدينة.\n{{input.row.reply}}" },
+                { act: "email", to: "{{player.email}}", subject: "انقبلت!", text: `مبروك {{player.name}}،\nطلبك ({{input.row.character}}) انقبل. ${b.use.apply!.player ? "أهلاً فيك معنا." : "منستنّاك بالمدينة."}\n{{input.row.reply}}` },
               ],
             },
             { act: "if", if: became("rejected"), do: [{ act: "email", to: "{{player.email}}", subject: "عن طلبك", text: "أهلين {{player.name}}،\nطلبك ({{input.row.character}}) ما انقبل هالمرة.\n{{input.row.reply}}\nفيك تقدّم مرة تانية بعد {{settings.applyWaitDays}} يوم." }] },

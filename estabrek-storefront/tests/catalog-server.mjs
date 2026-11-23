@@ -1851,6 +1851,21 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           { id: "rn3", slug: "rn-3", status: "PUBLISHED", values: {}, shown: { title: "Plain", body: "**stays as written**" }, links: {} },
         ]);
       }
+      // A Roblox game's codes (game-community.spec.ts): the working ones or the expired ones, by their state; one has no last day.
+      if (table === "codes") {
+        const state = q.get("status[is]");
+        const all = [
+          { id: "c1", code: "FLOOR100", reward: "1,000 clouds for reaching floor 100", until: "31 December 2026", status: "active" },
+          { id: "c2", code: "GOLDWINGS", reward: "Golden wings that shine behind you", until: null, status: "active" },
+          { id: "c3", code: "SUMMER26", reward: "500 clouds", until: "1 September 2026", status: "expired" },
+        ];
+        return answer(all.filter((c) => !state || c.status === state).map((c) => ({
+          id: c.id, slug: c.code.toLowerCase(), status: "PUBLISHED",
+          values: { code: { en: c.code }, reward: { en: c.reward }, status: c.status, ...(c.until ? { until: "2026-12-31" } : {}) },
+          shown: { code: c.code, reward: c.reward, status: c.status === "active" ? "Working" : "Expired", ...(c.until ? { until: c.until } : {}) },
+          links: {},
+        })));
+      }
       if (table === "nothing") return answer([]);
       if (table === "broken") return send(400, { error: "BAD_QUERY", message: "No column \"gone\" in this table" });
       return send(404, { error: "NOT_FOUND", message: "No such table, or it isn't open" });

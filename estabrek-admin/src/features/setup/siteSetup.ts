@@ -36,6 +36,10 @@ export const SITE_THEMES: Record<string, string> = {
   "site-coop-survival": "rough-survival",
   "site-minecraft-network": "square-pixel",
   "site-cs2-community": "clean-esports",
+  // The communities (wave G7c): a Roblox game in squares, a Discord at night, a clan as a guild.
+  "site-roblox-community": "square-pixel",
+  "site-discord-community": "night-neon",
+  "site-gaming-clan": "fantasy-guild",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */

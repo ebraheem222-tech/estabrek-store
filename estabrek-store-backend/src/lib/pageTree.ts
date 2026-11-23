@@ -1288,6 +1288,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     collectionId: id,
     limit: z.number().int().min(1).max(48).optional(),
     sort: z.enum(["newest", "oldest", "order", "title"]).optional(),
+    // By the table's own fields before `sort` (lib/collectionTree.ts listSortBy): the coming events by their day, then their hour.
+    sortBy: z.array(z.object({ field: z.string().regex(/^[a-z][a-zA-Z0-9]{0,30}$/), dir: z.enum(["asc", "desc"]).optional() }).strict()).min(1).max(2).optional(),
     columns: z.number().int().min(1).max(6).optional(),
     empty: local(300).optional(),
     // Whose rows: none = the published ones, drawn with the page. Else the list is read in the visitor's browser

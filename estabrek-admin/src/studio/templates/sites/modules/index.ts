@@ -17,9 +17,13 @@ import { WIPE } from "./wipe";
 import { STREAMERS } from "./streamers";
 import { SERVERS } from "./servers";
 import { BANS } from "./bans";
+import { CODES } from "./codes";
+import { EVENTS } from "./events";
+import { ROSTER } from "./roster";
+import { MEMBERS } from "./members";
 import type { Built, Part, SiteModule } from "./kit";
 
-export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, SERVERS, BANS, CONTACT, BOOKING, NOTIFY];
+export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, SERVERS, BANS, CODES, EVENTS, ROSTER, MEMBERS, CONTACT, BOOKING, NOTIFY];
 
 /** Each archetype's home page; one with none can't be built yet. */
 export const HOMES: Partial<Record<Archetype, (b: Built) => Part[]>> = { front: frontHome, server: serverHome };

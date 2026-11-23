@@ -35,6 +35,8 @@ export const waitsOf = (bp: SiteBlueprint): SiteWait[] => used(bp).flatMap((m) =
 
 /** The board page's name where it isn't bookings (a game server's: its applications by their state). */
 const BOARD_NAME: Partial<Record<Archetype, typeof PANEL.board>> = { server: PANEL.boardServer };
+/** A community's board has its events' calendar (wave G7c), beside its applications if it has them. */
+const boardName = (bp: SiteBlueprint) => (bp.archetype === "server" && bp.modules.events ? (bp.modules.apply || bp.modules.mcstore ? PANEL.boardServerCalendar : PANEL.boardCalendar) : BOARD_NAME[bp.archetype] ?? PANEL.board);
 
 /**
  * A blueprint's panel (its own pages in the admin's menu): «اليوم» with every number at the top, its modules'
@@ -54,7 +56,7 @@ export function panelOf(bp: SiteBlueprint): PanelPage[] {
   const people = bits.flatMap((b) => b.people ?? []);
   const pages: PanelPage[] = [
     { key: "today", name: PANEL.today, icon: "today", parts: today },
-    { key: "board", name: BOARD_NAME[bp.archetype] ?? PANEL.board, icon: "calendar", parts: bits.flatMap((b) => b.board ?? []) },
+    { key: "board", name: boardName(bp), icon: "calendar", parts: bits.flatMap((b) => b.board ?? []) },
     { key: "people", name: PANEL.people, icon: "people", parts: people.length ? [{ kind: "people", key: "person", title: PANEL.person, by: "phone", name: "name", tables: people }] : [] },
     { key: "reports", name: PANEL.reports, icon: "chart", parts: bits.flatMap((b) => b.reports ?? []) },
     { key: "lists", name: PANEL.lists, icon: "lists", parts: lists },

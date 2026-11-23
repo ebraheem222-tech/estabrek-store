@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { checkTree } from "../lib/pageTree.js";
-import { bindTree, expandLists, itemAddress, listFeed, listFilters, listIdsOf, sortItems, LIST_OPS, type CollectionLite, type ItemLite } from "../lib/collectionTree.js";
+import { bindTree, expandLists, itemAddress, listFeed, listFilters, listIdsOf, listSortBy, sortByFields, sortItems, LIST_OPS, type CollectionLite, type ItemLite } from "../lib/collectionTree.js";
 import { OPS_BY_KIND } from "../lib/dataQuery.js";
 import { OPS_FOR } from "../../../estabrek-admin/src/studio/listRows.js";
 import { checkItemData, CollectionBody, defaultStoreTemplate, defaultTemplate, PRESETS, STORE_TEMPLATES } from "../lib/collections.js";
@@ -64,6 +64,28 @@ describe("collections", () => {
     expect(d.root.children[0].children[0].props.text.en).toBe("1 March 2026");
   });
 
+  test("a list ordered by its table's own fields: a date, then words; a row without the field last; equal ones in the merchant's order", () => {
+    const rows: ItemLite[] = [
+      { id: "a", slug: "a", data: { title: { en: "B" }, date: "2026-12-05" }, sort: 1 },
+      { id: "b", slug: "b", data: { title: { en: "A" }, date: "2026-11-27" }, sort: 2 },
+      { id: "c", slug: "c", data: { title: { en: "C" } }, sort: 0 },
+      { id: "d", slug: "d", data: { title: { en: "A" }, date: "2026-12-05" }, sort: 3 },
+    ];
+    expect(sortByFields(rows, [{ field: "date", dir: "asc" }], blog).map((r) => r.id)).toEqual(["b", "a", "d", "c"]);
+    expect(sortByFields(rows, [{ field: "date", dir: "asc" }, { field: "title", dir: "asc" }], blog, "en").map((r) => r.id)).toEqual(["b", "d", "a", "c"]);
+    expect(sortByFields(rows, [{ field: "date", dir: "desc" }], blog).map((r) => r.id)).toEqual(["a", "d", "b", "c"]);
+    // What isn't a field of the table orders nothing; what isn't an order is none.
+    expect(sortByFields(rows, [{ field: "gone", dir: "asc" }], blog)).toBe(rows);
+    expect(listSortBy({ sortBy: [{ field: "Bad Field" }] })).toBeNull();
+    expect(listSortBy({ sortBy: [{ field: "date", dir: "sideways" }] })).toEqual([{ field: "date", dir: "asc" }]);
+    // Drawn with the page: the nearest first.
+    const data = new Map([["c1", { collection: blog, items: rows }]]);
+    const out = expandLists(page(list({ sortBy: [{ field: "date" }], limit: 4 })) as never, data) as any;
+    expect(out.root.children[0].children[0].children.map((c: N) => c.children[1].props.text.en)).toEqual(["A", "B", "A", "C"]);
+    expect(ok(page(list({ sortBy: [{ field: "date", dir: "desc" }, { field: "title" }] })))).toEqual([]);
+    expect(ok(page(list({ sortBy: [{ field: "a" }, { field: "b" }, { field: "c" }] }))).length).toBeGreaterThan(0);
+  });
+
   test("a list draws its card once per item in its order, the first keeping the card's ids", () => {
     const data = new Map([["c1", { collection: blog, items }]]);
     const out = expandLists(page(list({ sort: "oldest", columns: 2 })) as never, data) as any;
@@ -102,6 +124,8 @@ describe("collections", () => {
     expect(JSON.stringify(out)).not.toContain("Spring");
     // Any other order is the newest first; no words, no filters: left out.
     expect((expandLists(page(list({ feed: "live", sort: "title" })) as never, data) as any).root.children[0].children[0].props.live).toEqual({ table: "blog", feed: "live", limit: 6, sort: "-createdAt" });
+    // By the table's own fields (the coming events by their day): the same fields asked of the API.
+    expect((expandLists(page(list({ feed: "live", sortBy: [{ field: "date", dir: "desc" }, { field: "title" }, { field: "gone" }] })) as never, data) as any).root.children[0].children[0].props.live.sort).toBe("-date,title");
     // A list inside its card isn't drawn there.
     const nested = list({ feed: "mine" });
     nested.children![0].children!.push({ id: "inner", type: "collectionList", props: { collectionId: "c1" }, children: [] });
