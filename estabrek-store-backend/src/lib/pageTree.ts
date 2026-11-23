@@ -35,7 +35,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell", "deck", "scrollScene",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
-  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "tebexPackages", "leaderboard",
+  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "tebexPackages", "leaderboard", "wipeCountdown", "streamers",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
   "toc", "flipBox", "share", "progress", "headline", "storyBar",
@@ -1012,6 +1012,11 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // A game server site's ranking on one of its boards (lib/ranking.ts fills it as the page is served): the best players
   // today, this week, this month or of all time, each window a tab.
   leaderboard: z.object({ board: z.string().trim().regex(/^[a-z0-9_-]{1,40}$/i), windows: z.array(z.enum(["day", "week", "month", "all"])).min(1).max(4).optional(), size: z.number().int().min(3).max(50).optional(), empty: local(200).optional(), day: local(30).optional(), week: local(30).optional(), month: local(30).optional(), all: local(30).optional() }),
+  // A game server site's next wipe (lib/wipes.ts fills it from the site's schedule as the page is served): a countdown,
+  // the schedule in words, when the last one was, and the owner's note.
+  wipeCountdown: z.object({ title: local(80).optional(), done: local(80).optional(), none: local(200).optional(), size: z.enum(["big", "small"]).optional() }),
+  // A game server site's streamers (lib/twitch.ts fills them as the page is served): the live first, with their stream.
+  streamers: z.object({ live: local(30).optional(), watch: local(40).optional(), channel: local(40).optional(), empty: local(200).optional(), columns: z.number().int().min(1).max(4).optional(), onlyLive: z.boolean().optional() }),
   clock: z.object({ label: local(160).optional(), timezone: z.string().trim().max(80).refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }).default("UTC"), format: z.enum(["12", "24"]).optional(), seconds: z.boolean().optional(), date: z.boolean().optional() }),
   spacer: z.object({ size: px(0, 400).default(32) }),
   divider: none,

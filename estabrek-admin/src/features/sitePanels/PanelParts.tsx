@@ -13,7 +13,7 @@ import { adminLang, loc } from "../../lib/lang";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 import * as Panels from "../../api/sitePanels.api";
-import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelLink, PanelReport, PanelRow, PanelScanner, PanelTebex, ReportPeriod } from "../../api/sitePanels.api";
+import type { PanelAsk, PanelCalendar, PanelChart, PanelColumn, PanelGame, PanelKanban, PanelMap, PanelPageView, PanelPeople, PanelPerson, PanelLink, PanelReport, PanelRow, PanelScanner, PanelStreamers, PanelTebex, PanelWipe, ReportPeriod } from "../../api/sitePanels.api";
 import { cellText, inLang } from "./panelText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
@@ -464,6 +464,74 @@ export function LinkPart({ part, view }: { part: PanelLink; view: PanelPageView 
       {steps ? <ol className="mt-3 list-decimal space-y-1 ps-5 text-xs text-white/60">{steps.map((s) => <li key={s}>{say(s)}</li>)}</ol> : null}
       {dialog}
       {part.whitelistable ? <p className="mt-2 text-xs text-white/50" data-testid={`site-link-${part.key}-whitelist`}>{part.whitelist ? say("الوايتلست شغّال: بيفوت بس اللي بجدول الوايتلست.|The whitelist is on: only those in the whitelist table come in.|הרשימה הלבנה פעילה: נכנסים רק מי שבטבלה.") : say("الوايتلست طافي: الكل بيفوت. بتشغّله من إعدادات الموقع.|The whitelist is off: everyone comes in. Switch it on in the site's settings.|הרשימה הלבנה כבויה: כולם נכנסים. מפעילים אותה בהגדרות האתר.")}</p> : null}
+    </section>
+  );
+}
+
+/** A game server site's streamers: whether Twitch answers its keys, and who of them is live now. */
+export function StreamersPart({ part }: { part: PanelStreamers }) {
+  const lang = adminLang();
+  const state = !part.connected ? "none" : part.failed ? "failed" : "on";
+  return (
+    <section className={box} data-testid={`site-part-${part.key}`} data-kind="streamers" data-state={state}>
+      <Head title={inLang(part.title, lang)} />
+      <p className="text-sm" data-testid={`site-streamers-${part.key}-line`}>
+        {state === "none"
+          ? say("لسّا ما حطّيت مفاتيح Twitch بإعدادات الموقع: القنوات بتطلع، بس مين لايف لأ.|Twitch's keys aren't in the site's settings yet: the channels show, but not who is live.|מפתחות Twitch עוד לא בהגדרות האתר: הערוצים מופיעים, אבל לא מי בשידור.")
+          : state === "failed"
+            ? say("Twitch ما قبل المفاتيح أو ما ردّ. شيّك على الـ Client ID والـ Secret.|Twitch didn't take the keys, or didn't answer. Check the Client ID and the Secret.|Twitch לא קיבל את המפתחות או לא ענה. בדקו את ה-Client ID וה-Secret.")
+            : part.live.length
+              ? say("{n} من {total} لايف هلّق.|{n} of {total} live now.|{n} מתוך {total} בשידור עכשיו.").replace("{n}", String(part.live.length)).replace("{total}", String(part.total))
+              : say("ما حدا لايف هلّق ({total} ستريمر).|Nobody is live right now ({total} streamers).|אף אחד לא בשידור כרגע ({total} סטרימרים).").replace("{total}", String(part.total))}
+      </p>
+      {part.live.length ? (
+        <ul className="mt-3 space-y-2 text-sm">
+          {part.live.map((s) => (
+            <li key={s.name} className="flex flex-wrap items-baseline gap-2">
+              <span className="rounded bg-rose-500 px-1.5 text-[11px] font-bold text-white">{say("لايف|LIVE|בשידור")}</span>
+              {s.url ? <a className="font-semibold underline" href={s.url} target="_blank" rel="noreferrer">{s.name}</a> : <b>{s.name}</b>}
+              <span className="text-white/60">· {s.viewers.toLocaleString("en")} · {s.title}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+const WIPE_RULE: Record<string, string> = {
+  weekly: "كل {day}، {time}|Every {day}, {time}|כל {day}, {time}",
+  biweekly: "كل أسبوعين يوم {day}، {time}|Every other {day}, {time}|כל שבועיים ביום {day}, {time}",
+  monthly: "أول {day} بكل شهر، {time}|The first {day} of each month, {time}|{day} הראשון בכל חודש, {time}",
+  date: "مرّة وحدة، {time}|Once, {time}|פעם אחת, {time}",
+};
+/** A game server site's next wipe by its schedule: when, in how many days, and the last one. */
+export function WipePart({ part }: { part: PanelWipe }) {
+  const lang = adminLang();
+  const [now] = useState(() => Date.now());
+  const wp = part.wipe;
+  const at = (iso: string) => new Date(iso).toLocaleString(loc(), { timeZone: wp?.zone, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  const dayName = wp ? new Date(Date.UTC(2026, 10, 1 + ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(wp.day))).toLocaleDateString(loc(), { weekday: "long", timeZone: "UTC" }) : "";
+  const days = wp?.next ? Math.max(0, Math.ceil((Date.parse(wp.next) - now) / 86_400_000)) : null;
+  return (
+    <section className={box} data-testid={`site-part-${part.key}`} data-kind="wipe" data-state={wp?.next ? "next" : "none"}>
+      <Head title={inLang(part.title, lang)} />
+      {!wp ? (
+        <p className="text-sm text-white/60">{say("ما في موعد للمسح. حطّه من إعدادات الموقع.|There's no wipe schedule. Set it in the site's settings.|אין מועד מחיקה. קבעו אותו בהגדרות האתר.")}</p>
+      ) : (
+        <>
+          {wp.next ? (
+            <p className="text-sm" data-testid={`site-wipe-${part.key}-next`}>
+              <b>{at(wp.next)}</b> <span className="text-white/60" dir="ltr">({wp.zone})</span>
+              {days !== null ? <span className="text-white/60"> · {days === 0 ? say("اليوم|today|היום") : say("بعد {n} يوم|in {n} days|בעוד {n} ימים").replace("{n}", String(days))}</span> : null}
+            </p>
+          ) : (
+            <p className="text-sm text-white/60">{say("ما في مسح جاي بهالموعد.|No wipe ahead on this schedule.|אין מחיקה קרובה לפי המועד הזה.")}</p>
+          )}
+          <p className="mt-1 text-xs text-white/50">{say(WIPE_RULE[wp.every]).replace("{day}", lang === "ar" && wp.every !== "biweekly" ? dayName.replace(/^ال/, "") : dayName).replace("{time}", wp.time)}</p>
+          {wp.last ? <p className="mt-1 text-xs text-white/50">{say("آخر مسح|Last wipe|מחיקה אחרונה")}: {at(wp.last)}</p> : null}
+        </>
+      )}
     </section>
   );
 }

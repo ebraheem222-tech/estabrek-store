@@ -94,6 +94,11 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
     if (b.key === "playtime" && (b.how !== "sum" || b.unit !== "minutes")) out.push(`The "playtime" board is counted: summed minutes`);
   });
   if (bp.modules.ranking && !boards.length) out.push(`"ranking" needs a board`);
+  // A wipe's schedule as the backend reads it (lib/wipes.ts): an hour on the 24-hour clock, a day for a first one.
+  const wipe = bp.modules.wipe;
+  if (wipe && !/^([01]\d|2[0-3]):[0-5]\d$/.test(wipe.time)) out.push(`The wipe's time "${wipe.time}" isn't HH:MM`);
+  if (wipe && wipe.from !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(wipe.from)) out.push(`The wipe's first day "${wipe.from}" isn't YYYY-MM-DD`);
+  if (wipe?.every === "date" && !wipe.from) out.push(`A wipe once needs its day`);
   const known = new Set(MODULES.map((m) => m.key as string));
   for (const key of Object.keys(bp.modules)) if (!known.has(key)) out.push(`No module "${key}"`);
   const on = new Set(used(bp).map((m) => m.key));

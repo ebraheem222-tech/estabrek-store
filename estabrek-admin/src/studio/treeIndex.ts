@@ -54,6 +54,8 @@ export const TYPE_LABEL: Record<string, () => string> = {
   gameStatus: () => say("حالة السيرفر|Server status|מצב השרת"),
   tebexPackages: () => say("باقات Tebex|Tebex packages|חבילות Tebex"),
   leaderboard: () => say("الترتيب|Ranking|דירוג"),
+  wipeCountdown: () => say("عدّاد المسح|Wipe countdown|ספירה למחיקה"),
+  streamers: () => say("الستريمرز|Streamers|סטרימרים"),
   svg: () => tr("رسمة", "Drawing"),
   product360: () => tr("منتج 360°", "Product 360°"),
   spacer: () => tr("مسافة", "Spacer"),

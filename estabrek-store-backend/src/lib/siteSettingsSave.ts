@@ -11,6 +11,7 @@ import { installedOf } from "./featureInstall.js";
 import { forgetFeatureGate } from "./featureGate.js";
 import { forgetTriggers } from "./fnTriggers.js";
 import { forgetTebex } from "./tebex.js";
+import { forgetTwitch } from "./twitch.js";
 import { triggerCmsRevalidate } from "./cmsRevalidate.js";
 
 /** The named settings changed (the others stay): 404 no such feature, 409 it has none, 400 with each problem by key. */
@@ -26,6 +27,8 @@ export async function saveSiteSettings(featureId: string, asked: unknown): Promi
   forgetTriggers();
   // A Tebex token just set or changed: its webstore is read again.
   forgetTebex();
+  // Twitch keys just set or changed: asked again.
+  forgetTwitch();
   const slugs = (await prisma.page.findMany({ where: { id: { in: feature.items.map((i) => i.refId) }, kind: "page" }, select: { slug: true } })).map((p) => p.slug);
   if (slugs.length) await triggerCmsRevalidate(slugs);
   return read.values;

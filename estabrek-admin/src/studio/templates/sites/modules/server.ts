@@ -14,6 +14,8 @@ import { postsPart, questionsPart, teamPart } from "./lists";
 import { fromSetting, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 import { applyBand } from "./apply";
 import { mcNoticePart, mcStoreBand } from "./mcstore";
+import { wipeBand } from "./wipe";
+import { streamersBand } from "./streamers";
 
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
@@ -60,7 +62,7 @@ const discordBand: Part = (c) => {
  */
 export function serverHome(b: Built): Part[] {
   const u = b.use;
-  return [noticePart, statusHero(b), joinSteps(b), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...(u.mcstore ? [mcNoticePart] : [])];
+  return [noticePart, statusHero(b), ...when(u.wipe, () => wipeBand(b)), joinSteps(b), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...(u.mcstore ? [mcNoticePart] : [])];
 }
 
 /** A server's own settings: the notice over its first page ("restart at 20:00"). */

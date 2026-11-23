@@ -68,7 +68,7 @@ describe("A game server's site", () => {
     expect(res.status, JSON.stringify(res.body).slice(0, 300)).toBe(201);
     const id = res.body.id as string;
     made.push(id);
-    expect(res.body.settings.declared.map((d: Obj) => d.key)).toEqual(["noticeOn", "notice", "game", "serverAddress", "discordOn", "discordUrl", "rulesChanged", "applyOpen", "applyClosed", "applyWaitDays", "applyVotes", "rolePolice", "roleEms", "roleMechanic", "roleStaff", "tebexToken", "whitelistOn", "whitelistMessage", "notifyOn", "notifyEmail"]);
+    expect(res.body.settings.declared.map((d: Obj) => d.key)).toEqual(["noticeOn", "notice", "game", "serverAddress", "discordOn", "discordUrl", "rulesChanged", "applyOpen", "applyClosed", "applyWaitDays", "applyVotes", "rolePolice", "roleEms", "roleMechanic", "roleStaff", "tebexToken", "whitelistOn", "whitelistMessage", "twitchClientId", "twitchSecret", "notifyOn", "notifyEmail"]);
     const ids: Obj = (await prisma.feature.findUnique({ where: { id }, select: { template: true } }))!.template!.ids;
     await prisma.page.updateMany({ where: { id: { in: Object.values(ids.page) as string[] } }, data: { status: "PUBLISHED" } });
     await request(app).put(`${at}/my-features/${id}/settings`).send({ values: { serverAddress: `127.0.0.1:${port}`, discordUrl: "https://discord.gg/dewcity" } }).expect(200);
