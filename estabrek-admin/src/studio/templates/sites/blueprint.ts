@@ -84,7 +84,7 @@ export type Bare = Record<string, never>;
  * (the invite, and `discord` empty: the status is the Discord). A streamer's (wave G7c2) is their Twitch channel (live or
  * not, how many watch), read with the site's own Twitch keys.
  */
-export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord" | "twitch"; address: string; discord: string; join: W; steps: Array<[W, W]>; group?: string };
+export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord" | "twitch" | "web"; address: string; discord: string; join: W; steps: Array<[W, W]>; group?: string };
 /** A game server's rules (wave G3): numbered sections ("1.1"), and what changed last ("آخر تعديل"). */
 export type RulesUse = { title: W; sub: W; changed: W; /** The day they last changed ("2026-11-20"), on each ready rule. */ date: string; sections: Array<{ key: string; name: W; rows: Array<{ n: string; title: W; text: W }> }> };
 /** One kind a player applies for: the whitelist, a job (police, paramedics…) or the staff, with its own question. */
@@ -162,6 +162,12 @@ export type Weekday = "sat" | "sun" | "mon" | "tue" | "wed" | "thu" | "fri";
 export type ScheduleUse = { title: W; sub: W; rows: Array<{ day: Weekday; time: string; game: W; title: W }> };
 /** A streamer's clips: each one's link (Twitch or YouTube), its game and day. */
 export type ClipsUse = { title: W; sub: W; rows: Array<{ slug: string; title: W; link: string; game: W; date: string }> };
+/** A hosting company's ordering (wave G7d2): the places a server may be in (its plans are its main list's rows). */
+export type HostingUse = { title: W; sub: W; locations: Array<[string, W]> };
+/** One server on a server list (wave G7d2): its game and public address, its words, its Discord, and this month's votes. */
+export type ListingRow = { slug: string; name: string; game: "fivem" | "minecraft" | "bedrock" | "steam"; address: string; about: W; tags: W; discord: string; votes: number };
+/** A server list: the games it has a section for, and its ready servers (listed). */
+export type ListingsUse = { title: W; sub: W; games: Array<[ListingRow["game"], W]>; rows: ListingRow[] };
 /** A studio's docs (wave G7d1): pages for each of its products, each with the version it is for. */
 export type DocsUse = { title: W; sub: W; products: Array<[string, W]>; rows: Array<{ slug: string; product: string; title: W; version: string; body: W }> };
 /** A studio's changelog: each product's versions, each with its day and whether it added, changed or fixed. */
@@ -289,6 +295,8 @@ export type SiteModules = {
   docs?: DocsUse;
   releases?: ReleasesUse;
   tickets?: TicketsUse;
+  hosting?: HostingUse;
+  listings?: ListingsUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

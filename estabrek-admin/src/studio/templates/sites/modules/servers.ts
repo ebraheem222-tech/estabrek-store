@@ -32,7 +32,10 @@ const GAMES: Array<[string, ReturnType<typeof w>]> = [
 ];
 const plain = (v: string) => ({ ar: v, en: v, he: v });
 /** A server's game where its row names none: the site's, or Minecraft Java for a site that isn't a game server (a streamer's). */
-const own = (b: Built) => (GAMES.some(([id]) => id === b.bp.modules.status!.game) ? b.bp.modules.status!.game : "minecraft");
+const own = (b: Built) => (gamesOf(b).some(([id]) => id === b.bp.modules.status!.game) ? b.bp.modules.status!.game : "minecraft");
+/** The games a server may be: a status page's machines may also be websites (their health addresses, wave G7d2). */
+const gamesOf = (b: Built): Array<[string, ReturnType<typeof w>]> =>
+  b.bp.modules.status!.game === "web" || b.use.servers!.list.some((x) => x.game === "web") ? [...GAMES, ["web", w("موقع أو جهاز (https)", "A website or a machine (https)", "אתר או מכונה (https)")]] : GAMES;
 
 export const SERVERS: SiteModule = {
   key: "servers",
@@ -49,7 +52,7 @@ export const SERVERS: SiteModule = {
         f.text("title", SUBS_W.title, { required: true }),
         { ...f.text("key", SUBS_W.key, { required: true, unique: true, max: 30 }), help: SUBS_W.keyHelp },
         f.long("line", SUBS_W.line),
-        f.select("game", SUBS_W.game, GAMES, { default: own(b) }),
+        f.select("game", SUBS_W.game, gamesOf(b), { default: own(b) }),
         { ...f.text("address", SUBS_W.address, { max: 120 }), help: SUBS_W.addressHelp },
         f.text("hint", SUBS_W.hint, { max: 60 }),
       ],

@@ -45,6 +45,9 @@ export const SITE_THEMES: Record<string, string> = {
   // The studios (wave G7d1).
   "site-fivem-studio": "clean-esports",
   "site-minecraft-studio": "square-pixel",
+  // The last two (wave G7d2).
+  "site-game-hosting": "race-stripes",
+  "site-server-list": "night-neon",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */

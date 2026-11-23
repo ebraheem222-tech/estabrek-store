@@ -17,6 +17,7 @@ import { GAME_LIMITS, isGame, joinOf, readStatus, type Game, type GameStatus } f
 import { discordCounts } from "./socialSignIn.js";
 import { LINK_LIMITS, SERVER_NAME, heardOf } from "./gameLink.js";
 import { channelNow, hasTwitchKeys } from "./twitch.js";
+import { readListings } from "./gameListings.js";
 
 const HOUR = 3_600_000;
 /** A game site's game and address, as its owner set them (null: not a game site, or no address yet). */
@@ -97,6 +98,8 @@ export async function readGameServers(): Promise<{ read: number; online: number;
     }
   }
   await prisma.gameSample.deleteMany({ where: { at: { lt: new Date(Date.now() - GAME_LIMITS.keepHours * HOUR) } } });
+  // A server list's listed servers, a few at a time (wave G7d2).
+  await readListings().catch(() => null);
   return counts;
 }
 
@@ -116,6 +119,8 @@ export type SubView = {
   at: string | null;
   from: "asked" | "link" | null;
   join: { href: string | null; address: string };
+  /** How long its last answer took (a website's speed). */
+  ms: number | null;
 };
 export type GameView = {
   featureId: string;
@@ -128,6 +133,8 @@ export type GameView = {
   version: string | null;
   at: string | null;
   join: { href: string | null; address: string };
+  /** How long its last answer took (a website's speed, wave G7d2). */
+  ms: number | null;
   /** The last 24 hours, an hour each (the most that played; null: not read that hour). */
   history: Array<{ hour: string; players: number | null; online: boolean | null }>;
   /** Its Discord while its owner shows it: how many are on now and in it (Discord's public invite answer). */
@@ -136,13 +143,13 @@ export type GameView = {
   servers: SubView[] | null;
 };
 
-type LastRow = { server: string; at: Date; online: boolean; players: number | null; max: number | null; map: string | null };
+type LastRow = { server: string; at: Date; online: boolean; players: number | null; max: number | null; map: string | null; ms: number | null };
 /** Each of a site's own servers now. */
 async function subViews(featureId: string, main: { game: Game; address: string }, own: SubServer[], now: number): Promise<SubView[]> {
   const asked = own.filter((x) => x.address).map((x) => x.key);
   // The last reading of each, at once (the index on featureId, server, at).
   const last = asked.length
-    ? await prisma.$queryRaw<LastRow[]>`SELECT DISTINCT ON ("server") "server", "at", "online", "players", "max", "map" FROM "GameSample" WHERE "featureId" = ${featureId} AND "server" IN (${Prisma.join(asked)}) ORDER BY "server", "at" DESC`
+    ? await prisma.$queryRaw<LastRow[]>`SELECT DISTINCT ON ("server") "server", "at", "online", "players", "max", "map", "ms" FROM "GameSample" WHERE "featureId" = ${featureId} AND "server" IN (${Prisma.join(asked)}) ORDER BY "server", "at" DESC`
     : [];
   const byKey = new Map(last.map((r) => [r.server, r]));
   const link = own.some((x) => !x.address) ? await prisma.siteLink.findUnique({ where: { featureId }, select: { servers: true } }) : null;
@@ -151,13 +158,13 @@ async function subViews(featureId: string, main: { game: Game; address: string }
     const base = { key: x.key, title: x.title, line: x.line, hint: x.hint, game: x.game, join: joinOf(x.game, x.address || main.address) };
     if (x.address) {
       const r = byKey.get(x.key);
-      return { ...base, online: r ? r.online : null, players: r?.online ? r.players : null, max: r?.max ?? null, map: r?.map ?? null, at: r ? r.at.toISOString() : null, from: r ? "asked" : null };
+      return { ...base, online: r ? r.online : null, players: r?.online ? r.players : null, max: r?.max ?? null, map: r?.map ?? null, at: r ? r.at.toISOString() : null, from: r ? "asked" : null, ms: r?.online ? r.ms : null };
     }
     // Behind the main one: up while its link said hello in the last minutes.
     const h = heard[x.key];
-    if (!h) return { ...base, online: null, players: null, max: null, map: null, at: null, from: null };
+    if (!h) return { ...base, online: null, players: null, max: null, map: null, at: null, from: null, ms: null };
     const up = now - Date.parse(h.at) <= LINK_LIMITS.freshMinutes * 60_000;
-    return { ...base, online: up, players: up ? h.players : null, max: h.max, map: null, at: h.at, from: "link" };
+    return { ...base, online: up, players: up ? h.players : null, max: h.max, map: null, at: h.at, from: "link", ms: null };
   });
 }
 
@@ -173,7 +180,7 @@ export async function gameView(featureId: string, now = Date.now()): Promise<Gam
   if (!site) return null;
   const since = new Date(Math.floor(now / HOUR) * HOUR - 23 * HOUR);
   // The main server's readings ("" is the main one; the site's own servers are kept by their keys).
-  const samples = await prisma.gameSample.findMany({ where: { featureId, server: "", at: { gte: since } }, orderBy: { at: "asc" }, select: { at: true, online: true, players: true, max: true, name: true, map: true, version: true } });
+  const samples = await prisma.gameSample.findMany({ where: { featureId, server: "", at: { gte: since } }, orderBy: { at: "asc" }, select: { at: true, online: true, players: true, max: true, name: true, map: true, version: true, ms: true } });
   const last = samples.at(-1) ?? (await prisma.gameSample.findFirst({ where: { featureId, server: "" }, orderBy: { at: "desc" } }));
   const history = Array.from({ length: 24 }, (_, k) => {
     const from = since.getTime() + k * HOUR;
@@ -192,6 +199,7 @@ export async function gameView(featureId: string, now = Date.now()): Promise<Gam
     version: last?.version ?? null,
     at: last ? last.at.toISOString() : null,
     join: joinOf(site.game, site.address),
+    ms: last?.online ? last.ms ?? null : null,
     history,
     discord: s?.values.discordOn === true ? await discordCounts(s.values.discordUrl, now) : null,
     servers: own.length ? await subViews(featureId, site, own, now) : null,

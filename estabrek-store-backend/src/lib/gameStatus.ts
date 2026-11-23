@@ -9,6 +9,8 @@
  *   Steam      A2S_INFO over UDP (Rust, CS2, Garry's Mod, ARK, Valheim…), with its challenge
  *   Roblox     a game (an experience) by its place: how many play it now, from Roblox's own public games API (wave G7c)
  *   Discord    a community's server by its invite: how many are on now and in it, from Discord's public invite answer
+ *   Web        a website or a machine's health address (wave G7d2: a hosting company's status page): up while it answers
+ *              2xx or 3xx, and how fast; asked like the game servers, only at a public address
  *   Twitch     a streamer's channel (wave G7c2): live or not, how many watch, its title and game, with the site's own
  *              Twitch keys (lib/twitch.ts asks; without keys it isn't asked)
  *
@@ -21,11 +23,11 @@ import net from "node:net";
 import dgram from "node:dgram";
 import { lookup } from "node:dns/promises";
 
-export const GAMES = ["fivem", "minecraft", "bedrock", "steam", "roblox", "discord", "twitch"] as const;
+export const GAMES = ["fivem", "minecraft", "bedrock", "steam", "roblox", "discord", "twitch", "web"] as const;
 export type Game = (typeof GAMES)[number];
 export const isGame = (v: unknown): v is Game => typeof v === "string" && (GAMES as readonly string[]).includes(v);
 /** The games whose servers are asked at their own address and port (Roblox and Discord are asked of their own APIs). */
-type SocketGame = Exclude<Game, "roblox" | "discord" | "twitch">;
+type SocketGame = Exclude<Game, "roblox" | "discord" | "twitch" | "web">;
 const DEFAULT_PORT: Record<SocketGame, number> = { fivem: 30120, minecraft: 25565, bedrock: 19132, steam: 27015 };
 export const GAME_LIMITS = { ms: 3500, text: 120, keepHours: 48 } as const;
 
@@ -34,7 +36,7 @@ export const GAME_LIMITS = { ms: 3500, text: 120, keepHours: 48 } as const;
  * now (there is no most); for Twitch, `online` is live, `players` who watch, `name` the stream's title and `map` its game.
  */
 export type GameStatus = { online: boolean; players: number | null; max: number | null; name: string | null; map: string | null; version: string | null; ms: number | null; error?: string };
-export type Where = { host: string; port: number } | { cfx: string } | { place: string } | { invite: string } | { channel: string };
+export type Where = { host: string; port: number } | { cfx: string } | { place: string } | { invite: string } | { channel: string } | { url: string; host: string };
 
 const HOST = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
 const CFX = /^(?:(?:https?:\/\/)?(?:cfx\.re\/join\/))?([a-z0-9]{6})$/i;
@@ -60,6 +62,19 @@ export function whereOf(game: Game, raw: string): Where | null {
   if (game === "twitch") {
     const m = TWITCH_CHANNEL.exec(text);
     return m ? { channel: m[1].toLowerCase() } : null;
+  }
+  if (game === "web") {
+    // An address with its scheme (https://status.example.com/health); no user or password in it.
+    let u: URL;
+    try {
+      u = new URL(text);
+    } catch {
+      return null;
+    }
+    if ((u.protocol !== "https:" && u.protocol !== "http:") || u.username || u.password) return null;
+    const host = u.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    if (!net.isIP(host) && !HOST.test(host)) return null;
+    return { url: u.toString(), host };
   }
   if (game === "fivem") {
     const code = CFX.exec(text);
@@ -160,6 +175,14 @@ async function readDiscord(invite: string, ms: number): Promise<Omit<GameStatus,
   const body = await getJson(`https://discord.com/api/v10/invites/${encodeURIComponent(invite)}?with_counts=true`, ms);
   const guild = (body.guild ?? {}) as Record<string, unknown>;
   return { online: true, players: num(body.approximate_presence_count), max: num(body.approximate_member_count), name: clip(guild.name), map: null, version: null };
+}
+/** A website or a machine's health address: up while it answers 2xx or 3xx (its redirects aren't followed). */
+async function readWeb(url: string, host: string, ms: number, allowPrivate: boolean): Promise<Omit<GameStatus, "ms">> {
+  await addressOf(host, allowPrivate);
+  const res = await fetch(url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(ms), headers: { "user-agent": "Mozilla/5.0 (compatible; StoreStatus/1.0)" } });
+  await res.body?.cancel().catch(() => {});
+  if (res.status >= 400) throw new Error(`It answered ${res.status}`);
+  return { online: true, players: null, max: null, name: null, map: null, version: null };
 }
 /** For the tests: Roblox's games are looked up again. */
 export const forgetRoblox = () => universes.clear();
@@ -311,6 +334,7 @@ export async function readStatus(game: Game, address: string, opts: { allowPriva
     if ("cfx" in where) got = await readCfx(where.cfx, ms);
     else if ("place" in where) got = await readRoblox(where.place, ms);
     else if ("invite" in where) got = await readDiscord(where.invite, ms);
+    else if ("url" in where) got = await readWeb(where.url, where.host, ms, !!opts.allowPrivate);
     else if ("channel" in where) {
       if (!opts.twitch) return off("No Twitch keys");
       got = await opts.twitch(where.channel);
@@ -333,7 +357,8 @@ export function joinOf(game: Game, address: string): { href: string | null; addr
   if ("place" in where) return { href: `https://www.roblox.com/games/${where.place}`, address: `roblox.com/games/${where.place}` };
   if ("invite" in where) return { href: `https://discord.gg/${where.invite}`, address: `discord.gg/${where.invite}` };
   if ("channel" in where) return { href: `https://www.twitch.tv/${where.channel}`, address: `twitch.tv/${where.channel}` };
-  if (game === "roblox" || game === "discord" || game === "twitch") return { href: null, address: address.trim() };
+  if ("url" in where) return { href: where.url, address: where.host };
+  if (game === "roblox" || game === "discord" || game === "twitch" || game === "web") return { href: null, address: address.trim() };
   const shown = where.port === DEFAULT_PORT[game] && game !== "steam" ? where.host : `${net.isIPv6(where.host) ? `[${where.host}]` : where.host}:${where.port}`;
   if (game === "fivem") return { href: `fivem://connect/${shown}`, address: shown };
   if (game === "steam") return { href: `steam://connect/${shown}`, address: shown };

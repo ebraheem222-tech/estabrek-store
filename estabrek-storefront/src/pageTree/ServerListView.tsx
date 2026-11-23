@@ -13,7 +13,9 @@ type Sub = {
   title: unknown;
   line: unknown;
   hint: unknown;
-  game: "fivem" | "minecraft" | "bedrock" | "steam";
+  game: "fivem" | "minecraft" | "bedrock" | "steam" | "web";
+  /** A website's or a machine's speed (wave G7d2). */
+  ms?: number | null;
   online: boolean | null;
   players: number | null;
   max: number | null;
@@ -23,9 +25,9 @@ type Sub = {
 type Live = { featureId: string; servers: Sub[] | null };
 
 const WORDS = {
-  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت عليه", copy: "انسخ العنوان", copied: "انتسخ", then: "بعدها اكتب", sample: "سيرفر", empty: "السيرفرات بتطلع هون قريباً." },
-  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join it", copy: "Copy the address", copied: "Copied", then: "Then type", sample: "Server", empty: "The servers show here soon." },
-  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר אליו", copy: "להעתיק את הכתובת", copied: "הועתק", then: "ואז להקליד", sample: "שרת", empty: "השרתים יופיעו כאן בקרוב." },
+  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت عليه", copy: "انسخ العنوان", copied: "انتسخ", then: "بعدها اكتب", sample: "سيرفر", empty: "السيرفرات بتطلع هون قريباً.", up: "شغّال", down: "واقف" },
+  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join it", copy: "Copy the address", copied: "Copied", then: "Then type", sample: "Server", empty: "The servers show here soon.", up: "Up", down: "Down" },
+  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר אליו", copy: "להעתיק את הכתובת", copied: "הועתק", then: "ואז להקליד", sample: "שרת", empty: "השרתים יופיעו כאן בקרוב.", up: "פועל", down: "לא פועל" },
 } as const;
 
 const isLive = (v: unknown): v is Live => !!v && typeof v === "object" && typeof (v as Live).featureId === "string";
@@ -98,7 +100,13 @@ export function ServerListView({ live: first, lang, joinLabel, copyLabel, empty,
             <div className={css.top}>
               <span className={css.dot} aria-hidden="true" />
               <h3 className={css.title}>{wordsIn(s.title, lang) || s.key}</h3>
-              {s.online && s.players !== null ? (
+              {s.game === "web" ? (
+                // A machine on a status page: up or down, and how fast it answered.
+                <span className={css.state} data-testid="server-web">
+                  {s.online === null ? t.unknown : s.online ? t.up : t.down}
+                  {s.online && typeof s.ms === "number" ? <bdi className={css.players}> {s.ms} ms</bdi> : null}
+                </span>
+              ) : s.online && s.players !== null ? (
                 <span className={css.players} dir="ltr" data-testid="server-players" data-gp="num">
                   {s.players}
                   {s.max ? ` / ${s.max}` : ""} <span>{t.players}</span>
@@ -109,7 +117,7 @@ export function ServerListView({ live: first, lang, joinLabel, copyLabel, empty,
             </div>
             {line && size === "big" ? <p className={css.line}>{line}</p> : null}
             {s.map && size === "big" ? <p className={css.map}>{s.map}</p> : null}
-            <div className={css.ways}>
+            {s.game === "web" ? null : <div className={css.ways}>
               {s.join.href ? (
                 <a className={css.join} href={s.join.href} rel="nofollow" data-testid="server-join" data-gp="go">
                   {joinLabel || t.join}
@@ -119,7 +127,7 @@ export function ServerListView({ live: first, lang, joinLabel, copyLabel, empty,
                 <code dir="ltr">{s.join.address}</code>
                 <span>{copied === s.key ? t.copied : copyLabel || t.copy}</span>
               </button>
-            </div>
+            </div>}
             {hint ? (
               <p className={css.hint}>
                 {t.then} <code dir="ltr">{hint}</code>

@@ -36,7 +36,7 @@ export const waitsOf = (bp: SiteBlueprint): SiteWait[] => used(bp).flatMap((m) =
 /** The board page's name where it isn't bookings (a game server's: its applications by their state). */
 const BOARD_NAME: Partial<Record<Archetype, typeof PANEL.board>> = { server: PANEL.boardServer };
 /** A community's board has its events' calendar (wave G7c), beside its applications if it has them. */
-const boardName = (bp: SiteBlueprint) => (bp.archetype === "server" && bp.modules.tickets && !bp.modules.events && !bp.modules.apply && !bp.modules.mcstore ? PANEL.boardTickets : bp.archetype === "server" && bp.modules.events ? (bp.modules.apply || bp.modules.mcstore ? PANEL.boardServerCalendar : PANEL.boardCalendar) : BOARD_NAME[bp.archetype] ?? PANEL.board);
+const boardName = (bp: SiteBlueprint) => (bp.archetype === "server" && bp.modules.hosting ? PANEL.boardOrders : bp.archetype === "server" && bp.modules.tickets && !bp.modules.events && !bp.modules.apply && !bp.modules.mcstore ? PANEL.boardTickets : bp.archetype === "server" && bp.modules.events ? (bp.modules.apply || bp.modules.mcstore ? PANEL.boardServerCalendar : PANEL.boardCalendar) : BOARD_NAME[bp.archetype] ?? PANEL.board);
 
 /**
  * A blueprint's panel (its own pages in the admin's menu): «اليوم» with every number at the top, its modules'
@@ -73,6 +73,8 @@ export function siteCounts(bp: SiteBlueprint) {
 
 /** The same setting key rule as the backend's (lib/pageTree.ts SETTING_KEY). */
 const SETTING_KEY = /^[a-z][a-zA-Z0-9]{0,30}$/;
+/** The addresses the shop uses itself (the backend's lib/collections.ts RESERVED_SLUGS): a site's page may not start with one. */
+const RESERVED = new Set(["shop", "p", "c", "cart", "checkout", "account", "search", "about", "contact", "wishlist", "order", "policies", "request", "studio-frame", "design-frame", "stock-alert", "api", "admin", "ar", "en", "he", "__block", "__component", "__template", "__collection"]);
 /** The same page address rule as the backend's templates (lib/featureTemplate.ts TEMPLATE_PAGE_SLUG). */
 const PAGE_SLUG = /^\/[a-z0-9][a-z0-9-]{0,60}(\/[a-z0-9][a-z0-9-]{0,60}){0,3}$/;
 /** What is wrong with a blueprint, in words (nothing: it can be built). */
@@ -124,6 +126,7 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
   const seen = new Set<string>();
   for (const p of pages) {
     if (!PAGE_SLUG.test(p.slug)) out.push(`The page address "${p.slug}" isn't /small-words`);
+    if (RESERVED.has(p.slug.split("/")[1] ?? "")) out.push(`The shop already uses the page address "${p.slug}"`);
     if (seen.has(p.slug)) out.push(`Two pages at "${p.slug}"`);
     seen.add(p.slug);
   }
