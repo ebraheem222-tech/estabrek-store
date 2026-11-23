@@ -721,6 +721,23 @@ model GameSample {
   @@index([featureId, at])
 }
 
+/// A reviewer's vote on a row waiting in a site panel's queue (sites wave G3, src/lib/siteVotes.ts): an application
+/// to a game server, one vote for each member of the staff (with a note if they like), changed or taken back by them.
+/// The member's name is kept as it was when they voted.
+model RowVote {
+  id         String         @id @default(cuid())
+  itemId     String
+  item       CollectionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  memberId   String         @db.VarChar(64)
+  memberName String         @db.VarChar(200)
+  vote       String         @db.VarChar(8)
+  note       String?        @db.VarChar(500)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([itemId, memberId])
+}
+
 /// One thing of a feature. A thing belongs to one feature at most.
 model FeatureItem {
   featureId String
@@ -1434,6 +1451,8 @@ model CollectionItem {
   linksOut     CollectionLink[] @relation("linkFrom")
   linksIn      CollectionLink[] @relation("linkTo")
   storeLinks   StoreLink[]      @relation("storeLinkFrom")
+  /// The reviewers' votes on it, while it waits in a site panel's queue (src/lib/siteVotes.ts).
+  votes        RowVote[]
 
   @@unique([collectionId, slug])
   @@index([collectionId, status, sort])

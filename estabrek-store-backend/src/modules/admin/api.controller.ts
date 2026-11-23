@@ -23,7 +23,7 @@ import { AppError } from "../../utils/httpError.js";
 import type { Field } from "../../lib/collectionTree.js";
 import { ACTS, KEY_LIMITS, ScopesSchema, forgetKeys, keyView, newSecret, type KeyLite } from "../../lib/apiKeys.js";
 import { openApi, typesText } from "../../lib/apiDocs.js";
-import { API_LIMITS, AccessSchema, DATA_API_BASE, PRIVATE_MAX, RolesSchema, WHO, accessOf, docTables, fieldView, groupOf, isOpen, privateOf, rolesOf, tableFrom } from "../../lib/dataApi.js";
+import { API_LIMITS, AccessSchema, DATA_API_BASE, PRIVATE_MAX, RolesSchema, WHO, accessOf, docTables, fieldView, groupOf, isOpen, lockedOf, privateOf, rolesOf, tableFrom } from "../../lib/dataApi.js";
 import { roleKeys } from "../../lib/shopperRoles.js";
 import { customerAccountsOn } from "../../lib/features.js";
 
@@ -34,7 +34,7 @@ const tableView = (c: { id: string; slug: string; name: unknown; fields: unknown
   const fields = (Array.isArray(c.fields) ? c.fields : []) as Field[];
   const roles = rolesOf(c.api);
   // A private field that was since removed from the table isn't listed (it comes back with the field).
-  return { id: c.id, slug: c.slug, name: c.name, access, open: isOpen(access, roles), private: privateOf(c.api).filter((id) => fields.some((f) => f.id === id)), roles, group: groupOf(c.api), fields: fields.map(fieldView) };
+  return { id: c.id, slug: c.slug, name: c.name, access, open: isOpen(access, roles), private: privateOf(c.api).filter((id) => fields.some((f) => f.id === id)), roles, group: groupOf(c.api), locked: lockedOf(c.api).filter((id) => fields.some((f) => f.id === id)), fields: fields.map(fieldView) };
 };
 const TABLE = { id: true, slug: true, name: true, fields: true, api: true } as const;
 
@@ -81,7 +81,9 @@ r.put(
     // The private fields, the roles and the group stay as they were when the request says nothing of them.
     const roles = askedRoles ? { read: [...new Set(askedRoles.read ?? [])], create: [...new Set(askedRoles.create ?? [])], update: [...new Set(askedRoles.update ?? [])], delete: [...new Set(askedRoles.delete ?? [])] } : rolesOf(was.api);
     const group = askedGroup ?? groupOf(was.api);
-    const kept = { ...access, private: asked ? [...new Set(asked)] : privateOf(was.api), ...(Object.values(roles).some((x) => x.length) ? { roles } : {}), ...(group ? { group } : {}) };
+    // The locked fields (a whole site's: an application's state) stay as the site made them.
+    const locked = lockedOf(was.api);
+    const kept = { ...access, private: asked ? [...new Set(asked)] : privateOf(was.api), ...(Object.values(roles).some((x) => x.length) ? { roles } : {}), ...(group ? { group } : {}), ...(locked.length ? { locked } : {}) };
     // `updatedAt` is the table's own (its fields, its name): opening its API doesn't touch it.
     await prisma.$executeRaw`UPDATE "Collection" SET "api" = ${JSON.stringify(kept)}::jsonb WHERE "id" = ${id}`;
     res.json(tableView(await prisma.collection.findUniqueOrThrow({ where: { id }, select: TABLE })));

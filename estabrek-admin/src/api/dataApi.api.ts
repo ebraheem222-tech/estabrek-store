@@ -12,7 +12,7 @@ export type TableAccess = Record<Act, Who>;
 export type ApiField = { id: string; type: FieldType; name: Local | null; required: boolean; options?: Array<{ id: string; name: Local | null }>; many?: boolean; currency?: string; /** A picture or file field shoppers may upload into. */ upload?: { maxMb: number; kinds?: string[]; private?: boolean } };
 /** The shopper roles whose holders do an act on every row (الأدوار والمجموعات). */
 export type ActRoles = Record<Act, string[]>;
-export type ApiTable = { id: string; slug: string; name: Local | null; access: TableAccess; open: boolean; /** The fields only a key sees or writes. */ private: string[]; roles?: ActRoles; /** A shopper reads their group's rows too. */ group?: boolean; fields: ApiField[] };
+export type ApiTable = { id: string; slug: string; name: Local | null; access: TableAccess; open: boolean; /** The fields only a key sees or writes. */ private: string[]; /** Read by a shopper, never written by one (a whole site's: an application's state). */ locked?: string[]; roles?: ActRoles; /** A shopper reads their group's rows too. */ group?: boolean; fields: ApiField[] };
 export type Scopes = { /** Every table (those made later too), or these, by id. */ tables: "*" | string[]; acts: Act[] };
 export type KeyState = "active" | "revoked" | "expired";
 /** A key as the admin sees it: its first letters, never the key itself. */

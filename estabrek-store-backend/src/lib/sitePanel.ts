@@ -2,7 +2,9 @@
  * A whole site's panel (wave 1 of docs/sites-300-plan.ar.md): its own pages in the admin's menu, under the site's
  * name, made of the panel parts its file declares (admin studio/templates/sites):
  *   numbers   rows counted, in a window of days, next to the window before
- *   queue     rows waiting for a decision; a button sets the row's fields ("confirmed", "replied")
+ *   queue     rows waiting for a decision; a button sets the row's fields ("confirmed", "replied"); with `votes`,
+ *             each member of the staff says yes or no once (lib/siteVotes.ts), and a button "after the votes"
+ *             (accept) waits for as many yes as one of the site's settings says
  *   view      a saved table: columns, order
  *   settings  the site's settings form
  *   actions   quick actions that set a setting ("close online booking")
@@ -28,6 +30,7 @@ import { csvCell } from "./dataRows.js";
 import { declsOf, valuesOf, type SettingDecl, type Values } from "./siteSettings.js";
 import type { Field } from "./collectionTree.js";
 import { gameView } from "./gameSites.js";
+import { votesOn, type VoteView } from "./siteVotes.js";
 
 export const PANEL_LIMITS = { pages: 8, parts: 12, numbers: 8, conds: 6, columns: 8, decisions: 4, actions: 8, rows: 50, people: 4, days: 90, month: 200, exportRows: 5000 } as const;
 export const PANEL_ICONS = ["today", "lists", "settings", "calendar", "people", "chart"] as const;
@@ -45,14 +48,17 @@ const Conds = z.array(Cond).max(PANEL_LIMITS.conds);
 const Columns = z.array(FieldId).min(1).max(PANEL_LIMITS.columns);
 
 const NumberItem = z.object({ key: Key, label: Label, table: TableRef, where: Conds.optional(), window: z.enum(["today", "week", "month"]).optional(), compare: z.boolean().optional() }).strict();
-const Decision = z.object({ key: Key, label: Label, set: z.record(FieldId, Scalar).refine((s) => Object.keys(s).length > 0 && Object.keys(s).length <= 4, "It sets one field or a few"), tone: z.enum(["good", "bad"]).optional() }).strict();
+// `afterVotes`: in a queue that counts votes, the button waits for enough yes (an application accepted).
+const Decision = z.object({ key: Key, label: Label, set: z.record(FieldId, Scalar).refine((s) => Object.keys(s).length > 0 && Object.keys(s).length <= 4, "It sets one field or a few"), tone: z.enum(["good", "bad"]).optional(), afterVotes: z.boolean().optional() }).strict();
+/** A queue whose rows the staff vote on; `need`: the site's number setting saying how many yes a button "after the votes" waits for. */
+const Votes = z.object({ need: Key.optional() }).strict();
 const Decisions = z.array(Decision).min(1).max(PANEL_LIMITS.decisions);
 const Action = z.object({ key: Key, label: Label, note: Label.optional(), setting: Key, value: Scalar }).strict();
 const Rows = z.number().int().min(1).max(PANEL_LIMITS.rows).optional();
 
 export const PanelPartSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("numbers"), key: Key, items: z.array(NumberItem).min(1).max(PANEL_LIMITS.numbers) }).strict(),
-  z.object({ kind: z.literal("queue"), key: Key, title: Label, table: TableRef, where: Conds, show: Columns, decisions: Decisions, empty: Label.optional(), limit: Rows }).strict(),
+  z.object({ kind: z.literal("queue"), key: Key, title: Label, table: TableRef, where: Conds, show: Columns, decisions: Decisions, empty: Label.optional(), limit: Rows, votes: Votes.optional() }).strict(),
   z.object({ kind: z.literal("view"), key: Key, title: Label, table: TableRef, where: Conds.optional(), columns: Columns, sort: z.object({ field: FieldId, dir: z.enum(["asc", "desc"]) }).strict().optional(), limit: Rows }).strict(),
   z.object({ kind: z.literal("settings"), key: Key, title: Label.optional(), keys: z.array(Key).min(1).max(40) }).strict(),
   z.object({ kind: z.literal("actions"), key: Key, title: Label.optional(), items: z.array(Action).min(1).max(PANEL_LIMITS.actions) }).strict(),
@@ -142,8 +148,9 @@ export function panelProblems(panel: Panel, tables: Array<{ key: string; fields:
         for (const f of read.fields.filter(own)) if (!fields.has(f)) out.push({ at, message: `"${part.key}": the table "${key}" has no field "${f}"` });
         for (const [f, kind] of read.kinds ?? []) if ((!own(f) || fields.has(f)) && !isKind(fields.get(f), kind, f)) out.push({ at, message: `"${part.key}": "${f}" isn't ${kind === "select" ? "a choice" : "a date"}` });
       }
-      const keys = part.kind === "settings" ? part.keys : part.kind === "actions" ? part.items.map((a) => a.setting) : [];
+      const keys = part.kind === "settings" ? part.keys : part.kind === "actions" ? part.items.map((a) => a.setting) : part.kind === "queue" && part.votes?.need ? [part.votes.need] : [];
       for (const k of keys) if (!settings.includes(k)) out.push({ at, message: `"${part.key}" names "${k}", which isn't one of the site's settings` });
+      if ((part.kind === "queue" || part.kind === "scanner") && !(part.kind === "queue" && part.votes) && part.decisions.some((d) => d.afterVotes)) out.push({ at, message: `"${part.key}": a button waits for votes in a queue that counts them` });
     }),
   );
   return out;
@@ -256,6 +263,8 @@ const SYSTEM: Record<string, { type: string; name: Record<Lang, string> }> = {
   $createdAt: { type: "$date", name: { ar: "وصل", en: "Came in", he: "התקבל" } },
   $updatedAt: { type: "$date", name: { ar: "آخر تغيير", en: "Last change", he: "שינוי אחרון" } },
   $status: { type: "$status", name: { ar: "النشر", en: "Published", he: "פרסום" } },
+  // The shopper who added the row (through the shop: an application, a report): their name, email, Discord and Steam.
+  $by: { type: "$person", name: { ar: "مين", en: "Who", he: "מי" } },
 };
 
 const filtersOf = (conds: Array<{ field: string; op: string; value?: unknown }> = []): GridFilter[] => conds.map((c) => ({ field: c.field, op: c.op as GridFilter["op"], ...(c.value !== undefined ? { value: c.value } : {}) }));
@@ -276,10 +285,21 @@ function columnsOf(table: TableHere, ids: string[]): Column[] {
 }
 /** A choice field's options, in its own order. */
 const optionsOf = (table: TableHere, id: string) => ((table.fields.find((x) => x.id === id) as { options?: Array<{ id: string; name?: unknown }> } | undefined)?.options ?? []).map((o) => ({ id: o.id, name: o.name ?? null }));
-/** A row as a part shows it: the asked cells only. */
-function cellsOf(row: Pick<GridRow, "id" | "data" | "status" | "createdAt" | "updatedAt">, ids: string[]) {
-  const sys: Record<string, unknown> = { $createdAt: new Date(row.createdAt).toISOString(), $updatedAt: new Date(row.updatedAt).toISOString(), $status: row.status };
+/** A row as a part shows it: the asked cells only (who added it by their id, until `withPeople` names them). */
+function cellsOf(row: Pick<GridRow, "id" | "data" | "status" | "createdAt" | "updatedAt" | "ownerId">, ids: string[]) {
+  const sys: Record<string, unknown> = { $createdAt: new Date(row.createdAt).toISOString(), $updatedAt: new Date(row.updatedAt).toISOString(), $status: row.status, $by: row.ownerId ?? null };
   return { id: row.id, cells: Object.fromEntries(ids.map((id) => [id, id in sys ? sys[id] : (row.data?.[id] ?? null)])) };
+}
+type Cells = ReturnType<typeof cellsOf>;
+/** Who added a row, as the panel shows them (to the store's own members): their name, email, and game accounts. */
+export type Person = { name: string; email: string; discordId: string | null; steamId: string | null };
+/** The rows' "who" cells, from the shoppers' ids to the shoppers (one question for all of them). */
+async function withPeople(rows: Cells[]): Promise<void> {
+  const ids = [...new Set(rows.map((r) => r.cells.$by).filter((v): v is string => typeof v === "string" && !!v))];
+  if (!ids.length) return;
+  const found = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, email: true, discordId: true, steamId: true } });
+  const byId = new Map(found.map((u) => [u.id, { name: u.name, email: u.email, discordId: u.discordId, steamId: u.steamId } satisfies Person]));
+  for (const r of rows) if ("$by" in r.cells) r.cells.$by = typeof r.cells.$by === "string" ? (byId.get(r.cells.$by) ?? null) : null;
 }
 
 export async function tablesHere(ids: string[]): Promise<Map<string, TableHere>> {
@@ -329,7 +349,8 @@ export function monthRange(month: string | undefined, now: number): { month: str
   return { month: ok, from: ymd(Date.UTC(y, m - 1, 1)), to: ymd(Date.UTC(y, m, 0)) };
 }
 
-export type ViewOpts = { lang: Lang; now?: number; month?: string; period?: string };
+/** `member`: who is looking (their own vote on a row is said). */
+export type ViewOpts = { lang: Lang; now?: number; month?: string; period?: string; member?: string | null };
 
 /** One page of a site's panel as this member sees it, each part with what it shows now. */
 export async function pageView(site: SitePanel, page: SitePanel["panel"][number], may: PanelRights, opts: ViewOpts) {
@@ -342,6 +363,13 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
   const period: Period = (PERIODS as readonly string[]).includes(opts.period ?? "") ? (opts.period as Period) : "month";
 
   const out: unknown[] = [];
+  // Every row shown on the page, so who added each is named at the end in one question.
+  const seen: Cells[] = [];
+  const shape = (rows: GridRow[] | undefined, ids: string[]) => {
+    const cells = (rows ?? []).map((r) => cellsOf(r, ids));
+    seen.push(...cells);
+    return cells;
+  };
   for (const part of parts) {
     const t = "table" in part ? tableOf(part.table) : null;
     if (part.kind === "numbers") {
@@ -360,8 +388,12 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
       const shown = part.kind === "queue" ? part.show : part.columns;
       const sort = part.kind === "queue" ? [{ field: "$createdAt", dir: "asc" as const }] : part.sort ? [part.sort] : [];
       const got = await rowsOf(t, { pageSize: part.limit ?? (part.kind === "queue" ? 10 : 20), filters: filtersOf(part.where), sort, lang: opts.lang });
-      const common = { key: part.key, title: part.title, table: tableView(t), columns: columnsOf(t, shown), rows: got?.rows.map((r) => cellsOf(r, shown)) ?? [], total: got?.total ?? 0, ...(got ? {} : { problem: "It can't be read" }) };
-      out.push(part.kind === "queue" ? { kind: "queue", ...common, decisions: part.decisions.map((d) => ({ key: d.key, label: d.label, ...(d.tone ? { tone: d.tone } : {}) })), canDecide: may.writeTable(t.id), empty: part.empty ?? null } : { kind: "view", ...common });
+      const common = { key: part.key, title: part.title, table: tableView(t), columns: columnsOf(t, shown), rows: shape(got?.rows, shown) as Array<Cells & { votes?: VoteView }>, total: got?.total ?? 0, ...(got ? {} : { problem: "It can't be read" }) };
+      if (part.kind === "queue" && part.votes) {
+        const votes = await votesOn(common.rows.map((r) => r.id), opts.member ?? null);
+        for (const r of common.rows) r.votes = votes.get(r.id);
+      }
+      out.push(part.kind === "queue" ? { kind: "queue", ...common, decisions: part.decisions.map((d) => ({ key: d.key, label: d.label, ...(d.tone ? { tone: d.tone } : {}), ...(d.afterVotes && part.votes ? { afterVotes: true } : {}) })), canDecide: may.writeTable(t.id), empty: part.empty ?? null, ...(part.votes ? { votes: { need: needOf(site, part) } } : {}) } : { kind: "view", ...common });
     } else if (part.kind === "settings") {
       const decls = part.keys.map((k) => site.decls.find((d) => d.key === k)).filter((d): d is SettingDecl => !!d);
       out.push({ kind: "settings", key: part.key, title: part.title ?? null, declared: decls, values: Object.fromEntries(decls.map((d) => [d.key, site.values[d.key]])), canWrite: may.writeSettings });
@@ -380,14 +412,14 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
       const columns = [];
       for (const o of optionsOf(t, part.field)) {
         const got = await rowsOf(t, { pageSize: part.limit ?? 20, filters: [...filtersOf(part.where), { field: part.field, op: "is", value: o.id }], sort: [{ field: "$createdAt", dir: "desc" }], lang: opts.lang });
-        columns.push({ id: o.id, name: o.name, rows: got?.rows.map((r) => cellsOf(r, part.show)) ?? [], total: got?.total ?? 0 });
+        columns.push({ id: o.id, name: o.name, rows: shape(got?.rows, part.show), total: got?.total ?? 0 });
       }
       out.push({ kind: "kanban", key: part.key, title: part.title, table: tableView(t), field: part.field, columns, show: columnsOf(t, part.show), canMove: may.writeTable(t.id) });
     } else if (part.kind === "calendar" && t) {
       const range = monthRange(opts.month, now);
       const shown = [...new Set([part.date, ...part.show, ...(part.color ? [part.color] : [])])];
       const got = await rowsOf(t, { pageSize: PANEL_LIMITS.month, filters: [...filtersOf(part.where), { field: part.date, op: "between", value: range.from, value2: range.to }], sort: [{ field: part.date, dir: "asc" }], lang: opts.lang });
-      out.push({ kind: "calendar", key: part.key, title: part.title, table: tableView(t), month: range.month, date: part.date, ...(part.color ? { color: part.color, options: optionsOf(t, part.color) } : {}), show: columnsOf(t, part.show), rows: got?.rows.map((r) => cellsOf(r, shown)) ?? [], total: got?.total ?? 0, canMove: may.writeTable(t.id) && own(part.date) });
+      out.push({ kind: "calendar", key: part.key, title: part.title, table: tableView(t), month: range.month, date: part.date, ...(part.color ? { color: part.color, options: optionsOf(t, part.color) } : {}), show: columnsOf(t, part.show), rows: shape(got?.rows, shown), total: got?.total ?? 0, canMove: may.writeTable(t.id) && own(part.date) });
     } else if (part.kind === "people") {
       out.push({ kind: "people", key: part.key, title: part.title, by: part.by });
     } else if (part.kind === "report" && t) {
@@ -399,13 +431,14 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
     } else if (part.kind === "map" && t) {
       const shown = [part.label, part.address, ...(part.show ?? [])];
       const got = await rowsOf(t, { pageSize: PANEL_LIMITS.rows, filters: [...filtersOf(part.where), { field: part.address, op: "notEmpty" }], lang: opts.lang });
-      out.push({ kind: "map", key: part.key, title: part.title, table: tableView(t), label: part.label, address: part.address, columns: columnsOf(t, shown), rows: got?.rows.map((r) => cellsOf(r, shown)) ?? [] });
+      out.push({ kind: "map", key: part.key, title: part.title, table: tableView(t), label: part.label, address: part.address, columns: columnsOf(t, shown), rows: shape(got?.rows, shown) });
     } else if (part.kind === "game") {
       out.push({ kind: "game", key: part.key, title: part.title, status: await gameView(site.featureId), canCheck: may.writeSettings });
     } else if (part.kind === "scanner" && t) {
       out.push({ kind: "scanner", key: part.key, title: part.title, table: tableView(t), columns: columnsOf(t, part.show), decisions: part.decisions.map((d) => ({ key: d.key, label: d.label, ...(d.tone ? { tone: d.tone } : {}) })), canDecide: may.writeTable(t.id) });
     }
   }
+  await withPeople(seen);
   return {
     featureId: site.featureId,
     name: site.name,
@@ -416,6 +449,12 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
     // Whoever may change the site's settings arranges its panel: every part of the page, and the site's tables to build their own from.
     ...(may.writeSettings ? { arrange: await arrangeView(site, page.key) } : {}),
   };
+}
+
+/** How many yes a queue's buttons "after the votes" wait for: its site's setting (a whole number, 0 or more), else one. */
+export function needOf(site: SitePanel, part: Extract<PanelPart, { kind: "queue" }>): number {
+  const v = part.votes?.need ? site.values[part.votes.need] : undefined;
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), 50) : 1;
 }
 
 /** A part's name on the owner's list: its title, else its first number's, else none (the admin names it by its kind). */
@@ -503,7 +542,9 @@ export async function peopleSearch(site: SitePanel, part: Extract<PanelPart, { k
       people.set(key, person);
     }
   }
-  return { people: [...people.values()].sort((a, b) => b.last.localeCompare(a.last)).slice(0, 20) };
+  const found = [...people.values()].sort((a, b) => b.last.localeCompare(a.last)).slice(0, 20);
+  await withPeople(found.flatMap((p) => p.tables.flatMap((g) => g.rows as Cells[])));
+  return { people: found };
 }
 
 /** A scanner's code: the row of its table whose field (or address) is the code, as the part shows it. */
@@ -515,7 +556,10 @@ export async function findByCode(site: SitePanel, part: Extract<PanelPart, { kin
   const value = part.match === "$slug" ? (asked.split("/").filter(Boolean).pop() ?? asked).toLowerCase() : asked;
   const got = await rowsOf(t, { pageSize: 1, filters: [{ field: part.match, op: "is", value }] });
   const row = got?.rows[0];
-  return row ? cellsOf(row, part.show) : null;
+  if (!row) return null;
+  const cells = cellsOf(row, part.show);
+  await withPeople([cells]);
+  return cells;
 }
 
 /** A report's period as a file: its rows, the part's columns in words, a spreadsheet's way (a header, then a line a row). */
@@ -528,12 +572,15 @@ export async function reportCsv(site: SitePanel, part: Extract<PanelPart, { kind
   const text = (c: Column, v: unknown) => {
     if (v === null || v === undefined) return "";
     if (c.type === "select") return wordsOf((c.options as Array<{ id: string; name?: unknown }> | undefined)?.find((o) => o.id === v)?.name, lang) || String(v);
+    if (c.type === "$person" && typeof v === "object") return [(v as Person).name, (v as Person).email].filter(Boolean).join(" ");
     return wordsOf(v, lang);
   };
   const lines = [columns.map((c) => csvCell(wordsOf(c.name, lang) || c.id, true)).join(",")];
   for (let page = 1; lines.length <= PANEL_LIMITS.exportRows; page++) {
     const got = await rowsOf(t, { page, pageSize: 200, filters: [...filtersOf(part.where), periodFilter(range)], sort: [{ field: "$createdAt", dir: "asc" }], lang });
-    for (const row of got?.rows ?? []) lines.push(columns.map((c) => csvCell(text(c, cellsOf(row, part.columns).cells[c.id]), true)).join(","));
+    const rows = (got?.rows ?? []).map((row) => cellsOf(row, part.columns));
+    await withPeople(rows);
+    for (const row of rows) lines.push(columns.map((c) => csvCell(text(c, row.cells[c.id]), true)).join(","));
     if (!got || got.rows.length < 200) break;
   }
   return { name: `${t.slug}-${range.from}-${range.to}.csv`, body: `${String.fromCodePoint(0xfeff)}${lines.join("\r\n")}\r\n` };

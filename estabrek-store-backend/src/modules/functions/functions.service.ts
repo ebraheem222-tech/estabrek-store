@@ -712,7 +712,10 @@ export async function runFn(id: string, input: Record<string, unknown>, opts: { 
 
 /* ---------------- Started by a trigger: through the queue ---------------- */
 
-/** What a row event hands the function: the row as it is now, as it was before a change, and what happened. */
+/**
+ * What a row event hands the function: the row as it is now, as it was before a change, and what happened. A row a
+ * shopper added says who (`$owner`, their id: a customer step reads them by it, an application's player).
+ */
 async function rowInput(r: NonNullable<FnTask["row"]>, lang: Lang): Promise<Record<string, unknown> | null> {
   const c = await prisma.collection.findUnique({ where: { id: r.table }, select: { id: true, slug: true, fields: true } });
   // (A deleted row is in the trash, and still read from there.)
@@ -721,7 +724,7 @@ async function rowInput(r: NonNullable<FnTask["row"]>, lang: Lang): Promise<Reco
   const table: Table = { id: c.id, slug: c.slug, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[] };
   const [now] = await rowsOut(table, [row], lang);
   const before = r.before === undefined ? null : (await rowsOut(table, [{ ...row, data: r.before }], lang))[0];
-  return { row: now, before, event: r.event, table: table.slug };
+  return { row: { ...now, $owner: row.ownerId ?? null }, before, event: r.event, table: table.slug };
 }
 
 /**

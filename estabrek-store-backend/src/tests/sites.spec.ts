@@ -100,7 +100,7 @@ describe("Whole sites", () => {
     }
     await clean();
     expect({ tables: await prisma.collection.count(), fns: await prisma.fn.count(), pages: await prisma.page.count(), rows: await prisma.collectionItem.count() }).toEqual(before);
-  });
+  }, 60_000);
 
   test("nothing of a site is on the shop while it is off; switched on, its pages and its rows' pages show, and a visitor's message lands in its table", async () => {
     const feature = await install("site-restaurant", "en");

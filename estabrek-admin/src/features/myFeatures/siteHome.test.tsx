@@ -66,10 +66,13 @@ afterEach(() => {
 });
 
 describe("A site's menus", () => {
-  test("every page in the site's order, its first one as «الرئيسية», named in three languages", () => {
+  test("every page in the site's order (but the ones another page leads to), its first one as «الرئيسية», named in three languages", () => {
     for (const s of SITES) {
       const shell = shellOf(s);
-      expect(shell.header.map((l) => l.page)).toEqual(pagesOf(s).map((p) => p.key));
+      expect(shell.header.map((l) => l.page)).toEqual(pagesOf(s).filter((p) => p.menu !== false).map((p) => p.key));
+      // A game server's form for each kind is reached from its applications' page.
+      if (s.modules.apply) expect(shell.header.map((l) => l.page)).toEqual(expect.arrayContaining(["rules", "apply"]));
+      expect(shell.header.some((l) => l.page.startsWith("apply-"))).toBe(false);
       expect(shell.footer).toEqual(shell.header);
       expect(shell.header[0]).toEqual({ page: "home", label: L("الرئيسية", "Home", "דף הבית") });
       for (const l of shell.header) for (const lang of ["ar", "en", "he"] as const) expect(l.label[lang].length, `${s.key} ${l.page}`).toBeGreaterThan(0);

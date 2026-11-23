@@ -15,7 +15,7 @@ import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { say } from "../../studio/say";
 import * as Panels from "../../api/sitePanels.api";
-import type { PanelActions, PanelAsk, PanelNumbers, PanelPageView, PanelQueue, PanelSettings, PanelView } from "../../api/sitePanels.api";
+import type { PanelActions, PanelAsk, PanelNumbers, PanelPageView, PanelQueue, PanelSettings, PanelView, PanelVotes } from "../../api/sitePanels.api";
 import { SettingsEditor } from "../myFeatures/SiteSettings";
 import { cellText, changeText, inLang } from "./panelText";
 import { CalendarPart, ChartPart, GamePart, KanbanPart, MapPart, PeoplePart, ReportPart, ScannerPart } from "./PanelParts";
@@ -122,6 +122,21 @@ const gridLink = (slug: string) => `/admin/data?table=${encodeURIComponent(slug)
 function Queue({ part, view, took, onError }: { part: PanelQueue; view: PanelPageView; took: (v: PanelPageView) => void; onError: (e: unknown) => void }) {
   const lang = adminLang();
   const decide = useMutation({ mutationFn: ({ row, decision }: { row: string; decision: string }) => Panels.decide(view.featureId, view.page.key, part.key, row, decision, lang), onSuccess: took, onError });
+  // A queue whose rows the staff vote on: each member's yes or no (pressed again: taken back), with a note.
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const vote = useMutation({
+    mutationFn: ({ row, said }: { row: string; said: "yes" | "no" | "none" }) => Panels.vote(view.featureId, view.page.key, part.key, row, said, notes[row] ?? "", lang),
+    onSuccess: (next, { row }) => {
+      took(next);
+      setNotes((n) => {
+        const next = { ...n };
+        delete next[row];
+        return next;
+      });
+    },
+    onError,
+  });
+  const need = part.votes?.need ?? 0;
   const [first, ...rest] = part.columns;
   return (
     <section className={box} data-testid={`site-part-${part.key}`} data-kind="queue">
@@ -143,18 +158,45 @@ function Queue({ part, view, took, onError }: { part: PanelQueue; view: PanelPag
                 return text ? (
                   <div key={c.id} className="text-white/65">
                     <span className="text-white/40">{inLang(c.name ?? undefined, lang)}: </span>
-                    <span dir={c.type === "phone" || c.type === "email" ? "ltr" : undefined}>{text}</span>
+                    <span dir={c.type === "phone" || c.type === "email" || c.type === "$person" ? "ltr" : undefined}>{text}</span>
                   </div>
                 ) : null;
               })}
+              {part.votes && row.votes ? <Votes votes={row.votes} need={need} rowId={row.id} /> : null}
             </div>
             {part.canDecide ? (
-              <div className="flex shrink-0 gap-2">
-                {part.decisions.map((d) => (
-                  <Button key={d.key} size="sm" variant={d.tone === "good" ? "primary" : "secondary"} disabled={decide.isPending} onClick={() => decide.mutate({ row: row.id, decision: d.key })} data-testid={`site-decide-${row.id}-${d.key}`}>
-                    {inLang(d.label, lang)}
-                  </Button>
-                ))}
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  {part.decisions.map((d) => {
+                    // A button "after the votes" waits for enough yes.
+                    const waits = !!d.afterVotes && (row.votes?.yes ?? 0) < need;
+                    return (
+                      <Button key={d.key} size="sm" variant={d.tone === "good" ? "primary" : "secondary"} disabled={decide.isPending || waits} title={waits ? say("بدها {n} «مع» (هلّق {yes})|It waits for {n} yes ({yes} so far)|ממתין ל־{n} «בעד» ({yes} עד עכשיו)").replace("{n}", String(need)).replace("{yes}", String(row.votes?.yes ?? 0)) : undefined} onClick={() => decide.mutate({ row: row.id, decision: d.key })} data-testid={`site-decide-${row.id}-${d.key}`}>
+                        {inLang(d.label, lang)}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {part.votes && row.votes ? (
+                  <div className="flex flex-wrap items-center justify-end gap-2" data-testid={`site-vote-${row.id}`}>
+                    <input
+                      className="w-44 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs"
+                      placeholder={say("ملاحظة مع صوتك (اختياري)|A note with your vote (optional)|הערה עם ההצבעה (לא חובה)")}
+                      maxLength={500}
+                      value={notes[row.id] ?? ""}
+                      onChange={(e) => setNotes((n) => ({ ...n, [row.id]: e.target.value }))}
+                      data-testid={`site-vote-note-${row.id}`}
+                    />
+                    {(["yes", "no"] as const).map((said) => {
+                      const mine = row.votes?.mine === said;
+                      return (
+                        <Button key={said} size="sm" variant={mine ? "primary" : "secondary"} aria-pressed={mine} disabled={vote.isPending} onClick={() => vote.mutate({ row: row.id, said: mine && !(notes[row.id] ?? "").trim() ? "none" : said })} data-testid={`site-vote-${row.id}-${said}`}>
+                          {said === "yes" ? say("👍 مع|👍 Yes|👍 בעד") : say("👎 ضد|👎 No|👎 נגד")}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </li>
@@ -162,6 +204,27 @@ function Queue({ part, view, took, onError }: { part: PanelQueue; view: PanelPag
       </ul>
       {part.total > part.rows.length ? <p className="mt-2 text-xs text-white/50">{say("و{n} كمان بالجدول.|And {n} more in the table.|ועוד {n} בטבלה.").replace("{n}", String(part.total - part.rows.length))}</p> : null}
     </section>
+  );
+}
+
+/** A row's votes: how many each way (and how many yes its "after the votes" buttons wait for), and who said what. */
+function Votes({ votes, need, rowId }: { votes: PanelVotes; need: number; rowId: string }) {
+  return (
+    <div className="mt-2 space-y-1 rounded-lg bg-white/[0.04] p-2 text-xs" data-testid={`site-votes-${rowId}`}>
+      <div className="font-medium text-white/80">
+        <span data-testid={`site-votes-${rowId}-yes`}>{say("👍 {n} مع|👍 {n} yes|👍 {n} בעד").replace("{n}", String(votes.yes))}</span>
+        {" · "}
+        <span data-testid={`site-votes-${rowId}-no`}>{say("👎 {n} ضد|👎 {n} no|👎 {n} נגד").replace("{n}", String(votes.no))}</span>
+        {need > 0 ? <span className="text-white/50">{" · "}{say("القبول بدّه {n} مع|Accepting takes {n} yes|קבלה דורשת {n} בעד").replace("{n}", String(need))}</span> : null}
+      </div>
+      {votes.by.map((v, i) => (
+        <div key={`${v.name}-${i}`} className="text-white/60">
+          <span className={v.vote === "yes" ? "text-emerald-300" : "text-red-300"}>{v.vote === "yes" ? "👍" : "👎"}</span> {v.name}
+          {v.me ? <span className="text-white/40"> {say("(إنت)|(you)|(את/ה)")}</span> : null}
+          {v.note ? <span className="text-white/50">: {v.note}</span> : null}
+        </div>
+      ))}
+    </div>
   );
 }
 

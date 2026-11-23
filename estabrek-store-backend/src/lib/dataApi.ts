@@ -13,6 +13,9 @@
  * email; to anyone else as a first name and whether it is them (`personView`), and without a key it
  * can't be asked about (a filter would say whether someone is in the table).
  *
+ * Locked fields (sites wave G3): a shopper reads them on their own rows but never writes them (an application's
+ * state and the staff's answer); the store's members, its keys, a role's holders and its functions do.
+ *
  * Roles and groups (stage 2, item 3; lib/shopperRoles.ts): a table may also let the shoppers holding a role do an
  * act on every row, whatever its status (`roles`; a moderator, a seller), and let a shopper read the rows their
  * group's members added beside their own (`group`). A role never reaches a key's private fields.
@@ -50,7 +53,7 @@ export const RolesSchema = z.object({ read: RoleList.optional(), create: RoleLis
  * As kept on the table: who may do what, the fields only a key sees or writes, the roles that do an act on every row,
  * and whether a shopper reads their group's rows too.
  */
-export const SettingsSchema = z.object({ ...ACT_WHO, private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).default([]), roles: RolesSchema.optional(), group: z.boolean().optional() }).strict();
+export const SettingsSchema = z.object({ ...ACT_WHO, private: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).default([]), roles: RolesSchema.optional(), group: z.boolean().optional(), locked: z.array(z.string().min(1).max(40)).max(PRIVATE_MAX).optional() }).strict();
 
 /** A table's access as kept; anything that isn't one is closed. */
 export function accessOf(raw: unknown): TableAccess {
@@ -68,6 +71,11 @@ export function rolesOf(raw: unknown): ActRoles {
   const r = parsed.success ? parsed.data.roles : undefined;
   return { read: [...new Set(r?.read ?? [])], create: [...new Set(r?.create ?? [])], update: [...new Set(r?.update ?? [])], delete: [...new Set(r?.delete ?? [])] };
 }
+/** The fields a shopper reads but never writes, as kept. */
+export function lockedOf(raw: unknown): string[] {
+  const parsed = SettingsSchema.safeParse(raw);
+  return parsed.success ? [...new Set(parsed.data.locked ?? [])] : [];
+}
 /** A shopper reads their group's rows too. */
 export const groupOf = (raw: unknown): boolean => {
   const parsed = SettingsSchema.safeParse(raw);
@@ -80,8 +88,8 @@ export const isOpen = (access: TableAccess, roles: ActRoles = NO_ROLES) => ACTS.
 export const DATA_API_BASE = "/v1/data";
 
 /** A table as the API knows it: its address, its fields, who reaches it, the fields only a key sees, its roles and groups. */
-export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess; private: string[]; roles: ActRoles; group: boolean };
-export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api), private: privateOf(c.api), roles: rolesOf(c.api), group: groupOf(c.api) });
+export type ApiTable = { id: string; slug: string; name: unknown; fields: Field[]; access: TableAccess; private: string[]; roles: ActRoles; group: boolean; /** Read by a shopper, never written by one. */ locked?: string[] };
+export const tableFrom = (c: { id: string; slug: string; name: unknown; fields: unknown; api: unknown }): ApiTable => ({ id: c.id, slug: c.slug, name: c.name, fields: (Array.isArray(c.fields) ? c.fields : []) as Field[], access: accessOf(c.api), private: privateOf(c.api), roles: rolesOf(c.api), group: groupOf(c.api), locked: lockedOf(c.api) });
 
 /**
  * How a request gets in: through its key (every row), as a shopper holding one of the act's roles (every row, without
@@ -159,7 +167,9 @@ export function docTables(all: ApiTable[], key: KeyLite | null, customer: string
     // Answered as the caller reads (or, for a table it only writes, as it writes); written as its widest write.
     const fields = seenFields(t, how.get("read") ?? [...how.values()][0]);
     const writes = [how.get("create"), how.get("update")].filter((x): x is As => !!x);
-    const writeFields = writes.length ? seenFields(t, writes.includes("key") ? "key" : writes[0]) : undefined;
+    // A locked field is written by a key or a role's holder only.
+    const mayLocked = writes.includes("key") || writes.includes("role");
+    const writeFields = writes.length ? seenFields(t, writes.includes("key") ? "key" : writes[0]).filter((f) => mayLocked || !(t.locked ?? []).includes(f.id)) : undefined;
     // A relation shows when its table is open to everyone or to the caller's key (a shopper's own rows aren't followed through a link).
     const links = new Set<string>();
     for (const f of [...fields, ...(writeFields ?? [])]) {

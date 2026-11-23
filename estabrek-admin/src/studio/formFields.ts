@@ -12,7 +12,8 @@ export type Words = Record<string, string>;
 export type FormKind = "text" | "long" | "email" | "phone" | "number" | "select" | "check" | "date" | "file";
 export type FormOption = { value: string; label?: Words };
 export type FormField = { name: string; kind: FormKind; label: Words; hint?: Words; required?: boolean; options?: FormOption[]; min?: number; max?: number };
-export type FormSend = { to: "fn"; fn?: string; as?: string } | { to: "table"; table?: string };
+/** `set`: values a row always gets beside what was typed (a site's form for one job: { kind: "police" }). */
+export type FormSend = { to: "fn"; fn?: string; as?: string } | { to: "table"; table?: string; set?: Record<string, string | number | boolean> };
 export const FORM_MAX = { fields: 20, options: 30 } as const;
 /** What a field is sent as: a function's input name, or a table field's id. */
 export const FIELD_NAME = /^[a-z][a-zA-Z0-9_]{0,30}$/;

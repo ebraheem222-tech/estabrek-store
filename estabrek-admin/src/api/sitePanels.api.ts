@@ -10,10 +10,15 @@ export type PanelPageLite = { key: string; name: Local; icon: PanelIcon };
 export type SitePanelLite = { featureId: string; name: string; enabled: boolean; pages: PanelPageLite[] };
 export type PanelTable = { id: string; slug: string; name: Local | null };
 export type PanelColumn = { id: string; type: string; name: Local | null; options?: Array<{ id: string; name?: Local }>; currency?: string };
-export type PanelRow = { id: string; cells: Record<string, unknown> };
+/** A row's votes, in a queue that counts them (backend lib/siteVotes.ts): each way, this member's, and who said what. */
+export type PanelVotes = { yes: number; no: number; mine: "yes" | "no" | null; by: Array<{ name: string; vote: "yes" | "no"; note: string | null; at: string; me: boolean }> };
+export type PanelRow = { id: string; cells: Record<string, unknown>; votes?: PanelVotes };
+/** Who added a row through the shop (a "$person" cell). */
+export type PanelPerson1 = { name: string; email: string; discordId: string | null; steamId: string | null };
 
 export type PanelNumbers = { kind: "numbers"; key: string; items: Array<{ key: string; label: Local; value: number | null; window?: "today" | "week" | "month"; before?: number | null; table: PanelTable }> };
-export type PanelQueue = { kind: "queue"; key: string; title: Local; table: PanelTable; columns: PanelColumn[]; rows: PanelRow[]; total: number; problem?: string; decisions: Array<{ key: string; label: Local; tone?: "good" | "bad" }>; canDecide: boolean; empty: Local | null };
+/** `votes.need`: how many yes a button `afterVotes` waits for. */
+export type PanelQueue = { kind: "queue"; key: string; title: Local; table: PanelTable; columns: PanelColumn[]; rows: PanelRow[]; total: number; problem?: string; decisions: Array<{ key: string; label: Local; tone?: "good" | "bad"; afterVotes?: boolean }>; canDecide: boolean; empty: Local | null; votes?: { need: number } };
 export type PanelView = { kind: "view"; key: string; title: Local; table: PanelTable; columns: PanelColumn[]; rows: PanelRow[]; total: number; problem?: string };
 export type PanelSettings = { kind: "settings"; key: string; title: Local | null; declared: SiteSettingDecl[]; values: Record<string, unknown>; canWrite: boolean };
 export type PanelActions = { kind: "actions"; key: string; title: Local | null; items: Array<{ key: string; label: Local; note: Local | null; setting: string; value: unknown; done: boolean }> };
@@ -84,6 +89,10 @@ export async function checkGame(featureId: string, page: string, part: string, l
 /** A queue's button pressed on one row: the page as it is after. */
 export async function decide(featureId: string, page: string, part: string, row: string, decision: string, lang: string) {
   return (await api.post(`${BASE}/${enc(featureId)}/${enc(page)}/${enc(part)}/decide`, { row, decision, lang })).data as PanelPageView;
+}
+/** A member's vote on a queue's row (yes, no, or none to take it back), with a note: the page as it is after. */
+export async function vote(featureId: string, page: string, part: string, row: string, said: "yes" | "no" | "none", note: string, lang: string) {
+  return (await api.post(`${BASE}/${enc(featureId)}/${enc(page)}/${enc(part)}/vote`, { row, vote: said, ...(note.trim() ? { note: note.trim() } : {}), lang })).data as PanelPageView;
 }
 /** A quick action: the setting it names set; the page as it is after. */
 export async function act(featureId: string, page: string, part: string, action: string, lang: string) {

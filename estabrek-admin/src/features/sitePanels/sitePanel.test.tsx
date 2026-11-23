@@ -9,8 +9,8 @@ import type { PanelPageView } from "../../api/sitePanels.api";
 // whose buttons decide a row, quick actions (only those that would change something, asked first), a saved table,
 // and a member who may only read. The server's side, with a database, is the backend's sitePanels.spec.ts.
 
-const m = vi.hoisted(() => ({ getSitePanelPage: vi.fn(), decide: vi.fn(), act: vi.fn(), listSitePanels: vi.fn(), saveFeatureSettings: vi.fn(), may: new Set<string>() }));
-vi.mock("../../api/sitePanels.api", () => ({ getSitePanelPage: m.getSitePanelPage, decide: m.decide, act: m.act, listSitePanels: m.listSitePanels }));
+const m = vi.hoisted(() => ({ getSitePanelPage: vi.fn(), decide: vi.fn(), act: vi.fn(), vote: vi.fn(), listSitePanels: vi.fn(), saveFeatureSettings: vi.fn(), may: new Set<string>() }));
+vi.mock("../../api/sitePanels.api", () => ({ getSitePanelPage: m.getSitePanelPage, decide: m.decide, act: m.act, vote: m.vote, listSitePanels: m.listSitePanels }));
 vi.mock("../../api/myFeatures.api", () => ({ saveFeatureSettings: m.saveFeatureSettings }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ hasPermission: (p: string) => m.may.has(p) }) }));
 
@@ -114,6 +114,40 @@ describe("A whole site's own page", () => {
     expect((await screen.findByTestId("site-part-bookings-empty")).textContent).toBe("No booking requests waiting.");
     expect(screen.queryByTestId("site-decide-r1-confirm")).toBeNull();
     expect(screen.getByTestId("site-panel-off")).toBeTruthy();
+  });
+
+  test("a queue the staff vote on: who applied, the votes with their notes, «accept» waiting for enough yes", async () => {
+    const APPS = { id: "t-a", slug: "applications", name: L("Applications") };
+    const page = (votes: { yes: number; no: number; mine: "yes" | "no" | null; by: Array<{ name: string; vote: "yes" | "no"; note: string | null; at: string; me: boolean }> }): PanelPageView => ({
+      ...today(),
+      parts: [{
+        kind: "queue", key: "applications", title: L("Applications"), table: APPS, total: 1, canDecide: true, empty: null, votes: { need: 2 },
+        columns: [{ id: "$by", type: "$person", name: L("Who") }, { id: "character", type: "text", name: L("Character") }],
+        rows: [{ id: "a1", cells: { $by: { name: "Sara", email: "sara@x.test", discordId: "8035", steamId: null }, character: { en: "Omar" } }, votes }],
+        decisions: [{ key: "interview", label: L("Interview") }, { key: "accept", label: L("Accept"), tone: "good", afterVotes: true }],
+      }],
+    });
+    const nour = { name: "Nour", vote: "yes" as const, note: "Strong answers", at: "2026-11-23T10:00:00.000Z", me: false };
+    m.getSitePanelPage.mockResolvedValue(page({ yes: 1, no: 0, mine: null, by: [nour] }));
+    show();
+    // Who applied, with the Discord they linked.
+    expect((await screen.findByTestId("site-row-a1")).textContent).toContain("Sara · sara@x.test · Discord 8035");
+    expect(screen.getByTestId("site-votes-a1").textContent).toContain("👍 1 yes · 👎 0 no · Accepting takes 2 yes");
+    expect(screen.getByTestId("site-votes-a1").textContent).toContain("Nour: Strong answers");
+    // One yes of two: «accept» waits; the other button doesn't.
+    expect((screen.getByTestId("site-decide-a1-accept") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("site-decide-a1-interview") as HTMLButtonElement).disabled).toBe(false);
+    // This member votes yes with a note: the page as the server answers it, «accept» awake.
+    m.vote.mockResolvedValue(page({ yes: 2, no: 0, mine: "yes", by: [nour, { name: "Owner", vote: "yes", note: "After the interview", at: "2026-11-23T11:00:00.000Z", me: true }] }));
+    fireEvent.change(screen.getByTestId("site-vote-note-a1"), { target: { value: "After the interview" } });
+    fireEvent.click(screen.getByTestId("site-vote-a1-yes"));
+    await waitFor(() => expect(m.vote).toHaveBeenCalledWith("f9", "today", "applications", "a1", "yes", "After the interview", "en"));
+    await waitFor(() => expect((screen.getByTestId("site-decide-a1-accept") as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByTestId("site-vote-a1-yes").getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByTestId("site-vote-note-a1") as HTMLInputElement).value).toBe("");
+    // Pressed again with no note: taken back.
+    fireEvent.click(screen.getByTestId("site-vote-a1-yes"));
+    await waitFor(() => expect(m.vote).toHaveBeenLastCalledWith("f9", "today", "applications", "a1", "none", "", "en"));
   });
 
   test("a page this member can't see: what the server said", async () => {

@@ -90,8 +90,13 @@ export function CustomFormFields({ p, lang, busy, setProps }: { p: Record<string
           ) : (
             <Pick label={say("أي جدول|Which table|איזו טבלה")} value={send.table ?? ""} busy={busy} testId="form-table"
               options={[["", say("اختار…|Pick one…|לבחור…")], ...tables.map((t): [string, string] => [t.slug, `${t.name?.[lang as "ar"] || t.name?.ar || t.name?.en || t.slug} · ${t.slug}`])]}
-              onPick={(t) => setSend({ to: "table", ...(t ? { table: t } : {}) })} />
+              onPick={(t) => setSend({ to: "table", ...(t ? { table: t } : {}), ...(t && t === send.table && send.set ? { set: send.set } : {}) })} />
           )}
+          {send.set && Object.keys(send.set).length ? (
+            <p className={note} data-testid="form-set">
+              {say("بيبعت دايماً كمان:|It always sends too:|הוא תמיד שולח גם:")} <bdi dir="ltr">{Object.entries(send.set).map(([k, v]) => `${k} = ${String(v)}`).join(" · ")}</bdi>
+            </p>
+          ) : null}
           {send.table && api.data && !table ? <p className={warn} data-testid="form-table-gone">{say("هالجدول مش مفتوح للإضافة من المتجر هلأ. اختار غيره، أو افتحه من «الـ API والمفاتيح».|This table isn't open for the shop to add to now. Pick another, or open it in “API and keys”.|הטבלה הזו לא פתוחה כרגע להוספה מהחנות. לבחור אחרת, או לפתוח אותה ב«API ומפתחות».")}</p> : null}
           {table ? <p className={note} data-testid="form-who">{table.access.create === "customer"
             ? say("بس الزبون المسجّل دخوله بيضيف، والسطر بينكتب بإسمه. الزائر بينقاله يسجّل دخول.|Only a signed-in shopper adds, and the row is theirs. A guest is asked to sign in.|רק לקוח מחובר מוסיף, והשורה שלו. אורח מתבקש להתחבר.")
