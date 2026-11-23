@@ -16,6 +16,7 @@ import { allSiteSettings, settingsFor, settingsOfFeature, type SiteSettings } fr
 import { GAME_LIMITS, isGame, joinOf, readStatus, type Game, type GameStatus } from "./gameStatus.js";
 import { discordCounts } from "./socialSignIn.js";
 import { LINK_LIMITS, SERVER_NAME, heardOf } from "./gameLink.js";
+import { channelNow, hasTwitchKeys } from "./twitch.js";
 
 const HOUR = 3_600_000;
 /** A game site's game and address, as its owner set them (null: not a game site, or no address yet). */
@@ -60,15 +61,19 @@ const sampleOf = (s: GameStatus) => ({ online: s.online, players: s.players, max
 
 /** One site read now and kept: its main server, then each of its own that has an address, a few at a time. */
 export async function readSite(featureId: string, opts: { allowPrivate?: boolean } = {}): Promise<GameStatus | null> {
-  const site = gameOf(await settingsOfFeature(featureId));
+  const settings = await settingsOfFeature(featureId);
+  const site = gameOf(settings);
   if (!site) return null;
+  // A streamer's channel is asked with the site's own Twitch keys: without them it isn't asked (and nothing is kept).
+  if (site.game === "twitch" && !hasTwitchKeys(settings)) return null;
   const allow = opts.allowPrivate ?? allowPrivate();
-  const status = await readStatus(site.game, site.address, { allowPrivate: allow });
+  const twitch = async (channel: string) => (await channelNow(settings, channel)) ?? Promise.reject(new Error("No Twitch keys"));
+  const status = await readStatus(site.game, site.address, { allowPrivate: allow, twitch });
   await prisma.gameSample.create({ data: { featureId, ...sampleOf(status) } });
   const own = (await subServersOf(featureId, site.game)).filter((x) => x.address);
   for (let i = 0; i < own.length; i += SUB_LIMITS.together) {
     await Promise.all(own.slice(i, i + SUB_LIMITS.together).map(async (x) => {
-      const got = await readStatus(x.game, x.address, { allowPrivate: allow }).catch(() => null);
+      const got = await readStatus(x.game, x.address, { allowPrivate: allow, twitch }).catch(() => null);
       if (got) await prisma.gameSample.create({ data: { featureId, server: x.key, ...sampleOf(got) } });
     }));
   }

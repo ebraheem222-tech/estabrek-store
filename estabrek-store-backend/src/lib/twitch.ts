@@ -78,6 +78,21 @@ async function liveNow(k: Keys, logins: string[], now: number) {
   live.set(memo, { at: now, v });
   return v;
 }
+/** Whether a site's Twitch keys are set (a channel isn't asked without them). */
+export const hasTwitchKeys = (s: SiteSettings | null) => keysOf(s) !== null;
+/**
+ * A site's own channel now, as its status (wave G7c2: a streamer's site): live or not, how many watch, its title and its
+ * game. Null: no keys (not asked). Throws when Twitch doesn't answer, so the status says why.
+ */
+export async function channelNow(s: SiteSettings | null, channel: string, now = Date.now()): Promise<{ online: boolean; players: number | null; max: null; name: string | null; map: string | null; version: null } | null> {
+  const k = keysOf(s);
+  if (!k) return null;
+  const v = await liveNow(k, [channel], now);
+  if (!v) throw new Error("Twitch didn't answer");
+  const on = v.get(channel);
+  return on ? { online: true, players: on.viewers, max: null, name: on.title || null, map: on.game || null, version: null } : { online: false, players: null, max: null, name: null, map: null, version: null };
+}
+
 /** Their pictures on Twitch, for those with none of their own on the site. */
 async function picturesOf(k: Keys, logins: string[], now: number): Promise<Map<string, string>> {
   const out = new Map<string, string>();

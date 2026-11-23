@@ -31,6 +31,8 @@ const GAMES: Array<[string, ReturnType<typeof w>]> = [
   ["steam", w("لعبة على Steam", "A Steam game", "משחק ב־Steam")],
 ];
 const plain = (v: string) => ({ ar: v, en: v, he: v });
+/** A server's game where its row names none: the site's, or Minecraft Java for a site that isn't a game server (a streamer's). */
+const own = (b: Built) => (GAMES.some(([id]) => id === b.bp.modules.status!.game) ? b.bp.modules.status!.game : "minecraft");
 
 export const SERVERS: SiteModule = {
   key: "servers",
@@ -47,7 +49,7 @@ export const SERVERS: SiteModule = {
         f.text("title", SUBS_W.title, { required: true }),
         { ...f.text("key", SUBS_W.key, { required: true, unique: true, max: 30 }), help: SUBS_W.keyHelp },
         f.long("line", SUBS_W.line),
-        f.select("game", SUBS_W.game, GAMES, { default: b.bp.modules.status!.game }),
+        f.select("game", SUBS_W.game, GAMES, { default: own(b) }),
         { ...f.text("address", SUBS_W.address, { max: 120 }), help: SUBS_W.addressHelp },
         f.text("hint", SUBS_W.hint, { max: 60 }),
       ],
@@ -55,7 +57,7 @@ export const SERVERS: SiteModule = {
       api: { read: "off", create: "off", update: "off", delete: "off" },
       rows: b.use.servers!.list.map((x) => ({
         slug: x.key,
-        data: { title: x.title, key: plain(x.key), line: x.line, game: x.game ?? b.bp.modules.status!.game, address: plain(x.address), ...(x.hint ? { hint: x.hint } : {}) },
+        data: { title: x.title, key: plain(x.key), line: x.line, game: x.game ?? own(b), address: plain(x.address), ...(x.hint ? { hint: x.hint } : {}) },
       })),
     },
   ],

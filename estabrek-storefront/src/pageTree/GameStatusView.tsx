@@ -3,7 +3,8 @@
 // and map, the last 24 hours, and a way in (the game's own link, or the address to copy). The server fills it as the
 // page is served; here it is asked again every minute. In the editor (no status yet) it shows how it will look.
 // A community's status (wave G7c) is its Roblox game (everyone playing it now) or its Discord server (who is on now,
-// and how many are in it): its way in is a link, so there is no address to copy.
+// and how many are in it), and a streamer's is their Twitch channel (live or not, how many watch, the stream's title and
+// game): their way in is a link, so there is no address to copy.
 import { useEffect, useState } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
 import type { TreeLang } from "./tree";
@@ -11,7 +12,7 @@ import css from "./GameStatusView.module.css";
 
 type Live = {
   featureId: string;
-  game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord";
+  game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord" | "twitch";
   online: boolean | null;
   players: number | null;
   max: number | null;
@@ -25,9 +26,9 @@ type Live = {
 };
 
 const WORDS = {
-  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت هلّق", copy: "انسخ العنوان", copied: "انتسخ", last: "آخر 24 ساعة", sample: "حالة السيرفر بتطلع هون", discordNow: "هلّق على الديسكورد", discordOf: "من", playing: "عم يلعبوا هلّق", online: "أونلاين", members: "عضو", inviteOff: "رابط الدعوة ما بيشتغل" },
-  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join now", copy: "Copy the address", copied: "Copied", last: "The last 24 hours", sample: "The server's status shows here", discordNow: "on Discord now", discordOf: "of", playing: "playing now", online: "online", members: "members", inviteOff: "The invite doesn't work" },
-  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר עכשיו", copy: "להעתיק את הכתובת", copied: "הועתק", last: "24 השעות האחרונות", sample: "מצב השרת יופיע כאן", discordNow: "ב-Discord עכשיו", discordOf: "מתוך", playing: "משחקים עכשיו", online: "מחוברים", members: "חברים", inviteOff: "קישור ההזמנה לא עובד" },
+  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت هلّق", copy: "انسخ العنوان", copied: "انتسخ", last: "آخر 24 ساعة", sample: "حالة السيرفر بتطلع هون", discordNow: "هلّق على الديسكورد", discordOf: "من", playing: "عم يلعبوا هلّق", online: "أونلاين", members: "عضو", inviteOff: "رابط الدعوة ما بيشتغل", live: "لايف هلّق", notLive: "مش لايف هلّق", watching: "عم يتفرّجوا" },
+  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join now", copy: "Copy the address", copied: "Copied", last: "The last 24 hours", sample: "The server's status shows here", discordNow: "on Discord now", discordOf: "of", playing: "playing now", online: "online", members: "members", inviteOff: "The invite doesn't work", live: "Live now", notLive: "Not live right now", watching: "watching" },
+  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר עכשיו", copy: "להעתיק את הכתובת", copied: "הועתק", last: "24 השעות האחרונות", sample: "מצב השרת יופיע כאן", discordNow: "ב-Discord עכשיו", discordOf: "מתוך", playing: "משחקים עכשיו", online: "מחוברים", members: "חברים", inviteOff: "קישור ההזמנה לא עובד", live: "בשידור חי עכשיו", notLive: "לא בשידור כרגע", watching: "צופים" },
 } as const;
 
 const isLive = (v: unknown): v is Live => !!v && typeof v === "object" && typeof (v as Live).featureId === "string" && Array.isArray((v as Live).history);
@@ -60,10 +61,12 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
 
   const state = !live || live.online === null ? "unknown" : live.online ? "on" : "off";
   // A Roblox game or a Discord server is reached by its link alone: nothing to copy.
-  const linkOnly = live?.game === "roblox" || live?.game === "discord";
+  const linkOnly = live?.game === "roblox" || live?.game === "discord" || live?.game === "twitch";
+  /** The state's words: a stream is live or not; a dead invite says so. */
+  const stateWords = (l: Live) => (l.game === "twitch" && state !== "unknown" ? (state === "on" ? t.live : t.notLive) : state === "off" && l.game === "discord" ? t.inviteOff : t[state]);
   const n = (v: number) => v.toLocaleString("en");
   // The chart's top: the server's most players; a Discord's members are far more than are ever on, so its own busiest hour.
-  const most = Math.max(1, live?.game === "discord" ? 0 : live?.max ?? 0, ...(live?.history ?? []).map((h) => h.players ?? 0));
+  const most = Math.max(1, live?.game === "discord" || live?.game === "twitch" ? 0 : live?.max ?? 0, ...(live?.history ?? []).map((h) => h.players ?? 0));
   const copy = async () => {
     if (!live) return;
     try {
@@ -79,7 +82,7 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
     <div className={`${css.box} ${size === "big" ? css.big : css.small}`} data-state={state} data-testid="game-status" data-gp="panel" role="status" aria-live="polite">
       <div className={css.top}>
         <span className={css.dot} aria-hidden="true" />
-        <strong className={css.state}>{live ? (state === "off" && live.game === "discord" ? t.inviteOff : t[state]) : t.sample}</strong>
+        <strong className={css.state}>{live ? stateWords(live) : t.sample}</strong>
         {live?.online && live.players !== null ? (
           // A community's counts read in the page's own direction, each number kept with its word (a line may wrap between them).
           <span className={css.players} dir={linkOnly ? undefined : "ltr"} data-testid="game-players" data-gp="num">
@@ -97,9 +100,9 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
                   </>
                 ) : null}
               </>
-            ) : live.game === "roblox" ? (
+            ) : live.game === "roblox" || live.game === "twitch" ? (
               <b className={css.group}>
-                <bdi>{n(live.players)}</bdi> <span>{t.playing}</span>
+                <bdi>{n(live.players)}</bdi> <span>{live.game === "twitch" ? t.watching : t.playing}</span>
               </b>
             ) : (
               <>

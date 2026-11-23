@@ -40,6 +40,9 @@ const LANGS = ["ar", "en", "he"] as const;
  *   own live pulse (a Roblox game's players now, a Discord server's online and members), a Roblox game's codes (copied
  *   in a press, expiring by themselves), events by their day with a clan's results, a members' directory shown on the
  *   staff's yes, and a clan's roster by part.
+ *   site-lfg-board and site-gaming-streamer 1.0.0 (wave G7c2): a looking-for-a-group board (posts by game published at
+ *   once, read live, closing by themselves after their time, one open post a player) and a streamer opening with their
+ *   Twitch channel (live or not, viewers), with the week's streams, clips, sponsors and their followers' server.
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -68,6 +71,8 @@ const BUILT: Record<string, string[]> = {
   "site-roblox-community": ["12f6c3e07d86e463", "5239c9ecd9abe5d1", "ac0cd734210781c8", "30e42e7ce5ea98d6", "7fc956ebfb6c7601", "54dc3b03aa1c75e3"],
   "site-discord-community": ["f158ff10c331974f", "1cf91f98e54270b8", "0d72e5f5aec1d668", "c097efbc40ae37d8", "89afb86937d30d74", "59c9b1f9fbec4aa0"],
   "site-gaming-clan": ["00fe49f84e9204f5", "932636f6d757d777", "b1e46d5c819e8763", "d7884c89d637577b", "2dee16342bd01924", "ac4aa61747f96f00"],
+  "site-lfg-board": ["1289c40c1226199e", "233a76d45f1d226f", "a704b73a4cd00a93", "5199b9ee79ab7785", "25bd6819fda4b171", "8106689a9446702d"],
+  "site-gaming-streamer": ["8524ffc410bd3655", "50161df566f39e58", "58d680a0c3c96f45", "319ddd40c0354d65", "a1b717dc22dd1f28", "d85c1ea7c6b30b54"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
