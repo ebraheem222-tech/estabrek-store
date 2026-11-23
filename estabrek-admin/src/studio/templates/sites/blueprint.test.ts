@@ -24,6 +24,8 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-fivem-rp 1.4.0 (wave G5): the server's link (its whitelist switch, words and quick actions; the panel's part).
  *   site-minecraft-survival 1.1.0 (wave G5b): the server's link (the Paper plugin; no whitelist, it has no applications),
  *   its purchases' «عم تنعطى» while the plugin gives them, and the paid words saying it arrives by itself.
+ *   site-fivem-rp 1.5.0 and site-minecraft-survival 1.2.0 (wave G6a): their rankings (a page with a section for each
+ *   board, the boards and the players' numbers as tables, both on the panel's lists).
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -38,8 +40,8 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
-  "site-fivem-rp": ["00e929a7ee93be47", "17d668e392f9cead", "4be3196e73ee779b", "555d02fd4f2caf4c", "0071d4bcf64d0195", "51c1935a3172ef6d"],
-  "site-minecraft-survival": ["3b4b5772cfa2d3fa", "584b68531f8bdf7f", "7682f674be42c06c", "16239ccf8b3bb8f1", "4cfd3dc91bfc89ff", "ffcf1324c3ba014f"],
+  "site-fivem-rp": ["4aedb1ec7494735f", "4f48cc0ebc126778", "54009c62d93d3563", "989e7db216153df3", "87f3566c1433c1f9", "73f70bc00ee5f550"],
+  "site-minecraft-survival": ["8f471a35147d85eb", "5c2b419517985e07", "b9ec7acd65315298", "308a6aee1d775597", "088830f36051e6ae", "26dc1c422fbaede6"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);

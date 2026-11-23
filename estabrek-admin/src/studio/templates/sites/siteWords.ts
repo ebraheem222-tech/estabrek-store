@@ -374,6 +374,43 @@ export const MC_W = {
 };
 
 /** The words of a game server's link (wave G5). */
+export const RANK_W = {
+  name: w("الترتيب", "Rankings", "דירוג"),
+  boards: w("لوحات الترتيب", "Ranking boards", "לוחות דירוג"),
+  scores: w("أرقام اللاعبين", "The players' numbers", "המספרים של השחקנים"),
+  title: w("الاسم", "Name", "שם"),
+  key: w("المفتاح", "Key", "מפתח"),
+  keyHelp: w("كلمة قصيرة بالإنجليزي (money، level…): السيرفر بيبعت الأرقام عليها. playtime بينحسب لحاله من لينك السيرفر.", "A short word in English (money, level…): the server sends the numbers by it. playtime is counted by the server's link by itself.", "מילה קצרה באנגלית (money, level…): השרת שולח את המספרים לפיה. playtime נספר מעצמו מהקישור לשרת."),
+  unit: w("الوحدة", "Unit", "יחידה"),
+  minutes: w("دقايق لعب", "Minutes played", "דקות משחק"),
+  number: w("رقم", "A number", "מספר"),
+  lap: w("وقت (ملّي ثانية)", "A time (milliseconds)", "זמן (מילישניות)"),
+  how: w("كيف بتنجمع أرقام اللاعب", "How a player's numbers add up", "איך המספרים של השחקן מצטברים"),
+  sum: w("بتنجمع", "Added up", "מצטברים"),
+  best: w("أحسن رقم إله", "Their best", "השיא שלו"),
+  latest: w("آخر رقم إله", "Their latest", "האחרון שלו"),
+  first: w("مين الأول", "Who is first", "מי ראשון"),
+  high: w("الأعلى", "The highest", "הגבוה ביותר"),
+  low: w("الأقل (متل أسرع وقت)", "The lowest (like the fastest time)", "הנמוך ביותר (כמו הזמן המהיר)"),
+  player: w("اللاعب", "Player", "שחקן"),
+  board: w("اللوحة", "Board", "לוח"),
+  value: w("الرقم", "Number", "מספר"),
+  span: w("الفترة", "Span", "תקופה"),
+  spanDay: w("يوم", "A day", "יום"),
+  spanAll: w("من الأول", "All time", "מאז ומעולם"),
+  dayField: w("اليوم", "Day", "יום"),
+  playerId: w("رقم اللاعب باللعبة", "The player's game id", "המזהה של השחקן במשחק"),
+  latestScores: w("آخر الأرقام", "The latest numbers", "המספרים האחרונים"),
+  boardSub: w("بيتحدّث من السيرفر كل دقيقة.", "Updated from the server every minute.", "מתעדכן מהשרת כל דקה."),
+  empty: w("لسّا ما في أرقام هون. بتطلع لما السيرفر يبعت.", "No numbers here yet. They show once the server sends them.", "עוד אין כאן מספרים. הם יופיעו כשהשרת ישלח."),
+  day: w("اليوم", "Today", "היום"),
+  week: w("هالأسبوع", "This week", "השבוע"),
+  month: w("هالشهر", "This month", "החודש"),
+  all: w("من الأول", "All time", "מאז ומעולם"),
+  playtime: w("ساعات اللعب", "Time played", "זמן משחק"),
+  playtimeSub: w("مين لعب أكتر. بتنحسب لحالها، دقيقة لكل دقيقة جوّا السيرفر.", "Who played the most. Counted by itself, a minute for each minute on the server.", "מי שיחק הכי הרבה. נספר מעצמו, דקה על כל דקה בשרת."),
+};
+
 export const LINK_W = {
   panel: w("لينك السيرفر", "The server's link", "הקישור לשרת"),
   whitelistOn: w("الوايتلست شغّال", "The whitelist is on", "הרשימה הלבנה פעילה"),

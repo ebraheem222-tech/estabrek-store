@@ -1,10 +1,11 @@
 /** Whole sites for game servers (wave G of docs/sites-300-plan.ar.md): a FiveM roleplay city first. */
 import { w } from "../words";
 import { site } from "./blueprint";
+import { RANK_W } from "./siteWords";
 
 export const FIVEM_RP = site({
   key: "site-fivem-rp",
-  version: "1.4.0",
+  version: "1.5.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -112,6 +113,14 @@ export const FIVEM_RP = site({
       sub: w("VIP، سيارات، ومنازل: ادعم المدينة وخود شي حلو جوّا اللعبة.", "VIP, cars and houses: support the city and get something nice in the game.", "VIP, מכוניות ובתים: תמכו בעיר וקבלו משהו נחמד במשחק."),
     },
     link: {},
+    ranking: {
+      title: w("الترتيب", "The rankings", "הדירוג"),
+      sub: w("مين الأكتر بالمدينة: ساعات اللعب ومصاري كل واحد، اليوم وهالأسبوع ومن الأول.", "Who leads the city: time played and each one's money, today, this week and of all time.", "מי מוביל בעיר: זמן משחק והכסף של כל אחד, היום, השבוע ומאז ומעולם."),
+      boards: [
+        { key: "playtime", title: RANK_W.playtime, sub: RANK_W.playtimeSub, unit: "minutes", how: "sum", best: "high" },
+        { key: "money", title: w("أغنى السكان", "The richest residents", "התושבים העשירים"), sub: w("مصاري الجيبة والبنك، حسب آخر مرّة شافها السيرفر.", "Cash and bank, as the server last saw them.", "מזומן ובנק, כפי שהשרת ראה לאחרונה."), unit: "number", how: "latest", best: "high" },
+      ],
+    },
     contact: {},
     notify: {},
   },
@@ -124,7 +133,7 @@ export const FIVEM_RP = site({
  */
 export const MC_SURVIVAL = site({
   key: "site-minecraft-survival",
-  version: "1.1.0",
+  version: "1.2.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -158,6 +167,15 @@ export const MC_SURVIVAL = site({
       ],
     },
     link: {},
+    ranking: {
+      title: w("الترتيب", "The rankings", "הדירוג"),
+      sub: w("مين لعب أكتر، مين أغنى واحد بالوادي، ومين أسرع واحد بالباركور.", "Who played the most, who is the richest in the valley, and who is the fastest on the parkour.", "מי שיחק הכי הרבה, מי העשיר ביותר בעמק ומי המהיר ביותר בפארקור."),
+      boards: [
+        { key: "playtime", title: RANK_W.playtime, sub: RANK_W.playtimeSub, unit: "minutes", how: "sum", best: "high" },
+        { key: "money", title: w("أغنى اللاعبين", "The richest players", "השחקנים העשירים"), sub: w("رصيد كل واحد، حسب آخر مرّة شافه السيرفر.", "Each one's balance, as the server last saw it.", "היתרה של כל אחד, כפי שהשרת ראה לאחרונה."), unit: "number", how: "latest", best: "high" },
+        { key: "parkour", title: w("باركور القلعة: أسرع وقت", "The castle parkour: the fastest time", "פארקור הטירה: הזמן המהיר"), sub: w("أحسن وقت لكل لاعب من البداية للعلم.", "Each player's best time from the start to the flag.", "הזמן הטוב של כל שחקן מההתחלה עד הדגל."), unit: "lap", how: "best", best: "low" },
+      ],
+    },
     rules: {
       title: w("القوانين", "The rules", "החוקים"),
       sub: w("عالم بيضل حلو لأنه الكل بيحترمه. اقراها قبل ما تبني.", "A world stays good because everyone respects it. Read them before you build.", "עולם נשאר טוב כי כולם מכבדים אותו. קראו לפני שבונים."),

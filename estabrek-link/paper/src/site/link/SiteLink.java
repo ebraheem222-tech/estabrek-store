@@ -8,10 +8,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import org.bukkit.Bukkit;
@@ -32,18 +34,24 @@ import org.bukkit.plugin.java.JavaPlugin;
  *     command (the player's name in it), it runs as the console, and the site is told whether it went.
  *   - While the whitelist is on, a player joining is asked about on your site, and only those it knows come in.
  *   - /link 123456 links the player's game account to their account on your site (the code is on «حسابي»).
+ *   - Your site's rankings: those online get a minute of play time at each hello, and /linkscore <board> <player>
+ *     <value> (the console, a command block, or another plugin) sends the other numbers with the next hello.
  *
  * Made for your site when you downloaded it: site-link.properties inside holds its key. Keep the file private; a
  * new download makes a new key and this one stops working.
  */
 public final class SiteLink extends JavaPlugin implements Listener, CommandExecutor {
-  private static final String VERSION = "1.0.0";
+  private static final String VERSION = "1.1.0";
   private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
   private String name = "Server";
   private String api = "";
   private String key = "";
   private String lang = "ar";
   private volatile boolean whitelistOn = false;
+  /** Who is online, as JSON, taken on the server's own thread (the hello is sent off it). */
+  private volatile String online = "[]";
+  private volatile int onlineCount = 0;
+  private final ConcurrentLinkedQueue<String> scores = new ConcurrentLinkedQueue<>();
 
   @Override
   public void onEnable() {
@@ -63,7 +71,10 @@ public final class SiteLink extends JavaPlugin implements Listener, CommandExecu
     }
     Bukkit.getPluginManager().registerEvents(this, this);
     if (getCommand("link") != null) getCommand("link").setExecutor(this);
-    // Every minute (1200 ticks), after 10 seconds: hello, then what waits to be given.
+    if (getCommand("linkscore") != null) getCommand("linkscore").setExecutor(this);
+    // Who is online, every 10 seconds on the server's thread; every minute (1200 ticks), after 10 seconds: hello, the
+    // numbers for the rankings, then what waits to be given.
+    Bukkit.getScheduler().runTaskTimer(this, this::seeOnline, 20L, 200L);
     Bukkit.getScheduler().runTaskTimerAsynchronously(this, this::tick, 200L, 1200L);
   }
 
@@ -97,11 +108,27 @@ public final class SiteLink extends JavaPlugin implements Listener, CommandExecu
     }
   }
 
-  /** Hello, then the purchases waiting to be given: each command run as the console, and the site told how it went. */
+  private void seeOnline() {
+    StringBuilder b = new StringBuilder("[");
+    int n = 0;
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      if (n++ > 0) b.append(',');
+      b.append("{\"id\":").append(Json.quote(p.getUniqueId().toString())).append(",\"name\":").append(Json.quote(p.getName())).append('}');
+    }
+    online = b.append(']').toString();
+    onlineCount = n;
+  }
+
+  /** Hello, the numbers for the rankings, then the purchases waiting to be given: each command run as the console, and the site told how it went. */
   @SuppressWarnings("unchecked")
   private void tick() {
-    Map<String, Object> hello = call("/hello", "{\"game\":\"minecraft\",\"version\":" + Json.quote(VERSION) + ",\"players\":" + Bukkit.getOnlinePlayers().size() + ",\"lang\":" + Json.quote(lang) + "}");
+    Map<String, Object> hello = call("/hello", "{\"game\":\"minecraft\",\"version\":" + Json.quote(VERSION) + ",\"players\":" + onlineCount + ",\"online\":" + online + ",\"lang\":" + Json.quote(lang) + "}");
     if (hello != null) whitelistOn = Boolean.TRUE.equals(hello.get("whitelist"));
+    while (!scores.isEmpty()) {
+      List<String> batch = new ArrayList<>();
+      for (String s; batch.size() < 200 && (s = scores.poll()) != null; ) batch.add(s);
+      call("/scores", "{\"items\":[" + String.join(",", batch) + "]}");
+    }
     Map<String, Object> got = call("/deliveries", "{}");
     Object items = got == null ? null : got.get("items");
     if (!(items instanceof List)) return;
@@ -143,9 +170,31 @@ public final class SiteLink extends JavaPlugin implements Listener, CommandExecu
     }
   }
 
+  /**
+   * /linkscore money Steve 12500: a number for one of the site's boards (its key there), for a player online now. For
+   * the console, command blocks and other plugins (the permission sitelink.score, which operators have).
+   */
+  private boolean score(CommandSender sender, String[] args) {
+    if (!sender.hasPermission("sitelink.score")) return true;
+    double value;
+    try {
+      value = args.length == 3 ? Double.parseDouble(args[2]) : Double.NaN;
+    } catch (NumberFormatException e) {
+      value = Double.NaN;
+    }
+    Player player = args.length == 3 ? Bukkit.getPlayerExact(args[1]) : null;
+    if (Double.isNaN(value) || Double.isInfinite(value) || !args[0].matches("[A-Za-z0-9_-]{1,40}") || player == null) {
+      sender.sendMessage("/linkscore <board> <online player> <number>");
+      return true;
+    }
+    if (scores.size() < 1000) scores.add("{\"board\":" + Json.quote(args[0]) + ",\"player\":{\"id\":" + Json.quote(player.getUniqueId().toString()) + ",\"name\":" + Json.quote(player.getName()) + "},\"value\":" + value + "}");
+    return true;
+  }
+
   /** /link 123456: the code from «حسابي» on the site links this game account to that site account. */
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    if (command.getName().equalsIgnoreCase("linkscore")) return score(sender, args);
     if (!(sender instanceof Player)) return true;
     Player player = (Player) sender;
     if (args.length != 1 || !args[0].matches("\\d{6}")) {

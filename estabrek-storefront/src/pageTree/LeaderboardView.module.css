@@ -1,0 +1,16 @@
+/* A game server's ranking (LeaderboardView.tsx): in the theme's colours, readable on a dark or a light section. */
+.wrap { display: grid; gap: 18px; width: 100%; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tab { min-height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent, currentColor); color: var(--accent-contrast, #fff); border-color: transparent; font-weight: 700; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; width: 100%; }
+.row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 56px; padding: 8px 18px 8px 10px; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
+.n { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; font-weight: 800; font-variant-numeric: tabular-nums; background: color-mix(in srgb, currentColor 9%, transparent); }
+.row[data-top="1"] .n, .row[data-top="2"] .n, .row[data-top="3"] .n { background: var(--accent, currentColor); color: var(--accent-contrast, #fff); }
+.row[data-top="1"] { border-color: color-mix(in srgb, var(--accent, currentColor) 55%, transparent); background: color-mix(in srgb, var(--accent, currentColor) 10%, transparent); }
+.row[data-top="1"] .n { width: 40px; height: 40px; font-size: 1.1em; }
+.name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; text-align: start; }
+.value { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { margin: 0; padding: 22px; border-radius: 16px; border: 1px dashed color-mix(in srgb, currentColor 25%, transparent); text-align: center; opacity: .8; }
+.tab:focus-visible { outline: 3px solid var(--accent, currentColor); outline-offset: 3px; }
+@media (max-width: 560px) { .row { gap: 10px; padding-inline: 8px 12px; } }

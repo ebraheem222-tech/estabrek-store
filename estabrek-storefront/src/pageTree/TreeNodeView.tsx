@@ -52,7 +52,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, GameStatusView, TebexPackagesView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, GameStatusView, LeaderboardView, TebexPackagesView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -423,6 +423,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "tebexPackages":
       // A game server site's packages on its Tebex webstore (the server fills props.store as the page is served).
       return <div className={cls(node)} {...mark}><TebexPackagesView store={p.store} lang={ctx.lang} buy={say(p.buy)} all={say(p.all)} empty={say(p.empty)} note={say(p.note)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} /></div>;
+    case "leaderboard":
+      // A game server site's ranking on one of its boards (the server fills props.ranks as the page is served).
+      return <div className={cls(node)} {...mark}><LeaderboardView ranks={p.ranks} lang={ctx.lang} empty={say(p.empty)} labels={{ day: say(p.day), week: say(p.week), month: say(p.month), all: say(p.all) }} /></div>;
     case "gameStatus":
       // A game server site's live status (the server fills props.live as the page is served).
       return <div className={cls(node)} {...mark}><GameStatusView live={p.live} lang={ctx.lang} joinLabel={say(p.join)} copyLabel={say(p.copy)} chart={p.chart === true} size={p.size === "small" ? "small" : "big"} /></div>;

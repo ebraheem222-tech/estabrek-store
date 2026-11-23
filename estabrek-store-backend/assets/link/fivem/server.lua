@@ -4,8 +4,11 @@
 --   * While it is on, a player connecting is asked about on your site (their Discord, Steam and license), and
 --     only those accepted come in, with your site's words for the others.
 --   * /link 123456 links the player's game account to their account on your site (the code is on «حسابي»).
-local VERSION = "1.0.0"
+--   * Your site's rankings: those online get a minute of play time at each hello, and your own scripts send the
+--     other numbers: exports['site-link']:score('money', source, 12500) (sent with the next hello).
+local VERSION = "1.1.0"
 local whitelistOn = false
+local scores = {}
 
 local WORDS = {
   ar = { checking = "عم نتأكد من الوايتلست…", away = "الموقع مش رادد هلّق. جرّب كمان شوي.", how = "اكتب /link والكود (6 أرقام) من «حسابي» بالموقع.", failed = "ما زبط. جرّب كمان مرة." },
@@ -39,12 +42,32 @@ local function identifiersOf(src)
   return ids
 end
 
--- Hello every minute: how many play; the site says whether its whitelist is on.
+-- A number for one of your site's boards (its key there), for a player by their server id.
+exports("score", function(board, src, value)
+  if type(board) ~= "string" or type(value) ~= "number" or #scores >= 1000 then return false end
+  local license = identifiersOf(src).license
+  if not license then return false end
+  scores[#scores + 1] = { board = board, player = { id = license, name = GetPlayerName(src) }, value = value }
+  return true
+end)
+
+-- Hello every minute: who plays (for the play time board); the site says whether its whitelist is on. Then the
+-- numbers your scripts gave since the last one.
 CreateThread(function()
   while true do
-    call("/hello", { game = "fivem", version = VERSION, players = #GetPlayers(), lang = Config.Lang }, function(status, data)
+    local online = {}
+    for _, src in ipairs(GetPlayers()) do
+      local license = identifiersOf(src).license
+      if license then online[#online + 1] = { id = license, name = GetPlayerName(src) } end
+    end
+    call("/hello", { game = "fivem", version = VERSION, players = #GetPlayers(), online = online, lang = Config.Lang }, function(status, data)
       if status == 200 and data then whitelistOn = data.whitelist == true end
     end)
+    while #scores > 0 do
+      local batch = {}
+      for i = 1, math.min(200, #scores) do batch[i] = table.remove(scores, 1) end
+      call("/scores", { items = batch }, function() end)
+    end
     Wait(60000)
   end
 end)
