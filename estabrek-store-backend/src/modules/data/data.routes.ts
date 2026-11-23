@@ -57,6 +57,7 @@ import { hit } from "../../lib/hitLimit.js";
 import { namedRows, relationsOf, trashRows, withLinks } from "../../lib/links.js";
 import { LONG, StatusIn, addRow, changeRow, refresh } from "../../lib/rowWrites.js";
 import { shownRow } from "../../lib/schemaChange.js";
+import { heldBack, heldWords } from "../../lib/siteWaits.js";
 
 const r = Router();
 const MINUTE = 60_000;
@@ -307,13 +308,14 @@ const Lang = z.enum(LANGS).default("ar");
 const AnyCase = z.preprocess((v) => (typeof v === "string" ? v.toUpperCase() : v), StatusIn);
 const CreateBody = z.object({ slug: z.string().max(100).optional(), status: AnyCase.optional(), values: z.record(z.string().max(60), z.unknown()).default({}), lang: Lang }).strict();
 const ChangeBody = z.object({ slug: z.string().max(100).optional(), status: AnyCase.optional(), values: z.record(z.string().max(40), z.unknown()).optional(), lang: Lang }).strict();
-type Problem = { field: string; message: string; value?: string };
+/** `say`: what is wrong in each language, where the server has the words (a site's rule). */
+type Problem = { field: string; message: string; value?: string; say?: { ar: string; en: string; he: string } };
 const invalid = (issues: Problem[]) => new AppError(400, "ROW_INVALID", "Some values are wrong", { issues });
 const plain = { lang: null, pick: null, expand: [] as string[] };
 
 /**
- * What only a key may write: a row's status and address (a role's holder may too), and the private fields
- * (named as columns that aren't there: the same answer a misspelt one gets).
+ * What only a key may write: a row's status and address (a role's holder may too), the private fields
+ * (named as columns that aren't there: the same answer a misspelt one gets), and the locked ones (a role's holder may).
  */
 function keyOnly(table: ApiTable, as: As, body: { status?: unknown; slug?: unknown; values?: Record<string, unknown> }): Problem[] {
   if (as === "key") return [];
@@ -322,6 +324,7 @@ function keyOnly(table: ApiTable, as: As, body: { status?: unknown; slug?: unkno
     ...(body.status !== undefined && !role ? [{ field: "status", message: "Only a key sets the status" }] : []),
     ...(body.slug !== undefined && !role ? [{ field: "slug", message: "Only a key sets the address" }] : []),
     ...Object.keys(body.values ?? {}).filter((k) => table.private.includes(k.split(".")[0])).map((k) => ({ field: k, message: "No such column" })),
+    ...(role ? [] : Object.keys(body.values ?? {}).filter((k) => !table.private.includes(k.split(".")[0]) && (table.locked ?? []).includes(k.split(".")[0])).map((k) => ({ field: k, message: "Only the store sets this" }))),
   ];
 }
 
@@ -380,6 +383,14 @@ r.post(
     if (links.length) throw invalid(links);
     const files = await fileIssues(table, fields, body.values, { key: as === "key", shopper: who.customer });
     if (files.length) throw invalid(files);
+    // A site's rule (lib/siteWaits.ts): a shopper's application waits while their last is being read, and for some days after it.
+    if (as === "customer" && who.customer) {
+      const held = await heldBack(table.id, who.customer, body.values);
+      if (held) {
+        const say = heldWords(held.held);
+        throw invalid([{ field: held.wait.same[0] ?? "$row", message: say.en, say }]);
+      }
+    }
     // A signed-in shopper's row is theirs, also where anyone may add.
     const row = await addRow(table, { slug: body.slug, status: body.status, values: body.values, ownerId: as === "key" ? null : who.customer }, body.lang);
     if (!row) throw new AppError(500, "ROW_NOT_SAVED", "The row wasn't saved");

@@ -12,8 +12,8 @@ import { SW } from "./siteWords";
 export type ShellLink = { page: string; label: W };
 export type Shell = { header: ShellLink[]; footer: ShellLink[] };
 
-/** The menus a site brings: every page, its first one as «الرئيسية». */
+/** The menus a site brings: every page (but the ones another page leads to), its first one as «الرئيسية». */
 export function shellOf(bp: SiteBlueprint): Shell {
-  const links = pagesOf(bp).map((p) => ({ page: p.key, label: p.key === "home" ? SW.homeLink : p.name }));
+  const links = pagesOf(bp).filter((p) => p.menu !== false).map((p) => ({ page: p.key, label: p.key === "home" ? SW.homeLink : p.name }));
   return { header: links, footer: links };
 }

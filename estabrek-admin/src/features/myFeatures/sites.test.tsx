@@ -84,7 +84,8 @@ describe("The sites themselves", () => {
         const words = JSON.stringify(f.pages);
         expect(words).toContain(s.pack.title.ar);
         expect(words).toContain(s.pack.title.he);
-        for (const t of f.tables) if (!["messages", "bookings"].includes(t.key)) expect(t.rows?.length, `${s.key} ${t.key}`).toBeGreaterThan(0);
+        // The tables visitors and the site's functions write into start empty.
+        for (const t of f.tables) if (!["messages", "bookings", "applications", "whitelist"].includes(t.key)) expect(t.rows?.length, `${s.key} ${t.key}`).toBeGreaterThan(0);
         // The library's sample store details gave way to the site's own.
         expect(words).not.toContain("hello@example.com");
         expect(words).toContain(s.biz.email);

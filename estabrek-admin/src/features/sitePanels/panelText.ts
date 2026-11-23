@@ -2,7 +2,7 @@
 import { loc } from "../../lib/lang";
 import { money } from "../../lib/money";
 import { say } from "../../studio/say";
-import type { PanelColumn } from "../../api/sitePanels.api";
+import type { PanelColumn, PanelPerson1 } from "../../api/sitePanels.api";
 
 type Lang = "ar" | "en" | "he";
 type Local = Partial<Record<Lang, string>>;
@@ -21,6 +21,12 @@ const day = (v: string, withTime: boolean) => {
 export function cellText(col: PanelColumn, v: unknown, lang: Lang): string {
   if (v === null || v === undefined || v === "") return "";
   if (col.type === "$status") return say(STATUS[String(v)] ?? String(v));
+  // Who added the row through the shop: their name and email, and the game accounts they linked.
+  if (col.type === "$person") {
+    if (typeof v !== "object" || Array.isArray(v)) return "";
+    const p = v as PanelPerson1;
+    return [p.name, p.email, p.discordId ? `Discord ${p.discordId}` : "", p.steamId ? `Steam ${p.steamId}` : ""].filter(Boolean).join(" · ");
+  }
   if (col.type === "$date" || col.type === "datetime") return typeof v === "string" ? day(v, true) : "";
   if (col.type === "date") return typeof v === "string" ? day(v, false) : "";
   if (col.type === "boolean") return v === true ? "✓" : "";

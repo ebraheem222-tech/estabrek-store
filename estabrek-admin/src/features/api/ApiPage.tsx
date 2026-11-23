@@ -323,6 +323,11 @@ function TableCard({ table, url, limits, customerAccounts, canWrite, busy, onCha
               </label>
             ))}
           </div>
+          {table.locked?.length ? (
+            <p className="mt-2 text-white/55" data-testid={`locked-${table.slug}`}>
+              {say("بيقراها الزبون وما بيكتبها (حطّها الموقع): {fields}. بتنكتب من اللوحة، بمفتاح، أو من الـ functions.|A shopper reads these but never writes them (the site set them): {fields}. They are written from the panel, with a key, or by the functions.|לקוח קורא אותם אבל לא כותב (האתר קבע): {fields}. הם נכתבים מהלוח, עם מפתח או מהפונקציות.").replace("{fields}", table.locked.map((id) => nameOf(table.fields.find((f) => f.id === id)?.name ?? null, id, lang)).join("، "))}
+            </p>
+          ) : null}
         </fieldset>
       ) : null}
       {table.open ? (

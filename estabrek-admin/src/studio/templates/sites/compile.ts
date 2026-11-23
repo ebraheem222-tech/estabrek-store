@@ -5,7 +5,7 @@
  */
 import { ctxOf, say, type Ctx, type MotionLevel, type N } from "../build";
 import { C, w, type W } from "../words";
-import { SITE_FORMAT, SITE_FORMAT_VERSION, type PanelBits, type PanelPage, type PanelPart, type SiteBlueprint, type SiteSetting } from "./blueprint";
+import { SITE_FORMAT, SITE_FORMAT_VERSION, type Archetype, type PanelBits, type PanelPage, type PanelPart, type SiteBlueprint, type SiteSetting, type SiteWait } from "./blueprint";
 import { HOME_PANEL, HOME_SETTINGS, HOMES, MODULES } from "./modules";
 import { PANEL } from "./siteWords";
 import type { Built, Lang, SiteFile, SiteModule, SitePage, Slugs } from "./modules/kit";
@@ -30,6 +30,12 @@ export const slugsOf = (bp: SiteBlueprint): Slugs => slugsFrom(pagesOf(bp));
 /** A blueprint's settings, in its form's order: its archetype's, then its modules' (in the modules' order). */
 export const settingsOf = (bp: SiteBlueprint): SiteSetting[] => [...(HOME_SETTINGS[bp.archetype]?.(bp) ?? []), ...used(bp).flatMap((m) => m.settings?.(bp) ?? [])];
 
+/** A blueprint's rules on what its visitors add, in the modules' order (an application once, again after some days). */
+export const waitsOf = (bp: SiteBlueprint): SiteWait[] => used(bp).flatMap((m) => m.waits?.(bp) ?? []);
+
+/** The board page's name where it isn't bookings (a game server's: its applications by their state). */
+const BOARD_NAME: Partial<Record<Archetype, typeof PANEL.board>> = { server: PANEL.boardServer };
+
 /**
  * A blueprint's panel (its own pages in the admin's menu): «اليوم» with every number at the top, its modules'
  * queues, and the quick actions; «الحجوزات» with its calendars and boards; «الزباين» with one person's page across
@@ -46,7 +52,7 @@ export function panelOf(bp: SiteBlueprint): PanelPage[] {
   const people = bits.flatMap((b) => b.people ?? []);
   const pages: PanelPage[] = [
     { key: "today", name: PANEL.today, icon: "today", parts: today },
-    { key: "board", name: PANEL.board, icon: "calendar", parts: bits.flatMap((b) => b.board ?? []) },
+    { key: "board", name: BOARD_NAME[bp.archetype] ?? PANEL.board, icon: "calendar", parts: bits.flatMap((b) => b.board ?? []) },
     { key: "people", name: PANEL.people, icon: "people", parts: people.length ? [{ kind: "people", key: "person", title: PANEL.person, by: "phone", name: "name", tables: people }] : [] },
     { key: "reports", name: PANEL.reports, icon: "chart", parts: bits.flatMap((b) => b.reports ?? []) },
     { key: "lists", name: PANEL.lists, icon: "lists", parts: lists },
@@ -73,6 +79,13 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
   if (!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(bp.version)) out.push(`The version "${bp.version}" isn't three numbers`);
   if (!HOMES[bp.archetype]) out.push(`The "${bp.archetype}" archetype has no home yet`);
   if (bp.archetype === "server" && !bp.modules.status) out.push(`A game server's site needs "status"`);
+  // A kind of application is in a page's address and a setting's name ("/apply/police", "rolePolice").
+  const kinds = bp.modules.apply?.kinds.map((k) => k.key) ?? [];
+  kinds.forEach((k, i) => {
+    if (!/^[a-z][a-z0-9]{1,20}$/.test(k)) out.push(`The kind "${k}" isn't small letters and digits`);
+    if (kinds.indexOf(k) !== i) out.push(`Two kinds called "${k}"`);
+  });
+  if (bp.modules.apply && !kinds.length) out.push(`"apply" needs a kind to apply for`);
   const known = new Set(MODULES.map((m) => m.key as string));
   for (const key of Object.keys(bp.modules)) if (!known.has(key)) out.push(`No module "${key}"`);
   const on = new Set(used(bp).map((m) => m.key));
@@ -162,5 +175,6 @@ export function buildSite(bp: SiteBlueprint, o: BuildSite): SiteFile {
   const tables = mods.flatMap((m) => m.tables?.(b, c) ?? []).map((t) => (t.itemPage ? { ...t, itemPage: { ...t.itemPage, root: ownWords(t.itemPage.root, b, c, set) } } : t));
   const functions = mods.flatMap((m) => m.functions?.(b) ?? []);
   const panel = panelOf(bp);
-  return { format: "estabrek.feature", formatVersion: 1, key: bp.key, version: bp.version, name: bp.name, note: bp.note, tables, functions, pages, needs: { secrets: [], sites: [] }, ...(settings.length ? { settings } : {}), ...(panel.length ? { panel } : {}) };
+  const waits = waitsOf(bp);
+  return { format: "estabrek.feature", formatVersion: 1, key: bp.key, version: bp.version, name: bp.name, note: bp.note, tables, functions, pages, needs: { secrets: [], sites: [] }, ...(settings.length ? { settings } : {}), ...(panel.length ? { panel } : {}), ...(waits.length ? { waits } : {}) };
 }

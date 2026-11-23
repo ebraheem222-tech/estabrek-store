@@ -80,6 +80,15 @@ export type BookingUse = { title: W; sub: W; ask: W; button: W; done: W; /** Wha
 export type Bare = Record<string, never>;
 /** A game server: its game and its address (the sample's; its owner sets theirs), its Discord, how a player gets in. */
 export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam"; address: string; discord: string; join: W; steps: Array<[W, W]> };
+/** A game server's rules (wave G3): numbered sections ("1.1"), and what changed last ("آخر تعديل"). */
+export type RulesUse = { title: W; sub: W; changed: W; /** The day they last changed ("2026-11-20"), on each ready rule. */ date: string; sections: Array<{ key: string; name: W; rows: Array<{ n: string; title: W; text: W }> }> };
+/** One kind a player applies for: the whitelist, a job (police, paramedics…) or the staff, with its own question. */
+export type ApplyKind = { key: string; name: W; line: W; needs: W; question: W };
+/**
+ * Applying to a game server (wave G3): its kinds, each on a page of its own; the days before a player applies for the
+ * same kind again, and how many of the staff say yes before one is accepted (both its owner's settings after).
+ */
+export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; votes: number };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -114,13 +123,14 @@ export type SiteSetting = {
 export type PanelCond = { field: string; op: "is" | "isNot" | "empty" | "notEmpty"; value?: string | number | boolean };
 /** A number on the panel: how many rows match, in a window of days (compared with the window before it). */
 export type PanelNumber = { key: string; label: W; table: string; where?: PanelCond[]; window?: "today" | "week" | "month"; compare?: boolean };
-/** A queue's button: the fields it sets on the row ("confirmed"). */
-export type PanelDecision = { key: string; label: W; set: Record<string, string | number | boolean>; tone?: "good" | "bad" };
+/** A queue's button: the fields it sets on the row ("confirmed"); `afterVotes`: it waits for the staff's yes (accept). */
+export type PanelDecision = { key: string; label: W; set: Record<string, string | number | boolean>; tone?: "good" | "bad"; afterVotes?: boolean };
 /** A quick action: a setting it sets ("close online booking"). */
 export type PanelAction = { key: string; label: W; note?: W; setting: string; value: string | number | boolean };
 export type PanelPart =
   | { kind: "numbers"; key: string; items: PanelNumber[] }
-  | { kind: "queue"; key: string; title: W; table: string; where: PanelCond[]; show: string[]; decisions: PanelDecision[]; empty?: W; limit?: number }
+  /** `votes`: each member of the staff votes once on a row; `need`, the number setting saying how many yes its buttons "after the votes" wait for. */
+  | { kind: "queue"; key: string; title: W; table: string; where: PanelCond[]; show: string[]; decisions: PanelDecision[]; empty?: W; limit?: number; votes?: { need?: string } }
   | { kind: "view"; key: string; title: W; table: string; where?: PanelCond[]; columns: string[]; sort?: { field: string; dir: "asc" | "desc" }; limit?: number }
   | { kind: "settings"; key: string; title?: W; keys: string[] }
   | { kind: "actions"; key: string; title?: W; items: PanelAction[] }
@@ -148,6 +158,13 @@ export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "setti
  */
 export type PanelBits = { numbers?: PanelNumber[]; today?: PanelPart[]; board?: PanelPart[]; reports?: PanelPart[]; lists?: PanelPart[]; actions?: PanelAction[]; people?: PanelPeopleTable[] };
 
+/**
+ * A site's rule on what its visitors add (the backend's lib/siteWaits.ts): one row of a kind (`same`: the fields that
+ * make it one) per person, and again only after some days (its number setting `setting`, else `days`); a row still in
+ * one of the `open` states holds a new one back however old it is. Asked of a signed-in shopper's own rows.
+ */
+export type SiteWait = { table: string; same: string[]; days: number; setting?: string; open?: { field: string; values: string[] } };
+
 /** The modules a site uses, each with its words. Which modules exist, and what each brings, is modules/index.ts. */
 export type SiteModules = {
   status?: StatusUse;
@@ -158,6 +175,8 @@ export type SiteModules = {
   questions?: QuestionsUse;
   news?: NewsUse;
   branches?: BranchesUse;
+  rules?: RulesUse;
+  apply?: ApplyUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

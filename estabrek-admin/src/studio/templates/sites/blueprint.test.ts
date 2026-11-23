@@ -15,6 +15,7 @@ const LANGS = ["ar", "en", "he"] as const;
  *   online booking open or closed, the bell and an email), read by their pages and their function.
  *   1.2.0 (wave 1.2): the sites' panels (today's numbers, queues and quick actions; their lists; their settings).
  *   1.3.0 (wave 1.3): their bookings' calendar and board, a customer's page, charts and reports, the branches' map.
+ *   site-fivem-rp 1.1.0 (wave G3): its rules, and applying for its jobs (a page and a form each, the staff's votes).
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -29,7 +30,7 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
-  "site-fivem-rp": ["56619ee488171aee", "9457cd24eb9793ee", "63355bb5b2dc823a", "0e6f67f5bd6dc408", "c0c8d5f9b5ccb6a3", "85eee71fad03981b"],
+  "site-fivem-rp": ["6adbdae5fd80f834", "4fcea42efb3dc452", "1819904bda00064e", "6c4c523a35e3fa55", "b0d123513052548b", "36d7b74ee6a446b0"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -260,7 +261,7 @@ describe("A site's panel (wave 1.2)", () => {
       const f = buildSite(s, { lang: "en" });
       const panel = panelOf(s);
       expect(f.panel).toEqual(panel);
-      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
+      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
       for (const p of panel) for (const lang of LANGS) expect(p.name[lang].trim()).toBeTruthy();
       const tables = new Map(f.tables.map((t) => [`@table:${t.key}`, new Set(t.fields.map((x) => x.id))]));
       const keys = new Set((f.settings ?? []).map((x) => x.key));
@@ -294,5 +295,82 @@ describe("A site's panel (wave 1.2)", () => {
     expect(text).not.toContain("@table:bookings");
     expect(text).not.toContain('"setting":"bookingOpen"');
     expect(text).toContain('"key":"messages"');
+  });
+});
+
+describe("A game server's rules and applications (wave G3)", () => {
+  const rp = () => siteByKey("site-fivem-rp")!;
+  test("the rules in numbered sections from their table, and when they last changed, a setting the shop reads", () => {
+    const f = buildSite(rp(), { lang: "ar" });
+    const rules = f.tables.find((t) => t.key === "rules")!;
+    expect(rules.rows!.map((r) => (r.data.number as { ar: string }).ar)).toEqual(["1.1", "1.2", "1.3", "2.1", "2.2", "2.3", "3.1", "3.2", "3.3"]);
+    expect(rules.rows!.every((r) => r.data.changed === "2026-11-20")).toBe(true);
+    const page = f.pages.find((p) => p.key === "rules")!;
+    const text = JSON.stringify(page.tree);
+    // One list for each section, by its key; the last change from the setting.
+    for (const s of ["general", "roleplay", "crime"]) expect(text).toContain(`"value":"${s}"`);
+    expect(text).toContain('"fromSetting":{"text":"rulesChanged"}');
+    expect(f.settings!.find((x) => x.key === "rulesChanged")).toMatchObject({ kind: "words", public: true });
+  });
+
+  test("a page for each kind, out of the menu, its form writing the kind with what was typed and the rules agreed to", () => {
+    const bp = rp();
+    const f = buildSite(bp, { lang: "en" });
+    const kinds = bp.modules.apply!.kinds.map((k) => k.key);
+    expect(kinds).toEqual(["police", "ems", "mechanic", "staff"]);
+    expect(pagesOf(bp).filter((p) => p.menu === false).map((p) => p.slug)).toEqual(kinds.map((k) => `/apply/${k}`));
+    for (const k of bp.modules.apply!.kinds) {
+      const page = f.pages.find((p) => p.slug === `/apply/${k.key}`)!;
+      const form = JSON.stringify(page.tree).match(/"type":"form","props":(\{.*?"done":\{[^}]*\}\})/)?.[1];
+      const props = JSON.parse(form!) as { fields: Array<{ name: string; kind: string; required?: boolean; hint?: { en: string } }>; send: unknown };
+      expect(props.send).toEqual({ to: "table", table: "applications", set: { kind: k.key } });
+      expect(props.fields.map((x) => x.name)).toEqual(["character", "age", "story", "why", "question", "rules"]);
+      // Its own question, under the one every kind asks; the rules agreed to, or it isn't sent.
+      expect(props.fields.find((x) => x.name === "question")!.hint!.en).toBe(k.question.en);
+      expect(props.fields.find((x) => x.name === "rules")).toMatchObject({ kind: "check", required: true });
+      // Only while applications are open; the owner's words otherwise.
+      expect(JSON.stringify(page.tree)).toContain('"showIf":{"setting":"applyOpen"}');
+    }
+    // «My applications»: the player's own rows, read in their browser.
+    expect(JSON.stringify(f.pages.find((p) => p.slug === "/apply")!.tree)).toContain('"feed":"added"');
+  });
+
+  test("a player adds an application and reads theirs, never its state, the staff's answer or notes; once a kind, again after the days", () => {
+    const f = buildSite(rp(), { lang: "en" });
+    const apps = f.tables.find((t) => t.key === "applications")!;
+    expect(apps.api).toEqual({ read: "customer", create: "customer", update: "off", delete: "off", private: ["notes"], locked: ["status", "reply"] });
+    expect(f.waits).toEqual([{ table: "@table:applications", same: ["kind"], days: 7, setting: "applyWaitDays", open: { field: "status", values: ["fresh", "review", "interview"] } }]);
+    expect(f.settings!.find((x) => x.key === "applyWaitDays")).toMatchObject({ kind: "number", default: 7, min: 0 });
+    // Each kind's Discord role, kept on the server (the functions read it).
+    for (const k of ["rolePolice", "roleEms", "roleMechanic", "roleStaff"]) expect(f.settings!.find((x) => x.key === k)).toMatchObject({ kind: "text", default: "" });
+    expect(f.settings!.find((x) => x.key === "rolePolice")!.public).toBeUndefined();
+  });
+
+  test("the staff vote in the queue, «accept» waits for the votes its owner sets; the board is the applications'", () => {
+    const panel = panelOf(rp());
+    const queue = panel[0].parts.find((p) => p.key === "applications")!;
+    expect(queue).toMatchObject({ kind: "queue", votes: { need: "applyVotes" } });
+    if (queue.kind !== "queue") throw new Error("a queue");
+    expect(queue.show[0]).toBe("$by");
+    expect(queue.decisions.map((d) => [d.key, !!d.afterVotes])).toEqual([["review", false], ["interview", false], ["accept", true], ["reject", false]]);
+    expect(panel.find((p) => p.key === "board")!.name.ar).toBe("الطلبات");
+    expect(settingsOf(rp()).find((s) => s.key === "applyVotes")).toMatchObject({ kind: "number", default: 2 });
+  });
+
+  test("its functions: a bell for each, the player told and whitelisted when decided, Discord once its owner picks the connection", () => {
+    const f = buildSite(rp(), { lang: "ar" });
+    const fn = (key: string) => f.functions.find((x) => x.key === key)!;
+    expect(f.functions.map((x) => x.key)).toEqual(["applyNew", "applyDecided", "applyDiscord", "notify"]);
+    expect(fn("applyNew").triggers).toEqual([{ kind: "row", config: { table: "@table:applications", on: ["added"] } }]);
+    const decided = JSON.stringify(fn("applyDecided").def);
+    expect(decided).toContain('"who":"{{input.row.$owner}}"');
+    expect(decided).toContain('"table":"@table:whitelist"');
+    expect(decided).toContain("{{settings.applyWaitDays}}");
+    const discord = JSON.stringify(fn("applyDiscord").def);
+    // A ready connection is the store's own: picked when it is set up.
+    expect(discord.match(/"act":"ready","via":""/g)?.length).toBe(5);
+    expect(discord).toContain('"role":"{{settings.rolePolice}}"');
+    // The bell for messages stays the messages'; applications have their own.
+    expect(fn("notify").triggers.map((t) => t.config.table)).toEqual(["@table:messages"]);
   });
 });

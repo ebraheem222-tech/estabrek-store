@@ -110,6 +110,8 @@ export async function exportFeature(featureId: string, opts: { key?: string; ver
   if (came?.file.settings?.length) out.template.settings = came.file.settings;
   // Its panel too (lib/sitePanel.ts): it names the tables by their keys, which the export keeps.
   if (came?.file.panel?.length) out.template.panel = came.file.panel;
+  // And its rules on what its visitors add (lib/siteWaits.ts), by the same keys.
+  if (came?.file.waits?.length) out.template.waits = came.file.waits;
   return out;
 }
 

@@ -14,9 +14,10 @@ export type FormFieldKind = (typeof FORM_FIELD_KINDS)[number];
 export type FormFieldSpec = { name: string; kind: FormFieldKind; label: string; hint: string; required: boolean; options: Array<{ value: string; label: string }>; min?: number; max?: number };
 /**
  * One of the owner's functions by its call address (its answer kept in the variable `as`, "" = not kept), or a new row
- * of one of their tables; or the shop's own two forms (storeFormOf): a message to the store, a newsletter sign-up.
+ * of one of their tables (with `set`: values the row always gets beside what was typed, a site's form for one job);
+ * or the shop's own two forms (storeFormOf): a message to the store, a newsletter sign-up.
  */
-export type FormSendSpec = { to: "fn"; fn: string; as: string } | { to: "table"; table: string } | { to: "contact" } | { to: "newsletter" };
+export type FormSendSpec = { to: "fn"; fn: string; as: string } | { to: "table"; table: string; set?: Record<string, string | number | boolean> } | { to: "contact" } | { to: "newsletter" };
 /** A way to reach the store shown with its contact form (WhatsApp, a phone number, an email address). */
 export type FormWay = { label: string; value: string; href: string };
 export type FormSpec = {
@@ -26,6 +27,13 @@ export type FormSpec = {
   ways?: FormWay[];
 };
 export type FormValue = string | boolean;
+
+/** A form's values the row always gets (each a field's id and a short value), if it has any. */
+function fixedOf(v: unknown): { set?: Record<string, string | number | boolean> } {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const set = Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k, x]) => NAME.test(k) && (typeof x === "boolean" || (typeof x === "number" && Number.isFinite(x)) || (typeof x === "string" && x.length <= 80))).slice(0, 6)) as Record<string, string | number | boolean>;
+  return Object.keys(set).length ? { set } : {};
+}
 
 /** Sent on the form's element once it was sent and taken at the other end (a recipe with the "sent" event waits for it). */
 export const FORM_SENT_EVENT = "pt:form-sent";
@@ -63,7 +71,7 @@ export function formOf(p: Record<string, unknown>, say: (t: unknown) => string):
   const s = p.send && typeof p.send === "object" ? (p.send as Record<string, unknown>) : {};
   const send: FormSendSpec | null =
     s.to === "fn" && typeof s.fn === "string" && ADDRESS.test(s.fn) ? { to: "fn", fn: s.fn, as: typeof s.as === "string" && VAR.test(s.as) ? s.as : "" }
-    : s.to === "table" && typeof s.table === "string" && TABLE.test(s.table) ? { to: "table", table: s.table }
+    : s.to === "table" && typeof s.table === "string" && TABLE.test(s.table) ? { to: "table", table: s.table, ...fixedOf(s.set) }
     : null;
   return { title: say(p.title).slice(0, 160), fields, send, button: say(p.button).slice(0, 40), done: say(p.done).slice(0, 200) };
 }

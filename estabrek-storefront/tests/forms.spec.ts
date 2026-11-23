@@ -29,6 +29,8 @@ test.describe("a form as data", () => {
     expect([spec.title, spec.button, spec.done]).toEqual(["Ask", "Send it", "Sent"]);
     expect(formOf({ kind: "custom", send: { to: "fn", fn: "Not An Address" } }, say).send).toBeNull();
     expect(formOf({ kind: "custom", send: { to: "table", table: "friend-requests" } }, say).send).toEqual({ to: "table", table: "friend-requests" });
+    // Values the row always gets (a site's form for one job): a field's id each, a short value; anything else drops out.
+    expect(formOf({ kind: "custom", send: { to: "table", table: "applications", set: { kind: "police", Bad: "x", age: 3, long: "y".repeat(81) } } }, say).send).toEqual({ to: "table", table: "applications", set: { kind: "police", age: 3 } });
     expect(formOf({ kind: "custom", send: { to: "email" } }, say).send).toBeNull();
   });
 
@@ -85,7 +87,7 @@ const FORMS_PAGE = {
           }),
           // To a table anyone may add to; the table has rules of its own.
           form("write", {
-            send: { to: "table", table: "messages" },
+            send: { to: "table", table: "messages", set: { source: "page" } },
             fields: [field("name", "text", "Your name", { required: true }), field("age", "number", "Age", { min: 1, max: 120 }), field("news", "check", "Send me news"), field("day", "date", "A day")],
           }),
           // To a function that stops by itself; to a table for signed-in shoppers; and one not set up yet.
@@ -213,7 +215,8 @@ test.describe("a form on a page", () => {
     await expect(note(page, "write")).toHaveText("Sent ✓");
     await expect(box(page, "write", "name")).toHaveValue("");
     expect((await (await page.request.get(`${MOCK}/__test/data-rows`)).json()).rows).toEqual([
-      { table: "messages", values: { name: "Rana", age: 30, news: true, day: "2026-11-16" }, lang: "en", shopper: null },
+      // With the value the form always sends.
+      { table: "messages", values: { name: "Rana", age: 30, news: true, day: "2026-11-16", source: "page" }, lang: "en", shopper: null },
     ]);
 
     // A guest at a table for signed-in shoppers.

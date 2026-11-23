@@ -121,7 +121,7 @@ export function FormView({ spec, lang, signin }: { spec: FormSpec; lang: TreeLan
       ? { ok: false, status: 0, error: "" }
       : spec.send.to === "fn"
         ? await hands.fn(spec.send.fn, valuesFor(spec.fields, values, "fn"))
-        : await hands.row(spec.send.table, { ...valuesFor(spec.fields, values, "table"), ...uploaded }, lang);
+        : await hands.row(spec.send.table, { ...valuesFor(spec.fields, values, "table"), ...uploaded, ...spec.send.set }, lang);
     if (out.ok) {
       if (spec.send.to === "fn" && spec.send.as) keepAnswer(spec.send.as, out.value);
       done();

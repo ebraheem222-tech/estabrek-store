@@ -5,7 +5,7 @@
 import { B, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type Ctx, type N, type Skin } from "../../build";
 import { RECIPES } from "../../sections";
 import type { W } from "../../words";
-import type { ModuleKey, PanelBits, PanelPage, SiteBlueprint, SiteModules, SiteSetting } from "../blueprint";
+import type { ModuleKey, PanelBits, PanelPage, SiteBlueprint, SiteModules, SiteSetting, SiteWait } from "../blueprint";
 
 /* ---------------- The file a site becomes ---------------- */
 
@@ -25,6 +25,8 @@ export type SiteFile = {
   settings?: SiteSetting[];
   /** Its own pages in the admin's menu (blueprint.ts PanelPage); none: the key is left out. */
   panel?: PanelPage[];
+  /** Its rules on what its visitors add (blueprint.ts SiteWait); none: the key is left out. */
+  waits?: SiteWait[];
 };
 export type SiteTable = { key: string; slug: string; name: W; fields: Field[]; api?: Record<string, unknown>; itemPage?: Tree; rows?: Array<{ slug?: string; data: Record<string, unknown> }> };
 export type Field = Record<string, unknown> & { id: string; type: string };
@@ -42,8 +44,8 @@ export type Slugs = { home: string } & Record<string, string>;
 export type Built = { bp: SiteBlueprint; use: SiteModules; slugs: Slugs; inbox: string[] };
 export type Part = (c: Ctx) => N;
 
-/** One of a site's pages: where it is, where it comes in the site's list, and its sections. */
-export type SitePage = { key: string; slug: string; order: number; name: W; seo: W; parts: (b: Built) => Part[] };
+/** One of a site's pages: where it is, where it comes in the site's list, and its sections. `menu: false`: not in the site's menus (another page leads to it). */
+export type SitePage = { key: string; slug: string; order: number; name: W; seo: W; parts: (b: Built) => Part[]; menu?: false };
 
 /** A module: a whole piece of a site (its main list, its news, its bookings…) with what it brings. */
 export type SiteModule = {
@@ -67,6 +69,8 @@ export type SiteModule = {
   settings?: (bp: SiteBlueprint) => SiteSetting[];
   /** What it brings to its site's panel in the admin. */
   panel?: (bp: SiteBlueprint) => PanelBits;
+  /** Its rules on what its visitors add (one application of a kind, again after some days). */
+  waits?: (bp: SiteBlueprint) => SiteWait[];
 };
 
 /* ---------------- Building pieces ---------------- */
@@ -88,12 +92,16 @@ export const shownIf = (n: N, setting: string, is: boolean | string | number = t
 /** An element whose words on the shop are one of the site's settings (its text, a button's label), or its link (a Discord invite). */
 export const fromSetting = (n: N, take: { text?: string; label?: string; href?: string }): N => ({ ...n, props: { ...n.props, fromSetting: take } });
 
-/** A list of a table's rows drawn with the page (its card repeated once a row, in the owner's order). */
-export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W }): N {
+/**
+ * A list of a table's rows drawn with the page (its card repeated once a row, in the owner's order). With `feed`, read in
+ * the visitor's browser instead: "added", the rows the signed-in shopper added (their applications), with `signin`
+ * said to a visitor who isn't signed in.
+ */
+export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added"; signin?: W; sort?: "order" | "newest" }): N {
   return {
     id: c.ids("list"),
     type: "collectionList",
-    props: { collectionId: T(table), sort: "order", limit: o.limit ?? 24, columns: o.columns, ...(o.where?.length ? { where: o.where } : {}), ...(o.empty ? { empty: say(c, o.empty) } : {}) },
+    props: { collectionId: T(table), sort: o.sort ?? "order", limit: o.limit ?? 24, columns: o.columns, ...(o.where?.length ? { where: o.where } : {}), ...(o.empty ? { empty: say(c, o.empty) } : {}), ...(o.feed ? { feed: o.feed } : {}), ...(o.signin ? { signin: say(c, o.signin) } : {}) },
     style: { base: { gap: 24, self: "stretch" } },
     motion: mo.group(c),
     children: [card],
@@ -125,6 +133,7 @@ export const f = {
   long: (id: string, name: W, more: Obj = {}): Field => ({ id, type: "longText", name, ...more }),
   image: (id: string, name: W): Field => ({ id, type: "image", name }),
   money: (id: string, name: W): Field => ({ id, type: "money", name, currency: "ILS" }),
+  num: (id: string, name: W, more: Obj = {}): Field => ({ id, type: "number", name, ...more }),
   bool: (id: string, name: W): Field => ({ id, type: "boolean", name }),
   date: (id: string, name: W): Field => ({ id, type: "date", name }),
   phone: (id: string, name: W, more: Obj = {}): Field => ({ id, type: "phone", name, ...more }),

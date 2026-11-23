@@ -762,7 +762,8 @@ const FormField = z
  */
 const FormSend = z.discriminatedUnion("to", [
   z.object({ to: z.literal("fn"), fn: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "A function's address").optional(), as: z.string().trim().regex(/^[A-Za-z][A-Za-z0-9_]{0,23}$/, "A name of letters, digits and _").optional() }).strict(),
-  z.object({ to: z.literal("table"), table: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "A table's address").optional() }).strict(),
+  // `set`: values the row always gets beside what was typed (one application form for each job: { kind: "police" }).
+  z.object({ to: z.literal("table"), table: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "A table's address").optional(), set: z.record(z.string().regex(/^[a-z][a-zA-Z0-9]{0,30}$/, "A field's id"), z.union([z.string().max(80), z.number().finite(), z.boolean()])).refine((s) => Object.keys(s).length <= 6, "6 values at most").optional() }).strict(),
 ]);
 
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {

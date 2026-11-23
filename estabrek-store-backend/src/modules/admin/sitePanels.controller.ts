@@ -6,7 +6,8 @@ import { AppError } from "../../utils/httpError.js";
 import { hasPermission } from "../../middleware/access.js";
 import { tableRight } from "./permissions.js";
 import { tableOf, changeRow } from "../../lib/rowWrites.js";
-import { findByCode, pageView, pagesShown, partShown, peopleSearch, reportCsv, saveLayout, sitePanels, tableIdOf, type PanelPart, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
+import { findByCode, needOf, pageView, pagesShown, partShown, peopleSearch, reportCsv, saveLayout, sitePanels, tableIdOf, type PanelPart, type PanelRights, type SitePanel } from "../../lib/sitePanel.js";
+import { VOTES, VOTE_NOTE_MAX, castVote, yesVotes } from "../../lib/siteVotes.js";
 import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
 import { readSite } from "../../lib/gameSites.js";
 
@@ -19,6 +20,9 @@ import { readSite } from "../../lib/gameSites.js";
  * GET  /admin/site-panels                                  — the sites here with a panel, each with the pages this member sees
  * GET  /admin/site-panels/:feature/:page?lang&month&period — one page, each part with what it shows now (a calendar's month, a report's period)
  * POST /admin/site-panels/:feature/:page/:part/decide      { row, decision, lang? } — a queue's or a scanner's button: the row's fields set
+ *                                                           (a button "after the votes" only once enough of the staff said yes)
+ * POST /admin/site-panels/:feature/:page/:part/vote        { row, vote: yes|no|none, note?, lang? } — a member's vote on a row of a
+ *                                                           queue that counts them (one each; "none" takes it back)
  * POST /admin/site-panels/:feature/:page/:part/move        { row, to, lang? } — a kanban's card to another column, a calendar's row to another day
  * POST /admin/site-panels/:feature/:page/:part/act         { action } — a quick action: the setting it names set (features:write)
  * GET  /admin/site-panels/:feature/:page/:part/people?q=   — a person's page: their rows across the part's tables
@@ -36,7 +40,7 @@ const rightsOf = (req: Request): PanelRights => {
 };
 const langOf = (v: unknown): "ar" | "en" | "he" => (v === "en" || v === "he" ? v : "ar");
 const text = (v: unknown) => (typeof v === "string" ? v : undefined);
-const optsOf = (req: Request, lang?: unknown) => ({ lang: langOf(lang ?? req.query.lang), month: text(req.query.month), period: text(req.query.period) });
+const optsOf = (req: Request, lang?: unknown) => ({ lang: langOf(lang ?? req.query.lang), month: text(req.query.month), period: text(req.query.period), member: req.user?.sub ?? null });
 
 /** The site and the page asked for, if this member sees that page. */
 async function pageOf(req: Request) {
@@ -90,9 +94,33 @@ r.post(
     const decision = part.decisions.find((d) => d.key === body.decision);
     if (!decision) throw new AppError(404, "DECISION_NOT_FOUND", "No such button here");
     const { table, was } = await rowToChange(site, part.table, body.row, may);
+    // Accepted only once enough of the staff said yes (the site's setting says how many).
+    if (part.kind === "queue" && part.votes && decision.afterVotes) {
+      const need = needOf(site, part);
+      const yes = await yesVotes(was.id);
+      if (yes < need) throw new AppError(409, "VOTES_NEEDED", `It waits for ${need} yes (${yes} so far)`, { need, yes });
+    }
     // Like a cell changed in the grid: checked against the fields, and the functions waiting for a change are told.
     const saved = await changeRow(table, was, { values: decision.set, lang: body.lang ?? "ar" });
     res.json({ ...(await pageView(site, page, may, optsOf(req, body.lang))), row: saved.id });
+  }),
+);
+
+const VoteBody = z.object({ row: z.string().min(1).max(40), vote: z.enum([...VOTES, "none"]), note: z.string().max(VOTE_NOTE_MAX).optional(), lang: z.enum(["ar", "en", "he"]).optional() }).strict();
+r.post(
+  "/:feature/:page/:part/vote",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    const part = partOf(site, page, String(req.params.part), ["queue"], may);
+    if (!part.votes) throw new AppError(404, "PART_NOT_FOUND", "This queue doesn't count votes");
+    const body = VoteBody.parse(req.body ?? {});
+    // Whoever may decide the rows votes on them (a member who only reads the table sees the votes).
+    const { was } = await rowToChange(site, part.table, body.row, may);
+    const id = req.user?.sub;
+    if (!id) throw new AppError(401, "UNAUTHORIZED", "Sign in first");
+    const admin = await prisma.adminUser.findUnique({ where: { id }, select: { name: true, email: true } });
+    await castVote(was.id, { id, name: admin?.name || admin?.email || req.user?.email || id }, body.vote === "none" ? null : body.vote, body.note);
+    res.json({ ...(await pageView(site, page, may, optsOf(req, body.lang))), row: was.id });
   }),
 );
 
