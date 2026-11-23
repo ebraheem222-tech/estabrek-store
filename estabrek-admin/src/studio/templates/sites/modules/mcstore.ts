@@ -7,15 +7,16 @@
  *
  * Buying: a package's «اشتري» (signed in) calls the site's function with that row; it writes the purchase (theirs,
  * unpaid) and asks for the payment («اطلب دفع»), and the player is sent to the shop's payment page. Paid, another
- * function moves the purchase to «بتستنّى التسليم» and writes to the player; the staff mark it given, or failed and
- * tried again (until the server's own plugin gives it by itself, wave G5, by the package's command).
+ * function moves the purchase to «بتستنّى التسليم» and writes to the player. The server's link (wave G5b, the Paper
+ * plugin) gives it by itself once the player linked their Minecraft account: «عم تنعطى» while the server runs the
+ * package's command, then given, or failed with why; the staff can still mark it given, or failed and tried again.
  */
 import { B, CARD, H, IMG, P, SEC, STACK, pop, withSkin, type Ctx, type N } from "../../build";
 import { w, type W } from "../../words";
 import { MC_W } from "../siteWords";
 import { LIST, T, bound, callBand, f, head, pageHead, still, type Built, type Part, type SiteModule } from "./kit";
 
-const STATES: Array<[string, W]> = [["unpaid", MC_W.unpaid], ["waiting", MC_W.waiting], ["given", MC_W.given], ["failed", MC_W.failed]];
+const STATES: Array<[string, W]> = [["unpaid", MC_W.unpaid], ["waiting", MC_W.waiting], ["giving", MC_W.giving], ["given", MC_W.given], ["failed", MC_W.failed]];
 /** The call address the store's «اشتري» runs (renamed by an install where it is taken). */
 const BUY = "buy-package";
 
@@ -155,8 +156,8 @@ export const MCSTORE: SiteModule = {
             if: [{ left: "{{buy}}", cmp: "notEmpty" }, { left: "{{buy.status}}", cmp: "eq", right: "unpaid" }],
             do: [
               { act: "change", table: T("purchases"), row: "{{buy.$id}}", values: { status: "waiting" } },
-              { act: "notify", title: "انباعت باقة: {{buy.package}}", text: "افتح «بتستنّى التسليم» بلوحة الموقع وسلّمها.", link: "/admin/data" },
-              { act: "if", if: [{ left: "{{input.email}}", cmp: "notEmpty" }], do: [{ act: "email", to: "{{input.email}}", subject: "شكراً عالدعم!", text: "وصلنا دفعك لـ {{buy.package}}. الطاقم رح يسلّمك ياها باللعبة، وبتشوف وين وصلت بـ «مشترياتي» بصفحة المتجر." }] },
+              { act: "notify", title: "انباعت باقة: {{buy.package}}", text: "إذا لينك السيرفر شغّال واللاعب رابط حسابه، بتنعطى باللعبة لحالها. وإلا سلّمها من «بتستنّى التسليم» بلوحة الموقع.", link: "/admin/data" },
+              { act: "if", if: [{ left: "{{input.email}}", cmp: "notEmpty" }], do: [{ act: "email", to: "{{input.email}}", subject: "شكراً عالدعم!", text: "وصلنا دفعك لـ {{buy.package}}. بتوصلك باللعبة، ولحالها كمان إذا ربطت حساب ماينكرافت تبعك من «حسابي» (‎/link والكود). وبتشوف وين وصلت بـ «مشترياتي» بصفحة المتجر." }] },
             ],
           },
         ],
