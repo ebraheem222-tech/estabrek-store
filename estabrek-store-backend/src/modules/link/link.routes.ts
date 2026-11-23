@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { asyncHandler } from "../../utils/async.js";
 import { hit } from "../../lib/hitLimit.js";
-import { claimLinkCode, linkHello, siteOfKey, whitelistAnswer } from "../../lib/gameLink.js";
+import { claimLinkCode, deliveries, linkHello, reportDeliveries, siteOfKey, whitelistAnswer } from "../../lib/gameLink.js";
 
 /**
  * /v1/link — «إستبرق لينك» on a game server talking to its site (lib/gameLink.ts), with the key its download was
@@ -10,6 +10,8 @@ import { claimLinkCode, linkHello, siteOfKey, whitelistAnswer } from "../../lib/
  * POST /link/hello      { game, version, players, lang } — every minute: { whitelist } (is the site's whitelist on)
  * POST /link/whitelist  { ids: { license?, discord?, steam?, uuid? }, name, lang } — { allowed, message? }
  * POST /link/claim      { code, game, account: { id, name }, lang } — /link 482913 typed in the game: { ok, message }
+ * POST /link/deliveries — a Minecraft server's purchases to give now: { items: [{ id, command }] } (each handed over once)
+ * POST /link/deliveries/report { items: [{ id, ok, error? }] } — what it gave: { given, failed }
  */
 const r = Router();
 const MINUTE = 60_000;
@@ -54,6 +56,23 @@ r.post(
     const featureId = await siteOf(req, res);
     if (!featureId) return;
     res.json(await claimLinkCode(body(req)));
+  }),
+);
+
+r.post(
+  "/deliveries",
+  asyncHandler(async (req, res) => {
+    const featureId = await siteOf(req, res);
+    if (!featureId) return;
+    res.json(await deliveries(featureId));
+  }),
+);
+r.post(
+  "/deliveries/report",
+  asyncHandler(async (req, res) => {
+    const featureId = await siteOf(req, res);
+    if (!featureId) return;
+    res.json(await reportDeliveries(featureId, body(req).items));
   }),
 );
 

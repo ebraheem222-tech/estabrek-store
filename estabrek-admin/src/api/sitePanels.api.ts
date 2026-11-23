@@ -37,7 +37,7 @@ export type PanelGame = { kind: "game"; key: string; title: Local; status: GameV
 /** A game server site's Tebex webstore as its pages show it (backend lib/tebex.ts): `token`, whether one is set. */
 export type PanelTebex = { kind: "tebex"; key: string; title: Local; token: boolean; store: { name: string; url: string; currency: string; categories: Array<{ name: string; packages: number }> } | null };
 /** A game server site's link (backend lib/gameLink.ts): downloaded or not, its last hello, its whitelist switch. */
-export type PanelLink = { kind: "link"; key: string; title: Local; game: "fivem" | "minecraft" | null; made: boolean; keyHint: string | null; lastSeenAt: string | null; lastVersion: string | null; lastPlayers: number | null; whitelist: boolean; canDownload: boolean };
+export type PanelLink = { kind: "link"; key: string; title: Local; game: "fivem" | "minecraft" | null; made: boolean; keyHint: string | null; lastSeenAt: string | null; lastVersion: string | null; lastPlayers: number | null; whitelist: boolean; whitelistable: boolean; canDownload: boolean };
 export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame | PanelTebex | PanelLink;
 /** One person (by their phone or email) with their rows in each of the part's tables. */
 export type PanelPerson = { key: string; by: string; name: string; last: string; tables: Array<{ table: PanelTable; title: Local; columns: PanelColumn[]; rows: PanelRow[] }> };

@@ -343,6 +343,7 @@ export const MC_W = {
   status: w("الحالة", "State", "מצב"),
   unpaid: w("ما ندفعت", "Not paid", "לא שולם"),
   waiting: w("بتستنّى التسليم", "Waiting to be given", "ממתינה למסירה"),
+  giving: w("عم تنعطى", "Being given", "בתהליך מסירה"),
   given: w("انعطت", "Given", "נמסרה"),
   failed: w("فشل التسليم", "Giving failed", "המסירה נכשלה"),
   note: w("ملاحظة الطاقم", "Staff note", "הערת צוות"),

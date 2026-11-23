@@ -124,7 +124,7 @@ export const FIVEM_RP = site({
  */
 export const MC_SURVIVAL = site({
   key: "site-minecraft-survival",
-  version: "1.0.0",
+  version: "1.1.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -157,6 +157,7 @@ export const MC_SURVIVAL = site({
         [w("اقرأ القوانين وفوت", "Read the rules and join", "לקרוא את החוקים ולהיכנס"), w("أول ليلة صعبة: ابنِ بيت قبل ما تغيب الشمس.", "The first night is hard: build a house before sunset.", "הלילה הראשון קשה: בנו בית לפני השקיעה.")],
       ],
     },
+    link: {},
     rules: {
       title: w("القوانين", "The rules", "החוקים"),
       sub: w("عالم بيضل حلو لأنه الكل بيحترمه. اقراها قبل ما تبني.", "A world stays good because everyone respects it. Read them before you build.", "עולם נשאר טוב כי כולם מכבדים אותו. קראו לפני שבונים."),

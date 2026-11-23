@@ -410,6 +410,11 @@ const LINK_STEPS: Record<string, string[]> = {
     "زيد السطر ensure site-link بـ server.cfg، وأعد تشغيل السيرفر.|Add the line ensure site-link to server.cfg, and restart the server.|הוסיפו את השורה ensure site-link ל-server.cfg והפעילו את השרת מחדש.",
     "خلال دقيقة بيطلع هون إنه حكى. اللاعبين بيربطوا حساباتهم بـ /link والكود من «حسابي».|Within a minute it shows here that it spoke. Players link their accounts with /link and the code from «My account».|תוך דקה יופיע כאן שהוא דיבר. שחקנים מקשרים חשבונות עם /link והקוד מ«החשבון שלי».",
   ],
+  minecraft: [
+    "حط الملف site-link.jar بمجلّد plugins تبع سيرفرك (Paper أو Purpur أو Spigot، نسخة 1.20 أو أحدث)، وأعد تشغيل السيرفر.|Put site-link.jar in your server's plugins folder (Paper, Purpur or Spigot, 1.20 or newer), and restart the server.|שימו את site-link.jar בתיקיית plugins של השרת (Paper, Purpur או Spigot, גרסה 1.20 ומעלה) והפעילו את השרת מחדש.",
+    "خلال دقيقة بيطلع هون إنه حكى. اللاعب بيربط حسابه بـ /link والكود من «حسابي».|Within a minute it shows here that it spoke. A player links their account with /link and the code from «My account».|תוך דקה יופיע כאן שהוא דיבר. שחקן מקשר את החשבון עם /link והקוד מ«החשבון שלי».",
+    "اللي بينشرى من متجر الموقع بينعطى باللعبة لحاله، بأمر الباقة، لما صاحبه يكون رابط حسابه. اللي فشل بيطلع بـ «فشل التسليم» مع السبب.|What is bought in the site's store is given in the game by itself, by the package's command, once its buyer linked their account. What fails shows in «Giving failed» with why.|מה שנקנה בחנות האתר נמסר במשחק בעצמו, בפקודה של החבילה, אחרי שהקונה קישר את החשבון. מה שנכשל מופיע ב«המסירה נכשלה» עם הסיבה.",
+  ],
 };
 /** A game server site's link: downloaded or not, its last hello, and a new download (a new key; the old one stops). */
 export function LinkPart({ part, view }: { part: PanelLink; view: PanelPageView }) {
@@ -443,7 +448,7 @@ export function LinkPart({ part, view }: { part: PanelLink; view: PanelPageView 
         more={part.canDownload && steps ? <Button size="xs" variant={part.made ? "secondary" : "primary"} isLoading={file.isPending} onClick={() => void download()} data-testid={`site-link-${part.key}-download`}>{part.made ? say("نزّل من جديد|Download again|להוריד שוב") : say("نزّل|Download|להוריד")}</Button> : null}
       />
       {!steps ? (
-        <p className="text-sm text-white/60" data-testid={`site-link-${part.key}-later`}>{say("لهاللعبة لسّا ما في لينك. FiveM هلّق، وماينكرافت قريباً.|This game has no link yet. FiveM now, Minecraft soon.|למשחק הזה עוד אין קישור. FiveM עכשיו, מיינקראפט בקרוב.")}</p>
+        <p className="text-sm text-white/60" data-testid={`site-link-${part.key}-later`}>{say("لهاللعبة لسّا ما في لينك: في لـ FiveM ولماينكرافت Java بس.|This game has no link yet: there is one for FiveM and Minecraft Java only.|למשחק הזה עוד אין קישור: יש רק ל-FiveM ולמיינקראפט Java.")}</p>
       ) : !part.made ? (
         <p className="text-sm text-white/60" data-testid={`site-link-${part.key}-none`}>{say("لسّا ما نزّلته. نزّله وحطّه على سيرفرك: بيحكي مع الموقع لحاله، وما في ولا منفذ بينفتح.|Not downloaded yet. Download it and put it on your server: it talks to the site by itself, and no port opens.|עוד לא הורד. הורידו ושימו על השרת: הוא מדבר עם האתר בעצמו, ושום פורט לא נפתח.")}</p>
       ) : (
@@ -456,7 +461,7 @@ export function LinkPart({ part, view }: { part: PanelLink; view: PanelPageView 
       )}
       {steps ? <ol className="mt-3 list-decimal space-y-1 ps-5 text-xs text-white/60">{steps.map((s) => <li key={s}>{say(s)}</li>)}</ol> : null}
       {dialog}
-      <p className="mt-2 text-xs text-white/50" data-testid={`site-link-${part.key}-whitelist`}>{part.whitelist ? say("الوايتلست شغّال: بيفوت بس اللي بجدول الوايتلست.|The whitelist is on: only those in the whitelist table come in.|הרשימה הלבנה פעילה: נכנסים רק מי שבטבלה.") : say("الوايتلست طافي: الكل بيفوت. بتشغّله من إعدادات الموقع.|The whitelist is off: everyone comes in. Switch it on in the site's settings.|הרשימה הלבנה כבויה: כולם נכנסים. מפעילים אותה בהגדרות האתר.")}</p>
+      {part.whitelistable ? <p className="mt-2 text-xs text-white/50" data-testid={`site-link-${part.key}-whitelist`}>{part.whitelist ? say("الوايتلست شغّال: بيفوت بس اللي بجدول الوايتلست.|The whitelist is on: only those in the whitelist table come in.|הרשימה הלבנה פעילה: נכנסים רק מי שבטבלה.") : say("الوايتلست طافي: الكل بيفوت. بتشغّله من إعدادات الموقع.|The whitelist is off: everyone comes in. Switch it on in the site's settings.|הרשימה הלבנה כבויה: כולם נכנסים. מפעילים אותה בהגדרות האתר.")}</p> : null}
     </section>
   );
 }

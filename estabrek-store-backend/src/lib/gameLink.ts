@@ -1,12 +1,14 @@
 /**
  * «إستبرق لينك» (wave G5 of docs/sites-300-plan.ar.md): a small piece the owner puts on their game server (a FiveM
- * resource; a Paper plugin next) that talks to their site. The site never reaches into the game server: no port opens
+ * resource, or a Paper plugin built from estabrek-link/) that talks to their site. The site never reaches into the game server: no port opens
  * and no RCON password leaves it. What it does:
  *   - says hello every minute (how many play; the site answers whether its whitelist is on);
  *   - asks the site whether a player connecting may come in, while the whitelist is on: one accepted (a row in the
  *     site's whitelist table) by their Discord, their Steam, or the shop account their game account is linked to;
  *   - links a player's game account to their shop account by a code they type in the game (/link 482913), taken
- *     from «حسابي» on the shop (10 minutes, one at a time).
+ *     from «حسابي» on the shop (10 minutes, one at a time);
+ *   - gives what players bought in a Minecraft server's own store (its purchases waiting to be given): each handed
+ *     over once («عم تنعطى») with its package's command, the player's Minecraft name in it, then given or failed.
  *
  * Each download is stamped with the site's key, its name and the API's address (assets/link); a new download makes a
  * new key and the old one stops working. The key is kept hashed. Nothing in it names the platform (a store is its own).
@@ -18,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { settingsOfFeature } from "./siteSettings.js";
-import { plainZip } from "./plainZip.js";
+import { plainZip, readPlainZip } from "./plainZip.js";
 
 export const LINK_GAMES = ["fivem", "minecraft"] as const;
 export type LinkGame = (typeof LINK_GAMES)[number];
@@ -177,11 +179,13 @@ export async function linkView(featureId: string) {
   const link = await prisma.siteLink.findUnique({ where: { featureId } });
   const s = await settingsOfFeature(featureId);
   const game: LinkGame | null = s?.values.game === "fivem" ? "fivem" : s?.values.game === "minecraft" ? "minecraft" : null;
-  return { game, made: !!link, keyHint: link?.keyHint ?? null, lastSeenAt: link?.lastSeenAt?.toISOString() ?? null, lastVersion: link?.lastVersion ?? null, lastPlayers: link?.lastPlayers ?? null, whitelist: s?.values.whitelistOn === true };
+  // A site has a whitelist where it declares the switch (one with a whitelist table: its applications).
+  const whitelistable = !!s?.decls.some((d) => d.key === "whitelistOn");
+  return { game, made: !!link, keyHint: link?.keyHint ?? null, lastSeenAt: link?.lastSeenAt?.toISOString() ?? null, lastVersion: link?.lastVersion ?? null, lastPlayers: link?.lastPlayers ?? null, whitelist: s?.values.whitelistOn === true, whitelistable };
 }
 
 /** A game the link has a download for, now. */
-export const DOWNLOADS: Partial<Record<LinkGame, { name: string; type: string }>> = { fivem: { name: "site-link.zip", type: "application/zip" } };
+export const DOWNLOADS: Record<LinkGame, { name: string; type: string }> = { fivem: { name: "site-link.zip", type: "application/zip" }, minecraft: { name: "site-link.jar", type: "application/java-archive" } };
 
 /** The site's link for its game, stamped with a new key and where the API answers. */
 export async function linkDownload(featureId: string, apiBase: string, lang: Lang, siteName: string): Promise<{ name: string; type: string; data: Buffer } | null> {
@@ -194,6 +198,81 @@ export async function linkDownload(featureId: string, apiBase: string, lang: Lan
   // (A site's feature is named "the kind: the name": players see the name.)
   const name = (siteName.split(":").pop() ?? siteName).replace(/[\\"\r\n]/g, " ").trim().slice(0, 40) || "Server";
   const stamp = (text: string) => text.replace("__SITE_NAME__", () => name).replace("__SITE_API__", () => apiBase).replace("__SITE_KEY__", () => key).replace("__SITE_LANG__", () => lang);
+  if (view.game === "minecraft") {
+    // The blank plugin (built by estabrek-link/build.mjs) with its properties stamped: a properties file escapes "\".
+    const jar = readPlainZip(fs.readFileSync(path.join(dir, "site-link.jar")));
+    const escaped = (text: string) => text.replace(/\\/g, "\\\\");
+    const props = (text: string) => text.replace("__SITE_NAME__", () => escaped(name)).replace("__SITE_API__", () => escaped(apiBase)).replace("__SITE_KEY__", () => escaped(key)).replace("__SITE_LANG__", () => escaped(lang));
+    return { ...what, data: plainZip(jar.map((f) => (f.name === "site-link.properties" ? { name: f.name, data: props(f.data.toString("utf8")) } : f))) };
+  }
   const files = ["fxmanifest.lua", "config.lua", "server.lua"].map((file) => ({ name: `site-link/${file}`, data: stamp(fs.readFileSync(path.join(dir, file), "utf8")) }));
   return { ...what, data: plainZip(files) };
+}
+
+/* ---------------- Giving purchases (a Minecraft server's own store) ---------------- */
+
+export const DELIVERY_LIMITS = { batch: 20, stuckMinutes: 10, note: 300 } as const;
+const MC_NAME = /^[A-Za-z0-9_]{3,16}$/;
+type TableIds = { purchases?: string; packages?: string };
+async function storeTables(featureId: string): Promise<TableIds> {
+  const f = await prisma.feature.findUnique({ where: { id: featureId }, select: { template: true } });
+  return ((f?.template as { ids?: { table?: TableIds } } | null)?.ids?.table ?? {}) as TableIds;
+}
+/** Words in any language, or a plain value, as text. */
+const textOf = (v: unknown): string => (typeof v === "string" ? v : v && typeof v === "object" ? String(Object.values(v as Record<string, unknown>).find((x) => typeof x === "string" && x.trim()) ?? "") : "");
+const setStatus = (status: string) => Prisma.sql`jsonb_set(i."data", '{status}', to_jsonb(${status}::text))`;
+
+/**
+ * What the game server gives now: purchases waiting to be given whose buyer linked a Minecraft account, each handed
+ * over once (moved to «عم تنعطى»; one stuck there 10 minutes goes back to waiting), with its package's command and
+ * the player's name in it ({player}, {uuid}). A package with no command fails at once, with why.
+ */
+export async function deliveries(featureId: string, now = Date.now()): Promise<{ items: Array<{ id: string; command: string }> }> {
+  const t = await storeTables(featureId);
+  if (!t.purchases || !t.packages) return { items: [] };
+  await prisma.$executeRaw(Prisma.sql`
+    UPDATE "CollectionItem" i SET "data" = ${setStatus("waiting")}, "updatedAt" = now()
+    WHERE i."collectionId" = ${t.purchases} AND i."deletedAt" IS NULL AND i."data"->>'status' = 'giving' AND i."updatedAt" < ${new Date(now - DELIVERY_LIMITS.stuckMinutes * 60_000)}`);
+  const taken = await prisma.$queryRaw<Array<{ id: string; packageId: string | null; name: string; uuid: string }>>(Prisma.sql`
+    UPDATE "CollectionItem" i SET "data" = ${setStatus("giving")}, "updatedAt" = now()
+    FROM (
+      SELECT c."id", u."minecraftName" AS name, u."minecraftUuid" AS uuid FROM "CollectionItem" c JOIN "User" u ON u."id" = c."ownerId"
+      WHERE c."collectionId" = ${t.purchases} AND c."deletedAt" IS NULL AND c."data"->>'status' = 'waiting' AND u."minecraftUuid" IS NOT NULL AND u."minecraftName" IS NOT NULL
+      ORDER BY c."createdAt" ASC LIMIT ${DELIVERY_LIMITS.batch} FOR UPDATE OF c SKIP LOCKED
+    ) w
+    WHERE i."id" = w."id"
+    RETURNING i."id", i."data"->>'packageId' AS "packageId", w.name, w.uuid`);
+  if (!taken.length) return { items: [] };
+  const packages = await prisma.collectionItem.findMany({ where: { collectionId: t.packages, id: { in: taken.map((r) => r.packageId).filter((x): x is string => !!x) } }, select: { id: true, data: true } });
+  const items: Array<{ id: string; command: string }> = [];
+  const failed: Array<{ id: string; error: string }> = [];
+  for (const r of taken) {
+    const pkg = packages.find((p) => p.id === r.packageId);
+    const command = textOf((pkg?.data as Record<string, unknown> | undefined)?.command).trim().replace(/^\//, "");
+    if (!command || !MC_NAME.test(r.name)) failed.push({ id: r.id, error: !command ? "The package has no command to give it" : "The player's Minecraft name can't go in a command" });
+    else items.push({ id: r.id, command: command.replace(/\{player\}/g, r.name).replace(/\{uuid\}/g, r.uuid) });
+  }
+  if (failed.length) await reportDeliveries(featureId, failed.map((f) => ({ id: f.id, ok: false, error: f.error })));
+  return { items };
+}
+
+/** The game server's word on what it gave: given, or failed with why (a purchase it was handed, only). */
+export async function reportDeliveries(featureId: string, said: unknown): Promise<{ given: number; failed: number }> {
+  const t = await storeTables(featureId);
+  const list = Array.isArray(said) ? said : [];
+  let given = 0, failed = 0;
+  for (const x of list.slice(0, DELIVERY_LIMITS.batch * 2)) {
+    if (!x || typeof x !== "object") continue;
+    const r = x as Record<string, unknown>;
+    if (typeof r.id !== "string" || !t.purchases) continue;
+    const ok = r.ok === true;
+    const why = ok ? null : (typeof r.error === "string" && r.error.trim() ? r.error.trim() : "The server didn't say why").slice(0, DELIVERY_LIMITS.note);
+    const note = why ? Prisma.sql`, '{note}', jsonb_build_object('ar', ${why}::text, 'en', ${why}::text, 'he', ${why}::text)` : Prisma.empty;
+    const data = why ? Prisma.sql`jsonb_set(${setStatus("failed")}${note})` : setStatus("given");
+    const n = await prisma.$executeRaw(Prisma.sql`
+      UPDATE "CollectionItem" i SET "data" = ${data}, "updatedAt" = now()
+      WHERE i."id" = ${r.id} AND i."collectionId" = ${t.purchases} AND i."data"->>'status' = 'giving'`);
+    if (n) ok ? given++ : failed++;
+  }
+  return { given, failed };
 }
