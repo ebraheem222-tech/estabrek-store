@@ -2004,6 +2004,10 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           return send(200, { url: `https://steamcommunity.com/openid/login?${new URLSearchParams({ "openid.mode": "checkid_setup", "openid.return_to": ret })}` });
         }
         if (pathname === "/v1/customer/me/steam" && req.method === "DELETE") { customerState.user.steamId = null; return send(200, customerState.user); }
+        // A game server's link (social-sign-in.spec.ts): the store's state is set by /__test/game-link.
+        if (pathname === "/v1/customer/me/game-link" && req.method === "GET") return send(200, (globalThis.gameLink ??= { available: false, fivem: null, minecraft: null }));
+        if (pathname === "/v1/customer/me/game-link" && req.method === "POST") return send(200, { code: "482913", expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() });
+        if (pathname.startsWith("/v1/customer/me/game-link/") && req.method === "DELETE") { const game = pathname.split("/").pop(); globalThis.gameLink = { ...(globalThis.gameLink ?? {}), [game]: null }; return send(200, globalThis.gameLink); }
         if (pathname === "/v1/customer/me" && req.method === "GET") return send(200, customerState.user);
         if (pathname === "/v1/customer/me" && req.method === "PATCH") { Object.assign(customerState.user, data); return send(200, customerState.user); }
         if (pathname === "/v1/customer/me/orders") return send(200, { orders: customerState.orders });
@@ -2036,7 +2040,14 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       return;
     }
     if (pathname === "/__test/customer-state") return res.end(JSON.stringify({ wishlist: [...customerState.wishlist], orders: customerState.orders.length, user: customerState.user }));
+    if (pathname === "/__test/game-link" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => { globalThis.gameLink = JSON.parse(body || "{}"); res.end(JSON.stringify({ ok: true })); });
+      return;
+    }
     if (pathname === "/__test/customer-reset") {
+      globalThis.gameLink = { available: false, fivem: null, minecraft: null };
       customerState.user = null; customerState.tokens.clear(); customerState.refresh.clear(); customerState.orders = []; customerState.wishlist.clear(); customerState.addresses = []; customerState.states.clear();
       return res.end(JSON.stringify({ ok: true }));
     }

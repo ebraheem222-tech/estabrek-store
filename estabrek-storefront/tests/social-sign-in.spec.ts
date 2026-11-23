@@ -127,3 +127,22 @@ test("a sign-in begun in another browser never finishes here", async ({ page, br
   await expect(theirs.getByTestId("account-signin")).toBeVisible();
   await other.close();
 });
+
+test("a store with a game server: a code to type in the game, and a linked game account let go", async ({ page }) => {
+  await settings(page, { discord: { enabled: true, clientId: CLIENT } });
+  await playDiscord(page);
+  await page.goto("/en/account");
+  await page.getByTestId("discord-sign-in").click();
+  await expect(page.getByTestId("account-home")).toBeVisible();
+  // No game server here: no box.
+  await expect(page.getByTestId("game-link")).toHaveCount(0);
+  await page.request.post(`${API}/__test/game-link`, { data: { available: true, fivem: "SaraK", minecraft: null } });
+  await page.reload();
+  await expect(page.getByTestId("game-link")).toContainText("Your game account");
+  await expect(page.getByTestId("game-link-fivem")).toContainText("SaraK");
+  await page.getByTestId("game-link-ask").click();
+  await expect(page.getByTestId("game-link-code")).toContainText("/link 482913");
+  await expect(page.getByTestId("game-link-code")).toContainText("The code runs out in 10 minutes.");
+  await page.getByTestId("game-link-fivem").getByRole("button", { name: "Unlink" }).click();
+  await expect(page.getByTestId("game-link-fivem")).toHaveCount(0);
+});

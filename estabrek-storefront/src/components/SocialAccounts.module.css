@@ -14,3 +14,5 @@
 .quiet { min-height: 36px; padding: 0 12px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .steam:disabled, .quiet:disabled { opacity: .6; cursor: wait; }
 .note { margin: 0; font-size: 13px; opacity: .8; }
+.code { display: grid; gap: 6px; justify-items: start; }
+.code code { padding: 8px 16px; border-radius: 12px; background: color-mix(in srgb, currentColor 8%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; font-weight: 700; letter-spacing: .06em; user-select: all; }

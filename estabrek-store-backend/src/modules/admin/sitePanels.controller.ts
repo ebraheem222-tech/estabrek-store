@@ -10,6 +10,7 @@ import { findByCode, needOf, pageView, pagesShown, partShown, peopleSearch, repo
 import { VOTES, VOTE_NOTE_MAX, castVote, yesVotes } from "../../lib/siteVotes.js";
 import { saveSiteSettings } from "../../lib/siteSettingsSave.js";
 import { readSite } from "../../lib/gameSites.js";
+import { linkDownload } from "../../lib/gameLink.js";
 
 /**
  * /v1/admin/site-panels — a whole site's own pages in the admin's menu (sites wave 1; lib/sitePanel.ts): its parts as
@@ -29,6 +30,8 @@ import { readSite } from "../../lib/gameSites.js";
  * GET  /admin/site-panels/:feature/:page/:part/find?code=  — a scanner's code: the row it names
  * GET  /admin/site-panels/:feature/:page/:part/export?period= — a report's period as a CSV file
  * POST /admin/site-panels/:feature/:page/:part/check       — a game server's status asked now (features:write; once in 10 seconds a site)
+ * POST /admin/site-panels/:feature/:page/:part/download    { lang? } — the site's link for its game, stamped with a new key
+ *                                                           (the old one stops working) and this API's address (features:write)
  * PUT  /admin/site-panels/:feature/:page/layout             { order?, hidden?, own? } — the page as its owner arranges it (features:write):
  *                                                           its parts' order, the ones hidden, parts of their own over the site's tables
  */
@@ -121,6 +124,25 @@ r.post(
     const admin = await prisma.adminUser.findUnique({ where: { id }, select: { name: true, email: true } });
     await castVote(was.id, { id, name: admin?.name || admin?.email || req.user?.email || id }, body.vote === "none" ? null : body.vote, body.note);
     res.json({ ...(await pageView(site, page, may, optsOf(req, body.lang))), row: was.id });
+  }),
+);
+
+r.post(
+  "/:feature/:page/:part/download",
+  asyncHandler(async (req, res) => {
+    const { site, page, may } = await pageOf(req);
+    partOf(site, page, String(req.params.part), ["link"], may);
+    if (!may.writeSettings) throw new AppError(403, "PERMISSION_DENIED", "Downloading the link isn't yours to do", { required: ["features:write"] });
+    // Where the game server reaches this API: as this request came (behind a proxy, as it says it came).
+    const proto = String(req.get("x-forwarded-proto") ?? req.protocol).split(",")[0].trim();
+    const host = String(req.get("x-forwarded-host") ?? req.get("host") ?? "").split(",")[0].trim();
+    const lang = langOf(req.body?.lang);
+    const file = await linkDownload(site.featureId, `${proto}://${host}/v1/link`, lang, site.name);
+    if (!file) throw new AppError(409, "LINK_GAME", "This site's game has no link yet");
+    res.setHeader("Content-Type", file.type);
+    res.setHeader("Content-Disposition", `attachment; filename="${file.name}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.send(file.data);
   }),
 );
 

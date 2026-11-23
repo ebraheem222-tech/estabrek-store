@@ -372,6 +372,17 @@ export const MC_W = {
   paidFn: w("لما تندفع باقة", "When a package is paid", "כשחבילה שולמה"),
 };
 
+/** The words of a game server's link (wave G5). */
+export const LINK_W = {
+  panel: w("لينك السيرفر", "The server's link", "הקישור לשרת"),
+  whitelistOn: w("الوايتلست شغّال", "The whitelist is on", "הרשימה הלבנה פעילה"),
+  whitelistOnNote: w("بيفوت عالسيرفر بس اللي بجدول الوايتلست (بالـ Discord أو الـ Steam أو حساب اللعبة المربوط). بدّه لينك السيرفر.", "Only those in the whitelist table join the server (by their Discord, Steam or linked game account). It needs the server's link.", "רק מי שבטבלת הרשימה הלבנה נכנס לשרת (לפי Discord, Steam או חשבון משחק מקושר). צריך את הקישור לשרת."),
+  whitelistMessage: w("شو بينقال للي مش عالوايتلست", "What those not on the whitelist are told", "מה נאמר למי שלא ברשימה"),
+  whitelistText: w("إنت مش عالوايتلست لسّا. قدّم من صفحة «التقديم» بموقعنا، وبعد ما تنقبل بتقدر تفوت.", "You're not on the whitelist yet. Apply on our site's «Apply» page; once accepted, you can join.", "אתם עוד לא ברשימה הלבנה. הגישו בקשה בעמוד «הגשה» באתר שלנו; אחרי שתתקבלו תוכלו להיכנס."),
+  whitelistShow: w("شغّل الوايتلست", "Switch the whitelist on", "להפעיל את הרשימה הלבנה"),
+  whitelistHide: w("طفّي الوايتلست", "Switch the whitelist off", "לכבות את הרשימה הלבנה"),
+};
+
 /** A review's stars, as a choice field's options. */
 export const STARS: Array<[string, W]> = [
   ["s5", w("★★★★★", "★★★★★", "★★★★★")],

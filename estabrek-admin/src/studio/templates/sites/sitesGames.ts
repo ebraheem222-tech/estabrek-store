@@ -4,7 +4,7 @@ import { site } from "./blueprint";
 
 export const FIVEM_RP = site({
   key: "site-fivem-rp",
-  version: "1.3.0",
+  version: "1.4.0",
   field: "games",
   archetype: "server",
   fam: "gaming",
@@ -111,6 +111,7 @@ export const FIVEM_RP = site({
       title: w("الباقات", "Packages", "חבילות"),
       sub: w("VIP، سيارات، ومنازل: ادعم المدينة وخود شي حلو جوّا اللعبة.", "VIP, cars and houses: support the city and get something nice in the game.", "VIP, מכוניות ובתים: תמכו בעיר וקבלו משהו נחמד במשחק."),
     },
+    link: {},
     contact: {},
     notify: {},
   },

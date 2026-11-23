@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { authenticateCustomer, requireCustomerAccounts } from "../../middleware/customerAuth.js";
 import { invoiceHtml, loadInvoice } from "../../lib/invoice.js";
+import { gameAccountsOf, issueLinkCode, unlinkGame } from "../../lib/gameLink.js";
 import {
   addToWishlist,
   createAddress,
@@ -92,6 +93,18 @@ me.get("/", asyncHandler(async (req, res) => {
 // Their Steam account: linked (sent to Steam and back), or unlinked.
 me.post("/steam/start", validate({ body: z.object({ returnTo: z.string().trim().url().max(300), back: z.string().trim().max(200).optional() }) }), asyncHandler(async (req, res) => {
   res.json(await steamStart(req.customer!.id, req.body.returnTo, req.body.back ?? "/"));
+}));
+// «إستبرق لينك» (lib/gameLink.ts): their game accounts and whether this store has a game server; a code to type in
+// the game (/link 482913); a game account let go.
+me.get("/game-link", asyncHandler(async (req, res) => {
+  res.json(await gameAccountsOf(req.customer!.id));
+}));
+me.post("/game-link", asyncHandler(async (req, res) => {
+  res.json(await issueLinkCode(req.customer!.id));
+}));
+me.delete("/game-link/:game", validate({ params: z.object({ game: z.enum(["fivem", "minecraft"]) }) }), asyncHandler(async (req, res) => {
+  await unlinkGame(req.customer!.id, req.params.game as "fivem" | "minecraft");
+  res.json(await gameAccountsOf(req.customer!.id));
 }));
 me.delete("/steam", asyncHandler(async (req, res) => {
   res.json(await steamUnlink(req.customer!.id));

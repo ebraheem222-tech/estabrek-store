@@ -17,6 +17,7 @@
  *   scanner   a code read by the camera (or typed) finds a row, and buttons decide it
  *   game      a game server site's status now and its last 24 hours (lib/gameSites.ts), asked again in one tap
  *   tebex     a game server site's Tebex webstore as its pages show it: connected or not, its categories and packages
+ *   link      a game server site's «إستبرق لينك»: downloaded or not, when it last said hello, and its download
  *
  * A part names its site's tables by their keys in the file (`@table:bookings`); installed, they are the ids the
  * feature keeps (Installed.ids.table). Each part is shown only to a member who may read what it reads (a table's
@@ -32,6 +33,7 @@ import { declsOf, valuesOf, type SettingDecl, type Values } from "./siteSettings
 import type { Field } from "./collectionTree.js";
 import { gameView } from "./gameSites.js";
 import { siteTebex } from "./tebex.js";
+import { linkView } from "./gameLink.js";
 import { votesOn, type VoteView } from "./siteVotes.js";
 
 export const PANEL_LIMITS = { pages: 8, parts: 12, numbers: 8, conds: 6, columns: 8, decisions: 4, actions: 8, rows: 50, people: 4, days: 90, month: 200, exportRows: 5000 } as const;
@@ -73,6 +75,7 @@ export const PanelPartSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("scanner"), key: Key, title: Label, table: TableRef, match: FieldId, show: Columns, decisions: Decisions }).strict(),
   z.object({ kind: z.literal("game"), key: Key, title: Label }).strict(),
   z.object({ kind: z.literal("tebex"), key: Key, title: Label }).strict(),
+  z.object({ kind: z.literal("link"), key: Key, title: Label }).strict(),
 ]);
 export type PanelPart = z.infer<typeof PanelPartSchema>;
 const PanelPage = z.object({ key: Key, name: Label, icon: z.enum(PANEL_ICONS), parts: z.array(PanelPartSchema).min(1).max(PANEL_LIMITS.parts) }).strict();
@@ -242,6 +245,8 @@ export function partShown(site: SitePanel, part: PanelPart, may: PanelRights): b
   if (part.kind === "game") return true;
   // Its webstore is what its pages show anyone; the token stays with the settings.
   if (part.kind === "tebex") return true;
+  // What the game server said: every member; its download (a new key) only for who changes the site's settings.
+  if (part.kind === "link") return true;
   if (part.kind === "numbers" || part.kind === "people") {
     const refs = part.kind === "numbers" ? part.items.map((i) => i.table) : part.tables.map((t) => t.table);
     return refs.some((ref) => {
@@ -437,6 +442,8 @@ export async function pageView(site: SitePanel, page: SitePanel["panel"][number]
       const shown = [part.label, part.address, ...(part.show ?? [])];
       const got = await rowsOf(t, { pageSize: PANEL_LIMITS.rows, filters: [...filtersOf(part.where), { field: part.address, op: "notEmpty" }], lang: opts.lang });
       out.push({ kind: "map", key: part.key, title: part.title, table: tableView(t), label: part.label, address: part.address, columns: columnsOf(t, shown), rows: shape(got?.rows, shown) });
+    } else if (part.kind === "link") {
+      out.push({ kind: "link", key: part.key, title: part.title, ...(await linkView(site.featureId)), canDownload: may.writeSettings });
     } else if (part.kind === "tebex") {
       const t = await siteTebex(site.featureId);
       const s = t.store;

@@ -36,7 +36,9 @@ export type GameView = { featureId: string; game: "fivem" | "minecraft" | "bedro
 export type PanelGame = { kind: "game"; key: string; title: Local; status: GameView | null; canCheck: boolean };
 /** A game server site's Tebex webstore as its pages show it (backend lib/tebex.ts): `token`, whether one is set. */
 export type PanelTebex = { kind: "tebex"; key: string; title: Local; token: boolean; store: { name: string; url: string; currency: string; categories: Array<{ name: string; packages: number }> } | null };
-export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame | PanelTebex;
+/** A game server site's link (backend lib/gameLink.ts): downloaded or not, its last hello, its whitelist switch. */
+export type PanelLink = { kind: "link"; key: string; title: Local; game: "fivem" | "minecraft" | null; made: boolean; keyHint: string | null; lastSeenAt: string | null; lastVersion: string | null; lastPlayers: number | null; whitelist: boolean; canDownload: boolean };
+export type PanelPartView = PanelNumbers | PanelQueue | PanelView | PanelSettings | PanelActions | PanelChart | PanelKanban | PanelCalendar | PanelPeople | PanelReport | PanelMap | PanelScanner | PanelGame | PanelTebex | PanelLink;
 /** One person (by their phone or email) with their rows in each of the part's tables. */
 export type PanelPerson = { key: string; by: string; name: string; last: string; tables: Array<{ table: PanelTable; title: Local; columns: PanelColumn[]; rows: PanelRow[] }> };
 /** What a page asks besides its language: a calendar's month ("2026-11"), a report's period. */
@@ -78,6 +80,12 @@ export async function findCode(featureId: string, page: string, part: string, co
 export async function exportReport(featureId: string, page: string, part: string, period: string, lang: string) {
   const res = await api.get(`${at(featureId, page, part)}/export`, { params: { period, lang }, responseType: "blob" });
   const name = /filename="([^"]+)"/.exec(String(res.headers["content-disposition"] ?? ""))?.[1] ?? "report.csv";
+  return { blob: res.data as Blob, name };
+}
+/** The site's link for its game, stamped with a new key (the old one stops working): the file to save. */
+export async function downloadLink(featureId: string, page: string, part: string, lang: string) {
+  const res = await api.post(`${at(featureId, page, part)}/download`, { lang }, { responseType: "blob" });
+  const name = /filename="([^"]+)"/.exec(String(res.headers["content-disposition"] ?? ""))?.[1] ?? "site-link.zip";
   return { blob: res.data as Blob, name };
 }
 /** The page as its owner arranges it (400: `details.problems`): the page as it is after. */
