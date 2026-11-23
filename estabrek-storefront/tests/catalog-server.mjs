@@ -1718,6 +1718,8 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         }
         // It stops by itself, with its own words.
         if (address === "full") return send(422, { ok: false, error: "You already asked her" });
+        // It answers with a payment's link, as «اطلب دفع» does (recipe-link.spec.ts): the one the test hands it.
+        if (address === "pay-for") return send(200, { ok: true, value: { link: String(input.to ?? "") } });
         // A request sent to the shopper, accepted by its id (rows.spec.ts): only the one it points at may.
         if (address === "accept") {
           const row = listRows().find((r) => r.id === input.id);

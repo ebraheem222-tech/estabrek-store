@@ -600,7 +600,9 @@ export const TriggerAction = z.discriminatedUnion("act", [
   z.object({ act: z.literal("visible"), target: triggerTarget, value: z.enum(["show", "hide", "toggle"]) }),
   z.object({ act: z.literal("scrollTo"), target: triggerTarget, offset: px(-400, 400).optional() }),
   z.object({ act: z.literal("scene"), target: triggerTarget, at: pct }), // a scroll scene, scrolled to its moment
-  z.object({ act: z.literal("link"), href, newTab: z.boolean().optional() }),
+  // `to`: a recipe variable holding the address instead (a payment's link a function answered: {{order_link}}), taken
+  // only when it is a safe one at that moment (a path on the shop, or an https address).
+  z.object({ act: z.literal("link"), href: href.optional(), to: z.string().trim().regex(/^[A-Za-z][A-Za-z0-9_]{0,23}$/, "A name of letters, digits and _").optional(), newTab: z.boolean().optional() }),
   z.object({ act: z.literal("popup"), target: triggerTarget, value: z.enum(["open", "close"]) }),
   z.object({ act: z.literal("video"), target: triggerTarget, value: z.enum(["play", "pause", "toggle", "restart", "mute", "unmute"]) }),
   z.object({ act: z.literal("burst"), kind: z.enum(BURSTS), color: color.optional(), amount: z.number().int().min(5).max(200).optional() }),

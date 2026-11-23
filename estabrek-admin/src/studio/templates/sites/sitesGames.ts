@@ -115,3 +115,114 @@ export const FIVEM_RP = site({
     notify: {},
   },
 });
+
+/**
+ * A Minecraft Java survival server (wave G4): its live status (the address to copy), rules, a store of looks only
+ * behind the «gives an advantage?» gate (one ready package that does, to show it held back), news, questions,
+ * appeals and reports, messages. Mojang's line on its first page and its store.
+ */
+export const MC_SURVIVAL = site({
+  key: "site-minecraft-survival",
+  version: "1.0.0",
+  field: "games",
+  archetype: "server",
+  fam: "gaming",
+  pics: "gaming",
+  look: 0,
+  name: w("سيرفر ماينكرافت سرفايفل: وادي السنديان", "Minecraft survival server: Oak Valley", "שרת הישרדות מיינקראפט: עמק האלון"),
+  note: w("موقع سيرفر ماينكرافت Java كامل: الحالة الحيّة ونسخ العنوان، القوانين، متجر أشكال بس ببوابة «بتعطي أفضلية؟» حسب قواعد Mojang، الأخبار، الاستئناف والبلاغ، ورسائل.", "A whole Minecraft Java server site: the live status and the address to copy, rules, a looks-only store behind the «gives an advantage?» gate by Mojang's rules, news, appeals and reports, and messages.", "אתר שלם לשרת מיינקראפט Java: המצב החי והעתקת הכתובת, חוקים, חנות מראות בלבד עם שער «נותנת יתרון?» לפי הכללים של Mojang, חדשות, ערעורים ודיווחים והודעות."),
+  biz: { name: w("وادي السنديان", "Oak Valley", "עמק האלון"), address: w("أونلاين", "Online", "אונליין"), hours: w("السيرفر شغّال 24/7", "The server runs 24/7", "השרת פועל 24/7"), phone: "0", email: "team@oakvalley.example", city: "" },
+  pack: {
+    label: w("وادي السنديان", "Oak Valley", "עמק האלון"),
+    eyebrow: w("سيرفر سرفايفل لماينكرافت Java", "A survival server for Minecraft Java", "שרת הישרדות למיינקראפט Java"),
+    title: w("ابنِ، اكتشف، وعيش مع جيرانك", "Build, explore, and live with your neighbours", "לבנות, לגלות ולחיות עם השכנים"),
+    sub: w("سرفايفل نضيف: بدون سرقة ولا تخريب، اقتصاد خفيف، وفعالية كل جمعة.", "Clean survival: no stealing or griefing, a light economy, and an event every Friday.", "הישרדות נקייה: בלי גניבות ובלי הרס, כלכלה קלה ואירוע בכל שישי."),
+    cta: w("انسخ العنوان", "Copy the address", "להעתיק את הכתובת"),
+    product: w("العالم", "The world", "העולם"),
+    story: w("فتحنا الوادي لصحاب بدهم عالم بيضل، وجيرة بتحترم بعض.", "We opened the valley for friends who wanted a world that lasts, and neighbours who respect each other.", "פתחנו את העמק לחברים שרצו עולם שנשאר, ושכנים שמכבדים זה את זה."),
+    collection: w("آخر الأخبار", "Latest news", "החדשות האחרונות"),
+    icon: "star",
+  },
+  home: "/valley",
+  modules: {
+    status: {
+      game: "minecraft",
+      address: "play.oakvalley.example",
+      discord: "https://discord.gg/oakvalley",
+      join: w("انسخ العنوان", "Copy the address", "להעתיק את הכתובת"),
+      steps: [
+        [w("افتح ماينكرافت Java", "Open Minecraft Java", "לפתוח את מיינקראפט Java"), w("نسخة 1.21، وبحساب أصلي.", "Version 1.21, on a genuine account.", "גרסה 1.21, עם חשבון מקורי.")],
+        [w("ضيف السيرفر", "Add the server", "להוסיף את השרת"), w("Multiplayer ← Add Server، والصق العنوان.", "Multiplayer → Add Server, and paste the address.", "Multiplayer ← Add Server, ולהדביק את הכתובת.")],
+        [w("اقرأ القوانين وفوت", "Read the rules and join", "לקרוא את החוקים ולהיכנס"), w("أول ليلة صعبة: ابنِ بيت قبل ما تغيب الشمس.", "The first night is hard: build a house before sunset.", "הלילה הראשון קשה: בנו בית לפני השקיעה.")],
+      ],
+    },
+    rules: {
+      title: w("القوانين", "The rules", "החוקים"),
+      sub: w("عالم بيضل حلو لأنه الكل بيحترمه. اقراها قبل ما تبني.", "A world stays good because everyone respects it. Read them before you build.", "עולם נשאר טוב כי כולם מכבדים אותו. קראו לפני שבונים."),
+      changed: w("آخر تعديل 20 تشرين التاني: زدنا 2.3 عن مزارع اللاغ.", "Last changed on 20 November: we added 2.3 on lag farms.", "שינוי אחרון ב־20 בנובמבר: הוספנו את 2.3 על חוות לאג."),
+      date: "2026-11-20",
+      sections: [
+        { key: "general", name: w("عام", "General", "כללי"), rows: [
+          { n: "1.1", title: w("احترم الكل", "Respect everyone", "כבוד לכולם"), text: w("ما في شتائم ولا عنصرية ولا تحرّش، بالشات ولا بالديسكورد.", "No slurs, racism or harassment, in chat or on Discord.", "בלי קללות, גזענות או הטרדה, בצ'אט ובדיסקורד.") },
+          { n: "1.2", title: w("بدون غش", "No cheating", "בלי רמאות"), text: w("لا X-ray ولا طيران ولا أي مود بيعطيك أفضلية.", "No X-ray, no flying, no mod that gives you an edge.", "בלי X-ray, בלי תעופה ובלי מוד שנותן יתרון.") },
+          { n: "1.3", title: w("حساب واحد", "One account", "חשבון אחד"), text: w("كل لاعب بحساب واحد.", "Each player plays on one account.", "כל שחקן משחק בחשבון אחד.") },
+        ] },
+        { key: "building", name: w("البناء", "Building", "בנייה"), rows: [
+          { n: "2.1", title: w("بدون تخريب", "No griefing", "בלי הרס"), text: w("ما بتلمس بنا ولا صندوق حدا تاني.", "Don't touch anyone else's builds or chests.", "לא נוגעים בבנייה או בתיבות של אחרים.") },
+          { n: "2.2", title: w("مسافة عن جيرانك", "Keep a distance", "מרחק מהשכנים"), text: w("ابعد 100 بلوكة عن أقرب بيت إلا إذا اتفقتوا.", "Build 100 blocks from the nearest home unless you agree otherwise.", "לבנות 100 בלוקים מהבית הקרוב אלא אם הסכמתם.") },
+          { n: "2.3", title: w("بدون مزارع لاغ", "No lag farms", "בלי חוות לאג"), text: w("المزارع الكبيرة بتنبنى بمكان الطاقم بيحدده.", "Big farms go where the staff says.", "חוות גדולות נבנות במקום שהצוות קובע.") },
+        ] },
+        { key: "chat", name: w("الشات", "Chat", "צ'אט"), rows: [
+          { n: "3.1", title: w("بدون إعلانات", "No advertising", "בלי פרסום"), text: w("ما بتعلن عن سيرفرات تانية.", "Don't advertise other servers.", "לא מפרסמים שרתים אחרים.") },
+          { n: "3.2", title: w("بدون سبام", "No spam", "בלי ספאם"), text: w("رسالة وحدة بتكفي.", "One message is enough.", "הודעה אחת מספיקה.") },
+        ] },
+      ],
+    },
+    mcstore: {
+      title: w("المتجر", "The store", "החנות"),
+      sub: w("ألقاب وتأثيرات وأشكال بتدعم السيرفر. ولا شي هون بيخلّيك أقوى من غيرك.", "Titles, effects and looks that support the server. Nothing here makes you stronger than anyone.", "תארים, אפקטים ומראות שתומכים בשרת. שום דבר כאן לא הופך אתכם לחזקים יותר."),
+      kinds: [
+        ["rank", w("رتبة (شكل)", "Rank (looks)", "דרגה (מראה)")],
+        ["cosmetic", w("شكل وتأثيرات", "Looks and effects", "מראה ואפקטים")],
+        ["title", w("لقب", "Title", "תואר")],
+        ["pet", w("حيوان أليف شكلي", "A pet (looks)", "חיית מחמד (מראה)")],
+        ["other", w("غير شي", "Something else", "משהו אחר")],
+      ],
+      rows: [
+        { slug: "star-rank", title: w("رتبة نجمة", "Star rank", "דרגת כוכב"), kind: "rank", price: 20, text: w("اسم ملوّن ولقب «نجمة» بالشات.", "A coloured name and the «Star» title in chat.", "שם צבעוני והתואר «כוכב» בצ'אט."), advantage: false, command: "lp user {player} parent add star" },
+        { slug: "particles", title: w("تأثيرات حواليك", "Trail effects", "אפקטים סביבכם"), kind: "cosmetic", price: 15, text: w("نجوم وقلوب وثلج حواليك وإنت ماشي.", "Stars, hearts and snow around you as you walk.", "כוכבים, לבבות ושלג סביבכם כשאתם הולכים."), advantage: false, command: "lp user {player} permission set trails.use" },
+        { slug: "builder-title", title: w("لقب البنّاء", "The builder title", "התואר בנאי"), kind: "title", price: 8, text: w("لقب «البنّاء» جنب اسمك.", "The «Builder» title beside your name.", "התואר «בנאי» ליד השם."), advantage: false, command: "lp user {player} permission set tags.builder" },
+        { slug: "fox-pet", title: w("ثعلب صغير", "A little fox", "שועל קטן"), kind: "pet", price: 12, text: w("بيمشي معك وبس: ما بيقاتل ولا بيجمع.", "It walks with you, that's all: it neither fights nor gathers.", "הולך איתכם וזהו: לא נלחם ולא אוסף."), advantage: false, command: "lp user {player} permission set pets.fox" },
+        // An advantage in the game: never shown or sold (Mojang's rules); the panel lists it held back, to show the gate.
+        { slug: "diamond-kit", title: w("عدّة الماس", "Diamond kit", "ערכת יהלומים"), kind: "other", price: 30, text: w("سيف ودرع ماس من أول يوم.", "A diamond sword and armour from day one.", "חרב ושריון יהלום מהיום הראשון."), advantage: true, command: "give {player} diamond_sword" },
+      ],
+    },
+    news: {
+      title: w("الأخبار", "News", "חדשות"),
+      sub: w("مواسم وفعاليات وتحديثات.", "Seasons, events and updates.", "עונות, אירועים ועדכונים."),
+      rows: [
+        { slug: "season-3", date: "2026-11-15", title: w("الموسم 3 بلّش", "Season 3 has begun", "עונה 3 התחילה"), text: w("عالم جديد وحدود أوسع.", "A new world and wider borders.", "עולם חדש וגבולות רחבים יותר."), body: w("الموسم 3 فتح بعالم جديد وحدود 10,000 بلوكة. العالم القديم صار للزيارة بس.", "Season 3 opened with a new world and a 10,000-block border. The old world is now for visits only.", "עונה 3 נפתחה בעולם חדש עם גבול של 10,000 בלוקים. העולם הישן לביקור בלבד.") },
+        { slug: "friday-build", date: "2026-11-10", title: w("مسابقة بناء الجمعة", "Friday's build contest", "תחרות הבנייה של שישי"), text: w("الموضوع: بيت بالشجر.", "The theme: a treehouse.", "הנושא: בית על העץ."), body: w("الجمعة الساعة 8 المسا. الأحلى بيوصله لقب «المهندس» بلاش.", "Friday at 8 pm. The best one gets the «Architect» title, free.", "שישי ב־20:00. הטוב ביותר מקבל את התואר «אדריכל» בחינם.") },
+        { slug: "update-1-21", date: "2026-11-01", title: w("صرنا على 1.21", "We're on 1.21", "עברנו ל־1.21"), text: w("السيرفر انتقل لنسخة 1.21.", "The server moved to version 1.21.", "השרת עבר לגרסה 1.21."), body: w("فوتوا بنسخة 1.21 من ماينكرافت Java.", "Join with Minecraft Java 1.21.", "היכנסו עם מיינקראפט Java 1.21.") },
+      ],
+    },
+    questions: { rows: [
+      { q: w("لازم حساب أصلي؟", "Do I need a genuine account?", "צריך חשבון מקורי?"), a: w("أيوا، السيرفر للحسابات الأصلية بس.", "Yes, the server is for genuine accounts only.", "כן, השרת לחשבונות מקוריים בלבד.") },
+      { q: w("في Bedrock؟", "Is there Bedrock?", "יש Bedrock?"), a: w("لسّا لأ، Java بس.", "Not yet, Java only.", "עדיין לא, רק Java.") },
+      { q: w("شو بيبيع المتجر؟", "What does the store sell?", "מה החנות מוכרת?"), a: w("أشكال وألقاب وتأثيرات بس. ولا شي بيخلّيك أقوى من غيرك.", "Looks, titles and effects only. Nothing makes you stronger than anyone.", "מראות, תארים ואפקטים בלבד. שום דבר לא הופך אתכם לחזקים יותר.") },
+      { q: w("انبنّدت، شو بعمل؟", "I was banned, what do I do?", "קיבלתי באן, מה עושים?"), a: w("قدّم استئناف من صفحة «الاستئناف والبلاغ» برقم الباند.", "Appeal it on the appeals and reports page with the ban's number.", "הגישו ערעור בעמוד הערעורים והדיווחים עם מספר הבאן.") },
+    ] },
+    appeals: {
+      title: w("الاستئناف والبلاغ", "Appeals and reports", "ערעורים ודיווחים"),
+      sub: w("انبنّدت وشايف إنه غلط، أو شفت حدا عم يخرّب؟ من هون.", "Banned and think it was wrong, or saw someone griefing? Here.", "קיבלתם באן וחושבים שזו טעות, או ראיתם מישהו הורס? כאן."),
+      reasons: [
+        ["cheating", w("غش (X-ray، طيران…)", "Cheating (X-ray, flying…)", "רמאות (X-ray, תעופה…)")],
+        ["grief", w("تخريب أو سرقة", "Griefing or stealing", "הרס או גניבה")],
+        ["toxic", w("شتائم أو تحرّش", "Insults or harassment", "קללות או הטרדה")],
+        ["other", w("شي تاني", "Something else", "משהו אחר")],
+      ],
+    },
+    contact: {},
+    notify: {},
+  },
+});

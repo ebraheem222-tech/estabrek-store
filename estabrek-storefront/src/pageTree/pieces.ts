@@ -198,7 +198,8 @@ export type TriggerActionSpec =
   | { act: "visible"; target: string; value: "show" | "hide" | "toggle" }
   | { act: "scrollTo"; target: string; offset: number }
   | { act: "scene"; target: string; at: number }
-  | { act: "link"; href: string; newTab: boolean }
+  /** `to`: the variable holding the address (a payment's link a function answered), else `href`. */
+  | { act: "link"; href: string; to?: string; newTab: boolean }
   | { act: "popup"; target: string; value: "open" | "close" }
   | { act: "video"; target: string; value: "play" | "pause" | "toggle" | "restart" | "mute" | "unmute" }
   | { act: "burst"; kind: (typeof BURSTS)[number]; color?: string; amount: number }
@@ -292,7 +293,8 @@ function actionOf(x: Record<string, unknown>, { link, say }: Readers): TriggerAc
     }
     case "link": {
       const href = link(x.href);
-      if (href) return ({ act: "link", href, newTab: x.newTab === true });
+      const to = varNameOf(x.to);
+      if (href || to) return ({ act: "link", href: href ?? "", ...(to ? { to } : {}), newTab: x.newTab === true });
       break;
     }
     case "popup": {

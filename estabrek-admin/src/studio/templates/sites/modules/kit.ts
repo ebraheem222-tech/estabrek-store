@@ -18,7 +18,8 @@ export type SiteFile = {
   name: W;
   note: W;
   tables: SiteTable[];
-  functions: Array<{ key: string; name: string; note?: string; def: Record<string, unknown>; triggers: Array<{ kind: "row"; config: Record<string, unknown> }> }>;
+  /** Its functions and what starts each: a row of its tables, a call from its pages (by `slug`), a store event (a payment paid). */
+  functions: Array<{ key: string; name: string; note?: string; def: Record<string, unknown>; triggers: Array<{ kind: "row" | "call" | "event"; config: Record<string, unknown>; slug?: string }> }>;
   pages: Array<{ key: string; name: string; slug: string; tree: Tree; seo?: { title?: string; description?: string } }>;
   needs: { secrets: string[]; sites: string[] };
   /** What its owner can change (blueprint.ts SiteSetting); none: the key is left out. */
@@ -97,7 +98,7 @@ export const fromSetting = (n: N, take: { text?: string; label?: string; href?: 
  * the visitor's browser instead: "added", the rows the signed-in shopper added (their applications), with `signin`
  * said to a visitor who isn't signed in.
  */
-export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added"; signin?: W; sort?: "order" | "newest" }): N {
+export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added" | "live"; signin?: W; sort?: "order" | "newest" }): N {
   return {
     id: c.ids("list"),
     type: "collectionList",
