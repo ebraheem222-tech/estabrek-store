@@ -20,6 +20,7 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-fivem-rp 1.2.0 (wave G3): its appeals (one for each ban) and reports on a player; its tables' fields named
  *   about the player, as the staff read them (its forms still speak to the player).
  *   site-fivem-rp 1.3.0 (wave G4): its packages from its owner's Tebex webstore, and the webstore on its panel.
+ *   site-minecraft-survival 1.0.0 (wave G4): the first Minecraft server, with its own store behind the advantage gate.
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -35,6 +36,7 @@ const BUILT: Record<string, string[]> = {
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
   "site-fivem-rp": ["c4819073c5315e50", "3f37e33dc5030b03", "9327f4472f72a535", "7087d5060fcf2c2c", "e83d45205686d990", "36fc0595c979bfd7"],
+  "site-minecraft-survival": ["fe50d3a564011062", "f54c0ed2e993777c", "e3c3aa6d3ee37f6d", "79bc55692f433695", "429ceb228edc986e", "fec1429ecc09e269"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -265,7 +267,7 @@ describe("A site's panel (wave 1.2)", () => {
       const f = buildSite(s, { lang: "en" });
       const panel = panelOf(s);
       expect(f.panel).toEqual(panel);
-      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
+      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply || s.modules.mcstore ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
       for (const p of panel) for (const lang of LANGS) expect(p.name[lang].trim()).toBeTruthy();
       const tables = new Map(f.tables.map((t) => [`@table:${t.key}`, new Set(t.fields.map((x) => x.id))]));
       const keys = new Set((f.settings ?? []).map((x) => x.key));
@@ -427,5 +429,37 @@ describe("A game server's packages from its Tebex webstore (wave G4)", () => {
     expect(token.public).toBeUndefined();
     expect(panelOf(rp)[0].parts.map((p) => p.kind)).toContain("tebex");
     expect(shellOf(rp).header.map((l) => l.page)).toContain("packages");
+  });
+});
+
+describe("A Minecraft server's own store behind the advantage gate (wave G4)", () => {
+  const mc = () => siteByKey("site-minecraft-survival")!;
+  test("the store lists what gives no advantage, read in the browser, each «اشتري» asking for that row's payment", () => {
+    const f = buildSite(mc(), { lang: "en" });
+    const page = JSON.stringify(f.pages.find((p) => p.slug === "/store")!.tree);
+    expect(page).toContain('"feed":"live"');
+    expect(page).toContain('"where":[{"field":"advantage","op":"isFalse"}]');
+    expect(page).toContain('"do":[{"act":"fn","fn":"buy-package","input":{"package":"{{row_id}}"},"as":"order"},{"act":"link","to":"order_link"}]');
+    expect(page).toContain('"who":"customer","deny":"signin"');
+    // Mojang's line where it sells and on its first page; never on a FiveM server's.
+    const notice = "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.";
+    expect(page).toContain(notice);
+    expect(JSON.stringify(f.pages.find((p) => p.key === "home")!.tree)).toContain(notice);
+    expect(JSON.stringify(buildSite(siteByKey("site-fivem-rp")!, { lang: "en" }))).not.toContain(notice);
+  });
+
+  test("a package that gives an advantage is held back: never listed, never sold, shown to the owner with why", () => {
+    const f = buildSite(mc(), { lang: "ar" });
+    const packages = f.tables.find((t) => t.key === "packages")!;
+    expect(packages.api).toEqual({ read: "public", create: "off", update: "off", delete: "off", private: ["command"] });
+    expect(packages.fields.find((x) => x.id === "advantage")).toMatchObject({ type: "boolean", help: { en: expect.stringContaining("minecraft.net/usage-guidelines") } });
+    expect(packages.rows!.filter((r) => r.data.advantage === true).map((r) => r.slug)).toEqual(["diamond-kit"]);
+    expect(f.tables.find((t) => t.key === "purchases")!.api).toEqual({ read: "customer", create: "off", update: "off", delete: "off", private: ["note"] });
+    const buy = f.functions.find((x) => x.key === "buyPackage")!;
+    expect(buy.triggers).toEqual([{ kind: "call", config: { who: "customer", perMinute: 10 }, slug: "buy-package" }]);
+    expect(JSON.stringify(buy.def)).toContain('"if":[{"left":"{{pkg.advantage}}","cmp":"eq","right":true}],"do":[{"act":"stop"');
+    expect(f.functions.find((x) => x.key === "packagePaid")!.triggers).toEqual([{ kind: "event", config: { event: "payment.paid" } }]);
+    const lists = panelOf(mc()).find((p) => p.key === "lists")!.parts;
+    expect(lists.find((p) => p.key === "packagesHeld")).toMatchObject({ kind: "view", where: [{ field: "advantage", op: "is", value: true }] });
   });
 });

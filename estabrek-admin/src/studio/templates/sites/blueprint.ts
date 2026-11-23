@@ -93,6 +93,13 @@ export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; vot
 export type AppealsUse = { title: W; sub: W; reasons: Array<[string, W]> };
 /** A game server's packages from its own Tebex webstore (wave G4): the page's words; its token is its owner's setting. */
 export type PackagesUse = { title: W; sub: W };
+/** One of a Minecraft server's packages: what it is, its price, and whether it gives an advantage in the game (never sold then). */
+export type McPackage = { slug: string; title: W; kind: string; price: number; text: W; advantage: boolean; command: string };
+/**
+ * A Minecraft server's own store (wave G4): its packages sold through the shop's payments. Mojang's rules forbid
+ * selling what gives an advantage in the game, so a package that does is never shown or sold, and says why.
+ */
+export type McStoreUse = { title: W; sub: W; kinds: Array<[string, W]>; rows: McPackage[] };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -185,6 +192,7 @@ export type SiteModules = {
   apply?: ApplyUse;
   appeals?: AppealsUse;
   packages?: PackagesUse;
+  mcstore?: McStoreUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

@@ -142,10 +142,15 @@ async function act(a: TriggerActionSpec, { self, reduced, point, tryout, hasFail
         if (scene) window.scrollTo({ top: sceneScrollTop(scene, a.at), behavior: reduced ? "instant" as ScrollBehavior : "smooth" });
         break;
       }
-      case "link":
-        if (a.newTab) window.open(a.href, "_blank", "noopener,noreferrer");
-        else window.location.assign(a.href);
+      case "link": {
+        // An address a variable holds (a function's answer) only when it is a safe one: a path on the shop, this shop's own
+        // address, or https.
+        const to = a.to ? String(scopedVar(a.to, row) ?? "").trim() : a.href;
+        if (!to || (a.to && !/^(\/(?!\/)|https:\/\/)/i.test(to) && !to.startsWith(`${window.location.origin}/`))) break;
+        if (a.newTab) window.open(to, "_blank", "noopener,noreferrer");
+        else window.location.assign(to);
         break;
+      }
       case "popup":
         window.dispatchEvent(new CustomEvent("pt:popup", { detail: { id: a.target === "self" ? self.dataset.treeNode : a.target, open: a.value === "open" } }));
         break;
