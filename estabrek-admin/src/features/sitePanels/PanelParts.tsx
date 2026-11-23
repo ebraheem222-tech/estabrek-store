@@ -402,7 +402,7 @@ export function ScannerPart({ part, view, onError }: { part: PanelScanner } & Co
 
 /* ---------------- A game server: its status now, the last 24 hours ---------------- */
 
-const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam" } as const;
+const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam", roblox: "Roblox", discord: "Discord" } as const;
 /** How to put the link on the game server, by game. */
 const LINK_STEPS: Record<string, string[]> = {
   fivem: [
@@ -588,7 +588,8 @@ export function GamePart({ part, view, took, onError }: { part: PanelGame } & Co
   const lang = adminLang();
   const s = part.status;
   const check = useMutation({ mutationFn: () => Panels.checkGame(view.featureId, view.page.key, part.key, lang), onSuccess: took, onError });
-  const most = Math.max(1, s?.max ?? 0, ...(s?.history ?? []).map((h) => h.players ?? 0));
+  // A Discord's members are far more than are ever on: its chart's top is its own busiest hour.
+  const most = Math.max(1, s?.game === "discord" ? 0 : s?.max ?? 0, ...(s?.history ?? []).map((h) => h.players ?? 0));
   const state = !s || s.online === null ? "unknown" : s.online ? "on" : "off";
   return (
     <section className={box} data-testid={`site-part-${part.key}`} data-kind="game" data-state={state}>
@@ -603,7 +604,8 @@ export function GamePart({ part, view, took, onError }: { part: PanelGame } & Co
           <div className="flex flex-wrap items-center gap-3">
             <span className={`h-3 w-3 rounded-full ${state === "on" ? "bg-emerald-400" : state === "off" ? "bg-red-400" : "bg-white/30"}`} />
             <strong data-testid={`site-game-${part.key}-state`}>{state === "on" ? say("شغّال|Online|מחובר") : state === "off" ? say("طافي|Offline|כבוי") : say("لسّا ما انسأل|Not checked yet|עוד לא נבדק")}</strong>
-            {s.online && s.players !== null ? <span className="text-2xl font-semibold tabular-nums" dir="ltr" data-testid={`site-game-${part.key}-players`}>{s.players}{s.max ? ` / ${s.max}` : ""}</span> : null}
+            {s.online && s.players !== null ? <span className="text-2xl font-semibold tabular-nums" dir="ltr" data-testid={`site-game-${part.key}-players`}>{s.players.toLocaleString("en")}{s.max ? ` / ${s.max.toLocaleString("en")}` : ""}</span> : null}
+            {s.online && s.players !== null && (s.game === "discord" || s.game === "roblox") ? <span className="text-xs text-white/60">{s.game === "discord" ? say("أونلاين هلّق / أعضاء السيرفر|online now / in the server|מחוברים עכשיו / חברים בשרת") : say("عم يلعبوا اللعبة هلّق|playing the game now|משחקים במשחק עכשיו")}</span> : null}
             <span className="text-xs text-white/50">{GAME_NAME[s.game]} · <span dir="ltr">{s.join.address}</span></span>
           </div>
           {s.name || s.map ? <p className="mt-1 text-sm text-white/65">{[s.name, s.map, s.version].filter(Boolean).join(" · ")}</p> : null}

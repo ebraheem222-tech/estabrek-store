@@ -18,8 +18,8 @@ export type SiteFile = {
   name: W;
   note: W;
   tables: SiteTable[];
-  /** Its functions and what starts each: a row of its tables, a call from its pages (by `slug`), a store event (a payment paid). */
-  functions: Array<{ key: string; name: string; note?: string; def: Record<string, unknown>; triggers: Array<{ kind: "row" | "call" | "event"; config: Record<string, unknown>; slug?: string }> }>;
+  /** Its functions and what starts each: a row of its tables, a call from its pages (by `slug`), a store event (a payment paid), a time of day. */
+  functions: Array<{ key: string; name: string; note?: string; def: Record<string, unknown>; triggers: Array<{ kind: "row" | "call" | "event" | "schedule"; config: Record<string, unknown>; slug?: string }> }>;
   pages: Array<{ key: string; name: string; slug: string; tree: Tree; seo?: { title?: string; description?: string } }>;
   needs: { secrets: string[]; sites: string[] };
   /** What its owner can change (blueprint.ts SiteSetting); none: the key is left out. */
@@ -98,11 +98,12 @@ export const fromSetting = (n: N, take: { text?: string; label?: string; href?: 
  * the visitor's browser instead: "added", the rows the signed-in shopper added (their applications), with `signin`
  * said to a visitor who isn't signed in.
  */
-export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added" | "live"; signin?: W; sort?: "order" | "newest" }): N {
+export function LIST(c: Ctx, table: string, card: N, o: { columns: number; limit?: number; where?: Array<{ field: string; op: string; value?: string }>; empty?: W; feed?: "added" | "live"; signin?: W; sort?: "order" | "newest"; by?: Array<{ field: string; dir?: "asc" | "desc" }> }): N {
   return {
     id: c.ids("list"),
     type: "collectionList",
-    props: { collectionId: T(table), sort: o.sort ?? "order", limit: o.limit ?? 24, columns: o.columns, ...(o.where?.length ? { where: o.where } : {}), ...(o.empty ? { empty: say(c, o.empty) } : {}), ...(o.feed ? { feed: o.feed } : {}), ...(o.signin ? { signin: say(c, o.signin) } : {}) },
+    // `by`: the table's own fields first (the coming events by their day, then their hour; the backend's listSortBy).
+    props: { collectionId: T(table), sort: o.sort ?? "order", ...(o.by?.length ? { sortBy: o.by } : {}), limit: o.limit ?? 24, columns: o.columns, ...(o.where?.length ? { where: o.where } : {}), ...(o.empty ? { empty: say(c, o.empty) } : {}), ...(o.feed ? { feed: o.feed } : {}), ...(o.signin ? { signin: say(c, o.signin) } : {}) },
     style: { base: { gap: 24, self: "stretch" } },
     motion: mo.group(c),
     children: [card],

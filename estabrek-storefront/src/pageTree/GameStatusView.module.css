@@ -8,6 +8,8 @@
 .state { font-size: 1.15em; }
 .players { margin-inline-start: auto; font-size: 1.6em; font-weight: 800; font-variant-numeric: tabular-nums; }
 .players span { font-size: .55em; font-weight: 500; opacity: .7; }
+/* A community's number and its word, kept together on one line (G7c). */
+.group { white-space: nowrap; font-weight: inherit; }
 .big .players { font-size: 2.1em; }
 .name { opacity: .75; font-size: .95em; }
 .discord { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .95em; }

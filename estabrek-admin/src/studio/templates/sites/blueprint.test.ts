@@ -36,6 +36,10 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-minecraft-network and site-cs2-community 1.0.0 (wave G7b): several servers on one site («السيرفرات»: each
  *   one's status, a band under the opening, a page and a table), a Minecraft minigames network's rankings for each game,
  *   and a CS2 community's public ban list tied to its appeals (an appeal lifted lifts its ban).
+ *   site-roblox-community, site-discord-community and site-gaming-clan 1.0.0 (wave G7c): communities that open with their
+ *   own live pulse (a Roblox game's players now, a Discord server's online and members), a Roblox game's codes (copied
+ *   in a press, expiring by themselves), events by their day with a clan's results, a members' directory shown on the
+ *   staff's yes, and a clan's roster by part.
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -61,6 +65,9 @@ const BUILT: Record<string, string[]> = {
   "site-coop-survival": ["812bf7a924f31ccb", "b0798eacd893974d", "2bd6b44d0a4a27f6", "708c838bf14ab7ac", "2edcacad7fee4a5b", "056ec04922777522"],
   "site-minecraft-network": ["7f4ef5fc2a580706", "1f9b14e67222a3d4", "cb7b898c6f55afd3", "67970ac8e2126655", "bb6bc56ae9230b02", "c087d60f5727f89f"],
   "site-cs2-community": ["b6741a96c78d95cf", "31787aa39db2988d", "d761552493d38708", "c955b20b4031ed5f", "f48302240b28bb72", "64427465b37ee80b"],
+  "site-roblox-community": ["12f6c3e07d86e463", "5239c9ecd9abe5d1", "ac0cd734210781c8", "30e42e7ce5ea98d6", "7fc956ebfb6c7601", "54dc3b03aa1c75e3"],
+  "site-discord-community": ["f158ff10c331974f", "1cf91f98e54270b8", "0d72e5f5aec1d668", "c097efbc40ae37d8", "89afb86937d30d74", "59c9b1f9fbec4aa0"],
+  "site-gaming-clan": ["00fe49f84e9204f5", "932636f6d757d777", "b1e46d5c819e8763", "d7884c89d637577b", "2dee16342bd01924", "ac4aa61747f96f00"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -291,7 +298,7 @@ describe("A site's panel (wave 1.2)", () => {
       const f = buildSite(s, { lang: "en" });
       const panel = panelOf(s);
       expect(f.panel).toEqual(panel);
-      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply || s.modules.mcstore ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
+      expect(panel.map((p) => p.key), s.key).toEqual(s.modules.booking || s.modules.apply || s.modules.mcstore || s.modules.events ? ["today", "board", "people", "reports", "lists", "settings"] : ["today", "people", "reports", "lists", "settings"]);
       for (const p of panel) for (const lang of LANGS) expect(p.name[lang].trim()).toBeTruthy();
       const tables = new Map(f.tables.map((t) => [`@table:${t.key}`, new Set(t.fields.map((x) => x.id))]));
       const keys = new Set((f.settings ?? []).map((x) => x.key));

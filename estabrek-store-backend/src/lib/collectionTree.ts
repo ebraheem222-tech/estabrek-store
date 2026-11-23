@@ -217,6 +217,48 @@ export function listIdsOf(tree: Tree | null | undefined): string[] {
   return [...out];
 }
 
+/**
+ * A list ordered by its table's own fields (sites wave G7c: the coming events by their day, then their hour), before
+ * its plain order: one or two fields, each up or down. A row without the field comes last. Null: the list has none.
+ */
+export type ListSortBy = Array<{ field: string; dir: "asc" | "desc" }>;
+export function listSortBy(props: Record<string, unknown>): ListSortBy | null {
+  if (!Array.isArray(props.sortBy)) return null;
+  const out: ListSortBy = [];
+  for (const s of props.sortBy.slice(0, 2)) {
+    const x = s && typeof s === "object" ? (s as Record<string, unknown>) : {};
+    if (typeof x.field === "string" && /^[a-z][a-zA-Z0-9]{0,30}$/.test(x.field)) out.push({ field: x.field, dir: x.dir === "desc" ? "desc" : "asc" });
+  }
+  return out.length ? out : null;
+}
+/** A list's items by its fields (`listSortBy`), the merchant's own order between equal ones; a field the table no longer has is passed over. */
+export function sortByFields(items: ItemLite[], by: ListSortBy, collection: CollectionLite | null, lang: "ar" | "en" | "he" = "ar"): ItemLite[] {
+  const keys = by.flatMap((b) => {
+    const field = collection?.fields.find((f) => f.id === b.field);
+    return field ? [{ ...b, kind: valueKind(field) }] : [];
+  });
+  if (!keys.length) return items;
+  const valueOf = (i: ItemLite, k: (typeof keys)[number]): number | string | null => {
+    const v = i.data?.[k.field];
+    const n = valueNumber(v, k.kind);
+    if (n !== null) return n;
+    const t = valueWords(v);
+    return t.length ? String((v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>)[lang] : null) ?? t[0]) : null;
+  };
+  return [...items].sort((a, b) => {
+    for (const k of keys) {
+      const x = valueOf(a, k);
+      const y = valueOf(b, k);
+      if (x === null && y === null) continue;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      const d = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), lang, { numeric: true });
+      if (d) return k.dir === "desc" ? -d : d;
+    }
+    return (a.sort ?? 0) - (b.sort ?? 0);
+  });
+}
+
 /** How a list orders and how many it shows (the API reads the items this way). */
 export function listQuery(props: Record<string, unknown>): { sort: "newest" | "oldest" | "order" | "title"; limit: number } {
   const sort = ["newest", "oldest", "order", "title"].includes(String(props.sort)) ? (props.sort as "newest") : "newest";
@@ -336,10 +378,11 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
       // Drawn with the page, a list keeps the rows its filters ask for (read in the browser, the API asks them).
       const asked = listFilters(n.props);
       const pool = asked.length && !listFeed(n.props) ? (got?.items ?? []).filter((item) => rowMatches(item, asked, got?.collection ?? null)) : got?.items ?? [];
-      const items = sortItems(pool, sort, got?.collection ?? null).slice(0, limit);
+      const by = listSortBy(n.props);
+      const items = (by ? sortByFields(pool, by, got?.collection ?? null) : sortItems(pool, sort, got?.collection ?? null)).slice(0, limit);
       const columns = typeof n.props.columns === "number" && n.props.columns >= 1 && n.props.columns <= 6 ? n.props.columns : 3;
       const style = { ...(n.style ?? {}), base: { columns, gap: 24, ...(n.style?.base ?? {}) }, tablet: { columns: Math.min(columns, 2), ...(n.style?.tablet ?? {}) }, mobile: { columns: 1, ...(n.style?.mobile ?? {}) } };
-      const { collectionId: _c, limit: _l, sort: _s, columns: _col, empty: _e, layout: _lay, feed: _f, where: _w, signin: _si, stream: _st, ...rest } = n.props;
+      const { collectionId: _c, limit: _l, sort: _s, sortBy: _sb, columns: _col, empty: _e, layout: _lay, feed: _f, where: _w, signin: _si, stream: _st, ...rest } = n.props;
       // Read in the visitor's browser: the shop gets the card once, its connections kept, and what to ask the
       // table's API. (The editor's preview shows the card as designed: nobody's rows are read there.)
       const feed = listFeed(n.props);
@@ -348,7 +391,9 @@ export function expandLists<T extends Tree>(tree: T, data: ReadonlyMap<string, {
         const where = listFilters(n.props);
         const empty = words(n.props.empty);
         const signin = words(n.props.signin);
-        const live: LiveList = { table: got.collection.slug, feed, limit, sort: sort === "oldest" ? "createdAt" : "-createdAt", ...(where.length ? { where } : {}), ...(empty ? { empty } : {}), ...(signin ? { signin } : {}), ...(n.props.stream === true ? { stream: true as const } : {}) };
+        // The API sorts by the same fields (those the table still has), else by when the rows came.
+        const fields = (by ?? []).filter((b) => got.collection.fields.some((f) => f.id === b.field)).map((b) => `${b.dir === "desc" ? "-" : ""}${b.field}`);
+        const live: LiveList = { table: got.collection.slug, feed, limit, sort: fields.length ? fields.join(",") : sort === "oldest" ? "createdAt" : "-createdAt", ...(where.length ? { where } : {}), ...(empty ? { empty } : {}), ...(signin ? { signin } : {}), ...(n.props.stream === true ? { stream: true as const } : {}) };
         return { ...n, type: "grid", props: { ...rest, live }, style, children: [withoutLists(card, got.collection)] };
       }
       let cards: Node[] = [];

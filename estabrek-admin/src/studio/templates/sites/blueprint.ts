@@ -78,8 +78,12 @@ export type BranchesUse = { rows: Array<{ name: W; address: W; hours: W; phone: 
 export type BookingUse = { title: W; sub: W; ask: W; button: W; done: W; /** What the visitor picks (else the main list's groups). */ options?: Array<[string, W]> };
 /** A module that takes no words of its own. */
 export type Bare = Record<string, never>;
-/** A game server: its game and its address (the sample's; its owner sets theirs), its Discord, how a player gets in. */
-export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam"; address: string; discord: string; join: W; steps: Array<[W, W]> };
+/**
+ * A game server: its game and its address (the sample's; its owner sets theirs), its Discord, how a player gets in. A
+ * community's status (wave G7c) is its Roblox game (the game's link; `group`, its Roblox group) or its Discord server
+ * (the invite, and `discord` empty: the status is the Discord).
+ */
+export type StatusUse = { game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord"; address: string; discord: string; join: W; steps: Array<[W, W]>; group?: string };
 /** A game server's rules (wave G3): numbered sections ("1.1"), and what changed last ("آخر تعديل"). */
 export type RulesUse = { title: W; sub: W; changed: W; /** The day they last changed ("2026-11-20"), on each ready rule. */ date: string; sections: Array<{ key: string; name: W; rows: Array<{ n: string; title: W; text: W }> }> };
 /** One kind a player applies for: the whitelist, a job (police, paramedics…) or the staff, with its own question. */
@@ -88,7 +92,7 @@ export type ApplyKind = { key: string; name: W; line: W; needs: W; question: W }
  * Applying to a game server (wave G3): its kinds, each on a page of its own; the days before a player applies for the
  * same kind again, and how many of the staff say yes before one is accepted (both its owner's settings after).
  */
-export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; votes: number };
+export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; votes: number; /** A clan's (wave G7c): the form asks for the player's name in games and their experience, not a character's. */ player?: boolean };
 /** A game server's appeals (one for each ban, by its number) and reports on a player (wave G3), with the reasons a report picks from. */
 export type AppealsUse = { title: W; sub: W; reasons: Array<[string, W]> };
 /** A game server's packages from its own Tebex webstore (wave G4): the page's words; its token is its owner's setting. */
@@ -131,6 +135,23 @@ export type BanRow = { number: string; player: string; playerId: string; reason:
 export type BanLength = "forever" | "day" | "days3" | "week" | "month";
 /** A server's public ban list (wave G7b): the reasons a ban picks from, and its ready rows. */
 export type BansUse = { title: W; sub: W; reasons: Array<[string, W]>; rows: BanRow[] };
+/** One of a Roblox game's codes (wave G7c): the code, what it gives, its last day ("2026-12-31"; "" for none), and whether it is over. */
+export type CodeRow = { code: string; reward: W; until: string; expired?: boolean };
+/** A Roblox game's codes: `how`, where in the game a code is typed. */
+export type CodesUse = { title: W; sub: W; how: W; rows: CodeRow[] };
+/**
+ * One of a community's events (wave G7c): its day ("2026-12-05") and hour ("21:00"), where, and, for a clan's match,
+ * who against and how it ended (`done`: it happened).
+ */
+export type EventRow = { slug: string; title: W; kind: string; date: string; time: string; where: W; text: W; opponent?: string; result?: "win" | "loss" | "draw"; score?: string; done?: boolean };
+/** A community's events: their kinds; `matches`, a clan's (each against someone, with its result and score). */
+export type EventsUse = { title: W; sub: W; kinds: Array<[string, W]>; matches?: boolean; rows: EventRow[] };
+/** One of a clan's players (wave G7c): their name in games, their part (one of the roster's roles), game, rank, and their channel. */
+export type RosterRow = { name: string; role: string; game: W; rank: W; about: W; link?: string };
+export type RosterUse = { title: W; sub: W; roles: Array<[string, W]>; rows: RosterRow[] };
+export type Platform = "pc" | "playstation" | "xbox" | "switch" | "mobile";
+/** A community's members' directory (wave G7c): its ready cards (shown; a member's own waits for the staff's yes). */
+export type MembersUse = { title: W; sub: W; rows: Array<{ tag: string; games: W; platform: Platform; discordName: string; about: W }> };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -236,6 +257,10 @@ export type SiteModules = {
   streamers?: StreamersUse;
   servers?: ServersUse;
   bans?: BansUse;
+  codes?: CodesUse;
+  events?: EventsUse;
+  roster?: RosterUse;
+  members?: MembersUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

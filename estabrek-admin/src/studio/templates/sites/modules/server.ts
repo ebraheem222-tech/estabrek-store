@@ -4,6 +4,9 @@
  * home opens with the server's live status and «فوت هلّق», not a big picture and words. The status module brings the
  * settings the backend reads it by (lib/gameSites.ts: the game and the address), the Discord link, and its part on the
  * panel.
+ *
+ * A community's site (wave G7c) opens the same way with its own pulse: its Roblox game (everyone playing it now, the way
+ * to play, its Roblox group) or its Discord server (who is on now and how many are in it).
  */
 import { B, EL, GRID, H, P, SEC, STACK, eyebrow, pop, say, withSkin } from "../../build";
 import { w } from "../../words";
@@ -17,6 +20,10 @@ import { mcNoticePart, mcStoreBand } from "./mcstore";
 import { wipeBand } from "./wipe";
 import { streamersBand } from "./streamers";
 import { serversBand } from "./servers";
+import { codesBand } from "./codes";
+import { eventsBand } from "./events";
+import { rosterBand } from "./roster";
+import { membersBand } from "./members";
 
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
@@ -26,13 +33,15 @@ const statusHero = (b: Built): Part => (c) => {
   const k = withSkin(c, "night");
   const s = b.use.status!;
   const discord = shownIf(fromSetting(B(k, SERVER.discord, "https://discord.com", "outline", still), { href: "discordUrl" }), "discordOn");
+  // A Roblox game's group, beside the Discord, while its owner shows it.
+  const group = s.game === "roblox" ? [shownIf(fromSetting(B(k, SERVER.group, "https://www.roblox.com/communities", "outline", still), { href: "robloxGroup" }), "robloxGroupOn")] : [];
   return SEC(k, [
     STACK(k, [
       eyebrow(k, b.bp.pack.eyebrow),
       H(k, b.bp.pack.title, 1),
       P(k, b.bp.pack.sub, { style: { size: 19, maxWidth: "640px" } }),
       EL(k, "gameStatus", { join: say(k, s.join), copy: say(k, SERVER.copy), chart: true, size: "big" }, { style: { self: "stretch", maxWidth: "720px" } }),
-      STACK(k, [discord], { direction: "row", gap: 12, wrap: true }),
+      STACK(k, [...group, discord], { direction: "row", gap: 12, wrap: true }),
     ], { gap: 20, align: "center", textAlign: "center" }),
   ], { name: SERVER.statusSection, pad: [104, 24, 96, 24] });
 };
@@ -58,13 +67,20 @@ const discordBand: Part = (c) => {
   return shownIf(SEC(k, [STACK(k, [H(k, SERVER.discordTitle, 2), P(k, SERVER.discordLine, { style: { maxWidth: "560px" } }), STACK(k, [button], { direction: "row", justify: "center" })], { gap: 16, align: "center", textAlign: "center" })], { name: SERVER.discordTitle, pad: [80, 24, 80, 24] }), "discordOn");
 };
 
+/** A Roblox game's community site ends with its line: not Roblox's own, and nothing of the game sold here. */
+const robloxNoticePart: Part = (c) => {
+  const k = withSkin(c, "plain");
+  return SEC(k, [P(k, SERVER.robloxNotice, { ...still, style: { size: 13, textAlign: "center", maxWidth: "720px" } })], { name: w("سطر Roblox", "Roblox's line", "השורה של Roblox"), pad: [24, 24, 32, 24] });
+};
+
 /**
- * A game server's home: the notice, its status and way in, its own servers (a network's), how to join, its updates, a call to apply or to its store,
- * its team, questions, the Discord; a Minecraft server's ends with Mojang's line.
+ * A game server's home: the notice, its status and way in, its own servers (a network's), its codes (a Roblox game's), how to join, its events, its updates,
+ * its roster (a clan's), a call to apply or to its store, its team, its members, questions, the Discord; a Minecraft server's ends with Mojang's line, a Roblox game's with Roblox's.
  */
 export function serverHome(b: Built): Part[] {
   const u = b.use;
-  return [noticePart, statusHero(b), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), joinSteps(b), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...(u.mcstore ? [mcNoticePart] : [])];
+  const ends = [...(u.mcstore ? [mcNoticePart] : []), ...(u.status?.game === "roblox" ? [robloxNoticePart] : [])];
+  return [noticePart, statusHero(b), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...ends];
 }
 
 /** A server's own settings: the notice over its first page ("restart at 20:00"). */
@@ -89,12 +105,21 @@ export const STATUS: SiteModule = {
   // The game and the address the backend reads the status by (they stay on the server); the Discord link the pages show.
   settings: (bp: SiteBlueprint) => {
     const s = bp.modules.status!;
+    // A community (a Roblox game, a Discord server) may also be read as either; a game server's choices stay its own.
+    const community = s.game === "roblox" || s.game === "discord" ? [{ id: "roblox", name: w("لعبة على Roblox", "A Roblox game", "משחק ב־Roblox") }, { id: "discord", name: w("سيرفر ديسكورد (مجتمع)", "A Discord server (a community)", "שרת דיסקורד (קהילה)") }] : [];
     return [
-      { key: "game", kind: "choice", label: SERVER.game, note: SERVER.gameNote, group: STATUS_NAME, default: s.game, options: [{ id: "fivem", name: w("FiveM (GTA V)", "FiveM (GTA V)", "FiveM (GTA V)") }, { id: "minecraft", name: w("ماينكرافت Java", "Minecraft Java", "Minecraft Java") }, { id: "bedrock", name: w("ماينكرافت Bedrock", "Minecraft Bedrock", "Minecraft Bedrock") }, { id: "steam", name: w("لعبة على Steam (Rust، CS2، GMod…)", "A Steam game (Rust, CS2, GMod…)", "משחק ב־Steam (Rust, CS2, GMod…)") }] },
-      { key: "serverAddress", kind: "text", label: SERVER.address, note: SERVER.addressNote, group: STATUS_NAME, default: s.address },
+      { key: "game", kind: "choice", label: SERVER.game, note: SERVER.gameNote, group: STATUS_NAME, default: s.game, options: [{ id: "fivem", name: w("FiveM (GTA V)", "FiveM (GTA V)", "FiveM (GTA V)") }, { id: "minecraft", name: w("ماينكرافت Java", "Minecraft Java", "Minecraft Java") }, { id: "bedrock", name: w("ماينكرافت Bedrock", "Minecraft Bedrock", "Minecraft Bedrock") }, { id: "steam", name: w("لعبة على Steam (Rust، CS2، GMod…)", "A Steam game (Rust, CS2, GMod…)", "משחק ב־Steam (Rust, CS2, GMod…)") }, ...community] },
+      { key: "serverAddress", kind: "text", label: SERVER.address, note: community.length ? SERVER.communityAddressNote : SERVER.addressNote, group: STATUS_NAME, default: s.address },
       // A server with no Discord (a children's one) starts with its button and band off.
       { key: "discordOn", kind: "toggle", label: SERVER.discordOn, group: STATUS_NAME, public: true, default: Boolean(s.discord.trim()) },
       { key: "discordUrl", kind: "text", label: SERVER.discordUrl, note: SERVER.discordUrlNote, group: STATUS_NAME, public: true, default: s.discord },
+      // A Roblox game's group: its button beside the Discord's.
+      ...(s.game === "roblox"
+        ? [
+            { key: "robloxGroupOn", kind: "toggle" as const, label: SERVER.groupOn, group: STATUS_NAME, public: true, default: Boolean(s.group?.trim()) },
+            { key: "robloxGroup", kind: "text" as const, label: SERVER.groupUrl, note: SERVER.groupUrlNote, group: STATUS_NAME, public: true, default: s.group ?? "" },
+          ]
+        : []),
     ];
   },
   panel: () => ({ today: [{ kind: "game", key: "server", title: SERVER.statusTitle }] }),

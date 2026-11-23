@@ -7,7 +7,11 @@
  *   Minecraft  Java Edition's Server List Ping over TCP
  *   Bedrock    an unconnected ping over UDP (RakNet)
  *   Steam      A2S_INFO over UDP (Rust, CS2, Garry's Mod, ARK, Valheim…), with its challenge
+ *   Roblox     a game (an experience) by its place: how many play it now, from Roblox's own public games API (wave G7c)
+ *   Discord    a community's server by its invite: how many are on now and in it, from Discord's public invite answer
  *
+ * Roblox and Discord are asked at their own fixed addresses (apis.roblox.com, games.roblox.com, discord.com), never
+ * at one the owner wrote: what the owner writes is only the place's number or the invite's code.
  * Only public addresses are asked: a name is looked up first, and one that leads into a private, local or reserved
  * network is refused (the site must not become a way into someone's own network). Each answer has a few seconds.
  */
@@ -15,22 +19,37 @@ import net from "node:net";
 import dgram from "node:dgram";
 import { lookup } from "node:dns/promises";
 
-export const GAMES = ["fivem", "minecraft", "bedrock", "steam"] as const;
+export const GAMES = ["fivem", "minecraft", "bedrock", "steam", "roblox", "discord"] as const;
 export type Game = (typeof GAMES)[number];
 export const isGame = (v: unknown): v is Game => typeof v === "string" && (GAMES as readonly string[]).includes(v);
-const DEFAULT_PORT: Record<Game, number> = { fivem: 30120, minecraft: 25565, bedrock: 19132, steam: 27015 };
+/** The games whose servers are asked at their own address and port (Roblox and Discord are asked of their own APIs). */
+type SocketGame = Exclude<Game, "roblox" | "discord">;
+const DEFAULT_PORT: Record<SocketGame, number> = { fivem: 30120, minecraft: 25565, bedrock: 19132, steam: 27015 };
 export const GAME_LIMITS = { ms: 3500, text: 120, keepHours: 48 } as const;
 
+/** For Discord, `players` is who is on now and `max` how many are in it; for Roblox, `players` is everyone playing the game now (there is no most). */
 export type GameStatus = { online: boolean; players: number | null; max: number | null; name: string | null; map: string | null; version: string | null; ms: number | null; error?: string };
-export type Where = { host: string; port: number } | { cfx: string };
+export type Where = { host: string; port: number } | { cfx: string } | { place: string } | { invite: string };
 
 const HOST = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
 const CFX = /^(?:(?:https?:\/\/)?(?:cfx\.re\/join\/))?([a-z0-9]{6})$/i;
+/** A Roblox game's address (roblox.com/games/920587237/Its-Name), or its place's number alone. */
+const ROBLOX_PLACE = /^(?:(?:https?:\/\/)?(?:www\.|web\.|m\.)?roblox\.com\/(?:[a-z]{2}\/)?games\/)?(\d{3,19})(?:[/?#].*)?$/i;
+/** A Discord invite (discord.gg/abc, discord.com/invite/abc), or its code alone. */
+const DISCORD_INVITE = /^(?:(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord(?:app)?\.com\/invite)\/)?([A-Za-z0-9-]{2,40})\/?$/;
 
-/** Where a game's server is, from what its owner wrote ("play.example.com", "1.2.3.4:30120", "cfx.re/join/abc123"); null: not an address. */
+/** Where a game's server is, from what its owner wrote ("play.example.com", "1.2.3.4:30120", "cfx.re/join/abc123", a Roblox game's link, a Discord invite); null: not an address. */
 export function whereOf(game: Game, raw: string): Where | null {
   const text = raw.trim();
   if (!text || text.length > 260) return null;
+  if (game === "roblox") {
+    const m = ROBLOX_PLACE.exec(text);
+    return m ? { place: m[1] } : null;
+  }
+  if (game === "discord") {
+    const m = DISCORD_INVITE.exec(text);
+    return m ? { invite: m[1] } : null;
+  }
   if (game === "fivem") {
     const code = CFX.exec(text);
     if (code && (text.includes("cfx.re") || !text.includes("."))) return { cfx: code[1].toLowerCase() };
@@ -108,6 +127,31 @@ async function readCfx(code: string, ms: number): Promise<Omit<GameStatus, "ms">
   const vars = (d.vars ?? {}) as Record<string, unknown>;
   return { online: true, players: num(d.clients), max: num(d.sv_maxclients ?? d.svMaxclients), name: clip(vars.sv_projectName) ?? clip(d.hostname), map: clip(d.mapname), version: clip(d.server) };
 }
+
+/** Each Roblox place's game (its universe): it never changes, so it is asked once. */
+const universes = new Map<string, string>();
+/** A Roblox game now: everyone playing it, across all its servers. */
+async function readRoblox(place: string, ms: number): Promise<Omit<GameStatus, "ms">> {
+  let universe = universes.get(place);
+  if (!universe) {
+    const u = num((await getJson(`https://apis.roblox.com/universes/v1/places/${place}/universe`, ms)).universeId);
+    if (!u) throw new Error("No such game");
+    universe = String(u);
+    universes.set(place, universe);
+  }
+  const body = await getJson(`https://games.roblox.com/v1/games?universeIds=${universe}`, ms);
+  const game = Array.isArray(body.data) ? (body.data[0] as Record<string, unknown> | undefined) : undefined;
+  if (!game || typeof game !== "object") throw new Error("No such game");
+  return { online: true, players: num(game.playing), max: null, name: clip(game.name), map: null, version: null };
+}
+/** A Discord server now, by its invite: who is on, how many are in it, its name. A dead invite answers 404. */
+async function readDiscord(invite: string, ms: number): Promise<Omit<GameStatus, "ms">> {
+  const body = await getJson(`https://discord.com/api/v10/invites/${encodeURIComponent(invite)}?with_counts=true`, ms);
+  const guild = (body.guild ?? {}) as Record<string, unknown>;
+  return { online: true, players: num(body.approximate_presence_count), max: num(body.approximate_member_count), name: clip(guild.name), map: null, version: null };
+}
+/** For the tests: Roblox's games are looked up again. */
+export const forgetRoblox = () => universes.clear();
 
 /** A Minecraft VarInt. */
 const varint = (n: number) => {
@@ -254,6 +298,8 @@ export async function readStatus(game: Game, address: string, opts: { allowPriva
   try {
     let got: Omit<GameStatus, "ms">;
     if ("cfx" in where) got = await readCfx(where.cfx, ms);
+    else if ("place" in where) got = await readRoblox(where.place, ms);
+    else if ("invite" in where) got = await readDiscord(where.invite, ms);
     else {
       const ip = await addressOf(where.host, !!opts.allowPrivate);
       got = game === "fivem" ? await readFivem(ip, where.port, ms) : game === "minecraft" ? await readMinecraft(ip, where.port, where.host, ms) : game === "bedrock" ? await readBedrock(ip, where.port, ms) : await readSteam(ip, where.port, ms);
@@ -264,11 +310,14 @@ export async function readStatus(game: Game, address: string, opts: { allowPriva
   }
 }
 
-/** How a player joins: the link that opens the game on it (FiveM, Steam), else the address to copy (Minecraft). */
+/** How a player joins: the link that opens the game on it (FiveM, Steam, a Roblox game, a Discord invite), else the address to copy (Minecraft). */
 export function joinOf(game: Game, address: string): { href: string | null; address: string } {
   const where = whereOf(game, address);
   if (!where) return { href: null, address: address.trim() };
   if ("cfx" in where) return { href: `https://cfx.re/join/${where.cfx}`, address: `cfx.re/join/${where.cfx}` };
+  if ("place" in where) return { href: `https://www.roblox.com/games/${where.place}`, address: `roblox.com/games/${where.place}` };
+  if ("invite" in where) return { href: `https://discord.gg/${where.invite}`, address: `discord.gg/${where.invite}` };
+  if (game === "roblox" || game === "discord") return { href: null, address: address.trim() };
   const shown = where.port === DEFAULT_PORT[game] && game !== "steam" ? where.host : `${net.isIPv6(where.host) ? `[${where.host}]` : where.host}:${where.port}`;
   if (game === "fivem") return { href: `fivem://connect/${shown}`, address: shown };
   if (game === "steam") return { href: `steam://connect/${shown}`, address: shown };
