@@ -52,7 +52,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, GameStatusView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -435,6 +435,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "gameStatus":
       // A game server site's live status (the server fills props.live as the page is served).
       return <div className={cls(node)} {...mark} data-game-part="gameStatus"><GameStatusView live={p.live} lang={ctx.lang} joinLabel={say(p.join)} copyLabel={say(p.copy)} chart={p.chart === true} size={p.size === "small" ? "small" : "big"} /></div>;
+    case "serverList":
+      // A network's or a community's own servers (the server fills props.live with the site's status as the page is served).
+      return <div className={cls(node)} {...mark} data-game-part="serverList"><ServerListView live={p.live} lang={ctx.lang} joinLabel={say(p.join)} copyLabel={say(p.copy)} empty={say(p.empty)} columns={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 4 ? p.columns : 3} size={p.size === "small" ? "small" : "big"} /></div>;
     case "filterGallery":
       return <FilterGalleryBlock props={p} className={cls(node)} mark={mark} say={say} link={link} lang={ctx.lang} />;
     case "schedule": {

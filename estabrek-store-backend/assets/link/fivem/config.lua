@@ -10,3 +10,6 @@ Config.Api = "__SITE_API__"
 Config.Key = "__SITE_KEY__"
 -- The language of the messages players see: "ar", "en" or "he".
 Config.Lang = "__SITE_LANG__"
+-- This server's name on your site, when your site has several servers: the key of its row in the site's servers
+-- table (small English letters, numbers, - and _). Leave it empty on a single server.
+Config.Server = ""

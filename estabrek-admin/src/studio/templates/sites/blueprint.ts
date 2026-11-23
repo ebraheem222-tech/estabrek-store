@@ -119,6 +119,18 @@ export type WipeUse = { title: W; sub: W; line: W; words?: CountdownWords; slug?
 export type CountdownWords = { next: W; done: W; none: W; what: W; whatSub: W };
 /** A game server's streamers (wave G6b): ready rows (a Twitch channel the owner fills in; empty, no channel shows). */
 export type StreamersUse = { title: W; sub: W; rows: Array<{ slug: string; name: W; twitch: string; about: W }> };
+/**
+ * One of a network's or a community's own servers (wave G7b): its key (what its link says hello by: server=bedwars in
+ * the link's server.properties), what it is, its game (else the site's), its address where players reach it directly
+ * ("" for one behind the main address, a network's proxy), and what to type once in ("/server bedwars").
+ */
+export type SubServer = { key: string; title: W; line: W; game?: StatusUse["game"]; address: string; hint?: W };
+export type ServersUse = { title: W; sub: W; list: SubServer[] };
+/** One ban on a server's public list (wave G7b): its number (what an appeal names), the player, why, for how long, since when, on which server. */
+export type BanRow = { number: string; player: string; playerId: string; reason: string; length: BanLength; date: string; server: string; note: W };
+export type BanLength = "forever" | "day" | "days3" | "week" | "month";
+/** A server's public ban list (wave G7b): the reasons a ban picks from, and its ready rows. */
+export type BansUse = { title: W; sub: W; reasons: Array<[string, W]>; rows: BanRow[] };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -222,6 +234,8 @@ export type SiteModules = {
   ranking?: RankingUse;
   wipe?: WipeUse;
   streamers?: StreamersUse;
+  servers?: ServersUse;
+  bans?: BansUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;

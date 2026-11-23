@@ -18,4 +18,5 @@ public final class Bukkit {
   public static ConsoleCommandSender getConsoleSender() { throw new UnsupportedOperationException(); }
   public static Player getPlayer(UUID id) { throw new UnsupportedOperationException(); }
   public static Player getPlayerExact(String name) { throw new UnsupportedOperationException(); }
+  public static int getMaxPlayers() { throw new UnsupportedOperationException(); }
 }

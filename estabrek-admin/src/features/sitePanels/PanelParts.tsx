@@ -563,6 +563,27 @@ export function TebexPart({ part }: { part: PanelTebex }) {
   );
 }
 
+/** A network's or a community's own servers on its status card: each one up or down, and how many are on it. */
+function SubServers({ part, list }: { part: string; list: Panels.SubView[] }) {
+  const lang = adminLang();
+  return (
+    <ul className="mt-4 grid gap-2 sm:grid-cols-2" data-testid={`site-game-${part}-servers`}>
+      {list.map((x) => {
+        const state = x.online === null ? "unknown" : x.online ? "on" : "off";
+        const title = typeof x.title === "string" ? x.title : inLang(x.title, lang) || x.key;
+        return (
+          <li key={x.key} className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm" data-testid={`site-game-${part}-server-${x.key}`} data-state={state}>
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${state === "on" ? "bg-emerald-400" : state === "off" ? "bg-red-400" : "bg-white/30"}`} />
+            <strong className="truncate">{title}</strong>
+            <span className="ms-auto tabular-nums" dir="ltr">{x.online && x.players !== null ? `${x.players}${x.max ? ` / ${x.max}` : ""}` : state === "off" ? say("طافي|Offline|כבוי") : "—"}</span>
+            <span className="text-xs text-white/45">{x.from === "link" ? say("من اللينك|by the link|מהקישור") : x.from === "asked" ? <span dir="ltr">{x.join.address}</span> : say("لسّا ما حكى|not heard from yet|עוד לא דיבר")}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function GamePart({ part, view, took, onError }: { part: PanelGame } & Common) {
   const lang = adminLang();
   const s = part.status;
@@ -592,6 +613,7 @@ export function GamePart({ part, view, took, onError }: { part: PanelGame } & Co
             ))}
           </div>
           <p className="mt-1 text-xs text-white/45">{say("آخر 24 ساعة، أكتر عدد لاعبين بكل ساعة.|The last 24 hours, the most players each hour.|24 השעות האחרונות, הכי הרבה שחקנים בכל שעה.")}{s.at ? ` · ${say("آخر سؤال|Last asked|נבדק לאחרונה")}: ${new Date(s.at).toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit" })}` : ""}</p>
+          {s.servers?.length ? <SubServers part={part.key} list={s.servers} /> : null}
         </>
       )}
     </section>

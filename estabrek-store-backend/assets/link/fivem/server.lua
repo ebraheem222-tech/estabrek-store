@@ -1,12 +1,13 @@
 -- Your site's link for FiveM: it talks to your site, your site never reaches into your server (no port to open,
 -- no RCON password anywhere).
---   * Every minute it says hello (how many play) and learns whether your site's whitelist is on.
+--   * Every minute it says hello (how many play) and learns whether your site's whitelist is on; by its own name
+--     (Config.Server) when your site has several servers.
 --   * While it is on, a player connecting is asked about on your site (their Discord, Steam and license), and
 --     only those accepted come in, with your site's words for the others.
 --   * /link 123456 links the player's game account to their account on your site (the code is on «حسابي»).
 --   * Your site's rankings: those online get a minute of play time at each hello, and your own scripts send the
 --     other numbers: exports['site-link']:score('money', source, 12500) (sent with the next hello).
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 local whitelistOn = false
 local scores = {}
 
@@ -60,7 +61,9 @@ CreateThread(function()
       local license = identifiersOf(src).license
       if license then online[#online + 1] = { id = license, name = GetPlayerName(src) } end
     end
-    call("/hello", { game = "fivem", version = VERSION, players = #GetPlayers(), online = online, lang = Config.Lang }, function(status, data)
+    local server = nil
+    if type(Config.Server) == "string" and Config.Server ~= "" then server = string.lower(Config.Server) end
+    call("/hello", { game = "fivem", version = VERSION, players = #GetPlayers(), max = GetConvarInt("sv_maxclients", 48), online = online, server = server, lang = Config.Lang }, function(status, data)
       if status == 200 and data then whitelistOn = data.whitelist == true end
     end)
     while #scores > 0 do

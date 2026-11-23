@@ -468,6 +468,57 @@ export const LINK_W = {
   whitelistHide: w("طفّي الوايتلست", "Switch the whitelist off", "לכבות את הרשימה הלבנה"),
 };
 
+/** The words of a network's or a community's own servers (wave G7b). */
+export const SUBS_W = {
+  name: w("السيرفرات", "The servers", "השרתים"),
+  note: w("كذا سيرفر بموقع واحد: كل واحد بحالته (شغّال، كم لاعب)، شو هو، وكيف بتفوت عليه. اللي إله عنوان بنسأله كل دقيقة، واللي ورا العنوان الرئيسي (سيرفرات الشبكة) بيعرّف حاله بلينك السيرفر.", "Several servers on one site: each with its status (up, how many play), what it is, and how to join it. One with an address of its own is asked every minute; one behind the main address (a network's) tells the site by the server's link.", "כמה שרתים באתר אחד: לכל אחד המצב שלו (פועל, כמה משחקים), מה הוא, ואיך מתחברים אליו. שרת עם כתובת משלו נשאל כל דקה; שרת מאחורי הכתובת הראשית (של רשת) מודיע לאתר דרך הקישור לשרת."),
+  title: w("الاسم", "Name", "שם"),
+  key: w("المفتاح", "Key", "מפתח"),
+  keyHelp: w("حروف إنجليزي صغيرة وأرقام (bedwars). سيرفر ورا العنوان الرئيسي بيعرّف حاله بنفس الاسم: server=bedwars بملف server.properties تبع لينك السيرفر.", "Small English letters and numbers (bedwars). A server behind the main address tells the site by the same name: server=bedwars in the server link's server.properties.", "אותיות אנגליות קטנות ומספרים (bedwars). שרת מאחורי הכתובת הראשית מודיע לאתר באותו שם: server=bedwars בקובץ server.properties של הקישור לשרת."),
+  line: w("شو هو", "What it is", "מה הוא"),
+  game: w("اللعبة", "Game", "משחק"),
+  address: w("عنوانه", "Its address", "הכתובת שלו"),
+  addressHelp: w("إذا اللاعبين بيفوتوا عليه مباشرة (1.2.3.4:27016). فاضي: بيفوتوا من العنوان الرئيسي، وحالته من لينك السيرفر.", "If players join it directly (1.2.3.4:27016). Empty: they join through the main address, and its status comes from the server's link.", "אם שחקנים מתחברים אליו ישירות (1.2.3.4:27016). ריק: מתחברים דרך הכתובת הראשית, והמצב שלו מגיע מהקישור לשרת."),
+  hint: w("شو بيكتبوا بعد ما يفوتوا", "What to type once in", "מה מקלידים אחרי הכניסה"),
+  join: w("فوت عليه", "Join it", "להתחבר אליו"),
+  empty: w("السيرفرات بتطلع هون قريباً.", "The servers show here soon.", "השרתים יופיעו כאן בקרוב."),
+  bandSub: w("كل سيرفر هلّق: شغّال ولا لأ، وكم واحد عليه.", "Each server now: up or not, and how many are on it.", "כל שרת עכשיו: פועל או לא, וכמה שחקנים עליו."),
+  all: w("كل السيرفرات", "All the servers", "כל השרתים"),
+};
+
+/** The words of a server's public ban list (wave G7b). */
+export const BANS_W = {
+  name: w("لائحة الباند", "Ban list", "רשימת הבאנים"),
+  note: w("لائحة عامة بالباندات: رقم كل باند، اللاعب، السبب، لإيمتى، وعلى أي سيرفر. الطاقم بيضيف من اللوحة، أو السيرفر بيبعتها بمفتاح API. ولما ينقبل استئناف على باند، بينشال من اللائحة لحاله.", "A public list of the bans: each ban's number, the player, the reason, until when and on which server. The staff add them from the panel, or the server sends them with an API key. Once an appeal on a ban is accepted, it leaves the list by itself.", "רשימה ציבורית של הבאנים: המספר של כל באן, השחקן, הסיבה, עד מתי ובאיזה שרת. הצוות מוסיף מהלוח, או שהשרת שולח עם מפתח API. כשערעור על באן מתקבל, הוא יורד מהרשימה מעצמו."),
+  bans: w("الباندات", "Bans", "באנים"),
+  number: w("رقم الباند", "Ban number", "מספר הבאן"),
+  numberTaken: w("في باند بهالرقم.", "There is a ban with this number.", "יש באן עם המספר הזה."),
+  player: w("اللاعب", "Player", "שחקן"),
+  playerId: w("رقم اللاعب (SteamID)", "Player's ID (SteamID)", "מזהה השחקן (SteamID)"),
+  reason: w("السبب", "Reason", "סיבה"),
+  date: w("من", "Since", "מתאריך"),
+  length: w("المدّة", "Length", "משך"),
+  day: w("يوم", "A day", "יום"),
+  days3: w("3 أيام", "3 days", "3 ימים"),
+  week: w("أسبوع", "A week", "שבוע"),
+  month: w("شهر", "A month", "חודש"),
+  server: w("السيرفر", "Server", "שרת"),
+  story: w("شو صار", "What happened", "מה קרה"),
+  by: w("مين بنّد", "Banned by", "מי הטיל"),
+  notes: w("ملاحظات الطاقم", "Staff notes", "הערות הצוות"),
+  status: w("الحالة", "State", "מצב"),
+  active: w("ساري", "In force", "בתוקף"),
+  lifted: w("انشال", "Lifted", "הוסר"),
+  forGood: w("دايم", "For good", "לתמיד"),
+  empty: w("ما في باندات هلّق.", "No bans right now.", "אין באנים כרגע."),
+  appealTitle: w("انبنّدت وشايف إنه غلط؟", "Banned, and think it was wrong?", "קיבלתם באן וחושבים שזו טעות?"),
+  appealLine: w("قدّم استئناف برقم الباند، والطاقم بيرجعلك.", "Appeal with the ban's number, and the staff get back to you.", "הגישו ערעור עם מספר הבאן, והצוות יחזור אליכם."),
+  appealButton: w("قدّم استئناف", "Appeal", "להגיש ערעור"),
+  activeCount: w("باندات سارية", "Bans in force", "באנים בתוקף"),
+  newest: w("آخر الباندات", "The latest bans", "הבאנים האחרונים"),
+  liftedFn: w("استئناف انقبل: الباند بينشال", "An appeal accepted: the ban is lifted", "ערעור התקבל: הבאן מוסר"),
+};
+
 /** A review's stars, as a choice field's options. */
 export const STARS: Array<[string, W]> = [
   ["s5", w("★★★★★", "★★★★★", "★★★★★")],

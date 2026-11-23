@@ -46,7 +46,9 @@ export function panelOf(bp: SiteBlueprint): PanelPage[] {
   const bits: PanelBits[] = [HOME_PANEL[bp.archetype]?.(bp) ?? {}, ...used(bp).map((m) => m.panel?.(bp) ?? {})];
   const numbers = bits.flatMap((b) => b.numbers ?? []);
   const actions = bits.flatMap((b) => b.actions ?? []);
-  const today: PanelPart[] = [...(numbers.length ? [{ kind: "numbers" as const, key: "numbers", items: numbers }] : []), ...bits.flatMap((b) => b.today ?? []), ...(actions.length ? [{ kind: "actions" as const, key: "actions", title: PANEL.quick, items: actions }] : [])];
+  // Eight numbers a row (the backend's most for one part): a site with many modules has a second row.
+  const rows = Array.from({ length: Math.ceil(numbers.length / 8) }, (_, i) => ({ kind: "numbers" as const, key: i ? `numbers${i + 1}` : "numbers", items: numbers.slice(i * 8, i * 8 + 8) }));
+  const today: PanelPart[] = [...rows, ...bits.flatMap((b) => b.today ?? []), ...(actions.length ? [{ kind: "actions" as const, key: "actions", title: PANEL.quick, items: actions }] : [])];
   const lists = bits.flatMap((b) => b.lists ?? []);
   const keys = settingsOf(bp).map((s) => s.key);
   const people = bits.flatMap((b) => b.people ?? []);
@@ -115,6 +117,14 @@ export function blueprintProblems(bp: SiteBlueprint): string[] {
     if (!PAGE_SLUG.test(p.slug)) out.push(`The page address "${p.slug}" isn't /small-words`);
     if (seen.has(p.slug)) out.push(`Two pages at "${p.slug}"`);
     seen.add(p.slug);
+  }
+  // The panel as the backend takes it (lib/sitePanel.ts PANEL_LIMITS), caught here rather than when it is installed.
+  for (const page of panelOf(bp)) {
+    if (page.parts.length > 12) out.push(`The panel's "${page.key}" page has more than 12 parts`);
+    for (const part of page.parts) {
+      const [many, what] = part.kind === "numbers" || part.kind === "actions" ? [part.items.length, part.kind] : "columns" in part ? [part.columns.length, "columns"] : "show" in part ? [part.show?.length ?? 0, "fields shown"] : [0, ""];
+      if (many > 8) out.push(`The panel's "${part.key}" has more than 8 ${what}`);
+    }
   }
   return out;
 }

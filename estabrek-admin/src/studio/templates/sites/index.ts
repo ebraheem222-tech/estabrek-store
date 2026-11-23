@@ -14,9 +14,10 @@ import { ACADEMY, AGENCY, LAW } from "./sitesWork";
 import { GUESTHOUSE, HALL, PHOTOGRAPHER, PROPERTY } from "./sitesPlace";
 import { FIVEM_RP, MC_SURVIVAL, RUST_WIPE } from "./sitesGames";
 import { COOP_SURVIVAL, FIVEM_OPEN, FIVEM_RACING, GMOD_RP, MC_FAMILY, MC_SKYBLOCK } from "./sitesGamesMore";
+import { CS2_COMMUNITY, MC_NETWORK } from "./sitesGamesNet";
 
 /** Every site, in the order the gallery shows them. */
-export const SITES: SiteBlueprint[] = [RESTAURANT, BAKERY, CLINIC, SALON, GYM, ACADEMY, PROPERTY, GUESTHOUSE, HALL, PHOTOGRAPHER, LAW, AGENCY, FIVEM_RP, MC_SURVIVAL, RUST_WIPE, FIVEM_OPEN, FIVEM_RACING, MC_SKYBLOCK, MC_FAMILY, GMOD_RP, COOP_SURVIVAL];
+export const SITES: SiteBlueprint[] = [RESTAURANT, BAKERY, CLINIC, SALON, GYM, ACADEMY, PROPERTY, GUESTHOUSE, HALL, PHOTOGRAPHER, LAW, AGENCY, FIVEM_RP, MC_SURVIVAL, RUST_WIPE, FIVEM_OPEN, FIVEM_RACING, MC_SKYBLOCK, MC_FAMILY, GMOD_RP, COOP_SURVIVAL, MC_NETWORK, CS2_COMMUNITY];
 
 export const siteByKey = (key: string): SiteBlueprint | null => SITES.find((s) => s.key === key) ?? null;
 /** A site's file by its key, or null. */

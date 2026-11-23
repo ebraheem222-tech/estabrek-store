@@ -1,0 +1,32 @@
+/* A network's or a community's own servers (ServerListView.tsx): cards in the theme's colours, readable on a dark or a light section. */
+.grid { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 16px; width: 100%; }
+@media (max-width: 900px) { .grid:not([data-one]) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .grid:not([data-one]), .grid { grid-template-columns: 1fr; } }
+.card { container-type: inline-size; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 12px; padding: 18px; border-radius: 18px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); background: color-mix(in srgb, currentColor 6%, transparent); text-align: start; min-width: 0; }
+.big { padding: 22px; gap: 14px; }
+.small { gap: 10px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; background: #9ca3af; box-shadow: 0 0 0 4px color-mix(in srgb, #9ca3af 25%, transparent); flex: none; }
+.card[data-state="on"] .dot { background: #22c55e; box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 30%, transparent); animation: beat 2s ease-in-out infinite; }
+.card[data-state="off"] .dot { background: #ef4444; box-shadow: 0 0 0 4px color-mix(in srgb, #ef4444 30%, transparent); }
+.title { margin: 0; font-size: 1.1em; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.big .title { font-size: 1.3em; }
+.players { margin-inline-start: auto; font-size: 1.35em; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.players span { font-size: .6em; font-weight: 500; opacity: .7; }
+.state { margin-inline-start: auto; opacity: .75; font-size: .95em; }
+.line { margin: 0; opacity: .85; line-height: 1.6; }
+.map { margin: 0; opacity: .65; font-size: .9em; }
+.ways { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.join { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 20px; border-radius: 999px; background: var(--accent, #111); color: var(--accent-contrast, #fff); font-weight: 700; text-decoration: none; }
+.copy { display: flex; flex: 1 1 220px; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; min-height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); background: transparent; color: inherit; font: inherit; font-size: .92em; cursor: pointer; }
+.copy code, .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+/* The address stays whole on one line (cut short with … when the card is narrow); what the button does, beside it. */
+.copy code { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.copy span { flex: none; white-space: nowrap; opacity: .75; }
+/* A narrow card (a phone): the address on its own line, what the button does under it. */
+@container (max-width: 300px) { .copy { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 16px; border-radius: 16px; } .copy code { max-width: 100%; } .copy span { font-size: .85em; } }
+.hint { margin: 0; font-size: .9em; opacity: .8; }
+.empty { margin: 0; text-align: center; opacity: .75; }
+.join:focus-visible, .copy:focus-visible { outline: 3px solid var(--accent, currentColor); outline-offset: 3px; }
+@keyframes beat { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, #22c55e 10%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .card[data-state="on"] .dot { animation: none; } }
