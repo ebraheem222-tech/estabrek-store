@@ -169,3 +169,21 @@ describe("A map and a scanner", () => {
     expect(await screen.findByTestId("site-scanner-scan-missing")).toBeTruthy();
   });
 });
+
+describe("A game server's Tebex store", () => {
+  const tebex = (over: Partial<Extract<PanelPartView, { kind: "tebex" }>>): PanelPartView => ({ kind: "tebex", key: "tebex", title: L("The Tebex store"), token: true, store: null, ...over });
+  test("connected: its name, packages and categories, and a way to it; else why not", async () => {
+    m.getSitePanelPage.mockResolvedValue(pageWith([tebex({ store: { name: "Dew City", url: "https://dewcity.tebex.io", currency: "EUR", categories: [{ name: "VIP", packages: 3 }, { name: "Cars", packages: 2 }] } })]));
+    show("/admin/site/f9/today");
+    expect((await screen.findByTestId("site-tebex-tebex-line")).textContent).toBe("Connected to «Dew City»: 5 packages in 2 categories, in EUR.");
+    expect(screen.getByRole("link", { name: "Open the store ↗" }).getAttribute("href")).toBe("https://dewcity.tebex.io");
+    cleanup();
+    m.getSitePanelPage.mockResolvedValue(pageWith([tebex({})]));
+    show("/admin/site/f9/today");
+    expect((await screen.findByTestId("site-tebex-tebex-failed")).textContent).toContain("didn't answer this token");
+    cleanup();
+    m.getSitePanelPage.mockResolvedValue(pageWith([tebex({ token: false })]));
+    show("/admin/site/f9/today");
+    expect((await screen.findByTestId("site-tebex-tebex-none")).textContent).toContain("Public Token");
+  });
+});

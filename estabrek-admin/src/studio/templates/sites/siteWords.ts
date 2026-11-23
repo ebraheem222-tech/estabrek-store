@@ -302,6 +302,19 @@ export const APPEAL_W = {
   reportDecided: w("لما ينقرّر بلاغ", "When a report is decided", "כשדיווח הוחלט"),
 };
 
+/** The words of a game server's Tebex packages (wave G4). */
+export const PACKAGES_W = {
+  pick: w("ادعم السيرفر", "Support the server", "תמכו בשרת"),
+  pickSub: w("كل باقة بتساعدنا نشغّل السيرفر. الدفع والاستلام عند Tebex، وبتوصلك جوّا اللعبة.", "Every package helps keep the server running. You pay and receive it on Tebex, and get it in the game.", "כל חבילה עוזרת להחזיק את השרת. התשלום והקבלה ב-Tebex, ומקבלים אותה במשחק."),
+  buy: w("اشتري عند Tebex", "Buy on Tebex", "לקנות ב-Tebex"),
+  all: w("المتجر كله عند Tebex", "The whole store on Tebex", "כל החנות ב-Tebex"),
+  empty: w("المتجر جاي قريباً. تابع الديسكورد لتعرف أول وحدة.", "The store is coming soon. Follow the Discord to hear first.", "החנות בקרוב. עקבו אחרי הדיסקורד כדי לשמוע ראשונים."),
+  note: w("الدفع والتسليم عند Tebex، شريك البيع الرسمي لسيرفرات FiveM. موقعنا ما بيشوف بطاقتك ولا بيقبض.", "Payment and delivery are with Tebex, the official seller for FiveM servers. Our site never sees your card or takes payment.", "התשלום והמסירה אצל Tebex, המוכר הרשמי של שרתי FiveM. האתר שלנו לא רואה את הכרטיס ולא גובה."),
+  token: w("الـ Public Token تبع متجر Tebex", "Your Tebex store's Public Token", "ה-Public Token של חנות ה-Tebex"),
+  tokenNote: w("من لوحة Tebex: Integrations ← API Keys، انسخ الـ Public Token. بس هاد: الـ Private Key ما بينحط هون أبداً.", "In Tebex's panel: Integrations → API Keys, copy the Public Token. Only that: the Private Key never goes here.", "בלוח של Tebex: Integrations ← API Keys, העתיקו את ה-Public Token. רק אותו: ה-Private Key אף פעם לא נכנס כאן."),
+  panel: w("متجر Tebex", "The Tebex store", "חנות ה-Tebex"),
+};
+
 /** A review's stars, as a choice field's options. */
 export const STARS: Array<[string, W]> = [
   ["s5", w("★★★★★", "★★★★★", "★★★★★")],

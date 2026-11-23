@@ -1,0 +1,22 @@
+/* A game server's Tebex packages (TebexPackagesView.tsx): in the theme's colours, readable on a dark or a light section. */
+.wrap { display: grid; gap: 22px; width: 100%; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tab { min-height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent, currentColor); color: var(--accent-contrast, #fff); border-color: transparent; font-weight: 700; }
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); width: 100%; }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 18px; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); background: color-mix(in srgb, currentColor 5%, transparent); text-align: start; }
+.pic { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 12px; background: color-mix(in srgb, currentColor 10%, transparent); }
+.name { margin: 0; font-size: 1.15em; font-weight: 700; }
+.price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.price b { font-size: 1.35em; font-variant-numeric: tabular-nums; }
+.price s { opacity: .6; font-variant-numeric: tabular-nums; }
+.sale { padding: 2px 8px; border-radius: 999px; background: var(--accent, currentColor); color: var(--accent-contrast, #fff); font-size: .75em; font-weight: 700; }
+.text { margin: 0; opacity: .8; font-size: .95em; line-height: 1.6; flex: 1 1 auto; }
+.buy { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 999px; background: var(--accent, #111); color: var(--accent-contrast, #fff); font-weight: 700; text-decoration: none; align-self: flex-start; }
+.foot { display: grid; gap: 8px; justify-items: center; text-align: center; }
+.all { display: inline-flex; align-items: center; min-height: 44px; padding: 0 22px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); color: inherit; text-decoration: none; font-weight: 600; }
+.note { margin: 0; opacity: .65; font-size: .85em; }
+.empty { margin: 0; padding: 22px; border-radius: 16px; border: 1px dashed color-mix(in srgb, currentColor 25%, transparent); text-align: center; opacity: .8; }
+.buy:focus-visible, .all:focus-visible, .tab:focus-visible { outline: 3px solid var(--accent, currentColor); outline-offset: 3px; }

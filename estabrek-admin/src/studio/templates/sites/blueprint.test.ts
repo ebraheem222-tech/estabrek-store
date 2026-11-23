@@ -19,6 +19,7 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-fivem-rp 1.1.0 (wave G3): its rules, and applying for its jobs (a page and a form each, the staff's votes).
  *   site-fivem-rp 1.2.0 (wave G3): its appeals (one for each ban) and reports on a player; its tables' fields named
  *   about the player, as the staff read them (its forms still speak to the player).
+ *   site-fivem-rp 1.3.0 (wave G4): its packages from its owner's Tebex webstore, and the webstore on its panel.
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -33,7 +34,7 @@ const BUILT: Record<string, string[]> = {
   "site-photographer": ["fe9bbb429db02ade", "b334ecfd451e4074", "2f4dc4be70255e87", "7ec2e79838d70375", "4a59d87bf2cf4c0f", "33e2b6b85e22d7c2"],
   "site-law-office": ["934cce069a07b2f9", "80945bb343c4c259", "202d00ca4f92c98c", "3c2358d71dbdf7ee", "0ac39da7dd433f91", "f171bd02092cc104"],
   "site-creative-agency": ["b2d6f0303bb9aadd", "22a2abc51b6e597d", "e412687b60f93ad0", "7e6eb86448a5513a", "50c7ae74f75f3d89", "05e0dbe3330fb361"],
-  "site-fivem-rp": ["9f3d381986d3cfa7", "0607a9fbf1022cb2", "c74651b97147afec", "cc65cd466b7a620f", "9b1de714c228eeaa", "0e9de0e84eb9f7ef"],
+  "site-fivem-rp": ["c4819073c5315e50", "3f37e33dc5030b03", "9327f4472f72a535", "7087d5060fcf2c2c", "e83d45205686d990", "36fc0595c979bfd7"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);
@@ -409,5 +410,22 @@ describe("A game server's appeals and reports (wave G3)", () => {
     expect(fn("appealsBell").triggers.map((t) => t.config.table)).toEqual(["@table:appeals", "@table:reports"]);
     expect(JSON.stringify(fn("appealDecided").def)).toContain("{{input.row.ban}}");
     expect(JSON.stringify(fn("reportDecided").def)).toContain('"who":"{{input.row.$owner}}"');
+  });
+});
+
+describe("A game server's packages from its Tebex webstore (wave G4)", () => {
+  test("a page with the webstore's packages, its token kept on the server, the webstore on the panel's first page", () => {
+    const rp = siteByKey("site-fivem-rp")!;
+    const f = buildSite(rp, { lang: "ar" });
+    const page = f.pages.find((p) => p.slug === "/packages")!;
+    expect(JSON.stringify(page.tree)).toContain('"type":"tebexPackages"');
+    expect(JSON.stringify(page.tree)).toContain('"columns":3');
+    expect(JSON.stringify(page.tree)).toContain("اشتري عند Tebex");
+    // The token is read by the server alone: never a setting the shop gets.
+    const token = f.settings!.find((s) => s.key === "tebexToken")!;
+    expect(token).toMatchObject({ kind: "text", default: "" });
+    expect(token.public).toBeUndefined();
+    expect(panelOf(rp)[0].parts.map((p) => p.kind)).toContain("tebex");
+    expect(shellOf(rp).header.map((l) => l.page)).toContain("packages");
   });
 });

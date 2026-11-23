@@ -91,6 +91,8 @@ export type ApplyKind = { key: string; name: W; line: W; needs: W; question: W }
 export type ApplyUse = { title: W; sub: W; kinds: ApplyKind[]; wait: number; votes: number };
 /** A game server's appeals (one for each ban, by its number) and reports on a player (wave G3), with the reasons a report picks from. */
 export type AppealsUse = { title: W; sub: W; reasons: Array<[string, W]> };
+/** A game server's packages from its own Tebex webstore (wave G4): the page's words; its token is its owner's setting. */
+export type PackagesUse = { title: W; sub: W };
 
 /**
  * A whole site's setting (wave 1): a switch, a number, words… its owner changes without opening a page or a
@@ -151,7 +153,9 @@ export type PanelPart =
   /** A code read by the camera (or typed) finds a row; buttons decide it. */
   | { kind: "scanner"; key: string; title: W; table: string; match: string; show: string[]; decisions: PanelDecision[] }
   /** A game server site's status now and its last 24 hours (wave G1). */
-  | { kind: "game"; key: string; title: W };
+  | { kind: "game"; key: string; title: W }
+  /** A game server site's Tebex webstore as its pages show it (wave G4). */
+  | { kind: "tebex"; key: string; title: W };
 export type PanelPeopleTable = { table: string; title: W; show: string[] };
 export type PanelPage = { key: string; name: W; icon: "today" | "lists" | "settings" | "calendar" | "people" | "chart"; parts: PanelPart[] };
 /**
@@ -180,6 +184,7 @@ export type SiteModules = {
   rules?: RulesUse;
   apply?: ApplyUse;
   appeals?: AppealsUse;
+  packages?: PackagesUse;
   contact?: Bare;
   booking?: BookingUse;
   notify?: Bare;
