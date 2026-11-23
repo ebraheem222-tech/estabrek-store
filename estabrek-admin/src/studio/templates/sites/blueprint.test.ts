@@ -30,6 +30,9 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-rust-wipe 1.0.0 (wave G6b): the first Rust server, with its wipe countdown and schedule, and its streamers.
  *   site-fivem-rp 1.7.0, site-minecraft-survival 1.3.0 and site-rust-wipe 1.1.0 (wave G6c): their openings (and the
  *   wipe's own band) on the theme's deepest band («night»), so a dark game theme's opening stays dark.
+ *   site-fivem-open, site-fivem-racing, site-minecraft-skyblock, site-minecraft-family, site-gmod-rp and site-coop-survival
+ *   1.0.0 (wave G7a): six more game servers from the same modules; the wipe's countdown named as a race, a season or the
+ *   update day; a server with no Discord starts with its Discord off.
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -47,6 +50,12 @@ const BUILT: Record<string, string[]> = {
   "site-fivem-rp": ["12936beff6d0fa7e", "9f096dd7e6120566", "2e513254c68b749e", "967e7a2aeeb3ff64", "05ea4a87244a15d7", "7910a1a7d7fdcd52"],
   "site-minecraft-survival": ["b19de4f303307809", "ca289819666c50b8", "0b0cc53f09bbbfc8", "38dd61e87ee29b0e", "b7d1b5a233e48ac8", "4ae2db202bf4dcd8"],
   "site-rust-wipe": ["b89e427978bdceeb", "416c386b1ac51304", "4c39e38b5c0dab90", "dfd19462f774f9ab", "09f0e98ca3d48750", "6e899b3cecdcd025"],
+  "site-fivem-open": ["fbd6e3d29da5da70", "5ccf291b0a43cffc", "f45705fa4ea28fd8", "eb536cc1af2daa9d", "01435408394aedc2", "d14ad4238ddfdc9f"],
+  "site-fivem-racing": ["51e1948252b36b51", "1423aa42a765c07f", "b1936985f90e9e8b", "ea99a8f52e33281c", "e5df6faeb5b72a30", "841aaf3958645674"],
+  "site-minecraft-skyblock": ["25af1a54d2d80e85", "16cf975dfca3a5fb", "308311514573e26f", "7e3dc9cc6306960a", "3f2a919f9f0931ae", "37e458335a6b5f00"],
+  "site-minecraft-family": ["b3ebc807f5d7c6b2", "37b92130a19a53ec", "0826069606c0b6db", "0a7809044a3a90d4", "61a9950a91976e1c", "88a7c111c8069066"],
+  "site-gmod-rp": ["e24e53b833431fc6", "92492c0ce532a176", "047280a038fdf576", "4f63e034537a38db", "067f596c89925e73", "d1cfe5637e62079d"],
+  "site-coop-survival": ["812bf7a924f31ccb", "b0798eacd893974d", "2bd6b44d0a4a27f6", "708c838bf14ab7ac", "2edcacad7fee4a5b", "056ec04922777522"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);

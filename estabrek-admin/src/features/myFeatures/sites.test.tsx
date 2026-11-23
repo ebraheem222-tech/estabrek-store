@@ -72,7 +72,7 @@ afterEach(() => {
 
 describe("The sites themselves", () => {
   test("every site, one key each, every one built in each language with its pages, tables and ready rows", () => {
-    expect(SITES.length).toBe(15);
+    expect(SITES.length).toBe(21);
     expect(new Set(SITES.map((s) => s.key)).size).toBe(SITES.length);
     for (const s of SITES)
       for (const lang of ["ar", "en", "he"] as const) {
@@ -107,8 +107,8 @@ describe("The sites page", () => {
   test("reached from My features; filtered by field and words; a pick is shown with its rows, then installed as a draft", async () => {
     show("/admin/my-features");
     fireEvent.click(await screen.findByTestId("features-sites-link"));
-    expect((await screen.findByTestId("sites-totals")).textContent).toBe("15 ready sites");
-    expect(within(screen.getByTestId("sites-list")).getAllByRole("listitem")).toHaveLength(15);
+    expect((await screen.findByTestId("sites-totals")).textContent).toBe("21 ready sites");
+    expect(within(screen.getByTestId("sites-list")).getAllByRole("listitem")).toHaveLength(21);
     fireEvent.click(screen.getByTestId("sites-field-health"));
     expect(within(screen.getByTestId("sites-list")).getAllByRole("listitem").map((li) => li.getAttribute("data-testid"))).toEqual(["sites-item-site-dental-clinic"]);
     fireEvent.click(screen.getByTestId("sites-field-all"));

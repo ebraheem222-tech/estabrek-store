@@ -28,6 +28,12 @@ export const SITE_THEMES: Record<string, string> = {
   "site-fivem-rp": "night-neon",
   "site-minecraft-survival": "square-pixel",
   "site-rust-wipe": "rough-survival",
+  "site-fivem-open": "night-neon",
+  "site-fivem-racing": "race-stripes",
+  "site-minecraft-skyblock": "fantasy-guild",
+  "site-minecraft-family": "square-pixel",
+  "site-gmod-rp": "clean-esports",
+  "site-coop-survival": "rough-survival",
 };
 
 /** A site's kind in a word or two (its name before the colon: «مطعم»), where it is picked. */
