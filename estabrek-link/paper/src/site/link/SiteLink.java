@@ -1,5 +1,6 @@
 package site.link;
 
+import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -7,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +31,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 /**
  * Your site's link for a Paper server. It talks to your site; your site never reaches into your server (no port to
  * open, no RCON password anywhere).
- *   - Every minute it says hello (how many play) and learns whether your site's whitelist is on.
+ *   - Every minute it says hello (how many play) and learns whether your site's whitelist is on. On a network, each
+ *     server says it by its own name (plugins/SiteLink/server.properties: server=bedwars), the key of its row in your
+ *     site's servers table, so the site shows each game's players and counts each one's play time.
  *   - It gives what players bought on your site: the site hands over each purchase waiting to be given with its
  *     command (the player's name in it), it runs as the console, and the site is told whether it went.
  *   - While the whitelist is on, a player joining is asked about on your site, and only those it knows come in.
@@ -41,16 +45,19 @@ import org.bukkit.plugin.java.JavaPlugin;
  * new download makes a new key and this one stops working.
  */
 public final class SiteLink extends JavaPlugin implements Listener, CommandExecutor {
-  private static final String VERSION = "1.1.0";
+  private static final String VERSION = "1.2.0";
   private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
   private String name = "Server";
   private String api = "";
   private String key = "";
   private String lang = "ar";
+  /** This server's name on the site, when the site has several (a network's games); "" on a single server. */
+  private String server = "";
   private volatile boolean whitelistOn = false;
   /** Who is online, as JSON, taken on the server's own thread (the hello is sent off it). */
   private volatile String online = "[]";
   private volatile int onlineCount = 0;
+  private volatile int maxPlayers = 0;
   private final ConcurrentLinkedQueue<String> scores = new ConcurrentLinkedQueue<>();
 
   @Override
@@ -69,6 +76,7 @@ public final class SiteLink extends JavaPlugin implements Listener, CommandExecu
       getLogger().warning("This copy has no key: download it again from your site's panel.");
       return;
     }
+    server = serverName();
     Bukkit.getPluginManager().registerEvents(this, this);
     if (getCommand("link") != null) getCommand("link").setExecutor(this);
     if (getCommand("linkscore") != null) getCommand("linkscore").setExecutor(this);
@@ -108,6 +116,32 @@ public final class SiteLink extends JavaPlugin implements Listener, CommandExecu
     }
   }
 
+  /**
+   * This server's name on the site (plugins/SiteLink/server.properties: server=bedwars), written empty with what it is
+   * for the first time. Small English letters, numbers, - and _; anything else is left out.
+   */
+  private String serverName() {
+    File dir = getDataFolder();
+    File file = new File(dir, "server.properties");
+    try {
+      if (!file.exists()) {
+        dir.mkdirs();
+        Files.writeString(file.toPath(), "# This server's name on your site, when your site has several servers (a network's games: bedwars, skywars...).\n# It is the key of its row in the site's servers table. Leave it empty on a single server.\nserver=\n", StandardCharsets.UTF_8);
+        return "";
+      }
+      Properties p = new Properties();
+      try (InputStream in = Files.newInputStream(file.toPath())) {
+        p.load(new InputStreamReader(in, StandardCharsets.UTF_8));
+      }
+      String name = p.getProperty("server", "").trim().toLowerCase(java.util.Locale.ROOT);
+      if (name.isEmpty() || name.matches("[a-z0-9_-]{1,30}")) return name;
+      getLogger().warning("server.properties: the server's name may have small English letters, numbers, - and _ only.");
+    } catch (Exception e) {
+      getLogger().log(Level.WARNING, "Couldn't read server.properties", e);
+    }
+    return "";
+  }
+
   private void seeOnline() {
     StringBuilder b = new StringBuilder("[");
     int n = 0;
@@ -117,12 +151,13 @@ public final class SiteLink extends JavaPlugin implements Listener, CommandExecu
     }
     online = b.append(']').toString();
     onlineCount = n;
+    maxPlayers = Bukkit.getMaxPlayers();
   }
 
   /** Hello, the numbers for the rankings, then the purchases waiting to be given: each command run as the console, and the site told how it went. */
   @SuppressWarnings("unchecked")
   private void tick() {
-    Map<String, Object> hello = call("/hello", "{\"game\":\"minecraft\",\"version\":" + Json.quote(VERSION) + ",\"players\":" + onlineCount + ",\"online\":" + online + ",\"lang\":" + Json.quote(lang) + "}");
+    Map<String, Object> hello = call("/hello", "{\"game\":\"minecraft\",\"version\":" + Json.quote(VERSION) + ",\"players\":" + onlineCount + ",\"max\":" + maxPlayers + ",\"online\":" + online + (server.isEmpty() ? "" : ",\"server\":" + Json.quote(server)) + ",\"lang\":" + Json.quote(lang) + "}");
     if (hello != null) whitelistOn = Boolean.TRUE.equals(hello.get("whitelist"));
     while (!scores.isEmpty()) {
       List<String> batch = new ArrayList<>();

@@ -31,8 +31,10 @@ export type PanelReport = { kind: "report"; key: string; title: Local; table: Pa
 export type PanelMap = { kind: "map"; key: string; title: Local; table: PanelTable; label: string; address: string; columns: PanelColumn[]; rows: PanelRow[] };
 export type PanelScanner = { kind: "scanner"; key: string; title: Local; table: PanelTable; columns: PanelColumn[]; decisions: Array<{ key: string; label: Local; tone?: "good" | "bad" }>; canDecide: boolean };
 export type ReportPeriod = "week" | "month" | "lastMonth" | "quarter";
-/** A game server site's status (backend lib/gameSites.ts GameView). */
-export type GameView = { featureId: string; game: "fivem" | "minecraft" | "bedrock" | "steam"; online: boolean | null; players: number | null; max: number | null; name: string | null; map: string | null; version: string | null; at: string | null; join: { href: string | null; address: string }; history: Array<{ hour: string; players: number | null; online: boolean | null }> };
+/** One of a network's or a community's own servers now (backend lib/gameSites.ts SubView): asked at its address, or heard from by the server's link. */
+export type SubView = { key: string; title: Local | string | null; game: "fivem" | "minecraft" | "bedrock" | "steam"; online: boolean | null; players: number | null; max: number | null; at: string | null; from: "asked" | "link" | null; join: { href: string | null; address: string } };
+/** A game server site's status (backend lib/gameSites.ts GameView); `servers`, its own servers (a network's), if it has any. */
+export type GameView = { featureId: string; game: "fivem" | "minecraft" | "bedrock" | "steam"; online: boolean | null; players: number | null; max: number | null; name: string | null; map: string | null; version: string | null; at: string | null; join: { href: string | null; address: string }; history: Array<{ hour: string; players: number | null; online: boolean | null }>; servers?: SubView[] | null };
 export type PanelGame = { kind: "game"; key: string; title: Local; status: GameView | null; canCheck: boolean };
 /** A game server site's Tebex webstore as its pages show it (backend lib/tebex.ts): `token`, whether one is set. */
 export type PanelTebex = { kind: "tebex"; key: string; title: Local; token: boolean; store: { name: string; url: string; currency: string; categories: Array<{ name: string; packages: number }> } | null };

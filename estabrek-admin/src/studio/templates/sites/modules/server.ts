@@ -16,6 +16,7 @@ import { applyBand } from "./apply";
 import { mcNoticePart, mcStoreBand } from "./mcstore";
 import { wipeBand } from "./wipe";
 import { streamersBand } from "./streamers";
+import { serversBand } from "./servers";
 
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
@@ -58,12 +59,12 @@ const discordBand: Part = (c) => {
 };
 
 /**
- * A game server's home: the notice, its status and way in, how to join, its updates, a call to apply or to its store,
+ * A game server's home: the notice, its status and way in, its own servers (a network's), how to join, its updates, a call to apply or to its store,
  * its team, questions, the Discord; a Minecraft server's ends with Mojang's line.
  */
 export function serverHome(b: Built): Part[] {
   const u = b.use;
-  return [noticePart, statusHero(b), ...when(u.wipe, () => wipeBand(b)), joinSteps(b), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...(u.mcstore ? [mcNoticePart] : [])];
+  return [noticePart, statusHero(b), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), joinSteps(b), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), discordBand, ...(u.mcstore ? [mcNoticePart] : [])];
 }
 
 /** A server's own settings: the notice over its first page ("restart at 20:00"). */

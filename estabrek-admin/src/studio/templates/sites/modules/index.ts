@@ -15,9 +15,11 @@ import { LINK } from "./link";
 import { RANKING } from "./ranking";
 import { WIPE } from "./wipe";
 import { STREAMERS } from "./streamers";
+import { SERVERS } from "./servers";
+import { BANS } from "./bans";
 import type { Built, Part, SiteModule } from "./kit";
 
-export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, CONTACT, BOOKING, NOTIFY];
+export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, SERVERS, BANS, CONTACT, BOOKING, NOTIFY];
 
 /** Each archetype's home page; one with none can't be built yet. */
 export const HOMES: Partial<Record<Archetype, (b: Built) => Part[]>> = { front: frontHome, server: serverHome };

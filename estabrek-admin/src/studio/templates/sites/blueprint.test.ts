@@ -33,6 +33,9 @@ const LANGS = ["ar", "en", "he"] as const;
  *   site-fivem-open, site-fivem-racing, site-minecraft-skyblock, site-minecraft-family, site-gmod-rp and site-coop-survival
  *   1.0.0 (wave G7a): six more game servers from the same modules; the wipe's countdown named as a race, a season or the
  *   update day; a server with no Discord starts with its Discord off.
+ *   site-minecraft-network and site-cs2-community 1.0.0 (wave G7b): several servers on one site («السيرفرات»: each
+ *   one's status, a band under the opening, a page and a table), a Minecraft minigames network's rankings for each game,
+ *   and a CS2 community's public ban list tied to its appeals (an appeal lifted lifts its ban).
  */
 const BUILT: Record<string, string[]> = {
   "site-restaurant": ["88d649b47d4e4d32", "eb90430e347c9b4a", "db40072aa7f6233a", "0b4c23ad9fc9b390", "31f84c7e8a0c123e", "5e987cb80e089cf6"],
@@ -56,6 +59,8 @@ const BUILT: Record<string, string[]> = {
   "site-minecraft-family": ["b3ebc807f5d7c6b2", "37b92130a19a53ec", "0826069606c0b6db", "0a7809044a3a90d4", "61a9950a91976e1c", "88a7c111c8069066"],
   "site-gmod-rp": ["e24e53b833431fc6", "92492c0ce532a176", "047280a038fdf576", "4f63e034537a38db", "067f596c89925e73", "d1cfe5637e62079d"],
   "site-coop-survival": ["812bf7a924f31ccb", "b0798eacd893974d", "2bd6b44d0a4a27f6", "708c838bf14ab7ac", "2edcacad7fee4a5b", "056ec04922777522"],
+  "site-minecraft-network": ["7f4ef5fc2a580706", "1f9b14e67222a3d4", "cb7b898c6f55afd3", "67970ac8e2126655", "bb6bc56ae9230b02", "c087d60f5727f89f"],
+  "site-cs2-community": ["b6741a96c78d95cf", "31787aa39db2988d", "d761552493d38708", "c955b20b4031ed5f", "f48302240b28bb72", "64427465b37ee80b"],
 };
 
 const print = (bp: SiteBlueprint, lang: (typeof LANGS)[number], motion: "calm" | "rich") => createHash("sha256").update(JSON.stringify(buildSite(bp, { lang, motion }))).digest("hex").slice(0, 16);

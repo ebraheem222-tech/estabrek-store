@@ -30,6 +30,7 @@ export const SliderControls = early("./SliderControls", () => import("./SliderCo
 export const InstrumentView = early("./InstrumentView", () => import("./InstrumentView").then((m) => m.InstrumentView));
 export const ClockView = early("./ClockView", () => import("./ClockView").then((m) => m.ClockView));
 export const GameStatusView = early("./GameStatusView", () => import("./GameStatusView").then((m) => m.GameStatusView));
+export const ServerListView = early("./ServerListView", () => import("./ServerListView").then((m) => m.ServerListView));
 export const LeaderboardView = early("./LeaderboardView", () => import("./LeaderboardView").then((m) => m.LeaderboardView));
 export const WipeCountdownView = early("./WipeCountdownView", () => import("./WipeCountdownView").then((m) => m.WipeCountdownView));
 export const StreamersView = early("./StreamersView", () => import("./StreamersView").then((m) => m.StreamersView));

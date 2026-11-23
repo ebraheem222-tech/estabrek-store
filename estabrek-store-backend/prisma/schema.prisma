@@ -706,9 +706,12 @@ model Feature {
 
 /// A whole site's game server as our server read it, once a minute (src/lib/gameStatus.ts, src/lib/gameSites.ts):
 /// kept two days, for the site's live status and its last 24 hours. A reading that got no answer is offline.
+/// `server` is one of the site's own servers (a network's or a community's, sites wave G7b: its key in the site's
+/// «السيرفرات» table), "" the site's main one.
 model GameSample {
   id        String   @id @default(cuid())
   featureId String
+  server    String   @default("")
   at        DateTime @default(now())
   online    Boolean
   players   Int?
@@ -719,6 +722,7 @@ model GameSample {
   ms        Int?
 
   @@index([featureId, at])
+  @@index([featureId, server, at])
 }
 
 /// A whole game server site's «إستبرق لينك» (sites wave G5, src/lib/gameLink.ts): the key its resource or plugin
@@ -732,6 +736,9 @@ model SiteLink {
   lastGame    String?
   lastVersion String?
   lastPlayers Int?
+  /// Each of the site's own servers that says hello by its name (a network's, sites wave G7b): { name: { at, players,
+  /// version } }, "" the one with no name.
+  servers     Json?
 }
 
 /// A short code a signed-in player types in the game (/link 482913) to link their game account to their shop

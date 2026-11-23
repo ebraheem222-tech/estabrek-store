@@ -22,6 +22,13 @@ The plugin only makes outgoing HTTPS calls, so no port opens on the game server:
 - **Every minute** it calls `POST /hello` with its version and how many players are online. The answer says whether
   the whitelist is on. It then calls `POST /deliveries` and runs each command it gets as the console. It reports back
   on `POST /deliveries/report`: each one given, or failed with the reason.
+- **A network** (several Paper servers behind one proxy, each a row of the site's «السيرفرات» table): each server
+  says its own name in its hello. The name is in `plugins/SiteLink/server.properties` (`server=bedwars`), which the
+  plugin writes empty the first time it starts; it is the key of the server's row on the site. The site then shows
+  each game's players, and counts each one's play time (two servers in the same minute both count). A name the site
+  doesn't know yet is kept for the first 20. Every server asks for purchases to give, and the first to ask runs each
+  one, so a network's package commands must work from any of its servers (LuckPerms with a shared database does).
+  The FiveM resource takes its name from `Config.Server`.
 - **On join**, while the whitelist is on, it calls `POST /whitelist` with the player's UUID and name. A player the
   site refuses is turned away with the site's own words. Minecraft sites have no whitelist yet: there is no
   applications module on one.

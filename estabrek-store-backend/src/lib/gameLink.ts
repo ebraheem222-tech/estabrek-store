@@ -2,7 +2,8 @@
  * «إستبرق لينك» (wave G5 of docs/sites-300-plan.ar.md): a small piece the owner puts on their game server (a FiveM
  * resource, or a Paper plugin built from estabrek-link/) that talks to their site. The site never reaches into the game server: no port opens
  * and no RCON password leaves it. What it does:
- *   - says hello every minute (how many play; the site answers whether its whitelist is on);
+ *   - says hello every minute (how many play; the site answers whether its whitelist is on), by its name when it is
+ *     one of the site's own servers (a network's: bedwars, skywars…), each kept apart;
  *   - asks the site whether a player connecting may come in, while the whitelist is on: one accepted (a row in the
  *     site's whitelist table) by their Discord, their Steam, or the shop account their game account is linked to;
  *   - links a player's game account to their shop account by a code they type in the game (/link 482913), taken
@@ -25,7 +26,9 @@ import { countPlaytime } from "./ranking.js";
 
 export const LINK_GAMES = ["fivem", "minecraft"] as const;
 export type LinkGame = (typeof LINK_GAMES)[number];
-export const LINK_LIMITS = { codeMinutes: 10, name: 40, id: 80 } as const;
+export const LINK_LIMITS = { codeMinutes: 10, name: 40, id: 80, servers: 20, freshMinutes: 3 } as const;
+/** A server's own name in its hello (the link's server.properties: server=bedwars), as the site's «السيرفرات» table keys it. */
+export const SERVER_NAME = /^[a-z0-9_-]{1,30}$/;
 /** estabrek-store-backend/assets/link (the same from src/ and dist/). */
 export const LINK_ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../assets/link");
 
@@ -42,7 +45,7 @@ export async function issueLinkKey(featureId: string): Promise<string> {
   await prisma.siteLink.upsert({
     where: { featureId },
     create: { featureId, keyHash: hash(key), keyHint: key.slice(-4) },
-    update: { keyHash: hash(key), keyHint: key.slice(-4), createdAt: new Date(), lastSeenAt: null, lastGame: null, lastVersion: null, lastPlayers: null },
+    update: { keyHash: hash(key), keyHint: key.slice(-4), createdAt: new Date(), lastSeenAt: null, lastGame: null, lastVersion: null, lastPlayers: null, servers: Prisma.DbNull },
   });
   return key;
 }
@@ -57,15 +60,47 @@ export async function siteOfKey(key: unknown): Promise<string | null> {
 
 /* ---------------- Hello ---------------- */
 
-/** A game server's hello: kept for the panel; the site says whether its whitelist is on. */
-export async function linkHello(featureId: string, said: { game?: unknown; version?: unknown; players?: unknown; online?: unknown }) {
+/** What one of a site's servers last said: when, how many played, of how many, its link's version. */
+export type Heard = { at: string; players: number | null; max: number | null; version: string | null };
+/** A site's link's servers by their names, as kept ("" the one with no name). */
+export function heardOf(v: unknown): Record<string, Heard> {
+  const out: Record<string, Heard> = {};
+  if (!v || typeof v !== "object" || Array.isArray(v)) return out;
+  for (const [name, h] of Object.entries(v as Record<string, unknown>)) {
+    const x = (h && typeof h === "object" ? h : {}) as Record<string, unknown>;
+    if ((name === "" || SERVER_NAME.test(name)) && typeof x.at === "string") out[name] = { at: x.at, players: typeof x.players === "number" ? x.players : null, max: typeof x.max === "number" ? x.max : null, version: typeof x.version === "string" ? x.version : null };
+  }
+  return out;
+}
+const count = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v < 100_000 ? v : null);
+
+/**
+ * A game server's hello: kept for the panel; the site says whether its whitelist is on. A network's servers each say
+ * theirs by name (the link's server.properties: server=bedwars), kept apart: each its players, and each its own minute
+ * of play time for those on it (one hello's minute never takes another server's). A name past the 20th is kept as the
+ * server with no name's.
+ */
+export async function linkHello(featureId: string, said: { game?: unknown; version?: unknown; players?: unknown; max?: unknown; online?: unknown; server?: unknown }, now = Date.now()) {
   const game = LINK_GAMES.find((g) => g === said.game) ?? null;
-  const players = typeof said.players === "number" && Number.isInteger(said.players) && said.players >= 0 && said.players < 100_000 ? said.players : null;
+  const players = count(said.players);
   const version = typeof said.version === "string" ? said.version.slice(0, 20) : null;
-  const before = await prisma.siteLink.findUnique({ where: { featureId }, select: { lastSeenAt: true } });
-  await prisma.siteLink.update({ where: { featureId }, data: { lastSeenAt: new Date(), lastGame: game, lastVersion: version, lastPlayers: players } });
+  const before = await prisma.siteLink.findUnique({ where: { featureId }, select: { lastSeenAt: true, servers: true } });
+  const heard = heardOf(before?.servers);
+  const asked = typeof said.server === "string" ? said.server.trim().toLowerCase() : "";
+  const named = Object.keys(heard).filter(Boolean);
+  const name = SERVER_NAME.test(asked) && (heard[asked] || named.length < LINK_LIMITS.servers) ? asked : "";
+  // This server's last hello: a named one's own; the one with no name's is the link's while no server has a name.
+  const last = name ? (heard[name] ? new Date(heard[name].at) : null) : named.length && heard[""] ? new Date(heard[""].at) : before?.lastSeenAt ?? null;
+  const mine: Heard = { at: new Date(now).toISOString(), players, max: count(said.max), version };
+  heard[name] = mine;
+  // The panel's "players now": every server heard from in the last minutes, together.
+  const fresh = Object.values(heard).filter((h) => now - Date.parse(h.at) <= LINK_LIMITS.freshMinutes * 60_000 && h.players !== null);
+  const total = name || named.length ? fresh.reduce((n, h) => n + (h.players ?? 0), 0) : players;
+  await prisma.siteLink.update({ where: { featureId }, data: { lastSeenAt: new Date(now), lastGame: game, lastVersion: version, lastPlayers: total } });
+  // Two servers saying hello at once each keep their own name (merged in the database, not over each other).
+  await prisma.$executeRaw`UPDATE "SiteLink" SET "servers" = COALESCE("servers", '{}'::jsonb) || jsonb_build_object(${name}::text, ${JSON.stringify(mine)}::jsonb) WHERE "featureId" = ${featureId}`;
   // Those online now (each { id, name }) get a minute on the site's play time board, if it has one (lib/ranking.ts).
-  await countPlaytime(featureId, said.online, before?.lastSeenAt ?? null);
+  await countPlaytime(featureId, said.online, last, now);
   const s = await settingsOfFeature(featureId);
   return { whitelist: s?.values.whitelistOn === true };
 }
