@@ -91,7 +91,8 @@ export const STATUS: SiteModule = {
     return [
       { key: "game", kind: "choice", label: SERVER.game, note: SERVER.gameNote, group: STATUS_NAME, default: s.game, options: [{ id: "fivem", name: w("FiveM (GTA V)", "FiveM (GTA V)", "FiveM (GTA V)") }, { id: "minecraft", name: w("ماينكرافت Java", "Minecraft Java", "Minecraft Java") }, { id: "bedrock", name: w("ماينكرافت Bedrock", "Minecraft Bedrock", "Minecraft Bedrock") }, { id: "steam", name: w("لعبة على Steam (Rust، CS2، GMod…)", "A Steam game (Rust, CS2, GMod…)", "משחק ב־Steam (Rust, CS2, GMod…)") }] },
       { key: "serverAddress", kind: "text", label: SERVER.address, note: SERVER.addressNote, group: STATUS_NAME, default: s.address },
-      { key: "discordOn", kind: "toggle", label: SERVER.discordOn, group: STATUS_NAME, public: true, default: true },
+      // A server with no Discord (a children's one) starts with its button and band off.
+      { key: "discordOn", kind: "toggle", label: SERVER.discordOn, group: STATUS_NAME, public: true, default: Boolean(s.discord.trim()) },
       { key: "discordUrl", kind: "text", label: SERVER.discordUrl, note: SERVER.discordUrlNote, group: STATUS_NAME, public: true, default: s.discord },
     ];
   },

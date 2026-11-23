@@ -110,7 +110,13 @@ export type RankingUse = { title: W; sub: W; boards: RankBoard[] };
  * A game server's wipes (wave G6b): its schedule as the settings start (every week, every two weeks from `from`, the
  * first `day` of each month, or once on `from`), the hour and the server's time zone (an id of modules/wipe.ts ZONES: "london"), and what each wipe takes.
  */
-export type WipeUse = { title: W; sub: W; line: W; every: "weekly" | "biweekly" | "monthly" | "date"; day: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"; time: string; zone: string; from?: string; note: W; what: Array<[W, W]> };
+/**
+ * A game server's wipes (wave G6b), or any other countdown on a schedule its owner keeps (a weekly race, a season, the
+ * update day: `words` names it, else it is the wipe's; `slug` its page's address, else /wipe).
+ */
+export type WipeUse = { title: W; sub: W; line: W; words?: CountdownWords; slug?: string; every: "weekly" | "biweekly" | "monthly" | "date"; day: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"; time: string; zone: string; from?: string; note: W; what: Array<[W, W]> };
+/** What a countdown is called: its next one, the words when it comes, before there is one, and what each brings. */
+export type CountdownWords = { next: W; done: W; none: W; what: W; whatSub: W };
 /** A game server's streamers (wave G6b): ready rows (a Twitch channel the owner fills in; empty, no channel shows). */
 export type StreamersUse = { title: W; sub: W; rows: Array<{ slug: string; name: W; twitch: string; about: W }> };
 
