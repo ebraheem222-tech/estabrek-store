@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageTreeNode } from "../api/pages.api";
-import { pickCanvasContainer } from "./canvasContainers";
+import { OUT_MARGIN, pickCanvasContainer } from "./canvasContainers";
 import { SpatialGrid, type Box, type Shape } from "./geometry";
 import { indexTree, type TreeIndex } from "./treeIndex";
 
@@ -54,6 +54,33 @@ describe("canvas drop containers", () => {
   it("lifts into a measured ancestor after leaving the current parent", () => {
     const { index, shapes } = nested();
     expect(pickCanvasContainer(index, shapes, { x: 450, y: 150 }, ["moving"], "holder")).toBe("section");
+  });
+
+  it("stays in its holder until the pointer is clearly out of it (OUT_MARGIN)", () => {
+    const { index, shapes } = nested();
+    // The holder ends at x 420: a little past it is still the holder's, further on is the section's.
+    expect(pickCanvasContainer(index, shapes, { x: 420 + OUT_MARGIN - 4, y: 150 }, ["moving"], "holder")).toBeNull();
+    expect(pickCanvasContainer(index, shapes, { x: 420 + OUT_MARGIN + 4, y: 150 }, ["moving"], "holder")).toBe("section");
+  });
+
+  it("keeps a header's search in its cell in the gap between the row's cells, and lets it into the next cell", () => {
+    // A header: three cells in a row, 24 px apart (the ready header: name, menu, search).
+    const index = tree(node("header", "section", [node("cols", "columns", [
+      node("c1", "cell", [node("name", "heading")]), node("c2", "cell", [node("menu", "menu")]), node("c3", "cell", [node("search", "search")]),
+    ])]));
+    const shapes = [
+      shape(index, "header", box(0, 0, 1240, 200)), shape(index, "cols", box(20, 16, 1200, 58)),
+      shape(index, "c1", box(20, 16, 282, 58)), shape(index, "c2", box(326, 16, 564, 58)), shape(index, "c3", box(914, 16, 306, 58)),
+      shape(index, "search", box(914, 18, 306, 54)),
+    ];
+    // In the gap left of its cell (and far past OUT_MARGIN for a wide gap): it is still in its cell.
+    expect(pickCanvasContainer(index, shapes, { x: 902, y: 40 }, ["search"], "c3")).toBeNull();
+    const wide = shapes.map((s) => (s.id === "c2" ? { ...s, box: box(326, 16, 500, 58) } : s));
+    expect(pickCanvasContainer(index, wide, { x: 870, y: 40 }, ["search"], "c3")).toBeNull();
+    // Into the menu's cell.
+    expect(pickCanvasContainer(index, shapes, { x: 880, y: 40 }, ["search"], "c3")).toBe("c2");
+    // Out of the row, into the header's own space, clearly away from its cell: the header.
+    expect(pickCanvasContainer(index, shapes, { x: 1000, y: 160 }, ["search"], "c3")).toBe("header");
   });
 
   it("ignores the dragged subtree so its own descendants cannot hide another target", () => {

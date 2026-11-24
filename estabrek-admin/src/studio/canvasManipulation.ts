@@ -114,6 +114,26 @@ export function placementPatch(
   };
 }
 
+/**
+ * How its holder places a flow element again once its size changes, per axis (screen sides): 0 its left (top) side
+ * stays, .5 it stays centred, 1 its right (bottom) side stays. Along the holder's flow it follows the holder's
+ * `justify`; across it, its own `self` or the holder's `align`; where neither says, it is read from where it is
+ * drawn in its holder (centred, or against the far side). In a right-to-left page a row starts on the right.
+ * `seen` is where it is laid out (its own offset taken off), `at` its place among the `count` in the holder's flow.
+ */
+export function flowAnchorOf(o: { seen: Box; holder: Box; row: boolean; justify?: unknown; align?: unknown; at: number; count: number; rtl: boolean }): Pt {
+  const read = (before: number, after: number) => (before <= 2 && after <= 2 ? 0 : Math.abs(before - after) <= 2 ? 0.5 : after <= 2 ? 1 : 0);
+  const seen = { x: read(o.seen.x - o.holder.x, o.holder.x + o.holder.w - o.seen.x - o.seen.w), y: read(o.seen.y - o.holder.y, o.holder.y + o.holder.h - o.seen.y - o.seen.h) };
+  const side = (v: unknown) => (v === "center" || v === "around" ? 0.5 : v === "end" ? 1 : v === "start" || v === "stretch" ? 0 : null);
+  const main = o.justify === "between" ? (o.count <= 1 || o.at === 0 ? 0 : o.at === o.count - 1 ? 1 : 0.5) : side(o.justify) ?? (o.count <= 1 ? null : 0);
+  const across = side(o.align);
+  // A side that starts on the right in a right-to-left page (a row's own direction; across a column, its width).
+  const flip = (v: number | null) => (v === null || !o.rtl ? v : 1 - v);
+  return o.row
+    ? { x: flip(main) ?? seen.x, y: across ?? seen.y }
+    : { x: flip(across) ?? seen.x, y: main ?? seen.y };
+}
+
 /** Keep the entire object/subtree at its displayed size across differently scaled holders. */
 export function transferPatch(
   node: PageTreeNode,
@@ -203,6 +223,7 @@ export function resizePatch(
   rtl: boolean,
   free: boolean,
   parentScale = 1,
+  anchor: Pt = { x: 0, y: 0 },
 ): Record<string, unknown> | null {
   if (!finiteBox(start) || !finiteBox(next) || !finiteSize(size) || !positive(zoom) || !positive(parentScale)) return null;
   const w = width ?? size.w / zoom;
@@ -216,8 +237,11 @@ export function resizePatch(
 
   const before = centerOffset(node, screen, size);
   const after = centerOffset(node, screen, resized);
-  const dx = (next.x + next.w / 2 - start.x - start.w / 2) / (zoom * parentScale) - (after.x - before.x) / zoom;
-  const dy = (next.y + next.h / 2 - start.y - start.h / 2) / (zoom * parentScale) - (after.y - before.y) / zoom;
+  // In the flow its holder places it again at its new size: `anchor` is how much of the growth its left (top) side
+  // goes back by (0 from the start side, .5 centred, 1 from the end side; flowAnchor), which its offset makes up.
+  const shift = { x: (anchor.x || 0) * (w - size.w / zoom), y: (anchor.y || 0) * (h - size.h / zoom) };
+  const dx = (next.x + next.w / 2 - start.x - start.w / 2) / (zoom * parentScale) - (after.x - before.x) / zoom + shift.x;
+  const dy = (next.y + next.h / 2 - start.y - start.h / 2) / (zoom * parentScale) - (after.y - before.y) / zoom + shift.y;
   const move = (key: string, delta: number) => Math.max(-1000, Math.min(1000, lookNumber(node, screen, key, 0) + delta));
   return {
     ...(width !== null ? { width: length(w), maxWidth: length(w) } : {}),

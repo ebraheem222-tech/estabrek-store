@@ -119,6 +119,24 @@ function restore(d: Drag) {
 export const SMALL_SIDE = 30;
 export const HANDLE_OFF = 9;
 
+/**
+ * Where a handle stands off a small element, `off` px out: a corner's along its diagonal, a side's straight out
+ * from its side (turned with the element by `rotation` degrees). On a short, wide element the corners then stay
+ * clear of the side handles beside them (out from the middle, they all crowded at its two ends). `rotation` null:
+ * a plane in depth, out from its middle.
+ */
+export function standOff(on: Pt, h: Handle, box: Box, off: number, rotation: number | null): Pt {
+  let dir: Pt;
+  if (rotation === null) dir = { x: on.x - (box.x + box.w / 2), y: on.y - (box.y + box.h / 2) };
+  else {
+    const local = { x: h.includes("e") ? 1 : h.includes("w") ? -1 : 0, y: h.includes("s") ? 1 : h.includes("n") ? -1 : 0 };
+    const a = rotation * Math.PI / 180;
+    dir = { x: local.x * Math.cos(a) - local.y * Math.sin(a), y: local.x * Math.sin(a) + local.y * Math.cos(a) };
+  }
+  const far = Math.hypot(dir.x, dir.y);
+  return far > 0.01 ? { x: on.x + (dir.x / far) * off, y: on.y + (dir.y / far) * off } : on;
+}
+
 export function SelectionHandles({ box, zoom, frame, geometry, proportional, ratioLimits, sides, turn, local, onSize, onSizeLive, onCancel, onReset, onTurnLive, onTurn }: SelectionHandlesProps) {
   const drag = useRef<Drag | null>(null);
   const [live, setLive] = useState<{ change?: ResizeChange; deg?: number } | null>(null);
@@ -248,13 +266,13 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
       {handles.map((h) => {
         const on = shownPlane ? planarHandle(shownPlane, h) : handleAt(shown, h, shownFrame);
         if (!on) return null;
-        // A small element: the handles in the middle of a short side go, and the rest stand off it, so its middle
-        // stays free to press and move (they used to cover it whole).
-        if (sides === "all" && ((h === "n" || h === "s") ? shown.w < SMALL_SIDE : (h === "e" || h === "w") ? shown.h < SMALL_SIDE : false)) return null;
+        // A small element: its handles stand off it, so its middle stays free to press and move (they used to cover
+        // it whole). Only a tiny one (small both ways) loses the handles in the middle of its sides: a short, wide
+        // one (a menu, a search box, a button in a header) keeps them, or it could not be made wider or narrower
+        // without changing its height too.
+        if (sides === "all" && h.length === 1 && Math.max(shown.w, shown.h) < SMALL_SIDE) return null;
         const off = Math.min(shown.w, shown.h) < SMALL_SIDE ? HANDLE_OFF : 0;
-        const from = { x: on.x - (shown.x + shown.w / 2), y: on.y - (shown.y + shown.h / 2) };
-        const far = Math.hypot(from.x, from.y);
-        const at = off && far > 0.01 ? { x: on.x + (from.x / far) * off, y: on.y + (from.y / far) * off } : on;
+        const at = off ? standOff(on, h, shown, off, shownPlane ? null : shownFrame?.rotation ?? 0) : on;
         return (
           <div
             key={h}
