@@ -37,6 +37,9 @@ export default async function StudioFrame(props: { params?: Promise<{ lang?: str
     <>
       {/* The editor only: an empty cell or section keeps a place to drop things into (the shop draws it empty). */}
       <style dangerouslySetInnerHTML={{ __html: EMPTY_PLACES }} />
+      {/* The page scrolls without its own bar in the editor, as on a phone: the device's width is the page's whole
+          width (a bar took 10–17px of it, and full-width parts stuck out by as much). */}
+      <style dangerouslySetInnerHTML={{ __html: "html{scrollbar-width:none}html::-webkit-scrollbar{display:none}" }} />
       {/* The home looks as the home does in the editor (StorefrontChrome reads this). */}
       {(page.slug || "/") === "/" ? <div hidden data-studio-home="" /> : null}
       <div hidden data-studio-document-kind={(page as { kind?: string }).kind === "block" || /^\/__(block|design)\//.test(page.slug || "") ? "block" : "page"} />

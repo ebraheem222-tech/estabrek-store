@@ -87,6 +87,7 @@ import { LibraryBrowser } from "./LibraryBrowser";
 import { ShaderPanel } from "./ShaderPanel";
 import { TrailPanel } from "./TrailPanel";
 import { SpacePanel } from "./SpacePanel";
+import { withLibWord } from "./library";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
 import { AddPanel } from "./AddPanel";
@@ -637,6 +638,11 @@ function StudioDocument() {
         setEditing(null);
         canvasRef.current?.focus({ preventScroll: true });
         if (d.type === "nodeEdited") onNodeEdited.current(m.nodeId, String(m.value ?? ""));
+      } else if (d.type === "libWordEdited" || d.type === "libWordCancelled") {
+        const m = d as unknown as { nodeId: string; from?: string; value?: string };
+        setEditing(null);
+        canvasRef.current?.focus({ preventScroll: true });
+        if (d.type === "libWordEdited") onLibWordEdited.current(m.nodeId, String(m.from ?? ""), String(m.value ?? ""));
       } else if (d.type === "partEdited" || d.type === "partCancelled") {
         const m = d as unknown as { nodeId: string; path: string; line?: number; lang: Lang; value?: string };
         setEditing(null);
@@ -877,6 +883,13 @@ function StudioDocument() {
     const bound = partContentOf(sid); if (!bound) return;
     const props = replaceContent(bound.owner.props, bound.binding, shopLang, value, main, bound.owner.type);
     if (props) void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId: bound.owner.id, props }]);
+  };
+  /** A theme library piece's words written over on the page (the frame's "libWordEdited"): its own words for that text. */
+  const onLibWordEdited = useRef<(nodeId: string, from: string, value: string) => void>(() => {});
+  onLibWordEdited.current = (nodeId, from, value) => {
+    const n = index?.nodes.get(nodeId)?.node;
+    if (!n || n.type !== "lib" || !from || from.length > 400 || value.length > 600) return;
+    void change(say("كلام قطعة المكتبة|The library piece's words|המילים של פריט הספרייה"), [{ op: "setProps", nodeId, props: withLibWord(n.props ?? {}, from, shopLang, value) }]);
   };
   const onPartEdited = useRef<(nodeId: string, path: string, line: number | undefined, lang: Lang, value: string) => void>(() => {});
   onPartEdited.current = (nodeId, path, line, lang, value) => {
@@ -4271,6 +4284,16 @@ function StudioDocument() {
               const at = inFrame(p) ? pickAt(grid.near(p), p) : null;
               if (at) {
                 select(at.id);
+                // A theme library piece (or a part inside one, which is how a click inside it is picked): the words under
+                // the pointer are written over in place (StudioBridge "editLibWord").
+                const extra = extras.get(at.id);
+                const owner = extra && "owner" in extra ? extra.owner : undefined;
+                const libId = [at.id, owner?.startsWith("n:") ? owner.slice(2) : null].find((x) => x && index?.nodes.get(x)?.node.type === "lib");
+                if (libId) {
+                  setEditing({ nodeId: libId });
+                  send({ type: "editLibWord", nodeId: libId, x: (p.x - pan.x) / zoom, y: (p.y - pan.y) / zoom });
+                  return;
+                }
                 // Words are written in place; anything else opens on its own (focus mode): the element itself, else
                 // the nearest one around it with an editor of its own, else whatever was clicked (zoomed to).
                 if (!startText(at.id) && index) {

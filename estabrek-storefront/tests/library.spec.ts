@@ -179,3 +179,66 @@ test("from the editor: a library piece added from the Add panel, its words and c
   await panel.getByTestId("studio-lib-reset").click();
   await expect.poll(async () => ((await draft()).children as any[]).find((n) => n.id === piece.id).props).toEqual({ item: "faq-classic" });
 });
+
+test("from the editor: a library piece's words written over on the page, a whole site fitting the frame with no bars", async ({ page }) => {
+  test.setTimeout(240_000);
+  const draft = () => page.evaluate(() => (window as any).__canvasHarness.getDraft().tree.root);
+  const ready = () => expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90_000 });
+  const frame = page.frameLocator('[data-testid="studio-frame"]');
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto(editor);
+  await ready();
+  const add = async (item: string, name: string) => {
+    await page.getByRole("tab", { name: "+ Add" }).click();
+    await page.getByTestId("studio-lib-browse").click();
+    const shelf = page.getByTestId("lib-shelf");
+    await shelf.getByTestId("lib-search").fill(name);
+    await shelf.locator(`[data-testid="lib-card"][data-item="${item}"] [data-testid="lib-pick"]`).click();
+    await expect.poll(async () => ((await draft()).children as any[]).some((n) => n.type === "lib" && n.props.item === item)).toBe(true);
+    await ready();
+    return ((await draft()).children as any[]).find((n) => n.type === "lib" && n.props.item === item).id as string;
+  };
+  // Double-clicks a text of a piece where it shows (its marker takes no room: its words' own place).
+  const dblclickWord = async (from: string) => {
+    const word = frame.locator(`[data-lx-src="${from}"]`).first();
+    await expect(word).toHaveCount(1, { timeout: 60_000 });
+    await word.evaluate((el) => el.parentElement!.scrollIntoView({ block: "center" }));
+    await page.waitForTimeout(1500);
+    const r = await word.evaluate((el) => { const range = document.createRange(); range.selectNodeContents(el); const b = range.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
+    const box = (await page.getByTestId("studio-frame").boundingBox())!;
+    const scale = box.width / (await page.evaluate(() => (window as any).__canvasHarness.getLayout().viewport.w));
+    await page.mouse.dblclick(box.x + r.x * scale, box.y + r.y * scale);
+    return word;
+  };
+
+  const id = await add("faq-classic", "Classic Accordion");
+  await page.waitForTimeout(3000);
+  // Written over in place: the words become writable where they are, what's typed is the piece's own words for them.
+  const word = await dblclickWord("Frequently asked questions");
+  await expect(word).toHaveAttribute("contenteditable", /plaintext-only|true/);
+  await page.keyboard.type("Questions about our store");
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => ((await draft()).children as any[]).find((n) => n.id === id).props.words).toEqual({ "Frequently asked questions": { en: "Questions about our store" } });
+  await ready();
+  await expect(frame.locator(`[data-tree-node="${id}"]`)).toContainText("Questions about our store", { timeout: 60_000 });
+  // Esc leaves another as it was.
+  const second = await dblclickWord("How does the free trial work?");
+  await expect(second).toHaveAttribute("contenteditable", /plaintext-only|true/);
+  await page.keyboard.type("Not these words");
+  await page.keyboard.press("Escape");
+  await expect(second).not.toHaveAttribute("contenteditable", /.+/);
+  await expect(second).toHaveText("How does the free trial work?");
+  expect(Object.keys(((await draft()).children as any[]).find((n) => n.id === id).props.words)).toEqual(["Frequently asked questions"]);
+
+  // A whole site spans the frame exactly (no page bar in the editor, none counted in its width); what scrolls inside
+  // it shows no bar either.
+  const site = await add("site-maison", "Maison Lune");
+  const shown = frame.locator(`[data-tree-node="${site}"] [data-lib="site-maison"]`);
+  await expect(shown).toHaveAttribute("data-lib-ready", "", { timeout: 90_000 });
+  const fit = await shown.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const bars = Array.from(el.querySelectorAll<HTMLElement>("*")).filter((e) => e.offsetWidth - e.clientWidth > 0 && /(auto|scroll)/.test(getComputedStyle(e).overflowY) || e.offsetHeight - e.clientHeight > 0 && /(auto|scroll)/.test(getComputedStyle(e).overflowX)).length;
+    return { left: Math.round(r.left), width: Math.round(r.width), page: document.documentElement.clientWidth, inner: window.innerWidth, bars };
+  });
+  expect(fit).toEqual({ left: 0, width: fit.inner, page: fit.inner, inner: fit.inner, bars: 0 });
+});
