@@ -25,6 +25,7 @@ const NODES = [
 
 test.afterAll(async ({ request }) => {
   await request.post(`${API}/__test/library-page`, { data: {} });
+  await request.post(`${SITE}/api/revalidate`, { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
 });
 
 test("the library's text and pointer tricks on a page of the shop", async ({ page }) => {

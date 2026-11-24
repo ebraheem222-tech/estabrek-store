@@ -22,6 +22,7 @@ const NODES = [
 
 test.afterAll(async ({ request }) => {
   await request.post(`${API}/__test/library-page`, { data: {} });
+  await request.post(`${SITE}/api/revalidate`, { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
 });
 
 const open = async (page: Page) => {

@@ -18,6 +18,7 @@ const libStyles = (page: Page) =>
 
 test.afterAll(async ({ request }) => {
   await request.post(`${API}/__test/library-page`, { data: {} });
+  await request.post(`${SITE}/api/revalidate`, { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
 });
 
 test("a whole website and two sections from the library, in the store's name, the owner's words and colours", async ({ page }) => {
@@ -25,6 +26,7 @@ test("a whole website and two sections from the library, in the store's name, th
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.request.post(`${API}/__test/library-page`, { data: {} });
+  await page.request.post(`${SITE}/api/revalidate`, { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
   await page.context().addCookies([{ name: "shop-lang", value: "en", url: SITE }]);
   await page.goto("/library-demo");
   const site = page.locator('[data-lib="site-maison"]');
