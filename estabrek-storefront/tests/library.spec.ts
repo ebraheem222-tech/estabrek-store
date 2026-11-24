@@ -79,6 +79,42 @@ test("a whole website and two sections from the library, in the store's name, th
   await expect(page.locator(".atelier-header").first()).toBeVisible();
 });
 
+test("a piece turned right to left in Arabic words; any piece on its own at its preview address, as a file of its own", async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.request.post(`${API}/__test/library-page`, { data: { nodes: [
+    { id: "lib-faq", type: "lib", props: { item: "faq-classic", dir: "rtl", words: { "Frequently asked questions": { ar: "أسئلة شائعة", en: "Questions" } } } },
+  ] } });
+  await page.request.post(`${SITE}/api/revalidate`, { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
+  await page.context().addCookies([{ name: "shop-lang", value: "ar", url: SITE }]);
+  await page.goto("/ar/library-demo");
+  const faq = page.locator('[data-lib="faq-classic"]');
+  await expect(faq).toHaveAttribute("data-lib-ready", "", { timeout: 90_000 });
+  await expect(faq).toHaveAttribute("dir", "rtl");
+  await expect(faq.getByText("أسئلة شائعة")).toBeVisible();
+  // Its question sits at the right, its button at the left.
+  const row = await faq.evaluate((el) => {
+    const q = Array.from(el.querySelectorAll("button")).find((b) => /free trial/.test(b.textContent ?? ""))!;
+    const r = q.getBoundingClientRect();
+    const text = Array.from(q.querySelectorAll("*")).find((x) => /free trial/.test(x.textContent ?? "") && !x.children.length)!.getBoundingClientRect();
+    return { textRight: Math.round(r.right - text.right), textLeft: Math.round(text.left - r.left) };
+  });
+  expect(row.textRight).toBeLessThan(row.textLeft);
+
+  // The preview address: one piece alone, nothing of the store's around it, its own file and styles.
+  const files: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/library/")) files.push(r.url().split("/library/")[1]); });
+  await page.goto("/en/lib-preview?item=cta-conic");
+  await expect(page.locator('[data-lib="cta-conic"]')).toHaveAttribute("data-lib-ready", "", { timeout: 90_000 });
+  await expect(page.locator(".atelier-header")).toBeHidden();
+  expect(files.some((f) => /^js\/cta-conic-[A-Z0-9]+\.js$/.test(f))).toBe(true);
+  expect(files.some((f) => f.startsWith("css/cta-cta.css"))).toBe(true);
+  expect(files.filter((f) => f.startsWith("js/") && !f.startsWith("js/c/") && !f.startsWith("js/cta-conic-"))).toEqual([]);
+  expect((await page.goto("/en/lib-preview?item=no-such-piece"))?.status()).toBe(404);
+  expect(errors).toEqual([]);
+});
+
 test("from the editor: a library piece added from the Add panel, its words and colours changed in its panel", async ({ page }) => {
   test.setTimeout(240_000);
   const draft = () => page.evaluate(() => (window as any).__canvasHarness.getDraft().tree.root);

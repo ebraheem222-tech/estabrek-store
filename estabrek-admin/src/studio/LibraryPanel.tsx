@@ -111,7 +111,7 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
     else delete next[hex];
     setProps({ colours: Object.keys(next).length ? next : undefined }, say("ألوان قطعة المكتبة|The library piece's colours|הצבעים של פריט הספרייה"));
   };
-  const changed = Object.keys(own).length + Object.keys(families).length + Object.keys(colours).length + (p.brand ? 1 : 0);
+  const changed = Object.keys(own).length + Object.keys(families).length + Object.keys(colours).length + (p.brand ? 1 : 0) + (p.dir === "rtl" ? 1 : 0);
 
   return (
     <div className="space-y-3" data-testid="studio-lib-panel" data-item={item.id}>
@@ -123,7 +123,7 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             <div className="text-[10px] text-white/40">{say("من المكتبة: كل كلمة ولون فيها إلك تغيّرها|From the library: every word and colour in it is yours to change|מהספרייה: כל מילה וצבע בה שלך לשנות")}</div>
           </div>
           {changed ? (
-            <button type="button" className={small} disabled={busy} onClick={() => setProps({ words: undefined, colours: undefined, families: undefined, brand: undefined }, say("رجّع القطعة متل ما كانت|Put the piece back as it was|החזרת הפריט כפי שהיה"))} data-testid="studio-lib-reset">
+            <button type="button" className={small} disabled={busy} onClick={() => setProps({ words: undefined, colours: undefined, families: undefined, brand: undefined, dir: undefined }, say("رجّع القطعة متل ما كانت|Put the piece back as it was|החזרת הפריט כפי שהיה"))} data-testid="studio-lib-reset">
               {say("رجّعها متل ما كانت|As it was|כפי שהיה")}
             </button>
           ) : null}
@@ -137,6 +137,20 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             testId="studio-lib-brand"
           />
         ) : null}
+        <div className="space-y-1">
+          <div className="text-[11px] text-white/55">{say("الاتجاه|Direction|כיוון")}</div>
+          <div className="flex gap-1" role="group" aria-label={say("الاتجاه|Direction|כיוון")} data-testid="studio-lib-dir">
+            {([["ltr", "متل ما انعملت (شمال ← يمين)|As made (left to right)|כפי שנבנה (שמאל לימין)"], ["rtl", "من اليمين للشمال|Right to left|מימין לשמאל"]] as const).map(([d, name]) => {
+              const on = (p.dir === "rtl" ? "rtl" : "ltr") === d;
+              return (
+                <button key={d} type="button" disabled={busy} aria-pressed={on} onClick={() => !on && setProps({ dir: d === "rtl" ? "rtl" : undefined })} className={`flex-1 rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`} data-dir={d}>
+                  {say(name)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] leading-4 text-white/35">{say("أغلب القطع بتنقلب منيح؛ جرّب وشوف بالمعاينة.|Most pieces turn well; try it and look at the preview.|רוב הפריטים מתהפכים יפה; נסו ובדקו בתצוגה.")}</p>
+        </div>
       </div>
 
       <section className={box} aria-label={say("الكلام|The words|המילים")} data-testid="studio-lib-words">

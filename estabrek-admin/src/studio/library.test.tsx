@@ -143,11 +143,23 @@ describe("a piece's panel", () => {
     expect(lastProps(onOps).colours).toEqual({ c8a75d: "#2563eb" });
   });
 
+  it("turns a piece right to left, and back as it was made", () => {
+    const onOps = vi.fn();
+    const { rerender } = render(<LibraryPanel node={node({ item: "faq-classic" })} lang="ar" busy={false} onOps={onOps} />);
+    const dir = screen.getByTestId("studio-lib-dir");
+    expect(within(dir).getByRole("button", { pressed: true }).dataset.dir).toBe("ltr");
+    fireEvent.click(dir.querySelector('[data-dir="rtl"]')!);
+    expect(lastProps(onOps)).toEqual({ item: "faq-classic", dir: "rtl" });
+    rerender(<LibraryPanel node={node({ item: "faq-classic", dir: "rtl" })} lang="ar" busy={false} onOps={onOps} />);
+    fireEvent.click(screen.getByTestId("studio-lib-dir").querySelector('[data-dir="ltr"]')!);
+    expect(lastProps(onOps)).toEqual({ item: "faq-classic", dir: undefined });
+  });
+
   it("puts everything back in one click; a piece the library doesn't have says so", () => {
     const onOps = vi.fn();
     render(<LibraryPanel node={node({ item: "faq-classic", words: { General: { en: "All" } }, families: { indigo: "theme" } })} lang="en" busy={false} onOps={onOps} />);
     fireEvent.click(screen.getByTestId("studio-lib-reset"));
-    expect(lastProps(onOps)).toEqual({ item: "faq-classic", words: undefined, colours: undefined, families: undefined, brand: undefined });
+    expect(lastProps(onOps)).toEqual({ item: "faq-classic", words: undefined, colours: undefined, families: undefined, brand: undefined, dir: undefined });
     cleanup();
     expect(libItemOf("gone")).toBeNull();
     render(<LibraryPanel node={node({ item: "gone" })} lang="en" busy={false} onOps={vi.fn()} />);

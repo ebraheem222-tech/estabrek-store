@@ -493,7 +493,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
         }
       }
       const brand = say(p.brand);
-      return <div className={cls(node)} {...mark}><LibBlock item={item.id} kind={item.kind} madeUp={item.brand || undefined} minH={item.minH} js={item.js} css={item.css} version={LIB_CSS_VERSION} words={words} colours={p.colours} families={p.families} brand={brand || undefined} />{fx}</div>;
+      return <div className={cls(node)} {...mark}><LibBlock item={item.id} kind={item.kind} madeUp={item.brand || undefined} minH={item.minH} js={item.js} css={item.css} version={LIB_CSS_VERSION} dir={p.dir === "rtl" ? "rtl" : "ltr"} words={words} colours={p.colours} families={p.families} brand={brand || undefined} />{fx}</div>;
     }
     case "showcase": {
       const spec = showcaseOf(p);

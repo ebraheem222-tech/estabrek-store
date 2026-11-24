@@ -915,6 +915,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
         z.union([z.string().trim().regex(/^#[0-9a-f]{6}$/i), z.literal("theme")]),
       )
       .optional(),
+    // Its direction: as the library made it (left to right), or turned for a right-to-left page.
+    dir: z.enum(["ltr", "rtl"]).optional(),
   }),
   rive: z.object({
     src: src.refine((v) => /\.riv([?#]|$)/i.test(v), "A Rive file ends in .riv").optional(),

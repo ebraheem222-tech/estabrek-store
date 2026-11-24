@@ -45,7 +45,7 @@ export function libVars(colours: unknown, families: unknown): CSSProperties {
 }
 
 /** What the server's list (meta.ts) says of the piece: a page never downloads the whole library's list. */
-export function LibBlock({ item, kind, madeUp, minH, js, css, version, words, colours, families, brand, className, ...rest }: {
+export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "ltr", words, colours, families, brand, className, ...rest }: {
   item: string;
   kind: string;
   /** The piece's made-up brand (a site's name), the store's name replaces. */
@@ -56,6 +56,8 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, words, co
   js: string;
   css: string;
   version: string;
+  /** As the library made it (left to right), or turned for a right-to-left page. */
+  dir?: "ltr" | "rtl";
   words?: Record<string, string>;
   colours?: Record<string, string>;
   families?: Record<string, string>;
@@ -78,7 +80,7 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, words, co
   // A whole website brings its own bar and footer: on its page the store's step aside (drawn with the page, no flash).
   const site = kind === "site";
   return (
-    <div className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`} dir="ltr" data-lib={item} data-lib-kind={kind} data-lib-ready={Piece ? "" : undefined} style={libVars(colours, families)} {...rest}>
+    <div className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`} dir={dir} data-lib={item} data-lib-kind={kind} data-lib-ready={Piece ? "" : undefined} style={libVars(colours, families)} {...rest}>
       <link rel="stylesheet" href={FONTS} />
       {site ? <style>{".atelier-announcement,.atelier-header,.atelier-footer{display:none!important}[data-lib-kind=site]{width:100vw;margin-inline:calc(50% - 50vw)}"}</style> : null}
       {Piece ? (

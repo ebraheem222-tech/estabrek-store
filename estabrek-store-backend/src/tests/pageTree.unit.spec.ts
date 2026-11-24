@@ -506,6 +506,9 @@ describe("checking a page tree", () => {
     expect(issuesOf(one({ item: "site-maison", colours: { "url(x)": "#000000" } })).length).toBeGreaterThan(0);
     expect(issuesOf(one({ item: "site-maison", families: { brand: "#000000" } })).length).toBeGreaterThan(0);
     expect(issuesOf(one({ item: "site-maison", words: { "Hi": { ar: "x".repeat(601) } } })).length).toBeGreaterThan(0);
+    // Right to left, or as made.
+    expect(ok({ item: "site-maison", dir: "rtl" })).toBe(true);
+    expect(issuesOf(one({ item: "site-maison", dir: "up" })).length).toBeGreaterThan(0);
   });
 
   test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
