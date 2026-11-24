@@ -15881,3 +15881,24 @@ html[data-ab-hero="film"] .rose-opening {
   background: linear-gradient(90deg, var(--th-strong), var(--th-accent));
   box-shadow: none;
 }
+
+/* The store's bar over a header the owner designed (StoreBar.tsx): signing in, a new account and the cart, at the
+   end of a thin line above it. In the page's own colours (any theme): nothing of its own but a hairline. */
+.store-bar { font-size: 13px; line-height: 1; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.store-bar-in { max-width: 1200px; margin-inline: auto; padding: 6px 16px; display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex-wrap: wrap; }
+.store-bar-item { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 999px; color: inherit; text-decoration: none; opacity: .85; transition: opacity .15s, background-color .15s; }
+.store-bar-item:hover, .store-bar-item:focus-visible { opacity: 1; background: color-mix(in srgb, currentColor 8%, transparent); }
+.store-bar-strong { opacity: 1; font-weight: 600; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); }
+.store-bar-cart { position: relative; }
+.store-bar-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--th-accent, var(--accent, currentColor)); color: var(--th-on-strong, var(--accent-contrast, #fff)); }
+/* On a phone it is slimmer: the first screen is the owner's. */
+@media (max-width: 767px) {
+  .store-bar { font-size: 12px; }
+  .store-bar-in { padding: 2px 12px; gap: 4px; }
+  .store-bar-item { min-height: 28px; padding: 0 8px; }
+}
+/* Where the bottom bar shows (a phone, a tablet) the cart is there: the bar keeps signing in, or goes. */
+@media (max-width: 1023px) {
+  html[data-bottom-nav] .store-bar-cart { display: none; }
+  html[data-bottom-nav] .store-bar[data-only-cart] { display: none; }
+}

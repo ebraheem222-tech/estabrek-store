@@ -226,6 +226,11 @@ export function accountErrorText(e: unknown, lang: Lang = "ar"): string {
       return tr(lang, "طلبتِ أكواد كثيرة. استني كم دقيقة وجرّبي.", "Too many codes asked for. Wait a few minutes and try again.");
     case "ACCOUNT_SUSPENDED":
       return tr(lang, "هذا الحساب موقوف. تواصلي معنا.", "This account is suspended. Contact us.");
+    // The store can't send the code's email (none set up on its server, or the provider refused it): said, not waited for.
+    case "EMAIL_NOT_READY":
+      return tr(lang, "المتجر لسّا ما جهّز إرسال الإيميلات، فالكود ما رح يوصل. جرّبي طريقة دخول تانية أو تواصلي معنا.", "This store can't send emails yet, so the code won't arrive. Try another way in, or contact us.");
+    case "EMAIL_FAILED":
+      return tr(lang, "ما قدرنا نبعت الكود على الإيميل هلّق. جرّبي كمان شوي، أو بطريقة دخول تانية.", "We couldn't email the code just now. Try again in a little while, or another way in.");
     case "VALIDATION_ERROR":
       return tr(lang, "في معلومة مش مكتوبة صح. راجعيها.", "Something isn't filled in right. Please check it.");
     case "SIGNED_OUT":
