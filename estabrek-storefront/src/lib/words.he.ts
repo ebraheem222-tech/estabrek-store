@@ -122,6 +122,8 @@ export const HE: Record<string, string> = {
   "Colour you want": "הצבע הרצוי",
   "Colours": "צבעים",
   "Complete the look": "השלמת הלוק",
+  "Goes well with it": "משתלב איתו",
+  "✨ Goes well with it": "✨ משתלב איתו",
   "Confirm": "אישור",
   "Confirm order ✓": "אישור ההזמנה ✓",
   "Confirmed with you": "מאושר איתך",

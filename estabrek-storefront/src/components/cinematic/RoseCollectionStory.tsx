@@ -10,6 +10,7 @@ import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
 import { buildWhenClose, lazyMargin, prebuildNear, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
+import { ROSE_PICTURES } from "./rosePictures";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
 import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
@@ -50,21 +51,21 @@ const ROSE_LINE: Record<StoryKey, { ar: string; en: string; he: string }> = {
 const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Copy; he: Copy }> = {
   accessories: {
     seed: "#c4a266",
-    fallback: "/editorial/scarves.webp",
+    fallback: ROSE_PICTURES.scarves,
     ar: { eyebrow: "الإكسسوارات", title: "معاصم، دبابيس\nوقمطات.", text: "خاتم التسبيح الإلكتروني، دبابيس الشال، المعاصم والبيسك… كل ما يثبّت لفّتكِ ويكمّلها.", cta: "تسوّقي الإكسسوارات" },
     en: { eyebrow: "ACCESSORIES", title: "Sleeves, pins\nand underscarves.", text: "The electronic tasbih ring, shawl pins, sleeves and underscarves: everything that holds your wrap in place.", cta: "Shop accessories" },
     he: { eyebrow: "אקססוריז", title: "שרוולים, סיכות\nוכיסויים פנימיים.", text: "טבעת תשביח אלקטרונית, סיכות לצעיף, שרוולים וכיסויים פנימיים: כל מה שמחזיק את הכיסוי במקום ומשלים אותו.", cta: "לאקססוריז" },
   },
   kids: {
     seed: "#e59b9b",
-    fallback: "/editorial/hijab-campaign.webp",
+    fallback: ROSE_PICTURES.campaign,
     ar: { eyebrow: "للصغيرات", title: "فساتين وأطقم\nللبنات الصغيرات.", text: "فساتين مورّدة وأطقم مريحة بألوان فرحة.", cta: "تسوّقي الأطفال" },
     en: { eyebrow: "FOR LITTLE ONES", title: "Dresses and sets\nfor little girls.", text: "Floral dresses and comfy sets in happy colours.", cta: "Shop kids" },
     he: { eyebrow: "לקטנות", title: "שמלות וסטים\nלבנות קטנות.", text: "שמלות פרחוניות וסטים נוחים בצבעים שמחים.", cta: "לקולקציית הילדות" },
   },
   incense: {
     seed: "#9b6b4e",
-    fallback: "/editorial/rose-campaign-poster.webp",
+    fallback: ROSE_PICTURES.poster,
     ar: { eyebrow: "المباخر", title: "مباخر خشب\nونقش عربي.", text: "مباخر من الخشب والبورسلان بنقوش عربية، مع عيدان البخور وتوزيعات العطر.", cta: "تسوّقي المباخر" },
     en: { eyebrow: "INCENSE BURNERS", title: "Wooden burners,\nArabic carving.", text: "Wood and porcelain burners with Arabic carving, plus incense sticks and perfume favours.", cta: "Shop incense burners" },
     he: { eyebrow: "מבערי קטורת", title: "מבערים מעץ\nועיטור ערבי.", text: "מבערי קטורת מעץ ומפורצלן עם עיטורים ערביים, יחד עם מקלות קטורת ומתנות בושם.", cta: "למבערי הקטורת" },

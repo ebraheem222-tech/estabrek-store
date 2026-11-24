@@ -16,6 +16,7 @@ import { motionLevel } from "@/lib/motionBudget";
 import { tr } from "@/lib/words";
 import type { ModelKey } from "./CollectionModelsScene";
 import type { RoseCollection } from "./RoseSections";
+import { ROSE_PICTURES } from "./rosePictures";
 
 const CollectionModelsScene = dynamic(() => import("./CollectionModelsScene"), { ssr: false, loading: () => null });
 
@@ -183,7 +184,7 @@ export function RoseCollectionsScroll({ items, title, subtitle, anchor = "collec
         <div className="rose-cs-copy" key={lead} data-ready={ready || undefined}>
           <span className="rose-cs-count" dir="ltr">{String(lead + 1).padStart(2, "0")} <i /> {String(chapters.length).padStart(2, "0")}</span>
           <Link href={item.href || "/shop"} className="rose-cs-photo" data-edit-media={`items.${lead}.imageUrl`}>
-            <Image src={item.imageUrl || "/editorial/scarves.webp"} alt={name} fill sizes="(max-width:760px) 40vw, 22vw" />
+            <Image src={item.imageUrl || ROSE_PICTURES.scarves} alt={name} fill sizes="(max-width:760px) 40vw, 22vw" />
           </Link>
           <h3 className="rose-cs-name" data-edit={item.label || !item.title ? `items.${lead}.label` : `items.${lead}.title`}>
             {/* Word by word (Arabic letters join: a word stays whole). */}

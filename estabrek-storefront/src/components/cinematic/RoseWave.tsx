@@ -1,7 +1,11 @@
+"use client";
+import { useStoreLook } from "@/store/storeLook";
+
 /*
  * A soft wave in three layers that flow slowly sideways (rose-showcase.css, "the waves"): where the page
  * meets the footer, under the shop's opening, between a product and its "you may also like". Its colour is
  * the part it leads into (--wave-fill), so the two parts melt into each other instead of meeting at a line.
+ * The rose design's own ornament: a store on a theme meets its parts plainly (its theme draws its own dividers).
  */
 const WAVES = [
   // One period every 720 units, drawn twice as wide as the box so a shift by one period loops without a seam.
@@ -11,6 +15,8 @@ const WAVES = [
 ];
 
 export function RoseWave({ className = "" }: { className?: string }) {
+  const { rose } = useStoreLook();
+  if (!rose) return null;
   return (
     <div className={`rose-wave ${className}`.trim()} aria-hidden="true">
       <svg viewBox="0 0 1440 80" preserveAspectRatio="none" focusable="false">

@@ -998,3 +998,28 @@ html.lenis, html.lenis body { height: auto; }
     }
   }
 }
+
+/* ---------------------------------------------------------------- 19. a store on a theme */
+
+/* These ornaments are the rose design's own. A store on a theme (and the admin's preview of a theme) shows its
+   pages without them: no waves, no drawings behind a product, no line in an arched photo, no star by a card's
+   kind, no flourish under the headings; its cards and the contact form take the theme's corners. The parts are
+   left out of the page too (RoseWave, RoseProductBackdrop and ProductTile ask useStoreLook().rose); this covers
+   a preview, where the page is the saved store's and only its look changes. */
+:root[data-store-theme] :is(.rose-wave, .rose-pdp-backdrop, .rose-card-arch, .rose-card-spark) { display: none !important; }
+:root[data-store-theme] .cinematic-interior-shell :is(.rose-pdp-related h2, .rose-about-story h2, .rose-contact-intro h1)::after { content: none; }
+:root[data-store-theme] .cinematic-interior-shell .rose-product-tile {
+  background: var(--th-surface) !important;
+  border-radius: var(--th-radius);
+}
+:root[data-store-theme] .cinematic-interior-shell .rose-product-tile .rose-product-image { border-radius: max(0px, calc(var(--th-radius) - 6px)) !important; }
+:root[data-store-theme] .cinematic-interior-shell .rose-product-tile .rose-product-meta::before { border-top-color: var(--th-line); }
+/* A discount: the theme's own pill instead of the scalloped seal. */
+:root[data-store-theme] .cinematic-interior-shell .rose-product-discount .rose-seal { display: none; }
+:root[data-store-theme] .cinematic-interior-shell .rose-product-tile .rose-product-discount {
+  width: auto; height: auto; top: 18px; inset-inline-start: 18px;
+  padding: 6px 10px !important; border-radius: var(--th-pill) !important;
+  background: var(--th-strong) !important; color: var(--th-on-strong);
+}
+:root[data-store-theme] .cinematic-interior-shell .rose-product-discount > span { transform: none; }
+:root[data-store-theme] .rose-contact-form-panel { border-radius: var(--th-radius-lg); }

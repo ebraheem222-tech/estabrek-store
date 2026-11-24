@@ -1,5 +1,7 @@
+"use client";
 import type { ReactNode } from "react";
 import type { Mood } from "@/lib/categoryMood";
+import { useStoreLook } from "@/store/storeLook";
 import { RoseWave } from "./RoseWave";
 
 /*
@@ -55,6 +57,9 @@ const SPOTS = [
 ];
 
 export function RoseProductBackdrop({ mood }: { mood: Mood }) {
+  // The rose design's own: a store on a theme shows its product on the theme's page.
+  const { rose } = useStoreLook();
+  if (!rose) return null;
   const [one, two] = DRAWINGS[mood];
   return (
     <div className="rose-pdp-backdrop" data-mood={mood} aria-hidden="true">

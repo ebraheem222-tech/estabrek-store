@@ -21,6 +21,7 @@ import { cldUrl } from "@/lib/cloudinary";
 import type { StoryChapter } from "@/lib/collectionStories";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
 import type { ProductBadge } from "@/lib/productBadges";
+import { ROSE_PICTURES } from "./rosePictures";
 
 export function RoseHomeFrame({ children }: { children: ReactNode }) {
   return <RosePageFrame home>{children}</RosePageFrame>;
@@ -93,14 +94,14 @@ export function RoseHome({
             href: categories.find((c) => /dress|hijabi/.test(c.slug))
               ? `/c/${categories.find((c) => /dress|hijabi/.test(c.slug))!.slug}`
               : "/shop",
-            imageUrl: "/editorial/hijab-campaign.webp",
+            imageUrl: ROSE_PICTURES.campaign,
           },
           {
             label: "حجاب وتفاصيل",
             href: categories.find((c) => /hijab|accessor/.test(c.slug))
               ? `/c/${categories.find((c) => /hijab|accessor/.test(c.slug))!.slug}`
               : "/shop",
-            imageUrl: "/editorial/scarves.webp",
+            imageUrl: ROSE_PICTURES.scarves,
           },
         ]}
       />
