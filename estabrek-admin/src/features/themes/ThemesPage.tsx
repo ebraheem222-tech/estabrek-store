@@ -24,7 +24,7 @@ import { identityOf } from "../../lib/storeIdentity";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
 import { stylesOfKit, withPackStyles } from "../../studio/packs";
-import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, stageOptionsOf, withOwnedTheme, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
+import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, ownsRose, saveStorePack, saveStoreTheme, stageOptionsOf, withOwnedTheme, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
 import { PackPanel } from "./PackPanel";
 import { packChoice, type PackChoice, type PackFrom } from "./packChoice";
 import { StageWorkspace, type StageTab } from "./StageWorkspace";
@@ -34,17 +34,18 @@ import { customParam, type ThemeCustom } from "./customize";
 type View = "home" | "product" | "cart";
 const SIZES = { computer: { w: 1280, h: 800 }, phone: { w: 390, h: 844 } } as const;
 
-const ROSE: StoreThemeInfo = {
+/** The rose design, as its owner sees it: named after the store, since it's that store's alone. */
+const roseCard = (store: string): StoreThemeInfo => ({
   id: ROSE_ID,
-  name: { ar: "تصميم الورد", en: "The rose design", he: "עיצוב הוורד" },
+  name: { ar: `تصميم ${store}`, en: `${store}'s design`, he: `העיצוב של ${store}` },
   family: "fashion",
-  blurb: { ar: "تصميم المتجر الأصلي: فيلم الافتتاح، المشاهد والألوان اللي بتتبع اختيار الزبون.", en: "The store's own design: the opening film, the scenes and colours that follow the shopper's pick.", he: "העיצוב המקורי של החנות: סרט הפתיחה, הסצנות והצבעים שעוקבים אחרי בחירת הלקוח." },
+  blurb: { ar: "تصميمك الخاص، ما بيطلع لأي متجر تاني: فيلم الافتتاح، المشاهد، رزان والألوان اللي بتتبع اختيار الزبون.", en: "Your own design, shown to no other store: the opening film, the scenes, the guide and colours that follow the shopper's pick.", he: "העיצוב שלך בלבד, לא מוצג לאף חנות אחרת: סרט הפתיחה, הסצנות, המדריכה והצבעים שעוקבים אחרי בחירת הלקוח." },
   mode: "light",
   modes: ["light"],
   swatch: ["#fff8f4", "#ffffff", "#e8b4ce", "#7d2448", "#462c3b"],
   hero: "film",
   motion: "rose",
-};
+});
 
 export default function ThemesPage() {
   const qc = useQueryClient();
@@ -56,15 +57,16 @@ export default function ThemesPage() {
   const pagesQ = useQuery({ queryKey: ["pages"], queryFn: PagesAPI.listPages });
   const productsQ = useQuery({ queryKey: ["catalog", "products", "active"], queryFn: () => listProducts("active") });
   const current = currentStoreTheme(settings.data?.header);
-  // The rose design is for modest fashion stores alone; any other store with no theme chosen
+  // The rose design is one store's own: only that store sees it here. A store with no theme chosen
   // shows its kind's theme (the shop's DEFAULT_THEME), so that one is its current theme here.
   const identity = identityOf(settings.data?.header);
-  const ownedDesign = (settings.data?.header as { storeDesign?: { mode?: string } } | null)?.storeDesign?.mode === "cms";
-  const modest = !ownedDesign && identity.industry === "fashion" && identity.audience === "women";
+  const owner = ownsRose(settings.data?.header);
+  const storeName = identity.shortName[lang] || identity.shortName.ar || identity.name[lang] || identity.name.ar || tr("متجرك", "your store");
+  const ROSE = useMemo(() => roseCard(storeName), [storeName]);
   const defaults = themesQ.data?.defaults;
-  const currentId = current?.id ?? (modest ? ROSE_ID : defaults?.[identity.industry] ?? defaults?.general ?? ROSE_ID);
+  const currentId = current?.id ?? defaults?.[identity.industry] ?? defaults?.general ?? "";
 
-  const all = useMemo(() => [...(modest ? [ROSE] : []), ...withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)], [themesQ.data, modest, settings.data?.header]);
+  const all = useMemo(() => [...(owner ? [ROSE] : []), ...withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)], [themesQ.data, owner, ROSE, settings.data?.header]);
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<"light" | "dark" | null>(null);
   const [view, setView] = useState<View>("home");
@@ -213,7 +215,7 @@ export default function ThemesPage() {
   const apply = async () => {
     setSaving(true);
     try {
-      await saveStoreTheme(shown.id === ROSE_ID ? null : { id: shown.id, mode: shownMode === shown.mode ? null : shownMode });
+      await saveStoreTheme(shown.id === ROSE_ID ? { id: ROSE_ID } : { id: shown.id, mode: shownMode === shown.mode ? null : shownMode });
       await qc.invalidateQueries({ queryKey: ["settings"] });
       setAsking(false);
       setPicked(null);

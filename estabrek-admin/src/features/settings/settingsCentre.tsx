@@ -22,7 +22,7 @@ export type SettingsTabId = "brand" | "rose" | "menu" | "marketing" | "seo" | "a
 
 export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
   { id: "brand", label: "الهوية والتواصل" },
-  { id: "rose", label: "تصميم روز" },
+  { id: "rose", label: "واجهة المتجر" },
   { id: "menu", label: "القائمة" },
   { id: "marketing", label: "التسويق والتتبع" },
   { id: "seo", label: "محركات البحث" },
@@ -178,7 +178,7 @@ export function SettingsSection({
     <section ref={ref} hidden={!visible} data-settings-section={id} data-settings-tab={tab} className="space-y-3">
       {legacy ? (
         <div className="rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs text-amber-100">
-          لا يؤثر على تصميم روز الحالي — هذه الإعدادات للتصميم القديم فقط.
+          لا يؤثر على تصميم متجرك الحالي — هذه الإعدادات للتصميم القديم فقط.
         </div>
       ) : null}
       {note ? <div className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-4 py-2 text-xs text-sky-100">{note}</div> : null}
@@ -327,7 +327,7 @@ export function SeoCard({
                 className="min-h-[96px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20"
                 value={description}
                 onChange={(e) => onChange({ ...value, description: e.target.value })}
-                placeholder="حجاب، فساتين وأطقم محتشمة. توصيل لكل البلاد والدفع عند الاستلام."
+                placeholder="مثلاً: شو بتبيع أو شو بتقدّم، بجملة وحدة. توصيل لكل البلاد والدفع عند الاستلام."
               />
               <div className="mt-1 flex justify-between"><span className="text-xs text-white/45">الأفضل 120–160 حرفاً</span><Counter n={description.length} max={160} /></div>
             </div>

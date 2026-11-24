@@ -85,6 +85,48 @@ test("another store: its own name everywhere, nothing of Estabrek", async ({ pag
   await expect(page.locator(".atelier-brand .brand-arabic").first()).toHaveText("Noor");
 });
 
+// Another hijab shop on the platform: it sells what Estabrek sells, but Estabrek's design (its film, its
+// guide, its words) is Estabrek's own theme. With no theme picked it wears its kind's library theme.
+const LAMA = {
+  name: { ar: "متجر لمى", en: "Lama Store", he: "" },
+  shortName: { ar: "لمى", en: "Lama", he: "" },
+  tagline: { ar: "", en: "", he: "" },
+  about: { ar: "", en: "", he: "" },
+  industry: "fashion",
+  audience: "women",
+  legalName: "",
+};
+
+test("another hijab shop: its kind's theme, nothing of Estabrek's design or guide", async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.request.post(`${API}/__test/identity`, { data: LAMA });
+  await settle(page);
+  for (const path of ["/", "/shop", "/about", "/contact", "/cart"]) {
+    await open(page, path, "ar");
+    await expect(page.locator("html"), path).toHaveAttribute("data-store-theme", "runway-3d");
+    await expect(page.locator(".hero-mascot, .rose-companion, .rose-film"), path).toHaveCount(0);
+    const all = (await everything(page))
+      .replaceAll("hello@estabrek.test", "")
+      .replaceAll("حملة استبرق", "")
+      // The mock's home has its owner's own hero title (a line of its own); the rose design's lines end otherwise.
+      .replace(/^أناقة تليق بكِ$/gm, "");
+    expect(all, path).not.toMatch(/استبرق|estabrek|رزان|أناقة تليق بكِ|عالم الأقمشة|متجر للحجاب والملابس المحتشمة/i);
+  }
+  // Its home's title is its own name, without Estabrek's line.
+  await open(page, "/", "ar");
+  expect(await page.title()).toBe("متجر لمى");
+  // The sharing picture isn't Estabrek's hijab campaign.
+  await expect(page.locator('meta[property="og:image"][content*="hijab-campaign"]')).toHaveCount(0);
+  // Nor can an address show it: a preview of the rose design (or of no theme at all) is its owner's alone.
+  for (const query of ["?storeTheme=rose", "?storeTheme=no-such-theme"]) {
+    await open(page, `/${query}`, "ar");
+    await page.waitForTimeout(1500);
+    await expect(page.locator("html"), query).toHaveAttribute("data-store-theme", "runway-3d");
+    await expect(page.locator(".rose-film, .hero-mascot"), query).toHaveCount(0);
+    await expect(page.locator(".th-home").first(), query).toBeVisible();
+  }
+});
+
 test("Estabrek itself is unchanged", async ({ page }) => {
   await page.request.post(`${API}/__test/identity`, { data: {} });
   await page.request.post(`${API}/__test/razan`, { data: {} });

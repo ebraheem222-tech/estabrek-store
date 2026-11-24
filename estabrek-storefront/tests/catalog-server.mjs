@@ -30,6 +30,10 @@ const site = {
       audience: "women",
       legalName: "",
     },
+    // Estabrek wears its own theme, the rose design (the migration 20261124090000_rose_theme writes it):
+    // it picked it (storeTheme) and owns it (privateThemes, so only it sees it in the admin's gallery).
+    storeTheme: { id: "rose" },
+    privateThemes: ["rose"],
     cmsNav: { enabled: false },
     storefront: {
       darkModeDefault: false,
@@ -1142,7 +1146,7 @@ http
       });
       return;
     }
-    // Store themes (store-themes.spec.ts): POST {"id":"circuit","mode":"dark"} to pick one, {} for the rose design.
+    // Store themes (store-themes.spec.ts): POST {"id":"circuit","mode":"dark"} to pick one, {} for Estabrek's own (the rose design).
     if (pathname === "/__test/store-theme" && req.method === "POST") {
       let body = "";
       req.on("data", (c) => (body += c));
@@ -1151,7 +1155,7 @@ http
         // {"options": {...}} also sets the store's own models and games for that theme; {"kit": {...}} its pack (storeThemes/packs.ts).
         const { options, kit, ...choice } = data;
         if (kit) site.header.storeKit = kit; else delete site.header.storeKit;
-        if (choice.id) site.header.storeTheme = choice; else delete site.header.storeTheme;
+        site.header.storeTheme = choice.id ? choice : { id: "rose" };
         if (options && choice.id) site.header.storeThemeOptions = { [choice.id]: options }; else delete site.header.storeThemeOptions;
         res.end(JSON.stringify({ ok: true }));
       });
@@ -1394,14 +1398,24 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       });
       return;
     }
-    // Another store on the platform (identity.spec.ts): POST a JSON body to set header.identity, {} for Estabrek's again.
+    // Another store on the platform (identity.spec.ts): POST a JSON body to set header.identity (that store hasn't
+    // picked a theme and doesn't own the rose design; "theme" in the body picks one), {} for Estabrek's again.
     if (pathname === "/__test/identity" && req.method === "POST") {
       let body = "";
       req.on("data", (c) => (body += c));
       req.on("end", () => {
         const data = JSON.parse(body || "{}");
         globalThis.estabrekIdentity ??= site.header.identity;
-        site.header.identity = Object.keys(data).length ? data : globalThis.estabrekIdentity;
+        const { theme, ...identity } = data;
+        const other = Object.keys(identity).length > 0;
+        site.header.identity = other ? identity : globalThis.estabrekIdentity;
+        if (other) {
+          if (theme) site.header.storeTheme = { id: theme }; else delete site.header.storeTheme;
+          delete site.header.privateThemes;
+        } else {
+          site.header.storeTheme = { id: "rose" };
+          site.header.privateThemes = ["rose"];
+        }
         res.end(JSON.stringify({ ok: true }));
       });
       return;

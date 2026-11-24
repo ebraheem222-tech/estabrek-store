@@ -5264,4 +5264,6 @@ export const HE: Record<string, string> = {
   "Checking speed…": "בודקים מהירות…",
   "The page went back to the version before": "העמוד חזר לגרסה הקודמת",
   "The page didn't go back": "העמוד לא חזר",
+  "Your own design": "העיצוב שלך",
+  "your store": "החנות שלך",
 };

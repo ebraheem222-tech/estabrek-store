@@ -95,8 +95,27 @@ export type StageOptions = {
 };
 export type StoreThemeChoice = { id: string; mode?: "light" | "dark" | null; snapshot?: unknown; /** The store's changes (features/themes/customize.ts). */ custom?: unknown };
 
-/** The rose design (no theme), shown first in the gallery. */
+/**
+ * The rose design: one store's own theme, never anyone's default. A store wears it when it picked it
+ * (header.storeTheme.id = "rose"); only a store that owns it (header.privateThemes, written for that
+ * store by the backend migration 20261124090000_rose_theme) sees it in the gallery, with its pages
+ * («رزان», the scenes' colours).
+ */
 export const ROSE_ID = "rose";
+
+type RoseHeader = { storeTheme?: { id?: unknown }; privateThemes?: unknown; storeDesign?: { mode?: unknown } } | null | undefined;
+
+/** The store wears the rose design: it picked it, and its pages aren't its own design (cms). */
+export const wearsRose = (header: unknown) => {
+  const h = header as RoseHeader;
+  return h?.storeDesign?.mode !== "cms" && h?.storeTheme?.id === ROSE_ID;
+};
+
+/** The rose design is this store's own: it wears it, or owns it while on another theme. */
+export const ownsRose = (header: unknown) => {
+  const h = header as RoseHeader;
+  return h?.storeTheme?.id === ROSE_ID || (Array.isArray(h?.privateThemes) && h.privateThemes.includes(ROSE_ID));
+};
 
 export const shopOrigin = () => {
   try {
@@ -158,14 +177,13 @@ export const currentStoreTheme = (header: unknown): StoreThemeChoice | null => {
   return t && typeof t.id === "string" && t.id ? t : null;
 };
 
-/** The saved choice, or the same industry default the storefront uses without one. */
+/** The saved choice, or the same industry default the storefront uses without one ("" while the list loads). */
 export function currentStoreThemeId(header: unknown, defaults: Record<string, string> = {}): string {
   const choice = currentStoreTheme(header);
   if (choice) return choice.id;
-  const h = header as { identity?: { industry?: unknown; audience?: unknown }; storeDesign?: { mode?: unknown } } | null | undefined;
+  const h = header as { identity?: { industry?: unknown } } | null | undefined;
   const industry = typeof h?.identity?.industry === "string" ? h.identity.industry : "general";
-  const modest = h?.storeDesign?.mode !== "cms" && industry === "fashion" && h?.identity?.audience === "women";
-  return modest ? ROSE_ID : defaults[industry] ?? defaults.general ?? ROSE_ID;
+  return defaults[industry] ?? defaults.general ?? "";
 }
 
 /** The customer's copied palette/fonts remain available even when the source template changes. */
@@ -188,11 +206,15 @@ async function copiedChoice(choice: StoreThemeChoice, header: Record<string, any
   return { ...choice, snapshot: data.theme };
 }
 
-/** Saves the theme for the whole store from the latest settings (other header fields kept); null = the rose design. */
+/** Saves the theme for the whole store from the latest settings (other header fields kept); null = the kind's theme. */
 export async function saveStoreTheme(choice: StoreThemeChoice | null) {
   const latest = await getSettings();
   const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
-  if (choice && choice.id !== ROSE_ID) header.storeTheme = await copiedChoice({ ...choice, mode: choice.mode ?? null }, header);
+  // The rose design is the store's own (nothing to copy): only a store that owns it may wear it.
+  if (choice?.id === ROSE_ID) {
+    if (!ownsRose(header)) throw new Error("This design belongs to another store");
+    header.storeTheme = { id: ROSE_ID };
+  } else if (choice) header.storeTheme = await copiedChoice({ ...choice, mode: choice.mode ?? null }, header);
   else delete header.storeTheme;
   return updateSettings({ header } as never);
 }

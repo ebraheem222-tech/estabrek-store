@@ -19,7 +19,7 @@ import type { StoreTheme } from "./types";
 
 const KEY = "store-theme-preview";
 
-export function StoreThemePreview({ saved, owned }: { saved: string | null; owned?: StoreTheme | null }) {
+export function StoreThemePreview({ saved, owned, roseOwner = false }: { saved: string | null; owned?: StoreTheme | null; /** The rose design is this store's own (only then may it be previewed). */ roseOwner?: boolean }) {
   const pathname = usePathname();
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -52,7 +52,8 @@ export function StoreThemePreview({ saved, owned }: { saved: string | null; owne
     const theme = found ? applyCustom(found, customFromParam(custom)) : null;
     let tag = document.getElementById(KEY) as HTMLStyleElement | null;
     if (!theme) {
-      // The rose design: no theme at all.
+      // The rose design: no theme at all, for its owner alone. An id that is no theme changes nothing.
+      if (wanted !== "rose" || !roseOwner) return;
       tag?.remove();
       document.getElementById("store-theme")?.setAttribute("media", "not all");
       delete root.dataset.storeTheme;
@@ -80,6 +81,6 @@ export function StoreThemePreview({ saved, owned }: { saved: string | null; owne
     }
     });
     return () => { live = false; };
-  }, [pathname, saved, owned]);
+  }, [pathname, saved, owned, roseOwner]);
   return null;
 }

@@ -20,7 +20,7 @@ export type Pack = {
   hint: W;
   /** Theme families the wizard offers, the first the closest. */
   families: string[];
-  /** The theme it starts with (null = the rose design). */
+  /** The theme it starts with, from the library (never the rose design: that one is one store's own). */
   theme: string | null;
   hero: { eyebrow: W; title: W; subtitle: W; cta: W };
   categories: PackCategory[];
@@ -43,10 +43,10 @@ export const PACKS: Pack[] = [
     label: w("أزياء محتشمة وحجاب", "Modest fashion & hijab", "אופנה צנועה וחיג'אב"),
     hint: w("حجابات، عبايات، فساتين", "Hijabs, abayas, dresses", "צעיפים, עבאיות, שמלות"),
     families: ["fashion"],
-    theme: null,
+    theme: "silk-veil",
     hero: {
       eyebrow: w("المجموعة الجديدة", "The new collection", "הקולקציה החדשה"),
-      title: w("أناقة تليق بكِ", "Elegance that suits you", "אלגנטיות שמתאימה לך"),
+      title: w("ستايلكِ بهدوء", "Your style, softly", "הסטייל שלך, בעדינות"),
       subtitle: w("حجابات وعبايات وفساتين محتشمة بأقمشة ناعمة وألوان تشبهكِ.", "Hijabs, abayas and modest dresses in soft fabrics and colours like you.", "צעיפים, עבאיות ושמלות צנועות בבדים רכים ובצבעים שדומים לך."),
       cta: w("تسوّقي المجموعة", "Shop the collection", "לקולקציה"),
     },

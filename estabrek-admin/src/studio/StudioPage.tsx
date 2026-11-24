@@ -38,7 +38,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../api/pages.api";
 import { getApiErrorMessage } from "../api/http";
-import { ROSE_ID, currentStoreTheme, currentStoreThemeId, loadStoreThemes, saveStoreTheme, withOwnedTheme } from "./storeThemes";
+import { ROSE_ID, currentStoreTheme, currentStoreThemeId, loadStoreThemes, ownsRose, saveStoreTheme, wearsRose, withOwnedTheme } from "./storeThemes";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PagePublishDialog } from "./PagePublishDialog";
 import { PagePublicationStatus } from "./PagePublicationStatus";
@@ -931,7 +931,7 @@ function StudioDocument() {
     setThemeSaving(true);
     try {
       const id = themePreview ?? currentTheme;
-      await saveStoreTheme(id === ROSE_ID ? null : { ...(id === currentTheme ? savedTheme : {}), id, mode: shownThemeMode });
+      await saveStoreTheme(id === ROSE_ID ? { id: ROSE_ID } : { ...(id === currentTheme ? savedTheme : {}), id, mode: shownThemeMode });
       await qc.invalidateQueries({ queryKey: ["settings"] });
       setThemePreview(null);
       setThemeMode(undefined);
@@ -3004,7 +3004,7 @@ function StudioDocument() {
     if (leftTab === "styles" && siteOpen) return siteInspector();
     if (focus && !focusAll && index && nodeOf(focus.id)) return focusInspector();
     if (themeOpen) {
-      return <ThemePanel themes={withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} currentMode={savedTheme?.mode ?? null} original={settings.data?.header?.storeDesign?.mode !== "cms" && who.industry === "fashion" && who.audience === "women"} onPreview={(t) => { if (busy) return; setThemePreview(t); setThemeMode(undefined); }} onMode={(mode) => { if (!busy) setThemeMode(mode); }} saving={themeSaving || busy} onSave={() => setAsking({ kind: "theme" })} />;
+      return <ThemePanel themes={withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} currentMode={savedTheme?.mode ?? null} original={ownsRose(settings.data?.header) && settings.data?.header?.storeDesign?.mode !== "cms"} onPreview={(t) => { if (busy) return; setThemePreview(t); setThemeMode(undefined); }} onMode={(mode) => { if (!busy) setThemeMode(mode); }} saving={themeSaving || busy} onSave={() => setAsking({ kind: "theme" })} />;
     }
     if (!selected || !index) {
       return (
@@ -3678,10 +3678,9 @@ function StudioDocument() {
     const item = c ? pageItemOf(c, selected) : null;
     return item ? index?.nodes.get(item)?.node ?? null : null;
   })();
-  // The rose design (no store theme, a modest fashion store) draws old sections its own way: the home's
+  // The rose design (the store that picked it) draws old sections its own way: the home's
   // first HERO is its opening (it stays), the rest take the rose look that converting leaves behind.
-  const who = identityOf(settings.data?.header);
-  const roseDesign = !savedTheme?.id && who.industry === "fashion" && who.audience === "women";
+  const roseDesign = wearsRose(settings.data?.header);
   const roseOf = (s: OldSection): RoseRole | undefined => (!roseDesign ? undefined : pageQ.data?.slug === "/" && s.id === heroSection?.id ? "opening" : "look");
   /** The page's old sections (the old editor's), in order, with their data. */
   const oldOnPage = pageKids.flatMap((n) => {

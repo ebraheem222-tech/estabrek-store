@@ -118,7 +118,7 @@ export function RoseCategoryIntro({
         </div>
         <svg className="rose-stage-line" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d="M2 138V50A48 48 0 0 1 98 50V138" /></svg>
         <RoseShopRing pieces={showcase} label={tr(lang, "قطع من المتجر، اسحبي لتلفّيها", "Pieces from the shop: drag to turn them")} />
-      </div> : imageUrl || look.modest ? <div className="rose-shop-intro-image" data-reveal>
+      </div> : imageUrl || look.rose ? <div className="rose-shop-intro-image" data-reveal>
         <Image
           src={imageUrl || "/editorial/scarves.webp"}
           alt={name}

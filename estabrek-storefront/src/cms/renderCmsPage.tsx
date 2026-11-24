@@ -25,7 +25,7 @@ import ProductCard from "@/components/ProductCard";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import { RoseCmsHome } from "@/components/cinematic/RoseCmsHome";
-import { storeThemeOf, themeById, applyCustom, customFromParam } from "@/storeThemes";
+import { roseOwned, storeThemeOf, themeById, applyCustom, customFromParam } from "@/storeThemes";
 import { kitFromParam, kitOfHeader, withKit } from "@/storeThemes/packs";
 import { ThemedHome } from "@/storeThemes/home/ThemedHome";
 import { stageOptionsOf } from "@/storeThemes/three/kinds";
@@ -191,11 +191,13 @@ export async function renderCmsPageBySlug(
   const savedTheme = storeThemeOf(settingsHeader);
   const previewId = options?.storeTheme !== undefined ? options.storeTheme : typeof searchParams?.storeTheme === "string" ? searchParams.storeTheme : undefined;
   const ownedTheme = readThemeSnapshot(settingsHeader?.storeTheme?.snapshot);
-  const baseTheme = previewId !== undefined ? (previewId === "rose" ? null : previewId === ownedTheme?.id ? ownedTheme : themeById(previewId)) : savedTheme?.theme ?? null;
+  // A preview of the rose design is its owner's alone; an id that is no theme changes nothing.
+  const previewed = previewId === undefined ? undefined : previewId === "rose" ? (roseOwned(settingsHeader) ? null : undefined) : previewId === ownedTheme?.id ? ownedTheme : themeById(previewId) ?? undefined;
+  const baseTheme = previewed !== undefined ? previewed : savedTheme?.theme ?? null;
   const previewCustom = typeof searchParams?.themeCustom === "string" ? customFromParam(searchParams.themeCustom) : null;
   const storeTheme = baseTheme ? applyCustom(baseTheme, previewCustom) : null;
   const previewMode = searchParams?.themeMode === "light" || searchParams?.themeMode === "dark" ? searchParams.themeMode : null;
-  const storeThemeMode = options?.storeThemeMode ?? previewMode ?? (previewId === undefined ? savedTheme?.mode ?? null : null);
+  const storeThemeMode = options?.storeThemeMode ?? previewMode ?? (previewed === undefined ? savedTheme?.mode ?? null : null);
 
   // The new CMS: a page saved as a tree (format 2). Its old sections keep their place
   // through `legacy` nodes and draw exactly as before; every other page-level node
