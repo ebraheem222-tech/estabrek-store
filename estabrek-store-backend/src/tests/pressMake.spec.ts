@@ -223,7 +223,10 @@ afterAll(async () => {
   setOwnerWaitForTests(null);
 });
 
-describe("Making a client's copy", () => {
+// Each test makes a whole copy (a few seconds of waiting on its own), and this is the suite's first
+// file to use the database: a runner that stalls on it (7 s once on CI) would pass the 5 s default,
+// and a test cut off by its time keeps running, making connections under the tests after it.
+describe("Making a client's copy", { timeout: 30_000 }, () => {
   test("made in the owner's order: the database, the server, its owner's account on it, then the shop and the admin; its secrets go to its parts and nowhere else", async () => {
     await connectAll();
     // Said yes to in so many words: it costs money every month.
