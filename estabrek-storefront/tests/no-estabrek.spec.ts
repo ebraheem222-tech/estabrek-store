@@ -117,9 +117,10 @@ for (const theme of [undefined, "eyewear"] as const) {
     await page.context().addCookies([{ name: "shop-lang", value: "ar", url: SITE }]);
     const walk = async (path: string, strict: boolean) => {
       // A page the local dev server was still building can come out as its error page: opened once more then.
+      // Some pages never go quiet on the network (a live list, a poll): the wait for it is bounded.
       for (let tries = 0; tries < 3; tries++) {
-        await page.goto(path);
-        await page.waitForLoadState("networkidle");
+        await page.goto(path, { waitUntil: "load", timeout: 120_000 });
+        await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {});
         await page.waitForTimeout(600);
         if (await page.locator("html").getAttribute("data-store-theme")) break;
         await page.waitForTimeout(2000);
