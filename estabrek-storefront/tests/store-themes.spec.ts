@@ -46,12 +46,20 @@ function project(p: number[], eye: number[], target: number[], fov: number, box:
   return { x: box.x + box.width / 2 + (nx * box.width) / 2, y: box.y + box.height / 2 - (ny * box.height) / 2 };
 }
 
-test.describe("the rose stylesheet becomes themeable", () => {
-  const css = fs.readFileSync(path.resolve(process.cwd(), "src/app/cinematic.css"), "utf8");
+test.describe("the rose stylesheets become themeable", () => {
+  // cinematic.css and its companions (the inner pages, the cards and filters, the home's showpieces): every
+  // store's inner pages are drawn by them, so a theme's store must get its own colours in all of them.
+  const FILES = ["cinematic.css", "rose-inner.css", "rose-showcase.css", "rose-wonders.css"];
   const run = async () => {
     const postcss = require("postcss");
     const tokens = require("../postcss/theme-tokens.cjs");
-    return (await postcss([tokens()]).process(css, { from: path.resolve(process.cwd(), "src/app/cinematic.css") })).css as string;
+    expect(tokens.ROSE_STYLESHEETS).toEqual(FILES);
+    const out: string[] = [];
+    for (const name of FILES) {
+      const from = path.resolve(process.cwd(), "src/app", name);
+      out.push((await postcss([tokens()]).process(fs.readFileSync(from, "utf8"), { from })).css as string);
+    }
+    return out.join("\n");
   };
 
   test("every colour is a variable that falls back to itself, and the list of them is up to date", async () => {
