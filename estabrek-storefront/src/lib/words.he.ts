@@ -39,6 +39,8 @@ export const HE: Record<string, string> = {
   "Add an email or phone number so we can reply.": "צריך להוסיף אימייל או מספר טלפון כדי שנוכל לענות.",
   "Add to bag": "הוספה לתיק",
   "Add to cart": "הוספה לסל",
+  "Everything new from us, in one place": "כל החדש שלנו במקום אחד",
+  "See what's new": "לחדשים",
   "Add your name and phone so we can reach you.": "צריך להוסיף שם וטלפון כדי שנוכל ליצור קשר.",
   "Add your name and phone so we can tell you.": "צריך להוסיף שם וטלפון כדי שנוכל לעדכן.",
   "Add your name and phone.": "צריך להוסיף שם וטלפון.",

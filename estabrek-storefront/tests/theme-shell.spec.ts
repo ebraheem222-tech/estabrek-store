@@ -152,6 +152,36 @@ test("a dark theme's bag and pages stay dark: no light mixed in from the rose de
   await page.evaluate(() => localStorage.removeItem("estabrak_cart_v1"));
 });
 
+test("a theme's header and footer take the kinds its design gives them", async ({ page }) => {
+  test.setTimeout(300_000);
+  const kinds = [
+    ["womens-fashion", "centered", "newsletter"],
+    ["mens-fashion", "split", "block"],
+    ["eyewear", "floating", "bigcta"],
+  ] as const;
+  for (const [theme, header, footer] of kinds) {
+    await page.request.post(`${API}/__test/identity`, { data: { ...NOOR, theme } });
+    await settle(page);
+    await open(page, "/shop");
+    await expect(page.locator(".atelier-header"), theme).toHaveAttribute("data-th-header", header);
+    await expect(page.locator(".atelier-footer"), theme).toHaveAttribute("data-th-footer", footer);
+    const brand = await page.locator(".atelier-header > .atelier-brand").boundingBox();
+    const nav = await page.locator(".atelier-header > .atelier-desktop-nav").boundingBox();
+    if (header === "centered") {
+      // The name in the middle, the menu on a row under it.
+      expect(nav!.y, theme).toBeGreaterThanOrEqual(brand!.y + brand!.height - 4);
+      expect(Math.abs(brand!.x + brand!.width / 2 - 640), theme).toBeLessThan(60);
+    }
+    if (header === "split") expect(Math.abs(brand!.x + brand!.width / 2 - 640), theme).toBeLessThan(60);
+    if (header === "floating") expect(await page.locator(".atelier-header").evaluate((el) => getComputedStyle(el).borderTopLeftRadius), theme).not.toBe("0px");
+    const band = page.locator(".th-footer-band");
+    if (footer === "bigcta" || footer === "newsletter") {
+      await expect(band, theme).toBeVisible();
+      await expect(band.locator('a[href="/shop"]'), theme).toBeVisible();
+    } else await expect(band, theme).toHaveCount(0);
+  }
+});
+
 test("a store on a theme with no home of its own gets its theme's home, never the rose home", async ({ page }) => {
   test.setTimeout(180_000);
   await page.request.post(`${API}/__test/identity`, { data: { ...NOOR, cmsHome: false } });
@@ -174,6 +204,8 @@ test("Estabrek keeps all of its design's ornaments", async ({ page }) => {
   await expect(page.locator("html")).not.toHaveAttribute("data-store-theme", /.+/);
   await expect(page.locator(".rose-footer-wave")).toHaveCount(1);
   await expect(page.locator(".rose-product-tile .rose-card-arch").first()).toBeAttached();
+  // Its own header and footer, as ever.
+  await expect(page.locator(".atelier-header[data-th-header], .atelier-footer[data-th-footer], .th-footer-band")).toHaveCount(0);
   // Its own pinks, as ever (and the check above does see them).
   expect((await rosePinks(page)).length).toBeGreaterThan(5);
   await open(page, "/p/rose-dress");
