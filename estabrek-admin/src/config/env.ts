@@ -44,14 +44,64 @@ type Env = {
     return new URL(whole).pathname === "/" ? `${whole}/v1` : whole;
   }
 
+  /** The server on this machine, while working on the admin itself. */
+  export const LOCAL_API = "http://localhost:4000/v1";
+
+  /**
+   * Where the admin's server came from: its build (the host's VITE_API_BASE_URL), this browser (connected
+   * on /connect while the build has none), this machine (the admin served from it, for local work), or
+   * nowhere: a copy's admin put up on a host before anything else was linked (paintispassion.pages.dev had
+   * no VITE_API_BASE_URL and no server yet, and showed a sign-in to nothing). With none, the admin opens
+   * on /connect, which links the database, the server and the rest, instead of on the sign-in.
+   */
+  export type ServerFrom = "build" | "browser" | "local" | "none";
+  /** This browser's server, kept by /connect (features/connect/ConnectPage.tsx). */
+  export const SERVER_KEY = "admin.server";
+
+  /** A server address that may be kept in a browser: whole, and https unless it is on this machine. */
+  export function keptServer(written: string | null | undefined): string | null {
+    if (!written?.trim()) return null;
+    const api = apiAddress(written);
+    try {
+      const u = new URL(api);
+      if (u.protocol === "https:") return api;
+      return u.protocol === "http:" && LOCAL.test(u.host) ? api : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * The server this admin speaks to. The build's address always wins, so a browser's kept one is used only
+   * by an admin built without any (no one can point a built store's admin elsewhere).
+   */
+  export function chooseServer(input: { built?: string | null; kept?: string | null; adminHost: string }): { address: string; from: ServerFrom } {
+    if (input.built?.trim()) return { address: apiAddress(input.built), from: "build" };
+    const kept = keptServer(input.kept);
+    if (kept) return { address: kept, from: "browser" };
+    if (!input.adminHost || LOCAL.test(input.adminHost)) {
+      console.warn(`[env] Missing VITE_API_BASE_URL. Falling back to: ${LOCAL_API}`);
+      return { address: LOCAL_API, from: "local" };
+    }
+    return { address: LOCAL_API, from: "none" };
+  }
+
+  function readKept(): string | null {
+    try {
+      return typeof localStorage === "undefined" ? null : localStorage.getItem(SERVER_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  export const server = chooseServer({
+    built: import.meta.env.VITE_API_BASE_URL,
+    kept: readKept(),
+    adminHost: typeof window === "undefined" ? "" : window.location.host,
+  });
+
   export const env: Env = {
-    VITE_API_BASE_URL: apiAddress(
-      required(
-        "VITE_API_BASE_URL",
-        import.meta.env.VITE_API_BASE_URL,
-        "http://localhost:4000/v1"
-      ),
-    ),
+    VITE_API_BASE_URL: server.address,
 
     VITE_STOREFRONT_BASE_URL: wholeAddress(
       required(

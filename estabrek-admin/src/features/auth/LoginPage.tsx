@@ -1,6 +1,6 @@
 // src/features/auth/LoginPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { getApiErrorMessage } from "../../api/http";
@@ -11,6 +11,7 @@ import { firstAllowedPath } from "../../layouts/adminNav";
 import * as AuthAPI from "../../api/auth.api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { tr } from "@/lib/words";
+import { say } from "../../studio/say";
 
 type Mode = "email" | "phone";
 
@@ -56,6 +57,10 @@ export default function LoginPage() {
   useEffect(() => {
     if (firstRun.data?.needed) nav(`/welcome${location.search}`, { replace: true });
   }, [firstRun.data, nav, location.search]);
+  // No answer at all, or one that isn't a store's server (its address is wrong): no sign-in can work, so say what to do.
+  const noServer =
+    (firstRun.isError && !(firstRun.error as { response?: unknown } | null)?.response) ||
+    (firstRun.isSuccess && typeof (firstRun.data as { needed?: unknown } | undefined)?.needed !== "boolean");
 
   const phoneStart = useMutation({ mutationFn: AuthAPI.phoneStart });
   const phoneVerify = useMutation({ mutationFn: AuthAPI.phoneVerify });
@@ -163,6 +168,15 @@ export default function LoginPage() {
         {loginReason === "expired" && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">
             {tr("انتهت الجلسة. يرجى تسجيل الدخول من جديد.", "Your session ended. Please sign in again.")}
+          </div>
+        )}
+
+        {noServer && (
+          <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200" role="alert" data-testid="login-no-server">
+            {say("السيرفر ما عم يرد، فالدخول مش رح يزبط هلق.|The server isn't answering, so signing in can't work now.|השרת לא עונה, אז הכניסה לא יכולה לעבוד עכשיו.")}{" "}
+            <Link to="/connect" className="font-medium underline">
+              {say("شو لازم أعمل؟|What do I do?|מה לעשות?")}
+            </Link>
           </div>
         )}
 

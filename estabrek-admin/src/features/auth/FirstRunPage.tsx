@@ -83,7 +83,7 @@ export default function FirstRunPage() {
             <Input label={say("كود الإعداد|The setup code|קוד ההגדרה")} value={code} onChange={(e) => setCode(e.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX" autoComplete="one-time-code" dir="ltr" data-testid="first-run-code" />
             <p className="mt-1 text-xs text-white/50" data-testid="first-run-code-from">
               {status.data?.codeFrom === "link"
-                ? say("موجود بالرابط اللي وصلك مع المتجر.|It is in the link you were given with the store.|הוא נמצא בקישור שקיבלתם עם החנות.")
+                ? say("موجود بالرابط اللي وصلك مع المتجر، أو بمتغيّر SETUP_CODE تبع السيرفر.|It is in the link you were given with the store, or in the server's SETUP_CODE variable.|הוא נמצא בקישור שקיבלתם עם החנות, או במשתנה SETUP_CODE של השרת.")
                 : (
                     <>
                       {say("مكتوب بسجل السيرفر (Railway ← الخدمة ← Logs)، بسطر بيبلّش بـ|It is in the server's log (Railway → the service → Logs), on a line starting with|הוא כתוב ביומן של השרת (Railway ← השירות ← Logs), בשורה שמתחילה ב-")} <bdi dir="ltr">[first-run]</bdi>
