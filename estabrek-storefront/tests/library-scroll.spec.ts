@@ -92,10 +92,19 @@ test("the library's scroll scenes on a page of the shop", async ({ page }) => {
   const after = page.locator('[data-tree-node="after"]');
   await bring(page, "s4", 0);
   await expect.poll(() => after.evaluate((el) => getComputedStyle(el).visibility)).toBe("hidden");
-  await page.evaluate(() => window.scrollBy(0, innerHeight * 1.5));
-  await expect.poll(() => dive.evaluate((el) => parseFloat(el.style.scale || "1")), { timeout: 10_000 }).toBeGreaterThan(8);
-  await page.evaluate(() => window.scrollBy(0, innerHeight * 0.9));
-  await expect.poll(() => after.evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 10_000 }).toBeGreaterThan(0.9);
+  // Scrolled on a little at a time, as a shopper does (where the held parts above end up is the page's own business).
+  const scaleOf = () => dive.evaluate((el) => parseFloat(el.style.scale || "1"));
+  const scrollUntil = async (done: () => Promise<boolean>) => {
+    for (let i = 0; i < 40 && !(await done()); i++) {
+      await page.mouse.wheel(0, 160);
+      await page.waitForTimeout(120);
+    }
+  };
+  await scrollUntil(async () => (await scaleOf()) > 8);
+  await expect.poll(scaleOf, { timeout: 10_000 }).toBeGreaterThan(8);
+  const opacityAfter = () => after.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await scrollUntil(async () => (await opacityAfter()) > 0.9);
+  await expect.poll(opacityAfter, { timeout: 10_000 }).toBeGreaterThan(0.9);
 
   // The timeline draws its line, and each year lights up as the page reaches it.
   const tl = page.locator('[data-tree-node="tl"]');

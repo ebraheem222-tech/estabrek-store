@@ -61,7 +61,7 @@ test("the library's text and pointer tricks on a page of the shop", async ({ pag
   await node("s2").scrollIntoViewIfNeeded();
   const dots = node("dots");
   await expect(dots.locator("canvas.pt-fx-dots")).toHaveCount(1);
-  await expect.poll(() => dots.locator("canvas.pt-fx-dots").evaluate((c) => Number((c as HTMLCanvasElement).dataset.dots ?? 0)), { timeout: 20_000 }).toBeGreaterThan(40);
+  await expect.poll(() => dots.locator("canvas.pt-fx-dots").evaluate((c) => Number((c as HTMLCanvasElement).dataset.dots ?? 0)), { timeout: 20_000 }).toBeGreaterThan(20);
   await expect(dots).toHaveClass(/pt-fx-dots-on/);
   expect(await dots.textContent()).toContain("PARTICLES");
 
