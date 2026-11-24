@@ -211,6 +211,39 @@
 .th-card:focus-within .th-card-add { opacity: 1; transform: none; }
 @media (hover: none) { .th-card-add { opacity: 1; transform: none; } }
 
+/* The shop's own cards on a theme (ProductTile on the shop, a category, search and "you may also like"): the
+   theme's card above, with the shop's heart in the photo's corner, its colours, and add + preview under the price. */
+.th-card-host { min-width: 0; color: var(--th-ink); font-family: var(--th-text); }
+.th-card-host .th-card { height: 100%; align-content: start; }
+.th-card-host a.th-card-link { color: inherit; text-decoration: none; }
+.th-card-host .th-card-title { margin: 0; }
+.th-card-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--th-muted); }
+.th-card-discount {
+  position: absolute; top: 12px; inset-inline-start: 12px; z-index: 2; padding: 4px 10px;
+  border-radius: var(--th-pill); background: var(--th-strong); color: var(--th-on-strong);
+  font-size: 0.78rem; font-weight: 700; direction: ltr; unicode-bidi: isolate;
+}
+.th-card-heart {
+  position: absolute; top: 12px; inset-inline-end: 12px; z-index: 3; display: grid; place-items: center;
+  width: 36px; height: 36px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--th-line); background: color-mix(in srgb, var(--th-surface) 92%, transparent); color: var(--th-strong);
+}
+.th-card-heart svg { width: 17px; height: 17px; fill: transparent; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.th-card-heart[aria-pressed="true"] svg { fill: currentColor; }
+.th-card-swatches button {
+  width: 16px; height: 16px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--th-ink) 20%, transparent);
+}
+.th-card-swatches button[aria-pressed="true"] { outline: 2px solid var(--th-strong); outline-offset: 2px; }
+.th-card-host .th-card-add.th-card-actions { position: static; opacity: 1; transform: none; display: flex; align-items: center; gap: 8px; }
+.th-card-host .th-card-actions > :first-child { flex: 1; min-width: 0; }
+.th-card-peek {
+  display: grid; place-items: center; flex: none; width: 42px; height: 42px; padding: 0; cursor: pointer;
+  border-radius: var(--th-pill); border: 1px solid var(--th-line); background: var(--th-surface); color: var(--th-ink);
+}
+.th-card-peek svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.th-card-heart:focus-visible, .th-card-peek:focus-visible, .th-card-swatches button:focus-visible { outline: 3px solid var(--th-accent); outline-offset: 2px; }
+
 [data-th-card="portrait"] .th-card-media { border-radius: 0; aspect-ratio: 2 / 3; }
 [data-th-card="portrait"] .th-card-title { font-family: var(--th-display); font-weight: 500; font-size: 1.15rem; }
 [data-th-card="spec"] .th-card { padding: 14px; border-radius: var(--th-radius-lg); background: var(--th-surface); border: 1px solid var(--th-line); box-shadow: var(--th-shadow); }
