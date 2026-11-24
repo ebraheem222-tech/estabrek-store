@@ -27,7 +27,8 @@ import "../../src/App.css";
 import "../../src/theme/skins.css";
 
 const PAGE_ID = "editor-controls-fixture";
-const FIXTURE = "http://127.0.0.1:4100";
+// The test API: :4100, or VITE_FIXTURE_API beside another session's run (catalog-server.mjs with CATALOG_PORT).
+const FIXTURE = (import.meta.env.VITE_FIXTURE_API as string | undefined) || "http://127.0.0.1:4100";
 // The shop's own address: :3000 unless this PC can't open it (VITE_FIXTURE_SHOP, e.g. http://127.0.0.1:3900).
 const SHOP = (import.meta.env.VITE_FIXTURE_SHOP as string | undefined) || "http://127.0.0.1:3000";
 env.VITE_API_BASE_URL = `${FIXTURE}/v1`;

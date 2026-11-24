@@ -1,0 +1,1057 @@
+/* templates/sites/taskflow.tsx's classes (made by scripts/library/build-css.mjs: do not edit). */
+/*! tailwindcss v4.3.5 | MIT License | https://tailwindcss.com */
+.lx-f-templates-sites-taskflow .pointer-events-none {
+    pointer-events: none;
+  }
+.lx-f-templates-sites-taskflow .visible {
+    visibility: visible;
+  }
+.lx-f-templates-sites-taskflow .absolute {
+    position: absolute;
+  }
+.lx-f-templates-sites-taskflow .fixed {
+    position: fixed;
+  }
+.lx-f-templates-sites-taskflow .relative {
+    position: relative;
+  }
+.lx-f-templates-sites-taskflow .sticky {
+    position: sticky;
+  }
+.lx-f-templates-sites-taskflow .inset-0 {
+    inset: 0px;
+  }
+.lx-f-templates-sites-taskflow .inset-x-0 {
+    inset-inline: 0px;
+  }
+.lx-f-templates-sites-taskflow .inset-x-3 {
+    inset-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .inset-y-0 {
+    inset-block: 0px;
+  }
+.lx-f-templates-sites-taskflow .top-0 {
+    top: 0px;
+  }
+.lx-f-templates-sites-taskflow .top-2 {
+    top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .right-0 {
+    right: 0px;
+  }
+.lx-f-templates-sites-taskflow .bottom-3 {
+    bottom: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .bottom-24 {
+    bottom: calc(var(--spacing) * 24);
+  }
+.lx-f-templates-sites-taskflow .left-1\/2 {
+    left: calc(1 / 2 * 100%);
+  }
+.lx-f-templates-sites-taskflow .left-2 {
+    left: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .z-10 {
+    z-index: 10;
+  }
+.lx-f-templates-sites-taskflow .z-30 {
+    z-index: 30;
+  }
+.lx-f-templates-sites-taskflow .z-50 {
+    z-index: 50;
+  }
+.lx-f-templates-sites-taskflow .z-\[60\] {
+    z-index: 60;
+  }
+.lx-f-templates-sites-taskflow .z-\[200\] {
+    z-index: 200;
+  }
+.lx-f-templates-sites-taskflow .z-\[201\] {
+    z-index: 201;
+  }
+.lx-f-templates-sites-taskflow .z-\[400\] {
+    z-index: 400;
+  }
+.lx-f-templates-sites-taskflow .mx-auto {
+    margin-inline: auto;
+  }
+.lx-f-templates-sites-taskflow .mt-1 {
+    margin-top: var(--spacing);
+  }
+.lx-f-templates-sites-taskflow .mt-2 {
+    margin-top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .mt-3 {
+    margin-top: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .mt-5 {
+    margin-top: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-taskflow .mt-6 {
+    margin-top: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .mt-8 {
+    margin-top: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-taskflow .mt-10 {
+    margin-top: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-taskflow .ml-auto {
+    margin-left: auto;
+  }
+.lx-f-templates-sites-taskflow .flex {
+    display: flex;
+  }
+.lx-f-templates-sites-taskflow .grid {
+    display: grid;
+  }
+.lx-f-templates-sites-taskflow .hidden {
+    display: none;
+  }
+.lx-f-templates-sites-taskflow .inline-block {
+    display: inline-block;
+  }
+.lx-f-templates-sites-taskflow .inline-flex {
+    display: inline-flex;
+  }
+.lx-f-templates-sites-taskflow .table {
+    display: table;
+  }
+.lx-f-templates-sites-taskflow .aspect-\[9\/19\] {
+    aspect-ratio: 9/19;
+  }
+.lx-f-templates-sites-taskflow .size-2\.5 {
+    width: calc(var(--spacing) * 2.5);
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-taskflow .size-3 {
+    width: calc(var(--spacing) * 3);
+    height: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .size-4 {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-taskflow .size-5 {
+    width: calc(var(--spacing) * 5);
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-taskflow .size-6 {
+    width: calc(var(--spacing) * 6);
+    height: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .size-8 {
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-taskflow .size-10 {
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-taskflow .size-full {
+    width: 100%;
+    height: 100%;
+  }
+.lx-f-templates-sites-taskflow .h-1 {
+    height: var(--spacing);
+  }
+.lx-f-templates-sites-taskflow .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-taskflow .h-5 {
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-taskflow .h-12 {
+    height: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-taskflow .h-16 {
+    height: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-taskflow .h-full {
+    height: 100%;
+  }
+.lx-f-templates-sites-taskflow .h-screen {
+    height: 100vh;
+  }
+.lx-f-templates-sites-taskflow .min-h-24 {
+    min-height: calc(var(--spacing) * 24);
+  }
+.lx-f-templates-sites-taskflow .min-h-full {
+    min-height: 100%;
+  }
+.lx-f-templates-sites-taskflow .min-h-screen {
+    min-height: 100vh;
+  }
+.lx-f-templates-sites-taskflow .w-6 {
+    width: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .w-14 {
+    width: calc(var(--spacing) * 14);
+  }
+.lx-f-templates-sites-taskflow .w-20 {
+    width: calc(var(--spacing) * 20);
+  }
+.lx-f-templates-sites-taskflow .w-28 {
+    width: calc(var(--spacing) * 28);
+  }
+.lx-f-templates-sites-taskflow .w-60 {
+    width: calc(var(--spacing) * 60);
+  }
+.lx-f-templates-sites-taskflow .w-64 {
+    width: calc(var(--spacing) * 64);
+  }
+.lx-f-templates-sites-taskflow .w-72 {
+    width: calc(var(--spacing) * 72);
+  }
+.lx-f-templates-sites-taskflow .w-full {
+    width: 100%;
+  }
+.lx-f-templates-sites-taskflow .w-max {
+    width: max-content;
+  }
+.lx-f-templates-sites-taskflow .max-w-7xl {
+    max-width: var(--container-7xl);
+  }
+.lx-f-templates-sites-taskflow .max-w-lg {
+    max-width: var(--container-lg);
+  }
+.lx-f-templates-sites-taskflow .max-w-md {
+    max-width: var(--container-md);
+  }
+.lx-f-templates-sites-taskflow .min-w-0 {
+    min-width: 0px;
+  }
+.lx-f-templates-sites-taskflow .flex-1 {
+    flex: 1;
+  }
+.lx-f-templates-sites-taskflow .shrink-0 {
+    flex-shrink: 0;
+  }
+.lx-f-templates-sites-taskflow .-translate-x-1\/2 {
+    --tw-translate-x: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+.lx-f-templates-sites-taskflow .rotate-180 {
+    rotate: 180deg;
+  }
+.lx-f-templates-sites-taskflow .transform {
+    transform: var(--tw-rotate-x, ) var(--tw-rotate-y, ) var(--tw-rotate-z, ) var(--tw-skew-x, ) var(--tw-skew-y, );
+  }
+.lx-f-templates-sites-taskflow .animate-marquee {
+    animation: var(--animate-marquee);
+  }
+.lx-f-templates-sites-taskflow .animate-marquee-reverse {
+    animation: var(--animate-marquee-reverse);
+  }
+.lx-f-templates-sites-taskflow .cursor-grab {
+    cursor: grab;
+  }
+.lx-f-templates-sites-taskflow .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-taskflow .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-taskflow .flex-col {
+    flex-direction: column;
+  }
+.lx-f-templates-sites-taskflow .flex-wrap {
+    flex-wrap: wrap;
+  }
+.lx-f-templates-sites-taskflow .place-items-center {
+    place-items: center;
+  }
+.lx-f-templates-sites-taskflow .items-center {
+    align-items: center;
+  }
+.lx-f-templates-sites-taskflow .items-start {
+    align-items: flex-start;
+  }
+.lx-f-templates-sites-taskflow .justify-between {
+    justify-content: space-between;
+  }
+.lx-f-templates-sites-taskflow .justify-center {
+    justify-content: center;
+  }
+.lx-f-templates-sites-taskflow .gap-0\.5 {
+    gap: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-taskflow .gap-1 {
+    gap: var(--spacing);
+  }
+.lx-f-templates-sites-taskflow .gap-1\.5 {
+    gap: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-taskflow .gap-2 {
+    gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .gap-2\.5 {
+    gap: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-taskflow .gap-3 {
+    gap: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .gap-4 {
+    gap: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-taskflow .gap-6 {
+    gap: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .gap-7 {
+    gap: calc(var(--spacing) * 7);
+  }
+.lx-f-templates-sites-taskflow .gap-12 {
+    gap: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-taskflow :where(.space-y-1 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(var(--spacing) * var(--tw-space-y-reverse));
+    margin-block-end: calc(var(--spacing) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-taskflow :where(.space-y-2\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2.5) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-taskflow .gap-x-6 {
+    column-gap: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow :where(.-space-x-2 > :not(:last-child)) {
+    --tw-space-x-reverse: 0;
+    margin-inline-start: calc(calc(var(--spacing) * -2) * var(--tw-space-x-reverse));
+    margin-inline-end: calc(calc(var(--spacing) * -2) * calc(1 - var(--tw-space-x-reverse)));
+  }
+.lx-f-templates-sites-taskflow .gap-y-2 {
+    row-gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .overflow-hidden {
+    overflow: hidden;
+  }
+.lx-f-templates-sites-taskflow .overflow-x-auto {
+    overflow-x: auto;
+  }
+.lx-f-templates-sites-taskflow .overflow-y-auto {
+    overflow-y: auto;
+  }
+.lx-f-templates-sites-taskflow .rounded {
+    border-radius: 0.25rem;
+  }
+.lx-f-templates-sites-taskflow .rounded-2xl {
+    border-radius: var(--radius-2xl);
+  }
+.lx-f-templates-sites-taskflow .rounded-\[2\.1rem\] {
+    border-radius: 2.1rem;
+  }
+.lx-f-templates-sites-taskflow .rounded-\[2\.6rem\] {
+    border-radius: 2.6rem;
+  }
+.lx-f-templates-sites-taskflow .rounded-full {
+    border-radius: calc(infinity * 1px);
+  }
+.lx-f-templates-sites-taskflow .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
+.lx-f-templates-sites-taskflow .rounded-xl {
+    border-radius: var(--radius-xl);
+  }
+.lx-f-templates-sites-taskflow .border {
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+  }
+.lx-f-templates-sites-taskflow .border-\[7px\] {
+    border-style: var(--tw-border-style);
+    border-width: 7px;
+  }
+.lx-f-templates-sites-taskflow .border-r {
+    border-right-style: var(--tw-border-style);
+    border-right-width: 1px;
+  }
+.lx-f-templates-sites-taskflow .border-b {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
+  }
+.lx-f-templates-sites-taskflow .border-dashed {
+    --tw-border-style: dashed;
+    border-style: dashed;
+  }
+.lx-f-templates-sites-taskflow .border-current\/10 {
+    border-color: currentcolor;
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, currentcolor 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .border-neutral-900 {
+    border-color: var(--color-neutral-900);
+  }
+.lx-f-templates-sites-taskflow .border-transparent {
+    border-color: transparent;
+  }
+.lx-f-templates-sites-taskflow .border-white\/5 {
+    border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .border-white\/10 {
+    border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-\[\#0b0d12\] {
+    background-color: var(--lx-0b0d12, #0b0d12);
+  }
+.lx-f-templates-sites-taskflow .bg-\[\#0f1117\] {
+    background-color: var(--lx-0f1117, #0f1117);
+  }
+.lx-f-templates-sites-taskflow .bg-\[\#171a22\] {
+    background-color: var(--lx-171a22, #171a22);
+  }
+.lx-f-templates-sites-taskflow .bg-\[\#09090b\] {
+    background-color: var(--lx-09090b, #09090b);
+  }
+.lx-f-templates-sites-taskflow .bg-amber-500\/15 {
+    background-color: color-mix(in srgb, oklch(76.9% 0.188 70.08) 15%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-amber-500) 15%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-black {
+    background-color: var(--color-black);
+  }
+.lx-f-templates-sites-taskflow .bg-black\/5 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-black\/50 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-black\/70 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 70%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-neutral-900 {
+    background-color: var(--color-neutral-900);
+  }
+.lx-f-templates-sites-taskflow .bg-pink-500 {
+    background-color: var(--color-pink-500);
+  }
+.lx-f-templates-sites-taskflow .bg-transparent {
+    background-color: transparent;
+  }
+.lx-f-templates-sites-taskflow .bg-violet-400 {
+    background-color: var(--color-violet-400);
+  }
+.lx-f-templates-sites-taskflow .bg-violet-500 {
+    background-color: var(--color-violet-500);
+  }
+.lx-f-templates-sites-taskflow .bg-violet-500\/10 {
+    background-color: color-mix(in srgb, oklch(60.6% 0.25 292.717) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-violet-500) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-white {
+    background-color: var(--color-white);
+  }
+.lx-f-templates-sites-taskflow .bg-white\/5 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-white\/10 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-white\/\[0\.03\] {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 3%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 3%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .bg-linear-to-br {
+    --tw-gradient-position: to bottom right;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to bottom right in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-taskflow .bg-linear-to-t {
+    --tw-gradient-position: to top;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to top in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-taskflow .from-amber-300 {
+    --tw-gradient-from: var(--color-amber-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-black\/85 {
+    --tw-gradient-from: color-mix(in srgb, var(--lx-000000, #000) 85%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-from: color-mix(in oklab, var(--color-black) 85%, transparent);
+    }
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-cyan-400 {
+    --tw-gradient-from: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-emerald-400 {
+    --tw-gradient-from: var(--color-emerald-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-fuchsia-400 {
+    --tw-gradient-from: var(--color-fuchsia-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-lime-300 {
+    --tw-gradient-from: var(--color-lime-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-pink-400 {
+    --tw-gradient-from: var(--color-pink-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-rose-400 {
+    --tw-gradient-from: var(--color-rose-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-sky-400 {
+    --tw-gradient-from: var(--color-sky-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .from-violet-500 {
+    --tw-gradient-from: var(--color-violet-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .via-black\/10 {
+    --tw-gradient-via: color-mix(in srgb, var(--lx-000000, #000) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-via: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+    --tw-gradient-via-stops: var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-via) var(--tw-gradient-via-position), var(--tw-gradient-to) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-via-stops);
+  }
+.lx-f-templates-sites-taskflow .to-blue-500 {
+    --tw-gradient-to: var(--color-blue-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-cyan-400 {
+    --tw-gradient-to: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-emerald-500 {
+    --tw-gradient-to: var(--color-emerald-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-indigo-400 {
+    --tw-gradient-to: var(--color-indigo-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-orange-300 {
+    --tw-gradient-to: var(--color-orange-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-pink-500 {
+    --tw-gradient-to: var(--color-pink-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-rose-500 {
+    --tw-gradient-to: var(--color-rose-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-teal-300 {
+    --tw-gradient-to: var(--color-teal-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-transparent {
+    --tw-gradient-to: transparent;
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-violet-400 {
+    --tw-gradient-to: var(--color-violet-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .to-yellow-200 {
+    --tw-gradient-to: var(--color-yellow-200);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-taskflow .fill-current {
+    fill: currentcolor;
+  }
+.lx-f-templates-sites-taskflow .fill-white {
+    fill: var(--color-white);
+  }
+.lx-f-templates-sites-taskflow .p-3 {
+    padding: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .p-3\.5 {
+    padding: calc(var(--spacing) * 3.5);
+  }
+.lx-f-templates-sites-taskflow .p-4 {
+    padding: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-taskflow .p-6 {
+    padding: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .px-1 {
+    padding-inline: var(--spacing);
+  }
+.lx-f-templates-sites-taskflow .px-1\.5 {
+    padding-inline: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-taskflow .px-2 {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .px-3 {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .px-4 {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-taskflow .px-5 {
+    padding-inline: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-taskflow .px-6 {
+    padding-inline: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .py-0\.5 {
+    padding-block: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-taskflow .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-taskflow .py-2 {
+    padding-block: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-taskflow .py-2\.5 {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-taskflow .py-4 {
+    padding-block: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-taskflow .py-5 {
+    padding-block: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-taskflow .py-6 {
+    padding-block: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-taskflow .py-12 {
+    padding-block: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-taskflow .pt-4 {
+    padding-top: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-taskflow .pr-12 {
+    padding-right: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-taskflow .pb-1 {
+    padding-bottom: var(--spacing);
+  }
+.lx-f-templates-sites-taskflow .pb-3 {
+    padding-bottom: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-taskflow .pb-5 {
+    padding-bottom: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-taskflow .pb-24 {
+    padding-bottom: calc(var(--spacing) * 24);
+  }
+.lx-f-templates-sites-taskflow .pb-28 {
+    padding-bottom: calc(var(--spacing) * 28);
+  }
+.lx-f-templates-sites-taskflow .text-center {
+    text-align: center;
+  }
+.lx-f-templates-sites-taskflow .text-left {
+    text-align: left;
+  }
+.lx-f-templates-sites-taskflow .font-display {
+    font-family: var(--font-display);
+  }
+.lx-f-templates-sites-taskflow .font-jakarta {
+    font-family: var(--font-jakarta);
+  }
+.lx-f-templates-sites-taskflow .text-3xl {
+    font-size: var(--text-3xl);
+    line-height: var(--tw-leading, var(--text-3xl--line-height));
+  }
+.lx-f-templates-sites-taskflow .text-base {
+    font-size: var(--text-base);
+    line-height: var(--tw-leading, var(--text-base--line-height));
+  }
+.lx-f-templates-sites-taskflow .text-lg {
+    font-size: var(--text-lg);
+    line-height: var(--tw-leading, var(--text-lg--line-height));
+  }
+.lx-f-templates-sites-taskflow .text-sm {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+.lx-f-templates-sites-taskflow .text-xl {
+    font-size: var(--text-xl);
+    line-height: var(--tw-leading, var(--text-xl--line-height));
+  }
+.lx-f-templates-sites-taskflow .text-xs {
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+.lx-f-templates-sites-taskflow .text-\[9px\] {
+    font-size: 9px;
+  }
+.lx-f-templates-sites-taskflow .text-\[10px\] {
+    font-size: 10px;
+  }
+.lx-f-templates-sites-taskflow .leading-tight {
+    --tw-leading: var(--leading-tight);
+    line-height: var(--leading-tight);
+  }
+.lx-f-templates-sites-taskflow .font-bold {
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
+.lx-f-templates-sites-taskflow .font-extrabold {
+    --tw-font-weight: var(--font-weight-extrabold);
+    font-weight: var(--font-weight-extrabold);
+  }
+.lx-f-templates-sites-taskflow .font-medium {
+    --tw-font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium);
+  }
+.lx-f-templates-sites-taskflow .font-normal {
+    --tw-font-weight: var(--font-weight-normal);
+    font-weight: var(--font-weight-normal);
+  }
+.lx-f-templates-sites-taskflow .font-semibold {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
+.lx-f-templates-sites-taskflow .tracking-tight {
+    --tw-tracking: var(--tracking-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+.lx-f-templates-sites-taskflow .tracking-wider {
+    --tw-tracking: var(--tracking-wider);
+    letter-spacing: var(--tracking-wider);
+  }
+.lx-f-templates-sites-taskflow .text-amber-300 {
+    color: var(--color-amber-300);
+  }
+.lx-f-templates-sites-taskflow .text-amber-400 {
+    color: var(--color-amber-400);
+  }
+.lx-f-templates-sites-taskflow .text-black {
+    color: var(--color-black);
+  }
+.lx-f-templates-sites-taskflow .text-black\/25 {
+    color: color-mix(in srgb, var(--lx-000000, #000) 25%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-black) 25%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .text-rose-400 {
+    color: var(--color-rose-400);
+  }
+.lx-f-templates-sites-taskflow .text-slate-400 {
+    color: var(--color-slate-400);
+  }
+.lx-f-templates-sites-taskflow .text-slate-500 {
+    color: var(--color-slate-500);
+  }
+.lx-f-templates-sites-taskflow .text-slate-600 {
+    color: var(--color-slate-600);
+  }
+.lx-f-templates-sites-taskflow .text-slate-900 {
+    color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-taskflow .text-violet-400 {
+    color: var(--color-violet-400);
+  }
+.lx-f-templates-sites-taskflow .text-white {
+    color: var(--color-white);
+  }
+.lx-f-templates-sites-taskflow .text-white\/70 {
+    color: color-mix(in srgb, var(--lx-ffffff, #fff) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-white) 70%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .uppercase {
+    text-transform: uppercase;
+  }
+.lx-f-templates-sites-taskflow .tabular-nums {
+    --tw-numeric-spacing: tabular-nums;
+    font-variant-numeric: var(--tw-ordinal, ) var(--tw-slashed-zero, ) var(--tw-numeric-figure, ) var(--tw-numeric-spacing, ) var(--tw-numeric-fraction, );
+  }
+.lx-f-templates-sites-taskflow .line-through {
+    text-decoration-line: line-through;
+  }
+.lx-f-templates-sites-taskflow .opacity-30 {
+    opacity: 30%;
+  }
+.lx-f-templates-sites-taskflow .opacity-40 {
+    opacity: 40%;
+  }
+.lx-f-templates-sites-taskflow .opacity-50 {
+    opacity: 50%;
+  }
+.lx-f-templates-sites-taskflow .opacity-70 {
+    opacity: 70%;
+  }
+.lx-f-templates-sites-taskflow .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-taskflow .shadow-sm {
+    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-taskflow .ring {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-taskflow .ring-1 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-taskflow .ring-2 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-taskflow .ring-\[\#0f1117\] {
+    --tw-ring-color: var(--lx-0f1117, #0f1117);
+  }
+.lx-f-templates-sites-taskflow .ring-black\/10 {
+    --tw-ring-color: color-mix(in srgb, var(--lx-000000, #000) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-ring-color: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .ring-violet-400 {
+    --tw-ring-color: var(--color-violet-400);
+  }
+.lx-f-templates-sites-taskflow .ring-violet-500\/40 {
+    --tw-ring-color: color-mix(in srgb, oklch(60.6% 0.25 292.717) 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-ring-color: color-mix(in oklab, var(--color-violet-500) 40%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .ring-white {
+    --tw-ring-color: var(--color-white);
+  }
+.lx-f-templates-sites-taskflow .filter {
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+.lx-f-templates-sites-taskflow .backdrop-blur {
+    --tw-backdrop-blur: blur(8px);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-taskflow .backdrop-blur-\[2px\] {
+    --tw-backdrop-blur: blur(2px);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-taskflow .backdrop-blur-sm {
+    --tw-backdrop-blur: blur(var(--blur-sm));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-taskflow .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(var(--blur-xl));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-taskflow .transition {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-taskflow .transition-\[background-color\,border-color\,backdrop-filter\] {
+    transition-property: background-color,border-color,backdrop-filter;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-taskflow .duration-300 {
+    --tw-duration: 300ms;
+    transition-duration: 300ms;
+  }
+.lx-f-templates-sites-taskflow .selection\:bg-violet-500 ::selection {
+    background-color: var(--color-violet-500);
+  }
+.lx-f-templates-sites-taskflow .selection\:bg-violet-500::selection {
+    background-color: var(--color-violet-500);
+  }
+.lx-f-templates-sites-taskflow .selection\:text-white ::selection {
+    color: var(--color-white);
+  }
+.lx-f-templates-sites-taskflow .selection\:text-white::selection {
+    color: var(--color-white);
+  }
+.lx-f-templates-sites-taskflow .placeholder\:text-slate-500::placeholder {
+    color: var(--color-slate-500);
+  }
+@media (hover: hover) {
+    .lx-f-templates-sites-taskflow .hover\:border-white\/15:hover {
+      border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 15%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .lx-f-templates-sites-taskflow .hover\:border-white\/15:hover {
+        border-color: color-mix(in oklab, var(--color-white) 15%, transparent);
+      }
+    }
+    .lx-f-templates-sites-taskflow .hover\:bg-violet-400:hover {
+      background-color: var(--color-violet-400);
+    }
+    .lx-f-templates-sites-taskflow .hover\:bg-white\/5:hover {
+      background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .lx-f-templates-sites-taskflow .hover\:bg-white\/5:hover {
+        background-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+      }
+    }
+    .lx-f-templates-sites-taskflow .hover\:bg-white\/10:hover {
+      background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .lx-f-templates-sites-taskflow .hover\:bg-white\/10:hover {
+        background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+      }
+    }
+    .lx-f-templates-sites-taskflow .hover\:text-white:hover {
+      color: var(--color-white);
+    }
+    .lx-f-templates-sites-taskflow .hover\:opacity-100:hover {
+      opacity: 100%;
+    }
+  }
+.lx-f-templates-sites-taskflow .focus\:bg-white\/5:focus {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-taskflow .focus\:outline-none:focus {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+.lx-f-templates-sites-taskflow .active\:cursor-grabbing:active {
+    cursor: grabbing;
+  }
+@media (width >= 40rem) {
+    .lx-f-templates-sites-taskflow .sm\:block {
+      display: block;
+    }
+    .lx-f-templates-sites-taskflow .sm\:w-40 {
+      width: calc(var(--spacing) * 40);
+    }
+    .lx-f-templates-sites-taskflow .sm\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-taskflow .sm\:p-6 {
+      padding: calc(var(--spacing) * 6);
+    }
+    .lx-f-templates-sites-taskflow .sm\:px-6 {
+      padding-inline: calc(var(--spacing) * 6);
+    }
+    .lx-f-templates-sites-taskflow .sm\:px-8 {
+      padding-inline: calc(var(--spacing) * 8);
+    }
+  }
+@media (width >= 48rem) {
+    .lx-f-templates-sites-taskflow .md\:flex-row {
+      flex-direction: row;
+    }
+    .lx-f-templates-sites-taskflow .md\:items-center {
+      align-items: center;
+    }
+    .lx-f-templates-sites-taskflow .md\:justify-between {
+      justify-content: space-between;
+    }
+  }
+@media (width >= 64rem) {
+    .lx-f-templates-sites-taskflow .lg\:ml-0 {
+      margin-left: 0px;
+    }
+    .lx-f-templates-sites-taskflow .lg\:flex {
+      display: flex;
+    }
+    .lx-f-templates-sites-taskflow .lg\:hidden {
+      display: none;
+    }
+  }
+.lx-scope.lx-f-templates-sites-taskflow {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope.lx-f-templates-sites-taskflow {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-taskflow ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope.lx-f-templates-sites-taskflow {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-taskflow *, .lx-f-templates-sites-taskflow *::before, .lx-f-templates-sites-taskflow *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-f-templates-sites-taskflow .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-taskflow .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-taskflow .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-taskflow .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-taskflow .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-taskflow .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-taskflow .synth-grid, .lx-f-templates-sites-taskflow .pixel-ground {
+    animation: none;
+  }
+}
+.lx-f-templates-sites-taskflow .site [id] {
+  scroll-margin-top: 5rem;
+}
+.lx-f-templates-sites-taskflow .no-scrollbar {
+  scrollbar-width: none;
+}
+.lx-f-templates-sites-taskflow .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

@@ -160,6 +160,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/nav", tr("القوائم", "Menus")],
   ["/pages", tr("الصفحات", "Pages")],
   ["/themes", tr("ثيمات المتجر", "Store themes")],
+  ["/library", say("مكتبة الثيمات|Theme library|ספריית העיצובים")],
   ["/ugc/comments", tr("التعليقات", "Comments")],
   ["/ugc/reviews", tr("التقييمات", "Reviews")],
   ["/profile", tr("الملف الشخصي", "Profile")],

@@ -15,14 +15,13 @@ import { REFERENCE_SECTIONS } from "./referenceSections";
 import { LIVE_GROUPS, LIVE_SECTIONS } from "./liveSections";
 import { adminLang } from "../lib/lang";
 import { say } from "./say";
-import { LIB_GROUP_NAME, LIB_ITEMS, libName, type LibKind } from "./library";
+import { LIB_ITEMS, LIB_KIND_NAME, libName, type LibKind } from "./library";
+import { libFilter } from "./LibraryBrowser";
 
 const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, () => string, string]> }> = [
   { key: "commerce", title: () => tr("المتجر والسلة", "Shop and cart"), kinds: [["shop", () => typeLabel("shop"), "▦"], ["cartItems", () => typeLabel("cartItems"), "▤"], ["cartSummary", () => typeLabel("cartSummary"), "Σ"], ["cartCheckout", () => typeLabel("cartCheckout"), "✓"]] },
   // Forty sections on the forty new drawn backgrounds (liveSections.ts), in three groups; their words carry their own Hebrew.
   ...LIVE_GROUPS.map(([group, title]) => ({ key: `live-${group}`, title: () => title[adminLang()], kinds: LIVE_SECTIONS.filter(s => s.group === group).map(s => [s.kind, () => s.name[adminLang()], "✺"] as [AddKind, () => string, string]) })),
-  // The owner's theme library (docs/themes-library-plan.ar.md): whole websites and sections, every word and colour editable.
-  { key: "library", title: () => say("من المكتبة: مواقع وأقسام فاخرة|From the library: premium sites and sections|מהספרייה: אתרים ומקטעים יוקרתיים"), kinds: LIB_ITEMS.map(i => [`lib:${i.id}` as LibKind, () => `${say(LIB_GROUP_NAME[i.kind] ?? i.kind)} · ${libName(i)}`, i.kind === "site" ? "◈" : "❖"] as [AddKind, () => string, string]) },
   { key: "references", title: () => tr("إلهام القوالب", "Template inspiration"), kinds: REFERENCE_SECTIONS.map(reference => [reference.kind, () => tr(reference.name.ar, reference.name.en), "✦"]) },
   {
     key: "ready",
@@ -140,7 +139,7 @@ const WHERE: Array<[Where, () => string]> = [
   ["inside", () => tr("جوّاه / فوقه", "Inside / over it")],
 ];
 
-export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, onDragKind, onSplit, motionNode, motion, onMotion }: {
+export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, onDragKind, onSplit, motionNode, motion, onMotion, onBrowse }: {
   where: Where;
   /** Which places are open for the selection. */
   canWhere: Record<Where, boolean>;
@@ -158,10 +157,16 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
   motionNode: PageTreeNode | null;
   motion: Motion | undefined;
   onMotion: (p: MotionPreset) => void;
+  /** Opens the theme library to browse (LibraryBrowser). */
+  onBrowse?: () => void;
 }) {
   const [q, setQ] = useState("");
   const find = q.trim().toLowerCase();
   const groups = GROUPS.map(g => ({ ...g, kinds: find ? g.kinds.filter(([k, name]) => name().toLowerCase().includes(find) || k.toLowerCase().includes(find) || g.title().toLowerCase().includes(find)) : g.kinds })).filter(g => g.kinds.length);
+  // A search finds the theme library's pieces too (the first ones; the library shows them all).
+  const libFound = find.length >= 2 ? libFilter(LIB_ITEMS, "all", "", find) : [];
+  if (libFound.length) groups.unshift({ key: "library", title: () => say(`من المكتبة (${libFound.length})|From the library (${libFound.length})|מהספרייה (${libFound.length})`), kinds: libFound.slice(0, 16).map(i => [`lib:${i.id}` as LibKind, () => `${libName(i)} · ${say(LIB_KIND_NAME[i.kind] ?? i.kind)}`, i.kind === "site" ? "◈" : "❖"] as [AddKind, () => string, string]) });
+  const sites = LIB_ITEMS.filter(i => i.kind === "site").length;
   return (
     <div className="space-y-4" data-testid="studio-add-panel">
       <div className="space-y-1.5 rounded-xl border border-white/[0.08] p-2">
@@ -185,6 +190,16 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
         </div>
         <p className="text-[10px] leading-4 text-white/35">{tr("كبسة بتضيف هون، أو اسحب لأي مكان بالصفحة: بين قسمين، لجوّا خلية، أو فوق قسم.", "Click to add here, or drag anywhere on the page: between two sections, into a cell, or over a section.")}</p>
       </div>
+
+      {onBrowse ? (
+        <button type="button" disabled={busy} onClick={onBrowse} className="flex w-full items-center gap-2 rounded-xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-500/15 to-cyan-500/10 px-3 py-2.5 text-start text-xs text-white hover:from-fuchsia-500/25 disabled:opacity-40" data-testid="studio-lib-browse">
+          <span className="text-base" aria-hidden="true">◈</span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">{say("مكتبة الثيمات|The theme library|ספריית העיצובים")}</span>
+            <span className="block text-[10px] text-white/55">{say(`${sites} موقع كامل و${LIB_ITEMS.length - sites} قسم، كلامها وألوانها إلك|${sites} whole websites and ${LIB_ITEMS.length - sites} sections, their words and colours yours|${sites} אתרים שלמים ו-${LIB_ITEMS.length - sites} מקטעים, המילים והצבעים שלך`)}</span>
+          </span>
+        </button>
+      ) : null}
 
       <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على قسم أو عنصر…", "Find a section or element…")} aria-label={tr("دوّر على قسم أو عنصر", "Find a section or element")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-add-search" />
       {find && !groups.length ? <p className="text-[11px] text-white/45">{tr("ما في نتائج.", "No results.")}</p> : null}

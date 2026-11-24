@@ -12,9 +12,9 @@ const painted = (page: Page, sel: string, rgb: string) =>
     const cs = getComputedStyle(el);
     return [cs.color, cs.backgroundColor, cs.borderTopColor, cs.fill, cs.stroke].includes(rgb);
   }), [sel, rgb] as const);
-/** How many of the page's stylesheets carry the library's own rules (not the shop's that leave its pieces alone). */
+/** The library's stylesheets on the page (their addresses, without the version): its shared one and its pieces' files'. */
 const libStyles = (page: Page) =>
-  page.evaluate(() => Array.from(document.styleSheets).filter((s) => { try { return Array.from(s.cssRules).some((r) => /^\.lx-scope[ .:[>]/.test(r.cssText)); } catch { return false; } }).length);
+  page.evaluate(() => Array.from(document.styleSheets).map((s) => s.href ?? "").filter((h) => h.includes("/library/")).map((h) => new URL(h).pathname));
 
 test.afterAll(async ({ request }) => {
   await request.post(`${API}/__test/library-page`, { data: {} });
@@ -45,7 +45,7 @@ test("a whole website and two sections from the library, in the store's name, th
     for (let i = 0; i < n; i++) await expect(page.locator(chrome).nth(i)).toBeHidden();
   }
   // White words on its dark parts stay white (the shop's light theme doesn't repaint the library's).
-  const pricing = page.locator('[data-lib="pricing-three"]');
+  const pricing = page.locator('[data-lib="pricing-three-tiers"]');
   await pricing.scrollIntoViewIfNeeded();
   await expect(pricing).toContainText(/month|mo/i);
   // Its indigo family is the owner's green, all its shades made from it.
@@ -61,13 +61,16 @@ test("a whole website and two sections from the library, in the store's name, th
     return c;
   });
   expect(shade600).not.toBe("rgba(0, 0, 0, 0)");
-  expect(await painted(page, '[data-lib="pricing-three"]', shade600)).toBe(true);
+  expect(await painted(page, '[data-lib="pricing-three-tiers"]', shade600)).toBe(true);
   // A section with nothing changed is as the library made it.
   const faq = page.locator('[data-lib="faq-classic"]');
   await faq.scrollIntoViewIfNeeded();
   await expect(faq).toContainText("Frequently asked questions");
   // Once, however many pieces the page shows.
-  expect(await libStyles(page)).toBe(1);
+  // The shared one once, however many pieces the page shows; each piece file's own once.
+  const sheets = await libStyles(page);
+  expect(sheets.filter((h) => h === "/library/lib.css")).toHaveLength(1);
+  expect([...sheets].sort()).toEqual(["/library/css/faq-faq.css", "/library/css/pricing-pricing.css", "/library/css/templates-sites-maison.css", "/library/lib.css"]);
   expect(errors).toEqual([]);
 
   // A page without library pieces never loads its styles, and the store wears its own bar there.
@@ -75,8 +78,50 @@ test("a whole website and two sections from the library, in the store's name, th
   await page.goto("/shop").catch(() => page.goto("/shop"));
   await page.waitForLoadState("networkidle").catch(() => {});
   await expect(page.locator(".lx-scope")).toHaveCount(0);
-  expect(await libStyles(page)).toBe(0);
+  expect(await libStyles(page)).toEqual([]);
   await expect(page.locator(".atelier-header").first()).toBeVisible();
+});
+
+test("a piece turned right to left in Arabic words; any piece on its own at its preview address, as a file of its own", async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.request.post(`${API}/__test/library-page`, { data: { nodes: [
+    { id: "lib-faq", type: "lib", props: { item: "faq-classic", dir: "rtl", words: { "Frequently asked questions": { ar: "أسئلة شائعة", en: "Questions" } } } },
+  ] } });
+  await page.request.post(`${SITE}/api/revalidate`, { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
+  await page.context().addCookies([{ name: "shop-lang", value: "ar", url: SITE }]);
+  await page.goto("/ar/library-demo");
+  const faq = page.locator('[data-lib="faq-classic"]');
+  await expect(faq).toHaveAttribute("data-lib-ready", "", { timeout: 90_000 });
+  await expect(faq).toHaveAttribute("dir", "rtl");
+  await expect(faq.getByText("أسئلة شائعة")).toBeVisible();
+  // Its question sits at the right, its button at the left.
+  const row = await faq.evaluate((el) => {
+    const q = Array.from(el.querySelectorAll("button")).find((b) => /free trial/.test(b.textContent ?? ""))!;
+    const r = q.getBoundingClientRect();
+    // The question's own words (a text in the button, wherever it sits).
+    const walker = document.createTreeWalker(q, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    while ((node = walker.nextNode()) && !/free trial/.test(node.textContent ?? ""));
+    const range = document.createRange();
+    range.selectNodeContents(node!);
+    const text = range.getBoundingClientRect();
+    return { textRight: Math.round(r.right - text.right), textLeft: Math.round(text.left - r.left) };
+  });
+  expect(row.textRight).toBeLessThan(row.textLeft);
+
+  // The preview address: one piece alone, nothing of the store's around it, its own file and styles.
+  const files: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/library/")) files.push(r.url().split("/library/")[1]); });
+  await page.goto("/en/lib-preview?item=cta-conic");
+  await expect(page.locator('[data-lib="cta-conic"]')).toHaveAttribute("data-lib-ready", "", { timeout: 90_000 });
+  await expect(page.locator(".atelier-header")).toBeHidden();
+  expect(files.some((f) => /^js\/cta-conic-[A-Z0-9]+\.js$/.test(f))).toBe(true);
+  expect(files.some((f) => f.startsWith("css/cta-cta.css"))).toBe(true);
+  expect(files.filter((f) => f.startsWith("js/") && !f.startsWith("js/c/") && !f.startsWith("js/cta-conic-"))).toEqual([]);
+  expect((await page.goto("/en/lib-preview?item=no-such-piece"))?.status()).toBe(404);
+  expect(errors).toEqual([]);
 });
 
 test("from the editor: a library piece added from the Add panel, its words and colours changed in its panel", async ({ page }) => {
@@ -87,16 +132,22 @@ test("from the editor: a library piece added from the Add panel, its words and c
   await page.goto(editor);
   await ready();
   await page.getByRole("tab", { name: "+ Add" }).click();
-  // The library's group, found by its name too.
-  await page.getByRole("searchbox", { name: "Find a section or element" }).fill("accordion");
-  const add = page.locator('[data-testid="studio-add-item"][data-kind="lib:faq-classic"]');
-  await expect(add).toBeVisible();
-  await add.click();
+  // The Add panel's search finds the library's pieces too.
+  await page.getByRole("searchbox", { name: "Find a section or element" }).fill("classic accordion");
+  await expect(page.locator('[data-testid="studio-add-item"][data-kind="lib:faq-classic"]')).toBeVisible();
+  // The library itself: its kinds, the FAQs among them, a piece put on the page.
+  await page.getByTestId("studio-lib-browse").click();
+  const shelf = page.getByTestId("lib-shelf");
+  await expect(shelf.locator('[data-testid="lib-card"]').first()).toHaveAttribute("data-kind", "site");
+  await shelf.locator('[data-testid="lib-kind"][data-kind="faq"]').click();
+  await expect(shelf.locator('[data-testid="lib-card"]')).toHaveCount(48);
+  await shelf.locator('[data-testid="lib-card"][data-item="faq-classic"] [data-testid="lib-pick"]').click();
+  await expect(shelf).toBeHidden();
   // It goes on the page as it is (a whole section of its own), named for the layers list.
   await expect.poll(async () => ((await draft()).children as any[]).some((n) => n.type === "lib")).toBe(true);
   const piece = ((await draft()).children as any[]).find((n) => n.type === "lib");
   expect(piece.props).toEqual({ item: "faq-classic" });
-  expect(piece.name).toBe("Classic accordion");
+  expect(piece.name).toBe("Classic Accordion");
   expect(piece.children ?? []).toEqual([]);
 
   const panel = page.getByTestId("studio-lib-panel").first();

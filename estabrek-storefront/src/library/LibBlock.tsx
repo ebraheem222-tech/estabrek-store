@@ -7,14 +7,9 @@
  * - families: a Tailwind colour family the item uses → one colour (or "theme": the store theme's accent), its
  *   whole scale made from it (--color-<family>-50 … 950).
  */
-import dynamic from "next/dynamic";
-import type { CSSProperties } from "react";
-import { LIB_COMPONENTS } from "./items.gen";
-import { libItem } from "./meta";
+import { useEffect, useState, type ComponentType, type CSSProperties } from "react";
+import { loadPiece } from "./loader";
 import { LibWordsProvider, hexKey } from "./runtime";
-
-/** The library's styles: one module, loaded with the first item a page shows. */
-const LibStyles = dynamic(() => import("./LibStyles"));
 
 /** The library's fonts (its index.html): the browser fetches only the ones an item's text uses. */
 const FONTS =
@@ -49,8 +44,20 @@ export function libVars(colours: unknown, families: unknown): CSSProperties {
   return vars as CSSProperties;
 }
 
-export function LibBlock({ item, words, colours, families, brand, className, ...rest }: {
+/** What the server's list (meta.ts) says of the piece: a page never downloads the whole library's list. */
+export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "ltr", words, colours, families, brand, className, ...rest }: {
   item: string;
+  kind: string;
+  /** The piece's made-up brand (a site's name), the store's name replaces. */
+  madeUp?: string;
+  /** Its height while it loads. */
+  minH?: number;
+  /** Its file (public/library/js) and its file's styles (public/library/css), and the styles' version. */
+  js: string;
+  css: string;
+  version: string;
+  /** As the library made it (left to right), or turned for a right-to-left page. */
+  dir?: "ltr" | "rtl";
   words?: Record<string, string>;
   colours?: Record<string, string>;
   families?: Record<string, string>;
@@ -58,22 +65,31 @@ export function LibBlock({ item, words, colours, families, brand, className, ...
   className?: string;
   [data: `data-${string}`]: unknown;
 }) {
-  const meta = libItem(item);
-  const Item = LIB_COMPONENTS[item];
-  if (!meta || !Item) return null;
+  // The piece itself comes in the browser (with its styles, before it shows): until then its place keeps its height.
+  const [Piece, setPiece] = useState<ComponentType | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    setFailed(false);
+    loadPiece(js, css, version).then((c) => live && setPiece(() => c), () => live && setFailed(true));
+    return () => { live = false; };
+  }, [js, css, version]);
   // The store's name wherever the item says its made-up one (as written, and in capitals for the letter-spaced logos).
-  const swaps: Array<readonly [string, string]> = brand && meta.brand ? [[meta.brand, brand], [meta.brand.toUpperCase(), brand.toLocaleUpperCase()]] : [];
+  const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
   const own = { map: { ...(words ?? {}) }, swaps };
   // A whole website brings its own bar and footer: on its page the store's step aside (drawn with the page, no flash).
-  const site = meta.kind === "site";
+  const site = kind === "site";
   return (
-    <div className={`lx-scope${className ? ` ${className}` : ""}`} dir="ltr" data-lib={item} data-lib-kind={meta.kind} style={libVars(colours, families)} {...rest}>
+    <div className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`} dir={dir} data-lib={item} data-lib-kind={kind} data-lib-ready={Piece ? "" : undefined} style={libVars(colours, families)} {...rest}>
       <link rel="stylesheet" href={FONTS} />
-      <LibStyles />
       {site ? <style>{".atelier-announcement,.atelier-header,.atelier-footer{display:none!important}[data-lib-kind=site]{width:100vw;margin-inline:calc(50% - 50vw)}"}</style> : null}
-      <LibWordsProvider words={own}>
-        <Item />
-      </LibWordsProvider>
+      {Piece ? (
+        <LibWordsProvider words={own}>
+          <Piece />
+        </LibWordsProvider>
+      ) : (
+        <div aria-hidden="true" style={{ minHeight: failed ? undefined : minH ? `min(${Math.round(minH)}px, 100vh)` : undefined }} />
+      )}
     </div>
   );
 }

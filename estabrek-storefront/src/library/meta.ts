@@ -1,10 +1,11 @@
 /**
- * The owner's theme library's items as the shop carries them (made by scripts/library/convert.mjs): each with its
- * kind, its names, its made-up brand, the words it shows and the colours it uses. Server and client alike; the
- * admin's editor reads manifest.gen.ts by path too (no React, no "@/" imports there).
+ * The owner's theme library's pieces as the shop carries them (made by scripts/library/convert.mjs): each with its
+ * kind, category, name, made-up brand and height. Read on the server (the page tree hands a piece what it needs);
+ * the admin reads index.gen.ts by path too (no React, no "@/" imports there).
  */
-import { LIB_MANIFEST, type LibItemMeta } from "./manifest.gen";
+import { LIB_CSS_VERSION, LIB_INDEX, type LibItem } from "./index.gen";
 
-export type { LibItemMeta };
-export const LIB_ITEMS: readonly LibItemMeta[] = LIB_MANIFEST;
-export const libItem = (id: unknown): LibItemMeta | null => (typeof id === "string" ? LIB_ITEMS.find((i) => i.id === id) ?? null : null);
+export type { LibItem };
+export { LIB_CSS_VERSION };
+const BY_ID = new Map(LIB_INDEX.map((i) => [i.id, i]));
+export const libItem = (id: unknown): LibItem | null => (typeof id === "string" ? BY_ID.get(id) ?? null : null);

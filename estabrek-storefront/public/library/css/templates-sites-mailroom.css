@@ -1,0 +1,831 @@
+/* templates/sites/mailroom.tsx's classes (made by scripts/library/build-css.mjs: do not edit). */
+/*! tailwindcss v4.3.5 | MIT License | https://tailwindcss.com */
+.lx-f-templates-sites-mailroom .absolute {
+    position: absolute;
+  }
+.lx-f-templates-sites-mailroom .fixed {
+    position: fixed;
+  }
+.lx-f-templates-sites-mailroom .relative {
+    position: relative;
+  }
+.lx-f-templates-sites-mailroom .inset-0 {
+    inset: 0px;
+  }
+.lx-f-templates-sites-mailroom .inset-y-0 {
+    inset-block: 0px;
+  }
+.lx-f-templates-sites-mailroom .top-10 {
+    top: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-mailroom .right-2 {
+    right: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .bottom-2 {
+    bottom: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .bottom-4 {
+    bottom: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom .left-0 {
+    left: 0px;
+  }
+.lx-f-templates-sites-mailroom .left-2 {
+    left: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .left-4 {
+    left: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom .z-20 {
+    z-index: 20;
+  }
+.lx-f-templates-sites-mailroom .z-40 {
+    z-index: 40;
+  }
+.lx-f-templates-sites-mailroom .z-50 {
+    z-index: 50;
+  }
+.lx-f-templates-sites-mailroom .z-\[300\] {
+    z-index: 300;
+  }
+.lx-f-templates-sites-mailroom .z-\[400\] {
+    z-index: 400;
+  }
+.lx-f-templates-sites-mailroom .mx-1 {
+    margin-inline: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .mx-auto {
+    margin-inline: auto;
+  }
+.lx-f-templates-sites-mailroom .mt-1 {
+    margin-top: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .mt-2 {
+    margin-top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .mt-3 {
+    margin-top: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-mailroom .mt-5 {
+    margin-top: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-mailroom .mt-6 {
+    margin-top: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-mailroom .mb-1 {
+    margin-bottom: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .mb-4 {
+    margin-bottom: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom .ml-1 {
+    margin-left: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .ml-1\.5 {
+    margin-left: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-mailroom .ml-auto {
+    margin-left: auto;
+  }
+.lx-f-templates-sites-mailroom .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+.lx-f-templates-sites-mailroom .block {
+    display: block;
+  }
+.lx-f-templates-sites-mailroom .flex {
+    display: flex;
+  }
+.lx-f-templates-sites-mailroom .grid {
+    display: grid;
+  }
+.lx-f-templates-sites-mailroom .hidden {
+    display: none;
+  }
+.lx-f-templates-sites-mailroom .inline-block {
+    display: inline-block;
+  }
+.lx-f-templates-sites-mailroom .size-1\.5 {
+    width: calc(var(--spacing) * 1.5);
+    height: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-mailroom .size-2\.5 {
+    width: calc(var(--spacing) * 2.5);
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-mailroom .size-3 {
+    width: calc(var(--spacing) * 3);
+    height: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-mailroom .size-3\.5 {
+    width: calc(var(--spacing) * 3.5);
+    height: calc(var(--spacing) * 3.5);
+  }
+.lx-f-templates-sites-mailroom .size-4 {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom .size-5 {
+    width: calc(var(--spacing) * 5);
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-mailroom .size-8 {
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-mailroom .size-9 {
+    width: calc(var(--spacing) * 9);
+    height: calc(var(--spacing) * 9);
+  }
+.lx-f-templates-sites-mailroom .size-10 {
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-mailroom .size-12 {
+    width: calc(var(--spacing) * 12);
+    height: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-mailroom .size-14 {
+    width: calc(var(--spacing) * 14);
+    height: calc(var(--spacing) * 14);
+  }
+.lx-f-templates-sites-mailroom .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-mailroom .h-screen {
+    height: 100vh;
+  }
+.lx-f-templates-sites-mailroom .max-h-\[80vh\] {
+    max-height: 80vh;
+  }
+.lx-f-templates-sites-mailroom .min-h-0 {
+    min-height: 0px;
+  }
+.lx-f-templates-sites-mailroom .min-h-\[640px\] {
+    min-height: 640px;
+  }
+.lx-f-templates-sites-mailroom .w-48 {
+    width: calc(var(--spacing) * 48);
+  }
+.lx-f-templates-sites-mailroom .w-64 {
+    width: calc(var(--spacing) * 64);
+  }
+.lx-f-templates-sites-mailroom .w-full {
+    width: 100%;
+  }
+.lx-f-templates-sites-mailroom .max-w-2xl {
+    max-width: var(--container-2xl);
+  }
+.lx-f-templates-sites-mailroom .min-w-0 {
+    min-width: 0px;
+  }
+.lx-f-templates-sites-mailroom .flex-1 {
+    flex: 1;
+  }
+.lx-f-templates-sites-mailroom .shrink-0 {
+    flex-shrink: 0;
+  }
+.lx-f-templates-sites-mailroom .-translate-x-full {
+    --tw-translate-x: -100%;
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+.lx-f-templates-sites-mailroom .translate-x-0 {
+    --tw-translate-x: 0px;
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+.lx-f-templates-sites-mailroom .cursor-pointer {
+    cursor: pointer;
+  }
+.lx-f-templates-sites-mailroom .resize-none {
+    resize: none;
+  }
+.lx-f-templates-sites-mailroom .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-mailroom .flex-col {
+    flex-direction: column;
+  }
+.lx-f-templates-sites-mailroom .flex-wrap {
+    flex-wrap: wrap;
+  }
+.lx-f-templates-sites-mailroom .place-items-center {
+    place-items: center;
+  }
+.lx-f-templates-sites-mailroom .items-center {
+    align-items: center;
+  }
+.lx-f-templates-sites-mailroom .gap-0\.5 {
+    gap: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-mailroom .gap-1 {
+    gap: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .gap-1\.5 {
+    gap: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-mailroom .gap-2 {
+    gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .gap-3 {
+    gap: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-mailroom .gap-4 {
+    gap: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom :where(.space-y-2\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2.5) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-mailroom :where(.space-y-4 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-mailroom :where(.-space-x-2 > :not(:last-child)) {
+    --tw-space-x-reverse: 0;
+    margin-inline-start: calc(calc(var(--spacing) * -2) * var(--tw-space-x-reverse));
+    margin-inline-end: calc(calc(var(--spacing) * -2) * calc(1 - var(--tw-space-x-reverse)));
+  }
+.lx-f-templates-sites-mailroom .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+.lx-f-templates-sites-mailroom .overflow-hidden {
+    overflow: hidden;
+  }
+.lx-f-templates-sites-mailroom .overflow-y-auto {
+    overflow-y: auto;
+  }
+.lx-f-templates-sites-mailroom .rounded {
+    border-radius: 0.25rem;
+  }
+.lx-f-templates-sites-mailroom .rounded-2xl {
+    border-radius: var(--radius-2xl);
+  }
+.lx-f-templates-sites-mailroom .rounded-full {
+    border-radius: calc(infinity * 1px);
+  }
+.lx-f-templates-sites-mailroom .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
+.lx-f-templates-sites-mailroom .rounded-md {
+    border-radius: var(--radius-md);
+  }
+.lx-f-templates-sites-mailroom .rounded-xl {
+    border-radius: var(--radius-xl);
+  }
+.lx-f-templates-sites-mailroom .border {
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+  }
+.lx-f-templates-sites-mailroom .border-t {
+    border-top-style: var(--tw-border-style);
+    border-top-width: 1px;
+  }
+.lx-f-templates-sites-mailroom .border-b {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
+  }
+.lx-f-templates-sites-mailroom .border-b-2 {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 2px;
+  }
+.lx-f-templates-sites-mailroom .border-\[\#2f6fed\] {
+    border-color: var(--lx-2f6fed, #2f6fed);
+  }
+.lx-f-templates-sites-mailroom .border-slate-100 {
+    border-color: var(--color-slate-100);
+  }
+.lx-f-templates-sites-mailroom .border-slate-200 {
+    border-color: var(--color-slate-200);
+  }
+.lx-f-templates-sites-mailroom .border-transparent {
+    border-color: transparent;
+  }
+.lx-f-templates-sites-mailroom .bg-\[\#2f6fed\] {
+    background-color: var(--lx-2f6fed, #2f6fed);
+  }
+.lx-f-templates-sites-mailroom .bg-\[\#f3f5fa\] {
+    background-color: var(--lx-f3f5fa, #f3f5fa);
+  }
+.lx-f-templates-sites-mailroom .bg-black\/30 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 30%, transparent);
+    }
+  }
+.lx-f-templates-sites-mailroom .bg-blue-50 {
+    background-color: var(--color-blue-50);
+  }
+.lx-f-templates-sites-mailroom .bg-blue-50\/60 {
+    background-color: color-mix(in srgb, oklch(97% 0.014 254.604) 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-blue-50) 60%, transparent);
+    }
+  }
+.lx-f-templates-sites-mailroom .bg-blue-100 {
+    background-color: var(--color-blue-100);
+  }
+.lx-f-templates-sites-mailroom .bg-blue-500 {
+    background-color: var(--color-blue-500);
+  }
+.lx-f-templates-sites-mailroom .bg-emerald-500 {
+    background-color: var(--color-emerald-500);
+  }
+.lx-f-templates-sites-mailroom .bg-orange-500 {
+    background-color: var(--color-orange-500);
+  }
+.lx-f-templates-sites-mailroom .bg-slate-50 {
+    background-color: var(--color-slate-50);
+  }
+.lx-f-templates-sites-mailroom .bg-slate-50\/60 {
+    background-color: color-mix(in srgb, oklch(98.4% 0.003 247.858) 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-slate-50) 60%, transparent);
+    }
+  }
+.lx-f-templates-sites-mailroom .bg-slate-100 {
+    background-color: var(--color-slate-100);
+  }
+.lx-f-templates-sites-mailroom .bg-slate-400 {
+    background-color: var(--color-slate-400);
+  }
+.lx-f-templates-sites-mailroom .bg-slate-800 {
+    background-color: var(--color-slate-800);
+  }
+.lx-f-templates-sites-mailroom .bg-slate-900 {
+    background-color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-mailroom .bg-white {
+    background-color: var(--color-white);
+  }
+.lx-f-templates-sites-mailroom .bg-white\/10 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-mailroom .bg-linear-to-br {
+    --tw-gradient-position: to bottom right;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to bottom right in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-mailroom .from-amber-300 {
+    --tw-gradient-from: var(--color-amber-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-cyan-400 {
+    --tw-gradient-from: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-emerald-400 {
+    --tw-gradient-from: var(--color-emerald-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-fuchsia-400 {
+    --tw-gradient-from: var(--color-fuchsia-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-lime-300 {
+    --tw-gradient-from: var(--color-lime-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-pink-400 {
+    --tw-gradient-from: var(--color-pink-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-rose-400 {
+    --tw-gradient-from: var(--color-rose-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-sky-400 {
+    --tw-gradient-from: var(--color-sky-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .from-violet-500 {
+    --tw-gradient-from: var(--color-violet-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-blue-500 {
+    --tw-gradient-to: var(--color-blue-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-cyan-400 {
+    --tw-gradient-to: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-emerald-500 {
+    --tw-gradient-to: var(--color-emerald-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-indigo-400 {
+    --tw-gradient-to: var(--color-indigo-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-orange-300 {
+    --tw-gradient-to: var(--color-orange-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-rose-500 {
+    --tw-gradient-to: var(--color-rose-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-teal-300 {
+    --tw-gradient-to: var(--color-teal-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-violet-400 {
+    --tw-gradient-to: var(--color-violet-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .to-yellow-200 {
+    --tw-gradient-to: var(--color-yellow-200);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-mailroom .fill-amber-400 {
+    fill: var(--color-amber-400);
+  }
+.lx-f-templates-sites-mailroom .fill-current {
+    fill: currentcolor;
+  }
+.lx-f-templates-sites-mailroom .p-2 {
+    padding: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .p-3 {
+    padding: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-mailroom .p-4 {
+    padding: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom .p-16 {
+    padding: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-mailroom .px-1 {
+    padding-inline: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .px-1\.5 {
+    padding-inline: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-mailroom .px-2 {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .px-3 {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-mailroom .px-4 {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-mailroom .px-5 {
+    padding-inline: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-mailroom .py-0\.5 {
+    padding-block: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-mailroom .py-1 {
+    padding-block: var(--spacing);
+  }
+.lx-f-templates-sites-mailroom .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-mailroom .py-2 {
+    padding-block: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .py-2\.5 {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-mailroom .py-3 {
+    padding-block: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-mailroom .py-3\.5 {
+    padding-block: calc(var(--spacing) * 3.5);
+  }
+.lx-f-templates-sites-mailroom .pt-0\.5 {
+    padding-top: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-mailroom .pb-2 {
+    padding-bottom: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-mailroom .text-center {
+    text-align: center;
+  }
+.lx-f-templates-sites-mailroom .text-left {
+    text-align: left;
+  }
+.lx-f-templates-sites-mailroom .font-display {
+    font-family: var(--font-display);
+  }
+.lx-f-templates-sites-mailroom .font-sans {
+    font-family: var(--font-sans);
+  }
+.lx-f-templates-sites-mailroom .text-2xl {
+    font-size: var(--text-2xl);
+    line-height: var(--tw-leading, var(--text-2xl--line-height));
+  }
+.lx-f-templates-sites-mailroom .text-sm {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+.lx-f-templates-sites-mailroom .text-xl {
+    font-size: var(--text-xl);
+    line-height: var(--tw-leading, var(--text-xl--line-height));
+  }
+.lx-f-templates-sites-mailroom .text-xs {
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+.lx-f-templates-sites-mailroom .text-\[10px\] {
+    font-size: 10px;
+  }
+.lx-f-templates-sites-mailroom .leading-relaxed {
+    --tw-leading: var(--leading-relaxed);
+    line-height: var(--leading-relaxed);
+  }
+.lx-f-templates-sites-mailroom .font-bold {
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
+.lx-f-templates-sites-mailroom .font-medium {
+    --tw-font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium);
+  }
+.lx-f-templates-sites-mailroom .font-semibold {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
+.lx-f-templates-sites-mailroom .tracking-tight {
+    --tw-tracking: var(--tracking-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+.lx-f-templates-sites-mailroom .tracking-wider {
+    --tw-tracking: var(--tracking-wider);
+    letter-spacing: var(--tracking-wider);
+  }
+.lx-f-templates-sites-mailroom .whitespace-pre-line {
+    white-space: pre-line;
+  }
+.lx-f-templates-sites-mailroom .text-\[\#2f6fed\] {
+    color: var(--lx-2f6fed, #2f6fed);
+  }
+.lx-f-templates-sites-mailroom .text-amber-400 {
+    color: var(--color-amber-400);
+  }
+.lx-f-templates-sites-mailroom .text-blue-300 {
+    color: var(--color-blue-300);
+  }
+.lx-f-templates-sites-mailroom .text-blue-700 {
+    color: var(--color-blue-700);
+  }
+.lx-f-templates-sites-mailroom .text-blue-900 {
+    color: var(--color-blue-900);
+  }
+.lx-f-templates-sites-mailroom .text-pink-500 {
+    color: var(--color-pink-500);
+  }
+.lx-f-templates-sites-mailroom .text-rose-500 {
+    color: var(--color-rose-500);
+  }
+.lx-f-templates-sites-mailroom .text-slate-200 {
+    color: var(--color-slate-200);
+  }
+.lx-f-templates-sites-mailroom .text-slate-300 {
+    color: var(--color-slate-300);
+  }
+.lx-f-templates-sites-mailroom .text-slate-400 {
+    color: var(--color-slate-400);
+  }
+.lx-f-templates-sites-mailroom .text-slate-600 {
+    color: var(--color-slate-600);
+  }
+.lx-f-templates-sites-mailroom .text-slate-700 {
+    color: var(--color-slate-700);
+  }
+.lx-f-templates-sites-mailroom .text-slate-800 {
+    color: var(--color-slate-800);
+  }
+.lx-f-templates-sites-mailroom .text-slate-900 {
+    color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-mailroom .text-white {
+    color: var(--color-white);
+  }
+.lx-f-templates-sites-mailroom .uppercase {
+    text-transform: uppercase;
+  }
+.lx-f-templates-sites-mailroom .tabular-nums {
+    --tw-numeric-spacing: tabular-nums;
+    font-variant-numeric: var(--tw-ordinal, ) var(--tw-slashed-zero, ) var(--tw-numeric-figure, ) var(--tw-numeric-spacing, ) var(--tw-numeric-fraction, );
+  }
+.lx-f-templates-sites-mailroom .accent-\[\#2f6fed\] {
+    accent-color: var(--lx-2f6fed, #2f6fed);
+  }
+.lx-f-templates-sites-mailroom .opacity-30 {
+    opacity: 30%;
+  }
+.lx-f-templates-sites-mailroom .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .shadow-md {
+    --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 2px 4px -2px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .shadow-sm {
+    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .shadow-xl {
+    --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 8px 10px -6px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .ring {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .ring-1 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .ring-2 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .shadow-blue-500\/30 {
+    --tw-shadow-color: color-mix(in srgb, oklch(62.3% 0.214 259.815) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-shadow-color: color-mix(in oklab, color-mix(in oklab, var(--color-blue-500) 30%, transparent) var(--tw-shadow-alpha), transparent);
+    }
+  }
+.lx-f-templates-sites-mailroom .ring-slate-200 {
+    --tw-ring-color: var(--color-slate-200);
+  }
+.lx-f-templates-sites-mailroom .ring-white {
+    --tw-ring-color: var(--color-white);
+  }
+.lx-f-templates-sites-mailroom .filter {
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+.lx-f-templates-sites-mailroom .transition {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-mailroom .transition-transform {
+    transition-property: transform, translate, scale, rotate;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-mailroom .outline-none {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+.lx-f-templates-sites-mailroom .focus-within\:border-\[\#2f6fed\]:focus-within {
+    border-color: var(--lx-2f6fed, #2f6fed);
+  }
+.lx-f-templates-sites-mailroom .focus-within\:ring-2:focus-within {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-mailroom .focus-within\:ring-\[\#2f6fed\]\/40:focus-within {
+    --tw-ring-color: color-mix(in oklab, var(--lx-2f6fed, #2f6fed) 40%, transparent);
+  }
+@media (hover: hover) {
+    .lx-f-templates-sites-mailroom .hover\:bg-slate-50:hover {
+      background-color: var(--color-slate-50);
+    }
+    .lx-f-templates-sites-mailroom .hover\:bg-slate-100:hover {
+      background-color: var(--color-slate-100);
+    }
+    .lx-f-templates-sites-mailroom .hover\:bg-slate-200:hover {
+      background-color: var(--color-slate-200);
+    }
+    .lx-f-templates-sites-mailroom .hover\:shadow-\[inset_3px_0_0_\#2f6fed\]:hover {
+      --tw-shadow: inset 3px 0 0 var(--tw-shadow-color, var(--lx-2f6fed, #2f6fed));
+      box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    }
+  }
+.lx-f-templates-sites-mailroom .disabled\:opacity-40:disabled {
+    opacity: 40%;
+  }
+@media (width >= 40rem) {
+    .lx-f-templates-sites-mailroom .sm\:left-auto {
+      left: auto;
+    }
+    .lx-f-templates-sites-mailroom .sm\:grid {
+      display: grid;
+    }
+    .lx-f-templates-sites-mailroom .sm\:inline {
+      display: inline;
+    }
+    .lx-f-templates-sites-mailroom .sm\:w-\[480px\] {
+      width: 480px;
+    }
+    .lx-f-templates-sites-mailroom .sm\:p-6 {
+      padding: calc(var(--spacing) * 6);
+    }
+    .lx-f-templates-sites-mailroom .sm\:px-4 {
+      padding-inline: calc(var(--spacing) * 4);
+    }
+  }
+@media (width >= 48rem) {
+    .lx-f-templates-sites-mailroom .md\:static {
+      position: static;
+    }
+    .lx-f-templates-sites-mailroom .md\:z-auto {
+      z-index: auto;
+    }
+    .lx-f-templates-sites-mailroom .md\:hidden {
+      display: none;
+    }
+    .lx-f-templates-sites-mailroom .md\:w-56 {
+      width: calc(var(--spacing) * 56);
+    }
+    .lx-f-templates-sites-mailroom .md\:translate-x-0 {
+      --tw-translate-x: 0px;
+      translate: var(--tw-translate-x) var(--tw-translate-y);
+    }
+  }
+@media (width >= 64rem) {
+    .lx-f-templates-sites-mailroom .lg\:flex {
+      display: flex;
+    }
+    .lx-f-templates-sites-mailroom .lg\:hidden {
+      display: none;
+    }
+    .lx-f-templates-sites-mailroom .lg\:max-w-\[460px\] {
+      max-width: 460px;
+    }
+  }
+@media (width >= 80rem) {
+    .lx-f-templates-sites-mailroom .xl\:block {
+      display: block;
+    }
+  }
+.lx-scope.lx-f-templates-sites-mailroom {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope.lx-f-templates-sites-mailroom {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-mailroom ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope.lx-f-templates-sites-mailroom {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-mailroom *, .lx-f-templates-sites-mailroom *::before, .lx-f-templates-sites-mailroom *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-f-templates-sites-mailroom .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-mailroom .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-mailroom .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-mailroom .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-mailroom .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-mailroom .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-mailroom .synth-grid, .lx-f-templates-sites-mailroom .pixel-ground {
+    animation: none;
+  }
+}
+.lx-f-templates-sites-mailroom .site [id] {
+  scroll-margin-top: 5rem;
+}
+.lx-f-templates-sites-mailroom .no-scrollbar {
+  scrollbar-width: none;
+}
+.lx-f-templates-sites-mailroom .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

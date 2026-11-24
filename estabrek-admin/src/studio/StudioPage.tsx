@@ -83,6 +83,7 @@ import { BLOCK_KINDS } from "./blockDefaults";
 import { ChartPanel, ClockPanel, InstrumentPanel, StickyPanel } from "./CreativePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { LibraryPanel } from "./LibraryPanel";
+import { LibraryBrowser } from "./LibraryBrowser";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
 import { AddPanel } from "./AddPanel";
@@ -366,6 +367,7 @@ function StudioDocument() {
   useEffect(() => setSiteSel(null), [selected]);
   const [addWhere, setAddWhere] = useState<Where>("after");
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   /** A picture or clip being chosen for something about to be added. */
   const [asked, setAsked] = useState<{ media: "image" | "video"; then: (url: string) => void } | null>(null);
   const [askedUrl, setAskedUrl] = useState("");
@@ -3821,6 +3823,7 @@ function StudioDocument() {
       onWhere={setAddWhere}
       onAdd={(k) => addKind(k)}
       onDragKind={(k) => (adding.current = k)}
+      onBrowse={() => setLibraryOpen(true)}
       onSplit={(w) => addSection(w, addWhereNow === "before" ? "before" : "after")}
       motionNode={motionNode}
       motion={motionNode?.motion as Motion | undefined}
@@ -4805,6 +4808,12 @@ function StudioDocument() {
             await saveTheme();
           }
         }}
+      />
+      <LibraryBrowser
+        open={libraryOpen}
+        busy={busy || !index}
+        onClose={() => setLibraryOpen(false)}
+        onPick={(id) => { setLibraryOpen(false); addKind(`lib:${id}`); }}
       />
       <TemplatesGallery
         open={templatesOpen}
