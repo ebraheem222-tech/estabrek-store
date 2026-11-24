@@ -15,7 +15,10 @@ import { applyButtonTheme, clearButtonTheme } from "../theme/buttonTheme";
 import { applySkin, useSkin } from "../theme/skin";
 import { Icons, NAV_GROUPS, type NavItem } from "./adminNav";
 import { ownsRose } from "../studio/storeThemes";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAdminOverview } from "../api/dashboard.api";
+import { getSettings, updateSettings } from "../api/settings.api";
+import { isSiteStore, showsShop } from "./siteKind";
 import { listSitePanels, type PanelIcon } from "../api/sitePanels.api";
 import { adminLang } from "../lib/lang";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -283,11 +286,30 @@ export default function AdminLayout() {
 
   // The rose design's own pages (its guide) show only in the store that owns it.
   const roseOwner = ownsRose(qSettings.data?.header);
+  // A whole site that sells nothing: the shop's pages tucked away until its owner asks for them (siteKind.ts).
+  const siteStore = isSiteStore(qSettings.data?.header);
+  const seesCounts = hasPermission("dashboard:read");
+  const overview = useQuery({ queryKey: ["admin", "overview"], queryFn: getAdminOverview, staleTime: 30_000, enabled: siteStore && seesCounts });
+  const products: number | null | undefined = !seesCounts || overview.isError ? null : (overview.data?.counts?.products as number | undefined);
+  const shopShown = showsShop(qSettings.data?.header, products);
+  const qc = useQueryClient();
+  const [showingShop, setShowingShop] = useState(false);
+  const showShop = async () => {
+    setShowingShop(true);
+    try {
+      const latest = await getSettings();
+      await updateSettings({ header: { ...((latest.header ?? {}) as Record<string, unknown>), adminShop: true } } as never);
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+    } finally {
+      setShowingShop(false);
+    }
+  };
   const canViewNavItem = useCallback(
     (item: NavItem): boolean =>
       (!item.roseOnly || roseOwner) &&
+      (!item.shop || shopShown) &&
       (!item.requirePermissions?.length || item.requirePermissions.every((permission) => hasPermission(permission))),
-    [hasPermission, roseOwner]
+    [hasPermission, roseOwner, shopShown]
   );
   const can = useCallback((p: "orders:read" | "catalog:read" | "catalog:write") => hasPermission(p), [hasPermission]);
 
@@ -353,6 +375,19 @@ export default function AdminLayout() {
               {navGroups.map((group) => (
                 <NavGroup key={group.id} title={group.title} items={group.items} collapsed={collapsed} />
               ))}
+              {/* The shop's pages, tucked away from a site that sells nothing: one click brings them back. */}
+              {!shopShown && !collapsed && products !== undefined && hasPermission("settings:write") ? (
+                <button
+                  type="button"
+                  data-testid="show-shop"
+                  onClick={(event) => { event.stopPropagation(); void showShop(); }}
+                  disabled={showingShop}
+                  title={say("موقعك ما بيبيع إشي هلّق، فأقسام المتجر مخبّاية. بترجعهم بكبسة.|Your site sells nothing yet, so the shop's sections are tucked away. One click brings them back.|האתר שלך עוד לא מוכר כלום, אז חלקי החנות מוסתרים. לחיצה אחת מחזירה אותם.")}
+                  className="w-full rounded-xl border border-dashed border-white/[0.12] px-3 py-2.5 text-start text-xs text-white/55 hover:text-white hover:border-white/25 transition-colors"
+                >
+                  {say("＋ أقسام المتجر (منتجات، طلبات، مخزون)|+ The shop's sections (products, orders, stock)|+ חלקי החנות (מוצרים, הזמנות, מלאי)")}
+                </button>
+              ) : null}
             </div>
 
             {/* User + look */}
@@ -498,9 +533,9 @@ export default function AdminLayout() {
 
         <MobileTabBar
           ordersBadge={ordersBadge}
-          canOrders={canSeeOrders}
-          canAddProduct={hasPermission("catalog:write")}
-          canProducts={hasPermission("catalog:read")}
+          canOrders={canSeeOrders && shopShown}
+          canAddProduct={hasPermission("catalog:write") && shopShown}
+          canProducts={hasPermission("catalog:read") && shopShown}
           onSearch={() => setPaletteOpen(true)}
           onMenu={() => setMobileOpen(true)}
         />
