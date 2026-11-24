@@ -276,7 +276,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs text-white/55">{tr("اسم النوع", "Type name")}</span>
-            <input className={`${field} ${tried && nameMissing ? "border-red-500/60" : ""}`} value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder={tr("مثلاً: عباية، تذكرة، كورس", "e.g. abaya, ticket, course")} />
+            <input className={`${field} ${tried && nameMissing ? "border-red-500/60" : ""}`} value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder={tr("مثلاً: جهاز، تذكرة، كورس", "e.g. device, ticket, course")} />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-white/55">{tr("وصف قصير (اختياري)", "Short description (optional)")}</span>
@@ -357,7 +357,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
                       className={`${field} ${tried && problems[f.key] && !f.label.trim() ? "border-red-500/60" : ""}`}
                       value={f.label}
                       onChange={(e) => setField(i, { label: e.target.value })}
-                      placeholder={tr("اسم الحقل، مثلاً: القماش", "Field name, e.g. fabric")}
+                      placeholder={tr("اسم الحقل، مثلاً: المادة", "Field name, e.g. material")}
                     />
                     <select aria-label={tr("نوع الحقل", "Field kind")} className={field} value={f.kind} onChange={(e) => setField(i, { kind: e.target.value as FieldKind })}>
                       {FIELD_KINDS.map((k) => (
@@ -386,7 +386,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
                       className={`mt-2 w-full rounded-xl border bg-white/[0.03] p-2 text-sm ${tried && problems[f.key] && f.label.trim() ? "border-red-500/60" : "border-white/[0.08]"}`}
                       value={f.optionsText ?? ""}
                       onChange={(e) => setField(i, { optionsText: e.target.value })}
-                      placeholder={tr("كل اختيار بسطر، مثلاً:\nكريب\nشيفون", "One choice per line, e.g.:\nCrepe\nChiffon")}
+                      placeholder={tr("كل اختيار بسطر، مثلاً:\nصغير\nكبير", "One choice per line, e.g.:\nSmall\nLarge")}
                     />
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">

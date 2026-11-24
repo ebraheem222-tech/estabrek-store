@@ -11,6 +11,7 @@ import { getSettings, updateSettings } from "../../api/settings.api";
 import { getApiErrorMessage } from "../../api/http";
 import { useSettings } from "../../hooks/useSettings";
 import { useAuth } from "../../hooks/useAuth";
+import { useRoseOwner } from "../../hooks/useRoseOwner";
 import { toast } from "../../lib/toast";
 import {
   normalizeScarcity,
@@ -25,6 +26,8 @@ import {
 import { tr } from "@/lib/words";
 
 export function ScarcityCard() {
+  // Razan (the rose design's guide) helps shoppers order in its store alone.
+  const rose = useRoseOwner();
   const qc = useQueryClient();
   const settings = useSettings();
   const { hasPermission } = useAuth();
@@ -125,7 +128,7 @@ export function ScarcityCard() {
                 <input type="checkbox" className="mt-1" checked={draft.nearPrice} onChange={(e) => set({ nearPrice: e.target.checked })} />
                 <span>
                   {tr("جنب السعر", "Next to the price")}
-                  <span className="block text-xs text-white/50">{tr("لما الزبون يختار المقاس، ومع رزان وهي بتساعده يطلب", "When the customer picks a size, and with Razan while she helps them order")}</span>
+                  <span className="block text-xs text-white/50">{rose ? tr("لما الزبون يختار المقاس، ومع رزان وهي بتساعده يطلب", "When the customer picks a size, and with Razan while she helps them order") : tr("لما الزبون يختار المقاس", "When the customer picks a size")}</span>
                 </span>
               </label>
             </fieldset>

@@ -57,8 +57,10 @@ export function Field({ label, value, multiline, onSave, testId, maxLength }: { 
   );
 }
 
-export function SectionSettings({ type, data, words, busy, onSet }: {
+export function SectionSettings({ type, data, words, busy, onSet, rose = false }: {
   type: string;
+  /** The store wears the rose design: its opening's own scenes (the film, the fabric, the particles, Razan's story) are offered. */
+  rose?: boolean;
   /** The section's data in the main language (switches, colours). */
   data: Record<string, unknown>;
   /** The section's words in the language being edited. */
@@ -95,7 +97,7 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
         // A custom HTML section stays an old section; its HTML is edited here (the shop cleans it before showing it).
         <Field label={tr("الـ HTML تبع القسم", "The section's HTML")} multiline value={typeof words.html === "string" ? words.html : ""} onSave={(v) => onSet(["html"], v, true)} testId="studio-custom-html" />
       ) : null}
-      {type === "HERO" ? (
+      {type === "HERO" && rose ? (
         <div className="space-y-2 border-t border-white/[0.06] pt-3">
           {toggle("roseHeroFilm", tr("فيلم الافتتاح مع السكرول", "The scroll film opening"))}
           {toggle("roseVideoEnabled", tr("الفيديو تحت الافتتاح", "The clip under the opening"))}

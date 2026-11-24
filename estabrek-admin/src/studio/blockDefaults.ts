@@ -208,7 +208,7 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): Pa
         id: id("flipcard"), type: "flipBox",
         props: {
           title: one(lang, w("قطعة الموسم", "This season's piece", "הפריט של העונה")), text: one(lang, w("مرّري فوقها لتشوفي أكتر", "Hover to see more", "העבירו מעליו כדי לראות עוד")), icon: "sparkle",
-          backTitle: one(lang, w("مصنوعة بحب", "Made with care", "נעשה באהבה")), backText: one(lang, w("قماش ناعم وقصّة مريحة لكل يوم.", "Soft fabric and an easy cut for every day.", "בד רך וגזרה נוחה לכל יום.")),
+          backTitle: one(lang, w("مصنوعة بحب", "Made with care", "נעשה באהבה")), backText: one(lang, w("جودة بتدوم وتفاصيل مدروسة لكل يوم.", "Quality that lasts, and details thought through for every day.", "איכות שנשארת, ופרטים מחושבים לכל יום.")),
           button: one(lang, w("تسوّقي", "Shop now", "לקנייה")), href: "/shop", effect: "flip", direction: "start", height: 300,
           ...(src ? { image: src } : {}),
         },

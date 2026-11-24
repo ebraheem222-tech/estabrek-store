@@ -46,9 +46,9 @@ export const POPULARITY_TEXT: Record<string, string> = {
 };
 
 export const SECTION_TEXT: Record<MotionSection, { label: string; note: string }> = {
-  hero: { label: "فيلم البداية (الشال)", note: "الشال اللي بيطير وبيلتف حجاب مع السكرول." },
+  hero: { label: "فيلم البداية", note: "الفيلم اللي بيمشي مع السكرول بأول الصفحة." },
   opening: { label: "افتتاحية الصورة", note: "صورة البداية لما الفيلم مش شغّال." },
-  study: { label: "دراسة القماش (3D)", note: "الحجاب اللي بيلف مع السكرول وفصوله." },
+  study: { label: "المشهد ثلاثي الأبعاد (3D)", note: "المشهد اللي بيلف مع السكرول وفصوله." },
   seasons: { label: "الفصول (3D)", note: "الشتاء والربيع والصيف والخريف." },
   collections: { label: "عوالم المجموعات (3D)", note: "الإكسسوارات والأطفال والبخور." },
   campaign: { label: "فيديو الحملة", note: "الفيديو بعد البداية، بيمشي مع السكرول." },

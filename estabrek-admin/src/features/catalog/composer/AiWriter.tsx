@@ -63,7 +63,7 @@ export function AiWriter({ draft, update, type, categoryName }: Props) {
         </button>
         <span className="text-xs text-white/55">{images.length ? tr(`من ${images.length} صور — المراجعة قبل ما يتغيّر إشي.`, "From {0} photos — you check it before anything changes.", [images.length]) : tr("لازم تنرفع صورة وحدة على الأقل أول.", "Upload at least one photo first.")}</span>
       </div>
-      <input className={cn(fieldCls, "mt-2 h-10 text-sm")} value={notes} maxLength={600} onChange={(e) => setNotes(e.target.value)} placeholder={tr("ملاحظة للكتابة (اختياري): القماش، الطول، لمين مناسبة…", "A note for the writing (optional): fabric, length, who it suits…")} aria-label={tr("ملاحظة للكتابة", "A note for the writing")} />
+      <input className={cn(fieldCls, "mt-2 h-10 text-sm")} value={notes} maxLength={600} onChange={(e) => setNotes(e.target.value)} placeholder={tr("ملاحظة للكتابة (اختياري): المادة، الحجم، لمين مناسب…", "A note for the writing (optional): material, size, who it suits…")} aria-label={tr("ملاحظة للكتابة", "A note for the writing")} />
 
       {result ? (
         <div className="mt-3 space-y-2 text-sm" data-testid="ai-writer-result">

@@ -62,7 +62,7 @@ export function TypeFieldsBlock({
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-white/45">{tr("هالنوع ما إله حقول بعد. الحقول (مثل القماش أو الطول) بتنضاف من «إدارة الأنواع والحقول».", "This type has no fields yet. Add fields (like fabric or length) in “Manage types and fields”.")}</p>
+        <p className="mt-3 text-xs text-white/45">{tr("هالنوع ما إله حقول بعد. الحقول (مثل المادة أو الحجم) بتنضاف من «إدارة الأنواع والحقول».", "This type has no fields yet. Add fields (like material or size) in “Manage types and fields”.")}</p>
       )}
 
       {active.fulfillment && active.fulfillment !== "SHIPPING" ? (

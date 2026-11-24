@@ -3258,6 +3258,7 @@ function StudioDocument() {
               words={(fieldValue(selSection, shopLang, main, []) ?? {}) as Record<string, unknown>}
               busy={busy}
               onSet={(path, value, inLanguage) => void setField(selSection.id, path, value, inLanguage ? shopLang : main)}
+              rose={wearsRose(settings.data?.header)}
             />
             <ConvertPanel section={selSection as OldSection} main={main} rose={roseOf(selSection as OldSection)} busy={busy} onConvert={() => convertOld([selected!])} />
           </>

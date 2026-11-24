@@ -259,7 +259,8 @@ const NAV_DISCOUNTS: NavItem[] = [
 const NAV_SITE: NavItem[] = [
   { to: "/admin/features", label: tr("الميزات", "Features"), icon: Icons.toggles, requirePermissions: ["settings:read"] },
   { to: "/admin/razan", label: tr("رزان (دليلة المتجر)", "Rose (store guide)"), icon: Icons.chatbot, requirePermissions: ["settings:read"], roseOnly: true, noLanding: true },
-  { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"], shop: true },
+  // Razan offers it (only the rose design's store has her).
+  { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"], shop: true, roseOnly: true },
   { to: "/admin/ai", label: tr("الذكاء الاصطناعي ✨", "AI ✨"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
   { to: "/admin/ai/social", label: say("منشورات السوشال ✨|Social posts ✨|פוסטים לרשתות ✨"), icon: Icons.pages, requirePermissions: ["catalog:read"], shop: true },
   { to: "/admin/ai/eval", label: say("جرّب النموذج 🧪|Try the model 🧪|לנסות את המודל 🧪"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },

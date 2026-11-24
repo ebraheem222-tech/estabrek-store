@@ -5266,4 +5266,18 @@ export const HE: Record<string, string> = {
   "The page didn't go back": "העמוד לא חזר",
   "Your own design": "העיצוב שלך",
   "your store": "החנות שלך",
+  // Any store's words where the admin spoke of a clothes shop (clean platform plan, phase 4.2).
+  "Customers who asked for a size or colour that isn't there, or a new product (with photos). Look for it, link the product when it arrives, and tell them in one click.": "לקוחות שביקשו מידה או צבע שאין, או מוצר חדש (עם תמונות). לחפש, לקשר את המוצר כשהוא מגיע, ולעדכן אותם בלחיצה.",
+  "A “Your size isn't there?” button shows on the product page, “Ask us for it” in search, and the /request page.": "כפתור „המידה שלך לא כאן?” מופיע בעמוד המוצר, „בקשו מאיתנו” בחיפוש, ועמוד ‎/request.",
+  "When the customer picks a size": "כשהלקוח בוחר מידה",
+  "e.g. the product's name with its best feature": "למשל: שם המוצר עם התכונה הכי טובה שלו",
+  "What it's made of, how it's used, a tip for choosing…": "ממה הוא עשוי, איך משתמשים בו, טיפ לבחירה…",
+  "What it is, its colours or sizes, and delivery… in two sentences": "מה הוא, הצבעים או הגדלים שלו, והמשלוח… בשני משפטים",
+  "e.g. device, ticket, course": "למשל: מכשיר, כרטיס, קורס",
+  "Field name, e.g. material": "שם השדה, למשל: חומר",
+  "One choice per line, e.g.:\nSmall\nLarge": "בחירה אחת בכל שורה, למשל:\nקטן\nגדול",
+  "From a list: material": "מתוך רשימה: חומר",
+  "This type has no fields yet. Add fields (like material or size) in “Manage types and fields”.": "לסוג הזה אין עדיין שדות. מוסיפים שדות (כמו חומר או גודל) ב„ניהול סוגים ושדות”.",
+  "A note for the writing (optional): material, size, who it suits…": "הערה לכתיבה (לא חובה): חומר, גודל, למי זה מתאים…",
+  "e.g. SKU-123 or a product's name...": "למשל: SKU-123 או שם של מוצר...",
 };
