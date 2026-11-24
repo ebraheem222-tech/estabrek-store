@@ -12,6 +12,7 @@ import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
 import { tr } from "@/lib/words";
 import { useStoreIdentity } from "@/store/storeIdentity";
+import { useStoreLook } from "@/store/storeLook";
 import { useLanguage } from "./Language";
 
 type LookPiece = { id: string; title: string; slug: string; image: string | null; price: number | null; colorName: string | null };
@@ -19,6 +20,9 @@ type LookPiece = { id: string; title: string; slug: string; image: string | null
 export function RoseCompleteLook({ productId, colorHex, colorName }: { productId: string; colorHex?: string | null; colorName?: string | null }) {
   const { language: lang } = useLanguage();
   const { currency } = useStoreIdentity();
+  // A store on a theme shows the pieces as its theme's cards; the rose design keeps its own row.
+  const look = useStoreLook();
+  const card = look.theme && !look.rose ? look.theme.card : null;
   const box = useRef<HTMLElement>(null);
   const [near, setNear] = useState(false);
   const [pieces, setPieces] = useState<LookPiece[] | null>(null);
@@ -51,7 +55,24 @@ export function RoseCompleteLook({ productId, colorHex, colorName }: { productId
         <>
           <h2>{tr(lang, "✨ كمّلي اللبسة", "✨ Complete the look")}</h2>
           {colorName ? <p className="rose-look-sub">{tr(lang, `بألوان بتلبق مع ${colorName}`, "In colours that go with {0}", [colorName])}</p> : null}
-          <ul>
+          {card ? <div className="th-look-grid">
+            {pieces.map((p) => (
+              <div key={p.id} className="th-card-host" data-th-card={card}>
+                <article className="th-card">
+                  <Link className="th-card-link" href={`/p/${encodeURIComponent(p.slug)}${p.colorName ? `?c=${encodeURIComponent(p.colorName)}` : ""}`}>
+                    <div className="th-card-media">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {p.image ? <img className="th-cover th-card-main" src={cldUrl(p.image, { w: 480, h: 640, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="th-card-empty" />}
+                    </div>
+                    <div className="th-card-info">
+                      <h3 className="th-card-title">{p.title}</h3>
+                      {p.price != null ? <span className="th-card-price">{formatMoney(p.price, currency)}</span> : null}
+                    </div>
+                  </Link>
+                </article>
+              </div>
+            ))}
+          </div> : <ul>
             {pieces.map((p) => (
               <li key={p.id}>
                 <Link href={`/p/${encodeURIComponent(p.slug)}${p.colorName ? `?c=${encodeURIComponent(p.colorName)}` : ""}`}>
@@ -62,7 +83,7 @@ export function RoseCompleteLook({ productId, colorHex, colorName }: { productId
                 </Link>
               </li>
             ))}
-          </ul>
+          </ul>}
         </>
       ) : null}
     </section>

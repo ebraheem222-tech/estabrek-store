@@ -51,6 +51,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { usePictureFx } from "@/lib/usePictureFx";
 import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
+import { useStoreLook } from "@/store/storeLook";
 import { translatedTypeLabel } from "@/lib/localize";
 import type { Lang } from "@/lib/i18n";
 
@@ -63,6 +64,9 @@ type Crumb = { label: string; href: string };
  */
 export function RoseProduct({ product, crumbs, related }: { product: CatalogProduct; crumbs: Crumb[]; related: CatalogProduct[] }) {
   const { language: lang } = useLanguage();
+  // A store on a theme: the product's photo takes its theme's card shape (store-themes.css, "the product page").
+  const look = useStoreLook();
+  const themeCard = look.theme && !look.rose ? look.theme.card : undefined;
   const ar = lang === "ar";
   const items = useMemo(() => product.items ?? [], [product]);
   const [colorKey, setColorKey] = useState(() => (items[0] ? catalogItemKey(items[0], 0) : ""));
@@ -214,7 +218,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   // (cinematic.css). It follows the picture shown: another photo, another colour.
   usePictureFx(zoom, pageCfg.productPictureFx, currentImage);
   return (
-    <div className="rose-pdp">
+    <div className="rose-pdp" data-th-card={themeCard}>
       <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>
         {crumbs.map((c, i) => (
           <span key={`${c.href}-${i}`}>

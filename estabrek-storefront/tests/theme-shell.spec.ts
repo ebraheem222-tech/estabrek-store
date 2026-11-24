@@ -74,10 +74,12 @@ test("a store on a theme: none of the rose design's ornaments or pictures on its
   // A product: "complete the look" is a clothes shop's; any other store's words are plain.
   await open(page, "/p/rose-dress");
   const look = page.locator('[data-testid="complete-look"]');
-  if (await look.count()) {
-    await expect(look).toHaveAttribute("aria-label", "بيلبق معه");
-    await expect(look.locator("h2")).not.toContainText("اللبسة");
-  }
+  await expect(look).toHaveAttribute("aria-label", "بيلبق معه");
+  // The big photo takes the theme's card shape, and the pieces that go with it are the theme's cards.
+  await expect(page.locator(".rose-pdp[data-th-card]")).toHaveCount(1);
+  await look.scrollIntoViewIfNeeded();
+  await expect(look.locator(".th-look-grid .th-card").first()).toBeVisible();
+  await expect(look.locator("h2")).not.toContainText("اللبسة");
 });
 
 /**
@@ -153,6 +155,7 @@ test("Estabrek keeps all of its design's ornaments", async ({ page }) => {
   expect((await rosePinks(page)).length).toBeGreaterThan(5);
   await open(page, "/p/rose-dress");
   await expect(page.locator(".rose-pdp-backdrop")).toHaveCount(1);
+  await expect(page.locator(".rose-pdp[data-th-card]")).toHaveCount(0);
   // With no home of its own published, its own rose home.
   await page.request.post(`${API}/__test/identity`, { data: { cmsHome: false } });
   await settle(page);
