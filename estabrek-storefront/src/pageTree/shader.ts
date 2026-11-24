@@ -7,9 +7,9 @@
  */
 export const SHADER_KIND_LIST = [
   "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
-  "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel",
+  "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel", "gem",
   // Physics and generative canvases (fxEngines.ts), drawn in 2D.
-  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo",
+  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo", "earth", "solar",
 ] as const;
 export type ShaderKind = (typeof SHADER_KIND_LIST)[number];
 export type ShaderSpec = {

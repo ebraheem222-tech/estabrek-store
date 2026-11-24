@@ -3,6 +3,7 @@ import { checkTree } from "../lib/pageTree.js";
 import { applyOps, draftFromPage } from "../lib/pageDraft.js";
 import { readyCounters, readyOrbit, readyPaint, readyPortal } from "../../../estabrek-admin/src/studio/scrollTricks";
 import { SCROLL_EFFECTS } from "../../../estabrek-admin/src/studio/scrollEffects";
+import { readyBook3d, readyPhone3d, readyRing3d } from "../../../estabrek-admin/src/studio/spaceReady";
 
 // Scroll tricks: things travelling around a circle, an arc or a wave; numbers counting and lines
 // drawing with the scroll; the next section's edge; a picture through a growing window; a section
@@ -29,7 +30,7 @@ const sec = (props: Record<string, unknown>, children: Node[] = [], id = "s"): N
 
 describe("scroll tricks", () => {
   test.each(["ar", "en", "he"] as const)("the ready sections pass the page check in %s, nothing dropped", (lang) => {
-    for (const make of [readyOrbit, readyCounters, (l: typeof lang, i: ReturnType<typeof ids>) => readyPortal(l, i, "https://res.cloudinary.com/x/image/upload/pic.jpg"), readyPaint]) {
+    for (const make of [readyOrbit, readyCounters, (l: typeof lang, i: ReturnType<typeof ids>) => readyPortal(l, i, "https://res.cloudinary.com/x/image/upload/pic.jpg"), readyPaint, readyRing3d, readyBook3d, readyPhone3d]) {
       const made = make(lang, ids()) as Node;
       const r = checkTree(page([made]));
       expect(r.ok ? [] : r.issues).toEqual([]);

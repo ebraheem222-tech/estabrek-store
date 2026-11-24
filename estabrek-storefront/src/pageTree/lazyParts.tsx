@@ -21,6 +21,7 @@ export const ShaderView = early("./ShaderView", () => import("./ShaderView").the
 export const MarqueeSpeed = early("./PointerParts", () => import("./PointerParts").then((m) => m.MarqueeSpeed));
 export const FlashReveal = early("./PointerParts", () => import("./PointerParts").then((m) => m.FlashReveal));
 export const TrailView = early("./PointerParts", () => import("./PointerParts").then((m) => m.TrailView));
+export const Space3D = early("./Space3D", () => import("./Space3D").then((m) => m.Space3D));
 export const Model3dSpot = early("./Model3dSpot", () => import("./Model3dSpot").then((m) => m.Model3dSpot));
 export const PopupView = early("./Interactive", () => import("./Interactive").then((m) => m.PopupView));
 export const TocView = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.TocView));

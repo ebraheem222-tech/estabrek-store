@@ -39,6 +39,7 @@ export const SHADER_NAMES: Record<ShaderKind, string> = {
   oil: "زيت ملوّن|Oil film|שמן צבעוני",
   raymarch: "كرات سائلة 3D|Liquid 3D blobs|כדורים נוזליים בתלת ממד",
   tunnel: "نفق ضوئي|Light tunnel|מנהרת אור",
+  gem: "ماسة 3D بتلف وبتكسر الضو|A turning 3D diamond that splits the light|יהלום בתלת ממד שמפצל את האור",
   cloth: "علم من قماش حقيقي|Real cloth flag|דגל מבד אמיתי",
   murmuration: "سرب طيور|Flock of birds|להקת ציפורים",
   sand: "رمل بيتساقط|Falling sand|חול נופל",
@@ -51,6 +52,8 @@ export const SHADER_NAMES: Record<ShaderKind, string> = {
   koi: "بركة سمك كوي|Koi pond|בריכת קוי",
   field: "حقل خطوط بيأشّر عالماوس|Lines all pointing to the pointer|קווים שמצביעים על העכבר",
   goo: "كرات سائلة بتلزق ببعض|Gooey blobs that melt together|כדורים נוזליים שנדבקים",
+  earth: "كرة أرضية منقّطة وطيارات بين المدن|A dotted world with flights between cities|כדור ארץ מנוקד וטיסות בין ערים",
+  solar: "مجموعة شمسية|A solar system|מערכת השמש",
 };
 /** The kinds in two groups: WebGL shaders, then physics and generative canvases. */
 const GROUPS: Array<[string, ShaderKind[]]> = [

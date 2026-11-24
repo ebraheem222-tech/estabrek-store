@@ -14,8 +14,8 @@ afterEach(cleanup);
 describe("the library's shaders", () => {
   it("are the same list in the shop's settings, its GLSL and canvases, and the server's rules, each named, its colours 6-digit", () => {
     expect([...SHADER_KIND_LIST].sort()).toEqual([...Object.keys(SHADERS), ...Object.keys(FX_ENGINES)].sort());
-    expect(Object.keys(SHADERS)).toHaveLength(21);
-    expect(Object.keys(FX_ENGINES)).toHaveLength(12);
+    expect(Object.keys(SHADERS)).toHaveLength(22);
+    expect(Object.keys(FX_ENGINES)).toHaveLength(14);
     const server = readFileSync(resolve(process.cwd(), "../estabrek-store-backend/src/lib/pageTree.ts"), "utf8");
     const listed = /export const SHADER_KINDS = \[([^\]]*)\]/.exec(server)![1].match(/"([a-z]+)"/g)!.map((s) => s.slice(1, -1));
     expect(listed).toEqual([...SHADER_KIND_LIST]);
@@ -40,11 +40,11 @@ describe("a section's WebGL background panel", () => {
   const section = (props: Record<string, unknown> = {}): PageTreeNode => ({ id: "s1", type: "section", props: { contained: true, ...props }, children: [] });
   const last = (onOps: ReturnType<typeof vi.fn>) => (onOps.mock.calls.at(-1)![1] as Array<{ props: Record<string, unknown> }>)[0].props;
 
-  it("picks one of the 33 (21 shaders, 12 canvases), keeping the section's other settings", () => {
+  it("picks one of the 36 (22 shaders, 14 canvases), keeping the section's other settings", () => {
     const onOps = vi.fn();
     render(<ShaderPanel node={section()} busy={false} onOps={onOps} />);
     fireEvent.click(screen.getByRole("button", { expanded: false }));
-    expect(screen.getAllByTestId("studio-shader-kind")).toHaveLength(33);
+    expect(screen.getAllByTestId("studio-shader-kind")).toHaveLength(36);
     fireEvent.click(screen.getAllByTestId("studio-shader-kind").find((el) => el.dataset.kind === "ocean")!);
     expect(last(onOps)).toEqual({ contained: true, shader: { kind: "ocean" } });
     fireEvent.click(screen.getAllByTestId("studio-shader-kind").find((el) => el.dataset.kind === "koi")!);

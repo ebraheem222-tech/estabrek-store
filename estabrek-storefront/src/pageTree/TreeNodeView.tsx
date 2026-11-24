@@ -32,6 +32,7 @@ import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
 import { shaderOf } from "./shader";
 import { flashOf, trailOf } from "./pointerSpec";
+import { spaceOf } from "./spaceSpec";
 import { model3dOf } from "./model3d";
 import { BlockView, WORDS as BLOCK_WORDS } from "./blocks";
 import { spinFor } from "@/components/cinematic/spinData";
@@ -54,7 +55,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -291,6 +292,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // for each row the table's API answers this visitor.
       const list = node.type === "grid" ? liveOf(p.live, say) : null;
       const card = list ? node.children?.[0] : undefined;
+      // What it holds laid out in 3D: a ring, a helix, a cube, a book, a phone (Space3D.tsx, inside it).
+      const space = !list && node.type !== "columns" ? spaceOf(p.space) : null;
+      if (space) return <div className={cls(node)} {...mark}>{kids()}<Space3D spec={space} /></div>;
       if (list) return <div className={cls(node)} {...mark}>{before}{card ? <RowsView spec={list} lang={ctx.lang} signin={link("/account") ?? "/account"} prefix={(link("/__row__") ?? "/__row__").replace(/\/__row__$/, "")}><TreeNodeView node={card} ctx={{ ...ctx, inRows: true }} /></RowsView> : null}{fx}{after}</div>;
       return <div className={cls(node)} {...mark}>{kids()}</div>;
     }

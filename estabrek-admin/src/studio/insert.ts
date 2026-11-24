@@ -18,6 +18,7 @@ import { makeLiveSection, type LiveKind } from "./liveSections";
 import { readyScrollStory, readyScrollVideo, readyScrollZoom } from "./scrollScene";
 import { readyCover } from "./coverPin";
 import { readyCounters, readyOrbit, readyPaint, readyPortal } from "./scrollTricks";
+import { readyBook3d, readyPhone3d, readyRing3d } from "./spaceReady";
 import type { Extra, TreeIndex } from "./treeIndex";
 import { makeLibNode, type LibKind } from "./library";
 
@@ -131,7 +132,7 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /* ------------------------------------------------------------- ready blocks */
 
 /** Ready-made blocks: a few elements already put together. */
-export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer", "ready-scroll-video", "ready-scroll-story", "ready-scroll-zoom", "ready-cover", "ready-orbit", "ready-counters", "ready-portal", "ready-paint"] as const;
+export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer", "ready-scroll-video", "ready-scroll-story", "ready-scroll-zoom", "ready-cover", "ready-orbit", "ready-counters", "ready-portal", "ready-paint", "ready-ring3d", "ready-book3d", "ready-phone3d"] as const;
 export type ReadyKind = (typeof READY)[number];
 export type AddKind = NewKind | ReadyKind | ReferenceKind | LiveKind | LibKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
@@ -203,6 +204,12 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
       return readyPortal(lang, ids, src);
     case "ready-paint":
       return readyPaint(lang, ids);
+    case "ready-ring3d":
+      return readyRing3d(lang, ids);
+    case "ready-book3d":
+      return readyBook3d(lang, ids);
+    case "ready-phone3d":
+      return readyPhone3d(lang, ids);
     case "ready-header":
       return newHeader(lang, ids);
     case "ready-footer":

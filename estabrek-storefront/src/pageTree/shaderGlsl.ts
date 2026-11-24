@@ -553,6 +553,76 @@ void main(){
   col += mix(h, vec3(1.0), 0.6) * exp(-r * 9.0) * 0.9;
   gl_FragColor = vec4(u_bg + col, 1.0);
 }` },
+  // A raymarched diamond (the library's Diamond sites: Templates/src/sites/caratprism.jsx): a round brilliant that bends
+  // light back out in colour, turning; the pointer turns the eye around it. u_c1 its colour, u_c2 the light's.
+  gem: { bg: "#05060a", c1: "#f4f7ff", c2: "#9fb2ff", c3: "#1e2a44", frag: `
+#define PI 3.14159265
+mat2 rot(float a){ float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+float gemD(vec3 p){
+  p.xz *= rot(u_time * 0.35);
+  float k = 1.08;
+  p /= k;
+  float a = atan(p.z, p.x), s8 = PI / 4.0;
+  float a1 = (floor(a / s8) + 0.5) * s8, a2 = floor(a / s8 + 0.5) * s8;
+  float r1 = dot(p.xz, vec2(cos(a1), sin(a1))), r2 = dot(p.xz, vec2(cos(a2), sin(a2)));
+  float d = max(r1, r2) - 1.0;
+  d = max(d, p.y - 0.36);
+  d = max(d, dot(vec2(r1, p.y), vec2(0.612, 0.791)) - 0.627);
+  d = max(d, dot(vec2(r2, p.y), vec2(0.677, 0.736)) - 0.692);
+  d = max(d, dot(vec2(r1, p.y), vec2(0.652, -0.758)) - 0.652);
+  d = max(d, dot(vec2(r2, p.y), vec2(0.707, -0.707)) - 0.707);
+  return d * k;
+}
+vec3 gemNormal(vec3 p){ vec2 e = vec2(0.0015, 0.0); return normalize(vec3(gemD(p + e.xyy) - gemD(p - e.xyy), gemD(p + e.yxy) - gemD(p - e.yxy), gemD(p + e.yyx) - gemD(p - e.yyx))); }
+vec3 env(vec3 d){
+  vec3 c = mix(u_bg * 1.4 + 0.02, u_c2 * 0.55, smoothstep(-0.4, 0.8, d.y));
+  c += vec3(4.0) * smoothstep(0.94, 0.98, dot(d, normalize(vec3(0.6, 0.75, 0.3))));
+  c += vec3(2.6, 2.7, 3.0) * smoothstep(0.9, 0.96, dot(d, normalize(vec3(-0.7, 0.45, 0.55))));
+  c += vec3(2.4) * smoothstep(0.97, 1.0, dot(d, normalize(vec3(0.15, 0.25, -1.0))));
+  c += vec3(2.0) * smoothstep(0.04, 0.0, abs(d.y - 0.5)) * smoothstep(-0.2, 0.4, d.x);
+  c += vec3(1.6) * smoothstep(0.03, 0.0, abs(d.x + 0.35)) * smoothstep(0.0, 0.5, d.y);
+  c += vec3(1.6) * pow(max(0.0, sin(atan(d.z, d.x) * 12.0)), 24.0) * smoothstep(0.05, 0.25, d.y) * smoothstep(0.65, 0.35, d.y);
+  return c;
+}
+vec3 shadeGem(vec3 p, vec3 rd, vec3 n){
+  float ior = 2.42;
+  float fres = 0.17 + 0.83 * pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
+  vec3 col = env(reflect(rd, n)) * fres;
+  vec3 rdi = refract(rd, n, 1.0 / ior), pi = p - n * 0.004, thru = vec3(1.0 - fres);
+  for (int b = 0; b < 4; b++){
+    float t = 0.0;
+    for (int i = 0; i < 40; i++){ float h = -gemD(pi + rdi * t); if (h < 0.0015) break; t += max(h, 0.003); }
+    vec3 pe = pi + rdi * t, ne = -gemNormal(pe);
+    thru *= u_c1;
+    vec3 o = refract(rdi, ne, ior);
+    if (dot(o, o) > 0.0){
+      vec3 oR = refract(rdi, ne, ior * 0.97), oB = refract(rdi, ne, ior * 1.03);
+      if (dot(oR, oR) == 0.0) oR = o;
+      if (dot(oB, oB) == 0.0) oB = o;
+      col += thru * vec3(env(oR).r, env(o).g, env(oB).b) * 0.9;
+      thru *= 0.35;
+    }
+    rdi = reflect(rdi, ne); pi = pe + ne * 0.004;
+  }
+  return col;
+}
+void main(){
+  vec2 uv = (gl_FragCoord.xy * 2.0 - u_res) / u_res.y;
+  float yaw = 0.5 + (u_mouse.x - 0.5) * 2.4, pitch = 0.38 + (u_mouse.y - 0.5) * 0.7;
+  vec3 ta = vec3(0.0, 0.05, 0.0);
+  vec3 ro = ta + 4.4 * vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
+  vec3 w = normalize(ta - ro), u = normalize(cross(w, vec3(0.0, 1.0, 0.0))), v = cross(u, w);
+  vec3 rd = normalize(uv.x * u + uv.y * v + 2.1 * w);
+  float vig = 1.0 - 0.175 * dot(uv, uv);
+  vec3 col = mix(u_bg, u_c3 * 0.7, smoothstep(-1.0, 1.2, uv.y)) * vig;
+  col += u_c3 * 0.5 * exp(-3.0 * length(uv - vec2(0.0, 0.1)));
+  float t = 0.0;
+  bool hit = false;
+  for (int i = 0; i < 80; i++){ float h = gemD(ro + rd * t); if (h < 0.0008 * t + 0.0004){ hit = true; break; } t += h * 0.95; if (t > 12.0) break; }
+  if (hit){ vec3 p = ro + rd * t; col = shadeGem(p, rd, gemNormal(p)); }
+  col = col / (1.0 + col * 0.55) * 1.12;
+  gl_FragColor = vec4(pow(col, vec3(0.92)), 1.0);
+}` },
 };
 
 export const SHADER_KINDS = Object.keys(SHADERS);

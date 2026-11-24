@@ -694,6 +694,166 @@ const goo: FxDef = {
   },
 };
 
-export const FX_ENGINES: Record<string, FxDef> = { cloth, murmuration, sand, magnetic, newton, flow, arcs, constellation, galaxy, koi, field, goo };
+/* ── Premium 08 · A world of dots (premium-b.jsx InteractiveGlobe): flights arc between cities; the pointer turns it ── */
+const CITIES: Array<[number, number]> = [[31.95, 35.93], [25.2, 55.27], [51.5, -0.12], [40.71, -74], [35.68, 139.69], [-23.55, -46.63], [30.04, 31.24], [1.35, 103.82], [52.52, 13.4], [-1.29, 36.82]];
+const ROUTES: Array<[number, number]> = [[0, 1], [0, 2], [2, 3], [1, 7], [7, 4], [0, 6], [6, 9], [3, 5], [8, 0], [2, 8]];
+const rad = (d: number) => (d * Math.PI) / 180;
+const vecOf = (lat: number, lon: number): [number, number, number] => [Math.cos(rad(lat)) * Math.sin(rad(lon)), Math.sin(rad(lat)), Math.cos(rad(lat)) * Math.cos(rad(lon))];
+// Made-up land, as the library draws it: a few waves over the sphere.
+const isLand = (lat: number, lon: number) => {
+  const a = rad(lon), b = rad(lat);
+  return Math.sin(a * 2 + 1.3) * Math.cos(b * 3) + Math.sin(a * 5 - b * 2) * 0.5 + Math.cos(b * 1.5 + a * 3) * 0.4 + Math.cos(b * 2.2) * 0.3 > 0.42;
+};
+let EARTH_DOTS: Array<[number, number, number]> | null = null;
+const earthDots = () => {
+  if (EARTH_DOTS) return EARTH_DOTS;
+  const out: Array<[number, number, number]> = [];
+  const n = 2600;
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1)) * 2, r = Math.sqrt(1 - y * y), th = i * 2.399963;
+    const v: [number, number, number] = [Math.cos(th) * r, y, Math.sin(th) * r];
+    if (isLand((Math.asin(v[1]) * 180) / Math.PI, (Math.atan2(v[0], v[2]) * 180) / Math.PI)) out.push(v);
+  }
+  return (EARTH_DOTS = out);
+};
+const earth: FxDef = {
+  bg: "#02030a", c1: "#94c5ff", c2: "#f472b6", c3: "#67e8f9",
+  draw({ ctx, t, w, h, s, bg, c1, c2, c3, pointer }) {
+    if (s.yaw === undefined) Object.assign(s, { yaw: -0.6, pitch: 0.35, vel: 0.004 });
+    // The pointer's side sets which way it turns and how fast; its height tips it.
+    const wantVel = pointer ? (pointer.x / w - 0.5) * 0.03 : 0.0025;
+    s.vel += (wantVel - s.vel) * 0.04;
+    s.yaw += s.vel;
+    if (pointer) s.pitch += (Math.max(-0.9, Math.min(0.9, (pointer.y / h - 0.5) * 1.4 + 0.2)) - s.pitch) * 0.04;
+    const R = Math.min(w * 0.42, h * 0.42), cx = w / 2, cy = h / 2;
+    const cyw = Math.cos(s.yaw), syw = Math.sin(s.yaw), cp = Math.cos(s.pitch), sp = Math.sin(s.pitch);
+    const proj = (v: number[]): [number, number, number] => {
+      const x = v[0] * cyw + v[2] * syw, z1 = -v[0] * syw + v[2] * cyw;
+      const y = v[1] * cp - z1 * sp, z = v[1] * sp + z1 * cp;
+      return [cx + x * R, cy - y * R, z];
+    };
+    ctx.fillStyle = css(bg);
+    ctx.fillRect(0, 0, w, h);
+    const g = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, R * 0.1, cx, cy, R * 1.25);
+    g.addColorStop(0, css(c3, 0.16));
+    g.addColorStop(0.75, css(mix(bg, c1, 0.25), 0.25));
+    g.addColorStop(1, css(bg, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 1.25, 0, Math.PI * 2);
+    ctx.fill();
+    for (const v of earthDots()) {
+      const [x, y, z] = proj(v);
+      if (z < -0.05) continue;
+      ctx.fillStyle = css(c1, 0.15 + z * 0.75);
+      ctx.fillRect(x - 1, y - 1, 1.6 + z, 1.6 + z);
+    }
+    ctx.lineWidth = 1.6;
+    ROUTES.forEach(([a, b], i) => {
+      const A = vecOf(CITIES[a][0], CITIES[a][1]), B = vecOf(CITIES[b][0], CITIES[b][1]);
+      const pts: Array<[number, number, number]> = [];
+      for (let k = 0; k <= 40; k++) {
+        const u = k / 40, lift = 1 + Math.sin(Math.PI * u) * 0.22;
+        const m = [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u, A[2] + (B[2] - A[2]) * u];
+        const len = Math.hypot(m[0], m[1], m[2]) || 1;
+        pts.push(proj([(m[0] / len) * lift, (m[1] / len) * lift, (m[2] / len) * lift]));
+      }
+      const head = (t * 0.35 + i * 0.13) % 1.4;
+      for (let k = 1; k < pts.length; k++) {
+        if (pts[k][2] < -0.1) continue;
+        const near = Math.max(0, 1 - Math.abs(k / 40 - head) * 4);
+        ctx.strokeStyle = css(c2, 0.12 + near * 0.85);
+        ctx.beginPath();
+        ctx.moveTo(pts[k - 1][0], pts[k - 1][1]);
+        ctx.lineTo(pts[k][0], pts[k][1]);
+        ctx.stroke();
+      }
+    });
+    CITIES.forEach(([la, lo], i) => {
+      const [x, y, z] = proj(vecOf(la, lo));
+      if (z < 0) return;
+      const pulse = (t * 0.8 + i * 0.17) % 1;
+      ctx.strokeStyle = css(c3, (1 - pulse) * 0.8);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, 3 + pulse * 14, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = css(c3);
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  },
+};
+
+/* ── Heros 55 · Solar system (heroes-g.jsx): planets round a glowing sun; the pointer's height tips their orbits ── */
+type Planet = { r: number; s: number; v: number; p: number; ring?: boolean };
+const PLANETS: Planet[] = [
+  { r: 70, s: 4, v: 1.6, p: 0 }, { r: 105, s: 7, v: 1.2, p: 2 }, { r: 145, s: 8, v: 1, p: 4 },
+  { r: 185, s: 6, v: 0.8, p: 1 }, { r: 255, s: 18, v: 0.45, p: 3 }, { r: 330, s: 14, v: 0.32, p: 5, ring: true },
+];
+const solar: FxDef = {
+  bg: "#03030a", c1: "#fde68a", c2: "#60a5fa", c3: "#f87171",
+  draw({ ctx, t, w, h, s, bg, c1, c2, c3, pointer }) {
+    if (!s.stars) s.stars = Array.from({ length: 160 }, (_, i) => [((i * 7919) % 1000) / 1000, ((i * 104729) % 997) / 997, ((i * 1299709) % 991) / 991]);
+    const want = pointer ? 0.18 + (pointer.y / h) * 0.3 : 0.32;
+    s.flat = (s.flat ?? 0.32) + (want - (s.flat ?? 0.32)) * 0.05;
+    ctx.fillStyle = css(bg);
+    ctx.fillRect(0, 0, w, h);
+    for (const [x, y, b] of s.stars as number[][]) {
+      ctx.fillStyle = css(WHITE, 0.15 + b * 0.5);
+      ctx.fillRect(x * w, y * h, b > 0.8 ? 2 : 1, b > 0.8 ? 2 : 1);
+    }
+    const k = Math.min(w, h * 1.6) / 760, cx = w / 2, cy = h * 0.6, flat = s.flat as number;
+    const colours: Rgb[] = [mix(c2, WHITE, 0.45), mix(c1, c3, 0.4), c2, c3, mix(c1, c3, 0.3), c1];
+    const pos = PLANETS.map((p, i) => {
+      const a = t * p.v * 0.35 + p.p;
+      return { ...p, c: colours[i], x: cx + Math.cos(a) * p.r * k, y: cy + Math.sin(a) * p.r * k * flat, z: Math.sin(a) };
+    });
+    ctx.lineWidth = 1;
+    for (const p of PLANETS) {
+      ctx.strokeStyle = css(WHITE, 0.08);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, p.r * k, p.r * k * flat, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    const drawPlanet = (p: (typeof pos)[number]) => {
+      const r = p.s * k * (0.85 + (p.z + 1) * 0.12);
+      const g = ctx.createRadialGradient(p.x - r * 0.4, p.y - r * 0.4, r * 0.1, p.x, p.y, r);
+      g.addColorStop(0, "#fff");
+      g.addColorStop(0.35, css(p.c));
+      g.addColorStop(1, css(times(p.c, 0.1)));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (p.ring) {
+        ctx.strokeStyle = css(c1, 0.6);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, r * 2, r * 0.6, -0.3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+    };
+    pos.filter((p) => p.z < 0).forEach(drawPlanet);
+    const sr = 34 * k;
+    const glow = ctx.createRadialGradient(cx, cy, sr * 0.2, cx, cy, sr * 4);
+    glow.addColorStop(0, css(c1, 0.9));
+    glow.addColorStop(0.25, css(mix(c1, c3, 0.5), 0.35));
+    glow.addColorStop(1, css(c3, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, sr * 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = css(c1);
+    ctx.beginPath();
+    ctx.arc(cx, cy, sr, 0, Math.PI * 2);
+    ctx.fill();
+    pos.filter((p) => p.z >= 0).forEach(drawPlanet);
+  },
+};
+
+export const FX_ENGINES: Record<string, FxDef> = { cloth, murmuration, sand, magnetic, newton, flow, arcs, constellation, galaxy, koi, field, goo, earth, solar };
 /** How many frames to run before a still picture (for whoever asked for less motion): a poster's whole drawing. */
 export const FX_WARMUP: Record<string, number> = { flow: 520, sand: 240 };

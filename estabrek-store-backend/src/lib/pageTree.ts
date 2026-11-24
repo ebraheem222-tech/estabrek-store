@@ -718,9 +718,9 @@ export const NodeTriggers = z.array(NodeTrigger).max(8);
 /** A section's WebGL background from the theme library (the shop's pageTree/shader.ts SHADER_KIND_LIST, same order). */
 export const SHADER_KINDS = [
   "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
-  "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel",
+  "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel", "gem",
   // Physics and generative canvases (the shop's pageTree/fxEngines.ts).
-  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo",
+  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo", "earth", "solar",
 ] as const;
 
 /** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */
@@ -1366,6 +1366,20 @@ for (const t of NODE_TYPES) {
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
   NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ cursorText: local(24).optional(), bind: NodeBind.optional(), styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
+
+/**
+ * What a box holds laid out in 3D (the shop's pageTree/spaceSpec.ts, from the theme library's 3D pieces): on a ring, up
+ * a helix, on a cube's faces, as a book's pages or a phone's screens. `speed` turns it by itself (0: only by hand,
+ * below 0 the other way), `drag` lets a visitor turn it, `tilt` leans a ring or a cube.
+ */
+export const SPACE_KINDS = ["ring", "helix", "cube", "book", "phone"] as const;
+const Space3d = z.object({
+  kind: z.enum(SPACE_KINDS),
+  speed: z.number().finite().min(-3).max(3).optional(),
+  drag: z.boolean().optional(),
+  tilt: z.number().finite().min(-30).max(30).optional(),
+}).strict();
+for (const t of ["stack", "grid", "cell"] as const) NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ space: Space3d.optional() });
 
 /**
  * An element's own speed settings (the editor's speed per element, docs/cms-big-engine-plan.ar.md J), on any kind

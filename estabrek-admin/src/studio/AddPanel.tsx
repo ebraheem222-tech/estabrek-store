@@ -44,6 +44,9 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["ready-orbit", () => say("حلقة بتلف مع السكرول|Ring that turns with the scroll|טבעת שמסתובבת בגלילה"), "↻"],
       ["ready-counters", () => say("أرقام بتعدّ مع السكرول|Numbers that count with the scroll|מספרים שסופרים בגלילה"), "#"],
       ["ready-paint", () => say("قسم بيلوّن الصفحة كلها|Section that colours the whole page|מקטע שצובע את כל הדף"), "◐"],
+      ["ready-ring3d", () => say("حلقة كروت 3D بتلفّها بإيدك|3D ring of cards you turn by hand|טבעת קלפים בתלת ממד שמסובבים ביד"), "◎"],
+      ["ready-book3d", () => say("كتاب بتقلب صفحاته|A book whose pages turn|ספר שדפיו מתהפכים"), "📖"],
+      ["ready-phone3d", () => say("موبايل 3D بيلف مع السكرول|3D phone turning with the scroll|טלפון בתלת ממד שמסתובב בגלילה"), "▯"],
     ],
   },
   {
