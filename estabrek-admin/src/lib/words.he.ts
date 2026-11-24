@@ -5281,4 +5281,5 @@ export const HE: Record<string, string> = {
   "A note for the writing (optional): material, size, who it suits…": "הערה לכתיבה (לא חובה): חומר, גודל, למי זה מתאים…",
   "e.g. SKU-123 or a product's name...": "למשל: SKU-123 או שם של מוצר...",
   "No seasons yet. e.g. “Eid” with a gold theme and 15% off a category you pick, from its first day to its last, then everything goes back by itself.": "אין עדיין עונות. למשל: „החג” עם ערכת נושא זהובה ו־15% הנחה על קטגוריה שתבחרו, מהיום הראשון ועד האחרון, ואחר כך הכול חוזר לבד.",
+  "Accounts are on, but email sending isn't set up on the server, so sign-in codes don't reach customers. Add RESEND_API_KEY and EMAIL_FROM to the server's variables (Railway → Variables), or turn on signing in with Google or Discord.": "החשבונות פעילים, אבל שליחת אימייל לא מוגדרת בשרת, אז קודי הכניסה לא מגיעים ללקוחות. הוסיפו RESEND_API_KEY ו־EMAIL_FROM למשתני השרת (Railway ← Variables), או הפעילו כניסה עם Google או Discord.",
 };

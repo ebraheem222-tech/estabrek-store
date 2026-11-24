@@ -1993,6 +1993,9 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           customerState.refresh.add(refresh);
           return { accessToken: access, refreshToken: refresh, refreshExpiresInDays: 60 };
         };
+        // A live store with no email set up, or one its email provider refuses (store-bar.spec.ts, /__test/customer-email).
+        if (pathname === "/v1/customer/auth/start" && globalThis.customerEmail === "missing") return send(503, { error: "EMAIL_NOT_READY", message: "This store can't send emails yet" });
+        if (pathname === "/v1/customer/auth/start" && globalThis.customerEmail === "failed") return send(502, { error: "EMAIL_FAILED", message: "The code's email couldn't be sent" });
         if (pathname === "/v1/customer/auth/start") return send(200, { ok: true, minutes: 5, devCode: "123456" });
         // Google's token, played: "fixture-google-ok" is a good one; anything else isn't Google's.
         if (pathname === "/v1/customer/auth/google") {
@@ -2100,6 +2103,11 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       req.on("data", (c) => (body += c));
       req.on("end", () => { globalThis.gameLink = JSON.parse(body || "{}"); res.end(JSON.stringify({ ok: true })); });
       return;
+    }
+    // The email the sign-in code goes out by: "missing" (none set up), "failed" (refused), else it goes.
+    if (pathname === "/__test/customer-email") {
+      globalThis.customerEmail = new URL(req.url, "http://localhost").searchParams.get("state") || null;
+      return res.end(JSON.stringify({ ok: true, state: globalThis.customerEmail }));
     }
     if (pathname === "/__test/customer-reset") {
       globalThis.gameLink = { available: false, fivem: null, minecraft: null };

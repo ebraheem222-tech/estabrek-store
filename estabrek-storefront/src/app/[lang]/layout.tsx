@@ -309,7 +309,7 @@ export default async function RootLayout({
                   // Admin → التوصيل: free delivery from this subtotal (the small bag's progress line).
                   freeOver: normalizeDelivery(header?.delivery).freeOver,
                 }}
-                legacyHeader={cinematic ? null : regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
+                legacyHeader={cinematic ? null : regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} accounts={accountsEnabled} /> :
                   <>
                     <div data-studio-region="header" id="site-header" className="site-header">
                       <AnnouncementBar site={settings.site} />
