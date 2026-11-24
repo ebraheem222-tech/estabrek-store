@@ -16,6 +16,12 @@ import { listProducts } from "../../api/catalog.api";
 import { listImageDuplicates } from "../../api/uploads.api";
 import { getSettings } from "../../api/settings.api";
 import { tr } from "@/lib/words";
+import { useSettings } from "../../hooks/useSettings";
+import { isSiteStore, showsShop } from "../../layouts/siteKind";
+import { SiteToday } from "./SiteToday";
+
+/** The permissions that are a shop's: a whole site that sells nothing doesn't see their numbers here (siteKind.ts). */
+const SHOP_PERMISSIONS = new Set<AdminPermission>(["orders:read", "catalog:read", "catalog:write", "inventory:read", "discounts:read", "ugc:read"]);
 import { loc } from "@/lib/lang";
 
 // Icons
@@ -233,7 +239,12 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { overviewQuery } = useDashboard();
-  const can = (permission: AdminPermission) => hasPermission(permission);
+  // A store whose face is a whole site: its own numbers first; one that sells nothing, the shop's not at all.
+  const header = useSettings().data?.header;
+  const siteHome = isSiteStore(header) ? (header as { siteHome: { featureId?: unknown } }).siteHome : null;
+  const products = overviewQuery.isError ? null : (overviewQuery.data?.counts?.products as number | undefined);
+  const shopShown = showsShop(header, products);
+  const can = (permission: AdminPermission) => hasPermission(permission) && (shopShown || !SHOP_PERMISSIONS.has(permission));
 
   const lowStockQuery = useQuery({
     queryKey: ["dashboard", "low-stock-count"],
@@ -288,10 +299,10 @@ export default function DashboardPage() {
   const counts = data.counts ?? {};
   const latestOrders = data.latestOrders ?? [];
   const ordersByStatus = counts.ordersByStatus ?? {};
-  const canReadOrders = hasPermission("orders:read");
-  const canReadCatalog = hasPermission("catalog:read");
-  const canReadOutbox = hasPermission("outbox:read");
-  const canReadUgc = hasPermission("ugc:read");
+  const canReadOrders = can("orders:read");
+  const canReadCatalog = can("catalog:read");
+  const canReadOutbox = can("outbox:read");
+  const canReadUgc = can("ugc:read");
   const settings: any = settingsQuery.data ?? {};
   const stripeEnabled = settings.stripeEnabled === true;
   const paypalEnabled = settings.paypalEnabled === true;
@@ -403,6 +414,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {siteHome && typeof siteHome.featureId === "string" ? <SiteToday featureId={siteHome.featureId} /> : null}
       {/* Main Stats */}
       {mainStats.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -414,7 +426,7 @@ export default function DashboardPage() {
             />
           ))}
         </div>
-      ) : (
+      ) : siteHome ? null : (
         <div className="glass rounded-2xl p-5 text-sm text-white/60">
           {tr("لا توجد إحصائيات متاحة لحسابك حالياً.", "No figures are available for your account yet.")}
         </div>

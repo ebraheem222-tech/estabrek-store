@@ -105,7 +105,8 @@ export default function SitePanelPage() {
   );
 }
 
-function Numbers({ part }: { part: PanelNumbers }) {
+/** A part's numbers as cards (the admin's home shows a site's first ones too, dashboard/SiteToday.tsx). */
+export function Numbers({ part }: { part: PanelNumbers }) {
   const lang = adminLang();
   return (
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid={`site-part-${part.key}`}>
