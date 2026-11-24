@@ -141,7 +141,7 @@ export default function AiEvalPage() {
               value={text ?? ""}
               disabled={!canWrite}
               onChange={(e) => setText(e.target.value)}
-              placeholder={say("عندكم مقاس L بالعباية السودا؟\nقديش بياخد التوصيل لنابلس؟\nبدي إشي للعرس بلون فاتح|Do you have the black abaya in L?\nHow long is delivery to Nablus?\nSomething light-coloured for a wedding|יש את העבאיה השחורה במידה L?\nכמה זמן לוקח משלוח לשכם?\nמשהו בצבע בהיר לחתונה")}
+              placeholder={say("عندكم هالمنتج بلون أسود؟\nقديش بياخد التوصيل لنابلس؟\nبدي هدية لحد 100 شيكل|Do you have this in black?\nHow long is delivery to Nablus?\nI'd like a gift under 100|יש את זה בשחור?\nכמה זמן לוקח משלוח לשכם?\nאני רוצה מתנה עד 100")}
               aria-label={say("الأسئلة، سؤال بكل سطر|The questions, one per line|השאלות, שאלה בכל שורה")}
               data-testid="eval-questions"
             />

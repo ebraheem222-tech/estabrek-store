@@ -5280,4 +5280,5 @@ export const HE: Record<string, string> = {
   "This type has no fields yet. Add fields (like material or size) in “Manage types and fields”.": "לסוג הזה אין עדיין שדות. מוסיפים שדות (כמו חומר או גודל) ב„ניהול סוגים ושדות”.",
   "A note for the writing (optional): material, size, who it suits…": "הערה לכתיבה (לא חובה): חומר, גודל, למי זה מתאים…",
   "e.g. SKU-123 or a product's name...": "למשל: SKU-123 או שם של מוצר...",
+  "No seasons yet. e.g. “Eid” with a gold theme and 15% off a category you pick, from its first day to its last, then everything goes back by itself.": "אין עדיין עונות. למשל: „החג” עם ערכת נושא זהובה ו־15% הנחה על קטגוריה שתבחרו, מהיום הראשון ועד האחרון, ואחר כך הכול חוזר לבד.",
 };
