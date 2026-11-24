@@ -262,6 +262,64 @@
 }
 @keyframes th-arrive-photo { from { opacity: 0; scale: 0.97; } }
 
+/* ------------------------------------------------------------- the header and the footer of a theme's store */
+/* StorefrontChrome puts the kinds the theme's design gives them on the header (data-th-header) and the footer
+   (data-th-footer): classic stays as it is; the others take their own shape. On a computer only (the menu
+   folds into its button below 1100px). */
+.atelier-header[data-th-header] { font-family: var(--th-text); }
+@media (min-width: 1101px) {
+  .atelier-header:is([data-th-header="centered"], [data-th-header="twotier"], [data-th-header="split"]) {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 24px;
+  }
+  .atelier-header[data-th-header="centered"] { grid-template-areas: ". brand actions" "nav nav nav"; padding-bottom: 0; }
+  .atelier-header[data-th-header="twotier"] { grid-template-areas: "brand . actions" "nav nav nav"; padding-bottom: 0; }
+  .atelier-header[data-th-header="split"] { grid-template-areas: "nav brand actions"; }
+  .atelier-header[data-th-header] > .atelier-brand { grid-area: brand; }
+  .atelier-header[data-th-header] > .atelier-desktop-nav { grid-area: nav; }
+  .atelier-header[data-th-header] > .atelier-actions { grid-area: actions; justify-self: end; }
+  .atelier-header[data-th-header="centered"] > .atelier-brand { justify-self: center; }
+  .atelier-header[data-th-header="centered"] > .atelier-desktop-nav { justify-content: center; }
+  .atelier-header[data-th-header="twotier"] > .atelier-brand { justify-self: start; }
+  .atelier-header[data-th-header="twotier"] > .atelier-desktop-nav { justify-content: flex-start; border-top: 1px solid var(--th-line); margin-top: 8px; }
+  .atelier-header[data-th-header="split"] > .atelier-desktop-nav { justify-self: start; }
+  /* The menu beside the name, the buttons apart. */
+  .atelier-header[data-th-header="sidebar"] > .atelier-desktop-nav { margin-inline-end: auto; padding-inline-start: 28px; border-inline-start: 1px solid var(--th-line); }
+  /* Slim, quiet. */
+  .atelier-header[data-th-header="minimal"] { min-height: 64px; border-bottom-color: transparent; }
+  .atelier-header[data-th-header="minimal"] .atelier-desktop-nav { font-weight: 500; color: var(--th-muted); }
+  /* Tall, with a strong menu. */
+  .atelier-header[data-th-header="mega"] { min-height: 104px; }
+  .atelier-header[data-th-header="mega"] .atelier-desktop-nav { font-size: 14px; font-weight: 700; gap: 40px; }
+  /* Off the page's edges, as a rounded bar of its own. */
+  .atelier-header[data-th-header="floating"] {
+    top: 12px; margin: 12px 2.5% 0; border: 1px solid var(--th-line); border-radius: var(--th-radius-lg); box-shadow: var(--th-shadow);
+  }
+}
+
+.atelier-footer[data-th-footer] { font-family: var(--th-text); }
+.th-footer-band {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 32px;
+  margin: 0 0 48px; padding: clamp(22px, 4vw, 44px); border-radius: var(--th-radius-lg);
+  background: var(--th-strong); color: var(--th-on-strong);
+}
+.th-footer-band[data-kind="newsletter"] { background: var(--th-surface); color: var(--th-ink); border: 1px solid var(--th-line); }
+.th-footer-band-title { margin: 0; font-family: var(--th-display); font-size: clamp(1.4rem, 3vw, 2.3rem); line-height: 1.25; max-width: 30ch; }
+.atelier-footer a.th-footer-band-cta {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 26px; border-radius: var(--th-pill);
+  background: var(--th-on-strong); color: var(--th-strong); font-weight: 700; font-size: 14px;
+}
+.th-footer-band[data-kind="newsletter"] a.th-footer-band-cta { background: var(--th-strong); color: var(--th-on-strong); }
+/* Just a line: no description, no big name. */
+.atelier-footer[data-th-footer="minimal"] { padding-top: 32px; }
+.atelier-footer[data-th-footer="minimal"] :is(.footer-wordmark, .footer-main p) { display: none; }
+/* A block of the theme's strong colour. */
+.atelier-footer[data-th-footer="block"] { background: var(--th-strong); color: var(--th-on-strong); border-top: 0; }
+.atelier-footer[data-th-footer="block"] :is(a, p, span, .footer-links > div > span, .footer-socials, .footer-bottom, .atelier-brand) { color: inherit; }
+.atelier-footer[data-th-footer="block"] .footer-wordmark { color: color-mix(in srgb, var(--th-on-strong) 18%, transparent); }
+.atelier-footer[data-th-footer="block"] .footer-bottom { border-top-color: color-mix(in srgb, var(--th-on-strong) 25%, transparent); }
+/* Where to find the store first: its ways to reach it, larger. */
+.atelier-footer[data-th-footer="map"] .footer-socials { font-size: 13px; gap: 22px; }
+
 [data-th-card="portrait"] .th-card-media { border-radius: 0; aspect-ratio: 2 / 3; }
 [data-th-card="portrait"] .th-card-title { font-family: var(--th-display); font-weight: 500; font-size: 1.15rem; }
 [data-th-card="spec"] .th-card { padding: 14px; border-radius: var(--th-radius-lg); background: var(--th-surface); border: 1px solid var(--th-line); box-shadow: var(--th-shadow); }

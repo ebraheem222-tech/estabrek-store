@@ -19,6 +19,7 @@ import { PerfOverlay } from "./PerfOverlay";
 import { useNames, useStoreIdentity } from "@/store/storeIdentity";
 import { markOf, pick } from "@/lib/storeIdentity";
 import { useStoreLook } from "@/store/storeLook";
+import { say } from "@/storeThemes/words";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { tr } from "@/lib/words";
 import { dirOf } from "@/lib/i18n";
@@ -80,7 +81,10 @@ function Header() {
   const ar = lang === "ar";
   const id = useStoreIdentity();
   // The rose design's own words (its fabric story, its greeting) belong to the store that wears it.
-  const rose = useStoreLook().rose;
+  const look = useStoreLook();
+  const rose = look.rose;
+  // A store on a theme: its header takes the shape its theme's design gives it (store-themes.css, "the header").
+  const headerKind = !rose ? look.theme?.design?.header : undefined;
   const n = useNames();
   const { count } = useCart();
   // Admin → الإعدادات → السلة والدفع: the bag icon opens the small bag instead of the bag page.
@@ -153,7 +157,7 @@ function Header() {
           <Icon name="spark" width="11" height="11" />
         </span>
       </div>
-      <header data-studio-region="header" className="atelier-header" dir={dirOf(lang)}>
+      <header data-studio-region="header" className="atelier-header" data-th-header={headerKind} dir={dirOf(lang)}>
         <Brand />
         <nav
           className="atelier-desktop-nav"
@@ -339,14 +343,25 @@ function Footer() {
   const lang = language;
   const ar = lang === "ar";
   const id = useStoreIdentity();
-  const rose = useStoreLook().rose;
+  const look = useStoreLook();
+  const rose = look.rose;
+  // A store on a theme: its footer takes the kind its theme's design gives it (store-themes.css, "the footer"):
+  // a big invitation or a "what's new" band over it, a block of its strong colour, or just a line.
+  const theme = !rose ? look.theme : null;
+  const footerKind = theme?.design?.footer;
   const n = useNames();
   const accountsOn = useOptionalAccount() !== null;
   if (store.footerEnabled === false) return null;
   return (
-    <footer data-studio-region="footer" className="atelier-footer" dir={dirOf(lang)}>
+    <footer data-studio-region="footer" className="atelier-footer" data-th-footer={footerKind} dir={dirOf(lang)}>
       {/* The page flows into the footer on a wave (rose-showcase.css). */}
       <RoseWave className="rose-footer-wave" />
+      {theme && (footerKind === "bigcta" || footerKind === "newsletter") ? (
+        <div className="th-footer-band" data-kind={footerKind}>
+          <p className="th-footer-band-title">{footerKind === "bigcta" ? say(theme.copy.title, lang).replace(/\n/g, " ") : tr(lang, "كل جديد عنّا بمكان واحد", "Everything new from us, in one place")}</p>
+          <Link href="/shop" className="th-footer-band-cta">{footerKind === "bigcta" ? say(theme.copy.cta, lang) : tr(lang, "شوفوا الجديد", "See what's new")}</Link>
+        </div>
+      ) : null}
       <div className="footer-main">
         <div>
           <Brand />
