@@ -1190,10 +1190,15 @@ export function ProductFiltersBar({
           border-color: transparent;
         }
 
+        /* A store on a theme: its own colour (the rose is the rose design's own). */
         .filter-candy-shell .clear-filters-btn {
           background: linear-gradient(145deg, rgba(254, 226, 226, 0.92), rgba(252, 165, 165, 0.34));
           border-color: rgba(252, 165, 165, 0.6);
-          color: #be123c;
+          color: var(--th-accent, #be123c);
+        }
+        :global(:root[data-store-theme]) .filter-candy-shell .clear-filters-btn {
+          background: color-mix(in srgb, var(--th-accent) 10%, transparent);
+          border-color: color-mix(in srgb, var(--th-accent) 28%, transparent);
         }
 
         .filter-candy-shell .clear-filters-btn:hover {
