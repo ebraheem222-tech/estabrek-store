@@ -1012,4 +1012,14 @@ export const HE: Record<string, string> = {
   "A product's name, its colour or any word about it.": "שם המוצר, הצבע שלו או כל מילה עליו.",
   "A question about a product or an order? We'd love to help.": "שאלה על מוצר או הזמנה? נשמח לעזור.",
   "e.g. a product like the one in the photo, in a certain colour or size": "למשל: מוצר כמו זה שבתמונה, בצבע או במידה מסוימים",
+  // The store's bar over a designed header, a new account, and a code the store can't email (StoreBar.tsx, RoseAccount.tsx, account.tsx).
+  "New account": "חשבון חדש",
+  "Cart": "עגלה",
+  "NEW ACCOUNT": "חשבון חדש",
+  "Open your account.": "פתיחת חשבון.",
+  "Have an account?": "יש לך חשבון?",
+  "No account yet?": "עוד אין חשבון?",
+  "Enter your name.": "צריך לכתוב שם.",
+  "This store can't send emails yet, so the code won't arrive. Try another way in, or contact us.": "החנות עוד לא יכולה לשלוח מיילים, אז הקוד לא יגיע. אפשר לנסות דרך כניסה אחרת או ליצור איתנו קשר.",
+  "We couldn't email the code just now. Try again in a little while, or another way in.": "לא הצלחנו לשלוח את הקוד במייל כרגע. אפשר לנסות שוב עוד מעט, או בדרך כניסה אחרת.",
 };

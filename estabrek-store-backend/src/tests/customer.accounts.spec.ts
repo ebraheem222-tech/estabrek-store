@@ -5,6 +5,7 @@ import { prisma, resetDb, seedCatalog } from "./helpers/db.js";
 import { signAccessToken } from "../config/security.js";
 import { applyPolicy, envDefaults, mergePolicy } from "../lib/securityPolicy.js";
 import { forgetFeatures } from "../lib/features.js";
+import { env } from "../config/env.js";
 
 /** The admin switch (Settings → حسابات الزبائن). */
 async function setAccounts(on: boolean) {
@@ -63,6 +64,38 @@ describe("Signing in with an email code", () => {
     expect(out.body.error).toBe("TOO_MANY_ATTEMPTS");
     for (let i = 0; i < 4; i++) await request(app).post("/v1/customer/auth/start").send({ email: "x@shop.test" }).expect(200);
     expect((await request(app).post("/v1/customer/auth/start").send({ email: "x@shop.test" }).expect(429)).body.error).toBe("TOO_MANY_CODES");
+  });
+
+  // A new client's live store had no email set up: it answered "sent" for a code only written to its log, and the
+  // shopper waited for nothing. Now it says so; and an email the provider refuses is said too (the code then dies).
+  test("a live store that can't send the email says so, instead of answering \"sent\"", async () => {
+    const was = { NODE_ENV: env.NODE_ENV, RESEND_API_KEY: env.RESEND_API_KEY, EMAIL_FROM: env.EMAIL_FROM };
+    const realFetch = globalThis.fetch;
+    try {
+      Object.assign(env, { NODE_ENV: "production", RESEND_API_KEY: undefined, EMAIL_FROM: undefined });
+      const none = await request(app).post("/v1/customer/auth/start").send({ email: "sara@shop.test" }).expect(503);
+      expect(none.body.error).toBe("EMAIL_NOT_READY");
+      expect(await prisma.customerOtp.count()).toBe(0);
+
+      // Set up, but the provider refuses it (a sender on a domain it hasn't verified).
+      Object.assign(env, { RESEND_API_KEY: "re_test_not_a_real_key", EMAIL_FROM: "Shop <codes@shop.test>" });
+      const asked: string[] = [];
+      globalThis.fetch = (async (url: string | URL | Request) => {
+        asked.push(String(url));
+        return new Response(JSON.stringify({ name: "validation_error", message: "The shop.test domain is not verified" }), { status: 403, headers: { "Content-Type": "application/json" } });
+      }) as typeof fetch;
+      const refused = await request(app).post("/v1/customer/auth/start").send({ email: "sara@shop.test" }).expect(502);
+      expect(refused.body.error).toBe("EMAIL_FAILED");
+      expect(asked).toEqual(["https://api.resend.com/emails"]);
+      // The code no email carries is never left working.
+      expect(await prisma.customerOtp.count({ where: { usedAt: null } })).toBe(0);
+    } finally {
+      globalThis.fetch = realFetch;
+      Object.assign(env, was);
+    }
+    // Back as a store that is being tried out: the code comes back, as before.
+    const ok = await request(app).post("/v1/customer/auth/start").send({ email: "sara@shop.test" }).expect(200);
+    expect(ok.body.devCode).toMatch(/^\d{6}$/);
   });
 
   test("refresh rotates the token; signing out ends it", async () => {
