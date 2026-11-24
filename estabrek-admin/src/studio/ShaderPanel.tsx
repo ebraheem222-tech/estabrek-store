@@ -49,6 +49,8 @@ export const SHADER_NAMES: Record<ShaderKind, string> = {
   constellation: "نجوم وأبراج|Stars and constellations|כוכבים ומזלות",
   galaxy: "مجرّة جزيئات|Particle galaxy|גלקסיית חלקיקים",
   koi: "بركة سمك كوي|Koi pond|בריכת קוי",
+  field: "حقل خطوط بيأشّر عالماوس|Lines all pointing to the pointer|קווים שמצביעים על העכבר",
+  goo: "كرات سائلة بتلزق ببعض|Gooey blobs that melt together|כדורים נוזליים שנדבקים",
 };
 /** The kinds in two groups: WebGL shaders, then physics and generative canvases. */
 const GROUPS: Array<[string, ShaderKind[]]> = [

@@ -523,6 +523,23 @@ describe("checking a page tree", () => {
     expect(issuesOf(one({ kind: "aurora", veil: 1 })).length).toBeGreaterThan(0);
   });
 
+  test("the theme library's text and pointer tricks: flap, proximity, particles, flashlight, trail, scroll-speed marquee", () => {
+    const page = (children: unknown[]) => ({ version: 1, root: { id: "page", type: "page", props: {}, children } });
+    const sec = (props: Record<string, unknown>, kids: unknown[] = []) => page([{ id: "s", type: "section", props, children: kids }]);
+    const heading = (motion: unknown) => sec({}, [{ id: "h", type: "heading", props: { text: { ar: "أهلاً" } }, motion }]);
+    expect(checkTree(heading({ enter: { kind: "flap", duration: 1 } })).ok).toBe(true);
+    expect(checkTree(heading({ fx: { kind: "proximity", color: "accent" } })).ok).toBe(true);
+    expect(checkTree(heading({ fx: { kind: "particles", color: "#16a34a", to: "accent" } })).ok).toBe(true);
+    expect(checkTree(sec({}, [{ id: "i", type: "image", props: { src: "/a.jpg", flash: { src: "/b.jpg", radius: 220 } } }])).ok).toBe(true);
+    expect(issuesOf(sec({}, [{ id: "i", type: "image", props: { src: "/a.jpg", flash: { src: "javascript:x" } } }])).length).toBeGreaterThan(0);
+    expect(checkTree(sec({ trail: { images: ["/a.jpg", "/b.jpg"], size: 160 } })).ok).toBe(true);
+    expect(issuesOf(sec({ trail: { images: [] } })).length).toBeGreaterThan(0);
+    expect(issuesOf(sec({ trail: { images: Array.from({ length: 9 }, (_, i) => `/${i}.jpg`) } })).length).toBeGreaterThan(0);
+    expect(checkTree(sec({}, [{ id: "m", type: "marquee", props: { items: [{ ar: "عرض" }], velocity: true } }])).ok).toBe(true);
+    expect(checkTree(sec({ shader: { kind: "goo" } })).ok).toBe(true);
+    expect(checkTree(sec({ shader: { kind: "field" } })).ok).toBe(true);
+  });
+
   test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
     const one = (n: unknown, sec: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props: { smooth: true }, children: [{ id: "s", type: "section", props: sec, children: [n] }] } });
     const ok = (n: unknown, sec?: Record<string, unknown>) => checkTree(one(n, sec)).ok;

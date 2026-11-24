@@ -192,7 +192,7 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
       const sep = typeof p.separator === "string" && p.separator.length <= 4 ? p.separator : "•";
       return (
         <Running
-          className={`${className} pt-mq${p.reverse === true ? " pt-mq-rev" : ""}${p.pause === true ? " pt-mq-pause" : ""}`}
+          className={`${className} pt-mq${p.reverse === true ? " pt-mq-rev" : ""}${p.pause === true ? " pt-mq-pause" : ""}${p.velocity === true ? " pt-mq-vel" : ""}`}
           style={{ "--pt-mqs": `${speed}s` }} items={items} separator={sep || undefined} mark={mark}
         />
       );

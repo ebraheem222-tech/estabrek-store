@@ -85,6 +85,7 @@ import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, 
 import { LibraryPanel } from "./LibraryPanel";
 import { LibraryBrowser } from "./LibraryBrowser";
 import { ShaderPanel } from "./ShaderPanel";
+import { TrailPanel } from "./TrailPanel";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
 import { AddPanel } from "./AddPanel";
@@ -3437,6 +3438,7 @@ function StudioDocument() {
             {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <ShaderPanel key={`shader:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" ? <TrailPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <InspectorGroup id="behaviour" />
             <TriggersPanel key={`triggers:${selFree.id}`} node={selFree} lang={shopLang} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || typeLabel(x.node.type), type: x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={(i, fail) => send({ type: "motionTriggerTest", nodeId: selFree.id, index: i, ...(fail ? { fail: true } : {}) })} />
             <VisualControlsPanel key={`visual:${selFree.id}`} node={selFree} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", nodeId: selFree.id, event })} />

@@ -497,6 +497,7 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           <Range label={tr("لفّة كاملة بتاخد", "One full loop takes")} min={4} max={120} unit="s" busy={busy} value={typeof p.speed === "number" ? p.speed : 30} onSave={(v) => set(tr("السرعة", "Speed"), { speed: v })} testId="block-speed" />
           {toggle("reverse", tr("بالعكس", "The other way"))}
           {toggle("pause", tr("بيوقف لما يمرّ الماوس", "Stops under the mouse"))}
+          {toggle("velocity", say("بيسرع مع سرعة السكرول وبيرجع لورا لما تطلع|Speeds up with the scroll, turns round going up|מאיץ עם הגלילה, מתהפך בעלייה"))}
           <Field label={tr("الفاصل بينهم", "Between them")} value={typeof p.separator === "string" ? p.separator : "•"} onSave={(v) => set(tr("الفاصل", "Separator"), { separator: v.trim().slice(0, 4) || undefined })} testId="block-separator" />
         </>
       ) : null}

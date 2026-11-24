@@ -86,7 +86,7 @@ test("from the editor: a section's WebGL background picked from its panel, shown
   const panel = page.getByTestId("studio-shader");
   await panel.scrollIntoViewIfNeeded();
   await panel.getByRole("button", { expanded: false }).click();
-  await expect(panel.getByTestId("studio-shader-kind")).toHaveCount(31);
+  await expect(panel.getByTestId("studio-shader-kind")).toHaveCount(33);
   await panel.locator('[data-testid="studio-shader-kind"][data-kind="ocean"]').click();
   await expect.poll(async () => ((await draft()).children as any[]).find((n) => n.id === sec.id).props.shader).toEqual({ kind: "ocean" });
   await ready();

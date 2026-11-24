@@ -384,6 +384,8 @@ export const ENTER_KINDS = [
   "fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn",
   "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw",
   "letters", "lines", "scramble", "typewriter", "count",
+  // From the theme library: a split-flap board's letters flipping to their own.
+  "flap",
 ] as const;
 // "type" types its words, waits and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
@@ -400,7 +402,8 @@ export const HOVER_KINDS = [
   "bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop",
   "spotlight", "ripple", "spring", "jelly",
 ] as const;
-export const FX_KINDS = ["shine", "gradient", "grain"] as const;
+// From the theme library, for words: letters that answer the pointer ("proximity"), words drawn in particles ("particles").
+export const FX_KINDS = ["shine", "gradient", "grain", "proximity", "particles"] as const;
 /** A picture's live effects (the shop's shared/pictureFx.ts PICTURE_FX). */
 export const PICTURE_FX = ["ripple", "liquid", "shift", "reveal"] as const;
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
@@ -716,7 +719,7 @@ export const SHADER_KINDS = [
   "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
   "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel",
   // Physics and generative canvases (the shop's pageTree/fxEngines.ts).
-  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi",
+  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo",
 ] as const;
 
 /** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */
@@ -802,6 +805,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       intensity: z.number().finite().min(0).max(2).default(1),
       interactive: z.boolean().default(false),
     }).optional(),
+    // Pictures left along the pointer's way over it (the theme library's cursor trail): up to eight, and their size.
+    trail: z.object({ images: z.array(src).min(1).max(8), size: z.number().int().min(80).max(280).optional() }).optional(),
     // A WebGL background from the theme library: its colours (unset: the shader's own), a rainbow one drawn in
     // the colours instead (rainbow false), its speed, following the pointer, film grain, a veil for the words on it.
     shader: z.object({
@@ -865,6 +870,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   text: z.object({ text: local(5000), rich: z.boolean().optional(), curve: Curve.optional() }),
   image: z.object({
     src, alt: local(200).optional(), href: href.optional(),
+    // A second picture seen through a light that follows the pointer (the theme library's flashlight).
+    flash: z.object({ src, radius: z.number().min(60).max(400).optional() }).optional(),
     // Its link opens in a new tab; it loads at once and first (a picture at the top of the page) instead of waiting
     // until it's near the screen.
     newTab: z.boolean().optional(),
@@ -1313,6 +1320,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     reverse: z.boolean().optional(),
     pause: z.boolean().optional(),
     separator: z.string().trim().max(4).optional(),
+    // Runs faster the faster the page scrolls, and turns round when it scrolls up (the theme library's).
+    velocity: z.boolean().optional(),
   }),
   roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram", "particles", "world", "rooms"]) }),
   legacy: z.object({ sectionId: id }),

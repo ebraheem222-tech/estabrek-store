@@ -1435,6 +1435,11 @@ export const BASE_CSS = [
   ".pt-icon{display:inline-flex;align-items:center;gap:8px;color:var(--accent)}",
   // A section's edges: a band along its top or bottom, under its content (or over it, `front`).
   ".pt-has-edges{position:relative;isolation:isolate}",
+  // Words' effects from the theme library (wordFx.ts, TreeMotion): a split-flap's letters; words drawn in particles keep their own words unseen.
+  ".pt-flap{display:inline-block;transform-origin:50% 0}.pt-fx-dots-on,.pt-fx-dots-on *{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important}",
+  // The theme library's pointer tricks (PointerParts.tsx): a picture's flashlight, a section's trail of pictures.
+  ".pt-flash{position:absolute;inset:0;z-index:1;pointer-events:none;-webkit-mask-image:radial-gradient(circle var(--pt-fl-r,170px) at var(--pt-fl-x,50%) var(--pt-fl-y,50%),#000 35%,transparent 100%);mask-image:radial-gradient(circle var(--pt-fl-r,170px) at var(--pt-fl-x,50%) var(--pt-fl-y,50%),#000 35%,transparent 100%)}.pt-flash img{display:block;width:100%;height:100%;object-fit:cover}",
+  ".pt-trail{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1}.pt-trail-tile{position:absolute;object-fit:cover;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.25);transform:translate(-50%,-50%) rotate(var(--pt-tr,0deg));animation:pt-trail 1.1s cubic-bezier(.2,.8,.2,1) forwards}@keyframes pt-trail{0%{opacity:0;transform:translate(-50%,-50%) scale(0) rotate(calc(var(--pt-tr,0deg) - 20deg))}18%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(var(--pt-tr,0deg))}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-30%) scale(.6) rotate(var(--pt-tr,0deg))}}",
   // A section's WebGL background (ShaderView): behind its content, its grain and veil over the colours.
   ".pt-shader{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;border-radius:inherit}.pt-shader-grain,.pt-shader-veil{position:absolute;inset:0;z-index:1}.pt-shader-grain{mix-blend-mode:overlay;background-size:160px}.pt-shader-veil{background:#000}",
   ".pt-edge{position:absolute;inset-inline:0;height:var(--pt-eh);line-height:0;pointer-events:none;z-index:-1}",

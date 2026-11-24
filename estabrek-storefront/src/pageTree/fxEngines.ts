@@ -605,6 +605,95 @@ const koi: FxDef = {
   },
 };
 
-export const FX_ENGINES: Record<string, FxDef> = { cloth, murmuration, sand, magnetic, newton, flow, arcs, constellation, galaxy, koi };
+/* ── 09 · Cursor force field: every line points to the pointer (wandering without one); a press sends a wave ── */
+const field: FxDef = {
+  bg: "#0a0814", c1: "#a78bfa", c2: "#34d399", c3: "#ffffff",
+  draw({ ctx, t, w, h, s, bg, c1, c2, pointer, press }) {
+    const m = pointer ?? { x: w / 2 + Math.cos(t * 0.7) * w * 0.3, y: h / 2 + Math.sin(t * 1.1) * h * 0.3 };
+    s.cur = s.cur ?? { x: m.x, y: m.y };
+    s.cur.x += (m.x - s.cur.x) * 0.12;
+    s.cur.y += (m.y - s.cur.y) * 0.12;
+    s.waves = (s.waves ?? []).filter((wv: { t: number }) => t - wv.t < 2.2);
+    if (press) s.waves.push({ x: press.x, y: press.y, t });
+    ctx.fillStyle = css(bg);
+    ctx.fillRect(0, 0, w, h);
+    const gap = 26;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    for (let y = gap / 2; y < h; y += gap)
+      for (let x = gap / 2; x < w; x += gap) {
+        const dx = s.cur.x - x, dy = s.cur.y - y;
+        const d = Math.hypot(dx, dy);
+        let push = 0;
+        for (const wv of s.waves) {
+          const r = (t - wv.t) * 420;
+          const dd = Math.abs(Math.hypot(x - wv.x, y - wv.y) - r);
+          if (dd < 40) push += (1 - dd / 40) * (1 - (t - wv.t) / 2.2) * 14;
+        }
+        const ang = Math.atan2(dy, dx);
+        const len = Math.max(3, 18 - d * 0.035) + push;
+        const ox = Math.cos(ang) * push, oy = Math.sin(ang) * push;
+        // Near the pointer its first colour, far away its second, fainter.
+        ctx.strokeStyle = css(mix(c1, c2, Math.min(1, d / 480)), Math.max(0.18, 1 - d / 520));
+        ctx.beginPath();
+        ctx.moveTo(x - ox - (Math.cos(ang) * len) / 2, y - oy - (Math.sin(ang) * len) / 2);
+        ctx.lineTo(x - ox + (Math.cos(ang) * len) / 2, y - oy + (Math.sin(ang) * len) / 2);
+        ctx.stroke();
+      }
+    const glow = ctx.createRadialGradient(s.cur.x, s.cur.y, 0, s.cur.x, s.cur.y, 160);
+    glow.addColorStop(0, css(c1, 0.25)); glow.addColorStop(1, css(c1, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+  },
+};
+
+/* ── 16 · Gooey metaballs: blobs going round, the pointer's own blob melting into them ── */
+const goo: FxDef = {
+  bg: "#0b0614", c1: "#f472b6", c2: "#a78bfa", c3: "#22d3ee",
+  draw({ ctx, t, w, h, s, bg, c1, c2, c3, pointer }) {
+    // A small field (a quarter of the size), drawn up smoothly: soft edges for little work.
+    const k = 4, W = Math.max(8, Math.round(w / k)), H = Math.max(8, Math.round(h / k));
+    if (!s.img || s.resized || s.W !== W || s.H !== H) {
+      s.W = W; s.H = H;
+      s.off = document.createElement("canvas");
+      s.off.width = W; s.off.height = H;
+      s.octx = s.off.getContext("2d");
+      s.img = s.octx.createImageData(W, H);
+    }
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H);
+    const tones = [c1, c2, c3, mix(c1, c3, 0.5), mix(c2, WHITE, 0.3)];
+    const balls: Array<{ x: number; y: number; r: number; c: Rgb }> = tones.map((c, i) => {
+      const a = t * (0.35 + i * 0.07) * (i % 2 ? -1 : 1) + i * 1.3;
+      const d = R * (0.18 + 0.12 * Math.sin(t * 0.6 + i));
+      return { x: cx + Math.cos(a) * d * 1.4, y: cy + Math.sin(a) * d, r: R * (0.08 + (i % 3) * 0.025), c };
+    });
+    s.px = s.px ?? cx; s.py = s.py ?? cy;
+    const tx = pointer ? pointer.x / k : cx, ty = pointer ? pointer.y / k : cy;
+    s.px += (tx - s.px) * 0.12; s.py += (ty - s.py) * 0.12;
+    balls.push({ x: s.px, y: s.py, r: R * 0.1, c: mix(c3, WHITE, 0.6) });
+    balls.push({ x: cx, y: cy, r: R * 0.13, c: mix(c1, c2, 0.5) });
+    const data = s.img.data as Uint8ClampedArray;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        let f = 0, r = 0, g = 0, b = 0;
+        for (const ball of balls) {
+          const dx = x - ball.x, dy = y - ball.y;
+          const v = (ball.r * ball.r) / (dx * dx + dy * dy + 0.01);
+          f += v; r += ball.c[0] * v; g += ball.c[1] * v; b += ball.c[2] * v;
+        }
+        const a = Math.min(1, Math.max(0, (f - 0.9) / 0.25));
+        const i = (y * W + x) * 4;
+        data[i] = bg[0] + ((r / f) - bg[0]) * a;
+        data[i + 1] = bg[1] + ((g / f) - bg[1]) * a;
+        data[i + 2] = bg[2] + ((b / f) - bg[2]) * a;
+        data[i + 3] = 255;
+      }
+    s.octx.putImageData(s.img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(s.off, 0, 0, w, h);
+  },
+};
+
+export const FX_ENGINES: Record<string, FxDef> = { cloth, murmuration, sand, magnetic, newton, flow, arcs, constellation, galaxy, koi, field, goo };
 /** How many frames to run before a still picture (for whoever asked for less motion): a poster's whole drawing. */
 export const FX_WARMUP: Record<string, number> = { flow: 520, sand: 240 };
