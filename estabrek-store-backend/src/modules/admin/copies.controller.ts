@@ -7,6 +7,7 @@ import { readyOfKind } from "../../lib/fnReady.js";
 import { BRANCH_RULE, NEON_REGIONS, PRESS_KINDS, PRESS_LIMITS, REPO_RULE, START_SITE_RULE, copyPlan, nameProblem, tidyName, type CopyInput, type PressKind } from "../../lib/press.js";
 import { checkCopy, type Via } from "../../lib/pressCheck.js";
 import { aliveOf, copyView, isMaking, startCopy, tryCopyAgain } from "../../lib/pressMake.js";
+import { askingAdmin, listAsks } from "../../lib/siteAsk.js";
 
 /**
  * /v1/admin/system/copies — نسخ الزباين: a client's copy of this store, made in the owner's own
@@ -25,6 +26,11 @@ import { aliveOf, copyView, isMaking, startCopy, tryCopyAgain } from "../../lib/
  * GET  /made/:id        — one, with its owner's setup link once it is made
  * POST /made/:id/again  — a copy that stopped, made again from the step that said no
  * GET  /made/:id/alive  — whether its server, shop and admin answer yet, and whether its owner is in
+ * GET  /asks            — admins the owner put up by hand on their Pages, asking for the rest (lib/siteAsk.ts)
+ * POST /asks/:id/make { label, server, site, …, agree: true } — said yes to (after matching its pair with the
+ *            client): checked, then made like any copy, adopting that Pages project; its owner's account is
+ *            made by the client with the setup code their admin is told
+ * POST /asks/:id/refuse — said no to (the client may ask again)
  */
 const r = Router();
 
@@ -70,6 +76,9 @@ const MakeBody = z
     agree: z.literal(true),
   })
   .strict();
+
+// An ask said yes to: the same names as a copy, and no owner (the client makes their own account).
+const AskMakeBody = z.object({ ...Fields, agree: z.literal(true) }).strict();
 
 async function connections() {
   const out = {} as Record<PressKind, Array<{ id: string; name: string }>>;
@@ -176,6 +185,60 @@ r.post(
     if (isMaking(row.id) || !(await tryCopyAgain(row.id))) throw new AppError(409, "COPY_MAKING", "This copy is being made now");
     res.setHeader("Cache-Control", "no-store");
     res.status(202).json(await copyView(await oneCopy(row.id), true));
+  }),
+);
+
+r.get(
+  "/asks",
+  asyncHandler(async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ asks: await listAsks() });
+  }),
+);
+
+async function oneAsk(id: string) {
+  const ask = await prisma.siteAsk.findUnique({ where: { id } });
+  if (!ask) throw new AppError(404, "ASK_NOT_FOUND", "No such site asked");
+  if (ask.state !== "waiting") throw new AppError(409, "ASK_NOT_WAITING", "This site isn't waiting any more");
+  return ask;
+}
+
+r.post(
+  "/asks/:id/make",
+  asyncHandler(async (req, res) => {
+    const ask = await oneAsk(String(req.params.id));
+    const { agree: _agree, ...body } = AskMakeBody.parse(req.body ?? {});
+    const { input, via } = await readAsk(body);
+    const adopt = askingAdmin(ask.admin);
+    if (!adopt) throw new AppError(409, "ASK_ADMIN", "This site's address can't be adopted");
+    const had = await prisma.clientCopy.findFirst({ where: { OR: [{ server: input.server }, { site: input.site }] }, select: { id: true } });
+    if (had) throw new AppError(409, "COPY_EXISTS", "A copy with this name is already made or being made", { id: had.id });
+    const checks = await checkCopy(input, via, adopt);
+    if (!checks.every((c) => c.ok)) throw new AppError(409, "COPY_NOT_READY", "Not every service said yes", { checks });
+    // Taken only while it waits: a second press, or the client asking again from another browser meanwhile, finds it taken.
+    const took = await prisma.siteAsk.updateMany({ where: { id: ask.id, state: "waiting", keyHash: ask.keyHash }, data: { state: "making" } });
+    if (!took.count) throw new AppError(409, "ASK_NOT_WAITING", "This site isn't waiting any more");
+    let row;
+    try {
+      row = await startCopy(input, via, req.user?.email ?? null, null, adopt);
+    } catch (e) {
+      await prisma.siteAsk.update({ where: { id: ask.id }, data: { state: "waiting" } });
+      if ((e as { code?: string })?.code === "P2002") throw new AppError(409, "COPY_EXISTS", "A copy with this name is already made or being made");
+      throw e;
+    }
+    await prisma.siteAsk.update({ where: { id: ask.id }, data: { copyId: row.id } });
+    res.setHeader("Cache-Control", "no-store");
+    res.status(202).json(await copyView(row));
+  }),
+);
+
+r.post(
+  "/asks/:id/refuse",
+  asyncHandler(async (req, res) => {
+    const ask = await oneAsk(String(req.params.id));
+    await prisma.siteAsk.update({ where: { id: ask.id }, data: { state: "refused" } });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ asks: await listAsks() });
   }),
 );
 

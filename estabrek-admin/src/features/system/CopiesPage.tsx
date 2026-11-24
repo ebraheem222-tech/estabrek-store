@@ -19,6 +19,7 @@ import { adminLang } from "../../lib/lang";
 import { SITES, SITE_FIELDS, type SiteField } from "../../studio/templates/sites";
 import { siteKindName } from "../setup/siteSetup";
 import { CopyRuns } from "./CopyRuns";
+import { SiteAsks } from "./SiteAsks";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const field = "h-10 w-full min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
@@ -98,6 +99,7 @@ export default function CopiesPage() {
         </p>
       </section>
 
+      <SiteAsks via={Object.fromEntries(PRESS_KINDS.map((k) => [k, picked(k)]).filter(([, id]) => !!id))} regions={v.regions} onMade={setOpen} />
       <CopyRuns open={open} onOpen={setOpen} />
 
       <section className={box} data-testid="copies-connections">

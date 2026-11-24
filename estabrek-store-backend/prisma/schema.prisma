@@ -814,6 +814,26 @@ model ClientCopy {
   @@index([createdAt])
 }
 
+/// A copy's admin the owner put up by hand on Cloudflare Pages before anything else, asking this store's press to make
+/// the rest (src/lib/siteAsk.ts). It is made only when the owner says yes in نسخ الزباين, after matching its pair code
+/// with the client; then a ClientCopy is made for it that sets that same Pages project to its new server.
+model SiteAsk {
+  id        String   @id @default(cuid())
+  /// The admin's own address, as its browser sent it (https://name.pages.dev): one ask per admin.
+  admin     String   @unique
+  /// Six letters shown on the asking page and in the owner's list: the owner checks they match before saying yes.
+  pair      String
+  /// sha256 of the asking browser's own key: only that browser is told its server and its setup code.
+  keyHash   String
+  /// "waiting" | "making" (its copy is made or being made) | "refused"
+  state     String   @default("waiting")
+  copyId    String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([state, createdAt])
+}
+
 model ProjectSnapshot {
   id        String   @id @default(cuid())
   /// The owner's name for it, or what it was kept before.

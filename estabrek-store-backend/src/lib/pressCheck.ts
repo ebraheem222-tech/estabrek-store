@@ -60,8 +60,27 @@ async function pagesAddressFree(name: string): Promise<CopyCheck> {
   }
 }
 
-/** Each service's questions for this copy, all at once. A service with no connection picked is said so. */
-export async function checkCopy(input: CopyInput, via: Via): Promise<CopyCheck[]> {
+/** An admin the owner already put up on Pages (lib/siteAsk.ts): its project's name, and the address it asked from. */
+export type Adopt = { project: string; admin: string };
+
+/**
+ * Whether the owner's own Pages project is the one that asked: it is in the connected account, and its address is
+ * the asking one (a project's address can be another than its name, when the name was taken).
+ */
+export function adoptCheck(got: { ok: boolean; status: number; why: string | null; body?: unknown }, adopt: Adopt): CopyCheck {
+  const id = "cloudflare.adopt";
+  if (got.status === 404) return { id, kind: "cloudflare", ok: false, why: `No Pages project "${adopt.project}" in this Cloudflare account` };
+  if (!got.ok) return { id, kind: "cloudflare", ok: false, why: said(got) };
+  const sub = part(part(got.body, "result"), "subdomain");
+  if (typeof sub !== "string" || `https://${sub}` !== adopt.admin) return { id, kind: "cloudflare", ok: false, why: `The Pages project "${adopt.project}" isn't at ${adopt.admin}` };
+  return { id, kind: "cloudflare", ok: true, why: null };
+}
+
+/**
+ * Each service's questions for this copy, all at once. A service with no connection picked is said so. `adopt`: the
+ * copy's admin is a Pages project already there (asked for from it), so it is found, not checked free.
+ */
+export async function checkCopy(input: CopyInput, via: Via, adopt?: Adopt): Promise<CopyCheck[]> {
   const settingsOf = async (kind: PressKind) => (via[kind] ? ((await readyOfKind(kind)).find((c) => c.id === via[kind])?.settings ?? null) : null);
   const [neonS, railwayS, vercelS, cloudflareS] = await Promise.all([settingsOf("neon"), settingsOf("railway"), settingsOf("vercel"), settingsOf("cloudflare")]);
   const missing = (kind: PressKind): CopyCheck => ({ id: `${kind}.connection`, kind, ok: false, why: "No connection to it is picked" });
@@ -100,7 +119,9 @@ export async function checkCopy(input: CopyInput, via: Via): Promise<CopyCheck[]
   if (!cloudflareS) jobs.push(missing("cloudflare"));
   // A Pages project lives in an account.
   else if (!cloudflareS.account) jobs.push({ id: "cloudflare.account", kind: "cloudflare", ok: false, why: "The Cloudflare connection has no Account ID" });
-  else {
+  else if (adopt) {
+    jobs.push(askThrough(via.cloudflare!, "cloudflare", { method: "GET", url: `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(cloudflareS.account)}/pages/projects/${encodeURIComponent(adopt.project)}`, headers: bearer }).then((got) => adoptCheck(got, adopt)));
+  } else {
     const name = adminName(input.site);
     jobs.push(askThrough(via.cloudflare!, "cloudflare", { method: "GET", url: `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(cloudflareS.account)}/pages/projects/${encodeURIComponent(name)}`, headers: bearer }).then((got) => freeName("cloudflare", "cloudflare.name", got, name)));
     jobs.push(pagesAddressFree(name));

@@ -28,7 +28,7 @@ import { askThrough, readyOfKind } from "./fnReady.js";
 import { newSetupCode } from "./firstRun.js";
 import { COPY_FOLDERS, PRE_DEPLOY, adminName, copyUrls, copyVariables, madeSecret, type CopyInput, type CopyUrls, type CopyVar, type PressKind } from "./press.js";
 import type { ReadyCall, Asked } from "./fnKinds.js";
-import type { Via } from "./pressCheck.js";
+import { adoptCheck, type Adopt, type Via } from "./pressCheck.js";
 
 /** The steps, in the order they are made, each with the service it is made at. */
 export const MAKE_STEPS = [
@@ -74,7 +74,11 @@ export type Made = {
   /** The new store's owner: their account made on its server (the password is kept sealed with the secrets until then). */
   owner?: { name: string; email: string; made?: boolean };
   vercel?: { project?: string; address?: string; variables?: boolean; deployment?: string };
-  cloudflare?: { project?: string; address?: string; deployment?: string };
+  /**
+   * `adopted`: the admin is a Pages project the owner put up by hand, which asked for the rest (lib/siteAsk.ts): found
+   * and checked (`checked`), given its variables (`variables`), then built again, never made.
+   */
+  cloudflare?: { project?: string; address?: string; deployment?: string; adopted?: boolean; checked?: boolean; variables?: boolean };
 };
 /** The copy's own secrets (lib/press.ts says where each one goes) and the code its owner opens its setup with. */
 export type CopySecrets = {
@@ -300,8 +304,18 @@ const STEPS: Record<StepId, (c: Ctx) => Promise<void>> = {
 
   async "cloudflare.project"(c) {
     const m = (c.made.cloudflare ??= {});
-    if (m.project) return;
     const account = c.settings.cloudflare?.account;
+    if (m.adopted) {
+      // The owner's own project, which asked: still there, and still at the address that asked.
+      if (m.checked) return;
+      if (!account) throw new StepError("The Cloudflare connection has no Account ID");
+      const got = await c.peek("cloudflare", call("GET", `${CLOUDFLARE}/accounts/${encodeURIComponent(account)}/pages/projects/${encodeURIComponent(m.project!)}`));
+      const check = adoptCheck(got, { project: m.project!, admin: m.address! });
+      if (!check.ok) throw new StepError(check.why ?? "The Pages project isn't the one that asked");
+      m.checked = true;
+      return;
+    }
+    if (m.project) return;
     if (!account) throw new StepError("The Cloudflare connection has no Account ID");
     const name = adminName(c.input.site);
     const at = `${CLOUDFLARE}/accounts/${encodeURIComponent(account)}/pages/projects`;
@@ -351,6 +365,12 @@ const STEPS: Record<StepId, (c: Ctx) => Promise<void>> = {
     const m = c.made.cloudflare!;
     if (m.deployment) return;
     const account = c.settings.cloudflare?.account ?? "";
+    if (m.adopted && !m.variables) {
+      // Made by hand with none: given the new server's and shop's addresses (set alongside any it has), then built with them.
+      const env = Object.fromEntries(copyVariables(addressesOf(c.input, c.made)).admin.map((v) => [v.name, { type: "plain_text", value: valueOf(v, c.secrets) }]));
+      await c.ask("cloudflare", call("PATCH", `${CLOUDFLARE}/accounts/${encodeURIComponent(account)}/pages/projects/${encodeURIComponent(m.project!)}`, { deployment_configs: { production: { env_vars: env }, preview: { env_vars: env } } }));
+      m.variables = true;
+    }
     // A project built from GitHub: its production branch built now (and with every merge after).
     const got = await c.ask("cloudflare", call("POST", `${CLOUDFLARE}/accounts/${encodeURIComponent(account)}/pages/projects/${encodeURIComponent(m.project!)}/deployments`));
     m.deployment = text(part(part(got.body, "result"), "id")) ?? "started";
@@ -495,10 +515,14 @@ const asJson = (v: unknown) => JSON.parse(JSON.stringify(v));
 const freshSteps = (): MakeStep[] => MAKE_STEPS.map(([id, kind]) => ({ id, kind, state: "waiting", why: null, at: null }));
 type Row = NonNullable<Awaited<ReturnType<typeof prisma.clientCopy.findUnique>>>;
 
-/** A new copy kept, and its making begun (not waited for). */
-export async function startCopy(input: CopyInput, via: Via, by: string | null, owner: CopyOwner) {
-  const secrets: CopySecrets = { ...newCopySecrets(), OWNER_PASSWORD: owner.password };
-  const made: Made = { owner: { name: owner.name, email: owner.email } };
+/**
+ * A new copy kept, and its making begun (not waited for). `owner`: its owner's account, made by the press once the
+ * server answers; null when the client makes it themself with the setup code (an admin that asked: `adopt`).
+ */
+export async function startCopy(input: CopyInput, via: Via, by: string | null, owner: CopyOwner | null, adopt?: Adopt) {
+  const secrets: CopySecrets = { ...newCopySecrets(), ...(owner ? { OWNER_PASSWORD: owner.password } : {}) };
+  const made: Made = owner ? { owner: { name: owner.name, email: owner.email } } : {};
+  if (adopt) made.cloudflare = { project: adopt.project, address: adopt.admin, adopted: true };
   const row = await prisma.clientCopy.create({
     data: { label: input.label, server: input.server, site: input.site, repo: input.repo, branch: input.branch, region: input.region, startSite: input.startSite, via: asJson(via), steps: asJson(freshSteps()), made: asJson(made), sealed: seal(JSON.stringify(secrets)), byEmail: by },
   });

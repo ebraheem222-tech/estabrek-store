@@ -108,3 +108,27 @@ describe("A store with no one in it", () => {
     expect((await screen.findByTestId("first-run")).textContent).toContain("أهلاً بمتجرك الجديد");
   });
 });
+
+describe("A sign-in with no server behind it", () => {
+  test("no answer at all: says so, and where to link it", async () => {
+    m.api.firstRunStatus.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }));
+    show("/login");
+    const notice = await screen.findByTestId("login-no-server");
+    expect(notice.textContent).toContain("The server isn't answering");
+    expect(notice.querySelector("a")?.getAttribute("href")).toBe("/connect");
+  });
+
+  test("an answer that isn't a store's server (the admin's own page): the same", async () => {
+    m.api.firstRunStatus.mockResolvedValue("<!doctype html><html></html>");
+    show("/login");
+    expect(await screen.findByTestId("login-no-server")).toBeTruthy();
+  });
+
+  test("a server that answers, even with an error, is no reason for it", async () => {
+    m.api.firstRunStatus.mockRejectedValue(Object.assign(new Error("Request failed with status code 429"), { response: { status: 429 } }));
+    show("/login");
+    await waitFor(() => expect(m.api.firstRunStatus).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByTestId("login-no-server")).toBeNull();
+  });
+});

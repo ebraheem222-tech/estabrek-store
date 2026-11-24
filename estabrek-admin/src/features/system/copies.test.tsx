@@ -11,7 +11,7 @@ import type { CopiesView, CopyPlan, CopyView } from "../../api/copies.api";
 // that said no in its own words with "try again from here", and a made copy's addresses and its owner's link.
 
 const m = vi.hoisted(() => ({
-  api: { getCopies: vi.fn(), planCopy: vi.fn(), makeCopy: vi.fn(), listCopies: vi.fn(), getCopy: vi.fn(), copyAgain: vi.fn(), copyAlive: vi.fn(), PRESS_KINDS: ["neon", "railway", "vercel", "cloudflare"] },
+  api: { getCopies: vi.fn(), planCopy: vi.fn(), makeCopy: vi.fn(), listCopies: vi.fn(), getCopy: vi.fn(), copyAgain: vi.fn(), copyAlive: vi.fn(), listAsks: vi.fn(), makeAsk: vi.fn(), refuseAsk: vi.fn(), PRESS_KINDS: ["neon", "railway", "vercel", "cloudflare"] },
   admin: { owner: true, role: "SUPERADMIN" } as Record<string, unknown> | null,
 }));
 vi.mock("../../api/copies.api", () => m.api);
@@ -90,6 +90,7 @@ beforeEach(() => {
   m.api.getCopies.mockResolvedValue(VIEW);
   m.api.planCopy.mockResolvedValue(PLAN);
   m.api.listCopies.mockResolvedValue([]);
+  m.api.listAsks.mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup();
@@ -301,5 +302,59 @@ describe("Client copies", () => {
     expect(whyText("The server didn't answer in time: its first deploy may have failed (see it at Railway)")).toContain("السيرفر ما اشتغل بالوقت");
     expect(refusedText({ error: "NAME_INVALID", message: "A name is at least 3 letters", details: { at: "server" } })).toBe("اسم السيرفر: الاسم 3 حروف عالأقل");
     expect([tidyName("  My Shop "), tidyName("Rose_Store!!"), tidyName("a--b"), tidyName("-shop-")]).toEqual(["my-shop", "rose-store", "a-b", "shop"]);
+  });
+});
+
+// A site the owner put up by hand on their Pages asks for the rest (backend lib/siteAsk.ts; the client's page is
+// features/connect): it waits here with the six letters the client reads out; said yes to, it is made like any copy.
+describe("Sites waiting", () => {
+  const ASK = { id: "a1", admin: "https://paint.pages.dev", project: "paint", pair: "K7Q-H9M", state: "waiting" as const, asked: "2026-11-24T18:00:00.000Z", copy: null };
+
+  test("a waiting site with its letters; said yes to with the names it gives and the connections picked, then followed below", async () => {
+    m.api.listAsks.mockResolvedValue([ASK, { ...ASK, id: "a2", admin: "https://old.pages.dev", project: "old", state: "making" }]);
+    m.api.makeAsk.mockResolvedValue(copy("making", 1));
+    m.api.getCopy.mockResolvedValue(copy("making", 1));
+    show();
+    const asks = await screen.findByTestId("copies-asks");
+    // Only the waiting one, its letters as the client sees them.
+    expect(within(asks).queryByTestId("copies-ask-old")).toBeNull();
+    expect(screen.getByTestId("copies-ask-paint-pair").textContent).toBe("K7Q-H9M");
+    fireEvent.click(screen.getByTestId("copies-ask-paint-yes"));
+    // The names come from the site's own; nothing is made before the owner says the letters match and it costs monthly.
+    expect((screen.getByTestId("copies-ask-paint-server") as HTMLInputElement).value).toBe("paint");
+    expect(screen.getByTestId("copies-ask-paint-form").textContent).toContain("paint.up.railway.app");
+    expect(screen.getByTestId("copies-ask-paint-form").textContent).toContain("https://paint.pages.dev");
+    const make = screen.getByTestId("copies-ask-paint-make") as HTMLButtonElement;
+    expect(make.disabled).toBe(true);
+    type("copies-ask-paint-server", "Paint API");
+    fireEvent.click(screen.getByTestId("copies-ask-paint-agree"));
+    expect(make.disabled).toBe(false);
+    m.api.listCopies.mockResolvedValue([copy("making", 1)]);
+    fireEvent.click(make);
+    await waitFor(() => expect(m.api.makeAsk).toHaveBeenCalledWith("a1", { label: "paint", server: "paint-api", site: "paint", region: "aws-eu-central-1", via: { neon: "n1", railway: "r1" } }));
+    expect(await screen.findByTestId("copies-made")).toBeTruthy();
+  });
+
+  test("a service saying no is said with its checks; a no to the site itself", async () => {
+    m.api.listAsks.mockResolvedValue([ASK]);
+    m.api.makeAsk.mockRejectedValue({ response: { data: { error: "COPY_NOT_READY", message: "Not every service said yes", details: { checks: [{ id: "cloudflare.adopt", kind: "cloudflare", ok: false, why: 'The Pages project "paint" isn\'t at https://paint.pages.dev' }, { id: "neon.reach", kind: "neon", ok: true, why: null }] } } } });
+    m.api.refuseAsk.mockResolvedValue([]);
+    show();
+    fireEvent.click(await screen.findByTestId("copies-ask-paint-yes"));
+    fireEvent.click(screen.getByTestId("copies-ask-paint-agree"));
+    fireEvent.click(screen.getByTestId("copies-ask-paint-make"));
+    const refused = await screen.findByTestId("copies-ask-paint-refused");
+    expect(refused.textContent).toContain("A service says no now");
+    expect(refused.textContent).toContain("The site that asked is in the Cloudflare account, at the same address");
+    expect(refused.textContent).toContain("it isn't the site that asked");
+    expect(refused.textContent).not.toContain("Neon answers");
+    fireEvent.click(screen.getByTestId("copies-ask-paint-no"));
+    await waitFor(() => expect(m.api.refuseAsk).toHaveBeenCalledWith("a1"));
+  });
+
+  test("nothing waiting: nothing shown", async () => {
+    show();
+    await screen.findByTestId("copies-connections");
+    expect(screen.queryByTestId("copies-asks")).toBeNull();
   });
 });
