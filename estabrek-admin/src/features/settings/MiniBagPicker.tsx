@@ -136,7 +136,7 @@ export function MiniBagPicker({ value, onChange, header, currency = "ILS", testi
 
   return (
     <div className="space-y-4" data-testid={testid}>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3" data-testid={`${testid}-picked`}>
+      <div className="rounded-2xl border border-white/10 bg-white/4 p-3" data-testid={`${testid}-picked`}>
         {picked ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
             <div className="space-y-3">
@@ -179,7 +179,7 @@ export function MiniBagPicker({ value, onChange, header, currency = "ILS", testi
           {say("بدون تصميم (السلة الأصلية)|No design (the original bag)|בלי עיצוב (הסל המקורי)")}
         </button>
         <input
-          className="h-9 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm"
+          className="h-9 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/3 px-3 text-sm"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={say(`دوّر بين ${MINI_BAG_DESIGNS.length} تصميم…|Search ${MINI_BAG_DESIGNS.length} designs…|חיפוש בין ${MINI_BAG_DESIGNS.length} עיצובים…`)}
@@ -204,7 +204,7 @@ export function MiniBagPicker({ value, onChange, header, currency = "ILS", testi
         ))}
       </div>
 
-      <ul className="grid max-h-[40rem] grid-cols-2 gap-3 overflow-auto pe-1 sm:grid-cols-3 xl:grid-cols-4" role="listbox" aria-label={say("تصاميم السلة المصغّرة|Small bag designs|עיצובי הסל הקטן")} data-testid={`${testid}-list`}>
+      <ul className="grid max-h-160 grid-cols-2 gap-3 overflow-auto pe-1 sm:grid-cols-3 xl:grid-cols-4" role="listbox" aria-label={say("تصاميم السلة المصغّرة|Small bag designs|עיצובי הסל הקטן")} data-testid={`${testid}-list`}>
         {found.map((x) => (
           <Tile key={x.id} design={x} on={x.id === value} fits={!!industry && x.fits.includes(industry)} lines={lines} total={total} vars={look?.vars} dir={dir} onPick={() => onChange(x.id)} testid={`${testid}-${x.id}`} />
         ))}

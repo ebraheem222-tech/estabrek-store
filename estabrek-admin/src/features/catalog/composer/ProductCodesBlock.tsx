@@ -87,7 +87,7 @@ function CodesEditor({ productId }: { productId: string }) {
   const [confirm, confirmDialog] = useConfirm();
 
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] p-3 sm:p-4" data-testid="product-codes">
+    <div className="mt-4 rounded-xl border border-white/8 p-3 sm:p-4" data-testid="product-codes">
       {confirmDialog}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-white">{tr("🔑 أكواد بتنباع وحدة وحدة", "🔑 Codes sold one by one")}</span>
@@ -103,7 +103,7 @@ function CodesEditor({ productId }: { productId: string }) {
       {hasAny ? (
         <div className="mb-3 grid gap-2 sm:grid-cols-3" data-testid="codes-counts">
           {variants.filter((v) => v.available + v.delivered + v.void > 0 || variants.length === 1).map((v) => (
-            <div key={v.id} className="rounded-lg bg-white/[0.04] px-3 py-2">
+            <div key={v.id} className="rounded-lg bg-white/4 px-3 py-2">
               {variants.length > 1 ? <div className="mb-0.5 truncate text-xs text-white/60">{variantLabel(v)}</div> : null}
               <div className={cn("text-lg font-semibold", v.available ? "text-white" : "text-red-300")}>{v.available} <span className="text-xs font-normal text-white/50">{tr("متاح", "available")}</span></div>
               <div className="text-[11px] text-white/45">{v.delivered} {tr("انباع", "sold")}{v.void ? tr(` · ${v.void} ملغي`, " · {0} cancelled", [v.void]) : ""}</div>
@@ -117,7 +117,7 @@ function CodesEditor({ productId }: { productId: string }) {
       )}
 
       {open ? (
-        <div className="mt-3 space-y-3 rounded-xl bg-white/[0.03] p-3" data-testid="codes-add">
+        <div className="mt-3 space-y-3 rounded-xl bg-white/3 p-3" data-testid="codes-add">
           {variants.length > 1 ? (
             <div>
               <span className="mb-1.5 block text-xs text-white/55">{tr("لأي مقاس؟", "For which size?")}</span>
@@ -162,7 +162,7 @@ function CodesEditor({ productId }: { productId: string }) {
             >
               {add.isPending ? tr("جارٍ الإضافة…", "Adding…") : preview.count ? tr(`إضافة ${codesCount(preview.count)}`, "Add {0}", [codesCount(preview.count)]) : tr("إضافة", "Add")}
             </button>
-            <button type="button" onClick={() => file.current?.click()} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">
+            <button type="button" onClick={() => file.current?.click()} className="h-10 rounded-xl border border-white/10 px-4 text-sm text-white/80 hover:bg-white/6">
               {tr("من ملف…", "From a file…")}
             </button>
             <button type="button" onClick={() => { setOpen(false); setText(""); }} className="h-10 rounded-xl px-3 text-sm text-white/60 hover:text-white">
@@ -176,7 +176,7 @@ function CodesEditor({ productId }: { productId: string }) {
           <button type="button" disabled={!variants.length} onClick={() => setOpen(true)} className="h-10 rounded-xl bg-accent-500/20 px-4 text-sm text-white hover:bg-accent-500/30 disabled:opacity-50">
             {tr("+ إضافة أكواد", "+ Add codes")}
           </button>
-          <button type="button" disabled={!variants.length} onClick={() => file.current?.click()} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">
+          <button type="button" disabled={!variants.length} onClick={() => file.current?.click()} className="h-10 rounded-xl border border-white/10 px-4 text-sm text-white/80 hover:bg-white/6 disabled:opacity-50">
             {tr("+ من ملف CSV", "+ From a CSV file")}
           </button>
         </div>
@@ -193,7 +193,7 @@ function CodesEditor({ productId }: { productId: string }) {
             ))}
           </div>
           {q.data?.codes.length ? (
-            <ul className="divide-y divide-white/[0.06]" data-testid="codes-list">
+            <ul className="divide-y divide-white/6" data-testid="codes-list">
               {q.data.codes.map((c) => (
                 <CodeRow
                   key={c.id}
@@ -240,7 +240,7 @@ function CodeRow({ c, size, reveal, onVoid }: { c: ProductCode; size: string | n
       <span className={cn("rounded-full px-2 py-0.5 text-[11px]", CODE_STATUS[c.status].cls)}>{CODE_STATUS[c.status].label}</span>
       {size ? <span className="text-[11px] text-white/50">{size}</span> : null}
       {/* Phones: the story on its own line under the code; wider: in the middle. */}
-      <span className="order-last basis-full text-[11px] text-white/40 sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto sm:truncate">{codeNote(c)}</span>
+      <span className="order-last basis-full text-[11px] text-white/40 sm:order-0 sm:min-w-0 sm:flex-1 sm:basis-auto sm:truncate">{codeNote(c)}</span>
       <span className="ms-auto flex items-center gap-1 sm:ms-0">
         {c.orderRequestId ? (
           <Link to={`/admin/orders/${c.orderRequestId}`} className="inline-flex h-9 items-center rounded-lg px-3 text-sm sm:h-7 sm:px-2 sm:text-xs text-accent-300 hover:bg-accent-500/10">

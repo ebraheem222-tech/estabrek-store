@@ -145,7 +145,7 @@ function TriggerCard({ t, tables, meta, canWrite, busy, missing, onAddInputs, on
   const daily = "at" in c;
 
   return (
-    <li className="rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid={`trigger-${t.id}`} data-kind={t.kind}>
+    <li className="rounded-xl border border-white/10 bg-white/3 p-3" data-testid={`trigger-${t.id}`} data-kind={t.kind}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{say(TRIGGER_KIND_NAME[t.kind])}</span>
         <span className="min-w-0 flex-1 truncate text-sm text-white/60" data-testid={`trigger-${t.id}-line`}>

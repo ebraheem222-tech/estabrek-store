@@ -70,7 +70,7 @@ export function EaseField({ label, value, busy, onSave, testId = "studio-ease" }
         {(["named", "bezier", "spring"] as const).map((k) => (
           <button
             key={k} type="button" role="radio" aria-checked={kind === k} disabled={busy}
-            className={`rounded-lg px-1.5 py-1 text-[11px] ${kind === k ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`}
+            className={`rounded-lg px-1.5 py-1 text-[11px] ${kind === k ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`}
             onClick={() => save(k === "named" ? { kind: "named", name: "power2.inOut" } : k === "bezier" ? { kind: "bezier", p: [0.25, 0.1, 0.25, 1] } : { kind: "spring", mass: 1, stiffness: 170, damping: 14 })}
             data-testid={`${testId}-${k}`}
           >
@@ -79,7 +79,7 @@ export function EaseField({ label, value, busy, onSave, testId = "studio-ease" }
         ))}
       </div>
       <svg
-        ref={svg} viewBox={`0 0 ${W} ${H}`} className="block w-full touch-none rounded-lg bg-white/[0.04]" role="img" aria-label={say("المنحنى|The curve|העקומה")}
+        ref={svg} viewBox={`0 0 ${W} ${H}`} className="block w-full touch-none rounded-lg bg-white/4" role="img" aria-label={say("المنحنى|The curve|העקומה")}
         onPointerMove={(e) => {
           if (drag.current === null || !bez) return;
           const p = fromPointer(e);
@@ -123,11 +123,11 @@ export function EaseField({ label, value, busy, onSave, testId = "studio-ease" }
       </svg>
       {ease.kind === "named" ? (
         <div className="grid grid-cols-2 gap-1">
-          <select className="rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" disabled={busy} value={ease.name === "none" ? "none" : ease.name.split(".")[0]} onChange={(e) => save({ kind: "named", name: e.target.value === "none" ? "none" : `${e.target.value}.${ease.name.includes(".") ? ease.name.split(".")[1] : "inOut"}` })} data-testid={`${testId}-family`}>
+          <select className="rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white" disabled={busy} value={ease.name === "none" ? "none" : ease.name.split(".")[0]} onChange={(e) => save({ kind: "named", name: e.target.value === "none" ? "none" : `${e.target.value}.${ease.name.includes(".") ? ease.name.split(".")[1] : "inOut"}` })} data-testid={`${testId}-family`}>
             <option value="none">{say("ثابت السرعة|Steady|קבוע")}</option>
             {EASE_FAMILIES.map((f) => <option key={f} value={f}>{say(FAMILY_WORD[f])}</option>)}
           </select>
-          <select className="rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white disabled:opacity-40" disabled={busy || ease.name === "none"} value={ease.name.split(".")[1] ?? "inOut"} onChange={(e) => save({ kind: "named", name: `${ease.name.split(".")[0]}.${e.target.value}` })} data-testid={`${testId}-way`}>
+          <select className="rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white disabled:opacity-40" disabled={busy || ease.name === "none"} value={ease.name.split(".")[1] ?? "inOut"} onChange={(e) => save({ kind: "named", name: `${ease.name.split(".")[0]}.${e.target.value}` })} data-testid={`${testId}-way`}>
             {EASE_WAYS.map((w) => <option key={w} value={w}>{say(WAY_WORD[w])}</option>)}
           </select>
         </div>

@@ -173,13 +173,13 @@ export function ScenePanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
   const find = q.trim().toLowerCase();
   const current = SCENE_GROUPS.flatMap(g => g.kinds).find(([k]) => k === scene?.kind);
   return (
-    <div className="space-y-2.5 rounded-xl border border-white/[0.08] p-3" data-testid="studio-scene">
+    <div className="space-y-2.5 rounded-xl border border-white/8 p-3" data-testid="studio-scene">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/70">{tr("مشهد خلفية القسم", "Section background scene")}</div>
         <span className="text-[10px] text-white/40">{tr("100 خلفية متحركة", "100 moving backgrounds")}</span>
       </div>
       {/* The chosen background and its settings come first, so they never sit below a hundred tiles. */}
-      {scene ? <div className="space-y-2 rounded-lg bg-white/[0.04] p-2" data-testid="studio-scene-settings">
+      {scene ? <div className="space-y-2 rounded-lg bg-white/4 p-2" data-testid="studio-scene-settings">
         <div className="text-[11px] text-white/70">{tr("المختار:", "Chosen:")} <span className="text-white">{current ? current[1]() : String(scene.kind)}</span></div>
         <ColourPick label={tr("لون المشهد", "Scene colour")} value={scene.color ?? "accent"} busy={busy} onPick={(color) => save({ ...scene, color: color ?? undefined })} testId="studio-scene-color" />
         <ColourPick label={tr("اللون الثاني للمشهد", "Scene secondary colour")} value={scene.secondary ?? "text"} busy={busy} onPick={(secondary) => save({ ...scene, secondary: secondary ?? undefined })} testId="studio-scene-secondary" />
@@ -188,9 +188,9 @@ export function ScenePanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
         <Range label={tr("شدة المشهد", "Scene intensity")} value={typeof scene.intensity === "number" ? scene.intensity : 1} min={0} max={2} step={0.1} busy={busy} onSave={(intensity) => save({ ...scene, intensity })} testId="studio-scene-intensity" />
         <label className="flex items-center justify-between gap-2 text-xs text-white/75"><span>{tr("يتفاعل مع المؤشر", "Respond to pointer")}</span><input type="checkbox" disabled={busy} checked={scene.interactive === true} onChange={(e) => save({ ...scene, interactive: e.target.checked })} data-testid="studio-scene-interactive" /></label>
         <p className="text-[10px] leading-4 text-white/40">{tr("يتوقف خارج الشاشة، ويعرض صورة ثابتة عند تقليل الحركة.", "Pauses out of view; shows a still frame with reduced motion.")}</p>
-        <button type="button" disabled={busy} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs text-red-300 disabled:opacity-40" onClick={() => save(null)}>{tr("إزالة المشهد", "Remove scene")}</button>
+        <button type="button" disabled={busy} className="rounded-lg bg-white/6 px-2 py-1 text-xs text-red-300 disabled:opacity-40" onClick={() => save(null)}>{tr("إزالة المشهد", "Remove scene")}</button>
       </div> : null}
-      <input type="search" value={q} disabled={busy} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على خلفية…", "Find a background…")} aria-label={tr("دوّر على خلفية", "Find a background")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-scene-search" />
+      <input type="search" value={q} disabled={busy} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على خلفية…", "Find a background…")} aria-label={tr("دوّر على خلفية", "Find a background")} className="w-full rounded-lg border border-white/10 bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-scene-search" />
       <div role="group" aria-label={tr("نوع المشهد", "Scene kind")} className="space-y-3">
         {SCENE_GROUPS.map(g => {
           const kinds = find ? g.kinds.filter(([k, name]) => name().toLowerCase().includes(find) || k.includes(find) || g.title().toLowerCase().includes(find)) : g.kinds;
@@ -200,7 +200,7 @@ export function ScenePanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
               <h4 className="mb-1 text-[10px] font-medium text-white/50">{g.title()} <span className="text-white/30">· {kinds.length}</span></h4>
               <div className="grid grid-cols-3 gap-1">
                 {kinds.map(([kind, name]) => (
-                  <button type="button" key={kind} disabled={busy} aria-pressed={scene?.kind === kind} data-scene-kind={kind} title={name()} onPointerEnter={() => setResting(kind)} onPointerLeave={() => setResting(r => (r === kind ? null : r))} onClick={() => save({ amount: 32, speed: 1, intensity: 1, interactive: false, ...scene, kind })} className={`overflow-hidden rounded-lg p-1 text-center text-[10px] disabled:opacity-40 ${scene?.kind === kind ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"}`}>
+                  <button type="button" key={kind} disabled={busy} aria-pressed={scene?.kind === kind} data-scene-kind={kind} title={name()} onPointerEnter={() => setResting(kind)} onPointerLeave={() => setResting(r => (r === kind ? null : r))} onClick={() => save({ amount: 32, speed: 1, intensity: 1, interactive: false, ...scene, kind })} className={`overflow-hidden rounded-lg p-1 text-center text-[10px] disabled:opacity-40 ${scene?.kind === kind ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/5 text-white/70 hover:bg-white/10"}`}>
                     <SceneThumb kind={kind} moving={resting === kind} />
                     <span className="mt-1 block truncate">{name()}</span>
                   </button>

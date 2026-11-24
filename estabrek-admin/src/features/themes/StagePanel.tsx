@@ -13,8 +13,8 @@ import { tr } from "../../lib/words";
 import { stageWords, type StageModelInfo, type StoreThemeInfo } from "../../studio/storeThemes";
 import { MAX_GAMES, MAX_MODELS, themeDraft, type DraftGame, type DraftModel, type StageDraftApi } from "./stageDraft";
 
-const input = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-30";
+const input = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-30";
 
 function LinkPicker({ value, onChange, categories, label }: { value: string; onChange: (v: string) => void; categories: CatalogCategory[]; label: string }) {
   const known = value === "" || categories.some((c) => `/c/${encodeURIComponent(c.slug)}` === value);
@@ -74,7 +74,7 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
       <div className="space-y-2">
         <div className="text-xs font-medium text-white/70">{tr("الموديلات", "Models")} ({rows.length}/{MAX_MODELS})</div>
         {rows.map((r, i) => (
-          <div key={i} className="grid gap-2 rounded-xl bg-white/[0.03] p-2 md:grid-cols-[150px_1fr_1fr_auto]" data-testid="stage-model-row">
+          <div key={i} className="grid gap-2 rounded-xl bg-white/3 p-2 md:grid-cols-[150px_1fr_1fr_auto]" data-testid="stage-model-row">
             <select className={input} aria-label={tr("الموديل", "Model")} value={r.kind} onChange={(e) => setRow(i, { kind: e.target.value })}>
               {models.map((m) => (
                 <option key={m.kind} value={m.kind}>
@@ -105,9 +105,9 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
       <div className="space-y-2">
         <div className="text-xs font-medium text-white/70">{words.list} ({games.length}/{MAX_GAMES})</div>
         {games.map((g, i) => (
-          <div key={i} className="grid gap-2 rounded-xl bg-white/[0.03] p-2 md:grid-cols-[1fr_52px_130px_1fr_auto]" data-testid="stage-game-row">
+          <div key={i} className="grid gap-2 rounded-xl bg-white/3 p-2 md:grid-cols-[1fr_52px_130px_1fr_auto]" data-testid="stage-game-row">
             <input className={input} aria-label={words.name} value={g.name} placeholder={words.example} onChange={(e) => setGame(i, { name: e.target.value }, `game:${i}`)} />
-            <input type="color" className="h-8 w-full cursor-pointer rounded-lg border border-white/[0.1] bg-transparent" aria-label={tr("اللون", "Colour")} value={g.color} onChange={(e) => setGame(i, { color: e.target.value }, `gameColour:${i}`)} />
+            <input type="color" className="h-8 w-full cursor-pointer rounded-lg border border-white/10 bg-transparent" aria-label={tr("اللون", "Colour")} value={g.color} onChange={(e) => setGame(i, { color: e.target.value }, `gameColour:${i}`)} />
             <select className={input} aria-label={tr("الموديل", "Model")} value={g.model} onChange={(e) => setGame(i, { model: e.target.value })}>
               <option value="">{tr("بدون", "None")}</option>
               {models.map((m) => (
@@ -118,7 +118,7 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
             </select>
             <LinkPicker label={tr("الرابط", "Link")} value={g.href} onChange={(href) => setGame(i, { href }, `gameHref:${i}`)} categories={categories} />
             <div className="flex items-center gap-1">
-              {g.imageUrl ? <img src={g.imageUrl} alt="" className="h-8 w-8 rounded object-cover" /> : null}
+              {g.imageUrl ? <img src={g.imageUrl} alt="" className="h-8 w-8 rounded-sm object-cover" /> : null}
               <button type="button" className={btn} onClick={() => setPicking(i)}>{tr("صورة", "Picture")}</button>
               <button type="button" className={`${btn} text-red-300`} onClick={() => change((d) => ({ ...d, games: d.games.filter((_, j) => j !== i) }))} aria-label={tr("حذف", "Delete")}>×</button>
             </div>

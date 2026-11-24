@@ -209,7 +209,7 @@ function AskForAll({ platform, go, fetcher, every }: { platform: string; go: (to
           {parts ? (
             <ul className="space-y-2">
               {PARTS.map((p) => (
-                <li key={p} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2 text-sm" data-testid={`connect-part-${p}`} data-state={parts[p]}>
+                <li key={p} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2 text-sm" data-testid={`connect-part-${p}`} data-state={parts[p]}>
                   <span className={`w-4 text-center ${MARK_TONE[parts[p]]}`}>{MARK[parts[p]]}</span>
                   <span className="text-white/80">{say(PART_NAME[p])}</span>
                 </li>

@@ -10,9 +10,9 @@ import * as Panels from "../../api/sitePanels.api";
 import type { OwnPart, PanelArrange, PanelAsk, PanelPageView } from "../../api/sitePanels.api";
 import { KIND_NAME, inLang } from "./panelText";
 
-const box = "rounded-2xl border border-accent-400/30 bg-accent-500/[0.06] p-5";
+const box = "rounded-2xl border border-accent-400/30 bg-accent-500/6 p-5";
 const field = "h-9 min-w-0 rounded-lg border border-white/10 bg-surface-925 px-2 text-sm text-white";
-const btn = "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.06] text-sm hover:bg-white/[0.12] disabled:opacity-30";
+const btn = "grid h-8 w-8 place-items-center rounded-lg bg-white/6 text-sm hover:bg-white/12 disabled:opacity-30";
 type Item = PanelArrange["parts"][number];
 type Kind = "numbers" | "view" | "chart";
 type Lang = "ar" | "en" | "he";
@@ -51,16 +51,16 @@ export function ArrangePanel({ view, ask, onSaved, onError }: { view: PanelPageV
       <p className="mt-1 text-sm text-white/65">{say("رتّب القطع، خبّي اللي ما بدّك ياه، وزيد قطعة من عندك. الترتيب بيضل لما يتحدّث الموقع، والقطع الجديدة بتطلع بالآخر.|Order the parts, hide what you don't want, and add a part of your own. The order stays when the site is upgraded; new parts show at the end.|סדרו את החלקים, הסתירו את מה שלא צריך, והוסיפו חלק משלכם. הסדר נשמר כשהאתר מתעדכן; חלקים חדשים מופיעים בסוף.")}</p>
       <ul className="mt-3 space-y-2">
         {items.map((x, k) => (
-          <li key={x.key} className={`flex flex-wrap items-center gap-2 rounded-xl border p-2 ${x.hidden ? "border-white/5 opacity-60" : "border-white/10 bg-white/[0.03]"}`} data-testid={`site-arrange-${x.key}`} data-hidden={x.hidden}>
+          <li key={x.key} className={`flex flex-wrap items-center gap-2 rounded-xl border p-2 ${x.hidden ? "border-white/5 opacity-60" : "border-white/10 bg-white/3"}`} data-testid={`site-arrange-${x.key}`} data-hidden={x.hidden}>
             <div className="flex gap-1">
               <button type="button" className={btn} disabled={k === 0} onClick={() => move(k, -1)} aria-label={say("لفوق|Up|למעלה")} data-testid={`site-arrange-${x.key}-up`}>↑</button>
               <button type="button" className={btn} disabled={k === items.length - 1} onClick={() => move(k, 1)} aria-label={say("لتحت|Down|למטה")} data-testid={`site-arrange-${x.key}-down`}>↓</button>
             </div>
             <span className="min-w-0 flex-1 text-sm">
               {nameOf(x)} <span className="text-xs text-white/45">· {say(KIND_NAME[x.kind] ?? x.kind)}</span>
-              {x.own ? <span className="ms-2 rounded bg-sky-400/10 px-1.5 py-0.5 text-[11px] text-sky-200">{say("من عندك|Your own|שלכם")}</span> : null}
+              {x.own ? <span className="ms-2 rounded-sm bg-sky-400/10 px-1.5 py-0.5 text-[11px] text-sky-200">{say("من عندك|Your own|שלכם")}</span> : null}
             </span>
-            <button type="button" className="h-8 rounded-lg bg-white/[0.06] px-2 text-xs hover:bg-white/[0.12]" onClick={() => set(x.key, { hidden: !x.hidden })} data-testid={`site-arrange-${x.key}-toggle`}>
+            <button type="button" className="h-8 rounded-lg bg-white/6 px-2 text-xs hover:bg-white/12" onClick={() => set(x.key, { hidden: !x.hidden })} data-testid={`site-arrange-${x.key}-toggle`}>
               {x.hidden ? say("رجّعها|Show it|להציג") : say("خبّيها|Hide it|להסתיר")}
             </button>
             {x.own ? (
@@ -113,7 +113,7 @@ function OwnPartForm({ tables, lang, onAdd, onCancel }: { tables: PanelArrange["
     <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-surface-925/60 p-3" data-testid="site-own">
       <div className="flex flex-wrap gap-2">
         {(["numbers", "view", "chart"] as Kind[]).map((k) => (
-          <button key={k} type="button" className={`rounded-lg px-3 py-1.5 text-sm ${kind === k ? "bg-accent-500/25 text-white" : "bg-white/[0.06] text-white/70"}`} onClick={() => setKind(k)} data-testid={`site-own-kind-${k}`}>{say(KIND_NAME[k])}</button>
+          <button key={k} type="button" className={`rounded-lg px-3 py-1.5 text-sm ${kind === k ? "bg-accent-500/25 text-white" : "bg-white/6 text-white/70"}`} onClick={() => setKind(k)} data-testid={`site-own-kind-${k}`}>{say(KIND_NAME[k])}</button>
         ))}
       </div>
       <label className="block text-xs text-white/60">
@@ -162,7 +162,7 @@ function OwnPartForm({ tables, lang, onAdd, onCancel }: { tables: PanelArrange["
           <legend>{say("الأعمدة (لحد 8)|The columns (up to 8)|העמודות (עד 8)")}</legend>
           <div className="mt-1 flex flex-wrap gap-2">
             {[...shown.map((f) => ({ id: f.id, name: inLang(f.name, lang) || f.id })), { id: "$createdAt", name: say("وصل|Came in|התקבל") }].map((c) => (
-              <label key={c.id} className="flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-sm text-white/80">
+              <label key={c.id} className="flex items-center gap-1 rounded-lg bg-white/4 px-2 py-1 text-sm text-white/80">
                 <input type="checkbox" checked={columns.includes(c.id)} disabled={!columns.includes(c.id) && columns.length >= 8} onChange={(e) => setColumns((list) => (e.target.checked ? [...list, c.id] : list.filter((x) => x !== c.id)))} data-testid={`site-own-column-${c.id}`} />
                 {c.name}
               </label>

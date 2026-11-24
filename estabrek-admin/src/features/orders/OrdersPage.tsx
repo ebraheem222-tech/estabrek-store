@@ -124,8 +124,8 @@ export default function OrdersPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setDeliveryOpen(true)} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{tr("🚚 أسعار التوصيل", "🚚 Delivery prices")}</button>
-          <button type="button" onClick={() => { void list.refetch(); void summary.refetch(); }} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{list.isFetching ? tr("جارٍ التحديث…", "Updating…") : tr("↻ تحديث", "↻ Refresh")}</button>
+          <button type="button" onClick={() => setDeliveryOpen(true)} className="h-10 rounded-xl border border-white/10 px-4 text-sm text-white/80 hover:bg-white/6">{tr("🚚 أسعار التوصيل", "🚚 Delivery prices")}</button>
+          <button type="button" onClick={() => { void list.refetch(); void summary.refetch(); }} className="h-10 rounded-xl border border-white/10 px-4 text-sm text-white/80 hover:bg-white/6">{list.isFetching ? tr("جارٍ التحديث…", "Updating…") : tr("↻ تحديث", "↻ Refresh")}</button>
         </div>
       </div>
 
@@ -145,16 +145,16 @@ export default function OrdersPage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder={tr("بحث بالاسم أو رقم الهاتف أو رقم الطلب", "Search by name, phone or order number")}
-              className="h-11 w-full rounded-xl border border-white/[0.08] bg-surface-925 pe-3 ps-10 text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-white/8 bg-surface-925 pe-3 ps-10 text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-hidden"
               aria-label={tr("بحث في الطلبات", "Search orders")}
               type="search"
             />
-            <span className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-white/40" aria-hidden>⌕</span>
+            <span className="pointer-events-none absolute inset-s-3.5 top-1/2 -translate-y-1/2 text-white/40" aria-hidden>⌕</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {RANGES.map((r) => (
               <button key={r.key} type="button" onClick={() => { setRange(r.key); setPage(1); }} aria-pressed={range === r.key}
-                className={cn("h-9 rounded-full border px-3 text-xs transition", range === r.key ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/[0.08] text-white/65 hover:text-white")}>
+                className={cn("h-9 rounded-full border px-3 text-xs transition", range === r.key ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/8 text-white/65 hover:text-white")}>
                 {r.label}
               </button>
             ))}
@@ -163,18 +163,18 @@ export default function OrdersPage() {
         </div>
         {showMore && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white" aria-label={tr("مصدر الطلب", "Order source")}>
+            <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/8 bg-surface-925 px-3 text-sm text-white" aria-label={tr("مصدر الطلب", "Order source")}>
               <option value="">{tr("كل المصادر", "All sources")}</option>
               <option value="WHATSAPP_CART">{tr("واتساب", "WhatsApp")}</option>
               <option value="DIRECT_CART">{tr("طلب مباشر", "Direct order")}</option>
               <option value="EMAIL_CART">{tr("إيميل", "Email")}</option>
             </select>
-            <select value={payment} onChange={(e) => { setPayment(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white" aria-label={tr("الدفع", "Payment")}>
+            <select value={payment} onChange={(e) => { setPayment(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/8 bg-surface-925 px-3 text-sm text-white" aria-label={tr("الدفع", "Payment")}>
               <option value="">{tr("الدفع: الكل", "Payment: all")}</option>
               <option value="unpaid">{tr("لم يُستلم المبلغ", "Not received")}</option>
               <option value="paid">{tr("تم استلام المبلغ", "Received")}</option>
             </select>
-            <input value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} placeholder={tr("المدينة", "City")} className="h-10 w-40 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("المدينة", "City")} />
+            <input value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} placeholder={tr("المدينة", "City")} className="h-10 w-40 rounded-xl border border-white/8 bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("المدينة", "City")} />
             {filtering && <button type="button" onClick={() => { setSearch(""); setRange("all"); setSource(""); setPayment(""); setCity(""); }} className="h-10 rounded-xl px-3 text-sm text-white/60 hover:text-white">{tr("مسح الفلاتر", "Clear filters")}</button>}
           </div>
         )}
@@ -182,13 +182,13 @@ export default function OrdersPage() {
 
       {/* Bulk actions */}
       {selectedIds.length > 0 && (
-        <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-accent-500/30 bg-surface-950/95 p-3 backdrop-blur">
+        <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-accent-500/30 bg-surface-950/95 p-3 backdrop-blur-sm">
           <span className="text-sm text-white/80">{tr("تم اختيار", "Selected")} <b>{selectedIds.length}</b></span>
-          <select disabled={bulkBusy} defaultValue="" onChange={(e) => { const v = e.target.value as OrderStatus; e.target.value = ""; if (v) void bulkMove(v); }} className="h-9 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("تغيير حالة المختار", "Change status of the selected")}>
+          <select disabled={bulkBusy} defaultValue="" onChange={(e) => { const v = e.target.value as OrderStatus; e.target.value = ""; if (v) void bulkMove(v); }} className="h-9 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white" aria-label={tr("تغيير حالة المختار", "Change status of the selected")}>
             <option value="">{bulkBusy ? tr("جارٍ التحديث…", "Updating…") : tr("تغيير الحالة إلى…", "Change status to…")}</option>
             {ORDER_STATUSES.map((s) => <option key={s} value={s}>{STATUS_INFO[s].label}</option>)}
           </select>
-          <button type="button" onClick={printSelected} className="h-9 rounded-xl border border-white/[0.1] px-3 text-sm text-white/85 hover:bg-white/[0.06]">{tr("🖨 طباعة الفواتير", "🖨 Print invoices")}</button>
+          <button type="button" onClick={printSelected} className="h-9 rounded-xl border border-white/10 px-3 text-sm text-white/85 hover:bg-white/6">{tr("🖨 طباعة الفواتير", "🖨 Print invoices")}</button>
           <button type="button" onClick={() => setSelected({})} className="ms-auto h-9 rounded-xl px-3 text-sm text-white/55 hover:text-white">{tr("إلغاء الاختيار", "Clear selection")}</button>
         </div>
       )}
@@ -196,7 +196,7 @@ export default function OrdersPage() {
       {/* List */}
       <div className="glass overflow-hidden rounded-2xl">
         {list.isLoading ? (
-          <div className="space-y-2 p-3">{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />)}</div>
+          <div className="space-y-2 p-3">{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-white/4" />)}</div>
         ) : list.isError ? (
           <div className="p-10 text-center text-sm text-red-300">{tr("تعذّر تحميل الطلبات.", "The orders couldn't load.")} <button type="button" className="underline" onClick={() => void list.refetch()}>{tr("إعادة المحاولة", "Try again")}</button></div>
         ) : orders.length === 0 ? (
@@ -206,14 +206,14 @@ export default function OrdersPage() {
           </div>
         ) : (
           <>
-            <div className="hidden items-center gap-3 border-b border-white/[0.06] px-4 py-2 text-[11px] text-white/45 md:flex">
+            <div className="hidden items-center gap-3 border-b border-white/6 px-4 py-2 text-[11px] text-white/45 md:flex">
               <input type="checkbox" aria-label={tr("اختيار الكل", "Select all")} checked={orders.every((o) => selected[o.id])} onChange={(e) => setSelected(e.target.checked ? Object.fromEntries(orders.map((o) => [o.id, true])) : {})} />
               <span className="flex-1">{tr("الزبون والطلب", "Customer and order")}</span>
               <span className="w-24 text-center">{tr("المبلغ", "Amount")}</span>
               <span className="w-28 text-center">{tr("الحالة", "Status")}</span>
               <span className="w-[220px] text-end">{tr("إجراءات", "Actions")}</span>
             </div>
-            <ul className="divide-y divide-white/[0.06]">
+            <ul className="divide-y divide-white/6">
               {orders.map((o) => (
                 <OrderRow
                   key={o.id}
@@ -242,7 +242,7 @@ export default function OrdersPage() {
 function StatusTab({ active, onClick, label, count, highlight }: { active: boolean; onClick: () => void; label: string; count?: number; highlight?: boolean }) {
   return (
     <button type="button" role="tab" aria-selected={active} onClick={onClick}
-      className={cn("inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-3.5 text-sm transition", active ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/[0.08] bg-white/[0.02] text-white/70 hover:text-white")}>
+      className={cn("inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-3.5 text-sm transition", active ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/8 bg-white/2 text-white/70 hover:text-white")}>
       {label}
       {count != null && count > 0 && <span className={cn("min-w-[1.4rem] rounded-full px-1.5 text-center text-[11px] font-semibold", highlight ? "bg-sky-400 text-sky-950" : "bg-white/10 text-white/70")}>{count}</span>}
     </button>
@@ -257,8 +257,8 @@ function OrderRow({ order: o, now, selected, onSelect, onOpen, onAdvance, busy, 
   const fresh = o.status === "NEW" && now - new Date(o.createdAt).getTime() < 3600_000;
   const first = lines[0];
   return (
-    <li className={cn("group relative flex flex-wrap items-center gap-3 px-3 py-3 transition hover:bg-white/[0.025] md:flex-nowrap md:px-4", fresh && "bg-sky-500/[0.05]")} data-testid="order-row">
-      {fresh && <span className="absolute inset-y-0 start-0 w-1 bg-sky-400" aria-hidden />}
+    <li className={cn("group relative flex flex-wrap items-center gap-3 px-3 py-3 transition hover:bg-white/2.5 md:flex-nowrap md:px-4", fresh && "bg-sky-500/5")} data-testid="order-row">
+      {fresh && <span className="absolute inset-y-0 inset-s-0 w-1 bg-sky-400" aria-hidden />}
       <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={tr(`اختيار طلب ${o.customerName}`, "Select the order of {0}", [o.customerName])} />
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 basis-[calc(100%-2.5rem)] items-center gap-3 text-start md:basis-auto">
         <Thumb src={first?.imageUrl} className="h-14 w-11" />
@@ -290,7 +290,7 @@ function OrderRow({ order: o, now, selected, onSelect, onOpen, onAdvance, busy, 
             {busy ? "…" : NEXT_STEP_LABEL[next]}
           </button>
         )}
-        <Link to={`/admin/orders/${o.id}`} className="h-9 rounded-xl px-3 text-xs leading-9 text-white/60 hover:bg-white/[0.06] hover:text-white">{tr("فتح", "Open")}</Link>
+        <Link to={`/admin/orders/${o.id}`} className="h-9 rounded-xl px-3 text-xs leading-9 text-white/60 hover:bg-white/6 hover:text-white">{tr("فتح", "Open")}</Link>
       </div>
     </li>
   );

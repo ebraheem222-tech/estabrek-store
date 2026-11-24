@@ -23,7 +23,7 @@ export function AssistantStep({ on, onToggle, persona, onPersona, industry }: { 
           "مساعد بيرد على زباينك بالمتجر: بيسألهم شو بدهم، وبيقترح منتجات، وبيجاوب عن الشحن والمقاسات. اختار شخصية بيحكي فيها (اسمها ووجهها وطريقتها)، أو خلّيه المساعد العادي، أو طفّيه.|An assistant that answers your shoppers in the store: it asks what they want, suggests products and answers about shipping and sizes. Pick a personality for it to speak as (its name, face and manner), keep the plain assistant, or switch it off.|עוזר שעונה לקונים בחנות: שואל מה הם רוצים, מציע מוצרים ועונה על משלוחים ומידות. בחרו דמות שבה הוא ידבר (שם, פנים וסגנון), השאירו את העוזר הרגיל, או כבו אותו.",
         )}
       </p>
-      <label className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <label className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/3 p-4">
         <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} className="h-5 w-5" data-testid="setup-assistant-on" />
         <span>
           <span className="block text-sm font-medium">{say("شغّل المساعد بالمتجر|Turn the assistant on in the store|הפעלת העוזר בחנות")}</span>
@@ -35,7 +35,7 @@ export function AssistantStep({ on, onToggle, persona, onPersona, industry }: { 
   );
 }
 
-const field = "w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-sm outline-none focus:border-accent-400";
+const field = "w-full rounded-xl border border-white/10 bg-white/4 px-3 py-2.5 text-sm outline-hidden focus:border-accent-400";
 
 /** A name for the shop from the admin's own address (samoray1337.pages.dev → samoray1337), as the server tidies names. */
 function nameFromHere(): string {
@@ -208,7 +208,7 @@ export function ShopStep({ onReady, onReadyChange, inCard = false }: { onReady?:
         </div>
       ) : null}
       {showForm ? (
-        <div className="space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4" data-testid="setup-shop-form">
+        <div className="space-y-3 rounded-2xl border border-white/8 bg-white/3 p-4" data-testid="setup-shop-form">
           {url ? (
             <p className="rounded-xl bg-amber-500/10 p-3 text-xs leading-6 text-amber-100" data-testid="setup-shop-elsewhere">
               {say("هاللوحة موصولة بمتجر ما بيفتحلها، يمكن تبع متجر تاني:|This admin is linked to a shop that doesn't open to it, perhaps another store's:|לוח הניהול מחובר לחנות שלא נפתחת אליו, אולי של חנות אחרת:")} <bdi dir="ltr">{url.replace(/^https:\/\//, "")}</bdi>
@@ -397,7 +397,7 @@ export function MediaStep({ manage = false, saveRef }: { manage?: boolean; saveR
         </div>
       ) : (
         <form
-          className="space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
+          className="space-y-3 rounded-2xl border border-white/8 bg-white/3 p-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (can && !save.isPending) save.mutate();

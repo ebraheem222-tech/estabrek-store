@@ -48,7 +48,7 @@ export const GAMING_NAV: NavTemplate[] = [
       linkHover: "hover:text-white",
       linkActive: "text-white",
       button:
-        "bg-gradient-to-r from-red-500 via-green-500 to-blue-500 text-white px-5 py-2 text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-opacity",
+        "bg-linear-to-r from-red-500 via-green-500 to-blue-500 text-white px-5 py-2 text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-opacity",
     },
   },
   {
@@ -107,13 +107,13 @@ export const GAMING_NAV: NavTemplate[] = [
     styles: {
       nav: "bg-gray-950 border-b-2 border-orange-500",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
-      logo: "text-xl font-black bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider",
+      logo: "text-xl font-black bg-linear-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider",
       links: "hidden md:flex items-center gap-6",
       link: "text-gray-400 text-sm font-bold uppercase tracking-wider transition-all duration-200",
       linkHover: "hover:text-orange-400",
       linkActive: "text-orange-400",
       button:
-        "bg-gradient-to-r from-red-600 to-orange-500 text-white px-5 py-2 text-sm font-bold uppercase tracking-wider hover:from-red-500 hover:to-orange-400 transition-all",
+        "bg-linear-to-r from-red-600 to-orange-500 text-white px-5 py-2 text-sm font-bold uppercase tracking-wider hover:from-red-500 hover:to-orange-400 transition-all",
     },
   },
   {
@@ -124,13 +124,13 @@ export const GAMING_NAV: NavTemplate[] = [
     styles: {
       nav: "bg-gray-950 border-b-2 border-cyan-400",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
-      logo: "text-xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent uppercase tracking-wider",
+      logo: "text-xl font-black bg-linear-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent uppercase tracking-wider",
       links: "hidden md:flex items-center gap-6",
       link: "text-gray-400 text-sm font-bold uppercase tracking-wider transition-all duration-200",
       linkHover: "hover:text-cyan-400",
       linkActive: "text-cyan-400",
       button:
-        "bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-5 py-2 text-sm font-bold uppercase tracking-wider hover:from-cyan-400 hover:to-blue-400 transition-all",
+        "bg-linear-to-r from-cyan-500 to-blue-500 text-white px-5 py-2 text-sm font-bold uppercase tracking-wider hover:from-cyan-400 hover:to-blue-400 transition-all",
     },
   },
 ];

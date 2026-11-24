@@ -117,7 +117,7 @@ export function PackPanel({ theme, themes, choice, from, onFrom, applied, busy, 
   const mixed = Object.keys(from).length > 0;
 
   return (
-    <section className="space-y-3 rounded-xl border border-white/[0.08] p-3" aria-label={tr("حزمة الثيم", "The theme's pack")} data-testid="pack-panel">
+    <section className="space-y-3 rounded-xl border border-white/8 p-3" aria-label={tr("حزمة الثيم", "The theme's pack")} data-testid="pack-panel">
       <div className="flex flex-wrap items-center gap-2">
         <div className="me-auto">
           <h3 className="text-sm font-semibold">{tr("الحزمة كاملة", "The whole pack")}</h3>
@@ -128,7 +128,7 @@ export function PackPanel({ theme, themes, choice, from, onFrom, applied, busy, 
         {applied ? <span className="rounded-md bg-accent-500/20 px-1.5 py-0.5 text-[10px] text-accent-200" data-testid="pack-applied">{tr("مطبّقة", "Applied")}</span> : null}
       </div>
 
-      <ul className="divide-y divide-white/[0.06] text-xs">
+      <ul className="divide-y divide-white/6 text-xs">
         {PACK_PARTS.map((part) => {
           const kit = isKitPart(part) && from[part] && from[part] !== "off" ? byId.get(from[part]!)?.kit ?? choice.kit : choice.kit;
           const swatch = part === "colours" ? (from.colours ? byId.get(from.colours) : theme)?.swatch : undefined;
@@ -138,7 +138,7 @@ export function PackPanel({ theme, themes, choice, from, onFrom, applied, busy, 
               <span className="w-32 shrink-0 text-white/60">{PART_LABEL[part]()}</span>
               <span className="min-w-0 flex-1 truncate text-white/85" data-testid="pack-part-value">
                 {swatch ? (
-                  <span className="inline-flex h-4 w-24 overflow-hidden rounded align-middle" aria-hidden>
+                  <span className="inline-flex h-4 w-24 overflow-hidden rounded-sm align-middle" aria-hidden>
                     {swatch.map((c, i) => <span key={i} className="flex-1" style={{ background: c }} />)}
                   </span>
                 ) : fonts ? (
@@ -148,7 +148,7 @@ export function PackPanel({ theme, themes, choice, from, onFrom, applied, busy, 
                 ) : null}
               </span>
               <select
-                className="max-w-[11rem] rounded-lg border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-[11px] text-white"
+                className="max-w-44 rounded-lg border border-white/10 bg-surface-925 px-1.5 py-1 text-[11px] text-white"
                 value={from[part] ?? ""}
                 onChange={(e) => set(part, e.target.value)}
                 aria-label={tr(`${PART_LABEL[part]()} من`, "{0} from", [PART_LABEL[part]()])}
@@ -166,7 +166,7 @@ export function PackPanel({ theme, themes, choice, from, onFrom, applied, busy, 
       </ul>
 
       <div className="flex flex-wrap gap-1">
-        <button type="button" aria-pressed={trying} onClick={() => onTrying(!trying)} className={`rounded-lg px-2.5 py-1.5 text-xs ${trying ? "bg-white/[0.16] text-white" : "bg-white/[0.06] text-white/80 hover:bg-white/[0.1]"}`} data-testid="pack-try">
+        <button type="button" aria-pressed={trying} onClick={() => onTrying(!trying)} className={`rounded-lg px-2.5 py-1.5 text-xs ${trying ? "bg-white/16 text-white" : "bg-white/6 text-white/80 hover:bg-white/10"}`} data-testid="pack-try">
           {trying ? tr("وقّف التجربة", "Stop trying it") : tr("جرّبها على المعاينة", "Try it on the preview")}
         </button>
         <button type="button" disabled={busy} onClick={() => onApply(choice)} className="rounded-lg bg-accent-500 px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-40" data-testid="pack-apply">

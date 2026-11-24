@@ -12,7 +12,7 @@ export function CoverPanel({ node, isLast, busy, onOps }: { node: PageTreeNode; 
   const cover = coverOfNode(node);
   const save = (next: Cover | null) => onOps(say("يثبت ويتغطى|Held, then covered|נשאר ומתכסה"), [coverOp(node, next)]);
   return (
-    <div className="space-y-2.5 rounded-xl border border-white/[0.08] p-3" data-testid="studio-cover">
+    <div className="space-y-2.5 rounded-xl border border-white/8 p-3" data-testid="studio-cover">
       <label className="flex items-center justify-between gap-2 text-xs font-medium text-white/70">
         <span>{say("يثبت، والقسم اللي بعده يطلع فوقه|Stays, then the next section slides over it|נשאר, והמקטע הבא עולה מעליו")}</span>
         <input type="checkbox" disabled={busy} checked={Boolean(cover)} onChange={(e) => save(e.target.checked ? { ...NEW_COVER } : null)} data-testid="studio-cover-on" />
@@ -23,12 +23,12 @@ export function CoverPanel({ node, isLast, busy, onOps }: { node: PageTreeNode; 
         )}
       </p>
       {cover ? (
-        <div className="space-y-2 rounded-lg bg-white/[0.04] p-2" data-testid="studio-cover-settings">
+        <div className="space-y-2 rounded-lg bg-white/4 p-2" data-testid="studio-cover-settings">
           <Range label={say("كم شاشة بيضل ثابت قبل ما يتغطى|Screens it stays before it's covered|כמה מסכים הוא נשאר לפני שמתכסה")} min={0} max={6} step={0.5} busy={busy} value={cover.hold} onSave={(hold) => save({ ...cover, hold })} testId="studio-cover-hold" />
           <div className="text-[11px] text-white/60">{say("وهو بيتغطى:|While it's covered:|בזמן שהוא מתכסה:")}</div>
           <div role="group" aria-label={say("شو بيصير فيه وهو بيتغطى|What it does while it's covered|מה קורה לו כשהוא מתכסה")} className="grid grid-cols-3 gap-1">
             {COVER_UNDERS.map(([k, label]) => (
-              <button key={k} type="button" aria-pressed={cover.under === k} disabled={busy} data-cover-under={k} onClick={() => save({ ...cover, under: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${cover.under === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`}>
+              <button key={k} type="button" aria-pressed={cover.under === k} disabled={busy} data-cover-under={k} onClick={() => save({ ...cover, under: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${cover.under === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/5 text-white/70 hover:bg-white/10"} disabled:opacity-40`}>
                 {label()}
               </button>
             ))}
@@ -36,7 +36,7 @@ export function CoverPanel({ node, isLast, busy, onOps }: { node: PageTreeNode; 
           <div className="text-[11px] text-white/60">{say("حافة القسم اللي بيغطيه:|The covering section's edge:|הקצה של המקטע המכסה:")}</div>
           <div role="group" aria-label={say("حافة القسم اللي بيغطيه|The covering section's edge|הקצה של המקטע המכסה")} className="grid grid-cols-3 gap-1">
             {COVER_ENTERS.map(([k, label]) => (
-              <button key={k} type="button" aria-pressed={(cover.enter ?? "rise") === k} disabled={busy} data-cover-enter={k} onClick={() => save({ ...cover, enter: k === "rise" ? undefined : k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${(cover.enter ?? "rise") === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`}>
+              <button key={k} type="button" aria-pressed={(cover.enter ?? "rise") === k} disabled={busy} data-cover-enter={k} onClick={() => save({ ...cover, enter: k === "rise" ? undefined : k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${(cover.enter ?? "rise") === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/5 text-white/70 hover:bg-white/10"} disabled:opacity-40`}>
                 {label()}
               </button>
             ))}
@@ -60,7 +60,7 @@ export function CoverPanel({ node, isLast, busy, onOps }: { node: PageTreeNode; 
 export function PaintPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: (label: string, ops: PageDraftOp[]) => void }) {
   const paint = typeof node.props?.paint === "string" ? node.props.paint : "";
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-paint">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-paint">
       <div className="text-xs font-medium text-white/70">{say("لون الصفحة لما يوصل هالقسم|The page's colour at this section|צבע הדף במקטע הזה")}</div>
       <ColourPick label={say("الصفحة بتتلوّن فيه وهو بنص الشاشة (فاضي = بلا)|The page turns this colour while it's mid-screen (empty = none)|הדף נצבע בזה כשהוא באמצע המסך (ריק = בלי)")} value={paint} busy={busy} onPick={(c) => onOps(say("لون الصفحة|Page colour|צבע הדף"), [paintOp(node, c ?? null)])} testId="studio-paint-color" />
       <p className="text-[10px] leading-4 text-white/35">{say("الأقسام اللي بلا خلفية بتاخد اللون، والصفحة بترجع للونها لما يعدّي. انتبه للون الكلام.|Sections without a background take it, and the page goes back once it has passed. Mind the words' colour.|מקטעים בלי רקע מקבלים אותו, והדף חוזר כשהוא עובר. שים לב לצבע הטקסט.")}</p>

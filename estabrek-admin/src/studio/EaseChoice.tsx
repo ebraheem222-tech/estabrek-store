@@ -11,7 +11,7 @@ import { say } from "./say";
 /** The free curve a fresh pick starts from: quick at first, settling gently (it is then drawn and changed). */
 export const FREE_CURVE = "cubic-bezier(0.2,0.8,0.2,1)";
 const FREE = "__free";
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 /** Is this ease a free curve (not one of the panel's own names)? */
 export const isFreeCurve = (value: string | undefined, names: Array<[string, string]>) => Boolean(value) && !names.some(([k]) => k === value) && Boolean(readEase(value));

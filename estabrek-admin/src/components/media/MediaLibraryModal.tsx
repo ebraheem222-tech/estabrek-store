@@ -682,7 +682,7 @@ export function MediaLibraryModal({
 
           {/* Bulk bar */}
           {manageMode && bulkCount > 0 && (
-            <div className="flex flex-col lg:flex-row gap-3 lg:items-center bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
+            <div className="flex flex-col lg:flex-row gap-3 lg:items-center bg-white/3 border border-white/6 rounded-xl p-3">
               <div className="text-sm text-white/70">{tr("محدد:", "Selected:")} <span className="text-white">{bulkCount}</span></div>
               <div className="flex-1 flex flex-col md:flex-row gap-2">
                 <BulkFolderMove folderNames={folderNames} onMove={bulkMoveFolder} />
@@ -709,10 +709,10 @@ export function MediaLibraryModal({
           {/* Main */}
           <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_340px] gap-4 min-h-[60vh]">
             {/* Sidebar */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4">
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-semibold text-white">Folders</div>
-                <Button variant="ghost" className="!px-2" onClick={() => setCreateFolderOpen(true)}>
+                <Button variant="ghost" className="px-2!" onClick={() => setCreateFolderOpen(true)}>
                   +
                 </Button>
               </div>
@@ -755,8 +755,8 @@ export function MediaLibraryModal({
                       key={t.tag}
                       className={`w-full text-start px-3 py-2 rounded-xl text-sm border transition ${
                         tag === t.tag
-                          ? "bg-white/[0.06] border-white/[0.12] text-white"
-                          : "bg-transparent border-transparent text-white/70 hover:bg-white/[0.04]"
+                          ? "bg-white/6 border-white/12 text-white"
+                          : "bg-transparent border-transparent text-white/70 hover:bg-white/4"
                       }`}
                       onClick={() => setTag(tag === t.tag ? null : t.tag)}
                     >
@@ -768,7 +768,7 @@ export function MediaLibraryModal({
             </div>
 
             {/* Grid */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4">
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-4">
               {loading ? (
                 <div className="flex items-center justify-center py-20">
                   <Spinner />
@@ -786,13 +786,13 @@ export function MediaLibraryModal({
                           <div
                             key={img.id}
                             className={`group relative rounded-xl overflow-hidden border transition cursor-pointer ${
-                              manage?.id === img.id ? "border-white/30" : "border-white/[0.06] hover:border-white/20"
+                              manage?.id === img.id ? "border-white/30" : "border-white/6 hover:border-white/20"
                             }`}
                           >
                             {/* Selection overlays */}
                             {manageMode ? (
                               <button
-                                className={`absolute top-2 end-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
+                                className={`absolute top-2 inset-e-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
                                   isBulk ? "bg-white/20 border-white/30" : "bg-black/30 border-white/20 hover:bg-black/40"
                                 }`}
                                 onClick={(e) => {
@@ -805,7 +805,7 @@ export function MediaLibraryModal({
                               </button>
                             ) : multiple ? (
                               <button
-                                className={`absolute top-2 end-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
+                                className={`absolute top-2 inset-e-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
                                   isPicked ? "bg-white/20 border-white/30" : "bg-black/30 border-white/20 hover:bg-black/40"
                                 }`}
                                 onClick={(e) => {
@@ -844,7 +844,7 @@ export function MediaLibraryModal({
                               </div>
                             </div>
 
-                            <div className="absolute top-2 start-2 z-10 flex gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                            <div className="absolute top-2 inset-s-2 z-10 flex gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                               <button
                                 type="button"
                                 className="grid h-7 w-7 place-items-center rounded-lg border border-white/20 bg-black/50 text-sm text-white hover:bg-black/70"
@@ -861,10 +861,10 @@ export function MediaLibraryModal({
                             </div>
 
                             {manageMode && (
-                              <div className="absolute bottom-2 start-2 opacity-0 group-hover:opacity-100 transition">
+                              <div className="absolute bottom-2 inset-s-2 opacity-0 group-hover:opacity-100 transition">
                                 <Button
                                   variant="ghost"
-                                  className="!px-2 !py-1 text-xs"
+                                  className="px-2! py-1! text-xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openManage(img);
@@ -892,12 +892,12 @@ export function MediaLibraryModal({
             </div>
 
             {/* Manage panel */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4">
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-4">
               {!manage ? (
                 <div className="text-white/60 text-sm">{tr("اختيار صورة (وضع الإدارة) لتعديلها.", "Pick an image (manage mode) to edit it.")}</div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  <div className="rounded-xl overflow-hidden border border-white/[0.06]">
+                  <div className="rounded-xl overflow-hidden border border-white/6">
                     <img src={manage.url} className="w-full h-40 object-cover" />
                   </div>
 
@@ -1098,7 +1098,7 @@ export function MediaLibraryModal({
             <div className="flex flex-col gap-4">
               {duplicatesMode === "exact"
                 ? (duplicateGroups as DuplicateGroupExact[]).map((group) => (
-                    <div key={group.hash} className="border border-white/[0.06] rounded-2xl p-4 bg-white/[0.02]">
+                    <div key={group.hash} className="border border-white/6 rounded-2xl p-4 bg-white/2">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm text-white/80">
                           Hash: <span className="text-white/60">{group.hash}</span> {tr("• عدد:", "• Count:")}{" "}
@@ -1110,11 +1110,11 @@ export function MediaLibraryModal({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         {group.items.map((img) => (
-                          <div key={img.id} className="border border-white/[0.06] rounded-xl overflow-hidden">
+                          <div key={img.id} className="border border-white/6 rounded-xl overflow-hidden">
                             <div className="relative">
                               <img src={img.url} className="w-full h-24 object-cover" />
                               <button
-                                className={`absolute top-2 end-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
+                                className={`absolute top-2 inset-e-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
                                   duplicateSelectedSet.has(img.id)
                                     ? "bg-white/20 border-white/30"
                                     : "bg-black/40 border-white/20"
@@ -1138,7 +1138,7 @@ export function MediaLibraryModal({
                     </div>
                   ))
                 : (duplicateGroups as DuplicateGroupNear[]).map((group) => (
-                    <div key={group.baseId} className="border border-white/[0.06] rounded-2xl p-4 bg-white/[0.02]">
+                    <div key={group.baseId} className="border border-white/6 rounded-2xl p-4 bg-white/2">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm text-white/80">
                           Base: <span className="text-white/60">{group.baseId}</span>
@@ -1149,11 +1149,11 @@ export function MediaLibraryModal({
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         {group.items.map((entry) => (
-                          <div key={entry.item.id} className="border border-white/[0.06] rounded-xl overflow-hidden">
+                          <div key={entry.item.id} className="border border-white/6 rounded-xl overflow-hidden">
                             <div className="relative">
                               <img src={entry.item.url} className="w-full h-24 object-cover" />
                               <button
-                                className={`absolute top-2 end-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
+                                className={`absolute top-2 inset-e-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
                                   duplicateSelectedSet.has(entry.item.id)
                                     ? "bg-white/20 border-white/30"
                                     : "bg-black/40 border-white/20"
@@ -1163,7 +1163,7 @@ export function MediaLibraryModal({
                               >
                                 {duplicateSelectedSet.has(entry.item.id) ? "✓" : ""}
                               </button>
-                              <div className="absolute bottom-2 start-2 text-[10px] bg-black/50 text-white/80 px-1.5 py-0.5 rounded">
+                              <div className="absolute bottom-2 inset-s-2 text-[10px] bg-black/50 text-white/80 px-1.5 py-0.5 rounded-sm">
                                 d={entry.distance}
                               </div>
                             </div>
@@ -1223,7 +1223,7 @@ function FolderRow({
   onDelete?: () => void;
 }) {
   return (
-    <div className={`group flex items-center gap-2 px-3 py-2 rounded-xl border transition ${active ? "bg-white/[0.06] border-white/[0.12]" : "border-transparent hover:bg-white/[0.04]"}`}>
+    <div className={`group flex items-center gap-2 px-3 py-2 rounded-xl border transition ${active ? "bg-white/6 border-white/12" : "border-transparent hover:bg-white/4"}`}>
       <button className="flex-1 text-start text-sm text-white/80" onClick={onClick}>
         {label}
         <span className="text-white/40"> ({count})</span>
@@ -1261,7 +1261,7 @@ function BulkFolderMove({
   return (
     <div className="flex items-center gap-2 flex-1">
       <select
-        className="w-full bg-surface-900 border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/90"
+        className="w-full bg-surface-900 border border-white/8 rounded-xl px-3 py-2 text-sm text-white/90"
         value={val}
         onChange={(e) => setVal(e.target.value)}
       >

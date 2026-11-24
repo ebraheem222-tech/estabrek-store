@@ -34,7 +34,7 @@ export function HomeSectionsCard({ canWrite, busy, onTry }: { canWrite: boolean;
             )}
           </p>
         </div>
-        <select className="h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-2 text-sm" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label={tr("الفترة", "Period")}>
+        <select className="h-9 rounded-xl border border-white/8 bg-white/3 px-2 text-sm" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label={tr("الفترة", "Period")}>
           {[7, 30, 90].map((n) => <option key={n} value={n}>{tr(`آخر ${n} يوم`, "Last {0} days", [n])}</option>)}
         </select>
       </div>
@@ -56,7 +56,7 @@ export function HomeSectionsCard({ canWrite, busy, onTry }: { canWrite: boolean;
               </thead>
               <tbody>
                 {rows.map((s: HomeSectionRow) => (
-                  <tr key={s.key} className="border-t border-white/[0.06]" data-testid={`home-section-${s.key}`}>
+                  <tr key={s.key} className="border-t border-white/6" data-testid={`home-section-${s.key}`}>
                     <td className="py-2">
                       {s.label}
                       {!s.onPage ? <span className="ms-2 text-xs text-white/40">{tr("(مشهد ثابت)", "(fixed scene)")}</span> : null}
@@ -66,7 +66,7 @@ export function HomeSectionsCard({ canWrite, busy, onTry }: { canWrite: boolean;
                     <td className="py-2 text-end tabular-nums">{s.bags} <span className="text-xs text-white/45">{pct(s.bagRate)}</span></td>
                     <td className="py-2 ps-4">
                       {s.enough ? (
-                        <div className="h-2 rounded-full bg-white/[0.06]" aria-label={tr(`القوة ${Math.round((s.score / best) * 100)}%`, "Strength {0}%", [Math.round((s.score / best) * 100)])}>
+                        <div className="h-2 rounded-full bg-white/6" aria-label={tr(`القوة ${Math.round((s.score / best) * 100)}%`, "Strength {0}%", [Math.round((s.score / best) * 100)])}>
                           <div className="h-2 rounded-full bg-accent-500" style={{ width: `${Math.max(4, (s.score / best) * 100)}%` }} />
                         </div>
                       ) : (
@@ -79,7 +79,7 @@ export function HomeSectionsCard({ canWrite, busy, onTry }: { canWrite: boolean;
             </table>
           </div>
 
-          <div className="mt-4 rounded-xl border border-white/[0.08] p-3" data-testid="home-suggested">
+          <div className="mt-4 rounded-xl border border-white/8 p-3" data-testid="home-suggested">
             {d.suggested ? (
               <>
                 <div className="text-sm font-semibold">{tr("الترتيب اللي بتقترحه الأرقام", "The order the numbers suggest")}</div>

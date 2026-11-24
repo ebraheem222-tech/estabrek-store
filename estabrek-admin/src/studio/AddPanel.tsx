@@ -172,7 +172,7 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
   const sites = LIB_ITEMS.filter(i => i.kind === "site").length;
   return (
     <div className="space-y-4" data-testid="studio-add-panel">
-      <div className="space-y-1.5 rounded-xl border border-white/[0.08] p-2">
+      <div className="space-y-1.5 rounded-xl border border-white/8 p-2">
         <div className="text-[11px] text-white/50">
           {tr("بينضاف", "Adds")} <span className="text-white/80">{target}</span>
         </div>
@@ -184,7 +184,7 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
               disabled={!canWhere[w]}
               aria-pressed={where === w}
               onClick={() => onWhere(w)}
-              className={`flex-1 rounded-lg px-1.5 py-1 text-[11px] disabled:opacity-30 ${where === w ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"}`}
+              className={`flex-1 rounded-lg px-1.5 py-1 text-[11px] disabled:opacity-30 ${where === w ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/70 hover:bg-white/10"}`}
               data-where={w}
             >
               {name()}
@@ -195,7 +195,7 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
       </div>
 
       {onBrowse ? (
-        <button type="button" disabled={busy} onClick={onBrowse} className="flex w-full items-center gap-2 rounded-xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-500/15 to-cyan-500/10 px-3 py-2.5 text-start text-xs text-white hover:from-fuchsia-500/25 disabled:opacity-40" data-testid="studio-lib-browse">
+        <button type="button" disabled={busy} onClick={onBrowse} className="flex w-full items-center gap-2 rounded-xl border border-fuchsia-400/30 bg-linear-to-r from-fuchsia-500/15 to-cyan-500/10 px-3 py-2.5 text-start text-xs text-white hover:from-fuchsia-500/25 disabled:opacity-40" data-testid="studio-lib-browse">
           <span className="text-base" aria-hidden="true">◈</span>
           <span className="min-w-0 flex-1">
             <span className="block font-medium">{say("مكتبة الثيمات|The theme library|ספריית העיצובים")}</span>
@@ -204,7 +204,7 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
         </button>
       ) : null}
 
-      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على قسم أو عنصر…", "Find a section or element…")} aria-label={tr("دوّر على قسم أو عنصر", "Find a section or element")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-add-search" />
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على قسم أو عنصر…", "Find a section or element…")} aria-label={tr("دوّر على قسم أو عنصر", "Find a section or element")} className="w-full rounded-lg border border-white/10 bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-add-search" />
       {find && !groups.length ? <p className="text-[11px] text-white/45">{tr("ما في نتائج.", "No results.")}</p> : null}
 
       {groups.map((g) => (
@@ -226,7 +226,7 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
                   }}
                   onDragEnd={() => onDragKind(null)}
                   onClick={() => onAdd(k)}
-                  className="flex cursor-grab items-center gap-1.5 truncate rounded-lg border border-white/[0.08] px-2 py-2 text-start text-[11px] text-white/80 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-35"
+                  className="flex cursor-grab items-center gap-1.5 truncate rounded-lg border border-white/8 px-2 py-2 text-start text-[11px] text-white/80 hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-35"
                   data-testid="studio-add-item"
                   data-kind={k}
                   title={name()}
@@ -253,7 +253,7 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
             {presetsFor(motionNode.type, motionNode).map((p) => {
               const on = hasPreset(motion, p);
               return (
-                <button key={p.key} type="button" disabled={busy} aria-pressed={on} onClick={() => onMotion(p)} className={`truncate rounded-lg border px-2 py-1.5 text-start text-[11px] ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-preset={p.key} title={p.label()}>
+                <button key={p.key} type="button" disabled={busy} aria-pressed={on} onClick={() => onMotion(p)} className={`truncate rounded-lg border px-2 py-1.5 text-start text-[11px] ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/8 text-white/75 hover:bg-white/5"} disabled:opacity-40`} data-preset={p.key} title={p.label()}>
                   {p.label()}
                 </button>
               );

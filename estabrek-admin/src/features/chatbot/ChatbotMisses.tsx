@@ -36,7 +36,7 @@ export function ChatbotMisses({ onAnswer, onOpenChat }: { onAnswer: (question: s
       ) : (
         <>
           <p className="text-xs text-white/60">{say(`${open} سؤال بدها جواب|${open} questions need an answer|${open} שאלות מחכות לתשובה`)}</p>
-          <ul className="divide-y divide-white/[0.06]">
+          <ul className="divide-y divide-white/6">
             {items.map((m) => (
               <li key={`${m.conversationId}-${m.question}`} className="flex flex-wrap items-start justify-between gap-3 py-3" data-testid="chatbot-miss">
                 <div className="min-w-0 flex-1">

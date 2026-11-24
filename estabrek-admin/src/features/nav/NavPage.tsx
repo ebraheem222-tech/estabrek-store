@@ -186,7 +186,7 @@ export default function NavPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-white/20 sm:w-64"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-hidden focus:border-white/20 sm:w-64"
               value={activeMenuId}
               onChange={(e) => setActiveMenuId(e.target.value)}
               disabled={!menus.length}
@@ -238,7 +238,7 @@ export default function NavPage() {
                   {menus.map((m: any) => (
                     <div
                       key={m.id}
-                      className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 ${m.id === activeMenuId ? "border-white/30 bg-white/[0.08]" : ""}`}
+                      className={`rounded-2xl border border-white/10 bg-white/3 p-4 ${m.id === activeMenuId ? "border-white/30 bg-white/8" : ""}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold">{m.name}</div>
@@ -313,7 +313,7 @@ export default function NavPage() {
                 <div className="space-y-3">
                   <div className="space-y-3 sm:hidden">
                     {(activeMenu.items ?? []).map((it: any) => (
-                      <div key={it.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                      <div key={it.id} className="rounded-2xl border border-white/10 bg-white/3 p-4">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="text-sm font-semibold">{it.label}</div>

@@ -15,7 +15,7 @@ import { tr } from "../lib/words";
 import { Field } from "./StudioPanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 export function Product360Panel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
   const p = (node.props ?? {}) as Record<string, unknown>;
@@ -36,7 +36,7 @@ export function Product360Panel({ node, lang, busy, onOps }: { node: PageTreeNod
   const chosen = (products.data ?? []).find((x) => x.id === productId);
   const items = ((full.data as { items?: Array<{ id: string; colorName?: string | null }> } | undefined)?.items ?? []).filter((it) => it.id);
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-product360">
+    <div className="space-y-3 rounded-xl border border-white/8 p-3" data-testid="studio-product360">
       <div className="text-xs font-medium text-white/70">{tr("منتج 360°", "Product 360°")}</div>
       {chosen ? <div className="text-xs text-white/85">{chosen.title}{spun.has(chosen.id) ? "" : ` · ${tr("ما إله عرض 360° لسا", "has no 360° view yet")}`}</div> : <p className="text-[11px] text-amber-200/80">{tr("اختار المنتج اللي بدك تلفّه.", "Choose the product to turn.")}</p>}
       <label className="block text-[11px] text-white/55">
@@ -46,9 +46,9 @@ export function Product360Panel({ node, lang, busy, onOps }: { node: PageTreeNod
       <ul className="max-h-48 space-y-1 overflow-y-auto" data-testid="studio-product360-list">
         {list.map((x) => (
           <li key={x.id}>
-            <button type="button" disabled={busy} onClick={() => set(tr("منتج 360°", "Product 360°"), { productId: x.id, itemId: undefined })} aria-pressed={x.id === productId} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-start text-xs ${x.id === productId ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-product={x.id}>
+            <button type="button" disabled={busy} onClick={() => set(tr("منتج 360°", "Product 360°"), { productId: x.id, itemId: undefined })} aria-pressed={x.id === productId} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-start text-xs ${x.id === productId ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/5"} disabled:opacity-40`} data-product={x.id}>
               <span className="min-w-0 flex-1 truncate">{x.title}</span>
-              {spun.has(x.id) ? <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 text-[10px] text-emerald-200">360°</span> : null}
+              {spun.has(x.id) ? <span className="shrink-0 rounded-sm bg-emerald-500/15 px-1.5 text-[10px] text-emerald-200">360°</span> : null}
             </button>
           </li>
         ))}

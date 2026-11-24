@@ -31,7 +31,7 @@ export const TONE_CLASS: Record<(typeof STATUS_INFO)[OrderStatus]["tone"], strin
   ship: "bg-accent-500/15 text-accent-200 border-accent-400/30",
   done: "bg-white/[0.07] text-white/75 border-white/15",
   bad: "bg-red-500/12 text-red-300 border-red-400/30",
-  muted: "bg-white/[0.05] text-white/55 border-white/10",
+  muted: "bg-white/5 text-white/55 border-white/10",
 };
 
 export function statusLabel(s?: string | null) {

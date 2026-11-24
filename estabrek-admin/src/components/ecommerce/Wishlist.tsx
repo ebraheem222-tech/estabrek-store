@@ -83,7 +83,7 @@ export function WishlistPage({
     return (
       <div className={cn("text-center py-20", className)}>
         <svg
-          className="w-24 h-24 mx-auto text-[var(--color-text-muted)] mb-6"
+          className="w-24 h-24 mx-auto text-(--color-text-muted) mb-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -96,12 +96,12 @@ export function WishlistPage({
           />
         </svg>
         <h2 className="text-2xl font-bold mb-2">قائمة الأمنيات فارغة</h2>
-        <p className="text-[var(--color-text-muted)] mb-6">
+        <p className="text-(--color-text-muted) mb-6">
           لم تقم بإضافة أي منتجات إلى قائمة الأمنيات بعد
         </p>
         <button
           onClick={onContinueShopping}
-          className="px-8 py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors"
+          className="px-8 py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors"
         >
           تصفح المنتجات
         </button>

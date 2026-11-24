@@ -26,7 +26,7 @@ import {
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Target = { id: string; label: string; type?: string };
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
 const L = () => say("المشغّلات|Triggers|טריגרים");
 const named = (list: ReadonlyArray<readonly [string, () => string]>): Array<[string, string]> => list.map(([k, n]) => [k, n()]);
 const shown = (v: VarValue | undefined) => (v === undefined ? "" : String(v));
@@ -46,7 +46,7 @@ function ProductPick({ value, busy, onPick }: { value?: string; busy: boolean; o
       <input className={sel} value={text} onChange={(e) => setText(e.target.value)} placeholder={say("دوّر على منتج|Find a product|חיפוש מוצר")} data-testid="trigger-product-find" />
       <ul className="max-h-32 space-y-0.5 overflow-y-auto">
         {list.map((x) => (
-          <li key={x.id}><button type="button" disabled={busy} aria-pressed={x.id === value} onClick={() => onPick(x.id)} className={`w-full truncate rounded-lg px-2 py-1 text-start text-[11px] ${x.id === value ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-product={x.id}>{x.title}</button></li>
+          <li key={x.id}><button type="button" disabled={busy} aria-pressed={x.id === value} onClick={() => onPick(x.id)} className={`w-full truncate rounded-lg px-2 py-1 text-start text-[11px] ${x.id === value ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/6"}`} data-product={x.id}>{x.title}</button></li>
         ))}
       </ul>
     </div>
@@ -251,7 +251,7 @@ function StepList({ steps, lang, targets, busy, max, min = 0, groups, onSave, te
     <div className="space-y-1.5">
       <ol className="space-y-1.5">
         {steps.map((s, j) => (
-          <li key={j} className="space-y-1.5 rounded-lg bg-white/[0.04] p-2" data-testid={`${testId}-step-${j}`}>
+          <li key={j} className="space-y-1.5 rounded-lg bg-white/4 p-2" data-testid={`${testId}-step-${j}`}>
             <div className="flex items-end gap-1">
               <div className="flex-1"><Pick label={`${j + 1}. ${say("اعمل|Do|עשה")}`} value={s.act} options={kinds} busy={busy} onPick={(act) => put(j, newStep(act as StepKind, lang))} testId={`${testId}-act-${j}`} /></div>
               <button type="button" className={btn} disabled={busy || j === 0} aria-label="↑" onClick={() => { const d = [...steps]; [d[j - 1], d[j]] = [d[j], d[j - 1]]; onSave(d); }}>↑</button>
@@ -336,7 +336,7 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
         const fails = canFail([...t.do, ...(t.else ?? [])]);
         const letter = t.on === "key" && t.key && t.key.length === 1 ? t.key : "";
         return (
-          <div key={i} className="space-y-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2" data-testid={`trigger-${i}`}>
+          <div key={i} className="space-y-2 rounded-lg border border-white/8 bg-white/2 p-2" data-testid={`trigger-${i}`}>
             <Line label={say("اسمه (إلك، اختياري)|Its name (for you, optional)|השם שלו (בשבילך, לא חובה)")} value={t.name ?? ""} max={40} busy={busy} onSave={(name) => setOne(i, { ...t, name: name || undefined })} testId={`trigger-${i}-name`} />
             <div className={part}>{say("لما|When|כאשר")}</div>
             <div className="grid grid-cols-2 gap-2">
@@ -369,7 +369,7 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
 
             <div className={part}>{say("إذا (كل الشروط)|If (all of them)|אם (כל התנאים)")}</div>
             {conditions.map((c, k) => (
-              <div key={k} className="space-y-1.5 rounded-lg bg-white/[0.04] p-2" data-testid={`trigger-${i}-if-${k}`}>
+              <div key={k} className="space-y-1.5 rounded-lg bg-white/4 p-2" data-testid={`trigger-${i}-if-${k}`}>
                 <div className="flex items-end gap-1">
                   <div className="flex-1"><Pick label={say("الشرط|The condition|התנאי")} value={c.if} options={named(CONDITIONS)} busy={busy} onPick={(kind) => setOne(i, { ...t, if: conditions.map((x, m) => (m === k ? newCondition(kind as ConditionKind) : x)) })} testId={`trigger-${i}-if-${k}-kind`} /></div>
                   <button type="button" className={`${btn} text-red-300`} disabled={busy} aria-label={say("شيل|Remove|הסרה")} onClick={() => setOne(i, { ...t, if: conditions.filter((_, m) => m !== k) })} data-testid={`trigger-${i}-if-${k}-remove`}>×</button>
@@ -395,7 +395,7 @@ export function TriggersPanel({ node, lang, targets, busy, onOps, onTest }: { no
               </>
             ) : null}
 
-            <div className="flex flex-wrap gap-1 border-t border-white/[0.06] pt-2">
+            <div className="flex flex-wrap gap-1 border-t border-white/6 pt-2">
               <button type="button" className={btn} onClick={() => onTest(i)} data-testid={`trigger-${i}-test`}>▶ {say("جرّب بالمعاينة|Try in the preview|לנסות בתצוגה")}</button>
               {fails ? <button type="button" className={btn} onClick={() => onTest(i, true)} data-testid={`trigger-${i}-test-fail`}>▶ {say("جرّب الفشل (قال «لا» / المنتج خلص / function وقفت)|Try the failure (a “no” / sold out / a function stopped)|לנסות כישלון («לא» / אזל / פונקציה נעצרה)")}</button> : null}
               <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(list.filter((_, k) => k !== i))} data-testid={`trigger-${i}-remove`}>{say("شيل المشغّل|Remove the trigger|הסרת הטריגר")}</button>

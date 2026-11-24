@@ -11,8 +11,8 @@ import * as API from "../../api/copies.api";
 import type { CopyCheck, PressKind, SiteAsk } from "../../api/copies.api";
 import { checkName, makeRefusedText, refusedText, tidyName, whyText } from "./copiesText";
 
-const box = "rounded-2xl border border-amber-400/30 bg-amber-500/[0.06] p-4 sm:p-5";
-const field = "h-10 w-full min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const box = "rounded-2xl border border-amber-400/30 bg-amber-500/6 p-4 sm:p-5";
+const field = "h-10 w-full min-w-0 rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 
 type Props = {
   /** The connection picked for each service (the page's own picks). */
@@ -100,7 +100,7 @@ function Ask({ ask, via, regions, onMade }: { ask: SiteAsk } & Props) {
 
       {open ? (
         <form
-          className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+          className="space-y-3 rounded-xl border border-white/10 bg-white/3 p-3"
           onSubmit={(e) => {
             e.preventDefault();
             if (can) make.mutate();

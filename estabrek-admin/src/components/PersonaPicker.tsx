@@ -15,7 +15,7 @@ export function PersonaPicker({ value, onChange, industry, testid = "persona" }:
   return (
     <div className="space-y-3" data-testid={testid}>
       {picked ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3" data-testid={`${testid}-picked`}>
+        <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/4 p-3" data-testid={`${testid}-picked`}>
           <img src={personaFaceUrl(picked, 72)} alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full" />
           <div className="min-w-0 text-sm">
             <div className="font-semibold">
@@ -36,7 +36,7 @@ export function PersonaPicker({ value, onChange, industry, testid = "persona" }:
           {say("بدون شخصية (المساعد العادي)|No personality (the plain assistant)|בלי דמות (העוזר הרגיל)")}
         </button>
         <input
-          className="h-9 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm"
+          className="h-9 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/3 px-3 text-sm"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={say(`دوّر بين ${PERSONAS.length} شخصية…|Search ${PERSONAS.length} personalities…|חיפוש בין ${PERSONAS.length} דמויות…`)}
@@ -44,7 +44,7 @@ export function PersonaPicker({ value, onChange, industry, testid = "persona" }:
           data-testid={`${testid}-search`}
         />
       </div>
-      <ul className="grid max-h-[22rem] grid-cols-2 gap-2 overflow-auto pe-1 sm:grid-cols-3 lg:grid-cols-4" role="listbox" aria-label={say("الشخصيات|Personalities|דמויות")}>
+      <ul className="grid max-h-88 grid-cols-2 gap-2 overflow-auto pe-1 sm:grid-cols-3 lg:grid-cols-4" role="listbox" aria-label={say("الشخصيات|Personalities|דמויות")}>
         {found.map((p) => {
           const on = p.id === value;
           const fits = !!industry && p.fits.includes(industry);

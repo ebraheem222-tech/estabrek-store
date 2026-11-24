@@ -97,7 +97,7 @@ export default function FunctionsPage() {
                         {say(STATE_NAME[state])}
                       </Badge>
                     </div>
-                    {fn.note ? <div className="break-words text-sm text-white/70">{fn.note}</div> : null}
+                    {fn.note ? <div className="wrap-break-word text-sm text-white/70">{fn.note}</div> : null}
                     <div className="text-xs text-white/60">
                       {say("{n} خطوة|{n} steps|{n} שלבים").replace("{n}", String(fn.steps))}
                       {" · "}

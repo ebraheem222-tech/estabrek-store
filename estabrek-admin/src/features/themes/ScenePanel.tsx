@@ -10,7 +10,7 @@ import { tr } from "../../lib/words";
 import { STAGE_FLOORS, STAGE_LAYOUTS, type StageCamera, type StageDefaults, type StageLights, type StageScene, type StoreThemeInfo } from "../../studio/storeThemes";
 import type { StageDraftApi } from "./stageDraft";
 
-const field = "w-full rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
+const field = "w-full rounded-md border border-white/10 bg-surface-925 px-1.5 py-1 text-xs text-white";
 
 const LAYOUT_LABEL: Record<(typeof STAGE_LAYOUTS)[number], () => string> = {
   orbit: () => tr("دائرة حول المختار", "A circle round the picked one"),
@@ -45,7 +45,7 @@ const LIGHT_STEP = { ambient: 0.05, key: 0.1, keyAngle: 1, rim: 1, env: 0.05 } a
 
 function Group({ title, children, onReset, testId }: { title: string; children: ReactNode; onReset?: () => void; testId?: string }) {
   return (
-    <div className="space-y-2 rounded-xl bg-white/[0.03] p-2" data-testid={testId}>
+    <div className="space-y-2 rounded-xl bg-white/3 p-2" data-testid={testId}>
       <div className="flex items-center gap-2">
         <h4 className="me-auto text-xs font-medium text-white/75">{title}</h4>
         {onReset ? (
@@ -66,7 +66,7 @@ function Range({ label, value, min, max, step, onChange, testId }: { label: stri
       <span dir="ltr" className="text-[10px] tabular-nums text-white/40">
         {Number(value.toFixed(step >= 1 ? 0 : 2))}
       </span>
-      <input type="range" className="col-span-2 accent-[var(--color-accent-500,#a43b64)]" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} data-testid={testId} />
+      <input type="range" className="col-span-2 accent-(--color-accent-500,#a43b64)" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} data-testid={testId} />
     </label>
   );
 }
@@ -110,7 +110,7 @@ export function ScenePanel({ theme, api, defaults }: { theme: StoreThemeInfo; ap
         </select>
         <div className="flex flex-wrap items-center gap-3 text-[11px] text-white/60">
           <label className="flex items-center gap-1.5">
-            <input type="color" className="h-6 w-7 cursor-pointer rounded border border-white/[0.1] bg-transparent" value={scene.floorColour ?? "#0b0b12"} onChange={(e) => set((s) => ({ ...s, floorColour: e.target.value }), "floorColour")} data-testid="scene-floor-colour" />
+            <input type="color" className="h-6 w-7 cursor-pointer rounded-sm border border-white/10 bg-transparent" value={scene.floorColour ?? "#0b0b12"} onChange={(e) => set((s) => ({ ...s, floorColour: e.target.value }), "floorColour")} data-testid="scene-floor-colour" />
             {tr("لون المنصة", "Stage colour")}
             {scene.floorColour ? (
               <button type="button" className="text-white/40 hover:text-white" onClick={() => without("floorColour")} aria-label={tr("لون الثيم", "The theme's colour")}>
@@ -143,7 +143,7 @@ export function ScenePanel({ theme, api, defaults }: { theme: StoreThemeInfo; ap
             <input
               key={j}
               type="color"
-              className="h-6 w-7 cursor-pointer rounded border border-white/[0.1] bg-transparent"
+              className="h-6 w-7 cursor-pointer rounded-sm border border-white/10 bg-transparent"
               value={lights.colours?.[j] ?? theme.swatch[j === 0 ? 2 : 3] ?? "#888888"}
               onChange={(e) => {
                 const next: [string, string] = [...(lights.colours ?? [theme.swatch[2] ?? "#888888", theme.swatch[3] ?? "#888888"])] as [string, string];
@@ -180,7 +180,7 @@ export function ScenePanel({ theme, api, defaults }: { theme: StoreThemeInfo; ap
 
       <button
         type="button"
-        className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-30"
+        className="rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-30"
         disabled={!Object.keys(scene).length}
         onClick={() => change((d) => ({ ...d, scene: {} }))}
         data-testid="scene-reset-stage"

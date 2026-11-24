@@ -98,8 +98,8 @@ export function OrderTrackingTimeline({
                 step.completed
                   ? "bg-green-500 border-green-500 text-white"
                   : step.current
-                  ? "bg-[var(--color-accent)] border-[var(--color-accent)] text-white"
-                  : "bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-muted)]"
+                  ? "bg-(--color-accent) border-(--color-accent) text-white"
+                  : "bg-(--color-bg-alt) border-(--color-border) text-(--color-text-muted)"
               )}
             >
               {step.completed ? (
@@ -114,7 +114,7 @@ export function OrderTrackingTimeline({
               <div
                 className={cn(
                   "w-0.5 h-16 transition-colors",
-                  step.completed ? "bg-green-500" : "bg-[var(--color-border)]"
+                  step.completed ? "bg-green-500" : "bg-(--color-border)"
                 )}
               />
             )}
@@ -125,16 +125,16 @@ export function OrderTrackingTimeline({
             <h4
               className={cn(
                 "font-bold",
-                step.completed || step.current ? "text-[var(--color-text)]" : "text-[var(--color-text-muted)]"
+                step.completed || step.current ? "text-(--color-text)" : "text-(--color-text-muted)"
               )}
             >
               {step.titleAr}
             </h4>
             {step.date && (
-              <p className="text-sm text-[var(--color-text-muted)]">{step.date}</p>
+              <p className="text-sm text-(--color-text-muted)">{step.date}</p>
             )}
             {step.description && (
-              <p className="text-sm text-[var(--color-text-muted)] mt-1">{step.description}</p>
+              <p className="text-sm text-(--color-text-muted) mt-1">{step.description}</p>
             )}
           </div>
         </div>
@@ -167,13 +167,13 @@ export function OrderCard({
     <div
       onClick={onClick}
       className={cn(
-        "bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6 cursor-pointer hover:shadow-lg transition-shadow",
+        "bg-(--color-surface) rounded-2xl border border-(--color-border) p-6 cursor-pointer hover:shadow-lg transition-shadow",
         className
       )}
     >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm text-[var(--color-text-muted)]">رقم الطلب</p>
+          <p className="text-sm text-(--color-text-muted)">رقم الطلب</p>
           <p className="font-bold">{order.orderNumber}</p>
         </div>
         <OrderStatusBadge status={order.status} />
@@ -183,7 +183,7 @@ export function OrderCard({
         {order.items.slice(0, 3).map((item, i) => (
           <div
             key={i}
-            className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--color-bg-alt)]"
+            className="w-16 h-16 rounded-xl overflow-hidden bg-(--color-bg-alt)"
           >
             {item.image ? (
               <img src={item.image} alt={item.nameAr || item.name} className="w-full h-full object-cover" />
@@ -193,18 +193,18 @@ export function OrderCard({
           </div>
         ))}
         {order.items.length > 3 && (
-          <div className="w-16 h-16 rounded-xl bg-[var(--color-bg-alt)] flex items-center justify-center text-sm font-medium">
+          <div className="w-16 h-16 rounded-xl bg-(--color-bg-alt) flex items-center justify-center text-sm font-medium">
             +{order.items.length - 3}
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]">
+      <div className="flex items-center justify-between pt-4 border-t border-(--color-border)">
         <div>
-          <p className="text-sm text-[var(--color-text-muted)]">{order.date}</p>
-          <p className="text-sm text-[var(--color-text-muted)]">{order.items.length} منتج</p>
+          <p className="text-sm text-(--color-text-muted)">{order.date}</p>
+          <p className="text-sm text-(--color-text-muted)">{order.items.length} منتج</p>
         </div>
-        <p className="text-xl font-bold text-[var(--color-accent)]">{formatPrice(order.total)}</p>
+        <p className="text-xl font-bold text-(--color-accent)">{formatPrice(order.total)}</p>
       </div>
     </div>
   );
@@ -246,19 +246,19 @@ export function OrderDetails({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">طلب #{order.orderNumber}</h1>
-          <p className="text-[var(--color-text-muted)]">{order.date}</p>
+          <p className="text-(--color-text-muted)">{order.date}</p>
         </div>
         <OrderStatusBadge status={order.status} />
       </div>
 
       {/* Tracking */}
       {order.status !== "cancelled" && (
-        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6">
+        <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6">
           <h2 className="text-lg font-bold mb-6">تتبع الطلب</h2>
           <OrderTrackingTimeline steps={trackingSteps} />
           {order.trackingNumber && (
-            <div className="mt-4 p-4 bg-[var(--color-bg-alt)] rounded-xl">
-              <p className="text-sm text-[var(--color-text-muted)]">رقم التتبع</p>
+            <div className="mt-4 p-4 bg-(--color-bg-alt) rounded-xl">
+              <p className="text-sm text-(--color-text-muted)">رقم التتبع</p>
               <p className="font-mono font-bold">{order.trackingNumber}</p>
             </div>
           )}
@@ -266,12 +266,12 @@ export function OrderDetails({
       )}
 
       {/* Items */}
-      <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6">
+      <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6">
         <h2 className="text-lg font-bold mb-4">المنتجات</h2>
         <div className="space-y-4">
           {order.items.map((item) => (
             <div key={item.id} className="flex gap-4">
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-[var(--color-bg-alt)]">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-(--color-bg-alt)">
                 {item.image ? (
                   <img src={item.image} alt={item.nameAr || item.name} className="w-full h-full object-cover" />
                 ) : (
@@ -280,15 +280,15 @@ export function OrderDetails({
               </div>
               <div className="flex-1">
                 <h4 className="font-bold">{item.nameAr || item.name}</h4>
-                <p className="text-sm text-[var(--color-text-muted)]">الكمية: {item.quantity}</p>
+                <p className="text-sm text-(--color-text-muted)">الكمية: {item.quantity}</p>
               </div>
               <p className="font-bold">{formatPrice(item.price * item.quantity)}</p>
             </div>
           ))}
         </div>
-        <div className="border-t border-[var(--color-border)] mt-4 pt-4 flex justify-between">
+        <div className="border-t border-(--color-border) mt-4 pt-4 flex justify-between">
           <span className="font-bold">الإجمالي</span>
-          <span className="text-xl font-bold text-[var(--color-accent)]">{formatPrice(order.total)}</span>
+          <span className="text-xl font-bold text-(--color-accent)">{formatPrice(order.total)}</span>
         </div>
       </div>
 
@@ -297,7 +297,7 @@ export function OrderDetails({
         {onReorder && (
           <button
             onClick={onReorder}
-            className="flex-1 py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors"
+            className="flex-1 py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors"
           >
             إعادة الطلب
           </button>

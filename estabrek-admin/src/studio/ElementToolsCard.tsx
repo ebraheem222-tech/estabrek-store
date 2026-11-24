@@ -20,7 +20,7 @@ export function ElementToolsCard({ tools, busy, onGo, children }: { tools: Eleme
       {tools.map((t) => (
         <button
           key={t.id} type="button" title={t.hint} disabled={busy && changes(t)} onClick={() => onGo(t)}
-          className={`rounded-full px-2 py-1 text-[11px] disabled:opacity-40 ${t.small ? "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]" : "bg-accent-500/20 font-medium text-accent-100 hover:bg-accent-500/30"}`}
+          className={`rounded-full px-2 py-1 text-[11px] disabled:opacity-40 ${t.small ? "bg-white/6 text-white/75 hover:bg-white/10" : "bg-accent-500/20 font-medium text-accent-100 hover:bg-accent-500/30"}`}
           data-testid="studio-tool" data-tool={t.id}
         >
           <span aria-hidden="true">{t.icon}</span> {t.label}<span className="sr-only"> · {t.hint}</span>
@@ -33,7 +33,7 @@ export function ElementToolsCard({ tools, busy, onGo, children }: { tools: Eleme
 /** Where the bigger tools are (shown with nothing selected). */
 export function ToolsGuide() {
   return (
-    <div className="mt-3 space-y-1.5 rounded-xl border border-white/[0.08] p-2" data-testid="studio-tools-guide">
+    <div className="mt-3 space-y-1.5 rounded-xl border border-white/8 p-2" data-testid="studio-tools-guide">
       <div className="text-[11px] font-semibold text-white/70">{say("وين بلاقي…؟|Where do I find…?|איפה נמצא…?")}</div>
       <ul className="space-y-1">
         {TOOL_GUIDE.map(([icon, what, where]) => (

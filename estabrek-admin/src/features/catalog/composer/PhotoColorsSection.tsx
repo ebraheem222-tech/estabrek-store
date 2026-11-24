@@ -131,7 +131,7 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
         className={cn(
           "flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-4 text-center transition-all",
           photoCount ? "py-5" : "py-10",
-          over ? "border-accent-400 bg-accent-500/10" : "border-white/[0.12] bg-white/[0.02]",
+          over ? "border-accent-400 bg-accent-500/10" : "border-white/12 bg-white/2",
         )}
       >
         <div className="text-3xl" aria-hidden>🖼️</div>
@@ -140,7 +140,7 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
           <button type="button" onClick={() => pick.current?.click()} className="h-11 rounded-xl bg-accent-500 px-4 text-sm font-medium text-white hover:bg-accent-400 sm:h-10">
             {tr("اختيار صور", "Choose photos")}
           </button>
-          <button type="button" onClick={() => camera.current?.click()} className="h-11 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 text-sm text-white/85 hover:bg-white/[0.08] sm:h-10">
+          <button type="button" onClick={() => camera.current?.click()} className="h-11 rounded-xl border border-white/12 bg-white/4 px-4 text-sm text-white/85 hover:bg-white/8 sm:h-10">
             {tr("📷 تصوير بالكاميرا", "📷 Take a photo")}
           </button>
         </div>
@@ -177,11 +177,11 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
       <CutoutBatch open={cutoutAll} targets={cutoutTargets} canReplace onClose={() => setCutoutAll(false)} onSaved={(key, picture, how) => addCutout(key, picture.url, how.replace)} />
 
       {undo ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm text-white/80" role="status" data-testid="colour-undo">
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-white/80" role="status" data-testid="colour-undo">
           <span className="min-w-0 flex-1">
             {tr("انحذف اللون «", "Colour deleted “")}{undo.group.name || tr("بدون اسم", "untitled")}»{undo.group.photoKeys.length ? tr(` مع ${photosText(undo.group.photoKeys.length)}`, " with {0}", [photosText(undo.group.photoKeys.length)]) : ""}.
           </span>
-          <button type="button" onClick={restoreGroup} className="h-10 rounded-xl bg-white/[0.08] px-4 font-medium text-white hover:bg-white/[0.14] sm:h-8">
+          <button type="button" onClick={restoreGroup} className="h-10 rounded-xl bg-white/8 px-4 font-medium text-white hover:bg-white/[0.14] sm:h-8">
             {tr("تراجع", "Undo")}
           </button>
         </div>
@@ -190,12 +190,12 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <button type="button" onClick={addEmptyGroup} className="h-10 rounded-xl px-3 text-accent-300 hover:bg-accent-500/10 sm:h-9">{tr("+ إضافة لون", "+ Add a colour")}</button>
         {draft.groups.length > 1 && !draft.edit && (
-          <button type="button" onClick={mergeAll} className="h-10 rounded-xl px-3 text-white/60 hover:bg-white/[0.06] hover:text-white sm:h-9" title={tr("إذا كل الصور لنفس اللون من زوايا مختلفة", "When all the photos are one colour from different angles")}>
+          <button type="button" onClick={mergeAll} className="h-10 rounded-xl px-3 text-white/60 hover:bg-white/6 hover:text-white sm:h-9" title={tr("إذا كل الصور لنفس اللون من زوايا مختلفة", "When all the photos are one colour from different angles")}>
             {tr("كل الصور لون واحد", "All photos are one colour")}
           </button>
         )}
         {photoCount > 0 && (
-          <button type="button" onClick={() => setCutoutAll(true)} className="h-10 rounded-xl px-3 text-white/70 hover:bg-white/[0.06] hover:text-white sm:h-9" data-testid="photos-cutout-all">
+          <button type="button" onClick={() => setCutoutAll(true)} className="h-10 rounded-xl px-3 text-white/70 hover:bg-white/6 hover:text-white sm:h-9" data-testid="photos-cutout-all">
             {tr("✂ شيل الخلفية عن كل الصور", "✂ Remove the background from all photos")}
           </button>
         )}
@@ -256,7 +256,7 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
     });
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3 sm:p-4" data-testid="color-group">
+    <div className="rounded-2xl border border-white/8 bg-white/2 p-3 sm:p-4" data-testid="color-group">
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative cursor-pointer" title={tr("تعديل اللون", "Edit colour")}>
           <Swatch hex={group.hex} size={34} />
@@ -273,7 +273,7 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
         <datalist id={listId}>{FASHION_COLORS.map((c) => <option key={c.code} value={c.name} />)}</datalist>
         <div className="flex flex-wrap gap-1">
           {suggestions.filter((s) => s.name !== group.name).slice(0, 4).map((s) => (
-            <button key={s.code} type="button" onClick={() => { onName(s.name); if (!group.hex) onHex(s.hex); }} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/[0.08] px-3 text-xs text-white/70 hover:border-white/20 hover:text-white sm:h-7 sm:px-2.5">
+            <button key={s.code} type="button" onClick={() => { onName(s.name); if (!group.hex) onHex(s.hex); }} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/8 px-3 text-xs text-white/70 hover:border-white/20 hover:text-white sm:h-7 sm:px-2.5">
               <Swatch hex={s.hex} size={12} />{s.name}
             </button>
           ))}
@@ -288,7 +288,7 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
         {group.photoKeys.map((k, i) => (
           <PhotoTile key={k} photo={draft.photos[k]} main={i === 0} groups={draft.groups} groupKey={group.key} onMain={() => makeMain(k)} onRemove={() => removePhoto(k)} onMove={(t) => movePhoto(k, t)} onRetry={() => onRetry(k)} studio={studio} title={title} onStudio={(url) => addStudioPhoto(k, url)} onCutout={onCutout ? () => onCutout(k) : undefined} />
         ))}
-        <button type="button" onClick={() => add.current?.click()} className="grid aspect-[4/5] place-items-center rounded-xl border border-dashed border-white/[0.14] text-xs text-white/50 hover:border-accent-400/60 hover:text-white" aria-label={tr(`إضافة صور للون ${group.name || index + 1}`, "Add photos to colour {0}", [group.name || index + 1])}>
+        <button type="button" onClick={() => add.current?.click()} className="grid aspect-4/5 place-items-center rounded-xl border border-dashed border-white/[0.14] text-xs text-white/50 hover:border-accent-400/60 hover:text-white" aria-label={tr(`إضافة صور للون ${group.name || index + 1}`, "Add photos to colour {0}", [group.name || index + 1])}>
           <span className="text-center leading-6"><span className="block text-xl">+</span>{tr("صور لهذا اللون", "Photos for this colour")}</span>
         </button>
         <input ref={add} type="file" accept="image/*" multiple hidden onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
@@ -352,9 +352,9 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
     }
   };
   return (
-    <div className={cn("group relative aspect-[4/5] overflow-hidden rounded-xl border bg-black/20", main ? "border-accent-400/70" : "border-white/[0.08]")} data-testid="photo-tile">
+    <div className={cn("group relative aspect-4/5 overflow-hidden rounded-xl border bg-black/20", main ? "border-accent-400/70" : "border-white/8")} data-testid="photo-tile">
       <img src={photo.preview} alt="" className="h-full w-full object-cover" draggable={false} />
-      {main && <span className="absolute start-1.5 top-1.5 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white">{tr("الرئيسية", "Main")}</span>}
+      {main && <span className="absolute inset-s-1.5 top-1.5 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white">{tr("الرئيسية", "Main")}</span>}
       {busy && (
         <div className="absolute inset-0 grid place-items-center bg-black/35">
           <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-label={tr("جارٍ الرفع", "Uploading")} />
@@ -379,7 +379,7 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
               onChange={(e) => setScene(e.target.value)}
               placeholder={say("مشهد من عندك…|Your own scene…|סצנה משלך…")}
               aria-label={say("مشهد من عندك|Your own scene|סצנה משלך")}
-              className="h-8 min-w-0 flex-1 rounded-md border-0 bg-white/10 px-1.5 text-white placeholder:text-white/45 focus:outline-none"
+              className="h-8 min-w-0 flex-1 rounded-md border-0 bg-white/10 px-1.5 text-white placeholder:text-white/45 focus:outline-hidden"
             />
             <button type="submit" disabled={scene.trim().length < 3} className="min-h-8 rounded-md bg-accent-500 px-2 text-white disabled:opacity-40">{say("صوّر|Make|צור")}</button>
           </form>
@@ -394,14 +394,14 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
           </div>
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/75 to-transparent p-1.5 pt-8 sm:pt-6">
+      <div className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-linear-to-t from-black/75 to-transparent p-1.5 pt-8 sm:pt-6">
         {!main && (
           <button type="button" onClick={onMain} className={tileBtn} title={tr("جعلها الصورة الرئيسية", "Make it the main photo")} aria-label={tr("جعلها الصورة الرئيسية", "Make it the main photo")}>★</button>
         )}
         <select
           value={groupKey}
           onChange={(e) => onMove(e.target.value)}
-          className="h-9 min-w-0 flex-1 rounded-lg border-0 bg-white/15 px-1 text-xs text-white focus:outline-none sm:h-6 sm:rounded-md sm:text-[10px]"
+          className="h-9 min-w-0 flex-1 rounded-lg border-0 bg-white/15 px-1 text-xs text-white focus:outline-hidden sm:h-6 sm:rounded-md sm:text-[10px]"
           aria-label={tr("نقل الصورة إلى لون آخر", "Move the photo to another colour")}
         >
           {groups.map((g, i) => <option key={g.key} value={g.key} className="text-black">{g.name || tr(`لون ${i + 1}`, "Colour {0}", [i + 1])}</option>)}

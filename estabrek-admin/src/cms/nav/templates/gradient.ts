@@ -7,7 +7,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج غروب",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600",
+      nav: "bg-linear-to-r from-orange-500 via-pink-500 to-purple-600",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -23,7 +23,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج محيط",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600",
+      nav: "bg-linear-to-r from-cyan-500 via-blue-500 to-indigo-600",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -39,7 +39,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج غابة",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500",
+      nav: "bg-linear-to-r from-green-600 via-emerald-500 to-teal-500",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -55,7 +55,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج ملكي",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-purple-700 via-violet-600 to-indigo-700",
+      nav: "bg-linear-to-r from-purple-700 via-violet-600 to-indigo-700",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -71,7 +71,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج ناري",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500",
+      nav: "bg-linear-to-r from-red-600 via-orange-500 to-yellow-500",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -87,7 +87,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج حلوى",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400",
+      nav: "bg-linear-to-r from-pink-400 via-purple-400 to-indigo-400",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -95,7 +95,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
       linkHover: "hover:text-white",
       linkActive: "text-white",
       button:
-        "bg-white/20 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/30 transition-colors",
+        "bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/30 transition-colors",
     },
   },
   {
@@ -104,14 +104,14 @@ export const GRADIENT_NAV: NavTemplate[] = [
     nameAr: "تدرج داكن",
     category: "gradient",
     styles: {
-      nav: "bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900",
+      nav: "bg-linear-to-r from-gray-900 via-gray-800 to-gray-900",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
       link: "text-gray-400 text-sm font-medium transition-colors duration-200",
       linkHover: "hover:text-white",
       linkActive: "text-white",
-      button: "bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity",
+      button: "bg-linear-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity",
     },
   },
   {
@@ -128,7 +128,7 @@ export const GRADIENT_NAV: NavTemplate[] = [
       linkHover: "hover:text-white",
       linkActive: "text-white",
       button:
-        "bg-white/10 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/20 hover:bg-white/20 transition-colors",
+        "bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/20 hover:bg-white/20 transition-colors",
     },
   },
 ];

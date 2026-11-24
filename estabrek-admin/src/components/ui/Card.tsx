@@ -49,7 +49,7 @@ export function CardHeader({ title, description, subtitle, action, className }: 
           <p className="mt-0.5 text-sm text-white/50">{detail}</p>
         )}
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -70,7 +70,7 @@ type CardFooterProps = {
 
 export function CardFooter({ children, className }: CardFooterProps) {
   return (
-    <div className={cn("mt-4 pt-4 border-t border-white/[0.06]", className)}>
+    <div className={cn("mt-4 pt-4 border-t border-white/6", className)}>
       {children}
     </div>
   );

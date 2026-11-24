@@ -89,7 +89,7 @@ function ValueInput({ at, value, onChange, plain, long, placeholder, testid }: {
   };
   const props = { className: `${field} w-full ${long ? "h-auto min-h-[72px] py-2" : ""}`, value: text, placeholder, disabled: !b.canWrite, dir: "auto" as const, "data-testid": testid };
   return (
-    <div className="flex min-w-[11rem] flex-1 items-start gap-1">
+    <div className="flex min-w-44 flex-1 items-start gap-1">
       {long ? <textarea {...props} rows={3} onChange={(e) => set(e.target.value)} /> : <input {...props} onChange={(e) => set(e.target.value)} />}
       <NameMenu at={at} onPick={(n) => set(`${text}{{${n}}}`)} testid={testid ? `${testid}-names` : undefined} />
     </div>
@@ -266,7 +266,7 @@ function FiltersForm({ at, table, filters, match, onChange }: { at: Path; table:
         return (
           <div key={k} className="flex flex-wrap items-start gap-2">
             <select
-              className={`${field} max-w-[12rem] shrink-0`}
+              className={`${field} max-w-48 shrink-0`}
               value={f.field}
               disabled={!b.canWrite}
               onChange={(e) => {
@@ -373,14 +373,14 @@ function HeadersForm({ at, id, headers, onChange }: { at: Path; id: string; head
           <ValueInput at={at} plain value={headers[name]} onChange={(v) => out({ ...headers, [name]: String(v) })} placeholder="Bearer {{secret.MY_KEY}}" testid={`step-${id}-header-${k}`} />
           <SecretMenu onPick={(hole) => out({ ...headers, [name]: `${headers[name]}${hole}` })} testid={`step-${id}-header-${k}-secrets`} />
           {b.canWrite ? (
-            <button type="button" className="rounded px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => out(Object.fromEntries(Object.entries(headers).filter(([key]) => key !== name)))} aria-label={say("شيل السطر|Take the header out|הסרת הכותרת")} data-testid={`step-${id}-header-${k}-remove`}>
+            <button type="button" className="rounded-sm px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => out(Object.fromEntries(Object.entries(headers).filter(([key]) => key !== name)))} aria-label={say("شيل السطر|Take the header out|הסרת הכותרת")} data-testid={`step-${id}-header-${k}-remove`}>
               ✕
             </button>
           ) : null}
         </div>
       ))}
       {b.canWrite ? (
-        <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12]" onClick={() => out({ ...headers, [names.includes("Authorization") ? freeName("X-Header-", names) : "Authorization"]: "" })} data-testid={`step-${id}-header-add`}>
+        <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12" onClick={() => out({ ...headers, [names.includes("Authorization") ? freeName("X-Header-", names) : "Authorization"]: "" })} data-testid={`step-${id}-header-add`}>
           {say("＋ سطر بأول الطلب (header)|＋ A header|＋ כותרת (header)")}
         </button>
       ) : null}
@@ -401,14 +401,14 @@ function GiveForm({ at, id, give, onChange }: { at: Path; id: string; give: Reco
           <span className="text-white/70">=</span>
           <ValueInput at={at} value={give[name]} onChange={(v) => onChange({ ...give, [name]: v })} placeholder="{{rows}}" testid={`step-${id}-give-${k}`} />
           {b.canWrite ? (
-            <button type="button" className="rounded px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => onChange(Object.fromEntries(Object.entries(give).filter(([key]) => key !== name)))} aria-label={say("شيل القيمة|Take the value out|הסרת הערך")} data-testid={`step-${id}-give-${k}-remove`}>
+            <button type="button" className="rounded-sm px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => onChange(Object.fromEntries(Object.entries(give).filter(([key]) => key !== name)))} aria-label={say("شيل القيمة|Take the value out|הסרת הערך")} data-testid={`step-${id}-give-${k}-remove`}>
               ✕
             </button>
           ) : null}
         </div>
       ))}
       {b.canWrite ? (
-        <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12]" onClick={() => onChange({ ...give, [freeName("value", names)]: "" })} data-testid={`step-${id}-give-add`}>
+        <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12" onClick={() => onChange({ ...give, [freeName("value", names)]: "" })} data-testid={`step-${id}-give-add`}>
           {say("＋ قيمة للكود|＋ A value for the code|＋ ערך לקוד")}
         </button>
       ) : null}
@@ -463,7 +463,7 @@ function StepForm({ path, step }: { path: Path; step: Step }) {
           {table(step.table, (t) => set({ act: "find", table: t, as: step.as, ...(step.limit ? { limit: step.limit } : {}) }))}
           <FiltersForm at={path} table={step.table} filters={step.filters ?? []} match={step.match} onChange={(filters, match) => set({ ...step, filters: filters.length ? filters : undefined, match })} />
           <Row name={say("الترتيب|Order|סדר")}>
-            <select className={`${field} max-w-[12rem]`} value={sort?.field ?? ""} disabled={!b.canWrite} onChange={(e) => set({ ...step, sort: e.target.value ? [{ field: e.target.value, dir: sort?.dir ?? "asc" }] : undefined })} data-testid={`step-${id}-sort`}>
+            <select className={`${field} max-w-48`} value={sort?.field ?? ""} disabled={!b.canWrite} onChange={(e) => set({ ...step, sort: e.target.value ? [{ field: e.target.value, dir: sort?.dir ?? "asc" }] : undefined })} data-testid={`step-${id}-sort`}>
               <option value="">{say("متل ما هم|As they are|כמו שהן")}</option>
               {[...fields.filter((f) => f.type !== "relation").map((f) => f.id), "$createdAt", "$updatedAt"].map((c) => (
                 <option key={c} value={c}>
@@ -1001,7 +1001,7 @@ function StepCard({ path, step, last }: { path: Path; step: Step; last: boolean 
     </div>
   );
   return (
-    <li className={`rounded-xl border p-3 ${failed ? "border-red-400/60" : problems.length ? "border-amber-400/50" : "border-white/10"} bg-white/[0.03]`} data-testid={`step-${id}`} data-act={step.act} data-open={open}>
+    <li className={`rounded-xl border p-3 ${failed ? "border-red-400/60" : problems.length ? "border-amber-400/50" : "border-white/10"} bg-white/3`} data-testid={`step-${id}`} data-act={step.act} data-open={open}>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-start" onClick={() => b.setOpenAt(open ? null : id)} aria-expanded={open} data-testid={`step-${id}-head`}>
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/10 text-xs">{n + 1}</span>

@@ -24,7 +24,7 @@ export function Pagination({ page, totalPages, onChange, className }: Props) {
           "flex items-center justify-center w-9 h-9 rounded-lg text-sm transition-colors",
           page <= 1
             ? "text-white/20 cursor-not-allowed"
-            : "text-white/60 hover:bg-white/[0.06] hover:text-white"
+            : "text-white/60 hover:bg-white/6 hover:text-white"
         )}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -50,8 +50,8 @@ export function Pagination({ page, totalPages, onChange, className }: Props) {
             className={cn(
               "flex items-center justify-center w-9 h-9 rounded-lg text-sm font-medium transition-all",
               isActive
-                ? "bg-white/10 text-white border border-white/[0.08]"
-                : "text-white/60 hover:bg-white/[0.06] hover:text-white"
+                ? "bg-white/10 text-white border border-white/8"
+                : "text-white/60 hover:bg-white/6 hover:text-white"
             )}
           >
             {pageNum}
@@ -67,7 +67,7 @@ export function Pagination({ page, totalPages, onChange, className }: Props) {
           "flex items-center justify-center w-9 h-9 rounded-lg text-sm transition-colors",
           page >= totalPages
             ? "text-white/20 cursor-not-allowed"
-            : "text-white/60 hover:bg-white/[0.06] hover:text-white"
+            : "text-white/60 hover:bg-white/6 hover:text-white"
         )}
       >
         <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -41,7 +41,7 @@ export function SpacePanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
   };
   const kids = node.children?.length ?? 0;
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-space">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-space">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/70">{label}</div>
         <span className="text-[10px] text-white/40">{now ? say(SPACE_NAMES[now.kind]) : say("مسطّح|Flat|שטוח")}</span>

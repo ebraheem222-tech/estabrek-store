@@ -95,7 +95,7 @@ export function SettingsTabBar({
 }: ReturnType<typeof useSettingsCentre>) {
   const searching = query.trim().length > 0;
   return (
-    <div className="sticky top-0 z-20 -mx-1 space-y-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur" data-testid="settings-tabs">
+    <div className="sticky top-0 z-20 -mx-1 space-y-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur-sm" data-testid="settings-tabs">
       <div className="relative">
         <input
           type="search"
@@ -103,10 +103,10 @@ export function SettingsTabBar({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="ابحثي في الإعدادات… (مثلاً: واتساب، الشعار، Pixel)"
           aria-label="بحث في الإعدادات"
-          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none focus:border-white/25"
+          className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-hidden focus:border-white/25"
         />
         {searching ? (
-          <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-white/55">
+          <span className="absolute inset-e-3 top-1/2 -translate-y-1/2 text-xs text-white/55">
             {total ? `${total} نتيجة` : "لا نتائج"}
           </span>
         ) : null}
@@ -288,7 +288,7 @@ export function GooglePreview({ title, description, url }: { title: string; desc
   const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trim()}…` : s);
   return (
     // Google's own colours, fixed (the admin's light/dark skins remap white and grey classes).
-    <div className="rounded-xl p-4 text-start shadow-sm" dir="auto" data-testid="google-preview" style={{ background: "#ffffff", border: "1px solid #dadce0", fontFamily: "Arial, sans-serif" }}>
+    <div className="rounded-xl p-4 text-start shadow-xs" dir="auto" data-testid="google-preview" style={{ background: "#ffffff", border: "1px solid #dadce0", fontFamily: "Arial, sans-serif" }}>
       <div className="truncate text-xs" dir="ltr" style={{ color: "#202124" }}>{url}</div>
       <div className="mt-1 truncate text-lg leading-6" style={{ color: "#1a0dab" }}>{cut(title || "—", 60)}</div>
       <div className="mt-1 text-sm leading-5" style={{ color: "#4d5156" }}>{cut(description || "—", 160)}</div>
@@ -324,7 +324,7 @@ export function SeoCard({
             <div>
               <label className="mb-2 block text-sm font-medium text-white/80">الوصف</label>
               <textarea
-                className="min-h-[96px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20"
+                className="min-h-[96px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-hidden focus:border-white/20"
                 value={description}
                 onChange={(e) => onChange({ ...value, description: e.target.value })}
                 placeholder="مثلاً: شو بتبيع أو شو بتقدّم، بجملة وحدة. توصيل لكل البلاد والدفع عند الاستلام."

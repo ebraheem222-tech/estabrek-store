@@ -68,7 +68,7 @@ export function TryPanel({ inputs, canRun, canRunLive, busy, outcome, onRun, onK
             </div>
             {/* A try that showed what it should: kept as a test, so it is checked before every publish. */}
             {canRun && onKeep && outcome.dry ? (
-              <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12]" onClick={() => onKeep(inputsOut(inputs, typed), outcome.ok)} data-testid="fn-try-keep">
+              <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12" onClick={() => onKeep(inputsOut(inputs, typed), outcome.ok)} data-testid="fn-try-keep">
                 {say("＋ احفظها كاختبار|＋ Keep it as a test|＋ לשמור כבדיקה")}
               </button>
             ) : null}

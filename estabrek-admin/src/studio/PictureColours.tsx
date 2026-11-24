@@ -8,7 +8,7 @@ import type { PictureColour, PictureRoles } from "../../../shared/pictureSense";
 import { say } from "./say";
 
 export type PictureLook = { nodeId: string; colours: PictureColour[]; roles: PictureRoles | null };
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 
 export function PictureColoursCard({ look, busy, room, partName, onAdd, onDress, onBackdrop, onClose }: {
   look: PictureLook;
@@ -25,15 +25,15 @@ export function PictureColoursCard({ look, busy, room, partName, onAdd, onDress,
 }) {
   const { colours, roles } = look;
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-2" data-testid="studio-picture-colours">
+    <div className="space-y-2 rounded-xl border border-white/8 p-2" data-testid="studio-picture-colours">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/80">{say("ألوان الصورة|The picture's colours|צבעי התמונה")}</div>
         <button type="button" className="px-1 text-white/50 hover:text-white" aria-label={say("سكّر|Close|סגור")} onClick={onClose} data-testid="studio-picture-close">×</button>
       </div>
       <div className="flex flex-wrap gap-1">
         {colours.map((c) => (
-          <span key={c.hex} className="inline-flex items-center gap-1 rounded-md border border-white/[0.08] px-1 py-0.5 text-[10px] text-white/70" title={`${Math.round(c.share * 100)}%`} data-testid="studio-picture-colour" data-hex={c.hex}>
-            <span className="h-4 w-4 rounded border border-black/10" style={{ background: c.hex }} aria-hidden="true" />
+          <span key={c.hex} className="inline-flex items-center gap-1 rounded-md border border-white/8 px-1 py-0.5 text-[10px] text-white/70" title={`${Math.round(c.share * 100)}%`} data-testid="studio-picture-colour" data-hex={c.hex}>
+            <span className="h-4 w-4 rounded-sm border border-black/10" style={{ background: c.hex }} aria-hidden="true" />
             <span dir="ltr">{c.hex}</span>
             <span className="text-white/40" dir="ltr">{Math.round(c.share * 100)}%</span>
           </span>

@@ -81,7 +81,7 @@ export function RelationInput({
           </span>
         ))}
         <input
-          className="min-w-[7rem] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-white/35"
+          className="min-w-28 flex-1 bg-transparent px-1 py-0.5 text-sm outline-hidden placeholder:text-white/35"
           value={search}
           autoFocus={autoFocus}
           onFocus={() => setOpen(true)}
@@ -119,7 +119,7 @@ export function RelationInput({
                   onClick={() => toggle(row)}
                   aria-pressed={has(row.id)}
                   data-testid={id(`pick-${row.slug}`)}
-                  className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-start text-xs hover:bg-white/10 ${has(row.id) ? "text-accent-200" : "text-white/85"}`}
+                  className={`flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-start text-xs hover:bg-white/10 ${has(row.id) ? "text-accent-200" : "text-white/85"}`}
                 >
                   <span className="w-3 shrink-0" aria-hidden>
                     {has(row.id) ? "✓" : ""}

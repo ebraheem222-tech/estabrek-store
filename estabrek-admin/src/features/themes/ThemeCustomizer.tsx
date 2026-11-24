@@ -72,10 +72,10 @@ export function ThemeCustomizer({
     }
   };
 
-  const chip = (on: boolean) => `rounded-lg px-2.5 py-1 text-xs ${on ? "bg-white/[0.16] text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"}`;
+  const chip = (on: boolean) => `rounded-lg px-2.5 py-1 text-xs ${on ? "bg-white/16 text-white" : "bg-white/4 text-white/60 hover:bg-white/8"}`;
 
   return (
-    <section className="space-y-4 rounded-2xl border border-white/[0.08] p-3" data-testid="theme-customizer" aria-label={tr("تخصيص الثيم", "Customise the theme")}>
+    <section className="space-y-4 rounded-2xl border border-white/8 p-3" data-testid="theme-customizer" aria-label={tr("تخصيص الثيم", "Customise the theme")}>
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="me-auto text-sm font-semibold">{tr("تخصيص الثيم", "Customise the theme")}</h3>
         <button type="button" className={chip(false)} disabled={!tidy && !saved} onClick={() => setDraft({})} data-testid="theme-custom-reset">
@@ -110,7 +110,7 @@ export function ThemeCustomizer({
           <label key={k} className="block text-xs">
             <span className="mb-1 block text-white/60">{k === "display" ? tr("خط العناوين", "Heading font") : tr("خط النصوص", "Text font")}</span>
             <select
-              className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-2 py-2"
+              className="w-full rounded-lg border border-white/10 bg-white/4 px-2 py-2"
               value={draft.fonts?.[k] ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, fonts: { ...d.fonts, [k]: e.target.value || undefined } }))}
               data-testid={`theme-custom-font-${k}`}

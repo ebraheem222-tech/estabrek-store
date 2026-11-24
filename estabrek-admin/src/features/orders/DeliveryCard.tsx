@@ -136,7 +136,7 @@ export function DeliveryCard({ orderId, status, onChange, shopperLang, audience 
           <p className="text-[12px] text-white/50">{tr("انسلّمت", "Delivered")} {d.deliveredAt ? dateTime(d.deliveredAt) : ""}</p>
           {link ? (
             <>
-              <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-surface-925 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-surface-925 px-3 py-2">
                 <span dir="ltr" className="min-w-0 flex-1 truncate text-xs text-white/70" data-testid="delivery-link">{link}</span>
                 <button type="button" onClick={copy} className="shrink-0 text-xs text-accent-300 hover:text-accent-200">{tr("نسخ", "Copy")}</button>
                 <a href={link} target="_blank" rel="noreferrer" className="shrink-0 text-xs text-white/55 hover:text-white">{tr("فتح ↗", "Open ↗")}</a>
@@ -153,10 +153,10 @@ export function DeliveryCard({ orderId, status, onChange, shopperLang, audience 
           {!d.storefrontUrlSet ? <p className="text-[11px] text-amber-300/90">{tr("عشان الرابط يوصل بالإيميل، لازم ينضاف STOREFRONT_URL بمتغيرات Railway.", "For the link to work by email, add STOREFRONT_URL to the Railway variables.")}</p> : null}
 
           {/* Email */}
-          <div className="rounded-xl border border-white/[0.08] p-3 text-sm">
+          <div className="rounded-xl border border-white/8 p-3 text-sm">
             {emailEdit !== null ? (
               <div className="flex flex-wrap gap-2">
-                <input dir="ltr" type="email" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} placeholder="name@example.com" className="h-10 min-w-0 flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("إيميل الزبون", "Customer's email")} />
+                <input dir="ltr" type="email" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} placeholder="name@example.com" className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white" aria-label={tr("إيميل الزبون", "Customer's email")} />
                 <button type="button" disabled={!/^\S+@\S+\.\S+$/.test(emailEdit.trim()) || email.isPending} onClick={() => email.mutate(emailEdit.trim())} className={cn(btn, "bg-accent-500 text-white")}>{tr("بعت", "Send")}</button>
                 <button type="button" onClick={() => setEmailEdit(null)} className="h-10 px-2 text-xs text-white/55">{tr("إلغاء", "Cancel")}</button>
               </div>
@@ -164,7 +164,7 @@ export function DeliveryCard({ orderId, status, onChange, shopperLang, audience 
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-white/55">{tr("الإيميل:", "Email:")}</span>
                 <span dir="ltr" className="text-white/85">{d.email}</span>
-                <span className={cn("rounded-full px-2 py-0.5 text-[11px]", d.emailSentAt ? "bg-emerald-500/15 text-emerald-200" : "bg-white/[0.06] text-white/55")}>
+                <span className={cn("rounded-full px-2 py-0.5 text-[11px]", d.emailSentAt ? "bg-emerald-500/15 text-emerald-200" : "bg-white/6 text-white/55")}>
                   {d.emailSentAt ? tr(`انبعت ${dateTime(d.emailSentAt)}`, "Sent {0}", [dateTime(d.emailSentAt)]) : tr("لسا ما انبعت", "Not sent yet")}
                 </span>
                 <span className="ms-auto flex gap-2">
@@ -243,7 +243,7 @@ export function DeliveryCard({ orderId, status, onChange, shopperLang, audience 
           </h3>
           <ul className="space-y-1.5 text-sm">
             {d.tickets.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5">
+              <li key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/3 px-2 py-1.5">
                 <span dir="ltr" className="font-mono text-white">{t.code}</span>
                 <span className="min-w-0 flex-1 truncate text-xs text-white/55">{[t.title, t.label].filter(Boolean).join(" · ")}</span>
                 <span className={cn("rounded-full px-2 py-0.5 text-[11px]", TICKET_STATUS[t.status].cls)}>{TICKET_STATUS[t.status].label}</span>
@@ -277,7 +277,7 @@ function OrderCodeRow({ c, canSwap, busy, reveal, onReplace }: { c: NonNullable<
     }
   };
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5" data-testid="order-code">
+    <li className="flex flex-wrap items-center gap-2 rounded-lg bg-white/3 px-2 py-1.5" data-testid="order-code">
       {shown ? <RevealedCode code={shown} onHide={() => setShown(null)} /> : <span dir="ltr" className="font-mono text-white">{masked(c.last4)}</span>}
       <span className={cn("rounded-full px-2 py-0.5 text-[11px]", CODE_STATUS[c.status].cls)}>{c.status === "delivered" ? tr("مع الزبون", "With the customer") : CODE_STATUS[c.status].label}</span>
       <span className="ms-auto flex items-center gap-2">
@@ -362,7 +362,7 @@ function LicenceRow({ l, closed, busy, reveal, onAct, onReset }: { l: OrderLicen
     }
   };
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5" data-testid="order-licence">
+    <li className="flex flex-wrap items-center gap-2 rounded-lg bg-white/3 px-2 py-1.5" data-testid="order-licence">
       {shown ? <RevealedCode code={shown} onHide={() => setShown(null)} /> : <span dir="ltr" className="font-mono text-white">{masked(l.last4)}</span>}
       <span className={cn("rounded-full px-2 py-0.5 text-[11px]", state.cls)}>{state.label}</span>
       <span className="ms-auto flex items-center gap-2">

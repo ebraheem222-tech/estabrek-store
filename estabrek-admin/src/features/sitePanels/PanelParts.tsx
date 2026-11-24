@@ -77,7 +77,7 @@ export function ChartPart({ part }: { part: PanelChart }) {
       {options.length ? (
         <div className="mt-2 flex flex-wrap gap-3 text-xs text-white/65">
           {options.map((o) => (
-            <span key={o.id} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-sm ${toneOf(options, o.id)}`} />{inLang(o.name, lang) || o.id}</span>
+            <span key={o.id} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-xs ${toneOf(options, o.id)}`} />{inLang(o.name, lang) || o.id}</span>
           ))}
         </div>
       ) : null}
@@ -104,7 +104,7 @@ export function KanbanPart({ part, view, took, onError, ask }: { part: PanelKanb
         {part.columns.map((col) => (
           <div
             key={col.id}
-            className={`rounded-xl border p-2 ${over === col.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/5 bg-white/[0.03]"}`}
+            className={`rounded-xl border p-2 ${over === col.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/5 bg-white/3"}`}
             onDragOver={part.canMove ? (e) => { e.preventDefault(); setOver(col.id); } : undefined}
             onDragLeave={() => setOver(null)}
             onDrop={part.canMove ? drop(col.id) : undefined}
@@ -174,7 +174,7 @@ export function CalendarPart({ part, view, took, onError, ask, setAsk }: { part:
         more={
           <span className="flex items-center gap-1">
             <button type="button" className="rounded-lg px-2 py-1 text-sm hover:bg-white/10" onClick={() => setAsk({ ...ask, month: addMonth(part.month, -1) })} aria-label={say("الشهر اللي قبل|The month before|החודש הקודם")} data-testid={`site-calendar-${part.key}-prev`}><span className="inline-block rtl:rotate-180">‹</span></button>
-            <span className="min-w-[8rem] text-center text-sm">{first.toLocaleDateString(loc(), { month: "long", year: "numeric", timeZone: "UTC" })}</span>
+            <span className="min-w-32 text-center text-sm">{first.toLocaleDateString(loc(), { month: "long", year: "numeric", timeZone: "UTC" })}</span>
             <button type="button" className="rounded-lg px-2 py-1 text-sm hover:bg-white/10" onClick={() => setAsk({ ...ask, month: addMonth(part.month, 1) })} aria-label={say("الشهر الجاي|The month after|החודש הבא")} data-testid={`site-calendar-${part.key}-next`}><span className="inline-block rtl:rotate-180">›</span></button>
           </span>
         }
@@ -183,12 +183,12 @@ export function CalendarPart({ part, view, took, onError, ask, setAsk }: { part:
         {Array.from({ length: 7 }, (_, k) => <div key={k} className="px-1 pb-1 text-center text-white/45">{weekday(k)}</div>)}
         {cells.map((d, k) =>
           d ? (
-            <div key={d} className={`min-h-[5.5rem] rounded-lg border p-1 ${d === today ? "border-accent-400/50" : "border-white/5"} bg-white/[0.02]`} data-testid={`site-day-${d}`}>
+            <div key={d} className={`min-h-22 rounded-lg border p-1 ${d === today ? "border-accent-400/50" : "border-white/5"} bg-white/2`} data-testid={`site-day-${d}`}>
               <div className="mb-1 text-[11px] text-white/45">{Number(d.slice(8))}</div>
               <div className="space-y-1">
                 {part.rows.filter((r) => dateOf(r) === d).map((r) => (
                   <div key={r.id}>
-                    <button type="button" className="w-full truncate rounded px-1 py-0.5 text-start text-[11px] text-white hover:brightness-110" onClick={() => { setOpen(open === r.id ? null : r.id); setDay(d); }} data-testid={`site-event-${r.id}`}>
+                    <button type="button" className="w-full truncate rounded-sm px-1 py-0.5 text-start text-[11px] text-white hover:brightness-110" onClick={() => { setOpen(open === r.id ? null : r.id); setDay(d); }} data-testid={`site-event-${r.id}`}>
                       <span className={`me-1 inline-block h-2 w-2 rounded-full ${part.color ? toneOf(part.options, r.cells[part.color]) : "bg-accent-500"}`} />
                       {cellText(part.show[0], r.cells[part.show[0]?.id ?? ""], lang) || "—"}
                     </button>
@@ -239,7 +239,7 @@ export function PeoplePart({ part, view }: { part: PanelPeople; view: PanelPageV
       {search.isSuccess && !people.length ? <p className="mt-3 text-sm text-white/55" data-testid={`site-people-${part.key}-none`}>{say("ما لقينا حدا هيك.|Nobody like that.|לא נמצא אף אחד.")}</p> : null}
       <div className="mt-3 space-y-3">
         {people.map((p) => (
-          <article key={p.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid={`site-person-${p.key}`}>
+          <article key={p.key} className="rounded-xl border border-white/10 bg-white/3 p-3" data-testid={`site-person-${p.key}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="font-medium">{p.name || p.by}</div>
               <div className="text-xs text-white/55" dir="ltr">{p.by}</div>
@@ -249,7 +249,7 @@ export function PeoplePart({ part, view }: { part: PanelPeople; view: PanelPageV
                 <div className="text-xs text-white/50">{inLang(t.title, lang)} ({t.rows.length})</div>
                 <ul className="mt-1 space-y-1">
                   {t.rows.map((r) => (
-                    <li key={r.id} className="rounded-lg bg-white/[0.03] px-2 py-1 text-sm">
+                    <li key={r.id} className="rounded-lg bg-white/3 px-2 py-1 text-sm">
                       {t.columns.map((c) => cellText(c, r.cells[c.id], lang)).filter(Boolean).join(" · ")}
                     </li>
                   ))}
@@ -328,17 +328,17 @@ export function MapPart({ part }: { part: PanelMap }) {
         <ul className="space-y-2">
           {part.rows.map((r) => (
             <li key={r.id}>
-              <button type="button" className={`w-full rounded-xl border p-3 text-start text-sm ${picked === r.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/5 bg-white/[0.03] hover:bg-white/[0.06]"}`} onClick={() => setPicked(r.id)} data-testid={`site-place-${r.id}`}>
+              <button type="button" className={`w-full rounded-xl border p-3 text-start text-sm ${picked === r.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/5 bg-white/3 hover:bg-white/6"}`} onClick={() => setPicked(r.id)} data-testid={`site-place-${r.id}`}>
                 <Lines columns={[...(label ? [label] : []), ...part.columns.filter((c) => c.id !== part.label)]} row={r} lang={lang} />
               </button>
             </li>
           ))}
         </ul>
-        <div className="min-h-[16rem] overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
+        <div className="min-h-64 overflow-hidden rounded-xl border border-white/10 bg-white/2">
           {chosen ? (
-            <iframe title={addressOf(chosen)} src={`https://maps.google.com/maps?q=${encodeURIComponent(addressOf(chosen))}&z=15&hl=${lang}&output=embed`} className="h-full min-h-[16rem] w-full" loading="lazy" referrerPolicy="no-referrer" data-testid={`site-map-${part.key}`} />
+            <iframe title={addressOf(chosen)} src={`https://maps.google.com/maps?q=${encodeURIComponent(addressOf(chosen))}&z=15&hl=${lang}&output=embed`} className="h-full min-h-64 w-full" loading="lazy" referrerPolicy="no-referrer" data-testid={`site-map-${part.key}`} />
           ) : (
-            <p className="grid h-full min-h-[16rem] place-items-center p-4 text-center text-sm text-white/50">{say("اختار مكان من القائمة ليبيّن عالخريطة.|Pick a place from the list to see it on the map.|בחרו מקום מהרשימה כדי לראות אותו במפה.")}</p>
+            <p className="grid h-full min-h-64 place-items-center p-4 text-center text-sm text-white/50">{say("اختار مكان من القائمة ليبيّن عالخريطة.|Pick a place from the list to see it on the map.|בחרו מקום מהרשימה כדי לראות אותו במפה.")}</p>
           )}
         </div>
       </div>
@@ -385,7 +385,7 @@ export function ScannerPart({ part, view, onError }: { part: PanelScanner } & Co
       {camera ? <QrScanner onCode={(text) => { setCamera(false); setCode(text); find.mutate(text); }} onClose={() => setCamera(false)} /> : null}
       {missing ? <p className="mt-3 text-sm text-amber-200" data-testid={`site-scanner-${part.key}-missing`}>{say("ما في شي بهالكود.|Nothing has this code.|אין שום דבר עם הקוד הזה.")}</p> : null}
       {found ? (
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid={`site-scanner-${part.key}-row`}>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/3 p-3" data-testid={`site-scanner-${part.key}-row`}>
           <Lines columns={part.columns} row={found.row} lang={lang} />
           {part.canDecide ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -488,7 +488,7 @@ export function StreamersPart({ part }: { part: PanelStreamers }) {
         <ul className="mt-3 space-y-2 text-sm">
           {part.live.map((s) => (
             <li key={s.name} className="flex flex-wrap items-baseline gap-2">
-              <span className="rounded bg-rose-500 px-1.5 text-[11px] font-bold text-white">{say("لايف|LIVE|בשידור")}</span>
+              <span className="rounded-sm bg-rose-500 px-1.5 text-[11px] font-bold text-white">{say("لايف|LIVE|בשידור")}</span>
               {s.url ? <a className="font-semibold underline" href={s.url} target="_blank" rel="noreferrer">{s.name}</a> : <b>{s.name}</b>}
               <span className="text-white/60">· {s.viewers.toLocaleString("en")} · {s.title}</span>
             </li>

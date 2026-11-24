@@ -13,7 +13,7 @@ import { useSettings } from "../../hooks/useSettings";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const LINK = /^(\/(?!\/)|https?:\/\/)[^\s<>"'`\\]*$/i;
 type Words = Partial<Record<"ar" | "en" | "he", string>>;
 const LANGS: Array<["ar" | "en" | "he", string]> = [["ar", "عربي"], ["en", "English"], ["he", "עברית"]];

@@ -21,8 +21,8 @@ import { ReferenceDataPanel } from "./ReferenceDataPanels";
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Item = Record<string, unknown>;
 type FieldSpec = { key: string; label: () => string; kind: "words" | "long" | "link" | "image" | "stars" | "toggle" | "percent" | "sublinks"; max?: number; required?: boolean };
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 const SAFE_LINK = /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i;
 
 const wordsOf = (t: unknown, lang: Lang) => (t && typeof t === "object" ? String((t as Record<string, string>)[lang] ?? "") : typeof t === "string" ? t : "");
@@ -265,7 +265,7 @@ function RunningWords({ node, lang, busy, onOps }: { node: PageTreeNode; lang: L
   );
 }
 
-const chipOf = (on: boolean) => `rounded-lg px-2 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]"} disabled:opacity-40`;
+const chipOf = (on: boolean) => `rounded-lg px-2 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/75 hover:bg-white/10"} disabled:opacity-40`;
 
 /** A menu link's own links (at most 12): each its words, its link and a line under it, added and removed here. */
 function SubLinks({ label, value, lang, busy, onSave }: { label: string; value: Item[]; lang: Lang; busy: boolean; onSave: (next: Item[]) => void }) {

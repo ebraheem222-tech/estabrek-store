@@ -91,11 +91,11 @@ export function TestsPanel({
           {tests.map((t, k) => {
             const result = resultOf(t.id);
             return (
-              <li key={t.id} className={`space-y-2 rounded-xl border p-3 ${result ? (result.pass ? "border-emerald-400/40" : "border-red-400/60") : "border-white/10"} bg-white/[0.03]`} data-testid={`fn-test-${k}`}>
+              <li key={t.id} className={`space-y-2 rounded-xl border p-3 ${result ? (result.pass ? "border-emerald-400/40" : "border-red-400/60") : "border-white/10"} bg-white/3`} data-testid={`fn-test-${k}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <input className={`${field} flex-1`} value={t.name} maxLength={80} disabled={!canWrite} onChange={(e) => set(k, { ...t, name: e.target.value })} aria-label={say("اسم الاختبار|The test's name|שם הבדיקה")} data-testid={`fn-test-${k}-name`} />
                   {canWrite ? (
-                    <button type="button" className="rounded px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => onChange(tests.filter((_, i) => i !== k))} aria-label={say("احذف الاختبار|Delete the test|מחיקת הבדיקה")} data-testid={`fn-test-${k}-remove`}>
+                    <button type="button" className="rounded-sm px-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => onChange(tests.filter((_, i) => i !== k))} aria-label={say("احذف الاختبار|Delete the test|מחיקת הבדיקה")} data-testid={`fn-test-${k}-remove`}>
                       ✕
                     </button>
                   ) : null}
@@ -141,7 +141,7 @@ export function TestsPanel({
                   </select>
                   {t.expect.ok ? (
                     <input
-                      className={`${field} min-w-[12rem] flex-1`}
+                      className={`${field} min-w-48 flex-1`}
                       dir="ltr"
                       value={t.expect.value === undefined ? "" : fromVal(t.expect.value as never)}
                       placeholder={say('وجوابها بالضبط (اختياري): 5 أو {"ok": true}|and gives back exactly (optional): 5 or {"ok": true}|ומחזירה בדיוק (לא חובה): 5 או {"ok": true}')}
@@ -151,7 +151,7 @@ export function TestsPanel({
                     />
                   ) : (
                     <input
-                      className={`${field} min-w-[12rem] flex-1`}
+                      className={`${field} min-w-48 flex-1`}
                       dir="auto"
                       value={t.expect.error ?? ""}
                       maxLength={200}
@@ -174,7 +174,7 @@ export function TestsPanel({
       )}
       {canWrite ? (
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-sm hover:bg-white/[0.12] disabled:opacity-40" disabled={tests.length >= max} onClick={() => onChange([...tests, newTest(tests, say("اختبار {n}|Test {n}|בדיקה {n}").replace("{n}", String(tests.length + 1)))])} data-testid="fn-test-add">
+          <button type="button" className="rounded-lg bg-white/[0.07] px-3 py-1.5 text-sm hover:bg-white/12 disabled:opacity-40" disabled={tests.length >= max} onClick={() => onChange([...tests, newTest(tests, say("اختبار {n}|Test {n}|בדיקה {n}").replace("{n}", String(tests.length + 1)))])} data-testid="fn-test-add">
             {say("＋ اختبار|＋ A test|＋ בדיקה")}
           </button>
           {tests.length ? (

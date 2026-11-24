@@ -30,10 +30,10 @@ type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Ids = (prefix: string) => string;
 type Look = Record<string, unknown>;
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const box = "space-y-3 rounded-xl border border-white/[0.08] p-3";
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]"} disabled:opacity-40`;
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const box = "space-y-3 rounded-xl border border-white/8 p-3";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/75 hover:bg-white/10"} disabled:opacity-40`;
 const lookOf = (n: PageTreeNode, screen: TreeScreen): Look => (((n.style ?? {}) as Record<string, Look | undefined>)[screen] ?? {});
 const SAFE_LINK = /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i;
 const SAFE_FILE = /^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i;
@@ -149,7 +149,7 @@ export function ColourPick({ label, value, busy, onPick, testId }: { label: stri
           {tokens?.colors.length ? <optgroup label={say("المتغيرات|Variables|משתנים")}>{tokens.colors.map((t) => <option key={t.id} value={`$${t.id}`}>◆ {tokenName(t)}</option>)}</optgroup> : null}
           <option value="own">{tr("لون خاص", "A colour of its own")}</option>
         </select>
-        <input ref={input} type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={six(hex)} onChange={(e) => { setHex(e.target.value); setDirty(true); latest.current = { ...latest.current, hex: e.target.value, dirty: true }; }} onBlur={commit} data-testid={testId ? `${testId}-own` : undefined} />
+        <input ref={input} type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded-sm border border-white/10 bg-transparent" disabled={busy} value={six(hex)} onChange={(e) => { setHex(e.target.value); setDirty(true); latest.current = { ...latest.current, hex: e.target.value, dirty: true }; }} onBlur={commit} data-testid={testId ? `${testId}-own` : undefined} />
       </span>
     </label>
   );
@@ -160,7 +160,7 @@ export function ColourPick({ label, value, busy, onPick, testId }: { label: stri
 function SplitThumb({ widths }: { widths: number[] }) {
   return (
     <span className="flex h-5 w-full gap-0.5">
-      {widths.map((w, i) => <span key={i} className="rounded-sm bg-current opacity-60" style={{ flexGrow: w, flexBasis: 0 }} />)}
+      {widths.map((w, i) => <span key={i} className="rounded-xs bg-current opacity-60" style={{ flexGrow: w, flexBasis: 0 }} />)}
     </span>
   );
 }
@@ -172,7 +172,7 @@ export function SplitPicker({ current, busy, onPick, testId = "studio-split" }: 
       {PRESETS.map((p) => {
         const on = sameWidths(current, p.widths);
         return (
-          <button key={p.widths.join("-")} type="button" disabled={busy} title={p.label()} aria-label={p.label()} aria-pressed={on} onClick={() => onPick(p.widths)} className={`rounded-lg border px-2 py-2 ${on ? "border-accent-400/70 text-accent-200" : "border-white/[0.08] text-white/70 hover:bg-white/[0.04]"} disabled:opacity-40`} data-split={p.widths.join("-")}>
+          <button key={p.widths.join("-")} type="button" disabled={busy} title={p.label()} aria-label={p.label()} aria-pressed={on} onClick={() => onPick(p.widths)} className={`rounded-lg border px-2 py-2 ${on ? "border-accent-400/70 text-accent-200" : "border-white/8 text-white/70 hover:bg-white/4"} disabled:opacity-40`} data-split={p.widths.join("-")}>
             <SplitThumb widths={p.widths} />
           </button>
         );
@@ -355,7 +355,7 @@ function IconFields({ node, busy, setProps }: { node: PageTreeNode; busy: boolea
   return (
     <>
       <div className="flex items-center gap-3">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-white/[0.06] text-white/85" data-testid="studio-icon-now">{art ? <IconGlyph art={art} className="h-7 w-7" /> : null}</div>
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-white/6 text-white/85" data-testid="studio-icon-now">{art ? <IconGlyph art={art} className="h-7 w-7" /> : null}</div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[11px] text-white/55" dir="ltr">{name.replace(/^([a-z-]+):/, "$1 · ")}</div>
           <button type="button" className="mt-1 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setOpen(true)} data-testid="studio-icon-pick">
@@ -411,9 +411,9 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
       {slides.length ? (
         <div className="grid grid-cols-4 gap-1" role="group" aria-label={tr("الشرائح", "Slides")} data-testid="studio-slides">
           {slides.map((x, i) => (
-            <button key={i} type="button" onClick={() => setOpen(i)} aria-pressed={i === at} aria-label={`${tr("شريحة", "Slide")} ${i + 1}`} className={`relative overflow-hidden rounded-md border ${i === at ? "border-accent-400" : "border-white/[0.08]"}`} data-testid="studio-slide">
+            <button key={i} type="button" onClick={() => setOpen(i)} aria-pressed={i === at} aria-label={`${tr("شريحة", "Slide")} ${i + 1}`} className={`relative overflow-hidden rounded-md border ${i === at ? "border-accent-400" : "border-white/8"}`} data-testid="studio-slide">
               {x.kind === "video" ? <video src={x.src} muted playsInline preload="metadata" className="aspect-square w-full object-cover" /> : <img src={x.src} alt="" className="aspect-square w-full object-cover" />}
-              <span className="absolute bottom-0 start-0 rounded-se bg-black/65 px-1 text-[10px] text-white">{i + 1}{x.kind === "video" ? " ▶" : ""}</span>
+              <span className="absolute bottom-0 inset-s-0 rounded-se bg-black/65 px-1 text-[10px] text-white">{i + 1}{x.kind === "video" ? " ▶" : ""}</span>
             </button>
           ))}
         </div>
@@ -437,7 +437,7 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
         </div>
       ) : null}
       {s ? (
-        <div className="space-y-2 rounded-lg bg-white/[0.03] p-2" data-testid="studio-slide-edit">
+        <div className="space-y-2 rounded-lg bg-white/3 p-2" data-testid="studio-slide-edit">
           <div className="flex items-center justify-between gap-1">
             <span className="text-xs text-white/70">{tr("شريحة", "Slide")} {at + 1}</span>
             <span className="flex gap-1">
@@ -491,7 +491,7 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
         <div className="grid grid-cols-4 gap-1">
           {SLIDER_LOOK_NAMES.map(([key, name, mark]) => {
             const on = (p.look ?? "plain") === key;
-            return <button key={key} type="button" disabled={busy} aria-pressed={on} title={say(name)} onClick={() => setProps({ look: key === "plain" ? undefined : key })} data-testid={`studio-slider-look-${key}`} className={`flex flex-col items-center gap-0.5 rounded-md border px-1 py-1.5 text-[10px] leading-tight ${on ? "border-accent-400 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/65 hover:border-white/25"}`}><span aria-hidden="true" className="text-base leading-none">{mark}</span>{say(name)}</button>;
+            return <button key={key} type="button" disabled={busy} aria-pressed={on} title={say(name)} onClick={() => setProps({ look: key === "plain" ? undefined : key })} data-testid={`studio-slider-look-${key}`} className={`flex flex-col items-center gap-0.5 rounded-md border px-1 py-1.5 text-[10px] leading-tight ${on ? "border-accent-400 bg-accent-500/15 text-white" : "border-white/8 text-white/65 hover:border-white/25"}`}><span aria-hidden="true" className="text-base leading-none">{mark}</span>{say(name)}</button>;
           })}
         </div>
         {(p.look === "peek" || p.look === "trio") && (p.effect ?? "slide") !== "slide" ? <p className="text-[11px] leading-5 text-amber-100/70">{say("هالشكل بيبيّن أكتر من شريحة مع حركة «سحب» بس.|This shape shows more than one slide with the \"Slide\" effect only.|הצורה הזו מציגה יותר משקופית אחת רק עם האפקט \"החלקה\".")}</p> : null}
@@ -721,7 +721,7 @@ export function AddMenu({ kinds, busy, title, onAdd, onDragKind }: { kinds: NewK
               }}
               onDragEnd={() => onDragKind(null)}
               onClick={() => (k === "image" || k === "slider" ? setMedia(k) : k === "video" ? setVideo("") : onAdd(k))}
-              className={`truncate rounded-lg border border-white/[0.08] px-1.5 py-1.5 text-[11px] text-white/80 hover:bg-white/[0.06] disabled:opacity-40 ${needsFile ? "" : "cursor-grab"}`}
+              className={`truncate rounded-lg border border-white/8 px-1.5 py-1.5 text-[11px] text-white/80 hover:bg-white/6 disabled:opacity-40 ${needsFile ? "" : "cursor-grab"}`}
               data-testid="studio-add-kind"
               data-kind={k}
             >

@@ -21,7 +21,7 @@ import { loc } from "@/lib/lang";
 import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 export default function QuizPage() {
   const q = useQuery({ queryKey: ["quiz"], queryFn: QuizAPI.getQuiz });
@@ -189,7 +189,7 @@ function Questions() {
             <h3 className="mb-2 text-xs text-white/55">{LEVEL_LABELS[lvl]} ({rows.length})</h3>
             <ul className="space-y-2">
               {rows.map((x) => (
-                <li key={x.id} className={`rounded-xl border p-3 ${x.approved ? "border-white/10" : "border-amber-400/30 bg-amber-500/[0.04]"}`} data-testid="quiz-question">
+                <li key={x.id} className={`rounded-xl border p-3 ${x.approved ? "border-white/10" : "border-amber-400/30 bg-amber-500/4"}`} data-testid="quiz-question">
                   {editing === x.id ? (
                     <QuestionForm initial={x} id={x.id} onDone={() => { setEditing(null); refresh(); }} onCancel={() => setEditing(null)} />
                   ) : (
@@ -284,7 +284,7 @@ function Winners() {
       {q.isLoading ? <div className="mt-3 flex items-center gap-2 text-sm"><Spinner /> …</div> : !rows.length ? (
         <p className="mt-2 text-sm text-white/50">{tr("لسا ما ربح حدا.", "Nobody has won yet.")}</p>
       ) : (
-        <ul className="mt-3 divide-y divide-white/[0.06]">
+        <ul className="mt-3 divide-y divide-white/6">
           {rows.map((w) => (
             <li key={w.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
               <span className="font-mono" dir="ltr">{w.code}</span>

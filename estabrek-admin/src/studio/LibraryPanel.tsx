@@ -29,8 +29,8 @@ const FAMILY_500: Record<string, string> = {
 };
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
-const box = "space-y-3 rounded-xl border border-white/[0.08] p-3";
-const small = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] text-white/75 hover:bg-white/[0.1] disabled:opacity-40";
+const box = "space-y-3 rounded-xl border border-white/8 p-3";
+const small = "rounded-lg bg-white/6 px-2 py-1 text-[11px] text-white/75 hover:bg-white/10 disabled:opacity-40";
 const rec = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 const inLang = (v: unknown, lang: Lang) => (typeof v === "string" ? v : typeof rec(v)[lang] === "string" ? String(rec(v)[lang]) : "");
 const withLang = (v: unknown, lang: Lang, text: string): Local | undefined => {
@@ -56,9 +56,9 @@ function Swatch({ value, was, busy, label, onPick, testId, data }: { value: stri
   }, []);
   const changed = value.toLowerCase() !== was.toLowerCase();
   return (
-    <label className={`relative block h-8 w-8 shrink-0 cursor-pointer overflow-hidden rounded-lg border ${changed ? "border-accent-400" : "border-white/[0.12]"}`} title={label} style={{ background: hex }}>
+    <label className={`relative block h-8 w-8 shrink-0 cursor-pointer overflow-hidden rounded-lg border ${changed ? "border-accent-400" : "border-white/12"}`} title={label} style={{ background: hex }}>
       <input ref={input} type="color" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label={label} disabled={busy} value={hex} onChange={(e) => setHex(e.target.value)} data-testid={testId} {...Object.fromEntries(Object.entries(data).map(([k, v]) => [`data-${k}`, v]))} />
-      {changed ? <span className="pointer-events-none absolute bottom-0 end-0 h-2.5 w-2.5 rounded-tl" style={{ background: was }} aria-hidden="true" /> : null}
+      {changed ? <span className="pointer-events-none absolute bottom-0 inset-e-0 h-2.5 w-2.5 rounded-tl" style={{ background: was }} aria-hidden="true" /> : null}
     </label>
   );
 }
@@ -143,7 +143,7 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             {([["ltr", "متل ما انعملت (شمال ← يمين)|As made (left to right)|כפי שנבנה (שמאל לימין)"], ["rtl", "من اليمين للشمال|Right to left|מימין לשמאל"]] as const).map(([d, name]) => {
               const on = (p.dir === "rtl" ? "rtl" : "ltr") === d;
               return (
-                <button key={d} type="button" disabled={busy} aria-pressed={on} onClick={() => !on && setProps({ dir: d === "rtl" ? "rtl" : undefined })} className={`flex-1 rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`} data-dir={d}>
+                <button key={d} type="button" disabled={busy} aria-pressed={on} onClick={() => !on && setProps({ dir: d === "rtl" ? "rtl" : undefined })} className={`flex-1 rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/70 hover:bg-white/10"} disabled:opacity-40`} data-dir={d}>
                   {say(name)}
                 </button>
               );
@@ -163,7 +163,7 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           onChange={(e) => setQ(e.target.value)}
           placeholder={say("دوّر على كلمة…|Find a word…|חיפוש מילה…")}
           aria-label={say("دوّر على كلمة|Find a word|חיפוש מילה")}
-          className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white"
+          className="w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white"
           data-testid="studio-lib-search"
         />
         <p className="text-[10px] leading-4 text-white/35">{say("فوق كل خانة الكلام الأصلي؛ اكتب مكانه كلامك باللغة اللي عم تعدّلها. فاضية = بيضل الأصلي.|Above each box is the original; write yours in the language you're editing. Empty keeps the original.|מעל כל תיבה המקור; כתבו את שלכם בשפה שאתם עורכים. ריק = נשאר המקור.")}</p>

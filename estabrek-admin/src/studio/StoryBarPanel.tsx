@@ -14,7 +14,7 @@ import { Choice } from "./StudioTreePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Item = Record<string, unknown>;
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]"} disabled:opacity-40`;
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/75 hover:bg-white/10"} disabled:opacity-40`;
 const wordsOf = (t: unknown, lang: Lang) => (t && typeof t === "object" ? String((t as Record<string, string>)[lang] ?? "") : "");
 
 export function StoryBarPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {

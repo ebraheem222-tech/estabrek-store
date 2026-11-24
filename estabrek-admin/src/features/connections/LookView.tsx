@@ -37,7 +37,7 @@ function Item({ item, depth, t }: { item: LookItem; depth: number; t: string }) 
         <bdi className={depth ? "text-white/90" : "font-medium"}>{item.name}</bdi>
         {item.tone ? <span className="text-xs text-white/80">{toneName(item.tone)}</span> : null}
         {item.state ? (
-          <bdi dir="ltr" className="rounded bg-white/10 px-1 font-mono text-[11px] text-white/80">
+          <bdi dir="ltr" className="rounded-sm bg-white/10 px-1 font-mono text-[11px] text-white/80">
             {item.state}
           </bdi>
         ) : null}

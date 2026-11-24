@@ -24,8 +24,8 @@ export type PartInfo = { box: { x: number; y: number; w: number; h: number } };
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 const six = (v: string) => (v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v);
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const control = "min-w-0 flex-1 rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const control = "min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 const TOKEN_WORD: Record<string, string> = {
   text: "لون النص|Text colour|צבע טקסט", muted: "باهت|Muted|מעומעם", accent: "لون المتجر|Store colour|צבע החנות",
   "accent-soft": "لون المتجر الفاتح|Soft store colour|צבע חנות בהיר", "accent-contrast": "عكس لون المتجر|On store colour|ניגוד לצבע החנות",
@@ -56,7 +56,7 @@ function Paint({ label, value, busy, onPick, testId }: { label: string; value: s
           <option value="own">{say("لون خاص|A colour of its own|צבע משלו")}</option>
         </select>
         <input
-          type="color" className="h-7 w-8 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy}
+          type="color" className="h-7 w-8 shrink-0 cursor-pointer rounded-sm border border-white/10 bg-transparent" disabled={busy}
           aria-label={say("لون خاص|A colour of its own|צבע משלו")} value={hex}
           onChange={(e) => setHex(e.target.value)}
           onBlur={() => { if (!busy && hex !== own) onPick(hex); }}
@@ -90,7 +90,7 @@ export function writeTurn(t: Turn, mid: { x: number; y: number }): string | null
 
 export function MorphSettings({ morph, busy, onSave, onTry }: { morph: Morph; busy: boolean; onSave: (m: Morph | null) => void; onTry?: () => void }) {
   return (
-    <div className="space-y-2 rounded-lg border border-white/[0.08] p-2" data-testid="studio-morph-settings">
+    <div className="space-y-2 rounded-lg border border-white/8 p-2" data-testid="studio-morph-settings">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-medium text-white/70">{say("التحوّل|The morph|ההתמרה")} · {morph.pairs.length}</span>
         <span className="flex gap-1">
@@ -239,9 +239,9 @@ export function SvgPartPanel({ node, part, info, busy, onOps, onTry }: { node: P
               ) : null}
             </select>
           </label>
-          <details className="rounded-lg border border-white/[0.06] px-2 py-1">
+          <details className="rounded-lg border border-white/6 px-2 py-1">
             <summary className="cursor-pointer select-none text-[11px] text-white/60">{say("أو الصق شكل (SVG أو مسار)|Or paste a shape (SVG or a path)|או הדבק צורה (SVG או נתיב)")}</summary>
-            <textarea dir="ltr" className="mt-1 min-h-[56px] w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 font-mono text-[11px] text-white" value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="M10 10 L90 10 … / <svg …>" data-testid="studio-focus-svg-morph-paste" />
+            <textarea dir="ltr" className="mt-1 min-h-[56px] w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 font-mono text-[11px] text-white" value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="M10 10 L90 10 … / <svg …>" data-testid="studio-focus-svg-morph-paste" />
             <button type="button" className={btn} disabled={busy || !paste.trim()} onClick={takePaste} data-testid="studio-focus-svg-morph-take">{say("استعمل|Use it|השתמש")}</button>
           </details>
           {note ? <p className="text-[11px] text-amber-200/80">{note}</p> : null}

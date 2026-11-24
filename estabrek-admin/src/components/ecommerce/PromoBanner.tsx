@@ -243,7 +243,7 @@ function CardBanner({
 }: PromoBannerProps) {
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-hover)] p-6 text-white",
+      "relative overflow-hidden rounded-2xl bg-linear-to-br from-(--color-accent) to-(--color-accent-hover) p-6 text-white",
       className
     )}>
       {image && (
@@ -264,7 +264,7 @@ function CardBanner({
         {buttonText && (
           <button
             onClick={onButtonClick}
-            className="px-6 py-2 bg-white text-[var(--color-accent)] rounded-xl font-bold hover:opacity-90 transition-opacity"
+            className="px-6 py-2 bg-white text-(--color-accent) rounded-xl font-bold hover:opacity-90 transition-opacity"
           >
             {buttonText}
           </button>
@@ -290,13 +290,13 @@ function FloatingBanner({
 }: PromoBannerProps) {
   return (
     <div className={cn(
-      "fixed bottom-4 right-4 z-50 max-w-sm bg-[var(--color-surface)] rounded-2xl shadow-2xl border border-[var(--color-border)] p-4 animate-slide-up",
+      "fixed bottom-4 right-4 z-50 max-w-sm bg-(--color-surface) rounded-2xl shadow-2xl border border-(--color-border) p-4 animate-slide-up",
       className
     )}>
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-2 left-2 p-1 hover:bg-[var(--color-bg-alt)] rounded-full"
+          className="absolute top-2 left-2 p-1 hover:bg-(--color-bg-alt) rounded-full"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -304,20 +304,20 @@ function FloatingBanner({
         </button>
       )}
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-gold)] rounded-xl flex items-center justify-center text-white text-2xl font-bold">
+        <div className="w-16 h-16 bg-linear-to-br from-(--color-accent) to-(--color-gold) rounded-xl flex items-center justify-center text-white text-2xl font-bold">
           {discount || "🎁"}
         </div>
         <div className="flex-1">
           <h4 className="font-bold">{titleAr || title}</h4>
           {code && (
-            <span className="text-sm text-[var(--color-accent)] font-mono">{code}</span>
+            <span className="text-sm text-(--color-accent) font-mono">{code}</span>
           )}
         </div>
       </div>
       {buttonText && (
         <button
           onClick={onButtonClick}
-          className="w-full mt-3 py-2 bg-[var(--color-accent)] text-white rounded-xl font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+          className="w-full mt-3 py-2 bg-(--color-accent) text-white rounded-xl font-medium hover:bg-(--color-accent-hover) transition-colors"
         >
           {buttonText}
         </button>

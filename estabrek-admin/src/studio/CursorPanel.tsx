@@ -33,14 +33,14 @@ export function PageCursorPanel({ root, busy, onOps }: { root: PageTreeNode; bus
   const cursor = cursorOfPage(root);
   const save = (next: PageCursor | null) => onOps(say("مؤشر الصفحة|Page cursor|סמן הדף"), [cursorOp(root, next)]);
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-page-cursor">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-page-cursor">
       <div className="text-xs text-white/75">
         {say("مؤشر الماوس للصفحة|The page's mouse cursor|סמן העכבר של הדף")}
         <span className="block text-[10px] text-white/40">{say("بيلحق الماوس بنعومة، وبيكبر فوق الروابط، وبيكتب كلمة العنصر إذا إلها. مش للمس.|Follows the mouse softly, grows over links, and shows an element's word when it has one. Not for touch.|עוקב אחרי העכבר ברכות, גדל מעל קישורים ומציג מילה של אלמנט. לא למגע.")}</span>
       </div>
       <div role="group" aria-label={say("نوع المؤشر|Cursor kind|סוג הסמן")} className="grid grid-cols-4 gap-1">
         {CURSOR_KINDS.map(([k, label]) => (
-          <button key={k} type="button" disabled={busy} aria-pressed={(cursor?.kind ?? "none") === k} data-cursor-kind={k} onClick={() => save(k === "none" ? null : { ...(cursor ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${(cursor?.kind ?? "none") === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`}>
+          <button key={k} type="button" disabled={busy} aria-pressed={(cursor?.kind ?? "none") === k} data-cursor-kind={k} onClick={() => save(k === "none" ? null : { ...(cursor ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${(cursor?.kind ?? "none") === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/5 text-white/70 hover:bg-white/10"} disabled:opacity-40`}>
             {label()}
           </button>
         ))}
@@ -69,9 +69,9 @@ export function CursorTextPanel({ node, lang, busy, onOps }: { node: PageTreeNod
     onOps(say("كلمة المؤشر|Cursor word|מילת הסמן"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, cursorText: Object.keys(next).length ? next : undefined } }]);
   };
   return (
-    <label className="block space-y-1 rounded-xl border border-white/[0.08] p-3 text-xs text-white/75" data-testid="studio-cursor-text">
+    <label className="block space-y-1 rounded-xl border border-white/8 p-3 text-xs text-white/75" data-testid="studio-cursor-text">
       <span>{say("كلمة بالمؤشر لما الماوس فوقه|A word in the cursor while the mouse is over it|מילה בסמן כשהעכבר מעליו")}</span>
-      <input type="text" value={text} maxLength={24} disabled={busy} onChange={(e) => setText(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} placeholder={say("مثلاً: شوف، افتح، تسوّق|e.g. See, Open, Shop|למשל: צפה, פתח")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" />
+      <input type="text" value={text} maxLength={24} disabled={busy} onChange={(e) => setText(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} placeholder={say("مثلاً: شوف، افتح، تسوّق|e.g. See, Open, Shop|למשל: צפה, פתח")} className="w-full rounded-lg border border-white/10 bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" />
       <span className="block text-[10px] text-white/35">{say("بيبيّن بس إذا الصفحة إلها مؤشر (من إعدادات الصفحة).|Shown only when the page has a cursor (in the page's settings).|מוצג רק כשלדף יש סמן (בהגדרות הדף).")}</span>
     </label>
   );

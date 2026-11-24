@@ -23,7 +23,7 @@ export function ScrollEffectsPanel({ node, sections, busy, onOps }: {
   const toAll = (scroll: NonNullable<Motion["scroll"]> | null, label: string) =>
     onOps(label, sections.map((s) => motionOp(s, withScroll(s.motion as Motion | undefined, scroll))));
   return (
-    <div className="space-y-2.5 rounded-xl border border-white/[0.08] p-3" data-testid="studio-scroll-effects">
+    <div className="space-y-2.5 rounded-xl border border-white/8 p-3" data-testid="studio-scroll-effects">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/70">{tr("تأثير التمرير", "Scroll effect")}</div>
         <span className="text-[10px] text-white/40">{chosen ? chosen.name() : tr("بلا تأثير", "No effect")}</span>
@@ -38,7 +38,7 @@ export function ScrollEffectsPanel({ node, sections, busy, onOps }: {
               {items.map((e) => (
                 <button key={e.key} type="button" disabled={busy} aria-pressed={now === e.key} data-scroll-effect={e.key} title={e.name()}
                   onClick={() => onOps(`${tr("تأثير التمرير", "Scroll effect")}: ${e.name()}`, [motionOp(node, withScroll(motion, now === e.key ? null : e.scroll))])}
-                  className={`truncate rounded-lg border px-2 py-1.5 text-start text-[11px] disabled:opacity-40 ${now === e.key ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"}`}>
+                  className={`truncate rounded-lg border px-2 py-1.5 text-start text-[11px] disabled:opacity-40 ${now === e.key ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/8 text-white/75 hover:bg-white/5"}`}>
                   {e.name()}
                 </button>
               ))}
@@ -47,11 +47,11 @@ export function ScrollEffectsPanel({ node, sections, busy, onOps }: {
         );
       })}
       {isSection && sections.length > 1 ? (
-        <div className="flex flex-wrap gap-1 border-t border-white/[0.06] pt-2">
+        <div className="flex flex-wrap gap-1 border-t border-white/6 pt-2">
           <button type="button" disabled={busy || !chosen} onClick={() => chosen && toAll(chosen.scroll, `${tr("تأثير التمرير لكل الأقسام", "Scroll effect on every section")}: ${chosen.name()}`)} className="rounded-lg bg-accent-500/80 px-2 py-1 text-[11px] text-white disabled:opacity-40" data-testid="studio-scroll-all">
             {tr("طبّقه على كل أقسام الصفحة", "Put it on every section of the page")}
           </button>
-          <button type="button" disabled={busy || !sections.some((s) => (s.motion as Motion | undefined)?.scroll)} onClick={() => toAll(null, tr("بلا تأثير تمرير لكل الأقسام", "No scroll effect on any section"))} className="rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] text-red-300 disabled:opacity-40" data-testid="studio-scroll-none-all">
+          <button type="button" disabled={busy || !sections.some((s) => (s.motion as Motion | undefined)?.scroll)} onClick={() => toAll(null, tr("بلا تأثير تمرير لكل الأقسام", "No scroll effect on any section"))} className="rounded-lg bg-white/6 px-2 py-1 text-[11px] text-red-300 disabled:opacity-40" data-testid="studio-scroll-none-all">
             {tr("شيله من كل الأقسام", "Take it off every section")}
           </button>
         </div>

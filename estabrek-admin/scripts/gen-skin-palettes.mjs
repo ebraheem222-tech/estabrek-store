@@ -3,7 +3,8 @@
 // background (300/400) become dark shades that read well on cream.
 // Run: node scripts/gen-skin-palettes.mjs
 import fs from "node:fs";
-import colors from "tailwindcss/colors.js";
+// Tailwind 3's colours in hex (Tailwind 4 keeps them in oklch), kept here for the skins.
+import colors from "./tailwind-v3-colors.json" with { type: "json" };
 import { SKIN_PALETTES } from "./skin-palettes.list.mjs";
 
 const rgb = (hex) => {

@@ -136,7 +136,7 @@ export function CutoutBatch({ open, targets: given, onClose, onSaved, canReplace
           </section>
         ) : null}
         {engine === "browser" ? <p className="text-xs text-white/50">{planText(free.plan)}</p> : null}
-        {needsDownload ? <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">{firstDownloadText(free.plan!)}</p> : null}
+        {needsDownload ? <p className="rounded-xl border border-white/10 bg-white/3 p-3 text-xs text-white/70">{firstDownloadText(free.plan!)}</p> : null}
 
         <section className="space-y-2">
           <div className="font-medium">{tr("الخلفية", "Background")}</div>
@@ -190,7 +190,7 @@ export function CutoutBatch({ open, targets: given, onClose, onSaved, canReplace
                     </span>
                   </div>
                 ) : st.kind === "done" ? (
-                  <span className="absolute end-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-xs text-white">✓</span>
+                  <span className="absolute inset-e-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-xs text-white">✓</span>
                 ) : st.kind === "error" ? (
                   <span className="absolute inset-x-0 bottom-0 bg-rose-950/80 p-1 text-[10px] leading-4 text-rose-100">{st.message}</span>
                 ) : null}

@@ -16,7 +16,7 @@ import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 const pill = (on: boolean) => `rounded-full border px-3 py-1.5 text-xs transition ${on ? "border-accent-400/70 bg-accent-500/20 text-white" : "border-white/10 text-white/70 hover:border-white/25"}`;
 
 export const PLATFORM_NAME: Record<Platform, string> = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", whatsapp: "WhatsApp", x: "X" };
@@ -52,13 +52,13 @@ function PostCard({ platform, text, idea, url, extra }: { platform: Platform; te
   const [words, setWords] = useState(text);
   const share = shareLink(platform, words, url);
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid="social-post" data-platform={platform}>
+    <div className="rounded-xl border border-white/10 bg-white/3 p-3" data-testid="social-post" data-platform={platform}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-sm font-semibold">{PLATFORM_ICON[platform]} {PLATFORM_NAME[platform]}</span>
         <span className="text-[11px] text-white/40" dir="ltr">{words.length}</span>
       </div>
       {extra}
-      <textarea value={words} onChange={(e) => setWords(e.target.value)} rows={Math.min(14, Math.max(3, words.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 46)), 0)))} className="w-full resize-y rounded-lg border border-white/[0.08] bg-black/20 p-2 text-sm leading-6" aria-label={say("نص المنشور|The post's words|טקסט הפוסט")} />
+      <textarea value={words} onChange={(e) => setWords(e.target.value)} rows={Math.min(14, Math.max(3, words.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 46)), 0)))} className="w-full resize-y rounded-lg border border-white/8 bg-black/20 p-2 text-sm leading-6" aria-label={say("نص المنشور|The post's words|טקסט הפוסט")} />
       {idea ? <p className="mt-1.5 text-[11px] leading-5 text-white/55">💡 {say("الصورة/الفيديو:|Picture/video:|תמונה/וידאו:")} {idea}</p> : null}
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" variant="primary" onClick={() => void copy(words)}>{say("نسخ|Copy|העתקה")}</Button>
@@ -126,7 +126,7 @@ export default function SocialPostsPage() {
           {picked.length ? (
             <div className="mt-2 flex flex-wrap gap-2">
               {picked.map((id) => (
-                <span key={id} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] py-1 pe-1 ps-3 text-xs">
+                <span key={id} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pe-1 ps-3 text-xs">
                   {byId.get(id)?.title ?? id}
                   <button type="button" className="grid h-6 w-6 place-items-center rounded-full hover:bg-white/10" onClick={() => setPicked((l) => l.filter((x) => x !== id))} aria-label={say("شيل|Remove|הסרה")}>×</button>
                 </span>
@@ -139,7 +139,7 @@ export default function SocialPostsPage() {
               {products.isLoading ? <div className="mt-2 flex items-center gap-2 text-xs"><Spinner /> …</div> : null}
               <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                 {found.map((p: CatalogProduct) => (
-                  <button key={p.id} type="button" className="flex items-center gap-2 rounded-xl border border-white/[0.08] p-1.5 text-start text-xs hover:border-white/25" onClick={() => { setPicked((l) => [...l, p.id].slice(0, 3)); setSearch(""); }} data-testid="social-pick">
+                  <button key={p.id} type="button" className="flex items-center gap-2 rounded-xl border border-white/8 p-1.5 text-start text-xs hover:border-white/25" onClick={() => { setPicked((l) => [...l, p.id].slice(0, 3)); setSearch(""); }} data-testid="social-pick">
                     {p.summary?.thumbUrl ? <img src={p.summary.thumbUrl} alt="" className="h-9 w-9 rounded-lg object-cover" /> : <span className="h-9 w-9 rounded-lg bg-white/10" />}
                     <span className="line-clamp-2">{p.title}</span>
                   </button>
@@ -149,7 +149,7 @@ export default function SocialPostsPage() {
           ) : null}
           <label className="mt-4 block text-sm">
             {say("العرض أو المناسبة (اختياري)|The offer or occasion (optional)|המבצע או האירוע (לא חובה)")}
-            <textarea className="mt-1 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm" rows={2} maxLength={300} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder={say("مثلاً: خصم 20% على كل المنتجات لحد الجمعة|e.g. 20% off everything until Friday|למשל: 20% הנחה על הכל עד שישי")} data-testid="social-offer" />
+            <textarea className="mt-1 w-full rounded-xl border border-white/8 bg-white/3 p-3 text-sm" rows={2} maxLength={300} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder={say("مثلاً: خصم 20% على كل المنتجات لحد الجمعة|e.g. 20% off everything until Friday|למשל: 20% הנחה על הכל עד שישי")} data-testid="social-offer" />
           </label>
         </section>
       ) : (

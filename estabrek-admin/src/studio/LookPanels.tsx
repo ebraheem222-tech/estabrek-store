@@ -19,8 +19,8 @@ import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanel
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Preview = (vars: Record<string, string | number>) => void;
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(Math.abs(v) < 10 ? 2 : 1));
 
 /** A slider that shows its value, previews while it moves, and saves when it's let go. */
@@ -71,14 +71,14 @@ function MotionChoice({ label, value, options, busy, onPick, testId }: { label: 
   return <div className="text-[11px] text-white/55">
     {label}
     <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label={label} data-testid={testId}>
-      {options.map(([key, name]) => <button key={key} type="button" disabled={busy} aria-pressed={value === key} data-value={key} className={`rounded-lg px-2 py-1 text-xs ${value === key ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]"} disabled:opacity-40`} onClick={() => { if (key || value) onPick(value === key ? "" : key); }}>{name}</button>)}
+      {options.map(([key, name]) => <button key={key} type="button" disabled={busy} aria-pressed={value === key} data-value={key} className={`rounded-lg px-2 py-1 text-xs ${value === key ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/75 hover:bg-white/10"} disabled:opacity-40`} onClick={() => { if (key || value) onPick(value === key ? "" : key); }}>{name}</button>)}
     </div>
   </div>;
 }
 
 function Part({ title, open, children, testId }: { title: string; open?: boolean; children: React.ReactNode; testId?: string }) {
   return (
-    <details className="group rounded-lg border border-white/[0.06] px-2 py-1.5" open={open} data-testid={testId}>
+    <details className="group rounded-lg border border-white/6 px-2 py-1.5" open={open} data-testid={testId}>
       <summary className="cursor-pointer select-none text-[11px] font-medium text-white/70">{title}</summary>
       <div className="mt-2 space-y-2.5">{children}</div>
     </details>
@@ -120,7 +120,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
   const own = lookOf(node, screen);
   const turned = ["rotateX", "rotateY", "rotateZ", "perspective", "scale", "moveX", "moveY", "origin", "opacity"].some((k) => own[k] !== undefined);
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-look">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-look">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/70">{tr("الشكل والمكان", "Look and place")}</div>
         <span className="text-[10px] text-white/40">{SCREEN_LABEL[screen]()}</span>
@@ -196,7 +196,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
               {tr("أي نقطة منه بتقعد هناك", "Which point of it sits there")}
               <div className="mt-1 grid w-24 grid-cols-3 gap-1" role="group" aria-label={tr("أي نقطة منه بتقعد هناك", "Which point of it sits there")}>
                 {Object.keys(ANCHOR_AT).map((a) => (
-                  <button key={a} type="button" disabled={busy} aria-pressed={(place.anchor ?? "center") === a} aria-label={a} onClick={() => save(tr("المكان", "Place"), { layer: { ...place, anchor: a } })} className={`h-6 rounded ${(place.anchor ?? "center") === a ? "bg-accent-500/60" : "bg-white/[0.08] hover:bg-white/[0.14]"}`} data-anchor={a} />
+                  <button key={a} type="button" disabled={busy} aria-pressed={(place.anchor ?? "center") === a} aria-label={a} onClick={() => save(tr("المكان", "Place"), { layer: { ...place, anchor: a } })} className={`h-6 rounded-sm ${(place.anchor ?? "center") === a ? "bg-accent-500/60" : "bg-white/8 hover:bg-white/[0.14]"}`} data-anchor={a} />
                 ))}
               </div>
             </div>
@@ -215,7 +215,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
 export function VideoOverlayPanel({ node, screen, busy, onOps, onPreview }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; onPreview: Preview }) {
   const overlay = shownLook(node, screen, "overlay") as { color: string; opacity: number; to?: string; angle?: number; blend?: string } | undefined;
   const save = (next: typeof overlay | null) => onOps(tr("طبقة الفيديو", "Video overlay"), [styleOp(node, screen, { overlay: next })]);
-  return <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-video-overlay">
+  return <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-video-overlay">
     <div className="flex items-center justify-between gap-2 text-xs text-white/70"><span>{tr("طبقة الفيديو", "Video overlay")}</span><span className="text-[10px] text-white/40">{SCREEN_LABEL[screen]()}</span></div>
     {toggleRow(tr("طبقة لون", "Colour layer"), Boolean(overlay && overlay.opacity > 0), busy, (on) => save(on ? { ...overlay, color: overlay?.color ?? "#000000", opacity: overlay?.opacity || 0.5 } : screen === "base" ? null : { ...overlay, color: overlay?.color ?? "#000000", opacity: 0 }), "studio-video-overlay-on")}
     {overlay ? <>
@@ -268,7 +268,7 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
   const loopKinds = Object.keys(LOOP_LABEL).filter((k) => k === m.loop?.kind || ((k !== "morph" || drawingMorphs(node)) && (k !== "dash" || drawingHasLines(node)) && (k !== "type" || WORDY.has(node.type))));
   const moves = Object.keys(m).some((k) => k !== "phone" && k !== "engine");
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-motion">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-motion">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/70">{tr("الحركة", "Motion")}</div>
         <button type="button" className={btn} disabled={busy || !moves} onClick={onPlay} data-testid="studio-motion-play">▶ {tr("جرّب بالصفحة", "Try it on the page")}</button>
@@ -278,7 +278,7 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
         {presetsFor(node.type, node).map((p) => {
           const on = hasPreset(m, p);
           return (
-            <button key={p.key} type="button" disabled={busy} aria-pressed={on} onClick={() => set(p.label(), togglePreset(m, p))} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-preset={p.key} title={p.label()}>
+            <button key={p.key} type="button" disabled={busy} aria-pressed={on} onClick={() => set(p.label(), togglePreset(m, p))} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/8 text-white/75 hover:bg-white/5"} disabled:opacity-40`} data-preset={p.key} title={p.label()}>
               {p.label()}
             </button>
           );

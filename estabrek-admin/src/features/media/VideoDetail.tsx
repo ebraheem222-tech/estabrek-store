@@ -15,7 +15,7 @@ import { Segmented, Toggle } from "../system/cacheParts";
 import { CODEC_TEXT, LADDER_TEXT, PRESET_TEXT, QUALITY_TEXT, STATUS_TEXT, codecsFor, durationText, frameTimes, profileSummary, renditionSummary, timeText } from "./videoText";
 import { tr } from "@/lib/words";
 
-const field = "h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-9 rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 async function copy(text: string) {
   try {
@@ -118,7 +118,7 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
           ) : null}
         </div>
 
-        <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <section className="rounded-xl border border-white/10 bg-white/3 p-4">
           <h3 className="font-medium">{tr("صور من الفيديو", "Photos from the video")}</h3>
           <p className="mt-0.5 text-xs text-white/50">{tr("المؤشر بيتحرّك للإطار المطلوب (أو تشغيل وتوقيف الفيديو)، وبعدها اختيار شو ينعمل فيه.", "Move the marker to the frame you want (or play and pause the video), then choose what to do with it.")}</p>
           <div className="mt-3 flex items-center gap-3">
@@ -187,7 +187,7 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
           ) : null}
         </section>
 
-        <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <section className="rounded-xl border border-white/10 bg-white/3 p-4">
           <h3 className="font-medium">{tr("النسخ المحوّلة", "Converted versions")}</h3>
           <p className="mt-0.5 text-xs text-white/50">{tr("كل نسخة إلها رابط: بينتسخ وبينحط بقسم الفيديو بالصفحة. النسخ بتنعمل بالخلفية، وبتتحدّث هون لحالها.", "Each version has a link: copy it into a video section on the page. Versions are made in the background and update here by themselves.")}</p>
           {video.renditions.length ? (
@@ -202,7 +202,7 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
           {canWrite ? <ConvertForm video={video} library={library} onDone={refresh} /> : null}
         </section>
 
-        <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <section className="rounded-xl border border-white/10 bg-white/3 p-4">
           <h3 className="font-medium">{tr("معلومات", "Info")}</h3>
           <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
             <Info label={tr("المدة", "Duration")} value={durationText(video.durationMs)} />

@@ -69,8 +69,8 @@ export function CheckoutSteps({
                 index < currentStep
                   ? "bg-green-500 text-white"
                   : index === currentStep
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "bg-[var(--color-bg-alt)] text-[var(--color-text-muted)]"
+                  ? "bg-(--color-accent) text-white"
+                  : "bg-(--color-bg-alt) text-(--color-text-muted)"
               )}
             >
               {index < currentStep ? (
@@ -84,7 +84,7 @@ export function CheckoutSteps({
             <span
               className={cn(
                 "text-xs mt-2",
-                index <= currentStep ? "text-[var(--color-text)]" : "text-[var(--color-text-muted)]"
+                index <= currentStep ? "text-(--color-text)" : "text-(--color-text-muted)"
               )}
             >
               {step}
@@ -94,7 +94,7 @@ export function CheckoutSteps({
             <div
               className={cn(
                 "w-12 h-1 mx-2",
-                index < currentStep ? "bg-green-500" : "bg-[var(--color-border)]"
+                index < currentStep ? "bg-green-500" : "bg-(--color-border)"
               )}
             />
           )}
@@ -122,9 +122,9 @@ export function AddressForm({
   const cities = ["القدس", "رام الله", "نابلس", "الخليل", "بيت لحم", "جنين", "طولكرم", "قلقيلية", "أريحا", "سلفيت"];
 
   return (
-    <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6">
+    <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6">
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-        <svg className="w-5 h-5 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -138,7 +138,7 @@ export function AddressForm({
             type="text"
             value={address?.fullName || ""}
             onChange={(e) => onChange({ ...address, fullName: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
             placeholder="أدخل اسمك الكامل"
           />
         </div>
@@ -149,7 +149,7 @@ export function AddressForm({
             type="tel"
             value={address?.phone || ""}
             onChange={(e) => onChange({ ...address, phone: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
             placeholder="05X-XXX-XXXX"
             dir="ltr"
           />
@@ -160,7 +160,7 @@ export function AddressForm({
           <select
             value={address?.city || ""}
             onChange={(e) => onChange({ ...address, city: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
           >
             <option value="">اختر المدينة</option>
             {cities.map((city) => (
@@ -175,7 +175,7 @@ export function AddressForm({
             type="text"
             value={address?.area || ""}
             onChange={(e) => onChange({ ...address, area: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
             placeholder="اسم الحي أو المنطقة"
           />
         </div>
@@ -186,7 +186,7 @@ export function AddressForm({
             type="text"
             value={address?.street || ""}
             onChange={(e) => onChange({ ...address, street: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
             placeholder="اسم الشارع ورقم المبنى"
           />
         </div>
@@ -197,7 +197,7 @@ export function AddressForm({
             type="text"
             value={address?.building || ""}
             onChange={(e) => onChange({ ...address, building: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
             placeholder="رقم المبنى (اختياري)"
           />
         </div>
@@ -208,7 +208,7 @@ export function AddressForm({
             type="text"
             value={address?.floor || ""}
             onChange={(e) => onChange({ ...address, floor: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all"
             placeholder="رقم الطابق (اختياري)"
           />
         </div>
@@ -219,7 +219,7 @@ export function AddressForm({
             value={address?.notes || ""}
             onChange={(e) => onChange({ ...address, notes: e.target.value })}
             rows={3}
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-transparent focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 outline-none transition-all resize-none"
+            className="w-full px-4 py-3 rounded-xl border border-(--color-border) bg-transparent focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 outline-hidden transition-all resize-none"
             placeholder="أي تعليمات خاصة للتوصيل..."
           />
         </div>
@@ -229,7 +229,7 @@ export function AddressForm({
         <button
           onClick={onSubmit}
           disabled={loading}
-          className="w-full mt-6 py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
+          className="w-full mt-6 py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors disabled:opacity-50"
         >
           {loading ? "جاري الحفظ..." : "حفظ العنوان"}
         </button>
@@ -257,9 +257,9 @@ export function ShippingMethodSelector({
     new Intl.NumberFormat("ar-IL", { style: "currency", currency, minimumFractionDigits: 0 }).format(price);
 
   return (
-    <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6">
+    <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6">
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-        <svg className="w-5 h-5 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
         </svg>
@@ -273,8 +273,8 @@ export function ShippingMethodSelector({
             className={cn(
               "flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all",
               selectedId === method.id
-                ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5"
-                : "border-[var(--color-border)] hover:border-[var(--color-accent)]/50"
+                ? "border-(--color-accent) bg-(--color-accent)/5"
+                : "border-(--color-border) hover:border-(--color-accent)/50"
             )}
           >
             <input
@@ -288,11 +288,11 @@ export function ShippingMethodSelector({
             <div
               className={cn(
                 "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                selectedId === method.id ? "border-[var(--color-accent)]" : "border-[var(--color-border)]"
+                selectedId === method.id ? "border-(--color-accent)" : "border-(--color-border)"
               )}
             >
               {selectedId === method.id && (
-                <div className="w-3 h-3 rounded-full bg-[var(--color-accent)]" />
+                <div className="w-3 h-3 rounded-full bg-(--color-accent)" />
               )}
             </div>
             
@@ -301,12 +301,12 @@ export function ShippingMethodSelector({
                 <span className="font-bold">{method.nameAr}</span>
                 <span className={cn(
                   "font-bold",
-                  method.price === 0 ? "text-green-600" : "text-[var(--color-accent)]"
+                  method.price === 0 ? "text-green-600" : "text-(--color-accent)"
                 )}>
                   {method.price === 0 ? "مجاني" : formatPrice(method.price)}
                 </span>
               </div>
-              <p className="text-sm text-[var(--color-text-muted)]">{method.estimatedDays}</p>
+              <p className="text-sm text-(--color-text-muted)">{method.estimatedDays}</p>
             </div>
           </label>
         ))}
@@ -352,9 +352,9 @@ export function PaymentMethodSelector({
   };
 
   return (
-    <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6">
+    <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6">
       <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-        <svg className="w-5 h-5 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-(--color-accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
         طريقة الدفع
@@ -367,8 +367,8 @@ export function PaymentMethodSelector({
             className={cn(
               "flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all",
               selectedId === method.id
-                ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5"
-                : "border-[var(--color-border)] hover:border-[var(--color-accent)]/50"
+                ? "border-(--color-accent) bg-(--color-accent)/5"
+                : "border-(--color-border) hover:border-(--color-accent)/50"
             )}
           >
             <input
@@ -379,23 +379,23 @@ export function PaymentMethodSelector({
               onChange={() => onSelect(method.id)}
               className="sr-only"
             />
-            <div className="text-[var(--color-accent)]">
+            <div className="text-(--color-accent)">
               {icons[method.type]}
             </div>
             <div className="flex-1">
               <span className="font-bold block">{method.nameAr}</span>
               {method.description && (
-                <span className="text-xs text-[var(--color-text-muted)]">{method.description}</span>
+                <span className="text-xs text-(--color-text-muted)">{method.description}</span>
               )}
             </div>
             <div
               className={cn(
                 "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                selectedId === method.id ? "border-[var(--color-accent)]" : "border-[var(--color-border)]"
+                selectedId === method.id ? "border-(--color-accent)" : "border-(--color-border)"
               )}
             >
               {selectedId === method.id && (
-                <div className="w-3 h-3 rounded-full bg-[var(--color-accent)]" />
+                <div className="w-3 h-3 rounded-full bg-(--color-accent)" />
               )}
             </div>
           </label>
@@ -429,15 +429,15 @@ export function OrderConfirmation({
       </div>
 
       <h1 className="text-3xl font-bold mb-4">شكراً لطلبك!</h1>
-      <p className="text-[var(--color-text-muted)] mb-2">تم استلام طلبك بنجاح</p>
+      <p className="text-(--color-text-muted) mb-2">تم استلام طلبك بنجاح</p>
       
-      <div className="inline-block bg-[var(--color-bg-alt)] rounded-xl px-6 py-3 mb-6">
-        <span className="text-sm text-[var(--color-text-muted)]">رقم الطلب</span>
-        <p className="text-xl font-bold text-[var(--color-accent)]">{orderNumber}</p>
+      <div className="inline-block bg-(--color-bg-alt) rounded-xl px-6 py-3 mb-6">
+        <span className="text-sm text-(--color-text-muted)">رقم الطلب</span>
+        <p className="text-xl font-bold text-(--color-accent)">{orderNumber}</p>
       </div>
 
       {email && (
-        <p className="text-sm text-[var(--color-text-muted)] mb-8">
+        <p className="text-sm text-(--color-text-muted) mb-8">
           تم إرسال تأكيد الطلب إلى: {email}
         </p>
       )}
@@ -445,13 +445,13 @@ export function OrderConfirmation({
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <button
           onClick={onTrackOrder}
-          className="px-8 py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors"
+          className="px-8 py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors"
         >
           تتبع الطلب
         </button>
         <button
           onClick={onContinueShopping}
-          className="px-8 py-3 border border-[var(--color-border)] rounded-xl font-bold hover:bg-[var(--color-bg-alt)] transition-colors"
+          className="px-8 py-3 border border-(--color-border) rounded-xl font-bold hover:bg-(--color-bg-alt) transition-colors"
         >
           متابعة التسوق
         </button>

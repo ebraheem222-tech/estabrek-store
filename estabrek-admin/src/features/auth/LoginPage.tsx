@@ -149,7 +149,7 @@ export default function LoginPage() {
       <div className="relative glass rounded-3xl p-8 shadow-elevated">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center shadow-glow">
+          <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-accent-500 to-accent-600 flex items-center justify-center shadow-glow">
             <span className="text-white font-bold text-2xl">E</span>
           </div>
         </div>
@@ -253,7 +253,7 @@ export default function LoginPage() {
               {tr("تسجيل الدخول", "Sign in")}
             </Button>
 
-            <div className="mt-2 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+            <div className="mt-2 p-4 rounded-xl bg-white/2 border border-white/4">
               <p className="text-xs text-white/40 text-center">
                 {tr("للتجربة:", "For testing:")}
               </p>

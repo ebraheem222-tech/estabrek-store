@@ -183,13 +183,13 @@ export function StageWorkspace({
     }
   };
 
-  const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-30";
+  const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-30";
   return (
-    <section className="space-y-3 rounded-2xl border border-white/[0.08] p-3" data-testid="stage-workspace">
+    <section className="space-y-3 rounded-2xl border border-white/8 p-3" data-testid="stage-workspace">
       <div className="flex flex-wrap items-center gap-1">
         <div className="me-auto flex gap-1" role="tablist" aria-label={tr("المشهد", "The stage")}>
           {(["models", "scene"] as const).map((t) => (
-            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-white/[0.14] text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`stage-tab-${t}`}>
+            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-white/[0.14] text-white" : "text-white/60 hover:bg-white/6"}`} data-testid={`stage-tab-${t}`}>
               {t === "models" ? stageWords(theme.family).title : tr("محرّر المشهد", "Scene editor")}
             </button>
           ))}
@@ -206,9 +206,9 @@ export function StageWorkspace({
         <StagePanel theme={theme} models={models} categories={categories} api={api} />
       ) : (
         <>
-          <div className="flex gap-1 rounded-lg bg-white/[0.03] p-1" role="group" aria-label={tr("بتعدّل على", "Editing")}>
+          <div className="flex gap-1 rounded-lg bg-white/3 p-1" role="group" aria-label={tr("بتعدّل على", "Editing")}>
             {(["model", "stage"] as const).map((x) => (
-              <button key={x} type="button" aria-pressed={part === x} onClick={() => setPart(x)} className={`flex-1 rounded-md px-2 py-1 text-xs ${part === x ? "bg-white/[0.14] text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`scene-part-${x}`}>
+              <button key={x} type="button" aria-pressed={part === x} onClick={() => setPart(x)} className={`flex-1 rounded-md px-2 py-1 text-xs ${part === x ? "bg-white/[0.14] text-white" : "text-white/60 hover:bg-white/6"}`} data-testid={`scene-part-${x}`}>
                 {x === "model" ? tr("موديل", "A model") : tr("المشهد كله", "The whole stage")}
               </button>
             ))}
@@ -221,7 +221,7 @@ export function StageWorkspace({
         </>
       )}
 
-      <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-white/[0.06] bg-surface-950/90 pt-2 backdrop-blur">
+      <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-white/6 bg-surface-950/90 pt-2 backdrop-blur-sm">
         <span className={`me-auto text-[11px] ${dirty ? "text-amber-200" : "text-white/40"}`} data-testid="stage-dirty" data-dirty={dirty ? "1" : "0"}>
           {dirty ? tr("في تغييرات ما انحفظت", "Unsaved changes") : tr("كل شي محفوظ", "Everything is saved")}
         </span>

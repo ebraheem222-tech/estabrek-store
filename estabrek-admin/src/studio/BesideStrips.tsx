@@ -8,7 +8,7 @@ import { say } from "./say";
 import { SIDE_GROUPS, type Place, type Side } from "./beside";
 import { GROUP_ICON, GROUP_WORD, type InspectorGroupId } from "./InspectorNav";
 
-const pill = (on: boolean) => `grid h-8 w-8 place-items-center rounded-full border text-sm shadow-lg transition-colors ${on ? "border-accent-400 bg-accent-500 text-white" : "border-white/[0.12] bg-surface-950/95 text-white/80 hover:bg-accent-500/30 hover:text-white"}`;
+const pill = (on: boolean) => `grid h-8 w-8 place-items-center rounded-full border text-sm shadow-lg transition-colors ${on ? "border-accent-400 bg-accent-500 text-white" : "border-white/12 bg-surface-950/95 text-white/80 hover:bg-accent-500/30 hover:text-white"}`;
 
 export function BesideStrips({ place, groups, active, onPick, onAdd }: {
   place: Place;

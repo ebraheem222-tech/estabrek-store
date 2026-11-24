@@ -137,13 +137,13 @@ export default function TicketsPage() {
             autoComplete="off"
             autoCapitalize="characters"
             spellCheck={false}
-            className="h-14 min-w-0 flex-1 rounded-2xl border border-white/[0.12] bg-surface-925 px-4 text-center font-mono text-2xl tracking-[0.2em] text-white placeholder:text-white/20"
+            className="h-14 min-w-0 flex-1 rounded-2xl border border-white/12 bg-surface-925 px-4 text-center font-mono text-2xl tracking-[0.2em] text-white placeholder:text-white/20"
             aria-label={tr("كود التذكرة", "Ticket code")}
             data-testid="ticket-code"
           />
           <button type="submit" className="h-14 rounded-2xl bg-accent-500 px-6 text-base font-semibold text-white hover:bg-accent-400">{tr("تشييك", "Check")}</button>
           {canScan ? (
-            <button type="button" onClick={() => setScanning(true)} className="h-14 rounded-2xl border border-white/[0.12] px-4 text-base text-white/85 hover:bg-white/[0.06]">{tr("📷 مسح", "📷 Scan")}</button>
+            <button type="button" onClick={() => setScanning(true)} className="h-14 rounded-2xl border border-white/12 px-4 text-base text-white/85 hover:bg-white/6">{tr("📷 مسح", "📷 Scan")}</button>
           ) : null}
         </form>
 
@@ -155,7 +155,7 @@ export default function TicketsPage() {
       <div className={box}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-white">{tr("الحجوزات", "Bookings")}</h2>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("بحث: اسم، هاتف، كود", "Search: name, phone, code")} className="h-10 w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35 sm:w-64" aria-label={tr("بحث بالتذاكر", "Search tickets")} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("بحث: اسم، هاتف، كود", "Search: name, phone, code")} className="h-10 w-full rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white placeholder:text-white/35 sm:w-64" aria-label={tr("بحث بالتذاكر", "Search tickets")} />
         </div>
         {events.isLoading ? (
           <p className="text-sm text-white/50">{tr("جارٍ التحميل…", "Loading…")}</p>
@@ -173,7 +173,7 @@ export default function TicketsPage() {
                     type="button"
                     onClick={() => setEventId(eventId === e.id ? null : e.id)}
                     aria-pressed={eventId === e.id}
-                    className={cn("w-full rounded-xl border p-3 text-start transition", eventId === e.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/[0.08] hover:border-white/20")}
+                    className={cn("w-full rounded-xl border p-3 text-start transition", eventId === e.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/8 hover:border-white/20")}
                   >
                     <div className="truncate font-medium text-white">{e.title}</div>
                     <div className="mt-0.5 truncate text-xs text-white/50">{e.when ?? tr("بدون موعد", "No date")}{e.eventLocation ? ` · ${e.eventLocation}` : ""}</div>
@@ -201,7 +201,7 @@ export default function TicketsPage() {
             ) : !list.data?.tickets.length ? (
               <p className="text-sm text-white/50">{tr("ما في تذاكر.", "No tickets.")}</p>
             ) : (
-              <ul className="divide-y divide-white/[0.06]" data-testid="tickets-list">
+              <ul className="divide-y divide-white/6" data-testid="tickets-list">
                 {list.data.tickets.map((t) => (
                   <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
                     <span dir="ltr" className="font-mono text-white">{t.code}</span>
@@ -231,7 +231,7 @@ function LookResult({ look, canWrite, busy, onCheckIn, onUndo }: { look: NonNull
   }
   const t = look.ticket;
   const tone =
-    look.note === "JUST_IN" ? "border-emerald-500/40 bg-emerald-500/15" : look.note === "ALREADY_USED" ? "border-amber-500/40 bg-amber-500/10" : look.note === "TICKET_CANCELLED" ? "border-red-500/40 bg-red-500/10" : "border-white/[0.12] bg-white/[0.04]";
+    look.note === "JUST_IN" ? "border-emerald-500/40 bg-emerald-500/15" : look.note === "ALREADY_USED" ? "border-amber-500/40 bg-amber-500/10" : look.note === "TICKET_CANCELLED" ? "border-red-500/40 bg-red-500/10" : "border-white/12 bg-white/4";
   return (
     <div className={cn("mt-4 rounded-2xl border p-4", tone)} role="status" data-testid="ticket-result">
       {look.note === "JUST_IN" ? <p className="mb-2 text-center text-xl font-bold text-emerald-200">{tr("✓ تم الدخول", "✓ Checked in")}</p> : null}

@@ -19,7 +19,7 @@ import { relativeTime } from "../team/teamText";
 import { ACTION_TEXT, TRIGGER_TEXT, WORD_TEXT, channelWarning, cooldownText, newRule, ruleSentence, runDetailText } from "./automationText";
 import { currencySign } from "../../lib/money";
 
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const KEY = ["automations"];
 const onError = (e: unknown) => toast.error("ما زبط", { description: getApiErrorMessage(e) });
 const TRIGGERS = Object.keys(TRIGGER_TEXT) as Trigger[];
@@ -255,7 +255,7 @@ function RuleForm({ draft, setDraft, data, editing, canPin, saving, onSave, onCa
             <textarea className={`${field} mt-1.5 h-20 py-2`} maxLength={1000} value={draft.config.text ?? ""} placeholder={t.text} onChange={(e) => setDraft({ ...draft, config: { ...draft.config, text: e.target.value } })} />
             <span className="mt-1.5 flex flex-wrap gap-1.5">
               {t.words.map((w) => (
-                <button key={w} type="button" className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-white/70 hover:bg-white/[0.06]" onClick={() => setDraft({ ...draft, config: { ...draft.config, text: `${draft.config.text ?? t.text} {{${w}}}`.trim() } })}>
+                <button key={w} type="button" className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-white/70 hover:bg-white/6" onClick={() => setDraft({ ...draft, config: { ...draft.config, text: `${draft.config.text ?? t.text} {{${w}}}`.trim() } })}>
                   {`${WORD_TEXT[w] ?? w}`}
                 </button>
               ))}
