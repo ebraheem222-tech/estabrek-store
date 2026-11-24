@@ -243,6 +243,24 @@
 }
 .th-card-peek svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .th-card-heart:focus-visible, .th-card-peek:focus-visible, .th-card-swatches button:focus-visible { outline: 3px solid var(--th-accent); outline-offset: 2px; }
+.th-card-host img.th-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* "Goes well with it" on a product page (RoseCompleteLook): the theme's cards in a row. */
+.th-look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 22px; margin-top: 18px; }
+
+/* The product page of a store on a theme (RoseProduct puts its card shape on .rose-pdp): the big photo takes the
+   shape the theme's cards have, and comes in without the rose design's rounded unveil. */
+.rose-pdp[data-th-card] .rose-pdp-frame { border-radius: var(--th-radius-lg); }
+.rose-pdp:is([data-th-card="portrait"], [data-th-card="minimal"], [data-th-card="pixel"], [data-th-card="list"]) .rose-pdp-frame { border-radius: 0; }
+.rose-pdp[data-th-card="arch"] .rose-pdp-frame { border-radius: 999px 999px var(--th-radius-lg) var(--th-radius-lg); }
+.rose-pdp[data-th-card="round"] .rose-pdp-frame { border-radius: calc(var(--th-radius-lg) * 1.6); }
+.rose-pdp[data-th-card="angled"] .rose-pdp-frame { border-radius: 0; clip-path: polygon(0 0, calc(100% - 44px) 0, 100% 44px, 100% 100%, 44px 100%, 0 calc(100% - 44px)); }
+.rose-pdp:is([data-th-card="polaroid"], [data-th-card="frame"]) .rose-pdp-frame { border-radius: 4px; outline: 12px solid var(--th-surface); outline-offset: -12px; box-shadow: var(--th-shadow); }
+.rose-pdp:is([data-th-card="spec"], [data-th-card="tile"]) .rose-pdp-frame { background: var(--th-surface); box-shadow: inset 0 0 0 1px var(--th-line); }
+.cinematic-interior-shell .rose-pdp[data-th-card] .rose-pdp-frame { animation: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .cinematic-interior-shell .rose-pdp[data-th-card] .rose-pdp-frame { animation: th-arrive-photo 0.9s cubic-bezier(.2, .8, .2, 1) both; }
+}
+@keyframes th-arrive-photo { from { opacity: 0; scale: 0.97; } }
 
 [data-th-card="portrait"] .th-card-media { border-radius: 0; aspect-ratio: 2 / 3; }
 [data-th-card="portrait"] .th-card-title { font-family: var(--th-display); font-weight: 500; font-size: 1.15rem; }
