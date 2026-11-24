@@ -715,6 +715,8 @@ export const NodeTriggers = z.array(NodeTrigger).max(8);
 export const SHADER_KINDS = [
   "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
   "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel",
+  // Physics and generative canvases (the shop's pageTree/fxEngines.ts).
+  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi",
 ] as const;
 
 /** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */

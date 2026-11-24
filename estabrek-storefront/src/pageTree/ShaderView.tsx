@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { SHADERS, SHADER_HEAD } from "./shaderGlsl";
+import { FX_ENGINES, FX_WARMUP, type FxFrame } from "./fxEngines";
 import type { ShaderSpec } from "./shader";
 
 type Rgb = [number, number, number];
@@ -29,8 +30,9 @@ const GRAIN = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/s
 export function ShaderView({ spec, colours }: { spec: ShaderSpec; colours: { bg?: string; c1?: string; c2?: string; c3?: string } }) {
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"idle" | "running" | "still" | "none">("idle");
-  const def = SHADERS[spec.kind];
-  const rainbow = spec.rainbow ?? Boolean(def?.rainbow);
+  const fx = FX_ENGINES[spec.kind];
+  const def = SHADERS[spec.kind] ?? fx;
+  const rainbow = spec.rainbow ?? Boolean(SHADERS[spec.kind]?.rainbow);
   useEffect(() => {
     const el = box.current;
     if (!el || !def) return;
@@ -42,16 +44,86 @@ export function ShaderView({ spec, colours }: { spec: ShaderSpec; colours: { bg?
     const col = { bg: rgbOf(probe, colours.bg, def.bg), c1: rgbOf(probe, colours.c1, def.c1), c2: rgbOf(probe, colours.c2, def.c2), c3: rgbOf(probe, colours.c3, def.c3) };
     probe.remove();
     let mx = 0.5, my = 0.5, tx = 0.5, ty = 0.5;
-    const onMove = (e: PointerEvent) => {
+    // In pixels for a canvas: where the pointer is over the section, and a press since the last frame.
+    let px: { x: number; y: number } | null = null;
+    let press: { x: number; y: number } | null = null;
+    const local = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
-      tx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-      ty = Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height));
+      return { x: e.clientX - r.left, y: e.clientY - r.top, r };
     };
-    if (spec.mouse && !still) host.addEventListener("pointermove", onMove);
+    const onMove = (e: PointerEvent) => {
+      const { x, y, r } = local(e);
+      tx = Math.min(1, Math.max(0, x / r.width));
+      ty = Math.min(1, Math.max(0, 1 - y / r.height));
+      px = { x, y };
+    };
+    const onLeave = () => { px = null; };
+    const onDown = (e: PointerEvent) => { const { x, y } = local(e); press = { x, y }; };
+    if (spec.mouse && !still) {
+      host.addEventListener("pointermove", onMove);
+      host.addEventListener("pointerleave", onLeave);
+      if (fx) host.addEventListener("pointerdown", onDown);
+    }
     const born = performance.now();
+
+    /** A physics or generative canvas (fxEngines.ts): its 2D loop, in the section's colours. */
+    const startFx = (): (() => void) | null => {
+      const c = document.createElement("canvas");
+      c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";
+      el.appendChild(c);
+      const ctx = c.getContext("2d");
+      if (!ctx || !fx) {
+        c.remove();
+        setState("none");
+        return null;
+      }
+      const to255 = (v: Rgb): [number, number, number] => [v[0] * 255, v[1] * 255, v[2] * 255];
+      const s: Record<string, unknown> = { resized: true };
+      let w = 0, h = 0;
+      const size = () => {
+        const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+        w = c.clientWidth;
+        h = c.clientHeight;
+        c.width = Math.max(1, Math.round(w * dpr));
+        c.height = Math.max(1, Math.round(h * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        s.resized = true;
+      };
+      size();
+      const frame = (t: number) => {
+        const f: FxFrame = { ctx, t, w, h, s, bg: to255(col.bg), c1: to255(col.c1), c2: to255(col.c2), c3: to255(col.c3), pointer: px, press };
+        press = null;
+        fx.draw(f);
+        s.resized = false;
+      };
+      let raf = 0;
+      const ro = new ResizeObserver(() => {
+        size();
+        // Still: drawn again at its new size, run to the same moment.
+        if (still) for (let i = 0; i < (FX_WARMUP[spec.kind] ?? 90); i++) frame(i / 60);
+      });
+      ro.observe(c);
+      if (still) {
+        for (let i = 0; i < (FX_WARMUP[spec.kind] ?? 90); i++) frame(i / 60);
+        setState("still");
+      } else {
+        const loop = () => {
+          frame(((performance.now() - born) / 1000) * spec.speed);
+          raf = requestAnimationFrame(loop);
+        };
+        loop();
+        setState("running");
+      }
+      return () => {
+        cancelAnimationFrame(raf);
+        ro.disconnect();
+        c.remove();
+      };
+    };
 
     /** A fresh canvas and context, drawing; returns what takes them down (a released context can't be reused). */
     const start = (): (() => void) | null => {
+      if (fx) return startFx();
       const c = document.createElement("canvas");
       c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";
       el.appendChild(c);
@@ -150,10 +222,12 @@ export function ShaderView({ spec, colours }: { spec: ShaderSpec; colours: { bg?
     return () => {
       io.disconnect();
       host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+      host.removeEventListener("pointerdown", onDown);
       stop?.();
       stop = null;
     };
-  }, [spec.kind, spec.speed, spec.mouse, rainbow, colours.bg, colours.c1, colours.c2, colours.c3, def]);
+  }, [spec.kind, spec.speed, spec.mouse, rainbow, colours.bg, colours.c1, colours.c2, colours.c3, def, fx]);
 
   // Without WebGL: its colours as a gradient.
   const flat: CSSProperties = state === "none" && def ? { background: `linear-gradient(135deg, ${colours.bg ?? def.bg}, ${colours.c1 ?? def.c1} 55%, ${colours.c2 ?? def.c2})` } : {};

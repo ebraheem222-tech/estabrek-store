@@ -24,7 +24,7 @@ test("a section's shader runs near the screen, in the owner's colours, behind it
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await showSections(page, [section("a", { kind: "aurora" }), section("b", { kind: "aurora", bg: "#000000", c1: "#16a34a", c2: "#16a34a", c3: "#16a34a" }), section("c", { kind: "tunnel", rainbow: false, veil: 0.5, grain: 0.2 })]);
+  await showSections(page, [section("a", { kind: "aurora" }), section("b", { kind: "aurora", bg: "#000000", c1: "#16a34a", c2: "#16a34a", c3: "#16a34a" }), section("c", { kind: "tunnel", rainbow: false, veil: 0.5, grain: 0.2 }), section("d", { kind: "koi", c1: "#16a34a" })]);
   await page.context().addCookies([{ name: "shop-lang", value: "en", url: SITE }]);
   await page.goto("/library-demo");
   const a = page.locator('[data-pt-shader="aurora"]').first();
@@ -51,6 +51,15 @@ test("a section's shader runs near the screen, in the owner's colours, behind it
   await expect(t).toHaveAttribute("data-shader-state", "running");
   await expect(t.locator(".pt-shader-veil")).toHaveCSS("opacity", "0.5");
   await expect(t.locator(".pt-shader-grain")).toHaveCount(1);
+  // A physics canvas (the koi pond): running, its ripples following the pointer, a drop on a press.
+  const k = page.locator('[data-pt-shader="koi"]');
+  await k.scrollIntoViewIfNeeded();
+  await expect(k).toHaveAttribute("data-shader-state", "running");
+  const kb = (await k.boundingBox())!;
+  for (let i = 0; i < 8; i++) await page.mouse.move(kb.x + kb.width * (0.3 + i * 0.05), kb.y + kb.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.up();
+  expect(await k.locator("canvas").count()).toBe(1);
   expect(errors).toEqual([]);
 
   // Less motion: one still frame.
@@ -58,6 +67,8 @@ test("a section's shader runs near the screen, in the owner's colours, behind it
   const still = await calm.newPage();
   await still.goto(`${SITE}/en/library-demo`);
   await expect(still.locator('[data-pt-shader="aurora"]').first()).toHaveAttribute("data-shader-state", "still", { timeout: 90_000 });
+  await still.locator('[data-pt-shader="koi"]').scrollIntoViewIfNeeded();
+  await expect(still.locator('[data-pt-shader="koi"]')).toHaveAttribute("data-shader-state", "still");
   await calm.close();
 });
 
@@ -75,7 +86,7 @@ test("from the editor: a section's WebGL background picked from its panel, shown
   const panel = page.getByTestId("studio-shader");
   await panel.scrollIntoViewIfNeeded();
   await panel.getByRole("button", { expanded: false }).click();
-  await expect(panel.getByTestId("studio-shader-kind")).toHaveCount(21);
+  await expect(panel.getByTestId("studio-shader-kind")).toHaveCount(31);
   await panel.locator('[data-testid="studio-shader-kind"][data-kind="ocean"]').click();
   await expect.poll(async () => ((await draft()).children as any[]).find((n) => n.id === sec.id).props.shader).toEqual({ kind: "ocean" });
   await ready();

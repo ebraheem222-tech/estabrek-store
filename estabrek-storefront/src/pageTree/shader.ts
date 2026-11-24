@@ -1,5 +1,6 @@
 /**
- * A section's WebGL background (one of the theme library's shaders, shaderGlsl.ts), as its settings hold it:
+ * A section's live background from the theme library (a WebGL shader, shaderGlsl.ts, or a physics or generative
+ * canvas, fxEngines.ts), as its settings hold it:
  * the shader, its colours (a theme colour's name or a #hex; empty: the shader's own), its rainbow (for the ones
  * drawn in one), its speed, whether it follows the pointer, its film grain, and a veil that keeps words on it
  * readable. Safe, bounded data; the shop draws it (ShaderView.tsx), the admin's panel sets it.
@@ -7,6 +8,8 @@
 export const SHADER_KIND_LIST = [
   "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
   "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel",
+  // Physics and generative canvases (fxEngines.ts), drawn in 2D.
+  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi",
 ] as const;
 export type ShaderKind = (typeof SHADER_KIND_LIST)[number];
 export type ShaderSpec = {

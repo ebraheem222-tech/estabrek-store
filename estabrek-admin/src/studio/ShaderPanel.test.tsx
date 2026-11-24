@@ -5,22 +5,26 @@ import { resolve } from "node:path";
 import type { PageTreeNode } from "../api/pages.api";
 import { SHADERS } from "../../../estabrek-storefront/src/pageTree/shaderGlsl";
 import { SHADER_KIND_LIST, shaderOf } from "../../../estabrek-storefront/src/pageTree/shader";
+import { FX_ENGINES } from "../../../estabrek-storefront/src/pageTree/fxEngines";
 import { SHADER_NAMES, ShaderPanel } from "./ShaderPanel";
 
 afterEach(cleanup);
 
 // The theme library's WebGL backgrounds (docs/themes-library-plan.ar.md, phase 3).
 describe("the library's shaders", () => {
-  it("are the same list in the shop's settings, its GLSL and the server's rules, each named, its colours 6-digit", () => {
-    expect([...SHADER_KIND_LIST].sort()).toEqual(Object.keys(SHADERS).sort());
-    expect(SHADER_KIND_LIST).toHaveLength(21);
+  it("are the same list in the shop's settings, its GLSL and canvases, and the server's rules, each named, its colours 6-digit", () => {
+    expect([...SHADER_KIND_LIST].sort()).toEqual([...Object.keys(SHADERS), ...Object.keys(FX_ENGINES)].sort());
+    expect(Object.keys(SHADERS)).toHaveLength(21);
+    expect(Object.keys(FX_ENGINES)).toHaveLength(10);
     const server = readFileSync(resolve(process.cwd(), "../estabrek-store-backend/src/lib/pageTree.ts"), "utf8");
     const listed = /export const SHADER_KINDS = \[([^\]]*)\]/.exec(server)![1].match(/"([a-z]+)"/g)!.map((s) => s.slice(1, -1));
     expect(listed).toEqual([...SHADER_KIND_LIST]);
     for (const k of SHADER_KIND_LIST) {
       expect(SHADER_NAMES[k].split("|")).toHaveLength(3);
-      for (const c of ["bg", "c1", "c2", "c3"] as const) expect(SHADERS[k][c]).toMatch(/^#[0-9a-f]{6}$/);
-      expect(SHADERS[k].frag).toContain("gl_FragColor");
+      const def = SHADERS[k] ?? FX_ENGINES[k];
+      for (const c of ["bg", "c1", "c2", "c3"] as const) expect(def[c]).toMatch(/^#[0-9a-f]{6}$/);
+      if (SHADERS[k]) expect(SHADERS[k].frag).toContain("gl_FragColor");
+      else expect(typeof FX_ENGINES[k].draw).toBe("function");
     }
   });
 
@@ -36,13 +40,15 @@ describe("a section's WebGL background panel", () => {
   const section = (props: Record<string, unknown> = {}): PageTreeNode => ({ id: "s1", type: "section", props: { contained: true, ...props }, children: [] });
   const last = (onOps: ReturnType<typeof vi.fn>) => (onOps.mock.calls.at(-1)![1] as Array<{ props: Record<string, unknown> }>)[0].props;
 
-  it("picks one of the 21, keeping the section's other settings", () => {
+  it("picks one of the 31 (21 shaders, 10 canvases), keeping the section's other settings", () => {
     const onOps = vi.fn();
     render(<ShaderPanel node={section()} busy={false} onOps={onOps} />);
     fireEvent.click(screen.getByRole("button", { expanded: false }));
-    expect(screen.getAllByTestId("studio-shader-kind")).toHaveLength(21);
+    expect(screen.getAllByTestId("studio-shader-kind")).toHaveLength(31);
     fireEvent.click(screen.getAllByTestId("studio-shader-kind").find((el) => el.dataset.kind === "ocean")!);
     expect(last(onOps)).toEqual({ contained: true, shader: { kind: "ocean" } });
+    fireEvent.click(screen.getAllByTestId("studio-shader-kind").find((el) => el.dataset.kind === "koi")!);
+    expect(last(onOps)).toEqual({ contained: true, shader: { kind: "koi" } });
   });
 
   it("its colours, speed, pointer, grain and veil; rainbow only for the ones drawn in one; removed in one click", () => {
