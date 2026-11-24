@@ -24,9 +24,11 @@ import { MEMBERS } from "./members";
 import { LFG } from "./lfg";
 import { CLIPS, SCHEDULE, SPONSORS } from "./streamer";
 import { DOCS, GOODS, RELEASES, TICKETS } from "./studio";
+import { HOSTING } from "./hosting";
+import { LISTINGS } from "./listings";
 import type { Built, Part, SiteModule } from "./kit";
 
-export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, SERVERS, BANS, CODES, EVENTS, ROSTER, MEMBERS, LFG, SCHEDULE, CLIPS, SPONSORS, GOODS, DOCS, RELEASES, TICKETS, CONTACT, BOOKING, NOTIFY];
+export const MODULES: SiteModule[] = [STATUS, OFFERS, TEAM, STORY, REVIEWS, QUESTIONS, NEWS, BRANCHES, RULES, APPLY, APPEALS, PACKAGES, MCSTORE, LINK, RANKING, WIPE, STREAMERS, SERVERS, BANS, CODES, EVENTS, ROSTER, MEMBERS, LFG, SCHEDULE, CLIPS, SPONSORS, GOODS, DOCS, RELEASES, TICKETS, HOSTING, LISTINGS, CONTACT, BOOKING, NOTIFY];
 
 /** Each archetype's home page; one with none can't be built yet. */
 export const HOMES: Partial<Record<Archetype, (b: Built) => Part[]>> = { front: frontHome, server: serverHome };

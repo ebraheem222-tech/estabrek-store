@@ -76,6 +76,29 @@ test.describe("a community's pulse and its codes", () => {
     await expect(node(page, "off").getByTestId("game-players")).toHaveCount(0);
   });
 
+  test("a hosting company's panel as a website: up and how fast, a day of up and down; its machines up or down with their speed, no way in", async ({ page }) => {
+    const web = live("web", { ms: 142, join: { href: "https://panel.playcloud.example/", address: "panel.playcloud.example" }, history: hours.map((h, i) => ({ ...h, players: 0, online: i !== 5 })) });
+    const machine = (key: string, more: Record<string, unknown>) => ({ key, title: { en: key }, line: null, hint: null, game: "web", online: null, players: null, max: null, map: null, at: null, from: null, ms: null, join: { href: `https://${key}.example/health`, address: `${key}.example` }, ...more });
+    const nodes = { featureId: "web-fixture", servers: [machine("fra1", { online: true, ms: 38, from: "asked" }), machine("ams1", { online: false, from: "asked" }), machine("dxb1", {})] };
+    expect((await publish(page, pageWith([status("panel", web), { id: "nodes", type: "serverList", props: { columns: 3, size: "big", live: nodes } }]))).ok()).toBeTruthy();
+    await page.setViewportSize({ width: 1280, height: 1100 });
+    await page.goto("/en/publication-fixture-en");
+    const card = node(page, "panel");
+    await expect(card).toContainText("Up");
+    await expect(card.getByTestId("game-ms")).toHaveText("142 ms");
+    await expect(card.getByTestId("game-copy")).toHaveCount(0);
+    await expect(card.getByTestId("game-join")).toHaveAttribute("href", "https://panel.playcloud.example/");
+    // The day: a full bar for each hour it was up, a short one for the hour it was down.
+    await expect(card.locator('[data-gp="bar"]').nth(4)).toHaveAttribute("style", /height: 100%/);
+    await expect(card.locator('[data-gp="bar"]').nth(5)).toHaveAttribute("style", /height: 12%/);
+    const machines = node(page, "nodes").locator("article");
+    await expect(machines.nth(0).getByTestId("server-web")).toHaveText("Up 38 ms");
+    await expect(machines.nth(1).getByTestId("server-web")).toHaveText("Down");
+    await expect(machines.nth(2).getByTestId("server-web")).toHaveText("Not checked yet");
+    await expect(node(page, "nodes").getByTestId("server-copy")).toHaveCount(0);
+    await expect(node(page, "nodes").getByRole("link")).toHaveCount(0);
+  });
+
   test("the working codes, each copied by its own button; a code with no last day says so; the expired ones apart", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     expect((await publish(page, pageWith([codesList("working", "active"), codesList("over", "expired")]))).ok()).toBeTruthy();

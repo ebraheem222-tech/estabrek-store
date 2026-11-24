@@ -13,7 +13,7 @@ import { w } from "../../words";
 import type { PanelBits, SiteBlueprint, SiteSetting } from "../blueprint";
 import { SET, SERVER, STREAM_W } from "../siteWords";
 import { noticePart } from "./front";
-import { postsPart, questionsPart, teamPart } from "./lists";
+import { offersPart, postsPart, questionsPart, teamPart } from "./lists";
 import { fromSetting, shownIf, still, type Built, type Part, type SiteModule } from "./kit";
 import { applyBand } from "./apply";
 import { mcNoticePart, mcStoreBand } from "./mcstore";
@@ -27,6 +27,7 @@ import { membersBand } from "./members";
 import { lfgBand } from "./lfg";
 import { clipsBand, scheduleBand, sponsorsBand } from "./streamer";
 import { docsBand, goodsBand, releasesBand, ticketsBand } from "./studio";
+import { listingsBand } from "./listings";
 
 const when = (on: unknown, part: () => Part): Part[] => (on ? [part()] : []);
 
@@ -83,7 +84,7 @@ const robloxNoticePart: Part = (c) => {
 export function serverHome(b: Built): Part[] {
   const u = b.use;
   const ends = [...(u.mcstore || u.goods?.minecraft ? [mcNoticePart] : []), ...(u.status?.game === "roblox" ? [robloxNoticePart] : [])];
-  return [noticePart, statusHero(b), ...when(u.lfg, () => lfgBand(b)), ...when(u.servers, () => serversBand(b)), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), ...when(u.schedule, () => scheduleBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.clips, () => clipsBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.goods, () => goodsBand(b)), ...when(u.releases, () => releasesBand(b)), ...when(u.docs, () => docsBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.sponsors, () => sponsorsBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), ...when(u.tickets, () => ticketsBand(b)), discordBand, ...ends];
+  return [noticePart, statusHero(b), ...when(u.listings, () => listingsBand(b)), ...when(u.lfg, () => lfgBand(b)), ...when(u.servers, () => serversBand(b)), ...when(u.hosting && u.offers, () => offersPart(b, "plain", { featured: true })), ...when(u.wipe, () => wipeBand(b)), ...when(u.codes, () => codesBand(b)), ...when(u.schedule, () => scheduleBand(b)), joinSteps(b), ...when(u.events, () => eventsBand(b)), ...when(u.news, () => postsPart(b, "plain", 3, true)), ...when(u.roster, () => rosterBand(b)), ...when(u.clips, () => clipsBand(b)), ...when(u.apply, () => applyBand(b)), ...when(u.mcstore, () => mcStoreBand(b)), ...when(u.goods, () => goodsBand(b)), ...when(u.releases, () => releasesBand(b)), ...when(u.docs, () => docsBand(b)), ...when(u.team, () => teamPart(b, "surface")), ...when(u.streamers, () => streamersBand(b)), ...when(u.members, () => membersBand(b)), ...when(u.sponsors, () => sponsorsBand(b)), ...when(u.questions, () => questionsPart(b, "plain", 4, true)), ...when(u.tickets, () => ticketsBand(b)), discordBand, ...ends];
 }
 
 /** A server's own settings: the notice over its first page ("restart at 20:00"). */
@@ -111,10 +112,12 @@ export const STATUS: SiteModule = {
     // A community (a Roblox game, a Discord server) may also be read as either, a streamer's as their Twitch channel too; a game server's choices stay its own.
     const community = s.game === "roblox" || s.game === "discord" || s.game === "twitch" ? [{ id: "roblox", name: w("لعبة على Roblox", "A Roblox game", "משחק ב־Roblox") }, { id: "discord", name: w("سيرفر ديسكورد (مجتمع)", "A Discord server (a community)", "שרת דיסקורד (קהילה)") }] : [];
     const streamer = s.game === "twitch";
-    const choices = streamer ? [...community, { id: "twitch", name: w("قناة على Twitch (ستريمر)", "A Twitch channel (a streamer)", "ערוץ ב־Twitch (סטרימר)") }] : community;
+    const site = s.game === "web";
+    // A hosting company's status is its site or control panel (wave G7d2): read as a website.
+    const choices = site ? [{ id: "web", name: w("موقع أو لوحة تحكّم (https)", "A website or a control panel (https)", "אתר או לוח בקרה (https)") }] : streamer ? [...community, { id: "twitch", name: w("قناة على Twitch (ستريمر)", "A Twitch channel (a streamer)", "ערוץ ב־Twitch (סטרימר)") }] : community;
     return [
       { key: "game", kind: "choice", label: SERVER.game, note: SERVER.gameNote, group: STATUS_NAME, default: s.game, options: [{ id: "fivem", name: w("FiveM (GTA V)", "FiveM (GTA V)", "FiveM (GTA V)") }, { id: "minecraft", name: w("ماينكرافت Java", "Minecraft Java", "Minecraft Java") }, { id: "bedrock", name: w("ماينكرافت Bedrock", "Minecraft Bedrock", "Minecraft Bedrock") }, { id: "steam", name: w("لعبة على Steam (Rust، CS2، GMod…)", "A Steam game (Rust, CS2, GMod…)", "משחק ב־Steam (Rust, CS2, GMod…)") }, ...choices] },
-      { key: "serverAddress", kind: "text", label: SERVER.address, note: streamer ? SERVER.streamerAddressNote : community.length ? SERVER.communityAddressNote : SERVER.addressNote, group: STATUS_NAME, default: s.address },
+      { key: "serverAddress", kind: "text", label: SERVER.address, note: site ? SERVER.webAddressNote : streamer ? SERVER.streamerAddressNote : community.length ? SERVER.communityAddressNote : SERVER.addressNote, group: STATUS_NAME, default: s.address },
       // A server with no Discord (a children's one) starts with its button and band off.
       { key: "discordOn", kind: "toggle", label: SERVER.discordOn, group: STATUS_NAME, public: true, default: Boolean(s.discord.trim()) },
       { key: "discordUrl", kind: "text", label: SERVER.discordUrl, note: SERVER.discordUrlNote, group: STATUS_NAME, public: true, default: s.discord },

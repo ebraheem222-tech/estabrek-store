@@ -51,7 +51,7 @@ describe("Whole sites", () => {
           const { plan, problems } = planInstall(read.template, none(), ids);
           if (problems.length) throw new Error(`${s.key} ${lang} ${motion}: ${JSON.stringify(problems.slice(0, 4))}`);
           // Every table holds ready rows but the two the visitors write into.
-          for (const t of plan.tables) expect(t.rows.length > 0 || ["messages", "bookings", "applications", "whitelist", "appeals", "reports", "purchases", "scores", "tickets"].includes(t.key), `${s.key} ${t.key}`).toBe(true);
+          for (const t of plan.tables) expect(t.rows.length > 0 || ["messages", "bookings", "applications", "whitelist", "appeals", "reports", "purchases", "scores", "tickets", "orders", "votes"].includes(t.key), `${s.key} ${t.key}`).toBe(true);
         }
     }
     // Every site, in three languages and two motions: more than vitest's 5 seconds on a cold run.

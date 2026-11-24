@@ -6,7 +6,7 @@
 import { B, CARD, COLS, DIVIDER, H, ICON, IMG, P, SEC, STACK, eyebrow, pop, withSkin, type Ctx, type N, type Skin } from "../../build";
 import { w, type W } from "../../words";
 import { hug } from "../../partsMore";
-import { PANEL, SET, SW, STARS } from "../siteWords";
+import { HOST_W, PANEL, SET, SW, STARS } from "../siteWords";
 import { LIST, S, T, bound, callBand, f, head, pageHead, picOf, plainPic, shownIf, still, tree, type Built, type Part, type SiteModule } from "./kit";
 
 /* ---------------- The cards, each connected to its table's fields ---------------- */
@@ -112,7 +112,8 @@ function offerPage(c: Ctx, b: Built): N {
   const o = b.use.offers!;
   const first = o.rows[0];
   const k = withSkin(c, "plain");
-  const go = b.slugs.book && b.use.booking ? B(k, b.use.booking.button, b.slugs.book, "solid", still) : B(k, SW.writeUs, b.slugs.contact ?? b.slugs.home, "solid", still);
+  // A hosting company's plan is ordered on its order page (wave G7d2).
+  const go = b.use.hosting && b.slugs.order ? B(k, HOST_W.order, b.slugs.order, "solid", still) : b.slugs.book && b.use.booking ? B(k, b.use.booking.button, b.slugs.book, "solid", still) : B(k, SW.writeUs, b.slugs.contact ?? b.slugs.home, "solid", still);
   return SEC(k, [
     hug(B(k, SW.backTo, b.slugs.offers, "link", still)),
     COLS(k, [1, 1], [
@@ -148,7 +149,7 @@ function offersParts(b: Built): Part[] {
   const o = b.use.offers!;
   const skins: Skin[] = ["plain", "surface"];
   const groups = o.groups.map((g, i) => offersPart(b, skins[i % 2], { group: g }));
-  const call = b.slugs.book && b.use.booking ? callBand(b.use.booking.title, b.use.booking.sub, b.use.booking.button, b.slugs.book) : callBand(SW.contact, SW.contactSub, SW.writeUs, b.slugs.contact ?? b.slugs.home);
+  const call = b.use.hosting && b.slugs.order ? callBand(b.use.hosting.title, b.use.hosting.sub, HOST_W.order, b.slugs.order) : b.slugs.book && b.use.booking ? callBand(b.use.booking.title, b.use.booking.sub, b.use.booking.button, b.slugs.book) : callBand(SW.contact, SW.contactSub, SW.writeUs, b.slugs.contact ?? b.slugs.home);
   return [pageHead(o.title, o.sub, b.bp.look % 2 ? "plain" : "soft"), ...groups, call];
 }
 const newsParts = (b: Built): Part[] => [pageHead(b.use.news!.title, b.use.news!.sub, "soft"), postsPart(b, "plain")];

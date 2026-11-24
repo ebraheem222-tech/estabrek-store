@@ -402,7 +402,7 @@ export function ScannerPart({ part, view, onError }: { part: PanelScanner } & Co
 
 /* ---------------- A game server: its status now, the last 24 hours ---------------- */
 
-const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam", roblox: "Roblox", discord: "Discord", twitch: "Twitch" } as const;
+const GAME_NAME = { fivem: "FiveM", minecraft: "Minecraft Java", bedrock: "Minecraft Bedrock", steam: "Steam", roblox: "Roblox", discord: "Discord", twitch: "Twitch", web: "Web" } as const;
 /** How to put the link on the game server, by game. */
 const LINK_STEPS: Record<string, string[]> = {
   fivem: [

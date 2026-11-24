@@ -12,7 +12,9 @@ import css from "./GameStatusView.module.css";
 
 type Live = {
   featureId: string;
-  game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord" | "twitch";
+  game: "fivem" | "minecraft" | "bedrock" | "steam" | "roblox" | "discord" | "twitch" | "web";
+  /** How long its last answer took (a website's speed). */
+  ms?: number | null;
   online: boolean | null;
   players: number | null;
   max: number | null;
@@ -26,9 +28,9 @@ type Live = {
 };
 
 const WORDS = {
-  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت هلّق", copy: "انسخ العنوان", copied: "انتسخ", last: "آخر 24 ساعة", sample: "حالة السيرفر بتطلع هون", discordNow: "هلّق على الديسكورد", discordOf: "من", playing: "عم يلعبوا هلّق", online: "أونلاين", members: "عضو", inviteOff: "رابط الدعوة ما بيشتغل", live: "لايف هلّق", notLive: "مش لايف هلّق", watching: "عم يتفرّجوا" },
-  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join now", copy: "Copy the address", copied: "Copied", last: "The last 24 hours", sample: "The server's status shows here", discordNow: "on Discord now", discordOf: "of", playing: "playing now", online: "online", members: "members", inviteOff: "The invite doesn't work", live: "Live now", notLive: "Not live right now", watching: "watching" },
-  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר עכשיו", copy: "להעתיק את הכתובת", copied: "הועתק", last: "24 השעות האחרונות", sample: "מצב השרת יופיע כאן", discordNow: "ב-Discord עכשיו", discordOf: "מתוך", playing: "משחקים עכשיו", online: "מחוברים", members: "חברים", inviteOff: "קישור ההזמנה לא עובד", live: "בשידור חי עכשיו", notLive: "לא בשידור כרגע", watching: "צופים" },
+  ar: { on: "شغّال", off: "طافي", unknown: "لسّا ما انسأل", players: "لاعب", join: "فوت هلّق", copy: "انسخ العنوان", copied: "انتسخ", last: "آخر 24 ساعة", sample: "حالة السيرفر بتطلع هون", discordNow: "هلّق على الديسكورد", discordOf: "من", playing: "عم يلعبوا هلّق", online: "أونلاين", members: "عضو", inviteOff: "رابط الدعوة ما بيشتغل", live: "لايف هلّق", notLive: "مش لايف هلّق", watching: "عم يتفرّجوا", up: "شغّال", down: "واقف", uptime: "آخر 24 ساعة: شغّال ولا واقف" },
+  en: { on: "Online", off: "Offline", unknown: "Not checked yet", players: "players", join: "Join now", copy: "Copy the address", copied: "Copied", last: "The last 24 hours", sample: "The server's status shows here", discordNow: "on Discord now", discordOf: "of", playing: "playing now", online: "online", members: "members", inviteOff: "The invite doesn't work", live: "Live now", notLive: "Not live right now", watching: "watching", up: "Up", down: "Down", uptime: "The last 24 hours: up or down" },
+  he: { on: "מחובר", off: "כבוי", unknown: "עוד לא נבדק", players: "שחקנים", join: "להתחבר עכשיו", copy: "להעתיק את הכתובת", copied: "הועתק", last: "24 השעות האחרונות", sample: "מצב השרת יופיע כאן", discordNow: "ב-Discord עכשיו", discordOf: "מתוך", playing: "משחקים עכשיו", online: "מחוברים", members: "חברים", inviteOff: "קישור ההזמנה לא עובד", live: "בשידור חי עכשיו", notLive: "לא בשידור כרגע", watching: "צופים", up: "פועל", down: "לא פועל", uptime: "24 השעות האחרונות: פועל או לא" },
 } as const;
 
 const isLive = (v: unknown): v is Live => !!v && typeof v === "object" && typeof (v as Live).featureId === "string" && Array.isArray((v as Live).history);
@@ -61,9 +63,10 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
 
   const state = !live || live.online === null ? "unknown" : live.online ? "on" : "off";
   // A Roblox game or a Discord server is reached by its link alone: nothing to copy.
-  const linkOnly = live?.game === "roblox" || live?.game === "discord" || live?.game === "twitch";
+  const linkOnly = live?.game === "roblox" || live?.game === "discord" || live?.game === "twitch" || live?.game === "web";
+  const web = live?.game === "web";
   /** The state's words: a stream is live or not; a dead invite says so. */
-  const stateWords = (l: Live) => (l.game === "twitch" && state !== "unknown" ? (state === "on" ? t.live : t.notLive) : state === "off" && l.game === "discord" ? t.inviteOff : t[state]);
+  const stateWords = (l: Live) => (l.game === "web" && state !== "unknown" ? (state === "on" ? t.up : t.down) : l.game === "twitch" && state !== "unknown" ? (state === "on" ? t.live : t.notLive) : state === "off" && l.game === "discord" ? t.inviteOff : t[state]);
   const n = (v: number) => v.toLocaleString("en");
   // The chart's top: the server's most players; a Discord's members are far more than are ever on, so its own busiest hour.
   const most = Math.max(1, live?.game === "discord" || live?.game === "twitch" ? 0 : live?.max ?? 0, ...(live?.history ?? []).map((h) => h.players ?? 0));
@@ -83,6 +86,11 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
       <div className={css.top}>
         <span className={css.dot} aria-hidden="true" />
         <strong className={css.state}>{live ? stateWords(live) : t.sample}</strong>
+        {web && live?.online && typeof live.ms === "number" ? (
+          <span className={css.players} data-testid="game-ms" data-gp="num">
+            <bdi>{n(live.ms)}</bdi> <span>ms</span>
+          </span>
+        ) : null}
         {live?.online && live.players !== null ? (
           // A community's counts read in the page's own direction, each number kept with its word (a line may wrap between them).
           <span className={css.players} dir={linkOnly ? undefined : "ltr"} data-testid="game-players" data-gp="num">
@@ -124,9 +132,9 @@ export function GameStatusView({ live: first, lang, joinLabel, copyLabel, chart,
         </div>
       ) : null}
       {chart && live ? (
-        <div className={css.chart} role="img" aria-label={t.last} dir="ltr">
+        <div className={css.chart} role="img" aria-label={web ? t.uptime : t.last} dir="ltr">
           {live.history.map((h) => (
-            <span key={h.hour} className={css.bar} data-gp="bar" data-off={h.online === false ? "" : undefined} style={{ height: `${h.players === null ? 4 : Math.max(4, (h.players / most) * 100)}%` }} title={`${new Date(h.hour).getHours()}:00 · ${h.players ?? "—"}`} />
+            <span key={h.hour} className={css.bar} data-gp="bar" data-off={h.online === false ? "" : undefined} style={{ height: `${web ? (h.online ? 100 : h.online === false ? 12 : 4) : h.players === null ? 4 : Math.max(4, (h.players / most) * 100)}%` }} title={`${new Date(h.hour).getHours()}:00 · ${h.players ?? "—"}`} />
           ))}
         </div>
       ) : null}
