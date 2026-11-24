@@ -151,7 +151,7 @@ const SliderThemesDemo: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-12">
+      <div className="bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">🎠 Slider & Carousel Themes</h1>
           <p className="text-indigo-100 text-lg">100 Ready-to-Use Slider Components</p>
@@ -210,7 +210,7 @@ const SliderThemesDemo: React.FC = () => {
             placeholder="🔍 Search sliders by name, category, or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-xs"
           />
         </div>
 

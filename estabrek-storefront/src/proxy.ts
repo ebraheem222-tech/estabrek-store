@@ -32,7 +32,7 @@ const remember = (res: NextResponse, lang: string, had: string | undefined) => {
   return res;
 };
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const first = pathname.split("/")[1];
   // Public sample pages let a merchant inspect every template language before enabling it in the shop.

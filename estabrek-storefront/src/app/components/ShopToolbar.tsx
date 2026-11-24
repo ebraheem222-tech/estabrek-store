@@ -69,14 +69,14 @@ export function ShopToolbar({
   }
 
   return (
-    <div className="sticky top-[72px] z-20 -mx-4 border-y border-[var(--border)] bg-[var(--bg)]/90 px-4 py-3 backdrop-blur md:static md:mx-0 md:border md:rounded-2xl md:bg-[var(--surface)]">
+    <div className="sticky top-[72px] z-20 -mx-4 border-y border-(--border) bg-(--bg)/90 px-4 py-3 backdrop-blur-sm md:static md:mx-0 md:border md:rounded-2xl md:bg-(--surface)">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-[var(--muted)]">
-          <span className="font-semibold text-[var(--text)]">{total}</span> منتج
+        <div className="text-sm text-(--muted)">
+          <span className="font-semibold text-(--text)">{total}</span> منتج
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs text-[var(--muted)]">الترتيب</label>
+          <label className="text-xs text-(--muted)">الترتيب</label>
           <select
             value={sort}
             onChange={(e) => {
@@ -86,7 +86,7 @@ export function ShopToolbar({
               onFiltersChange?.(next);
               push(next);
             }}
-            className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+            className="h-10 rounded-xl border border-(--border) bg-(--surface) px-3 text-sm text-(--text) outline-hidden focus:ring-2 focus:ring-(--accent)/40"
           >
             {SORTS.map((s) => (
               <option key={s.key} value={s.key}>
@@ -96,7 +96,7 @@ export function ShopToolbar({
           </select>
 
           {!hideModeToggle && (
-            <div className="ms-2 hidden sm:flex rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
+            <div className="ms-2 hidden sm:flex rounded-xl border border-(--border) bg-(--surface) p-1">
               <button
                 type="button"
                 onClick={() => {
@@ -108,8 +108,8 @@ export function ShopToolbar({
                 }}
                 className={cx(
                   "h-9 rounded-lg px-3 text-sm",
-                  !lm && "bg-[var(--text)] text-[var(--bg)]",
-                  lm && "text-[var(--muted)] hover:opacity-90"
+                  !lm && "bg-(--text) text-(--bg)",
+                  lm && "text-(--muted) hover:opacity-90"
                 )}
                 aria-pressed={!lm}
               >
@@ -126,8 +126,8 @@ export function ShopToolbar({
                 }}
                 className={cx(
                   "h-9 rounded-lg px-3 text-sm",
-                  lm && "bg-[var(--text)] text-[var(--bg)]",
-                  !lm && "text-[var(--muted)] hover:opacity-90"
+                  lm && "bg-(--text) text-(--bg)",
+                  !lm && "text-(--muted) hover:opacity-90"
                 )}
                 aria-pressed={lm}
               >

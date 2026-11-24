@@ -14,7 +14,8 @@ const cors = (req: NextRequest): Record<string, string> => {
   return studioOrigins().includes(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : { Vary: "Origin" };
 };
 
-export function GET(req: NextRequest, { params }: { params: { kind: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ kind: string }> }) {
+  const params = await props.params;
   const page = (req.nextUrl.searchParams.get("page") ?? "home") as KitPage;
   const sections = (KIT_PAGES as readonly string[]).includes(page) ? kitPage(params.kind, page) : null;
   if (!sections) return NextResponse.json({ error: "No such page for this design yet" }, { status: 404, headers: cors(req) });

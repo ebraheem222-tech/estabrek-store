@@ -113,7 +113,7 @@ export default function CheckoutSuccessClient() {
             </div>
           ) : null}
           <div className="flex items-center justify-center gap-3 pt-3">
-            <Link href="/shop" className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium">
+            <Link href="/shop" className="px-4 py-2 rounded-xl bg-(--accent) text-white text-sm font-medium">
               متابعة التسوق
             </Link>
             <Link href="/" className="px-4 py-2 rounded-xl border border-white/10 text-sm text-white/80 hover:bg-white/5">
@@ -128,7 +128,7 @@ export default function CheckoutSuccessClient() {
           <div className="text-lg font-semibold text-amber-400">تعذر إكمال الدفع</div>
           <div className="text-sm text-white/80">{message}</div>
           <div className="flex items-center justify-center gap-3 pt-3">
-            <Link href="/cart" className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium">
+            <Link href="/cart" className="px-4 py-2 rounded-xl bg-(--accent) text-white text-sm font-medium">
               العودة للسلة
             </Link>
             <Link href="/shop" className="px-4 py-2 rounded-xl border border-white/10 text-sm text-white/80 hover:bg-white/5">

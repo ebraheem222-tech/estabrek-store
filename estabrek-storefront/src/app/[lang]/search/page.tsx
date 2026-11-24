@@ -13,7 +13,9 @@ import { tr } from "@/lib/words";
 type SP = Record<string, string | string[] | undefined>;
 export const revalidate = 60;
 
-export async function generateMetadata({ params, searchParams }: { params: { lang: string }; searchParams: SP }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ lang: string }>; searchParams: Promise<SP> }): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   const f = normalizeFiltersFromSearchParams(searchParams);
   const qs = buildCanonicalQuery(f);
@@ -31,7 +33,9 @@ export async function generateMetadata({ params, searchParams }: { params: { lan
   };
 }
 
-export default async function SearchPage({ params, searchParams }: { params: { lang: string }; searchParams: SP }) {
+export default async function SearchPage(props: { params: Promise<{ lang: string }>; searchParams: Promise<SP> }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   // Ask the catalog straight away: it is the slow request (≈1–2 s on the hosted
   // API), and it used to wait for the settings and the CMS page lookup first.

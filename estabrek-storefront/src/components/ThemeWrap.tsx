@@ -248,7 +248,7 @@ export function ThemeWrap({
       data-glass-effects={glassEnabled ? "1" : "0"}
       data-gallery-theme-active={!disableGalleryBackdrop && websiteTheme && websiteTheme.id.startsWith("theme-gallery-") ? "1" : "0"}
       className={
-        "relative isolate min-h-screen w-full bg-[var(--bg)] text-[var(--text)] overflow-x-hidden" +
+        "relative isolate min-h-screen w-full bg-(--bg) text-(--text) overflow-x-hidden" +
         (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
       }
       style={

@@ -4,7 +4,8 @@ import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
 import { routeLang, seoAlternates } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
 
-export async function generateMetadata({ params }: { params: { lang: string } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  const params = await props.params;
   return { title: tr(routeLang(params), "المفضلة", "Wishlist") };
 }
 

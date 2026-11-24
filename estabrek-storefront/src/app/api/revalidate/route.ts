@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
   const tags = asList(payload.tags ?? req.nextUrl.searchParams.getAll("tag"));
   const paths = asList(payload.paths ?? req.nextUrl.searchParams.getAll("path"));
 
-  for (const tag of tags) revalidateTag(tag);
+  // At once, as before Next 16 (the next visit reads fresh; "max" would serve the old page while it refreshes).
+  for (const tag of tags) revalidateTag(tag, { expire: 0 });
   for (const path of paths) {
     revalidatePath(path);
     // Each language is its own page (app/[lang]/…).

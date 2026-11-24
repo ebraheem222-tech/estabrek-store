@@ -72,7 +72,7 @@ export const Hero3: React.FC<HeroTemplateProps> = (props) => (
         </div>
       </div>
       <div className="relative">
-        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-2xl shadow-2xl" loading="eager" decoding="async" /> : <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center"><span className="text-gray-400">Image</span></div>}
+        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-2xl shadow-2xl" loading="eager" decoding="async" /> : <div className="aspect-video bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center"><span className="text-gray-400">Image</span></div>}
       </div>
     </div>
   </section>
@@ -106,7 +106,7 @@ export const Hero5: React.FC<HeroTemplateProps> = (props) => (
 
 // 6. Basic Gradient
 export const Hero6: React.FC<HeroTemplateProps> = (props) => (
-  <section style={props.style} className={`py-24 px-4 bg-gradient-to-r from-blue-600 to-purple-600 ${props.className || ''}`}>
+  <section style={props.style} className={`py-24 px-4 bg-linear-to-r from-blue-600 to-purple-600 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -138,7 +138,7 @@ export const Hero8: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`py-20 px-4 bg-gray-100 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
       <div className="order-2 md:order-1">
-        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-3xl" loading="eager" decoding="async" /> : <div className="aspect-square bg-gradient-to-br from-blue-200 to-purple-200 rounded-3xl"></div>}
+        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-3xl" loading="eager" decoding="async" /> : <div className="aspect-square bg-linear-to-br from-blue-200 to-purple-200 rounded-3xl"></div>}
       </div>
       <div className="order-1 md:order-2">
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded-full">{props.badge}</span>}
@@ -195,9 +195,9 @@ export const Hero10: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero13: React.FC<HeroTemplateProps> = (props) => (
-  <section style={props.style} className={`py-24 px-4 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 ${props.className || ''}`}>
+  <section style={props.style} className={`py-24 px-4 bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
-      {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 backdrop-blur-sm rounded-full">{props.badge}</span>}
+      {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 backdrop-blur-xs rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">{props.headline}</h1>
       {props.description && <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">{props.description}</p>}
       <div className="flex flex-wrap justify-center gap-4">
@@ -216,10 +216,10 @@ export const Hero14: React.FC<HeroTemplateProps> = (props) => (
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-cyan-500/20 text-cyan-400 rounded-full border border-cyan-500/30">{props.badge}</span>}
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">{props.headline}</h1>
         {props.description && <p className="text-lg text-gray-400 mb-8">{props.description}</p>}
-        {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg">{props.primaryCta.text}</button>}
+        {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-8 py-3 bg-linear-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg">{props.primaryCta.text}</button>}
       </div>
       <div className="relative">
-        <div className="aspect-video bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-2xl border border-cyan-500/20 flex items-center justify-center">
+        <div className="aspect-video bg-linear-to-br from-cyan-500/10 to-blue-500/10 rounded-2xl border border-cyan-500/20 flex items-center justify-center">
           <span className="text-cyan-500">AI Visualization</span>
         </div>
       </div>
@@ -239,7 +239,7 @@ export const Hero15: React.FC<HeroTemplateProps> = (props) => (
         </div>
         <h1 className="text-3xl md:text-4xl font-mono text-white mb-4">{props.headline}</h1>
         {props.description && <p className="text-gray-400 font-mono mb-8">{props.description}</p>}
-        {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-6 py-2 bg-green-500 text-black font-mono font-medium rounded">{props.primaryCta.text}</button>}
+        {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-6 py-2 bg-green-500 text-black font-mono font-medium rounded-sm">{props.primaryCta.text}</button>}
       </div>
     </div>
   </section>
@@ -254,10 +254,10 @@ export const Hero37: React.FC<HeroTemplateProps> = (props) => (
     <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl"></div>
     <div className="relative max-w-4xl mx-auto text-center">
-      {props.badge && <span className="inline-block px-6 py-2 mb-8 text-sm font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-full">{props.badge}</span>}
-      <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 mb-6">{props.headline}</h1>
+      {props.badge && <span className="inline-block px-6 py-2 mb-8 text-sm font-bold bg-linear-to-r from-purple-500 to-cyan-500 text-white rounded-full">{props.badge}</span>}
+      <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-pink-500 to-cyan-400 mb-6">{props.headline}</h1>
       {props.description && <p className="text-xl text-gray-400 mb-10">{props.description}</p>}
-      {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-10 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold rounded-lg hover:shadow-[0_0_40px_rgba(168,85,247,0.5)] transition-all">{props.primaryCta.text}</button>}
+      {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-10 py-4 bg-linear-to-r from-purple-600 to-cyan-600 text-white font-bold rounded-lg hover:shadow-[0_0_40px_rgba(168,85,247,0.5)] transition-all">{props.primaryCta.text}</button>}
     </div>
   </section>
 );
@@ -274,7 +274,7 @@ export const Hero38: React.FC<HeroTemplateProps> = (props) => (
           {props.secondaryCta && <button onClick={props.secondaryCta.onClick} className="px-8 py-3 border border-red-600 text-red-500 font-bold uppercase">{props.secondaryCta.text}</button>}
         </div>
       </div>
-      <div className="relative aspect-video bg-gradient-to-br from-red-900/30 to-black rounded-xl border border-red-900/50 flex items-center justify-center">
+      <div className="relative aspect-video bg-linear-to-br from-red-900/30 to-black rounded-xl border border-red-900/50 flex items-center justify-center">
         <span className="text-red-500">LIVE</span>
       </div>
     </div>
@@ -305,7 +305,7 @@ export const Hero25: React.FC<HeroTemplateProps> = (props) => (
 export const Hero26: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`relative min-h-screen flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0 bg-black">
-      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover opacity-60" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black"></div>}
+      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover opacity-60" loading="eager" decoding="async" /> : <div className="w-full h-full bg-linear-to-br from-gray-800 to-black"></div>}
     </div>
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
       {props.badge && <span className="inline-block px-6 py-2 mb-8 text-sm tracking-[0.3em] uppercase border border-white/30">{props.badge}</span>}
@@ -324,7 +324,7 @@ export const Hero27: React.FC<HeroTemplateProps> = (props) => (
         {props.description && <p className="text-gray-500 mb-6">{props.description}</p>}
         {props.primaryCta && <button onClick={props.primaryCta.onClick} className="text-gray-900 font-medium underline underline-offset-4">{props.primaryCta.text} →</button>}
       </div>
-      <div className="aspect-[4/3] bg-gray-100 rounded-lg"></div>
+      <div className="aspect-4/3 bg-gray-100 rounded-lg"></div>
     </div>
   </section>
 );
@@ -337,12 +337,12 @@ export const Hero47: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`py-20 px-4 bg-slate-50 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
-        {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded">{props.badge}</span>}
+        {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded-sm">{props.badge}</span>}
         <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 leading-tight">{props.headline}</h1>
         {props.description && <p className="text-lg text-slate-600 mb-8">{props.description}</p>}
         <div className="flex gap-4">
-          {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-8 py-3 bg-blue-600 text-white font-medium rounded">{props.primaryCta.text}</button>}
-          {props.secondaryCta && <button onClick={props.secondaryCta.onClick} className="px-8 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded">{props.secondaryCta.text}</button>}
+          {props.primaryCta && <button onClick={props.primaryCta.onClick} className="px-8 py-3 bg-blue-600 text-white font-medium rounded-sm">{props.primaryCta.text}</button>}
+          {props.secondaryCta && <button onClick={props.secondaryCta.onClick} className="px-8 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-sm">{props.secondaryCta.text}</button>}
         </div>
         {props.stats && (
           <div className="grid grid-cols-3 gap-8 pt-10 mt-10 border-t border-slate-200">
@@ -355,7 +355,7 @@ export const Hero47: React.FC<HeroTemplateProps> = (props) => (
           </div>
         )}
       </div>
-      <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-slate-100 rounded-lg"></div>
+      <div className="aspect-4/3 bg-linear-to-br from-blue-100 to-slate-100 rounded-lg"></div>
     </div>
   </section>
 );
@@ -382,8 +382,8 @@ export const Hero48: React.FC<HeroTemplateProps> = (props) => (
 
 export const Hero59: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`relative py-32 px-4 bg-black overflow-hidden ${props.className || ''}`}>
-    <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur-3xl opacity-30"></div>
-    <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl opacity-30"></div>
+    <div className="absolute top-20 left-10 w-64 h-64 bg-linear-to-r from-yellow-400 to-orange-500 rounded-full blur-3xl opacity-30"></div>
+    <div className="absolute bottom-20 right-10 w-96 h-96 bg-linear-to-r from-purple-400 to-pink-500 rounded-full blur-3xl opacity-30"></div>
     <div className="relative max-w-6xl mx-auto text-center">
       <h1 className="text-6xl md:text-8xl font-black text-white mb-8">{props.headline}</h1>
       {props.description && <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">{props.description}</p>}
@@ -409,7 +409,7 @@ export const Hero60: React.FC<HeroTemplateProps> = (props) => (
 export const Hero71: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`relative min-h-[80vh] flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0">
-      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-amber-900 to-orange-900"></div>}
+      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-linear-to-br from-amber-900 to-orange-900"></div>}
       <div className="absolute inset-0 bg-black/50"></div>
     </div>
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
@@ -430,7 +430,7 @@ export const Hero71: React.FC<HeroTemplateProps> = (props) => (
 
 export const Hero81: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`relative min-h-screen flex items-center ${props.className || ''}`}>
-    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent z-10"></div>
+    <div className="absolute inset-0 bg-linear-to-r from-black via-black/70 to-transparent z-10"></div>
     <div className="absolute inset-0 bg-gray-900">
       {props.imageSrc && <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />}
     </div>
@@ -451,20 +451,20 @@ export const Hero81: React.FC<HeroTemplateProps> = (props) => (
 export const Hero89: React.FC<HeroTemplateProps> = (props) => (
   <section style={props.style} className={`relative min-h-[90vh] flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0">
-      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-sky-900 to-blue-900"></div>}
+      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-linear-to-br from-sky-900 to-blue-900"></div>}
       <div className="absolute inset-0 bg-black/40"></div>
     </div>
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
-      {props.badge && <span className="inline-block px-6 py-2 mb-8 text-sm tracking-widest uppercase bg-white/10 backdrop-blur-sm rounded-full">{props.badge}</span>}
+      {props.badge && <span className="inline-block px-6 py-2 mb-8 text-sm tracking-widest uppercase bg-white/10 backdrop-blur-xs rounded-full">{props.badge}</span>}
       <h1 className="text-5xl md:text-7xl font-light mb-6">{props.headline}</h1>
       {props.description && <p className="text-xl text-white/80 mb-10">{props.description}</p>}
       {props.children || (
         <div className="bg-white rounded-lg p-4 max-w-3xl mx-auto shadow-2xl">
           <div className="grid md:grid-cols-4 gap-4">
-            <input type="text" placeholder="Destination" className="px-4 py-3 bg-gray-100 rounded text-gray-800" />
-            <input type="text" placeholder="Check In" className="px-4 py-3 bg-gray-100 rounded text-gray-800" />
-            <input type="text" placeholder="Check Out" className="px-4 py-3 bg-gray-100 rounded text-gray-800" />
-            <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded">{props.primaryCta?.text || 'Search'}</button>
+            <input type="text" placeholder="Destination" className="px-4 py-3 bg-gray-100 rounded-sm text-gray-800" />
+            <input type="text" placeholder="Check In" className="px-4 py-3 bg-gray-100 rounded-sm text-gray-800" />
+            <input type="text" placeholder="Check Out" className="px-4 py-3 bg-gray-100 rounded-sm text-gray-800" />
+            <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded-sm">{props.primaryCta?.text || 'Search'}</button>
           </div>
         </div>
       )}
@@ -477,7 +477,7 @@ export const Hero89: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero97: React.FC<HeroTemplateProps> = (props) => (
-  <section style={props.style} className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 ${props.className || ''}`}>
+  <section style={props.style} className={`min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 via-purple-900 to-gray-900 ${props.className || ''}`}>
     <div className="max-w-2xl mx-auto px-4 text-center text-white">
       <div className="text-6xl mb-8">🚀</div>
       <h1 className="text-5xl md:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -491,7 +491,7 @@ export const Hero97: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero98: React.FC<HeroTemplateProps> = (props) => (
-  <section style={props.style} className={`py-24 px-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 ${props.className || ''}`}>
+  <section style={props.style} className={`py-24 px-4 bg-linear-to-br from-indigo-900 via-purple-900 to-pink-900 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -516,7 +516,7 @@ export const Hero98: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero99: React.FC<HeroTemplateProps> = (props) => (
-  <section style={props.style} className={`py-20 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-linear-to-br from-blue-600 to-indigo-700 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div className="text-white">
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 rounded-full">{props.badge}</span>}
@@ -555,7 +555,7 @@ export const Hero100: React.FC<HeroTemplateProps> = (props) => (
       {props.description && <p className="text-lg text-gray-400 mb-8">{props.description}</p>}
       <div className="bg-gray-800 rounded-xl p-6">
         <input type="email" placeholder="Enter your email address" className="w-full px-5 py-3 bg-gray-700 text-white rounded-lg mb-4 border border-gray-600" />
-        <button className="w-full px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg">{props.primaryCta?.text || 'Subscribe'}</button>
+        <button className="w-full px-8 py-3 bg-linear-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg">{props.primaryCta?.text || 'Subscribe'}</button>
         <p className="text-sm text-gray-500 mt-4">No spam. Unsubscribe at any time.</p>
       </div>
     </div>

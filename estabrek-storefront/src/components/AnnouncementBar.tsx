@@ -15,7 +15,7 @@ export function AnnouncementBar({ site }: { site: SitePublicSettings }) {
   );
 
   return (
-    <div className="w-full bg-[color:var(--surface)] text-[color:var(--text)]">
+    <div className="w-full bg-(--surface) text-(--text)">
       {a.linkUrl ? (
         <Link href={a.linkUrl} className="block hover:opacity-90">
           {content}

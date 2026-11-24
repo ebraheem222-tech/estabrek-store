@@ -421,7 +421,7 @@ export const PricingModernGlass: React.FC<PricingTableProps> = ({
   className = '',
 }) => {
   return (
-    <section className={`py-16 px-4 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 ${className}`}>
+    <section className={`py-16 px-4 bg-linear-to-br from-purple-600 via-blue-600 to-cyan-500 ${className}`}>
       <div className="max-w-6xl mx-auto">
         {(title || subtitle || description) && (
           <div className="text-center mb-12">
@@ -507,7 +507,7 @@ export const PricingModernDark: React.FC<PricingTableProps> = ({
               }`}
             >
               {plan.badge && (
-                <span className="inline-block px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium rounded-full mb-4">
+                <span className="inline-block px-3 py-1 bg-linear-to-r from-blue-500 to-purple-500 text-white text-sm font-medium rounded-full mb-4">
                   {plan.badge}
                 </span>
               )}
@@ -537,7 +537,7 @@ export const PricingModernDark: React.FC<PricingTableProps> = ({
                 onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90'
+                    ? 'bg-linear-to-r from-blue-500 to-purple-500 text-white hover:opacity-90'
                     : 'bg-gray-700 text-white hover:bg-gray-600'
                 }`}
               >
@@ -582,17 +582,17 @@ export const PricingTechGradient: React.FC<PricingTableProps> = ({
               className="relative bg-gray-900 rounded-2xl p-8 border border-gray-800 overflow-hidden"
             >
               {/* Gradient top bar */}
-              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradients[index % gradients.length]}`} />
+              <div className={`absolute top-0 left-0 right-0 h-1 bg-linear-to-r ${gradients[index % gradients.length]}`} />
               
               {plan.badge && (
-                <span className={`inline-block px-3 py-1 bg-gradient-to-r ${gradients[index % gradients.length]} text-white text-sm font-medium rounded-full mb-4`}>
+                <span className={`inline-block px-3 py-1 bg-linear-to-r ${gradients[index % gradients.length]} text-white text-sm font-medium rounded-full mb-4`}>
                   {plan.badge}
                 </span>
               )}
               <h3 className="text-xl font-bold text-white">{plan.name}</h3>
               {plan.description && <p className="text-gray-400 mt-1">{plan.description}</p>}
               <div className="mt-6">
-                <span className={`text-4xl font-bold bg-gradient-to-r ${gradients[index % gradients.length]} bg-clip-text text-transparent`}>
+                <span className={`text-4xl font-bold bg-linear-to-r ${gradients[index % gradients.length]} bg-clip-text text-transparent`}>
                   {plan.currency || '$'}{plan.price}
                 </span>
                 {plan.period && <span className="text-gray-400">/{plan.period}</span>}
@@ -610,7 +610,7 @@ export const PricingTechGradient: React.FC<PricingTableProps> = ({
               </ul>
               <button
                 onClick={() => handlePlanSelect(plan)}
-                className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold bg-gradient-to-r ${gradients[index % gradients.length]} text-white hover:opacity-90 transition-opacity`}
+                className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold bg-linear-to-r ${gradients[index % gradients.length]} text-white hover:opacity-90 transition-opacity`}
               >
                 {plan.buttonText || 'Get Started'}
               </button>
@@ -642,7 +642,7 @@ export const PricingGamingNeon: React.FC<PricingTableProps> = ({
         {(title || subtitle || description) && (
           <div className="text-center mb-12">
             {subtitle && <p className="text-cyan-400 font-semibold mb-2">{subtitle}</p>}
-            {title && <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 mb-4">{title}</h2>}
+            {title && <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 mb-4">{title}</h2>}
             {description && <p className="text-gray-400 max-w-2xl mx-auto">{description}</p>}
           </div>
         )}

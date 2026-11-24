@@ -1,6 +1,6 @@
 import { Fragment, Suspense, createElement, lazy, type ComponentType } from "react";
 import * as ReactDOM from "react-dom";
-import { getExpectedRequestStore } from "next/dist/client/components/request-async-storage.external";
+import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external";
 
 /*
  * A part of a page in a script of its own, drawn on the server, that wakes up without leaving the page
@@ -28,8 +28,9 @@ const found = new WeakMap<object, Map<string, string[]>>();
 
 /** The part's files (its scripts and CSS), from the chunk map of the page being drawn on the server. */
 function filesOf(name: string): string[] {
-  let store: ReturnType<typeof getExpectedRequestStore>;
-  try { store = getExpectedRequestStore("early part"); } catch { return []; }
+  // Next keeps the page's chunk map on its work store while it draws a page (Next 16).
+  const store = workAsyncStorage.getStore();
+  if (!store) return [];
   const manifest = store.reactLoadableManifest as Record<string, { files: readonly string[] }> | undefined;
   if (!manifest) return [];
   let byName = found.get(manifest);

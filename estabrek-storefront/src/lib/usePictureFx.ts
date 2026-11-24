@@ -9,7 +9,7 @@ import { pointerFxOf } from "../../../shared/pictureFx";
  * `kind` is the setting as it was read (anything that isn't one of those kinds means no effect); `picture` is the
  * picture the host shows now: the effect starts again when it changes. Nothing for whoever asked for less motion.
  */
-export function usePictureFx(host: RefObject<HTMLElement>, kind: string | null | undefined, picture: string | null | undefined) {
+export function usePictureFx(host: RefObject<HTMLElement | null>, kind: string | null | undefined, picture: string | null | undefined) {
   useEffect(() => {
     const el = host.current;
     const fx = pointerFxOf(kind);

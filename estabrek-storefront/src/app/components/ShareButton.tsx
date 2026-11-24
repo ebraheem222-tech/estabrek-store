@@ -34,7 +34,7 @@ export default function ShareButton({ title }: { title?: string }) {
       <button
         type="button"
         onClick={onShare}
-        className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/[0.08]"
+        className="rounded-xl border border-white/10 bg-white/4 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/8"
       >
         مشاركة
       </button>

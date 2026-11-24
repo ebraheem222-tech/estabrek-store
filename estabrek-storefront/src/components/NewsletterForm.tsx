@@ -110,7 +110,7 @@ export default function NewsletterForm({
   }
 
   return (
-    <section className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6">
+    <section className="rounded-3xl border border-white/8 bg-white/3 p-6">
       <div className="mx-auto max-w-2xl">
         {titleData ? (
           <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
@@ -125,7 +125,7 @@ export default function NewsletterForm({
 
         <form onSubmit={submit} className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
-            className="h-11 flex-1 rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 outline-none focus:border-white/30"
+            className="h-11 flex-1 rounded-xl border border-white/12 bg-white/4 px-4 outline-hidden focus:border-white/30"
             placeholder={placeholder || "اكتب بريدك الإلكتروني"}
             value={email}
             onChange={(e) => setEmail(e.target.value)}

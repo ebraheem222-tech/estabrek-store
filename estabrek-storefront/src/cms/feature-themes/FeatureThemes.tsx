@@ -272,7 +272,7 @@ export const FeatureBasicGridIcons: React.FC<FeatureSectionProps> = ({
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns} gap-8`}>
           {features.map((feature, index) => (
             <div key={feature.id} className="flex gap-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-lg flex items-center justify-center">
+              <div className="shrink-0 w-12 h-12 bg-blue-600 text-white rounded-lg flex items-center justify-center">
                 {feature.icon || iconArray[index % iconArray.length]}
               </div>
               <div>
@@ -309,7 +309,7 @@ export const FeatureCardsElevated: React.FC<FeatureSectionProps> = ({
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns} gap-8`}>
           {features.map((feature, index) => (
             <div key={feature.id} className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl flex items-center justify-center mb-4">
+              <div className="w-14 h-14 bg-linear-to-br from-blue-500 to-purple-600 text-white rounded-xl flex items-center justify-center mb-4">
                 {feature.icon || iconArray[index % iconArray.length]}
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -337,7 +337,7 @@ export const FeatureCardsGlass: React.FC<FeatureSectionProps> = ({
   className = '',
 }) => {
   return (
-    <section className={`py-16 px-4 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 ${className}`}>
+    <section className={`py-16 px-4 bg-linear-to-br from-purple-600 via-blue-600 to-cyan-500 ${className}`}>
       <div className="max-w-6xl mx-auto">
         {(title || subtitle || description) && (
           <div className="text-center mb-12">
@@ -388,7 +388,7 @@ export const FeatureModernBento: React.FC<FeatureSectionProps> = ({
                 key={feature.id} 
                 className={`bg-gray-100 rounded-2xl p-6 flex flex-col justify-between ${isLarge ? 'md:col-span-2 md:row-span-2' : ''}`}
               >
-                <div className="w-12 h-12 bg-white text-gray-900 rounded-xl flex items-center justify-center shadow-sm">
+                <div className="w-12 h-12 bg-white text-gray-900 rounded-xl flex items-center justify-center shadow-xs">
                   {feature.icon || iconArray[index % iconArray.length]}
                 </div>
                 <div>
@@ -435,7 +435,7 @@ export const FeatureTechGradient: React.FC<FeatureSectionProps> = ({
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns} gap-6`}>
           {features.map((feature, index) => (
             <div key={feature.id} className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-colors">
-              <div className={`w-12 h-12 bg-gradient-to-br ${gradients[index % gradients.length]} rounded-lg flex items-center justify-center text-white mb-4`}>
+              <div className={`w-12 h-12 bg-linear-to-br ${gradients[index % gradients.length]} rounded-lg flex items-center justify-center text-white mb-4`}>
                 {feature.icon || iconArray[index % iconArray.length]}
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
@@ -501,7 +501,7 @@ export const FeatureEcommerceBenefits: React.FC<FeatureSectionProps> = ({
         <div className="flex flex-wrap justify-center gap-8 md:gap-16">
           {features.map((feature, index) => (
             <div key={feature.id} className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-sm">
+              <div className="w-10 h-10 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-xs">
                 {feature.icon || iconArray[index % iconArray.length]}
               </div>
               <span className="text-gray-700 font-medium">{feature.title}</span>
@@ -537,7 +537,7 @@ export const FeatureGamingNeon: React.FC<FeatureSectionProps> = ({
         {(title || subtitle || description) && (
           <div className="text-center mb-12">
             {subtitle && <p className="text-cyan-400 font-semibold mb-2">{subtitle}</p>}
-            {title && <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 mb-4">{title}</h2>}
+            {title && <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 mb-4">{title}</h2>}
             {description && <p className="text-gray-400 max-w-2xl mx-auto">{description}</p>}
           </div>
         )}
@@ -652,7 +652,7 @@ export const FeatureSplitScreen: React.FC<FeatureSectionProps & { image?: string
             <div className="space-y-6">
               {features.map((feature, index) => (
                 <div key={feature.id} className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                  <div className="shrink-0 w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
                     {feature.icon || iconArray[index % iconArray.length]}
                   </div>
                   <div>
@@ -669,7 +669,7 @@ export const FeatureSplitScreen: React.FC<FeatureSectionProps & { image?: string
             {image ? (
               <img src={image} alt="" className="rounded-2xl shadow-2xl" />
             ) : (
-              <div className="aspect-square bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl" />
+              <div className="aspect-square bg-linear-to-br from-blue-500 to-purple-600 rounded-2xl" />
             )}
           </div>
         </div>

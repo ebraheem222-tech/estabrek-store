@@ -28,7 +28,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
   const total = (data?.total ?? initial?.total ?? data?.items?.length ?? 0) as number;
 
   return (
-    <div className="lg:grid lg:grid-cols-[300px,1fr] lg:gap-8">
+    <div className="lg:grid lg:grid-cols-[300px_1fr] lg:gap-8">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:block filters-sidebar">
         <div className="sticky top-24 space-y-6">

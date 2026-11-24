@@ -7,8 +7,8 @@ import { tr } from "@/lib/words";
 import { googleClientId } from "@/lib/googleSignIn";
 import { socialSignIn } from "@/lib/socialSignIn";
 
-export async function generateMetadata({ params }: { params: { lang: string } }) {
-  return { title: tr(routeLang(params), "حسابي", "My account"), robots: { index: false, follow: false } };
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  return { title: tr(routeLang(await props.params), "حسابي", "My account"), robots: { index: false, follow: false } };
 }
 
 export default async function AccountPage() {

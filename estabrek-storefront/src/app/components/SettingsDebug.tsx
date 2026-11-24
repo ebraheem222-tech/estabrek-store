@@ -17,7 +17,7 @@ export function SettingsDebug() {
   if (process.env.NODE_ENV === "production") return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-[9999]">
+    <div className="fixed bottom-4 left-4 z-9999">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="bg-violet-600 text-white px-3 py-2 rounded-lg text-xs font-mono shadow-lg"

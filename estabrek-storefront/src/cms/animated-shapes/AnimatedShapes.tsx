@@ -593,7 +593,7 @@ export const BlobMorph: React.FC<AnimatedShapeProps> = ({
   return (
     <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
-        className={`${sizes[size]} bg-gradient-to-br ${gradients[color] || gradients.purple} rounded-[60%_40%_30%_70%/60%_30%_70%_40%]`}
+        className={`${sizes[size]} bg-linear-to-br ${gradients[color] || gradients.purple} rounded-[60%_40%_30%_70%/60%_30%_70%_40%]`}
         style={{
           opacity,
           animation: `morph ${speeds[speed]} ease-in-out infinite`,
@@ -611,15 +611,15 @@ export const BlobsMultiple: React.FC<AnimatedShapeProps> = ({
   return (
     <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       <div
-        className="absolute -top-20 -left-20 w-72 h-72 bg-gradient-to-br from-purple-500 to-pink-500 rounded-[60%_40%_30%_70%/60%_30%_70%_40%]"
+        className="absolute -top-20 -left-20 w-72 h-72 bg-linear-to-br from-purple-500 to-pink-500 rounded-[60%_40%_30%_70%/60%_30%_70%_40%]"
         style={{ opacity, animation: 'morph 8s ease-in-out infinite' }}
       />
       <div
-        className="absolute -bottom-20 -right-20 w-80 h-80 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-[40%_60%_70%_30%/40%_50%_60%_50%]"
+        className="absolute -bottom-20 -right-20 w-80 h-80 bg-linear-to-br from-blue-500 to-cyan-500 rounded-[40%_60%_70%_30%/40%_50%_60%_50%]"
         style={{ opacity, animation: 'morph 10s ease-in-out infinite', animationDelay: '2s' }}
       />
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-pink-500 to-orange-500 rounded-[50%_50%_40%_60%/60%_40%_60%_40%]"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-linear-to-br from-pink-500 to-orange-500 rounded-[50%_50%_40%_60%/60%_40%_60%_40%]"
         style={{ opacity: opacity * 0.6, animation: 'morph 12s ease-in-out infinite', animationDelay: '4s' }}
       />
     </div>

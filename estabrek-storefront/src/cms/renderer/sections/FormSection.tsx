@@ -98,7 +98,7 @@ export function FormSection({ data }: { data: FormData }) {
   return (
     <section className={data?.ui?.sectionClass ?? ""}>
       <div className={(data?.ui?.containerClass ?? "").trim() || "mx-auto w-full max-w-6xl px-4"}>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/3 p-6">
           {data?.title ? <h3 className="text-lg font-semibold">{data.title}</h3> : null}
           {data?.description ? <div className="mt-2 text-sm opacity-80">{data.description}</div> : null}
 
@@ -112,7 +112,7 @@ export function FormSection({ data }: { data: FormData }) {
                 required: !!f.required,
                 onChange: (e: any) => onChange(f.name, e.target.value),
                 className:
-                  "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm outline-none focus:border-white/25",
+                  "w-full rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-sm outline-hidden focus:border-white/25",
               };
 
               return (

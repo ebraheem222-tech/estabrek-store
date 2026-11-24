@@ -64,7 +64,7 @@ function normalizeMotionPreset(rawPreset: string): AnimPreset | "pin" | null {
   return null;
 }
 
-export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, refreshKey?: string | number | null) {
+export function useGsapMotion(rootRef: RefObject<HTMLElement | null>, enabled = true, refreshKey?: string | number | null) {
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;

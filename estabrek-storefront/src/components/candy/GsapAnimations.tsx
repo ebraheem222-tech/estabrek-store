@@ -30,7 +30,7 @@ export function GsapStagger({
   children, className = "", baseDelay = 0, stagger = 80, as: Tag = "div", style,
 }: {
   children: React.ReactNode; className?: string; baseDelay?: number;
-  stagger?: number; as?: keyof JSX.IntrinsicElements; style?: React.CSSProperties;
+  stagger?: number; as?: keyof React.JSX.IntrinsicElements; style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {

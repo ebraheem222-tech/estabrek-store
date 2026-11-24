@@ -134,7 +134,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
       >
         <Link href={`/p/${product.slug}`} className="block relative" prefetch={prefetchEnabled}>
           {/* Image Container */}
-          <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
+          <div className="relative aspect-4/5 w-full overflow-hidden bg-(--surface-2)">
             {primary ? (
               <>
                 <LqipImage
@@ -163,18 +163,18 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               </>
             ) : (
               <div className="image-skeleton flex h-full w-full items-center justify-center">
-                <svg className="w-8 h-8 text-[var(--muted)] opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                <svg className="w-8 h-8 text-(--muted) opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
             )}
 
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
 
             {/* Shimmer Effect */}
             <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
-              <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl" />
+              <div className="absolute -inset-24 rotate-12 bg-linear-to-r from-transparent via-white/10 to-transparent blur-2xl" />
             </div>
           </div>
 
@@ -187,7 +187,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                 e.stopPropagation();
                 openQuickView(product);
               }}
-              className="absolute left-3 bottom-3 z-30 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs text-white backdrop-blur hover:bg-black/60"
+              className="absolute left-3 bottom-3 z-30 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/60"
             >
               معاينة سريعة
             </button>
@@ -198,24 +198,24 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
             {/* Title & Price */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                <h3 className="truncate text-sm font-semibold text-(--text) group-hover:text-(--accent) transition-colors">
                   {product.title}
                 </h3>
-                <p className="mt-0.5 text-xs text-[var(--muted)] flex items-center gap-1">
+                <p className="mt-0.5 text-xs text-(--muted) flex items-center gap-1">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
                   {product.category?.name ?? "—"}
                 </p>
               </div>
-              <div className="price-shine shrink-0 text-sm font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+              <div className="price-shine shrink-0 text-sm font-bold bg-linear-to-r from-(--accent) to-(--accent-2) bg-clip-text text-transparent">
                 {product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "-"}
               </div>
             </div>
 
             {/* Animated Underline */}
-            <div className="relative h-px bg-[var(--border)] overflow-hidden">
-              <div className="absolute inset-y-0 left-0 w-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] transition-all duration-500 group-hover:w-full" />
+            <div className="relative h-px bg-(--border) overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-0 bg-linear-to-r from-(--accent) to-(--accent-2) transition-all duration-500 group-hover:w-full" />
             </div>
 
             {/* Color Swatches */}
@@ -224,13 +224,13 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                 {swatches.map((hex) => (
                   <span
                     key={hex}
-                    className="color-swatch h-5 w-5 rounded-full border-2 border-[var(--border)] transition-all hover:scale-110"
+                    className="color-swatch h-5 w-5 rounded-full border-2 border-(--border) transition-all hover:scale-110"
                     style={{ background: hex }}
                     title={hex}
                   />
                 ))}
                 {product.items && product.items.length > swatches.length ? (
-                  <span className="text-xs text-[var(--muted)] font-medium">
+                  <span className="text-xs text-(--muted) font-medium">
                     +{product.items.length - swatches.length}
                   </span>
                 ) : null}
@@ -243,7 +243,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
             <div className="quick-add-slide">
               <QuickAddButton
                 product={product}
-                className="w-full backdrop-blur-sm"
+                className="w-full backdrop-blur-xs"
                 buttonLabel="إضافة سريعة"
               />
             </div>

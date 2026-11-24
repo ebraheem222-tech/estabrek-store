@@ -156,12 +156,12 @@ export function ImageSearchPanel() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+          <div className="w-12 h-12 rounded-xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
             <ImageIcon />
           </div>
           <div>
-            <h3 className="font-bold text-[var(--text)]">البحث بالصورة</h3>
-            <p className="text-sm text-[var(--muted)]">ارفع صورة للعثور على منتجات مشابهة</p>
+            <h3 className="font-bold text-(--text)">البحث بالصورة</h3>
+            <p className="text-sm text-(--muted)">ارفع صورة للعثور على منتجات مشابهة</p>
           </div>
         </div>
 
@@ -176,7 +176,7 @@ export function ImageSearchPanel() {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-(--accent) to-(--accent-2) text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             disabled={loading}
           >
             {loading ? (
@@ -201,7 +201,7 @@ export function ImageSearchPanel() {
                 setPreviewUrl(null);
                 clearImageSearchPayload();
               }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-[var(--text)] text-sm font-medium hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-(--text) text-sm font-medium hover:bg-white/10 transition-colors"
             >
               <CloseIcon />
               مسح
@@ -218,11 +218,11 @@ export function ImageSearchPanel() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="drag-icon text-[var(--muted)]">
+          <div className="drag-icon text-(--muted)">
             <UploadIcon />
           </div>
-          <p className="text-sm text-[var(--muted)] mt-2">اسحب وأفلت صورة هنا</p>
-          <p className="text-xs text-[var(--muted)]/60 mt-1">PNG, JPG, WEBP حتى 8MB</p>
+          <p className="text-sm text-(--muted) mt-2">اسحب وأفلت صورة هنا</p>
+          <p className="text-xs text-(--muted)/60 mt-1">PNG, JPG, WEBP حتى 8MB</p>
         </div>
       )}
 
@@ -235,12 +235,12 @@ export function ImageSearchPanel() {
             className="image-search-preview-img"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-[var(--text)]">
+            <div className="text-sm font-medium text-(--text)">
               {loading ? "جاري تحليل الصورة..." : results?.caption ? `تم الكشف: ${results.caption}` : "تم رفع الصورة"}
             </div>
             {loading && (
               <div className="mt-2 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] rounded-full animate-pulse" style={{ width: "60%" }} />
+                <div className="h-full bg-linear-to-r from-(--accent) to-(--accent-2) rounded-full animate-pulse" style={{ width: "60%" }} />
               </div>
             )}
           </div>
@@ -302,11 +302,11 @@ export function ImageSearchPanel() {
             </div>
           ) : (
             <div className="no-results">
-              <div className="no-results-icon text-[var(--muted)]">
+              <div className="no-results-icon text-(--muted)">
                 <ImageIcon />
               </div>
-              <h3 className="text-lg font-semibold text-[var(--text)] mb-2">لا توجد نتائج</h3>
-              <p className="text-sm text-[var(--muted)]">جرب رفع صورة أخرى للبحث</p>
+              <h3 className="text-lg font-semibold text-(--text) mb-2">لا توجد نتائج</h3>
+              <p className="text-sm text-(--muted)">جرب رفع صورة أخرى للبحث</p>
             </div>
           )}
         </div>

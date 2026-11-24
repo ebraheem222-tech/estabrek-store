@@ -28,7 +28,7 @@ export function LoadingImg({
   if (!src) return null;
 
   const { className, onLoad, ...rest } = imgProps;
-  const blurClass = blurEnabled ? (loaded ? "blur-0 scale-100" : "blur-sm scale-[1.02] opacity-90") : "";
+  const blurClass = blurEnabled ? (loaded ? "blur-0 scale-100" : "blur-xs scale-[1.02] opacity-90") : "";
   const transitionClass = blurEnabled ? "transition-[filter,transform,opacity] duration-500" : "";
   const showPlaceholder = blurEnabled && !loaded && typeof blurDataUrl === "string" && blurDataUrl.trim().length > 0;
   const placeholderStyle = showPlaceholder

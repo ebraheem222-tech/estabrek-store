@@ -62,12 +62,12 @@ export default async function FallbackShop() {
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl md:text-4xl font-bold text-[var(--text)] mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold text-(--text) mb-4">
                 المتجر
               </h1>
 
               {/* Subtitle */}
-              <p className="text-[var(--muted)] leading-relaxed">
+              <p className="text-(--muted) leading-relaxed">
                 استكشف مجموعتنا الواسعة من المنتجات المميزة. تصفح حسب التصنيف أو ابحث عن ما تحتاجه.
               </p>
 
@@ -75,7 +75,7 @@ export default async function FallbackShop() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/search"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-medium hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-(--accent) to-(--accent-2) text-white font-medium hover:opacity-90 transition-opacity"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -88,16 +88,16 @@ export default async function FallbackShop() {
             {/* Stats */}
             <div className="flex gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+                <div className="text-3xl font-bold bg-linear-to-r from-(--accent) to-(--accent-2) bg-clip-text text-transparent">
                   {products.total ?? 0}+
                 </div>
-                <div className="text-sm text-[var(--muted)]">منتج</div>
+                <div className="text-sm text-(--muted)">منتج</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+                <div className="text-3xl font-bold bg-linear-to-r from-(--accent) to-(--accent-2) bg-clip-text text-transparent">
                   {cats?.length ?? 0}
                 </div>
-                <div className="text-sm text-[var(--muted)]">تصنيف</div>
+                <div className="text-sm text-(--muted)">تصنيف</div>
               </div>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default async function FallbackShop() {
             </h2>
             <Link
               href="/search"
-              className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-(--muted) hover:text-(--accent) transition-colors"
             >
               عرض الكل
               <ArrowLeftIcon />
@@ -134,7 +134,7 @@ export default async function FallbackShop() {
                 <div className="shop-category-icon">
                   <GridIcon />
                 </div>
-                <span className="font-medium text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                <span className="font-medium text-(--text) group-hover:text-(--accent) transition-colors">
                   {c.name}
                 </span>
               </Link>
@@ -154,7 +154,7 @@ export default async function FallbackShop() {
           </h2>
           <Link
             href="/search"
-            className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-(--muted) hover:text-(--accent) transition-colors"
           >
             المزيد
             <ArrowLeftIcon />
@@ -171,11 +171,11 @@ export default async function FallbackShop() {
           </div>
         ) : (
           <div className="no-results">
-            <div className="no-results-icon text-[var(--muted)]">
+            <div className="no-results-icon text-(--muted)">
               <EmptyIcon />
             </div>
-            <h3 className="text-xl font-semibold text-[var(--text)] mb-2">لا توجد منتجات</h3>
-            <p className="text-sm text-[var(--muted)]">لم يتم إضافة منتجات بعد، تابعونا قريباً!</p>
+            <h3 className="text-xl font-semibold text-(--text) mb-2">لا توجد منتجات</h3>
+            <p className="text-sm text-(--muted)">لم يتم إضافة منتجات بعد، تابعونا قريباً!</p>
           </div>
         )}
       </section>

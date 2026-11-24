@@ -25,7 +25,7 @@ import {
 
 export function useScrollAnimation<T extends HTMLElement = HTMLDivElement>(
   config: AnimationConfig
-): React.RefObject<T> {
+): React.RefObject<T | null> {
   const ref = useRef<T>(null);
   const animationRef = useRef<gsap.core.Tween | gsap.core.Timeline | null>(null);
 
@@ -131,7 +131,7 @@ export type AnimatedSectionConfig = {
 
 export function useAnimatedSection<T extends HTMLElement = HTMLDivElement>(
   config: AnimatedSectionConfig = {}
-): React.RefObject<T> {
+): React.RefObject<T | null> {
   const ref = useRef<T>(null);
   const animationRef = useRef<gsap.core.Tween | gsap.core.Timeline | null>(null);
 
@@ -285,7 +285,7 @@ export function useIntersectionAnimation<T extends HTMLElement = HTMLDivElement>
     once?: boolean;
     animationClass?: string;
   } = {}
-): React.RefObject<T> {
+): React.RefObject<T | null> {
   const ref = useRef<T>(null);
   const {
     threshold = 0.2,

@@ -104,7 +104,7 @@ export const FeatureCardsHoverLift: React.FC<FeatureSectionProps> = ({
               key={feature.id} 
               className="bg-white rounded-xl p-6 shadow-md hover:shadow-xl hover:-translate-y-2 transition-all duration-300"
             >
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl flex items-center justify-center mb-4">
+              <div className="w-14 h-14 bg-linear-to-br from-blue-500 to-blue-600 text-white rounded-xl flex items-center justify-center mb-4">
                 {feature.icon || iconArray[index % iconArray.length]}
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -303,9 +303,9 @@ export const FeatureModernGradientBorder: React.FC<FeatureSectionProps> = ({
         )}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns} gap-6`}>
           {features.map((feature, index) => (
-            <div key={feature.id} className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 p-[2px] rounded-xl">
+            <div key={feature.id} className="bg-linear-to-r from-purple-500 via-pink-500 to-red-500 p-[2px] rounded-xl">
               <div className="bg-gray-900 rounded-xl p-6 h-full">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-linear-to-br from-purple-500 to-pink-500 text-white rounded-lg flex items-center justify-center mb-4">
                   {feature.icon || iconArray[index % iconArray.length]}
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
@@ -357,7 +357,7 @@ export const FeatureAlternatingList: React.FC<FeatureSectionProps> = ({
                 {feature.image ? (
                   <img src={feature.image} alt="" className="rounded-2xl shadow-lg" />
                 ) : (
-                  <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl" />
+                  <div className="aspect-video bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl" />
                 )}
               </div>
             </div>
@@ -392,7 +392,7 @@ export const FeatureNumberedList: React.FC<FeatureSectionProps> = ({
         <div className="space-y-6">
           {features.map((feature, index) => (
             <div key={feature.id} className="flex gap-6 items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
+              <div className="shrink-0 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
                 {index + 1}
               </div>
               <div className="pt-2">
@@ -462,7 +462,7 @@ export const FeatureModernTabs: React.FC<FeatureSectionProps> = ({
               {features[activeTab]?.image ? (
                 <img src={features[activeTab].image} alt="" className="rounded-xl shadow-lg" />
               ) : (
-                <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl" />
+                <div className="aspect-video bg-linear-to-br from-blue-500 to-purple-600 rounded-xl" />
               )}
             </div>
           </div>
@@ -496,7 +496,7 @@ export const FeatureTechChecklist: React.FC<FeatureSectionProps> = ({
         <div className="grid md:grid-cols-2 gap-4">
           {features.map((feature) => (
             <div key={feature.id} className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
@@ -599,13 +599,13 @@ export const FeatureTravelDestinations: React.FC<FeatureSectionProps> = ({
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature) => (
-            <div key={feature.id} className="group relative rounded-2xl overflow-hidden aspect-[4/3]">
+            <div key={feature.id} className="group relative rounded-2xl overflow-hidden aspect-4/3">
               {feature.image ? (
                 <img src={feature.image} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-sky-400 to-blue-600" />
+                <div className="w-full h-full bg-linear-to-br from-sky-400 to-blue-600" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <h3 className="text-xl font-bold text-white mb-1">{feature.title}</h3>
                 {feature.description && <p className="text-white/80 text-sm">{feature.description}</p>}

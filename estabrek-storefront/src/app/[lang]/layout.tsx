@@ -78,7 +78,8 @@ const MODEST_COPY: Record<Lang, { tagline: string; description: (name: string) =
  * The site's name, icon and sharing card come from the admin settings (store name,
  * favicon, logo); every page title becomes "Page | Store name", in the page's language.
  */
-export async function generateMetadata({ params }: { params: { lang: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const lang: Lang = isLang(params.lang) ? params.lang : "ar";
   const { site } = await getPublicSettings().catch(() => ({ site: {} as any }));
   // The store's own name and words (admin → هوية المتجر).
@@ -120,13 +121,12 @@ export async function generateViewport(): Promise<Viewport> {
   return app?.app.enabled ? { themeColor: app.colours.theme } : {};
 }
 
-export default async function RootLayout({
-  children,
-  params,
-}: {
+export default async function RootLayout(props: {
   children: React.ReactNode;
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }) {
+  const { children } = props;
+  const params = await props.params;
   if (!isLang(params.lang)) notFound();
   const lang: Lang = params.lang;
   const [bootstrap, settings, pwa] = await Promise.all([

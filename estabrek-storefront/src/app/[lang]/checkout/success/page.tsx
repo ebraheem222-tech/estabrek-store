@@ -3,7 +3,8 @@ import CheckoutSuccessClient from "@/components/CheckoutSuccessClient";
 import { routeLang } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
 
-export async function generateMetadata({ params }: { params: { lang: string } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  const params = await props.params;
   return { title: tr(routeLang(params), "تم الدفع بنجاح", "Payment successful") };
 }
 

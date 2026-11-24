@@ -195,8 +195,8 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
                 </svg>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[var(--text)]">عرض 3D</h3>
-                <p className="text-xs text-[var(--muted)]">اسحب للتدوير • كبّر للتفاصيل</p>
+                <h3 className="text-sm font-bold text-(--text)">عرض 3D</h3>
+                <p className="text-xs text-(--muted)">اسحب للتدوير • كبّر للتفاصيل</p>
               </div>
             </div>
             <span
@@ -238,8 +238,8 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
               </svg>
             </div>
               <div>
-                <h3 className="text-sm font-bold text-[var(--text)]">عرض 360°</h3>
-                <p className="text-xs text-[var(--muted)]">اسحب للتدوير • انقر للتكبير</p>
+                <h3 className="text-sm font-bold text-(--text)">عرض 360°</h3>
+                <p className="text-xs text-(--muted)">اسحب للتدوير • انقر للتكبير</p>
               </div>
             </div>
             <span
@@ -283,7 +283,7 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
                 showSavings={compareEnabled}
               />
             ) : (
-              <div className="text-sm text-[var(--muted)]">تواصل للسعر</div>
+              <div className="text-sm text-(--muted)">تواصل للسعر</div>
             )}
           </div>
         </div>

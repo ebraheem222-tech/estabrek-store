@@ -219,8 +219,8 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
         )}
 
         {/* decorative svg glow */}
-        <div aria-hidden className="pointer-events-none absolute -top-24 right-[-140px] h-[520px] w-[520px] rounded-full bg-[color:var(--accent-1)]/30 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 left-[-160px] h-[620px] w-[620px] rounded-full bg-[color:var(--accent-2)]/20 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -top-24 right-[-140px] h-[520px] w-[520px] rounded-full bg-(--accent-1)/30 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-32 left-[-160px] h-[620px] w-[620px] rounded-full bg-(--accent-2)/20 blur-3xl" />
 
         <div
           key={contentKey}
@@ -260,7 +260,7 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
                 <a
                   href={current.primaryButton.href}
                   className={cls(
-                    "inline-flex items-center justify-center rounded-2xl border border-[color:var(--accent-2)]/50 bg-[color:var(--accent-2)] px-5 py-3 text-sm font-semibold text-[#0B0B0B] shadow-sm transition hover:brightness-95",
+                    "inline-flex items-center justify-center rounded-2xl border border-(--accent-2)/50 bg-(--accent-2) px-5 py-3 text-sm font-semibold text-[#0B0B0B] shadow-xs transition hover:brightness-95",
                     tokensClass(primaryButtonTokens),
                     primaryLabelData?.className
                   )}
@@ -297,7 +297,7 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
           <button
             type="button"
             aria-label="Previous slide"
-            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-black/10 bg-white/60 px-3 py-2 text-[#0B0B0B] shadow-sm backdrop-blur hover:bg-white/80"
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-black/10 bg-white/60 px-3 py-2 text-[#0B0B0B] shadow-xs backdrop-blur-sm hover:bg-white/80"
             onClick={() => setIndex((i) => (i - 1 + count) % count)}
           >
             {"<"}
@@ -305,7 +305,7 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
           <button
             type="button"
             aria-label="Next slide"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-black/10 bg-white/60 px-3 py-2 text-[#0B0B0B] shadow-sm backdrop-blur hover:bg-white/80"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-black/10 bg-white/60 px-3 py-2 text-[#0B0B0B] shadow-xs backdrop-blur-sm hover:bg-white/80"
             onClick={() => setIndex((i) => (i + 1) % count)}
           >
             {">"}
@@ -321,7 +321,7 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
                   className={
                     "cms-hero-dot h-2.5 w-2.5 rounded-full border " +
                     (i === index
-                      ? "border-[color:var(--accent-2)] bg-[color:var(--accent-2)]"
+                      ? "border-(--accent-2) bg-(--accent-2)"
                       : "border-black/20 bg-black/10 hover:bg-black/20")
                   }
                   onClick={() => setIndex(i)}

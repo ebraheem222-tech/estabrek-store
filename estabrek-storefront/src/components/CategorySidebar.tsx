@@ -100,7 +100,7 @@ export function CategorySidebar({
             <button
               type="button"
               onClick={() => toggle(node.id)}
-              className="h-6 w-6 rounded-md border border-white/10 bg-white/5 text-[var(--text)] flex items-center justify-center"
+              className="h-6 w-6 rounded-md border border-white/10 bg-white/5 text-(--text) flex items-center justify-center"
               aria-label={isOpen ? "Collapse" : "Expand"}
             >
               <svg
@@ -142,7 +142,7 @@ export function CategorySidebar({
         {selectedId ? (
           <button
             type="button"
-            className="text-xs text-[var(--muted)] hover:text-[var(--text)]"
+            className="text-xs text-(--muted) hover:text-(--text)"
             onClick={() => onSelect(undefined)}
           >
             {own.allLabel || tr(lang, "الكل", "All")}

@@ -92,8 +92,8 @@ function NavNode({
         .join(" ")
     : "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 relative overflow-hidden group " +
       (active
-        ? "bg-gradient-to-r from-[var(--accent)]/10 to-[var(--accent-2)]/10 text-[color:var(--accent)]"
-        : "text-[color:var(--text)] opacity-80 hover:opacity-100 hover:bg-gradient-to-r hover:from-[var(--accent)]/5 hover:to-[var(--accent-2)]/5");
+        ? "bg-linear-to-r from-(--accent)/10 to-(--accent-2)/10 text-(--accent)"
+        : "text-(--text) opacity-80 hover:opacity-100 hover:bg-linear-to-r hover:from-(--accent)/5 hover:to-(--accent-2)/5");
 
   const iconPaths: Record<string, string> = {
     home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
@@ -112,7 +112,7 @@ function NavNode({
         // eslint-disable-next-line jsx-a11y/alt-text
         <img
           src={rawName}
-          className="h-4 w-4 rounded-sm object-contain"
+          className="h-4 w-4 rounded-xs object-contain"
           loading="lazy"
           decoding="async"
         />
@@ -380,7 +380,7 @@ function NavNode({
       </button>
 
       <div
-        className={`absolute left-0 top-full z-[1300] hidden pt-2 transition-all duration-200 md:block ${
+        className={`absolute left-0 top-full z-1300 hidden pt-2 transition-all duration-200 md:block ${
           desktopOpen ? "pointer-events-auto opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-1 scale-[0.98]"
         }`}
       >
@@ -392,7 +392,7 @@ function NavNode({
           <GradientBg id={`nav-dd-${item.id ?? item.label}`} />
 
           <div className="relative">
-            <div className="mb-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 backdrop-blur" style={desktopHeaderStyle}>
+            <div className="mb-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 backdrop-blur-sm" style={desktopHeaderStyle}>
               <div className="flex items-center justify-between gap-2">
                 {desktopTrail.length ? (
                   <button
@@ -665,18 +665,18 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const allowMiniCart = settings.miniCartEnabled && isDesktop;
   const padMap: Record<string, string> = { compact: "py-2", normal: "py-3", comfortable: "py-4" };
   const padCls = `${padMap[heightMobile]} md:${padMap[heightDesktop]}`;
-  const navTextBase = "text-[color:var(--text)]";
-  const navTextMuted = "text-[color:var(--text)] opacity-80 hover:opacity-100";
+  const navTextBase = "text-(--text)";
+  const navTextMuted = "text-(--text) opacity-80 hover:opacity-100";
   const navPill =
     "inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm " +
     navTextMuted +
     " hover:bg-black/10 dark:hover:bg-white/15";
   const navCtaBase =
-    "rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-contrast)] hover:opacity-90";
+    "rounded-xl bg-(--accent) px-3 py-2 text-sm font-semibold text-(--accent-contrast) hover:opacity-90";
   const navDrawerItem =
     "overflow-hidden rounded-2xl border border-white/55 bg-white/72 shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-md";
   const navDrawerLink = "block w-full px-4 py-3 font-semibold text-slate-900";
-  const navDrawerSubLink = "block w-full px-4 py-2 text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
+  const navDrawerSubLink = "block w-full px-4 py-2 text-sm text-(--text) opacity-75 hover:opacity-100";
   const mobileLevelAnimClass =
     mobileLevelAnim === "forward"
       ? "mobile-nav-level mobile-nav-level-forward"
@@ -904,8 +904,8 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
       const basePos = sticky ? "sticky top-0 z-40 " : "relative z-40 ";
       const scrollStyles = scrolled
         // (A variable's colour can't take Tailwind's "/80": it gave no background at all, and the page showed through.)
-        ? "bg-[color:color-mix(in_srgb,var(--surface)_95%,transparent)] backdrop-blur-xl border-b-2 border-[color:color-mix(in_srgb,var(--accent)_20%,transparent)] shadow-lg"
-        : "bg-[color:color-mix(in_srgb,var(--surface)_82%,transparent)] backdrop-blur-md border-b border-[color:var(--border)]";
+        ? "bg-[color-mix(in_srgb,var(--surface)_95%,transparent)] backdrop-blur-xl border-b-2 border-[color-mix(in_srgb,var(--accent)_20%,transparent)] shadow-lg"
+        : "bg-[color-mix(in_srgb,var(--surface)_82%,transparent)] backdrop-blur-md border-b border-(--border)";
       return basePos + scrollStyles + " transition-all duration-300";
     }
 
@@ -932,7 +932,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     : `inline-flex w-full justify-center ${navCtaBase}`;
 
   const mobileDrawerNode = mobileDrawerVisible ? (
-    <div className="md:hidden fixed inset-0 z-[2147483000]">
+    <div className="md:hidden fixed inset-0 z-2147483000">
       <button
         type="button"
         className={`absolute inset-0 transition-opacity duration-300 ${mobileDrawerStage === "open" ? "opacity-100" : "opacity-0"}`}
@@ -964,7 +964,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 <button
                   type="button"
                   onClick={mobileBack}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur-md"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 text-sm text-slate-900 shadow-xs backdrop-blur-md"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
@@ -978,7 +978,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               <button
                 type="button"
                 onClick={closeMobileDrawer}
-                className="mobile-menu-close-btn inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/55 bg-white/75 text-slate-900 shadow-sm backdrop-blur-md"
+                className="mobile-menu-close-btn inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/55 bg-white/75 text-slate-900 shadow-xs backdrop-blur-md"
                 aria-label="Close menu"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -1048,7 +1048,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-white/35 bg-white/55 px-3 py-2 text-sm text-slate-600 backdrop-blur">
+                <div className="rounded-xl border border-white/35 bg-white/55 px-3 py-2 text-sm text-slate-600 backdrop-blur-sm">
                   لا توجد عناصر قائمة حالياً
                 </div>
               )}
@@ -1068,7 +1068,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               <button
                 type="button"
                 onClick={() => (mobileOpen ? closeMobileDrawer() : openMobileDrawer())}
-                className={`md:hidden ${navPill} transition-all duration-300 ${mobileToggleActive ? "bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-2)]/15" : ""}`}
+                className={`md:hidden ${navPill} transition-all duration-300 ${mobileToggleActive ? "bg-linear-to-r from-(--accent)/15 to-(--accent-2)/15" : ""}`}
                 aria-label="Toggle menu"
                 aria-expanded={mobileToggleActive}
               >
@@ -1093,7 +1093,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     decoding="sync"
                   />
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
+                  <div className="h-8 w-8 rounded-lg bg-white/8" />
                 )}
                 <div className={siteNameClass} style={navTemplateTextStyle}>
                   {site.siteName || "Store"}
@@ -1166,7 +1166,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               <button
                 type="button"
                 onClick={() => (mobileOpen ? closeMobileDrawer() : openMobileDrawer())}
-                className={`md:hidden ${navPill} transition-all duration-300 ${mobileToggleActive ? "bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-2)]/15" : ""}`}
+                className={`md:hidden ${navPill} transition-all duration-300 ${mobileToggleActive ? "bg-linear-to-r from-(--accent)/15 to-(--accent-2)/15" : ""}`}
                 aria-label="Toggle menu"
                 aria-expanded={mobileToggleActive}
               >
@@ -1191,7 +1191,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     decoding="sync"
                   />
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
+                  <div className="h-8 w-8 rounded-lg bg-white/8" />
                 )}
                 <div className={siteNameClass} style={navTemplateTextStyle}>
                   {site.siteName || "Store"}

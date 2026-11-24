@@ -121,7 +121,7 @@ const AlertThemesDemo: React.FC = () => {
         {filteredThemes.map((theme) => (
           <div
             key={theme.id}
-            className="bg-white border rounded-xl p-6 shadow"
+            className="bg-white border rounded-xl p-6 shadow-sm"
           >
             {renderAlertPreview(theme)}
 

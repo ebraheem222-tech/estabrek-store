@@ -15,7 +15,8 @@ const cors = (req: NextRequest): Record<string, string> => {
   return studioOrigins().includes(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : { Vary: "Origin" };
 };
 
-export function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (req.nextUrl.searchParams.get("view") === "thumbnail") {
     const sections = templatePage(params.id, "home", true);
     return NextResponse.json(sections ? { sections } : { error: "Unknown template" }, { status: sections ? 200 : 404, headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });

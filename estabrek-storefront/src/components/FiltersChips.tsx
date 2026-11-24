@@ -11,11 +11,11 @@ function chipClass(variant: "default" | "danger" = "default") {
   const base =
     "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition duration-200 will-change-transform";
   if (variant === "danger") {
-    return base + " border-[var(--border)] bg-[var(--text)] text-[var(--bg)] hover:opacity-90";
+    return base + " border-(--border) bg-(--text) text-(--bg) hover:opacity-90";
   }
   return (
     base +
-    " border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:-translate-y-0.5 hover:shadow-sm hover:ring-1 hover:ring-[var(--accent)]/40 hover:border-[var(--accent)]"
+    " border-(--border) bg-(--surface) text-(--text) hover:-translate-y-0.5 hover:shadow-xs hover:ring-1 hover:ring-(--accent)/40 hover:border-(--accent)"
   );
 }
 

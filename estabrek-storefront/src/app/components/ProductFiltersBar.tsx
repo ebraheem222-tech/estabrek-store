@@ -359,7 +359,7 @@ export function ProductFiltersBar({
             onChange={(e) => setQInput(e.target.value)}
             placeholder="ابحث عن منتج..."
           />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted)">
             <SearchIcon />
           </div>
         </div>
@@ -419,7 +419,7 @@ export function ProductFiltersBar({
               inputMode="numeric"
               dir="ltr"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">₪</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-(--muted)">₪</span>
           </div>
           <div className="flex items-center justify-center w-8">
             <span className="price-range-separator">—</span>
@@ -433,7 +433,7 @@ export function ProductFiltersBar({
               inputMode="numeric"
               dir="ltr"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">₪</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-(--muted)">₪</span>
           </div>
         </div>
       </div>
@@ -448,7 +448,7 @@ export function ProductFiltersBar({
           <div className="flex items-center gap-3">
             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
               inStockParam 
-                ? "bg-[var(--accent)] border-[var(--accent)]" 
+                ? "bg-(--accent) border-(--accent)" 
                 : "border-white/20 bg-transparent"
             }`}>
               {inStockParam && <CheckIcon />}
@@ -569,13 +569,13 @@ export function ProductFiltersBar({
       <div className="filters-container hidden md:block">
         <div className="filters-header">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
               <FilterIcon />
             </div>
             <div>
-              <h3 className="font-bold text-[var(--text)]">الفلاتر</h3>
+              <h3 className="font-bold text-(--text)">الفلاتر</h3>
               {activeFiltersCount > 0 && (
-                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} فلتر نشط</p>
+                <p className="text-xs text-(--muted)">{activeFiltersCount} فلتر نشط</p>
               )}
             </div>
           </div>
@@ -593,30 +593,30 @@ export function ProductFiltersBar({
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs" 
             onClick={() => setMobileOpen(false)} 
           />
           <div 
-            className="absolute inset-y-0 right-0 w-full max-w-sm bg-[var(--surface)] overflow-y-auto"
+            className="absolute inset-y-0 right-0 w-full max-w-sm bg-(--surface) overflow-y-auto"
             style={{ animation: "slideInRight 0.3s ease" }}
           >
             {/* Mobile Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-[var(--surface)]">
+            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-(--surface)">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+                <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
                   <FilterIcon />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[var(--text)]">الفلاتر</h3>
+                  <h3 className="font-bold text-(--text)">الفلاتر</h3>
                   {activeFiltersCount > 0 && (
-                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} فلتر نشط</p>
+                    <p className="text-xs text-(--muted)">{activeFiltersCount} فلتر نشط</p>
                   )}
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setMobileOpen(false)} 
-                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[var(--text)] hover:bg-white/10 transition-colors"
+                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-(--text) hover:bg-white/10 transition-colors"
               >
                 <CloseIcon />
               </button>
@@ -628,12 +628,12 @@ export function ProductFiltersBar({
             </div>
 
             {/* Mobile Footer */}
-            <div className="sticky bottom-0 p-4 border-t border-white/10 bg-[var(--surface)] flex gap-3">
+            <div className="sticky bottom-0 p-4 border-t border-white/10 bg-(--surface) flex gap-3">
               {hasAny && (
                 <button 
                   type="button" 
                   onClick={clearAll} 
-                  className="flex-1 py-3 rounded-xl border border-white/10 text-[var(--text)] font-medium hover:bg-white/5 transition-colors"
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-(--text) font-medium hover:bg-white/5 transition-colors"
                 >
                   مسح الكل
                 </button>
@@ -641,7 +641,7 @@ export function ProductFiltersBar({
               <button 
                 type="button" 
                 onClick={() => setMobileOpen(false)} 
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
+                className="flex-1 py-3 rounded-xl bg-linear-to-r from-(--accent) to-(--accent-2) text-white font-semibold hover:opacity-90 transition-opacity"
               >
                 عرض النتائج
               </button>

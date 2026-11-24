@@ -59,7 +59,7 @@ export const SliderDark: React.FC<SliderProps> = ({
             {slide.image ? (
               <img src={slide.image} alt="" className="w-full h-full object-cover opacity-60" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
+              <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900" />
             )}
             <div className="absolute inset-0 flex items-center justify-center text-center p-8">
               <div>
@@ -115,7 +115,7 @@ export const SliderGradient: React.FC<SliderProps> = ({
     <div className={`relative rounded-2xl overflow-hidden ${className}`}>
       <div className="aspect-video relative">
         {slides.map((slide, i) => (
-          <div key={slide.id} className={`absolute inset-0 bg-gradient-to-br ${gradients[i % gradients.length]} transition-opacity duration-700 ${i === current ? 'opacity-100' : 'opacity-0'}`}>
+          <div key={slide.id} className={`absolute inset-0 bg-linear-to-br ${gradients[i % gradients.length]} transition-opacity duration-700 ${i === current ? 'opacity-100' : 'opacity-0'}`}>
             <div className="absolute inset-0 flex items-center justify-center text-center p-8">
               <div className="text-white">
                 {slide.badge && <span className="inline-block px-3 py-1 mb-4 bg-white/20 rounded-full text-sm">{slide.badge}</span>}
@@ -168,13 +168,13 @@ export const SliderCardsCarousel: React.FC<SliderProps> = ({
           style={{ transform: `translateX(-${current * (100 / slidesToShow + 2)}%)` }}
         >
           {slides.map((slide) => (
-            <div key={slide.id} className="flex-shrink-0" style={{ width: `calc(${100 / slidesToShow}% - 1rem)` }}>
+            <div key={slide.id} className="shrink-0" style={{ width: `calc(${100 / slidesToShow}% - 1rem)` }}>
               <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                 <div className="aspect-video relative">
                   {slide.image ? (
                     <img src={slide.image} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
+                    <div className="w-full h-full bg-linear-to-br from-gray-100 to-gray-200" />
                   )}
                 </div>
                 <div className="p-6">
@@ -218,7 +218,7 @@ export const SliderLuxury: React.FC<SliderProps> = ({
 
   return (
     <div className={`relative bg-black ${className}`}>
-      <div className="aspect-[16/9] md:aspect-[21/9] relative overflow-hidden">
+      <div className="aspect-video md:aspect-21/9 relative overflow-hidden">
         {slides.map((slide, i) => (
           <div key={slide.id} className={`absolute inset-0 transition-all duration-1000 ${i === current ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}>
             {slide.image && <img src={slide.image} alt="" className="w-full h-full object-cover" />}
@@ -265,7 +265,7 @@ export const SliderTestimonialCards: React.FC<SliderProps> = ({
           style={{ transform: `translateX(-${current * (100 / slidesToShow)}%)` }}
         >
           {slides.map((slide) => (
-            <div key={slide.id} className="flex-shrink-0" style={{ width: `calc(${100 / slidesToShow}% - 1rem)` }}>
+            <div key={slide.id} className="shrink-0" style={{ width: `calc(${100 / slidesToShow}% - 1rem)` }}>
               <div className="bg-white rounded-xl shadow-md p-6 h-full">
                 {slide.rating && (
                   <div className="flex gap-1 mb-4">
@@ -326,7 +326,7 @@ export const SliderFoodMenu: React.FC<SliderProps> = ({
           style={{ transform: `translateX(-${current * (100 / slidesToShow)}%)` }}
         >
           {slides.map((slide) => (
-            <div key={slide.id} className="flex-shrink-0" style={{ width: `calc(${100 / slidesToShow}% - 1.2rem)` }}>
+            <div key={slide.id} className="shrink-0" style={{ width: `calc(${100 / slidesToShow}% - 1.2rem)` }}>
               <div className="bg-white rounded-2xl shadow-md overflow-hidden group">
                 <div className="aspect-square relative overflow-hidden">
                   {slide.image ? (
@@ -335,7 +335,7 @@ export const SliderFoodMenu: React.FC<SliderProps> = ({
                     <div className="w-full h-full bg-amber-100 flex items-center justify-center text-4xl">🍽️</div>
                   )}
                   {slide.badge && (
-                    <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">{slide.badge}</span>
+                    <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-sm">{slide.badge}</span>
                   )}
                 </div>
                 <div className="p-4 text-center">
@@ -376,15 +376,15 @@ export const SliderTravelDestinations: React.FC<SliderProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="aspect-[16/9] rounded-2xl overflow-hidden">
+      <div className="aspect-video rounded-2xl overflow-hidden">
         {slides.map((slide, i) => (
           <div key={slide.id} className={`absolute inset-0 transition-all duration-700 ${i === current ? 'opacity-100' : 'opacity-0'}`}>
             {slide.image ? (
               <img src={slide.image} alt="" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-sky-400 to-blue-600" />
+              <div className="w-full h-full bg-linear-to-br from-sky-400 to-blue-600" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-8">
               <div className="max-w-xl">
                 {slide.badge && <span className="inline-block px-3 py-1 mb-3 bg-sky-500 text-white text-sm rounded-full">{slide.badge}</span>}
@@ -434,7 +434,7 @@ export const SliderTechSaas: React.FC<SliderProps> = ({
   }, [slides.length]);
 
   return (
-    <div className={`relative py-20 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 overflow-hidden ${className}`}>
+    <div className={`relative py-20 bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 overflow-hidden ${className}`}>
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Content */}

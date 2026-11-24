@@ -7,17 +7,17 @@ import { independentDesign, siteHomeOn } from "@/storeThemes/snapshot";
 
 export const revalidate = 60;
 
-export async function generateMetadata({ params }: { params?: { slug?: string[]; lang?: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug?: string[]; lang?: string }> }) {
+  const params = await props.params;
   return { alternates: await seoAlternates(paramsToSlug(params), routeLang(params)) };
 }
 type SP = Record<string, string | string[] | undefined>;
-export default async function CmsPageRoute({
-  params,
-  searchParams,
-}: {
-  params?: { slug?: string[]; lang?: string };
-  searchParams?: SP;
+export default async function CmsPageRoute(props: {
+  params: Promise<{ slug?: string[]; lang?: string }>;
+  searchParams: Promise<SP>;
 }) {
+  const params = await props.params;
+  const searchParams = await props.searchParams;
   const slug = paramsToSlug(params);
   const lang = routeLang(params);
   if (slug === "/") {

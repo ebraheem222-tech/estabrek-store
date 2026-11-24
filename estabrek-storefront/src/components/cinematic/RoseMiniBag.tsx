@@ -257,7 +257,7 @@ function DesignedBag({
   colours: string[];
   look: React.CSSProperties | undefined;
   freeOver: number | null;
-  panel: React.RefObject<HTMLDivElement>;
+  panel: React.RefObject<HTMLDivElement | null>;
   close: () => void;
   less: (line: BagLine) => void;
   more: (line: BagLine) => void;

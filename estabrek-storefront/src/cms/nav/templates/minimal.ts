@@ -104,7 +104,7 @@ export const MINIMAL_NAV: NavTemplate[] = [
       nav: "bg-gray-50 py-4",
       container: "max-w-7xl mx-auto px-4 flex items-center justify-between",
       logo: "text-xl font-bold text-gray-900",
-      links: "hidden md:flex items-center gap-2 bg-white rounded-full px-2 py-1 shadow-sm",
+      links: "hidden md:flex items-center gap-2 bg-white rounded-full px-2 py-1 shadow-xs",
       link: "text-gray-600 text-sm font-medium px-4 py-2 rounded-full transition-all duration-200",
       linkHover: "hover:text-gray-900 hover:bg-gray-100",
       linkActive: "text-white bg-gray-900",

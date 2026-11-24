@@ -570,7 +570,7 @@ export const EditorialLinesHero: React.FC<AdvancedHeroProps> = (props) => {
           fallbackTo={preset.bgTo}
           overlayTint={`linear-gradient(90deg, rgba(0,0,0,${overlay}) 0%, transparent 60%)`}
         />
-        <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white/60 to-transparent" />
+        <div className="absolute inset-y-0 left-0 w-20 bg-linear-to-r from-white/60 to-transparent" />
       </div>
     </section>
   );
@@ -620,7 +620,7 @@ export const ArchSparklHero: React.FC<AdvancedHeroProps> = (props) => {
           <MediaSurface
             imageSrc={props.imageSrc}
             imageAlt={props.imageAlt}
-            className="relative aspect-[4/5] w-full border border-white/60 shadow-xl"
+            className="relative aspect-4/5 w-full border border-white/60 shadow-xl"
             style={{ borderRadius: "42% 42% 18% 18% / 34% 34% 12% 12%" }}
             fallbackFrom={preset.surface}
             fallbackTo={preset.bgTo}
@@ -678,7 +678,7 @@ export const BotanicalWaveHero: React.FC<AdvancedHeroProps> = (props) => {
           <MediaSurface
             imageSrc={props.imageSrc}
             imageAlt={props.imageAlt}
-            className="aspect-[4/5] w-full border border-white/50 shadow-xl"
+            className="aspect-4/5 w-full border border-white/50 shadow-xl"
             style={{ borderRadius: "38% 62% 57% 43% / 32% 43% 57% 68%" }}
             fallbackFrom={preset.surface}
             fallbackTo={preset.bgTo}
@@ -720,7 +720,7 @@ export const ArchGradientHero: React.FC<AdvancedHeroProps> = (props) => {
             <MediaSurface
               imageSrc={props.imageSrc}
               imageAlt={props.imageAlt}
-              className="aspect-[3/4] w-full border border-white/50"
+              className="aspect-3/4 w-full border border-white/50"
               style={{ borderRadius: "170px 170px 16px 16px" }}
               fallbackFrom={preset.surface}
               fallbackTo={preset.bgTo}

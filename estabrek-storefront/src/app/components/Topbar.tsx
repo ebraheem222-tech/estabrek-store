@@ -15,9 +15,9 @@ type HeaderCfg = {
 };
 
 const bgMap: Record<string, string> = {
-  solid: "bg-[color:var(--surface)]/90 border-b border-[color:var(--border)]",
-  glass: "bg-[color:var(--surface)]/70 backdrop-blur border-b border-[color:var(--border)]",
-  gradient: "bg-gradient-to-r from-[color:var(--accent-1)]/20 via-[color:var(--accent-2)]/20 to-[color:var(--accent-3)]/20 border-b border-[color:var(--border)]",
+  solid: "bg-(--surface)/90 border-b border-(--border)",
+  glass: "bg-(--surface)/70 backdrop-blur-sm border-b border-(--border)",
+  gradient: "bg-linear-to-r from-(--accent-1)/20 via-(--accent-2)/20 to-(--accent-3)/20 border-b border-(--border)",
 };
 
 export function Topbar({ header }: { header?: HeaderCfg | null }) {
@@ -26,7 +26,7 @@ export function Topbar({ header }: { header?: HeaderCfg | null }) {
   const showOnMobile = cfg.showOnMobile !== false;
 
   const wrap = "px-4";
-  const base = "text-xs md:text-sm text-[color:var(--muted)]";
+  const base = "text-xs md:text-sm text-(--muted)";
   const template = cfg.template ?? "info";
 
   const cls = (bgMap[cfg.bgPreset ?? "solid"] ?? bgMap.solid) + " " + (showOnMobile ? "" : "hidden md:block");
@@ -53,7 +53,7 @@ export function Topbar({ header }: { header?: HeaderCfg | null }) {
           {btn && href ? (
             <Link
               href={href}
-              className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1 text-xs text-[color:var(--text)] hover:brightness-95"
+              className="rounded-full border border-(--border) bg-(--surface-2) px-3 py-1 text-xs text-(--text) hover:brightness-95"
             >
               {btn}
             </Link>

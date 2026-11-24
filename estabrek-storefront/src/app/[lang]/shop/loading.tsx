@@ -11,7 +11,7 @@ export default function LoadingShop() {
         <LoadingIndicator className="inline-grid place-items-center" />
       </div>
 
-      <div className="lg:grid lg:grid-cols-[280px,1fr] lg:gap-8">
+      <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-8">
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-3 rounded-2xl border border-black/10 bg-white p-4">
             <SidebarFiltersSkeleton />

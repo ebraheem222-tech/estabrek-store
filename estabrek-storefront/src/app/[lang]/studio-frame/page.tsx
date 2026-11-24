@@ -19,7 +19,9 @@ type SP = Record<string, string | string[] | undefined>;
 const EMPTY_PLACES =
   ".pt-cell:empty,.pt-stack:empty,.pt-section:empty,.pt-inner:empty,.pt-product360:empty{min-height:96px;outline:1px dashed color-mix(in srgb,var(--accent,#7d2448) 45%,transparent);outline-offset:-1px;background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent,#7d2448) 7%,transparent) 0 8px,transparent 8px 16px)}";
 
-export default async function StudioFrame({ params, searchParams }: { params?: { lang?: string }; searchParams?: SP }) {
+export default async function StudioFrame(props: { params?: Promise<{ lang?: string }>; searchParams?: Promise<SP> }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const token = typeof searchParams?.token === "string" ? searchParams.token : "";
   const lang = routeLang(params);
   const page = token ? await getPagePreview(token, lang) : null;

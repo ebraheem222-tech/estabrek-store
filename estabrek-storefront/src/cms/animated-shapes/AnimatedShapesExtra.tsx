@@ -126,7 +126,7 @@ export const Confetti: React.FC<AnimatedShapeProps & { count?: number }> = ({
       {pieces.map((piece, i) => (
         <div
           key={i}
-          className={`absolute ${piece.color} ${piece.shape === 1 ? 'rounded-full' : piece.shape === 0 ? 'rounded-sm' : ''}`}
+          className={`absolute ${piece.color} ${piece.shape === 1 ? 'rounded-full' : piece.shape === 0 ? 'rounded-xs' : ''}`}
           style={{
             width: piece.width,
             height: piece.shape === 1 ? piece.width : piece.height,
@@ -199,7 +199,7 @@ export const Rain: React.FC<AnimatedShapeProps & { count?: number }> = ({
       {drops.map((drop, i) => (
         <div
           key={i}
-          className="absolute w-0.5 bg-gradient-to-b from-blue-300 to-transparent rounded-full"
+          className="absolute w-0.5 bg-linear-to-b from-blue-300 to-transparent rounded-full"
           style={{
             height: drop.height,
             left: `${drop.x}%`,
@@ -336,7 +336,7 @@ export const TechGrid: React.FC<AnimatedShapeProps> = ({
       </svg>
       {/* Animated highlight */}
       <div
-        className="absolute w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"
+        className="absolute w-full h-1 bg-linear-to-r from-transparent via-blue-500 to-transparent"
         style={{
           top: '50%',
           opacity: 0.3,
@@ -358,15 +358,15 @@ export const GradientOrbs: React.FC<AnimatedShapeProps> = ({
   return (
     <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       <div
-        className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full blur-3xl"
+        className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-linear-to-br from-purple-600 to-blue-600 rounded-full blur-3xl"
         style={{ opacity, animation: 'float 8s ease-in-out infinite' }}
       />
       <div
-        className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-gradient-to-br from-pink-600 to-orange-600 rounded-full blur-3xl"
+        className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-linear-to-br from-pink-600 to-orange-600 rounded-full blur-3xl"
         style={{ opacity, animation: 'float 10s ease-in-out infinite', animationDelay: '2s' }}
       />
       <div
-        className="absolute top-1/3 right-1/4 w-1/3 h-1/3 bg-gradient-to-br from-cyan-600 to-green-600 rounded-full blur-3xl"
+        className="absolute top-1/3 right-1/4 w-1/3 h-1/3 bg-linear-to-br from-cyan-600 to-green-600 rounded-full blur-3xl"
         style={{ opacity: opacity * 0.7, animation: 'float 12s ease-in-out infinite', animationDelay: '4s' }}
       />
     </div>
@@ -448,7 +448,7 @@ export const RetroShapes: React.FC<AnimatedShapeProps> = ({
       {Array.from({ length: 12 }, (_, i) => (
         <div
           key={i}
-          className="absolute top-1/2 left-1/2 w-1 h-[200%] bg-gradient-to-t from-orange-500/0 via-orange-500 to-orange-500/0"
+          className="absolute top-1/2 left-1/2 w-1 h-[200%] bg-linear-to-t from-orange-500/0 via-orange-500 to-orange-500/0"
           style={{
             opacity: opacity * 0.3,
             transform: `rotate(${i * 30}deg)`,
@@ -558,13 +558,13 @@ export const CosmicShapes: React.FC<AnimatedShapeProps & { count?: number }> = (
       
       {/* Nebula */}
       <div
-        className="absolute top-1/4 left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-purple-600/30 to-pink-600/30 rounded-full blur-3xl"
+        className="absolute top-1/4 left-1/4 w-1/2 h-1/2 bg-linear-to-br from-purple-600/30 to-pink-600/30 rounded-full blur-3xl"
         style={{ animation: 'morph 15s ease-in-out infinite' }}
       />
       
       {/* Shooting star */}
       <div
-        className="absolute w-20 h-0.5 bg-gradient-to-r from-white to-transparent rounded-full"
+        className="absolute w-20 h-0.5 bg-linear-to-r from-white to-transparent rounded-full"
         style={{
           top: '20%',
           left: '-10%',

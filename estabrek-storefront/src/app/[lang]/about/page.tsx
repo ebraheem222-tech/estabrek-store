@@ -55,8 +55,8 @@ const UsersIcon = () => (
   </svg>
 );
 
-export default async function AboutPage({ params }: { params: { lang: string } }) {
-  const lang = routeLang(params);
+export default async function AboutPage(props: { params: Promise<{ lang: string }> }) {
+  const lang = routeLang(await props.params);
   // Look up the CMS page alongside the settings instead of after them (one wait, not two).
   void getPageBySlug("/about", lang);
   const settings = await getPublicSettings().catch(() => null);

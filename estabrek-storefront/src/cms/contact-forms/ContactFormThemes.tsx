@@ -402,7 +402,7 @@ export const ContactFormDark: React.FC<ContactFormProps> = (props) => {
 export const ContactFormTechGradient: React.FC<ContactFormProps> = (props) => {
   const p = { ...defaultProps, ...props };
   return (
-    <section className={`py-16 px-4 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 ${p.className || ''}`}>
+    <section className={`py-16 px-4 bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 ${p.className || ''}`}>
       <div className="max-w-xl mx-auto">
         {p.title && <h2 className="text-3xl font-bold text-white mb-2 text-center">{p.title}</h2>}
         {p.subtitle && <p className="text-purple-200 mb-8 text-center">{p.subtitle}</p>}
@@ -432,8 +432,8 @@ export const ContactFormGamingNeon: React.FC<ContactFormProps> = (props) => {
         <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-600/30 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-cyan-600/30 rounded-full blur-3xl"></div>
         
-        <div className="relative bg-gray-900/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/30">
-          {p.title && <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 mb-2 text-center">{p.title}</h2>}
+        <div className="relative bg-gray-900/50 backdrop-blur-xs rounded-2xl p-8 border border-purple-500/30">
+          {p.title && <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-cyan-400 mb-2 text-center">{p.title}</h2>}
           {p.subtitle && <p className="text-gray-400 mb-8 text-center">{p.subtitle}</p>}
           <form className="space-y-5" onSubmit={formSubmit(p)}>
             {p.showName && <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 bg-gray-800/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />}
@@ -448,7 +448,7 @@ export const ContactFormGamingNeon: React.FC<ContactFormProps> = (props) => {
               </select>
             )}
             {p.showMessage && <textarea rows={4} placeholder={p.messagePlaceholder} className="w-full px-4 py-3 bg-gray-800/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 resize-none"></textarea>}
-            <button type="submit" className="w-full py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all">{p.submitLabel}</button>
+            <button type="submit" className="w-full py-3 bg-linear-to-r from-purple-600 to-cyan-600 text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all">{p.submitLabel}</button>
           </form>
         </div>
       </div>
@@ -469,7 +469,7 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
           <div className="space-y-4">
             {p.phone && (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-600 rounded-sm flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                 </div>
                 <span className="text-slate-700">{p.phone}</span>
@@ -477,7 +477,7 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
             )}
             {p.email && (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-600 rounded-sm flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                 </div>
                 <span className="text-slate-700">{p.email}</span>
@@ -485,7 +485,7 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
             )}
             {p.address && (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-600 rounded-sm flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
                 </div>
                 <span className="text-slate-700">{p.address}</span>
@@ -500,13 +500,13 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
               {p.showName && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">{p.nameLabel} *</label>
-                  <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:ring-2 focus:ring-blue-500" />
                 </div>
               )}
               {p.showEmail && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">{p.emailLabel} *</label>
-                  <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500" />
+                  <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:ring-2 focus:ring-blue-500" />
                 </div>
               )}
             </div>
@@ -514,20 +514,20 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
               {p.showPhone && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">{p.phoneLabel}</label>
-                  <input type="tel" placeholder={p.phonePlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500" />
+                  <input type="tel" placeholder={p.phonePlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:ring-2 focus:ring-blue-500" />
                 </div>
               )}
               {p.showCompany && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">{p.companyLabel}</label>
-                  <input type="text" placeholder={p.companyPlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" placeholder={p.companyPlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:ring-2 focus:ring-blue-500" />
                 </div>
               )}
             </div>
             {p.showSubject && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">{p.subjectLabel}</label>
-                <select className="w-full px-4 py-3 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:ring-2 focus:ring-blue-500">
                   <option value="">Select a topic</option>
                   <option value="sales">Sales Inquiry</option>
                   <option value="support">Support</option>
@@ -539,10 +539,10 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
             {p.showMessage && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">{p.messageLabel} *</label>
-                <textarea rows={4} placeholder={p.messagePlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                <textarea rows={4} placeholder={p.messagePlaceholder} className="w-full px-4 py-3 border border-slate-200 rounded-sm focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
               </div>
             )}
-            <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700">{p.submitLabel}</button>
+            <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-medium rounded-sm hover:bg-blue-700">{p.submitLabel}</button>
           </form>
         </div>
       </div>
@@ -605,9 +605,9 @@ export const ContactFormFitness: React.FC<ContactFormProps> = (props) => {
           {p.title && <h2 className="text-4xl font-black text-white uppercase mb-4">{p.title}</h2>}
           {p.description && <p className="text-gray-400 mb-8">{p.description}</p>}
           <div className="space-y-4">
-            {p.phone && <p className="text-gray-300 flex items-center gap-3"><span className="w-10 h-10 bg-red-600 rounded flex items-center justify-center">📞</span> {p.phone}</p>}
-            {p.email && <p className="text-gray-300 flex items-center gap-3"><span className="w-10 h-10 bg-red-600 rounded flex items-center justify-center">✉️</span> {p.email}</p>}
-            {p.address && <p className="text-gray-300 flex items-center gap-3"><span className="w-10 h-10 bg-red-600 rounded flex items-center justify-center">📍</span> {p.address}</p>}
+            {p.phone && <p className="text-gray-300 flex items-center gap-3"><span className="w-10 h-10 bg-red-600 rounded-sm flex items-center justify-center">📞</span> {p.phone}</p>}
+            {p.email && <p className="text-gray-300 flex items-center gap-3"><span className="w-10 h-10 bg-red-600 rounded-sm flex items-center justify-center">✉️</span> {p.email}</p>}
+            {p.address && <p className="text-gray-300 flex items-center gap-3"><span className="w-10 h-10 bg-red-600 rounded-sm flex items-center justify-center">📍</span> {p.address}</p>}
           </div>
         </div>
         <div className="bg-gray-800 rounded-xl p-8 border border-gray-700">
@@ -705,26 +705,26 @@ export const ContactFormCreative: React.FC<ContactFormProps> = (props) => {
             {p.showName && (
               <div>
                 <label className="block text-white text-sm mb-2 uppercase tracking-wider">Name</label>
-                <input type="text" placeholder={p.namePlaceholder} className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none" />
+                <input type="text" placeholder={p.namePlaceholder} className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-hidden" />
               </div>
             )}
             {p.showEmail && (
               <div>
                 <label className="block text-white text-sm mb-2 uppercase tracking-wider">Email</label>
-                <input type="email" placeholder={p.emailPlaceholder} className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none" />
+                <input type="email" placeholder={p.emailPlaceholder} className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-hidden" />
               </div>
             )}
           </div>
           {p.showSubject && (
             <div>
               <label className="block text-white text-sm mb-2 uppercase tracking-wider">Project Type</label>
-              <input type="text" placeholder="e.g. Branding, Web Design, Motion" className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none" />
+              <input type="text" placeholder="e.g. Branding, Web Design, Motion" className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-hidden" />
             </div>
           )}
           {p.showMessage && (
             <div>
               <label className="block text-white text-sm mb-2 uppercase tracking-wider">Tell us about your project</label>
-              <textarea rows={4} placeholder={p.messagePlaceholder} className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"></textarea>
+              <textarea rows={4} placeholder={p.messagePlaceholder} className="w-full px-0 py-3 bg-transparent border-b-2 border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-hidden resize-none"></textarea>
             </div>
           )}
           <div className="pt-4">
@@ -769,7 +769,7 @@ export const ContactFormEcommerceSupport: React.FC<ContactFormProps> = (props) =
           </div>
         </div>
         {/* Form */}
-        <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-8 border border-gray-200">
+        <div className="md:col-span-2 bg-white rounded-xl shadow-xs p-8 border border-gray-200">
           {p.title && <h2 className="text-2xl font-bold text-gray-900 mb-2">{p.title}</h2>}
           {p.subtitle && <p className="text-gray-600 mb-6">{p.subtitle}</p>}
           <form className="space-y-5" onSubmit={formSubmit(p)}>
@@ -794,7 +794,7 @@ export const ContactFormEcommerceSupport: React.FC<ContactFormProps> = (props) =
             </div>
             {p.showMessage && <textarea rows={4} placeholder={p.messagePlaceholder} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"></textarea>}
             <div className="flex items-center gap-3">
-              <input type="checkbox" id="urgent" className="w-4 h-4 text-blue-600 rounded" />
+              <input type="checkbox" id="urgent" className="w-4 h-4 text-blue-600 rounded-sm" />
               <label htmlFor="urgent" className="text-sm text-gray-600">This is urgent</label>
             </div>
             <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">{p.submitLabel}</button>

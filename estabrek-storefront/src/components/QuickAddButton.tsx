@@ -181,8 +181,8 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
         className={
           "w-full rounded-xl px-3 py-2 text-sm font-semibold transition " +
           // Luxury: black/gold
-          "bg-[color:var(--accent-2)] text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95 " +
-          "border border-[color:var(--accent-2)]/50"
+          "bg-(--accent-2) text-(--accent-contrast,#0B0B0B) hover:brightness-95 " +
+          "border border-(--accent-2)/50"
         }
       >
         {buttonLabel ?? (tr(lang, "أضف للسلة", "Add to bag"))}
@@ -344,23 +344,23 @@ const colorHasAvailable = (key: string): boolean => {
           "absolute bottom-0 left-0 right-0 sm:bottom-auto sm:left-auto sm:top-0 sm:right-0 " +
           "w-full sm:w-[420px] sm:max-w-[92vw] " +
           "max-h-[92vh] sm:h-full overflow-y-auto " +
-          "border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] shadow-2xl " +
+          "border border-(--border) bg-(--surface) text-(--text) shadow-2xl " +
           "rounded-t-3xl sm:rounded-none sm:rounded-l-3xl " +
           "transition-transform duration-200 will-change-transform " +
           (closing ? "translate-y-full sm:translate-y-0 sm:translate-x-full" : "translate-y-0 sm:translate-x-0")
         }
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[color:var(--border)] p-5">
+        <div className="flex items-start justify-between gap-3 border-b border-(--border) p-5">
           <div>
             <div className="text-base font-semibold">{tr(lang, "أضف للسلة", "Add to bag")}</div>
-            <div className="mt-1 text-xs text-[color:var(--muted)]">
+            <div className="mt-1 text-xs text-(--muted)">
               {tr(lang, "اختر اللون والمقاس", "Choose a colour and size")}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-2 text-sm text-[color:var(--text)] hover:brightness-95"
+            className="rounded-xl border border-(--border) bg-(--surface-2) px-3 py-2 text-sm text-(--text) hover:brightness-95"
           >
             ✕
           </button>
@@ -368,15 +368,15 @@ const colorHasAvailable = (key: string): boolean => {
 
         <div className="p-5">
           {loading ? (
-            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
+            <div className="rounded-2xl border border-(--border) bg-(--surface-2) p-4 text-sm text-(--muted)">
               <LoadingIndicator className="flex items-center justify-center" fallback={<span>Loading…</span>} />
             </div>
           ) : !product ? (
-            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
+            <div className="rounded-2xl border border-(--border) bg-(--surface-2) p-4 text-sm text-(--muted)">
               {tr(lang, "ما قدرنا نجيب بيانات المنتج.", "Product details could not load.")}
             </div>
           ) : variants.length === 0 ? (
-            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
+            <div className="rounded-2xl border border-(--border) bg-(--surface-2) p-4 text-sm text-(--muted)">
               {tr(lang, "هذا المنتج لا يحتوي خيارات (Variants) بعد.", "There are no options for this product yet.")}
             </div>
           ) : (
@@ -384,7 +384,7 @@ const colorHasAvailable = (key: string): boolean => {
               <div className="flex items-start justify-between gap-4">
                 <div className="text-sm font-semibold line-clamp-2">{product.title}</div>
                 {selectedPrice != null ? (
-                  <div className="text-sm text-[color:var(--text)]">{formatMoney(selectedPrice, undefined)}</div>
+                  <div className="text-sm text-(--text)">{formatMoney(selectedPrice, undefined)}</div>
                 ) : null}
               </div>
 
@@ -406,16 +406,16 @@ const colorHasAvailable = (key: string): boolean => {
                           className={
                             "rounded-full border px-3 py-1 text-sm transition " +
                             (disabled
-                              ? "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--muted)] opacity-50"
+                              ? "border-(--border) bg-(--surface-2) text-(--muted) opacity-50"
                               : active
-                              ? "border-[color:var(--accent-2)] bg-[color:var(--surface-2)] text-[color:var(--text)]"
-                              : "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text)] hover:brightness-95")
+                              ? "border-(--accent-2) bg-(--surface-2) text-(--text)"
+                              : "border-(--border) bg-(--surface-2) text-(--text) hover:brightness-95")
                           }
                         >
                           <span className="inline-flex items-center gap-2">
                             {swatch ? (
                               <span
-                                className="h-4 w-4 rounded-full border border-[color:var(--border)]"
+                                className="h-4 w-4 rounded-full border border-(--border)"
                                 style={{ background: swatch }}
                                 aria-hidden
                               />
@@ -447,10 +447,10 @@ const colorHasAvailable = (key: string): boolean => {
                           className={
                             "rounded-full border px-3 py-1 text-sm transition " +
                             (disabled
-                              ? "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--muted)] opacity-50"
+                              ? "border-(--border) bg-(--surface-2) text-(--muted) opacity-50"
                               : active
-                              ? "border-[color:var(--accent-2)] bg-[color:var(--surface-2)] text-[color:var(--text)]"
-                              : "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text)] hover:brightness-95")
+                              ? "border-(--accent-2) bg-(--surface-2) text-(--text)"
+                              : "border-(--border) bg-(--surface-2) text-(--text) hover:brightness-95")
                           }
                         >
                           {k === "default" ? (tr(lang, "مقاس واحد", "One size")) : k}
@@ -462,14 +462,14 @@ const colorHasAvailable = (key: string): boolean => {
               ) : null}
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-2">
-                  <span className="text-sm text-[color:var(--muted)]">Qty</span>
+                <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--surface-2) px-3 py-2">
+                  <span className="text-sm text-(--muted)">Qty</span>
                   <input
                     type="number"
                     min={1}
                     value={qty}
                     onChange={(e) => setQty(Math.max(1, Number(e.target.value || 1)))}
-                    className="w-16 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-2 py-1 text-sm text-[color:var(--text)]"
+                    className="w-16 rounded-lg border border-(--border) bg-(--surface) px-2 py-1 text-sm text-(--text)"
                   />
                 </div>
 
@@ -480,8 +480,8 @@ const colorHasAvailable = (key: string): boolean => {
                   className={
                     "rounded-xl px-4 py-2 text-sm font-semibold transition " +
                     (canAdd
-                      ? "bg-[color:var(--accent-2)] text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95"
-                      : "bg-[color:var(--surface-2)] text-[color:var(--text)] opacity-50")
+                      ? "bg-(--accent-2) text-(--accent-contrast,#0B0B0B) hover:brightness-95"
+                      : "bg-(--surface-2) text-(--text) opacity-50")
                   }
                 >
                   {tr(lang, "أضف للسلة", "Add to bag")}

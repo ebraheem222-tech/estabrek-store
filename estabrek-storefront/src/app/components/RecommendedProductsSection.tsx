@@ -25,7 +25,7 @@ export default async function RecommendedProductsSection({
   if (!products.length) return null;
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+    <div className="rounded-3xl border border-white/10 bg-white/4 p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-semibold">{title}</div>
         <Link href="/shop" className="text-xs text-white/60 hover:text-white">
@@ -38,9 +38,9 @@ export default async function RecommendedProductsSection({
           <Link
             key={p.id}
             href={`/p/${encodeURIComponent(p.slug)}`}
-            className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition hover:bg-white/[0.06]"
+            className="group overflow-hidden rounded-2xl border border-white/10 bg-white/4 transition hover:bg-white/6"
           >
-            <div className="relative aspect-[4/5] w-full overflow-hidden bg-black/[0.04]">
+            <div className="relative aspect-4/5 w-full overflow-hidden bg-black/4">
               {p.imageUrl ? (
                 <LqipImage
                   src={cldUrl(p.imageUrl, { w: 600, h: 750, c: "fill", g: "auto" })}
