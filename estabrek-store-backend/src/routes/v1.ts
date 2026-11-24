@@ -20,6 +20,7 @@ import data from "../modules/data/data.routes.js";
 import live from "../modules/live/live.routes.js";
 import pay from "../modules/pay/pay.routes.js";
 import vercelConnect from "../modules/vercel/vercelConnect.controller.js";
+import siteAsk from "../modules/siteAsk/siteAsk.controller.js";
 import { fnCalls, fnHooks, fnRoutes } from "../modules/functions/fn.routes.js";
 import link from "../modules/link/link.routes.js";
 import { webhookRun } from "../middleware/runLog.js";
@@ -44,6 +45,7 @@ r.use("/data", data); // the automatic API: the tables the owner opened, to a ke
 r.use("/live", live); // a shop page told at once when a row of those tables changes (server-sent events)
 r.use("/pay", pay); // a payment a function asked for, paid on the shop's own page (Stripe or PayPal)
 r.use("/vercel", vercelConnect); // «وصّل Vercel»: Vercel sends a store's owner back here (and on to their copy's server)
+r.use("/site-ask", siteAsk); // a copy's admin put up by hand asks the press for its database, server and shop
 r.use("/fn", fnCalls); // a function's own address: a shopper's button, a program with a key, or anyone
 r.use("/link", link); // «إستبرق لينك»: a game server and its site (the whitelist, players linking their account)
 r.use("/hooks", fnHooks); // a webhook from another system starts a function

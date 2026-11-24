@@ -8,10 +8,12 @@ import AuthLayout from "../layouts/AuthLayout";
 import type { AdminPermission } from "../lib/authz";
 import { useAuth } from "../hooks/useAuth";
 import { firstAllowedPath } from "../layouts/adminNav";
+import { server } from "../config/env";
 
 // features pages
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const FirstRunPage = lazy(() => import("../features/auth/FirstRunPage"));
+const ConnectPage = lazy(() => import("../features/connect/ConnectPage"));
 const TwoFactorPage = lazy(() => import("../features/auth/TwoFactorPage"));
 const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
@@ -140,6 +142,26 @@ export default function AppRouter() {
     </ProtectedRoute>
   );
 
+  // An admin put up before its server (no address in its build, none linked in this browser): nothing to sign
+  // in to, so every page opens the linking of the database, the server and the rest (features/connect).
+  if (server.from === "none") {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/connect"
+            element={
+              <AuthLayout>
+                <ConnectPage />
+              </AuthLayout>
+            }
+          />
+          <Route path="*" element={<Navigate to="/connect" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
@@ -158,6 +180,15 @@ export default function AppRouter() {
           element={
             <AuthLayout>
               <FirstRunPage />
+            </AuthLayout>
+          }
+        />
+        {/* The admin's server: linked here when it was put up first, or what its built address answers. */}
+        <Route
+          path="/connect"
+          element={
+            <AuthLayout>
+              <ConnectPage />
             </AuthLayout>
           }
         />

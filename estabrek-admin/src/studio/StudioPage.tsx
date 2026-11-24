@@ -44,7 +44,7 @@ import { PagePublishDialog } from "./PagePublishDialog";
 import { PagePublicationStatus } from "./PagePublicationStatus";
 import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { VisualControlsPanel } from "./VisualControlsPanel";
-import { candidateStack, clickPick, PointSelection } from "./selectionPicking";
+import { candidateStack, clickPick, PointSelection, sameBox } from "./selectionPicking";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { TokensContext, useDesignTokens, withGroup } from "./designTokens";
 import { coloursToAdd } from "./variableMaths";
@@ -155,7 +155,7 @@ import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange, distance
 import { pickCanvasContainer } from "./canvasContainers";
 import { BOUND_TAG, partBounds } from "./canvasBounds";
 import { ContrastNote, type InkReading } from "./ContrastNote";
-import { effectiveLook, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
+import { effectiveLook, flowAnchorOf, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
 import { canvasPlane,effectiveConstraints,movementOf,validResponsiveConstraints,planeMoveLocalPatch,planeNudgePatch,planeResizePatch } from "./engineGeometry";
 import { constrainSize,spaceBoxes,type SizeConstraints } from "./layoutConstraints";
 import { LayoutConstraintsPanel } from "./LayoutConstraintsPanel";
@@ -380,7 +380,8 @@ function StudioDocument() {
   const liveRef = useRef(false);
   liveRef.current = motionLive;
   const playNext = useRef<string | null>(null);
-  const [placing, setPlacing] = useState<{ id: string; box: Box; x: number; y: number; held?: "x" | "y" } | null>(null);
+  // `offset`: moved by its own offset in its holder's rows (page px from its place there), not placed by % (keepsRow).
+  const [placing, setPlacing] = useState<{ id: string; box: Box; x: number; y: number; held?: "x" | "y"; offset?: Pt } | null>(null);
   // A free drag (phase 9): how it behaves (kept in this browser), what it pushes, touches and lines up with, the place it'd go into.
   const [dragPrefs, setDragPrefs] = useState<DragPrefs>(readDragPrefs);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>(readCanvasMode);
@@ -1158,17 +1159,23 @@ function StudioDocument() {
     const hitPath = hit && index ? pathTo(index, hit.id, up) : [];
     // Pressed on an inner part (a label, a quote, a picture inside a widget): its object is what moves.
     const hitNode = [...hitPath].reverse().find((x) => index?.nodes.has(x)) ?? null;
-    // A selected inner part pressed on moves itself (below), not its object.
-    const onOwnPart = selExtra?.kind === "detail" && Boolean(selected && hitPath.includes(selected));
-    const grab = onOwnPart ? null : movable(selected) && selected && hitPath.includes(selected) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hitPath.includes(c)) ?? null : !touch && hitNode && movable(hitNode) ? hitNode : null;
+    // A selected inner part pressed on moves itself (below), not its object; unless it is only a wrapper drawn as
+    // its object (a menu's list of links fills the menu): then the object moves, and the links stay in their menu.
+    const partOwner = selExtra?.kind === "detail" && selected && index ? [...pathTo(index, selected, up)].reverse().find((x) => index.nodes.has(x)) ?? null : null;
+    const partBox = selExtra?.kind === "detail" ? shapeOf(selected)?.box : undefined, ownerBox = partOwner ? shapeOf(partOwner)?.box : undefined;
+    const wrapper = Boolean(partBox && ownerBox && sameBox(partBox, ownerBox));
+    const onOwnPart = selExtra?.kind === "detail" && !wrapper && Boolean(selected && hitPath.includes(selected));
+    let grab = onOwnPart ? null : movable(selected) && selected && hitPath.includes(selected) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hitPath.includes(c)) ?? null : !touch && hitNode && movable(hitNode) ? hitNode : null;
     // What's inside another selected element goes with it.
-    const group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
+    let group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
+    let free=grab?freeDragOf(grab,group):undefined;
+    const analytic=grab&&free?analyticDragOf(grab,free.ids,p):undefined;
+    // Only movable by its measured plane, and that isn't there (yet): this press doesn't move it, but it is still a
+    // click (it picks, a second click goes inside) and never just nothing (it used to be swallowed whole).
+    if (free && free.ids.some(needsPlaneMove) && !analytic) { grab = null; group = []; free = undefined; }
     const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
     if (grab && !chosen.includes(grab)) select(grab);
     if (grab && motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
-    const free=grab?freeDragOf(grab,group):undefined;
-    const analytic=grab&&free?analyticDragOf(grab,free.ids,p):undefined;
-    if(free&&free.ids.some(needsPlaneMove)&&!analytic)return;
     let partMove: PartMove | undefined;
     if (!grab && !panning && !e.shiftKey && selected && hitPath.includes(selected) && lookTarget && selExtra?.kind === "detail" && styleState === "normal") {
       const measured = layout?.items.find(item => item.kind === "detail" && item.owner === selExtra.owner && item.key === selExtra.key);
@@ -1234,7 +1241,7 @@ function StudioDocument() {
     // The object first, inside it on a second click, the deepest with Ctrl/⌘ (clickPick).
     const before = d.before ?? null;
     pickPoint(p, ids => {
-      const target = clickPick(ids, alt ? selected : before, { deep: deepSelection, deepest, cycle: alt, isPart: (x) => x.startsWith("detail:"), pathOf: (x) => pathTo(index, x, up) }) ?? index.root;
+      const target = clickPick(ids, alt ? selected : before, { deep: deepSelection, deepest, cycle: alt, isPart: (x) => x.startsWith("detail:"), pathOf: (x) => pathTo(index, x, up), boxOf: (x) => shapeOf(x)?.box }) ?? index.root;
       if (shift && target && isFree(index.nodes.get(target)?.node.type)) return toggleChosen(target);
       select(target);
     });
@@ -1385,6 +1392,11 @@ function StudioDocument() {
         to = nearer && nearer.zoom >= v.zoom * 1.15 ? nearer : null;
       }
       if (!to) return;
+      // A part already in sight is never made smaller to frame it whole (a header is wider than the canvas's free
+      // part: dropping a search into it made the whole page jump away from where the owner was working).
+      const seenW = Math.min(s.box.x + s.box.w, v.canvas.w) - Math.max(s.box.x, 0), seenH = Math.min(s.box.y + s.box.h, v.canvas.h) - Math.max(s.box.y, 0);
+      const inSight = seenW > 0 && seenH > 0 && seenW * seenH >= 0.3 * Math.min(s.box.w * s.box.h, v.canvas.w * v.canvas.h);
+      if (inSight && to.zoom < v.zoom - 1e-3) return;
       // A view of its own choosing: the next pick doesn't glide "back" to where the drag began.
       homeView.current = null;
       v.glide(to);
@@ -1508,7 +1520,7 @@ function StudioDocument() {
           if (selected !== focus.id) return select(focus.id);
           return closeFocus();
         }
-        setSelected((s) => parentOf(s));
+        setSelected((s) => outOf(s));
         return;
       }
       if (!mod && k === "f" && selected && !focus && !e.altKey && !e.shiftKey) {
@@ -1751,6 +1763,20 @@ function StudioDocument() {
     return pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text");
   };
   const parentOf = (sid: string | null) => (sid && index ? pathTo(index, sid, up).slice(-2, -1)[0] ?? null : null);
+  /**
+   * One step out (Escape): what holds it, past inner parts that only wrap it or are drawn as what holds them (a
+   * menu's list item around its link, its list filling the menu): from a link Escape is the menu at once.
+   */
+  const outOf = (sid: string | null) => {
+    const from = shapeOf(sid)?.box;
+    let at = parentOf(sid);
+    while (at?.startsWith("detail:")) {
+      const box = shapeOf(at)?.box, above = parentOf(at), aboveBox = shapeOf(above)?.box;
+      if (!box || !(from && sameBox(box, from) || aboveBox && sameBox(box, aboveBox))) break;
+      at = above;
+    }
+    return at;
+  };
   const selNode = selected ? index?.nodes.get(selected) : undefined;
   const selShape = shapeOf(selected);
   const selExtra = selected ? extras.get(selected) : undefined;
@@ -2394,12 +2420,25 @@ function StudioDocument() {
     const size = sizeOf(node.id) ?? { w: change.start.w, h: change.start.h };
     const group = scaleContents && Boolean(node.children?.length) && change.frame;
     // Group scaling preserves its original layout context, including auto and %
-    // dimensions. Only ordinary frame resizing converts flow to free placement.
-    const free = Boolean(placedOn(node, screen)) || !group && canvasMode === "free";
+    // dimensions. An element in its holder's rows is sized where it is (its own
+    // offset keeps the side not dragged still), as it is moved (keepsRow): taking
+    // it out of the rows to size it made its neighbours close up under it.
+    const free = Boolean(placedOn(node, screen));
     const patch = group
       ? scaleContentsPatch(node, screen, change.start, change.box, size, group.current.w / group.start.w, zoom, parentScaleOf(node.id))
-      : resizePatch(node, screen, change.start, change.box, size, w, h, holder, zoom, rtl, free, parentScaleOf(node.id));
-    return patch ? [...(free && !placedOn(node, screen) && parentId ? pinHolder(parentId) : []), styleOp(node, screen, patch)] : [];
+      : resizePatch(node, screen, change.start, change.box, size, w, h, holder, zoom, rtl, free, parentScaleOf(node.id), free ? undefined : flowAnchor(node.id, change.start));
+    return patch ? [styleOp(node, screen, patch)] : [];
+  };
+  /** How its holder places a flow element again at a new size (canvasManipulation.ts flowAnchorOf). */
+  const flowAnchor = (sid: string, seen: Box): Pt => {
+    const parentId = index?.nodes.get(sid)?.parentId ?? null, n = nodeOf(sid), parent = parentId ? nodeOf(parentId) : undefined;
+    const holder = parentId ? holdsOf(parentId) : null;
+    if (!n || !parent || !holder || !index) return { x: 0, y: 0 };
+    const flow = (index.nodes.get(parentId!)?.children ?? []).filter((c) => { const m = nodeOf(c); return Boolean(m && !placedOn(m, screen) && shapeOf(c)); });
+    // Where its holder lays it out: its own offset taken off.
+    const unit = zoom * parentScaleOf(sid);
+    const laid = { ...seen, x: seen.x - lookNum(n, "moveX", 0) * unit, y: seen.y - lookNum(n, "moveY", 0) * unit };
+    return flowAnchorOf({ seen: laid, holder, row: shownLook(parent, screen, "direction") === "row", justify: shownLook(parent, screen, "justify"), align: shownLook(n, screen, "self") ?? shownLook(parent, screen, "align"), at: flow.indexOf(sid), count: flow.length, rtl });
   };
   const lookNum = (n: PagesAPI.PageTreeNode, key: string, or: number) => {
     const v = Number(shownLook(n, screen, key));
@@ -2429,6 +2468,24 @@ function StudioDocument() {
     const r = (v: number) => Math.round(Math.max(-9999, Math.min(9999, v)) * 10) / 10;
     const unit = zoom * parentScaleOf(sid);
     send({ type: "previewLook", nodeId: sid, vars: { "--pt-x": `${r(lookNum(n, "moveX", 0) + by.x / unit)}px`, "--pt-y": `${r(lookNum(n, "moveY", 0) + by.y / unit)}px` } });
+  };
+  /**
+   * Moved freely but kept in its holder's rows (free move, not placed by % over its holder): it goes by its own
+   * offset, as the arrow keys move it, so what stands beside it in the rows stays where it is and it keeps its own
+   * size. Taking it out of the rows made its neighbours close up under it (a header's search jumped into the
+   * menu's place when the menu was moved) and froze its size (a link added to the menu then spilled out of it).
+   */
+  const keepsRow = (sid: string) => {
+    const n = nodeOf(sid);
+    return Boolean(n && canvasMode === "free" && !placedOn(n, screen));
+  };
+  /** Its own offset (page px) after a move by `by` screen pixels, for one that keeps its place in the rows. */
+  const rowOffset = (sid: string, by: Pt): Pt | null => {
+    const n = nodeOf(sid);
+    const unit = zoom * parentScaleOf(sid);
+    if (!n || !(unit > 0)) return null;
+    const r = (v: number) => Math.round(Math.max(-9999, Math.min(9999, v)) * 10) / 10;
+    return { x: r(lookNum(n, "moveX", 0) + by.x / unit), y: r(lookNum(n, "moveY", 0) + by.y / unit) };
   };
   /** A drag of what's placed freely: the grabbed one and those selected with it in the same holder, and what's beside them. */
   const freeDragOf = (grab: string, group: string[]): FreeDrag | undefined => {
@@ -2539,10 +2596,13 @@ function StudioDocument() {
     const box = f.ids.length > 1 ? { ...f.start, x: f.start.x + by.x, y: f.start.y + by.y } : lead;
     // Asked to go a way it can't, because it fills its holder and is kept inside it: said beside it (not a silent stop).
     const held = into ? null : heldAxis(f, { x: p.x - d.p.x, y: p.y - d.p.y }, by, dragPrefs);
-    setPlacing({ id: n.id, box, ...placeFor(placeBoxOf(n.id, lead), into?.box ?? f.holder, placedOn(n, screen)?.anchor ?? "center", rtl), ...(held ? { held } : {}) });
+    const offset = !into && keepsRow(n.id) ? rowOffset(n.id, by) : null;
+    setPlacing({ id: n.id, box, ...placeFor(placeBoxOf(n.id, lead), into?.box ?? f.holder, placedOn(n, screen)?.anchor ?? "center", rtl), ...(held ? { held } : {}), ...(offset ? { offset } : {}) });
     const preview: PagesAPI.PageDraftOp[] = [];
     for (const x of f.ids) {
       const moving = nodeOf(x), startBox = d.starts.get(x), measured = sizeOf(x);
+      // In its holder's rows it is shown moved by its own offset: nothing beside it moves (keepsRow).
+      if (moving && keepsRow(x)) { previewMove(x, by); continue; }
       if (!moving || !startBox || !measured) continue;
       const parentId = index?.nodes.get(x)?.parentId;
       if (!placedOn(moving, screen) && parentId) preview.push(...pinHolder(parentId));
@@ -2656,6 +2716,8 @@ function StudioDocument() {
     const order = inTreeOrder(index, f.ids);
     let first: string | null = null;
     let added = 0;
+    // Moved in its holder's rows: its own offset is saved (keepsRow), and the frame's preview of it is let go after.
+    let inRows = false;
     // Copies beside their originals go in from the last, so the places counted stay right.
     for (const x of copy && !into ? [...order].reverse() : order) {
       const n = nodeOf(x);
@@ -2663,6 +2725,11 @@ function StudioDocument() {
       const was = n ? placedOn(n, screen) : null;
       const parentId = index.nodes.get(x)?.parentId;
       if (!n || !s || !parentId) continue;
+      if (!into && !copy && keepsRow(x)) {
+        const offset = rowOffset(x, by);
+        if (offset) { ops.push(styleOp(n, screen, { moveX: offset.x || null, moveY: offset.y || null })); inRows = true; }
+        continue;
+      }
       const measured = sizeOf(x) ?? { w: s.w, h: s.h };
       const sourceScale = parentScaleOf(x), targetScale = into ? holderScaleOf(into.id) ?? sourceScale : sourceScale;
       const seen = { ...s, x: s.x + by.x, y: s.y + by.y };
@@ -2693,6 +2760,8 @@ function StudioDocument() {
     if (!ops.length) { clearGeometry(); return unpreview(d); }
     void change(copy ? tr("نسخة", "Copy") : into ? tr("نقل لجوّا", "Move into") : tr("المكان", "Place"), ops, first ?? undefined).finally(() => {
       unpreview(d); clearGeometry();
+      // Its offset is saved and drawn by the page now: what the drag showed is let go (it would hold the old one).
+      if (inRows) send({ type: "previewLook", nodeId: d.grab!, vars: null });
       // Into another part: the view comes to that part, so where it landed is in sight.
       if (into && dragPrefs.follow) frameOnPart(into.id);
     });
@@ -4279,7 +4348,7 @@ function StudioDocument() {
               {marquee ? <div className="pointer-events-none absolute border border-sky-400 bg-sky-400/10" style={rel(boxOf(marquee.a, marquee.b))} data-testid="studio-marquee" /> : null}
               {placing ? (
                 <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-sky-400 bg-sky-400/10" style={rel(placing.box)} data-testid="studio-placing">
-                  <span className="absolute start-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr">{placing.x}% · {placing.y}%</span>
+                  <span className="absolute start-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr" data-testid="studio-placing-at">{placing.offset ? `${placing.offset.x >= 0 ? "+" : ""}${placing.offset.x} · ${placing.offset.y >= 0 ? "+" : ""}${placing.offset.y} px` : `${placing.x}% · ${placing.y}%`}</span>
                   {placing.held ? (
                     <span className="absolute start-0 top-full mt-1 max-w-[20rem] rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] leading-4 text-black" data-testid="studio-placing-held" data-axis={placing.held}>
                       {placing.held === "x"

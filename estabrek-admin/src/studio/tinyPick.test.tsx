@@ -90,9 +90,22 @@ describe("handles on a small element", () => {
     expect(se.y).toBeGreaterThan(108);
   });
 
-  it("a long thin one keeps the handles on its long sides' ends; a normal one is as before", () => {
+  it("a long thin one (a header's menu or search) keeps every handle, its side ones clear of its corners; a normal one is as before", () => {
     render(<SelectionHandles {...props(box(100, 100, 200, 10))} />);
-    expect(screen.getAllByTestId("studio-handle").map((h) => h.dataset.handle).sort()).toEqual(["n", "ne", "nw", "s", "se", "sw"]);
+    // Its ends' handles stay, so it can be made wider or narrower alone.
+    expect(screen.getAllByTestId("studio-handle")).toHaveLength(8);
+    const e = at("e"), ne = at("ne"), se = at("se"), w = at("w");
+    expect(e).toMatchObject({ x: 300 + HANDLE_OFF, y: 105, off: "1" });
+    expect(w.x).toBe(100 - HANDLE_OFF);
+    // The corners stand off along their diagonals, so a 10 px handle at the side's middle doesn't sit on them.
+    expect(Math.hypot(ne.x - e.x, ne.y - e.y)).toBeGreaterThan(10);
+    expect(Math.hypot(se.x - e.x, se.y - e.y)).toBeGreaterThan(10);
+    expect(ne.y).toBeLessThan(100);
+    cleanup();
+    // A tall, narrow one keeps its top and bottom handles too.
+    render(<SelectionHandles {...props(box(100, 100, 12, 160))} />);
+    expect(screen.getAllByTestId("studio-handle").map((h) => h.dataset.handle).sort()).toEqual(["e", "n", "ne", "nw", "s", "se", "sw", "w"]);
+    expect(at("n")).toMatchObject({ x: 106, y: 100 - HANDLE_OFF });
     cleanup();
     render(<SelectionHandles {...props(box(100, 100, 200, 100))} />);
     expect(screen.getAllByTestId("studio-handle")).toHaveLength(8);

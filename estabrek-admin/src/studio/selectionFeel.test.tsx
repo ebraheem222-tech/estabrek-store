@@ -30,6 +30,27 @@ describe("a click picks like a design tool", () => {
   it("a second click on the selected object goes one level inside", () => {
     expect(clickPick(under, "reviews", opts())).toBe("detail:reviews/quote");
   });
+  it("a second click on a menu goes to the link, not to the list drawn as the menu itself", () => {
+    // A header's menu: its list of links fills it whole; the link is the part an owner means.
+    const paths: Record<string, string[]> = {
+      "detail:menu/ul": ["page", "head", "menu", "detail:menu/ul"],
+      "detail:menu/ul/li": ["page", "head", "menu", "detail:menu/ul", "detail:menu/ul/li"],
+      "detail:menu/ul/li/a": ["page", "head", "menu", "detail:menu/ul", "detail:menu/ul/li", "detail:menu/ul/li/a"],
+      menu: ["page", "head", "menu"], head: ["page", "head"],
+    };
+    const boxes: Record<string, { x: number; y: number; w: number; h: number }> = {
+      menu: { x: 300, y: 20, w: 240, h: 36 }, "detail:menu/ul": { x: 300.5, y: 20, w: 239.5, h: 36 },
+      // The list item only wraps its link (drawn on the same place).
+      "detail:menu/ul/li": { x: 300, y: 26, w: 70, h: 24 }, "detail:menu/ul/li/a": { x: 300, y: 26.5, w: 70, h: 23.5 },
+    };
+    const o = opts({ pathOf: (x: string) => paths[x] ?? [x], boxOf: (x: string) => boxes[x] });
+    const onLink = ["detail:menu/ul/li/a", "detail:menu/ul/li", "detail:menu/ul", "menu", "head"];
+    expect(clickPick(onLink, "menu", o)).toBe("detail:menu/ul/li/a");
+    // Without its boxes known it is as before (the closest part).
+    expect(clickPick(onLink, "menu", opts({ pathOf: (x: string) => paths[x] ?? [x] }))).toBe("detail:menu/ul");
+    // A part that is smaller than its object stays the closest one (the review's quote).
+    expect(clickPick(under, "reviews", opts({ boxOf: (x: string) => ({ reviews: { x: 0, y: 0, w: 400, h: 200 }, "detail:reviews/quote": { x: 20, y: 20, w: 300, h: 60 } } as Record<string, { x: number; y: number; w: number; h: number }>)[x] }))).toBe("detail:reviews/quote");
+  });
   it("inside an object, its parts are one click away; another object takes the click back out", () => {
     expect(clickPick(under, "detail:reviews/name", opts())).toBe("detail:reviews/quote/b");
     expect(clickPick(["heading-2", "sec"], "detail:reviews/quote", opts())).toBe("heading-2");

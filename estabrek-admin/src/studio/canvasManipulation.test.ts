@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { resizeFrame } from "./handles";
-import { placementBox, placementPatch, resizePatch, readCanvasMode, saveCanvasMode, effectiveLook, transferPatch, scaleContentsPatch, scaleContentsLimits, readScaleContents, saveScaleContents } from "./canvasManipulation";
+import { flowAnchorOf, placementBox, placementPatch, resizePatch, readCanvasMode, saveCanvasMode, effectiveLook, transferPatch, scaleContentsPatch, scaleContentsLimits, readScaleContents, saveScaleContents } from "./canvasManipulation";
 const node = { id: "image", type: "image", props: {}, style: { base: { width: "100%" } } };
 const holder = { x: 100, y: 200, w: 600, h: 400 };
 test("free group scaling preserves an auto-width group's original insets", () => {
@@ -145,4 +145,35 @@ test("flow resize compensates a changing top transform origin and ancestor scale
  const transformed={...node,style:{base:{origin:"top",scale:2,rotateZ:90}}};
  const start={x:200,y:50,w:200,h:400},next={x:180,y:10,w:240,h:440};
  expect(resizePatch(transformed,"base",start,next,{w:100,h:50},220,120,null,.5,false,false,2)).toMatchObject({width:"220px",height:"120px",moveX:10,moveY:-20});
+});
+
+// A header's menu, alone in its column and centred there, made 100 px wider by its right-hand handle at zoom 1: the
+// column centres it again at its new size, so its left side would go back 50 px: its offset makes that up.
+test("sized in the flow, the side not dragged stays where it is, however its holder places it", () => {
+ const menu={id:"menu",type:"menu",props:{},style:{base:{}}};
+ const start={x:400,y:20,w:300,h:36},next={x:400,y:20,w:400,h:36};
+ expect(resizePatch(menu,"base",start,next,{w:300,h:36},400,null,null,1,false,false,1,{x:.5,y:.5})).toMatchObject({width:"400px",moveX:50,moveY:0});
+ // From the start side (left stays by itself): no offset; from the end side, the whole growth.
+ expect(resizePatch(menu,"base",start,next,{w:300,h:36},400,null,null,1,false,false,1,{x:0,y:0})).toMatchObject({moveX:0});
+ expect(resizePatch(menu,"base",start,next,{w:300,h:36},400,null,null,1,false,false,1,{x:1,y:0})).toMatchObject({moveX:100});
+});
+
+test("how a holder places a flow element again: its justify along the flow, its align across, else where it is drawn", () => {
+ const holder={x:0,y:0,w:600,h:60};
+ // Alone in a column (a header cell), centred both ways by what it is drawn in.
+ expect(flowAnchorOf({seen:{x:150,y:12,w:300,h:36},holder,row:false,at:0,count:1,rtl:false})).toEqual({x:.5,y:.5});
+ // Against the far side; against the start side; filling it (it starts on the left once it has a width of its own).
+ expect(flowAnchorOf({seen:{x:300,y:0,w:300,h:36},holder,row:false,at:0,count:1,rtl:false})).toEqual({x:1,y:0});
+ expect(flowAnchorOf({seen:{x:0,y:0,w:300,h:36},holder,row:false,at:0,count:1,rtl:false})).toEqual({x:0,y:0});
+ expect(flowAnchorOf({seen:{x:0,y:0,w:600,h:60},holder,row:false,at:0,count:1,rtl:false})).toEqual({x:0,y:0});
+ // A centred row of three (name, menu, search): the row centres again; the holder's align says across.
+ expect(flowAnchorOf({seen:{x:200,y:12,w:200,h:36},holder,row:true,justify:"center",align:"center",at:1,count:3,rtl:false})).toEqual({x:.5,y:.5});
+ // Spread out: the first keeps its start, the last its end, one between them its middle; right to left, mirrored.
+ const row={seen:{x:0,y:0,w:100,h:60},holder,row:true,justify:"between",count:3};
+ expect([0,1,2].map(at=>flowAnchorOf({...row,at,rtl:false}).x)).toEqual([0,.5,1]);
+ expect([0,1,2].map(at=>flowAnchorOf({...row,at,rtl:true}).x)).toEqual([1,.5,0]);
+ // Packed at the start of a right-to-left row: its right side stays.
+ expect(flowAnchorOf({seen:{x:500,y:0,w:100,h:60},holder,row:true,at:0,count:2,rtl:true}).x).toBe(1);
+ // Across a column in a right-to-left page, "start" is the right side.
+ expect(flowAnchorOf({seen:{x:300,y:0,w:300,h:36},holder,row:false,align:"start",at:0,count:2,rtl:true}).x).toBe(1);
 });
