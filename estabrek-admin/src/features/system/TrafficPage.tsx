@@ -30,7 +30,7 @@ import {
 } from "./trafficText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
-const field = "h-10 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 export default function TrafficPage() {
   const { hasPermission } = useAuth();
@@ -164,7 +164,7 @@ function MessageEditor({ saved, canChange }: { saved: string; canChange: boolean
         disabled={!canChange}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="منحدّث المتجر وراجعين خلال ساعة. لأي سؤال راسلونا على واتساب."
-        className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm"
+        className="mt-2 w-full rounded-xl border border-white/8 bg-white/3 p-3 text-sm"
       />
       {canChange ? (
         <Button size="sm" variant="secondary" className="mt-2" onClick={() => save.mutate()} isLoading={save.isPending} disabled={saved === message}>
@@ -253,7 +253,7 @@ function PressureEditor({ saved, limits }: { saved: PressureSettings; limits: Sy
             aria-checked={draft.mode === m}
             disabled={!canChange}
             onClick={() => set("mode", m)}
-            className={`rounded-xl border px-4 py-2 text-sm ${draft.mode === m ? "border-[var(--btn-solid-border)] bg-[var(--btn-solid-bg)] text-[var(--btn-solid-text)]" : "border-white/10 bg-white/[0.03]"} disabled:opacity-60`}
+            className={`rounded-xl border px-4 py-2 text-sm ${draft.mode === m ? "border-(--btn-solid-border) bg-(--btn-solid-bg) text-(--btn-solid-text)" : "border-white/10 bg-white/3"} disabled:opacity-60`}
           >
             {MODE_TEXT[m].label}
           </button>
@@ -304,7 +304,7 @@ function PressureEditor({ saved, limits }: { saved: PressureSettings; limits: Sy
               disabled={!canChange}
               value={allowText}
               onChange={(e) => setAllowText(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm"
+              className="mt-1.5 w-full rounded-xl border border-white/8 bg-white/3 p-3 text-sm"
             />
           </div>
         </div>
@@ -380,7 +380,7 @@ function PressureCurve({ s }: { s: PressureSettings }) {
       </g>
     ) : null;
   return (
-    <figure className="rounded-xl border border-white/10 bg-white/[0.03] p-2">
+    <figure className="rounded-xl border border-white/10 bg-white/3 p-2">
       <svg style={{ direction: "ltr" }} viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="منحنى الضغط حسب النقاط">
         <line x1={pad} x2={W - pad} y1={H - pad} y2={H - pad} className="stroke-current opacity-30" />
         <line x1={pad} x2={pad} y1={pad} y2={H - pad} className="stroke-current opacity-30" />
@@ -552,7 +552,7 @@ function BlockDialog({ client, onClose }: { client: TrafficClient | null; onClos
                 role="radio"
                 aria-checked={minutes === o.minutes}
                 onClick={() => setMinutes(o.minutes)}
-                className={`rounded-xl border px-3 py-1.5 text-sm ${minutes === o.minutes ? "border-[var(--btn-solid-border)] bg-[var(--btn-solid-bg)] text-[var(--btn-solid-text)]" : "border-white/10"}`}
+                className={`rounded-xl border px-3 py-1.5 text-sm ${minutes === o.minutes ? "border-(--btn-solid-border) bg-(--btn-solid-bg) text-(--btn-solid-text)" : "border-white/10"}`}
               >
                 {o.label}
               </button>

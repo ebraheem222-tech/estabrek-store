@@ -14,7 +14,7 @@ import { EASING, enterFrames, hovered, lookCss, overlayCss } from "./looks/previ
 import type { ThumbColours } from "./templates/colours";
 
 const PAGE = 60;
-const chip = (on: boolean) => `shrink-0 rounded-full px-2 py-0.5 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"}`;
+const chip = (on: boolean) => `shrink-0 rounded-full px-2 py-0.5 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`;
 /** A picture for frames: hills under a sun, in the store's colours. */
 const photo = (c: ThumbColours) =>
   `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 90'><rect width='120' height='90' fill='${c["accent-soft"]}'/><circle cx='88' cy='26' r='12' fill='${c.surface}'/><path d='M0 70L34 38L62 64L84 46L120 72V90H0Z' fill='${c.accent}'/><path d='M0 80L40 58L80 82L120 66V90H0Z' fill='${c.text}' opacity='.55'/></svg>`)}") center/cover`;
@@ -76,7 +76,7 @@ function Tile({ look, colours, on, onPick, onRest }: { look: Ready; colours: Thu
         setOver(false);
         onRest(null);
       }}
-      className={`group relative flex flex-col overflow-hidden rounded-lg border text-start ${on ? "border-accent-400" : "border-white/[0.08] hover:border-white/25"}`}
+      className={`group relative flex flex-col overflow-hidden rounded-lg border text-start ${on ? "border-accent-400" : "border-white/8 hover:border-white/25"}`}
       title={look.name()}
       data-testid="studio-look"
       data-id={look.id}
@@ -124,7 +124,7 @@ export function LooksPanel({ node, label, colours, busy, current, onPick, onRest
           </button>
         ))}
       </div>
-      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر بالأشكال", "Find a look")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" data-testid="studio-looks-find" />
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر بالأشكال", "Find a look")} className="w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white" data-testid="studio-looks-find" />
       {groups.length > 1 ? (
         <div className="flex gap-1 overflow-x-auto pb-1">
           <button type="button" className={chip(group === null)} onClick={() => setGroup(null)}>{tr("الكل", "All")}</button>
@@ -140,7 +140,7 @@ export function LooksPanel({ node, label, colours, busy, current, onPick, onRest
         ))}
       </div>
       {looks.length > shown ? (
-        <button type="button" className="w-full rounded-lg bg-white/[0.05] py-1.5 text-xs text-white/70 hover:bg-white/[0.1]" onClick={() => setMore({ view, n: shown + PAGE })} data-testid="studio-looks-more">
+        <button type="button" className="w-full rounded-lg bg-white/5 py-1.5 text-xs text-white/70 hover:bg-white/10" onClick={() => setMore({ view, n: shown + PAGE })} data-testid="studio-looks-more">
           {tr(`كمان (${looks.length - shown})`, "More ({0})", [looks.length - shown])}
         </button>
       ) : null}

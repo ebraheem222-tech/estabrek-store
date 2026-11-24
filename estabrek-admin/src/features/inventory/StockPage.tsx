@@ -158,17 +158,17 @@ export default function StockPage() {
             <p className="mt-0.5 text-xs text-white/50">{tr("كل مقاس لكل لون هو SKU. الكميات بتتعدّل وبتنحفظ مرة وحدة — كل تغيير بينسجّل بالسجل.", "Each size of each colour is a SKU. Edit the quantities and save once — every change is logged.")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setImportOpen(true)} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("استيراد جرد (Excel/CSV)", "Import a stock count (Excel/CSV)")}</button>
-            <button type="button" onClick={exportCsv} disabled={!rows.length} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">{tr("تصدير Excel", "Export Excel")}</button>
-            <button type="button" onClick={printLabels} disabled={!rows.length} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">{selectedRows.length ? tr(`ملصقات (${selectedRows.length})`, "Labels ({0})", [selectedRows.length]) : tr("ملصقات باركود", "Barcode labels")}</button>
-            <Link to="/admin/inventory/adjustments" className="grid h-10 place-items-center rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("سجل المخزون", "Stock history")}</Link>
+            <button type="button" onClick={() => setImportOpen(true)} className="h-10 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6">{tr("استيراد جرد (Excel/CSV)", "Import a stock count (Excel/CSV)")}</button>
+            <button type="button" onClick={exportCsv} disabled={!rows.length} className="h-10 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6 disabled:opacity-50">{tr("تصدير Excel", "Export Excel")}</button>
+            <button type="button" onClick={printLabels} disabled={!rows.length} className="h-10 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6 disabled:opacity-50">{selectedRows.length ? tr(`ملصقات (${selectedRows.length})`, "Labels ({0})", [selectedRows.length]) : tr("ملصقات باركود", "Barcode labels")}</button>
+            <Link to="/admin/inventory/adjustments" className="grid h-10 place-items-center rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6">{tr("سجل المخزون", "Stock history")}</Link>
           </div>
         </div>
 
         {totals && (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {([["all", "SKU", totals.skus, ""], ["ok", tr("قطعة متوفرة", "pieces in stock"), totals.units, "text-emerald-300"], ["low", tr("قليل", "Low"), totals.low, "text-amber-200"], ["out", tr("نفد", "Sold out"), totals.out, "text-red-300"]] as const).map(([k, label, n, tone]) => (
-              <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("rounded-xl border px-3 py-2.5 text-start transition", filter === k ? "border-accent-500/50 bg-accent-500/10" : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]")}>
+              <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("rounded-xl border px-3 py-2.5 text-start transition", filter === k ? "border-accent-500/50 bg-accent-500/10" : "border-white/8 bg-white/2 hover:border-white/16")}>
                 <div className={cn("text-xl font-semibold text-white", tone)}>{n}</div>
                 <div className="text-xs text-white/55">{label}</div>
               </button>
@@ -177,7 +177,7 @@ export default function StockPage() {
         )}
 
         {/* scanner */}
-        <div className="mt-4 rounded-2xl border border-accent-500/25 bg-accent-500/[0.06] p-3">
+        <div className="mt-4 rounded-2xl border border-accent-500/25 bg-accent-500/6 p-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-lg" aria-hidden>▥</span>
             <input
@@ -187,11 +187,11 @@ export default function StockPage() {
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(scan); } }}
               placeholder={tr("مسح الباركود أو كتابة SKU ثم Enter", "Scan the barcode or type a SKU, then Enter")}
-              className="h-11 min-w-[220px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-start font-mono text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-none"
+              className="h-11 min-w-[220px] flex-1 rounded-xl border border-white/10 bg-surface-925 px-3 text-start font-mono text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-hidden"
               aria-label={tr("مسح باركود", "Scan barcode")}
               data-testid="scan-input"
             />
-            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label={tr("عند المسح", "On scan")}>
+            <div className="inline-flex rounded-xl border border-white/10 bg-white/3 p-1" role="tablist" aria-label={tr("عند المسح", "On scan")}>
               <button type="button" role="tab" aria-selected={scanMode === "find"} onClick={() => { setScanMode("find"); scanRef.current?.focus(); }} className={cn("h-9 rounded-lg px-3 text-sm", scanMode === "find" ? "bg-accent-500/25 text-white" : "text-white/60")}>{tr("إيجاد", "Find")}</button>
               <button type="button" role="tab" aria-selected={scanMode === "receive"} onClick={() => { setScanMode("receive"); scanRef.current?.focus(); }} className={cn("h-9 rounded-lg px-3 text-sm", scanMode === "receive" ? "bg-accent-500/25 text-white" : "text-white/60")}>{tr("استلام بضاعة (+1)", "Receive goods (+1)")}</button>
             </div>
@@ -207,8 +207,8 @@ export default function StockPage() {
 
         {/* filters */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} placeholder={tr("بحث بالاسم، اللون، المقاس أو SKU…", "Search by name, colour, size or SKU…")} className="h-10 min-w-[200px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35 focus:outline-none" aria-label={tr("بحث في المخزون", "Search stock")} />
-          <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("القسم", "Category")}>
+          <input value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} placeholder={tr("بحث بالاسم، اللون، المقاس أو SKU…", "Search by name, colour, size or SKU…")} className="h-10 min-w-[200px] flex-1 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white placeholder:text-white/35 focus:outline-hidden" aria-label={tr("بحث في المخزون", "Search stock")} />
+          <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-10 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white" aria-label={tr("القسم", "Category")}>
             <option value="">{tr("كل الأقسام", "All categories")}</option>
             {(cats.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.parentId ? `— ${c.name}` : c.name}</option>)}
           </select>
@@ -224,12 +224,12 @@ export default function StockPage() {
           <div className="p-10 text-center text-sm text-white/55">{tr("لا توجد مقاسات بهذا البحث.", "No sizes match this search.")}</div>
         ) : (
           <>
-            <div className="hidden grid-cols-[28px_44px_minmax(0,2.2fr)_minmax(0,1.4fr)_72px_150px_80px] items-center gap-3 border-b border-white/[0.06] px-4 py-2 text-[11px] text-white/45 md:grid">
+            <div className="hidden grid-cols-[28px_44px_minmax(0,2.2fr)_minmax(0,1.4fr)_72px_150px_80px] items-center gap-3 border-b border-white/6 px-4 py-2 text-[11px] text-white/45 md:grid">
               <input type="checkbox" checked={allChecked} onChange={(e) => setChecked((c) => ({ ...c, ...Object.fromEntries(visible.map((r) => [r.variantId, e.target.checked])) }))} aria-label={tr("تحديد الكل", "Select all")} />
               <span />
               <span>{tr("المنتج · اللون · المقاس", "Product · colour · size")}</span><span>SKU</span><span>{tr("السعر", "Price")}</span><span className="text-center">{tr("الكمية", "Quantity")}</span><span className="text-center">{tr("تنبيه عند", "Alert at")}</span>
             </div>
-            <ul className="divide-y divide-white/[0.05]" data-testid="stock-rows">
+            <ul className="divide-y divide-white/5" data-testid="stock-rows">
               {visible.map((r) => {
                 const st = stockOf(r);
                 const lw = lowOf(r);
@@ -249,7 +249,7 @@ export default function StockPage() {
                       <div className="flex flex-wrap items-center gap-2 text-xs text-white/55">
                         <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full border border-white/25" style={{ background: r.colorHex || "#888" }} />{r.colorName}</span>
                         <b className="text-white/85">{r.size}</b>
-                        {!r.productActive ? <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px]">{tr("مسودة", "Draft")}</span> : null}
+                        {!r.productActive ? <span className="rounded-full bg-white/8 px-1.5 text-[10px]">{tr("مسودة", "Draft")}</span> : null}
                         {st <= 0 ? <span className="rounded-full bg-red-500/15 px-1.5 text-[10px] text-red-300">{tr("نفد", "Sold out")}</span> : lw > 0 && st <= lw ? <span className="rounded-full bg-amber-500/15 px-1.5 text-[10px] text-amber-200">{tr("قليل", "Low")}</span> : null}
                         <span dir="ltr" className="font-mono text-[11px] text-white/45 md:hidden">{r.sku}</span>
                       </div>
@@ -257,20 +257,20 @@ export default function StockPage() {
                     <span dir="ltr" className="hidden truncate text-right font-mono text-xs text-white/70 md:block" title={r.sku}>{r.sku}</span>
                     <span className="hidden text-sm text-white/70 md:block">{money(Number(r.price))}</span>
                     <div className="col-span-2 col-start-2 flex items-center gap-2 md:col-span-1 md:col-start-auto md:justify-center">
-                      <div className="inline-flex items-center rounded-lg border border-white/[0.1] bg-white/[0.02]">
+                      <div className="inline-flex items-center rounded-lg border border-white/10 bg-white/2">
                         <button type="button" onClick={() => bump(r, -1)} className="h-9 w-9 text-white/55 hover:text-white" aria-label={tr(`إنقاص ${r.sku}`, "Less {0}", [r.sku])}>−</button>
-                        <input className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-none", st <= 0 ? "text-red-300" : "text-white")} inputMode="numeric" value={e?.stock ?? String(r.stock)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { stock: digits(ev.target.value) })} aria-label={tr(`كمية ${r.sku}`, "Quantity {0}", [r.sku])} />
+                        <input className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-hidden", st <= 0 ? "text-red-300" : "text-white")} inputMode="numeric" value={e?.stock ?? String(r.stock)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { stock: digits(ev.target.value) })} aria-label={tr(`كمية ${r.sku}`, "Quantity {0}", [r.sku])} />
                         <button type="button" onClick={() => bump(r, 1)} className="h-9 w-9 text-white/55 hover:text-white" aria-label={tr(`زيادة ${r.sku}`, "More {0}", [r.sku])}>+</button>
                       </div>
                       {dirty && e?.stock !== undefined && Number(e.stock) !== r.stock ? <span className="text-[11px] text-white/45">{tr("كان", "was")} {r.stock}</span> : null}
                     </div>
-                    <input className="hidden h-9 w-16 justify-self-center rounded-lg border border-white/[0.1] bg-surface-925 text-center text-sm text-white focus:outline-none md:block" inputMode="numeric" value={e?.low ?? String(r.lowStockThreshold)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { low: digits(ev.target.value) })} aria-label={tr(`تنبيه ${r.sku}`, "Alert {0}", [r.sku])} />
+                    <input className="hidden h-9 w-16 justify-self-center rounded-lg border border-white/10 bg-surface-925 text-center text-sm text-white focus:outline-hidden md:block" inputMode="numeric" value={e?.low ?? String(r.lowStockThreshold)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { low: digits(ev.target.value) })} aria-label={tr(`تنبيه ${r.sku}`, "Alert {0}", [r.sku])} />
                   </li>
                 );
               })}
             </ul>
             {rows.length > limit ? (
-              <div className="p-3 text-center"><button type="button" onClick={() => setLimit((l) => l + PAGE)} className="h-10 rounded-xl border border-white/[0.12] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{tr("عرض المزيد (", "Show more (")}{rows.length - limit})</button></div>
+              <div className="p-3 text-center"><button type="button" onClick={() => setLimit((l) => l + PAGE)} className="h-10 rounded-xl border border-white/12 px-4 text-sm text-white/80 hover:bg-white/6">{tr("عرض المزيد (", "Show more (")}{rows.length - limit})</button></div>
             ) : null}
           </>
         )}
@@ -280,8 +280,8 @@ export default function StockPage() {
         <div className="glass sticky bottom-[84px] z-30 rounded-2xl border border-accent-500/30 p-3 shadow-2xl lg:bottom-4" data-testid="stock-savebar">
           <div className="flex flex-wrap items-center gap-2">
             <b className="text-sm text-white">{changes.length} {changes.length === 1 ? tr("تغيير", "change") : tr("تغييرات", "changes")}</b>
-            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("السبب (اختياري): جرد، بضاعة وصلت…", "Reason (optional): count, goods arrived…")} className="h-10 min-w-[180px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white focus:outline-none" aria-label={tr("سبب التغيير", "Reason for the change")} />
-            <button type="button" onClick={() => setEdits({})} className="h-10 rounded-xl px-3 text-sm text-white/70 hover:bg-white/[0.06]">{tr("تراجع", "Undo")}</button>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("السبب (اختياري): جرد، بضاعة وصلت…", "Reason (optional): count, goods arrived…")} className="h-10 min-w-[180px] flex-1 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white focus:outline-hidden" aria-label={tr("سبب التغيير", "Reason for the change")} />
+            <button type="button" onClick={() => setEdits({})} className="h-10 rounded-xl px-3 text-sm text-white/70 hover:bg-white/6">{tr("تراجع", "Undo")}</button>
             <button type="button" onClick={save} disabled={saving} className="h-10 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white hover:bg-accent-400 disabled:opacity-60">{saving ? tr("جارٍ الحفظ…", "Saving…") : tr("حفظ الكميات", "Save quantities")}</button>
           </div>
         </div>
@@ -347,7 +347,7 @@ function ImportModal({ open, onClose, rows, onApply }: { open: boolean; onClose:
         </p>
         <input type="file" accept=".csv,text/csv,.txt" onChange={(e) => void read(e.target.files?.[0] ?? null)} aria-label={tr("ملف الجرد", "Stock count file")} className="block w-full text-sm" />
         {parsed && (
-          <div className="rounded-xl border border-white/[0.08] p-3" data-testid="import-summary">
+          <div className="rounded-xl border border-white/8 p-3" data-testid="import-summary">
             <div className="font-medium text-white">{name}</div>
             <ul className="mt-1 space-y-0.5 text-xs">
               <li className="text-emerald-300">{changed.length} {tr("كمية ستتغير", "quantities will change")}</li>

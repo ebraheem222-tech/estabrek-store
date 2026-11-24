@@ -107,7 +107,7 @@ export function ScarcityCard() {
                   value={draft.showAt}
                   disabled={!canChange}
                   onChange={(e) => set({ showAt: normalizeScarcity({ showAt: e.target.value }).showAt })}
-                  className="h-9 w-16 rounded-xl border border-white/15 bg-white/5 text-center text-sm outline-none focus:border-white/30"
+                  className="h-9 w-16 rounded-xl border border-white/15 bg-white/5 text-center text-sm outline-hidden focus:border-white/30"
                 />
                 <Button size="sm" variant="ghost" aria-label={tr("أكثر", "More")} disabled={!canChange || draft.showAt >= SCARCITY_MAX} onClick={() => bump(1)}>
                   +

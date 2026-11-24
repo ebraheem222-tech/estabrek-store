@@ -24,7 +24,7 @@ type Ops = (label: string, ops: PageDraftOp[]) => void;
 // The model's settings are plain nested data the backend checks; read loosely here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Obj = Record<string, any>;
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
 const isObj = (v: unknown): v is Obj => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 
 /** The built-in models' list (from the shop, with each one's shape knobs). */
@@ -58,7 +58,7 @@ const LIGHT_BASE: Record<string, { ambient: number; key: number; env: number; ri
 
 function Fold({ title, open, children, testId }: { title: string; open?: boolean; children: ReactNode; testId?: string }) {
   return (
-    <details className="rounded-lg border border-white/[0.06] px-2 py-1.5" open={open} data-testid={testId}>
+    <details className="rounded-lg border border-white/6 px-2 py-1.5" open={open} data-testid={testId}>
       <summary className="cursor-pointer select-none text-[11px] font-medium text-white/70">{title}</summary>
       <div className="mt-2 space-y-2.5">{children}</div>
     </details>
@@ -76,7 +76,7 @@ function ModelSwap({ initialTab, busy, model, file, onModel, onFile, onClose }: 
     return models.filter((m) => !q || m.kind.includes(q) || Object.values(m.label).some((w) => w.toLowerCase().includes(q)));
   }, [models, find]);
   const tabBtn = (t: "built" | "file", label: string) => (
-    <button type="button" role="tab" disabled={busy} aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-2.5 py-1 text-xs disabled:opacity-40 ${tab === t ? "bg-accent-500 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"}`} data-tab={t}>{label}</button>
+    <button type="button" role="tab" disabled={busy} aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-2.5 py-1 text-xs disabled:opacity-40 ${tab === t ? "bg-accent-500 text-white" : "bg-white/6 text-white/70 hover:bg-white/10"}`} data-tab={t}>{label}</button>
   );
   return (
     <Modal open title={tr("بدّل الموديل (كل الإعدادات التانية بتضل)", "Swap the model (everything else stays)")} onClose={onClose} widthClassName="max-w-3xl">
@@ -87,10 +87,10 @@ function ModelSwap({ initialTab, busy, model, file, onModel, onFile, onClose }: 
         </div>
         {tab === "built" ? (
           <>
-            <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={tr("دوّر: حذاء، ساعة، عطر…", "Find: sneaker, watch, perfume…")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-3 py-2 text-sm text-white" data-testid="model3d-find" />
+            <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={tr("دوّر: حذاء، ساعة، عطر…", "Find: sneaker, watch, perfume…")} className="w-full rounded-lg border border-white/10 bg-surface-925 px-3 py-2 text-sm text-white" data-testid="model3d-find" />
             <div className="grid max-h-[50vh] grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-1 overflow-y-auto">
               {shown.map((m) => (
-                <button key={m.kind} type="button" disabled={busy} onClick={() => onModel(m.kind)} className={`rounded-lg border px-2 py-2 text-start text-xs disabled:opacity-40 ${model === m.kind && !file ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/[0.08] text-white/80 hover:bg-white/[0.06]"}`} data-model={m.kind}>
+                <button key={m.kind} type="button" disabled={busy} onClick={() => onModel(m.kind)} className={`rounded-lg border px-2 py-2 text-start text-xs disabled:opacity-40 ${model === m.kind && !file ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/8 text-white/80 hover:bg-white/6"}`} data-model={m.kind}>
                   {nameOf(m, lang)}
                   <span className="block text-[10px] text-white/35" dir="ltr">{m.kind}</span>
                 </button>
@@ -130,14 +130,14 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
   return (
     <div className={box} data-testid="studio-model3d">
       <div className="text-xs font-medium text-white/70">{tr("الموديل ثلاثي الأبعاد", "The 3D model")}</div>
-      <div className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.04] p-2">
+      <div className="flex items-center justify-between gap-2 rounded-lg bg-white/4 p-2">
         <div className="min-w-0 text-xs">
           <div className="truncate text-white/85" data-testid="model3d-now">{file ? file.name || tr("ملفك", "Your file") : nameOf(info, lang) || String(p.model ?? "")}</div>
           <div className="text-[10px] text-white/40">{file ? tr("ملف ‎.glb من مكتبتك", "A .glb from your library") : tr("موديل جاهز", "A built-in model")}</div>
         </div>
         <button type="button" className="shrink-0 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setSwap(file ? "file" : "built")} data-testid="model3d-swap-open">{tr("بدّل الموديل", "Swap the model")}</button>
       </div>
-      <button type="button" disabled={busy} onClick={() => setSwap("file")} className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white/80 hover:bg-white/[0.08] disabled:opacity-40" data-testid="model3d-file-open">{tr("ارفع أو اختار ملف GLB", "Upload or choose a GLB file")}</button>
+      <button type="button" disabled={busy} onClick={() => setSwap("file")} className="w-full rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-xs text-white/80 hover:bg-white/8 disabled:opacity-40" data-testid="model3d-file-open">{tr("ارفع أو اختار ملف GLB", "Upload or choose a GLB file")}</button>
       {swap ? <ModelSwap
         key={node.id} initialTab={swap} busy={busy} model={typeof p.model === "string" ? p.model : undefined} file={file} onClose={() => setSwap(null)}
         // A built-in model in place of a file, or a file over the built-in one: only the model changes.
@@ -161,15 +161,15 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           if (!busy && (!url || /^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i.test(url))) set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster: url || undefined });
         }} testId="model3d-poster-url" />
         <div className="flex gap-2">
-          <button type="button" disabled={busy} onClick={() => setPosterOpen(true)} className="rounded-lg bg-white/[0.06] px-2 py-1.5 text-xs disabled:opacity-40" data-testid="model3d-poster-choose">{tr("اختيار صورة", "Choose a picture")}</button>
-          {p.poster ? <button type="button" disabled={busy} onClick={() => set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster: undefined })} className="rounded-lg bg-white/[0.06] px-2 py-1.5 text-xs disabled:opacity-40" data-testid="model3d-poster-clear">{tr("إزالة الصورة البديلة", "Remove fallback picture")}</button> : null}
+          <button type="button" disabled={busy} onClick={() => setPosterOpen(true)} className="rounded-lg bg-white/6 px-2 py-1.5 text-xs disabled:opacity-40" data-testid="model3d-poster-choose">{tr("اختيار صورة", "Choose a picture")}</button>
+          {p.poster ? <button type="button" disabled={busy} onClick={() => set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster: undefined })} className="rounded-lg bg-white/6 px-2 py-1.5 text-xs disabled:opacity-40" data-testid="model3d-poster-clear">{tr("إزالة الصورة البديلة", "Remove fallback picture")}</button> : null}
         </div>
         <MediaLibraryModal open={posterOpen} onClose={() => setPosterOpen(false)} title={tr("صورة بديلة للموديل", "Model fallback picture")} onSelect={(poster) => { setPosterOpen(false); set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster }); }} />
       </Fold>
 
       <div className="grid grid-cols-2 gap-1" role="group" aria-label={tr("أشكال جاهزة", "Ready looks")} data-testid="model3d-looks">
         {MODEL3D_LOOKS.map((l) => (
-          <button key={l.key} type="button" disabled={busy} aria-pressed={lookOf3d(p) === l.key} onClick={() => onOps(l.name(), [{ op: "setProps", nodeId: node.id, props: withLook(p, l) }])} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${lookOf3d(p) === l.key ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-look={l.key} title={l.name()}>
+          <button key={l.key} type="button" disabled={busy} aria-pressed={lookOf3d(p) === l.key} onClick={() => onOps(l.name(), [{ op: "setProps", nodeId: node.id, props: withLook(p, l) }])} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${lookOf3d(p) === l.key ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/8 text-white/75 hover:bg-white/5"} disabled:opacity-40`} data-look={l.key} title={l.name()}>
             {l.name()}
           </button>
         ))}
@@ -190,7 +190,7 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             <div className="text-[11px] text-white/55">{tr("الخامة", "Finish")}</div>
             <div className="grid grid-cols-4 gap-1" role="group">
               {STAGE_FINISHES.map((f) => (
-                <button key={f} type="button" aria-pressed={(p.finish ?? "metal") === f} disabled={busy} onClick={() => set(tr("الخامة", "Finish"), { finish: f })} className={`rounded-lg px-1 py-1 text-[11px] ${(p.finish ?? "metal") === f ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"}`} data-finish={f}>{FINISH_LABEL[f]()}</button>
+                <button key={f} type="button" aria-pressed={(p.finish ?? "metal") === f} disabled={busy} onClick={() => set(tr("الخامة", "Finish"), { finish: f })} className={`rounded-lg px-1 py-1 text-[11px] ${(p.finish ?? "metal") === f ? "bg-accent-500/30 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"}`} data-finish={f}>{FINISH_LABEL[f]()}</button>
               ))}
             </div>
             {STAGE_PARTS.map((k) => (
@@ -235,7 +235,7 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
       <Fold title={tr("الإضاءة", "Light")} testId="model3d-light">
         <div className="grid grid-cols-3 gap-1" role="group">
           {Object.keys(LIGHT_LABEL).map((k) => (
-            <button key={k} type="button" aria-pressed={preset === k} disabled={busy} onClick={() => set(tr("الإضاءة", "Light"), { lights: { preset: k } })} className={`rounded-lg px-1 py-1 text-[11px] ${preset === k ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"}`} data-light={k}>{LIGHT_LABEL[k]()}</button>
+            <button key={k} type="button" aria-pressed={preset === k} disabled={busy} onClick={() => set(tr("الإضاءة", "Light"), { lights: { preset: k } })} className={`rounded-lg px-1 py-1 text-[11px] ${preset === k ? "bg-accent-500/30 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"}`} data-light={k}>{LIGHT_LABEL[k]()}</button>
           ))}
         </div>
         <Range label={tr("ضو عام", "Overall light")} min={0} max={3} step={0.05} busy={busy} value={lights.ambient ?? base.ambient} onSave={(v) => part("lights", { preset, ambient: v }, tr("الإضاءة", "Light"))} />

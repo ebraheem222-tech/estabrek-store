@@ -20,7 +20,7 @@ import { AREA_TEXT, entrySentence, groupByDay, noRestoreText, rangeOf, restoreLa
 import { loc } from "@/lib/lang";
 
 type Range = "today" | "yesterday" | "week" | "month";
-const field = "h-10 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-10 rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 const time = (iso: string) => new Date(iso).toLocaleTimeString(loc("ar"), { hour: "2-digit", minute: "2-digit" });
 
 export default function HistoryPage() {

@@ -7,7 +7,7 @@ import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { convertPreview, type Converted, type Dropped, type OldSection, type RoseRole } from "./convert";
 
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
 
 const DROPPED: Record<Dropped, () => string> = {
   roseLook: () => tr("شكل تصميم الورد لهالقسم (بيصير بشكل العناصر الجديدة)", "The rose design's own look for this section (it takes the new elements' look)"),
@@ -69,7 +69,7 @@ export function ConvertAllPanel({ sections, main, roseOf, busy, onConvert }: { s
         {tr(`${sections.length} قسم قديم، منهم ${can} بيتحوّلوا لعناصر جديدة. الباقي بيضل متل ما هو.`, "{0} old sections, {1} of them can become new elements. The rest stay as they are.", [sections.length, can])}
       </p>
       {rose ? <p className="text-[11px] leading-5 text-amber-200/80" data-testid="studio-convert-all-rose">{tr("المتجر بتصميم الورد: الأقسام المحوّلة بتاخد شكل العناصر الجديدة بدل شكل الورد.", "The store wears the rose design: turned sections take the new elements' look instead of the rose one.")}</p> : null}
-      <button type="button" disabled={busy || !can} onClick={onConvert} className="w-full rounded-lg bg-white/[0.08] px-2 py-1.5 text-xs text-white hover:bg-white/[0.12] disabled:opacity-40" data-testid="studio-convert-all-go">
+      <button type="button" disabled={busy || !can} onClick={onConvert} className="w-full rounded-lg bg-white/8 px-2 py-1.5 text-xs text-white hover:bg-white/12 disabled:opacity-40" data-testid="studio-convert-all-go">
         {tr(`حوّل الـ ${can} مرة وحدة`, "Turn all {0} at once", [can])}
       </button>
     </div>

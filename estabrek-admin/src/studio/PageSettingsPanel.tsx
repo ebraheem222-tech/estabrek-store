@@ -11,8 +11,8 @@ import type { Lang } from "../lib/lang";
 import { toast } from "../lib/toast";
 import { tr } from "../lib/words";
 
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 const label = "block text-[11px] text-white/55";
 const save = "rounded-lg bg-accent-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-40";
 const LANG_NAME: Record<Lang, () => string> = { ar: () => tr("العربية", "Arabic"), en: () => tr("الإنجليزية", "English"), he: () => tr("العبرية", "Hebrew") };
@@ -99,7 +99,7 @@ export function PageSettingsPanel({ page, langs }: { page: PagesAPI.Page & { i18
         </button>
       </div>
 
-      <div className="space-y-2 border-t border-white/[0.06] pt-3">
+      <div className="space-y-2 border-t border-white/6 pt-3">
         <div className="flex items-center gap-2 text-[11px] text-white/60">
           {tr("محركات البحث", "Search engines")}
           <div className="ms-auto flex gap-1" role="group" aria-label={tr("اللغة", "Language")}>
@@ -137,7 +137,7 @@ export function PageSettingsPanel({ page, langs }: { page: PagesAPI.Page & { i18
         </button>
       </div>
 
-      <div className="space-y-2 border-t border-white/[0.06] pt-3">
+      <div className="space-y-2 border-t border-white/6 pt-3">
         <div className="text-[11px] text-white/60">{tr("كود متقدم", "Advanced code")}</div>
         <p className="text-[10px] leading-4 text-amber-200/70">{tr("بيشتغل على هالصفحة بس. كود غلط ممكن يخرّب شكلها.", "It runs on this page only. Wrong code can break how it looks.")}</p>
         <label className={label}>CSS<textarea className={`${control} font-mono`} dir="ltr" rows={4} value={css} onChange={(e) => setCss(e.target.value)} data-testid="page-css" /></label>

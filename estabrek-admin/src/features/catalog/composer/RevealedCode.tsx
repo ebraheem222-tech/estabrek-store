@@ -14,7 +14,7 @@ export function RevealedCode({ code, onHide }: { code: string; onHide: () => voi
   };
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      <code dir="ltr" className="select-all rounded bg-black/30 px-2 py-0.5 font-mono text-xs text-white" data-testid="revealed-code">
+      <code dir="ltr" className="select-all rounded-sm bg-black/30 px-2 py-0.5 font-mono text-xs text-white" data-testid="revealed-code">
         {code}
       </code>
       <button type="button" onClick={() => void copy()} className="rounded-lg px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/10">

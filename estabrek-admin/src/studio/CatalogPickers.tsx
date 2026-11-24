@@ -11,8 +11,8 @@ import { say } from "./say";
 
 type Props = { p: Record<string, unknown>; busy: boolean; setProps: (patch: Record<string, unknown>) => void };
 
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 const hint = "text-[10px] leading-4 text-white/40";
 /** A category page's design shows that page's own category (the shop's storeBind.ts). */
 const CURRENT = "current";
@@ -57,7 +57,7 @@ export function ProductsSourceFields({ p, busy, setProps }: Props) {
         </label>
       ) : null}
       {source === "picked" ? (
-        <div className="space-y-2 rounded-lg bg-white/[0.03] p-2" data-testid="studio-products-picked">
+        <div className="space-y-2 rounded-lg bg-white/3 p-2" data-testid="studio-products-picked">
           {picked.length ? (
             <ol className="space-y-1">
               {picked.map((id, i) => (
@@ -103,7 +103,7 @@ export function CategoriesPickFields({ p, busy, setProps }: Props) {
         onPick={(v) => { setOpen(v === "some"); if (v === "all") setProps({ ids: undefined }); }}
       />
       {open || only ? (
-        <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg bg-white/[0.03] p-2" data-testid="studio-categories-list">
+        <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg bg-white/3 p-2" data-testid="studio-categories-list">
           {(categories.data ?? []).map((c) => (
             <label key={c.id} className="flex items-center gap-2 text-xs text-white/80">
               <input type="checkbox" disabled={busy || (!ids.includes(c.id) && ids.length >= MAX_CATEGORIES)} checked={ids.includes(c.id)} onChange={(e) => flip(c.id, e.target.checked)} data-category={c.id} />

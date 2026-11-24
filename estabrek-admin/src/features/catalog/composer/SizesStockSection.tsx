@@ -104,7 +104,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
       )}
       <div className="flex flex-wrap gap-2" role="group" aria-label={tr("المقاسات", "Sizes")}>
         {chips.map((s) => (
-          <Chip key={s.id} active={draft.sizeIds.includes(s.id)} onClick={() => toggleSize(s.id)} className="min-w-[3rem] justify-center">{s.name}</Chip>
+          <Chip key={s.id} active={draft.sizeIds.includes(s.id)} onClick={() => toggleSize(s.id)} className="min-w-12 justify-center">{s.name}</Chip>
         ))}
         <div className="inline-flex items-center gap-1">
           <input className={cn(fieldCls, "h-9 w-28 rounded-full px-3")} placeholder={tr("مقاس جديد", "New size")} value={newSize} onChange={(e) => setNewSize(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void createSize(); } }} aria-label={tr("إضافة مقاس جديد", "Add a new size")} />
@@ -115,7 +115,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
       {selected.length > 0 && draft.groups.length > 0 && (
         <div className="mt-5">
           <div className="mb-3 flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label={tr("طريقة العرض", "View")}>
+            <div className="inline-flex rounded-xl border border-white/10 bg-white/3 p-1" role="tablist" aria-label={tr("طريقة العرض", "View")}>
               <button type="button" role="tab" aria-selected={view === "skus"} onClick={() => chooseView("skus")} className={cn("h-8 rounded-lg px-3 text-sm", view === "skus" ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>{tr("جدول SKU", "SKU table")}</button>
               <button type="button" role="tab" aria-selected={view === "grid"} onClick={() => chooseView("grid")} className={cn("h-8 rounded-lg px-3 text-sm", view === "grid" ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>{tr("شبكة الكميات", "Quantity grid")}</button>
             </div>
@@ -129,12 +129,12 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                 aria-label={tr("الكمية لكل مقاس", "Quantity per size")}
               />
             </label>
-            {!edit && <button type="button" onClick={fillAll} className="h-9 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("تطبيق على الكل", "Apply to all")}</button>}
+            {!edit && <button type="button" onClick={fillAll} className="h-9 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6">{tr("تطبيق على الكل", "Apply to all")}</button>}
             <span className="ms-auto text-xs text-white/50"><b className="text-white">{skuCount}</b> SKU · <b className="text-white">{total}</b> {tr("قطعة", "pcs")}</span>
           </div>
 
           {selected.length > 1 ? (
-            <div className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.015] p-3" data-testid="sizes-per-colour">
+            <div className="mb-4 rounded-xl border border-white/8 bg-white/1.5 p-3" data-testid="sizes-per-colour">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-medium text-white">{tr("كل لون بأي مقاسات؟", "Which sizes for each colour?")}</span>
                 {someOff ? (
@@ -150,7 +150,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                   const mine = sizesOf(draft, g.key).length;
                   return (
                     <li key={g.key} className="flex flex-wrap items-center gap-2" data-testid="colour-sizes">
-                      <span className="inline-flex min-w-[6rem] items-center gap-2 text-sm text-white/85"><Swatch hex={g.hex} size={14} />{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</span>
+                      <span className="inline-flex min-w-24 items-center gap-2 text-sm text-white/85"><Swatch hex={g.hex} size={14} />{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</span>
                       <div className="flex flex-wrap gap-1.5" role="group" aria-label={tr(`مقاسات ${g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}`, "Sizes of {0}", [g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])])}>
                         {selected.map((sz) => {
                           const on = hasSize(draft, g.key, sz.id);
@@ -161,7 +161,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                               aria-pressed={on}
                               onClick={() => toggleFor(g.key, sz.id)}
                               className={cn(
-                                "h-8 min-w-[2.75rem] rounded-full border px-2.5 text-xs transition",
+                                "h-8 min-w-11 rounded-full border px-2.5 text-xs transition",
                                 on ? "border-accent-400/60 bg-accent-500/20 text-white" : "border-dashed border-white/[0.14] text-white/35 line-through hover:text-white/60",
                               )}
                               title={on ? tr(`«${g.name}» ما بييجي بمقاس ${sz.name}؟ الضغط بيشيله`, "“{0}” doesn't come in size {1}? Click to remove it", [g.name, sz.name]) : tr(`إضافة مقاس ${sz.name} لـ«${g.name}»`, "Add size {0} to “{1}”", [sz.name, g.name])}
@@ -185,8 +185,8 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                 const colourTotal = sizesOf(draft, g.key).reduce((s, sid) => s + stockOf(draft, g.key, sid), 0);
                 const mineSizes = selected.filter((sz) => hasSize(draft, g.key, sz.id));
                 return (
-                  <div key={g.key} className={cn("rounded-xl border border-white/[0.08] bg-white/[0.015]", g.hidden && "opacity-70")}>
-                    <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3 py-2 text-sm">
+                  <div key={g.key} className={cn("rounded-xl border border-white/8 bg-white/1.5", g.hidden && "opacity-70")}>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-white/6 px-3 py-2 text-sm">
                       <Swatch hex={g.hex} size={16} />
                       <b className="text-white">{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</b>
                       {g.boxLabel ? <span className="text-xs text-white/45">({g.boxLabel})</span> : null}
@@ -196,7 +196,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                         <button
                           type="button"
                           onClick={() => update((d) => ({ ...d, groups: d.groups.map((x) => (x.key === g.key ? { ...x, hidden: !x.hidden } : x)) }))}
-                          className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-white/55 hover:bg-white/[0.06] hover:text-white sm:h-7 sm:px-2 sm:text-xs"
+                          className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-white/55 hover:bg-white/6 hover:text-white sm:h-7 sm:px-2 sm:text-xs"
                           title={tr("اللون المخفي لا يظهر في المتجر لكن يبقى بكمياته وطلباته", "A hidden colour doesn't show in the store but keeps its quantities and orders")}
                         >
                           {g.hidden ? tr("إظهار في المتجر", "Show in the store") : tr("إخفاء", "Hide")}
@@ -207,7 +207,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                       <span>{tr("المقاس", "Size")}</span><span>SKU</span><span>{tr("السعر", "Price")}</span><span className="text-center">{tr("الكمية", "Quantity")}</span><span className="text-center">{tr("تنبيه عند", "Alert at")}</span><span />
                     </div>
                     {!mineSizes.length ? <p className="px-3 py-3 text-xs text-red-300">{tr("ما في مقاسات لهاللون: المقاس بيتختار من «كل لون بأي مقاسات؟».", "No sizes for this colour: pick one in “Which sizes for each colour?”.")}</p> : null}
-                    <ul className="divide-y divide-white/[0.05]">
+                    <ul className="divide-y divide-white/5">
                       {mineSizes.map((s) => {
                         const key = stockKey(g.key, s.id);
                         const qty = stockOf(draft, g.key, s.id);
@@ -243,13 +243,13 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                                 onChange={(e) => setField("priceBy", key, decimal(e.target.value))}
                                 aria-label={tr(`سعر ${g.name} مقاس ${s.name}`, "Price {0} size {1}", [g.name, s.name])}
                               />
-                              <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-xs text-white/35">{currencySign()}</span>
+                              <span className="pointer-events-none absolute inset-s-2.5 top-1/2 -translate-y-1/2 text-xs text-white/35">{currencySign()}</span>
                             </label>
                             <div className="flex items-center justify-center gap-1">
-                              <div className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02]">
+                              <div className="inline-flex items-center rounded-lg border border-white/8 bg-white/2">
                                 <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, -1)} className="h-9 w-8 text-white/50 hover:text-white" aria-label={tr("إنقاص", "Less")}>−</button>
                                 <input
-                                  className="h-9 w-12 bg-transparent text-center text-sm text-white focus:outline-none"
+                                  className="h-9 w-12 bg-transparent text-center text-sm text-white focus:outline-hidden"
                                   inputMode="numeric"
                                   value={draft.stock[key] !== undefined ? draft.stock[key] : draft.defaultStock}
                                   onChange={(e) => setStock(g.key, s.id, e.target.value)}
@@ -286,18 +286,18 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
+            <div className="overflow-x-auto rounded-xl border border-white/8">
               <table className="w-full min-w-[420px] border-collapse text-sm" data-testid="stock-grid">
                 <thead>
-                  <tr className="bg-white/[0.03] text-xs text-white/55">
-                    <th className="sticky start-0 z-10 bg-surface-925 px-3 py-2 text-start font-medium">{tr("اللون", "Colour")}</th>
+                  <tr className="bg-white/3 text-xs text-white/55">
+                    <th className="sticky inset-s-0 z-10 bg-surface-925 px-3 py-2 text-start font-medium">{tr("اللون", "Colour")}</th>
                     {selected.map((s) => <th key={s.id} className="px-2 py-2 text-center font-medium">{s.name}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {draft.groups.map((g, gi) => (
-                    <tr key={g.key} className="border-t border-white/[0.06]">
-                      <td className="sticky start-0 z-10 bg-surface-925 px-3 py-2">
+                    <tr key={g.key} className="border-t border-white/6">
+                      <td className="sticky inset-s-0 z-10 bg-surface-925 px-3 py-2">
                         <span className="inline-flex items-center gap-2 whitespace-nowrap"><Swatch hex={g.hex} size={14} />{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</span>
                       </td>
                       {selected.map((s) => {
@@ -305,7 +305,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                         if (!hasSize(draft, g.key, s.id)) {
                           return (
                             <td key={s.id} className="px-1.5 py-1.5 text-center">
-                              <button type="button" onClick={() => toggleFor(g.key, s.id)} className="h-8 w-[5.25rem] rounded-lg border border-dashed border-white/[0.12] text-xs text-white/35 hover:text-white/70" title={tr(`إضافة مقاس ${s.name} لـ«${g.name}»`, "Add size {0} to “{1}”", [s.name, g.name])} aria-label={tr(`${g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])} مش متوفر بمقاس ${s.name}`, "{0} isn't available in size {1}", [g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1]), s.name])}>
+                              <button type="button" onClick={() => toggleFor(g.key, s.id)} className="h-8 w-21 rounded-lg border border-dashed border-white/12 text-xs text-white/35 hover:text-white/70" title={tr(`إضافة مقاس ${s.name} لـ«${g.name}»`, "Add size {0} to “{1}”", [s.name, g.name])} aria-label={tr(`${g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])} مش متوفر بمقاس ${s.name}`, "{0} isn't available in size {1}", [g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1]), s.name])}>
                                 —
                               </button>
                             </td>
@@ -313,10 +313,10 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                         }
                         return (
                           <td key={s.id} className="px-1.5 py-1.5 text-center">
-                            <div className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02]">
+                            <div className="inline-flex items-center rounded-lg border border-white/8 bg-white/2">
                               <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, -1)} className="h-8 w-7 text-white/50 hover:text-white" aria-label={tr("إنقاص", "Less")}>−</button>
                               <input
-                                className={cn("h-8 w-10 bg-transparent text-center text-sm focus:outline-none", explicit ? "text-white" : "text-white/55")}
+                                className={cn("h-8 w-10 bg-transparent text-center text-sm focus:outline-hidden", explicit ? "text-white" : "text-white/55")}
                                 inputMode="numeric"
                                 value={explicit ? draft.stock[stockKey(g.key, s.id)] : draft.defaultStock}
                                 onChange={(e) => setStock(g.key, s.id, e.target.value)}
@@ -340,10 +340,10 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
             {perSizePrice && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {selected.map((s) => (
-                  <label key={s.id} className="flex items-center gap-2 rounded-xl border border-white/[0.08] px-3 py-1.5 text-sm text-white/70">
+                  <label key={s.id} className="flex items-center gap-2 rounded-xl border border-white/8 px-3 py-1.5 text-sm text-white/70">
                     {s.name}
                     <input
-                      className="h-8 w-20 rounded-lg border border-white/[0.08] bg-surface-925 px-2 text-center text-white focus:outline-none"
+                      className="h-8 w-20 rounded-lg border border-white/8 bg-surface-925 px-2 text-center text-white focus:outline-hidden"
                       inputMode="decimal"
                       placeholder={basePrice != null ? String(basePrice) : currencySign()}
                       value={draft.priceBySize[s.id] ?? ""}
@@ -359,7 +359,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
         </div>
       )}
       {selected.length > 0 && draft.groups.length === 0 && (
-        <p className="mt-4 rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-white/55">{tr("الصور أو اللون بالخطوة ١ بيطلّعوا جدول المقاسات.", "Add photos or a colour in step 1 to see the sizes table.")}</p>
+        <p className="mt-4 rounded-xl bg-white/3 px-3 py-2 text-xs text-white/55">{tr("الصور أو اللون بالخطوة ١ بيطلّعوا جدول المقاسات.", "Add photos or a colour in step 1 to see the sizes table.")}</p>
       )}
     </Section>
   );

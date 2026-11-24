@@ -34,7 +34,7 @@ import {
 } from "./jobsText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
-const field = "h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-9 rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const KEY = ["system", "jobs"];
 
 export default function JobsPage() {
@@ -181,7 +181,7 @@ function JobCard({
         </div>
       </div>
 
-      {job.off ? <p className="mt-3 rounded-xl bg-white/[0.04] p-2.5 text-xs text-white/70">{OFF_TEXT[job.off] ?? `مطفي من السيرفر (${job.off}).`}</p> : null}
+      {job.off ? <p className="mt-3 rounded-xl bg-white/4 p-2.5 text-xs text-white/70">{OFF_TEXT[job.off] ?? `مطفي من السيرفر (${job.off}).`}</p> : null}
       {health ? <p className={`mt-3 text-xs ${health.variant === "danger" ? "text-red-300" : "text-amber-300"}`}>{health.note}</p> : null}
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
@@ -214,7 +214,7 @@ function JobCard({
       {job.lastError ? (
         <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-2.5 text-xs" data-testid={`job-${job.name}-error`}>
           <div className="text-red-200">{`آخر خطأ، ${agoText(job.lastError.at, now)}`}</div>
-          <div className="mt-0.5 break-words font-mono text-red-100/80" dir="ltr">
+          <div className="mt-0.5 wrap-break-word font-mono text-red-100/80" dir="ltr">
             {job.lastError.message}
           </div>
         </div>

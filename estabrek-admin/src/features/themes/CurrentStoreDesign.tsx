@@ -31,7 +31,7 @@ export function CurrentStoreDesign({ active = true, onSelect }: { active?: boole
   const query = previewReady ? `?storeTheme=${encodeURIComponent(id)}${choice?.mode ? `&themeMode=${choice.mode}` : ""}${choice?.custom && typeof choice.custom === "object" ? `&themeCustom=${encodeURIComponent(JSON.stringify(choice.custom))}` : ""}` : "";
   const url = `${shopOrigin()}/${lang}${query}`;
 
-  return <section className="space-y-3 rounded-2xl border border-accent-400/30 bg-accent-500/[0.06] p-4" data-testid="current-store-design">
+  return <section className="space-y-3 rounded-2xl border border-accent-400/30 bg-accent-500/6 p-4" data-testid="current-store-design">
     <button type="button" aria-pressed={active} aria-expanded={expanded} onClick={() => { onSelect?.(); setExpanded(value => !value); }} className="w-full text-start" data-testid="current-store-design-choice" data-theme-id={id}>
       <span className="flex flex-wrap items-center gap-2"><span className="font-semibold">{tr("تصميم المتجر الحالي", "Current store design")}</span><span className="rounded-md bg-accent-500/20 px-2 py-0.5 text-[10px] text-accent-200">{tr("الحالي", "Current")}</span></span>
       <span className="mt-1 block text-sm">{storeNameOf(settings.data, lang)}{designName ? ` · ${designName}` : ""}</span>

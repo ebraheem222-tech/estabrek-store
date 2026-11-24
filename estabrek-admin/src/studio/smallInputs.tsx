@@ -3,8 +3,8 @@
  * TriggersPanel.tsx; a form's fields: FormPanel.tsx): a pick from a list, a line saved when it is left, and the
  * looks of a part's title, a button, a note and a warning.
  */
-export const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-export const sel = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+export const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+export const sel = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 export const part = "text-[10px] font-semibold uppercase tracking-wide text-accent-200/80";
 export const note = "text-[10px] leading-4 text-white/70";
 export const warn = "text-[11px] leading-4 text-amber-200/90";

@@ -25,7 +25,7 @@ import { tr } from "@/lib/words";
 import { useRoseOwner } from "../../hooks/useRoseOwner";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 const TABS: Array<{ key: RequestStatus | "OPEN" | "ALL"; label: string }> = [
   { key: "OPEN", label: tr("مفتوحة", "Open") },
@@ -99,7 +99,7 @@ export default function RequestsPage() {
           ) : shown.length === 0 ? (
             <p className="py-6 text-center text-sm text-white/50">{tr("ما في طلبات هون.", "No requests here.")}</p>
           ) : (
-            <ul className="divide-y divide-white/[0.06]" data-testid="requests-list">
+            <ul className="divide-y divide-white/6" data-testid="requests-list">
               {shown.map((r) => (
                 <li key={r.id}>
                   <RequestRow r={r} open={openId === r.id} onToggle={() => setOpenRow((x) => (x?.id === r.id ? null : r))} />
@@ -123,7 +123,7 @@ export default function RequestsPage() {
 
 function RequestRow({ r, open, onToggle }: { r: CustomerRequestRow; open: boolean; onToggle: () => void }) {
   return (
-    <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-3 text-start hover:bg-white/[0.03]">
+    <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-3 text-start hover:bg-white/3">
       <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABELS[r.status]}</Badge>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{wantLine(r)}</span>
@@ -179,7 +179,7 @@ function RequestDetails({ id, onGone }: { id: string; onGone: () => void }) {
   const wa = waLink(r.phone, askText(r.name, r.kind, { storeName: storeNameIn(messageLang(r)), audience, lang: messageLang(r) }));
 
   return (
-    <div className="mb-4 space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4" data-testid="request-details">
+    <div className="mb-4 space-y-4 rounded-2xl border border-white/10 bg-white/3 p-4" data-testid="request-details">
       <div className="grid gap-3 text-sm sm:grid-cols-2">
         <Info label={tr("الزبون", "Customer")} value={<>{r.name} · <span dir="ltr">{r.phone}</span>{r.email ? <> · <span dir="ltr">{r.email}</span></> : null}</>} />
         <Info label={tr("النوع", "Type")} value={`${KIND_LABELS[r.kind]}${r.source ? ` — ${SOURCE_LABELS[r.source] ?? r.source}` : ""}`} />
@@ -188,7 +188,7 @@ function RequestDetails({ id, onGone }: { id: string; onGone: () => void }) {
         {r.product ? <Info label={tr("عن القطعة", "About the piece")} value={r.productUrl ? <a className="underline" href={r.productUrl} target="_blank" rel="noreferrer">{r.product.title}</a> : r.product.title} /> : null}
         <Info label={tr("وصل", "Came in")} value={new Date(r.createdAt).toLocaleString(loc("ar"), { dateStyle: "medium", timeStyle: "short" })} />
       </div>
-      {r.details ? <p className="whitespace-pre-wrap rounded-xl bg-white/[0.04] p-3 text-sm leading-7">{r.details}</p> : null}
+      {r.details ? <p className="whitespace-pre-wrap rounded-xl bg-white/4 p-3 text-sm leading-7">{r.details}</p> : null}
 
       {r.photos.length ? (
         <div className="flex flex-wrap gap-2" data-testid="request-photos">
@@ -271,7 +271,7 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="min-w-0">
       <span className="block text-xs text-white/50">{label}</span>
-      <span className="block break-words">{value}</span>
+      <span className="block wrap-break-word">{value}</span>
     </div>
   );
 }
@@ -291,7 +291,7 @@ function ProductPicker({ onPick }: { onPick: (id: string) => void }) {
         <ul className="max-h-60 overflow-auto rounded-xl border border-white/10">
           {found.map((p) => (
             <li key={p.id}>
-              <button type="button" onClick={() => onPick(p.id)} className="block w-full px-3 py-2 text-start text-sm hover:bg-white/[0.05]">
+              <button type="button" onClick={() => onPick(p.id)} className="block w-full px-3 py-2 text-start text-sm hover:bg-white/5">
                 {p.title}{p.isActive ? "" : <span className="ms-2 text-xs text-white/40">{tr("(مسودة)", "(draft)")}</span>}
               </button>
             </li>

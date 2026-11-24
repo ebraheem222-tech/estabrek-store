@@ -9,7 +9,7 @@ import { siteLine } from "../myFeatures/sitesText";
 import { runSteps, type SiteRun, type SiteRunStep } from "./siteSetupRun";
 import { siteKindName as kindOf } from "./siteSetup";
 
-const card = (on: boolean) => `flex w-full flex-col items-start gap-1 rounded-2xl border p-4 text-start transition ${on ? "border-accent-400 bg-accent-500/15" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.2]"}`;
+const card = (on: boolean) => `flex w-full flex-col items-start gap-1 rounded-2xl border p-4 text-start transition ${on ? "border-accent-400 bg-accent-500/15" : "border-white/8 bg-white/3 hover:border-white/20"}`;
 /**
  * «شو نوع موقعك؟»: an online store (null), or a whole site made for one kind of business. `suggested`: the site
  * picked for this store when its copy was made (نسخ الزباين), which the step opens on; any other is still a click away.
@@ -75,7 +75,7 @@ export function SiteFinish({ bp, chosen, sample, live, onLive, run, owner }: { b
   return (
     <section className="mx-auto max-w-2xl space-y-5" data-testid="setup-site-finish">
       <h1 className="text-2xl font-bold">{say("جاهز نجهّزه|Ready to set it up|מוכנים להקים")}</h1>
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
         <div className="text-sm font-semibold" data-testid="setup-site-name">
           {chosen.name[lang]}
         </div>
@@ -87,7 +87,7 @@ export function SiteFinish({ bp, chosen, sample, live, onLive, run, owner }: { b
           {say("لسّا من المثال، وبيطلعوا للناس هيك لحد ما تغيّرهم (خطوة «عنّك»): {list}|Still the sample's, and shown like that until you change them (the “About you” step): {list}|עדיין של הדוגמה, ויוצגו כך עד שתשנו אותם (שלב «עליכם»): {list}").replace("{list}", sample.join("، "))}
         </p>
       ) : null}
-      <label className="flex items-start gap-3 rounded-2xl border border-white/[0.08] p-4">
+      <label className="flex items-start gap-3 rounded-2xl border border-white/8 p-4">
         <input type="checkbox" className="mt-1 h-5 w-5" checked={live} disabled={started} onChange={(e) => onLive(e.target.checked)} data-testid="setup-site-live" />
         <span>
           <span className="block text-sm font-medium">{say("انشره هلّق وخلّيه الرئيسية|Publish it now and make it the home|לפרסם עכשיו ולהפוך לדף הבית")}</span>
@@ -139,8 +139,8 @@ export function SiteDone({ run, shop }: { run: SiteRun; shop: string }) {
         <Next to="/admin" title={say("لوحة التحكم|Dashboard|לוח הבקרה")} hint={say("كل الإعدادات|Everything else|כל השאר")} />
       </div>
       {live ? (
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08]">
-          <div className="flex items-center justify-between border-b border-white/[0.08] px-3 py-2 text-xs text-white/50">
+        <div className="overflow-hidden rounded-2xl border border-white/8">
+          <div className="flex items-center justify-between border-b border-white/8 px-3 py-2 text-xs text-white/50">
             <span>{say("موقعك الآن|Your site now|האתר שלכם עכשיו")}</span>
             <a href={`${shop}/`} target="_blank" rel="noreferrer" className="text-accent-300 hover:underline">
               {say("افتح بصفحة جديدة|Open in a new tab|פתיחה בלשונית חדשה")}
@@ -155,7 +155,7 @@ export function SiteDone({ run, shop }: { run: SiteRun; shop: string }) {
 
 function Next({ to, title, hint, testid }: { to: string; title: string; hint: string; testid?: string }) {
   return (
-    <Link to={to} className="block rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 hover:border-accent-400/60" data-testid={testid}>
+    <Link to={to} className="block rounded-2xl border border-white/8 bg-white/3 p-4 hover:border-accent-400/60" data-testid={testid}>
       <span className="block text-sm font-semibold">{title}</span>
       <span className="mt-1 block text-[11px] text-white/45">{hint}</span>
     </Link>

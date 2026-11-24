@@ -712,7 +712,7 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium">وصف سريع</label>
                 <textarea
-                  className="min-h-[84px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+                  className="min-h-[84px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-hidden focus:border-white/20 focus:ring-2 focus:ring-white/10"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -762,7 +762,7 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
                     type="button"
                     onClick={() => setSelectedGroupId(group.localId)}
                     className={`w-full rounded-xl border p-3 text-start transition ${
-                      active ? "border-accent-400/50 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                      active ? "border-accent-400/50 bg-accent-500/10" : "border-white/10 bg-white/3 hover:bg-white/[0.07]"
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -958,7 +958,7 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
             {skuRows.slice(0, 12).map((row) => (
               <div key={`${row.group.localId}-${row.sizeId}`} className="rounded-xl border border-white/10 bg-black/20 p-3">
                 <div className="font-mono text-sm font-semibold" dir="ltr">{row.sku}</div>
-                <div className="mt-2 h-8 rounded bg-[repeating-linear-gradient(90deg,#fff_0_2px,transparent_2px_5px,#fff_5px_8px,transparent_8px_12px)] opacity-80" />
+                <div className="mt-2 h-8 rounded-sm bg-[repeating-linear-gradient(90deg,#fff_0_2px,transparent_2px_5px,#fff_5px_8px,transparent_8px_12px)] opacity-80" />
                 <div className="mt-2 text-xs opacity-70">{row.group.colorName} / {row.sizeName} / {row.price}</div>
               </div>
             ))}
@@ -1013,7 +1013,7 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
                     <button
                       type="button"
                       onClick={() => removeCapturedShot(shot.id)}
-                      className="absolute start-1 top-1 rounded-lg bg-black/70 px-2 py-1 text-xs text-white"
+                      className="absolute inset-s-1 top-1 rounded-lg bg-black/70 px-2 py-1 text-xs text-white"
                     >
                       حذف
                     </button>

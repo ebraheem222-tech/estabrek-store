@@ -38,7 +38,7 @@ import {
 } from "./speedText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
-const field = "h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-9 rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const describe = (paths: string[]) => paths.map((p) => describeTrafficField(p) ?? p).join("، ") || "بدون تغيير";
 
 type Tab = "server" | "shoppers";
@@ -203,7 +203,7 @@ export default function SpeedMonitorPage() {
             const s = live.lanes.lanes[l];
             const c = draft.lanes[l];
             return (
-              <div key={l} className="rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid={`lane-${l}`}>
+              <div key={l} className="rounded-xl border border-white/10 bg-white/3 p-4" data-testid={`lane-${l}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h3 className="font-medium">{LANE_TEXT[l].label}</h3>
@@ -372,8 +372,8 @@ export default function SpeedMonitorPage() {
       ) : null}
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:start-72" data-testid="speed-save-bar">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--surface,#fff)] p-3 shadow-xl">
+        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:inset-s-72" data-testid="speed-save-bar">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-(--surface,#fff) p-3 shadow-xl">
             <span className="text-sm">
               {bad.length ? <span className="text-red-300">في قيم برّا الحد المسموح: {describe(bad)}</span> : <>تغييرات مش محفوظة: {describe(speedChangedPaths(draft, d.config))}</>}
             </span>

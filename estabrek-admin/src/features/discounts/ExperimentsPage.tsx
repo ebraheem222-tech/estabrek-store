@@ -18,7 +18,7 @@ import { FIELD_INPUT, STATUS_TEXT, rateText, runningForText, splitText, startVal
 import { tr } from "@/lib/words";
 import { HomeSectionsCard } from "./HomeSectionsCard";
 
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const KEY = ["experiments"];
 const onError = (e: unknown) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) });
 /** Revenue per visit with agorot: ₪3.24 vs ₪4.72 (whole shekels would hide the gap). */

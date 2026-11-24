@@ -505,7 +505,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
                   <div className="mt-2">
                     <label className="mb-1 block text-xs opacity-70">{tr("نوع الصورة", "Photo type")}</label>
                     <select
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm outline-none"
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm outline-hidden"
                       value={im.view ?? ""}
                       onChange={(e) => updateView(im.localId, e.target.value || null)}
                     >

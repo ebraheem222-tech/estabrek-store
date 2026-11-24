@@ -74,22 +74,22 @@ export function QuickStockModal({ productId, title, onClose }: { productId: stri
         {rows && rows.length === 0 ? <div className="py-6 text-center text-sm text-white/55">{tr("لا توجد مقاسات لهذا المنتج.", "This product has no sizes.")}</div> : null}
         {rows && rows.length > 0 && (
           <>
-            <ul className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08]">
+            <ul className="divide-y divide-white/6 rounded-xl border border-white/8">
               {rows.map((r) => {
                 const v = valueOf(r);
                 const dirty = next[r.variantId] !== undefined && Number(v) !== r.stock;
                 return (
-                  <li key={r.variantId} className={cn("flex items-center gap-3 px-3 py-2", dirty && "bg-accent-500/[0.06]")}>
+                  <li key={r.variantId} className={cn("flex items-center gap-3 px-3 py-2", dirty && "bg-accent-500/6")}>
                     <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/25" style={{ background: r.colorHex || "#888" }} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm text-white">{r.colorName} · <b>{r.size}</b></div>
                       <div dir="ltr" className="truncate text-right font-mono text-[11px] text-white/45">{r.sku}</div>
                     </div>
                     {dirty ? <span className="text-[11px] text-white/45">{tr("كان", "was")} {r.stock}</span> : null}
-                    <div className="inline-flex items-center rounded-lg border border-white/[0.1] bg-white/[0.02]">
+                    <div className="inline-flex items-center rounded-lg border border-white/10 bg-white/2">
                       <button type="button" onClick={() => step(r, -1)} className="h-9 w-9 text-white/60 hover:text-white" aria-label={tr("إنقاص", "Less")}>−</button>
                       <input
-                        className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-none", Number(v) <= 0 ? "text-red-300" : "text-white")}
+                        className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-hidden", Number(v) <= 0 ? "text-red-300" : "text-white")}
                         inputMode="numeric"
                         value={v}
                         onFocus={(e) => e.target.select()}
@@ -104,7 +104,7 @@ export function QuickStockModal({ productId, title, onClose }: { productId: stri
             </ul>
             <label className="mt-3 block text-xs text-white/55">
               {tr("السبب (اختياري، يظهر في سجل المخزون)", "Reason (optional, shows in the stock history)")}
-              <input className="mt-1 h-10 w-full rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white focus:outline-none" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("مثلاً: جرد، بضاعة وصلت، تالف", "e.g. count, goods arrived, damaged")} />
+              <input className="mt-1 h-10 w-full rounded-xl border border-white/8 bg-surface-925 px-3 text-sm text-white focus:outline-hidden" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("مثلاً: جرد، بضاعة وصلت، تالف", "e.g. count, goods arrived, damaged")} />
             </label>
           </>
         )}

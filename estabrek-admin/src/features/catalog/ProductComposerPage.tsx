@@ -417,7 +417,7 @@ export default function ProductComposerPage() {
           <span className="text-white/85">{tr("في منتج لم يكتمل", "An unfinished product")}{restore.title ? <> «<b>{restore.title}</b>»</> : null} {tr("من", "saved")} {timeAgo(restore.savedAt)}.</span>
           <div className="ms-auto flex gap-2">
             <button type="button" className="h-9 rounded-xl bg-accent-500 px-4 text-white hover:bg-accent-400" onClick={() => { setDraft(restore); setRestore(null); }}>{tr("متابعة", "Continue")}</button>
-            <button type="button" className="h-9 rounded-xl px-3 text-white/70 hover:bg-white/[0.06]" onClick={() => { clearLocalDraft(); setRestore(null); }}>{tr("بداية جديدة", "Start fresh")}</button>
+            <button type="button" className="h-9 rounded-xl px-3 text-white/70 hover:bg-white/6" onClick={() => { clearLocalDraft(); setRestore(null); }}>{tr("بداية جديدة", "Start fresh")}</button>
           </div>
         </div>
       )}
@@ -427,7 +427,7 @@ export default function ProductComposerPage() {
           {tr("تعذّر فتح المنتج:", "Couldn't open the product:")} {loadError}
           <div className="mt-4 flex justify-center gap-3">
             <button type="button" onClick={() => window.location.reload()} className="h-10 rounded-xl bg-accent-500 px-4 text-white">{tr("إعادة المحاولة", "Try again")}</button>
-            <Link to="/admin/catalog/products" className="grid h-10 place-items-center rounded-xl border border-white/[0.12] px-4 text-white/80">{tr("كل المنتجات", "All products")}</Link>
+            <Link to="/admin/catalog/products" className="grid h-10 place-items-center rounded-xl border border-white/12 px-4 text-white/80">{tr("كل المنتجات", "All products")}</Link>
           </div>
         </div>
       ) : loadingFrom ? (
@@ -485,7 +485,7 @@ export default function ProductComposerPage() {
                       placeholder="0"
                       aria-label={tr("سعر البيع", "Selling price")}
                     />
-                    <span className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-white/40">{currencySign()}</span>
+                    <span className="pointer-events-none absolute inset-s-3 top-1/2 -translate-y-1/2 text-white/40">{currencySign()}</span>
                   </div>
                 </label>
                 <div className="pb-2.5"><Toggle checked={draft.onSale} onChange={(v) => update((d) => ({ ...d, onSale: v }))} label={tr("عليها تخفيض", "On sale")} /></div>
@@ -494,7 +494,7 @@ export default function ProductComposerPage() {
                     <span className="mb-1.5 block text-xs text-white/55">{tr("السعر قبل الخصم", "Price before the discount")}</span>
                     <div className="relative">
                       <input className={cn(fieldCls, "h-12 w-40 ps-9", errors.compareAt && "border-red-500/50")} inputMode="decimal" value={draft.compareAt} onChange={(e) => { const v = e.target.value; update((d) => ({ ...d, compareAt: v })); setErrors((x) => ({ ...x, compareAt: undefined })); }} placeholder="0" aria-label={tr("السعر قبل الخصم", "Price before the discount")} />
-                      <span className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-white/40">{currencySign()}</span>
+                      <span className="pointer-events-none absolute inset-s-3 top-1/2 -translate-y-1/2 text-white/40">{currencySign()}</span>
                     </div>
                   </label>
                 )}
@@ -516,7 +516,7 @@ export default function ProductComposerPage() {
               <ul className="space-y-2 text-sm">
                 {checklist(draft).map((c) => (
                   <li key={c.key} className={cn("flex items-center gap-2", c.done ? "text-white/80" : "text-white/45")}>
-                    <span className={cn("grid h-5 w-5 place-items-center rounded-full text-[11px]", c.done ? "bg-emerald-500/20 text-emerald-300" : "bg-white/[0.06]")}>{c.done ? "✓" : ""}</span>
+                    <span className={cn("grid h-5 w-5 place-items-center rounded-full text-[11px]", c.done ? "bg-emerald-500/20 text-emerald-300" : "bg-white/6")}>{c.done ? "✓" : ""}</span>
                     {c.label}
                   </li>
                 ))}
@@ -530,7 +530,7 @@ export default function ProductComposerPage() {
       )}
 
       {/* Phones: the save buttons stay at the bottom, just above the tab bar (4rem tall; under it they were covered). */}
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.08] bg-surface-950/95 p-3 backdrop-blur lg:hidden" data-testid="composer-phone-bar">
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-white/8 bg-surface-950/95 p-3 backdrop-blur-sm lg:hidden" data-testid="composer-phone-bar">
         <div className="mx-auto grid max-w-xl grid-cols-[1fr_auto] gap-2"><SaveButtons phase={phase} onSave={save} compact edit={draft.edit} dirty={dirty} /></div>
       </div>
 
@@ -550,7 +550,7 @@ function SaveButtons({ phase, onSave, compact, edit, dirty }: { phase: Phase; on
         <button type="button" disabled={busy} onClick={() => onSave(edit.isActive)} className={cn("h-12 rounded-xl px-5 text-sm font-semibold text-white disabled:opacity-60", dirty ? "bg-accent-500 shadow-[0_8px_24px_-10px_rgb(var(--sk-accent-500,139_92_246)/0.8)] hover:bg-accent-400" : "bg-accent-500/60 hover:bg-accent-500")}>
           {busy ? tr("جارٍ الحفظ…", "Saving…") : dirty ? tr("حفظ التغييرات", "Save changes") : tr("حفظ", "Save")}
         </button>
-        <button type="button" disabled={busy} onClick={() => onSave(!edit.isActive)} className={cn("h-12 rounded-xl border border-white/[0.12] px-4 text-sm text-white/85 hover:bg-white/[0.06] disabled:opacity-60", compact && "px-3")}>
+        <button type="button" disabled={busy} onClick={() => onSave(!edit.isActive)} className={cn("h-12 rounded-xl border border-white/12 px-4 text-sm text-white/85 hover:bg-white/6 disabled:opacity-60", compact && "px-3")}>
           {edit.isActive ? tr("إخفاء (مسودة)", "Hide (draft)") : tr("حفظ ونشر", "Save and publish")}
         </button>
       </>
@@ -561,7 +561,7 @@ function SaveButtons({ phase, onSave, compact, edit, dirty }: { phase: Phase; on
       <button type="button" disabled={busy} onClick={() => onSave(true)} className="h-12 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white shadow-[0_8px_24px_-10px_rgb(var(--sk-accent-500,139_92_246)/0.8)] hover:bg-accent-400 disabled:opacity-60">
         {busy && phase.publish ? tr("جارٍ الحفظ…", "Saving…") : tr("نشر المنتج", "Publish the product")}
       </button>
-      <button type="button" disabled={busy} onClick={() => onSave(false)} className={cn("h-12 rounded-xl border border-white/[0.12] px-4 text-sm text-white/85 hover:bg-white/[0.06] disabled:opacity-60", compact && "px-3")}>
+      <button type="button" disabled={busy} onClick={() => onSave(false)} className={cn("h-12 rounded-xl border border-white/12 px-4 text-sm text-white/85 hover:bg-white/6 disabled:opacity-60", compact && "px-3")}>
         {busy && !phase.publish ? tr("جارٍ الحفظ…", "Saving…") : tr("حفظ كمسودة", "Save as draft")}
       </button>
     </>
@@ -653,9 +653,9 @@ function Preview({ draft, categoryName, price, before }: { draft: ComposerDraft;
     <div className="glass overflow-hidden rounded-2xl">
       <div className="px-4 pt-3 text-xs text-white/45">{tr("هكذا تظهر في المتجر", "How it shows in the store")}</div>
       <div className="p-4 pt-2">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#f4ebe3]">
+        <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-[#f4ebe3]">
           {photo ? <img src={photo.preview} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm text-[#9b7b6a]">{tr("الصورة الرئيسية", "Main photo")}</div>}
-          {before ? <span className="absolute start-3 top-3 rounded-full bg-[#7d2448] px-2.5 py-1 text-[11px] font-semibold text-white">−{Math.round((1 - (price ?? 0) / before) * 100)}%</span> : <span className="absolute start-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#7d2448]">{tr("جديد", "New")}</span>}
+          {before ? <span className="absolute inset-s-3 top-3 rounded-full bg-[#7d2448] px-2.5 py-1 text-[11px] font-semibold text-white">−{Math.round((1 - (price ?? 0) / before) * 100)}%</span> : <span className="absolute inset-s-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[#7d2448]">{tr("جديد", "New")}</span>}
         </div>
         <div className="mt-3 text-[11px] text-white/45">{categoryName || tr("القسم", "Category")}</div>
         <div className="mt-0.5 line-clamp-2 text-sm font-semibold text-white">{draft.title.trim() || tr("اسم المنتج", "Product name")}</div>
@@ -686,7 +686,7 @@ function SavingOverlay({ step, publish, photos, edit }: { step: "uploads" | Save
         <ol className="mt-4 space-y-3">
           {steps.map((s, i) => (
             <li key={s.key} className={cn("flex items-center gap-3 text-sm", i < at ? "text-emerald-300" : i === at ? "text-white" : "text-white/35")}>
-              <span className={cn("grid h-6 w-6 place-items-center rounded-full text-xs", i < at ? "bg-emerald-500/20" : i === at ? "bg-accent-500/25" : "bg-white/[0.06]")}>
+              <span className={cn("grid h-6 w-6 place-items-center rounded-full text-xs", i < at ? "bg-emerald-500/20" : i === at ? "bg-accent-500/25" : "bg-white/6")}>
                 {i < at ? "✓" : i === at ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : i + 1}
               </span>
               {s.label}
@@ -713,7 +713,7 @@ function SavedPanel({ phase, onNew, onEdit, onList }: { phase: Extract<Phase, { 
         ) : null}
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <button type="button" onClick={() => onNew("similar")} className="h-12 rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white hover:bg-accent-400">{tr("منتج مشابه", "Similar product")}</button>
-          <button type="button" onClick={() => onNew("blank")} className="h-12 rounded-xl border border-white/[0.12] px-4 text-sm text-white/85 hover:bg-white/[0.06]">{tr("منتج جديد فارغ", "Blank new product")}</button>
+          <button type="button" onClick={() => onNew("blank")} className="h-12 rounded-xl border border-white/12 px-4 text-sm text-white/85 hover:bg-white/6">{tr("منتج جديد فارغ", "Blank new product")}</button>
         </div>
         <p className="mt-2 text-[11px] text-white/40">{tr("«منتج مشابه» يحتفظ بالقسم والسعر والمقاسات — بتنضاف الصور والاسم بس.", "“Similar product” keeps the category, price and sizes — only the photos and name are added.")}</p>
         <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm">
@@ -729,14 +729,14 @@ function SavedPanel({ phase, onNew, onEdit, onList }: { phase: Extract<Phase, { 
 function EditHeader({ id, draft, dirty }: { id: string; draft: ComposerDraft; dirty: boolean }) {
   const live = draft.edit?.isActive;
   const storeUrl = `${env.VITE_STOREFRONT_BASE_URL.replace(/\/+$/, "")}/p/${encodeURIComponent(effectiveSlug(draft))}`;
-  const link = "inline-flex h-9 items-center rounded-xl border border-white/[0.1] px-3 text-sm text-white/75 hover:bg-white/[0.06] hover:text-white";
+  const link = "inline-flex h-9 items-center rounded-xl border border-white/10 px-3 text-sm text-white/75 hover:bg-white/6 hover:text-white";
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3" data-testid="product-edit-header">
       <div className="min-w-0">
         <Link to="/admin/catalog/products" className="text-xs text-white/50 hover:text-white">{tr("→ المنتجات", "← Products")}</Link>
         <h1 className="mt-1 flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight text-white">
           <span className="truncate">{draft.title || tr("تعديل منتج", "Edit product")}</span>
-          <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", live ? "bg-emerald-500/15 text-emerald-300" : "bg-white/[0.08] text-white/60")}>{live ? tr("منشور", "Published") : tr("مسودة", "Draft")}</span>
+          <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", live ? "bg-emerald-500/15 text-emerald-300" : "bg-white/8 text-white/60")}>{live ? tr("منشور", "Published") : tr("مسودة", "Draft")}</span>
           {dirty ? <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-200" role="status">{tr("تغييرات غير محفوظة", "Unsaved changes")}</span> : null}
         </h1>
       </div>

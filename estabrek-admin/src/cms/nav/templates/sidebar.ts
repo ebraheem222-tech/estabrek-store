@@ -39,7 +39,7 @@ export const SIDEBAR_NAV: NavTemplate[] = [
     nameAr: "شريط جانبي متدرج",
     category: "sidebar",
     styles: {
-      nav: "fixed inset-y-0 right-0 w-64 bg-gradient-to-b from-purple-900 to-indigo-900 flex flex-col",
+      nav: "fixed inset-y-0 right-0 w-64 bg-linear-to-b from-purple-900 to-indigo-900 flex flex-col",
       container: "flex-1 flex flex-col",
       logo: "text-xl font-bold text-white p-6",
       links: "flex-1 flex flex-col py-4",

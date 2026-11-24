@@ -18,31 +18,31 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const base = [
   "relative inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 ease-smooth",
-  "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950",
+  "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950",
   "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
   "active:scale-[0.98]",
 ].join(" ");
 
 const variants: Record<Variant, string> = {
   primary: [
-    "bg-[var(--btn-solid-bg)] text-[var(--btn-solid-text)] hover:bg-[var(--btn-solid-hover)]",
-    "border border-[var(--btn-solid-border)]",
+    "bg-(--btn-solid-bg) text-(--btn-solid-text) hover:bg-(--btn-solid-hover)",
+    "border border-(--btn-solid-border)",
     "shadow-[0_1px_2px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)]",
     "hover:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_8px_20px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)]",
   ].join(" "),
   accent: [
-    "bg-gradient-to-b from-[var(--btn-accent-from)] to-[var(--btn-accent-to)] text-[var(--btn-accent-text)]",
+    "bg-linear-to-b from-(--btn-accent-from) to-(--btn-accent-to) text-(--btn-accent-text)",
     "shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgb(var(--sk-accent-500,139_92_246)/0.25),inset_0_1px_0_rgba(255,255,255,0.15)]",
     "hover:shadow-[0_1px_2px_rgba(0,0,0,0.25),0_8px_20px_rgb(var(--sk-accent-500,139_92_246)/0.35),inset_0_1px_0_rgba(255,255,255,0.2)]",
-    "hover:from-[var(--btn-accent-from-hover)] hover:to-[var(--btn-accent-to-hover)]",
+    "hover:from-(--btn-accent-from-hover) hover:to-(--btn-accent-to-hover)",
   ].join(" "),
   secondary: [
-    "bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-text)] border border-[var(--btn-secondary-border)]",
-    "hover:bg-[var(--btn-secondary-bg-hover)]",
+    "bg-(--btn-secondary-bg) text-(--btn-secondary-text) border border-(--btn-secondary-border)",
+    "hover:bg-(--btn-secondary-bg-hover)",
     "shadow-inner-light",
   ].join(" "),
   ghost: [
-    "bg-transparent text-[var(--btn-ghost-text)] hover:bg-[var(--btn-ghost-bg-hover)] hover:text-[var(--btn-ghost-text-hover)]",
+    "bg-transparent text-(--btn-ghost-text) hover:bg-(--btn-ghost-bg-hover) hover:text-(--btn-ghost-text-hover)",
   ].join(" "),
   danger: [
     "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30",

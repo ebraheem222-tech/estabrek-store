@@ -41,7 +41,7 @@ function PhonePreview({ draft, name }: { draft: PushDraft; name: string }) {
   return (
     <div className="w-full max-w-[320px] rounded-[22px] border border-white/10 bg-black/40 p-3 shadow-xl" data-testid="push-preview">
       <div className="flex items-center gap-2 text-[11px] text-white/50">
-        <span className="flex h-4 w-4 items-center justify-center rounded bg-rose-700 text-[9px] font-bold text-white">{(name || "S").charAt(0)}</span>
+        <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-rose-700 text-[9px] font-bold text-white">{(name || "S").charAt(0)}</span>
         <span className="truncate">{name}</span>
         <span className="ms-auto">{say("هلّق|now|עכשיו")}</span>
       </div>

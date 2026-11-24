@@ -15,7 +15,7 @@ import { FromCell, ValueInput, input } from "./GridCells";
 import { LANGS, LANG_NAME, WORDS, fromName, isWorkedOut, issueAbout, issueSay } from "./dataText";
 import { draftFrom, draftProblem, shownText, valueFrom } from "./kinds";
 
-const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 const name = (v: Partial<Record<Lang, string>> | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 
@@ -119,7 +119,7 @@ export function RowDrawer({ table, row, incoming = [], lang, canWrite, onClose, 
             return (
               <div key={f.id} className="block text-xs text-white/60" data-testid={`row-field-${f.id}`}>
                 {label}
-                <span className="mt-1 flex items-center gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-sm text-white/85" data-testid={`row-${f.id}-worked`}>
+                <span className="mt-1 flex items-center gap-2 rounded-lg bg-white/4 px-2 py-1.5 text-sm text-white/85" data-testid={`row-${f.id}-worked`}>
                   {row ? shownText(f, v, lang) || "—" : say("بينحسب لما ينحفظ السطر|Worked out once the row is saved|מחושב כשהשורה נשמרת")}
                   <span className="ms-auto text-[10px] text-white/35">{say("بينحسب لحاله|Worked out by itself|מחושב מעצמו")}</span>
                 </span>
@@ -156,7 +156,7 @@ export function RowDrawer({ table, row, incoming = [], lang, canWrite, onClose, 
                 </span>
                 {f.type === "image" ? (
                   <>
-                    {values[f.id] ? <img src={values[f.id]} alt="" className="h-8 w-8 rounded object-cover" /> : null}
+                    {values[f.id] ? <img src={values[f.id]} alt="" className="h-8 w-8 rounded-sm object-cover" /> : null}
                     <button type="button" className={btn} onClick={() => setPicking(f.id)}>
                       {say("اختار صورة|Pick a picture|בחר תמונה")}
                     </button>

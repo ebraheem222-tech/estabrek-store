@@ -8,9 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import { listBlocks, type BlockInfo, type PageTreeNode } from "../api/pages.api";
 import { tr } from "../lib/words";
 
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const control = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 export const useBlocks = () => useQuery({ queryKey: ["page-blocks"], queryFn: listBlocks, staleTime: 30_000 });
 const usesLabel = (n: number) => (n === 1 ? tr("مربوط بصفحة وحدة", "Linked on one page") : tr(`مربوط بـ ${n} صفحات`, "Linked on {0} pages", [n]));
@@ -92,7 +92,7 @@ export function MyBlocks({ busy, onCopy, onLink, onDelete }: { busy: boolean; on
       {blocks.isError ? <p className="px-1 text-[11px] text-red-300">{tr("ما قدرنا نجيب البلوكات.", "Couldn't load the blocks.")}</p> : null}
       {blocks.isSuccess && !blocks.data.length ? <p className="px-1 text-[11px] leading-5 text-white/40">{tr("لسا ما في. اختار قسم واحفظه كبلوك من لوحته.", "None yet. Select a section and save it as a block from its panel.")}</p> : null}
       {(blocks.data ?? []).map((b) => (
-        <div key={b.id} className="rounded-lg border border-white/[0.08] p-2" data-testid="studio-my-block" data-block={b.id}>
+        <div key={b.id} className="rounded-lg border border-white/8 p-2" data-testid="studio-my-block" data-block={b.id}>
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs text-white/85">{b.name}</span>
             <button type="button" className="text-[11px] text-red-300 hover:underline disabled:opacity-40" disabled={busy} onClick={() => onDelete(b)} aria-label={tr("احذف البلوك", "Delete the block")}>×</button>

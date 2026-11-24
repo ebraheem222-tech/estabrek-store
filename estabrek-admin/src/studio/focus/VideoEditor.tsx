@@ -18,9 +18,9 @@ import { LIMITS, RATIOS, SPEEDS, clipAt, clipLength, clipStarts, moveClip, outpu
 import { say } from "../say";
 import { PREVIEW_SHARE, previewSize } from "./videoFit";
 
-const btn = "rounded-lg bg-white/[0.06] px-2.5 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
-const input = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2.5 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`;
+const input = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 let seq = 0;
 const newId = (k: string) => `${k}${Date.now().toString(36)}${(seq++).toString(36)}`;
 const time = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}.${Math.floor((t % 1) * 10)}`;
@@ -217,12 +217,12 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
   const words = chosen?.kind === "words" ? wordsOf(chosen.id) : null;
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-surface-950 text-white" role="dialog" aria-modal="true" aria-label={say("محرّر الفيديو|The video editor|עורך הווידאו")} data-testid="studio-video-editor">
-      <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
+      <header className="flex flex-wrap items-center gap-2 border-b border-white/8 px-3 py-2">
         <span className="text-sm font-semibold">🎬 {say("محرّر الفيديو|The video editor|עורך הווידאו")}</span>
         <span className="hidden text-xs text-white/45 sm:inline">{node.name ?? node.id}</span>
         <span className="flex-1" />
         {/* On a phone the shapes take a row of their own under the title, so Close and Make stay beside it. */}
-        <div className="order-last flex w-full gap-1 overflow-x-auto md:order-none md:w-auto" role="radiogroup" aria-label={say("شكل الإطار|The frame's shape|צורת המסגרת")}>
+        <div className="order-last flex w-full gap-1 overflow-x-auto md:order-0 md:w-auto" role="radiogroup" aria-label={say("شكل الإطار|The frame's shape|צורת המסגרת")}>
           {RATIOS.map((r) => (
             <button key={r} type="button" role="radio" aria-checked={(project?.ratio ?? "original") === r} className={chip((project?.ratio ?? "original") === r)} disabled={!project} onClick={() => project && change({ ...project, ratio: r === "original" ? undefined : (r as Ratio) })} data-testid="video-ratio" data-ratio={r}>
               {r === "original" ? say("متل ما انصوّر|As filmed|כפי שצולם") : r}
@@ -265,7 +265,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
           {note ? <p className="max-w-xl text-center text-[11px] text-white/60" data-testid="video-note">{note}</p> : null}
         </main>
 
-        <aside className="min-h-0 flex-1 space-y-3 overflow-y-auto border-t border-white/[0.08] p-3 md:w-72 md:flex-none md:border-s md:border-t-0" data-testid="video-inspector">
+        <aside className="min-h-0 flex-1 space-y-3 overflow-y-auto border-t border-white/8 p-3 md:w-72 md:flex-none md:border-s md:border-t-0" data-testid="video-inspector">
           {one && project ? (
             <div className="space-y-2" data-testid="video-clip-panel">
               <div className="text-xs font-medium">{say("المقطع|The clip|הקטע")} {project.clips.indexOf(one) + 1}</div>
@@ -303,7 +303,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
           ) : null}
           {!one && !words ? <p className="text-[11px] leading-5 text-white/45">{say("كبسة على مقطع أو كلام بالخط الزمني لتعديله. اسحب المقطع لتغيّر مكانه، وحوافه لتقصّه.|Click a clip or words on the timeline to change them. Drag a clip to move it, its edges to trim it.|לחץ על קטע או מילים בציר הזמן.")}</p> : null}
           {project ? (
-            <div className="space-y-2 border-t border-white/[0.08] pt-3">
+            <div className="space-y-2 border-t border-white/8 pt-3">
               <label className="flex items-center gap-2 text-[11px] text-white/60"><input type="checkbox" checked={project.mute === true} onChange={(e) => change({ ...project, mute: e.target.checked || undefined })} data-testid="video-mute" />{say("كل الفيديو بدون صوته|The whole video without its sound|כל הווידאו ללא קול")}</label>
               <label className="flex items-center gap-2 text-[11px] text-white/60"><input type="checkbox" checked={project.fade === true} onChange={(e) => change({ ...project, fade: e.target.checked || undefined })} data-testid="video-fade" />{say("يبين ويختفي بنعومة|Fades in and out|נכנס ויוצא בהדרגה")}</label>
               {project.music ? (
@@ -318,7 +318,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
         </aside>
       </div>
 
-      <footer className="space-y-2 border-t border-white/[0.08] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-testid="video-timeline">
+      <footer className="space-y-2 border-t border-white/8 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-testid="video-timeline">
         <div className="flex flex-wrap items-center gap-1">
           <button type="button" className={btn} disabled={!project} onClick={() => project && change(splitAt(project, t, newId("c")))} data-testid="video-split">✂ {say("قص هون|Cut here|חתוך כאן")}</button>
           <button
@@ -351,7 +351,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
         {project ? (
           <div className="relative touch-none select-none" onPointerMove={onDragMove} onPointerUp={onDragEnd}>
             <div
-              className="relative h-5 cursor-pointer rounded bg-white/[0.04]"
+              className="relative h-5 cursor-pointer rounded-sm bg-white/4"
               onPointerDown={(e) => { const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left) / pps); }}
               data-testid="video-ruler"
             >
@@ -359,7 +359,7 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
                 <span key={s} className="absolute top-0 text-[9px] text-white/35" style={{ left: s * pps }} dir="ltr">{s}s</span>
               ))}
             </div>
-            <div ref={row} className="relative mt-1 h-14 rounded bg-white/[0.03]" data-testid="video-clips">
+            <div ref={row} className="relative mt-1 h-14 rounded-sm bg-white/3" data-testid="video-clips">
               {project.clips.map((c, i) => {
                 const left = clipStarts(project)[i] * pps, w = clipLength(c) * pps;
                 const on = chosen?.kind === "clip" && chosen.id === c.id;
@@ -372,13 +372,13 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
                 return (
                   <div key={c.id} className={`absolute top-1 bottom-1 overflow-hidden rounded-md border ${on ? "border-sky-300 bg-sky-500/40" : "border-white/20 bg-accent-500/35"} cursor-grab`} style={{ left, width: Math.max(6, w) }} onPointerDown={start("move")} data-testid="video-clip" data-id={c.id}>
                     <span className="pointer-events-none absolute inset-x-3 top-1 truncate text-[10px] text-white/85">{i + 1} · {clipLength(c).toFixed(1)}s{c.speed && c.speed !== 1 ? ` · ${c.speed}×` : ""}</span>
-                    <span className="absolute inset-y-0 start-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimIn")} data-testid="video-trim-in" data-video-grip="" />
-                    <span className="absolute inset-y-0 end-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimOut")} data-testid="video-trim-out" data-video-grip="" />
+                    <span className="absolute inset-y-0 inset-s-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimIn")} data-testid="video-trim-in" data-video-grip="" />
+                    <span className="absolute inset-y-0 inset-e-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("trimOut")} data-testid="video-trim-out" data-video-grip="" />
                   </div>
                 );
               })}
             </div>
-            <div className="relative mt-1 h-8 rounded bg-white/[0.03]" data-testid="video-words-row">
+            <div className="relative mt-1 h-8 rounded-sm bg-white/3" data-testid="video-words-row">
               {(project.words ?? []).map((w) => {
                 const on = chosen?.kind === "words" && chosen.id === w.id;
                 const start = (kind: "wordsMove" | "wordsDur") => (e: React.PointerEvent) => {
@@ -388,9 +388,9 @@ export function VideoEditor({ node, abs, busy, onClose, onSave }: {
                   setChosen({ kind: "words", id: w.id });
                 };
                 return (
-                  <div key={w.id} className={`absolute top-1 bottom-1 cursor-grab overflow-hidden rounded border ${on ? "border-sky-300 bg-sky-500/40" : "border-amber-200/40 bg-amber-400/25"}`} style={{ left: w.at * pps, width: Math.max(10, w.dur * pps) }} onPointerDown={start("wordsMove")} data-testid="video-words" data-id={w.id}>
+                  <div key={w.id} className={`absolute top-1 bottom-1 cursor-grab overflow-hidden rounded-sm border ${on ? "border-sky-300 bg-sky-500/40" : "border-amber-200/40 bg-amber-400/25"}`} style={{ left: w.at * pps, width: Math.max(10, w.dur * pps) }} onPointerDown={start("wordsMove")} data-testid="video-words" data-id={w.id}>
                     <span className="pointer-events-none absolute inset-x-1 top-0.5 truncate text-[10px]" dir="auto">{w.text}</span>
-                    <span className="absolute inset-y-0 end-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("wordsDur")} data-testid="video-words-grip" data-video-grip="" />
+                    <span className="absolute inset-y-0 inset-e-0 w-2 cursor-ew-resize bg-white/40" onPointerDown={start("wordsDur")} data-testid="video-words-grip" data-video-grip="" />
                   </div>
                 );
               })}

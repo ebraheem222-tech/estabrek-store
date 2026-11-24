@@ -405,7 +405,7 @@ export function RolesSection({ id, roles, groups, canWrite }: { id: string; role
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-xl border border-white/10 bg-white/3 p-3">
       <div className="text-xs text-white/50">{label}</div>
       <div className="mt-1 font-semibold">{value}</div>
     </div>

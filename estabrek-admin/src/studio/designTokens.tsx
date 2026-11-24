@@ -76,7 +76,7 @@ export function useDesignTokens(onSaved: () => void | Promise<void>) {
   };
 }
 
-const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const control = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 /** Picks one of a group's variables for a style (null: none); nothing when the group is empty. */
 export function TokenSelect({ group, value, busy, label, onPick, testId }: { group: TokenGroup; value: unknown; busy: boolean; label?: string; onPick: (v: string | null) => void; testId?: string }) {
   const tokens = useTokens();

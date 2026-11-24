@@ -102,23 +102,23 @@ export function RatingSummary({
     <div className={cn("flex flex-col sm:flex-row gap-8", className)}>
       {/* Average */}
       <div className="text-center">
-        <div className="text-5xl font-bold text-[var(--color-text)]">{averageRating.toFixed(1)}</div>
+        <div className="text-5xl font-bold text-(--color-text)">{averageRating.toFixed(1)}</div>
         <StarRating value={Math.round(averageRating)} size="lg" className="justify-center mt-2" />
-        <p className="text-[var(--color-text-muted)] mt-1">{totalReviews} تقييم</p>
+        <p className="text-(--color-text-muted) mt-1">{totalReviews} تقييم</p>
       </div>
 
       {/* Distribution */}
       <div className="flex-1 space-y-2">
         {distribution.sort((a, b) => b.stars - a.stars).map((item) => (
           <div key={item.stars} className="flex items-center gap-3">
-            <span className="w-8 text-sm text-[var(--color-text-muted)]">{item.stars} ⭐</span>
-            <div className="flex-1 h-2 bg-[var(--color-bg-alt)] rounded-full overflow-hidden">
+            <span className="w-8 text-sm text-(--color-text-muted)">{item.stars} ⭐</span>
+            <div className="flex-1 h-2 bg-(--color-bg-alt) rounded-full overflow-hidden">
               <div
                 className="h-full bg-yellow-400 rounded-full transition-all"
                 style={{ width: maxCount > 0 ? `${(item.count / maxCount) * 100}%` : "0%" }}
               />
             </div>
-            <span className="w-10 text-sm text-[var(--color-text-muted)]">{item.count}</span>
+            <span className="w-10 text-sm text-(--color-text-muted)">{item.count}</span>
           </div>
         ))}
       </div>
@@ -140,7 +140,7 @@ export function ReviewCard({
   className?: string;
 }) {
   return (
-    <div className={cn("p-6 border-b border-[var(--color-border)]", className)}>
+    <div className={cn("p-6 border-b border-(--color-border)", className)}>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           {review.authorAvatar ? (
@@ -150,7 +150,7 @@ export function ReviewCard({
               className="w-10 h-10 rounded-full object-cover"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 rounded-full bg-(--color-accent) flex items-center justify-center text-white font-bold">
               {review.authorName.charAt(0)}
             </div>
           )}
@@ -168,14 +168,14 @@ export function ReviewCard({
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <StarRating value={review.rating} size="sm" />
-              <span className="text-xs text-[var(--color-text-muted)]">{review.date}</span>
+              <span className="text-xs text-(--color-text-muted)">{review.date}</span>
             </div>
           </div>
         </div>
       </div>
 
       {review.title && <h4 className="font-bold mb-2">{review.title}</h4>}
-      <p className="text-[var(--color-text-muted)] mb-3">{review.content}</p>
+      <p className="text-(--color-text-muted) mb-3">{review.content}</p>
 
       {review.images && review.images.length > 0 && (
         <div className="flex gap-2 mb-3">
@@ -193,7 +193,7 @@ export function ReviewCard({
       {onHelpful && (
         <button
           onClick={() => onHelpful(review.id)}
-          className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] flex items-center gap-1"
+          className="text-sm text-(--color-text-muted) hover:text-(--color-accent) flex items-center gap-1"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
@@ -234,7 +234,7 @@ export function ReviewsList({
         {onWriteReview && (
           <button
             onClick={onWriteReview}
-            className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-xl font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+            className="px-6 py-2 bg-(--color-accent) text-white rounded-xl font-medium hover:bg-(--color-accent-hover) transition-colors"
           >
             اكتب تقييمك
           </button>
@@ -246,18 +246,18 @@ export function ReviewsList({
           averageRating={averageRating ?? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length}
           totalReviews={reviews.length}
           distribution={distribution}
-          className="mb-8 p-6 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)]"
+          className="mb-8 p-6 bg-(--color-surface) rounded-2xl border border-(--color-border)"
         />
       )}
 
-      <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden">
+      <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) overflow-hidden">
         {reviews.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-[var(--color-text-muted)] mb-4">لا توجد تقييمات بعد</p>
+            <p className="text-(--color-text-muted) mb-4">لا توجد تقييمات بعد</p>
             {onWriteReview && (
               <button
                 onClick={onWriteReview}
-                className="text-[var(--color-accent)] hover:underline"
+                className="text-(--color-accent) hover:underline"
               >
                 كن أول من يكتب تقييماً
               </button>

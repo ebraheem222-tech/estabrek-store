@@ -29,7 +29,7 @@ export function DeckPanel({ node, lang, busy, ids, onOps }: Props) {
     <Range label={tr("مدة الانتقال", "Transition duration")} value={typeof p.duration === "number" ? p.duration : .5} min={0} max={2} step={.1} busy={busy} onSave={duration => save({ duration })} />
     <Choice label={tr("اللوحة الأولى", "Initial panel")} value={String(initial)} options={panels.map((panel, i) => [String(i), labels[panel.id]?.[lang] || `${i + 1}`])} busy={busy} onPick={value => save({ initial: Number(value) })} />
     {(["arrows", "dots", "menu"] as const).map(key => <label key={key} className="flex justify-between text-xs"><span>{{ arrows: tr("أسهم التنقل", "Navigation arrows"), dots: tr("نقاط التنقل", "Navigation dots"), menu: tr("قائمة المحتويات", "Contents menu") }[key]}</span><input type="checkbox" disabled={busy} checked={p[key] !== false} onChange={event => save({ [key]: event.target.checked })} /></label>)}
-    {panels.map((panel, i) => <div key={panel.id} className="space-y-2 rounded border border-white/10 p-2">
+    {panels.map((panel, i) => <div key={panel.id} className="space-y-2 rounded-sm border border-white/10 p-2">
       <Field label={`${tr("لوحة", "Panel")} ${i + 1}`} value={labels[panel.id]?.[lang] || ""} onSave={value => save({ labels: { ...labels, [panel.id]: { ...labels[panel.id], [lang]: value.slice(0, 80) } } })} />
       <div className="flex gap-3 text-xs">
         <button type="button" disabled={busy || i === 0} onClick={() => move(i, i - 1)} data-testid={`deck-panel-up-${panel.id}`}>↑</button>
@@ -37,6 +37,6 @@ export function DeckPanel({ node, lang, busy, ids, onOps }: Props) {
         <button type="button" disabled={busy} onClick={() => { const next = { ...labels }; delete next[panel.id]; const selected = panels[initial]?.id; const rest = panels.filter(child => child.id !== panel.id); save({ labels: next, initial: Math.max(0, rest.findIndex(child => child.id === selected)) }, [{ op: "remove", nodeId: panel.id }]); }}>{tr("حذف", "Delete")}</button>
       </div>
     </div>)}
-    <button type="button" disabled={busy || panels.length >= 12} onClick={add} data-testid="deck-panel-add" className="rounded bg-white/10 px-3 py-2 text-xs">+ {tr("إضافة لوحة", "Add panel")}</button>
+    <button type="button" disabled={busy || panels.length >= 12} onClick={add} data-testid="deck-panel-add" className="rounded-sm bg-white/10 px-3 py-2 text-xs">+ {tr("إضافة لوحة", "Add panel")}</button>
   </div>;
 }

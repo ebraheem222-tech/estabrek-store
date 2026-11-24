@@ -68,12 +68,12 @@ export function CartItemRow({
 
   return (
     <div className={cn(
-      "flex gap-4 p-4 border-b border-[var(--color-border)]",
+      "flex gap-4 p-4 border-b border-(--color-border)",
       isCompact && "p-2 gap-2"
     )}>
       {/* Image */}
       <div className={cn(
-        "relative overflow-hidden rounded-xl flex-shrink-0",
+        "relative overflow-hidden rounded-xl shrink-0",
         isCompact ? "w-16 h-16" : "w-24 h-24"
       )}>
         <img
@@ -86,14 +86,14 @@ export function CartItemRow({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <h4 className={cn(
-          "font-bold text-[var(--color-text)] truncate",
+          "font-bold text-(--color-text) truncate",
           isCompact ? "text-sm" : "text-base"
         )}>
           {item.nameAr || item.name}
         </h4>
         
         {item.variant && (
-          <p className="text-xs text-[var(--color-text-muted)]">{item.variant}</p>
+          <p className="text-xs text-(--color-text-muted)">{item.variant}</p>
         )}
 
         <div className="flex items-center justify-between mt-2">
@@ -101,7 +101,7 @@ export function CartItemRow({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onUpdateQuantity?.(item.id, Math.max(1, item.quantity - 1))}
-              className="w-8 h-8 rounded-lg bg-[var(--color-bg-alt)] hover:bg-[var(--color-border)] transition-colors flex items-center justify-center"
+              className="w-8 h-8 rounded-lg bg-(--color-bg-alt) hover:bg-(--color-border) transition-colors flex items-center justify-center"
               disabled={item.quantity <= 1}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,7 +111,7 @@ export function CartItemRow({
             <span className="w-8 text-center font-medium">{item.quantity}</span>
             <button
               onClick={() => onUpdateQuantity?.(item.id, item.quantity + 1)}
-              className="w-8 h-8 rounded-lg bg-[var(--color-bg-alt)] hover:bg-[var(--color-border)] transition-colors flex items-center justify-center"
+              className="w-8 h-8 rounded-lg bg-(--color-bg-alt) hover:bg-(--color-border) transition-colors flex items-center justify-center"
               disabled={item.maxQuantity !== undefined && item.quantity >= item.maxQuantity}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +122,7 @@ export function CartItemRow({
 
           {/* Price */}
           <span className={cn(
-            "font-bold text-[var(--color-accent)]",
+            "font-bold text-(--color-accent)",
             isCompact ? "text-sm" : "text-base"
           )}>
             {formatPrice(item.price * item.quantity, currency)}
@@ -171,7 +171,7 @@ export function CartSummary({
   const [couponCode, setCouponCode] = useState("");
 
   return (
-    <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-6">
+    <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6">
       <h3 className="text-lg font-bold mb-4">ملخص الطلب</h3>
 
       {/* Coupon Input */}
@@ -182,11 +182,11 @@ export function CartSummary({
             value={couponCode}
             onChange={(e) => setCouponCode(e.target.value)}
             placeholder="كود الخصم"
-            className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-transparent text-sm"
+            className="flex-1 px-4 py-2 rounded-xl border border-(--color-border) bg-transparent text-sm"
           />
           <button
             onClick={() => onApplyCoupon(couponCode)}
-            className="px-4 py-2 bg-[var(--color-accent)] text-white rounded-xl hover:bg-[var(--color-accent-hover)] transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-(--color-accent) text-white rounded-xl hover:bg-(--color-accent-hover) transition-colors text-sm font-medium"
           >
             تطبيق
           </button>
@@ -196,13 +196,13 @@ export function CartSummary({
       {/* Summary Lines */}
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-[var(--color-text-muted)]">المجموع الفرعي</span>
+          <span className="text-(--color-text-muted)">المجموع الفرعي</span>
           <span>{formatPrice(subtotal, currency)}</span>
         </div>
         
         {shipping > 0 && (
           <div className="flex justify-between">
-            <span className="text-[var(--color-text-muted)]">الشحن</span>
+            <span className="text-(--color-text-muted)">الشحن</span>
             <span>{formatPrice(shipping, currency)}</span>
           </div>
         )}
@@ -216,7 +216,7 @@ export function CartSummary({
         
         {tax > 0 && (
           <div className="flex justify-between">
-            <span className="text-[var(--color-text-muted)]">الضريبة</span>
+            <span className="text-(--color-text-muted)">الضريبة</span>
             <span>{formatPrice(tax, currency)}</span>
           </div>
         )}
@@ -228,9 +228,9 @@ export function CartSummary({
           </div>
         )}
 
-        <div className="border-t border-[var(--color-border)] pt-3 flex justify-between text-lg font-bold">
+        <div className="border-t border-(--color-border) pt-3 flex justify-between text-lg font-bold">
           <span>الإجمالي</span>
-          <span className="text-[var(--color-accent)]">{formatPrice(total, currency)}</span>
+          <span className="text-(--color-accent)">{formatPrice(total, currency)}</span>
         </div>
       </div>
 
@@ -238,7 +238,7 @@ export function CartSummary({
       <button
         onClick={onCheckout}
         disabled={loading}
-        className="w-full mt-6 py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full mt-6 py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -254,7 +254,7 @@ export function CartSummary({
       </button>
 
       {/* Trust Badges */}
-      <div className="mt-4 flex items-center justify-center gap-4 text-xs text-[var(--color-text-muted)]">
+      <div className="mt-4 flex items-center justify-center gap-4 text-xs text-(--color-text-muted)">
         <span className="flex items-center gap-1">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -302,16 +302,16 @@ export function MiniCart({
       {/* Drawer */}
       <div
         className={cn(
-          "fixed top-0 left-0 h-full w-full max-w-md bg-[var(--color-surface)] z-50 shadow-2xl transition-transform duration-300",
+          "fixed top-0 left-0 h-full w-full max-w-md bg-(--color-surface) z-50 shadow-2xl transition-transform duration-300",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
+        <div className="flex items-center justify-between p-4 border-b border-(--color-border)">
           <h2 className="text-lg font-bold">سلة التسوق ({itemCount})</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-[var(--color-bg-alt)] rounded-lg transition-colors"
+            className="p-2 hover:bg-(--color-bg-alt) rounded-lg transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -323,10 +323,10 @@ export function MiniCart({
         <div className="flex-1 overflow-auto p-4" style={{ maxHeight: "calc(100vh - 200px)" }}>
           {items.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="w-16 h-16 mx-auto text-[var(--color-text-muted)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-16 h-16 mx-auto text-(--color-text-muted) mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <p className="text-[var(--color-text-muted)]">السلة فارغة</p>
+              <p className="text-(--color-text-muted)">السلة فارغة</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -346,16 +346,16 @@ export function MiniCart({
 
         {/* Footer */}
         {items.length > 0 && (
-          <div className="p-4 border-t border-[var(--color-border)]">
+          <div className="p-4 border-t border-(--color-border)">
             <div className="flex justify-between mb-4">
               <span className="font-medium">المجموع</span>
-              <span className="text-xl font-bold text-[var(--color-accent)]">
+              <span className="text-xl font-bold text-(--color-accent)">
                 {formatPrice(subtotal, currency)}
               </span>
             </div>
             <button
               onClick={onCheckout}
-              className="w-full py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors"
+              className="w-full py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors"
             >
               إتمام الطلب
             </button>
@@ -382,13 +382,13 @@ export function CartIcon({
   return (
     <button
       onClick={onClick}
-      className={cn("relative p-2 hover:bg-[var(--color-bg-alt)] rounded-xl transition-colors", className)}
+      className={cn("relative p-2 hover:bg-(--color-bg-alt) rounded-xl transition-colors", className)}
     >
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-[var(--color-accent)] text-white text-xs font-bold rounded-full flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-(--color-accent) text-white text-xs font-bold rounded-full flex items-center justify-center">
           {count > 99 ? "99+" : count}
         </span>
       )}
@@ -416,14 +416,14 @@ export function CartPage({
   if (items.length === 0) {
     return (
       <div className={cn("text-center py-20", className)}>
-        <svg className="w-24 h-24 mx-auto text-[var(--color-text-muted)] mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-24 h-24 mx-auto text-(--color-text-muted) mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         <h2 className="text-2xl font-bold mb-2">السلة فارغة</h2>
-        <p className="text-[var(--color-text-muted)] mb-6">لم تقم بإضافة أي منتجات بعد</p>
+        <p className="text-(--color-text-muted) mb-6">لم تقم بإضافة أي منتجات بعد</p>
         <button
           onClick={onContinueShopping}
-          className="px-8 py-3 bg-[var(--color-accent)] text-white rounded-xl font-bold hover:bg-[var(--color-accent-hover)] transition-colors"
+          className="px-8 py-3 bg-(--color-accent) text-white rounded-xl font-bold hover:bg-(--color-accent-hover) transition-colors"
         >
           تصفح المنتجات
         </button>
@@ -435,8 +435,8 @@ export function CartPage({
     <div className={cn("grid lg:grid-cols-3 gap-8", className)}>
       {/* Items */}
       <div className="lg:col-span-2">
-        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden">
-          <div className="p-4 border-b border-[var(--color-border)]">
+        <div className="bg-(--color-surface) rounded-2xl border border-(--color-border) overflow-hidden">
+          <div className="p-4 border-b border-(--color-border)">
             <h2 className="text-lg font-bold">سلة التسوق ({items.length} منتج)</h2>
           </div>
           <div>
@@ -454,7 +454,7 @@ export function CartPage({
 
         <button
           onClick={onContinueShopping}
-          className="mt-4 text-[var(--color-accent)] hover:underline flex items-center gap-2"
+          className="mt-4 text-(--color-accent) hover:underline flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

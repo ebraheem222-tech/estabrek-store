@@ -8,9 +8,9 @@ import { PICTURE_FX, PICTURE_FX_STRENGTH, pictureFxOf, pictureFxOnPointer, type 
 import { Range } from "./LookPanels";
 import { say } from "./say";
 
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const control = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 export const PICTURE_FX_NAMES: Record<PictureFxKind, string> = {
   ripple: "تموّج مي (لما يمرّ الزبون عليها)|Water ripple (when the shopper is on it)|אדוות מים (כשהקונה עליה)",

@@ -39,10 +39,10 @@ export const NEW_WORLD: World = { start: "drop", walls: "open", bounce: 0.4, dra
 /** The change that makes a holder a physics world (what it holds become its bodies). */
 export const worldOnOps = (node: PageTreeNode): PageDraftOp[] => [{ op: "setProps", nodeId: node.id, props: { ...((node.props ?? {}) as Record<string, unknown>), world: { ...NEW_WORLD } } }];
 
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const sel = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const sel = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`;
 
 function Select<T extends string>({ label, value, options, busy, onPick, testId }: { label: string; value: T; options: Array<[T, string]>; busy: boolean; onPick: (v: T) => void; testId?: string }) {
   return (
@@ -185,7 +185,7 @@ export function WorldPanel({ node, busy, onOps, onPlay, onStop, onBake }: {
             ["none", say("ولا إشي|Nothing|כלום")], ["burst", say("بتفرقعهم من مكانها|Bursts them from there|מפזרת אותם")], ["flip", say("بتقلب الجاذبية|Turns gravity over|הופכת את הכבידה")],
           ]} />
           <Range label={say("بيرجع يبلّش كل (0 = لا)|Starts again every (0 = never)|מתחיל שוב כל")} min={0} max={30} step={1} unit="s" busy={busy} value={world.again ?? 0} onSave={(v) => set({ again: v || undefined })} testId="studio-world-again" />
-          <div className="space-y-1 rounded-lg bg-white/[0.03] p-2">
+          <div className="space-y-1 rounded-lg bg-white/3 p-2">
             <div className="text-[11px] text-white/60">{say("ثبّتها كحركة بالمفاتيح (أخف: بلا فيزياء بالصفحة)|Bake into keyframes (lighter: no physics on the page)|אפה לקיפריימים")}</div>
             <Range label={say("المدة|Length|משך")} min={1} max={12} step={0.5} unit="s" busy={busy || baking === "busy"} value={seconds} onSave={setSeconds} testId="studio-world-bake-seconds" />
             <button type="button" className={btn} disabled={busy || baking === "busy" || !kids} onClick={() => void bake()} data-testid="studio-world-bake">{baking === "busy" ? say("عم تتثبّت…|Baking…|אופה…") : say("ثبّت|Bake|אפה")}</button>

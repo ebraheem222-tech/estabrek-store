@@ -14,7 +14,7 @@ import { issueWords } from "../data/dataText";
 import { impactText, versionLine } from "./schemaText";
 
 type Lang = "ar" | "en" | "he";
-const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 
 /** What the change does, field by field; "apply" only after it's been read. */
@@ -41,7 +41,7 @@ export function ChangeDialog({ title, changes, nameOf, busy, onAccept, onCancel 
           <p className="text-white/70" data-testid="schema-no-rows">{say("ما في سطور بتتأثر بهالتغيير.|No row is touched by this change.|אף שורה לא מושפעת מהשינוי.")}</p>
         )}
         {changes.map((c) => (
-          <section key={c.field} className={`rounded-xl border p-3 ${c.lost || c.hidden ? "border-amber-400/40 bg-amber-500/[0.06]" : "border-white/10 bg-white/[0.03]"}`} data-testid={`schema-change-${c.field}`}>
+          <section key={c.field} className={`rounded-xl border p-3 ${c.lost || c.hidden ? "border-amber-400/40 bg-amber-500/6" : "border-white/10 bg-white/3"}`} data-testid={`schema-change-${c.field}`}>
             <p>{say(impactText(c, nameOf(c.field)))}</p>
             {c.samples.length ? (
               <ul className="mt-2 space-y-0.5 text-xs text-white/60">
@@ -103,13 +103,13 @@ export function VersionsPanel({ table, lang, canWrite, onRestored }: { table: Co
   const list = versions.data ?? [];
   if (!list.length) return null;
   return (
-    <section className="rounded-lg border border-white/[0.06] p-3" data-testid="table-versions">
+    <section className="rounded-lg border border-white/6 p-3" data-testid="table-versions">
       <button type="button" className="flex w-full items-center justify-between text-xs text-white/70" aria-expanded={open} onClick={() => setOpen(!open)} data-testid="versions-toggle">
         <span>{say(`النسخ السابقة للحقول (${list.length})|Earlier versions of the fields (${list.length})|גרסאות קודמות של השדות (${list.length})`)}</span>
         <span>{open ? "▴" : "▾"}</span>
       </button>
       {open ? (
-        <ul className="mt-2 divide-y divide-white/[0.06]">
+        <ul className="mt-2 divide-y divide-white/6">
           {list.map((v) => (
             <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs" data-testid="version-row">
               <span className="min-w-0">

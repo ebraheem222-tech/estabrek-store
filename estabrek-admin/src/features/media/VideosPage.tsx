@@ -199,10 +199,10 @@ function UploadRow({ item, onPause, onResume, onRemove }: { item: UploadItem; on
 function VideoCard({ video, onOpen }: { video: Video; onOpen: () => void }) {
   return (
     <li>
-      <button type="button" onClick={onOpen} className="w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-start hover:border-white/20" data-testid="video-card">
+      <button type="button" onClick={onOpen} className="w-full overflow-hidden rounded-xl border border-white/10 bg-white/3 text-start hover:border-white/20" data-testid="video-card">
         <div className="relative aspect-video w-full bg-black/40">
           {video.posterUrl ? <img src={video.posterUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
-          <span className="absolute bottom-2 end-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] tabular-nums text-white">{durationText(video.durationMs)}</span>
+          <span className="absolute bottom-2 inset-e-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] tabular-nums text-white">{durationText(video.durationMs)}</span>
         </div>
         <div className="p-3">
           <div className="truncate text-sm font-medium">{video.displayName || tr("فيديو", "video")}</div>

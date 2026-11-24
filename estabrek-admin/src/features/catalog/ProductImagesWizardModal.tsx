@@ -659,7 +659,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                     )}
                   </div>
 
-                                    <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+                                    <details className="mt-3 rounded-xl border border-white/10 bg-white/3 p-2">
                     <summary className="cursor-pointer select-none text-xs font-semibold">
                       Variants (Bulk sizes) {g.variants.sizeIds.length ? `(${g.variants.sizeIds.length})` : ""}
                       <span className="me-2 font-normal opacity-70">{tr("(قبل Create Items)", "(before Create Items)")}</span>
@@ -923,22 +923,22 @@ function AssetThumb({
     >
       <img src={a.url} alt={a.displayName || ""} className="h-20 w-full object-cover" />
       {isPrimary ? (
-        <div className="absolute top-1 end-1 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] text-emerald-100">
+        <div className="absolute top-1 inset-e-1 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] text-emerald-100">
           Primary
         </div>
       ) : null}
       {dc ? (
-        <div className="absolute bottom-1 end-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-          <span className="inline-block h-2 w-2 rounded-sm align-middle ms-1" style={{ background: dc }} />
+        <div className="absolute bottom-1 inset-e-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+          <span className="inline-block h-2 w-2 rounded-xs align-middle ms-1" style={{ background: dc }} />
           {dc}
         </div>
       ) : null}
       {groupId ? (
-        <div className="absolute bottom-1 start-1 rounded-md bg-black/60 px-1 py-0.5">
+        <div className="absolute bottom-1 inset-s-1 rounded-md bg-black/60 px-1 py-0.5">
           <select
             value={a.view ?? ""}
             onChange={(e) => onChangeView?.(e.target.value ? e.target.value : null)}
-            className="bg-transparent text-white text-[10px] outline-none"
+            className="bg-transparent text-white text-[10px] outline-hidden"
             title="View"
           >
             <option value="">View</option>

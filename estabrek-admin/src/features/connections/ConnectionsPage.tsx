@@ -169,12 +169,12 @@ function fileText(file: File): Promise<string> {
  */
 function KeyInput({ kind, value, onChange, placeholder, testid }: { kind: ReadyKind; value: string; onChange: (key: string) => void; placeholder?: string; testid: string }) {
   if (!kind.keyFile)
-    return <input className={`${field} min-w-[12rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} data-testid={testid} />;
+    return <input className={`${field} min-w-48 flex-1`} type="password" autoComplete="new-password" dir="ltr" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} data-testid={testid} />;
   const account = value ? keyFileAccount(value) : null;
   return (
-    <span className="flex min-w-[12rem] flex-1 flex-col items-start gap-1">
+    <span className="flex min-w-48 flex-1 flex-col items-start gap-1">
       {/* The browser's own picker says its words in its own language: a button in the page's words opens it. */}
-      <label className="cursor-pointer rounded-lg border border-white/15 bg-white/[0.07] px-3 py-1.5 text-sm hover:bg-white/[0.12] focus-within:ring-2 focus-within:ring-white/40">
+      <label className="cursor-pointer rounded-lg border border-white/15 bg-white/[0.07] px-3 py-1.5 text-sm hover:bg-white/12 focus-within:ring-2 focus-within:ring-white/40">
         {value ? say("اختار ملف تاني…|Pick another file…|בחר קובץ אחר…") : say("اختار ملف المفتاح…|Pick the key file…|בחר את קובץ המפתח…")}
         <input
           type="file"
@@ -215,7 +215,7 @@ function SettingsInputs({ kind, value, onChange, testid }: { kind: ReadyKind; va
               {s.required ? " *" : ""}
             </span>
             {s.choices ? (
-              <select className={`${field} min-w-[12rem] flex-1`} value={value[s.id] || s.choices[0]} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`}>
+              <select className={`${field} min-w-48 flex-1`} value={value[s.id] || s.choices[0]} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`}>
                 {s.choices.map((c) => (
                   <option key={c} value={c}>
                     {choiceName(kind.kind, s.id, c)}
@@ -223,7 +223,7 @@ function SettingsInputs({ kind, value, onChange, testid }: { kind: ReadyKind; va
                 ))}
               </select>
             ) : (
-              <input className={`${field} min-w-[12rem] flex-1`} dir="ltr" value={value[s.id] ?? ""} maxLength={s.max} placeholder={settingHint(kind.kind, s.id)} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`} />
+              <input className={`${field} min-w-48 flex-1`} dir="ltr" value={value[s.id] ?? ""} maxLength={s.max} placeholder={settingHint(kind.kind, s.id)} onChange={(e) => onChange({ ...value, [s.id]: e.target.value })} data-testid={`${testid}-${s.id}`} />
             )}
           </label>
         ))}
@@ -336,7 +336,7 @@ function ReadyRow({ ready, kind, canWrite, busy, onSave, onRemove }: { ready: Re
         <div className="space-y-2 rounded-xl border border-white/10 p-3">
           <label className="flex flex-wrap items-center gap-2 text-sm">
             <span className="w-36 shrink-0 text-xs text-white/70">{say("اسمه عندك|Your name for it|השם שלו אצלך")}</span>
-            <input className={`${field} min-w-[12rem] flex-1`} dir="auto" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} data-testid={`${t}-name`} />
+            <input className={`${field} min-w-48 flex-1`} dir="auto" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} data-testid={`${t}-name`} />
           </label>
           <label className="flex flex-wrap items-center gap-2 text-sm">
             <span className="w-36 shrink-0 text-xs text-white/70">{keyName(kind.kind)}</span>
@@ -483,7 +483,7 @@ export default function ConnectionsPage() {
               </p>
               <label className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="w-36 shrink-0 text-xs text-white/70">{say("اسمه عندك|Your name for it|השם שלו אצלך")}</span>
-                <input className={`${field} min-w-[12rem] flex-1`} dir="auto" value={newName} maxLength={60} placeholder={say("تنبيهات المتجر|Store alerts|התראות החנות")} onChange={(e) => setNewName(e.target.value)} data-testid="ready-new-name" />
+                <input className={`${field} min-w-48 flex-1`} dir="auto" value={newName} maxLength={60} placeholder={say("تنبيهات المتجر|Store alerts|התראות החנות")} onChange={(e) => setNewName(e.target.value)} data-testid="ready-new-name" />
               </label>
               <label className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="w-36 shrink-0 text-xs text-white/70">{keyName(kind.kind)}</span>
@@ -537,7 +537,7 @@ export default function ConnectionsPage() {
               change.mutate(() => API.addSite({ host: tidy }), { onSuccess: () => setHost("") });
             }}
           >
-            <input className={`${field} min-w-[14rem] flex-1`} dir="ltr" value={host} placeholder="api.telegram.org" onChange={(e) => setHost(e.target.value)} aria-label={say("اسم الموقع|The site's name|שם האתר")} data-testid="site-new" />
+            <input className={`${field} min-w-56 flex-1`} dir="ltr" value={host} placeholder="api.telegram.org" onChange={(e) => setHost(e.target.value)} aria-label={say("اسم الموقع|The site's name|שם האתר")} data-testid="site-new" />
             <Button size="sm" variant="secondary" type="submit" disabled={!siteOk(tidy) || sites.length >= limits.sites} isLoading={change.isPending} data-testid="site-add">
               {say("＋ اسمح بالموقع|＋ Allow the site|＋ התרת האתר")}
             </Button>
@@ -589,7 +589,7 @@ export default function ConnectionsPage() {
               <div className="text-sm font-medium">{say("سر جديد|A new secret|סוד חדש")}</div>
               <div className="flex flex-wrap items-center gap-2">
                 <input className={`${field} w-56 font-mono`} dir="ltr" value={name} placeholder="TELEGRAM_TOKEN" onChange={(e) => setName(e.target.value)} aria-label={say("اسم السر|The secret's name|שם הסוד")} data-testid="secret-new-name" />
-                <input className={`${field} min-w-[14rem] flex-1`} type="password" autoComplete="new-password" dir="ltr" value={value} maxLength={limits.value} placeholder={say("القيمة (بتنكتب وما بتنعرض بعدها)|The value (written, never shown again)|הערך (נכתב ולא מוצג שוב)")} onChange={(e) => setValue(e.target.value)} aria-label={say("قيمة السر|The secret's value|ערך הסוד")} data-testid="secret-new-value" />
+                <input className={`${field} min-w-56 flex-1`} type="password" autoComplete="new-password" dir="ltr" value={value} maxLength={limits.value} placeholder={say("القيمة (بتنكتب وما بتنعرض بعدها)|The value (written, never shown again)|הערך (נכתב ולא מוצג שוב)")} onChange={(e) => setValue(e.target.value)} aria-label={say("قيمة السر|The secret's value|ערך הסוד")} data-testid="secret-new-value" />
               </div>
               {name && secretName !== name.trim() ? (
                 <div className={note} data-testid="secret-new-as">

@@ -337,7 +337,7 @@ export default function ChatbotPage() {
         <div className="mt-4 space-y-2">
           <label className="block text-sm font-medium text-white/80">{tr("الإجابة", "Answer")}</label>
           <textarea
-            className="min-h-[160px] w-full rounded-xl border border-white/10 bg-surface-925 p-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent-500/20"
+            className="min-h-[160px] w-full rounded-xl border border-white/10 bg-surface-925 p-3 text-sm text-white outline-hidden focus:ring-2 focus:ring-accent-500/20"
             value={entryAnswer}
             onChange={(e) => setEntryAnswer(e.target.value)}
             placeholder={tr("إجابة واضحة...", "Write a clear answer...")}
@@ -399,7 +399,7 @@ export default function ChatbotPage() {
                   className={
                     "rounded-2xl border p-3 text-sm " +
                     (m.role === "user"
-                      ? "border-white/[0.08] bg-white/[0.03]"
+                      ? "border-white/8 bg-white/3"
                       : "border-accent-500/20 bg-accent-500/10")
                   }
                 >

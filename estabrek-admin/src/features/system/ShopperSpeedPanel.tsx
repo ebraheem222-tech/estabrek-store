@@ -28,7 +28,7 @@ import {
 } from "./rumText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
-const field = "h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-9 rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 
 export function ShopperSpeedPanel() {
   const [query, setQuery] = useState<RumQuery>({ days: 7, split: "os" });
@@ -185,7 +185,7 @@ function Card({ metric, report }: { metric: RumMetric; report: RumReport }) {
   const v = report.overall[metric];
   const rate = v?.rating ? RUM_RATING_TEXT[v.rating] : null;
   return (
-    <div className="rounded-xl bg-white/[0.04] p-3" title={`${RUM_METRIC_TEXT[metric].note} ${rumLimitsText(metric, report.thresholds[metric])}`} data-testid={`rum-card-${metric}`}>
+    <div className="rounded-xl bg-white/4 p-3" title={`${RUM_METRIC_TEXT[metric].note} ${rumLimitsText(metric, report.thresholds[metric])}`} data-testid={`rum-card-${metric}`}>
       <div className="text-xs text-white/60">{RUM_METRIC_TEXT[metric].label}</div>
       <div className={`mt-1 text-xl font-semibold tabular-nums ${rate?.cell ?? ""}`}>{rumValueText(metric, v?.value)}</div>
       <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-white/50">

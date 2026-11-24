@@ -17,8 +17,8 @@ import { PARTICLE_GROUPS } from "./particleKinds";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Obj = Record<string, unknown>;
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 const isObj = (v: unknown): v is Obj => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 const ROSE = "#c86b98";
 
@@ -29,7 +29,7 @@ export function ShapePicker({ value, busy, onPick, testId }: { value: unknown; b
       {tr("الشكل", "Shape")}
       <div className="mt-1 grid grid-cols-7 gap-1" role="group" aria-label={tr("الشكل", "Shape")} data-testid={testId}>
         {CUT_SHAPES.map(([k, name, d]) => (
-          <button key={k} type="button" title={name()} aria-label={name()} aria-pressed={value === k} disabled={busy} onClick={() => onPick(value === k ? null : k)} className={`grid aspect-square place-items-center rounded-md p-1 ${value === k ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"} disabled:opacity-40`} data-value={k}>
+          <button key={k} type="button" title={name()} aria-label={name()} aria-pressed={value === k} disabled={busy} onClick={() => onPick(value === k ? null : k)} className={`grid aspect-square place-items-center rounded-md p-1 ${value === k ? "bg-accent-500/30 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"} disabled:opacity-40`} data-value={k}>
             <svg viewBox="-4 -4 108 108" className="h-full w-full" aria-hidden="true"><path d={d} fill="currentColor" /></svg>
           </button>
         ))}
@@ -79,7 +79,7 @@ export function ParticlesPanel({ node, busy, onOps }: { node: PageTreeNode; busy
         <span className="text-[10px] text-white/40">{tr("100 نوع", "100 kinds")}</span>
       </div>
       {p ? (
-        <div className="space-y-2 rounded-lg bg-white/[0.04] p-2" data-testid="studio-particles-settings">
+        <div className="space-y-2 rounded-lg bg-white/4 p-2" data-testid="studio-particles-settings">
           <div className="text-[11px] text-white/70">{tr("المختار:", "Chosen:")} <span className="text-white">{current ? `${current[1]} ${current[2]()}` : String(p.kind)}</span></div>
           <ColourPick label={tr("لونها (فاضي = لون المتجر)", "Their colour (empty = the store's)")} value={p.color ?? ""} busy={busy} onPick={(c) => save({ ...p, color: c ?? undefined })} testId="studio-particles-color" />
           <Range label={tr("كميتها", "How many")} min={0.2} max={3} step={0.1} busy={busy} value={typeof p.amount === "number" ? p.amount : 1} onSave={(n) => save({ ...p, amount: n })} testId="studio-particles-amount" />
@@ -88,7 +88,7 @@ export function ParticlesPanel({ node, busy, onOps }: { node: PageTreeNode; busy
           <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(null)}>{tr("بلا جزيئات", "No particles")}</button>
         </div>
       ) : null}
-      <input type="search" value={q} disabled={busy} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على نوع…", "Find a kind…")} aria-label={tr("دوّر على نوع جزيئات", "Find a particle kind")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-particles-search" />
+      <input type="search" value={q} disabled={busy} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على نوع…", "Find a kind…")} aria-label={tr("دوّر على نوع جزيئات", "Find a particle kind")} className="w-full rounded-lg border border-white/10 bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-particles-search" />
       <div role="group" aria-label={tr("النوع", "Kind")} className="space-y-3">
         {PARTICLE_GROUPS.map((g) => {
           const kinds = find ? g.kinds.filter(([k, , name]) => name().toLowerCase().includes(find) || k.includes(find) || g.title().toLowerCase().includes(find)) : g.kinds;
@@ -98,7 +98,7 @@ export function ParticlesPanel({ node, busy, onOps }: { node: PageTreeNode; busy
               <h4 className="mb-1 text-[10px] font-medium text-white/50">{g.title()} <span className="text-white/30">· {kinds.length}</span></h4>
               <div className="grid grid-cols-4 gap-1">
                 {kinds.map(([k, mark, name]) => (
-                  <button key={k} type="button" title={name()} aria-pressed={p?.kind === k} disabled={busy} data-particle-kind={k} onClick={() => save(p?.kind === k ? null : { ...(p ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${p?.kind === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`}>
+                  <button key={k} type="button" title={name()} aria-pressed={p?.kind === k} disabled={busy} data-particle-kind={k} onClick={() => save(p?.kind === k ? null : { ...(p ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${p?.kind === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/5 text-white/70 hover:bg-white/10"} disabled:opacity-40`}>
                     <span className="block text-base leading-5" aria-hidden="true">{mark}</span>
                     <span className="block truncate">{name()}</span>
                   </button>
@@ -135,7 +135,7 @@ export function EdgesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
         const e = edges[where];
         const art = e?.art as Parameters<typeof ArtView>[0]["art"] | undefined;
         return (
-          <div key={where} className="space-y-2 rounded-lg bg-white/[0.03] p-2" data-edge={where}>
+          <div key={where} className="space-y-2 rounded-lg bg-white/3 p-2" data-edge={where}>
             <div className="flex items-center justify-between gap-2 text-[11px] text-white/60">
               <span>{where === "top" ? tr("SVG فوق", "SVG top") : tr("SVG تحت", "SVG bottom")}</span>
               <button type="button" className={btn} disabled={busy} onClick={() => setPicking(where)} data-testid={`studio-edge-pick-${where}`}>{e ? tr("غيّر الشكل", "Change the shape") : tr("+ حافة", "+ Edge")}</button>

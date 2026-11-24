@@ -48,20 +48,20 @@ const GROUPS: [title: string, rows: [keys: string, what: string][]][] = [
 
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4" onClick={onClose} data-testid="studio-shortcuts">
+    <div className="fixed inset-0 z-70 grid place-items-center bg-black/50 p-4" onClick={onClose} data-testid="studio-shortcuts">
       <div role="dialog" aria-modal="true" aria-label={say("اختصارات المحرر|Editor shortcuts|קיצורי העורך")} className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-surface-950 p-5 text-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">{say("اختصارات المحرر|Editor shortcuts|קיצורי העורך")}</h2>
-          <button type="button" className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1]" onClick={onClose} data-testid="studio-shortcuts-close">{say("سكّر|Close|סגירה")}</button>
+          <button type="button" className="rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10" onClick={onClose} data-testid="studio-shortcuts-close">{say("سكّر|Close|סגירה")}</button>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           {GROUPS.map(([title, rows]) => (
             <section key={title} className="space-y-1.5">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">{say(title)}</h3>
               {rows.map(([keys, what]) => (
-                <div key={keys} className="flex items-start justify-between gap-3 border-b border-white/[0.05] pb-1.5">
+                <div key={keys} className="flex items-start justify-between gap-3 border-b border-white/5 pb-1.5">
                   <span className="text-white/80">{say(what)}</span>
-                  <kbd dir="ltr" className="shrink-0 rounded-md border border-white/15 bg-white/[0.05] px-1.5 py-0.5 font-mono text-[11px] text-white/70">{keys}</kbd>
+                  <kbd dir="ltr" className="shrink-0 rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-white/70">{keys}</kbd>
                 </div>
               ))}
             </section>

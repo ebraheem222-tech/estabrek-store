@@ -34,9 +34,9 @@ export type UseWhere = "here" | "end";
 type Shown = { kind: "library"; t: Template } | { kind: "mine"; t: MyTemplateInfo; nodes: PageTreeNode[] } | { kind: "file"; name: string; nodes: PageTreeNode[] };
 
 const PAGE_SIZE = 36;
-const btn = "rounded-lg bg-white/[0.06] px-2.5 py-1.5 text-xs text-white/80 hover:bg-white/[0.1] disabled:opacity-40";
+const btn = "rounded-lg bg-white/6 px-2.5 py-1.5 text-xs text-white/80 hover:bg-white/10 disabled:opacity-40";
 const main = "rounded-lg bg-accent-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-accent-400 disabled:opacity-40";
-const control = "rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const control = "rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 const nameOf = (w: W) => w[adminLang()];
 /** A section's design, whatever its colours ("s:hero-center:dark" → "hero-center"); a page is its own. */
 const designOf = (t: Template) => (t.kind === "section" ? t.id.split(":")[1] : t.id);
@@ -209,9 +209,9 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
     <Modal open={open} onClose={onClose} title={tr("القوالب", "Templates")} widthClassName="max-w-6xl">
       <div className="flex min-h-0 flex-col gap-3" data-testid="studio-templates">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist">
+          <div className="flex gap-1 rounded-xl bg-white/4 p-1" role="tablist">
             {([["designs", tr("تصاميم المتجر الكاملة", "Complete store designs")], ["sections", tr("أقسام", "Sections")], ["pages", tr("صفحات كاملة", "Whole pages")], ["mine", tr("قوالبي", "My templates")]] as const).map(([t, label]) => (
-              <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => switchTab(t)} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tpl-tab-${t}`}>
+              <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => switchTab(t)} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/6"}`} data-testid={`studio-tpl-tab-${t}`}>
                 {label}
               </button>
             ))}
@@ -248,7 +248,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                   {FAMILIES.map((f) => <option key={f} value={f}>{nameOf(PACKS[f].label)}</option>)}
                 </select>
               </label>
-              <div className="flex gap-1 rounded-lg bg-white/[0.04] p-0.5" role="group" aria-label={tr("الحركة", "Motion")}>
+              <div className="flex gap-1 rounded-lg bg-white/4 p-0.5" role="group" aria-label={tr("الحركة", "Motion")}>
                 {([["calm", tr("حركة هادية", "Calm motion")], ["rich", tr("حركة غنية", "Rich motion")]] as const).map(([m, label]) => (
                   <button key={m} type="button" aria-pressed={motion === m} onClick={() => setMotion(m)} className={`rounded-md px-2 py-1 text-[11px] ${motion === m ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid={`studio-tpl-motion-${m}`}>{label}</button>
                 ))}
@@ -286,14 +286,14 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
             ) : (
               <ul className="space-y-0.5 text-xs">
                 <li>
-                  <button type="button" onClick={() => { setGroup("all"); setLimit(PAGE_SIZE); }} aria-pressed={group === "all"} className={`flex w-full justify-between rounded-lg px-2 py-1.5 ${group === "all" ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group="all">
+                  <button type="button" onClick={() => { setGroup("all"); setLimit(PAGE_SIZE); }} aria-pressed={group === "all"} className={`flex w-full justify-between rounded-lg px-2 py-1.5 ${group === "all" ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group="all">
                     <span>{tr("الكل", "All")}</span>
                   </button>
                 </li>
                 {/* The starred designs, and (sections) the newest ones. */}
                 {([["favs", say("★ المفضلة|★ Favourites|★ מועדפים"), favCount], ["new", say("جديد|New|חדש"), newCount]] as const).filter(([, , n]) => n > 0).map(([g, label, n]) => (
                   <li key={g}>
-                    <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group={g}>
+                    <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={g}>
                       <span className="truncate">{label}</span>
                       <span className="text-white/35">{n}</span>
                     </button>
@@ -310,7 +310,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                       <ul className="space-y-0.5">
                         {a.cats.map((g) => (
                           <li key={g}>
-                            <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group={g}>
+                            <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={g}>
                               <span className="truncate">{nameOf(CAT_NAMES[g])}</span>
                               <span className="text-white/35">{count(g)}</span>
                             </button>
@@ -321,7 +321,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                   ))
                   : PAGE_KINDS.map((g) => (
                     <li key={g}>
-                      <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/[0.05]"}`} data-testid="studio-tpl-group" data-group={g}>
+                      <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={g}>
                         <span className="truncate">{nameOf(PAGE_KIND_NAMES[g])}</span>
                         <span className="text-white/35">{count(g)}</span>
                       </button>
@@ -339,7 +339,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
               : (
                 <ul className="space-y-1">
                   {mine.data.map((t) => (
-                    <li key={t.id} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${shown?.kind === "mine" && shown.t.id === t.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/[0.08]"}`} data-testid="studio-tpl-mine-item">
+                    <li key={t.id} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${shown?.kind === "mine" && shown.t.id === t.id ? "border-accent-400/60 bg-accent-500/10" : "border-white/8"}`} data-testid="studio-tpl-mine-item">
                       <button type="button" className="min-w-0 flex-1 truncate text-start text-white/85" onClick={() => void openMine(t)}>{t.name}</button>
                       <span className="text-white/40">{tr(`${t.sections} أقسام`, "{0} sections", [t.sections])}</span>
                       {sure === t.id ? (
@@ -371,9 +371,9 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                     return (
                       <li key={t.id} className="relative">
                         {/* The star: kept in this browser, the design whatever its colour. */}
-                        <button type="button" onClick={() => star(t)} aria-pressed={favs.has(designOf(t))} aria-label={favs.has(designOf(t)) ? say("شيلها من المفضلة|Remove from favourites|הסרה מהמועדפים") : say("ضيفها للمفضلة|Add to favourites|הוספה למועדפים")} className={`absolute end-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-sm ${favs.has(designOf(t)) ? "text-amber-300" : "text-white/70 hover:text-white"}`} data-testid="studio-tpl-star">{favs.has(designOf(t)) ? "★" : "☆"}</button>
-                        {isNew(t) ? <span className="pointer-events-none absolute start-1.5 top-1.5 z-10 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white" data-testid="studio-tpl-new">{say("جديد|New|חדש")}</span> : null}
-                        <button type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/[0.08] hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
+                        <button type="button" onClick={() => star(t)} aria-pressed={favs.has(designOf(t))} aria-label={favs.has(designOf(t)) ? say("شيلها من المفضلة|Remove from favourites|הסרה מהמועדפים") : say("ضيفها للمفضلة|Add to favourites|הוספה למועדפים")} className={`absolute inset-e-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-sm ${favs.has(designOf(t)) ? "text-amber-300" : "text-white/70 hover:text-white"}`} data-testid="studio-tpl-star">{favs.has(designOf(t)) ? "★" : "☆"}</button>
+                        {isNew(t) ? <span className="pointer-events-none absolute inset-s-1.5 top-1.5 z-10 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white" data-testid="studio-tpl-new">{say("جديد|New|חדש")}</span> : null}
+                        <button type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/8 hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
                           <TemplateThumb key={`${t.id}:${fam}:${motion}:${all}`} build={thumbOf(t)} colours={colours} lang={lang} width={220} height={tab === "pages" ? 190 : 130} />
                           <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{nameOf(t.name)}</span>
                           <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{t.kind === "section" ? (colours_ > 1 ? say(`${colours_} ألوان|${colours_} colours|${colours_} צבעים`) : t.skin ? nameOf(SKIN_NAMES[t.skin]) : "") : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
@@ -392,7 +392,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
           </div>
 
           {/* What's chosen, big, and what to do with it. */}
-          <aside className="flex min-h-0 flex-col gap-2 rounded-xl border border-white/[0.08] p-2" aria-label={tr("المعاينة", "Preview")} data-testid="studio-tpl-preview">
+          <aside className="flex min-h-0 flex-col gap-2 rounded-xl border border-white/8 p-2" aria-label={tr("المعاينة", "Preview")} data-testid="studio-tpl-preview">
             {saving ? (
               <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void save(saving === "page" ? pageOwn : saving === "section" && selectedSection ? [selectedSection] : shown && shown.kind === "file" ? shown.nodes : []); }} data-testid="studio-tpl-save">
                 <div className="text-xs font-medium text-white/75">{saving === "page" ? tr("احفظ الصفحة كقالب", "Save the page as a template") : saving === "section" ? tr("احفظ القسم كقالب", "Save the section as a template") : tr("احفظ الملف بقوالبي", "Save the file to my templates")}</div>
@@ -412,7 +412,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                 {shown.kind === "library" && shown.t.kind === "section" && (COLOURS_OF.get(designOf(shown.t))?.length ?? 0) > 1 ? (
                   <div className="flex flex-wrap items-center gap-1" role="group" aria-label={say("ألوان التصميم|The design's colours|צבעי העיצוב")} data-testid="studio-tpl-skins">
                     {COLOURS_OF.get(designOf(shown.t))!.map((v) => (
-                      <button key={v.id} type="button" onClick={() => setShown({ kind: "library", t: v })} aria-pressed={v.id === shown.t.id} className={`rounded-full border px-2 py-0.5 text-[11px] ${v.id === shown.t.id ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/[0.12] text-white/65 hover:text-white"}`} data-testid="studio-tpl-skin" data-skin={v.skin}>
+                      <button key={v.id} type="button" onClick={() => setShown({ kind: "library", t: v })} aria-pressed={v.id === shown.t.id} className={`rounded-full border px-2 py-0.5 text-[11px] ${v.id === shown.t.id ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/12 text-white/65 hover:text-white"}`} data-testid="studio-tpl-skin" data-skin={v.skin}>
                         {v.skin ? nameOf(SKIN_NAMES[v.skin]) : ""}
                       </button>
                     ))}

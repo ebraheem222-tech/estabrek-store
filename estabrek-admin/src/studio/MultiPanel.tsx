@@ -6,8 +6,8 @@ import { useEffect, useRef } from "react";
 import { tr } from "../lib/words";
 import type { AlignHow } from "./selection";
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
 
 export type MultiActions = {
   onDelete: () => void;
@@ -118,14 +118,14 @@ export function ContextMenu({ at, items, onClose }: { at: { x: number; y: number
   const x = Math.min(at.x, window.innerWidth - 240);
   const y = Math.min(at.y, window.innerHeight - 30 * items.length - 16);
   return (
-    <div ref={ref} role="menu" className="fixed z-[60] max-h-[75vh] overflow-y-auto w-56 rounded-xl border border-white/[0.1] bg-surface-950 p-1 text-xs shadow-2xl" style={{ left: x, top: Math.max(8, y) }} data-testid="studio-menu">
+    <div ref={ref} role="menu" className="fixed z-60 max-h-[75vh] overflow-y-auto w-56 rounded-xl border border-white/10 bg-surface-950 p-1 text-xs shadow-2xl" style={{ left: x, top: Math.max(8, y) }} data-testid="studio-menu">
       {items.map((it, i) =>
         it === "line" ? (
-          <div key={i} className="my-1 border-t border-white/[0.08]" role="separator" />
+          <div key={i} className="my-1 border-t border-white/8" role="separator" />
         ) : (
           <button
             key={i} type="button" role="menuitem" disabled={it.disabled}
-            className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-start hover:bg-white/[0.08] focus:bg-white/[0.08] focus:outline-none disabled:opacity-35 ${it.danger ? "text-red-300" : "text-white/85"}`}
+            className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-start hover:bg-white/8 focus:bg-white/8 focus:outline-hidden disabled:opacity-35 ${it.danger ? "text-red-300" : "text-white/85"}`}
             onClick={() => {
               onClose();
               it.onClick();

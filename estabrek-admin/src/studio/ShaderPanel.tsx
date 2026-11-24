@@ -151,8 +151,8 @@ function Tile({ kind, on, busy, onPick }: { kind: ShaderKind; on: boolean; busy:
     return () => window.clearTimeout(id);
   }, [kind, pic]);
   return (
-    <button type="button" disabled={busy} aria-pressed={on} onClick={onPick} title={say(SHADER_NAMES[kind])} className={`overflow-hidden rounded-lg border text-start ${on ? "border-accent-400 ring-1 ring-accent-400/60" : "border-white/[0.08] hover:border-white/25"} disabled:opacity-40`} data-testid="studio-shader-kind" data-kind={kind}>
-      <span className="block aspect-[16/10] w-full" style={pic ? { background: `center/cover url(${pic})` } : { background: `linear-gradient(135deg, ${def.bg}, ${def.c1} 55%, ${def.c2})` }} />
+    <button type="button" disabled={busy} aria-pressed={on} onClick={onPick} title={say(SHADER_NAMES[kind])} className={`overflow-hidden rounded-lg border text-start ${on ? "border-accent-400 ring-1 ring-accent-400/60" : "border-white/8 hover:border-white/25"} disabled:opacity-40`} data-testid="studio-shader-kind" data-kind={kind}>
+      <span className="block aspect-16/10 w-full" style={pic ? { background: `center/cover url(${pic})` } : { background: `linear-gradient(135deg, ${def.bg}, ${def.c1} 55%, ${def.c2})` }} />
       <span className="block truncate px-1.5 py-1 text-[10px] text-white/75">{say(SHADER_NAMES[kind])}</span>
     </button>
   );
@@ -171,7 +171,7 @@ export function ShaderPanel({ node, busy, onOps }: { node: PageTreeNode; busy: b
   const [open, setOpen] = useState(Boolean(spec));
   const def = spec ? defOf(spec.kind) : null;
   return (
-    <div className="space-y-2.5 rounded-xl border border-white/[0.08] p-3" data-testid="studio-shader">
+    <div className="space-y-2.5 rounded-xl border border-white/8 p-3" data-testid="studio-shader">
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between gap-2 text-start" aria-expanded={open}>
         <span className="text-xs font-medium text-white/70">{say("خلفيات حيّة من المكتبة (WebGL وفيزياء)|Live backgrounds from the library (WebGL and physics)|רקעים חיים מהספרייה (WebGL ופיזיקה)")}</span>
         <span className="text-[10px] text-white/40">{spec ? say(SHADER_NAMES[spec.kind]) : say(`${SHADER_KIND_LIST.length} خلفية|${SHADER_KIND_LIST.length} backgrounds|${SHADER_KIND_LIST.length} רקעים`)} {open ? "▴" : "▾"}</span>
@@ -179,7 +179,7 @@ export function ShaderPanel({ node, busy, onOps }: { node: PageTreeNode; busy: b
       {open ? (
         <>
           {spec && def ? (
-            <div className="space-y-2 rounded-lg bg-white/[0.04] p-2" data-testid="studio-shader-settings">
+            <div className="space-y-2 rounded-lg bg-white/4 p-2" data-testid="studio-shader-settings">
               <ColourPick label={say("الخلفية|Background|רקע")} value={spec.bg ?? def.bg} busy={busy} onPick={(v) => set({ bg: v ?? undefined })} testId="studio-shader-bg" />
               <ColourPick label={say("اللون الأول|First colour|צבע ראשון")} value={spec.c1 ?? def.c1} busy={busy} onPick={(v) => set({ c1: v ?? undefined })} testId="studio-shader-c1" />
               <ColourPick label={say("اللون الثاني|Second colour|צבע שני")} value={spec.c2 ?? def.c2} busy={busy} onPick={(v) => set({ c2: v ?? undefined })} testId="studio-shader-c2" />
@@ -198,7 +198,7 @@ export function ShaderPanel({ node, busy, onOps }: { node: PageTreeNode; busy: b
               <Range label={say("حبيبات الفيلم|Film grain|גרעיניות")} value={spec.grain} min={0} max={0.4} step={0.02} busy={busy} onSave={(grain) => set({ grain: grain || undefined })} testId="studio-shader-grain" />
               <Range label={say("تغميق للكلام فوقها|Darken for the words on it|הכהיה למילים מעליו")} value={spec.veil} min={0} max={0.85} step={0.05} busy={busy} onSave={(veil) => set({ veil: veil || undefined })} testId="studio-shader-veil" />
               <p className="text-[10px] leading-4 text-white/40">{say("بتشتغل بس لما القسم قريب من الشاشة، وبتوقف صورة ثابتة لمين طالب حركة أقل.|Runs only while the section is near the screen; a still picture for whoever asked for less motion.|פועל רק כשהמקטע ליד המסך; תמונה קבועה למי שביקש פחות תנועה.")}</p>
-              <button type="button" disabled={busy} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs text-red-300 disabled:opacity-40" onClick={() => save(null)} data-testid="studio-shader-remove">
+              <button type="button" disabled={busy} className="rounded-lg bg-white/6 px-2 py-1 text-xs text-red-300 disabled:opacity-40" onClick={() => save(null)} data-testid="studio-shader-remove">
                 {say("شيل الخلفية|Remove the background|הסרת הרקע")}
               </button>
             </div>

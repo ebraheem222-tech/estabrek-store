@@ -156,7 +156,7 @@ function CommitCard({ title, repo, commit, message, note, testId }: { title: str
         </bdi>
       </div>
       {message ? (
-        <p className="mt-1 break-words text-sm text-white/80">
+        <p className="mt-1 wrap-break-word text-sm text-white/80">
           <bdi>{message}</bdi>
         </p>
       ) : null}

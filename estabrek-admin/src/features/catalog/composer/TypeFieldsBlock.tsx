@@ -36,7 +36,7 @@ export function TypeFieldsBlock({
   };
 
   return (
-    <div className="mt-5 border-t border-white/[0.06] pt-4" data-testid="type-fields">
+    <div className="mt-5 border-t border-white/6 pt-4" data-testid="type-fields">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-white/55">{tr("نوع القطعة", "Item type")}</span>
         <Link to="/admin/catalog/types" className="text-xs text-accent-300 hover:underline">
@@ -66,7 +66,7 @@ export function TypeFieldsBlock({
       )}
 
       {active.fulfillment && active.fulfillment !== "SHIPPING" ? (
-        <p className="mt-4 rounded-xl bg-white/[0.04] px-3 py-2 text-xs leading-5 text-white/65" data-testid="fulfillment-note">
+        <p className="mt-4 rounded-xl bg-white/4 px-3 py-2 text-xs leading-5 text-white/65" data-testid="fulfillment-note">
           {FULFILLMENT[active.fulfillment].icon} <b className="text-white/85">{FULFILLMENT[active.fulfillment].label}:</b>{" "}
           {active.fulfillment === "DIGITAL"
             ? tr("ما في داعي للكمية — المنتج الرقمي ما بيخلص (إلا إذا المنتج أكواد: وقتها الكمية = الأكواد المتاحة). الزبون بيلاقي الملفات والأكواد بصفحة طلبه بعد الدفع أونلاين أو لما ينقبل الطلب.", "No quantity needed — a digital product doesn't run out (unless it sells codes: then the quantity is the codes left). The customer finds the files and codes on their order page after paying online or once the order is accepted.")
@@ -118,9 +118,9 @@ function ShippingFields({ type, draft, update }: { type: ProductType; draft: Com
       <div>
         <span className="mb-1.5 block text-xs text-white/55">{tr("التوصيل خلال (أيام)", "Delivery in (days)")}</span>
         <div className="flex items-center gap-2">
-          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.minDays} onChange={(e) => set({ minDays: e.target.value })} placeholder={ph(type.deliveryMinDays)} aria-label={tr("أقل عدد أيام", "Fewest days")} />
+          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-20 px-2 text-center", bad && "border-red-500/50")} value={dv.minDays} onChange={(e) => set({ minDays: e.target.value })} placeholder={ph(type.deliveryMinDays)} aria-label={tr("أقل عدد أيام", "Fewest days")} />
           <span className="text-xs text-white/45">{tr("لحد", "to")}</span>
-          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.maxDays} onChange={(e) => set({ maxDays: e.target.value })} placeholder={ph(type.deliveryMaxDays)} aria-label={tr("أكثر عدد أيام", "Most days")} />
+          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-20 px-2 text-center", bad && "border-red-500/50")} value={dv.maxDays} onChange={(e) => set({ maxDays: e.target.value })} placeholder={ph(type.deliveryMaxDays)} aria-label={tr("أكثر عدد أيام", "Most days")} />
         </div>
       </div>
       <p className={cn("text-[11px] sm:col-span-2", bad ? "text-red-400" : "text-white/45")} data-testid="delivery-preview">

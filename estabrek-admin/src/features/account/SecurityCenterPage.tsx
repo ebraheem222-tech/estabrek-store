@@ -252,7 +252,7 @@ export default function SecurityCenterPage() {
                   </div>
 
                   {totpSecret && (
-                    <div className="rounded-2xl border border-white/[0.08] p-4 space-y-3">
+                    <div className="rounded-2xl border border-white/8 p-4 space-y-3">
                       <div className="text-sm text-white/70">
                         {tr("1) فتح Google Authenticator / Microsoft Authenticator", "1) Open Google Authenticator / Microsoft Authenticator")}<br />
                         {tr("2) إضافة حساب جديد وكتابة الـ Secret يدويًا", "2) Add a new account and type the secret by hand")}
@@ -294,7 +294,7 @@ export default function SecurityCenterPage() {
                   )}
 
                   {smsChallengeId && (
-                    <div className="rounded-2xl border border-white/[0.08] p-4 space-y-3">
+                    <div className="rounded-2xl border border-white/8 p-4 space-y-3">
                       <div className="text-sm text-white/70">{tr("انبعت كود لرقم الهاتف. إدخال الكود بيفعّل الخدمة.", "A code was sent to your phone. Enter it to turn this on.")}</div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
@@ -384,15 +384,15 @@ export default function SecurityCenterPage() {
                         <>
               <div className="space-y-3 sm:hidden">
                 {sessionsQuery.isLoading && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("جارٍ التحميل...", "Loading…")}</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm opacity-70">{tr("جارٍ التحميل...", "Loading…")}</div>
                 )}
                 {!sessionsQuery.isLoading && sessionRows.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("لا يوجد جلسات.", "No sessions.")}</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm opacity-70">{tr("لا يوجد جلسات.", "No sessions.")}</div>
                 )}
                 {sessionRows.map((s) => {
                   const isCurrent = !!currentSessionId && s.id === currentSessionId;
                   return (
-                    <div key={s.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div key={s.id} className="rounded-2xl border border-white/10 bg-white/3 p-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <Badge variant={s.status === "ACTIVE" ? "success" : s.status === "REVOKED" ? "danger" : "warning"}>{s.status}</Badge>
@@ -517,13 +517,13 @@ export default function SecurityCenterPage() {
                         <>
               <div className="space-y-3 sm:hidden">
                 {eventsQuery.isLoading && auditRows.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("جارٍ التحميل...", "Loading…")}</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm opacity-70">{tr("جارٍ التحميل...", "Loading…")}</div>
                 )}
                 {!eventsQuery.isLoading && auditRows.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("لا يوجد سجل.", "Nothing logged.")}</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm opacity-70">{tr("لا يوجد سجل.", "Nothing logged.")}</div>
                 )}
                 {auditRows.map((e) => (
-                  <div key={e.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div key={e.id} className="rounded-2xl border border-white/10 bg-white/3 p-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-xs opacity-70">{formatDateTime(e.createdAt)}</div>
                       <div className="flex items-center gap-2">
@@ -535,7 +535,7 @@ export default function SecurityCenterPage() {
                     </div>
                     <div className="mt-2 text-xs opacity-80">IP: {e.ip ?? "-"}</div>
                     {e.metadata ? (
-                      <pre className="mt-2 whitespace-pre-wrap break-all text-white/70 bg-white/[0.03] rounded-xl p-3 text-xs overflow-auto">
+                      <pre className="mt-2 whitespace-pre-wrap break-all text-white/70 bg-white/3 rounded-xl p-3 text-xs overflow-auto">
                         {JSON.stringify(e.metadata, null, 2)}
                       </pre>
                     ) : (
@@ -578,7 +578,7 @@ export default function SecurityCenterPage() {
                         <TD className="text-xs">{e.ip ?? "-"}</TD>
                         <TD className="text-xs">
                           {e.metadata ? (
-                            <pre className="whitespace-pre-wrap break-all text-white/70 bg-white/[0.03] rounded-xl p-3 max-w-[560px] overflow-auto">
+                            <pre className="whitespace-pre-wrap break-all text-white/70 bg-white/3 rounded-xl p-3 max-w-[560px] overflow-auto">
                               {JSON.stringify(e.metadata, null, 2)}
                             </pre>
                           ) : (
@@ -636,7 +636,7 @@ export default function SecurityCenterPage() {
         <div className="space-y-2">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {(recoveryCodes ?? []).map((c) => (
-              <div key={c} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 font-mono text-sm text-white/80">
+              <div key={c} className="rounded-xl border border-white/8 bg-white/3 px-3 py-2 font-mono text-sm text-white/80">
                 {c}
               </div>
             ))}

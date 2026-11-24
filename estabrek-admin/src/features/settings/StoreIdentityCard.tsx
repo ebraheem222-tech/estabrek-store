@@ -31,7 +31,7 @@ import {
   type Texts,
 } from "../../lib/storeIdentity";
 
-const field = "h-11 w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25";
+const field = "h-11 w-full rounded-xl border border-white/10 bg-white/4 px-3 text-sm text-white outline-hidden placeholder:text-white/30 focus:border-white/25";
 const LANGS: Lang[] = ["ar", "en", "he"];
 const dirOf = (l: Lang) => (l === "en" ? "ltr" : "rtl");
 
@@ -79,7 +79,7 @@ export function StoreIdentityCard() {
       <Card>
         <CardHeader title="هوية المتجر" subtitle="اسم المتجر وشعاره بالكلام، شو بيبيع، ولمين بيحكي. المتجر والإيميلات ورسايل الواتساب والذكاء الاصطناعي كلهم بياخدوا منها." />
         <CardContent>
-          <div className="mb-3 inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label="اللغة">
+          <div className="mb-3 inline-flex rounded-xl border border-white/10 bg-white/3 p-1" role="tablist" aria-label="اللغة">
             {LANGS.map((l) => (
               <button key={l} type="button" role="tab" aria-selected={lang === l} onClick={() => setLang(l)} className={cn("h-9 rounded-lg px-3 text-sm", lang === l ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>
                 {LANG_LABEL[l]}
@@ -129,7 +129,7 @@ export function StoreIdentityCard() {
             <legend className="mb-2 text-xs text-white/55">لمين بيحكي المتجر؟</legend>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="لمين بيحكي المتجر">
               {AUDIENCES.map((a) => (
-                <button key={a} type="button" role="radio" aria-checked={id.audience === a} onClick={() => set({ audience: a })} className={cn("min-h-11 rounded-xl border px-4 py-2 text-start text-sm", id.audience === a ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/[0.1] text-white/75 hover:border-white/20")}>
+                <button key={a} type="button" role="radio" aria-checked={id.audience === a} onClick={() => set({ audience: a })} className={cn("min-h-11 rounded-xl border px-4 py-2 text-start text-sm", id.audience === a ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/10 text-white/75 hover:border-white/20")}>
                   <b className="block">{AUDIENCE_LABEL[a].title}</b>
                   <span className="text-[11px] text-white/50">{AUDIENCE_LABEL[a].hint}</span>
                 </button>
@@ -137,7 +137,7 @@ export function StoreIdentityCard() {
             </div>
           </fieldset>
 
-          <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-sm" data-testid="identity-preview">
+          <div className="mt-4 rounded-xl border border-white/8 bg-white/2 p-3 text-sm" data-testid="identity-preview">
             <div className="text-[11px] text-white/45">هيك بيبين:</div>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
               <b className="text-lg">{mark}</b>

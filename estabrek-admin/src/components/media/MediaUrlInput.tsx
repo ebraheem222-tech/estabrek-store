@@ -60,7 +60,7 @@ export function MediaUrlInput({
       </div>
 
       {preview ? (
-        <div className="mt-2 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+        <div className="mt-2 overflow-hidden rounded-2xl border border-white/8 bg-white/2">
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <img src={preview} className="h-40 w-full object-cover" />
         </div>

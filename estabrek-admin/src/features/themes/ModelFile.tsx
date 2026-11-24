@@ -15,8 +15,8 @@ import type { StageGlb } from "../../studio/storeThemes";
 /** What the frame said about a file: its animations, or why it failed. */
 export type GlbInfo = { url: string; clips: string[]; error?: string };
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-30";
-const field = "w-full rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-30";
+const field = "w-full rounded-md border border-white/10 bg-surface-925 px-1.5 py-1 text-xs text-white";
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 export function ModelFile({ glb, info, busy = false, onChange }: { glb?: StageGlb; info?: GlbInfo; busy?: boolean; onChange: (glb: StageGlb | undefined) => void }) {
@@ -93,7 +93,7 @@ export function ModelFile({ glb, info, busy = false, onChange }: { glb?: StageGl
             {upload.error}
           </p>
         ) : (
-          <div className="h-1.5 overflow-hidden rounded bg-white/[0.08]" aria-label={tr("عم يرفع…", "Uploading…")}>
+          <div className="h-1.5 overflow-hidden rounded-sm bg-white/8" aria-label={tr("عم يرفع…", "Uploading…")}>
             <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${Math.round(upload.progress * 100)}%` }} />
           </div>
         )

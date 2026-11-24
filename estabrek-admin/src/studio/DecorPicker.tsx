@@ -18,7 +18,7 @@ export function DecorPicker({ open, edges, onPick, onClose }: { open: boolean; e
       <div className="space-y-3" data-testid="decor-picker">
         <div className="flex flex-wrap gap-1.5" role="tablist">
           {[["", () => tr("الكل", "All")] as const, ...groups].map(([g, name]) => (
-            <button key={g || "all"} type="button" role="tab" aria-selected={group === g} onClick={() => setGroup(g)} className={`rounded-lg px-2.5 py-1 text-xs ${group === g ? "bg-accent-500 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"}`} data-group={g || "all"}>
+            <button key={g || "all"} type="button" role="tab" aria-selected={group === g} onClick={() => setGroup(g)} className={`rounded-lg px-2.5 py-1 text-xs ${group === g ? "bg-accent-500 text-white" : "bg-white/6 text-white/70 hover:bg-white/10"}`} data-group={g || "all"}>
               {name()}
             </button>
           ))}

@@ -1722,7 +1722,7 @@ function StudioDocument() {
     const ring = Math.max(s.box.w, s.box.h) + 14;
     const cls = quad
       ? (kind === "selected" ? "border border-dashed border-accent-400/40" : "border border-dashed border-accent-300/30")
-      : kind === "selected" ? "border-2 border-accent-400 bg-accent-400/[0.06]" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
+      : kind === "selected" ? "border-2 border-accent-400 bg-accent-400/6" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
     // Where it goes on past the frame, its side is dashed.
     const cut = { borderTopStyle: seen.above ? "dashed" : undefined, borderBottomStyle: seen.below ? "dashed" : undefined } as const;
     return (
@@ -1732,19 +1732,19 @@ function StudioDocument() {
           <polygon points={quad.map((pt) => `${pt.x - frameBox.x},${pt.y - frameBox.y}`).join(" ")} fill="currentColor" fillOpacity={kind === "selected" ? 0.06 : 0} stroke="currentColor" strokeWidth={kind === "selected" ? 2 : 1} strokeDasharray={kind === "selected" ? undefined : "4 3"} strokeLinejoin="round" />
         </svg>
       ) : null}
-      {tiny ? <div className={`pointer-events-none absolute rounded-full ${kind === "selected" ? "border-2 border-accent-400/80 bg-accent-400/[0.08]" : "border border-dashed border-accent-300/80"}`} style={{ left: s.box.x + s.box.w / 2 - frameBox.x - ring / 2, top: s.box.y + s.box.h / 2 - frameBox.y - ring / 2, width: ring, height: ring }} data-testid={`studio-${kind}-ring`} /> : null}
+      {tiny ? <div className={`pointer-events-none absolute rounded-full ${kind === "selected" ? "border-2 border-accent-400/80 bg-accent-400/8" : "border border-dashed border-accent-300/80"}`} style={{ left: s.box.x + s.box.w / 2 - frameBox.x - ring / 2, top: s.box.y + s.box.h / 2 - frameBox.y - ring / 2, width: ring, height: ring }} data-testid={`studio-${kind}-ring`} /> : null}
       <div className={`pointer-events-none absolute ${cls}`} style={{ ...style, ...cut }} data-testid={`studio-${kind}`} data-cut={seen.above || seen.below ? "1" : undefined} data-quad={quad ? "1" : undefined}>
         {kind !== "parent" ? (
           // Above the box; inside it when the box touches the top of the frame (or goes on above it).
           // A tiny one's name stands beside its ring, clear of its handles and its turning knob.
-          <span className={`absolute inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${tiny ? "start-full top-1/2 ms-5 -translate-y-1/2" : `start-0 ${style.top < 24 || seen.above ? "top-0" : "-top-6"}`} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`} data-testid={`studio-${kind}-name`}>
+          <span className={`absolute inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${tiny ? "inset-s-full top-1/2 ms-5 -translate-y-1/2" : `inset-s-0 ${style.top < 24 || seen.above ? "top-0" : "-top-6"}`} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`} data-testid={`studio-${kind}-name`}>
             {seen.above ? <span aria-hidden="true">↑</span> : null}
             <span>{label(sid!)}</span>
             {/* Its own size: along its real sides when it's turned, not the box around it. */}
             {kind === "selected" ? <span className="opacity-75" dir="ltr" data-testid="studio-selected-size">{quad && quad.length === 4 ? `${Math.round(Math.hypot(quad[1].x - quad[0].x, quad[1].y - quad[0].y) / zoom)}×${Math.round(Math.hypot(quad[3].x - quad[0].x, quad[3].y - quad[0].y) / zoom)}` : `${Math.round(s.box.w / zoom)}×${Math.round(s.box.h / zoom)}`}</span> : null}
           </span>
         ) : null}
-        {kind === "selected" && seen.below ? <span className="absolute bottom-1 start-1/2 -translate-x-1/2 rounded-full bg-accent-500 px-1.5 text-[11px] text-white" aria-hidden="true">↓</span> : null}
+        {kind === "selected" && seen.below ? <span className="absolute bottom-1 inset-s-1/2 -translate-x-1/2 rounded-full bg-accent-500 px-1.5 text-[11px] text-white" aria-hidden="true">↓</span> : null}
       </div>
       </Fragment>
     );
@@ -3096,8 +3096,8 @@ function StudioDocument() {
       );
     }
     if (multi) return <><MultiPanel names={chosen.map(label)} busy={busy} actions={multiActions} /><div className="mt-3 space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-fixed-spacing">
-      <label className="block text-xs text-white/60">{tr("مسافة ثابتة (بكسل)","Fixed gap (px)")}<input type="number" min={0} max={2000} value={fixedGap} disabled={busy} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0&&value<=2000)setFixedGap(value);}} className="mt-1 w-full rounded bg-surface-925 px-2 py-1" /></label>
-      <div className="flex gap-2">{(["x","y"] as const).map(axis=><button type="button" key={axis} disabled={busy} onClick={()=>applyFixedGap(axis)} className="rounded bg-white/[0.06] px-2 py-1 text-xs" data-testid={`studio-spacing-${axis}`}>{axis==="x"?tr("أفقي","Horizontal"):tr("رأسي","Vertical")}</button>)}</div>
+      <label className="block text-xs text-white/60">{tr("مسافة ثابتة (بكسل)","Fixed gap (px)")}<input type="number" min={0} max={2000} value={fixedGap} disabled={busy} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0&&value<=2000)setFixedGap(value);}} className="mt-1 w-full rounded-sm bg-surface-925 px-2 py-1" /></label>
+      <div className="flex gap-2">{(["x","y"] as const).map(axis=><button type="button" key={axis} disabled={busy} onClick={()=>applyFixedGap(axis)} className="rounded-sm bg-white/6 px-2 py-1 text-xs" data-testid={`studio-spacing-${axis}`}>{axis==="x"?tr("أفقي","Horizontal"):tr("رأسي","Vertical")}</button>)}</div>
     </div></>;
     return (
       <div className="space-y-3" data-insp-list="">
@@ -3105,7 +3105,7 @@ function StudioDocument() {
           {selPath.map((pid, i) => (
             <span key={pid} className="flex items-center gap-1">
               {i ? <span className="inline-block ltr:-scale-x-100">‹</span> : null}
-              <button type="button" onClick={() => select(pid, true)} className={`rounded px-1 hover:bg-white/[0.06] ${pid === selected ? "text-white" : ""}`}>
+              <button type="button" onClick={() => select(pid, true)} className={`rounded-sm px-1 hover:bg-white/6 ${pid === selected ? "text-white" : ""}`}>
                 {crumb(pid)}
               </button>
             </span>
@@ -3365,7 +3365,7 @@ function StudioDocument() {
               />
             ) : null}
             {topAt >= 0 ? (
-              <button type="button" className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1]" disabled={busy} onClick={() => void run(tr("مكان تلقائي", "Automatic place"), [{ op: "placeBlock", block: selBlock as "seasons", index: null }])}>
+              <button type="button" className="rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10" disabled={busy} onClick={() => void run(tr("مكان تلقائي", "Automatic place"), [{ op: "placeBlock", block: selBlock as "seasons", index: null }])}>
                 {tr("رجوع لمكانه التلقائي", "Back to its automatic place")}
               </button>
             ) : null}
@@ -3537,7 +3537,7 @@ function StudioDocument() {
         {selFree&&!['page','section','cell','columns'].includes(selFree.type)?<>
           <div className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-movement">
             <div className="text-xs text-white/70">{tr("اتجاه التحريك داخل الحاوية","Movement within the container")}</div>
-            <div className="grid grid-cols-2 gap-1">{([['vertical',tr("رأسي فقط","Vertical only")],['horizontal',tr("أفقي فقط","Horizontal only")],['both',tr("المحوران داخل الحاوية","Both axes inside")],['free',tr("حر","Free")]] as const).map(([mode,label])=><button type="button" key={mode} disabled={busy} aria-pressed={movementOf(selFree,screen)===mode} className={`rounded px-2 py-1.5 text-xs ${movementOf(selFree,screen)===mode?'bg-accent-500/30':'bg-white/[0.06]'}`} data-testid={`studio-movement-${mode}`} onClick={()=>{setCanvasMode("free");saveCanvasMode("free");void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:mode})]);}}>{label}</button>)}</div>
+            <div className="grid grid-cols-2 gap-1">{([['vertical',tr("رأسي فقط","Vertical only")],['horizontal',tr("أفقي فقط","Horizontal only")],['both',tr("المحوران داخل الحاوية","Both axes inside")],['free',tr("حر","Free")]] as const).map(([mode,label])=><button type="button" key={mode} disabled={busy} aria-pressed={movementOf(selFree,screen)===mode} className={`rounded-sm px-2 py-1.5 text-xs ${movementOf(selFree,screen)===mode?'bg-accent-500/30':'bg-white/6'}`} data-testid={`studio-movement-${mode}`} onClick={()=>{setCanvasMode("free");saveCanvasMode("free");void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:mode})]);}}>{label}</button>)}</div>
             {screen!=="base"?<button type="button" disabled={busy} className="text-[10px] text-white/50" data-testid="studio-movement-inherit" onClick={()=>void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:null})])}>{tr("اتبع الشاشة الأكبر","Follow the larger screen")}</button>:null}
           </div>
           <LayoutConstraintsPanel key={`${selFree.id}:${screen}`} value={((selFree.style as Record<string,{constraints?:SizeConstraints}>|undefined)?.[screen]?.constraints)??{}} busy={busy} onChange={value=>setSizeConstraints(selFree,value)} />
@@ -3549,7 +3549,7 @@ function StudioDocument() {
         </label> : null}
 
         {selected === index.root || pageItemOf({ index, up, extras, pageIndex: indexAt, ids: makeIds() }, selected) ? (
-          <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-add-section">
+          <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-add-section">
             <div className="text-xs font-medium text-white/70">
               {selected === index.root ? tr("قسم جديد بأعمدة، آخر الصفحة", "A new section with columns, at the end of the page") : tr("قسم جديد بأعمدة، بعد هاد", "A new section with columns, after this one")}
             </div>
@@ -3560,7 +3560,7 @@ function StudioDocument() {
           </div>
         ) : null}
 
-        {selected === index.root ? <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-page-motion">
+        {selected === index.root ? <div className="space-y-3 rounded-xl border border-white/8 p-3" data-testid="studio-page-motion">
           <div className="text-xs font-medium text-white/70">{tr("حركة عناصر الصفحة", "Page element motion")}</div>
           <p className="text-[11px] leading-5 text-white/45">{tr("بتتطبق على عناصر هالصفحة وبتقدر تتراجع عنها. تشغيل الفيديو وحركة الموديل ثلاثي الأبعاد إلهم إعداداتهم الخاصة.", "Applies to this page's elements and can be undone. Video playback and 3D model movement have their own settings.")}</p>
           <MotionProfileFields value={pageMotion} onChange={setPageMotion} busy={busy} />
@@ -3589,7 +3589,7 @@ function StudioDocument() {
 
         {selected === index.root && index.nodes.get(index.root) ? <PageCursorPanel root={index.nodes.get(index.root)!.node} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
         {selected === index.root ? (
-          <label className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] p-3 text-xs" data-testid="studio-page-smooth">
+          <label className="flex items-center justify-between gap-2 rounded-xl border border-white/8 p-3 text-xs" data-testid="studio-page-smooth">
             <span className="text-white/75">
               {tr("سكرول ناعم للصفحة كلها", "Smooth scrolling for the whole page")}
               <span className="block text-[10px] text-white/40">{tr("مش للي طالب حركة أقل بجهازه.", "Not for whoever asked their device for less motion.")}</span>
@@ -3602,8 +3602,8 @@ function StudioDocument() {
         ) : null}
 
         <div className="flex flex-wrap gap-1">
-          <button type="button" onClick={zoomToSelected} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1]">{tr("تكبير على المحدد", "Zoom to selection")}</button>
-          {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1]">{tr("الأب (Esc)", "Parent (Esc)")}</button> : null}
+          <button type="button" onClick={zoomToSelected} className="rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10">{tr("تكبير على المحدد", "Zoom to selection")}</button>
+          {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10">{tr("الأب (Esc)", "Parent (Esc)")}</button> : null}
         </div>
       </div>
     );
@@ -3632,7 +3632,7 @@ function StudioDocument() {
         onClick={() => pick(f)}
         onMouseEnter={() => setHovered(f)}
         onMouseLeave={() => setHovered(null)}
-        className={`flex w-full truncate rounded-md py-0.5 pe-2 text-start text-[11px] ${selected === f ? "bg-accent-500/25 text-white" : hovered === f ? "bg-white/[0.06] text-white" : "text-white/55 hover:bg-white/[0.04]"}`}
+        className={`flex w-full truncate rounded-md py-0.5 pe-2 text-start text-[11px] ${selected === f ? "bg-accent-500/25 text-white" : hovered === f ? "bg-white/6 text-white" : "text-white/55 hover:bg-white/4"}`}
         style={{ paddingInlineStart: 20 + depth * 12 }}
         data-testid="studio-layer"
         data-node={f}
@@ -3687,9 +3687,9 @@ function StudioDocument() {
     <div>
       <input
         type="search" value={layerFind} onChange={(e) => setLayerFind(e.target.value)} placeholder={tr("دوّر بالطبقات", "Find in the layers")}
-        className="mb-1.5 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" data-testid="studio-layer-find"
+        className="mb-1.5 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white" data-testid="studio-layer-find"
       />
-      <button type="button" onClick={() => pick(index!.root)} className={`flex w-full rounded-md px-2 py-1 text-start text-xs ${selected === index!.root ? "bg-accent-500/25 text-white" : "text-white/70 hover:bg-white/[0.04]"}`} data-testid="studio-layer" data-node={index!.root}>
+      <button type="button" onClick={() => pick(index!.root)} className={`flex w-full rounded-md px-2 py-1 text-start text-xs ${selected === index!.root ? "bg-accent-500/25 text-white" : "text-white/70 hover:bg-white/4"}`} data-testid="studio-layer" data-node={index!.root}>
         {typeLabel("page")}
       </button>
       {[...extras].filter(([, extra]) => extra.kind === "region").filter(([sid]) => !layerMatch || layerMatch.has(sid)).map(([sid]) => <div key={sid}>
@@ -3709,7 +3709,7 @@ function StudioDocument() {
               onClick={(e) => pick(sid, e.shiftKey)}
               onMouseEnter={() => setHovered(sid)}
               onMouseLeave={() => setHovered(null)}
-              className={`flex w-full cursor-grab items-center gap-1.5 truncate rounded-md py-1 pe-2 ps-5 text-start text-xs ${selected === sid || chosen.includes(sid) ? "bg-accent-500/25 text-white" : hovered === sid ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"} ${sec && !sec.isVisible ? "opacity-45" : ""}`}
+              className={`flex w-full cursor-grab items-center gap-1.5 truncate rounded-md py-1 pe-2 ps-5 text-start text-xs ${selected === sid || chosen.includes(sid) ? "bg-accent-500/25 text-white" : hovered === sid ? "bg-white/6 text-white" : "text-white/70 hover:bg-white/4"} ${sec && !sec.isVisible ? "opacity-45" : ""}`}
               data-testid="studio-layer"
               data-node={sid}
             >
@@ -3848,7 +3848,7 @@ function StudioDocument() {
     {pageQ.data?.kind === "productTemplate" ? (
       <div className="mt-4 space-y-1" data-testid="add-product-detail">
         <div className="px-1 text-xs font-medium text-white/70">🛍 {say("صفحة المنتج|The product page|דף המוצר")}</div>
-        <button type="button" className="w-full rounded-lg bg-white/[0.04] px-2 py-1.5 text-start text-xs hover:bg-white/[0.08] disabled:opacity-40" disabled={busy} onClick={() => addNode({ id: makeIds()("pd"), type: "productDetail", props: {} }, addWhereNow, selected, undefined, say("تفاصيل المنتج|Product details|פרטי המוצר"))} data-testid="add-product-detail-button">{say("صور المنتج وألوانه ومقاساته وزر السلة|The product's pictures, colours, sizes and cart button|תמונות, צבעים, מידות וכפתור הסל")}</button>
+        <button type="button" className="w-full rounded-lg bg-white/4 px-2 py-1.5 text-start text-xs hover:bg-white/8 disabled:opacity-40" disabled={busy} onClick={() => addNode({ id: makeIds()("pd"), type: "productDetail", props: {} }, addWhereNow, selected, undefined, say("تفاصيل المنتج|Product details|פרטי המוצר"))} data-testid="add-product-detail-button">{say("صور المنتج وألوانه ومقاساته وزر السلة|The product's pictures, colours, sizes and cart button|תמונות, צבעים, מידות וכפתור הסל")}</button>
         <p className="px-1 text-[11px] leading-5 text-white/40">{say("أي عنوان أو نص أو صورة بتقدر تربطها بإسم المنتج أو سعره أو وصفه (◆ من لوحة العنصر).|Any heading, text or picture can connect to the product's name, price or description (◆ in the element's panel).|כל כותרת, טקסט או תמונה יכולים להתחבר לשם, מחיר או תיאור המוצר.")}</p>
       </div>
     ) : null}
@@ -3856,7 +3856,7 @@ function StudioDocument() {
       <div className="mt-4 space-y-1" data-testid="add-collection-lists">
         <div className="px-1 text-xs font-medium text-white/70">▦ {say("قوائم من المجموعات|Collection lists|רשימות מאוספים")}</div>
         {collectionsQ.data.map((c) => (
-          <button key={c.id} type="button" className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-start text-xs hover:bg-white/[0.08] disabled:opacity-40" disabled={busy} onClick={() => addNode(newCollectionList(c, shopLang, makeIds()), addWhereNow, selected, undefined, say("قائمة من مجموعة|Collection list|רשימה מאוסף"))} data-testid={`add-list-${c.slug}`}>
+          <button key={c.id} type="button" className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/4 px-2 py-1.5 text-start text-xs hover:bg-white/8 disabled:opacity-40" disabled={busy} onClick={() => addNode(newCollectionList(c, shopLang, makeIds()), addWhereNow, selected, undefined, say("قائمة من مجموعة|Collection list|רשימה מאוסף"))} data-testid={`add-list-${c.slug}`}>
             <span className="truncate">{c.name[shopLang] || c.name.ar || c.name.en || c.slug}</span><span className="shrink-0 text-[10px] text-white/40" dir="ltr">{c.published}</span>
           </button>
         ))}
@@ -3866,7 +3866,7 @@ function StudioDocument() {
       <div className="mt-4 space-y-1" data-testid="add-components">
         <div className="px-1 text-xs font-medium text-white/70">◇ {say("المكوّنات الرئيسية|Main components|רכיבים ראשיים")}</div>
         {componentsQ.data.filter((c) => c.id !== id).map((c) => (
-          <button key={c.id} type="button" className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-start text-xs hover:bg-white/[0.08] disabled:opacity-40" disabled={busy} onClick={() => addNode(newInstance(c, makeIds()), addWhereNow, selected, undefined, say("نسخة من مكوّن|Component instance|מופע רכיב"))} data-testid={`add-component-${c.id}`}>
+          <button key={c.id} type="button" className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/4 px-2 py-1.5 text-start text-xs hover:bg-white/8 disabled:opacity-40" disabled={busy} onClick={() => addNode(newInstance(c, makeIds()), addWhereNow, selected, undefined, say("نسخة من مكوّن|Component instance|מופע רכיב"))} data-testid={`add-component-${c.id}`}>
             <span className="truncate">{c.name}</span><span className="shrink-0 text-[10px] text-white/40">{c.variants.length > 1 ? say(`${c.variants.length} نسخ|${c.variants.length} variants|${c.variants.length} גרסאות`) : ""}</span>
           </button>
         ))}
@@ -3912,9 +3912,9 @@ function StudioDocument() {
     );
   };
   const leftTabs = (
-    <div className="mb-2 flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
+    <div className="mb-2 flex gap-1 rounded-xl bg-white/4 p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
       {(["add", "layers", "looks", "styles"] as const).map((t) => (
-        <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tab-${t}`}>
+        <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/6"}`} data-testid={`studio-tab-${t}`}>
           {t === "add" ? `+ ${tr("إضافة", "Add")}` : t === "layers" ? tr("الطبقات", "Layers") : t === "looks" ? tr("الأشكال", "Looks") : tr("الستايلات", "Styles")}
         </button>
       ))}
@@ -3931,8 +3931,8 @@ function StudioDocument() {
   };
   const openPageMotion = () => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); };
   const phoneHead = () => (
-    <header className="flex items-center gap-1 border-b border-white/[0.08] px-1.5 py-1" data-testid="studio-phone-head">
-      <Link to="/admin/pages" className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-base text-white/70 hover:bg-white/[0.06]" aria-label={tr("الصفحات", "Pages")}>
+    <header className="flex items-center gap-1 border-b border-white/8 px-1.5 py-1" data-testid="studio-phone-head">
+      <Link to="/admin/pages" className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-base text-white/70 hover:bg-white/6" aria-label={tr("الصفحات", "Pages")}>
         <span className="inline-block ltr:-scale-x-100">→</span>
       </Link>
       <div className="min-w-0 flex-1">
@@ -3948,21 +3948,21 @@ function StudioDocument() {
         <button type="button" onClick={() => send({ type: "stopEdit" })} className="h-10 shrink-0 rounded-lg bg-accent-500 px-4 text-sm font-medium text-white" data-testid="studio-write-done">✓ {say("تم|Done|סיום")}</button>
       ) : (
       <>
-      <button type="button" onClick={() => void undoLast()} disabled={!canUndo || busy} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-lg text-white/80 hover:bg-white/[0.06] disabled:opacity-30" aria-label={tr("تراجع", "Undo")} data-testid="studio-undo">↶</button>
-      <button type="button" onClick={() => void redoLast()} disabled={!canRedo || busy} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-lg text-white/80 hover:bg-white/[0.06] disabled:opacity-30" aria-label={tr("إعادة", "Redo")} data-testid="studio-redo">↷</button>
+      <button type="button" onClick={() => void undoLast()} disabled={!canUndo || busy} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-lg text-white/80 hover:bg-white/6 disabled:opacity-30" aria-label={tr("تراجع", "Undo")} data-testid="studio-undo">↶</button>
+      <button type="button" onClick={() => void redoLast()} disabled={!canRedo || busy} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-lg text-white/80 hover:bg-white/6 disabled:opacity-30" aria-label={tr("إعادة", "Redo")} data-testid="studio-redo">↷</button>
       <button type="button" onClick={() => void askPublish()} disabled={!canPublish || !draft || busy || labShown === "waiting"} className="h-10 shrink-0 rounded-lg bg-accent-500 px-3 text-sm font-medium text-white disabled:opacity-30" data-testid="studio-publish">{labShown === "waiting" ? "⏱" : tr("نشر", "Publish")}</button>
-      <button type="button" onClick={() => (sheet && sheetView === "more" ? setSheet(false) : openSheet("more"))} aria-expanded={sheet && sheetView === "more"} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-xl text-white/80 hover:bg-white/[0.06]" aria-label={say(SHEET_WORD.more)} data-testid="studio-more-toggle">⋯</button>
+      <button type="button" onClick={() => (sheet && sheetView === "more" ? setSheet(false) : openSheet("more"))} aria-expanded={sheet && sheetView === "more"} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-xl text-white/80 hover:bg-white/6" aria-label={say(SHEET_WORD.more)} data-testid="studio-more-toggle">⋯</button>
       </>
       )}
     </header>
   );
   const moreRow = "flex flex-wrap items-center gap-1.5";
-  const moreBtn = (on = false) => `min-h-[2.5rem] rounded-lg px-3 text-sm ${on ? "bg-accent-500/25 text-white" : "bg-white/[0.06] text-white/80"} disabled:opacity-30`;
+  const moreBtn = (on = false) => `min-h-10 rounded-lg px-3 text-sm ${on ? "bg-accent-500/25 text-white" : "bg-white/6 text-white/80"} disabled:opacity-30`;
   const moreTitle = (words: string) => <h3 className="mb-1.5 text-[11px] font-semibold text-white/45">{words}</h3>;
   /** What the top bar has on a computer and a phone has no room for. */
   const moreSheet = () => (
     <div className="space-y-4" data-testid="studio-more">
-      {pageQ.data && pageQ.data.kind !== "block" ? <div className="-mx-3 -mt-3 border-b border-white/[0.08]"><PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /></div> : null}
+      {pageQ.data && pageQ.data.kind !== "block" ? <div className="-mx-3 -mt-3 border-b border-white/8"><PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /></div> : null}
       {pageQ.data?.kind === "block" ? (
         <p className="rounded-lg bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100" data-testid="studio-block-banner">
           ⧉ {tr("عم تعدّل بلوك محفوظ: نشره بيغيّر كل صفحة مربوط فيها.", "Editing a saved block: publishing it changes every page that links it.")}
@@ -4035,14 +4035,14 @@ function StudioDocument() {
     if (!sheet || !index) return null;
     return (
       <div
-        className="fixed inset-x-0 z-50 flex flex-col rounded-t-2xl border-t border-white/[0.1] bg-surface-950 shadow-2xl"
+        className="fixed inset-x-0 z-50 flex flex-col rounded-t-2xl border-t border-white/10 bg-surface-950 shadow-2xl"
         style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))", height: sheetTall ? "calc(100dvh - 7.25rem - env(safe-area-inset-bottom, 0px))" : "56dvh" }}
         data-testid="studio-sheet" data-view={sheetView} data-tall={sheetTall ? "" : undefined}
       >
-        <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.08] ps-3 pe-1">
+        <div className="flex shrink-0 items-center gap-1 border-b border-white/8 ps-3 pe-1">
           <span className="min-w-0 flex-1 truncate text-sm font-semibold" data-testid="studio-sheet-title"><span aria-hidden="true">{SHEET_ICON[sheetView]}</span> {say(SHEET_WORD[sheetView])}</span>
-          <button type="button" onClick={() => setSheetTall((v) => !v)} aria-pressed={sheetTall} className="grid h-11 w-11 place-items-center rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={sheetTall ? say("صغّر اللوحة|Make the sheet smaller|הקטנת הלוח") : say("كبّر اللوحة|Make the sheet bigger|הגדלת הלוח")} data-testid="studio-sheet-size">{sheetTall ? "▾" : "▴"}</button>
-          <button type="button" onClick={() => setSheet(false)} className="grid h-11 w-11 place-items-center rounded-lg text-xl text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
+          <button type="button" onClick={() => setSheetTall((v) => !v)} aria-pressed={sheetTall} className="grid h-11 w-11 place-items-center rounded-lg text-white/60 hover:bg-white/6" aria-label={sheetTall ? say("صغّر اللوحة|Make the sheet smaller|הקטנת הלוח") : say("كبّر اللوحة|Make the sheet bigger|הגדלת הלוח")} data-testid="studio-sheet-size">{sheetTall ? "▾" : "▴"}</button>
+          <button type="button" onClick={() => setSheet(false)} className="grid h-11 w-11 place-items-center rounded-lg text-xl text-white/60 hover:bg-white/6" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
         </div>
         {/* Keyed by the job: each one starts from its top. */}
         <div key={sheetView} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 text-sm" data-testid="studio-sheet-body">
@@ -4057,9 +4057,9 @@ function StudioDocument() {
             looksPanel()
           ) : sheetView === "styles" ? (
             <>
-              {siteOpen ? <div className="mb-3 border-b border-white/[0.08] pb-3">{siteInspector()}</div> : null}
+              {siteOpen ? <div className="mb-3 border-b border-white/8 pb-3">{siteInspector()}</div> : null}
               <VariablesPanel api={dt} canPublish={canPublish} />
-              <div className="my-3 border-t border-white/[0.08]" />
+              <div className="my-3 border-t border-white/8" />
               <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
             </>
           ) : sheetView === "more" ? (
@@ -4078,15 +4078,15 @@ function StudioDocument() {
   };
   /** Under the canvas: what is selected (or how to select), and the five jobs. Its height never changes, so the frame above it doesn't either. */
   const phoneBar = () => (
-    <nav className="shrink-0 border-t border-white/[0.08] bg-surface-950 pb-[env(safe-area-inset-bottom)]" aria-label={say(SHEET_WORD.more)} data-testid="studio-phone-bar">
+    <nav className="shrink-0 border-t border-white/8 bg-surface-950 pb-[env(safe-area-inset-bottom)]" aria-label={say(SHEET_WORD.more)} data-testid="studio-phone-bar">
       <div className="flex h-11 items-center gap-1.5 px-2 text-xs" data-testid="studio-bar">
         {selected && index ? (
           <>
             <span className="min-w-0 flex-1 truncate font-medium" data-testid="studio-bar-name">{label(selected)}</span>
             {/* Whatever has words written in place (a finger has no double-click to count on): a heading, a text, a button, an inner part's words, an old section's field. */}
             {partContentOf(selected) || WRITABLE.has(index.nodes.get(selected)?.node.type ?? "") || (selExtra?.kind === "slot" && selExtra.edit !== "media" && selExtra.edit !== "list") ? <button type="button" onClick={() => startText(selected)} className="h-9 shrink-0 rounded-lg bg-accent-500 px-3 text-white" data-testid="studio-bar-edit">{tr("كتابة", "Write")}</button> : null}
-            {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="h-9 shrink-0 rounded-lg bg-white/[0.06] px-3" data-testid="studio-bar-parent">↑ {say("الأب|Parent|הורה")}</button> : null}
-            <button type="button" onClick={() => select(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/[0.06]" aria-label={say("إلغاء التحديد|Deselect|ביטול הבחירה")} data-testid="studio-bar-clear">✕</button>
+            {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="h-9 shrink-0 rounded-lg bg-white/6 px-3" data-testid="studio-bar-parent">↑ {say("الأب|Parent|הורה")}</button> : null}
+            <button type="button" onClick={() => select(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/6" aria-label={say("إلغاء التحديد|Deselect|ביטול הבחירה")} data-testid="studio-bar-clear">✕</button>
           </>
         ) : (
           <span className="min-w-0 flex-1 truncate text-white/45" data-testid="studio-bar-hint">{say("اكبس على أي شي بالصفحة لتختاره. إصبع واحد بيحرّك الصفحة، وإصبعين بيكبّروها.|Tap anything on the page to select it. One finger scrolls the page, two zoom it.|הקישו על כל דבר בדף כדי לבחור. אצבע אחת גוללת, שתיים מגדילות.")}</span>
@@ -4114,8 +4114,8 @@ function StudioDocument() {
     <StoreKitContext.Provider value={storeKit}><TokensContext.Provider value={dt.tokens}>
     <Shell busy={busy}>
       {phone ? phoneHead() : (
-      <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
-        <Link to="/admin/pages" className="rounded-lg px-2 py-1 text-xs text-white/60 hover:bg-white/[0.06] hover:text-white">
+      <header className="flex flex-wrap items-center gap-2 border-b border-white/8 px-3 py-2">
+        <Link to="/admin/pages" className="rounded-lg px-2 py-1 text-xs text-white/60 hover:bg-white/6 hover:text-white">
           <span className="inline-block ltr:-scale-x-100">→</span> {tr("الصفحات", "Pages")}
         </Link>
         <h1 className="me-2 truncate text-sm font-semibold">{pageQ.data?.name ?? "…"}</h1>
@@ -4123,7 +4123,7 @@ function StudioDocument() {
           {([["homeId", tr("الصفحة الرئيسية", "Home page")], ["headerId", tr("الهيدر", "Header")], ["footerId", tr("الفوتر", "Footer")]] as const).map(([key, label]) => ownedDesign[key] ? <Link key={key} to={`/studio/${ownedDesign[key]}`} aria-current={id === ownedDesign[key] ? "page" : undefined} className={`rounded-lg px-2 py-1 text-xs ${id === ownedDesign[key] ? "bg-accent-500/20 text-accent-100" : "bg-white/5 text-white/60"}`}>{label}</Link> : null)}
           <Link to="/setup" className="rounded-lg bg-white/5 px-2 py-1 text-xs text-white/70">{tr("اختيار قالب آخر", "Choose another template")}</Link>
         </nav> : null}
-        <button type="button" onClick={() => setSheet((v) => !v)} aria-expanded={sheet} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs md:hidden" data-testid="studio-layers-toggle">
+        <button type="button" onClick={() => setSheet((v) => !v)} aria-expanded={sheet} className="rounded-lg bg-white/6 px-2 py-1 text-xs md:hidden" data-testid="studio-layers-toggle">
           {tr("الطبقات", "Layers")}
         </button>
         <button
@@ -4148,7 +4148,7 @@ function StudioDocument() {
         ) : null}
         <div className="ms-auto flex flex-wrap items-center gap-1" role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
           {(Object.keys(DEVICES) as Device[]).map((k) => (
-            <button key={k} type="button" disabled={busy} onClick={() => setDevice(k)} aria-pressed={device === k} className={`rounded-lg px-2 py-1 text-xs ${device === k ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`}>
+            <button key={k} type="button" disabled={busy} onClick={() => setDevice(k)} aria-pressed={device === k} className={`rounded-lg px-2 py-1 text-xs ${device === k ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/6"}`}>
               {DEVICES[k].label()}
             </button>
           ))}
@@ -4156,7 +4156,7 @@ function StudioDocument() {
         {langs.enabled.length > 1 ? (
           <div className="flex items-center gap-1" role="group" aria-label={tr("لغة الصفحة", "Page language")}>
             {langs.enabled.map((l) => (
-              <button key={l} type="button" disabled={busy} onClick={() => setLang(l)} aria-pressed={shopLang === l} className={`rounded-lg px-2 py-1 text-xs ${shopLang === l ? "bg-white/[0.12] text-white" : "text-white/55 hover:bg-white/[0.06]"}`}>
+              <button key={l} type="button" disabled={busy} onClick={() => setLang(l)} aria-pressed={shopLang === l} className={`rounded-lg px-2 py-1 text-xs ${shopLang === l ? "bg-white/12 text-white" : "text-white/55 hover:bg-white/6"}`}>
                 {LANG_NAME[l]}
               </button>
             ))}
@@ -4164,24 +4164,24 @@ function StudioDocument() {
         ) : null}
         <DragSettings prefs={dragPrefs} onChange={changeDragPrefs} />
         <div className="flex shrink-0 gap-1 rounded-lg bg-white/5 p-0.5" role="group" aria-label={tr("طريقة التحريك", "Positioning mode")}>
-          {([["free", tr("تحريك حر", "Free move")], ["flow", tr("ترتيب", "Flow layout")]] as const).map(([mode, label]) => <button key={mode} type="button" disabled={busy} aria-pressed={canvasMode === mode} className={`h-7 rounded px-2 text-xs ${canvasMode === mode ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid={`studio-canvas-mode-${mode}`} onClick={() => { cancelDrag(); setCanvasMode(mode); saveCanvasMode(mode); }}>{label}</button>)}
+          {([["free", tr("تحريك حر", "Free move")], ["flow", tr("ترتيب", "Flow layout")]] as const).map(([mode, label]) => <button key={mode} type="button" disabled={busy} aria-pressed={canvasMode === mode} className={`h-7 rounded-sm px-2 text-xs ${canvasMode === mode ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid={`studio-canvas-mode-${mode}`} onClick={() => { cancelDrag(); setCanvasMode(mode); saveCanvasMode(mode); }}>{label}</button>)}
         </div>
         <div className="flex items-center gap-1" dir="ltr">
-          <button type="button" disabled={busy || !layout} onClick={() => void reload()} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06] disabled:opacity-30" aria-label={tr("تحديث المعاينة", "Refresh preview")} data-testid="studio-refresh-view">↻</button>
-          <button type="button" onClick={() => zoomBy(1 / 1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06]" aria-label={tr("تصغير", "Zoom out")}>−</button>
-          <button type="button" onClick={fit} className="min-w-[3.5rem] rounded-lg px-1 text-xs text-white/80 hover:bg-white/[0.06]" title={tr("ملاءمة (Ctrl+0)", "Fit (Ctrl+0)")} data-testid="studio-zoom">
+          <button type="button" disabled={busy || !layout} onClick={() => void reload()} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/6 disabled:opacity-30" aria-label={tr("تحديث المعاينة", "Refresh preview")} data-testid="studio-refresh-view">↻</button>
+          <button type="button" onClick={() => zoomBy(1 / 1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/6" aria-label={tr("تصغير", "Zoom out")}>−</button>
+          <button type="button" onClick={fit} className="min-w-14 rounded-lg px-1 text-xs text-white/80 hover:bg-white/6" title={tr("ملاءمة (Ctrl+0)", "Fit (Ctrl+0)")} data-testid="studio-zoom">
             {Math.round(zoom * 100)}%
           </button>
-          <button type="button" onClick={() => zoomBy(1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06]" aria-label={tr("تكبير", "Zoom in")}>+</button>
+          <button type="button" onClick={() => zoomBy(1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/6" aria-label={tr("تكبير", "Zoom in")}>+</button>
         </div>
         <div className="flex items-center gap-1" data-testid="studio-draft">
           <span className={`rounded-md px-2 py-0.5 text-[11px] ${draft ? "bg-amber-500/15 text-amber-200" : "text-white/40"}`} data-testid="studio-draft-state">
             {busy ? tr("عم نحفظ…", "Saving…") : draft ? tr("مسودة محفوظة، مش منشورة", "Draft saved, not published") : tr("متل المنشور", "Same as published")}
           </span>
-          <button type="button" onClick={() => void undoLast()} disabled={!canUndo || busy} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06] disabled:opacity-30" title="Ctrl+Z" data-testid="studio-undo">↶ {tr("تراجع", "Undo")}</button>
-          <button type="button" onClick={() => void redoLast()} disabled={!canRedo || busy} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06] disabled:opacity-30" title="Ctrl+Shift+Z" data-testid="studio-redo">↷ {tr("إعادة", "Redo")}</button>
+          <button type="button" onClick={() => void undoLast()} disabled={!canUndo || busy} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/6 disabled:opacity-30" title="Ctrl+Z" data-testid="studio-undo">↶ {tr("تراجع", "Undo")}</button>
+          <button type="button" onClick={() => void redoLast()} disabled={!canRedo || busy} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/6 disabled:opacity-30" title="Ctrl+Shift+Z" data-testid="studio-redo">↷ {tr("إعادة", "Redo")}</button>
           <div className="relative">
-            <button type="button" onClick={() => setHistoryOpen((v) => !v)} disabled={(!canUndo && !canRedo) || busy} aria-expanded={historyOpen} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-history-toggle">☰ {tr("السجل", "History")}</button>
+            <button type="button" onClick={() => setHistoryOpen((v) => !v)} disabled={(!canUndo && !canRedo) || busy} aria-expanded={historyOpen} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/6 disabled:opacity-30" data-testid="studio-history-toggle">☰ {tr("السجل", "History")}</button>
             {historyOpen ? (
               <HistoryList
                 done={history.current.done.map((x) => x.label)}
@@ -4193,13 +4193,13 @@ function StudioDocument() {
               />
             ) : null}
           </div>
-          <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
-          <button type="button" disabled={!index} onClick={openPageMotion} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
+          <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/6"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
+          <button type="button" disabled={!index} onClick={openPageMotion} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/6" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
           <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={toggleDeep}>{tr("تحديد داخلي", "Deep selection")}</button>
-          <button type="button" className="h-7 rounded-lg px-2 text-xs hover:bg-white/[0.08]" title={say("اختصارات المحرر (?)|Editor shortcuts (?)|קיצורי העורך (?)")} aria-label={say("اختصارات المحرر|Editor shortcuts|קיצורי העורך")} onClick={() => setKeysOpen(true)} data-testid="studio-shortcuts-open">⌨</button>
+          <button type="button" className="h-7 rounded-lg px-2 text-xs hover:bg-white/8" title={say("اختصارات المحرر (?)|Editor shortcuts (?)|קיצורי העורך (?)")} aria-label={say("اختصارات المحرر|Editor shortcuts|קיצורי העורך")} onClick={() => setKeysOpen(true)} data-testid="studio-shortcuts-open">⌨</button>
           <button type="button" disabled={!layout} className="h-7 rounded-lg px-2 text-xs" data-testid="studio-pick-objects" onClick={event => { const p = last.current?.p ?? (selShape ? { x: selShape.box.x + selShape.box.w / 2, y: selShape.box.y + selShape.box.h / 2 } : { x: frameBox.x + frameBox.w / 2, y: frameBox.y + 60 }); const r = event.currentTarget.getBoundingClientRect(); pickPoint(p, candidates => setMenu({ x: r.left, y: r.bottom + 4, candidates })); }}>{tr("اختيار عنصر", "Choose object")}</button>
-          <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
-          {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
+          <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/12 text-white" : "text-white/75 hover:bg-white/6"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
+          {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/6 disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
           <button type="button" onClick={() => void askPublish()} disabled={!canPublish || !draft || busy || labShown === "waiting"} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{labShown === "waiting" ? `⏱ ${tr("عم نفحص السرعة…", "Checking speed…")}` : tr("نشر", "Publish")}</button>
         </div>
         {origin && pageQ.data ? (
@@ -4225,7 +4225,7 @@ function StudioDocument() {
 
       <div className="flex min-h-0 flex-1">
         {phone ? null : (
-        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : leftTab === "looks" ? tr("الأشكال", "Looks") : tr("الطبقات", "Layers")}>
+        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/8 p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : leftTab === "looks" ? tr("الأشكال", "Looks") : tr("الطبقات", "Layers")}>
           {focus && index && nodeOf(focus.id) ? (
             focusSide()
           ) : (
@@ -4236,7 +4236,7 @@ function StudioDocument() {
           ) : leftTab === "styles" ? (
             <>
               <VariablesPanel api={dt} canPublish={canPublish} />
-              <div className="my-3 border-t border-white/[0.08]" />
+              <div className="my-3 border-t border-white/8" />
               <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
             </>
           ) : leftTab === "looks" ? (
@@ -4255,7 +4255,7 @@ function StudioDocument() {
         <main
           ref={canvasRef}
           tabIndex={-1}
-          className="relative outline-none min-w-0 flex-1 touch-none select-none overflow-hidden bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:16px_16px]"
+          className="relative outline-hidden min-w-0 flex-1 touch-none select-none overflow-hidden bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[16px_16px]"
           style={{ cursor: panMode ? "grab" : "default" }}
           data-testid="studio-canvas" data-zoom={Math.round(zoom * 100)}
         >
@@ -4334,7 +4334,7 @@ function StudioDocument() {
                 <div key={`bound-${b.id}`} className={`pointer-events-none absolute border border-dashed ${b.section ? "border-sky-500/80" : "border-violet-500/70"}`} style={{ left: b.box.x - frameBox.x, top: b.box.y - frameBox.y, width: b.box.w, height: b.box.h }} data-testid="studio-bound" data-node={b.id} data-section={b.section ? "1" : undefined}>
                   {b.named ? (
                     <button type="button" tabIndex={-1} disabled={Boolean(dragView || placing || drop) || busy}
-                      className={`absolute start-0 max-w-full truncate rounded-ee-md px-1 text-[9px] leading-4 ${dragView || placing || drop ? "pointer-events-none" : "pointer-events-auto cursor-pointer hover:brightness-125"} ${b.id === selected ? "bg-fuchsia-600 text-white" : b.section ? "bg-sky-600/85 text-white" : "bg-violet-600/80 text-white"}`}
+                      className={`absolute inset-s-0 max-w-full truncate rounded-ee-md px-1 text-[9px] leading-4 ${dragView || placing || drop ? "pointer-events-none" : "pointer-events-auto cursor-pointer hover:brightness-125"} ${b.id === selected ? "bg-fuchsia-600 text-white" : b.section ? "bg-sky-600/85 text-white" : "bg-violet-600/80 text-white"}`}
                       style={{ top: b.row * BOUND_TAG }} title={say("حدّد هالجزء|Select this part|בחירת החלק הזה")}
                       onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); select(b.id); }}
                       data-testid="studio-bound-name" data-node={b.id}>{label(b.id)}</button>
@@ -4348,9 +4348,9 @@ function StudioDocument() {
               {marquee ? <div className="pointer-events-none absolute border border-sky-400 bg-sky-400/10" style={rel(boxOf(marquee.a, marquee.b))} data-testid="studio-marquee" /> : null}
               {placing ? (
                 <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-sky-400 bg-sky-400/10" style={rel(placing.box)} data-testid="studio-placing">
-                  <span className="absolute start-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr" data-testid="studio-placing-at">{placing.offset ? `${placing.offset.x >= 0 ? "+" : ""}${placing.offset.x} · ${placing.offset.y >= 0 ? "+" : ""}${placing.offset.y} px` : `${placing.x}% · ${placing.y}%`}</span>
+                  <span className="absolute inset-s-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr" data-testid="studio-placing-at">{placing.offset ? `${placing.offset.x >= 0 ? "+" : ""}${placing.offset.x} · ${placing.offset.y >= 0 ? "+" : ""}${placing.offset.y} px` : `${placing.x}% · ${placing.y}%`}</span>
                   {placing.held ? (
-                    <span className="absolute start-0 top-full mt-1 max-w-[20rem] rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] leading-4 text-black" data-testid="studio-placing-held" data-axis={placing.held}>
+                    <span className="absolute inset-s-0 top-full mt-1 max-w-[20rem] rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] leading-4 text-black" data-testid="studio-placing-held" data-axis={placing.held}>
                       {placing.held === "x"
                         ? say("بعرض حاويته: صغّري عرضه ليتحرّك عالجنبين، أو طفّي «بيضل جوّا الحاوية تبعه» من قائمة السحب.|As wide as its holder: make it narrower to move it sideways, or turn off “Stays inside its holder” in Dragging.|ברוחב המכל שלו: הקטינו את הרוחב כדי להזיז לצדדים, או כבו «נשאר בתוך המכל» בתפריט הגרירה.")
                         : say("بطول حاويته: صغّري ارتفاعه ليتحرّك فوق وتحت، أو طفّي «بيضل جوّا الحاوية تبعه» من قائمة السحب.|As tall as its holder: make it shorter to move it up and down, or turn off “Stays inside its holder” in Dragging.|בגובה המכל שלו: הקטינו את הגובה כדי להזיז למעלה ולמטה, או כבו «נשאר בתוך המכל» בתפריט הגרירה.")}
@@ -4367,7 +4367,7 @@ function StudioDocument() {
               })}
               {dragView?.into ? (
                 <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-emerald-400/80 bg-emerald-400/5" style={rel(dragView.into.box)} data-testid="studio-into" data-node={dragView.into.id}>
-                  <span className="absolute start-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-emerald-500 px-1.5 py-0.5 text-[11px] text-white">
+                  <span className="absolute inset-s-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-emerald-500 px-1.5 py-0.5 text-[11px] text-white">
                     {tr("لجوّا", "Into")} {label(dragView.into.id)}
                   </span>
                 </div>
@@ -4376,7 +4376,7 @@ function StudioDocument() {
                 <>
                   <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-emerald-400/80 bg-emerald-400/5" style={rel(drop.box)} data-testid="studio-drop" data-drop={drop.over ? "over" : drop.page ? "page" : "inside"}>
                     {drop.over || drop.page ? (
-                      <span className="absolute start-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-emerald-500 px-1.5 py-0.5 text-[11px] text-white">
+                      <span className="absolute inset-s-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-emerald-500 px-1.5 py-0.5 text-[11px] text-white">
                         {drop.over ? `${tr("فوق القسم", "Over the section")} · ${Math.round(drop.over.spot.x)}% · ${Math.round(drop.over.spot.y)}%` : tr("قسم جديد هون", "A new section here")}
                       </span>
                     ) : null}
@@ -4397,7 +4397,7 @@ function StudioDocument() {
                         <button
                           key={where}
                           type="button"
-                          className="pointer-events-auto absolute start-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500 px-2.5 py-0.5 text-[11px] font-medium text-white shadow-lg hover:bg-accent-400"
+                          className="pointer-events-auto absolute inset-s-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500 px-2.5 py-0.5 text-[11px] font-medium text-white shadow-lg hover:bg-accent-400"
                           style={{ top: y - frameBox.y }}
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={() => {
@@ -4425,7 +4425,7 @@ function StudioDocument() {
                     aria-orientation="vertical"
                     tabIndex={0}
                     aria-label={tr("الخط بين خليتين: اسحبه أو استعمل الأسهم", "The line between two cells: drag it or use the arrows")}
-                    className="group pointer-events-auto absolute -translate-x-1/2 cursor-col-resize touch-none outline-none"
+                    className="group pointer-events-auto absolute -translate-x-1/2 cursor-col-resize touch-none outline-hidden"
                     style={{ left: x - frameBox.x, top: h.y - frameBox.y, width: 14, height: h.h }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
@@ -4514,7 +4514,7 @@ function StudioDocument() {
               {artInfo.parts.filter((x) => x.tag !== "g").map((x) => {
                 const b = toScreen(x.rect, layout.scroll, pan, zoom);
                 const on = focus?.part?.id === x.id;
-                return <div key={x.id} className={`absolute rounded-sm ${on ? "border-2 border-sky-400" : "border border-dashed border-white/35"}`} style={rel(b)} data-testid="studio-art-part" data-part={x.id} data-on={on ? "1" : undefined} />;
+                return <div key={x.id} className={`absolute rounded-xs ${on ? "border-2 border-sky-400" : "border border-dashed border-white/35"}`} style={rel(b)} data-testid="studio-art-part" data-part={x.id} data-on={on ? "1" : undefined} />;
               })}
             </div>
           ) : null}
@@ -4542,10 +4542,10 @@ function StudioDocument() {
             );
           })()}
           {focus?.lite ? (
-            <div className="pointer-events-auto absolute inset-x-3 top-2 z-[6] flex items-center gap-2 rounded-xl border border-white/[0.1] bg-surface-950/90 px-2 py-1.5 text-xs shadow-xl backdrop-blur" data-testid="studio-focus-bar" data-group="lite" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="pointer-events-auto absolute inset-x-3 top-2 z-6 flex items-center gap-2 rounded-xl border border-white/10 bg-surface-950/90 px-2 py-1.5 text-xs shadow-xl backdrop-blur-sm" data-testid="studio-focus-bar" data-group="lite" onPointerDown={(e) => e.stopPropagation()}>
               <span className="min-w-0 flex-1 truncate text-white/80">✎ {label(focus.id)}</span>
               <span className="hidden text-white/35 sm:inline">{say("Esc للرجوع|Esc to go back|Esc לחזרה")}</span>
-              <button type="button" className="rounded-lg bg-white/[0.08] px-2 py-1 hover:bg-white/[0.14]" onClick={closeFocus} data-testid="studio-focus-exit">{say("رجوع|Back|חזרה")}</button>
+              <button type="button" className="rounded-lg bg-white/8 px-2 py-1 hover:bg-white/[0.14]" onClick={closeFocus} data-testid="studio-focus-exit">{say("رجوع|Back|חזרה")}</button>
             </div>
           ) : null}
           {focus && !focus.lite && index && nodeOf(focus.id) ? (
@@ -4579,7 +4579,7 @@ function StudioDocument() {
               measure: "ما قدرنا نقيس مكان هالعنصر هلأ (في شي لسا عم يتحرك، أو ترتيب غير عادي).|This element's place couldn't be measured just now (something is still moving, or an unusual layout).|לא הצלחנו למדוד את מיקום האלמנט כרגע (משהו עדיין זז, או פריסה חריגה).",
             };
             return (
-              <div role="status" className="pointer-events-auto absolute bottom-3 start-3 max-w-sm space-y-2 rounded-lg bg-black/85 px-3 py-2 text-xs leading-5 text-white/85 shadow-lg" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} data-testid="studio-stuck" data-why={why}>
+              <div role="status" className="pointer-events-auto absolute bottom-3 inset-s-3 max-w-sm space-y-2 rounded-lg bg-black/85 px-3 py-2 text-xs leading-5 text-white/85 shadow-lg" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} data-testid="studio-stuck" data-why={why}>
                 <div>{say(reasons[why] ?? reasons.measure)}</div>
                 <div className="text-white/60">{say("فيك تغيّر مكانه وحجمه من لوحة «المكان والحجم»، أو ترجّعه لمكانه الطبيعي بين العناصر وبعدها بينسحب عادي.|You can change its place and size in the “Place and size” panel, or put it back in its rows, where it drags as usual.|אפשר לשנות את המיקום והגודל בלוח ״מיקום וגודל״, או להחזיר אותו לשורות, ושם הוא נגרר כרגיל.")}</div>
                 <div className="flex flex-wrap gap-1">
@@ -4632,11 +4632,11 @@ function StudioDocument() {
 
         {phone ? phoneSheet() : sheet && index ? (
           // Tablets: what's selected (the layers have their own column). A phone has its own sheet (phoneSheet).
-          <div className="fixed inset-x-0 bottom-0 z-50 max-h-[55vh] overflow-y-auto rounded-t-2xl border-t border-white/[0.1] bg-surface-950 p-2 shadow-2xl lg:hidden" data-testid="studio-sheet">
+          <div className="fixed inset-x-0 bottom-0 z-50 max-h-[55vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-surface-950 p-2 shadow-2xl lg:hidden" data-testid="studio-sheet">
             <div className="flex justify-end">
-              <button type="button" onClick={() => setSheet(false)} className="h-7 w-7 rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
+              <button type="button" onClick={() => setSheet(false)} className="h-7 w-7 rounded-lg text-white/60 hover:bg-white/6" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
             </div>
-            {(selected || themeOpen || siteOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
+            {(selected || themeOpen || siteOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/8 px-1 pb-3 text-sm">{inspector()}</div> : null}
             <div className="md:hidden">
               {leftTabs}
               {leftTab === "add"
@@ -4661,7 +4661,7 @@ function StudioDocument() {
         {besidePlaced && besideLone && !dragBusy ? (
           <button
             type="button" onClick={besideToggle} aria-pressed={besideShown}
-            className={`fixed z-30 hidden h-8 w-8 place-items-center rounded-full border text-sm shadow-lg lg:grid ${besideShown ? "border-accent-400 bg-accent-500 text-white" : "border-white/[0.12] bg-surface-950/95 text-white/80 hover:bg-accent-500/30 hover:text-white"}`}
+            className={`fixed z-30 hidden h-8 w-8 place-items-center rounded-full border text-sm shadow-lg lg:grid ${besideShown ? "border-accent-400 bg-accent-500 text-white" : "border-white/12 bg-surface-950/95 text-white/80 hover:bg-accent-500/30 hover:text-white"}`}
             style={{ left: besidePlaced.panel.left + 288 - 32, top: besidePlaced.panel.top }}
             title={say("لوحة الإعدادات|The settings panel|לוח ההגדרות")} aria-label={say("لوحة الإعدادات|The settings panel|לוח ההגדרות")} data-testid="studio-insp-show"
           >
@@ -4670,7 +4670,7 @@ function StudioDocument() {
         ) : null}
         {phone ? null : (
         <aside
-          className={besidePlaced ? "fixed z-30 hidden w-72 overflow-y-auto rounded-2xl border border-white/[0.12] bg-surface-950/95 p-3 text-sm shadow-2xl backdrop-blur lg:block" : "hidden w-64 shrink-0 overflow-y-auto border-s border-white/[0.08] p-3 text-sm lg:block"}
+          className={besidePlaced ? "fixed z-30 hidden w-72 overflow-y-auto rounded-2xl border border-white/12 bg-surface-950/95 p-3 text-sm shadow-2xl backdrop-blur-sm lg:block" : "hidden w-64 shrink-0 overflow-y-auto border-s border-white/8 p-3 text-sm lg:block"}
           style={besidePlaced ? {
             left: besidePlaced.panel.left, top: besidePlaced.panel.top + (besideLone ? 40 : 0), maxHeight: besidePlaced.panel.maxHeight - (besideLone ? 40 : 0),
             // Closed (from its tab, its ✕ or its button), or nothing selected and not asked for: off the page.
@@ -4695,11 +4695,11 @@ function StudioDocument() {
 
       {/* Smaller screens: what's selected, under the canvas (a phone: its own bar, with the five jobs). */}
       {phone ? phoneBar() : selected && index ? (
-        <div className="flex items-center gap-2 border-t border-white/[0.08] px-3 py-2 text-xs lg:hidden" data-testid="studio-bar">
+        <div className="flex items-center gap-2 border-t border-white/8 px-3 py-2 text-xs lg:hidden" data-testid="studio-bar">
           <span className="min-w-0 flex-1 truncate">{label(selected)}</span>
           {selExtra?.kind === "slot" && selExtra.edit !== "media" ? <button type="button" onClick={() => startText(selected)} className="rounded-lg bg-accent-500 px-2 py-1 text-white" data-testid="studio-bar-edit">{tr("كتابة", "Write")}</button> : null}
-          <button type="button" onClick={() => setSheet(true)} className="rounded-lg bg-white/[0.06] px-2 py-1" data-testid="studio-bar-more">{tr("إعدادات", "Settings")}</button>
-          {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="rounded-lg bg-white/[0.06] px-2 py-1">{tr("الأب (Esc)", "Parent (Esc)")}</button> : null}
+          <button type="button" onClick={() => setSheet(true)} className="rounded-lg bg-white/6 px-2 py-1" data-testid="studio-bar-more">{tr("إعدادات", "Settings")}</button>
+          {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="rounded-lg bg-white/6 px-2 py-1">{tr("الأب (Esc)", "Parent (Esc)")}</button> : null}
         </div>
       ) : null}
 
@@ -4724,10 +4724,10 @@ function StudioDocument() {
         }}
       />
       {asked?.media === "video" ? (
-        <div className="fixed bottom-4 start-1/2 z-[70] w-[min(28rem,92vw)] -translate-x-1/2 space-y-1 rounded-xl border border-white/[0.1] bg-surface-950 p-3 text-xs shadow-2xl" data-testid="studio-video-link">
+        <div className="fixed bottom-4 inset-s-1/2 z-70 w-[min(28rem,92vw)] -translate-x-1/2 space-y-1 rounded-xl border border-white/10 bg-surface-950 p-3 text-xs shadow-2xl" data-testid="studio-video-link">
           <label className="block text-[11px] text-white/55">
             {tr("أو رابط فيديو (MP4، https)", "Or a video link (MP4, https)")}
-            <input dir="ltr" className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" value={askedUrl} onChange={(e) => setAskedUrl(e.target.value)} placeholder="https://…/clip.mp4" data-testid="studio-video-link-url" />
+            <input dir="ltr" className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white" value={askedUrl} onChange={(e) => setAskedUrl(e.target.value)} placeholder="https://…/clip.mp4" data-testid="studio-video-link-url" />
           </label>
           <div className="flex gap-1">
             <button
@@ -4911,7 +4911,7 @@ function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, o
         onDropOn(id);
       } : undefined}
     >
-      <div className={`group flex items-center rounded-md ${on ? "bg-accent-500/25 text-white" : hovered === id ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"} ${isHidden ? "opacity-45" : ""}`}>
+      <div className={`group flex items-center rounded-md ${on ? "bg-accent-500/25 text-white" : hovered === id ? "bg-white/6 text-white" : "text-white/70 hover:bg-white/4"} ${isHidden ? "opacity-45" : ""}`}>
         {naming && tools ? (
           <input
             autoFocus defaultValue={n.name ?? ""} maxLength={60} aria-label={tr("اسم العنصر", "The element's name")}
@@ -4984,7 +4984,7 @@ function HistoryList({ done, undone, busy, onBack, onForward, onClose }: { done:
         </>
       ) : null}
       {[...done].reverse().map((label, i) => (
-        <button key={`d${i}`} type="button" role="menuitem" disabled={busy || i === 0} className="block w-full truncate rounded-lg px-2 py-1 text-start text-white/80 hover:bg-white/[0.06] disabled:cursor-default disabled:hover:bg-transparent" onClick={() => onBack(i)} title={i ? tr("رجوع لهون (بيتراجع عن اللي بعده)", "Back to here (undoes what came after)") : undefined} data-testid="studio-history-step">
+        <button key={`d${i}`} type="button" role="menuitem" disabled={busy || i === 0} className="block w-full truncate rounded-lg px-2 py-1 text-start text-white/80 hover:bg-white/6 disabled:cursor-default disabled:hover:bg-transparent" onClick={() => onBack(i)} title={i ? tr("رجوع لهون (بيتراجع عن اللي بعده)", "Back to here (undoes what came after)") : undefined} data-testid="studio-history-step">
           {i === 0 ? "● " : ""}{label}
         </button>
       ))}
