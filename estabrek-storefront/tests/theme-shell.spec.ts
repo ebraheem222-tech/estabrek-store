@@ -48,11 +48,25 @@ test("a store on a theme: none of the rose design's ornaments or pictures on its
     await expect(page.locator(ORNAMENTS), path).toHaveCount(0);
     await expect(page.locator(PICTURE_SPOTS), path).toHaveCount(0);
   }
-  // The cards: the theme's corners, not the rose design's arch.
+  // The cards: the theme's own card (the shape it has on its home), not the rose design's arched tile, with the
+  // shop's heart, colours, add and preview.
+  for (const path of ["/shop", "/c/dresses", "/search"]) {
+    await open(page, path);
+    await expect(page.locator(".rose-product-tile"), path).toHaveCount(0);
+    await expect(page.locator(".th-card-host[data-th-card] .th-shop-card").first(), path).toBeVisible();
+  }
   await open(page, "/shop");
-  const card = page.locator(".rose-product-tile .rose-product-image").first();
-  await expect(card).toBeVisible();
-  expect(await card.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).not.toContain("%");
+  const card = page.locator(".th-card-host[data-th-card] .th-shop-card").first();
+  await expect(card.locator(".th-card-title")).not.toBeEmpty();
+  await expect(card.locator(".th-card-price")).toContainText(/\d/);
+  await expect(card.locator(".th-card-media img").first()).toBeVisible();
+  const heart = card.locator(".th-card-heart");
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "true");
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "false");
+  await expect(card.locator(".th-card-actions button").first()).toBeVisible();
+  expect(await card.locator(".th-card-media").evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).not.toContain("%");
   // The contact page: no flourish under its title, and its form isn't an arch.
   await open(page, "/contact");
   expect(await page.locator(".rose-contact-intro h1").first().evaluate((el) => getComputedStyle(el, "::after").content)).toBe("none");

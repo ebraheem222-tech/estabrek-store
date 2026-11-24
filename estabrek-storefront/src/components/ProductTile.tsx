@@ -153,8 +153,10 @@ const ARCH = "M6 113V50A44 44 0 0 1 94 50V113Q94 119 88 119H12Q6 119 6 113Z";
 
 function DefaultProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
   const { language: lang } = useLanguage();
-  // The line drawn in the arch and the star by the kind are the rose design's; a store on a theme shows neither.
-  const roseLook = useStoreLook().rose;
+  // The line drawn in the arch and the star by the kind are the rose design's; a store on a theme shows neither,
+  // and its shop pages draw their cards as its theme does (the theme's card, below).
+  const look = useStoreLook();
+  const roseLook = look.rose;
   const ar = lang === "ar";
   const settings = useStorefrontSettings();
   const { openQuickView } = useQuickView();
@@ -313,6 +315,33 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
   }, [appearance]);
 
   // The colour picked on this card tints the card itself, as soft blurred light (rose-showcase.css).
+  const price = product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—";
+  // A store on a theme: its shop, category, search and "you may also like" cards are its theme's card (the same
+  // shape as on its home, store-themes.css [data-th-card]), with the shop's own heart, colours, add and preview.
+  if (appearance === "rose" && look.theme && !roseLook) return <div className="th-card-host" data-th-card={look.theme.card}>
+    <article data-cms-part="card" className="th-card th-shop-card" onMouseEnter={() => setIsHovered(true)} onMouseLeave={handleMouseLeave}>
+      <Link data-cms-part="card-image" className="th-card-link" href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
+        <div className={`th-card-media${secondary && shownImg === primary ? " has-alt" : ""}`}>
+          {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="th-cover th-card-main" /> : <span className="th-card-empty"><StoreMark /></span>}
+          {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="th-cover th-card-alt" /> : null}
+          {discountPercent ? <span className="th-card-discount">−{discountPercent}%</span> : <RoseBadge badge={badge} ar={ar} />}
+        </div>
+        <div data-cms-part="card-body" className="th-card-info">
+          {product.category?.name ? <span data-cms-part="card-category" className="th-card-cat">{product.category.name}</span> : null}
+          <h3 data-cms-part="card-name" className="th-card-title">{product.title}</h3>
+          <span data-cms-part="card-price" className="th-card-price">{price}</span>
+        </div>
+      </Link>
+      {wishlist ? <button type="button" className="th-card-heart" aria-pressed={saved} aria-label={`${saved ? tr(lang, "شيليها من المفضلة", "Remove from wishlist") : tr(lang, "احفظيها بالمفضلة", "Save to wishlist")}: ${product.title}`} onClick={() => wishlist.toggleWishlist({ id: product.id, title: product.title, slug: product.slug, image: primary ?? undefined, price: product.minPrice ?? undefined })}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1Z" /></svg>
+      </button> : null}
+      {!!swatches.length && <div data-cms-part="card-swatches" className="th-card-colours th-card-swatches">{swatches.map((s) => <button type="button" data-cms-part="card-swatch" key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ backgroundColor: s.hex }} onClick={() => setSelectedSwatch(s.key)} />)}</div>}
+      <div data-cms-part="card-actions" className="th-card-add th-card-actions">
+        <QuickAddButton product={product} selectedColorKey={selectedSwatch ?? undefined} buttonLabel={tr(lang, "إضافة للسلة", "Add to cart")} />
+        {quickViewEnabled ? <button type="button" className="th-card-peek" onClick={(event) => openQuickView(product, event.currentTarget)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" /></svg></button> : null}
+      </div>
+    </article>
+  </div>;
   const tint = appearance === "rose" ? swatches.find((s) => s.key === selectedSwatch)?.hex : undefined;
   if (appearance === "rose") return <article data-cms-part="card" ref={cardRef} className="rose-product-tile" data-tinted={tint ? "true" : undefined} style={tint ? ({ "--card-tint": tint } as React.CSSProperties) : undefined} onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
     <Link data-cms-part="card-image" className={`rose-product-image${secondary && shownImg === primary ? " has-alt" : ""}`} href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
