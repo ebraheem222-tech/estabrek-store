@@ -6,15 +6,15 @@ import { listPages } from "../../api/pages.api";
 import { adminLang } from "../../lib/lang";
 import { storeNameOf } from "../../lib/storeIdentity";
 import { tr } from "../../lib/words";
-import { currentStoreTheme, currentStoreThemeId, loadStoreThemes, ROSE_ID, shopOrigin, type Words } from "../../studio/storeThemes";
+import { currentStoreTheme, currentStoreThemeId, loadStoreThemes, ROSE_ID, shopOrigin, wearsRose, type Words } from "../../studio/storeThemes";
 
 /** The live design is independent of the source-template catalog and its filters. */
 export function CurrentStoreDesign({ active = true, onSelect }: { active?: boolean; onSelect?: () => void }) {
   const lang = adminLang();
   const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings });
-  const header = settings.data?.header as { storeDesign?: { homeId?: string; mode?: string }; identity?: { industry?: string; audience?: string } } | null | undefined;
+  const header = settings.data?.header as { storeDesign?: { homeId?: string; mode?: string } } | null | undefined;
   const choice = currentStoreTheme(header);
-  const original = !choice && header?.storeDesign?.mode !== "cms" && header?.identity?.industry === "fashion" && header.identity.audience === "women";
+  const original = wearsRose(header);
   const catalog = useQuery({ queryKey: ["store-themes", "full"], queryFn: loadStoreThemes, staleTime: 300_000, enabled: Boolean(settings.data) && !choice && !original });
   const homeId = header?.storeDesign?.homeId;
   const pages = useQuery({ queryKey: ["pages"], queryFn: listPages, enabled: Boolean(settings.data) && !homeId });
@@ -23,7 +23,7 @@ export function CurrentStoreDesign({ active = true, onSelect }: { active?: boole
 
   const id = currentStoreThemeId(header, catalog.data?.defaults);
   const name = (choice?.snapshot as { name?: Words } | undefined)?.name;
-  const designName = name?.[lang] || name?.en || (id === ROSE_ID ? tr("تصميم المتجر الأصلي", "Original store design") : catalog.data?.themes.find(theme => theme.id === id)?.name[lang]);
+  const designName = name?.[lang] || name?.en || (id === ROSE_ID ? tr("تصميمك الخاص", "Your own design") : catalog.data?.themes.find(theme => theme.id === id)?.name[lang]);
   const editorId = homeId ?? pages.data?.find(page => page.slug === "/")?.id;
   // An explicit current ID prevents a previous template preview retained in the frame's
   // sessionStorage from repainting this live store. Saved custom colours/fonts stay on.

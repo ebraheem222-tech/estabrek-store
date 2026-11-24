@@ -35,6 +35,7 @@ import { MailchimpCard } from "./MailchimpCard";
 import { StoreAppCard } from "./StoreAppCard";
 import { PersonaPicker } from "../../components/PersonaPicker";
 import { say } from "../../studio/say";
+import { wearsRose } from "../../studio/storeThemes";
 import { personaById } from "../../../../estabrek-storefront/src/lib/personas";
 import { miniBagById } from "../../../../estabrek-storefront/src/lib/miniBagDesigns";
 import { MiniBagPicker } from "./MiniBagPicker";
@@ -872,8 +873,9 @@ export default function SettingsPage() {
   const actions = useSettingsActions();
 
   const settings = q.data ?? null;
-  // The store's own theme (admin → ثيمات المتجر): the Rose design's colours don't reach its shop.
-  const ownStoreTheme = Boolean(((settings?.header as { storeTheme?: { id?: unknown } } | null | undefined)?.storeTheme)?.id);
+  // Every store wears a theme (its own pick, else its kind's) and takes its colours from it; only the rose
+  // design (the store that picked it) uses these two colours and its home's scenes.
+  const ownStoreTheme = !wearsRose(settings?.header);
 
   const [siteName, setSiteName] = useState<string>("");
   const [logoUrl, setLogoUrl] = useState<string>("");
@@ -1684,7 +1686,7 @@ export default function SettingsPage() {
             </Card>
             </SettingsSection>
 
-            <SettingsSection id="announcement" tab="rose" note="يظهر أعلى تصميم روز." keywords="اعلان شريط announcement">
+            <SettingsSection id="announcement" tab="rose" note="يظهر أعلى المتجر." keywords="اعلان شريط announcement">
             <Card>
               <CardHeader title="الشريط العلوي العام" subtitle="يظهر أعلى الموقع في الواجهة العامة." />
               <CardContent>
@@ -2160,7 +2162,7 @@ export default function SettingsPage() {
             </Card>
             </SettingsSection>
 
-            <SettingsSection id="footer" tab="rose" note="يستخدم تصميم روز من هنا: تفعيل الفوتر، النبذة، ورابط إنستغرام. باقي الخيارات للتصميم القديم." keywords="فوتر footer نبذة انستغرام instagram نشرة newsletter mailchimp">
+            <SettingsSection id="footer" tab="rose" note="المتجر بياخد من هون: تفعيل الفوتر، النبذة، ورابط إنستغرام. باقي الخيارات للتصميم القديم." keywords="فوتر footer نبذة انستغرام instagram نشرة newsletter mailchimp">
             <Card>
               <CardHeader title="الفوتر" subtitle="روابط، نبذة، ونشرة بريدية." />
               <CardContent>
@@ -2567,7 +2569,7 @@ export default function SettingsPage() {
             </SettingsSection>
 
             {/* Storefront UI Settings */}
-            <SettingsSection id="storefront" tab="rose" note="يستخدم تصميم روز من هنا: الحركة مع التمرير والـParallax، المساعد (روز) والدردشة، زر واتساب، البحث بالصوت، أدوات الإمكانية، والمعروض مؤخراً. باقي الخيارات للتصميم القديم." keywords="حركة تمرير scroll واتساب روز">
+            <SettingsSection id="storefront" tab="rose" note="المتجر بياخد من هون: الحركة مع التمرير والـParallax، الدردشة، زر واتساب، البحث بالصوت، أدوات الإمكانية، والمعروض مؤخراً. باقي الخيارات للتصميم القديم." keywords="حركة تمرير scroll واتساب">
             <Card>
               <CardHeader title="إعدادات واجهة المتجر" subtitle="تحكم في ميزات وتأثيرات الواجهة الأمامية" />
               <CardContent>
@@ -3110,7 +3112,7 @@ export default function SettingsPage() {
                     {/* A store on its own theme takes every colour from it (the shop ignores these two there). */}
                     {ownStoreTheme ? (
                       <p className="mb-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs leading-6 text-amber-100" data-testid="settings-colours-from-theme">
-                        {say("متجرك على ثيم خاص فيه: ألوان الأزرار وشريط التمرير والإشعارات وأزرار الشات بتيجي من الثيم. اللونين هون بيمشوا بس على تصميم روز. لتغيير ألوان متجرك روح على ثيمات المتجر.|Your store is on its own theme: the buttons, the scroll bar, the notices and the chat buttons take its colours. These two colours only apply to the Rose design. To change your store’s colours, go to Store themes.|החנות שלך בערכת נושא משלה: הכפתורים, פס הגלילה, ההודעות וכפתורי הצ׳אט לוקחים את הצבעים שלה. שני הצבעים כאן חלים רק על עיצוב רוז. כדי לשנות את צבעי החנות, עברו לערכות הנושא.")}{" "}
+                        {say("متجرك على ثيم خاص فيه: ألوان الأزرار وشريط التمرير والإشعارات وأزرار الشات بتيجي من الثيم. اللونين هون ما بيمشوا على ثيم متجرك. لتغيير ألوان متجرك روح على ثيمات المتجر.|Your store is on its own theme: the buttons, the scroll bar, the notices and the chat buttons take its colours. These two colours don't apply to your store's theme. To change your store’s colours, go to Store themes.|החנות שלך בערכת נושא משלה: הכפתורים, פס הגלילה, ההודעות וכפתורי הצ׳אט לוקחים את הצבעים שלה. שני הצבעים כאן לא חלים על ערכת הנושא של החנות. כדי לשנות את צבעי החנות, עברו לערכות הנושא.")}{" "}
                         <a href="/admin/themes" className="underline">
                           {say("ثيمات المتجر ←|Store themes →|ערכות נושא ←")}
                         </a>
@@ -3159,7 +3161,7 @@ export default function SettingsPage() {
                         checked={storefrontCfg.colorBlend}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, colorBlend: v }))}
                       />
-                      <div className="md:col-span-2 grid gap-2" data-testid="settings-color-scenes">
+                      <div className="md:col-span-2 grid gap-2" data-testid="settings-color-scenes" style={ownStoreTheme ? { display: "none" } : undefined}>
                         <div className="text-sm font-semibold">المشاهد اللي بتلبّس الصفحة لونها وهي عالشاشة</div>
                         <div className="text-xs opacity-70">
                           النصوص والأزرار بتضل مقروءة مع أي لون: المتجر بيظبّط التباين لحاله.

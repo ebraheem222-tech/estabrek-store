@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { WebsiteThemeGalleryPicker } from "./WebsiteThemeGalleryPicker";
 
-vi.mock("../../api/settings.api", () => ({ getSettings: vi.fn().mockResolvedValue({ id: "settings", siteName: "Estabrek", header: { identity: { industry: "fashion", audience: "women" } } }) }));
+vi.mock("../../api/settings.api", () => ({ getSettings: vi.fn().mockResolvedValue({ id: "settings", siteName: "Estabrek", header: { identity: { industry: "fashion", audience: "women" }, storeTheme: { id: "rose" }, privateThemes: ["rose"] } }) }));
 vi.mock("../../api/pages.api", () => ({ listPages: vi.fn().mockResolvedValue([{ id: "home", slug: "/" }]) }));
 vi.mock("../../studio/storeThemes", async (importOriginal) => ({ ...await importOriginal<typeof import("../../studio/storeThemes")>(), shopOrigin: () => "https://shop.example.com" }));
 

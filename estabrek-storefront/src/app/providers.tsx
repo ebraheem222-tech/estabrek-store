@@ -83,6 +83,7 @@ export default function Providers({
   children,
   initialStorefrontSettings,
   cinematic = false,
+  rose = false,
   accountsEnabled = false,
   stockAlertsEnabled = false,
   checkoutTerms,
@@ -103,6 +104,8 @@ export default function Providers({
   /** The store's theme is on, in this mode: the page stays in it. */
   storeThemeMode?: "light" | "dark" | null;
   cinematic?: boolean;
+  /** The store wears the rose design (storeThemes roseDesignOn). */
+  rose?: boolean;
   /** Admin → Settings → حسابات الزبائن. */
   accountsEnabled?: boolean;
   /** Admin → المخزون → بانتظار التوفّر. */
@@ -169,7 +172,7 @@ export default function Providers({
         <WishlistProvider>
           <RecentlyViewedProvider>
             {/* Storefront Features (reads settings from API) */}
-            <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings} cinematic={cinematic}>
+            <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings} cinematic={cinematic} rose={rose}>
               <RouteProgress />
               <StorefrontToastProvider>
                 <QuickViewProvider>

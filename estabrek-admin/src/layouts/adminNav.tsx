@@ -216,6 +216,8 @@ export type NavItem = {
   requirePermissions?: AdminPermission[];
   /** Open to everyone but not where a member lands (it shows each one only their own parts). */
   noLanding?: boolean;
+  /** Only for the store that owns the rose design (studio/storeThemes ownsRose): its guide's page. */
+  roseOnly?: boolean;
 };
 
 const NAV_MAIN: NavItem[] = [
@@ -254,7 +256,7 @@ const NAV_DISCOUNTS: NavItem[] = [
 
 const NAV_SITE: NavItem[] = [
   { to: "/admin/features", label: tr("الميزات", "Features"), icon: Icons.toggles, requirePermissions: ["settings:read"] },
-  { to: "/admin/razan", label: tr("رزان (دليلة المتجر)", "Rose (store guide)"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
+  { to: "/admin/razan", label: tr("رزان (دليلة المتجر)", "Rose (store guide)"), icon: Icons.chatbot, requirePermissions: ["settings:read"], roseOnly: true, noLanding: true },
   { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"] },
   { to: "/admin/ai", label: tr("الذكاء الاصطناعي ✨", "AI ✨"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
   { to: "/admin/ai/social", label: say("منشورات السوشال ✨|Social posts ✨|פוסטים לרשתות ✨"), icon: Icons.pages, requirePermissions: ["catalog:read"] },

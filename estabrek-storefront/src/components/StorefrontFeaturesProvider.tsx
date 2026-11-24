@@ -14,8 +14,6 @@ import dynamic from "next/dynamic";
 import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import { AccessibilityTools } from "@/components/AccessibilityTools";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
-import { useStoreIdentity } from "@/store/storeIdentity";
-import { modestShop } from "@/lib/storeIdentity";
 import { setColourEngine } from "@/lib/colourEngine";
 import { personaById } from "@/lib/personas";
 import {
@@ -40,17 +38,19 @@ interface StorefrontFeaturesProviderProps {
   initialSettings?: Partial<StorefrontSettings>;
   /** Rose storefront: keep one floating action (WhatsApp) and no scroll line. */
   cinematic?: boolean;
+  /** The store wears the rose design (storeThemes roseDesignOn): Razan comes with it. */
+  rose?: boolean;
 }
 
 export function StorefrontFeaturesProvider({ 
   children, 
   initialSettings,
   cinematic = false,
+  rose: roseTheme = false,
 }: StorefrontFeaturesProviderProps) {
-  // Rose, the shop guide in a hijab, belongs to modest fashion stores; every other store
-  // keeps the plain chat, WhatsApp and back-to-top buttons (Settings → هوية المتجر).
-  const identity = useStoreIdentity();
-  const rose = cinematic && modestShop(identity);
+  // Rose, the shop guide in a hijab, belongs to the rose design (one store's own theme); every
+  // other store keeps the plain chat, WhatsApp and back-to-top buttons.
+  const rose = cinematic && roseTheme;
   const parseMaybeJson = (value: unknown) => {
     if (typeof value !== "string") return value;
     try {

@@ -31,11 +31,11 @@ import { MotionSettingsBridge } from "@/components/MotionSettingsBridge";
 import { normalizeMotion } from "@/lib/motionSettings";
 import { abHeadScript, abTests } from "@/lib/ab";
 import { MarketingPixels } from "@/components/MarketingPixels";
-import { identityOf, modestShop, nameOf, pick } from "@/lib/storeIdentity";
+import { identityOf, nameOf, pick } from "@/lib/storeIdentity";
 import { StoreLookProvider } from "@/store/storeLook";
 import { themePalette } from "@/storeThemes/css";
 import { setArabicTone, tr } from "@/lib/words";
-import { storeThemeOf, themeCss } from "@/storeThemes";
+import { roseDesignOn, roseOwned, storeThemeOf, themeCss } from "@/storeThemes";
 import { kitCss, kitOfHeader } from "@/storeThemes/packs";
 import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
 import { StoreThemePreview } from "@/storeThemes/StoreThemePreview";
@@ -58,7 +58,7 @@ export function generateStaticParams() {
 }
 export const dynamicParams = false;
 
-/** The rose design's own line and words for a clothes shop for women, in each language. */
+/** The rose design's own line and words (only for the store that wears it), in each language. */
 const MODEST_COPY: Record<Lang, { tagline: string; description: (name: string) => string }> = {
   ar: {
     tagline: "أناقة تليق بكِ",
@@ -84,7 +84,7 @@ export async function generateMetadata({ params }: { params: { lang: string } })
   // The store's own name and words (admin → هوية المتجر).
   const id = identityOf(site as any);
   const name = nameOf(id, lang);
-  const modest = !independentDesign(site?.header) && modestShop(id);
+  const modest = roseDesignOn(site?.header);
   const main = langConfigOf((site as any)?.header).default === lang;
   // A title in one language holds only that language's line.
   const tagline = modest ? MODEST_COPY[lang].tagline : id.tagline[lang];
@@ -146,7 +146,7 @@ export default async function RootLayout({
       : null) ??
     null;
   const theme = header?.theme ?? null;
-  // Admin → ثيمات المتجر (header.storeTheme): none = the rose design.
+  // Admin → ثيمات المتجر (header.storeTheme): none = the kind's theme; the rose design only where picked.
   const storeTheme = storeThemeOf(header);
   // The pack the store applied (header.storeKit): its focus ring, cursor and loading indicator here.
   const ownedDesign = independentDesign(header);
@@ -227,7 +227,7 @@ export default async function RootLayout({
             (each tree's style then carries only its own rules, cms/renderCmsPage.tsx), after every stylesheet. */}
         {ownedDesign ? <style id="page-tree-base" dangerouslySetInnerHTML={{ __html: BASE_CSS }} /> : null}
         <MotionSettingsBridge />
-        <StoreThemePreview saved={storeTheme?.theme.id ?? null} owned={readThemeSnapshot(header?.storeTheme?.snapshot)} />
+        <StoreThemePreview saved={storeTheme?.theme.id ?? null} owned={readThemeSnapshot(header?.storeTheme?.snapshot)} roseOwner={roseOwned(header)} />
         <ThemeMotion />
         {ownedDesign ? <TreeRuntime /> : null}
         <a href="#main-content" className="skip-link">
@@ -238,6 +238,7 @@ export default async function RootLayout({
           storeThemeMode={storeThemeMode}
           visualControls={bootstrap.site.visualControls}
           cinematic={cinematic}
+          rose={roseDesignOn(header)}
           accountsEnabled={accountsEnabled}
           stockAlertsEnabled={stockAlertsEnabled}
           checkoutTerms={(settings.site as { checkoutTerms?: unknown } | undefined)?.checkoutTerms}
@@ -257,7 +258,7 @@ export default async function RootLayout({
               theme: storeTheme?.theme ?? null,
               mode: storeThemeMode ?? "light",
               industry: identity.industry,
-              modest: !ownedDesign && modestShop(identity),
+              rose: roseDesignOn(header),
             }}
           >
           <ThemeWrap

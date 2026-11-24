@@ -52,11 +52,11 @@ export function RoseShopIntro({ showcase = [] }: { showcase?: RingPiece[] }) {
   }
   // The opening: the words on one side; on the other an arch with the silk film (in the colour picked) and the
   // shop's own pieces turning around it on a 3D ring (rose-showcase.css).
-  const stage = look.modest || showcase.length >= 3;
+  const stage = look.rose || showcase.length >= 3;
   return <section className={`rose-shop-intro${stage ? " rose-shop-stage" : ""}`} data-rose-palette="pearl">
     <div data-reveal><span className="atelier-eyebrow">{tr(lang, "كل القطع", "THE COLLECTION")}</span>
       <h1><Rising text={tr(lang, "المتجر", "The collection")} /><span><Rising text={tr(lang, "كل القطع في مكان واحد.", "Every piece in one place.")} from={2} /></span></h1>
-      <p>{look.modest ? tr(lang, "حجاب، فساتين، وقطع تختارينها بحب. اكتشفي إطلالتكِ القادمة.", "Hijabs, dresses, and pieces to love. Find your next favourite.") : tr(lang, "كل منتجاتنا بمكان واحد، اختار اللي بيناسبك.", "Everything we sell in one place. Find what suits you.")}</p>
+      <p>{look.rose ? tr(lang, "حجاب، فساتين، وقطع تختارينها بحب. اكتشفي إطلالتكِ القادمة.", "Hijabs, dresses, and pieces to love. Find your next favourite.") : tr(lang, "كل منتجاتنا بمكان واحد، اختار اللي بيناسبك.", "Everything we sell in one place. Find what suits you.")}</p>
       <a href="#shop-products" className="atelier-text-link">{tr(lang, "اكتشفي المجموعة", "Explore the collection")}<Icon name="down" /></a>
       {razan.enabled && razan.styleQuiz.enabled ? (
         <button type="button" className="rose-quiz-cta" onClick={() => razanOpen("quiz")}>{tr(lang, `محتارة؟ ${n.assistant} بتختارلك 🌸`, "Not sure? Let {0} pick for you 🌸", [n.assistant])}</button>
@@ -64,7 +64,7 @@ export function RoseShopIntro({ showcase = [] }: { showcase?: RingPiece[] }) {
     </div>
     {stage ? <div className="rose-stage-visual">
       <div className="rose-stage-arch">
-        {look.modest ? <SilkFilm /> : <Image src="/editorial/scarves.webp" alt="" fill priority sizes="(max-width:760px) 60vw, 26vw" />}
+        {look.rose ? <SilkFilm /> : <Image src="/editorial/scarves.webp" alt="" fill priority sizes="(max-width:760px) 60vw, 26vw" />}
         <span className="rose-stage-dye" aria-hidden="true" />
         <span className="rose-stage-deepen" aria-hidden="true" />
       </div>

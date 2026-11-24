@@ -74,8 +74,3 @@ const FALLBACK: Texts = { ar: "المتجر", en: "Store", he: "החנות" };
 export const nameOf = (id: StoreIdentity, lang: Lang) => pick(id.name, lang) || FALLBACK[lang];
 /** The name in the logo: the short name, else the name. */
 export const markOf = (id: StoreIdentity, lang: Lang) => pick(id.shortName, lang) || nameOf(id, lang);
-/**
- * The rose design's own words (hijabs, dresses, «أناقة تليق بكِ») suit a clothes shop
- * for women; any other store gets plain words built from its name, line and about.
- */
-export const modestShop = (id: StoreIdentity) => id.industry === "fashion" && id.audience === "women";

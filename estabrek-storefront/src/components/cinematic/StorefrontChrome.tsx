@@ -17,7 +17,8 @@ import { FloatingDock } from "./FloatingDock";
 import { RoseWave } from "./RoseWave";
 import { PerfOverlay } from "./PerfOverlay";
 import { useNames, useStoreIdentity } from "@/store/storeIdentity";
-import { markOf, modestShop, pick } from "@/lib/storeIdentity";
+import { markOf, pick } from "@/lib/storeIdentity";
+import { useStoreLook } from "@/store/storeLook";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { tr } from "@/lib/words";
 import { dirOf } from "@/lib/i18n";
@@ -78,6 +79,8 @@ function Header() {
   const lang = language;
   const ar = lang === "ar";
   const id = useStoreIdentity();
+  // The rose design's own words (its fabric story, its greeting) belong to the store that wears it.
+  const rose = useStoreLook().rose;
   const n = useNames();
   const { count } = useCart();
   // Admin → الإعدادات → السلة والدفع: the bag icon opens the small bag instead of the bag page.
@@ -97,7 +100,7 @@ function Header() {
     : [
         { href: "/#arrivals", label: tr(lang, "وصل حديثاً", "New arrivals") },
         { href: "/#collections", label: tr(lang, "المجموعات", "Collections") },
-        modestShop(id) ? { href: "/#craft", label: tr(lang, "عالم الأقمشة", "The fabric story") } : { href: "/shop", label: tr(lang, "كل المنتجات", "All products") },
+        rose ? { href: "/#craft", label: tr(lang, "عالم الأقمشة", "The fabric story") } : { href: "/shop", label: tr(lang, "كل المنتجات", "All products") },
       ];
   useEffect(() => {
     if (!open) return;
@@ -142,11 +145,11 @@ function Header() {
               {store.announcement}
             </Link>
           ) : (
-            modestShop(id) ? tr(lang, "أناقة تليق بكِ، وراحة ترافق يومكِ.", "Modern modesty. Beautifully yours.") : pick(id.tagline, lang) || tr(lang, "أهلاً فيكم بمتجرنا", "Welcome to our store")
+            rose ? tr(lang, "أناقة تليق بكِ، وراحة ترافق يومكِ.", "Modern modesty. Beautifully yours.") : pick(id.tagline, lang) || tr(lang, "أهلاً فيكم بمتجرنا", "Welcome to our store")
           )}
         </span>
         <span className="announcement-right">
-          {ar ? (modestShop(id) ? `مرحباً بكِ في ${n.store}` : `أهلاً وسهلاً في ${n.store}`) : tr(lang, "", "Welcome to {0}", [n.store])}
+          {ar ? (rose ? `مرحباً بكِ في ${n.store}` : `أهلاً وسهلاً في ${n.store}`) : tr(lang, "", "Welcome to {0}", [n.store])}
           <Icon name="spark" width="11" height="11" />
         </span>
       </div>
@@ -336,6 +339,7 @@ function Footer() {
   const lang = language;
   const ar = lang === "ar";
   const id = useStoreIdentity();
+  const rose = useStoreLook().rose;
   const n = useNames();
   const accountsOn = useOptionalAccount() !== null;
   if (store.footerEnabled === false) return null;
@@ -348,7 +352,7 @@ function Footer() {
           <Brand />
           <p>
             {store.footerDescription ||
-              (modestShop(id)
+              (rose
                 ? tr(lang, `اختيارات تجمع الاحتشام والراحة والأناقة. من ${n.store}، لكل تفاصيلكِ الجميلة.`, "Modest pieces. Beautiful details. Made for every side of you.")
                 : pick(id.about, lang))}
           </p>

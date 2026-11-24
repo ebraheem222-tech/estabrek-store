@@ -28,7 +28,7 @@ const mount = (selected: StoreTemplate | null = null, motionOptions?: MotionProf
 };
 beforeEach(() => {
   vi.mocked(getStoreTemplates).mockResolvedValue(catalog);
-  vi.mocked(getSettings).mockResolvedValue({ id: "settings", siteName: "Estabrek", header: { identity: { industry: "fashion", audience: "women" } } });
+  vi.mocked(getSettings).mockResolvedValue({ id: "settings", siteName: "Estabrek", header: { identity: { industry: "fashion", audience: "women" }, storeTheme: { id: "rose" }, privateThemes: ["rose"] } });
 });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 

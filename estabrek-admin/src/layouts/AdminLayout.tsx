@@ -14,6 +14,7 @@ import { applyCursorTheme } from "../theme/cursorTheme";
 import { applyButtonTheme, clearButtonTheme } from "../theme/buttonTheme";
 import { applySkin, useSkin } from "../theme/skin";
 import { Icons, NAV_GROUPS, type NavItem } from "./adminNav";
+import { ownsRose } from "../studio/storeThemes";
 import { useQuery } from "@tanstack/react-query";
 import { listSitePanels, type PanelIcon } from "../api/sitePanels.api";
 import { adminLang } from "../lib/lang";
@@ -280,10 +281,13 @@ export default function AdminLayout() {
   const pageTitle = PAGE_TITLES.find(([p]) => location.pathname.includes(p))?.[1] ?? tr("لوحة التحكم", "Dashboard");
   const isHome = location.pathname === "/admin" || location.pathname.startsWith("/admin/dashboard");
 
+  // The rose design's own pages (its guide) show only in the store that owns it.
+  const roseOwner = ownsRose(qSettings.data?.header);
   const canViewNavItem = useCallback(
     (item: NavItem): boolean =>
-      !item.requirePermissions?.length || item.requirePermissions.every((permission) => hasPermission(permission)),
-    [hasPermission]
+      (!item.roseOnly || roseOwner) &&
+      (!item.requirePermissions?.length || item.requirePermissions.every((permission) => hasPermission(permission))),
+    [hasPermission, roseOwner]
   );
   const can = useCallback((p: "orders:read" | "catalog:read" | "catalog:write") => hasPermission(p), [hasPermission]);
 
