@@ -93,7 +93,9 @@ function run(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, m: MotionPreset, e
     el.addEventListener(type, fn as EventListener);
     off.push(() => el.removeEventListener(type, fn as EventListener));
   };
-  const seen = (el: Element) => el.getBoundingClientRect().top < vh * 0.92;
+  // The opening is the first screen: whatever of it shows at all plays at once (its title peeking at the bottom of a
+  // short screen stayed an empty gap until a scroll); further down, what's nearly in sight.
+  const seen = (el: Element) => el.getBoundingClientRect().top < (el.closest(".th-hero") ? vh : vh * 0.92);
   /** Plays now when on screen, else when scrolled to; what waits is hidden meanwhile. */
   const onSight = (el: Element, play: () => gsap.core.Animation | void, hide: Element[] = [el]) => {
     if (seen(el)) return play();
