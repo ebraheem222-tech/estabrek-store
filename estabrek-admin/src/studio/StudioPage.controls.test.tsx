@@ -50,7 +50,7 @@ beforeEach(()=>{
       path.endsWith("/draft")?{draft:{version:1,rev:1,baseHash:"local",sections:[],trash:[],startedAt:"",updatedAt:"",tree},main:"en"}:
       path.endsWith("/tree")?{format:2,tree,saved:true}:
       path.endsWith("/site-styles")?{styles:[],draft:null}:
-      path.endsWith("/settings")?{header:{identity:{industry:"fashion",audience:"women"},storeTheme:choice},languages:{default:"en",enabled:["en"]}}:
+      path.endsWith("/settings")?{header:{identity:{industry:"fashion",audience:"women"},privateThemes:["rose"],storeTheme:choice},languages:{default:"en",enabled:["en"]}}:
       path.endsWith(`/pages/${pageId}`)?{id:pageId,name:"Fixture",slug:"/",status:"DRAFT",kind:"page",sections:[],format:2}:
       path.includes("/models")?{items:[],maxBytes:1000000}:
       path.includes("background-removal")?{cloudinary:{on:false,ready:false,transformations:0}}:[];
