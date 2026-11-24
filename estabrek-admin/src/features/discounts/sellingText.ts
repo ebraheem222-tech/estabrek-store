@@ -58,7 +58,7 @@ export function campaignWhen(c: Pick<Campaign, "startsAt" | "endsAt">): string {
   return `${day(c.startsAt)}${sep}${time(c.startsAt)} ${tr("←", "→")} ${day(c.endsAt)}${sep}${time(c.endsAt)}`;
 }
 
-/** "الثيم: Luxury Paper · خصم 20% على حجاب، عبايات". */
+/** "الثيم: Luxury Paper · خصم 20% على أحذية، شنط". */
 export function campaignWhat(c: Pick<Campaign, "themePresetId" | "percentOff" | "categoryIds" | "productIds">, themeName: (id: string) => string, categoryName: (id: string) => string): string {
   const parts: string[] = [];
   if (c.themePresetId) parts.push(tr(`الثيم: ${themeName(c.themePresetId)}`, "Theme: {0}", [themeName(c.themePresetId)]));
