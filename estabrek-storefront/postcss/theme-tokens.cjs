@@ -21,9 +21,15 @@ const full = (hex) => {
 };
 const toHex = (n) => Math.max(0, Math.min(255, Math.round(Number(n)))).toString(16).padStart(2, "0");
 
-/** Colours in a value: hex and rgb()/rgba(), never inside url(). */
-function colours(value) {
-  if (!/#[0-9a-f]{3}|rgba?\(/i.test(value)) return value;
+// The named white and black too (a page mixed with "white" stayed light on a dark theme: the bag's fields,
+// the 404 card); not in shadows, filters and masks, where they are only light and shade.
+const NAMED = { white: "ffffff", black: "000000" };
+const PLAIN_ONLY = /shadow|filter|mask/;
+
+/** Colours in a value: hex, rgb()/rgba() and the named white and black, never inside url(). */
+function colours(value, prop = "") {
+  const named = !PLAIN_ONLY.test(prop);
+  if (!/#[0-9a-f]{3}|rgba?\(/i.test(value) && !(named && /\b(white|black)\b/i.test(value))) return value;
   return value
     .split(/(url\([^)]*\))/i)
     .map((part, i) => {
@@ -38,7 +44,8 @@ function colours(value) {
           if (a === undefined) return v;
           const pct = a.endsWith("%") ? parseFloat(a) : parseFloat(a) * 100;
           return pct >= 100 ? v : `color-mix(in srgb,${v} ${+pct.toFixed(2)}%,transparent)`;
-        });
+        })
+        .replace(/(^|[\s,(])(white|black)(?=$|[\s,)])/gi, (m, pre, word) => (named ? `${pre}var(--st-${NAMED[word.toLowerCase()]},${word})` : m));
     })
     .join("");
 }
@@ -74,7 +81,7 @@ module.exports = () => ({
       if (prop === "border-radius" || /^border-(start|end|top|bottom)-(start|end|left|right)-radius$/.test(prop)) {
         decl.value = radius(decl.value);
       }
-      decl.value = colours(decl.value);
+      decl.value = colours(decl.value, prop);
     });
   },
 });

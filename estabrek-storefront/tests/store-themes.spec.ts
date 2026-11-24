@@ -73,6 +73,16 @@ test.describe("the rose stylesheets become themeable", () => {
     // No colour left outside a variable, none wrapped twice.
     expect(out.replace(/var\(--st-[0-9a-f]{6},#[0-9a-f]{3,6}\)/gi, "").match(/#[0-9a-f]{6}\b/gi) ?? []).toEqual([]);
     expect(out).not.toMatch(/var\(--st-[0-9a-f]{6},var\(/);
+    // The named white and black are colours too (a mix with "white" stayed light on a dark theme), except as
+    // light and shade in shadows, filters and masks.
+    const tokens = require("../postcss/theme-tokens.cjs");
+    expect(tokens.colours("color-mix(in srgb, var(--x) 70%, white)", "background")).toBe("color-mix(in srgb, var(--x) 70%, var(--st-ffffff,white))");
+    expect(tokens.colours("black", "color")).toBe("var(--st-000000,black)");
+    expect(tokens.colours("0 2px 6px black", "box-shadow")).toBe("0 2px 6px black");
+    expect(tokens.colours("white-space nowrap", "x")).toBe("white-space nowrap");
+    // In the stylesheets themselves: no plain white or black left as a colour outside shadows, filters and masks.
+    const plain = [...out.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([\w-]+)\s*:([^;{}]*)/g)].filter(([, prop, value]) => !/shadow|filter|mask/.test(prop) && /(^|[\s,(])(white|black)(?=$|[\s,)])/i.test(value.replace(/var\(--st-[0-9a-f]{6},(white|black)\)/gi, "")) && !/url\(/.test(value));
+    expect(plain.map(([d]) => d.slice(0, 80))).toEqual([]);
     const names = new Set(wraps.map((w) => w[1]));
     for (const n of names) expect(ROSE_COLOURS, `run node scripts/store-theme-colours.cjs (${n})`).toContain(n);
   });
