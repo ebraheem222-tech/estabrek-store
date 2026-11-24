@@ -18,7 +18,7 @@ import { normalizeRequests } from "@/lib/requestsSettings";
 import { normalizeScarcity } from "@/lib/scarcity";
 import { identityOf, type StoreIdentity } from "@/lib/storeIdentity";
 import { NamesBridge, StoreIdentityProvider } from "@/store/storeIdentity";
-import { setArabicTone } from "@/lib/words";
+import { setArabicTone, setPlainWords } from "@/lib/words";
 import { LanguageProvider } from "@/components/cinematic/Language";
 import type { Lang, LangConfig } from "@/lib/i18n";
 import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -159,6 +159,7 @@ export default function Providers({
   // The store's way of speaking Arabic (to her, to him, to everyone), before anything below speaks.
   const store = identity ?? identityOf(null);
   setArabicTone(store.audience);
+  setPlainWords(!rose);
 
   return (
     <LanguageProvider initial={lang} config={languages}>

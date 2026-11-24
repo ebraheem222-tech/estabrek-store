@@ -1002,4 +1002,9 @@ export const HE: Record<string, string> = {
   "Join the server and type in the chat:": "היכנסו לשרת והקלידו בצ'אט:",
   "The code runs out in {n} minutes.": "הקוד יפוג בעוד {n} דקות.",
   "Link your game account": "קישור חשבון המשחק",
+  "More ways to search": "דרכים נוספות לחפש",
+  "Try another filter or a different search.": "אפשר לשנות את הסינון או לחפש במילה אחרת.",
+  "A product's name, its colour or any word about it.": "שם המוצר, הצבע שלו או כל מילה עליו.",
+  "A question about a product or an order? We'd love to help.": "שאלה על מוצר או הזמנה? נשמח לעזור.",
+  "e.g. a product like the one in the photo, in a certain colour or size": "למשל: מוצר כמו זה שבתמונה, בצבע או במידה מסוימים",
 };

@@ -9,6 +9,7 @@
 import type { Lang } from "./i18n";
 import { HE } from "./words.he";
 import { AR_TONE, AR_TONE_PATTERNS } from "./words.tone";
+import { PLAIN_AR, PLAIN_EN, cartAr, cartEn, cartHe } from "./words.plain";
 
 const fill = (text: string, args?: readonly unknown[]) =>
   args && args.length ? text.replace(/\{(\d+)\}/g, (m, i: string) => (Number(i) < args.length ? String(args[Number(i)] ?? "") : m)) : text;
@@ -42,8 +43,23 @@ export function toneAr(ar: string, to: ArabicTone = tone): string {
   return ar;
 }
 
+/**
+ * The clothes shop's words (the bag, the look, fabrics, hijabs) are the rose design's store's own;
+ * every other store speaks plainly (words.plain.ts). Set with the tone, from the store's theme.
+ */
+let plain = false;
+export function setPlainWords(next: boolean) {
+  plain = next;
+}
+
 /** The words for the page's language. */
 export function tr(lang: Lang, ar: string, en: string, args?: readonly unknown[]): string {
+  if (plain) {
+    if (lang === "ar") return cartAr(toneAr(PLAIN_AR[ar] ?? ar));
+    const line = PLAIN_EN[en] ?? en;
+    if (lang === "he") return fill(cartHe(HE[line] ?? line), args);
+    return fill(cartEn(line), args);
+  }
   if (lang === "ar") return toneAr(ar);
   if (lang === "he") return fill(HE[en] ?? en, args);
   return fill(en, args);
