@@ -4,7 +4,7 @@
 export type LibItem = { id: string; kind: string; cat?: string; name: string; brand: string; minH: number; blurb?: string; tags?: string[]; colors?: string[]; js: string; css: string };
 
 /** The styles' version (their content), so a new build of them is fetched again. */
-export const LIB_CSS_VERSION = "a4c93c492c";
+export const LIB_CSS_VERSION = "5a31450380";
 
 export const LIB_INDEX: readonly LibItem[] = [
  {"id":"site-caratprism","kind":"site","cat":"Diamond","name":"Carat & Prism","brand":"Carat & Prism","minH":900,"blurb":"Diamond house with a raymarched diamond that refracts light into colour and sits in a ring: cut, carat, colour and clarity change the stone and price, plus a physics gem bowl.","tags":["Raymarched diamond","Dispersion","Gem physics"],"colors":["#05060a","#bae6fd","#f5f5f4"],"css":"templates-sites-caratprism","js":"site-caratprism-BG6OX2J3.js"},

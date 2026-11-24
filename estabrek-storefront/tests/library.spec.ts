@@ -12,9 +12,9 @@ const painted = (page: Page, sel: string, rgb: string) =>
     const cs = getComputedStyle(el);
     return [cs.color, cs.backgroundColor, cs.borderTopColor, cs.fill, cs.stroke].includes(rgb);
   }), [sel, rgb] as const);
-/** How many of the page's stylesheets carry the library's own rules (not the shop's that leave its pieces alone). */
+/** The library's stylesheets on the page (their addresses, without the version): its shared one and its pieces' files'. */
 const libStyles = (page: Page) =>
-  page.evaluate(() => Array.from(document.styleSheets).filter((s) => { try { return Array.from(s.cssRules).some((r) => /^\.lx-scope[ .:[>]/.test(r.cssText)); } catch { return false; } }).length);
+  page.evaluate(() => Array.from(document.styleSheets).map((s) => s.href ?? "").filter((h) => h.includes("/library/")).map((h) => new URL(h).pathname));
 
 test.afterAll(async ({ request }) => {
   await request.post(`${API}/__test/library-page`, { data: {} });
@@ -67,7 +67,10 @@ test("a whole website and two sections from the library, in the store's name, th
   await faq.scrollIntoViewIfNeeded();
   await expect(faq).toContainText("Frequently asked questions");
   // Once, however many pieces the page shows.
-  expect(await libStyles(page)).toBe(1);
+  // The shared one once, however many pieces the page shows; each piece file's own once.
+  const sheets = await libStyles(page);
+  expect(sheets.filter((h) => h === "/library/lib.css")).toHaveLength(1);
+  expect([...sheets].sort()).toEqual(["/library/css/faq-faq.css", "/library/css/pricing-pricing.css", "/library/css/templates-sites-maison.css", "/library/lib.css"]);
   expect(errors).toEqual([]);
 
   // A page without library pieces never loads its styles, and the store wears its own bar there.
@@ -75,7 +78,7 @@ test("a whole website and two sections from the library, in the store's name, th
   await page.goto("/shop").catch(() => page.goto("/shop"));
   await page.waitForLoadState("networkidle").catch(() => {});
   await expect(page.locator(".lx-scope")).toHaveCount(0);
-  expect(await libStyles(page)).toBe(0);
+  expect(await libStyles(page)).toEqual([]);
   await expect(page.locator(".atelier-header").first()).toBeVisible();
 });
 
@@ -97,7 +100,13 @@ test("a piece turned right to left in Arabic words; any piece on its own at its 
   const row = await faq.evaluate((el) => {
     const q = Array.from(el.querySelectorAll("button")).find((b) => /free trial/.test(b.textContent ?? ""))!;
     const r = q.getBoundingClientRect();
-    const text = Array.from(q.querySelectorAll("*")).find((x) => /free trial/.test(x.textContent ?? "") && !x.children.length)!.getBoundingClientRect();
+    // The question's own words (a text in the button, wherever it sits).
+    const walker = document.createTreeWalker(q, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    while ((node = walker.nextNode()) && !/free trial/.test(node.textContent ?? ""));
+    const range = document.createRange();
+    range.selectNodeContents(node!);
+    const text = range.getBoundingClientRect();
     return { textRight: Math.round(r.right - text.right), textLeft: Math.round(text.left - r.left) };
   });
   expect(row.textRight).toBeLessThan(row.textLeft);
