@@ -384,6 +384,8 @@ export const ENTER_KINDS = [
   "fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn",
   "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw",
   "letters", "lines", "scramble", "typewriter", "count",
+  // From the theme library: a split-flap board's letters flipping to their own.
+  "flap",
 ] as const;
 // "type" types its words, waits and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
@@ -391,7 +393,8 @@ export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe
 // "sideways" holds it while what it holds slides along its row with the scroll (a horizontal gallery);
 // "count" counts its number up as it crosses the screen; "orbit" sends what it holds around a circle, along
 // an arc or a wave with the scroll; "draw" draws its lines with the scroll.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw"] as const;
+// From the theme library: "fan", "drift", "depth", "through", "timeline" (the shop's pageTree/scrollTricksLib.ts).
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw", "fan", "drift", "depth", "through", "timeline"] as const;
 /** The way "orbit" sends what it holds: around a circle, along an arc (a rainbow), or along a wave. */
 export const ORBIT_SHAPES = ["circle", "arc", "wave"] as const;
 // Then plays once as the mouse comes over it, a light following the mouse, a ripple where it's pressed, springy ones.
@@ -400,7 +403,8 @@ export const HOVER_KINDS = [
   "bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop",
   "spotlight", "ripple", "spring", "jelly",
 ] as const;
-export const FX_KINDS = ["shine", "gradient", "grain"] as const;
+// From the theme library, for words: letters that answer the pointer ("proximity"), words drawn in particles ("particles").
+export const FX_KINDS = ["shine", "gradient", "grain", "proximity", "particles"] as const;
 /** A picture's live effects (the shop's shared/pictureFx.ts PICTURE_FX). */
 export const PICTURE_FX = ["ripple", "liquid", "shift", "reveal"] as const;
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
@@ -711,6 +715,14 @@ export const NodeTriggers = z.array(NodeTrigger).max(8);
 
 /* ------------------------------------------------------------- each type */
 
+/** A section's WebGL background from the theme library (the shop's pageTree/shader.ts SHADER_KIND_LIST, same order). */
+export const SHADER_KINDS = [
+  "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
+  "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel", "gem",
+  // Physics and generative canvases (the shop's pageTree/fxEngines.ts).
+  "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo", "earth", "solar",
+] as const;
+
 /** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */
 export const SCENE_KINDS = [
   "constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix",
@@ -794,6 +806,19 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       intensity: z.number().finite().min(0).max(2).default(1),
       interactive: z.boolean().default(false),
     }).optional(),
+    // Pictures left along the pointer's way over it (the theme library's cursor trail): up to eight, and their size.
+    trail: z.object({ images: z.array(src).min(1).max(8), size: z.number().int().min(80).max(280).optional() }).optional(),
+    // A WebGL background from the theme library: its colours (unset: the shader's own), a rainbow one drawn in
+    // the colours instead (rainbow false), its speed, following the pointer, film grain, a veil for the words on it.
+    shader: z.object({
+      kind: z.enum(SHADER_KINDS),
+      bg: color.optional(), c1: color.optional(), c2: color.optional(), c3: color.optional(),
+      rainbow: z.boolean().optional(),
+      speed: z.number().finite().min(0).max(3).optional(),
+      mouse: z.boolean().optional(),
+      grain: z.number().finite().min(0).max(0.4).optional(),
+      veil: z.number().finite().min(0).max(0.85).optional(),
+    }).optional(),
     // Held on the screen while the page scrolls, then the section after it slides up over it from below
     // (a curtain): `hold` = screens it stays first; `under` = what it does while it's covered; `phone`
     // false = not on phones.
@@ -846,6 +871,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   text: z.object({ text: local(5000), rich: z.boolean().optional(), curve: Curve.optional() }),
   image: z.object({
     src, alt: local(200).optional(), href: href.optional(),
+    // A second picture seen through a light that follows the pointer (the theme library's flashlight).
+    flash: z.object({ src, radius: z.number().min(60).max(400).optional() }).optional(),
     // Its link opens in a new tab; it loads at once and first (a picture at the top of the page) instead of waiting
     // until it's near the screen.
     newTab: z.boolean().optional(),
@@ -1294,6 +1321,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     reverse: z.boolean().optional(),
     pause: z.boolean().optional(),
     separator: z.string().trim().max(4).optional(),
+    // Runs faster the faster the page scrolls, and turns round when it scrolls up (the theme library's).
+    velocity: z.boolean().optional(),
   }),
   roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram", "particles", "world", "rooms"]) }),
   legacy: z.object({ sectionId: id }),
@@ -1337,6 +1366,20 @@ for (const t of NODE_TYPES) {
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
   NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ cursorText: local(24).optional(), bind: NodeBind.optional(), styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
+
+/**
+ * What a box holds laid out in 3D (the shop's pageTree/spaceSpec.ts, from the theme library's 3D pieces): on a ring, up
+ * a helix, on a cube's faces, as a book's pages or a phone's screens. `speed` turns it by itself (0: only by hand,
+ * below 0 the other way), `drag` lets a visitor turn it, `tilt` leans a ring or a cube.
+ */
+export const SPACE_KINDS = ["ring", "helix", "cube", "book", "phone"] as const;
+const Space3d = z.object({
+  kind: z.enum(SPACE_KINDS),
+  speed: z.number().finite().min(-3).max(3).optional(),
+  drag: z.boolean().optional(),
+  tilt: z.number().finite().min(-30).max(30).optional(),
+}).strict();
+for (const t of ["stack", "grid", "cell"] as const) NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ space: Space3d.optional() });
 
 /**
  * An element's own speed settings (the editor's speed per element, docs/cms-big-engine-plan.ar.md J), on any kind

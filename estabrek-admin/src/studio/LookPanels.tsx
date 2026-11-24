@@ -11,7 +11,7 @@ import { tr } from "../lib/words";
 import { EaseChoice, staggerOrderNames } from "./EaseChoice";
 import { styleOp } from "./columns";
 import {
-  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, PHYSICS_FEEL, PHYSICS_LABEL, WORDS_ONLY, WORDY, hasNumber,
+  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, PHYSICS_FEEL, PHYSICS_LABEL, WORDS_FX, WORDS_ONLY, WORDY, hasNumber,
   drawingHasLines, drawingMorphs, hasPreset, lookOf, motionOp, placedOn, presetsFor, previewOf, shownLook, togglePreset,
   type Motion, type MotionKeys,
 } from "./look";
@@ -362,7 +362,7 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
       </Part>
 
       <Part title={tr("طبقة متحركة", "An animated layer")} open={Boolean(fx)}>
-        <Pick label={tr("الطبقة", "Layer")} value={fx?.kind ?? ""} busy={busy} options={[none, ...Object.keys(FX_LABEL).map((k): [string, string] => [k, FX_LABEL[k]()])]} onPick={(v) => part("fx", v ? { ...(fx ?? {}), kind: v } : undefined)} testId="studio-fx-kind" />
+        <Pick label={tr("الطبقة", "Layer")} value={fx?.kind ?? ""} busy={busy} options={[none, ...Object.keys(FX_LABEL).filter((k) => k === fx?.kind || !WORDS_FX.has(k) || WORDY.has(node.type)).map((k): [string, string] => [k, FX_LABEL[k]()])]} onPick={(v) => part("fx", v ? { ...(fx ?? {}), kind: v } : undefined)} testId="studio-fx-kind" />
         {fx ? (
           <>
             <Range label={tr("السرعة", "Speed")} min={0.2} max={5} step={0.1} busy={busy} value={fx.speed ?? 1} onSave={(v) => part("fx", { ...fx, speed: v })} />

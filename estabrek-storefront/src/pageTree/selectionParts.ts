@@ -40,7 +40,7 @@ export function targetSelector(target: string): string | null {
   return [part, `${part}.ar`, `${part}.en`, `${part}.he`].flatMap(p => [`${owner} [data-edit-box="${p}"][data-edit-box]`, `${owner} [data-edit="${p}"][data-edit]:not([data-edit-boxed])`]).concat(`${owner} [data-edit-media="${part}"][data-edit-media]`).join(",");
 }
 const CANDIDATES = "div,section,article,aside,header,footer,nav,main,form,fieldset,legend,label,input,textarea,select,span,strong,em,small,details,summary,table,thead,tbody,tr,th,td,ul,ol,li,figure,figcaption,blockquote,img,video,svg,canvas,picture,iframe,a,button,h1,h2,h3,h4,h5,h6,p,[data-cms-part],[data-part]";
-export const SELECTION_HELPERS = "input[type=hidden],.pt-fx,.pt-spot,.pt-particles,[data-pt-particles],.pt-edge,.pt-split-piece,.pt-mask-split-mask-piece-mask,.th-word,.th-char,.th-line,.th-mask-line-mask";
+export const SELECTION_HELPERS = "input[type=hidden],.pt-fx,.pt-tl-line,.pt-space-gear,.pt-fx-dots,.pt-trail,.pt-flash,.pt-spot,.pt-particles,[data-pt-particles],.pt-edge,.pt-split-piece,.pt-mask-split-mask-piece-mask,.th-word,.th-char,.th-line,.th-mask-line-mask";
 const semantic = (el: Element) => {
   const name = el.getAttribute("data-cms-part") ?? el.getAttribute("data-part");
   return name && /^[a-z0-9-]{1,40}$/.test(name) ? name : undefined;

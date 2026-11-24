@@ -8,7 +8,7 @@ import { adminLang } from "../lib/lang";
 import type { Motion } from "./look";
 
 type Scroll = NonNullable<Motion["scroll"]>;
-export type ScrollGroup = "enter" | "turn" | "parallax" | "pin" | "travel" | "words" | "lines";
+export type ScrollGroup = "enter" | "turn" | "parallax" | "pin" | "travel" | "scenes" | "words" | "lines";
 export type ScrollEffect = { key: string; group: ScrollGroup; name: () => string; scroll: Scroll; only?: ReadonlySet<string> };
 
 const say = (t: string) => () => { const [ar, en, he] = t.split("|"); return { ar, en, he: he ?? en }[adminLang()]; };
@@ -19,6 +19,9 @@ const WORDY = new Set(["heading", "text", "button"]);
 // What holds things that can travel around a circle, an arc or a wave; and what has lines to draw.
 const HOLDERS = new Set(["stack", "grid", "cell"]);
 const LINES = new Set(["svg", "icon", "divider"]);
+// The library's scroll scenes play on what a box or a section holds; the dive goes through a big word.
+const BOXES = new Set(["section", "stack", "grid", "cell"]);
+const BIG_WORDS = new Set(["heading", "text"]);
 
 export const SCROLL_EFFECTS: ScrollEffect[] = [
   S("fade-up", "enter", "يطلع ويوضح|Fades up into view|עולה ומתבהר", keys({ opacity: 0, y: 80 })),
@@ -56,6 +59,11 @@ export const SCROLL_EFFECTS: ScrollEffect[] = [
   S("orbit-ring-held", "travel", "دايرة بتلف وهي ثابتة|A ring that turns while held|טבעת שמסתובבת כשהיא נעצרת", { kind: "orbit", orbit: { shape: "circle", radius: 70, turn: 1 }, length: 150 }, HOLDERS),
   S("orbit-arc", "travel", "بيمشوا على قوس متل قوس قزح|They travel along an arc, like a rainbow|נעים לאורך קשת", { kind: "orbit", orbit: { shape: "arc", radius: 85, turn: 0.6 } }, HOLDERS),
   S("orbit-wave", "travel", "بيمشوا على موجة|They travel along a wave|נעים לאורך גל", { kind: "orbit", orbit: { shape: "wave", radius: 60, turn: 0.8 } }, HOLDERS),
+  S("fan-out", "scenes", "مروحة كروت بتنفرد مع التمرير|A fanned deck that spreads out as you scroll|חפיסה פרושה שנפתחת בגלילה", { kind: "fan" }, BOXES),
+  S("drift-columns", "scenes", "أعمدة بتمشي بسرعات مختلفة|Columns that drift at different speeds|עמודות שנעות במהירויות שונות", { kind: "drift", speed: 1 }, BOXES),
+  S("depth-tunnel", "scenes", "نفق بالعمق: بتطير من خلالهم|A depth tunnel: the page flies through them|מנהרת עומק: הדף עף דרכם", { kind: "depth", length: 300 }, BOXES),
+  S("dive-through", "scenes", "كلمة كبيرة بتغطس جواها|A big word the page dives into|מילה גדולה שהדף צולל לתוכה", { kind: "through", length: 250 }, BIG_WORDS),
+  S("scroll-timeline", "scenes", "خط زمني بيرسم حاله وبيضوي كل محطة|A timeline that draws itself and lights each step|ציר זמן שמצייר את עצמו ומאיר כל שלב", { kind: "timeline" }, BOXES),
   S("words-light", "words", "الكلمات تضوي مع التمرير|Words light up as you scroll|המילים נדלקות בגלילה", { kind: "words" }, WORDY),
   S("count-scroll", "words", "الرقم بيعدّ مع التمرير|The number counts with the scroll|המספר סופר עם הגלילה", { kind: "count" }, WORDY),
   S("draw-scroll", "lines", "الخطوط بترسم حالها مع التمرير|Its lines draw themselves as you scroll|הקווים מצטיירים בגלילה", { kind: "draw" }, LINES),
@@ -67,6 +75,7 @@ export const SCROLL_GROUPS: Array<[ScrollGroup, () => string]> = [
   ["parallax", say("عمق (بارالاكس)|Depth (parallax)|עומק (פרלקסה)")],
   ["pin", say("يثبت مكانه|Holds in place|נעצר במקום")],
   ["travel", say("بيمشوا مع التمرير|Travel with the scroll|נעים עם הגלילה")],
+  ["scenes", say("مشاهد التمرير|Scroll scenes|סצנות גלילה")],
   ["words", say("الكلام|The words|המילים")],
   ["lines", say("الخطوط|The lines|הקווים")],
 ];

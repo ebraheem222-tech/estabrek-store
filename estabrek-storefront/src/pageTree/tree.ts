@@ -163,6 +163,7 @@ import { autoNeeded, perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 import { videoPlay } from "./videoPlay";
 import { pictureFxOf } from "../../../shared/pictureFx";
+import { flashOf } from "./pointerSpec";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
 
@@ -206,13 +207,19 @@ export const ENTER_KINDS = [
   "fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn",
   "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw",
   "letters", "lines", "scramble", "typewriter", "count",
+  // From the theme library: a split-flap board's letters flipping to their own (Arabic: its words flip in).
+  "flap",
 ] as const;
 // "type" types its words, waits, and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
 // "words" lights its words up one by one with the scroll; "pin" holds a section in place for `length` % of a screen;
 // "sideways" holds it while what it holds slides along its row with the scroll; "count" counts its number up as
 // it crosses the screen; "orbit" sends what it holds around a circle, along an arc or a wave; "draw" draws its lines.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw"] as const;
+// From the theme library: "fan" what it holds starts gathered in a fanned deck and spreads to its places; "drift" what
+// it holds drifts at different speeds; "depth" held while the page flies through what it holds, one after another in
+// depth; "through" a huge word the page dives through, held, before what's around it comes in; "timeline" a line
+// down its side draws with the scroll and each thing it holds lights up as it's reached.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw", "fan", "drift", "depth", "through", "timeline"] as const;
 export const ORBIT_SHAPES = ["circle", "arc", "wave"] as const;
 // Then one-time plays as the mouse comes over it, a light that follows the mouse, a ripple where it's
 // pressed (a finger too), and springy ones (Motion's springs): it follows the mouse, or wobbles like jelly.
@@ -221,7 +228,9 @@ export const HOVER_KINDS = [
   "bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop",
   "spotlight", "ripple", "spring", "jelly",
 ] as const;
-export const FX_KINDS = ["shine", "gradient", "grain"] as const;
+// From the theme library, for words: "proximity" its letters grow, thicken and take the colour near the pointer;
+// "particles" its words drawn in particles that scatter from the pointer and gather again (a press scatters them all).
+export const FX_KINDS = ["shine", "gradient", "grain", "proximity", "particles"] as const;
 // "fall" speeds up as it goes (a fall), the rest slow down as they arrive or glide.
 export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear", "fall"] as const;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
@@ -314,6 +323,8 @@ export function framed(n: TreeNode, motion = motionOf(n)): boolean {
   if (n.type !== "image" && n.type !== "video") return false;
   // A picture's live effect is a canvas over it (pictureFxRun.ts): it needs the frame to sit in.
   if (n.type === "image" && pictureFxOf(n.props?.glfx)) return true;
+  // A flashlight's second picture (PointerParts.tsx FlashReveal) sits in the frame over it.
+  if (n.type === "image" && flashOf(n.props?.flash)) return true;
   const s = n.style ?? {};
   const pieces = Boolean(n.props?.layers?.before || n.props?.layers?.after || motion?.keys?.parts.before || motion?.keys?.parts.after || motion?.keys?.parts.inner);
   return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom" || pieces || (n.type === "image" && n.props?.sparkle?.points?.length));

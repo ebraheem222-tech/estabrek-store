@@ -173,9 +173,34 @@ export function ImageCards({ node, lang, busy, onOps }: Props) {
         {href ? <Toggle label={say("بيفتح بصفحة جديدة|Opens in a new tab|נפתח בלשונית חדשה")} on={p.newTab === true} busy={busy} onChange={(on) => patch(say("رابط الصورة|The picture's link|קישור התמונה"), { newTab: on || undefined })} testId="studio-image-newtab" /> : null}
         <div className={part}>{say("التحميل|Loading|טעינה")}</div>
         <Toggle label={say("بتتحمّل أول إشي (صورة براس الصفحة)|Loads first (a picture at the top of the page)|נטענת ראשונה (תמונה בראש העמוד)")} on={p.priority === true} busy={busy} onChange={(on) => patch(say("تحميل الصورة|The picture's loading|טעינת התמונה"), { priority: on || undefined })} testId="studio-image-priority" />
+        <FlashCard p={p} busy={busy} patch={patch} />
         <p className={hint}>{say("باقي الصور بتستنى لتقرب من الشاشة، وهيك الصفحة بتفتح أسرع. أول صورة بالصفحة بتتحمّل أول إشي لحالها.|Other pictures wait until they're near the screen, so the page opens faster. The page's first picture loads first by itself.|שאר התמונות ממתינות עד שהן קרובות למסך, כך העמוד נפתח מהר יותר. התמונה הראשונה בעמוד נטענת ראשונה מעצמה.")}</p>
       </div>
     </>
+  );
+}
+
+/** A flashlight (the theme library's): a second picture seen through a light that follows the pointer over this one. */
+function FlashCard({ p, busy, patch }: { p: Record<string, unknown>; busy: boolean; patch: (label: string, more: Record<string, unknown>) => void }) {
+  const [library, setLibrary] = useState(false);
+  const flash = p.flash && typeof p.flash === "object" ? (p.flash as { src?: string; radius?: number }) : null;
+  const label = say("الضو الكاشف|The flashlight|הפנס החושף");
+  return (
+    <div className="space-y-1.5" data-testid="studio-image-flash">
+      <div className={part}>{say("ضو بيكشف صورة تانية تحتها|A light that shows a second picture under it|אור שחושף תמונה שנייה מתחת")}</div>
+      {flash?.src ? <img src={flash.src} alt="" className="h-16 w-full rounded-lg object-cover opacity-80" /> : null}
+      <div className="flex gap-1">
+        <button type="button" className={btn} disabled={busy} onClick={() => setLibrary(true)} data-testid="studio-flash-pick">{flash?.src ? say("غيّر الصورة المخبّاية|Change the hidden picture|החלפת התמונה המוסתרת") : say("اختار صورة مخبّاية|Pick a hidden picture|בחירת תמונה מוסתרת")}</button>
+        {flash?.src ? <button type="button" className={btn} disabled={busy} onClick={() => patch(label, { flash: undefined })} data-testid="studio-flash-remove">{say("شيله|Remove it|הסרה")}</button> : null}
+      </div>
+      {flash?.src ? (
+        <label className="block text-[11px] text-white/55">
+          {say("حجم الضو|The light's size|גודל האור")}
+          <input type="range" min={60} max={400} step={10} disabled={busy} defaultValue={flash.radius ?? 170} onPointerUp={(e) => patch(label, { flash: { ...flash, radius: Number(e.currentTarget.value) } })} onKeyUp={(e) => patch(label, { flash: { ...flash, radius: Number(e.currentTarget.value) } })} className="mt-1 w-full" data-testid="studio-flash-radius" />
+        </label>
+      ) : null}
+      <MediaLibraryModal open={library} onClose={() => setLibrary(false)} title={say("الصورة المخبّاية|The hidden picture|התמונה המוסתרת")} onSelect={(u) => { setLibrary(false); patch(label, { flash: { ...(flash ?? {}), src: u } }); }} />
+    </div>
   );
 }
 

@@ -7,6 +7,7 @@
  */
 import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { tr } from "../lib/words";
+import { say } from "./say";
 
 export type Look = Record<string, unknown>;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
@@ -14,7 +15,7 @@ export type Motion = {
   engine?: "gsap" | "anime";
   // `ease`: an own name (EASE_LABEL) or a free curve's text; `order`: which goes first in a stagger (EaseChoice.tsx).
   enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number; order?: string };
-  scroll?: { kind: "parallax" | "keys" | "words" | "pin" | "sideways" | "count" | "orbit" | "draw"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: "circle" | "arc" | "wave"; radius?: number; turn?: number } };
+  scroll?: { kind: "parallax" | "keys" | "words" | "pin" | "sideways" | "count" | "orbit" | "draw" | "fan" | "drift" | "depth" | "through" | "timeline"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: "circle" | "arc" | "wave"; radius?: number; turn?: number } };
   /** Its own keyframes, 0–100 %, for itself and its pieces (keyframes.ts). */
   keys?: Record<string, unknown>;
   /** When it shows inside a scroll scene (scrollScene.ts). */
@@ -126,9 +127,10 @@ export const ENTER_LABEL: Record<string, () => string> = {
   scramble: () => tr("حروف ملخبطة بتترتّب", "Scrambled letters falling into place"),
   typewriter: () => tr("آلة كاتبة", "Typewriter"),
   count: () => tr("الرقم بيعدّ لحاله", "Its number counts up"),
+  flap: () => say("لوح حروف بيقلب متل المطارات|A split-flap board, like an airport's|לוח אותיות מתהפך כמו בשדה תעופה"),
 };
 /** Coming in that only words have. */
-export const WORDS_ONLY = new Set(["words", "letters", "lines", "scramble", "typewriter", "count"]);
+export const WORDS_ONLY = new Set(["words", "letters", "lines", "scramble", "typewriter", "count", "flap"]);
 export const LOOP_LABEL: Record<string, () => string> = {
   float: () => tr("يطفو", "Floats"),
   pulse: () => tr("ينبض", "Pulses"),
@@ -171,7 +173,11 @@ export const FX_LABEL: Record<string, () => string> = {
   shine: () => tr("لمعة ماشية", "Running shine"),
   gradient: () => tr("ألوان ماشية", "Moving colours"),
   grain: () => tr("حبيبات فيلم", "Film grain"),
+  proximity: () => say("حروف بتكبر وبتتلوّن قرب الماوس|Letters grow and colour near the pointer|אותיות גדלות ונצבעות ליד העכבר"),
+  particles: () => say("كلام من جزيئات بتهرب من الماوس|Words of particles that flee the pointer|מילים מחלקיקים שבורחים מהעכבר"),
 };
+/** The animated layers only words have. */
+export const WORDS_FX = new Set(["proximity", "particles"]);
 export const EASE_LABEL: Record<string, () => string> = {
   smooth: () => tr("ناعمة", "Smooth"),
   soft: () => tr("هادية", "Gentle"),
@@ -220,6 +226,9 @@ export const MOTION_PRESETS: MotionPreset[] = [
   { key: "words-zoom", label: () => tr("بيكبر لمكانه", "Zooms into place"), motion: { enter: { kind: "zoom-in", duration: 0.8, ease: "back" } }, only: WORDY },
   { key: "typewriter-slow", label: () => tr("آلة كاتبة بطيئة", "Slow typewriter"), motion: { enter: { kind: "typewriter", duration: 3 } }, only: WORDY },
   { key: "scramble-fast", label: () => tr("حروف بتترتّب بسرعة", "Quick unscramble"), motion: { enter: { kind: "scramble", duration: 0.8 } }, only: WORDY },
+  { key: "flap", label: () => say("لوح حروف بيقلب|Split-flap letters|אותיות מתהפכות"), motion: { enter: { kind: "flap", duration: 0.9 } }, only: WORDY },
+  { key: "proximity", label: () => say("حروف بتلحق الماوس|Letters that answer the pointer|אותיות שעונות לעכבר"), motion: { fx: { kind: "proximity", color: "accent" } }, only: WORDY },
+  { key: "particles", label: () => say("كلام من جزيئات|Words of particles|מילים מחלקיקים"), motion: { fx: { kind: "particles" } }, only: WORDY },
   { key: "colours-moving", label: () => tr("ألوان ماشية بالكلام", "Colours moving through the words"), motion: { fx: { kind: "gradient", speed: 1 } }, only: WORDY },
   { key: "pin", label: () => tr("بيثبت والصفحة ماشية", "Holds while the page scrolls"), motion: { scroll: { kind: "pin", length: 100 } }, only: new Set(["section"]) },
   { key: "wipe", label: () => tr("بينكشف بالمسح", "Wipes in"), motion: { enter: { kind: "wipe-start", duration: 1, ease: "strong" } } },

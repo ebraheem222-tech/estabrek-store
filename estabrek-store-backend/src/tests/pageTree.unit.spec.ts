@@ -511,6 +511,54 @@ describe("checking a page tree", () => {
     expect(issuesOf(one({ item: "site-maison", dir: "up" })).length).toBeGreaterThan(0);
   });
 
+  test("a section's WebGL background from the theme library, in the owner's colours", () => {
+    const one = (shader: unknown) => ({ version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: { shader }, children: [] }] } });
+    const ok = (shader: unknown) => checkTree(one(shader)).ok;
+    expect(ok({ kind: "aurora" })).toBe(true);
+    expect(ok({ kind: "tunnel", bg: "#000000", c1: "accent", c2: "#1ad9ff", c3: "text", rainbow: false, speed: 1.5, mouse: false, grain: 0.12, veil: 0.4 })).toBe(true);
+    // A shader the library doesn't have; a colour that isn't one; numbers out of their range.
+    expect(issuesOf(one({ kind: "lava-lamp" })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ kind: "aurora", c1: "url(x)" })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ kind: "aurora", speed: 9 })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ kind: "aurora", veil: 1 })).length).toBeGreaterThan(0);
+  });
+
+  test("the theme library's text and pointer tricks: flap, proximity, particles, flashlight, trail, scroll-speed marquee", () => {
+    const page = (children: unknown[]) => ({ version: 1, root: { id: "page", type: "page", props: {}, children } });
+    const sec = (props: Record<string, unknown>, kids: unknown[] = []) => page([{ id: "s", type: "section", props, children: kids }]);
+    const heading = (motion: unknown) => sec({}, [{ id: "h", type: "heading", props: { text: { ar: "أهلاً" } }, motion }]);
+    expect(checkTree(heading({ enter: { kind: "flap", duration: 1 } })).ok).toBe(true);
+    expect(checkTree(heading({ fx: { kind: "proximity", color: "accent" } })).ok).toBe(true);
+    expect(checkTree(heading({ fx: { kind: "particles", color: "#16a34a", to: "accent" } })).ok).toBe(true);
+    expect(checkTree(sec({}, [{ id: "i", type: "image", props: { src: "/a.jpg", flash: { src: "/b.jpg", radius: 220 } } }])).ok).toBe(true);
+    expect(issuesOf(sec({}, [{ id: "i", type: "image", props: { src: "/a.jpg", flash: { src: "javascript:x" } } }])).length).toBeGreaterThan(0);
+    expect(checkTree(sec({ trail: { images: ["/a.jpg", "/b.jpg"], size: 160 } })).ok).toBe(true);
+    expect(issuesOf(sec({ trail: { images: [] } })).length).toBeGreaterThan(0);
+    expect(issuesOf(sec({ trail: { images: Array.from({ length: 9 }, (_, i) => `/${i}.jpg`) } })).length).toBeGreaterThan(0);
+    expect(checkTree(sec({}, [{ id: "m", type: "marquee", props: { items: [{ ar: "عرض" }], velocity: true } }])).ok).toBe(true);
+    expect(checkTree(sec({ shader: { kind: "goo" } })).ok).toBe(true);
+    expect(checkTree(sec({ shader: { kind: "field" } })).ok).toBe(true);
+  });
+
+  test("the theme library's 3D: a box's things on a ring, a helix, a cube, in a book or a phone; a diamond, a world, a solar system", () => {
+    const page = (children: unknown[]) => ({ version: 1, root: { id: "page", type: "page", props: {}, children } });
+    const sec = (props: Record<string, unknown>, kids: unknown[] = []) => page([{ id: "s", type: "section", props, children: kids }]);
+    const box = (space: unknown, type = "stack") => sec({}, [{ id: "k", type, props: { space }, children: [{ id: "a", type: "text", props: { text: { ar: "أ" } } }] }]);
+    for (const kind of ["ring", "helix", "cube", "book", "phone"]) {
+      const r = checkTree(box({ kind }));
+      expect(r.ok).toBe(true);
+      if (r.ok) expect((r.tree as any).root.children[0].children[0].props.space).toEqual({ kind });
+    }
+    expect(checkTree(box({ kind: "ring", speed: -1.5, drag: false, tilt: -12 }, "grid")).ok).toBe(true);
+    const cell = { id: "c", type: "cell", props: { space: { kind: "book", speed: 0 } }, children: [{ id: "p1", type: "text", props: { text: { ar: "ص" } } }] };
+    expect(checkTree(sec({}, [{ id: "cols", type: "columns", props: {}, children: [cell] }])).ok).toBe(true);
+    expect(issuesOf(box({ kind: "warp" })).length).toBeGreaterThan(0);
+    expect(issuesOf(box({ kind: "ring", tilt: 90 })).length).toBeGreaterThan(0);
+    expect(issuesOf(box({ kind: "cube", speed: 9 })).length).toBeGreaterThan(0);
+    expect(issuesOf(box({ kind: "ring", spin: true })).length).toBeGreaterThan(0);
+    for (const kind of ["gem", "earth", "solar"]) expect(checkTree(sec({ shader: { kind } })).ok).toBe(true);
+  });
+
   test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
     const one = (n: unknown, sec: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props: { smooth: true }, children: [{ id: "s", type: "section", props: sec, children: [n] }] } });
     const ok = (n: unknown, sec?: Record<string, unknown>) => checkTree(one(n, sec)).ok;

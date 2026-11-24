@@ -25,6 +25,11 @@ describe("scroll tricks in the editor", () => {
     expect(keys("heading")).toContain("count-scroll");
     expect(keys("heading")).not.toContain("orbit-ring");
     expect(keys("svg")).toContain("draw-scroll");
+    // The library's scroll scenes: on what a box or a section holds, and the dive through a big word.
+    for (const t of ["section", "stack", "grid"]) expect(keys(t)).toEqual(expect.arrayContaining(["fan-out", "drift-columns", "depth-tunnel", "scroll-timeline"]));
+    expect(keys("heading")).toContain("dive-through");
+    expect(keys("image")).not.toContain("fan-out");
+    expect(keys("stack")).not.toContain("dive-through");
     // Every orbit the editor offers is one the shop can place.
     for (const e of SCROLL_EFFECTS.filter((x) => x.scroll.kind === "orbit")) expect(orbitSpot(e.scroll.orbit!.shape, 0, 3, 0.3, e.scroll.orbit!.turn ?? 0.5, 800, e.scroll.orbit!.radius ?? 45).opacity).toBeGreaterThanOrEqual(0);
   });

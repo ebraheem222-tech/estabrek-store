@@ -20,6 +20,8 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { studioLink } from "./studioLink";
 import { ARABIC, countUpText, scrambleChars } from "./textMotion";
+import { fxColour, fxPaint, particles, proximity } from "./wordFx";
+import { scrollTrick } from "./scrollTricksLib";
 import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { EASE_MAP, keyGlide, keySteps, originCss, type KeysSpec } from "./keyframes";
@@ -194,6 +196,30 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       const text = target.textContent ?? "";
       if (target.children.length === 0 && text.trim()) gsap.to(target, { scrambleText: { text, chars: scrambleChars(text), revealDelay: duration * 0.3, speed: 0.6 }, ...vars, ease: "none", scrollTrigger: sight });
       else gsap.fromTo(el, { opacity: 0 }, { opacity: Number(getComputedStyle(el).opacity) || 1, ...vars, scrollTrigger: sight });
+    } else if (e.kind === "flap") {
+      // A split-flap board (the theme library's): each letter flips through the board's letters to its own.
+      // Arabic flips in word by word, so its letters stay joined.
+      const joined = ARABIC.test(el.textContent ?? "");
+      const target = textTarget();
+      const split = SplitText.create(target, { type: joined ? "words" : "words,chars", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece pt-flap", linesClass: "pt-split-piece" });
+      const parts = (joined ? split.words : split.chars) as HTMLElement[];
+      if (joined) gsap.fromTo(parts, { rotateX: -90, autoAlpha: 0, transformOrigin: "50% 0%" }, { rotateX: 0, autoAlpha: 1, stagger: wait(e.stagger || 0.08), ...vars, ease: "back.out(2)", scrollTrigger: sight });
+      else {
+        const board = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-";
+        const step = Math.max(0.04, duration / 12);
+        const tl = gsap.timeline({ delay, scrollTrigger: sight });
+        parts.forEach((p, i) => {
+          const own = p.textContent ?? "";
+          if (!own.trim()) return;
+          const flips = 4 + (i % 5);
+          const at = i * (e.stagger || 0.035);
+          for (let k = 0; k <= flips; k++) {
+            const ch = k === flips ? own : board[(Math.random() * board.length) | 0];
+            tl.call(() => void (p.textContent = ch), undefined, at + k * step);
+            tl.fromTo(p, { rotateX: -80, opacity: 0.4 }, { rotateX: 0, opacity: 1, duration: step * 0.9, ease: "none", immediateRender: false }, at + k * step);
+          }
+        });
+      }
     } else if (e.kind === "count") {
       // The first number in its words counts up to itself.
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -300,6 +326,9 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
           kids.forEach((k) => ["translate", "scale", "opacity", "z-index"].forEach((x) => k.style.removeProperty(x)));
         });
       }
+    } else if (s.kind === "fan" || s.kind === "drift" || s.kind === "depth" || s.kind === "through" || s.kind === "timeline") {
+      // The theme library's scroll tricks (docs/themes-library-plan.ar.md 3.4): scrollTricksLib.ts.
+      off.push(scrollTrick(gsap, ScrollTrigger, el, s.kind, { speed: s.speed, length: s.length, rtl: env.rtl }));
     } else if (s.kind === "parallax") {
       const d = 120 * (s.speed ?? 0.4);
       gsap.fromTo(el, { "--pt-my": `${-d}px` }, { "--pt-my": `${d}px`, ease: "none", scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: true } });
@@ -342,6 +371,23 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     off.push(() => el.removeEventListener(type, listener));
   };
   // A ripple where it's pressed, by a mouse or a finger.
+  // Words' live effects from the theme library (wordFx.ts): letters that answer the pointer, words of particles.
+  if ((m.fx?.kind === "proximity" || m.fx?.kind === "particles") && !lite && (el.textContent ?? "").trim()) {
+    const joined = ARABIC.test(el.textContent ?? "");
+    const pieces = () => {
+      const split = SplitText.create(textTarget(), { type: joined ? "words" : "words,chars", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
+      return { parts: (joined ? split.words : split.chars) as HTMLElement[], done: () => split.revert() };
+    };
+    const tint = fxColour(el);
+    if (m.fx.kind === "proximity") {
+      if (env.mouse) off.push(proximity(el, pieces().parts, tint));
+    } else {
+      const to = el.querySelector<HTMLElement>(":scope > .pt-fx");
+      const second = to ? getComputedStyle(to).getPropertyValue("--pt-fxc2").trim() : "";
+      off.push(particles(el, pieces, tint, second ? fxPaint(el, second) : ""));
+    }
+  }
+
   if (m.hover?.kind === "ripple" && !lite) {
     on("pointerdown", (e) => {
       const r = el.getBoundingClientRect();
