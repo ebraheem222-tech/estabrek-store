@@ -58,6 +58,8 @@ import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
 import type { ShareNetwork } from "./ProWidgets";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
+import { LibBlock } from "@/library/LibBlock";
+import { libItem } from "@/library/meta";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -477,6 +479,21 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
           {fx}
         </span>
       );
+    }
+    case "lib": {
+      // A piece of the owner's theme library (src/library, docs/themes-library-plan.ar.md): as the library made
+      // it, in the owner's own words (in this page's language) and colours.
+      const item = libItem(p.item);
+      if (!item) return null;
+      const words: Record<string, string> = {};
+      if (p.words && typeof p.words === "object" && !Array.isArray(p.words)) {
+        for (const [from, to] of Object.entries(p.words as Record<string, unknown>).slice(0, 600)) {
+          const v = say(to as never);
+          if (from.length <= 400 && typeof v === "string" && v.length <= 600) words[from] = v;
+        }
+      }
+      const brand = say(p.brand);
+      return <div className={cls(node)} {...mark}><LibBlock item={item.id} words={words} colours={p.colours} families={p.families} brand={brand || undefined} />{fx}</div>;
     }
     case "showcase": {
       const spec = showcaseOf(p);

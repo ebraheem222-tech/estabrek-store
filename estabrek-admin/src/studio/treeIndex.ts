@@ -80,6 +80,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   hotspots: () => tr("صورة بنقاط", "Picture with points"),
   map: () => tr("خريطة", "Map"),
   popup: () => tr("نافذة منبثقة", "Popup"),
+  lib: () => say("قطعة من المكتبة|Library piece|פריט מהספרייה"),
   search: () => tr("خانة بحث", "Search box"),
   menu: () => tr("قائمة روابط", "Menu of links"),
   toc: () => say("فهرس الصفحة|Table of contents|תוכן העניינים"),

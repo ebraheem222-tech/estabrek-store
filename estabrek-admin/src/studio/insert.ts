@@ -19,6 +19,7 @@ import { readyScrollStory, readyScrollVideo, readyScrollZoom } from "./scrollSce
 import { readyCover } from "./coverPin";
 import { readyCounters, readyOrbit, readyPaint, readyPortal } from "./scrollTricks";
 import type { Extra, TreeIndex } from "./treeIndex";
+import { makeLibNode, type LibKind } from "./library";
 
 export type Where = "before" | "after" | "inside";
 /** A point inside a section or scene, in % of it (x from the line's start, y from its top). */
@@ -58,8 +59,8 @@ export function sceneOf(c: InsertCtx, id: string): string | null {
   return n?.type === "roseBlock" ? String(n.props.block) : null;
 }
 
-/** What's added at the page's own level comes in a section of its own (a section goes as it is). */
-export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" || node.type === "popup" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
+/** What's added at the page's own level comes in a section of its own (a section, and a library piece, go as they are). */
+export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" || node.type === "popup" || node.type === "lib" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
 
 const round = (v: number) => Math.round(Math.max(0, Math.min(100, v)));
 /** The node placed freely at a spot of what holds it. */
@@ -132,13 +133,13 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /** Ready-made blocks: a few elements already put together. */
 export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer", "ready-scroll-video", "ready-scroll-story", "ready-scroll-zoom", "ready-cover", "ready-orbit", "ready-counters", "ready-portal", "ready-paint"] as const;
 export type ReadyKind = (typeof READY)[number];
-export type AddKind = NewKind | ReadyKind | ReferenceKind | LiveKind | "section";
+export type AddKind = NewKind | ReadyKind | ReferenceKind | LiveKind | LibKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
 export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image", scrollScene: "video", "ready-scroll-video": "video", "ready-scroll-story": "image", "ready-scroll-zoom": "image", "ready-cover": "image", "ready-portal": "image" };
 
 /** A new element, ready block or empty section, in the language being edited. */
 export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): PageTreeNode {
-  const reference = makeReferenceSection(kind, lang, ids, src) ?? makeLiveSection(kind, lang, ids);
+  const reference = makeLibNode(kind, lang, ids) ?? makeReferenceSection(kind, lang, ids, src) ?? makeLiveSection(kind, lang, ids);
   if (reference) return reference;
   const el = (k: NewKind, s?: string) => newElement(k, lang, ids, s);
   const centred = { base: { textAlign: "center", align: "center" } };

@@ -495,6 +495,19 @@ describe("checking a page tree", () => {
     expect(issuesOf(tree({}, { base: { shape: "octopus" } })).length).toBeGreaterThan(0);
   });
 
+  test("a piece of the theme library, in the owner's words and colours", () => {
+    const one = (props: unknown) => ({ version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "x", type: "lib", props }] } });
+    const ok = (props: unknown) => checkTree(one(props)).ok;
+    expect(ok({ item: "site-maison" })).toBe(true);
+    expect(ok({ item: "site-maison", brand: { ar: "متجر نور", en: "Noor Store" }, words: { "Shop the collection": { ar: "تسوّقوا المجموعة" } }, colours: { c8a75d: "#2563eb" }, families: { stone: "#1e293b", indigo: "theme" } })).toBe(true);
+    // An item is a plain name; colours are 6-digit ones; a family is one of Tailwind's.
+    expect(issuesOf(one({ item: "../x" })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ item: "site-maison", colours: { c8a75d: "red" } })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ item: "site-maison", colours: { "url(x)": "#000000" } })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ item: "site-maison", families: { brand: "#000000" } })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ item: "site-maison", words: { "Hi": { ar: "x".repeat(601) } } })).length).toBeGreaterThan(0);
+  });
+
   test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
     const one = (n: unknown, sec: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props: { smooth: true }, children: [{ id: "s", type: "section", props: sec, children: [n] }] } });
     const ok = (n: unknown, sec?: Record<string, unknown>) => checkTree(one(n, sec)).ok;

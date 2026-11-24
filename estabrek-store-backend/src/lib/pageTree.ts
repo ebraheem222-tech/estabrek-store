@@ -40,6 +40,7 @@ export const NODE_TYPES = [
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
   "toc", "flipBox", "share", "progress", "headline", "storyBar",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
+  "lib",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -51,7 +52,8 @@ export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 export const SLIDER_LIMITS = { slides: 12, minSeconds: 2, maxSeconds: 30 } as const;
 /** Nodes that sit straight under the page, and only there. */
 // A popup sits on the page like a section and holds content like one; it shows over the page when its moment comes.
-export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy", "block", "popup"]);
+// A theme library piece (lib) is a whole section of its own (or a whole website), so it sits on the page too.
+export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy", "block", "popup", "lib"]);
 /**
  * An old section or a rose scene can hold objects placed freely over it (words, a picture,
  * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
@@ -897,6 +899,22 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     loop: z.boolean().optional(),
     speed: z.number().min(0.1).max(4).optional(),
     label: local(120).optional(),
+  }),
+  // A piece of the owner's theme library (the shop's src/library, docs/themes-library-plan.ar.md): which item, the
+  // owner's own words for its texts (the library's text → theirs, in each language), the store's name for its
+  // made-up one, and its colours (a colour as the library wrote it, 6 digits → the owner's; a Tailwind colour
+  // family it uses → one colour, or "theme" for the store theme's accent).
+  lib: z.object({
+    item: z.string().trim().regex(/^[a-z][a-z0-9-]{1,60}$/, "A library item's id"),
+    words: z.record(z.string().min(1).max(400), local(600)).refine((w) => Object.keys(w).length <= 600, "At most 600 words").optional(),
+    brand: local(80).optional(),
+    colours: z.record(z.string().regex(/^[0-9a-f]{6}$/), z.string().trim().regex(/^#[0-9a-f]{6}$/i)).refine((c) => Object.keys(c).length <= 200, "At most 200 colours").optional(),
+    families: z
+      .record(
+        z.string().regex(/^(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)$/, "One of Tailwind's colour families"),
+        z.union([z.string().trim().regex(/^#[0-9a-f]{6}$/i), z.literal("theme")]),
+      )
+      .optional(),
   }),
   rive: z.object({
     src: src.refine((v) => /\.riv([?#]|$)/i.test(v), "A Rive file ends in .riv").optional(),
