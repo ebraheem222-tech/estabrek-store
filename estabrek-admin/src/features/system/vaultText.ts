@@ -42,7 +42,12 @@ export function eventText(e: VaultEvent) {
 /** Problems with the events (refusals) stand out. */
 export const eventTone = (e: VaultEvent) => (e.event === "refused" ? "bad" : e.event.startsWith("session") ? "info" : "plain");
 
-/** The command the owner runs on her PC to build the launcher for this shop. */
+/** The launcher on offer, downloaded from this shop's API (apiBase ends with /v1). */
+export function launcherDownloadUrl(apiBase: string) {
+  return `${(apiBase || "").replace(/\/+$/, "")}/licences/launcher/download`;
+}
+
+/** The command the owner runs on her PC to build a launcher of her own for this shop. */
 export function buildCommand(apiBase: string, version: string) {
   const api = (apiBase || "").replace(/\/v1\/?$/, "").replace(/\/+$/, "");
   return `powershell -ExecutionPolicy Bypass -File estabrek-launcher\\build.ps1 -ApiUrl ${api || "https://YOUR-API"} -Version ${version}`;

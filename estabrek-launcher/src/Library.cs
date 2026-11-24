@@ -40,26 +40,37 @@ namespace Estabrek.Launcher
             }
         }
 
+        /** Her products from this shop. Another shop's launcher keeps its own here too: those are skipped. */
         public static List<Owned> All(List<string> unreadable)
         {
             var list = new List<Owned>();
             foreach (string dir in Directory.GetDirectories(Root))
             {
                 if (Path.GetFileName(dir) == "run") continue;
-                Owned o = Load(dir);
+                bool foreign;
+                Owned o = Load(dir, out foreign);
                 if (o != null) list.Add(o);
-                else if (unreadable != null) unreadable.Add(Path.GetFileName(dir));
+                else if (!foreign && unreadable != null) unreadable.Add(Path.GetFileName(dir));
             }
             return list;
         }
 
         public static Owned Load(string dir)
         {
+            bool foreign;
+            return Load(dir, out foreign);
+        }
+
+        /** foreign: it opened, but its licence is signed by a key this copy doesn't carry. */
+        public static Owned Load(string dir, out bool foreign)
+        {
+            foreign = false;
             try
             {
                 byte[] sealedBytes = File.ReadAllBytes(Path.Combine(dir, "licence.dat"));
                 byte[] plain = ProtectedData.Unprotect(sealedBytes, Entropy, DataProtectionScope.CurrentUser);
                 var d = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(plain));
+                foreign = LicenceToken.ForeignKey(LicenceToken.Str(d, "token"));
                 var o = new Owned
                 {
                     Id = Path.GetFileName(dir),

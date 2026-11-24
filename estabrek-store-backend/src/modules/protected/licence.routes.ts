@@ -5,7 +5,7 @@
  *   POST /v1/licences/activate            serial + PC → a licence signed for that PC
  *   POST /v1/licences/check               the launcher's periodic check → a fresh licence
  *   GET  /v1/licences/launcher            the launcher on offer (version, size)
- *   GET  /v1/licences/launcher/download   the launcher itself
+ *   GET  /v1/licences/launcher/download   the launcher itself (the ready one carries this shop's address, name and keys)
  */
 import { Router } from "express";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { activate, checkLicence, publicKeys } from "./activation.service.js";
 import { currentLauncher, launcherFile } from "./launcher.service.js";
+import { publicOrigin } from "./launcherStamp.js";
 
 const r = Router();
 r.use((_req, res, next) => {
@@ -64,8 +65,8 @@ r.get(
 
 r.get(
   "/launcher/download",
-  asyncHandler(async (_req, res) => {
-    const f = await launcherFile();
+  asyncHandler(async (req, res) => {
+    const f = await launcherFile(publicOrigin(req));
     res.setHeader("Content-Type", "application/vnd.microsoft.portable-executable");
     res.setHeader("Content-Disposition", `attachment; filename="${f.filename}"`);
     res.setHeader("Content-Length", String(f.data.length));

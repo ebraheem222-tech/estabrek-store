@@ -13,6 +13,9 @@ import { env } from "../config/env.js";
 import { releaseOrder } from "../modules/fulfillment/fulfillment.service.js";
 import { readEncryptedZip } from "../modules/protected/zipAes.js";
 import { verifyToken } from "../modules/protected/licenceToken.js";
+import { readStamp } from "../modules/protected/launcherStamp.js";
+import { readyLauncher } from "../modules/protected/launcher.service.js";
+import { getOrCreateSiteRow } from "../lib/siteRow.js";
 import { resetLimitsForTests } from "../modules/protected/activation.service.js";
 import { closeVaultSession } from "../modules/vault/vaultAdmin.service.js";
 import { createVault } from "../vault/vault.js";
@@ -225,8 +228,34 @@ describe("Activations on PCs", () => {
 });
 
 describe("The launcher", () => {
-  test("the owner uploads it; order pages with protected products offer it", async () => {
-    await request(app).get("/v1/licences/launcher").expect(404);
+  test("every shop has one ready: the download carries this shop's address, name and keys", async () => {
+    const ready = readyLauncher()!;
+    expect(ready).not.toBeNull();
+    const site = await getOrCreateSiteRow();
+    await prisma.siteSettings.update({ where: { id: site.id }, data: { siteName: "متجر عرب لايف" } });
+    const cur = await request(app).get("/v1/licences/launcher").expect(200);
+    expect(cur.body).toMatchObject({ version: ready.version, source: "ready", path: "/licences/launcher/download" });
+    expect((await request(app).get("/v1/admin/vault").expect(200)).body.ready).toEqual({ version: ready.version, bytes: ready.data.length });
+
+    const download = async () => {
+      const dl = await request(app).get("/v1/licences/launcher/download").set("X-Forwarded-Proto", "https").set("X-Forwarded-Host", "api.shop.example").buffer(true).parse(binary).expect(200);
+      expect(dl.headers["content-disposition"]).toContain(`EstabrekLauncher-${ready.version}.exe`);
+      expect((dl.body as Buffer).subarray(0, ready.data.length).equals(ready.data)).toBe(true);
+      return readStamp(dl.body)!;
+    };
+    useVault(false);
+    const keys = (await request(app).get("/v1/licences/public-key").expect(200)).body.keys;
+    expect(await download()).toEqual({ api: "https://api.shop.example", name: "متجر عرب لايف", keys });
+    // The vault turned on: the next download knows its key (signing now) and the old one.
+    useVault(true);
+    const withVault = await download();
+    expect(withVault.keys[0].kid).toBe(vault.key.info.kid);
+    expect(withVault.keys.map((k) => k.kid)).toContain(keys[0].kid);
+    useVault(false);
+    await prisma.siteSettings.update({ where: { id: site.id }, data: { siteName: site.siteName } });
+  });
+
+  test("the owner uploads her own build; order pages with protected products offer it; deleting it brings the ready one back", async () => {
     await request(app).post("/v1/admin/vault/launchers").field("version", "1.0.0").attach("file", Buffer.from("not a program"), "x.exe").expect(400);
     const exe = Buffer.concat([Buffer.from("MZ"), crypto.randomBytes(4000)]);
     await request(app).post("/v1/admin/vault/launchers").field("version", "1.0.0").attach("file", exe, "EstabrekLauncher.exe").expect(201);
@@ -242,5 +271,11 @@ describe("The launcher", () => {
     const id = await order();
     await releaseOrder(id, "paid");
     expect((await page(id)).launcher).toMatchObject({ version: "1.0.1" });
+
+    const active = (await request(app).get("/v1/admin/vault").expect(200)).body.launchers.filter((l: any) => l.isActive);
+    expect(active).toHaveLength(1);
+    await request(app).delete(`/v1/admin/vault/launchers/${active[0].id}`).expect(200);
+    expect((await request(app).get("/v1/licences/launcher").expect(200)).body).toMatchObject({ version: readyLauncher()!.version, source: "ready" });
+    expect((await page(id)).launcher).toMatchObject({ version: readyLauncher()!.version });
   });
 });
