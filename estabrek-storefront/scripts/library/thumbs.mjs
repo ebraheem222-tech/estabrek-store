@@ -26,9 +26,12 @@ console.log(`${todo.length} pictures to make`);
 const browser = await chromium.launch({ channel: "chrome" });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: "no-preference" });
 
-/** A picture (png or jpg bytes) made 480×300 webp in the browser (its top part, filling the frame). */
-async function toWebp(page, bytes, type) {
-  const url = await page.evaluate(async ({ b64, type }) => {
+/**
+ * A picture (png or jpg bytes) made 480×300 webp in the browser: its top part filling the frame, or (a short
+ * piece, `fit` "contain") the whole of it across the frame's width, in the middle of its own background colour.
+ */
+async function toWebp(page, bytes, type, fit = "cover") {
+  const url = await page.evaluate(async ({ b64, type, fit }) => {
     const img = new Image();
     img.src = `data:${type};base64,${b64}`;
     await img.decode();
@@ -36,11 +39,25 @@ async function toWebp(page, bytes, type) {
     c.width = 480;
     c.height = 300;
     const g = c.getContext("2d");
-    const scale = Math.max(480 / img.width, 300 / img.height);
     g.imageSmoothingQuality = "high";
-    g.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+    if (fit === "contain") {
+      // Its own background: the colour at its top corner.
+      const probe = document.createElement("canvas");
+      probe.width = probe.height = 1;
+      const pg = probe.getContext("2d");
+      pg.drawImage(img, 2, 2, 1, 1, 0, 0, 1, 1);
+      const [r, gr, b] = pg.getImageData(0, 0, 1, 1).data;
+      g.fillStyle = `rgb(${r},${gr},${b})`;
+      g.fillRect(0, 0, 480, 300);
+      const scale = Math.min(480 / img.width, 300 / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      g.drawImage(img, (480 - w) / 2, (300 - h) / 2, w, h);
+    } else {
+      const scale = Math.max(480 / img.width, 300 / img.height);
+      g.drawImage(img, 0, 0, img.width * scale, img.height * scale);
+    }
     return c.toDataURL("image/webp", 0.8);
-  }, { b64: Buffer.from(bytes).toString("base64"), type });
+  }, { b64: Buffer.from(bytes).toString("base64"), type, fit });
   return Buffer.from(url.split(",")[1], "base64");
 }
 
@@ -61,8 +78,10 @@ const work = async (page) => {
         await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
         await page.waitForTimeout(1800);
         // The piece itself, from the top of it (a short one is centred in the frame on its own background).
-        const shot = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: 1280, height: 800 } });
-        bytes = await toWebp(scratch, shot, "image/png");
+        const tall = await page.evaluate(() => Math.round(document.querySelector("[data-lib-ready]")?.getBoundingClientRect().height ?? 800));
+        const h = Math.max(120, Math.min(800, tall));
+        const shot = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: 1280, height: h } });
+        bytes = await toWebp(scratch, shot, "image/png", h < 760 ? "contain" : "cover");
       }
       fs.writeFileSync(path.join(OUT, `${item.id}.webp`), bytes);
     } catch (e) {

@@ -40,6 +40,11 @@ const outPath = (src) => {
   return path.join(OUT, rel[0].toLowerCase(), ...rel.slice(2)).replace(/\.jsx$/, ".tsx");
 };
 
+/**
+ * The runtime's helpers under names no piece uses itself (a piece's own "cv", a canvas, once hid the colour helper
+ * and broke it): the import is { cv as lx$cv, … }.
+ */
+const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w" };
 const TEXT_ATTRS = new Set(["alt", "title", "placeholder", "aria-label", "label"]);
 /** Props of the library's own components that are never words. */
 const NOT_WORDS = /^(className|class|id|key|href|to|src|type|variant|size|icon|as|ring|kind|mode|name|value|ref|style|role|tabIndex|htmlFor|target|rel|method|action|autoComplete|inputMode|pattern|min|max|step|viewBox|d|points|transform|fill|stroke|.*Class|.*class|.*Id|.*Color|.*color|on[A-Z].*)$/;
@@ -122,14 +127,14 @@ function convertFile(src, manifest) {
   const families = { add: (p, f) => bucket(p).families.add(f) };
   const hexes = { add: (p, h) => bucket(p).hexes.add(h) };
   let usesT = false, usesLx = false, usesCv = false;
-  const cvCall = (e) => { usesCv = true; return t.callExpression(t.identifier("cv"), [e]); };
+  const cvCall = (e) => { usesCv = true; return t.callExpression(t.identifier(RT.cv), [e]); };
   const lxIn = (p) => {
     // lx() inside a component reads its own item's words (useLx at the top of it); outside, the last ones.
     const fn = p.getFunctionParent();
     const comp = componentOf(fn);
-    if (comp) { comp.node.__lx = true; return "__lx"; }
+    if (comp) { comp.node.__lx = true; return RT.words; }
     usesLx = true;
-    return "lx";
+    return RT.lx;
   };
   const componentOf = (fn) => {
     // The outermost function: a Capitalised function or one given to a Capitalised const (a component).
@@ -165,7 +170,7 @@ function convertFile(src, manifest) {
         } else if (parent.isObjectProperty() && parent.node.value === p.node) {
           const k = t.isIdentifier(parent.node.key) ? parent.node.key.name : t.isStringLiteral(parent.node.key) ? parent.node.key.value : "";
           if (!NOT_WORD_KEYS.test(k)) words.add(p, p.node.value.trim());
-        } else if (!parent.isCallExpression() || !t.isIdentifier(parent.node.callee) || !["cv", "cvs"].includes(parent.node.callee.name)) {
+        } else if (!parent.isCallExpression() || !t.isIdentifier(parent.node.callee) || ![RT.cv, RT.cvs].includes(parent.node.callee.name)) {
           words.add(p, p.node.value.trim());
         }
       }
@@ -188,7 +193,7 @@ function convertFile(src, manifest) {
       if (t.isJSXElement(e) || t.isJSXFragment(e)) return;
       // A child shown on the page: <T s={…}/> (returns it as it is, or the owner's words for it).
       usesT = true;
-      p.replaceWith(t.jsxElement(t.jsxOpeningElement(t.jsxIdentifier("T"), [t.jsxAttribute(t.jsxIdentifier("s"), t.jsxExpressionContainer(e))], true), null, [], true));
+      p.replaceWith(t.jsxElement(t.jsxOpeningElement(t.jsxIdentifier(RT.T), [t.jsxAttribute(t.jsxIdentifier("s"), t.jsxExpressionContainer(e))], true), null, [], true));
     },
     JSXAttribute(p) {
       const name = typeof p.node.name.name === "string" ? p.node.name.name : null;
@@ -227,7 +232,7 @@ function convertFile(src, manifest) {
           }
         } else if (!t.isJSXEmptyExpression(e)) {
           usesCv = true;
-          v.expression = t.callExpression(t.identifier("cvs"), [e]);
+          v.expression = t.callExpression(t.identifier(RT.cvs), [e]);
         }
       }
     },
@@ -238,16 +243,16 @@ function convertFile(src, manifest) {
     Function(p) {
       if (!p.node.__lx) return;
       if (!t.isBlockStatement(p.node.body)) p.node.body = t.blockStatement([t.returnStatement(p.node.body)]);
-      p.node.body.body.unshift(t.variableDeclaration("const", [t.variableDeclarator(t.identifier("__lx"), t.callExpression(t.identifier("useLx"), []))]));
+      p.node.body.body.unshift(t.variableDeclaration("const", [t.variableDeclarator(t.identifier(RT.words), t.callExpression(t.identifier(RT.useLx), []))]));
     },
   });
   let usesUseLx = false;
-  traverse(ast, { Identifier(p) { if (p.node.name === "useLx") usesUseLx = true; } });
+  traverse(ast, { Identifier(p) { if (p.node.name === RT.useLx) usesUseLx = true; } });
 
   const out = outPath(src);
   const runtime = path.relative(path.dirname(out), path.join(OUT, "runtime")).split(path.sep).join("/");
   const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs"].filter(Boolean);
-  if (names.length) ast.program.body.unshift(t.importDeclaration(names.map((n) => t.importSpecifier(t.identifier(n), t.identifier(n))), t.stringLiteral(runtime.startsWith(".") ? runtime : `./${runtime}`)));
+  if (names.length) ast.program.body.unshift(t.importDeclaration(names.map((n) => t.importSpecifier(t.identifier(RT[n]), t.identifier(n))), t.stringLiteral(runtime.startsWith(".") ? runtime : `./${runtime}`)));
   const body = generate(ast, { retainLines: false, jsescOption: { minimal: true } }, code).code;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `// @ts-nocheck\n/* eslint-disable */\n// Made by scripts/library/convert.mjs from the owner's Themes folder (${path.relative(THEMES, src).split(path.sep).join("/")}): do not edit.\n${body}\n`);
