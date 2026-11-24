@@ -129,6 +129,29 @@ test("a store on a theme: its pages wear its theme's colours, not the rose desig
   }
 });
 
+test("a dark theme's bag and pages stay dark: no light mixed in from the rose design's whites", async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.request.post(`${API}/__test/identity`, { data: { ...NOOR, theme: "shoes-sneakers" } });
+  await settle(page);
+  /** How light an element's own background is (0 black … 1 white). */
+  const lightness = (selector: string) =>
+    page.locator(selector).first().evaluate((el) => {
+      const c = getComputedStyle(el).backgroundColor;
+      const n = (c.match(/[\d.]+/g) || []).map(Number);
+      const [r, g, b] = c.startsWith("color(") ? n.slice(0, 3) : n.slice(0, 3).map((v) => v / 255);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    });
+  await open(page, "/cart");
+  await page.evaluate(() => localStorage.setItem("estabrak_cart_v1", JSON.stringify([{ variantId: "m", quantity: 1 }])));
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(".rose-cart-form input").first()).toBeVisible();
+  expect(await lightness(".rose-cart-form input")).toBeLessThan(0.2);
+  await open(page, "/nothing-here");
+  expect(await lightness(".rose-status-card")).toBeLessThan(0.2);
+  await page.evaluate(() => localStorage.removeItem("estabrak_cart_v1"));
+});
+
 test("a store on a theme with no home of its own gets its theme's home, never the rose home", async ({ page }) => {
   test.setTimeout(180_000);
   await page.request.post(`${API}/__test/identity`, { data: { ...NOOR, cmsHome: false } });
