@@ -278,7 +278,7 @@ function SeasonsTab() {
       ) : null}
       {!list.length && !draft ? (
         <Card>
-          <p className="text-sm text-white/60">{tr("ما في مواسم لسا. مثلاً: «رمضان» بثيم ذهبي وخصم 15% على العبايات، من أول رمضان لآخره، وبعدها كل شي بيرجع لحاله.", "No seasons yet. e.g. “Ramadan” with a gold theme and 15% off abayas, from the start of Ramadan to its end, then everything goes back by itself.")}</p>
+          <p className="text-sm text-white/60">{tr("ما في مواسم لسا. مثلاً: «العيد» بثيم ذهبي وخصم 15% على تصنيف من اختيارك، من أول يوم لآخر يوم، وبعدها كل شي بيرجع لحاله.", "No seasons yet. e.g. “Eid” with a gold theme and 15% off a category you pick, from its first day to its last, then everything goes back by itself.")}</p>
         </Card>
       ) : null}
       {list.map((c) => {

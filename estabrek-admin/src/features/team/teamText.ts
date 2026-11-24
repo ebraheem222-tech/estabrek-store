@@ -9,7 +9,8 @@ export const AREA_LABELS: Record<string, string> = {
   catalog: "المنتجات",
   "product-types": "أنواع المنتجات",
   tickets: "التذاكر",
-  razan: "رزان",
+  // The store's guide (the rose design's store names its own; any store's guide may carry another name).
+  razan: "دليل المتجر",
   requests: "الطلبات الخاصة",
   "requests-settings": "إعدادات الطلبات الخاصة",
   quiz: "سؤال وجواب",
