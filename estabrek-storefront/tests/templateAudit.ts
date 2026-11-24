@@ -106,7 +106,10 @@ export async function auditPage(input: { layouts: Layout[]; wide: boolean }): Pr
     // A bar that broke into lines (its parts wrapped under each other) takes the first screen.
     // (A phone's header may hold a search box on a line of its own under the bar.)
     const tall = input.wide ? 190 : header.querySelector(".pt-search") ? 170 : 140;
-    if (r.height > tall) faults.push({ kind: "header-tall", where: "header", detail: `${Math.round(r.height)} px tall (more than ${tall})` });
+    // The designed header itself: the store's bar over it (sign-in, the cart; StoreBar.tsx) is the store's, not the template's.
+    const bar = header.querySelector('[data-testid="store-bar"]');
+    const own = r.height - (bar ? bar.getBoundingClientRect().height : 0);
+    if (own > tall) faults.push({ kind: "header-tall", where: "header", detail: `${Math.round(own)} px tall (more than ${tall})` });
     const atoms = Array.from(header.querySelectorAll("[data-tree-node]")).filter((el) => shown(el) && !el.querySelector("[data-tree-node]") && getComputedStyle(el).position !== "absolute");
     for (let i = 0; i < atoms.length; i++) for (let j = i + 1; j < atoms.length; j++) {
       const a = atoms[i].getBoundingClientRect();

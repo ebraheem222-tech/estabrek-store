@@ -14647,6 +14647,12 @@ html[data-ab-hero="film"] .rose-opening {
 .store-bar-strong { opacity: 1; font-weight: 600; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); }
 .store-bar-cart { position: relative; }
 .store-bar-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--th-accent, var(--accent, currentColor)); color: var(--th-on-strong, var(--accent-contrast, #fff)); }
+/* On a phone it is slimmer: the first screen is the owner's. */
+@media (max-width: 767px) {
+  .store-bar { font-size: 12px; }
+  .store-bar-in { padding: 2px 12px; gap: 4px; }
+  .store-bar-item { min-height: 28px; padding: 0 8px; }
+}
 /* Where the bottom bar shows (a phone, a tablet) the cart is there: the bar keeps signing in, or goes. */
 @media (max-width: 1023px) {
   html[data-bottom-nav] .store-bar-cart { display: none; }
