@@ -284,6 +284,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/connections", label: say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות"), icon: Icons.security, requirePermissions: ["connections:read"] },
   { to: "/admin/webhooks", label: say("Webhooks طالعة|Outgoing webhooks|Webhooks יוצאים"), icon: Icons.jobs, requirePermissions: ["connections:read"] },
   { to: "/admin/themes", label: tr("ثيمات المتجر", "Store themes"), icon: Icons.sun, requirePermissions: ["settings:read"] },
+  { to: "/admin/library", label: say("مكتبة الثيمات (مواقع وأقسام)|Theme library (sites and sections)|ספריית עיצובים (אתרים ומקטעים)"), icon: Icons.pages, requirePermissions: ["pages:read"] },
   { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"], shop: true },
   { to: "/admin/ugc/comments", label: tr("التعليقات", "Comments"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
 ];

@@ -1,11 +1,15 @@
-// The library's styles for the shop (src/library/lib.css), made once by machine from the converted files
-// (convert.mjs): Tailwind 4 (the library's own, from the Themes folder) builds exactly the classes they use, then
-//   - everything is kept inside an item's wrapper (.lx-scope): its resets, its variables, its classes, so none of
-//     it reaches the shop's own pages (the shop is on Tailwind 3), and the shop's rules don't reach in unasked;
-//   - the cascade layers are taken off (the shop's styles have none, and would otherwise always win);
-//   - its animations are named lx-… (the shop has an "aurora" and a "blink" of its own);
-//   - each colour written in a class ([#c8a75d]) becomes a variable the item's wrapper may set, as cv() does in code.
-// Tailwind's colour families are variables already (--color-stone-500…): the wrapper sets those too (LibBlock).
+// The library's styles for the shop, made once by machine from the converted files (convert.mjs) with Tailwind 4
+// (the library's own, from the Themes folder), in two parts:
+//   - public/library/lib.css: what every piece needs (Tailwind's resets, the theme's values, the folders' own
+//     animations and classes), loaded once on a page that shows any piece (LibBlock);
+//   - public/library/css/<file>.css: the classes one piece file uses (with what it imports), kept to that file's
+//     pieces (.lx-f-<file>, on the piece's wrapper), loaded with its pieces. A page showing one
+//     piece never downloads the classes of the other thousand.
+// Everything stays inside a piece's wrapper (.lx-scope), so none of it reaches the shop's own pages (on Tailwind 3)
+// and the shop's rules don't reach in unasked; the cascade layers are taken off (the shop's styles have none);
+// its animations are named lx-… (the shop has an "aurora" and a "blink" of its own); each colour written in a
+// class ([#c8a75d]) becomes a variable the piece's wrapper may set, as cv() does in code. Tailwind's colour
+// families are variables already (--color-stone-500…): the wrapper sets those too (LibBlock).
 //
 //   node scripts/library/build-css.mjs [path to the Themes folder]
 import fs from "node:fs";
@@ -13,26 +17,21 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import postcss from "postcss";
-import { ITEMS, KEYFRAMES } from "./items.mjs";
+import { keyframesOf, stylesheetsOf } from "./registry.mjs";
 
 const THEMES = path.resolve(process.argv[2] || process.env.THEMES_DIR || "C:/Users/Ibrah/Desktop/estabrek/Themes");
 const SHOP = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "../..");
-const OUT = path.join(SHOP, "src/library");
+const OUT = path.join(SHOP, "library-src");
+const PUB = path.join(SHOP, "public/library");
+fs.mkdirSync(PUB, { recursive: true });
 const req = createRequire(path.join(THEMES, "package.json"));
 const { compile } = await import(pathToFileURL(req.resolve("@tailwindcss/node")).href);
 const { Scanner } = await import(pathToFileURL(req.resolve("@tailwindcss/oxide")).href);
+const KEYFRAMES = keyframesOf(THEMES);
 
-// Each folder's own styles (its fonts, animations and a few classes), once, after a single Tailwind.
-const folders = [...new Set(ITEMS.map((i) => i.file.split("/")[0]))];
-const own = folders
-  .map((f) => path.join(THEMES, f, "src/index.css"))
-  .filter((f) => fs.existsSync(f))
-  .map((f) => fs.readFileSync(f, "utf8").replace(/@import\s+["']tailwindcss["'];?/g, ""));
+// Each folder's own styles (its fonts, animations and a few classes), once each, after a single Tailwind.
+const own = stylesheetsOf(THEMES).map((f) => fs.readFileSync(f, "utf8").replace(/@import\s+["']tailwindcss["'];?/g, ""));
 const input = `@import "tailwindcss";\n${[...new Set(own)].join("\n")}`;
-
-const compiler = await compile(input, { base: THEMES, onDependency: () => {} });
-const scanner = new Scanner({ sources: [{ base: OUT, pattern: "**/*.tsx", negated: false }] });
-const built = compiler.build(scanner.scan());
 
 const KF = new RegExp(`(^|[^\\w-])(${KEYFRAMES.map((k) => k.replace(/-/g, "\\-")).join("|")})(?![\\w-])`, "g");
 const HEX = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
@@ -40,7 +39,6 @@ const hexKey = (h) => {
   const x = h.slice(1).toLowerCase();
   return x.length === 3 ? x.split("").map((c) => c + c).join("") : x;
 };
-const SCOPE = ".lx-scope";
 /** A selector list's selectors: split at its own commas, never at an escaped one (\,) or one in brackets. */
 function splitSelectors(sel) {
   const out = [];
@@ -56,51 +54,96 @@ function splitSelectors(sel) {
   out.push(cur);
   return out;
 }
-const scopeSelector = (sel) =>
+const scopeSelector = (sel, scope) =>
   splitSelectors(sel)
     .map((s) => s.trim())
     .map((s) => {
-      if (/^(:root|:host|html|body)$/.test(s) || /^(:root|html),?\s*:host$/.test(s)) return SCOPE;
-      if (/^(html|:host)\s+/.test(s)) return s.replace(/^(html|:host)\s+/, `${SCOPE} `);
-      return `${SCOPE} ${s}`;
+      if (/^(:root|:host|html|body)$/.test(s) || /^(:root|html),?\s*:host$/.test(s)) return ".lx-scope";
+      if (/^(html|:host)\s+/.test(s)) return s.replace(/^(html|:host)\s+/, `${scope} `);
+      return `${scope} ${s}`;
     })
     .filter((s, i, all) => all.indexOf(s) === i)
     .join(", ");
 
-const scoped = await postcss([
-  {
-    postcssPlugin: "library-scope",
-    Once(root) {
-      // No cascade layers: their rules, in their order, as plain rules.
-      root.walkAtRules("layer", (at) => {
-        if (at.nodes) at.replaceWith(at.nodes);
-        else at.remove();
-      });
-      root.walkAtRules("keyframes", (at) => {
-        if (KEYFRAMES.includes(at.params)) at.params = `lx-${at.params}`;
-      });
-      root.walkRules((rule) => {
-        let p = rule.parent;
-        while (p) {
-          if (p.type === "atrule" && /keyframes/.test(p.name)) return;
-          p = p.parent;
-        }
-        rule.selector = scopeSelector(rule.selector);
-      });
-      root.walkDecls((d) => {
-        let p = d.parent;
-        while (p) {
-          if (p.type === "atrule" && p.name === "property") return;
-          p = p.parent;
-        }
-        if (/^(animation|animation-name)$/.test(d.prop) || d.prop.startsWith("--animate")) d.value = d.value.replace(KF, (_m, pre, name) => `${pre}lx-${name}`);
-        if (HEX.test(d.value) && !/url\(/.test(d.value)) d.value = d.value.replace(HEX, (h) => `var(--lx-${hexKey(h)}, ${h})`);
-        HEX.lastIndex = 0;
-      });
-    },
+/** The library's rules made the shop's: scoped, unlayered, animations and colours renamed. `part`: "base" keeps all but the utilities, "utilities" only them. */
+const shopRules = (scope, part) => ({
+  postcssPlugin: "library-scope",
+  Once(root) {
+    root.walkAtRules("layer", (at) => {
+      const name = at.params.trim();
+      if (!at.nodes) return at.remove(); // @layer theme, base, …;
+      if (part === "utilities" && name !== "utilities") return at.remove();
+      if (part === "base" && name === "utilities") return at.remove();
+      at.replaceWith(at.nodes);
+    });
+    if (part === "utilities") {
+      // Only the utilities: nothing else that was outside the layers (the base has it).
+      for (const n of [...root.nodes]) if (n.type === "atrule" && (n.name === "keyframes" || n.name === "property" || n.name === "font-face")) n.remove();
+    }
+    root.walkAtRules("keyframes", (at) => {
+      if (KEYFRAMES.includes(at.params)) at.params = `lx-${at.params}`;
+    });
+    root.walkRules((rule) => {
+      let p = rule.parent;
+      while (p) {
+        if (p.type === "atrule" && /keyframes/.test(p.name)) return;
+        p = p.parent;
+      }
+      rule.selector = scopeSelector(rule.selector, scope);
+    });
+    root.walkDecls((d) => {
+      let p = d.parent;
+      while (p) {
+        if (p.type === "atrule" && p.name === "property") return;
+        p = p.parent;
+      }
+      if (/^(animation|animation-name)$/.test(d.prop) || d.prop.startsWith("--animate")) d.value = d.value.replace(KF, (_m, pre, name) => `${pre}lx-${name}`);
+      if (HEX.test(d.value) && !/url\(/.test(d.value)) d.value = d.value.replace(HEX, (h) => `var(--lx-${hexKey(h)}, ${h})`);
+      HEX.lastIndex = 0;
+    });
   },
-]).process(built, { from: undefined });
+});
 
-const header = `/* The owner's theme library's styles, scoped to .lx-scope (made by scripts/library/build-css.mjs: do not edit). */\n`;
-fs.writeFileSync(path.join(OUT, "lib.css"), header + scoped.css);
-console.log(`lib.css: ${(Buffer.byteLength(scoped.css) / 1024).toFixed(0)} KB`);
+const scan = (sources) => new Scanner({ sources }).scan();
+const GEN = "made by scripts/library/build-css.mjs: do not edit";
+
+// What every piece needs: the whole library's resets, theme values, animations and own classes.
+const all = (await compile(input, { base: THEMES, onDependency: () => {} })).build(scan([{ base: OUT, pattern: "**/*.tsx", negated: false }]));
+const base = await postcss([shopRules(".lx-scope", "base")]).process(all, { from: undefined });
+fs.writeFileSync(path.join(PUB, "lib.css"), `/* The owner's theme library's shared styles, scoped to .lx-scope (${GEN}). */\n${base.css}`);
+
+// Each piece file's own classes (the file an entry takes its piece from, with the library files it imports).
+const importsOf = (file) => {
+  const out = [];
+  for (const m of fs.readFileSync(file, "utf8").matchAll(/from\s+"(\.{1,2}\/[^"]+)"/g)) {
+    const dep = path.resolve(path.dirname(file), m[1]) + ".tsx";
+    if (fs.existsSync(dep) && !dep.endsWith(`${path.sep}runtime.tsx`)) out.push(dep);
+  }
+  return out;
+};
+const closure = (file) => {
+  const seen = new Set();
+  const walk = (f) => { if (seen.has(f)) return; seen.add(f); importsOf(f).forEach(walk); };
+  walk(file);
+  return [...seen];
+};
+export const fileKey = (file) => path.relative(OUT, file).replace(/\.tsx$/, "").split(path.sep).join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
+fs.rmSync(path.join(PUB, "css"), { recursive: true, force: true });
+fs.mkdirSync(path.join(PUB, "css"), { recursive: true });
+const pieceFiles = new Set();
+for (const e of fs.readdirSync(path.join(OUT, "entries"))) {
+  const m = /from "\.\.\/([^"]+)"/.exec(fs.readFileSync(path.join(OUT, "entries", e), "utf8"));
+  if (m) pieceFiles.add(path.join(OUT, `${m[1]}.tsx`));
+}
+let total = 0, biggest = 0;
+for (const file of pieceFiles) {
+  const key = fileKey(file);
+  const files = closure(file);
+  const built = (await compile(input, { base: THEMES, onDependency: () => {} })).build(scan(files.map((f) => ({ base: path.dirname(f), pattern: path.basename(f), negated: false }))));
+  const css = (await postcss([shopRules(`.lx-f-${key}`, "utilities")]).process(built, { from: undefined })).css;
+  fs.writeFileSync(path.join(PUB, "css", `${key}.css`), `/* ${path.relative(OUT, file).split(path.sep).join("/")}'s classes (${GEN}). */\n${css}`);
+  total += css.length;
+  biggest = Math.max(biggest, css.length);
+}
+console.log(`lib.css: ${(Buffer.byteLength(base.css) / 1024).toFixed(0)} KB; ${pieceFiles.size} piece files: ${(total / 1024).toFixed(0)} KB in all, the biggest ${(biggest / 1024).toFixed(0)} KB`);

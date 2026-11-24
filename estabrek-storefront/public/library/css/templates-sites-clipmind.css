@@ -1,0 +1,1402 @@
+/* templates/sites/clipmind.tsx's classes (made by scripts/library/build-css.mjs: do not edit). */
+/*! tailwindcss v4.3.5 | MIT License | https://tailwindcss.com */
+.lx-f-templates-sites-clipmind .pointer-events-none {
+    pointer-events: none;
+  }
+.lx-f-templates-sites-clipmind .absolute {
+    position: absolute;
+  }
+.lx-f-templates-sites-clipmind .fixed {
+    position: fixed;
+  }
+.lx-f-templates-sites-clipmind .relative {
+    position: relative;
+  }
+.lx-f-templates-sites-clipmind .inset-0 {
+    inset: 0px;
+  }
+.lx-f-templates-sites-clipmind .inset-x-0 {
+    inset-inline: 0px;
+  }
+.lx-f-templates-sites-clipmind .inset-x-3 {
+    inset-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .inset-y-0 {
+    inset-block: 0px;
+  }
+.lx-f-templates-sites-clipmind .-top-1 {
+    top: calc(var(--spacing) * -1);
+  }
+.lx-f-templates-sites-clipmind .top-0 {
+    top: 0px;
+  }
+.lx-f-templates-sites-clipmind .top-1 {
+    top: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .top-2 {
+    top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .top-10 {
+    top: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-clipmind .right-0 {
+    right: 0px;
+  }
+.lx-f-templates-sites-clipmind .right-2 {
+    right: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .-bottom-1 {
+    bottom: calc(var(--spacing) * -1);
+  }
+.lx-f-templates-sites-clipmind .bottom-2 {
+    bottom: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .bottom-3 {
+    bottom: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .bottom-24 {
+    bottom: calc(var(--spacing) * 24);
+  }
+.lx-f-templates-sites-clipmind .bottom-\[12\%\] {
+    bottom: 12%;
+  }
+.lx-f-templates-sites-clipmind .-left-1 {
+    left: calc(var(--spacing) * -1);
+  }
+.lx-f-templates-sites-clipmind .left-1\.5 {
+    left: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-clipmind .left-1\/2 {
+    left: calc(1 / 2 * 100%);
+  }
+.lx-f-templates-sites-clipmind .left-2 {
+    left: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .z-30 {
+    z-index: 30;
+  }
+.lx-f-templates-sites-clipmind .z-50 {
+    z-index: 50;
+  }
+.lx-f-templates-sites-clipmind .z-\[60\] {
+    z-index: 60;
+  }
+.lx-f-templates-sites-clipmind .z-\[200\] {
+    z-index: 200;
+  }
+.lx-f-templates-sites-clipmind .z-\[201\] {
+    z-index: 201;
+  }
+.lx-f-templates-sites-clipmind .z-\[400\] {
+    z-index: 400;
+  }
+.lx-f-templates-sites-clipmind .mx-auto {
+    margin-inline: auto;
+  }
+.lx-f-templates-sites-clipmind .mt-1 {
+    margin-top: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .mt-1\.5 {
+    margin-top: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-clipmind .mt-2 {
+    margin-top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .mt-3 {
+    margin-top: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .mt-4 {
+    margin-top: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .mt-5 {
+    margin-top: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .mt-6 {
+    margin-top: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind .mt-7 {
+    margin-top: calc(var(--spacing) * 7);
+  }
+.lx-f-templates-sites-clipmind .mt-10 {
+    margin-top: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-clipmind .ml-0\.5 {
+    margin-left: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-clipmind .ml-auto {
+    margin-left: auto;
+  }
+.lx-f-templates-sites-clipmind .block {
+    display: block;
+  }
+.lx-f-templates-sites-clipmind .flex {
+    display: flex;
+  }
+.lx-f-templates-sites-clipmind .grid {
+    display: grid;
+  }
+.lx-f-templates-sites-clipmind .hidden {
+    display: none;
+  }
+.lx-f-templates-sites-clipmind .inline {
+    display: inline;
+  }
+.lx-f-templates-sites-clipmind .inline-block {
+    display: inline-block;
+  }
+.lx-f-templates-sites-clipmind .inline-flex {
+    display: inline-flex;
+  }
+.lx-f-templates-sites-clipmind .aspect-\[9\/16\] {
+    aspect-ratio: 9/16;
+  }
+.lx-f-templates-sites-clipmind .aspect-\[9\/19\] {
+    aspect-ratio: 9/19;
+  }
+.lx-f-templates-sites-clipmind .aspect-square {
+    aspect-ratio: 1 / 1;
+  }
+.lx-f-templates-sites-clipmind .aspect-video {
+    aspect-ratio: var(--aspect-video);
+  }
+.lx-f-templates-sites-clipmind .size-2\.5 {
+    width: calc(var(--spacing) * 2.5);
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-clipmind .size-3 {
+    width: calc(var(--spacing) * 3);
+    height: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .size-4 {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .size-5 {
+    width: calc(var(--spacing) * 5);
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .size-6 {
+    width: calc(var(--spacing) * 6);
+    height: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind .size-8 {
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-clipmind .size-9 {
+    width: calc(var(--spacing) * 9);
+    height: calc(var(--spacing) * 9);
+  }
+.lx-f-templates-sites-clipmind .size-10 {
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-clipmind .size-full {
+    width: 100%;
+    height: 100%;
+  }
+.lx-f-templates-sites-clipmind .h-2 {
+    height: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-clipmind .h-5 {
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .h-7 {
+    height: calc(var(--spacing) * 7);
+  }
+.lx-f-templates-sites-clipmind .h-12 {
+    height: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-clipmind .h-16 {
+    height: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-clipmind .h-\[240px\] {
+    height: 240px;
+  }
+.lx-f-templates-sites-clipmind .h-\[480px\] {
+    height: 480px;
+  }
+.lx-f-templates-sites-clipmind .h-full {
+    height: 100%;
+  }
+.lx-f-templates-sites-clipmind .max-h-full {
+    max-height: 100%;
+  }
+.lx-f-templates-sites-clipmind .min-h-full {
+    min-height: 100%;
+  }
+.lx-f-templates-sites-clipmind .min-h-screen {
+    min-height: 100vh;
+  }
+.lx-f-templates-sites-clipmind .w-0\.5 {
+    width: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-clipmind .w-6 {
+    width: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind .w-14 {
+    width: calc(var(--spacing) * 14);
+  }
+.lx-f-templates-sites-clipmind .w-20 {
+    width: calc(var(--spacing) * 20);
+  }
+.lx-f-templates-sites-clipmind .w-64 {
+    width: calc(var(--spacing) * 64);
+  }
+.lx-f-templates-sites-clipmind .w-\[900px\] {
+    width: 900px;
+  }
+.lx-f-templates-sites-clipmind .w-full {
+    width: 100%;
+  }
+.lx-f-templates-sites-clipmind .w-max {
+    width: max-content;
+  }
+.lx-f-templates-sites-clipmind .max-w-3xl {
+    max-width: var(--container-3xl);
+  }
+.lx-f-templates-sites-clipmind .max-w-6xl {
+    max-width: var(--container-6xl);
+  }
+.lx-f-templates-sites-clipmind .max-w-7xl {
+    max-width: var(--container-7xl);
+  }
+.lx-f-templates-sites-clipmind .max-w-full {
+    max-width: 100%;
+  }
+.lx-f-templates-sites-clipmind .max-w-lg {
+    max-width: var(--container-lg);
+  }
+.lx-f-templates-sites-clipmind .max-w-md {
+    max-width: var(--container-md);
+  }
+.lx-f-templates-sites-clipmind .max-w-xl {
+    max-width: var(--container-xl);
+  }
+.lx-f-templates-sites-clipmind .min-w-0 {
+    min-width: 0px;
+  }
+.lx-f-templates-sites-clipmind .flex-1 {
+    flex: 1;
+  }
+.lx-f-templates-sites-clipmind .shrink-0 {
+    flex-shrink: 0;
+  }
+.lx-f-templates-sites-clipmind .-translate-x-1\/2 {
+    --tw-translate-x: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+.lx-f-templates-sites-clipmind .rotate-180 {
+    rotate: 180deg;
+  }
+.lx-f-templates-sites-clipmind .transform {
+    transform: var(--tw-rotate-x, ) var(--tw-rotate-y, ) var(--tw-rotate-z, ) var(--tw-skew-x, ) var(--tw-skew-y, );
+  }
+.lx-f-templates-sites-clipmind .animate-marquee {
+    animation: var(--animate-marquee);
+  }
+.lx-f-templates-sites-clipmind .animate-marquee-reverse {
+    animation: var(--animate-marquee-reverse);
+  }
+.lx-f-templates-sites-clipmind .cursor-pointer {
+    cursor: pointer;
+  }
+.lx-f-templates-sites-clipmind .grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-clipmind .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-clipmind .flex-col {
+    flex-direction: column;
+  }
+.lx-f-templates-sites-clipmind .flex-wrap {
+    flex-wrap: wrap;
+  }
+.lx-f-templates-sites-clipmind .place-items-center {
+    place-items: center;
+  }
+.lx-f-templates-sites-clipmind .items-center {
+    align-items: center;
+  }
+.lx-f-templates-sites-clipmind .justify-between {
+    justify-content: space-between;
+  }
+.lx-f-templates-sites-clipmind .justify-center {
+    justify-content: center;
+  }
+.lx-f-templates-sites-clipmind .gap-0\.5 {
+    gap: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-clipmind .gap-1 {
+    gap: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .gap-1\.5 {
+    gap: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-clipmind .gap-2 {
+    gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .gap-3 {
+    gap: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .gap-4 {
+    gap: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .gap-6 {
+    gap: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind .gap-7 {
+    gap: calc(var(--spacing) * 7);
+  }
+.lx-f-templates-sites-clipmind .gap-12 {
+    gap: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-clipmind .gap-\[2px\] {
+    gap: 2px;
+  }
+.lx-f-templates-sites-clipmind :where(.space-y-1 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(var(--spacing) * var(--tw-space-y-reverse));
+    margin-block-end: calc(var(--spacing) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-clipmind :where(.space-y-1\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 1.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 1.5) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-clipmind :where(.space-y-2 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-clipmind :where(.space-y-2\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2.5) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-clipmind .gap-x-6 {
+    column-gap: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind :where(.-space-x-2 > :not(:last-child)) {
+    --tw-space-x-reverse: 0;
+    margin-inline-start: calc(calc(var(--spacing) * -2) * var(--tw-space-x-reverse));
+    margin-inline-end: calc(calc(var(--spacing) * -2) * calc(1 - var(--tw-space-x-reverse)));
+  }
+.lx-f-templates-sites-clipmind .gap-y-2 {
+    row-gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+.lx-f-templates-sites-clipmind .overflow-hidden {
+    overflow: hidden;
+  }
+.lx-f-templates-sites-clipmind .overflow-x-auto {
+    overflow-x: auto;
+  }
+.lx-f-templates-sites-clipmind .overflow-y-auto {
+    overflow-y: auto;
+  }
+.lx-f-templates-sites-clipmind .rounded {
+    border-radius: 0.25rem;
+  }
+.lx-f-templates-sites-clipmind .rounded-2xl {
+    border-radius: var(--radius-2xl);
+  }
+.lx-f-templates-sites-clipmind .rounded-3xl {
+    border-radius: var(--radius-3xl);
+  }
+.lx-f-templates-sites-clipmind .rounded-\[2\.1rem\] {
+    border-radius: 2.1rem;
+  }
+.lx-f-templates-sites-clipmind .rounded-\[2\.6rem\] {
+    border-radius: 2.6rem;
+  }
+.lx-f-templates-sites-clipmind .rounded-full {
+    border-radius: calc(infinity * 1px);
+  }
+.lx-f-templates-sites-clipmind .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
+.lx-f-templates-sites-clipmind .rounded-md {
+    border-radius: var(--radius-md);
+  }
+.lx-f-templates-sites-clipmind .rounded-xl {
+    border-radius: var(--radius-xl);
+  }
+.lx-f-templates-sites-clipmind .border {
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+  }
+.lx-f-templates-sites-clipmind .border-\[7px\] {
+    border-style: var(--tw-border-style);
+    border-width: 7px;
+  }
+.lx-f-templates-sites-clipmind .border-y {
+    border-block-style: var(--tw-border-style);
+    border-block-width: 1px;
+  }
+.lx-f-templates-sites-clipmind .border-t {
+    border-top-style: var(--tw-border-style);
+    border-top-width: 1px;
+  }
+.lx-f-templates-sites-clipmind .border-b {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
+  }
+.lx-f-templates-sites-clipmind .border-current\/10 {
+    border-color: currentcolor;
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, currentcolor 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .border-neutral-900 {
+    border-color: var(--color-neutral-900);
+  }
+.lx-f-templates-sites-clipmind .border-transparent {
+    border-color: transparent;
+  }
+.lx-f-templates-sites-clipmind .border-white\/5 {
+    border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .border-white\/10 {
+    border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .border-white\/15 {
+    border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 15%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 15%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .border-yellow-300 {
+    border-color: var(--color-yellow-300);
+  }
+.lx-f-templates-sites-clipmind .bg-\[\#0a0a10\] {
+    background-color: var(--lx-0a0a10, #0a0a10);
+  }
+.lx-f-templates-sites-clipmind .bg-\[\#0a0a10\]\/85 {
+    background-color: color-mix(in oklab, var(--lx-0a0a10, #0a0a10) 85%, transparent);
+  }
+.lx-f-templates-sites-clipmind .bg-\[\#09090b\] {
+    background-color: var(--lx-09090b, #09090b);
+  }
+.lx-f-templates-sites-clipmind .bg-\[\#15151d\] {
+    background-color: var(--lx-15151d, #15151d);
+  }
+.lx-f-templates-sites-clipmind .bg-\[\#111118\] {
+    background-color: var(--lx-111118, #111118);
+  }
+.lx-f-templates-sites-clipmind .bg-black {
+    background-color: var(--color-black);
+  }
+.lx-f-templates-sites-clipmind .bg-black\/5 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-black\/30 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 30%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-black\/40 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 40%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-black\/50 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-black\/55 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 55%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 55%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-black\/60 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 60%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-black\/70 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 70%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-emerald-400 {
+    background-color: var(--color-emerald-400);
+  }
+.lx-f-templates-sites-clipmind .bg-neutral-900 {
+    background-color: var(--color-neutral-900);
+  }
+.lx-f-templates-sites-clipmind .bg-purple-600\/15 {
+    background-color: color-mix(in srgb, oklch(55.8% 0.288 302.321) 15%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-purple-600) 15%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-rose-400\/30 {
+    background-color: color-mix(in srgb, oklch(71.2% 0.194 13.428) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-rose-400) 30%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-rose-500\/80 {
+    background-color: color-mix(in srgb, oklch(64.5% 0.246 16.439) 80%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-rose-500) 80%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-transparent {
+    background-color: transparent;
+  }
+.lx-f-templates-sites-clipmind .bg-white {
+    background-color: var(--color-white);
+  }
+.lx-f-templates-sites-clipmind .bg-white\/5 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-white\/10 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-white\/\[0\.02\] {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 2%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 2%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-white\/\[0\.03\] {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 3%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 3%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-yellow-300 {
+    background-color: var(--color-yellow-300);
+  }
+.lx-f-templates-sites-clipmind .bg-yellow-300\/10 {
+    background-color: color-mix(in srgb, oklch(90.5% 0.182 98.111) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-yellow-300) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-yellow-300\/20 {
+    background-color: color-mix(in srgb, oklch(90.5% 0.182 98.111) 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-yellow-300) 20%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .bg-zinc-500 {
+    background-color: var(--color-zinc-500);
+  }
+.lx-f-templates-sites-clipmind .bg-linear-to-br {
+    --tw-gradient-position: to bottom right;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to bottom right in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-clipmind .bg-linear-to-r {
+    --tw-gradient-position: to right;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to right in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-clipmind .bg-linear-to-t {
+    --tw-gradient-position: to top;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to top in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-clipmind .bg-\[repeating-linear-gradient\(45deg\,\#7f1d1d_0_6px\,\#450a0a_6px_12px\)\] {
+    background-image: repeating-linear-gradient(45deg,var(--lx-7f1d1d, #7f1d1d) 0 6px,var(--lx-450a0a, #450a0a) 6px 12px);
+  }
+.lx-f-templates-sites-clipmind .from-amber-300 {
+    --tw-gradient-from: var(--color-amber-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-black\/85 {
+    --tw-gradient-from: color-mix(in srgb, var(--lx-000000, #000) 85%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-from: color-mix(in oklab, var(--color-black) 85%, transparent);
+    }
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-cyan-400 {
+    --tw-gradient-from: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-emerald-400 {
+    --tw-gradient-from: var(--color-emerald-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-fuchsia-400 {
+    --tw-gradient-from: var(--color-fuchsia-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-lime-300 {
+    --tw-gradient-from: var(--color-lime-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-pink-400 {
+    --tw-gradient-from: var(--color-pink-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-purple-500 {
+    --tw-gradient-from: var(--color-purple-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-purple-600 {
+    --tw-gradient-from: var(--color-purple-600);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-rose-400 {
+    --tw-gradient-from: var(--color-rose-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-sky-400 {
+    --tw-gradient-from: var(--color-sky-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-sky-600 {
+    --tw-gradient-from: var(--color-sky-600);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .from-violet-500 {
+    --tw-gradient-from: var(--color-violet-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .via-black\/10 {
+    --tw-gradient-via: color-mix(in srgb, var(--lx-000000, #000) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-via: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+    --tw-gradient-via-stops: var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-via) var(--tw-gradient-via-position), var(--tw-gradient-to) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-via-stops);
+  }
+.lx-f-templates-sites-clipmind .to-blue-500 {
+    --tw-gradient-to: var(--color-blue-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-cyan-400 {
+    --tw-gradient-to: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-emerald-500 {
+    --tw-gradient-to: var(--color-emerald-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-fuchsia-500 {
+    --tw-gradient-to: var(--color-fuchsia-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-indigo-400 {
+    --tw-gradient-to: var(--color-indigo-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-orange-300 {
+    --tw-gradient-to: var(--color-orange-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-rose-500 {
+    --tw-gradient-to: var(--color-rose-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-teal-300 {
+    --tw-gradient-to: var(--color-teal-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-transparent {
+    --tw-gradient-to: transparent;
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-violet-400 {
+    --tw-gradient-to: var(--color-violet-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-yellow-200 {
+    --tw-gradient-to: var(--color-yellow-200);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .to-yellow-300 {
+    --tw-gradient-to: var(--color-yellow-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-clipmind .fill-current {
+    fill: currentcolor;
+  }
+.lx-f-templates-sites-clipmind .p-1 {
+    padding: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .p-1\.5 {
+    padding: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-clipmind .p-3 {
+    padding: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .p-4 {
+    padding: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .p-6 {
+    padding: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind .p-7 {
+    padding: calc(var(--spacing) * 7);
+  }
+.lx-f-templates-sites-clipmind .px-1 {
+    padding-inline: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .px-1\.5 {
+    padding-inline: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-clipmind .px-2 {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .px-2\.5 {
+    padding-inline: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-clipmind .px-3 {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .px-4 {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .px-5 {
+    padding-inline: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .px-6 {
+    padding-inline: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-clipmind .py-0\.5 {
+    padding-block: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-clipmind .py-1 {
+    padding-block: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-clipmind .py-2 {
+    padding-block: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-clipmind .py-2\.5 {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-clipmind .py-3 {
+    padding-block: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-clipmind .py-4 {
+    padding-block: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .py-5 {
+    padding-block: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .py-12 {
+    padding-block: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-clipmind .py-20 {
+    padding-block: calc(var(--spacing) * 20);
+  }
+.lx-f-templates-sites-clipmind .pt-4 {
+    padding-top: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-clipmind .pt-28 {
+    padding-top: calc(var(--spacing) * 28);
+  }
+.lx-f-templates-sites-clipmind .pr-12 {
+    padding-right: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-clipmind .pb-1 {
+    padding-bottom: var(--spacing);
+  }
+.lx-f-templates-sites-clipmind .pb-5 {
+    padding-bottom: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .pb-16 {
+    padding-bottom: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-clipmind .pb-28 {
+    padding-bottom: calc(var(--spacing) * 28);
+  }
+.lx-f-templates-sites-clipmind .text-center {
+    text-align: center;
+  }
+.lx-f-templates-sites-clipmind .text-left {
+    text-align: left;
+  }
+.lx-f-templates-sites-clipmind .font-display {
+    font-family: var(--font-display);
+  }
+.lx-f-templates-sites-clipmind .font-mono {
+    font-family: var(--font-mono);
+  }
+.lx-f-templates-sites-clipmind .font-sans {
+    font-family: var(--font-sans);
+  }
+.lx-f-templates-sites-clipmind .font-unbounded {
+    font-family: var(--font-unbounded);
+  }
+.lx-f-templates-sites-clipmind .text-3xl {
+    font-size: var(--text-3xl);
+    line-height: var(--tw-leading, var(--text-3xl--line-height));
+  }
+.lx-f-templates-sites-clipmind .text-4xl {
+    font-size: var(--text-4xl);
+    line-height: var(--tw-leading, var(--text-4xl--line-height));
+  }
+.lx-f-templates-sites-clipmind .text-base {
+    font-size: var(--text-base);
+    line-height: var(--tw-leading, var(--text-base--line-height));
+  }
+.lx-f-templates-sites-clipmind .text-lg {
+    font-size: var(--text-lg);
+    line-height: var(--tw-leading, var(--text-lg--line-height));
+  }
+.lx-f-templates-sites-clipmind .text-sm {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+.lx-f-templates-sites-clipmind .text-xs {
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+.lx-f-templates-sites-clipmind .text-\[9px\] {
+    font-size: 9px;
+  }
+.lx-f-templates-sites-clipmind .text-\[10px\] {
+    font-size: 10px;
+  }
+.lx-f-templates-sites-clipmind .text-\[11px\] {
+    font-size: 11px;
+  }
+.lx-f-templates-sites-clipmind .text-\[clamp\(2rem\,5\.5vw\,4rem\)\] {
+    font-size: clamp(2rem, 5.5vw, 4rem);
+  }
+.lx-f-templates-sites-clipmind .text-\[clamp\(9px\,1\.6vw\,13px\)\] {
+    font-size: clamp(9px, 1.6vw, 13px);
+  }
+.lx-f-templates-sites-clipmind .text-\[clamp\(10px\,2\.2vw\,18px\)\] {
+    font-size: clamp(10px, 2.2vw, 18px);
+  }
+.lx-f-templates-sites-clipmind .text-\[clamp\(10px\,2\.6vw\,22px\)\] {
+    font-size: clamp(10px, 2.6vw, 22px);
+  }
+.lx-f-templates-sites-clipmind .leading-5 {
+    --tw-leading: calc(var(--spacing) * 5);
+    line-height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-clipmind .leading-\[1\.05\] {
+    --tw-leading: 1.05;
+    line-height: 1.05;
+  }
+.lx-f-templates-sites-clipmind .leading-relaxed {
+    --tw-leading: var(--leading-relaxed);
+    line-height: var(--leading-relaxed);
+  }
+.lx-f-templates-sites-clipmind .leading-tight {
+    --tw-leading: var(--leading-tight);
+    line-height: var(--leading-tight);
+  }
+.lx-f-templates-sites-clipmind .font-black {
+    --tw-font-weight: var(--font-weight-black);
+    font-weight: var(--font-weight-black);
+  }
+.lx-f-templates-sites-clipmind .font-bold {
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
+.lx-f-templates-sites-clipmind .font-medium {
+    --tw-font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium);
+  }
+.lx-f-templates-sites-clipmind .font-normal {
+    --tw-font-weight: var(--font-weight-normal);
+    font-weight: var(--font-weight-normal);
+  }
+.lx-f-templates-sites-clipmind .font-semibold {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
+.lx-f-templates-sites-clipmind .tracking-tight {
+    --tw-tracking: var(--tracking-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+.lx-f-templates-sites-clipmind .tracking-wider {
+    --tw-tracking: var(--tracking-wider);
+    letter-spacing: var(--tracking-wider);
+  }
+.lx-f-templates-sites-clipmind .text-amber-400 {
+    color: var(--color-amber-400);
+  }
+.lx-f-templates-sites-clipmind .text-black {
+    color: var(--color-black);
+  }
+.lx-f-templates-sites-clipmind .text-black\/25 {
+    color: color-mix(in srgb, var(--lx-000000, #000) 25%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-black) 25%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .text-emerald-400 {
+    color: var(--color-emerald-400);
+  }
+.lx-f-templates-sites-clipmind .text-orange-400 {
+    color: var(--color-orange-400);
+  }
+.lx-f-templates-sites-clipmind .text-purple-400 {
+    color: var(--color-purple-400);
+  }
+.lx-f-templates-sites-clipmind .text-rose-400 {
+    color: var(--color-rose-400);
+  }
+.lx-f-templates-sites-clipmind .text-slate-900 {
+    color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-clipmind .text-white {
+    color: var(--color-white);
+  }
+.lx-f-templates-sites-clipmind .text-white\/45 {
+    color: color-mix(in srgb, var(--lx-ffffff, #fff) 45%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-white) 45%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .text-white\/70 {
+    color: color-mix(in srgb, var(--lx-ffffff, #fff) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-white) 70%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .text-white\/90 {
+    color: color-mix(in srgb, var(--lx-ffffff, #fff) 90%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-white) 90%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .text-yellow-200 {
+    color: var(--color-yellow-200);
+  }
+.lx-f-templates-sites-clipmind .text-yellow-300 {
+    color: var(--color-yellow-300);
+  }
+.lx-f-templates-sites-clipmind .text-zinc-400 {
+    color: var(--color-zinc-400);
+  }
+.lx-f-templates-sites-clipmind .text-zinc-800 {
+    color: var(--color-zinc-800);
+  }
+.lx-f-templates-sites-clipmind .uppercase {
+    text-transform: uppercase;
+  }
+.lx-f-templates-sites-clipmind .tabular-nums {
+    --tw-numeric-spacing: tabular-nums;
+    font-variant-numeric: var(--tw-ordinal, ) var(--tw-slashed-zero, ) var(--tw-numeric-figure, ) var(--tw-numeric-spacing, ) var(--tw-numeric-fraction, );
+  }
+.lx-f-templates-sites-clipmind .line-through {
+    text-decoration-line: line-through;
+  }
+.lx-f-templates-sites-clipmind .accent-emerald-400 {
+    accent-color: var(--color-emerald-400);
+  }
+.lx-f-templates-sites-clipmind .accent-yellow-300 {
+    accent-color: var(--color-yellow-300);
+  }
+.lx-f-templates-sites-clipmind .opacity-30 {
+    opacity: 30%;
+  }
+.lx-f-templates-sites-clipmind .opacity-50 {
+    opacity: 50%;
+  }
+.lx-f-templates-sites-clipmind .opacity-60 {
+    opacity: 60%;
+  }
+.lx-f-templates-sites-clipmind .opacity-70 {
+    opacity: 70%;
+  }
+.lx-f-templates-sites-clipmind .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-clipmind .shadow-\[0_40px_120px_-30px_rgba\(168\,85\,247\,0\.4\)\] {
+    --tw-shadow: 0 40px 120px -30px var(--tw-shadow-color, rgba(168,85,247,0.4));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-clipmind .shadow-sm {
+    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-clipmind .ring {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-clipmind .ring-1 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-clipmind .ring-2 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-clipmind .ring-black\/10 {
+    --tw-ring-color: color-mix(in srgb, var(--lx-000000, #000) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-ring-color: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .ring-white {
+    --tw-ring-color: var(--color-white);
+  }
+.lx-f-templates-sites-clipmind .ring-yellow-300 {
+    --tw-ring-color: var(--color-yellow-300);
+  }
+.lx-f-templates-sites-clipmind .ring-yellow-300\/40 {
+    --tw-ring-color: color-mix(in srgb, oklch(90.5% 0.182 98.111) 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-ring-color: color-mix(in oklab, var(--color-yellow-300) 40%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .blur-3xl {
+    --tw-blur: blur(var(--blur-3xl));
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+.lx-f-templates-sites-clipmind .filter {
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+.lx-f-templates-sites-clipmind .backdrop-blur {
+    --tw-backdrop-blur: blur(8px);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-clipmind .backdrop-blur-\[2px\] {
+    --tw-backdrop-blur: blur(2px);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-clipmind .backdrop-blur-sm {
+    --tw-backdrop-blur: blur(var(--blur-sm));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-clipmind .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(var(--blur-xl));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-clipmind .transition {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-clipmind .transition-\[background-color\,border-color\,backdrop-filter\] {
+    transition-property: background-color,border-color,backdrop-filter;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-clipmind .duration-300 {
+    --tw-duration: 300ms;
+    transition-duration: 300ms;
+  }
+.lx-f-templates-sites-clipmind .\[text-shadow\:0_2px_0_\#000\,0_0_8px_\#000\] {
+    text-shadow: 0 2px 0 var(--lx-000000, #000),0 0 8px var(--lx-000000, #000);
+  }
+.lx-f-templates-sites-clipmind .ring-inset {
+    --tw-ring-inset: inset;
+  }
+.lx-f-templates-sites-clipmind .selection\:bg-purple-500\/40 ::selection {
+    background-color: color-mix(in srgb, oklch(62.7% 0.265 303.9) 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-purple-500) 40%, transparent);
+    }
+  }
+.lx-f-templates-sites-clipmind .selection\:bg-purple-500\/40::selection {
+    background-color: color-mix(in srgb, oklch(62.7% 0.265 303.9) 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-purple-500) 40%, transparent);
+    }
+  }
+@media (hover: hover) {
+    .lx-f-templates-sites-clipmind .hover\:bg-white\/5:hover {
+      background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 5%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .lx-f-templates-sites-clipmind .hover\:bg-white\/5:hover {
+        background-color: color-mix(in oklab, var(--color-white) 5%, transparent);
+      }
+    }
+    .lx-f-templates-sites-clipmind .hover\:bg-white\/10:hover {
+      background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .lx-f-templates-sites-clipmind .hover\:bg-white\/10:hover {
+        background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+      }
+    }
+    .lx-f-templates-sites-clipmind .hover\:text-white:hover {
+      color: var(--color-white);
+    }
+    .lx-f-templates-sites-clipmind .hover\:opacity-100:hover {
+      opacity: 100%;
+    }
+  }
+@media (width >= 40rem) {
+    .lx-f-templates-sites-clipmind .sm\:block {
+      display: block;
+    }
+    .lx-f-templates-sites-clipmind .sm\:h-\[380px\] {
+      height: 380px;
+    }
+    .lx-f-templates-sites-clipmind .sm\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-clipmind .sm\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-clipmind .sm\:p-5 {
+      padding: calc(var(--spacing) * 5);
+    }
+    .lx-f-templates-sites-clipmind .sm\:px-8 {
+      padding-inline: calc(var(--spacing) * 8);
+    }
+    .lx-f-templates-sites-clipmind .sm\:pt-32 {
+      padding-top: calc(var(--spacing) * 32);
+    }
+    .lx-f-templates-sites-clipmind .sm\:text-5xl {
+      font-size: var(--text-5xl);
+      line-height: var(--tw-leading, var(--text-5xl--line-height));
+    }
+  }
+@media (width >= 48rem) {
+    .lx-f-templates-sites-clipmind .md\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-clipmind .md\:flex-row {
+      flex-direction: row;
+    }
+    .lx-f-templates-sites-clipmind .md\:items-center {
+      align-items: center;
+    }
+    .lx-f-templates-sites-clipmind .md\:justify-between {
+      justify-content: space-between;
+    }
+  }
+@media (width >= 64rem) {
+    .lx-f-templates-sites-clipmind .lg\:ml-0 {
+      margin-left: 0px;
+    }
+    .lx-f-templates-sites-clipmind .lg\:flex {
+      display: flex;
+    }
+    .lx-f-templates-sites-clipmind .lg\:hidden {
+      display: none;
+    }
+    .lx-f-templates-sites-clipmind .lg\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-clipmind .lg\:grid-cols-\[1fr_280px\] {
+      grid-template-columns: 1fr 280px;
+    }
+    .lx-f-templates-sites-clipmind .lg\:border-t-0 {
+      border-top-style: var(--tw-border-style);
+      border-top-width: 0px;
+    }
+    .lx-f-templates-sites-clipmind .lg\:border-l {
+      border-left-style: var(--tw-border-style);
+      border-left-width: 1px;
+    }
+  }
+.lx-scope {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-clipmind ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-clipmind *, .lx-f-templates-sites-clipmind *::before, .lx-f-templates-sites-clipmind *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-f-templates-sites-clipmind .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-clipmind .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-clipmind .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-clipmind .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-clipmind .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-clipmind .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-clipmind .synth-grid, .lx-f-templates-sites-clipmind .pixel-ground {
+    animation: none;
+  }
+}
+.lx-f-templates-sites-clipmind .site [id] {
+  scroll-margin-top: 5rem;
+}
+.lx-f-templates-sites-clipmind .no-scrollbar {
+  scrollbar-width: none;
+}
+.lx-f-templates-sites-clipmind .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.lx-scope {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-clipmind ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-clipmind *, .lx-f-templates-sites-clipmind *::before, .lx-f-templates-sites-clipmind *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-scope {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-clipmind ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-clipmind *, .lx-f-templates-sites-clipmind *::before, .lx-f-templates-sites-clipmind *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-f-templates-sites-clipmind .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-clipmind .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-clipmind .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-clipmind .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-clipmind .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-clipmind .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-clipmind .synth-grid, .lx-f-templates-sites-clipmind .pixel-ground {
+    animation: none;
+  }
+}
+.lx-f-templates-sites-clipmind .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-clipmind .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-clipmind .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-clipmind .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-clipmind .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-clipmind .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-clipmind .synth-grid, .lx-f-templates-sites-clipmind .pixel-ground {
+    animation: none;
+  }
+}

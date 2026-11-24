@@ -1,34 +1,39 @@
 // The owner's theme library (the Themes folder: React + Tailwind 4 + Framer Motion, docs/themes-library-plan.ar.md)
-// made editable for the shop, once, by machine. Every file a library item needs is copied into src/library with:
+// made editable for the shop, once, by machine. Every file a library piece needs is copied into library-src (not
+// kept in git; bundle.mjs makes the shop's files of it) with:
 //   - every text a shopper sees passed through the item's own words (runtime.tsx): written in the page (<T s="…"/>),
 //     the attributes people read (alt, title, placeholder, aria-label: lx("…")), and the words handed to the
 //     library's own components (text="…"). The logic keeps the original words; only what's shown changes.
 //   - every colour in a style or an SVG colour attribute passed through cv(), which names it as a CSS variable
 //     (--lx-<hex>) the item's wrapper can set; Tailwind's colour families are variables already (build-css.mjs).
 //   - Framer Motion taken from the shop's own copy (motion/react), and the library's animations named lx-….
-// It also writes manifest.gen.ts: each item with its kind, names, words, colour families and colours.
+// Every piece the library's folders list (registry.mjs). It also writes the list for bundle.mjs to finish into
+// src/library/index.gen.ts (each piece's kind, category, name, made-up brand and height), and
+// src/library/details/<id>.json (the words, colour families and colours a piece's panel offers, loaded only when
+// that panel opens).
 //
 //   node scripts/library/convert.mjs [path to the Themes folder]
 // (it uses the Themes folder's own Babel, so that folder must be there with its packages installed).
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { ITEMS, KEYFRAMES } from "./items.mjs";
+import { keyframesOf, readLibrary } from "./registry.mjs";
 
 const THEMES = path.resolve(process.argv[2] || process.env.THEMES_DIR || "C:/Users/Ibrah/Desktop/estabrek/Themes");
+const ITEMS = await readLibrary(THEMES);
+const KEYFRAMES = keyframesOf(THEMES);
 const SHOP = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "../..");
-const OUT = path.join(SHOP, "src/library");
+// The converted pieces: their own folder, outside the shop's code (bundle.mjs makes them public/library's files;
+// the shop's own build never compiles them). Not kept in git: made again from the Themes folder.
+const OUT = path.join(SHOP, "library-src");
+// What the shop and the admin read: each piece's details (src/library/details) and the list (bundle.mjs writes it).
+const LIB = path.join(SHOP, "src/library");
 const req = createRequire(path.join(THEMES, "package.json"));
 const parser = req("@babel/parser");
 const traverse = req("@babel/traverse").default;
 const generate = req("@babel/generator").default;
 const t = req("@babel/types");
 
-/** Where a library folder goes in the shop (Templates/src → templates). */
-const folderOf = (src) => {
-  const rel = path.relative(THEMES, src).split(path.sep);
-  return rel[0].toLowerCase();
-};
 const outPath = (src) => {
   const rel = path.relative(THEMES, src).split(path.sep);
   // <Folder>/src/<rest> → <folder>/<rest>
@@ -308,37 +313,28 @@ for (const item of ITEMS) {
     }
   };
   walk(file, item.exp);
-  manifest.items.push({ ...item, file: file.replace(/\.tsx$/, ""), folder: folderOf(entry), families: [...got.families], hexes: [...got.hexes], words: [...got.words] });
+  // The made-up brand isn't one of its words: the store's name takes its place.
+  const own = [...got.words].filter((w) => !item.brand || (w !== item.brand && w !== item.brand.toUpperCase()));
+  manifest.items.push({ ...item, file: file.replace(/\.tsx$/, ""), families: [...got.families], hexes: [...got.hexes], words: own });
 }
-// The list as plain data (no React, no "@/" imports): the shop reads it (meta.ts) and so does the admin's editor,
-// by path, for its "من المكتبة" group and an item's panel.
-fs.rmSync(path.join(OUT, "items.gen.json"), { force: true });
-fs.writeFileSync(
-  path.join(OUT, "manifest.gen.ts"),
-  `// Made by scripts/library/convert.mjs: do not edit.\n/* eslint-disable */\n` +
-    `/** A library item: its id, kind, names, made-up brand, height while it loads, and the words, colour families and colours (6 digits) it uses. */\n` +
-    `export type LibItemMeta = { id: string; kind: string; name: { ar: string; en: string; he: string }; brand: string; minH: number; folder: string; families: string[]; hexes: string[]; words: string[] };\n\n` +
-    `export const LIB_MANIFEST: readonly LibItemMeta[] = ${JSON.stringify(
-      manifest.items.map(({ id, kind, name, brand, minH, folder, families, hexes, words }) => ({ id, kind, name, brand: brand ?? "", minH, folder, families, hexes, words })),
-      null,
-      1,
-    )};\n`,
-);
+const GEN = "// Made by scripts/library/convert.mjs: do not edit.\n";
+fs.mkdirSync(OUT, { recursive: true });
 
-// Each item's entry: its component; and the list of them, each loaded only when shown (next/dynamic). The
-// library's styles come once for all of them (LibStyles.tsx, from LibBlock).
+// The list, for bundle.mjs to finish (with each piece's file and styles) into src/library/index.gen.ts.
+const cssKey = (file) => file.split("/").join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+fs.writeFileSync(path.join(OUT, "index.json"), JSON.stringify(manifest.items.map(({ id, kind, cat, name, brand, minH, blurb, tags, colors, file }) => ({ id, kind, ...(cat ? { cat } : {}), name, brand, minH, ...(blurb ? { blurb } : {}), ...(tags ? { tags } : {}), ...(colors ? { colors } : {}), css: cssKey(file) }))));
+// What a piece's panel offers: the words it shows, its colour families and its colours (6 digits).
+fs.rmSync(path.join(LIB, "details"), { recursive: true, force: true });
+fs.mkdirSync(path.join(LIB, "details"), { recursive: true });
+for (const i of manifest.items) fs.writeFileSync(path.join(LIB, "details", `${i.id}.json`), JSON.stringify({ words: i.words, families: i.families, hexes: i.hexes }) + "\n");
+
+// Each piece's entry: its component as the default export (bundle.mjs makes each its own file), and which file's
+// classes it wears (build-css.mjs: css/<file>.css, kept to its pieces by .lx-f-<file>).
 fs.rmSync(path.join(OUT, "entries"), { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, "entries"), { recursive: true });
-const GEN = "// Made by scripts/library/convert.mjs: do not edit.\n";
 for (const item of manifest.items) {
   const from = `../${item.file}`;
-  const body = item.exp === "default" ? `export { default } from "${from}";\n` : `import { ${item.exp} } from "${from}";\nexport default ${item.exp};\n`;
-  fs.writeFileSync(path.join(OUT, "entries", `${item.id}.tsx`), `"use client";\n${GEN}// @ts-nocheck\n${body}`);
+  const piece = item.exp === "default" ? `import Piece from "${from}";` : `import { ${item.exp} as Piece } from "${from}";`;
+  fs.writeFileSync(path.join(OUT, "entries", `${item.id}.tsx`), `${GEN}// @ts-nocheck\n${piece}\nexport default Piece;\n`);
 }
-fs.writeFileSync(
-  path.join(OUT, "items.gen.tsx"),
-  `"use client";\n${GEN}import dynamic from "next/dynamic";\nimport type { ComponentType } from "react";\n\nexport const LIB_COMPONENTS: Record<string, ComponentType> = {\n${manifest.items
-    .map((i) => `  ${JSON.stringify(i.id)}: dynamic(() => import("./entries/${i.id}")),`)
-    .join("\n")}\n};\n`,
-);
 console.log(`converted ${done.size} files, ${manifest.items.length} items`);

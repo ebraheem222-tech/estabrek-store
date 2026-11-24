@@ -45,7 +45,7 @@ test("a whole website and two sections from the library, in the store's name, th
     for (let i = 0; i < n; i++) await expect(page.locator(chrome).nth(i)).toBeHidden();
   }
   // White words on its dark parts stay white (the shop's light theme doesn't repaint the library's).
-  const pricing = page.locator('[data-lib="pricing-three"]');
+  const pricing = page.locator('[data-lib="pricing-three-tiers"]');
   await pricing.scrollIntoViewIfNeeded();
   await expect(pricing).toContainText(/month|mo/i);
   // Its indigo family is the owner's green, all its shades made from it.
@@ -61,7 +61,7 @@ test("a whole website and two sections from the library, in the store's name, th
     return c;
   });
   expect(shade600).not.toBe("rgba(0, 0, 0, 0)");
-  expect(await painted(page, '[data-lib="pricing-three"]', shade600)).toBe(true);
+  expect(await painted(page, '[data-lib="pricing-three-tiers"]', shade600)).toBe(true);
   // A section with nothing changed is as the library made it.
   const faq = page.locator('[data-lib="faq-classic"]');
   await faq.scrollIntoViewIfNeeded();
@@ -87,16 +87,22 @@ test("from the editor: a library piece added from the Add panel, its words and c
   await page.goto(editor);
   await ready();
   await page.getByRole("tab", { name: "+ Add" }).click();
-  // The library's group, found by its name too.
-  await page.getByRole("searchbox", { name: "Find a section or element" }).fill("accordion");
-  const add = page.locator('[data-testid="studio-add-item"][data-kind="lib:faq-classic"]');
-  await expect(add).toBeVisible();
-  await add.click();
+  // The Add panel's search finds the library's pieces too.
+  await page.getByRole("searchbox", { name: "Find a section or element" }).fill("classic accordion");
+  await expect(page.locator('[data-testid="studio-add-item"][data-kind="lib:faq-classic"]')).toBeVisible();
+  // The library itself: its kinds, the FAQs among them, a piece put on the page.
+  await page.getByTestId("studio-lib-browse").click();
+  const shelf = page.getByTestId("lib-shelf");
+  await expect(shelf.locator('[data-testid="lib-card"]').first()).toHaveAttribute("data-kind", "site");
+  await shelf.locator('[data-testid="lib-kind"][data-kind="faq"]').click();
+  await expect(shelf.locator('[data-testid="lib-card"]')).toHaveCount(48);
+  await shelf.locator('[data-testid="lib-card"][data-item="faq-classic"] [data-testid="lib-pick"]').click();
+  await expect(shelf).toBeHidden();
   // It goes on the page as it is (a whole section of its own), named for the layers list.
   await expect.poll(async () => ((await draft()).children as any[]).some((n) => n.type === "lib")).toBe(true);
   const piece = ((await draft()).children as any[]).find((n) => n.type === "lib");
   expect(piece.props).toEqual({ item: "faq-classic" });
-  expect(piece.name).toBe("Classic accordion");
+  expect(piece.name).toBe("Classic Accordion");
   expect(piece.children ?? []).toEqual([]);
 
   const panel = page.getByTestId("studio-lib-panel").first();

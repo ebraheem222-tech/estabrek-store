@@ -1,0 +1,1 @@
+{"words":["Real-time 3D · no libraries","Matter that","thinks in curves.","Four spheres, melting together in real time. Move your mouse to turn the camera.","Explore the lab","position:absolute;inset:0;width:100%;height:100%;display:block","attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }","WEBGL_lose_context"],"families":["indigo","fuchsia"],"hexes":[]}

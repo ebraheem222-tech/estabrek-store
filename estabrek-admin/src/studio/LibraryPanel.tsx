@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
-import { libItemOf, libName } from "./library";
+import { LIB_KIND_NAME, libDetails, libItemOf, libName, type LibDetails } from "./library";
 import { Field } from "./StudioPanels";
 import { say } from "./say";
 
@@ -71,7 +71,15 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
   const [q, setQ] = useState("");
   const [all, setAll] = useState(false);
   const own = rec(p.words);
-  const words = useMemo(() => (item?.words ?? []).filter((w) => w.length <= 400 && w !== item?.brand && w !== item?.brand.toUpperCase()), [item]);
+  // Its words and colours: a small file of its own, fetched when its panel opens.
+  const [details, setDetails] = useState<LibDetails | null>(null);
+  useEffect(() => {
+    let live = true;
+    setDetails(null);
+    if (item) void libDetails(item.id).then((d) => live && setDetails(d ?? { words: [], families: [], hexes: [] }));
+    return () => { live = false; };
+  }, [item?.id]);
+  const words = useMemo(() => (details?.words ?? []).filter((w) => w.length <= 400), [details]);
   if (!item) return <p className="text-[11px] text-amber-200/80">{say("هالقطعة مش موجودة بالمكتبة.|This piece isn't in the library.|הפריט הזה לא נמצא בספרייה.")}</p>;
 
   const setProps = (patch: Record<string, unknown>, label = say("تعديل قطعة المكتبة|Edit the library piece|עריכת פריט הספרייה")) =>
@@ -111,6 +119,7 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="text-xs font-medium text-white/85">{libName(item)}</div>
+            <div className="text-[10px] text-white/45">{say(LIB_KIND_NAME[item.kind] ?? item.kind)}</div>
             <div className="text-[10px] text-white/40">{say("من المكتبة: كل كلمة ولون فيها إلك تغيّرها|From the library: every word and colour in it is yours to change|מהספרייה: כל מילה וצבע בה שלך לשנות")}</div>
           </div>
           {changed ? (
@@ -159,11 +168,13 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         ) : null}
       </section>
 
-      {item.families.length ? (
+      {!details ? <p className="text-[11px] text-white/45" data-testid="studio-lib-loading">{say("عم تتحمّل كلماتها وألوانها…|Loading its words and colours…|טוען מילים וצבעים…")}</p> : null}
+
+      {details?.families.length ? (
         <section className={box} aria-label={say("عائلات الألوان|Colour families|משפחות צבעים")} data-testid="studio-lib-families">
           <h4 className="text-[11px] font-medium text-white/70">{say("عائلات الألوان|Colour families|משפחות צבעים")}</h4>
           <p className="text-[10px] leading-4 text-white/35">{say("كل عائلة بتتلوّن كلها (فاتحها وغامقها) من لون واحد، أو من لون ثيم متجرك.|Each family takes all its shades, light to dark, from one colour, or from your store theme's colour.|כל משפחה מקבלת את כל גווניה מצבע אחד, או מצבע ערכת החנות.")}</p>
-          {item.families.map((f) => {
+          {details.families.map((f) => {
             const to = families[f];
             const theme = to === "theme";
             return (
@@ -182,12 +193,12 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         </section>
       ) : null}
 
-      {item.hexes.length ? (
+      {details?.hexes.length ? (
         <section className={box} aria-label={say("ألوانها|Its colours|הצבעים שלה")} data-testid="studio-lib-colours">
-          <h4 className="text-[11px] font-medium text-white/70">{say("ألوانها|Its colours|הצבעים שלה")} <span className="text-white/35">({item.hexes.length})</span></h4>
+          <h4 className="text-[11px] font-medium text-white/70">{say("ألوانها|Its colours|הצבעים שלה")} <span className="text-white/35">({details.hexes.length})</span></h4>
           <p className="text-[10px] leading-4 text-white/35">{say("كبسة على لون بتغيّره وين ما إجا بالقطعة.|Click a colour to change it wherever the piece uses it.|לחיצה על צבע משנה אותו בכל מקום בפריט.")}</p>
           <div className="flex flex-wrap gap-1.5">
-            {item.hexes.map((h) => {
+            {details.hexes.map((h) => {
               const to = colours[h];
               return (
                 <Swatch key={h} value={typeof to === "string" && HEX6.test(to) ? to : `#${h}`} was={`#${h}`} busy={busy} label={`#${h}`} onPick={(v) => setColour(h, v)} testId="studio-lib-colour" data={{ hex: h }} />

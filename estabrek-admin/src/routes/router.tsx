@@ -106,6 +106,7 @@ const SitesPage = lazy(() => import("../features/myFeatures/SitesPage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
 const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
+const LibraryPage = lazy(() => import("../features/library/LibraryPage"));
 
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
 const CommentsPage = lazy(() => import("../features/ugc/CommentsPage"));
@@ -289,6 +290,8 @@ export default function AppRouter() {
           <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
           <Route path="visual-controls" element={withPermissions(<VisualControlsPage />, ["settings:read"])} />
           <Route path="themes" element={withPermissions(<ThemesPage />, ["settings:read"])} />
+          {/* The owner's theme library: whole websites and sections, a page made of any of them (docs/themes-library-plan.ar.md). */}
+          <Route path="library" element={withPermissions(<ErrorBoundary title="Library"><LibraryPage /></ErrorBoundary>, ["pages:read"])} />
           <Route path="features" element={withPermissions(<FeaturesPage />, ["settings:read"])} />
           <Route path="razan" element={withPermissions(<RazanPage />, ["settings:read"])} />
           <Route path="quiz" element={withPermissions(<QuizPage />, ["settings:read"])} />

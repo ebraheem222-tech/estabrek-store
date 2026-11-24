@@ -28,3 +28,6 @@ Claude outputs/
 
 # Animation players' WebAssembly, copied from node_modules before dev and build (estabrek-storefront/scripts/vendor-wasm.cjs)
 estabrek-storefront/public/vendor/
+
+# The theme library's converted pieces (estabrek-storefront/scripts/library/convert.mjs): made again from the Themes folder.
+estabrek-storefront/library-src/

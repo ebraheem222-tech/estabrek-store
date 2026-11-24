@@ -59,7 +59,7 @@ import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
 import type { ShareNetwork } from "./ProWidgets";
 import { RoseCollectionStory, RoseSeasons } from "@/components/cinematic/homeScenes";
 import { LibBlock } from "@/library/LibBlock";
-import { libItem } from "@/library/meta";
+import { LIB_CSS_VERSION, libItem } from "@/library/meta";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -493,7 +493,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
         }
       }
       const brand = say(p.brand);
-      return <div className={cls(node)} {...mark}><LibBlock item={item.id} words={words} colours={p.colours} families={p.families} brand={brand || undefined} />{fx}</div>;
+      return <div className={cls(node)} {...mark}><LibBlock item={item.id} kind={item.kind} madeUp={item.brand || undefined} minH={item.minH} js={item.js} css={item.css} version={LIB_CSS_VERSION} words={words} colours={p.colours} families={p.families} brand={brand || undefined} />{fx}</div>;
     }
     case "showcase": {
       const spec = showcaseOf(p);

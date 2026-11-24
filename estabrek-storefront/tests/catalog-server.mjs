@@ -493,7 +493,7 @@ const stageDemo = { id: "stage-demo", slug: "/stage-demo", name: "3D stage", sta
 // POST /__test/library-page {nodes} sets them; {} puts these back.
 const LIBRARY_NODES = () => [
   { id: "lib-maison", type: "lib", props: { item: "site-maison", brand: { ar: "متجر نور", en: "Noor Store" }, words: { "Shop the collection": { ar: "تسوّقوا المجموعة", en: "Shop what's new" } }, colours: { c8a75d: "#2563eb" } } },
-  { id: "lib-pricing", type: "lib", props: { item: "pricing-three", families: { indigo: "#16a34a" } } },
+  { id: "lib-pricing", type: "lib", props: { item: "pricing-three-tiers", families: { indigo: "#16a34a" } } },
   { id: "lib-faq", type: "lib", props: { item: "faq-classic" } },
 ];
 globalThis.libraryNodes = LIBRARY_NODES();

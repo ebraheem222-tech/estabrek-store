@@ -1,0 +1,1282 @@
+/* templates/sites/bourselle.tsx's classes (made by scripts/library/build-css.mjs: do not edit). */
+/*! tailwindcss v4.3.5 | MIT License | https://tailwindcss.com */
+.lx-f-templates-sites-bourselle .pointer-events-none {
+    pointer-events: none;
+  }
+.lx-f-templates-sites-bourselle .absolute {
+    position: absolute;
+  }
+.lx-f-templates-sites-bourselle .fixed {
+    position: fixed;
+  }
+.lx-f-templates-sites-bourselle .relative {
+    position: relative;
+  }
+.lx-f-templates-sites-bourselle .inset-0 {
+    inset: 0px;
+  }
+.lx-f-templates-sites-bourselle .inset-x-0 {
+    inset-inline: 0px;
+  }
+.lx-f-templates-sites-bourselle .inset-x-3 {
+    inset-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .inset-y-0 {
+    inset-block: 0px;
+  }
+.lx-f-templates-sites-bourselle .top-0 {
+    top: 0px;
+  }
+.lx-f-templates-sites-bourselle .top-2 {
+    top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .top-16 {
+    top: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-bourselle .right-0 {
+    right: 0px;
+  }
+.lx-f-templates-sites-bourselle .bottom-3 {
+    bottom: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .bottom-24 {
+    bottom: calc(var(--spacing) * 24);
+  }
+.lx-f-templates-sites-bourselle .left-1\/2 {
+    left: calc(1 / 2 * 100%);
+  }
+.lx-f-templates-sites-bourselle .left-2 {
+    left: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .z-30 {
+    z-index: 30;
+  }
+.lx-f-templates-sites-bourselle .z-40 {
+    z-index: 40;
+  }
+.lx-f-templates-sites-bourselle .z-50 {
+    z-index: 50;
+  }
+.lx-f-templates-sites-bourselle .z-\[60\] {
+    z-index: 60;
+  }
+.lx-f-templates-sites-bourselle .z-\[200\] {
+    z-index: 200;
+  }
+.lx-f-templates-sites-bourselle .z-\[201\] {
+    z-index: 201;
+  }
+.lx-f-templates-sites-bourselle .z-\[400\] {
+    z-index: 400;
+  }
+.lx-f-templates-sites-bourselle .col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+.lx-f-templates-sites-bourselle .mx-auto {
+    margin-inline: auto;
+  }
+.lx-f-templates-sites-bourselle .mt-1 {
+    margin-top: var(--spacing);
+  }
+.lx-f-templates-sites-bourselle .mt-2 {
+    margin-top: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .mt-3 {
+    margin-top: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .mt-4 {
+    margin-top: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .mt-5 {
+    margin-top: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .mt-6 {
+    margin-top: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .mt-8 {
+    margin-top: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-bourselle .mt-10 {
+    margin-top: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-bourselle .ml-auto {
+    margin-left: auto;
+  }
+.lx-f-templates-sites-bourselle .block {
+    display: block;
+  }
+.lx-f-templates-sites-bourselle .flex {
+    display: flex;
+  }
+.lx-f-templates-sites-bourselle .grid {
+    display: grid;
+  }
+.lx-f-templates-sites-bourselle .hidden {
+    display: none;
+  }
+.lx-f-templates-sites-bourselle .inline-block {
+    display: inline-block;
+  }
+.lx-f-templates-sites-bourselle .inline-flex {
+    display: inline-flex;
+  }
+.lx-f-templates-sites-bourselle .aspect-\[9\/19\] {
+    aspect-ratio: 9/19;
+  }
+.lx-f-templates-sites-bourselle .size-2 {
+    width: calc(var(--spacing) * 2);
+    height: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .size-3 {
+    width: calc(var(--spacing) * 3);
+    height: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .size-3\.5 {
+    width: calc(var(--spacing) * 3.5);
+    height: calc(var(--spacing) * 3.5);
+  }
+.lx-f-templates-sites-bourselle .size-4 {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .size-5 {
+    width: calc(var(--spacing) * 5);
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .size-6 {
+    width: calc(var(--spacing) * 6);
+    height: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .size-8 {
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-bourselle .size-10 {
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+  }
+.lx-f-templates-sites-bourselle .size-full {
+    width: 100%;
+    height: 100%;
+  }
+.lx-f-templates-sites-bourselle .h-0\.5 {
+    height: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-bourselle .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-bourselle .h-5 {
+    height: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .h-12 {
+    height: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-bourselle .h-16 {
+    height: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-bourselle .h-24 {
+    height: calc(var(--spacing) * 24);
+  }
+.lx-f-templates-sites-bourselle .h-32 {
+    height: calc(var(--spacing) * 32);
+  }
+.lx-f-templates-sites-bourselle .h-56 {
+    height: calc(var(--spacing) * 56);
+  }
+.lx-f-templates-sites-bourselle .min-h-full {
+    min-height: 100%;
+  }
+.lx-f-templates-sites-bourselle .min-h-screen {
+    min-height: 100vh;
+  }
+.lx-f-templates-sites-bourselle .w-4 {
+    width: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .w-6 {
+    width: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .w-14 {
+    width: calc(var(--spacing) * 14);
+  }
+.lx-f-templates-sites-bourselle .w-16 {
+    width: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-bourselle .w-20 {
+    width: calc(var(--spacing) * 20);
+  }
+.lx-f-templates-sites-bourselle .w-64 {
+    width: calc(var(--spacing) * 64);
+  }
+.lx-f-templates-sites-bourselle .w-full {
+    width: 100%;
+  }
+.lx-f-templates-sites-bourselle .w-max {
+    width: max-content;
+  }
+.lx-f-templates-sites-bourselle .max-w-3xl {
+    max-width: var(--container-3xl);
+  }
+.lx-f-templates-sites-bourselle .max-w-5xl {
+    max-width: var(--container-5xl);
+  }
+.lx-f-templates-sites-bourselle .max-w-6xl {
+    max-width: var(--container-6xl);
+  }
+.lx-f-templates-sites-bourselle .max-w-7xl {
+    max-width: var(--container-7xl);
+  }
+.lx-f-templates-sites-bourselle .max-w-lg {
+    max-width: var(--container-lg);
+  }
+.lx-f-templates-sites-bourselle .max-w-md {
+    max-width: var(--container-md);
+  }
+.lx-f-templates-sites-bourselle .max-w-sm {
+    max-width: var(--container-sm);
+  }
+.lx-f-templates-sites-bourselle .max-w-xl {
+    max-width: var(--container-xl);
+  }
+.lx-f-templates-sites-bourselle .min-w-0 {
+    min-width: 0px;
+  }
+.lx-f-templates-sites-bourselle .min-w-\[720px\] {
+    min-width: 720px;
+  }
+.lx-f-templates-sites-bourselle .flex-1 {
+    flex: 1;
+  }
+.lx-f-templates-sites-bourselle .shrink-0 {
+    flex-shrink: 0;
+  }
+.lx-f-templates-sites-bourselle .-translate-x-1\/2 {
+    --tw-translate-x: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+.lx-f-templates-sites-bourselle .rotate-180 {
+    rotate: 180deg;
+  }
+.lx-f-templates-sites-bourselle .transform {
+    transform: var(--tw-rotate-x, ) var(--tw-rotate-y, ) var(--tw-rotate-z, ) var(--tw-skew-x, ) var(--tw-skew-y, );
+  }
+.lx-f-templates-sites-bourselle .animate-marquee {
+    animation: var(--animate-marquee);
+  }
+.lx-f-templates-sites-bourselle .animate-marquee-reverse {
+    animation: var(--animate-marquee-reverse);
+  }
+.lx-f-templates-sites-bourselle .touch-none {
+    touch-action: none;
+  }
+.lx-f-templates-sites-bourselle .scroll-mt-28 {
+    scroll-margin-top: calc(var(--spacing) * 28);
+  }
+.lx-f-templates-sites-bourselle .grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-bourselle .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-bourselle .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+.lx-f-templates-sites-bourselle .flex-col {
+    flex-direction: column;
+  }
+.lx-f-templates-sites-bourselle .flex-wrap {
+    flex-wrap: wrap;
+  }
+.lx-f-templates-sites-bourselle .place-items-center {
+    place-items: center;
+  }
+.lx-f-templates-sites-bourselle .items-baseline {
+    align-items: baseline;
+  }
+.lx-f-templates-sites-bourselle .items-center {
+    align-items: center;
+  }
+.lx-f-templates-sites-bourselle .items-end {
+    align-items: flex-end;
+  }
+.lx-f-templates-sites-bourselle .items-start {
+    align-items: flex-start;
+  }
+.lx-f-templates-sites-bourselle .justify-between {
+    justify-content: space-between;
+  }
+.lx-f-templates-sites-bourselle .justify-center {
+    justify-content: center;
+  }
+.lx-f-templates-sites-bourselle .gap-0\.5 {
+    gap: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-bourselle .gap-1 {
+    gap: var(--spacing);
+  }
+.lx-f-templates-sites-bourselle .gap-1\.5 {
+    gap: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-bourselle .gap-2 {
+    gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .gap-3 {
+    gap: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .gap-4 {
+    gap: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .gap-6 {
+    gap: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .gap-7 {
+    gap: calc(var(--spacing) * 7);
+  }
+.lx-f-templates-sites-bourselle .gap-8 {
+    gap: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-bourselle .gap-12 {
+    gap: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-bourselle :where(.space-y-2 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-bourselle :where(.space-y-2\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2.5) * calc(1 - var(--tw-space-y-reverse)));
+  }
+.lx-f-templates-sites-bourselle .gap-x-6 {
+    column-gap: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle :where(.-space-x-2 > :not(:last-child)) {
+    --tw-space-x-reverse: 0;
+    margin-inline-start: calc(calc(var(--spacing) * -2) * var(--tw-space-x-reverse));
+    margin-inline-end: calc(calc(var(--spacing) * -2) * calc(1 - var(--tw-space-x-reverse)));
+  }
+.lx-f-templates-sites-bourselle .gap-y-2 {
+    row-gap: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .gap-y-3 {
+    row-gap: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle :where(.divide-y > :not(:last-child)) {
+    --tw-divide-y-reverse: 0;
+    border-bottom-style: var(--tw-border-style);
+    border-top-style: var(--tw-border-style);
+    border-top-width: calc(1px * var(--tw-divide-y-reverse));
+    border-bottom-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
+  }
+.lx-f-templates-sites-bourselle :where(.divide-slate-100 > :not(:last-child)) {
+    border-color: var(--color-slate-100);
+  }
+.lx-f-templates-sites-bourselle .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+.lx-f-templates-sites-bourselle .overflow-hidden {
+    overflow: hidden;
+  }
+.lx-f-templates-sites-bourselle .overflow-x-auto {
+    overflow-x: auto;
+  }
+.lx-f-templates-sites-bourselle .overflow-y-auto {
+    overflow-y: auto;
+  }
+.lx-f-templates-sites-bourselle .rounded {
+    border-radius: 0.25rem;
+  }
+.lx-f-templates-sites-bourselle .rounded-2xl {
+    border-radius: var(--radius-2xl);
+  }
+.lx-f-templates-sites-bourselle .rounded-\[2\.1rem\] {
+    border-radius: 2.1rem;
+  }
+.lx-f-templates-sites-bourselle .rounded-\[2\.6rem\] {
+    border-radius: 2.6rem;
+  }
+.lx-f-templates-sites-bourselle .rounded-full {
+    border-radius: calc(infinity * 1px);
+  }
+.lx-f-templates-sites-bourselle .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
+.lx-f-templates-sites-bourselle .rounded-md {
+    border-radius: var(--radius-md);
+  }
+.lx-f-templates-sites-bourselle .rounded-sm {
+    border-radius: var(--radius-sm);
+  }
+.lx-f-templates-sites-bourselle .rounded-xl {
+    border-radius: var(--radius-xl);
+  }
+.lx-f-templates-sites-bourselle .rounded-t {
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+  }
+.lx-f-templates-sites-bourselle .border-\[7px\] {
+    border-style: var(--tw-border-style);
+    border-width: 7px;
+  }
+.lx-f-templates-sites-bourselle .border-y {
+    border-block-style: var(--tw-border-style);
+    border-block-width: 1px;
+  }
+.lx-f-templates-sites-bourselle .border-t {
+    border-top-style: var(--tw-border-style);
+    border-top-width: 1px;
+  }
+.lx-f-templates-sites-bourselle .border-b {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
+  }
+.lx-f-templates-sites-bourselle .border-current\/10 {
+    border-color: currentcolor;
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, currentcolor 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .border-neutral-900 {
+    border-color: var(--color-neutral-900);
+  }
+.lx-f-templates-sites-bourselle .border-slate-100 {
+    border-color: var(--color-slate-100);
+  }
+.lx-f-templates-sites-bourselle .border-slate-200 {
+    border-color: var(--color-slate-200);
+  }
+.lx-f-templates-sites-bourselle .border-transparent {
+    border-color: transparent;
+  }
+.lx-f-templates-sites-bourselle .border-white\/10 {
+    border-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-\[\#09090b\] {
+    background-color: var(--lx-09090b, #09090b);
+  }
+.lx-f-templates-sites-bourselle .bg-\[\#f6f7f9\] {
+    background-color: var(--lx-f6f7f9, #f6f7f9);
+  }
+.lx-f-templates-sites-bourselle .bg-amber-50 {
+    background-color: var(--color-amber-50);
+  }
+.lx-f-templates-sites-bourselle .bg-black {
+    background-color: var(--color-black);
+  }
+.lx-f-templates-sites-bourselle .bg-black\/5 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 5%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 5%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-black\/50 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-black\/70 {
+    background-color: color-mix(in srgb, var(--lx-000000, #000) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 70%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-emerald-50 {
+    background-color: var(--color-emerald-50);
+  }
+.lx-f-templates-sites-bourselle .bg-emerald-50\/50 {
+    background-color: color-mix(in srgb, oklch(97.9% 0.021 166.113) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-emerald-50) 50%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-emerald-500 {
+    background-color: var(--color-emerald-500);
+  }
+.lx-f-templates-sites-bourselle .bg-indigo-500 {
+    background-color: var(--color-indigo-500);
+  }
+.lx-f-templates-sites-bourselle .bg-neutral-900 {
+    background-color: var(--color-neutral-900);
+  }
+.lx-f-templates-sites-bourselle .bg-rose-400 {
+    background-color: var(--color-rose-400);
+  }
+.lx-f-templates-sites-bourselle .bg-slate-50 {
+    background-color: var(--color-slate-50);
+  }
+.lx-f-templates-sites-bourselle .bg-slate-100 {
+    background-color: var(--color-slate-100);
+  }
+.lx-f-templates-sites-bourselle .bg-slate-200 {
+    background-color: var(--color-slate-200);
+  }
+.lx-f-templates-sites-bourselle .bg-slate-900 {
+    background-color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-bourselle .bg-transparent {
+    background-color: transparent;
+  }
+.lx-f-templates-sites-bourselle .bg-white {
+    background-color: var(--color-white);
+  }
+.lx-f-templates-sites-bourselle .bg-white\/10 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-white\/90 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 90%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 90%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-white\/95 {
+    background-color: color-mix(in srgb, var(--lx-ffffff, #fff) 95%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 95%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .bg-linear-to-br {
+    --tw-gradient-position: to bottom right;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to bottom right in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-bourselle .bg-linear-to-t {
+    --tw-gradient-position: to top;
+    @supports (background-image: linear-gradient(in lab, red, red)) {
+      --tw-gradient-position: to top in oklab;
+    }
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+.lx-f-templates-sites-bourselle .from-amber-300 {
+    --tw-gradient-from: var(--color-amber-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-black\/85 {
+    --tw-gradient-from: color-mix(in srgb, var(--lx-000000, #000) 85%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-from: color-mix(in oklab, var(--color-black) 85%, transparent);
+    }
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-cyan-400 {
+    --tw-gradient-from: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-emerald-400 {
+    --tw-gradient-from: var(--color-emerald-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-fuchsia-400 {
+    --tw-gradient-from: var(--color-fuchsia-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-lime-300 {
+    --tw-gradient-from: var(--color-lime-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-pink-400 {
+    --tw-gradient-from: var(--color-pink-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-rose-400 {
+    --tw-gradient-from: var(--color-rose-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-sky-400 {
+    --tw-gradient-from: var(--color-sky-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .from-violet-500 {
+    --tw-gradient-from: var(--color-violet-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .via-black\/10 {
+    --tw-gradient-via: color-mix(in srgb, var(--lx-000000, #000) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-via: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+    --tw-gradient-via-stops: var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-via) var(--tw-gradient-via-position), var(--tw-gradient-to) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-via-stops);
+  }
+.lx-f-templates-sites-bourselle .to-blue-500 {
+    --tw-gradient-to: var(--color-blue-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-cyan-400 {
+    --tw-gradient-to: var(--color-cyan-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-emerald-500 {
+    --tw-gradient-to: var(--color-emerald-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-indigo-400 {
+    --tw-gradient-to: var(--color-indigo-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-orange-300 {
+    --tw-gradient-to: var(--color-orange-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-rose-500 {
+    --tw-gradient-to: var(--color-rose-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-teal-300 {
+    --tw-gradient-to: var(--color-teal-300);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-transparent {
+    --tw-gradient-to: transparent;
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-violet-400 {
+    --tw-gradient-to: var(--color-violet-400);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .to-yellow-200 {
+    --tw-gradient-to: var(--color-yellow-200);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+.lx-f-templates-sites-bourselle .fill-amber-400 {
+    fill: var(--color-amber-400);
+  }
+.lx-f-templates-sites-bourselle .fill-current {
+    fill: currentcolor;
+  }
+.lx-f-templates-sites-bourselle .p-0\.5 {
+    padding: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-bourselle .p-3 {
+    padding: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .p-4 {
+    padding: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .p-5 {
+    padding: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .p-6 {
+    padding: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .p-8 {
+    padding: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-bourselle .px-1\.5 {
+    padding-inline: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-bourselle .px-2 {
+    padding-inline: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .px-3 {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .px-4 {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .px-5 {
+    padding-inline: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .px-6 {
+    padding-inline: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .py-0\.5 {
+    padding-block: calc(var(--spacing) * 0.5);
+  }
+.lx-f-templates-sites-bourselle .py-1 {
+    padding-block: var(--spacing);
+  }
+.lx-f-templates-sites-bourselle .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
+  }
+.lx-f-templates-sites-bourselle .py-2 {
+    padding-block: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .py-2\.5 {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
+.lx-f-templates-sites-bourselle .py-3 {
+    padding-block: calc(var(--spacing) * 3);
+  }
+.lx-f-templates-sites-bourselle .py-4 {
+    padding-block: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .py-5 {
+    padding-block: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .py-6 {
+    padding-block: calc(var(--spacing) * 6);
+  }
+.lx-f-templates-sites-bourselle .py-12 {
+    padding-block: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-bourselle .py-20 {
+    padding-block: calc(var(--spacing) * 20);
+  }
+.lx-f-templates-sites-bourselle .pt-4 {
+    padding-top: calc(var(--spacing) * 4);
+  }
+.lx-f-templates-sites-bourselle .pt-36 {
+    padding-top: calc(var(--spacing) * 36);
+  }
+.lx-f-templates-sites-bourselle .pr-12 {
+    padding-right: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-bourselle .pb-1 {
+    padding-bottom: var(--spacing);
+  }
+.lx-f-templates-sites-bourselle .pb-2 {
+    padding-bottom: calc(var(--spacing) * 2);
+  }
+.lx-f-templates-sites-bourselle .pb-5 {
+    padding-bottom: calc(var(--spacing) * 5);
+  }
+.lx-f-templates-sites-bourselle .pb-8 {
+    padding-bottom: calc(var(--spacing) * 8);
+  }
+.lx-f-templates-sites-bourselle .pb-12 {
+    padding-bottom: calc(var(--spacing) * 12);
+  }
+.lx-f-templates-sites-bourselle .pb-16 {
+    padding-bottom: calc(var(--spacing) * 16);
+  }
+.lx-f-templates-sites-bourselle .pb-28 {
+    padding-bottom: calc(var(--spacing) * 28);
+  }
+.lx-f-templates-sites-bourselle .text-center {
+    text-align: center;
+  }
+.lx-f-templates-sites-bourselle .text-left {
+    text-align: left;
+  }
+.lx-f-templates-sites-bourselle .text-right {
+    text-align: right;
+  }
+.lx-f-templates-sites-bourselle .font-display {
+    font-family: var(--font-display);
+  }
+.lx-f-templates-sites-bourselle .font-dmserif {
+    font-family: var(--font-dmserif);
+  }
+.lx-f-templates-sites-bourselle .font-mono {
+    font-family: var(--font-mono);
+  }
+.lx-f-templates-sites-bourselle .font-sans {
+    font-family: var(--font-sans);
+  }
+.lx-f-templates-sites-bourselle .text-2xl {
+    font-size: var(--text-2xl);
+    line-height: var(--tw-leading, var(--text-2xl--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-3xl {
+    font-size: var(--text-3xl);
+    line-height: var(--tw-leading, var(--text-3xl--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-4xl {
+    font-size: var(--text-4xl);
+    line-height: var(--tw-leading, var(--text-4xl--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-5xl {
+    font-size: var(--text-5xl);
+    line-height: var(--tw-leading, var(--text-5xl--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-base {
+    font-size: var(--text-base);
+    line-height: var(--tw-leading, var(--text-base--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-lg {
+    font-size: var(--text-lg);
+    line-height: var(--tw-leading, var(--text-lg--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-sm {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-xs {
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+.lx-f-templates-sites-bourselle .text-\[10px\] {
+    font-size: 10px;
+  }
+.lx-f-templates-sites-bourselle .text-\[11px\] {
+    font-size: 11px;
+  }
+.lx-f-templates-sites-bourselle .leading-\[1\] {
+    --tw-leading: 1;
+    line-height: 1;
+  }
+.lx-f-templates-sites-bourselle .leading-tight {
+    --tw-leading: var(--leading-tight);
+    line-height: var(--leading-tight);
+  }
+.lx-f-templates-sites-bourselle .font-bold {
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
+.lx-f-templates-sites-bourselle .font-medium {
+    --tw-font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium);
+  }
+.lx-f-templates-sites-bourselle .font-normal {
+    --tw-font-weight: var(--font-weight-normal);
+    font-weight: var(--font-weight-normal);
+  }
+.lx-f-templates-sites-bourselle .font-semibold {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
+.lx-f-templates-sites-bourselle .tracking-tight {
+    --tw-tracking: var(--tracking-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+.lx-f-templates-sites-bourselle .tracking-wider {
+    --tw-tracking: var(--tracking-wider);
+    letter-spacing: var(--tracking-wider);
+  }
+.lx-f-templates-sites-bourselle .whitespace-nowrap {
+    white-space: nowrap;
+  }
+.lx-f-templates-sites-bourselle .text-amber-400 {
+    color: var(--color-amber-400);
+  }
+.lx-f-templates-sites-bourselle .text-amber-500 {
+    color: var(--color-amber-500);
+  }
+.lx-f-templates-sites-bourselle .text-amber-700 {
+    color: var(--color-amber-700);
+  }
+.lx-f-templates-sites-bourselle .text-black {
+    color: var(--color-black);
+  }
+.lx-f-templates-sites-bourselle .text-black\/25 {
+    color: color-mix(in srgb, var(--lx-000000, #000) 25%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-black) 25%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .text-emerald-400 {
+    color: var(--color-emerald-400);
+  }
+.lx-f-templates-sites-bourselle .text-emerald-500 {
+    color: var(--color-emerald-500);
+  }
+.lx-f-templates-sites-bourselle .text-emerald-600 {
+    color: var(--color-emerald-600);
+  }
+.lx-f-templates-sites-bourselle .text-rose-600 {
+    color: var(--color-rose-600);
+  }
+.lx-f-templates-sites-bourselle .text-slate-300 {
+    color: var(--color-slate-300);
+  }
+.lx-f-templates-sites-bourselle .text-slate-400 {
+    color: var(--color-slate-400);
+  }
+.lx-f-templates-sites-bourselle .text-slate-500 {
+    color: var(--color-slate-500);
+  }
+.lx-f-templates-sites-bourselle .text-slate-600 {
+    color: var(--color-slate-600);
+  }
+.lx-f-templates-sites-bourselle .text-slate-900 {
+    color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-bourselle .text-white {
+    color: var(--color-white);
+  }
+.lx-f-templates-sites-bourselle .text-white\/70 {
+    color: color-mix(in srgb, var(--lx-ffffff, #fff) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-white) 70%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .uppercase {
+    text-transform: uppercase;
+  }
+.lx-f-templates-sites-bourselle .tabular-nums {
+    --tw-numeric-spacing: tabular-nums;
+    font-variant-numeric: var(--tw-ordinal, ) var(--tw-slashed-zero, ) var(--tw-numeric-figure, ) var(--tw-numeric-spacing, ) var(--tw-numeric-fraction, );
+  }
+.lx-f-templates-sites-bourselle .line-through {
+    text-decoration-line: line-through;
+  }
+.lx-f-templates-sites-bourselle .accent-slate-900 {
+    accent-color: var(--color-slate-900);
+  }
+.lx-f-templates-sites-bourselle .opacity-30 {
+    opacity: 30%;
+  }
+.lx-f-templates-sites-bourselle .opacity-50 {
+    opacity: 50%;
+  }
+.lx-f-templates-sites-bourselle .opacity-60 {
+    opacity: 60%;
+  }
+.lx-f-templates-sites-bourselle .opacity-70 {
+    opacity: 70%;
+  }
+.lx-f-templates-sites-bourselle .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-bourselle .shadow-sm {
+    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-bourselle .ring {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-bourselle .ring-1 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-bourselle .ring-2 {
+    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+.lx-f-templates-sites-bourselle .ring-amber-200 {
+    --tw-ring-color: var(--color-amber-200);
+  }
+.lx-f-templates-sites-bourselle .ring-black\/10 {
+    --tw-ring-color: color-mix(in srgb, var(--lx-000000, #000) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-ring-color: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+  }
+.lx-f-templates-sites-bourselle .ring-emerald-200 {
+    --tw-ring-color: var(--color-emerald-200);
+  }
+.lx-f-templates-sites-bourselle .ring-slate-200 {
+    --tw-ring-color: var(--color-slate-200);
+  }
+.lx-f-templates-sites-bourselle .ring-white {
+    --tw-ring-color: var(--color-white);
+  }
+.lx-f-templates-sites-bourselle .filter {
+    filter: var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, );
+  }
+.lx-f-templates-sites-bourselle .backdrop-blur {
+    --tw-backdrop-blur: blur(8px);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-bourselle .backdrop-blur-\[2px\] {
+    --tw-backdrop-blur: blur(2px);
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-bourselle .backdrop-blur-sm {
+    --tw-backdrop-blur: blur(var(--blur-sm));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-bourselle .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(var(--blur-xl));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+.lx-f-templates-sites-bourselle .transition {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-bourselle .transition-\[background-color\,border-color\,backdrop-filter\] {
+    transition-property: background-color,border-color,backdrop-filter;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+.lx-f-templates-sites-bourselle .duration-300 {
+    --tw-duration: 300ms;
+    transition-duration: 300ms;
+  }
+.lx-f-templates-sites-bourselle .outline-none {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+.lx-f-templates-sites-bourselle .selection\:bg-emerald-200 ::selection {
+    background-color: var(--color-emerald-200);
+  }
+.lx-f-templates-sites-bourselle .selection\:bg-emerald-200::selection {
+    background-color: var(--color-emerald-200);
+  }
+.lx-f-templates-sites-bourselle .focus-within\:ring-slate-900:focus-within {
+    --tw-ring-color: var(--color-slate-900);
+  }
+@media (hover: hover) {
+    .lx-f-templates-sites-bourselle .hover\:-translate-y-0\.5:hover {
+      --tw-translate-y: calc(var(--spacing) * -0.5);
+      translate: var(--tw-translate-x) var(--tw-translate-y);
+    }
+    .lx-f-templates-sites-bourselle .hover\:bg-slate-50:hover {
+      background-color: var(--color-slate-50);
+    }
+    .lx-f-templates-sites-bourselle .hover\:text-slate-500:hover {
+      color: var(--color-slate-500);
+    }
+    .lx-f-templates-sites-bourselle .hover\:text-slate-900:hover {
+      color: var(--color-slate-900);
+    }
+    .lx-f-templates-sites-bourselle .hover\:text-white:hover {
+      color: var(--color-white);
+    }
+    .lx-f-templates-sites-bourselle .hover\:underline:hover {
+      text-decoration-line: underline;
+    }
+    .lx-f-templates-sites-bourselle .hover\:opacity-100:hover {
+      opacity: 100%;
+    }
+    .lx-f-templates-sites-bourselle .hover\:shadow-md:hover {
+      --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 2px 4px -2px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+      box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    }
+  }
+.lx-f-templates-sites-bourselle .focus\:ring-slate-900:focus {
+    --tw-ring-color: var(--color-slate-900);
+  }
+@media (width >= 40rem) {
+    .lx-f-templates-sites-bourselle .sm\:block {
+      display: block;
+    }
+    .lx-f-templates-sites-bourselle .sm\:h-64 {
+      height: calc(var(--spacing) * 64);
+    }
+    .lx-f-templates-sites-bourselle .sm\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-bourselle .sm\:p-6 {
+      padding: calc(var(--spacing) * 6);
+    }
+    .lx-f-templates-sites-bourselle .sm\:px-6 {
+      padding-inline: calc(var(--spacing) * 6);
+    }
+    .lx-f-templates-sites-bourselle .sm\:px-8 {
+      padding-inline: calc(var(--spacing) * 8);
+    }
+    .lx-f-templates-sites-bourselle .sm\:text-7xl {
+      font-size: var(--text-7xl);
+      line-height: var(--tw-leading, var(--text-7xl--line-height));
+    }
+  }
+@media (width >= 48rem) {
+    .lx-f-templates-sites-bourselle .md\:col-span-2 {
+      grid-column: span 2 / span 2;
+    }
+    .lx-f-templates-sites-bourselle .md\:col-span-4 {
+      grid-column: span 4 / span 4;
+    }
+    .lx-f-templates-sites-bourselle .md\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-bourselle .md\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-bourselle .md\:flex-row {
+      flex-direction: row;
+    }
+    .lx-f-templates-sites-bourselle .md\:items-center {
+      align-items: center;
+    }
+    .lx-f-templates-sites-bourselle .md\:justify-between {
+      justify-content: space-between;
+    }
+  }
+@media (width >= 64rem) {
+    .lx-f-templates-sites-bourselle .lg\:col-span-2 {
+      grid-column: span 2 / span 2;
+    }
+    .lx-f-templates-sites-bourselle .lg\:ml-0 {
+      margin-left: 0px;
+    }
+    .lx-f-templates-sites-bourselle .lg\:flex {
+      display: flex;
+    }
+    .lx-f-templates-sites-bourselle .lg\:hidden {
+      display: none;
+    }
+    .lx-f-templates-sites-bourselle .lg\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .lx-f-templates-sites-bourselle .lg\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+.lx-scope {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-bourselle ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-bourselle *, .lx-f-templates-sites-bourselle *::before, .lx-f-templates-sites-bourselle *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-f-templates-sites-bourselle .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-bourselle .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-bourselle .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-bourselle .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-bourselle .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-bourselle .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-bourselle .synth-grid, .lx-f-templates-sites-bourselle .pixel-ground {
+    animation: none;
+  }
+}
+.lx-f-templates-sites-bourselle .site [id] {
+  scroll-margin-top: 5rem;
+}
+.lx-f-templates-sites-bourselle .no-scrollbar {
+  scrollbar-width: none;
+}
+.lx-f-templates-sites-bourselle .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.lx-scope {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-bourselle ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-bourselle *, .lx-f-templates-sites-bourselle *::before, .lx-f-templates-sites-bourselle *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-scope {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+.lx-scope {
+  background: var(--lx-05060f, #05060f);
+  color: var(--lx-cbd5e1, #cbd5e1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.lx-f-templates-sites-bourselle ::selection {
+  background: rgb(139 92 246 / 0.45);
+  color: white;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-scope {
+    scroll-behavior: auto;
+  }
+  .lx-f-templates-sites-bourselle *, .lx-f-templates-sites-bourselle *::before, .lx-f-templates-sites-bourselle *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.lx-f-templates-sites-bourselle .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-bourselle .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-bourselle .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-bourselle .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-bourselle .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-bourselle .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-bourselle .synth-grid, .lx-f-templates-sites-bourselle .pixel-ground {
+    animation: none;
+  }
+}
+.lx-f-templates-sites-bourselle .grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.lx-f-templates-sites-bourselle .scanlines {
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+.lx-f-templates-sites-bourselle .synth-grid {
+  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-size: 64px 64px;
+  animation: lx-h-grid-move 0.9s linear infinite;
+}
+.lx-f-templates-sites-bourselle .pixel-ground {
+  background-image: linear-gradient(to bottom, var(--lx-3fbf3f, #3fbf3f) 0 16px, var(--lx-2a8f2a, #2a8f2a) 16px 24px, transparent 24px), repeating-linear-gradient(90deg, var(--lx-a0522d, #a0522d) 0 32px, var(--lx-8b4513, #8b4513) 32px 64px);
+  background-size: 64px 100%;
+  animation: lx-h-ground 0.6s linear infinite;
+  image-rendering: pixelated;
+}
+.lx-f-templates-sites-bourselle .text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  color: transparent;
+}
+.lx-f-templates-sites-bourselle .text-stroke-dark {
+  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-f-templates-sites-bourselle .synth-grid, .lx-f-templates-sites-bourselle .pixel-ground {
+    animation: none;
+  }
+}
