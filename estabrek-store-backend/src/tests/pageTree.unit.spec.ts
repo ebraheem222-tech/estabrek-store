@@ -511,6 +511,18 @@ describe("checking a page tree", () => {
     expect(issuesOf(one({ item: "site-maison", dir: "up" })).length).toBeGreaterThan(0);
   });
 
+  test("a section's WebGL background from the theme library, in the owner's colours", () => {
+    const one = (shader: unknown) => ({ version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: { shader }, children: [] }] } });
+    const ok = (shader: unknown) => checkTree(one(shader)).ok;
+    expect(ok({ kind: "aurora" })).toBe(true);
+    expect(ok({ kind: "tunnel", bg: "#000000", c1: "accent", c2: "#1ad9ff", c3: "text", rainbow: false, speed: 1.5, mouse: false, grain: 0.12, veil: 0.4 })).toBe(true);
+    // A shader the library doesn't have; a colour that isn't one; numbers out of their range.
+    expect(issuesOf(one({ kind: "lava-lamp" })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ kind: "aurora", c1: "url(x)" })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ kind: "aurora", speed: 9 })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ kind: "aurora", veil: 1 })).length).toBeGreaterThan(0);
+  });
+
   test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
     const one = (n: unknown, sec: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props: { smooth: true }, children: [{ id: "s", type: "section", props: sec, children: [n] }] } });
     const ok = (n: unknown, sec?: Record<string, unknown>) => checkTree(one(n, sec)).ok;

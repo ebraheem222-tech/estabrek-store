@@ -17,6 +17,7 @@ const early = earlyFrom("pageTree/lazyParts.tsx");
 
 export const ProductDetail = early("@/components/ProductDetail", () => import("@/components/ProductDetail").then((m) => m.default));
 export const SceneView = early("./SceneView", () => import("./SceneView").then((m) => m.SceneView));
+export const ShaderView = early("./ShaderView", () => import("./ShaderView").then((m) => m.ShaderView));
 export const Model3dSpot = early("./Model3dSpot", () => import("./Model3dSpot").then((m) => m.Model3dSpot));
 export const PopupView = early("./Interactive", () => import("./Interactive").then((m) => m.PopupView));
 export const TocView = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.TocView));

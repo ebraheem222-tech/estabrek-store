@@ -1435,6 +1435,8 @@ export const BASE_CSS = [
   ".pt-icon{display:inline-flex;align-items:center;gap:8px;color:var(--accent)}",
   // A section's edges: a band along its top or bottom, under its content (or over it, `front`).
   ".pt-has-edges{position:relative;isolation:isolate}",
+  // A section's WebGL background (ShaderView): behind its content, its grain and veil over the colours.
+  ".pt-shader{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;border-radius:inherit}.pt-shader-grain,.pt-shader-veil{position:absolute;inset:0;z-index:1}.pt-shader-grain{mix-blend-mode:overlay;background-size:160px}.pt-shader-veil{background:#000}",
   ".pt-edge{position:absolute;inset-inline:0;height:var(--pt-eh);line-height:0;pointer-events:none;z-index:-1}",
   ".pt-edge svg{display:block;width:100%;height:100%}",
   ".pt-edge-top{top:-1px;transform:scaleY(-1)}.pt-edge-bottom{bottom:-1px}",

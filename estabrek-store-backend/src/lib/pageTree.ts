@@ -711,6 +711,12 @@ export const NodeTriggers = z.array(NodeTrigger).max(8);
 
 /* ------------------------------------------------------------- each type */
 
+/** A section's WebGL background from the theme library (the shop's pageTree/shader.ts SHADER_KIND_LIST, same order). */
+export const SHADER_KINDS = [
+  "aurora", "plasma", "ocean", "ink", "caustic", "chrome", "hole", "portal", "synth", "terrain", "rift",
+  "sun", "mesh", "dither", "bubbles", "cells", "kaleido", "mandel", "oil", "raymarch", "tunnel",
+] as const;
+
 /** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */
 export const SCENE_KINDS = [
   "constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix",
@@ -793,6 +799,17 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       speed: z.number().finite().min(0).max(3).default(1),
       intensity: z.number().finite().min(0).max(2).default(1),
       interactive: z.boolean().default(false),
+    }).optional(),
+    // A WebGL background from the theme library: its colours (unset: the shader's own), a rainbow one drawn in
+    // the colours instead (rainbow false), its speed, following the pointer, film grain, a veil for the words on it.
+    shader: z.object({
+      kind: z.enum(SHADER_KINDS),
+      bg: color.optional(), c1: color.optional(), c2: color.optional(), c3: color.optional(),
+      rainbow: z.boolean().optional(),
+      speed: z.number().finite().min(0).max(3).optional(),
+      mouse: z.boolean().optional(),
+      grain: z.number().finite().min(0).max(0.4).optional(),
+      veil: z.number().finite().min(0).max(0.85).optional(),
     }).optional(),
     // Held on the screen while the page scrolls, then the section after it slides up over it from below
     // (a curtain): `hold` = screens it stays first; `under` = what it does while it's covered; `phone`

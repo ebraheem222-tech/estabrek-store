@@ -30,6 +30,7 @@ import { pictureFxOf, pictureFxOnPointer } from "../../../shared/pictureFx";
 import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
+import { shaderOf } from "./shader";
 import { model3dOf } from "./model3d";
 import { BlockView, WORDS as BLOCK_WORDS } from "./blocks";
 import { spinFor } from "@/components/cinematic/spinData";
@@ -52,7 +53,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -199,6 +200,8 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // Particles behind its content (TreeMedia draws them), in its colour.
       const dots = particlesOf(p.particles);
       const scene = sceneOf(p.scene);
+      // A WebGL background from the theme library (ShaderView), behind the scene and the content.
+      const shader = shaderOf(p.shader);
       const tint = dots?.color ? color(dots.color) : undefined;
       // Held on the screen, then covered by the next section (TreeCovers measures it): the room under it
       // is the scroll it's held for, and what the next one slides over.
@@ -207,7 +210,8 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // The page's colour while it's in the middle of the screen (TreePaint).
       const paint = p.paint ? color(p.paint) : undefined;
       const held = (
-        <Tag className={`${cls(node)}${edges.length || dots || scene ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})} {...(paint ? { "data-pt-paint": paint } : {})}>
+        <Tag className={`${cls(node)}${edges.length || dots || scene || shader ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})} {...(paint ? { "data-pt-paint": paint } : {})}>
+          {shader ? <ShaderView spec={shader} colours={{ bg: shader.bg ? color(shader.bg) : undefined, c1: shader.c1 ? color(shader.c1) : undefined, c2: shader.c2 ? color(shader.c2) : undefined, c3: shader.c3 ? color(shader.c3) : undefined }} /> : null}
           {scene ? <SceneView spec={scene} primary={color(scene.color ?? "accent")!} secondary={color(scene.secondary ?? "text")!} /> : null}
           {dots ? <div className="pt-particles" data-pt-particles={JSON.stringify({ kind: dots.kind, amount: dots.amount, speed: dots.speed })} style={tint ? { color: tint } : undefined} aria-hidden="true" /> : null}
           {edges}
