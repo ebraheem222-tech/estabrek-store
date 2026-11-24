@@ -32,6 +32,8 @@ function fresh() {
     railway: { projects: [] as Array<{ id: string; name: string; createdAt: string }>, services: [] as Array<{ id: string; name: string; projectId: string }>, domains: [] as Array<{ id: string; domain: string }>, variables: null as Record<string, string> | null, connected: null as unknown, deployed: 0, instance: null as unknown },
     vercel: null as null | { id: string; name: string; createdAt: number; env: unknown[]; deployments: unknown[] },
     pages: null as null | { name: string; subdomain: string; created_on: string; body: unknown; deployments: number },
+    /** The owner's own Pages project, put up by hand long ago, that asks for the rest (lib/siteAsk.ts). */
+    adopted: { name: "paint", subdomain: "paint.pages.dev", created_on: "2026-01-01T00:00:00Z", patched: null as unknown, deployments: 0 },
     /** Says no, once each: a step's name → the words. */
     fail: {} as Record<string, string>,
     /** Made, but its answer lost on the way back. */
@@ -154,6 +156,15 @@ const network: Transport = async ({ method, url, headers, body }) => {
       world.pages = { name: parsed.name, subdomain: "rose-admin.pages.dev", created_on: now, body: parsed, deployments: 0 };
       return json({ success: true, result: world.pages });
     }
+    if (u.pathname === `${base}/paint` && method === "GET") return json({ success: true, result: world.adopted });
+    if (u.pathname === `${base}/paint` && method === "PATCH") {
+      world.adopted.patched = parsed;
+      return json({ success: true, result: world.adopted });
+    }
+    if (method === "POST" && u.pathname === `${base}/paint/deployments`) {
+      world.adopted.deployments++;
+      return json({ success: true, result: { id: "cfd-2" } });
+    }
     if (method === "POST" && u.pathname === `${base}/rose-admin/deployments`) {
       world.pages!.deployments++;
       return json({ success: true, result: { id: "cfd-1" } });
@@ -205,6 +216,7 @@ async function settled(id: string): Promise<View> {
 const mutations = () => sent.filter((s) => s.method !== "GET" && !(s.host === "backboard.railway.com" && !/^mutation/.test((s.body as { query: string }).query)));
 
 async function clean() {
+  await prisma.siteAsk.deleteMany({});
   await prisma.clientCopy.deleteMany({});
   await prisma.fnConnection.deleteMany({});
   forgetConnections();
@@ -483,6 +495,105 @@ describe("Making a client's copy", () => {
       const token = `Bearer ${signAccessToken({ sub: member.id, role: "STAFF", email: member.email })}`;
       expect((await request(app).post(`${at}/make`).set("Authorization", token).send({ label: "x", server: "abc", site: "abc", owner: OWNER, agree: true }).expect(403)).body).toMatchObject({ error: "OWNER_ONLY" });
       await request(app).get(`${at}/made`).set("Authorization", token).expect(403);
+    } finally {
+      await prisma.adminUser.delete({ where: { id: member.id } });
+      await prisma.staffRole.delete({ where: { id: role.id } });
+    }
+  });
+});
+
+// A copy's admin the owner put up by hand on their own Pages (paintispassion.pages.dev, 2026-11-24), with nothing
+// linked to it: its client can't reach the owner's Cloudflare, and has no Neon or Railway. It asks the press for the
+// rest; the owner says yes after matching the six letters; the press makes the database, the server and the shop,
+// and sets that same Pages project to them. Only the browser that asked is told the server and the setup code.
+describe("A site that asks for the rest", () => {
+  const ADMIN = "https://paint.pages.dev";
+  const KEY1 = "k1-made-in-the-asking-browser-0123456789";
+  const KEY2 = "k2-made-in-another-browser-abcdefghijklmn";
+  const ask = (key: string | undefined, origin = ADMIN, code = 200) => request(app).post("/v1/site-ask").set("Origin", origin).send(key === undefined ? {} : { key }).expect(code);
+  const status = (key: string, code = 200) => request(app).post("/v1/site-ask/status").set("Origin", ADMIN).send({ key }).expect(code);
+  type Ask = { id: string; admin: string; project: string; pair: string; state: string; copy: { id: string; state: string } | null };
+  const asks = async () => (await request(app).get(`${at}/asks`).expect(200)).body.asks as Ask[];
+  const yes = (id: string, body: Record<string, unknown> = {}, code = 202) => request(app).post(`${at}/asks/${id}/make`).send({ label: "Paint", server: "rose-api", site: "rose", repo: "acme/store", agree: true, ...body }).expect(code);
+
+  test("asked from the site, matched and said yes to by the owner, made in their accounts; the site itself set to it", async () => {
+    // Only a Pages project's own address asks (not a preview's, not any site), with a key of its browser.
+    expect((await ask(KEY1, "https://evil.example.com", 403)).body.error).toBe("ASK_ADMIN");
+    expect((await ask(KEY1, "https://3f2a.paint.pages.dev", 403)).body.error).toBe("ASK_ADMIN");
+    expect((await ask(undefined, ADMIN, 400)).body.error).toBe("ASK_KEY");
+    const first = (await ask(KEY1)).body as { pair: string; state: string };
+    expect(first).toEqual({ pair: expect.stringMatching(/^[A-HJKMNP-Z2-9]{3}-[A-HJKMNP-Z2-9]{3}$/), state: "waiting" });
+    // The same browser asking again (a reload) is the same ask.
+    expect((await ask(KEY1)).body).toEqual(first);
+    expect((await status(KEY1)).body).toEqual({ state: "waiting", pair: first.pair });
+    // Another browser asking starts it over with new letters, and the first one is told nothing any more.
+    const second = (await ask(KEY2)).body as { pair: string };
+    expect((await status(KEY1, 404)).body.error).toBe("ASK_NOT_FOUND");
+
+    let list = await asks();
+    expect(list).toEqual([expect.objectContaining({ admin: ADMIN, project: "paint", pair: second.pair, state: "waiting", copy: null })]);
+    // Said no to: the browser told so, and may ask again (new letters).
+    await request(app).post(`${at}/asks/${list[0].id}/refuse`).expect(200);
+    expect((await status(KEY2)).body.state).toBe("refused");
+    const third = (await ask(KEY2)).body as { pair: string; state: string };
+    expect(third.state).toBe("waiting");
+    expect(sent).toEqual([]);
+
+    // Said yes to, in so many words: made like any copy, with the site that asked as its admin.
+    await connectAll();
+    list = await asks();
+    await request(app).post(`${at}/asks/${list[0].id}/make`).send({ label: "Paint", server: "rose-api", site: "rose", repo: "acme/store" }).expect(400);
+    const begun = (await yes(list[0].id)).body as View;
+    // A second yes, or another browser asking meanwhile, finds it taken.
+    expect((await yes(list[0].id, {}, 409)).body.error).toBe("ASK_NOT_WAITING");
+    expect((await ask("k3-a-third-browser-trying-its-luck-012345", ADMIN, 409)).body.error).toBe("ASK_TAKEN");
+    const v = await settled(begun.id);
+    expect(v.state).toBe("made");
+    expect(v.addresses).toEqual({ api: "https://rose-api.up.railway.app", shop: "https://rose.vercel.app", admin: ADMIN });
+    expect(v.owner).toBeNull();
+
+    // Nothing new at Cloudflare: the owner's own project given the server's and the shop's addresses, then built again.
+    const base = `/client/v4/accounts/${ACCOUNT}/pages/projects`;
+    expect(sent.some((s) => s.method === "POST" && s.path === base)).toBe(false);
+    expect(world.pages).toBeNull();
+    const env = { VITE_API_BASE_URL: { type: "plain_text", value: "https://rose-api.up.railway.app/v1" }, VITE_STOREFRONT_BASE_URL: { type: "plain_text", value: "https://rose.vercel.app" } };
+    expect(world.adopted.patched).toEqual({ deployment_configs: { production: { env_vars: env }, preview: { env_vars: env } } });
+    expect(world.adopted.deployments).toBe(1);
+    // The server knows the site that asked, and its owner's account is left to the client.
+    expect(world.railway.variables).toMatchObject({ CORS_ORIGINS: `https://rose.vercel.app,${ADMIN}`, ADMIN_APP_URL: ADMIN });
+    expect(world.api.owner).toBeNull();
+    expect(sent.some((s) => s.host === "rose-api.up.railway.app" && s.method === "POST")).toBe(false);
+
+    // The asking browser alone is told the server and the code its owner's account is made with.
+    const done = (await status(KEY2)).body as { state: string; api: string; code: string; steps: Array<{ id: string; state: string }> };
+    expect(done).toMatchObject({ state: "made", pair: third.pair, api: "https://rose-api.up.railway.app/v1", code: world.railway.variables!.SETUP_CODE });
+    expect(done.steps.every((s) => s.state === "done")).toBe(true);
+    expect((await status(KEY1, 404)).body.error).toBe("ASK_NOT_FOUND");
+    expect(await asks()).toEqual([expect.objectContaining({ state: "making", copy: { id: v.id, state: "made" } })]);
+  });
+
+  test("not said yes to while its Pages project isn't the one that asked", async () => {
+    await connectAll();
+    await ask(KEY1);
+    world.adopted.subdomain = "paint-9x2.pages.dev";
+    const [one] = await asks();
+    const refused = (await yes(one.id, {}, 409)).body as { error: string; details: { checks: Array<{ id: string; ok: boolean; why: string | null }> } };
+    expect(refused.error).toBe("COPY_NOT_READY");
+    expect(refused.details.checks.find((c) => c.id === "cloudflare.adopt")).toEqual({ id: "cloudflare.adopt", kind: "cloudflare", ok: false, why: `The Pages project "paint" isn't at ${ADMIN}` });
+    expect(mutations()).toEqual([]);
+    expect((await asks())[0].state).toBe("waiting");
+  });
+
+  test("its list and its yes are the owner's alone", async () => {
+    await ask(KEY1);
+    const [one] = await asks();
+    const role = await prisma.staffRole.create({ data: { name: "site-ask-spec-system", permissions: ["system:read", "system:write"] } });
+    const member = await prisma.adminUser.create({ data: { email: "member@site-ask-spec.test", name: "member", passwordHash: "x", role: "STAFF", status: "ACTIVE", staffRoleId: role.id } });
+    try {
+      const token = `Bearer ${signAccessToken({ sub: member.id, role: "STAFF", email: member.email })}`;
+      await request(app).get(`${at}/asks`).set("Authorization", token).expect(403);
+      await request(app).post(`${at}/asks/${one.id}/make`).set("Authorization", token).send({ label: "x", server: "abc", site: "abc", agree: true }).expect(403);
+      await request(app).post(`${at}/asks/${one.id}/refuse`).set("Authorization", token).expect(403);
     } finally {
       await prisma.adminUser.delete({ where: { id: member.id } });
       await prisma.staffRole.delete({ where: { id: role.id } });

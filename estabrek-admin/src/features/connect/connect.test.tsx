@@ -1,43 +1,69 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ComponentProps } from "react";
-import fs from "node:fs";
-import path from "node:path";
 
-// A copy's admin put up on its host before anything was linked (paintispassion.pages.dev, 2026-11-24: no
-// VITE_API_BASE_URL in its build and no server yet) showed a sign-in to nothing. It opens /connect instead,
-// which takes the owner through Neon → Railway (every variable the server needs, its secrets made here) → the
-// server's address, checked and kept in this browser → the owner's account, with the setup code it made.
+// A copy's admin put up on the platform owner's Cloudflare Pages before anything was linked (paintispassion.pages.dev,
+// 2026-11-24): no VITE_API_BASE_URL and no server, so it showed a sign-in to nothing. Its client can't reach that
+// Cloudflare and has no Neon or Railway: one button asks the platform's server (backend lib/siteAsk.ts) to make them,
+// the owner says yes after matching six letters, and once made the page goes on to the owner's account with its code.
 
 import { setLangForTests } from "../../lib/lang";
 import { SERVER_KEY } from "../../config/env";
 import ConnectPage from "./ConnectPage";
-import ServerKeptNotice from "./ServerKeptNotice";
-import { databaseAddress, madeSetupCode, newSecrets, pagesProject, serverVariables } from "./serverLink";
+import { partsOf } from "./serverLink";
 
-const ORIGIN = "https://paintcopy.pages.dev";
-const NEON = "postgresql://neondb_owner:pw@ep-cool-name-a1b2c3-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+const PLATFORM = "https://platform-api.up.railway.app/v1";
+const API = "https://paint-api.up.railway.app/v1";
+const CODE = "K7QH-9MXP-3TRA-WZ4E";
+const done = (ids: string[]) => ids.map((id) => ({ id, state: "done" as const }));
+const STEPS = ["neon.project", "railway.project", "railway.service", "railway.domain", "railway.variables", "railway.deploy", "owner.account", "vercel.project", "cloudflare.project", "vercel.deploy", "cloudflare.deploy", "railway.addresses"];
 
-function answers(body: unknown, type = "application/json") {
-  return vi.fn(async () => new Response(typeof body === "string" ? body : JSON.stringify(body), { status: 200, headers: { "Content-Type": type } }));
-}
+/** The platform and the new server, stood in for: what each address answers now. */
+type World = { asked: Array<{ url: string; body: unknown }>; status: () => { code: number; body: unknown }; ask: () => { code: number; body: unknown }; server: () => unknown };
+let world: World;
+const reply = (code: number, body: unknown) => new Response(JSON.stringify(body), { status: code, headers: { "Content-Type": "application/json" } });
+const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+  const u = String(url);
+  const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+  world.asked.push({ url: u, body });
+  if (u === `${PLATFORM}/site-ask`) {
+    const r = world.ask();
+    return reply(r.code, r.body);
+  }
+  if (u === `${PLATFORM}/site-ask/status`) {
+    const r = world.status();
+    return reply(r.code, r.body);
+  }
+  if (u === `${API}/auth/first-run`) {
+    const s = world.server();
+    if (s instanceof Error) throw s;
+    return reply(200, s);
+  }
+  throw new TypeError("Failed to fetch");
+});
+
 function show(props: Partial<ComponentProps<typeof ConnectPage>> = {}) {
   const go = vi.fn();
   render(
     <MemoryRouter initialEntries={["/connect"]}>
-      <ConnectPage from="none" address="http://localhost:4000/v1" origin={ORIGIN} go={go} {...props} />
+      <ConnectPage from="none" address="http://localhost:4000/v1" platform={PLATFORM} go={go} fetcher={fetcher as never} every={20} {...props} />
     </MemoryRouter>,
   );
   return go;
 }
-const type = (testid: string, value: string) => fireEvent.change(screen.getByTestId(testid), { target: { value } });
 
 beforeEach(() => {
   setLangForTests("en");
   localStorage.clear();
-  sessionStorage.clear();
+  fetcher.mockClear();
+  world = {
+    asked: [],
+    status: () => ({ code: 404, body: { error: "ASK_NOT_FOUND" } }),
+    ask: () => ({ code: 200, body: { pair: "K7Q-H9M", state: "waiting" } }),
+    server: () => new TypeError("Failed to fetch"),
+  };
 });
 afterEach(() => {
   cleanup();
@@ -45,145 +71,106 @@ afterEach(() => {
 });
 
 describe("An admin with no server", () => {
-  test("the server's lines: the database pasted, this admin's address, secrets made here and the setup code", () => {
+  test("one button asks the platform; the letters to read to its owner; once said yes and made, on to the owner's account with the code", async () => {
+    const go = show();
+    // Nothing asked yet by this browser: the button, and no account needed anywhere.
+    expect((await screen.findByTestId("connect-start")).textContent).toContain("You need no account anywhere");
+    fireEvent.click(screen.getByTestId("connect-ask"));
+    expect((await screen.findByTestId("connect-pair")).textContent).toBe("K7Q-H9M");
+    const key = (world.asked.find((a) => a.url === `${PLATFORM}/site-ask`)!.body as { key: string }).key;
+    expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+
+    // The owner says yes: the making followed in four parts.
+    let steps = STEPS.map((id) => ({ id, state: "waiting" as string }));
+    steps = steps.map((s) => (s.id.startsWith("neon.") ? { ...s, state: "done" } : s.id === "railway.project" ? { ...s, state: "doing" } : s));
+    world.status = () => ({ code: 200, body: { state: "making", pair: "K7Q-H9M", steps } });
+    await waitFor(() => expect(screen.getByTestId("connect-making").getAttribute("data-state")).toBe("making"));
+    expect(screen.getByTestId("connect-part-neon").getAttribute("data-state")).toBe("done");
+    expect(screen.getByTestId("connect-part-railway").getAttribute("data-state")).toBe("doing");
+    expect(screen.getByTestId("connect-part-vercel").getAttribute("data-state")).toBe("waiting");
+
+    // Made: the server kept in this browser, waited for until it answers, then the owner's account with the code.
+    world.status = () => ({ code: 200, body: { state: "made", pair: "K7Q-H9M", steps: done(STEPS), api: API, code: CODE } });
+    await waitFor(() => expect(localStorage.getItem(SERVER_KEY)).toBe(API));
+    expect(go).not.toHaveBeenCalled();
+    world.server = () => ({ needed: true, codeFrom: "link" });
+    await waitFor(() => expect(go).toHaveBeenCalledWith(`/welcome?code=${encodeURIComponent(CODE)}`));
+    // Every status asked with this browser's own key, and only of the platform.
+    expect(world.asked.filter((a) => a.url.endsWith("/site-ask/status")).every((a) => (a.body as { key: string }).key === key)).toBe(true);
+    expect(localStorage.getItem("admin.ask.key")).toBeNull();
+  });
+
+  test("a reload follows the ask on with the same key; a no is said, and it may ask again", async () => {
+    localStorage.setItem("admin.ask.key", "k-kept-from-before-0123456789abcdefghijk");
+    world.status = () => ({ code: 200, body: { state: "waiting", pair: "ABC-DEF" } });
     show();
-    const copy = screen.getByTestId("connect-variables-copy") as HTMLButtonElement;
-    expect(copy.disabled).toBe(true);
-    // Pasted as Neon's psql command gives it: the address alone is taken.
-    type("connect-database", `psql '${NEON}'`);
-    expect(copy.disabled).toBe(false);
-    const lines = Object.fromEntries(screen.getByTestId("connect-variables").textContent!.split("\n").map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
-    expect(lines.NODE_ENV).toBe("production");
-    expect(lines.DATABASE_URL).toBe(NEON);
-    expect(lines.CORS_ORIGINS).toBe(ORIGIN);
-    expect(lines.ADMIN_APP_URL).toBe(ORIGIN);
-    expect(lines.SETUP_CODE).toMatch(/^[A-HJKMNP-Z2-9]{4}(-[A-HJKMNP-Z2-9]{4}){3}$/);
-    for (const k of ["JWT_SECRET", "WEBHOOK_TOKEN", "CODES_ENCRYPTION_KEY", "BACKUP_ENCRYPTION_KEY"]) expect(lines[k]).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(new Set([lines.JWT_SECRET, lines.WEBHOOK_TOKEN, lines.CODES_ENCRYPTION_KEY, lines.BACKUP_ENCRYPTION_KEY]).size).toBe(4);
-    expect(screen.getByTestId("connect-folder").textContent).toBe("estabrek-store-backend");
-    // Nothing of the database is kept anywhere.
-    expect(JSON.stringify({ ...localStorage, ...sessionStorage })).not.toContain("neon.tech");
+    expect((await screen.findByTestId("connect-pair")).textContent).toBe("ABC-DEF");
+    expect((world.asked[0].body as { key: string }).key).toBe("k-kept-from-before-0123456789abcdefghijk");
+    world.status = () => ({ code: 200, body: { state: "refused", pair: "ABC-DEF" } });
+    expect(await screen.findByTestId("connect-refused")).toBeTruthy();
+    world.ask = () => ({ code: 200, body: { pair: "GHJ-KMN", state: "waiting" } });
+    world.status = () => ({ code: 200, body: { state: "waiting", pair: "GHJ-KMN" } });
+    fireEvent.click(screen.getByTestId("connect-ask-again"));
+    await waitFor(() => expect(screen.getByTestId("connect-pair").textContent).toBe("GHJ-KMN"));
   });
 
-  test("a string that isn't a database's is said so", () => {
-    show();
-    type("connect-database", "https://console.neon.tech/app/projects");
-    expect(screen.getByTestId("connect-step-neon").textContent).toContain("it starts with postgresql://");
-    expect((screen.getByTestId("connect-variables-copy") as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  test("linked: the address checked, kept in this browser, and on to the owner's account with the code the server was given", async () => {
-    const fetcher = answers({ needed: true, codeFrom: "link" });
-    const go = show({ fetcher: fetcher as never });
-    type("connect-database", NEON);
-    const code = /SETUP_CODE=(\S+)/.exec(screen.getByTestId("connect-variables").textContent!)![1];
-    type("connect-address", "paint-api.up.railway.app");
-    fireEvent.click(screen.getByTestId("connect-submit"));
-    await waitFor(() => expect(go).toHaveBeenCalledWith(`/welcome?code=${encodeURIComponent(code)}`));
-    expect(fetcher).toHaveBeenCalledWith("https://paint-api.up.railway.app/v1/auth/first-run", expect.anything());
-    expect(localStorage.getItem(SERVER_KEY)).toBe("https://paint-api.up.railway.app/v1");
-  });
-
-  test("a server that has its owner already: kept, and on to the sign-in", async () => {
-    const go = show({ fetcher: answers({ needed: false }) as never });
-    type("connect-address", "https://paint-api.up.railway.app/");
-    fireEvent.click(screen.getByTestId("connect-submit"));
+  test("a store that already has its owner: kept, and on to the sign-in", async () => {
+    world.status = () => ({ code: 200, body: { state: "made", pair: "ABC-DEF", steps: done(STEPS), api: API, code: CODE } });
+    world.server = () => ({ needed: false });
+    localStorage.setItem("admin.ask.key", "k-kept-from-before-0123456789abcdefghijk");
+    const go = show();
     await waitFor(() => expect(go).toHaveBeenCalledWith("/login"));
-    expect(localStorage.getItem(SERVER_KEY)).toBe("https://paint-api.up.railway.app/v1");
+    expect(localStorage.getItem(SERVER_KEY)).toBe(API);
   });
 
-  test("no answer: still building or not allowing this admin, with the address CORS_ORIGINS needs; nothing kept", async () => {
-    const go = show({ fetcher: vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))) as never });
-    type("connect-address", "paint-api.up.railway.app");
-    fireEvent.click(screen.getByTestId("connect-submit"));
-    expect(await screen.findByTestId("connect-answer-silent")).toBeTruthy();
-    expect(screen.getByTestId("connect-origin").textContent).toBe(ORIGIN);
-    expect(go).not.toHaveBeenCalled();
-    expect(localStorage.getItem(SERVER_KEY)).toBeNull();
-  });
-
-  test("an answer that isn't a store's server (a page, Railway's 404): the folder to check; nothing kept", async () => {
-    const go = show({ fetcher: answers("<!doctype html><html></html>", "text/html") as never });
-    type("connect-address", "paint-api.up.railway.app");
-    fireEvent.click(screen.getByTestId("connect-submit"));
-    expect((await screen.findByTestId("connect-answer-other")).textContent).toContain("estabrek-store-backend");
-    expect(go).not.toHaveBeenCalled();
-    expect(localStorage.getItem(SERVER_KEY)).toBeNull();
-  });
-
-  test("an http address on a host isn't taken", async () => {
-    const fetcher = answers({ needed: true });
-    show({ fetcher: fetcher as never });
-    type("connect-address", "http://paint-api.up.railway.app");
-    fireEvent.click(screen.getByTestId("connect-submit"));
-    expect(screen.getByTestId("connect-step-link").textContent).toContain("That isn't an address");
-    expect(fetcher).not.toHaveBeenCalled();
-  });
-
-  test("how to make it stay: the host's variable and its value, with a link to this Pages project", () => {
+  test("the platform unreachable, or the site being made for another browser, said so", async () => {
+    world.ask = () => {
+      throw new TypeError("Failed to fetch");
+    };
+    fetcher.mockImplementationOnce(async () => {
+      throw new TypeError("Failed to fetch");
+    });
     show();
-    type("connect-address", "paint-api.up.railway.app");
-    expect(screen.getByTestId("connect-pin-name").textContent).toBe("VITE_API_BASE_URL");
-    expect(screen.getByTestId("connect-pin-value").textContent).toBe("https://paint-api.up.railway.app/v1");
-    expect(screen.getByRole("link", { name: "Cloudflare" }).getAttribute("href")).toBe("https://dash.cloudflare.com/?to=/:account/pages/view/paintcopy");
+    expect(await screen.findByTestId("connect-silent")).toBeTruthy();
+    cleanup();
+    world.ask = () => ({ code: 409, body: { error: "ASK_TAKEN" } });
+    show();
+    fireEvent.click(await screen.findByTestId("connect-ask"));
+    expect((await screen.findByTestId("connect-not-taken")).textContent).toContain("being made for another browser");
+  });
+
+  test("a build that doesn't know its platform says so", () => {
+    show({ platform: null });
+    expect(screen.getByTestId("connect-no-platform")).toBeTruthy();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
 
-describe("An admin on a server kept in this browser", () => {
-  test("shows it, what it answers, how to make it stay, and unlinks it", async () => {
-    localStorage.setItem(SERVER_KEY, "https://paint-api.up.railway.app/v1");
-    const go = show({ from: "browser", address: "https://paint-api.up.railway.app/v1", fetcher: answers({ needed: false }) as never });
-    expect(screen.getByTestId("connect-kept-address").textContent).toBe("https://paint-api.up.railway.app/v1");
+describe("An admin with a server", () => {
+  test("kept in this browser: shown, what it answers, the site being built again, and unlinked", async () => {
+    localStorage.setItem(SERVER_KEY, API);
+    world.server = () => ({ needed: false });
+    const go = show({ from: "browser", address: API });
+    expect(screen.getByTestId("connect-kept-address").textContent).toBe(API);
     expect(await screen.findByTestId("connect-answer-ok")).toBeTruthy();
-    expect(screen.getByTestId("connect-pin-value").textContent).toBe("https://paint-api.up.railway.app/v1");
-    expect(screen.queryByTestId("connect-step-neon")).toBeNull();
     fireEvent.click(screen.getByTestId("connect-forget"));
     expect(localStorage.getItem(SERVER_KEY)).toBeNull();
     expect(go).toHaveBeenCalledWith("/connect");
   });
 
-  test("a reminder on every other page until the host has it", () => {
-    const { unmount } = render(<ServerKeptNotice from="browser" path="/admin/dashboard" />);
-    expect(screen.getByTestId("server-kept-notice")).toBeTruthy();
-    unmount();
-    render(<ServerKeptNotice from="build" path="/admin/dashboard" />);
-    expect(screen.queryByTestId("server-kept-notice")).toBeNull();
-    render(<ServerKeptNotice from="browser" path="/connect" />);
-    expect(screen.queryByTestId("server-kept-notice")).toBeNull();
-  });
-});
-
-describe("An admin built with an address", () => {
-  test("says what it answers and how to fix it, with no way to point it elsewhere", async () => {
-    show({ from: "build", address: "https://paint-api.up.railway.app/v1", fetcher: vi.fn(async () => Promise.reject(new TypeError("x"))) as never });
-    expect(screen.getByTestId("connect-built-address").textContent).toBe("https://paint-api.up.railway.app/v1");
+  test("built with one: what it answers, and no way to point it elsewhere or to ask", async () => {
+    show({ from: "build", address: API });
+    expect(screen.getByTestId("connect-built-address").textContent).toBe(API);
     expect(await screen.findByTestId("connect-answer-silent")).toBeTruthy();
-    expect(screen.queryByTestId("connect-address")).toBeNull();
-    expect(screen.queryByTestId("connect-database")).toBeNull();
+    expect(screen.queryByTestId("connect-ask")).toBeNull();
+    await act(async () => new Promise((r) => setTimeout(r, 30)));
+    expect(world.asked.every((a) => !a.url.startsWith(PLATFORM))).toBe(true);
   });
 });
 
-describe("What the server is given", () => {
-  test("every variable is one the server reads (backend config/env.ts)", () => {
-    const schema = fs.readFileSync(path.join(process.cwd(), "..", "estabrek-store-backend", "src", "config", "env.ts"), "utf8");
-    for (const [name] of serverVariables(NEON, ORIGIN, newSecrets())) expect(schema, name).toMatch(new RegExp(`^\\s+${name}:`, "m"));
-  });
-
-  test("secrets long enough for the server's own rules, setup codes like its own", () => {
-    const s = newSecrets();
-    for (const v of [s.JWT_SECRET, s.WEBHOOK_TOKEN, s.CODES_ENCRYPTION_KEY, s.BACKUP_ENCRYPTION_KEY, s.SETUP_CODE]) expect(v.length).toBeGreaterThanOrEqual(16);
-    const codes = new Set(Array.from({ length: 50 }, madeSetupCode));
-    expect(codes.size).toBe(50);
-    for (const c of codes) expect(c).toMatch(/^[A-HJKMNP-Z2-9]{4}(-[A-HJKMNP-Z2-9]{4}){3}$/);
-  });
-
-  test("the database out of what was pasted, the Pages project out of the address", () => {
-    expect(databaseAddress(`psql '${NEON}'`)).toBe(NEON);
-    expect(databaseAddress(` "${NEON}" `)).toBe(NEON);
-    expect(databaseAddress("DATABASE_URL=postgres://u:p@host/db")).toBe("postgres://u:p@host/db");
-    expect(databaseAddress("neon.tech")).toBeNull();
-    expect(pagesProject("paintcopy.pages.dev")).toBe("paintcopy");
-    expect(pagesProject("3f2a1b.paintcopy.pages.dev")).toBe("paintcopy");
-    expect(pagesProject("admin.example.com")).toBeNull();
-  });
+test("the making in the four parts a client knows", () => {
+  const steps = STEPS.map((id) => ({ id, state: "waiting" as const }));
+  expect(partsOf(steps)).toEqual({ neon: "waiting", railway: "waiting", vercel: "waiting", cloudflare: "waiting" });
+  expect(partsOf(steps.map((s) => (s.id === "railway.deploy" ? { ...s, state: "failed" as const } : s.id.startsWith("neon") ? { ...s, state: "done" as const } : s)))).toMatchObject({ neon: "done", railway: "failed" });
+  expect(partsOf(done(STEPS))).toEqual({ neon: "done", railway: "done", vercel: "done", cloudflare: "done" });
 });

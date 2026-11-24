@@ -100,6 +100,12 @@ type Env = {
     adminHost: typeof window === "undefined" ? "" : window.location.host,
   });
 
+  /**
+   * The platform's own server (the one whose press makes client copies: backend lib/siteAsk.ts), asked by an admin
+   * with no server of its own to make one. Every copy builds from the same repository, so it is in .env.production.
+   */
+  export const PLATFORM_API: string | null = keptServer(import.meta.env.VITE_PLATFORM_API_URL);
+
   export const env: Env = {
     VITE_API_BASE_URL: server.address,
 

@@ -77,6 +77,22 @@ export async function getCopy(id: string) {
 export async function copyAgain(id: string) {
   return (await api.post(`${BASE}/made/${encodeURIComponent(id)}/again`)).data as CopyView;
 }
+/**
+ * A copy's admin the owner put up by hand on their Pages, asking for the rest (backend lib/siteAsk.ts): said yes to
+ * after the owner matches its six letters with the client; then made like any copy, adopting that same site.
+ */
+export type SiteAsk = { id: string; admin: string; project: string; pair: string; state: "waiting" | "making" | "refused"; asked: string; copy: { id: string; state: string } | null };
+export async function listAsks() {
+  return ((await api.get(`${BASE}/asks`)).data as { asks: SiteAsk[] }).asks;
+}
+/** Said yes to: made in the owner's accounts (202: it goes on by itself, in the copies list). Checked first. */
+export async function makeAsk(id: string, body: PlanAsk) {
+  return (await api.post(`${BASE}/asks/${encodeURIComponent(id)}/make`, { ...body, agree: true })).data as CopyView;
+}
+export async function refuseAsk(id: string) {
+  return ((await api.post(`${BASE}/asks/${encodeURIComponent(id)}/refuse`)).data as { asks: SiteAsk[] }).asks;
+}
+
 /** Whether its server, shop and admin answer yet, and whether its owner has yet to come in. */
 export async function copyAlive(id: string) {
   return (await api.get(`${BASE}/made/${encodeURIComponent(id)}/alive`)).data as Alive;

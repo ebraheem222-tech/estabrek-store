@@ -57,6 +57,7 @@ const CHECK: Record<string, string> = {
   "cloudflare.account": "اتصال Cloudflare إله Account ID|The Cloudflare connection has an Account ID|לחיבור Cloudflare יש Account ID",
   "cloudflare.name": "اسم الإدارة فاضي بـ Cloudflare Pages|The admin's name is free at Cloudflare Pages|שם הניהול פנוי ב-Cloudflare Pages",
   "cloudflare.address": "عنوان الإدارة مش لحدا تاني على Cloudflare|The admin's address is no one else's at Cloudflare|הכתובת של הניהול לא של מישהו אחר ב-Cloudflare",
+  "cloudflare.adopt": "الموقع اللي طلب موجود بحساب Cloudflare وعلى نفس العنوان|The site that asked is in the Cloudflare account, at the same address|האתר שביקש נמצא בחשבון Cloudflare, באותה כתובת",
 };
 /** The server's reasons, in the admin's words ({1}…: what the reason names). */
 const WHY: Array<[RegExp, string]> = [
@@ -69,6 +70,8 @@ const WHY: Array<[RegExp, string]> = [
   [/^The Cloudflare connection has no Account ID$/, "اتصال Cloudflare ما إله Account ID: حطّه بإعدادات الاتصال|The Cloudflare connection has no Account ID: give it one in the connection's settings|לחיבור Cloudflare אין Account ID: הוסיפו אותו בהגדרות החיבור"],
   [/^(.+)\.vercel\.app is someone else's$/, "{1}.vercel.app لحدا تاني على Vercel: اختار اسم تاني للموقع|{1}.vercel.app is someone else's at Vercel: pick another name for the site|{1}.vercel.app שייך למישהו אחר ב-Vercel: בחרו שם אחר לאתר"],
   [/^(.+)\.pages\.dev is someone else's$/, "{1}.pages.dev لحدا تاني على Cloudflare: اختار اسم تاني للموقع|{1}.pages.dev is someone else's at Cloudflare: pick another name for the site|{1}.pages.dev שייך למישהו אחר ב-Cloudflare: בחרו שם אחר לאתר"],
+  [/^No Pages project "(.+)" in this Cloudflare account$/, "ما في مشروع Pages اسمه «{1}» بحساب Cloudflare الموصول: تأكد إنو الموقع بنفس الحساب|No Pages project “{1}” in the connected Cloudflare account: make sure the site is in that account|אין פרויקט Pages בשם «{1}» בחשבון Cloudflare המחובר: ודאו שהאתר באותו חשבון"],
+  [/^The Pages project "(.+)" isn't at (.+)$/, "مشروع Pages «{1}» مش على العنوان {2}: هاد مش الموقع اللي طلب|The Pages project “{1}” isn't at {2}: it isn't the site that asked|פרויקט ה-Pages «{1}» לא בכתובת {2}: זה לא האתר שביקש"],
   [/^The server didn't answer in time/, "السيرفر ما اشتغل بالوقت: يمكن أول نشر إله فشل، شوفه بـ Railway، وبعدين جرّب كمان مرة من هون|The server didn't come up in time: its first deploy may have failed, see it at Railway, then try again from here|השרת לא עלה בזמן: אולי הפריסה הראשונה שלו נכשלה, ראו אותה ב-Railway, ואז נסו שוב מכאן"],
   [/^The setup code isn't right$/, "السيرفر ما قبل كود الإعداد: جرّب كمان مرة من هون|The server didn't take the setup code: try again from here|השרת לא קיבל את קוד ההגדרה: נסו שוב מכאן"],
   [/^"(.+)" didn't answer in time$/, "«{1}» ما جاوب بالوقت: جرّب كمان مرة|“{1}” didn't answer in time: try again|«{1}» לא ענה בזמן: נסו שוב"],
@@ -112,6 +115,7 @@ export function makeRefusedText(data: { error?: string; message?: string } | und
   if (data.error === "COPY_EXISTS") return say("في نسخة بهالاسم معمولة أو عم تنعمل: كمّلها من فوق، أو اختار اسم تاني.|A copy with this name is made or being made: carry it on from above, or pick another name.|יש עותק בשם הזה שנוצר או בתהליך: המשיכו אותו מלמעלה, או בחרו שם אחר.");
   if (data.error === "COPY_NOT_READY") return say("خدمة من الخدمات قالت لأ هلأ: شوف الفحص من جديد تحت.|A service says no now: see the checks again below.|אחד השירותים אומר לא עכשיו: ראו את הבדיקות שוב למטה.");
   if (data.error === "COPY_MAKING") return say("هالنسخة عم تنعمل هلأ.|This copy is being made now.|העותק הזה נוצר עכשיו.");
+  if (data.error === "ASK_NOT_WAITING") return say("هالموقع ما عاد عم يستنى: يمكن انقبل أو انرفض من قبل.|This site isn't waiting any more: it may have been said yes or no to already.|האתר הזה כבר לא מחכה: אולי כבר אושר או נדחה.");
   return null;
 }
 /** A refused name or repository, by the server's code. */

@@ -9,7 +9,7 @@ import { afterEach, expect, test, vi } from "vitest";
 vi.mock("../config/env", async (real) => {
   const actual = await real<typeof import("../config/env")>();
   const server = { address: actual.LOCAL_API, from: "none" as const };
-  return { ...actual, server, env: { ...actual.env, VITE_API_BASE_URL: server.address } };
+  return { ...actual, server, PLATFORM_API: null, env: { ...actual.env, VITE_API_BASE_URL: server.address } };
 });
 
 import { setLangForTests } from "../lib/lang";
@@ -28,7 +28,7 @@ test.each(["/login", "/", "/welcome?code=ABCD-EFGH-JKMN-PQRS", "/admin/products"
       <AppRouter />
     </QueryClientProvider>,
   );
-  expect(await screen.findByTestId("connect-step-neon", {}, { timeout: 4000 })).toBeTruthy();
+  expect(await screen.findByTestId("connect", {}, { timeout: 4000 })).toBeTruthy();
   expect(window.location.pathname).toBe("/connect");
   expect(screen.queryByText("Welcome back")).toBeNull();
 });

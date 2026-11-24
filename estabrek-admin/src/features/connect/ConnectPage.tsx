@@ -1,101 +1,56 @@
-// «وصّل متجرك»: where a copy's admin opens when it was put up on its host before anything was linked to it
-// (config/env.ts: server.from "none"; paintispassion.pages.dev showed a sign-in to no server). It walks the
-// owner through the database (Neon) → the server (Railway, given every variable it needs, its secrets made
-// here) → this admin (the server's address, checked, kept in this browser) → the owner's account (/welcome,
-// with the setup code made here) → the store's own setup (/setup: the shop, the pictures, the rest), and
-// says how to put the address in the host so every browser has it. An admin built with an address shows
-// what that address answers instead, and how to fix it: it can't be pointed elsewhere from here.
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+// «جهّز متجرك»: where a copy's admin opens when the platform's owner put it up on their Cloudflare Pages before
+// anything else (config/env.ts: server.from "none"; paintispassion.pages.dev showed a sign-in to no server). The
+// client can't reach that Cloudflare and has no Neon or Railway, so one button asks the platform's server to make
+// them (serverLink.ts, backend lib/siteAsk.ts). The page shows six letters for the client to read to the owner, who
+// says yes when they match; it follows the making; once made, it keeps the server's address in this browser (the
+// site is built again with it meanwhile) and goes on to the owner's account with the setup code it was told.
+//
+// An admin built with an address shows what that address answers instead: it can't be pointed elsewhere from here.
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
-import { keptServer, server as builtServer, type ServerFrom } from "../../config/env";
+import { PLATFORM_API, server as builtServer, type ServerFrom } from "../../config/env";
 import { say } from "../../studio/say";
-import {
-  SERVER_FOLDER,
-  asLines,
-  checkServer,
-  databaseAddress,
-  dropTabSecrets,
-  forgetServer,
-  keepServer,
-  pagesProject,
-  serverVariables,
-  tabSecrets,
-  type ServerCheck,
-} from "./serverLink";
+import { PARTS, askKey, askPlatform, askedStatus, checkServer, forgetAsk, forgetServer, keepServer, partsOf, type AskStatus, type Part, type ServerCheck } from "./serverLink";
 
 type Props = {
   /** Where the admin's server came from, and its address (config/env.ts). */
   from?: ServerFrom;
   address?: string;
-  /** This admin's own address. */
-  origin?: string;
+  /** The platform's server, asked to make this one (null: this build doesn't know it). */
+  platform?: string | null;
   /** Opens a page with the admin loaded again, so it speaks to the server it was just given. */
   go?: (to: string) => void;
   fetcher?: typeof fetch;
+  /** How often the page asks again (tests make it short). */
+  every?: number;
 };
 
-const NEON = "https://console.neon.tech/app/projects";
-const RAILWAY = "https://railway.com/new";
+const PART_NAME: Record<Part, string> = {
+  neon: "قاعدة البيانات|The database|מסד הנתונים",
+  railway: "السيرفر|The server|השרת",
+  vercel: "المتجر|The shop|החנות",
+  cloudflare: "هاللوحة، مبنية من جديد عليهم|This admin, built again with them|הפאנל הזה, נבנה מחדש איתם",
+};
+const MARK = { waiting: "○", doing: "◌", done: "✓", failed: "✗" } as const;
+const MARK_TONE = { waiting: "text-white/40", doing: "text-sky-300 animate-pulse", done: "text-emerald-300", failed: "text-red-300" } as const;
 
-function Copy({ text, testid, disabled }: { text: string; testid: string; disabled?: boolean }) {
-  const [done, setDone] = useState(false);
+function Card({ title, children, testid }: { title: string; children: ReactNode; testid: string }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => {
-        void navigator.clipboard?.writeText(text).then(() => {
-          setDone(true);
-          setTimeout(() => setDone(false), 1500);
-        });
-      }}
-      className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/80 transition hover:bg-white/10 disabled:opacity-40"
-      data-testid={testid}
-    >
-      {done ? say("انتسخ ✓|Copied ✓|הועתק ✓") : say("انسخ|Copy|העתקה")}
-    </button>
+    <div className="relative w-full max-w-lg animate-fade-in-up pb-16" data-testid={testid}>
+      <div className="relative glass space-y-5 rounded-3xl p-6 shadow-elevated sm:p-8">
+        <h1 className="text-center text-2xl font-bold text-white">{title}</h1>
+        {children}
+      </div>
+    </div>
   );
 }
 
-/** A value to paste somewhere, as it is. */
-function Value({ text, testid }: { text: string; testid: string }) {
-  return (
-    <span className="mt-1 flex items-center gap-2 rounded-lg bg-black/30 px-3 py-2">
-      <code className="min-w-0 flex-1 truncate text-xs text-emerald-200" dir="ltr" data-testid={testid}>
-        {text}
-      </code>
-      <Copy text={text} testid={`${testid}-copy`} />
-    </span>
-  );
-}
-
-function Step({ n, title, children, testid }: { n: number; title: string; children: ReactNode; testid: string }) {
-  return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5" data-testid={testid}>
-      <h2 className="mb-3 flex items-center gap-3 text-base font-semibold text-white">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-500/20 text-sm text-accent-200">{n}</span>
-        {title}
-      </h2>
-      <div className="space-y-3 text-sm leading-relaxed text-white/70">{children}</div>
-    </section>
-  );
-}
-
-function Outside({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer noopener" className="font-medium text-accent-300 underline underline-offset-2 hover:text-accent-200">
-      {children}
-    </a>
-  );
-}
-
-/** What an address answered, in the page's words. */
-function Answer({ check, origin, built }: { check: ServerCheck; origin: string; built: boolean }) {
+/** What a built (or kept) address answers, in the page's words. */
+function Answer({ check, built }: { check: ServerCheck; built: boolean }) {
   if (check.kind === "store") {
     return (
-      <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-emerald-200" data-testid="connect-answer-ok">
+      <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-200" data-testid="connect-answer-ok">
         {say("السيرفر شغّال وبيرد.|The server is up and answering.|השרת פועל ועונה.")}{" "}
         <Link to={check.needed ? "/welcome" : "/login"} className="underline">
           {check.needed ? say("اعمل حساب صاحب المتجر|Make the owner's account|צרו את החשבון של הבעלים") : say("سجّل دخول|Sign in|כניסה")}
@@ -103,230 +58,198 @@ function Answer({ check, origin, built }: { check: ServerCheck; origin: string; 
       </p>
     );
   }
-  if (check.kind === "other") {
-    return (
-      <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-amber-100" role="alert" data-testid="connect-answer-other">
-        {say(
-          "هالعنوان ردّ، بس مش سيرفر متجر.|This address answered, but it isn't a store's server.|הכתובת הזו ענתה, אבל זה לא שרת של חנות.",
-        )}{" "}
-        {built
-          ? say(
-              "صلّح VITE_API_BASE_URL بإعدادات الموقع (Cloudflare ← Settings ← Variables and Secrets) لعنوان السيرفر من Railway ← Networking، وبعدين Retry deployment.|Fix VITE_API_BASE_URL in the site's settings (Cloudflare → Settings → Variables and Secrets) to the server's address from Railway → Networking, then Retry deployment.|תקנו את VITE_API_BASE_URL בהגדרות האתר (Cloudflare ← Settings ← Variables and Secrets) לכתובת השרת מ-Railway ← Networking, ואז Retry deployment.",
-            )
-          : say(
-              `تأكد إنو الـ Root Directory بالخدمة هو ${SERVER_FOLDER}، وإنك نسخت العنوان من Settings ← Networking.|Make sure the service's Root Directory is ${SERVER_FOLDER}, and that you copied the address from Settings → Networking.|ודאו שה-Root Directory של השירות הוא ${SERVER_FOLDER}, ושהעתקתם את הכתובת מ-Settings ← Networking.`,
-            )}
-      </p>
-    );
-  }
   return (
-    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-red-200" role="alert" data-testid="connect-answer-silent">
-      <p>
-        {say(
-          "السيرفر ما ردّ. إذا لسا عم يبني (أول مرة بتاخد كم دقيقة)، استنى شوي وجرّب كمان مرة. وإذا خلص بناؤه، تأكد إنو متغيّر CORS_ORIGINS فيه عنوان هاللوحة:|The server didn't answer. If it is still building (the first time takes a few minutes), wait a little and try again. If it has finished, make sure its CORS_ORIGINS variable has this admin's address:|השרת לא ענה. אם הוא עדיין נבנה (בפעם הראשונה זה לוקח כמה דקות), חכו קצת ונסו שוב. אם הבנייה הסתיימה, ודאו שהמשתנה CORS_ORIGINS שלו כולל את הכתובת של הפאנל הזה:",
-        )}
-      </p>
-      <Value text={origin} testid="connect-origin" />
-    </div>
+    <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200" role="alert" data-testid={check.kind === "silent" ? "connect-answer-silent" : "connect-answer-other"}>
+      {check.kind === "silent"
+        ? say("السيرفر ما ردّ: يا واقف، يا لسا عم يبني (أول مرة بتاخد كم دقيقة). جرّب كمان شوي.|The server didn't answer: it is down, or still building (the first time takes a few minutes). Try again in a little while.|השרת לא ענה: הוא למטה, או עדיין נבנה (בפעם הראשונה זה לוקח כמה דקות). נסו שוב עוד מעט.")
+        : say("هالعنوان ردّ، بس مش سيرفر متجر.|This address answered, but it isn't a store's server.|הכתובת הזו ענתה, אבל זה לא שרת של חנות.")}{" "}
+      {built ? say("إذا ضلّ هيك، خبّر صاحب المنصة.|If it stays so, tell the platform's owner.|אם זה נשאר כך, ספרו לבעלים של הפלטפורמה.") : null}
+    </p>
   );
 }
 
-export default function ConnectPage({ from = builtServer.from, address = builtServer.address, origin = window.location.origin, go = (to) => window.location.assign(to), fetcher }: Props) {
-  const built = from === "build" || from === "local";
-  const project = pagesProject(new URL(origin).host);
-  const cloudflare = project ? `https://dash.cloudflare.com/?to=/:account/pages/view/${project}` : "https://dash.cloudflare.com/";
-
-  // An admin built with an address: what it answers.
+/** An admin built with an address, or one kept in this browser: what it answers. */
+function Linked({ from, address, go, fetcher }: { from: ServerFrom; address: string; go: (to: string) => void; fetcher?: typeof fetch }) {
   const [answer, setAnswer] = useState<ServerCheck | null>(null);
   useEffect(() => {
-    if (!built && from !== "browser") return;
     let live = true;
     void checkServer(address, fetcher).then((c) => live && setAnswer(c));
     return () => {
       live = false;
     };
-  }, [built, from, address, fetcher]);
-
-  const secrets = useMemo(() => tabSecrets(), []);
-  const [pasted, setPasted] = useState("");
-  const database = databaseAddress(pasted);
-  const lines = asLines(serverVariables(database ?? "", origin, secrets));
-
-  const [written, setWritten] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [tried, setTried] = useState<ServerCheck | null>(null);
-  const [badAddress, setBadAddress] = useState(false);
-
-  const connect = async (e: FormEvent) => {
-    e.preventDefault();
-    const api = keptServer(written);
-    setBadAddress(!api);
-    setTried(null);
-    if (!api || busy) return;
-    setBusy(true);
-    const check = await checkServer(api, fetcher);
-    setBusy(false);
-    if (check.kind !== "store") return setTried(check);
-    keepServer(api);
-    // On to the owner's account, with the code this page gave the server (a store that has its owner signs in).
-    if (check.needed) {
-      const to = `/welcome?code=${encodeURIComponent(secrets.SETUP_CODE)}`;
-      dropTabSecrets();
-      return go(to);
-    }
-    go("/login");
-  };
-
-  const pin = (api: string) => (
-    <>
-      <p>
-        {say(
-          "السيرفر محفوظ بهالمتصفح بس. ليفتح لكل حدا ومن كل جهاز، حطّه بإعدادات هالموقع:|The server is kept in this browser only. For it to open for everyone on every device, put it in this site's settings:|השרת שמור רק בדפדפן הזה. כדי שייפתח לכולם מכל מכשיר, הכניסו אותו להגדרות האתר:",
-        )}{" "}
-        <Outside href={cloudflare}>Cloudflare</Outside> ← {project ?? say("الموقع|the site|האתר")} ← Settings ← Variables and Secrets ← Add (Production):
-      </p>
-      <Value text="VITE_API_BASE_URL" testid="connect-pin-name" />
-      <Value text={api} testid="connect-pin-value" />
-      <p>{say("وبعدين Deployments ← آخر نشر ← Retry deployment.|Then Deployments → the latest one → Retry deployment.|ואז Deployments ← הפריסה האחרונה ← Retry deployment.")}</p>
-    </>
-  );
-
+  }, [address, fetcher]);
+  const kept = from === "browser";
   return (
-    <div className="relative w-full max-w-2xl animate-fade-in-up pb-16" data-testid="connect">
-      <div className="relative glass rounded-3xl p-6 shadow-elevated sm:p-8">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-white">
-            {built ? say("السيرفر تبع اللوحة|This admin's server|השרת של הפאנל") : say("وصّل متجرك|Link your store|חברו את החנות שלכם")}
-          </h1>
-          {built ? null : (
-            <p className="mt-2 text-sm text-white/60">
+    <Card title={kept ? say("متجرك موصول|Your store is linked|החנות שלכם מחוברת") : say("السيرفر تبع اللوحة|This admin's server|השרת של הפאנל")} testid="connect">
+      <div className="space-y-4 text-sm text-white/70" data-testid={kept ? "connect-kept" : "connect-built"}>
+        <p>{kept ? say("موصول بهالسيرفر:|Linked to this server:|מחובר לשרת הזה:") : say("هاللوحة مبنية على هالسيرفر:|This admin is built with this server:|הפאנל הזה בנוי עם השרת הזה:")}</p>
+        <code className="block truncate rounded-lg bg-black/30 px-3 py-2 text-xs text-emerald-200" dir="ltr" data-testid={kept ? "connect-kept-address" : "connect-built-address"}>
+          {address}
+        </code>
+        {answer ? <Answer check={answer} built={!kept} /> : <p className="text-white/40">{say("عم نسأله…|Asking it…|שואלים אותו…")}</p>}
+        {kept ? (
+          <>
+            <p className="text-xs text-white/50">
               {say(
-                "هالموقع لسا مش موصول بشي. خلّينا نوصّله خطوة خطوة: قاعدة البيانات (Neon)، بعدين السيرفر (Railway)، بعدين حسابك، وبعدها المتجر نفسه (Vercel) والصور وكل الباقي من إعداد المتجر.|This site isn't linked to anything yet. Let's link it step by step: the database (Neon), then the server (Railway), then your account, and after it the shop itself (Vercel), the pictures and the rest from the store's setup.|האתר הזה עדיין לא מחובר לשום דבר. בואו נחבר אותו צעד אחר צעד: מסד הנתונים (Neon), אחר כך השרת (Railway), אחר כך החשבון שלכם, ואחריו החנות עצמה (Vercel), התמונות וכל השאר מההגדרה של החנות.",
+                "الموقع عم ينبنى من جديد على هالسيرفر (كم دقيقة)، وبعدها بيفتح متجرك من أي جهاز. لهلق، هالمتصفح بيعرفه.|The site is being built again with this server (a few minutes), then your store opens from any device. Until then, this browser knows it.|האתר נבנה מחדש עם השרת הזה (כמה דקות), ואז החנות שלכם נפתחת מכל מכשיר. עד אז, הדפדפן הזה מכיר אותו.",
               )}
             </p>
-          )}
-        </div>
-
-        {built ? (
-          <div className="space-y-4 text-sm text-white/70" data-testid="connect-built">
-            <p>{say("هاللوحة مبنية على هالسيرفر:|This admin is built with this server:|הפאנל הזה בנוי עם השרת הזה:")}</p>
-            <Value text={address} testid="connect-built-address" />
-            {answer ? <Answer check={answer} origin={origin} built /> : <p className="text-white/40">{say("عم نسأله…|Asking it…|שואלים אותו…")}</p>}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {from === "browser" ? (
-              <section className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-5 text-sm text-white/70" data-testid="connect-kept">
-                <p className="font-semibold text-white">{say("موصول بهالسيرفر:|Linked to this server:|מחובר לשרת הזה:")}</p>
-                <Value text={address} testid="connect-kept-address" />
-                {answer ? <Answer check={answer} origin={origin} built={false} /> : null}
-                {pin(address)}
-                <button
-                  type="button"
-                  className="text-xs text-white/50 underline hover:text-white/70"
-                  onClick={() => {
-                    forgetServer();
-                    go("/connect");
-                  }}
-                  data-testid="connect-forget"
-                >
-                  {say("افصله عن هالمتصفح|Unlink it from this browser|נתקו אותו מהדפדפן הזה")}
-                </button>
-              </section>
-            ) : (
-              <>
-            <Step n={1} title={say("قاعدة البيانات: Neon|The database: Neon|מסד הנתונים: Neon")} testid="connect-step-neon">
-              <p>
-                {say("افتح|Open|פתחו את")} <Outside href={NEON}>Neon</Outside>{" "}
-                {say(
-                  "واعمل مشروع جديد (أي اسم، والمنطقة الأقرب لزباينك). بعدين اكبس Connect وانسخ رابط الاتصال.|and make a new project (any name, the region nearest your customers). Then press Connect and copy the connection string.|וצרו פרויקט חדש (כל שם, האזור הקרוב ללקוחות שלכם). אחר כך לחצו Connect והעתיקו את מחרוזת החיבור.",
-                )}
-              </p>
-              <Input
-                label={say("رابط قاعدة البيانات|The database's connection string|מחרוזת החיבור של מסד הנתונים")}
-                value={pasted}
-                onChange={(e) => setPasted(e.target.value)}
-                placeholder="postgresql://…neon.tech/neondb?sslmode=require"
-                dir="ltr"
-                autoComplete="off"
-                spellCheck={false}
-                error={pasted.trim() && !database ? say("هاد مش رابط قاعدة بيانات: لازم يبلّش بـ postgresql://|This isn't a database's string: it starts with postgresql://|זו לא מחרוזת של מסד נתונים: היא מתחילה ב-postgresql://") : undefined}
-                data-testid="connect-database"
-              />
-              <p className="text-xs text-white/45">
-                {say(
-                  "الرابط بيضل بهالصفحة بس: ما بينحفظ وما بيروح لأي مكان. إنت بتحطّه بـ Railway بالخطوة الجاية.|The string stays on this page only: it isn't kept or sent anywhere. You put it in Railway in the next step.|המחרוזת נשארת רק בעמוד הזה: היא לא נשמרת ולא נשלחת לשום מקום. אתם מכניסים אותה ל-Railway בצעד הבא.",
-                )}
-              </p>
-            </Step>
-
-            <Step n={2} title={say("السيرفر: Railway|The server: Railway|השרת: Railway")} testid="connect-step-railway">
-              <ol className="list-decimal space-y-3 ps-5">
-                <li>
-                  {say("افتح|Open|פתחו את")} <Outside href={RAILWAY}>Railway</Outside> ← New Project ← GitHub Repository{" "}
-                  {say("واختار مستودع المتجر.|and pick the store's repository.|ובחרו את המאגר של החנות.")}
-                </li>
-                <li>
-                  {say("بالخدمة: Settings ← Source ← Root Directory:|In the service: Settings → Source → Root Directory:|בשירות: Settings ← Source ← Root Directory:")}
-                  <Value text={SERVER_FOLDER} testid="connect-folder" />
-                </li>
-                <li>
-                  {say(
-                    "Variables ← Raw Editor: الصق هالأسطر كلها واكبس Update Variables. الأسرار انعملت هون جديدة لهالسيرفر.|Variables → Raw Editor: paste all these lines and press Update Variables. The secrets were made here, new for this server.|Variables ← Raw Editor: הדביקו את כל השורות האלה ולחצו Update Variables. הסודות נוצרו כאן, חדשים לשרת הזה.",
-                  )}
-                  <div className="mt-1 rounded-lg bg-black/30 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-white/45">
-                        {database ? say("جاهزين للّصق|Ready to paste|מוכנות להדבקה") : say("حط رابط قاعدة البيانات فوق أول.|Put the database's string above first.|הכניסו קודם את מחרוזת מסד הנתונים למעלה.")}
-                      </span>
-                      <Copy text={lines} testid="connect-variables-copy" disabled={!database} />
-                    </div>
-                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-5 text-emerald-200/90" dir="ltr" data-testid="connect-variables">
-                      {lines}
-                    </pre>
-                  </div>
-                </li>
-                <li>
-                  {say(
-                    "Settings ← Networking ← Generate Domain، وانسخ العنوان اللي بيعطيك ياه. أول بناء بياخد كم دقيقة، والسيرفر بيجهّز قاعدة البيانات لحاله.|Settings → Networking → Generate Domain, and copy the address it gives. The first build takes a few minutes, and the server readies the database by itself.|Settings ← Networking ← Generate Domain, והעתיקו את הכתובת שמתקבלת. הבנייה הראשונה לוקחת כמה דקות, והשרת מכין את מסד הנתונים בעצמו.",
-                  )}
-                </li>
-              </ol>
-            </Step>
-
-            <Step n={3} title={say("وصّل اللوحة بالسيرفر|Link this admin to the server|חברו את הפאנל לשרת")} testid="connect-step-link">
-              <form onSubmit={connect} className="space-y-3">
-                <Input
-                  label={say("عنوان السيرفر|The server's address|כתובת השרת")}
-                  value={written}
-                  onChange={(e) => setWritten(e.target.value)}
-                  placeholder="my-store.up.railway.app"
-                  dir="ltr"
-                  autoComplete="off"
-                  spellCheck={false}
-                  error={badAddress ? say("هاد مش عنوان: انسخه متل ما هو من Railway ← Networking.|That isn't an address: copy it as it is from Railway → Networking.|זו לא כתובת: העתיקו אותה כמו שהיא מ-Railway ← Networking.") : undefined}
-                  data-testid="connect-address"
-                />
-                {tried ? <Answer check={tried} origin={origin} built={false} /> : null}
-                <Button type="submit" variant="primary" className="h-11 w-full" disabled={!written.trim()} isLoading={busy} data-testid="connect-submit">
-                  {say("وصّل وكمّل|Link it and go on|חברו והמשיכו")}
-                </Button>
-              </form>
-              <p className="text-xs text-white/45">
-                {say(
-                  "بعدها بتعمل حسابك (إيميلك وكلمة سر من عندك)، وبيفتح إعداد المتجر: المتجر نفسه على Vercel، الصور، المساعد وكل الباقي.|Next you make your account (your email and a password of your own), and the store's setup opens: the shop itself on Vercel, the pictures, the assistant and the rest.|אחר כך תיצרו את החשבון שלכם (האימייל שלכם וסיסמה משלכם), וההגדרה של החנות נפתחת: החנות עצמה ב-Vercel, התמונות, העוזר וכל השאר.",
-                )}
-              </p>
-            </Step>
-
-            <Step n={4} title={say("ثبّت العنوان: Cloudflare|Make it stay: Cloudflare|קבעו את הכתובת: Cloudflare")} testid="connect-step-pin">
-              {pin(keptServer(written) ?? "https://my-store.up.railway.app/v1")}
-            </Step>
-              </>
-            )}
-          </div>
-        )}
+            <button
+              type="button"
+              className="text-xs text-white/50 underline hover:text-white/70"
+              onClick={() => {
+                forgetServer();
+                go("/connect");
+              }}
+              data-testid="connect-forget"
+            >
+              {say("افصله عن هالمتصفح|Unlink it from this browser|נתקו אותו מהדפדפן הזה")}
+            </button>
+          </>
+        ) : null}
       </div>
-    </div>
+    </Card>
   );
+}
+
+type Stage = { at: "start" } | { at: "asking" } | { at: "asked"; status: AskStatus } | { at: "waking"; status: AskStatus } | { at: "silent" } | { at: "refused"; error?: string };
+
+/** An admin with no server: one button asks the platform for everything. */
+function AskForAll({ platform, go, fetcher, every }: { platform: string; go: (to: string) => void; fetcher?: typeof fetch; every: number }) {
+  const [stage, setStage] = useState<Stage>({ at: "start" });
+  const [key] = useState(askKey);
+
+  const follow = useCallback(async () => {
+    const said = await askedStatus(platform, key, fetcher);
+    if (said.ok) {
+      const status = said.value;
+      if (status.state === "made" && status.api) {
+        // Made: this browser keeps the server (the site is built again with it meanwhile), and waits for it to answer.
+        keepServer(status.api);
+        setStage({ at: "waking", status });
+        const check = await checkServer(status.api, fetcher);
+        if (check.kind === "store") {
+          forgetAsk();
+          go(check.needed ? `/welcome${status.code ? `?code=${encodeURIComponent(status.code)}` : ""}` : "/login");
+        }
+        return;
+      }
+      setStage({ at: "asked", status });
+      return;
+    }
+    // This browser asked nothing the platform knows (or another browser asked since): start.
+    setStage(said.why === "unknown" ? { at: "start" } : said.why === "silent" ? { at: "silent" } : { at: "refused", error: said.error });
+  }, [platform, key, fetcher, go]);
+
+  // An ask of this browser's from before (a reload): followed on.
+  useEffect(() => {
+    void follow();
+  }, [follow]);
+
+  const following = stage.at === "asked" || stage.at === "waking";
+  useEffect(() => {
+    if (!following) return;
+    const t = setInterval(() => void follow(), every);
+    return () => clearInterval(t);
+  }, [following, follow, every]);
+
+  const ask = async () => {
+    setStage({ at: "asking" });
+    const said = await askPlatform(platform, key, fetcher);
+    if (said.ok) return setStage({ at: "asked", status: { state: said.value.state, pair: said.value.pair } });
+    setStage(said.why === "silent" ? { at: "silent" } : { at: "refused", error: said.error });
+  };
+
+  const status = stage.at === "asked" || stage.at === "waking" ? stage.status : null;
+  const parts = status?.steps ? partsOf(status.steps) : null;
+
+  return (
+    <Card title={say("جهّز متجرك|Set up your store|הכינו את החנות שלכם")} testid="connect">
+      {stage.at === "start" || stage.at === "asking" ? (
+        <div className="space-y-4 text-center" data-testid="connect-start">
+          <p className="text-sm text-white/70">
+            {say(
+              "هالموقع لسا ما إله سيرفر. اكبس الزر، وبعد ما صاحب المنصة يوافق، كل شي بينعمل لحاله: قاعدة البيانات، السيرفر، المتجر، وهاللوحة. ما بتحتاج أي حساب.|This site has no server yet. Press the button, and once the platform's owner says yes, everything is made by itself: the database, the server, the shop and this admin. You need no account anywhere.|לאתר הזה עדיין אין שרת. לחצו על הכפתור, ואחרי שהבעלים של הפלטפורמה יאשר, הכול נוצר מעצמו: מסד הנתונים, השרת, החנות והפאנל הזה. לא צריך שום חשבון.",
+            )}
+          </p>
+          <Button type="button" variant="primary" className="h-12 w-full" onClick={() => void ask()} isLoading={stage.at === "asking"} data-testid="connect-ask">
+            {say("جهّز متجري|Set up my store|הכינו את החנות שלי")}
+          </Button>
+        </div>
+      ) : null}
+
+      {status && status.state === "waiting" ? (
+        <div className="space-y-4 text-center" data-testid="connect-waiting">
+          <p className="text-sm text-white/70">{say("خبّر صاحب المنصة بهالحروف، ليوافق عليها:|Tell the platform's owner these letters, so they say yes:|אמרו לבעלים של הפלטפורמה את האותיות האלה, כדי שיאשר:")}</p>
+          <bdi dir="ltr" className="block font-mono text-4xl font-bold tracking-[0.3em] text-amber-200" data-testid="connect-pair">
+            {status.pair}
+          </bdi>
+          <p className="text-xs text-white/50">{say("هالصفحة بتكمّل لحالها أول ما يوافق: خلّيها مفتوحة.|This page goes on by itself as soon as they say yes: keep it open.|העמוד הזה ממשיך מעצמו ברגע שיאשרו: השאירו אותו פתוח.")}</p>
+        </div>
+      ) : null}
+
+      {status && status.state === "refused" ? (
+        <div className="space-y-4 text-center" data-testid="connect-refused">
+          <p className="text-sm text-amber-200">{say("صاحب المنصة ما وافق على هالطلب. احكي معه، وبعدين اطلب كمان مرة.|The platform's owner said no to this ask. Talk to them, then ask again.|הבעלים של הפלטפורמה דחה את הבקשה. דברו איתם, ואז בקשו שוב.")}</p>
+          <Button type="button" variant="primary" className="w-full" onClick={() => void ask()} data-testid="connect-ask-again">
+            {say("اطلب كمان مرة|Ask again|בקשו שוב")}
+          </Button>
+        </div>
+      ) : null}
+
+      {status && (status.state === "making" || status.state === "stopped" || status.state === "made") ? (
+        <div className="space-y-4" data-testid="connect-making" data-state={status.state}>
+          <p className="text-center text-sm text-white/70">
+            {stage.at === "waking"
+              ? say("كل شي انعمل. عم نستنى السيرفر يشتغل أول مرة (كم دقيقة)…|Everything is made. Waiting for the server to come up the first time (a few minutes)…|הכול נוצר. מחכים שהשרת יעלה בפעם הראשונה (כמה דקות)…")
+              : status.state === "stopped"
+                ? say("وقف بخطوة: صاحب المنصة رح يكمّلها من عنده.|It stopped at a step: the platform's owner will carry it on.|זה נעצר בשלב: הבעלים של הפלטפורמה ימשיך אותו.")
+                : say("صاحب المنصة وافق. عم ينعمل متجرك…|The platform's owner said yes. Your store is being made…|הבעלים של הפלטפורמה אישר. החנות שלכם נוצרת…")}
+          </p>
+          {parts ? (
+            <ul className="space-y-2">
+              {PARTS.map((p) => (
+                <li key={p} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2 text-sm" data-testid={`connect-part-${p}`} data-state={parts[p]}>
+                  <span className={`w-4 text-center ${MARK_TONE[parts[p]]}`}>{MARK[parts[p]]}</span>
+                  <span className="text-white/80">{say(PART_NAME[p])}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
+      {stage.at === "silent" ? (
+        <div className="space-y-4 text-center" data-testid="connect-silent">
+          <p className="text-sm text-red-200">{say("ما قدرنا نوصل لصاحب المنصة هلق. جرّب كمان شوي.|The platform couldn't be reached now. Try again in a little while.|לא הצלחנו להגיע לפלטפורמה עכשיו. נסו שוב עוד מעט.")}</p>
+          <Button type="button" variant="secondary" className="w-full" onClick={() => void follow()} data-testid="connect-retry">
+            {say("جرّب كمان مرة|Try again|נסו שוב")}
+          </Button>
+        </div>
+      ) : null}
+
+      {stage.at === "refused" ? (
+        <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-200" role="alert" data-testid="connect-not-taken">
+          {stage.error === "ASK_TAKEN"
+            ? say("هالموقع عم ينعمل لمتصفح تاني: كمّل من الجهاز اللي طلبت منه.|This site is being made for another browser: carry on from the device you asked from.|האתר הזה נוצר עבור דפדפן אחר: המשיכו מהמכשיר שממנו ביקשתם.")
+            : stage.error === "ASK_ADMIN"
+              ? say("هالعنوان ما بيقدر يطلب: افتح الموقع من عنوانه الأساسي (…pages.dev).|This address can't ask: open the site at its main address (…pages.dev).|הכתובת הזו לא יכולה לבקש: פתחו את האתר בכתובת הראשית שלו (…pages.dev).")
+              : say("صاحب المنصة ما قبل الطلب هلق. جرّب كمان شوي.|The platform didn't take the ask now. Try again in a little while.|הפלטפורמה לא קיבלה את הבקשה עכשיו. נסו שוב עוד מעט.")}
+        </p>
+      ) : null}
+    </Card>
+  );
+}
+
+export default function ConnectPage({ from = builtServer.from, address = builtServer.address, platform = PLATFORM_API, go = (to) => window.location.assign(to), fetcher, every = 5000 }: Props) {
+  if (from !== "none") return <Linked from={from} address={address} go={go} fetcher={fetcher} />;
+  if (!platform)
+    return (
+      <Card title={say("جهّز متجرك|Set up your store|הכינו את החנות שלכם")} testid="connect">
+        <p className="text-center text-sm text-white/70" data-testid="connect-no-platform">
+          {say("هالموقع لسا ما إله سيرفر، وما بيعرف منصته. خبّر صاحب المنصة.|This site has no server yet, and doesn't know its platform. Tell the platform's owner.|לאתר הזה עדיין אין שרת, והוא לא מכיר את הפלטפורמה שלו. ספרו לבעלים של הפלטפורמה.")}
+        </p>
+      </Card>
+    );
+  return <AskForAll platform={platform} go={go} fetcher={fetcher} every={every} />;
 }
