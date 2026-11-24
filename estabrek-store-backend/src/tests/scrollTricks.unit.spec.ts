@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { checkTree } from "../lib/pageTree.js";
 import { applyOps, draftFromPage } from "../lib/pageDraft.js";
 import { readyCounters, readyOrbit, readyPaint, readyPortal } from "../../../estabrek-admin/src/studio/scrollTricks";
+import { SCROLL_EFFECTS } from "../../../estabrek-admin/src/studio/scrollEffects";
 
 // Scroll tricks: things travelling around a circle, an arc or a wave; numbers counting and lines
 // drawing with the scroll; the next section's edge; a picture through a growing window; a section
@@ -42,6 +43,17 @@ describe("scroll tricks", () => {
     expect(ok(page([sec({}, [stack({ kind: "count" }), stack({ kind: "draw" }, "k2")])]))).toEqual([]);
     expect(ok(page([sec({}, [stack({ kind: "orbit", orbit: { shape: "spiral" } })])]))).not.toEqual([]);
     expect(ok(page([sec({}, [stack({ kind: "orbit", orbit: { shape: "arc", turn: 3 } })])]))).not.toEqual([]);
+  });
+
+  test("the library's scroll scenes: a fanned deck, drifting columns, a depth tunnel, a dive through a word, a timeline", () => {
+    const box = (scroll: unknown, id = "k"): Node => ({ id, type: "stack", props: {}, motion: { scroll }, children: [{ id: `${id}-a`, type: "text", props: { text: { en: "a" } } }] });
+    for (const kind of ["fan", "drift", "depth", "timeline"]) expect(ok(page([sec({}, [box({ kind })])]))).toEqual([]);
+    expect(ok(page([sec({}, [box({ kind: "drift", speed: -0.6 }), box({ kind: "depth", length: 400 }, "k2")])]))).toEqual([]);
+    expect(ok(page([sec({}, [{ id: "w", type: "heading", props: { text: { en: "DIVE" } }, motion: { scroll: { kind: "through", length: 250 } } }])]))).toEqual([]);
+    expect(ok(page([sec({}, [box({ kind: "tunnel" })])]))).not.toEqual([]);
+    expect(ok(page([sec({}, [box({ kind: "depth", length: 900 })])]))).not.toEqual([]);
+    // Every ready scroll effect the editor offers is one the page check keeps.
+    for (const e of SCROLL_EFFECTS) expect([e.key, ok(page([sec({}, [box(e.scroll)])]))]).toEqual([e.key, []]);
   });
 
   test("the next section's edge, the page's colour and a picture's window", () => {

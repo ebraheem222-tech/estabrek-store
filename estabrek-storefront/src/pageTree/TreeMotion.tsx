@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import { studioLink } from "./studioLink";
 import { ARABIC, countUpText, scrambleChars } from "./textMotion";
 import { fxColour, fxPaint, particles, proximity } from "./wordFx";
+import { scrollTrick } from "./scrollTricksLib";
 import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
 import { useStudioViewRevision } from "./useStudioViewRevision";
 import { EASE_MAP, keyGlide, keySteps, originCss, type KeysSpec } from "./keyframes";
@@ -325,6 +326,9 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
           kids.forEach((k) => ["translate", "scale", "opacity", "z-index"].forEach((x) => k.style.removeProperty(x)));
         });
       }
+    } else if (s.kind === "fan" || s.kind === "drift" || s.kind === "depth" || s.kind === "through" || s.kind === "timeline") {
+      // The theme library's scroll tricks (docs/themes-library-plan.ar.md 3.4): scrollTricksLib.ts.
+      off.push(scrollTrick(gsap, ScrollTrigger, el, s.kind, { speed: s.speed, length: s.length, rtl: env.rtl }));
     } else if (s.kind === "parallax") {
       const d = 120 * (s.speed ?? 0.4);
       gsap.fromTo(el, { "--pt-my": `${-d}px` }, { "--pt-my": `${d}px`, ease: "none", scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: true } });

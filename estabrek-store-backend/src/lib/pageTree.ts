@@ -393,7 +393,8 @@ export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe
 // "sideways" holds it while what it holds slides along its row with the scroll (a horizontal gallery);
 // "count" counts its number up as it crosses the screen; "orbit" sends what it holds around a circle, along
 // an arc or a wave with the scroll; "draw" draws its lines with the scroll.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw"] as const;
+// From the theme library: "fan", "drift", "depth", "through", "timeline" (the shop's pageTree/scrollTricksLib.ts).
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw", "fan", "drift", "depth", "through", "timeline"] as const;
 /** The way "orbit" sends what it holds: around a circle, along an arc (a rainbow), or along a wave. */
 export const ORBIT_SHAPES = ["circle", "arc", "wave"] as const;
 // Then plays once as the mouse comes over it, a light following the mouse, a ripple where it's pressed, springy ones.

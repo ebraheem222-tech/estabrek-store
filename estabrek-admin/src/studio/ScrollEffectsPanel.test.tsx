@@ -10,8 +10,8 @@ const sec = (id: string, motion?: Record<string, unknown>): PageTreeNode => ({ i
 
 describe("scroll effects", () => {
   it("offers 38 effects; pins only on sections, words only on words, travelling only on boxes", () => {
-    expect(SCROLL_EFFECTS).toHaveLength(38);
-    expect(new Set(SCROLL_EFFECTS.map((e) => e.key)).size).toBe(38);
+    expect(SCROLL_EFFECTS).toHaveLength(43);
+    expect(new Set(SCROLL_EFFECTS.map((e) => e.key)).size).toBe(43);
     expect(scrollEffectsFor("image").some((e) => e.group === "pin" || e.group === "words")).toBe(false);
     expect(scrollEffectsFor("section").some((e) => e.key === "pin")).toBe(true);
     expect(scrollEffectsFor("heading").some((e) => e.key === "words-light")).toBe(true);

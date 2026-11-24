@@ -15,7 +15,7 @@ export type Motion = {
   engine?: "gsap" | "anime";
   // `ease`: an own name (EASE_LABEL) or a free curve's text; `order`: which goes first in a stagger (EaseChoice.tsx).
   enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number; order?: string };
-  scroll?: { kind: "parallax" | "keys" | "words" | "pin" | "sideways" | "count" | "orbit" | "draw"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: "circle" | "arc" | "wave"; radius?: number; turn?: number } };
+  scroll?: { kind: "parallax" | "keys" | "words" | "pin" | "sideways" | "count" | "orbit" | "draw" | "fan" | "drift" | "depth" | "through" | "timeline"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number; orbit?: { shape: "circle" | "arc" | "wave"; radius?: number; turn?: number } };
   /** Its own keyframes, 0–100 %, for itself and its pieces (keyframes.ts). */
   keys?: Record<string, unknown>;
   /** When it shows inside a scroll scene (scrollScene.ts). */

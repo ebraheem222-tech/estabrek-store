@@ -215,7 +215,11 @@ export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe
 // "words" lights its words up one by one with the scroll; "pin" holds a section in place for `length` % of a screen;
 // "sideways" holds it while what it holds slides along its row with the scroll; "count" counts its number up as
 // it crosses the screen; "orbit" sends what it holds around a circle, along an arc or a wave; "draw" draws its lines.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw"] as const;
+// From the theme library: "fan" what it holds starts gathered in a fanned deck and spreads to its places; "drift" what
+// it holds drifts at different speeds; "depth" held while the page flies through what it holds, one after another in
+// depth; "through" a huge word the page dives through, held, before what's around it comes in; "timeline" a line
+// down its side draws with the scroll and each thing it holds lights up as it's reached.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways", "count", "orbit", "draw", "fan", "drift", "depth", "through", "timeline"] as const;
 export const ORBIT_SHAPES = ["circle", "arc", "wave"] as const;
 // Then one-time plays as the mouse comes over it, a light that follows the mouse, a ripple where it's
 // pressed (a finger too), and springy ones (Motion's springs): it follows the mouse, or wobbles like jelly.
