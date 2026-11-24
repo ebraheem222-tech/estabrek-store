@@ -82,6 +82,7 @@ import { ContentBlocksPanel, PopupPanel } from "./ContentBlocksPanel";
 import { BLOCK_KINDS } from "./blockDefaults";
 import { ChartPanel, ClockPanel, InstrumentPanel, StickyPanel } from "./CreativePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
+import { LibraryPanel } from "./LibraryPanel";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
 import { AddPanel } from "./AddPanel";
@@ -2791,6 +2792,7 @@ function StudioDocument() {
           </button>
         ) : null}
         {EDITABLE.has(target.type) ? <ContentPanel node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
+        {target.type === "lib" && !part ? <LibraryPanel key={`lib:${target.id}`} node={target} lang={shopLang} busy={busy} onOps={onOps} /> : null}
         {target.type === "heading" || target.type === "text" ? <CurvePanel node={target} busy={busy} onOps={onOps} /> : null}
         {target.type === "slider" && part && /^slide-\d+$/.test(part.id) ? (
           <SlidePanel key={`${target.id}:${part.id}`} node={target} index={Number(part.id.slice(6))} lang={shopLang} busy={busy} onOps={onOps} onShow={(i) => send({ type: "slideTo", nodeId: target.id, i })} />
@@ -3351,6 +3353,7 @@ function StudioDocument() {
             {selFree.type === "component" ? <ComponentInstancePanel node={selFree} components={componentsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("نسخة المكوّن|Component instance|מופע רכיב"), [{ op: "setProps", nodeId: selFree.id, props }])} onEdit={(cid) => window.location.assign(`/studio/${encodeURIComponent(cid)}?from=${encodeURIComponent(id)}`)} onDetach={(variant) => detachInstance(selFree, variant)} /> : null}
             {selFree.type === "svg" ? <SvgPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "lib" ? <LibraryPanel key={`lib:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {(BLOCK_KINDS as readonly string[]).includes(selFree.type) ? <ContentBlocksPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "instrument" ? <InstrumentPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "chart" ? <ChartPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}

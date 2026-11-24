@@ -267,7 +267,8 @@ export const OVER_TYPES = new Set(["heading", "text", "image", "button", "video"
 
 /** Whether a `child` may go straight inside `parent`. */
 export function accepts(parent: string, child: string): boolean {
-  if (parent === "page") return child === "section" || child === "block" || child === "popup";
+  // A theme library piece is a whole section (or a whole website) of its own.
+  if (parent === "page") return child === "section" || child === "block" || child === "popup" || child === "lib";
   if (parent === "legacy" || parent === "roseBlock") return OVER_TYPES.has(child);
   if (parent === "columns") return child === "cell";
   if (parent === "deck") return child === "stack";

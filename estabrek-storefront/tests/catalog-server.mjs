@@ -489,6 +489,18 @@ const stageDemo = { id: "stage-demo", slug: "/stage-demo", name: "3D stage", sta
     ] },
   ] },
 } };
+// The owner's theme library on a page (library.spec.ts): its pieces, in the owner's words and colours.
+// POST /__test/library-page {nodes} sets them; {} puts these back.
+const LIBRARY_NODES = () => [
+  { id: "lib-maison", type: "lib", props: { item: "site-maison", brand: { ar: "متجر نور", en: "Noor Store" }, words: { "Shop the collection": { ar: "تسوّقوا المجموعة", en: "Shop what's new" } }, colours: { c8a75d: "#2563eb" } } },
+  { id: "lib-pricing", type: "lib", props: { item: "pricing-three", families: { indigo: "#16a34a" } } },
+  { id: "lib-faq", type: "lib", props: { item: "faq-classic" } },
+];
+globalThis.libraryNodes = LIBRARY_NODES();
+const libraryDemo = () => ({
+  id: "library-demo", slug: "/library-demo", name: "Library demo", status: "PUBLISHED", format: 2, sections: [],
+  tree: { version: 1, root: { id: "page", type: "page", props: {}, children: globalThis.libraryNodes } },
+});
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
   sections: [{ id: "demo-faq", type: "FAQ", order: 0, isVisible: true, data: { title: "أسئلة القسم القديم", items: [{ question: "سؤال قديم؟", answer: "جواب قديم." }] } }],
@@ -1365,6 +1377,16 @@ http
 window.__msgs=[];addEventListener("message",function(e){if(e.data&&e.data.source==="estabrek-studio")window.__msgs.push({origin:e.origin,data:e.data})});
 window.send=function(m){document.getElementById("f").contentWindow.postMessage(Object.assign({source:"estabrek-studio"},m),"${shop}")};
 </script></body></html>`);
+    }
+    if (pathname === "/__test/library-page" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        globalThis.libraryNodes = Array.isArray(data.nodes) ? data.nodes : LIBRARY_NODES();
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
     }
     if (pathname === "/__test/page-tree" && req.method === "POST") {
       let body = "";
@@ -2283,6 +2305,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/") return res.end(JSON.stringify(globalThis.ownedDesign?.page ?? asTreePage(home)));
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
+      if (slug === "/library-demo") return res.end(JSON.stringify(libraryDemo()));
       if (slug === "/expanded-demo") return res.end(JSON.stringify(expandedDemo));
       if (slug === "/scene-demo") return res.end(JSON.stringify(sectionSceneDemo));
       if (slug === "/slider-effects-demo") return res.end(JSON.stringify(sliderEffectsDemo));

@@ -15,11 +15,14 @@ import { REFERENCE_SECTIONS } from "./referenceSections";
 import { LIVE_GROUPS, LIVE_SECTIONS } from "./liveSections";
 import { adminLang } from "../lib/lang";
 import { say } from "./say";
+import { LIB_GROUP_NAME, LIB_ITEMS, libName, type LibKind } from "./library";
 
 const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, () => string, string]> }> = [
   { key: "commerce", title: () => tr("المتجر والسلة", "Shop and cart"), kinds: [["shop", () => typeLabel("shop"), "▦"], ["cartItems", () => typeLabel("cartItems"), "▤"], ["cartSummary", () => typeLabel("cartSummary"), "Σ"], ["cartCheckout", () => typeLabel("cartCheckout"), "✓"]] },
   // Forty sections on the forty new drawn backgrounds (liveSections.ts), in three groups; their words carry their own Hebrew.
   ...LIVE_GROUPS.map(([group, title]) => ({ key: `live-${group}`, title: () => title[adminLang()], kinds: LIVE_SECTIONS.filter(s => s.group === group).map(s => [s.kind, () => s.name[adminLang()], "✺"] as [AddKind, () => string, string]) })),
+  // The owner's theme library (docs/themes-library-plan.ar.md): whole websites and sections, every word and colour editable.
+  { key: "library", title: () => say("من المكتبة: مواقع وأقسام فاخرة|From the library: premium sites and sections|מהספרייה: אתרים ומקטעים יוקרתיים"), kinds: LIB_ITEMS.map(i => [`lib:${i.id}` as LibKind, () => `${say(LIB_GROUP_NAME[i.kind] ?? i.kind)} · ${libName(i)}`, i.kind === "site" ? "◈" : "❖"] as [AddKind, () => string, string]) },
   { key: "references", title: () => tr("إلهام القوالب", "Template inspiration"), kinds: REFERENCE_SECTIONS.map(reference => [reference.kind, () => tr(reference.name.ar, reference.name.en), "✦"]) },
   {
     key: "ready",
