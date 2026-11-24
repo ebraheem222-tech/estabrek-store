@@ -1,6 +1,8 @@
 /**
- * Store themes (src/storeThemes): makes the rose design's stylesheet themeable without
- * touching how it is written. In cinematic.css every colour becomes a variable named
+ * Store themes (src/storeThemes): makes the rose design's stylesheets themeable without
+ * touching how they are written. In cinematic.css and its three companions (rose-inner.css:
+ * the inner pages' final look, rose-showcase.css: the cards, filters and openings,
+ * rose-wonders.css: the home's showpieces) every colour becomes a variable named
  * after it (#7d2448 → var(--st-7d2448,#7d2448)), fonts become the theme's display or
  * text face, and corners scale with the theme's roundness. With no theme every
  * variable is unset, so the shop looks exactly as written.
@@ -8,7 +10,10 @@
  * The list of colours it finds is what a theme maps onto its own palette
  * (src/storeThemes/roseColours.gen.ts, checked against this file by a test).
  */
-const FILES = /[\\/]cinematic\.css$/;
+// The rose design's stylesheets. The shop's inner pages (shop, product, bag, contact…) are drawn by them for
+// every store, so a theme's store gets its own colours, fonts and corners in all of them.
+const ROSE_STYLESHEETS = ["cinematic.css", "rose-inner.css", "rose-showcase.css", "rose-wonders.css"];
+const FILES = /[\\/](cinematic|rose-inner|rose-showcase|rose-wonders)\.css$/;
 
 const full = (hex) => {
   const h = hex.slice(1).toLowerCase();
@@ -74,5 +79,6 @@ module.exports = () => ({
   },
 });
 module.exports.postcss = true;
+module.exports.ROSE_STYLESHEETS = ROSE_STYLESHEETS;
 module.exports.colours = colours;
 module.exports.radius = radius;

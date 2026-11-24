@@ -66,6 +66,53 @@ test("a store on a theme: none of the rose design's ornaments or pictures on its
   }
 });
 
+/**
+ * What on the page is painted in the rose design's pinks (a hue between violet and red), apart from the
+ * products' own colours (their swatches, the colour picked). The phone shop's theme is blue: none should be.
+ */
+async function rosePinks(page: Page) {
+  return page.evaluate(() => {
+    const pink = (c: string) => {
+      const m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+      if (!m || (m[4] !== undefined && +m[4] < 0.15)) return false;
+      const [r, g, b] = [+m[1] / 255, +m[2] / 255, +m[3] / 255];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      if (d < 0.06) return false;
+      let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+      const l = (max + min) / 2;
+      return h >= 290 && h <= 355 && d / (1 - Math.abs(2 * l - 1)) > 0.18;
+    };
+    const found: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("main *, .atelier-header *, .atelier-footer *"))) {
+      const box = el.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      // A product's own colours: its swatches and anything painted from them.
+      if (el.closest('.color-chip-swatch, .rose-pdp-swatches, .rose-product-swatches, [style*="--swatch-color"], img, video, picture, canvas') || /background|--swatch/.test(el.getAttribute("style") || "")) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === "hidden" || cs.display === "none") continue;
+      const own = Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent!.trim());
+      const paints = [own ? cs.color : "", cs.backgroundColor, cs.borderTopWidth !== "0px" ? cs.borderTopColor : "", /^(svg|path|circle)$/i.test(el.tagName) ? `${cs.fill} ${cs.stroke}` : ""];
+      for (const p of paints) {
+        const hit = (p.match(/rgba?\([^)]*\)/g) || []).find(pink);
+        if (hit) { found.push(`${el.tagName.toLowerCase()}.${String(el.getAttribute("class") || "").split(/\s+/).slice(0, 2).join(".")} ${hit}`); break; }
+      }
+    }
+    return [...new Set(found)];
+  });
+}
+
+test("a store on a theme: its pages wear its theme's colours, not the rose design's pinks", async ({ page }) => {
+  test.setTimeout(300_000);
+  await page.request.post(`${API}/__test/identity`, { data: NOOR });
+  await settle(page);
+  for (const path of ["/shop", "/c/dresses", "/search?q=x", "/p/rose-dress", "/cart", "/contact", "/about", "/request", "/wishlist", "/track"]) {
+    await open(page, path);
+    expect(await rosePinks(page), path).toEqual([]);
+  }
+});
+
 test("a store on a theme with no home of its own gets its theme's home, never the rose home", async ({ page }) => {
   test.setTimeout(180_000);
   await page.request.post(`${API}/__test/identity`, { data: { ...NOOR, cmsHome: false } });
@@ -88,6 +135,8 @@ test("Estabrek keeps all of its design's ornaments", async ({ page }) => {
   await expect(page.locator("html")).not.toHaveAttribute("data-store-theme", /.+/);
   await expect(page.locator(".rose-footer-wave")).toHaveCount(1);
   await expect(page.locator(".rose-product-tile .rose-card-arch").first()).toBeAttached();
+  // Its own pinks, as ever (and the check above does see them).
+  expect((await rosePinks(page)).length).toBeGreaterThan(5);
   await open(page, "/p/rose-dress");
   await expect(page.locator(".rose-pdp-backdrop")).toHaveCount(1);
   // With no home of its own published, its own rose home.
