@@ -64,7 +64,7 @@ export function RoseShopIntro({ showcase = [] }: { showcase?: RingPiece[] }) {
     </div>
     {stage ? <div className="rose-stage-visual">
       <div className="rose-stage-arch">
-        {look.rose ? <SilkFilm /> : <Image src="/editorial/scarves.webp" alt="" fill priority sizes="(max-width:760px) 60vw, 26vw" />}
+        {look.rose ? <SilkFilm /> : showcase[0]?.image ? <Image src={showcase[0].image} alt="" fill priority sizes="(max-width:760px) 60vw, 26vw" /> : null}
         <span className="rose-stage-dye" aria-hidden="true" />
         <span className="rose-stage-deepen" aria-hidden="true" />
       </div>

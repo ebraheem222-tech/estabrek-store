@@ -31,6 +31,8 @@ import { RoseCollectionsScroll } from "./RoseCollectionsScroll";
 import { sectionMotionOn } from "@/lib/motionSettings";
 import { sceneField, sceneWord } from "./sceneWords";
 import { isRtl } from "@/lib/i18n";
+import { useStoreLook } from "@/store/storeLook";
+import { ROSE_PICTURES, rosePicture } from "./rosePictures";
 
 export type RoseHeroData = {
   title?: string;
@@ -73,7 +75,8 @@ export type RoseCollection = {
   color?: string;
 };
 
-const DEFAULT_HERO_IMAGE = "/editorial/hijab-campaign.webp";
+// The rose home's own (RoseHome, RoseCmsHome): no other store shows these sections.
+const DEFAULT_HERO_IMAGE = ROSE_PICTURES.campaign;
 
 export function RoseHero({
   data,
@@ -454,7 +457,7 @@ export function RoseProductGrid({
       ) : (
         <div className="rose-empty-edit">
           <Image
-            src="/editorial/scarves.webp"
+            src={ROSE_PICTURES.scarves}
             alt={tr(lang, "إلهام لألوان الحجاب", "Hijab color inspiration")}
             width={1500}
             height={1000}
@@ -565,8 +568,8 @@ export function RoseCollections({
               src={
                 item.imageUrl ||
                 (i % 2
-                  ? "/editorial/scarves.webp"
-                  : "/editorial/hijab-campaign.webp")
+                  ? ROSE_PICTURES.scarves
+                  : ROSE_PICTURES.campaign)
               }
               alt={
                 item.label ||
@@ -605,7 +608,7 @@ export function RoseEditorialPanel({ data }: { data: RoseHeroData }) {
           src={
             data.roseImageUrl ||
             data.backgroundImageUrl ||
-            "/editorial/scarves.webp"
+            ROSE_PICTURES.scarves
           }
           alt={data.roseImageAlt || data.title || ""}
           fill
@@ -783,6 +786,7 @@ export function RoseInstagram({ images = [], words }: { images?: string[]; words
   const ar = lang === "ar";
   const n = useNames();
   const store = useRoseStore();
+  const rose = useStoreLook().rose;
   if (!store.instagram) return null;
   const handle = (() => {
     try {
@@ -791,7 +795,9 @@ export function RoseInstagram({ images = [], words }: { images?: string[]; words
       return "Instagram";
     }
   })();
-  const tiles = Array.from(new Set([...images, "/editorial/hijab-campaign.webp", "/editorial/scarves.webp", "/editorial/rose-campaign-poster.webp"])).slice(0, 4);
+  // Too few of the store's own pictures: the rose design's store fills the row with its campaign; any other shows its own.
+  const tiles = Array.from(new Set([...images, ...(["campaign", "scarves", "poster"] as const).map((k) => rosePicture(rose, k)).filter((u): u is string => Boolean(u))])).slice(0, 4);
+  if (!tiles.length) return null;
   return (
     <section className="rose-instagram atelier-section" data-reveal>
       <div className="instagram-copy">

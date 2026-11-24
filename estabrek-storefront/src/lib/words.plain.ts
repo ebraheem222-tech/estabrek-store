@@ -13,6 +13,8 @@ const LINES: ReadonlyArray<readonly [from: readonly [string, string], to: readon
   [["اكتبي اسم القطعة، اللون أو القماش.", "Type a piece, a colour or a fabric."], ["اسم المنتج، لونه أو أي كلمة عنه.", "A product's name, its colour or any word about it."]],
   [["سؤال عن إطلالة، مقاس، أو طلب؟ يسعدنا نساعدكِ باختيار تفاصيلكِ.", "A question about your look, size or order? We'd love to help."], ["سؤال عن منتج أو طلب؟ يسعدنا نساعد.", "A question about a product or an order? We'd love to help."]],
   [["مثلاً: حجاب شيفون طويل، أو عباية زي اللي بالصورة", "e.g. a long chiffon hijab, or an abaya like the photo"], ["مثلاً: منتج زي اللي بالصورة، بلون أو مقاس معيّن", "e.g. a product like the one in the photo, in a certain colour or size"]],
+  [["✨ كمّلي اللبسة", "✨ Complete the look"], ["✨ بيلبق معه", "✨ Goes well with it"]],
+  [["كمّلي اللبسة", "Complete the look"], ["بيلبق معه", "Goes well with it"]],
 ];
 
 export const PLAIN_AR: Readonly<Record<string, string>> = Object.fromEntries(LINES.map(([from, to]) => [from[0], to[0]]));

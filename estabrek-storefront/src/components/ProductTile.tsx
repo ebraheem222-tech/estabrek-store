@@ -24,6 +24,7 @@ import { RoseBadge } from "./cinematic/RoseBadge";
 import { StoreMark } from "@/store/storeIdentity";
 import { useOptionalWishlist } from "@/store/wishlist";
 import { tr } from "@/lib/words";
+import { useStoreLook } from "@/store/storeLook";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -152,6 +153,8 @@ const ARCH = "M6 113V50A44 44 0 0 1 94 50V113Q94 119 88 119H12Q6 119 6 113Z";
 
 function DefaultProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
   const { language: lang } = useLanguage();
+  // The line drawn in the arch and the star by the kind are the rose design's; a store on a theme shows neither.
+  const roseLook = useStoreLook().rose;
   const ar = lang === "ar";
   const settings = useStorefrontSettings();
   const { openQuickView } = useQuickView();
@@ -316,7 +319,7 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
       {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
       {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-alt" /> : null}
       <span className="rose-card-sheen" aria-hidden="true" />
-      <svg className="rose-card-arch" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d={ARCH} /></svg>
+      {roseLook ? <svg className="rose-card-arch" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d={ARCH} /></svg> : null}
     </Link>
     {/* After the photo, not inside it: on the inner pages the photo is an arch and would cut a corner badge. */}
     {discountPercent ? <span className="rose-product-discount"><svg className="rose-seal" viewBox="-2 -2 68 68" aria-hidden="true"><path d={SEAL} /></svg><span>−{discountPercent}%</span></span> : <RoseBadge badge={badge} ar={ar} />}
@@ -324,7 +327,7 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1Z" /></svg>
     </button> : null}
     <div data-cms-part="card-body" className="rose-product-meta">
-      <span data-cms-part="card-category" className="rose-product-category">{product.category?.name ? <svg className="rose-card-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" /></svg> : null}{product.category?.name}</span>
+      <span data-cms-part="card-category" className="rose-product-category">{product.category?.name && roseLook ? <svg className="rose-card-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" /></svg> : null}{product.category?.name}</span>
       <Link href={`/p/${product.slug}`}><h3 data-cms-part="card-name">{product.title}</h3></Link>
       <span data-cms-part="card-price" className="rose-product-price">{product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—"}</span>
       {!!swatches.length && <div data-cms-part="card-swatches" className="rose-product-swatches">{swatches.map(s => <button data-cms-part="card-swatch" key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={event => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex, { source: event.currentTarget, mix: true }); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}

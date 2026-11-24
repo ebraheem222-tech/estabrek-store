@@ -1406,7 +1406,8 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       req.on("end", () => {
         const data = JSON.parse(body || "{}");
         globalThis.estabrekIdentity ??= site.header.identity;
-        const { theme, ...identity } = data;
+        // cmsHome: false = the store has no home of its own published (FallbackHome draws one).
+        const { theme, cmsHome, ...identity } = data;
         const other = Object.keys(identity).length > 0;
         site.header.identity = other ? identity : globalThis.estabrekIdentity;
         if (other) {
@@ -1416,6 +1417,9 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           site.header.storeTheme = { id: "rose" };
           site.header.privateThemes = ["rose"];
         }
+        site.header.storefront = { ...(site.header.storefront ?? {}) };
+        if (cmsHome === false) site.header.storefront.cmsOverrideHome = false;
+        else delete site.header.storefront.cmsOverrideHome;
         res.end(JSON.stringify({ ok: true }));
       });
       return;

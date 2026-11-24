@@ -10,6 +10,7 @@ import { useNames, useStoreIdentity } from "@/store/storeIdentity";
 import { pick } from "@/lib/storeIdentity";
 import { tr } from "@/lib/words";
 import { useStoreLook } from "@/store/storeLook";
+import { ROSE_PICTURES, rosePicture } from "./rosePictures";
 import { ThemeAbout } from "@/storeThemes/inner/ThemeAbout";
 
 /** The about page of a store that isn't modest fashion and has no theme: its own words, nothing else's. */
@@ -30,14 +31,18 @@ function PlainAbout() {
 
 export function RoseAboutHero({ data }: { data?: RoseHeroData }) {
   const lang = useLanguage().language, ar = lang === "ar", store = useRoseStore();
-  const n = useNames();
+  const n = useNames(), id = useStoreIdentity();
+  // Where the owner wrote nothing: the rose design's words and photo for its store; any other store its own story.
+  const rose = useStoreLook().rose;
+  const portrait = data?.roseImageUrl || (data?.backgroundImageUrl && data.backgroundImageUrl !== store.logoUrl ? data.backgroundImageUrl : rosePicture(rose, "campaign"));
+  const subtitle = data?.subtitle || (rose ? tr(lang, "كل إطلالة تبدأ باختيار صغير. لون تحبينه، تفصيلة تريحكِ، وقطعة تعبّرين فيها عن نفسكِ.", "Every look begins with a little choice. A colour you love. A detail that feels right. A piece that feels like you.") : pick(id.about, lang) || store.footerDescription || "");
   return <section className="rose-about-hero" data-rose-palette={data?.rosePresentation?.palette || "blush"}>
     <div className="rose-about-hero-copy" data-reveal><span className="atelier-eyebrow">{tr(lang, "قصتنا", "OUR STORY")}</span>
-      <h1>{data?.roseTitle || data?.title || (tr(lang, "أناقة تشبهكِ.", "Modesty, beautifully yours."))}</h1>
-      <p>{data?.subtitle || (tr(lang, "كل إطلالة تبدأ باختيار صغير. لون تحبينه، تفصيلة تريحكِ، وقطعة تعبّرين فيها عن نفسكِ.", "Every look begins with a little choice. A colour you love. A detail that feels right. A piece that feels like you."))}</p>
+      <h1>{data?.roseTitle || data?.title || (rose ? tr(lang, "أناقة تشبهكِ.", "Modesty, beautifully yours.") : tr(lang, "قصتنا", "Our story"))}</h1>
+      {subtitle ? <p>{subtitle}</p> : null}
       {data ? <div className="rose-about-actions">{[data.primaryButton, data.secondaryButton].filter(b => b?.href && b.label).map((b, i) => <Link key={i} href={b!.href!} className="atelier-text-link">{b!.label}<Icon name="arrow" /></Link>)}</div> : <Link href="/shop" className="atelier-text-link">{tr(lang, `اكتشفي ${n.store}`, "Discover {0}", [n.store])}<Icon name="arrow" /></Link>}
     </div>
-    <div className="rose-about-portrait" data-reveal><Image src={data?.roseImageUrl || (data?.backgroundImageUrl && data.backgroundImageUrl !== store.logoUrl ? data.backgroundImageUrl : "/editorial/hijab-campaign.webp")} alt={data?.roseImageAlt || (tr(lang, "إطلالة محتشمة بحجاب وردي", "A modest look in rose"))} fill priority sizes="(max-width:760px) 100vw, 50vw" /><span>MODESTLY, BEAUTIFULLY YOU</span></div>
+    {portrait ? <div className="rose-about-portrait" data-reveal><Image src={portrait} alt={data?.roseImageAlt || (rose ? tr(lang, "إطلالة محتشمة بحجاب وردي", "A modest look in rose") : "")} fill priority sizes="(max-width:760px) 100vw, 50vw" />{rose ? <span>MODESTLY, BEAUTIFULLY YOU</span> : null}</div> : null}
   </section>;
 }
 
@@ -52,7 +57,7 @@ export function RoseAbout() {
   return <RosePageFrame className="rose-about">
     <RoseAboutHero />
     <section className="rose-about-story" data-rose-palette="lilac">
-      <div className="rose-about-fabric" data-reveal><Image src="/editorial/scarves.webp" alt={tr(lang, "طيات من القماش بألوان هادئة", "Fabric folds in soft colours")} fill sizes="(max-width:760px) 100vw, 50vw" /></div>
+      <div className="rose-about-fabric" data-reveal><Image src={ROSE_PICTURES.scarves} alt={tr(lang, "طيات من القماش بألوان هادئة", "Fabric folds in soft colours")} fill sizes="(max-width:760px) 100vw, 50vw" /></div>
       <div data-reveal><span className="atelier-eyebrow">{tr(lang, `روح ${n.store}`, "THE {0} FEELING", [n.store.toUpperCase()])}</span><h2>{ar ? <>أكثر من إطلالة.<br /><em>مساحة لذوقكِ.</em></> : lang === "he" ? <>יותר מלוק.<br /><em>מקום קטן בשבילך.</em></> : <>More than a look.<br /><em>A little space for you.</em></>}</h2><p>{store.footerDescription || (look.rose ? (tr(lang, `${n.store} متجر للحجاب والملابس المحتشمة. نمنحكِ مساحة لتكتشفي الألوان والقطع التي تناسب ذوقكِ، وتختاري إطلالة بطريقتكِ.`, "{0} is a store for hijabs and modest clothing. Explore colours and pieces that suit your taste, and make your look your own.", [n.store])) : pick(id.about, lang))}</p><Link href="/contact" className="atelier-text-link">{tr(lang, "خلينا نحكي", "Let's talk")}<Icon name="arrow" /></Link></div>
     </section>
     <section className="rose-about-values" data-rose-palette="pearl">{values.map((v, i) => <article key={i} data-reveal><Icon name="spark" /><h2>{v.title}</h2><p>{v.text}</p></article>)}</section>

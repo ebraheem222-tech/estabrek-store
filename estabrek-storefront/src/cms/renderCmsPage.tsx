@@ -25,7 +25,7 @@ import ProductCard from "@/components/ProductCard";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import { RoseCmsHome } from "@/components/cinematic/RoseCmsHome";
-import { roseOwned, storeThemeOf, themeById, applyCustom, customFromParam } from "@/storeThemes";
+import { roseDesignOn, roseOwned, storeThemeOf, themeById, applyCustom, customFromParam } from "@/storeThemes";
 import { kitFromParam, kitOfHeader, withKit } from "@/storeThemes/packs";
 import { ThemedHome } from "@/storeThemes/home/ThemedHome";
 import { stageOptionsOf } from "@/storeThemes/three/kinds";
@@ -161,7 +161,7 @@ export async function renderCmsPageBySlug(
       return null;
     }
     if (allowFallback) {
-      if (slug === "/") return <FallbackHome />;
+      if (slug === "/") return <FallbackHome lang={lang} />;
       if (slug === "/shop") return <FallbackShop />;
       if (slug === "/cart") {
         const settings = await getPublicSettings().catch(() => null);
@@ -567,6 +567,13 @@ export async function renderCmsPageBySlug(
   let lookMoves = "";
   if (tree && treeCtx) {
     const needs = treeNeeds(tree);
+    // The rose design's scenes (seasons, collection worlds, the Instagram row) show on its store alone: any
+    // other store's page leaves them out (TreeNodeView draws a rose block only with its data).
+    if (!roseDesignOn(settingsHeader)) {
+      needs.seasons = false;
+      needs.stories = false;
+      needs.instagram = false;
+    }
     if (needs.categories || needs.seasons || needs.stories) {
       const fetched: CatalogCategory[] = homeData ? [] : await listCategories(lang).catch((): CatalogCategory[] => []);
       const cats: CatalogCategory[] = homeData?.categories ?? (lang ? localizeCategories(fetched, lang) : fetched);

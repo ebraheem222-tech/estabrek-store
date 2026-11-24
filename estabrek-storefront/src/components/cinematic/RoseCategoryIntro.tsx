@@ -17,6 +17,7 @@ import { ThemeIntro } from "@/storeThemes/inner/ThemeIntro";
 import { modelFor } from "@/storeThemes/inner/modelFor";
 import { RoseShopRing, type RingPiece } from "./RoseShopRing";
 import { RoseWave } from "./RoseWave";
+import { ROSE_PICTURES, rosePicture } from "./rosePictures";
 
 type Crumb = { label: string; href: string };
 
@@ -87,6 +88,8 @@ export function RoseCategoryIntro({
       />
     );
   }
+  // The arch's photo: the category's own, the rose design's for its store, else one of the category's pieces.
+  const stagePhoto = imageUrl || rosePicture(look.rose, "scarves") || showcase[0]?.image;
   return (
     <section ref={intro} className={`rose-shop-intro rose-category-intro${showcase.length >= 3 ? " rose-shop-stage" : ""}`} data-rose-palette="pearl">
       <div data-reveal>
@@ -114,13 +117,13 @@ export function RoseCategoryIntro({
       {showcase.length >= 3 ? <div className="rose-stage-visual">
         {/* The category's first photo in the arch, its pieces turning around it (as on the shop). */}
         <div className="rose-stage-arch rose-stage-photo">
-          <Image src={imageUrl || "/editorial/scarves.webp"} alt={name} fill priority sizes="(max-width:760px) 60vw, 26vw" />
+          {stagePhoto ? <Image src={stagePhoto} alt={name} fill priority sizes="(max-width:760px) 60vw, 26vw" /> : null}
         </div>
         <svg className="rose-stage-line" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d="M2 138V50A48 48 0 0 1 98 50V138" /></svg>
         <RoseShopRing pieces={showcase} label={tr(lang, "قطع من المتجر، اسحبي لتلفّيها", "Pieces from the shop: drag to turn them")} />
       </div> : imageUrl || look.rose ? <div className="rose-shop-intro-image" data-reveal>
         <Image
-          src={imageUrl || "/editorial/scarves.webp"}
+          src={imageUrl || ROSE_PICTURES.scarves}
           alt={name}
           fill
           priority

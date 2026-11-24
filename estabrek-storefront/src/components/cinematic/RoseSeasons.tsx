@@ -10,6 +10,7 @@ import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import { motionLevel } from "@/lib/motionBudget";
 import { buildWhenClose, lazyMargin, prebuildNear, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { SeasonEdit, SeasonKey } from "@/lib/seasonalEdits";
+import { ROSE_PICTURES } from "./rosePictures";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
 import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
@@ -67,7 +68,7 @@ class SceneBoundary extends Component<{ children: ReactNode; onError: () => void
 
 function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
   const { language: lang } = useLanguage();
-  const fallbackImage = edit.key === "winter" ? "/editorial/hijab-campaign.webp" : "/editorial/scarves.webp";
+  const fallbackImage = edit.key === "winter" ? ROSE_PICTURES.campaign : ROSE_PICTURES.scarves;
   if (!edit.products.length) {
     return (
       <div className="season-rack season-rack-empty">
