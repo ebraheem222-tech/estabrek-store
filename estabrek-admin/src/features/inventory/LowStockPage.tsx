@@ -116,7 +116,7 @@ export default function LowStockPage() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
           <div className="md:col-span-6">
             <div className="text-xs opacity-70 mb-1">{tr("بحث (SKU / المنتج / اللون)", "Search (SKU / product / colour)")}</div>
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("مثال: SKU-123 أو فستان...", "e.g. SKU-123 or dress...")} />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("مثال: SKU-123 أو اسم منتج...", "e.g. SKU-123 or a product's name...")} />
           </div>
           <div className="md:col-span-3">
             <div className="text-xs opacity-70 mb-1">{tr("الفلترة", "Filter")}</div>

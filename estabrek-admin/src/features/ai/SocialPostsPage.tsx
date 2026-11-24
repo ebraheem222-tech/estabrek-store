@@ -149,7 +149,7 @@ export default function SocialPostsPage() {
           ) : null}
           <label className="mt-4 block text-sm">
             {say("العرض أو المناسبة (اختياري)|The offer or occasion (optional)|המבצע או האירוע (לא חובה)")}
-            <textarea className="mt-1 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm" rows={2} maxLength={300} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder={say("مثلاً: خصم 20% على كل العبايات لحد الجمعة|e.g. 20% off all dresses until Friday|למשל: 20% הנחה על כל השמלות עד שישי")} data-testid="social-offer" />
+            <textarea className="mt-1 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm" rows={2} maxLength={300} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder={say("مثلاً: خصم 20% على كل المنتجات لحد الجمعة|e.g. 20% off everything until Friday|למשל: 20% הנחה על הכל עד שישי")} data-testid="social-offer" />
           </label>
         </section>
       ) : (

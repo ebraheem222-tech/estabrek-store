@@ -445,7 +445,7 @@ export default function ProductComposerPage() {
                   className={cn(fieldCls, "h-12 text-base", errors.title && "border-red-500/50")}
                   value={draft.title}
                   onChange={(e) => { const v = e.target.value; update((d) => ({ ...d, title: v })); if (v.trim()) setErrors((x) => ({ ...x, title: undefined })); }}
-                  placeholder={tr("مثلاً: فستان كتان بأكمام واسعة", "e.g. Linen dress with wide sleeves")}
+                  placeholder={tr("مثلاً: اسم المنتج مع أهم ميزة فيه", "e.g. the product's name with its best feature")}
                   aria-label={tr("اسم المنتج", "Product name")}
                   autoFocus={!restore && !fromId}
                 />
@@ -575,7 +575,7 @@ function Description({ value, onChange }: { value: string; onChange: (v: string)
   return (
     <label className="mt-4 block">
       <span className="mb-1.5 block text-xs text-white/55">{tr("الوصف (اختياري)", "Description (optional)")}</span>
-      <textarea className={cn(fieldCls, "h-24 resize-y py-2.5 leading-6")} value={value} onChange={(e) => onChange(e.target.value)} placeholder={tr("القماش، القصة، نصيحة للمقاس…", "Fabric, the story, a sizing tip…")} aria-label={tr("الوصف", "Description")} />
+      <textarea className={cn(fieldCls, "h-24 resize-y py-2.5 leading-6")} value={value} onChange={(e) => onChange(e.target.value)} placeholder={tr("ممّ هو مصنوع، كيف بينستعمل، نصيحة للاختيار…", "What it's made of, how it's used, a tip for choosing…")} aria-label={tr("الوصف", "Description")} />
     </label>
   );
 }
@@ -606,7 +606,7 @@ function SearchEngine({ draft, update }: { draft: ComposerDraft; update: (fn: (d
               <span>{tr("الوصف في Google (اختياري)", "Description on Google (optional)")}</span>
               <span className={draft.seoDescription.length > 160 ? "text-amber-200" : ""}>{draft.seoDescription.length} / 160</span>
             </span>
-            <textarea className={cn(fieldCls, "h-24 resize-y py-2.5 leading-6")} maxLength={320} value={draft.seoDescription} onChange={(e) => { const v = e.target.value; update((d) => ({ ...d, seoDescription: v })); }} placeholder={tr("القماش، الألوان، المقاسات، والتوصيل… بجملتين", "Fabric, colours, sizes and delivery… in two sentences")} aria-label={tr("الوصف في Google", "Description on Google")} />
+            <textarea className={cn(fieldCls, "h-24 resize-y py-2.5 leading-6")} maxLength={320} value={draft.seoDescription} onChange={(e) => { const v = e.target.value; update((d) => ({ ...d, seoDescription: v })); }} placeholder={tr("شو هو، ألوانه أو أحجامه، والتوصيل… بجملتين", "What it is, its colours or sizes, and delivery… in two sentences")} aria-label={tr("الوصف في Google", "Description on Google")} />
           </label>
         </div>
         <div className="space-y-2">

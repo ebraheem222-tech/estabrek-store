@@ -6,7 +6,7 @@ export const KIND_LABELS: Record<FieldKind, { label: string; hint: string }> = {
   text: { label: tr("نص قصير", "Short text"), hint: tr("مثلاً: اسم المصمم، بلد الصنع", "e.g. designer's name, country of origin") },
   longtext: { label: tr("نص طويل", "Long text"), hint: tr("مثلاً: تعليمات الغسيل", "e.g. washing instructions") },
   number: { label: tr("رقم", "Number"), hint: tr("مثلاً: الطول بالسم، عدد الساعات", "e.g. length in cm, number of hours") },
-  select: { label: tr("اختيار واحد", "One choice"), hint: tr("من قائمة: القماش", "From a list: fabric") },
+  select: { label: tr("اختيار واحد", "One choice"), hint: tr("من قائمة: المادة", "From a list: material") },
   multiselect: { label: tr("أكثر من اختيار", "Several choices"), hint: tr("من قائمة: المناسبات", "From a list: occasions") },
   boolean: { label: tr("نعم / لا", "Yes / no"), hint: tr("مثلاً: مبطّن؟", "e.g. lined?") },
   date: { label: tr("تاريخ", "Date"), hint: tr("مثلاً: تاريخ الرحلة", "e.g. the trip's date") },

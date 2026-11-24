@@ -22,6 +22,7 @@ import { KIND_LABELS, SOURCE_LABELS, STATUS_LABELS, STATUS_VARIANT, askText, wan
 import { useDelivery } from "../orders/useDelivery";
 import { loc } from "@/lib/lang";
 import { tr } from "@/lib/words";
+import { useRoseOwner } from "../../hooks/useRoseOwner";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
@@ -36,6 +37,8 @@ const TABS: Array<{ key: RequestStatus | "OPEN" | "ALL"; label: string }> = [
 
 export default function RequestsPage() {
   const { hasPermission } = useAuth();
+  // Razan (the rose design's guide) sends "call me" requests in its store alone.
+  const rose = useRoseOwner();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("OPEN");
   const [kind, setKind] = useState<RequestKind | "">("");
   const [q, setQ] = useState("");
@@ -55,7 +58,9 @@ export default function RequestsPage() {
       <div className={box}>
         <h1 className="text-lg font-semibold">{tr("الطلبات الخاصة", "Special requests")}</h1>
         <p className="mt-1 text-sm text-white/60">
-          {tr("زبائن طلبوا مقاس أو لون مش موجود، أو قطعة جديدة (مع صور)، وطلبات «احكوني» من رزان. البحث، ربط القطعة لما توصل، والتبليغ بكبسة.", "Customers who asked for a size or colour that isn't there, or a new piece (with photos), and “Call me” requests from Razan. Look for it, link the piece when it arrives, and tell them in one click.")}
+          {rose
+            ? tr("زبائن طلبوا مقاس أو لون مش موجود، أو قطعة جديدة (مع صور)، وطلبات «احكوني» من رزان. البحث، ربط القطعة لما توصل، والتبليغ بكبسة.", "Customers who asked for a size or colour that isn't there, or a new piece (with photos), and “Call me” requests from Razan. Look for it, link the piece when it arrives, and tell them in one click.")
+            : tr("زبائن طلبوا مقاس أو لون مش موجود، أو منتج جديد (مع صور). البحث، ربط المنتج لما يوصل، والتبليغ بكبسة.", "Customers who asked for a size or colour that isn't there, or a new product (with photos). Look for it, link the product when it arrives, and tell them in one click.")}
         </p>
       </div>
 
@@ -342,6 +347,7 @@ function SettingsCard() {
 }
 
 function SettingsEditor({ saved, photosReady, canWrite, onSaved }: { saved: RequestsSettings; photosReady: boolean; canWrite: boolean; onSaved: () => void }) {
+  const rose = useRoseOwner();
   const [s, setS] = useState(saved);
   const [open, setOpen] = useState(!saved.enabled);
   const dirty = JSON.stringify(s) !== JSON.stringify(saved);
@@ -357,7 +363,13 @@ function SettingsEditor({ saved, photosReady, canWrite, onSaved }: { saved: Requ
         <div className="min-w-0">
           <h2 className="font-semibold">{tr("«طلب قطعة» بالمتجر", "“Request a piece” in the store")}</h2>
           <p className="mt-1 text-xs text-white/55">
-            {tr("بيطلع زر «المقاس مش موجود؟» بصفحة القطعة، و«اطلبها منّا» بالبحث، وصفحة /request. طلبات «احكوني» من رزان بتوصل هون دايماً (من", "A “Your size isn't there?” button shows on the product page, “Ask us for it” in search, and the /request page. “Call me” requests from Razan always arrive here (from")} <Link className="underline" to="/admin/razan">{tr("صفحة رزان", "Razan's page")}</Link>).
+            {rose ? (
+              <>
+                {tr("بيطلع زر «المقاس مش موجود؟» بصفحة القطعة، و«اطلبها منّا» بالبحث، وصفحة /request. طلبات «احكوني» من رزان بتوصل هون دايماً (من", "A “Your size isn't there?” button shows on the product page, “Ask us for it” in search, and the /request page. “Call me” requests from Razan always arrive here (from")} <Link className="underline" to="/admin/razan">{tr("صفحة رزان", "Razan's page")}</Link>).
+              </>
+            ) : (
+              tr("بيطلع زر «المقاس مش موجود؟» بصفحة المنتج، و«اطلبها منّا» بالبحث، وصفحة /request.", "A “Your size isn't there?” button shows on the product page, “Ask us for it” in search, and the /request page.")
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
