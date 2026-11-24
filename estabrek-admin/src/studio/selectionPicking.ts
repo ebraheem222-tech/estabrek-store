@@ -1,4 +1,4 @@
-import { area, shapeContains, tinyNear, type Pt, type Shape } from "./geometry";
+import { area, shapeContains, tinyNear, type Box, type Pt, type Shape } from "./geometry";
 import { pathTo, type TreeIndex } from "./treeIndex";
 export function candidateStack(shapes: Shape[], point: Pt, painted: string[], index: TreeIndex, up: ReadonlyMap<string, string | null>, locked: ReadonlySet<string>, deep: boolean): string[] {
   const allowed = new Map(shapes.filter(s => s.id !== index.root && (deep || !s.id.startsWith("detail:")) && !pathTo(index, s.id, up).some(id => locked.has(id))).map(s => [s.id, s]));
@@ -35,7 +35,7 @@ export class PointSelection {
  * but when the pointer is on an inner part (a section's headline) that lies over another piece of the same owner
  * (the section's picture behind it), the owner is the object, not the piece behind what was clicked.
  */
-export function clickPick(ids: string[], before: string | null, o: { deep: boolean; deepest: boolean; cycle: boolean; isPart: (id: string) => boolean; pathOf: (id: string) => string[] }): string | null {
+export function clickPick(ids: string[], before: string | null, o: { deep: boolean; deepest: boolean; cycle: boolean; isPart: (id: string) => boolean; pathOf: (id: string) => string[]; boxOf?: (id: string) => Box | undefined }): string | null {
   if (!ids.length) return null;
   if (o.cycle) return cycleCandidate(ids, before);
   let object = ids.find(id => !o.isPart(id)) ?? null;
@@ -53,6 +53,19 @@ export function clickPick(ids: string[], before: string | null, o: { deep: boole
   if (!within) return object;
   const inside = ids.filter(id => id !== object && o.isPart(id) && o.pathOf(id).includes(object));
   if (!inside.length) return object;
-  if (before === object) return [...inside].sort((a, b) => o.pathOf(a).length - o.pathOf(b).length)[0];
+  if (before === object) {
+    // Its closest inner part, but never a wrapper drawn as the object itself (a menu's list of links fills the
+    // menu): picking that looked like nothing happened, and dragging it pulled the links out of their menu.
+    const own = o.boxOf?.(object);
+    const seen = own ? inside.filter(id => { const b = o.boxOf!(id); return !b || !sameBox(b, own); }) : inside;
+    const first = [...(seen.length ? seen : inside)].sort((a, b) => o.pathOf(a).length - o.pathOf(b).length)[0];
+    // And through what only wraps it (a menu's list item around its link): the innermost drawn on the same place.
+    const at = o.boxOf?.(first);
+    if (!at) return first;
+    return inside.filter(id => id !== first && o.pathOf(id).includes(first) && (b => b && sameBox(b, at))(o.boxOf!(id)))
+      .sort((a, b) => o.pathOf(b).length - o.pathOf(a).length)[0] ?? first;
+  }
   return inside[0];
 }
+/** Two boxes drawn on the same place, within 2 px on every side. */
+export const sameBox = (a: Box, b: Box) => Math.abs(a.x - b.x) <= 2 && Math.abs(a.y - b.y) <= 2 && Math.abs(a.x + a.w - b.x - b.w) <= 2 && Math.abs(a.y + a.h - b.y - b.h) <= 2;

@@ -12,6 +12,8 @@ import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import StudioPage from "../../src/studio/StudioPage";
 import { ADDABLE, newElement } from "../../src/studio/columns";
 import { simulate } from "../../src/studio/draft";
+import { newFooter, newHeader } from "../../src/studio/blockDefaults";
+import { buildTemplate } from "../../src/studio/templates/catalog";
 import VisualControlsPage from "../../src/features/settings/VisualControlsPage";
 import type { PageDraft, PageDraftOp, PageTreeNode } from "../../src/api/pages.api";
 import { api } from "../../src/api/http";
@@ -187,6 +189,49 @@ if (new URLSearchParams(location.search).has("twoParts")) {
       { id: "shelf", type: "stack", name: "Shelf", props: {}, style: { base: { width: "320px", minHeight: "220px", pad: [16, 16, 16, 16], bg: "#ffffff" } }, children: [
         { id: "shelf-text", type: "text", props: { text: text("On the shelf") } },
       ] },
+    ] },
+  ];
+}
+// The ready header and footer from the Add panel, as they are added (name, menu and search; about and links), with
+// a part between them: editing a header's menu or search, and moving and sizing what is in them (header-nav.spec.ts).
+if (new URLSearchParams(location.search).has("header")) {
+  let n = 0;
+  const ids = (prefix: string) => `${prefix}-${++n}`;
+  initial.tree!.root.children = [
+    { ...newHeader("en", ids), id: "head" },
+    { id: "middle", type: "section", name: "Middle part", props: {}, style: { base: { minHeight: "420px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "middle-headline", type: "heading", props: { text: text("Between the header and the footer"), level: 2 }, style: { base: { width: "520px" } } },
+    ] },
+    { ...newFooter("en", ids), id: "foot" },
+  ];
+  // `?header&row`: the name, the menu and the search in one row (a stack), as an owner builds a header by hand.
+  if (new URLSearchParams(location.search).has("row")) initial.tree!.root.children![0] = {
+    id: "head", type: "section", name: "Header", props: { tag: "header", contained: true }, style: { base: { pad: [16, 0, 16, 0] } }, children: [
+      { id: "bar", type: "stack", name: "Bar", props: {}, style: { base: { direction: "row", justify: "center", align: "center", gap: 32 } }, children: [
+        { id: "brand", type: "heading", props: { level: 3, text: text("Store name") } },
+        { id: "nav", type: "menu", props: { items: [{ label: text("Everything"), href: "/shop" }, { label: text("New in"), href: "/shop?sort=new" }, { label: text("About us"), href: "/about" }], layout: "row", phone: "fold" } },
+        { id: "find", type: "search", props: { look: "pill" }, style: { base: { width: "260px" } } },
+      ] },
+    ],
+  };
+  // `&axes`: the name moves only sideways and the search only up and down (two that can't be carried together).
+  if (new URLSearchParams(location.search).has("axes")) {
+    const bar = initial.tree!.root.children![0].children![0];
+    bar.children![0].style = { base: { movement: "horizontal" } };
+    bar.children![2].style = { base: { width: "260px", movement: "vertical" } };
+  }
+}
+// A header from the template library, as the gallery adds it (`?libraryHeader=s:dna-header-mega-heavy:plain`): the
+// name, the menu and the search side by side in rows (header-nav.spec.ts).
+const libraryHeader = new URLSearchParams(location.search).get("libraryHeader");
+if (libraryHeader) {
+  let n = 0;
+  const built = buildTemplate(libraryHeader, { lang: "en", fam: "fashion", ids: (prefix: string) => `${prefix}-${++n}` });
+  if (!built) throw new Error(`No library template ${libraryHeader}`);
+  initial.tree!.root.children = [
+    { ...built[0], id: "head" },
+    { id: "middle", type: "section", name: "Middle part", props: {}, style: { base: { minHeight: "420px", pad: [30, 30, 30, 30] } }, children: [
+      { id: "middle-headline", type: "heading", props: { text: text("Under the header"), level: 2 }, style: { base: { width: "520px" } } },
     ] },
   ];
 }
