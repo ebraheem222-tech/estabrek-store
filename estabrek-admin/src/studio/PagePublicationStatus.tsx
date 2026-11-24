@@ -40,7 +40,7 @@ export function PagePublicationStatus({ page, lang, hasDraft, canPublish }: { pa
     : result?.state === "not_public" ? tr("الصفحة لسه مش متاحة للزوار؛ راجع الحالة والمواعيد.", "The page is not public yet; review its status and dates.")
     : result?.state === "not_configured" ? tr("عنوان الموقع مش مضبوط للفحص.", "No storefront address is configured for verification.")
     : result ? tr("لسه ما تأكد ظهور الصفحة؛ راجع نتيجة كل موقع.", "This page is not verified yet; check each storefront result.") : "";
-  const btn = "rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:bg-white/[0.06] disabled:opacity-40";
+  const btn = "rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:bg-white/6 disabled:opacity-40";
   return <div className="shrink-0 space-y-1 border-b border-white/[0.07] px-3 py-2 text-[11px] text-white/60" data-testid="studio-publication">
     <div className="flex flex-wrap items-center gap-2">
       <span className={state === "live" && !hiddenBy ? "text-emerald-300" : "text-amber-200"}>{labels[state]}</span>

@@ -126,8 +126,8 @@ function Switch({ checked, label, disabled, busy, onChange }: { checked: boolean
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={[
-        "relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40",
-        checked ? "border-[var(--btn-solid-border)] bg-[var(--btn-solid-bg)]" : "border-white/20 bg-white/10",
+        "relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent-500/40",
+        checked ? "border-(--btn-solid-border) bg-(--btn-solid-bg)" : "border-white/20 bg-white/10",
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
       ].join(" ")}
     >

@@ -155,7 +155,7 @@ function Queue({ part, view, took, onError }: { part: PanelQueue; view: PanelPag
       {!part.rows.length && !part.problem ? <p className="mt-3 text-sm text-white/55" data-testid={`site-part-${part.key}-empty`}>{inLang(part.empty ?? undefined, lang) || say("ما في شي بيستنّى.|Nothing waiting.|אין מה שממתין.")}</p> : null}
       <ul className="mt-3 space-y-2">
         {part.rows.map((row) => (
-          <li key={row.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3" data-testid={`site-row-${row.id}`}>
+          <li key={row.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/5 bg-white/3 p-3" data-testid={`site-row-${row.id}`}>
             <div className="min-w-0 space-y-0.5 text-sm">
               {first ? <div className="font-medium">{cellText(first, row.cells[first.id], lang) || "—"}</div> : null}
               {rest.map((c) => {
@@ -215,7 +215,7 @@ function Queue({ part, view, took, onError }: { part: PanelQueue; view: PanelPag
 /** A row's votes: how many each way (and how many yes its "after the votes" buttons wait for), and who said what. */
 function Votes({ votes, need, rowId }: { votes: PanelVotes; need: number; rowId: string }) {
   return (
-    <div className="mt-2 space-y-1 rounded-lg bg-white/[0.04] p-2 text-xs" data-testid={`site-votes-${rowId}`}>
+    <div className="mt-2 space-y-1 rounded-lg bg-white/4 p-2 text-xs" data-testid={`site-votes-${rowId}`}>
       <div className="font-medium text-white/80">
         <span data-testid={`site-votes-${rowId}-yes`}>{say("👍 {n} مع|👍 {n} yes|👍 {n} בעד").replace("{n}", String(votes.yes))}</span>
         {" · "}

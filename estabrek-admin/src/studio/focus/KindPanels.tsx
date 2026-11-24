@@ -13,8 +13,8 @@ import { Range } from "../LookPanels";
 import { say } from "../say";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`;
 const box = "space-y-2 rounded-xl border border-accent-400/30 p-3";
 const KIND_WORD: Record<CurveKind, string> = { arc: "قوس|Arc|קשת", wave: "موجة|Wave|גל", circle: "دائرة|Circle|עיגול" };
 
@@ -34,7 +34,7 @@ export function CurvePanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
       </div>
       {curve && shape ? (
         <>
-          <svg viewBox={shape.viewBox} className="block h-14 w-full rounded-lg bg-white/[0.04]" aria-hidden="true"><path d={shape.d} fill="none" stroke="rgb(168,140,255)" strokeWidth={curve.kind === "circle" ? 18 : 8} /></svg>
+          <svg viewBox={shape.viewBox} className="block h-14 w-full rounded-lg bg-white/4" aria-hidden="true"><path d={shape.d} fill="none" stroke="rgb(168,140,255)" strokeWidth={curve.kind === "circle" ? 18 : 8} /></svg>
           {curve.kind !== "circle" ? <Range label={say("الانحناء (لتحت ← لفوق)|Bend (down ← up)|כיפוף")} min={-100} max={100} step={1} busy={busy} value={curve.bend ?? 50} onSave={(v) => save({ ...curve, bend: v })} testId="studio-curve-bend" /> : null}
           <Range label={say("حجم الكلام|Words' size|גודל המילים")} min={20} max={240} step={1} busy={busy} value={curve.size ?? 80} onSave={(v) => save({ ...curve, size: v })} testId="studio-curve-size" />
           <Range label={say("البعد بين الحروف|Letter spacing|ריווח אותיות")} min={-10} max={60} step={1} busy={busy} value={curve.space ?? 0} onSave={(v) => save({ ...curve, space: v || undefined })} testId="studio-curve-space" />
@@ -64,7 +64,7 @@ export function SlidePanel({ node, index, lang, busy, onOps, onShow }: { node: P
       </div>
       <label className="block text-[11px] text-white/55">
         {say("وصفها تحتها|Its caption|הכיתוב")}
-        <input className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" dir="auto" maxLength={200} disabled={busy} defaultValue={slide.caption?.[lang] ?? ""} key={`${index}:${lang}:${slide.caption?.[lang] ?? ""}`}
+        <input className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white" dir="auto" maxLength={200} disabled={busy} defaultValue={slide.caption?.[lang] ?? ""} key={`${index}:${lang}:${slide.caption?.[lang] ?? ""}`}
           onBlur={(e) => { if (e.target.value !== (slide.caption?.[lang] ?? "")) save(changeSlide(slides, index, { caption: { ...(slide.caption ?? {}), [lang]: e.target.value } })); }} data-testid="studio-focus-slide-caption" />
       </label>
     </div>

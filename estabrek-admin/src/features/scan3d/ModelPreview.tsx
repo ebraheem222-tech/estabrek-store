@@ -86,7 +86,7 @@ export function ModelPreview({ mesh, testId }: { mesh: Mesh; testId?: string }) 
         ref={canvas}
         width={SIZE}
         height={SIZE}
-        className="max-w-full rounded-xl bg-[repeating-conic-gradient(#0000000d_0%_25%,transparent_0%_50%)] [background-size:16px_16px]"
+        className="max-w-full rounded-xl bg-[repeating-conic-gradient(#0000000d_0%_25%,transparent_0%_50%)] bg-size-[16px_16px]"
         style={{ touchAction: "none", cursor: "grab" }}
         tabIndex={0}
         role="img"

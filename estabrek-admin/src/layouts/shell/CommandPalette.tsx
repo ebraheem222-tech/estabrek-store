@@ -146,16 +146,16 @@ function Palette({ onClose, canView, can }: {
   let lastGroup = "";
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 p-3 pt-[10vh] backdrop-blur-sm sm:p-6 sm:pt-[12vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} data-testid="command-palette">
+    <div className="fixed inset-0 z-70 flex items-start justify-center bg-black/50 p-3 pt-[10vh] backdrop-blur-sm sm:p-6 sm:pt-[12vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} data-testid="command-palette">
       <div role="dialog" aria-modal="true" aria-label={tr("بحث سريع", "Quick search")} className="glass w-full max-w-xl overflow-hidden rounded-2xl bg-surface-925 shadow-2xl" onKeyDown={onKey}>
-        <div className="flex items-center gap-3 border-b border-white/[0.08] px-4">
+        <div className="flex items-center gap-3 border-b border-white/8 px-4">
           <span className="text-white/45">{Icons.search}</span>
           <input
             ref={inputRef}
             value={q}
             onChange={(e) => { setQ(e.target.value); setActive(0); }}
             placeholder={tr("بحث عن صفحة، طلب (اسم أو هاتف)، أو منتج…", "Search a page, an order (name or phone), or a product…")}
-            className="h-14 flex-1 bg-transparent text-[15px] text-white placeholder:text-white/35 focus:outline-none"
+            className="h-14 flex-1 bg-transparent text-[15px] text-white placeholder:text-white/35 focus:outline-hidden"
             aria-label={tr("بحث", "Search")}
             role="combobox"
             aria-expanded="true"
@@ -182,9 +182,9 @@ function Palette({ onClose, canView, can }: {
                   data-index={i}
                   onMouseMove={() => setActive(i)}
                   onClick={h.run}
-                  className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors", i === current ? "bg-accent-500/[0.12] text-white" : "text-white/80")}
+                  className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors", i === current ? "bg-accent-500/12 text-white" : "text-white/80")}
                 >
-                  <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg [&_svg]:h-4 [&_svg]:w-4", i === current ? "bg-accent-500/20 text-accent-400" : "bg-white/[0.05] text-white/50")}>{h.icon}</span>
+                  <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg [&_svg]:h-4 [&_svg]:w-4", i === current ? "bg-accent-500/20 text-accent-400" : "bg-white/5 text-white/50")}>{h.icon}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{h.label}</span>
                     {h.hint && <span className="block truncate text-xs text-white/45">{h.hint}</span>}
@@ -195,7 +195,7 @@ function Palette({ onClose, canView, can }: {
             );
           })}
         </div>
-        <div className="hidden items-center gap-4 border-t border-white/[0.08] px-4 py-2 text-[11px] text-white/40 sm:flex">
+        <div className="hidden items-center gap-4 border-t border-white/8 px-4 py-2 text-[11px] text-white/40 sm:flex">
           <span><kbd className="font-sans">↑ ↓</kbd> {tr("للتنقل", "to move")}</span>
           <span><kbd className="font-sans">↵</kbd> {tr("للفتح", "to open")}</span>
           <span className="ms-auto">{tr("Ctrl K في أي وقت", "Ctrl K anytime")}</span>

@@ -109,7 +109,7 @@ export default function MyFeaturesPage() {
                       {f.enabled ? say("شغّالة|On|פועלת") : say("موقّفة|Off|כבויה")}
                     </Badge>
                   </div>
-                  {f.note ? <div className="break-words text-sm text-white/70">{f.note}</div> : null}
+                  {f.note ? <div className="wrap-break-word text-sm text-white/70">{f.note}</div> : null}
                   <div className="text-xs text-white/60">{countsLine(f.counts, lang)}</div>
                 </div>
               </li>

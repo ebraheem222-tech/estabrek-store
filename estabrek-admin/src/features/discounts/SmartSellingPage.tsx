@@ -38,7 +38,7 @@ import {
 import { tr } from "@/lib/words";
 
 type Tab = "suggestions" | "seasons" | "history";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const themeName = (id: string) => THEME_PRESETS.find((p) => p.id === id)?.name ?? id;
 const onError = (e: unknown) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) });
 

@@ -236,7 +236,7 @@ export default function CouponsPage() {
           <>
                         <div className="space-y-3 sm:hidden">
               {rows.map((c) => (
-                <div key={c.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={c.id} className="rounded-2xl border border-white/10 bg-white/3 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-mono text-sm font-semibold tracking-wider">{c.code}</div>
                     {c.isActive ? (
@@ -424,7 +424,7 @@ export default function CouponsPage() {
           />
 
           {editing ? (
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/60">
+            <div className="rounded-xl border border-white/10 bg-white/3 p-3 text-xs text-white/60">
               <div>{tr("الاستخدام الحالي:", "Uses so far:")} {usageText(editing)}</div>
               <div className="mt-1">{tr("آخر تحديث:", "Last updated:")} {formatDateTime(editing.updatedAt)}</div>
             </div>

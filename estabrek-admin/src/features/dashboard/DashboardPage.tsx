@@ -97,7 +97,7 @@ type StatCardProps = {
 
 function StatCard({ label, value, icon, trend, color = "default", delay = 0 }: StatCardProps) {
   const colors = {
-    default: "from-white/[0.04] to-transparent border-white/[0.06]",
+    default: "from-white/4 to-transparent border-white/6",
     success: "from-emerald-500/10 to-transparent border-emerald-500/20",
     warning: "from-amber-500/10 to-transparent border-amber-500/20",
     danger: "from-red-500/10 to-transparent border-red-500/20",
@@ -115,7 +115,7 @@ function StatCard({ label, value, icon, trend, color = "default", delay = 0 }: S
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 transition-all duration-300",
+        "group relative overflow-hidden rounded-2xl border bg-linear-to-br p-5 transition-all duration-300",
         "hover:scale-[1.02] hover:shadow-lg",
         colors[color],
         "animate-fade-in-up"
@@ -124,7 +124,7 @@ function StatCard({ label, value, icon, trend, color = "default", delay = 0 }: S
     >
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-30">
-        <div className="absolute -top-10 -start-10 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
+        <div className="absolute -top-10 -inset-s-10 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
       </div>
 
       <div className="relative flex items-start justify-between">
@@ -143,7 +143,7 @@ function StatCard({ label, value, icon, trend, color = "default", delay = 0 }: S
           )}
         </div>
         <div className={cn(
-          "w-11 h-11 rounded-xl flex items-center justify-center bg-white/[0.05]",
+          "w-11 h-11 rounded-xl flex items-center justify-center bg-white/5",
           iconColors[color]
         )}>
           {icon}
@@ -207,7 +207,7 @@ type TaskCardProps = {
 function TaskCard({ title, subtitle, value, to, tone = "default", loading }: TaskCardProps) {
   const navigate = useNavigate();
   const toneClass = {
-    default: "border-white/[0.06] bg-white/[0.03]",
+    default: "border-white/6 bg-white/3",
     warning: "border-amber-400/20 bg-amber-400/10",
     danger: "border-red-400/20 bg-red-500/10",
     success: "border-emerald-400/20 bg-emerald-500/10",
@@ -218,7 +218,7 @@ function TaskCard({ title, subtitle, value, to, tone = "default", loading }: Tas
       type="button"
       onClick={() => navigate(to)}
       className={cn(
-        "rounded-2xl border p-4 text-start transition hover:border-white/20 hover:bg-white/[0.06]",
+        "rounded-2xl border p-4 text-start transition hover:border-white/20 hover:bg-white/6",
         toneClass
       )}
     >
@@ -455,7 +455,7 @@ export default function DashboardPage() {
         {/* Latest Orders */}
         {canReadOrders && (
           <div className="lg:col-span-2 glass rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
               <div>
                 <h2 className="text-base font-semibold text-white">{tr("آخر الطلبات", "Latest orders")}</h2>
                 <p className="text-xs text-white/40 mt-0.5">{tr("آخر 10 طلبات وردت", "The last 10 orders")}</p>
@@ -516,7 +516,7 @@ export default function DashboardPage() {
             <h2 className="text-base font-semibold text-white">{tr("حالات الطلبات", "Order statuses")}</h2>
             <p className="text-xs text-white/40 mt-0.5">{tr("توزيع الطلبات حسب الحالة", "Orders by status")}</p>
 
-            <div className="mt-4 divide-y divide-white/[0.04]">
+            <div className="mt-4 divide-y divide-white/4">
               <OrderStatusCard label={tr("جديد", "New")} value={ordersByStatus.NEW ?? 0} color="NEW" delay={350} />
               <OrderStatusCard label={tr("تم التواصل", "Contacted")} value={ordersByStatus.CONTACTED ?? 0} color="CONTACTED" delay={400} />
               <OrderStatusCard label={tr("مقبول", "Accepted")} value={ordersByStatus.ACCEPTED ?? 0} color="ACCEPTED" delay={450} />

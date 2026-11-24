@@ -62,7 +62,7 @@ export function StoreLanguagesCard() {
               const on = draft.enabled.includes(l);
               const main = draft.default === l;
               return (
-                <li key={l} className={cn("flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5", on ? "border-white/[0.14] bg-white/[0.04]" : "border-white/[0.06]")}>
+                <li key={l} className={cn("flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5", on ? "border-white/[0.14] bg-white/4" : "border-white/6")}>
                   <label className="flex min-h-10 flex-1 items-center gap-2 text-sm">
                     <input type="checkbox" checked={on} disabled={!canWrite || (on && draft.enabled.length === 1)} onChange={() => toggle(l)} aria-label={`تشغيل ${LANG_LABEL[l]}`} />
                     <b lang={l}>{LANG_LABEL[l]}</b>

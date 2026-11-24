@@ -12,9 +12,9 @@ import { say } from "./say";
 
 export const useComponents = () => useQuery({ queryKey: ["page-components"], queryFn: listComponents, staleTime: 30_000, retry: false });
 
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const input = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const input = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 type Overrides = Record<string, Record<string, unknown>>;
 /** What an instance can change in an inner element: its words and its link. */

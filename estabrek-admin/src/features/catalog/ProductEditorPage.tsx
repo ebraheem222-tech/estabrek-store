@@ -1489,7 +1489,7 @@ export default function ProductEditorPage() {
           <div className="lg:col-span-2">
             <label className="mb-2 block text-sm font-medium">{tr("الوصف (اختياري)", "Description (optional)")}</label>
             <textarea
-              className="min-h-[140px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+              className="min-h-[140px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-hidden focus:border-white/20 focus:ring-2 focus:ring-white/10"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -1550,7 +1550,7 @@ export default function ProductEditorPage() {
                   key={it.localId}
                   type="button"
                   onClick={() => openEditItem(it)}
-                  className="flex min-w-[180px] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-start transition hover:border-white/20 hover:bg-white/[0.08]"
+                  className="flex min-w-[180px] items-center gap-3 rounded-xl border border-white/10 bg-white/4 px-3 py-2 text-start transition hover:border-white/20 hover:bg-white/8"
                 >
                   <span
                     className="h-7 w-7 shrink-0 rounded-full border border-white/20"
@@ -1616,7 +1616,7 @@ export default function ProductEditorPage() {
                         )}
                       </div>
                       {itemDiscount ? (
-                        <div className="pointer-events-none absolute -start-2 -top-2 z-10">
+                        <div className="pointer-events-none absolute -inset-s-2 -top-2 z-10">
                           <DiscountShapeBadge discount={itemDiscount} compact />
                         </div>
                       ) : null}
@@ -2119,7 +2119,7 @@ export default function ProductEditorPage() {
                         <label
                           key={s.id}
                           className={`flex items-center justify-between gap-3 px-3 py-2 text-sm ${
-                            s.disabled ? "opacity-50" : "cursor-pointer hover:bg-white/[0.04]"
+                            s.disabled ? "opacity-50" : "cursor-pointer hover:bg-white/4"
                           }`}
                         >
                           <div className="flex items-center gap-2">

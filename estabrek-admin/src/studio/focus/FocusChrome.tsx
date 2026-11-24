@@ -40,13 +40,13 @@ export function FocusBar({ group, crumbs, current, part, showAll, onCrumb, onPar
   onExit: () => void;
 }) {
   return (
-    <div className="pointer-events-auto absolute inset-x-3 top-2 z-[6] flex items-center gap-2 rounded-xl border border-white/[0.1] bg-surface-950/90 px-2 py-1.5 text-xs shadow-xl backdrop-blur" data-testid="studio-focus-bar" data-group={group} onPointerDown={(e) => e.stopPropagation()}>
+    <div className="pointer-events-auto absolute inset-x-3 top-2 z-6 flex items-center gap-2 rounded-xl border border-white/10 bg-surface-950/90 px-2 py-1.5 text-xs shadow-xl backdrop-blur-sm" data-testid="studio-focus-bar" data-group={group} onPointerDown={(e) => e.stopPropagation()}>
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-accent-500/30 text-[13px] text-white" aria-hidden="true">{GLYPH[group]}</span>
       <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap" aria-label={say("مسار العنصر المفتوح|The open element's path|נתיב הרכיב הפתוח")}>
         {crumbs.map((c, i) => (
           <span key={c.id} className="flex items-center gap-1">
             {i ? <span className="inline-block text-white/30 ltr:-scale-x-100">‹</span> : null}
-            <button type="button" onClick={() => onCrumb(c.id, c.inside)} className={`rounded px-1.5 py-0.5 hover:bg-white/[0.08] ${c.id === current && !part ? "bg-white/[0.08] text-white" : c.inside ? "text-white/75" : "text-white/40"}`} data-testid="studio-focus-crumb" data-inside={c.inside ? "1" : undefined}>
+            <button type="button" onClick={() => onCrumb(c.id, c.inside)} className={`rounded-sm px-1.5 py-0.5 hover:bg-white/8 ${c.id === current && !part ? "bg-white/8 text-white" : c.inside ? "text-white/75" : "text-white/40"}`} data-testid="studio-focus-crumb" data-inside={c.inside ? "1" : undefined}>
               {c.label}
             </button>
           </span>
@@ -54,7 +54,7 @@ export function FocusBar({ group, crumbs, current, part, showAll, onCrumb, onPar
         {part ? (
           <span className="flex items-center gap-1">
             <span className="inline-block text-white/30 ltr:-scale-x-100">‹</span>
-            <button type="button" onClick={onPart} className="rounded bg-white/[0.08] px-1.5 py-0.5 text-white" data-testid="studio-focus-crumb-part">{part.label}</button>
+            <button type="button" onClick={onPart} className="rounded-sm bg-white/8 px-1.5 py-0.5 text-white" data-testid="studio-focus-crumb-part">{part.label}</button>
           </span>
         ) : null}
       </nav>
@@ -62,7 +62,7 @@ export function FocusBar({ group, crumbs, current, part, showAll, onCrumb, onPar
         <input type="checkbox" checked={showAll} onChange={(e) => onShowAll(e.target.checked)} data-testid="studio-focus-all" />
         {say("كل الإعدادات|All settings|כל ההגדרות")}
       </label>
-      <button type="button" onClick={onExit} className="shrink-0 rounded-lg bg-white/[0.08] px-2 py-1 hover:bg-white/[0.14]" data-testid="studio-focus-exit">
+      <button type="button" onClick={onExit} className="shrink-0 rounded-lg bg-white/8 px-2 py-1 hover:bg-white/[0.14]" data-testid="studio-focus-exit">
         {say("خروج (Esc)|Leave (Esc)|יציאה (Esc)")}
       </button>
     </div>
@@ -89,7 +89,7 @@ export function FocusParts({ title, parts, chosen, onPick, onOpen, empty }: {
                 type="button"
                 onClick={() => onPick(p)}
                 onDoubleClick={onOpen && p.nodeId ? () => onOpen(p) : undefined}
-                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-start text-xs ${p.id === chosen ? "bg-accent-500/30 text-white" : "text-white/70 hover:bg-white/[0.06]"}`}
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-start text-xs ${p.id === chosen ? "bg-accent-500/30 text-white" : "text-white/70 hover:bg-white/6"}`}
                 style={{ paddingInlineStart: 8 + p.depth * 12 }}
                 data-testid="studio-focus-part"
                 data-part={p.id}

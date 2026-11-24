@@ -204,7 +204,7 @@ export default function CategoriesPage() {
                     <>
             <div className="space-y-3 sm:hidden">
               {treeList.map(({ cat: c, depth }) => (
-                <div key={c.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div key={c.id} className="rounded-2xl border border-white/10 bg-white/3 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2 text-sm font-semibold" style={{ paddingRight: depth * 12 }}>

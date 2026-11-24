@@ -22,7 +22,7 @@ type THeadProps = React.HTMLAttributes<HTMLTableSectionElement> & {
 
 export function THead({ children, className, ...rest }: THeadProps) {
   return (
-    <thead className={cn("border-b border-white/[0.06]", className)} {...rest}>
+    <thead className={cn("border-b border-white/6", className)} {...rest}>
       {children}
     </thead>
   );
@@ -34,7 +34,7 @@ type TBodyProps = React.HTMLAttributes<HTMLTableSectionElement> & {
 
 export function TBody({ children, className, ...rest }: TBodyProps) {
   return (
-    <tbody className={cn("divide-y divide-white/[0.04]", className)} {...rest}>
+    <tbody className={cn("divide-y divide-white/4", className)} {...rest}>
       {children}
     </tbody>
   );
@@ -49,7 +49,7 @@ export function TR({ children, className, ...rest }: TRProps) {
     <tr
       className={cn(
         "transition-colors duration-150",
-        "hover:bg-white/[0.02]",
+        "hover:bg-white/2",
         className
       )}
       {...rest}

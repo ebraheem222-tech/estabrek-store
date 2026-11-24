@@ -31,7 +31,7 @@ export function AiOrderCard({ orderId, phone }: { orderId: string; phone: string
       {status.data?.replySuggest ? (
         <div data-testid="reply-ideas">
           <span className="block text-sm font-medium">{tr("✨ اقتراحات رد على واتساب", "✨ WhatsApp reply ideas")}</span>
-          <textarea className="mt-2 h-20 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-2 text-sm" value={message} maxLength={1000} onChange={(e) => setMessage(e.target.value)} placeholder={tr("رسالة الزبون بتنلصق هون (اختياري) — أو بيضل فاضي لرد حسب حالة الطلب", "Paste their message here (optional) — or leave it empty for a reply based on the order's status")} aria-label={tr("رسالة الزبون", "Customer's message")} />
+          <textarea className="mt-2 h-20 w-full rounded-xl border border-white/8 bg-white/3 p-2 text-sm" value={message} maxLength={1000} onChange={(e) => setMessage(e.target.value)} placeholder={tr("رسالة الزبون بتنلصق هون (اختياري) — أو بيضل فاضي لرد حسب حالة الطلب", "Paste their message here (optional) — or leave it empty for a reply based on the order's status")} aria-label={tr("رسالة الزبون", "Customer's message")} />
           <button type="button" disabled={ideas.isPending} onClick={() => ideas.mutate()} className="mt-2 h-9 rounded-xl bg-accent-500 px-4 text-sm text-white disabled:opacity-60">
             {ideas.isPending ? tr("عم نكتب…", "Writing…") : tr("اقتراح ردود", "Suggest replies")}
           </button>
@@ -40,12 +40,12 @@ export function AiOrderCard({ orderId, phone }: { orderId: string; phone: string
               {ideas.data.replies.map((r, i) => {
                 const href = waLink(phone, r.text);
                 return (
-                  <li key={i} className="rounded-xl border border-white/[0.08] bg-black/10 p-2 text-sm">
+                  <li key={i} className="rounded-xl border border-white/8 bg-black/10 p-2 text-sm">
                     {r.label ? <span className="block text-[11px] text-white/45">{r.label}</span> : null}
                     <p className="whitespace-pre-wrap leading-6">{r.text}</p>
                     <div className="mt-1 flex gap-2">
                       {href ? <a href={href} target="_blank" rel="noreferrer" className="rounded-lg bg-emerald-600/80 px-2 py-1 text-xs text-white">{tr("فتح واتساب", "Open WhatsApp")}</a> : null}
-                      <button type="button" onClick={() => { void navigator.clipboard?.writeText(r.text).then(() => toast.success(tr("انتسخ", "Copied"))).catch(() => undefined); }} className="rounded-lg border border-white/[0.12] px-2 py-1 text-xs">{tr("نسخ", "Copy")}</button>
+                      <button type="button" onClick={() => { void navigator.clipboard?.writeText(r.text).then(() => toast.success(tr("انتسخ", "Copied"))).catch(() => undefined); }} className="rounded-lg border border-white/12 px-2 py-1 text-xs">{tr("نسخ", "Copy")}</button>
                     </div>
                   </li>
                 );

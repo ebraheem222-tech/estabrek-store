@@ -87,7 +87,7 @@ export default function InventoryAdjustmentsPage() {
               {rows.length ? (
                 <div className="space-y-3">
                   {rows.map((r) => (
-                    <div key={r.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                    <div key={r.id} className="rounded-xl border border-white/8 bg-white/2 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="text-xs opacity-70">{new Date(r.createdAt).toLocaleString()}</div>
                         {r.delta >= 0 ? (

@@ -126,11 +126,11 @@ export function StatsCounter({
   return (
     <div className={cn("grid gap-6", columnClasses[columns], className)}>
       {stats.map((stat, index) => (
-        <div key={index} className={cn("text-center p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)]", itemClassName)}>
-          <div className="text-3xl md:text-4xl font-bold text-[var(--color-accent)] mb-2">
+        <div key={index} className={cn("text-center p-6 rounded-2xl bg-(--color-surface) border border-(--color-border)", itemClassName)}>
+          <div className="text-3xl md:text-4xl font-bold text-(--color-accent) mb-2">
             <CounterAnimation end={stat.value} duration={duration} delay={index * stagger} prefix={stat.prefix} suffix={stat.suffix} decimals={stat.decimals} />
           </div>
-          <div className="text-sm text-[var(--color-text-muted)]">{stat.labelAr || stat.label}</div>
+          <div className="text-sm text-(--color-text-muted)">{stat.labelAr || stat.label}</div>
         </div>
       ))}
     </div>

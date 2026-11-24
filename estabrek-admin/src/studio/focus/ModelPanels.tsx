@@ -19,8 +19,8 @@ export type ModelPartInfo = { key: string; label: string; color: string | null; 
 export type View3d = { id: string; az: number; el: number; dist: number };
 export type Spot3d = { id: string; at: [number, number, number]; label?: Record<string, string>; href?: string };
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const input = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const input = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 const box = "space-y-2 rounded-xl border border-accent-400/30 p-3";
 let seq = 0;
 const newId = (k: string) => `${k}${Date.now().toString(36)}${(seq++).toString(36)}`;
@@ -123,7 +123,7 @@ export function ModelSpotsPanel({ node, lang, busy, onOps, pen, onPen }: { node:
         {say("كبسة على المجسّم بتزيد نقطة هناك|A click on the model adds a point there|לחיצה על המודל מוסיפה נקודה")}
       </label>
       {spots.map((s, i) => (
-        <div key={s.id} className="space-y-1 rounded-lg border border-white/[0.08] p-2" data-testid="studio-model-spot">
+        <div key={s.id} className="space-y-1 rounded-lg border border-white/8 p-2" data-testid="studio-model-spot">
           <div className="flex items-center justify-between text-[11px] text-white/55">
             <span>{say("نقطة|Point|נקודה")} {i + 1}</span>
             <button type="button" className={btn} disabled={busy} onClick={() => save(spots.filter((x) => x.id !== s.id))} aria-label={say("شيل|Remove|הסר")}>×</button>

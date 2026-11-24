@@ -12,8 +12,8 @@ import { toast } from "../lib/toast";
 import { tr } from "../lib/words";
 import { AUTO, KIND_LABEL, autoFor, isAuto, kindFor, listOf, newStyleId, styleLabel, styleOf } from "./siteStyles";
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const control = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 /** The shared styles as the editor changes them: the draft (or the published ones), with undo for this visit. */
 export function useSiteStyles(onSaved: () => void | Promise<void>) {
@@ -82,7 +82,7 @@ export function SiteStylesList({ ss, selected, canPublish, onPick }: { ss: SiteS
     <div className="space-y-3" data-testid="studio-site-styles">
       <p className="px-1 text-[11px] leading-5 text-white/45">{tr("غيّر ستايل مرة، بيتغيّر بكل الصفحات. شكل العنصر الخاص بيضل أقوى منه.", "Change a style once and every page changes. An element's own look still wins over it.")}</p>
       {ss.hasDraft || ss.canUndo ? (
-        <div className="space-y-2 rounded-xl border border-amber-300/30 bg-amber-300/[0.06] p-2" data-testid="studio-site-draft">
+        <div className="space-y-2 rounded-xl border border-amber-300/30 bg-amber-300/6 p-2" data-testid="studio-site-draft">
           {ss.hasDraft ? <p className="text-[11px] leading-5 text-amber-100/90">{tr("في تغييرات على الستايلات بتبيّن هون بس. انشرها لتوصل لكل الصفحات.", "There are style changes shown only here. Publish them to reach every page.")}</p> : null}
           <div className="flex flex-wrap gap-1">
             {ss.hasDraft ? (
@@ -112,7 +112,7 @@ export function SiteStylesList({ ss, selected, canPublish, onPick }: { ss: SiteS
           {listOf(ss.styles, kind).map((s) => {
             const saved = ss.styles.some((x) => x.id === s.id);
             return (
-              <button key={s.id} type="button" onClick={() => onPick(s.id)} className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-start text-xs ${selected === s.id ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.04]"}`} data-testid="studio-site-style" data-style={s.id}>
+              <button key={s.id} type="button" onClick={() => onPick(s.id)} className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-start text-xs ${selected === s.id ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/4"}`} data-testid="studio-site-style" data-style={s.id}>
                 <span className="truncate">{styleLabel(s)}</span>
                 {saved ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-300" title={tr("فيه ستايل", "Has a style")} aria-hidden="true" /> : null}
               </button>
@@ -187,7 +187,7 @@ export function StylePickPanel({ node, ss, busy, onOps, onEdit }: {
     onEdit(id);
   };
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-style-pick">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-style-pick">
       <div className="text-xs font-medium text-white/70">{tr("ستايل مشترك", "Shared style")}</div>
       {auto ? (
         <p className="text-[11px] leading-5 text-white/45">

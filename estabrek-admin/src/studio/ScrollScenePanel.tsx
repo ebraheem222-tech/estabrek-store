@@ -17,10 +17,10 @@ import { atChapter, chapterAt, chapterRange, cueOfNode, cueOp, CUE_KINDS, sceneO
 import { typeLabel } from "./treeIndex";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const chip = (on: boolean) => `rounded-lg border px-2 py-1 text-[11px] disabled:opacity-40 ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/70 hover:bg-white/[0.05]"}`;
-const sel = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const chip = (on: boolean) => `rounded-lg border px-2 py-1 text-[11px] disabled:opacity-40 ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/8 text-white/70 hover:bg-white/5"}`;
+const sel = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 
 function Picks<T extends string>({ label, value, options, busy, onPick, testId }: { label: string; value: T; options: Array<[T, string]>; busy: boolean; onPick: (v: T) => void; testId?: string }) {
   return (
@@ -126,7 +126,7 @@ export function ScrollScenePanel({ node, lang, busy, ids, onOps, onSeek, onSelec
       {pin ? <Range label={say("طوله (كم شاشة تمرير)|Its length (screens of scrolling)|אורך (מסכי גלילה)")} min={1} max={12} step={0.5} busy={busy} value={p.length ?? 4} onSave={(length) => save(L, { length })} testId="scene-length" /> : null}
       <Range label={say("نعومة اللحاق بالتمرير|How softly it follows the scroll|כמה רך הוא עוקב אחרי הגלילה")} min={0} max={1} step={0.05} busy={busy} value={p.smooth ?? 0.35} onSave={(smooth) => save(L, { smooth })} testId="scene-smooth" />
 
-      <div className="space-y-2 rounded-lg bg-white/[0.03] p-2">
+      <div className="space-y-2 rounded-lg bg-white/3 p-2">
         <div className="text-[11px] font-medium text-white/60">{say("الخلفية مع التمرير|The background with the scroll|הרקע עם הגלילה")}</div>
         {toggle(say("ضبابية (blur)|Blur|טשטוש"), Boolean(p.blur), busy, (on) => effect("blur", on ? { from: 20, to: 60, amount: 10 } : undefined), "scene-blur")}
         {p.blur ? <>
@@ -156,12 +156,12 @@ export function ScrollScenePanel({ node, lang, busy, ids, onOps, onSeek, onSelec
           onPick={(progress) => save(L, { progress })} />
       </div>
 
-      <div className="space-y-2 rounded-lg bg-white/[0.03] p-2" data-testid="scene-timeline">
+      <div className="space-y-2 rounded-lg bg-white/3 p-2" data-testid="scene-timeline">
         <div className="flex items-center justify-between gap-2">
           <div className="text-[11px] font-medium text-white/60">{say("الخط الزمني|Timeline|ציר זמן")}</div>
           <label className="flex items-center gap-1 text-[10px] text-white/45">
             {say("فصول|Chapters|פרקים")}
-            <select className="rounded border border-white/[0.1] bg-surface-925 px-1 text-[11px] text-white" value={chapters} disabled={busy} onChange={(e) => save(L, { chapters: Number(e.target.value) })} data-testid="scene-chapters">
+            <select className="rounded-sm border border-white/10 bg-surface-925 px-1 text-[11px] text-white" value={chapters} disabled={busy} onChange={(e) => save(L, { chapters: Number(e.target.value) })} data-testid="scene-chapters">
               {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
@@ -172,7 +172,7 @@ export function ScrollScenePanel({ node, lang, busy, ids, onOps, onSeek, onSelec
             const n = inChapter(i).length;
             const [a, b] = chapterRange(chapters, i);
             return (
-              <button key={i} type="button" className={`rounded-md border px-0.5 py-1 text-center text-[10px] ${chapter === i ? "border-accent-400/70 bg-accent-500/20 text-white" : "border-white/[0.08] text-white/60 hover:bg-white/[0.06]"}`}
+              <button key={i} type="button" className={`rounded-md border px-0.5 py-1 text-center text-[10px] ${chapter === i ? "border-accent-400/70 bg-accent-500/20 text-white" : "border-white/8 text-white/60 hover:bg-white/6"}`}
                 title={`${a}% – ${b}%`} onClick={() => seek(Math.round((a + b) / 2))} data-chapter={i + 1}>
                 {a}%{n ? <span className="block text-accent-300">● {n}</span> : <span className="block text-white/25">·</span>}
               </button>
@@ -195,13 +195,13 @@ export function ScrollScenePanel({ node, lang, busy, ids, onOps, onSeek, onSelec
             const c = cueOfNode(k);
             const end = c ? (c.out === "stay" ? 100 : c.to) : 100;
             return (
-              <li key={k.id} className="rounded-lg border border-white/[0.06] p-1.5">
+              <li key={k.id} className="rounded-lg border border-white/6 p-1.5">
                 <button type="button" className="flex w-full items-center justify-between gap-2 text-start text-[11px] text-white/75 hover:text-white" onClick={() => { onSelect(k.id); if (c && pin) seek(Math.round((c.from + end) / 2)); }}>
                   <span className="truncate">{k.name || typeLabel(k.type)}</span>
                   <span dir="ltr" className="shrink-0 tabular-nums text-white/40">{c && pin ? `${c.from}–${end}%` : "—"}</span>
                 </button>
                 {pin ? (
-                  <div className="relative mt-1 h-1.5 rounded-full bg-white/[0.06]" aria-hidden="true">
+                  <div className="relative mt-1 h-1.5 rounded-full bg-white/6" aria-hidden="true">
                     {c ? <span className="absolute inset-y-0 rounded-full bg-accent-400/70" style={{ insetInlineStart: `${c.from}%`, width: `${end - c.from}%` }} /> : null}
                     <span className="absolute inset-y-[-3px] w-px bg-white/70" style={{ insetInlineStart: `${at}%` }} />
                   </div>

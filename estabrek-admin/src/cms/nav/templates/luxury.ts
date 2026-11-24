@@ -55,7 +55,7 @@ export const LUXURY_NAV: NavTemplate[] = [
     nameAr: "فاخر وردي",
     category: "luxury",
     styles: {
-      nav: "bg-gradient-to-r from-rose-100 via-pink-50 to-rose-100 border-b border-rose-200",
+      nav: "bg-linear-to-r from-rose-100 via-pink-50 to-rose-100 border-b border-rose-200",
       container: "max-w-7xl mx-auto px-4 h-20 flex items-center justify-between",
       logo: "text-xl font-light tracking-[0.3em] uppercase text-rose-900",
       links: "hidden md:flex items-center gap-10",
@@ -103,7 +103,7 @@ export const LUXURY_NAV: NavTemplate[] = [
     nameAr: "فاخر مخملي",
     category: "luxury",
     styles: {
-      nav: "bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950 border-b border-purple-500/20",
+      nav: "bg-linear-to-r from-purple-950 via-purple-900 to-purple-950 border-b border-purple-500/20",
       container: "max-w-7xl mx-auto px-4 h-20 flex items-center justify-between",
       logo: "text-xl font-light tracking-[0.3em] uppercase text-purple-300",
       links: "hidden md:flex items-center gap-10",
@@ -119,7 +119,7 @@ export const LUXURY_NAV: NavTemplate[] = [
     nameAr: "فاخر شامبانيا",
     category: "luxury",
     styles: {
-      nav: "bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 border-b border-amber-200",
+      nav: "bg-linear-to-r from-amber-50 via-yellow-50 to-amber-50 border-b border-amber-200",
       container: "max-w-7xl mx-auto px-4 h-20 flex items-center justify-between",
       logo: "text-xl font-light tracking-[0.3em] uppercase text-amber-800",
       links: "hidden md:flex items-center gap-10",

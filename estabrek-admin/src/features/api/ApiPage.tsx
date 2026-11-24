@@ -352,7 +352,7 @@ function TableCard({ table, url, limits, customerAccounts, canWrite, busy, onCha
               ))}
               <div className="text-xs text-white/60">
                 <div>{say("حقول الجدول (الإسم اللي بينكتب بالطلب ونوعه):|The table's fields (the name a request uses, and its kind):|שדות הטבלה (השם שנכתב בבקשה והסוג):")}</div>
-                <bdi dir="ltr" className="mt-1 block break-words font-mono text-white/80" data-testid={`fields-${table.slug}`}>
+                <bdi dir="ltr" className="mt-1 block wrap-break-word font-mono text-white/80" data-testid={`fields-${table.slug}`}>
                   {table.fields.map((f) => `${f.id}${f.required ? "*" : ""}: ${f.type}`).join(" · ")}
                 </bdi>
               </div>

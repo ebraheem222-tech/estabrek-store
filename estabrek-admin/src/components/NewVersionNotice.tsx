@@ -55,14 +55,14 @@ export default function NewVersionNotice({ enabled = !import.meta.env.DEV, fetch
   return (
     <div
       role="status"
-      className="fixed inset-x-0 bottom-4 z-[10000] mx-auto flex w-[min(34rem,calc(100vw-2rem))] flex-wrap items-center gap-3 rounded-2xl border border-accent-400/40 bg-surface-950 px-4 py-3 text-sm text-white shadow-2xl"
+      className="fixed inset-x-0 bottom-4 z-10000 mx-auto flex w-[min(34rem,calc(100vw-2rem))] flex-wrap items-center gap-3 rounded-2xl border border-accent-400/40 bg-surface-950 px-4 py-3 text-sm text-white shadow-2xl"
       data-testid="new-version"
     >
       <div className="min-w-0 flex-1">
         <div className="font-medium">{tr("في نسخة جديدة من لوحة الإدارة", "A new version of the admin is out")}</div>
         <div className="text-xs text-white/60">{tr("حدّث الصفحة لتشتغل عليها. خلّص اللي بإيدك أول إذا في إشي مش محفوظ.", "Reload to use it. Finish anything unsaved first.")}</div>
       </div>
-      <button type="button" className="rounded-lg bg-white/[0.08] px-3 py-1.5 text-xs hover:bg-white/[0.14]" onClick={() => setLater(latest)} data-testid="new-version-later">
+      <button type="button" className="rounded-lg bg-white/8 px-3 py-1.5 text-xs hover:bg-white/[0.14]" onClick={() => setLater(latest)} data-testid="new-version-later">
         {tr("بعدين", "Later")}
       </button>
       <button type="button" className="rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-400" onClick={reload} data-testid="new-version-reload">

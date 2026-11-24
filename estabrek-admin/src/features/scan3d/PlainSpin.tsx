@@ -19,10 +19,10 @@ import { renderPlainSheet, type PlainBackground, type PlainSheet, type PlainStep
 import { Spin360 } from "./Spin360";
 import { frameAt, openVideo, readFrames, type OpenVideo } from "./video";
 
-const btn = "rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs hover:bg-white/[0.1] disabled:opacity-30";
+const btn = "rounded-lg bg-white/6 px-3 py-1.5 text-xs hover:bg-white/10 disabled:opacity-30";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40";
-const card = "space-y-3 rounded-2xl border border-white/[0.08] p-4";
-const chip = (on: boolean) => `rounded-lg px-2.5 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]"} disabled:opacity-40`;
+const card = "space-y-3 rounded-2xl border border-white/8 p-4";
+const chip = (on: boolean) => `rounded-lg px-2.5 py-1 text-xs ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/75 hover:bg-white/10"} disabled:opacity-40`;
 const MAX_SECONDS = 120;
 
 export type SpinProduct = { id: string; name: string; colours: Array<{ id: string; name: string }> };
@@ -208,7 +208,7 @@ export function PlainSpin({ product, onSaved }: { product?: SpinProduct; onSaved
             {([["cut", tr("بلا خلفية (شفافة)", "None (see-through)")], ["colour", tr("لون", "A colour")], ["kept", tr("متل ما تصوّرت", "As filmed")]] as const).map(([k, label]) => (
               <button key={k} type="button" className={chip(background === k)} aria-pressed={background === k} disabled={busy} onClick={() => { setBackground(k); setSheet(null); }} data-value={k}>{label}</button>
             ))}
-            {background === "colour" ? <input type="color" aria-label={tr("لون الخلفية", "Background colour")} className="h-7 w-9 cursor-pointer rounded border border-white/[0.1] bg-transparent" value={colour} disabled={busy} onChange={(e) => { setColour(e.target.value); setSheet(null); }} /> : null}
+            {background === "colour" ? <input type="color" aria-label={tr("لون الخلفية", "Background colour")} className="h-7 w-9 cursor-pointer rounded-sm border border-white/10 bg-transparent" value={colour} disabled={busy} onChange={(e) => { setColour(e.target.value); setSheet(null); }} /> : null}
           </div>
           <div className="flex flex-wrap items-center gap-1" role="group" aria-label={tr("الحجم", "Size")}>
             <span className="me-1 text-[11px] text-white/55">{tr("الحجم", "Size")}</span>
@@ -227,12 +227,12 @@ export function PlainSpin({ product, onSaved }: { product?: SpinProduct; onSaved
           <p className="text-center text-[11px] text-white/45" dir="ltr">{sheet.frames.length} · {sheet.cellW}×{sheet.cellH} · {Math.round(sheet.blob.size / 1024)} KB</p>
           <label className="block text-[11px] text-white/55">
             {tr("الاسم", "Name")}
-            <input className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" value={name} onChange={(e) => setName(e.target.value)} data-testid="plain-name" />
+            <input className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white" value={name} onChange={(e) => setName(e.target.value)} data-testid="plain-name" />
           </label>
           {product && product.colours.length > 1 ? (
             <label className="block text-[11px] text-white/55">
               {tr("لأي لون", "For which colour")}
-              <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" value={itemId} onChange={(e) => setItemId(e.target.value)} data-testid="plain-colour">
+              <select className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white" value={itemId} onChange={(e) => setItemId(e.target.value)} data-testid="plain-colour">
                 <option value="">{tr("كل الألوان", "Every colour")}</option>
                 {product.colours.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -253,7 +253,7 @@ function Progress({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-1" data-testid="plain-progress">
       <div className="text-xs text-white/60">{label}</div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]"><div className="h-full bg-accent-500 transition-[width]" style={{ width: `${Math.round(value * 100)}%` }} /></div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/8"><div className="h-full bg-accent-500 transition-[width]" style={{ width: `${Math.round(value * 100)}%` }} /></div>
     </div>
   );
 }

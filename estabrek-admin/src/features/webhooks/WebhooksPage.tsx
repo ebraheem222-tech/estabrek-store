@@ -76,7 +76,7 @@ function EndpointForm({ page, start, busy, onSave, onCancel, testid }: { page: W
       </div>
       {group(say("سطور جداولك|Rows of your tables|שורות בטבלאות שלך"), page.events.rows)}
       {rows ? (
-        <div className="space-y-1.5 rounded-xl bg-white/[0.03] p-3" data-testid={`${testid}-tables`}>
+        <div className="space-y-1.5 rounded-xl bg-white/3 p-3" data-testid={`${testid}-tables`}>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
             <label className="flex items-center gap-1.5">
               <input type="radio" checked={!some} onChange={() => setSome(false)} data-testid={`${testid}-tables-all`} />
@@ -184,12 +184,12 @@ function DeliveryLog({ endpoint, canWrite }: { endpoint: Endpoint; canWrite: boo
             </thead>
             <tbody>
               {list.map((d) => (
-                <tr key={d.id} className="border-t border-white/[0.06] align-top" data-testid={`delivery-${d.id}`} data-status={d.status}>
+                <tr key={d.id} className="border-t border-white/6 align-top" data-testid={`delivery-${d.id}`} data-status={d.status}>
                   <td className="whitespace-nowrap px-2 py-1.5 text-xs text-white/70">{when(d.createdAt, lang)}</td>
                   <td className="whitespace-nowrap px-2 py-1.5">{say(eventName(d.event))}</td>
                   <td className="px-2 py-1.5">
                     <span className={`${chip} ${d.status === "sent" ? "bg-emerald-500/20 text-emerald-200" : d.status === "failed" ? "bg-red-500/20 text-red-200" : "bg-amber-500/20 text-amber-200"}`}>{say(deliveryState(d))}</span>
-                    {d.error ? <span className="mt-1 block max-w-md whitespace-normal break-words text-xs text-white/65">{errorText(d.error, lang)}</span> : null}
+                    {d.error ? <span className="mt-1 block max-w-md whitespace-normal wrap-break-word text-xs text-white/65">{errorText(d.error, lang)}</span> : null}
                     {d.status === "waiting" && d.nextAt ? <span className="mt-1 block text-xs text-white/55">{`${say("المحاولة الجاية|Next try|הניסיון הבא")}: ${when(d.nextAt, lang)}`}</span> : null}
                   </td>
                   <td className="px-2 py-1.5 tabular-nums">{d.attempts}</td>
@@ -306,7 +306,7 @@ export default function WebhooksPage() {
 
       {/* The secret, once. */}
       {secret ? (
-        <section className="rounded-2xl border border-accent-500/50 bg-accent-500/[0.08] p-5" data-testid="secret-box">
+        <section className="rounded-2xl border border-accent-500/50 bg-accent-500/8 p-5" data-testid="secret-box">
           <div className="text-sm font-medium">{`${say("مفتاح التوقيع لـ|The signing secret of|סוד החתימה של")} «${secret.name}»`}</div>
           <p className="mt-1 text-xs text-white/75">
             {say(
@@ -350,7 +350,7 @@ export default function WebhooksPage() {
           {page.endpoints.map((e) => {
             const state = stateOf(e);
             return (
-              <li key={e.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid={`endpoint-${e.id}`} data-state={state}>
+              <li key={e.id} className="rounded-xl border border-white/10 bg-white/3 p-4" data-testid={`endpoint-${e.id}`} data-state={state}>
                 {editing === e.id ? (
                   <EndpointForm page={page} start={e} busy={change.isPending} testid="edit" onCancel={() => setEditing(null)} onSave={(body) => change.mutate({ id: e.id, body })} />
                 ) : (
@@ -382,7 +382,7 @@ export default function WebhooksPage() {
                           {e.lastOkAt ? ` · ${say("آخر وصول|Last arrived|הגיע לאחרונה")}: ${when(e.lastOkAt, lang)}` : ""}
                         </div>
                         {e.lastError && (!e.lastOkAt || (e.lastErrorAt ?? "") > e.lastOkAt) ? (
-                          <div className="mt-1.5 break-words text-xs text-red-200" data-testid={`error-${e.id}`}>
+                          <div className="mt-1.5 wrap-break-word text-xs text-red-200" data-testid={`error-${e.id}`}>
                             {`${say("آخر مشكلة|Last problem|הבעיה האחרונה")} (${when(e.lastErrorAt, lang)}): ${errorText(e.lastError, lang)}`}
                           </div>
                         ) : null}

@@ -627,7 +627,7 @@ T(29, "Matrix Code", "Cyberpunk", () => (
         </text>
       ))}
     </svg>
-    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/70"/>
+    <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/40 to-black/70"/>
     <div className="absolute inset-0 flex items-center justify-center"><div className="text-center">
       <h2 className="text-4xl font-black" style={{ color: "#00ff41", textShadow: "0 0 20px #00ff41" }}>THE MATRIX</h2>
       <p className="text-green-400/40 text-sm font-mono mt-2">Follow the white rabbit</p>
@@ -1001,7 +1001,7 @@ export default function ThemeGallery() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <input type="text" placeholder="Search themes..." value={search} onChange={e => setSearch(e.target.value)} className="text-sm rounded-xl px-4 py-2 w-48 outline-none" style={{ background: "rgba(255,255,255,0.04)", color: "white", border: "1px solid rgba(255,255,255,0.06)" }}/>
+              <input type="text" placeholder="Search themes..." value={search} onChange={e => setSearch(e.target.value)} className="text-sm rounded-xl px-4 py-2 w-48 outline-hidden" style={{ background: "rgba(255,255,255,0.04)", color: "white", border: "1px solid rgba(255,255,255,0.06)" }}/>
               <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
                 {[1,2].map(n => <button key={n} onClick={() => setCols(n)} className="px-3 py-1.5 text-xs" style={{ background: cols===n ? "rgba(255,255,255,0.08)" : "transparent", color: cols===n ? "white" : "#444" }}>{n===1?"List":"Grid"}</button>)}
               </div>

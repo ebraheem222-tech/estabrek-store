@@ -30,8 +30,8 @@ import { RelationInput } from "./RelationInput";
 import { draftLinks } from "./kinds";
 import { storeAreas } from "./storeLinks";
 
-const card = "rounded-2xl border border-white/10 bg-white/[0.03]";
-const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+const card = "rounded-2xl border border-white/10 bg-white/3";
+const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 const danger = "rounded-lg bg-red-500/15 px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/25 disabled:opacity-40";
 const VIEWS: View[] = ["all", "draft", "published", "archived", "trash"];
@@ -116,7 +116,7 @@ export default function DataPage() {
                       aria-current={c.id === table.id}
                       data-testid={`${group.prefix}-${c.slug}`}
                       // The store's are many: one line each in the side list (its name, then how many rows).
-                      className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${group.small ? "lg:flex lg:items-baseline lg:justify-between lg:gap-3 lg:py-1.5" : ""} ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}
+                      className={`shrink-0 rounded-xl border px-3 py-2 text-start text-sm ${group.small ? "lg:flex lg:items-baseline lg:justify-between lg:gap-3 lg:py-1.5" : ""} ${c.id === table.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/10 bg-white/3 hover:bg-white/6"}`}
                     >
                       <span className="block truncate font-medium">{words(c.name, lang) || c.slug}</span>
                       <span className="block shrink-0 text-xs text-white/50">{`${c.items.toLocaleString("en")} ${say("سطر|rows|שורות")}`}</span>
@@ -291,7 +291,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
         </button>
         {readOnly ? (
           <>
-            <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-white/70" data-testid="data-read-only">
+            <span className="rounded-full bg-white/6 px-2.5 py-1 text-xs text-white/70" data-testid="data-read-only">
               {storeCells.length
                 ? `${say("بيتعدّل هون (كبستين عالخانة):|Changed here (double-click the cell):|ניתן לשנות כאן (לחיצה כפולה על התא):")} ${columns.filter((c) => storeCells.includes(c.id)).map((c) => c.name).join(lang === "ar" ? "، " : ", ")}. ${say("الباقي من صفحته|The rest on its own page|השאר בדף שלו")}`
                 : say("للعرض بس: التعديل من صفحته|To look at: it's changed from its own page|לצפייה בלבד: העריכה מהדף שלו")}
@@ -423,7 +423,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
 
       <div className="overflow-x-auto border-t border-white/10">
         <table className="w-full min-w-max text-sm" data-testid="data-table">
-          <thead className="bg-white/[0.04] text-xs text-white/60">
+          <thead className="bg-white/4 text-xs text-white/60">
             <tr>
               <th className={`w-9 px-3 py-2 ${readOnly ? "hidden" : ""}`}>
                 <input
@@ -459,7 +459,7 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
           </thead>
           <tbody>
             {pageRows.map((row) => (
-              <tr key={row.id} className={`border-t border-white/[0.06] ${picked.has(row.id) || allMatching ? "bg-accent-500/[0.06]" : "hover:bg-white/[0.03]"}`} data-testid={`row-${row.slug}`}>
+              <tr key={row.id} className={`border-t border-white/6 ${picked.has(row.id) || allMatching ? "bg-accent-500/6" : "hover:bg-white/3"}`} data-testid={`row-${row.slug}`}>
                 <td className={`px-3 py-1.5 ${readOnly ? "hidden" : ""}`}>
                   <input
                     type="checkbox"
@@ -515,13 +515,13 @@ function TableGrid({ table, meta, lang }: { table: GridTable; meta: GridMeta; la
                 })}
                 <td className="px-2 py-1.5 text-end">
                   {!inTrash && !readOnly ? (
-                    <button type="button" className="rounded px-1.5 text-white/50 hover:bg-white/10 hover:text-white" onClick={() => setDrawer(row)} aria-label={say("افتح السطر|Open the row|פתח שורה")} data-testid={`open-${row.slug}`}>
+                    <button type="button" className="rounded-sm px-1.5 text-white/50 hover:bg-white/10 hover:text-white" onClick={() => setDrawer(row)} aria-label={say("افتح السطر|Open the row|פתח שורה")} data-testid={`open-${row.slug}`}>
                       ⤢
                     </button>
                   ) : null}
                   {/* One of the store's rows: its own page, where it is seen whole and changed. */}
                   {readOnly && storePage(table.slug, row.id, mayOpenRow) ? (
-                    <Link to={storePage(table.slug, row.id, mayOpenRow)!.to} className="inline-block rounded px-1.5 text-white/70 hover:bg-white/10 hover:text-white" aria-label={say("افتحه بصفحته|Open it on its own page|פתח בדף שלו")} title={say("افتحه بصفحته (للعرض الكامل والتعديل)|Open it on its own page (to see all of it and change it)|פתח בדף שלו (לצפייה מלאה ולעריכה)")} data-testid={`own-page-${row.slug}`}>
+                    <Link to={storePage(table.slug, row.id, mayOpenRow)!.to} className="inline-block rounded-sm px-1.5 text-white/70 hover:bg-white/10 hover:text-white" aria-label={say("افتحه بصفحته|Open it on its own page|פתח בדף שלו")} title={say("افتحه بصفحته (للعرض الكامل والتعديل)|Open it on its own page (to see all of it and change it)|פתח בדף שלו (לצפייה מלאה ולעריכה)")} data-testid={`own-page-${row.slug}`}>
                       ↗
                     </Link>
                   ) : null}
@@ -657,7 +657,7 @@ function FilterRow({ index, filter, columns, meta, lang, onChange }: { index: nu
           ))}
         </span>
       ) : null}
-      <button type="button" className="rounded px-1.5 text-white/50 hover:bg-white/10 hover:text-white" onClick={() => onChange(null)} aria-label={say("شيل الفلتر|Remove the filter|הסר סינון")} data-testid={`filter-${index}-remove`}>
+      <button type="button" className="rounded-sm px-1.5 text-white/50 hover:bg-white/10 hover:text-white" onClick={() => onChange(null)} aria-label={say("شيل الفلتر|Remove the filter|הסר סינון")} data-testid={`filter-${index}-remove`}>
         ×
       </button>
     </div>

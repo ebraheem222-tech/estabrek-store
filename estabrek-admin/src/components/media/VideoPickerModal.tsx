@@ -73,7 +73,7 @@ export function VideoPickerModal({
                 <button type="button" onClick={() => setChosen(v.id)} className="w-full overflow-hidden rounded-xl border border-white/10 text-start hover:border-white/20">
                   <div className="relative aspect-video bg-black/40">
                     {v.posterUrl ? <img src={v.posterUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
-                    <span className="absolute bottom-1.5 end-1.5 rounded bg-black/70 px-1 text-[11px] text-white">{durationText(v.durationMs)}</span>
+                    <span className="absolute bottom-1.5 inset-e-1.5 rounded-sm bg-black/70 px-1 text-[11px] text-white">{durationText(v.durationMs)}</span>
                   </div>
                   <div className="truncate p-2 text-xs">{v.displayName || tr("فيديو", "Video")}</div>
                 </button>

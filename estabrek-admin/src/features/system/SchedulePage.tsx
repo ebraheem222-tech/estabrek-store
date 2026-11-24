@@ -24,7 +24,7 @@ import { CAMPAIGN_STATUS_TEXT, campaignWhen, fromLocalInput, toLocalInput } from
 import { KIND_TEXT, STATUS_TEXT, payloadSummary, previewLineText, timelineGroups, whenText, type Names, type TimelineItem } from "./scheduleText";
 import { money } from "../../lib/money";
 
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const KEY = ["schedule"];
 const onError = (e: unknown) => toast.error("ما زبط", { description: getApiErrorMessage(e) });
 const RIGHT: Record<ScheduleKind, string> = { theme: "settings:write", maintenance: "settings:write", announcement: "settings:write", motion: "system:write", cachePurge: "system:write", section: "pages:write" };
@@ -454,7 +454,7 @@ function ChangeForm({ draft, setDraft, options, names, canKind, onDone }: { draf
       </div>
 
       {lines ? (
-        <ul className="mt-4 space-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm" data-testid="schedule-preview">
+        <ul className="mt-4 space-y-1 rounded-xl border border-white/10 bg-white/3 p-3 text-sm" data-testid="schedule-preview">
           {lines.map((l) => (
             <li key={l.key}>{previewLineText(l, names)}</li>
           ))}

@@ -35,7 +35,7 @@ export function ProtectionSettings({ draft, update }: { draft: ComposerDraft; up
   const downloads = Number.isNaN(v.licenceDownloads) ? null : v.licenceDownloads ?? DEFAULT_DOWNLOADS;
   const devices = Number.isNaN(v.licenceDevices) ? null : v.licenceDevices ?? DEFAULT_DEVICES;
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] p-3 sm:p-4" data-testid="protection-settings">
+    <div className="mt-4 rounded-xl border border-white/8 p-3 sm:p-4" data-testid="protection-settings">
       <Toggle checked={p.on} onChange={(on) => set({ on })} label={<b className="text-white">{tr("🔒 منتج محمي (سكربتات، برامج، موديلات)", "🔒 Protected product (scripts, software, models)")}</b>} />
       <p className="mt-2 text-xs leading-6 text-white/55">
         {tr("كل قطعة بتنباع بتاخد", "Each piece sold gets")} <b className="text-white/75">{tr("سيريال خاص فيها", "its own serial")}</b>{tr("، والزبون بينزّل نسخة مشفّرة (ملف ZIP، كلمة السر هي السيريال) فيها علامة طلبه. بتنفتح بـ", ", and the customer downloads an encrypted copy (a ZIP file, the password is the serial) carrying their order's mark. It opens with")} <bdi dir="ltr">7-Zip</bdi> {tr("أو WinRAR.", "or WinRAR.")}
@@ -45,15 +45,15 @@ export function ProtectionSettings({ draft, update }: { draft: ComposerDraft; up
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="block">
               <span className="mb-1.5 block text-xs text-white/55">{tr("مدة التنزيل (ساعات)", "Download window (hours)")}</span>
-              <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[8rem] text-center", hours == null && "border-red-500/50")} value={p.hours} onChange={(e) => set({ hours: e.target.value })} placeholder={String(DEFAULT_HOURS)} aria-label={tr("مدة التنزيل بالساعات", "Download window in hours")} />
+              <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-32 text-center", hours == null && "border-red-500/50")} value={p.hours} onChange={(e) => set({ hours: e.target.value })} placeholder={String(DEFAULT_HOURS)} aria-label={tr("مدة التنزيل بالساعات", "Download window in hours")} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs text-white/55">{tr("كم مرة بينزّل بالسيريال", "Downloads per serial")}</span>
-              <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[8rem] text-center", downloads == null && "border-red-500/50")} value={p.downloads} onChange={(e) => set({ downloads: e.target.value })} placeholder={String(DEFAULT_DOWNLOADS)} aria-label={tr("عدد التنزيلات", "Number of downloads")} />
+              <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-32 text-center", downloads == null && "border-red-500/50")} value={p.downloads} onChange={(e) => set({ downloads: e.target.value })} placeholder={String(DEFAULT_DOWNLOADS)} aria-label={tr("عدد التنزيلات", "Number of downloads")} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs text-white/55">{tr("على كم جهاز (برنامج التشغيل)", "On how many devices (the launcher)")}</span>
-              <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[8rem] text-center", devices == null && "border-red-500/50")} value={p.devices ?? ""} onChange={(e) => set({ devices: e.target.value })} placeholder={String(DEFAULT_DEVICES)} aria-label={tr("عدد الأجهزة", "Number of devices")} />
+              <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-32 text-center", devices == null && "border-red-500/50")} value={p.devices ?? ""} onChange={(e) => set({ devices: e.target.value })} placeholder={String(DEFAULT_DEVICES)} aria-label={tr("عدد الأجهزة", "Number of devices")} />
             </label>
           </div>
           <p className={cn("mt-2 text-[11px]", hours == null || downloads == null || devices == null ? "text-red-400" : "text-white/45")} data-testid="protection-preview">
@@ -65,7 +65,7 @@ export function ProtectionSettings({ draft, update }: { draft: ComposerDraft; up
                   [windowLength(hours), timesText(downloads), devicesText(devices)],
                 )}
           </p>
-          <p className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-[11px] leading-5 text-white/50">
+          <p className="mt-2 rounded-lg bg-white/4 px-3 py-2 text-[11px] leading-5 text-white/50">
             {tr("العلامة بتخلّي أي نسخة مسرّبة معروفة لأي طلب، بس حد شاطر بيقدر يمسحها. برنامج التشغيل بيربط النسخة بالجهاز، بس أي برنامج بيشتغل على جهاز الزبون ممكن ينكسر لو حد مصمّم.", "The mark ties any leaked copy to its order, but someone skilled can remove it. The launcher binds the copy to the device, but any program running on the customer's device can be cracked by someone determined.")}
           </p>
         </>
@@ -124,7 +124,7 @@ function MasterFiles({ productId }: { productId: string }) {
   const locked = Boolean(q.data?.vault?.on && !q.data.vault.session);
   const [confirm, confirmDialog] = useConfirm();
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] p-3 sm:p-4" data-testid="protected-files">
+    <div className="mt-4 rounded-xl border border-white/8 p-3 sm:p-4" data-testid="protected-files">
       {confirmDialog}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-white">{tr("🔒 الملفات الأصلية (محفوظة مشفّرة عنا)", "🔒 The original files (kept encrypted with us)")}</span>
@@ -143,13 +143,13 @@ function MasterFiles({ productId }: { productId: string }) {
         </p>
       ) : null}
       {locked ? (
-        <p className="mb-2 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-white/65" data-testid="protected-locked">
+        <p className="mb-2 rounded-lg bg-white/4 px-3 py-2 text-xs text-white/65" data-testid="protected-locked">
           {tr("🔐 الملفات بالخزنة. للرفع أو الحذف", "🔐 The files are in the vault. To upload or delete,")} <Link to="/admin/system/vault" className="text-accent-300 hover:underline">{tr("لازم تنفتح الخزنة", "open the vault")}</Link> {tr("(20 دقيقة). البيع والتنزيل شغّالين بدونها.", "(20 minutes). Selling and downloads work without it.")}
         </p>
       ) : null}
 
       {files.length ? (
-        <ul className="divide-y divide-white/[0.06]" data-testid="protected-list">
+        <ul className="divide-y divide-white/6" data-testid="protected-list">
           {files.map((f) => {
             const where = placementText(f);
             return (
@@ -168,7 +168,7 @@ function MasterFiles({ productId }: { productId: string }) {
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 ps-7">
                   <span className="text-[11px] text-white/45">{[f.type, formatBytes(f.bytes)].filter(Boolean).join(" · ")}</span>
-                  <span className={cn("rounded-full px-2 py-0.5 text-[11px]", where.tone === "good" ? "bg-emerald-500/15 text-emerald-300" : "bg-white/[0.06] text-white/60")}>{where.text}</span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[11px]", where.tone === "good" ? "bg-emerald-500/15 text-emerald-300" : "bg-white/6 text-white/60")}>{where.text}</span>
                   {f.storedIn ? <span className="text-[11px] text-white/40">{f.storedIn === "vault" ? tr("🔐 بالخزنة", "🔐 In the vault") : tr("🗄️ بقاعدة البيانات", "🗄️ In the database")}</span> : null}
                 </div>
               </li>
@@ -241,7 +241,7 @@ function FileTypesModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {form ? (
-          <div className="space-y-3 rounded-xl bg-white/[0.04] p-3" data-testid="type-form">
+          <div className="space-y-3 rounded-xl bg-white/4 p-3" data-testid="type-form">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr]">
               <label className="block">
                 <span className="mb-1 block text-xs text-white/55">{tr("الامتداد", "Extension")}</span>
@@ -286,7 +286,7 @@ function FileTypesModal({ onClose }: { onClose: () => void }) {
           </div>
         ) : null}
 
-        <ul className="max-h-[50vh] divide-y divide-white/[0.06] overflow-auto" data-testid="types-list">
+        <ul className="max-h-[50vh] divide-y divide-white/6 overflow-auto" data-testid="types-list">
           {list.map((t) => (
             <li key={t.ext} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
               <span dir="ltr" className="w-16 shrink-0 font-mono text-xs text-white">.{t.ext}</span>
@@ -338,7 +338,7 @@ function TraceModal({ onClose }: { onClose: () => void }) {
           result.found.length ? (
             <ul className="space-y-2" data-testid="trace-found">
               {result.found.map((r) => (
-                <li key={r.markId} className="rounded-xl bg-white/[0.04] p-3 text-xs leading-6 text-white/75">
+                <li key={r.markId} className="rounded-xl bg-white/4 p-3 text-xs leading-6 text-white/75">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <b className="text-sm text-white">{r.product.title}</b>
                     <Link to={`/admin/orders/${r.order.id}`} className="text-accent-300 hover:underline">
@@ -356,7 +356,7 @@ function TraceModal({ onClose }: { onClose: () => void }) {
               ))}
             </ul>
           ) : (
-            <p className="rounded-xl bg-white/[0.04] p-3 text-xs text-white/60" data-testid="trace-none">
+            <p className="rounded-xl bg-white/4 p-3 text-xs text-white/60" data-testid="trace-none">
               {result.marks.length ? tr("فيه علامة بس مش لطلب عنا (يمكن مزوّرة).", "There's a mark, but not from one of our orders (maybe forged).") : tr("ما لقينا علامة طلب بهالملف. يمكن انمسحت، أو الملف مش من عنا.", "No order mark found in this file. It may have been removed, or the file isn't ours.")}
             </p>
           )

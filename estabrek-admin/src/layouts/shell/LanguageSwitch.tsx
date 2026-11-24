@@ -53,12 +53,12 @@ export function LanguageSwitch({ className }: { className?: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={tr("لغة لوحة الإدارة", "Admin language")}
-        className="grid h-9 min-w-9 place-items-center rounded-xl border border-white/10 px-2 text-xs font-semibold text-white/70 hover:bg-white/[0.06] disabled:opacity-60"
+        className="grid h-9 min-w-9 place-items-center rounded-xl border border-white/10 px-2 text-xs font-semibold text-white/70 hover:bg-white/6 disabled:opacity-60"
       >
         <span lang={lang}>{SHORT[lang]}</span>
       </button>
       {open ? (
-        <div role="menu" className="absolute end-0 z-50 mt-2 w-40 overflow-hidden rounded-xl border border-white/10 bg-surface-900/95 p-1 shadow-xl backdrop-blur-xl">
+        <div role="menu" className="absolute inset-e-0 z-50 mt-2 w-40 overflow-hidden rounded-xl border border-white/10 bg-surface-900/95 p-1 shadow-xl backdrop-blur-xl">
           {ADMIN_LANGS.map((l) => (
             <button
               key={l}
@@ -68,7 +68,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
               onClick={() => void choose(l)}
               lang={l}
               dir={l === "en" ? "ltr" : "rtl"}
-              className={cn("flex min-h-10 w-full items-center justify-between rounded-lg px-3 text-sm", l === lang ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/[0.06]")}
+              className={cn("flex min-h-10 w-full items-center justify-between rounded-lg px-3 text-sm", l === lang ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/6")}
             >
               {LANG_LABEL[l]}
               {l === lang ? <span aria-hidden="true">✓</span> : null}

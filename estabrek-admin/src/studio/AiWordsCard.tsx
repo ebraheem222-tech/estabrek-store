@@ -14,8 +14,8 @@ export type AiWordsKind = "heading" | "text" | "button" | "picture";
 export type AiWordsAction = "write" | "improve" | "shorter" | "longer" | "translate" | "describe";
 export type AiWordsAsk = (action: AiWordsAction, more: { about?: string; to?: Lang }) => Promise<string[]>;
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const input = "w-full min-w-0 rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const input = "w-full min-w-0 rounded-md border border-white/10 bg-surface-925 px-1.5 py-1 text-xs text-white";
 const LANG_WORD: Record<Lang, string> = { ar: "العربي|Arabic|ערבית", en: "الإنجليزي|English|אנגלית", he: "العبري|Hebrew|עברית" };
 
 /** Plain words of what an element holds (its formatting's tags taken off), for the model. */
@@ -49,7 +49,7 @@ export function AiWordsCard({ kind, lang, others, text, status, busy, ask, onPic
   };
   const waiting = Boolean(state.working);
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-2" data-testid="studio-ai-words" data-kind={kind} data-status={status}>
+    <div className="space-y-2 rounded-xl border border-white/8 p-2" data-testid="studio-ai-words" data-kind={kind} data-status={status}>
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/80">🤖 {kind === "picture" ? say("وصف الصورة بالذكاء|The picture's description, with AI|תיאור התמונה עם AI") : say("كتابة بالذكاء|Writing with AI|כתיבה עם AI")}</div>
         <button type="button" className="px-1 text-white/50 hover:text-white" aria-label={say("سكّر|Close|סגור")} onClick={onClose} data-testid="studio-ai-close">×</button>
@@ -97,7 +97,7 @@ export function AiWordsCard({ kind, lang, others, text, status, busy, ask, onPic
             {state.for && state.for !== lang ? `${say("اختار واحد: بينحط بكلام|Pick one: it goes into the words in|בחר אחד: ייכנס למילים ב")} ${say(LANG_WORD[state.for])}` : say("اختار واحد بينحط مكان الكلام (بتقدر تتراجع):|Pick one to take the words' place (it can be undone):|בחר אחד שיחליף את המילים (אפשר לבטל):")}
           </div>
           {state.options.map((o) => (
-            <button key={o} type="button" dir="auto" className="block w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-start text-xs leading-5 text-white/90 hover:bg-white/[0.1] disabled:opacity-40" disabled={busy} onClick={() => onPick(o, state.for ?? lang)} data-testid="studio-ai-option">
+            <button key={o} type="button" dir="auto" className="block w-full rounded-lg border border-white/8 bg-white/4 px-2 py-1.5 text-start text-xs leading-5 text-white/90 hover:bg-white/10 disabled:opacity-40" disabled={busy} onClick={() => onPick(o, state.for ?? lang)} data-testid="studio-ai-option">
               {o}
             </button>
           ))}

@@ -234,7 +234,7 @@ export default function SetupWizard() {
 
   return (
     <div className="min-h-screen bg-surface-950 text-white" data-testid="setup-wizard">
-      <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-white/[0.08] bg-surface-950/90 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-white/8 bg-surface-950/90 px-4 py-3 backdrop-blur-sm">
         <div className="text-sm font-semibold">{tr("إعداد المتجر", "Store setup")}</div>
         <ol className="flex flex-1 flex-wrap justify-center gap-1 text-[11px]" aria-label={tr("الخطوات", "Steps")}>
           {steps.map((s, i) => (
@@ -267,7 +267,7 @@ export default function SetupWizard() {
                   {l !== "ar" ? <span className="text-white/35"> · {tr("اختياري", "optional")}</span> : null}
                 </span>
                 <input
-                  className="w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-sm outline-none focus:border-accent-400"
+                  className="w-full rounded-xl border border-white/10 bg-white/4 px-3 py-2.5 text-sm outline-hidden focus:border-accent-400"
                   dir={l === "en" ? "ltr" : "rtl"}
                   value={name[l]}
                   maxLength={60}
@@ -326,7 +326,7 @@ export default function SetupWizard() {
                   role="radio"
                   aria-checked={pack?.id === p.id}
                   onClick={() => pickPack(p)}
-                  className={`flex flex-col items-start gap-1 rounded-2xl border p-4 text-start transition ${pack?.id === p.id ? "border-accent-400 bg-accent-500/15" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.2]"}`}
+                  className={`flex flex-col items-start gap-1 rounded-2xl border p-4 text-start transition ${pack?.id === p.id ? "border-accent-400 bg-accent-500/15" : "border-white/8 bg-white/3 hover:border-white/20"}`}
                   data-testid={`setup-pack-${p.id}`}
                 >
                   <span className="text-2xl" aria-hidden>
@@ -360,7 +360,7 @@ export default function SetupWizard() {
               <div className="flex items-center gap-2 text-xs" role="radiogroup" aria-label={tr("فاتح أو غامق", "Light or dark")}>
                 <span className="text-white/55">{tr("الألوان:", "Colours:")}</span>
                 {chosen.modes.map((m) => (
-                  <button key={m} type="button" role="radio" aria-checked={(mode ?? chosen.mode) === m} onClick={() => setMode(m)} className={`rounded-full px-3 py-1 ${(mode ?? chosen.mode) === m ? "bg-white/[0.16]" : "bg-white/[0.05] text-white/60"}`}>
+                  <button key={m} type="button" role="radio" aria-checked={(mode ?? chosen.mode) === m} onClick={() => setMode(m)} className={`rounded-full px-3 py-1 ${(mode ?? chosen.mode) === m ? "bg-white/16" : "bg-white/5 text-white/60"}`}>
                     {m === "light" ? tr("فاتح", "Light") : tr("غامق", "Dark")}
                   </button>
                 ))}
@@ -418,8 +418,8 @@ export default function SetupWizard() {
               <NextStep to="/admin/catalog/products/new" title={tr("أضف أول منتج", "Add your first product")} hint={tr("بأنواع المنتجات الجاهزة", "With the ready product types")} />
               <NextStep to="/admin" title={tr("لوحة التحكم", "Dashboard")} hint={tr("كل الإعدادات", "Everything else")} />
             </div>
-            <div className="overflow-hidden rounded-2xl border border-white/[0.08]">
-              <div className="flex items-center justify-between border-b border-white/[0.08] px-3 py-2 text-xs text-white/50">
+            <div className="overflow-hidden rounded-2xl border border-white/8">
+              <div className="flex items-center justify-between border-b border-white/8 px-3 py-2 text-xs text-white/50">
                 <span>{tr("متجرك الآن", "Your store now")}</span>
                 <a href={`${shopOrigin()}/`} target="_blank" rel="noreferrer" className="text-accent-300 hover:underline">
                   {tr("افتح بصفحة جديدة", "Open in a new tab")}
@@ -432,7 +432,7 @@ export default function SetupWizard() {
       </main>
 
       {step !== "done" ? (
-        <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/[0.08] bg-surface-950/90 px-4 py-3 backdrop-blur">
+        <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/8 bg-surface-950/90 px-4 py-3 backdrop-blur-sm">
           <Button variant="ghost" size="sm" onClick={back} disabled={step === steps[0] || busy || Boolean(siteRun?.done.length)}>
             {tr("رجوع", "Back")}
           </Button>
@@ -462,7 +462,7 @@ function ThemeCard(p: { name: string; blurb: string; swatch: string[]; three?: b
       role="radio"
       aria-checked={p.picked}
       onClick={p.onPick}
-      className={`overflow-hidden rounded-2xl border text-start transition ${p.picked ? "border-accent-400 ring-2 ring-accent-500/30" : "border-white/[0.08] hover:border-white/[0.2]"}`}
+      className={`overflow-hidden rounded-2xl border text-start transition ${p.picked ? "border-accent-400 ring-2 ring-accent-500/30" : "border-white/8 hover:border-white/20"}`}
       data-testid={p.testId}
     >
       <div className="flex h-16" aria-hidden>
@@ -474,7 +474,7 @@ function ThemeCard(p: { name: string; blurb: string; swatch: string[]; three?: b
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-sm font-semibold">{p.name}</span>
           {p.recommended ? <span className="rounded-full bg-accent-500/20 px-2 py-0.5 text-[10px] text-accent-100">{tr("موصى فيه", "Recommended")}</span> : null}
-          {p.three ? <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] text-white/70">3D</span> : null}
+          {p.three ? <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/70">3D</span> : null}
         </div>
         <p className="text-[11px] leading-5 text-white/50">{p.blurb}</p>
       </div>
@@ -484,7 +484,7 @@ function ThemeCard(p: { name: string; blurb: string; swatch: string[]; three?: b
 
 function Check(p: { id: string; on: boolean; locked?: boolean; onChange: (v: boolean) => void; title: string; children?: ReactNode }) {
   return (
-    <label className={`block rounded-2xl border p-4 ${p.on ? "border-accent-400/50 bg-accent-500/[0.06]" : "border-white/[0.08]"}`}>
+    <label className={`block rounded-2xl border p-4 ${p.on ? "border-accent-400/50 bg-accent-500/6" : "border-white/8"}`}>
       <span className="flex items-center gap-2 text-sm font-semibold">
         <input type="checkbox" checked={p.on} disabled={p.locked} onChange={(e) => p.onChange(e.target.checked)} data-testid={`setup-include-${p.id}`} />
         {p.title}
@@ -498,7 +498,7 @@ function Chips({ items }: { items: string[] }) {
   return (
     <span className="flex flex-wrap gap-1.5">
       {items.map((x) => (
-        <span key={x} className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] text-white/70">
+        <span key={x} className="rounded-full bg-white/6 px-2.5 py-1 text-[11px] text-white/70">
           {x}
         </span>
       ))}
@@ -508,7 +508,7 @@ function Chips({ items }: { items: string[] }) {
 
 function NextStep({ to, title, hint }: { to: string; title: string; hint: string }) {
   return (
-    <Link to={to} className="block rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 hover:border-accent-400/60">
+    <Link to={to} className="block rounded-2xl border border-white/8 bg-white/3 p-4 hover:border-accent-400/60">
       <span className="block text-sm font-semibold">{title}</span>
       <span className="mt-1 block text-[11px] text-white/45">{hint}</span>
     </Link>

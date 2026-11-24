@@ -9,7 +9,7 @@ import { say } from "./say";
 import { marksOf, type ShowIf } from "./settingMarksOf";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
 
 /** What the shop does with it, in words. */
 function showsWhen(s: ShowIf): string {
@@ -29,7 +29,7 @@ export function SettingMarks({ node, busy, onOps }: { node: PageTreeNode; busy: 
     onOps(say("فكّ الربط بإعداد الموقع|Untie from the site's setting|ניתוק מהגדרת האתר"), [{ op: "setProps", nodeId: node.id, props: rest }]);
   };
   return (
-    <div className="space-y-2 rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-3 text-[11px] leading-4 text-sky-100/90" data-testid="studio-setting-marks">
+    <div className="space-y-2 rounded-xl border border-sky-400/20 bg-sky-400/6 p-3 text-[11px] leading-4 text-sky-100/90" data-testid="studio-setting-marks">
       <div className="text-xs font-medium text-sky-100">{say("مربوط بإعدادات الموقع|Tied to the site's settings|מחובר להגדרות האתר")}</div>
       {showIf ? (
         <div className="flex items-start justify-between gap-2" data-testid="studio-setting-show" data-setting={showIf.setting}>

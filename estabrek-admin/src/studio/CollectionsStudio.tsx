@@ -21,8 +21,8 @@ import type { TreeIndex } from "./treeIndex";
 
 export const useCollections = () => useQuery({ queryKey: ["collections"], queryFn: listCollections, staleTime: 30_000, retry: false });
 
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
-const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
+const control = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 const words = (v: Local | undefined, lang: Lang) => v?.[lang] || v?.ar || v?.en || v?.he || "";
 const PROP_NAME: Record<string, string> = { text: "الكلام|The words|הטקסט", label: "كلام الزر|The button's words|טקסט הכפתור", href: "الرابط|The link|הקישור", src: "الصورة|The picture|התמונה", alt: "وصف الصورة|Picture description|תיאור התמונה" };
 

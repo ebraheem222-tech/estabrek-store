@@ -17,7 +17,7 @@ import type { PayRow, PayStatus } from "../../api/paymentRequests.api";
 import { PAY_STATUS_NAME, PAY_STATUS_TONE, moneyText, payWhen } from "./paymentsText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 const TABS: Array<PayStatus | "ALL"> = ["PENDING", "PAID", "EXPIRED", "CANCELLED", "ALL"];
 
 export default function PaymentRequestsPage() {
@@ -103,7 +103,7 @@ export default function PaymentRequestsPage() {
           ) : rows.length === 0 ? (
             <p className="py-6 text-center text-sm text-white/60" data-testid="payments-empty">{say("ما في دفعات هون.|No payments here.|אין כאן תשלומים.")}</p>
           ) : (
-            <ul className="divide-y divide-white/[0.06]" data-testid="payments-list">
+            <ul className="divide-y divide-white/6" data-testid="payments-list">
               {rows.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-start gap-3 py-3" data-testid={`payment-${r.id}`} data-status={r.status}>
                   <div className="min-w-0 flex-1">

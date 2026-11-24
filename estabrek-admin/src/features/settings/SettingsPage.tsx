@@ -1406,7 +1406,7 @@ export default function SettingsPage() {
             {isImageIcon ? (
               <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                 {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                <img src={iconValue} className="h-5 w-5 rounded object-contain" />
+                <img src={iconValue} className="h-5 w-5 rounded-sm object-contain" />
                 <span className="text-xs text-white/60">معاينة أيقونة الصورة</span>
               </div>
             ) : null}
@@ -1677,7 +1677,7 @@ export default function SettingsPage() {
               <CardHeader title="CSS مخصص" subtitle="يُطبق على واجهة المتجر العامة." />
               <CardContent>
                 <textarea
-                  className="min-h-[160px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 focus:border-white/20"
+                  className="min-h-[160px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 focus:border-white/20"
                   value={customCss}
                   onChange={(e) => setCustomCss(e.target.value)}
                   placeholder="/* اكتب CSS هنا */"
@@ -2131,7 +2131,7 @@ export default function SettingsPage() {
                       <label className="mb-2 block text-sm font-medium">JSON الهيدر (متقدم)</label>
                       <textarea
                         className={
-                          "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 " +
+                          "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 " +
                           (errors.headerJson ? "border-red-400/40 focus:border-red-300/50" : "border-white/10 focus:border-white/20")
                         }
                         value={headerJsonDraft}
@@ -2207,7 +2207,7 @@ export default function SettingsPage() {
                       <div>
                         <label className="mb-2 block text-sm font-medium">النص</label>
                         <textarea
-                          className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 focus:border-white/20"
+                          className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 focus:border-white/20"
                           value={footerCfg.about.text}
                           onChange={(e) => setFooterCfg((p) => ({ ...p, about: { ...p.about, text: e.target.value } }))}
                           placeholder="اكتب نبذة قصيرة..."
@@ -2538,7 +2538,7 @@ export default function SettingsPage() {
                     <label className="mb-2 block text-sm font-medium">JSON الفوتر (متقدم)</label>
                     <textarea
                       className={
-                        "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 " +
+                        "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 " +
                         (errors.footerJson ? "border-red-400/40 focus:border-red-300/50" : "border-white/10 focus:border-white/20")
                       }
                       value={footerJsonDraft}
@@ -3305,7 +3305,7 @@ export default function SettingsPage() {
                 <label className="mb-2 block text-sm font-medium">Scripts في &lt;head&gt; (JSON Array)</label>
                 <textarea
                   className={
-                    "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 " +
+                    "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 " +
                     (errors.scriptsHead ? "border-red-400/40 focus:border-red-300/50" : "border-white/10 focus:border-white/20")
                   }
                   value={scriptsHeadText}
@@ -3322,7 +3322,7 @@ export default function SettingsPage() {
                 <label className="mb-2 block text-sm font-medium">Scripts قبل &lt;/body&gt; (JSON Array)</label>
                 <textarea
                   className={
-                    "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 " +
+                    "min-h-[220px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 " +
                     (errors.scriptsBody ? "border-red-400/40 focus:border-red-300/50" : "border-white/10 focus:border-white/20")
                   }
                   value={scriptsBodyText}
@@ -3349,7 +3349,7 @@ export default function SettingsPage() {
               <SettingsHistoryCard />
             </SettingsSection>
 
-            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur">
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur-sm">
               <span className="text-xs text-white/55">الحفظ يشمل كل الأقسام، وتُحفظ نسخة من الإعدادات السابقة في «السجل».</span>
               <Button variant="primary" onClick={onSave} disabled={!canSave} isLoading={actions.updateSettings.isPending}>
                 حفظ

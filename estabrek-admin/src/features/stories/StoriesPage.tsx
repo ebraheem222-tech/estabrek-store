@@ -24,10 +24,10 @@ import { adminLang } from "../../lib/lang";
 import { anyWords, fromLocalBox, inputOf, moved, newSlide, reelState, toLocalBox, withWords, wordsIn } from "./storiesText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
-const small = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
+const small = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 /** A choice among a few (the one picked stands out). */
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-xs disabled:opacity-40 ${on ? "bg-accent-500/30 font-semibold ring-1 ring-accent-400/60" : "bg-white/[0.06] hover:bg-white/[0.1]"}`;
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-xs disabled:opacity-40 ${on ? "bg-accent-500/30 font-semibold ring-1 ring-accent-400/60" : "bg-white/6 hover:bg-white/10"}`;
 const LANGS: Array<[keyof StoryWords, string]> = [["ar", "عربي"], ["en", "English"], ["he", "עברית"]];
 const SAFE_LINK = /^(\/(?!\/)|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i;
 const STATE: Record<ReturnType<typeof reelState>, [string, "success" | "default" | "warning" | "danger"]> = {
@@ -85,7 +85,7 @@ export default function StoriesPage() {
               const [stateWords, variant] = STATE[reelState(r)];
               const cover = r.cover ?? r.slides.find((s) => s.kind === "image")?.src ?? r.slides[0]?.poster ?? null;
               return (
-                <div key={r.id} className={`flex items-center gap-3 rounded-xl border p-2 ${chosen === r.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/[0.06]"}`} data-reel={r.id}>
+                <div key={r.id} className={`flex items-center gap-3 rounded-xl border p-2 ${chosen === r.id ? "border-accent-500/60 bg-accent-500/10" : "border-white/6"}`} data-reel={r.id}>
                   <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-start" onClick={() => setChosen(r.id)} data-testid="stories-open">
                     <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-accent-400/70 bg-white/[0.06]">
                       {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <span className="text-white/40">◌</span>}
@@ -317,7 +317,7 @@ function ProductChooser({ products, loading, onPick }: { products: Array<{ id: s
       {loading ? <div className="flex items-center gap-2"><Spinner /> …</div> : (
         <ul className="max-h-52 overflow-auto rounded-xl border border-white/10">
           {found.map((p) => (
-            <li key={p.id}><button type="button" onClick={() => onPick(p.id)} className="block w-full px-3 py-2 text-start text-sm hover:bg-white/[0.05]">{p.title}</button></li>
+            <li key={p.id}><button type="button" onClick={() => onPick(p.id)} className="block w-full px-3 py-2 text-start text-sm hover:bg-white/5">{p.title}</button></li>
           ))}
           {!found.length ? <li className="px-3 py-2 text-white/45">{say("ما في قطعة بهالاسم.|No piece with this name.|אין פריט בשם הזה.")}</li> : null}
         </ul>

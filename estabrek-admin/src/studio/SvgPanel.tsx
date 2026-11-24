@@ -19,7 +19,7 @@ import { IconPicker } from "./IconPicker";
 import { iconAsDrawing, iconShown } from "./iconLibrary";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 const SHOWN: Record<string, string> = {
   text: "#3b2530", muted: "#8d7380", accent: "#c86b98", "accent-soft": "#f6d6e4", "accent-contrast": "#ffffff",
   bg: "#fff8f4", surface: "#ffffff", border: "#e7d6dd", white: "#ffffff", black: "#000000", transparent: "transparent",
@@ -103,15 +103,15 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
   const baseWidth = (((node.style ?? {}) as Record<string, Record<string, unknown>>).base ?? {}).width;
   const shownWidth = typeof baseWidth === "string" && /^\d+px$/.test(baseWidth) ? parseInt(baseWidth, 10) : undefined;
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-svg">
+    <div className="space-y-3 rounded-xl border border-white/8 p-3" data-testid="studio-svg">
       <div className="text-xs font-medium text-white/70">{tr("الرسمة", "Drawing")}</div>
-      {art ? <ArtView art={art} className="mx-auto block h-24 w-full rounded-lg bg-white/[0.92] p-2" /> : null}
+      {art ? <ArtView art={art} className="mx-auto block h-24 w-full rounded-lg bg-white/92 p-2" /> : null}
       <div className="grid grid-cols-4 gap-1" role="group" aria-label={tr("رسمات جاهزة", "Ready drawings")} data-testid="studio-svg-shapes">
         {SHAPES.map((s) => (
           <button
             key={s.key} type="button" disabled={busy} title={s.label()} aria-label={s.label()} aria-pressed={p.shape === s.key}
             onClick={() => setProps(s.label(), { shape: s.key, knobs: defaultsOf(s), art: s.make(defaultsOf(s)) })}
-            className={`rounded-lg border p-1 ${p.shape === s.key ? "border-accent-400/70 bg-white/[0.9]" : "border-white/[0.08] bg-white/[0.75] hover:bg-white/[0.9]"} disabled:opacity-40`}
+            className={`rounded-lg border p-1 ${p.shape === s.key ? "border-accent-400/70 bg-white/90" : "border-white/8 bg-white/75 hover:bg-white/90"} disabled:opacity-40`}
             data-shape={s.key}
           >
             <ArtView art={s.make(defaultsOf(s))} className="block h-8 w-full" />
@@ -150,12 +150,12 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
         </div>
       ) : null}
 
-      <details className="rounded-lg border border-white/[0.06] px-2 py-1.5" data-testid="studio-svg-own">
+      <details className="rounded-lg border border-white/6 px-2 py-1.5" data-testid="studio-svg-own">
         <summary className="cursor-pointer select-none text-[11px] font-medium text-white/70">{tr("رسمتك (ملف SVG)", "Your own (an SVG file)")}</summary>
         <div className="mt-2 space-y-2">
           <label className="block text-[11px] text-white/55">
             {tr("الصق كود SVG", "Paste SVG code")}
-            <textarea dir="ltr" className="mt-1 min-h-[72px] w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 font-mono text-[11px] text-white" value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="<svg viewBox=…>…</svg>" data-testid="studio-svg-paste" />
+            <textarea dir="ltr" className="mt-1 min-h-[72px] w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 font-mono text-[11px] text-white" value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="<svg viewBox=…>…</svg>" data-testid="studio-svg-paste" />
           </label>
           <div className="flex flex-wrap gap-1">
             <button type="button" className={btn} disabled={busy || !paste.trim()} onClick={() => take(paste)} data-testid="studio-svg-take">{tr("استعمال الكود", "Use the code")}</button>

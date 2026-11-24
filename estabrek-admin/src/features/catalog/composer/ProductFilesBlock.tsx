@@ -86,7 +86,7 @@ function FilesEditor({ productId }: { productId: string }) {
 
   const [confirm, confirmDialog] = useConfirm();
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] p-3 sm:p-4" data-testid="product-files">
+    <div className="mt-4 rounded-xl border border-white/8 p-3 sm:p-4" data-testid="product-files">
       {confirmDialog}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-white">{tr("⬇️ الملفات اللي بينزّلها الزبون", "⬇️ Files the customer downloads")}</span>
@@ -95,7 +95,7 @@ function FilesEditor({ productId }: { productId: string }) {
       {q.data && !q.data.storageReady ? <p className="mb-2 text-xs text-amber-300">{tr("تخزين الملفات (Cloudinary) مش مضبوط بالسيرفر، فبس الروابط بتشتغل.", "File storage (Cloudinary) isn't set up on the server, so only links work.")}</p> : null}
 
       {files.length ? (
-        <ul className="divide-y divide-white/[0.06]">
+        <ul className="divide-y divide-white/6">
           {files.map((f) => (
             <FileRow key={f.id} f={f} onRename={(name) => rename.mutate({ id: f.id, name })} onOpen={() => void open(f)} onRemove={async () => { if (await confirm({ title: tr(`حذف «${f.name}»؟`, "Delete “{0}”?", [f.name]), message: tr("الزبائن اللي اشتروا ما رح يقدروا ينزّلوه.", "Customers who bought it won't be able to download it."), confirmText: tr("حذف الملف", "Delete file") })) remove.mutate(f.id); }} />
           ))}
@@ -127,7 +127,7 @@ function FilesEditor({ productId }: { productId: string }) {
         <div className="mt-3 flex flex-wrap gap-2">
           <input ref={input} type="file" multiple className="hidden" onChange={(e) => void upload(e.target.files)} data-testid="product-file-input" />
           <button type="button" disabled={Boolean(progress) || q.data?.storageReady === false} onClick={() => input.current?.click()} className="h-10 rounded-xl bg-accent-500/20 px-4 text-sm text-white hover:bg-accent-500/30 disabled:opacity-50">{tr("+ رفع ملف", "+ Upload a file")}</button>
-          <button type="button" onClick={() => setLink({ name: "", url: "" })} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{tr("+ رابط (لملف كبير)", "+ Link (for a big file)")}</button>
+          <button type="button" onClick={() => setLink({ name: "", url: "" })} className="h-10 rounded-xl border border-white/10 px-4 text-sm text-white/80 hover:bg-white/6">{tr("+ رابط (لملف كبير)", "+ Link (for a big file)")}</button>
         </div>
       )}
     </div>
@@ -140,7 +140,7 @@ function FileRow({ f, onRename, onOpen, onRemove }: { f: ProductFile; onRename: 
     <li className="flex flex-wrap items-center gap-2 py-2">
       <span className="text-lg" aria-hidden>{f.kind === "link" ? "🔗" : "📄"}</span>
       <input
-        className="h-9 min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 text-sm text-white hover:border-white/10 focus:border-white/20 focus:outline-none"
+        className="h-9 min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 text-sm text-white hover:border-white/10 focus:border-white/20 focus:outline-hidden"
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={() => { const v = name.trim(); if (v && v !== f.name) onRename(v); else setName(f.name); }}

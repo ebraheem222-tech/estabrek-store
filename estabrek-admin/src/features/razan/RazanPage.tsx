@@ -21,7 +21,7 @@ import { adminLang } from "../../lib/lang";
 import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 export default function RazanPage() {
   const q = useQuery({ queryKey: ["razan"], queryFn: RazanAPI.getRazan });
@@ -260,7 +260,7 @@ function Editor({ saved, chatbotEnabled, storefrontUrl }: { saved: RazanSettings
       <Report />
 
       {canWrite ? (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur-sm lg:static lg:border-0 lg:bg-transparent lg:p-0">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-end gap-2">
             {dirty ? <span className="me-auto text-xs text-amber-200" role="status">{tr("في تغييرات مش محفوظة", "There are unsaved changes")}</span> : null}
             <Button variant="secondary" isLoading={preview.isPending} onClick={() => preview.mutate()}>

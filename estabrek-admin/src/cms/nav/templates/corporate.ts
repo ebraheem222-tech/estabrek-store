@@ -7,14 +7,14 @@ export const CORPORATE_NAV: NavTemplate[] = [
     nameAr: "شركات كلاسيكي",
     category: "corporate",
     styles: {
-      nav: "bg-white shadow-sm",
+      nav: "bg-white shadow-xs",
       container: "max-w-7xl mx-auto px-4 h-20 flex items-center justify-between",
       logo: "text-xl font-bold text-blue-900",
       links: "hidden md:flex items-center gap-8",
       link: "text-gray-600 text-sm font-medium transition-colors duration-200",
       linkHover: "hover:text-blue-600",
       linkActive: "text-blue-600",
-      button: "bg-blue-600 text-white px-5 py-2.5 rounded text-sm font-medium hover:bg-blue-700 transition-colors",
+      button: "bg-blue-600 text-white px-5 py-2.5 rounded-sm text-sm font-medium hover:bg-blue-700 transition-colors",
     },
   },
   {
@@ -55,7 +55,7 @@ export const CORPORATE_NAV: NavTemplate[] = [
     nameAr: "شركات احترافي",
     category: "corporate",
     styles: {
-      nav: "bg-gradient-to-r from-slate-800 to-slate-900",
+      nav: "bg-linear-to-r from-slate-800 to-slate-900",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -63,7 +63,7 @@ export const CORPORATE_NAV: NavTemplate[] = [
       linkHover: "hover:text-white",
       linkActive: "text-white border-b-2 border-blue-500 pb-1",
       button:
-        "bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-2 rounded text-sm font-medium hover:from-blue-600 hover:to-blue-700 transition-all",
+        "bg-linear-to-r from-blue-500 to-blue-600 text-white px-5 py-2 rounded-sm text-sm font-medium hover:from-blue-600 hover:to-blue-700 transition-all",
     },
   },
   {
@@ -79,7 +79,7 @@ export const CORPORATE_NAV: NavTemplate[] = [
       link: "text-emerald-200/70 text-sm font-medium transition-colors duration-200",
       linkHover: "hover:text-white",
       linkActive: "text-white",
-      button: "bg-emerald-500 text-white px-5 py-2 rounded text-sm font-medium hover:bg-emerald-400 transition-colors",
+      button: "bg-emerald-500 text-white px-5 py-2 rounded-sm text-sm font-medium hover:bg-emerald-400 transition-colors",
     },
   },
   {

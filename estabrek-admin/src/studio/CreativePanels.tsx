@@ -9,7 +9,7 @@ import { shownLook } from "./look";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Props = { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops };
-const box = "space-y-3 rounded-xl border border-white/[0.08] p-3";
+const box = "space-y-3 rounded-xl border border-white/8 p-3";
 const words = (value: unknown, lang: Lang) => value && typeof value === "object" ? String((value as Record<string, string>)[lang] ?? "") : "";
 const localized = (value: unknown, lang: Lang, text: string) => ({ ...(value && typeof value === "object" ? value : {}), [lang]: text });
 const toggle = (label: string, checked: boolean, busy: boolean, onSave: (value: boolean) => void, id: string) => <label className="flex items-center justify-between gap-3 text-xs"><span>{label}</span><input type="checkbox" checked={checked} disabled={busy} data-testid={id} onChange={event => onSave(event.target.checked)} /></label>;
@@ -46,7 +46,7 @@ export function ChartPanel({ node, lang, busy, onOps }: Props) {
     <Field label={tr("عنوان الرسم", "Chart label")} value={words(p.label, lang)} onSave={text => set({ label: localized(p.label, lang, text.slice(0, 160)) })} testId="chart-label" />
     <Choice label={tr("نوع الرسم", "Chart type")} value={String(p.kind ?? "bar")} busy={busy} options={[["bar", tr("أعمدة", "Bars")], ["line", tr("خط", "Line")], ["donut", tr("دائري", "Donut")]]} onPick={kind => set({ kind })} testId="chart-kind" />
     {toggle(tr("إظهار القيم", "Show values"), p.showValues !== false, busy, showValues => set({ showValues }), "chart-values")}
-    {items.map((row, index) => <div key={index} className="space-y-2 rounded-lg bg-white/[0.04] p-2">
+    {items.map((row, index) => <div key={index} className="space-y-2 rounded-lg bg-white/4 p-2">
       <Field label={tr("التسمية", "Label")} value={words(row.label, lang)} onSave={text => item(index, { label: localized(row.label, lang, text.slice(0, 80)) })} testId={`chart-item-label-${index}`} />
       <NumberField label={tr("القيمة", "Value")} value={Number(row.value) || 0} min={0} max={1000000} onSave={value => value !== null && item(index, { value })} testId={`chart-item-value-${index}`} />
       <Field label={tr("لون القيمة (HEX أو لون الثيم)", "Value colour (HEX or theme colour)")} value={String(row.color ?? "accent")} onSave={color => /^(#[0-9a-f]{3}|#[0-9a-f]{6}|accent|text|muted|surface|border)$/i.test(color) && item(index, { color })} testId={`chart-item-color-${index}`} />

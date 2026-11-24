@@ -88,11 +88,11 @@ export function IconPicker({ open, current, line, onPick, onClose }: {
     <button key={f} type="button" role="tab" aria-selected={family === f} onClick={() => {
         setFamily(f);
         setGroup("");
-      }} className={`rounded-lg px-2.5 py-1 text-xs ${family === f ? "bg-accent-500 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"}`} data-testid={`icon-set-${f}`}>
+      }} className={`rounded-lg px-2.5 py-1 text-xs ${family === f ? "bg-accent-500 text-white" : "bg-white/6 text-white/70 hover:bg-white/10"}`} data-testid={`icon-set-${f}`}>
       {label}
     </button>
   );
-  const cell = "flex h-12 flex-col items-center justify-center rounded-lg text-white/85 hover:bg-white/[0.1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-500";
+  const cell = "flex h-12 flex-col items-center justify-center rounded-lg text-white/85 hover:bg-white/10 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-accent-500";
 
   return (
     <Modal open={open} title={tr("مكتبة الأيقونات", "Icon library")} onClose={onClose} widthClassName="max-w-4xl">
@@ -107,7 +107,7 @@ export function IconPicker({ open, current, line, onPick, onClose }: {
         {family === "phosphor" ? (
           <div className="flex flex-wrap gap-1.5" role="group" aria-label={tr("الوزن", "Weight")}>
             {PH_WEIGHTS.map((w) => (
-              <button key={w} type="button" aria-pressed={weight === w} onClick={() => setWeight(w)} className={`rounded-full px-2.5 py-0.5 text-[11px] ${weight === w ? "bg-white/20 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"}`} data-testid={`icon-weight-${w}`}>
+              <button key={w} type="button" aria-pressed={weight === w} onClick={() => setWeight(w)} className={`rounded-full px-2.5 py-0.5 text-[11px] ${weight === w ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`} data-testid={`icon-weight-${w}`}>
                 {PH_WEIGHT_NAME[w]()}
               </button>
             ))}
@@ -117,10 +117,10 @@ export function IconPicker({ open, current, line, onPick, onClose }: {
           <input
             autoFocus type="search" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder={tr("ابحث: سلة، قلب، توصيل، cart…", "Search: cart, heart, delivery…")}
-            className="min-w-0 flex-1 rounded-lg border border-white/[0.1] bg-surface-925 px-3 py-2 text-sm text-white placeholder:text-white/35" data-testid="icon-search"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-925 px-3 py-2 text-sm text-white placeholder:text-white/35" data-testid="icon-search"
           />
           {ready?.groups.length ? (
-            <select value={group} onChange={(e) => setGroup(e.target.value)} className="rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-2 text-xs text-white" aria-label={tr("المجموعة", "Group")} data-testid="icon-group">
+            <select value={group} onChange={(e) => setGroup(e.target.value)} className="rounded-lg border border-white/10 bg-surface-925 px-2 py-2 text-xs text-white" aria-label={tr("المجموعة", "Group")} data-testid="icon-group">
               <option value="">{tr("كل المجموعات", "Every group")}</option>
               {ready.groups.map((g) => <option key={g} value={g}>{groupName(g)}</option>)}
             </select>
@@ -159,7 +159,7 @@ export function IconPicker({ open, current, line, onPick, onClose }: {
                 <div className="py-8 text-center text-sm text-white/50">{tr("ما في أيقونة بهالاسم. جرّب كلمة تانية أو مكتبة تانية.", "No icon by that name. Try another word or set.")}</div>
               )}
               {found.length > shown ? (
-                <button type="button" className="w-full rounded-lg bg-white/[0.06] py-2 text-xs hover:bg-white/[0.1]" onClick={() => setMore({ view, n: shown + PAGE })} data-testid="icon-more">
+                <button type="button" className="w-full rounded-lg bg-white/6 py-2 text-xs hover:bg-white/10" onClick={() => setMore({ view, n: shown + PAGE })} data-testid="icon-more">
                   {tr(`اعرض أكتر (${found.length - shown} باقية)`, "Show more ({0} left)", [found.length - shown])}
                 </button>
               ) : null}

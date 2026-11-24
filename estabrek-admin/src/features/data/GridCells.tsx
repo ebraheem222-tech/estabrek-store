@@ -25,7 +25,7 @@ const safeLink = (v: unknown) => (typeof v === "string" && /^(https:\/\/|\/(?!\/
 export function FromCell({ got, lang }: { got: LinkedFrom | undefined; lang: Lang }) {
   if (!got?.n) return null;
   return (
-    <span className="flex max-w-[22rem] flex-wrap items-center gap-1" data-testid="cell-from" data-count={got.n}>
+    <span className="flex max-w-88 flex-wrap items-center gap-1" data-testid="cell-from" data-count={got.n}>
       <span className="rounded-full bg-accent-500/20 px-1.5 text-xs tabular-nums" title={say("كم سطر مربوط فيه|Rows that link it|שורות המקושרות אליו")}>
         {got.n.toLocaleString("en")}
       </span>
@@ -88,17 +88,17 @@ export function CellView({ column, row, lang, tableId }: { column: Column; row: 
   if (!text) return null;
   switch (column.kind) {
     case "image":
-      return typeof v === "string" ? <img src={v} alt="" loading="lazy" className="h-8 w-8 rounded object-cover" /> : null;
+      return typeof v === "string" ? <img src={v} alt="" loading="lazy" className="h-8 w-8 rounded-sm object-cover" /> : null;
     case "color":
       return (
         <span className="inline-flex items-center gap-1.5 font-mono text-xs" dir="ltr">
-          <span className="h-4 w-4 rounded border border-white/20" style={{ background: String(v) }} />
+          <span className="h-4 w-4 rounded-sm border border-white/20" style={{ background: String(v) }} />
           {text}
         </span>
       );
     case "multiSelect":
       return (
-        <span className="flex max-w-[22rem] flex-wrap gap-1">
+        <span className="flex max-w-88 flex-wrap gap-1">
           {(Array.isArray(v) ? v : []).map((id) => (
             <span key={String(id)} className={chip}>
               {column.field ? choiceName(column.field, String(id), lang) : String(id)}
@@ -111,7 +111,7 @@ export function CellView({ column, row, lang, tableId }: { column: Column; row: 
     case "relation":
       // The linked rows, each by its name.
       return (
-        <span className="flex max-w-[22rem] flex-wrap gap-1">
+        <span className="flex max-w-88 flex-wrap gap-1">
           {linkedOf(v).map((r) => (
             <span key={r.id} className={`${chip} ${r.hidden ? "bg-white/[0.06] text-white/55" : "bg-accent-500/15"}`} title={r.hidden ? undefined : r.slug} data-hidden={r.hidden ? "" : undefined}>
               <bdi>{linkedName(r, lang)}</bdi>
@@ -129,7 +129,7 @@ export function CellView({ column, row, lang, tableId }: { column: Column; row: 
       // The shopper it points at: their name when an account has that email (and the member may see the customers), then the email.
       const who = row.customers?.[column.id];
       return (
-        <span className="inline-flex max-w-[22rem] items-center gap-1.5" data-testid={`customer-${column.id}`}>
+        <span className="inline-flex max-w-88 items-center gap-1.5" data-testid={`customer-${column.id}`}>
           {who ? <span className={`${chip} bg-accent-500/15`} title={say("زبون عنده حساب بهالإيميل|A customer with an account at this address|לקוח עם חשבון בכתובת הזו")}><bdi>{who.name || say("زبون|a customer|לקוח")}</bdi></span> : null}
           <bdi dir="ltr" className="truncate text-white/75">{text}</bdi>
         </span>
@@ -170,7 +170,7 @@ export function CellView({ column, row, lang, tableId }: { column: Column; row: 
     case "phone":
       return <span dir="ltr" className="tabular-nums">{text}</span>;
     default:
-      return <span className="block max-w-[22rem] truncate" title={text.length > 40 ? text : undefined}>{text}</span>;
+      return <span className="block max-w-88 truncate" title={text.length > 40 ? text : undefined}>{text}</span>;
   }
 }
 
@@ -265,7 +265,7 @@ export function ValueInput({
     case "color":
       return (
         <span className="flex items-center gap-1">
-          <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#c86b98"} onChange={(e) => onChange(e.target.value)} className="h-7 w-8 shrink-0 rounded border border-white/15 bg-transparent" aria-label={say("لون|Colour|צבע")} />
+          <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#c86b98"} onChange={(e) => onChange(e.target.value)} className="h-7 w-8 shrink-0 rounded-sm border border-white/15 bg-transparent" aria-label={say("لون|Colour|צבע")} />
           {text({ dir: "ltr", placeholder: "#c86b98" })}
         </span>
       );
@@ -337,7 +337,7 @@ export function CellEditor({ column, row, lang, onSave, onCancel }: { column: Co
   const many = column.kind === "multiSelect" || column.kind === "location" || column.kind === "relation";
   return (
     <div
-      className={long || many ? "min-w-[18rem]" : "min-w-[9rem]"}
+      className={long || many ? "min-w-[18rem]" : "min-w-36"}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) finish(true);
       }}

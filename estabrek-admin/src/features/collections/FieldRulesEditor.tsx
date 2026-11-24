@@ -51,14 +51,14 @@ export function FieldRulesEditor({
   const own = field.pattern !== undefined;
   const [fresh, setFresh] = useState("");
   const choices = field.type === "select" || field.type === "multiSelect";
-  const small = "rounded-lg bg-white/[0.07] px-2 py-1 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+  const small = "rounded-lg bg-white/[0.07] px-2 py-1 text-xs hover:bg-white/12 disabled:opacity-40";
   const add = () => {
     if (!fresh.trim()) return;
     onChange(addChoice(field, fresh, lang));
     setFresh("");
   };
   return (
-    <div className="grid w-full gap-3 rounded-lg bg-white/[0.03] p-3 md:grid-cols-2" data-testid={`rules-${field.id}`}>
+    <div className="grid w-full gap-3 rounded-lg bg-white/3 p-3 md:grid-cols-2" data-testid={`rules-${field.id}`}>
       {onRetype ? (
         <label className={`${label} md:col-span-2`}>
           {say("نوع الحقل|The field's kind|סוג השדה")}
@@ -266,7 +266,7 @@ export function FieldRulesEditor({
               ))}
               <option value="$own">{say("نمط خاص (regex)|My own pattern (regex)|תבנית משלי (regex)")}</option>
             </select>
-            {own ? <input className={`${input} min-w-[12rem] flex-1 font-mono`} dir="ltr" value={field.pattern ?? ""} placeholder="^[A-Z]{2}-\d{3}$" onChange={(e) => onChange({ ...field, pattern: e.target.value })} data-testid={`rule-${field.id}-pattern`} /> : null}
+            {own ? <input className={`${input} min-w-48 flex-1 font-mono`} dir="ltr" value={field.pattern ?? ""} placeholder="^[A-Z]{2}-\d{3}$" onChange={(e) => onChange({ ...field, pattern: e.target.value })} data-testid={`rule-${field.id}-pattern`} /> : null}
           </span>
         </label>
       ) : null}

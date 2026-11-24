@@ -22,7 +22,7 @@ import { tidyTranslations, translationLangs, translationsOf, type TranslationRow
 import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 type Draft = {
   id?: string;
@@ -157,7 +157,7 @@ export default function ProductTypesPage() {
               {t.fields.length ? (
                 <ul className="mt-3 flex flex-wrap gap-1.5">
                   {t.fields.map((f) => (
-                    <li key={f.key} className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs">
+                    <li key={f.key} className="rounded-full border border-white/10 bg-white/3 px-2.5 py-1 text-xs">
                       {f.label}
                       <span className="text-white/40"> · {KIND_LABELS[f.kind].label}</span>
                       {f.filterable ? <span className="text-accent-300"> {tr("· فلتر", "· filter")}</span> : null}
@@ -319,9 +319,9 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
               <div>
                 <span className="mb-1 block text-xs text-white/55">{tr("التوصيل خلال (أيام)", "Delivery in (days)")}</span>
                 <div className="flex items-center gap-2">
-                  <input inputMode="numeric" dir="ltr" aria-label={tr("أقل عدد أيام", "Fewest days")} className={`${field} max-w-[5rem] text-center ${daysProblem ? "border-red-500/60" : ""}`} value={d.delivery.minDays} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, minDays: e.target.value } })} placeholder="2" />
+                  <input inputMode="numeric" dir="ltr" aria-label={tr("أقل عدد أيام", "Fewest days")} className={`${field} max-w-20 text-center ${daysProblem ? "border-red-500/60" : ""}`} value={d.delivery.minDays} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, minDays: e.target.value } })} placeholder="2" />
                   <span className="text-xs text-white/45">{tr("لحد", "to")}</span>
-                  <input inputMode="numeric" dir="ltr" aria-label={tr("أكثر عدد أيام", "Most days")} className={`${field} max-w-[5rem] text-center ${daysProblem ? "border-red-500/60" : ""}`} value={d.delivery.maxDays} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, maxDays: e.target.value } })} placeholder="5" />
+                  <input inputMode="numeric" dir="ltr" aria-label={tr("أكثر عدد أيام", "Most days")} className={`${field} max-w-20 text-center ${daysProblem ? "border-red-500/60" : ""}`} value={d.delivery.maxDays} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, maxDays: e.target.value } })} placeholder="5" />
                 </div>
               </div>
             </div>
@@ -350,7 +350,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
           {d.fields.length ? (
             <ol className="space-y-3">
               {d.fields.map((f, i) => (
-                <li key={f.key} className="rounded-xl border border-white/10 bg-white/[0.02] p-3" data-testid={`type-field-${i}`}>
+                <li key={f.key} className="rounded-xl border border-white/10 bg-white/2 p-3" data-testid={`type-field-${i}`}>
                   <div className="grid gap-2 sm:grid-cols-[1fr_170px_auto]">
                     <input
                       aria-label={tr("اسم الحقل", "Field name")}
@@ -383,7 +383,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
                     <textarea
                       aria-label={tr("الاختيارات", "Choices")}
                       rows={3}
-                      className={`mt-2 w-full rounded-xl border bg-white/[0.03] p-2 text-sm ${tried && problems[f.key] && f.label.trim() ? "border-red-500/60" : "border-white/[0.08]"}`}
+                      className={`mt-2 w-full rounded-xl border bg-white/3 p-2 text-sm ${tried && problems[f.key] && f.label.trim() ? "border-red-500/60" : "border-white/8"}`}
                       value={f.optionsText ?? ""}
                       onChange={(e) => setField(i, { optionsText: e.target.value })}
                       placeholder={tr("كل اختيار بسطر، مثلاً:\nصغير\nكبير", "One choice per line, e.g.:\nSmall\nLarge")}
@@ -524,7 +524,7 @@ function TemplateGallery({ onPick, onClose }: { onPick: (t: TypeTemplate) => voi
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((t) => (
               <li key={t.id}>
-                <button type="button" onClick={() => onPick(t)} className="h-full w-full rounded-xl border border-white/10 p-3 text-start transition hover:border-accent-400/50 hover:bg-white/[0.03]" data-testid={`template-${t.id}`}>
+                <button type="button" onClick={() => onPick(t)} className="h-full w-full rounded-xl border border-white/10 p-3 text-start transition hover:border-accent-400/50 hover:bg-white/3" data-testid={`template-${t.id}`}>
                   <span className="block font-medium">
                     {t.icon} {t.name}
                   </span>

@@ -43,6 +43,6 @@ export function LayoutConstraintsPanel({ value, onChange, busy = false }: { valu
       }} />)}
     </div>
     <p className="text-[10px] leading-4 text-white/40">{tr("الفارغ يتبع إعداد الشاشة الأكبر. النسبة 2 تعني عرضاً بضعف الارتفاع.", "Empty values follow the larger screen. A ratio of 2 means twice as wide as tall.")}</p>
-    <button type="button" disabled={busy} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs disabled:opacity-40" data-testid="constraints-reset" onClick={() => { setReset(current => current + 1); onChange({}); }}>{tr("إعادة تعيين حدود الحجم", "Reset size limits")}</button>
+    <button type="button" disabled={busy} className="rounded-lg bg-white/6 px-2 py-1 text-xs disabled:opacity-40" data-testid="constraints-reset" onClick={() => { setReset(current => current + 1); onChange({}); }}>{tr("إعادة تعيين حدود الحجم", "Reset size limits")}</button>
   </div>;
 }

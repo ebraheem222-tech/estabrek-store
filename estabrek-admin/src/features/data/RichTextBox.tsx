@@ -10,7 +10,7 @@ import { RICH_MARKS, markWords } from "../collections/computedText";
 
 const inline = (xs: RichInline[]): ReactNode =>
   xs.map((x, k) =>
-    x.t === "text" ? <Fragment key={k}>{x.v}</Fragment> : x.t === "a" ? <a key={k} href={x.href} target="_blank" rel="noreferrer" className="underline">{inline(x.kids)}</a> : x.t === "b" ? <strong key={k}>{inline(x.kids)}</strong> : x.t === "i" ? <em key={k}>{inline(x.kids)}</em> : x.t === "s" ? <s key={k}>{inline(x.kids)}</s> : <code key={k} className="rounded bg-white/10 px-1">{inline(x.kids)}</code>,
+    x.t === "text" ? <Fragment key={k}>{x.v}</Fragment> : x.t === "a" ? <a key={k} href={x.href} target="_blank" rel="noreferrer" className="underline">{inline(x.kids)}</a> : x.t === "b" ? <strong key={k}>{inline(x.kids)}</strong> : x.t === "i" ? <em key={k}>{inline(x.kids)}</em> : x.t === "s" ? <s key={k}>{inline(x.kids)}</s> : <code key={k} className="rounded-sm bg-white/10 px-1">{inline(x.kids)}</code>,
   );
 const lines = (ls: RichInline[][]) => ls.map((l, k) => <Fragment key={k}>{k ? <br /> : null}{inline(l)}</Fragment>);
 
@@ -40,7 +40,7 @@ export function RichTextBox({ value, onChange, className, dir, testId, rows = 6 
   const tool = "rounded-md px-2 py-0.5 text-xs text-white/75 hover:bg-white/10";
   return (
     <div className="space-y-1" data-testid={testId ? `${testId}-rich` : undefined}>
-      <div className="flex flex-wrap items-center gap-0.5 rounded-lg bg-white/[0.04] p-0.5" role="toolbar" aria-label={say("تنسيق|Formatting|עיצוב")}>
+      <div className="flex flex-wrap items-center gap-0.5 rounded-lg bg-white/4 p-0.5" role="toolbar" aria-label={say("تنسيق|Formatting|עיצוב")}>
         {RICH_MARKS.map((m) => (
           <button key={m.mark} type="button" className={`${tool} ${m.mark === "bold" ? "font-bold" : m.mark === "italic" ? "italic" : m.mark === "strike" ? "line-through" : ""}`} title={say(m.say)} aria-label={say(m.say)} onMouseDown={(e) => e.preventDefault()} onClick={() => put(m.mark)} data-testid={testId ? `${testId}-mark-${m.mark}` : undefined}>
             {m.label}

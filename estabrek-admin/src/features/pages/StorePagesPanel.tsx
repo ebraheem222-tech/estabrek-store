@@ -18,7 +18,7 @@ export function StorePagesPanel({ pages, canWrite, canReadSettings, onOpen }: { 
     catch (error) { toast.error(tr("تعذّر فتح صفحة المتجر", "Could not open the store page"), { description: getApiErrorMessage(error) }); }
     finally { setOpening(null); }
   };
-  return <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4" data-testid="store-pages">
+  return <section className="rounded-2xl border border-white/10 bg-white/2 p-4" data-testid="store-pages">
     <h2 className="font-semibold">{tr("تصميم صفحات المتجر", "Store page designs")}</h2>
     <p className="mt-1 text-xs text-white/55">{tr("رتّب عناصر المتجر والسلة داخل المحرّر. الصفحة الجديدة تبدأ مسودة؛ فتح تصميم موجود بحافظ على تعديلاتك.", "Arrange shop and cart objects in the editor. New pages start as drafts; existing designs keep your changes.")}</p>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">{(["shop", "cart"] as const).map(kind => {

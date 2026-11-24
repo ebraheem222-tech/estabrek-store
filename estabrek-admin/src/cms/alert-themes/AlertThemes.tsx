@@ -392,12 +392,12 @@ export const AlertWithAction: React.FC<AlertProps> = ({
           {(action || secondaryAction) && (
             <div className="flex gap-3 mt-3">
               {action && (
-                <button onClick={action.onClick} className={`px-4 py-1.5 rounded font-medium text-sm ${colors.filled}`}>
+                <button onClick={action.onClick} className={`px-4 py-1.5 rounded-sm font-medium text-sm ${colors.filled}`}>
                   {action.label}
                 </button>
               )}
               {secondaryAction && (
-                <button onClick={secondaryAction.onClick} className={`px-4 py-1.5 rounded font-medium text-sm ${colors.text} hover:underline`}>
+                <button onClick={secondaryAction.onClick} className={`px-4 py-1.5 rounded-sm font-medium text-sm ${colors.text} hover:underline`}>
                   {secondaryAction.label}
                 </button>
               )}
@@ -429,7 +429,7 @@ export const ToastSimple: React.FC<ToastProps> = ({
     <div className={`bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-[320px] max-w-md ${className}`}>
       <div className="flex items-start gap-3">
         {showIcon && (
-          <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${colorSchemes[type].bg} ${colorSchemes[type].icon}`}>
+          <span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${colorSchemes[type].bg} ${colorSchemes[type].icon}`}>
             {getIcon(type)}
           </span>
         )}
@@ -509,7 +509,7 @@ export const ToastWithProgress: React.FC<ToastProps & { progress?: number }> = (
       <div className="p-4">
         <div className="flex items-start gap-3">
           {showIcon && (
-            <span className={`flex-shrink-0 ${colorSchemes[type].icon}`}>{getIcon(type)}</span>
+            <span className={`shrink-0 ${colorSchemes[type].icon}`}>{getIcon(type)}</span>
           )}
           <div className="flex-1">
             {title && <p className="font-semibold text-gray-900">{title}</p>}
@@ -542,7 +542,7 @@ export const BannerSimple: React.FC<AlertProps> = ({
       <div className="max-w-7xl mx-auto flex items-center justify-center gap-4 flex-wrap">
         <p className="text-center">{message}</p>
         {action && (
-          <button onClick={action.onClick} className="px-4 py-1 bg-white/20 rounded font-medium text-sm hover:bg-white/30">
+          <button onClick={action.onClick} className="px-4 py-1 bg-white/20 rounded-sm font-medium text-sm hover:bg-white/30">
             {action.label}
           </button>
         )}
@@ -563,11 +563,11 @@ export const BannerGradient: React.FC<AlertProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`py-3 px-4 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white ${className}`}>
+    <div className={`py-3 px-4 bg-linear-to-r from-purple-600 via-pink-600 to-red-600 text-white ${className}`}>
       <div className="max-w-7xl mx-auto flex items-center justify-center gap-4 flex-wrap">
         <p className="text-center font-medium">{message}</p>
         {action && (
-          <button onClick={action.onClick} className="px-4 py-1 bg-white text-purple-600 rounded font-medium text-sm hover:bg-gray-100">
+          <button onClick={action.onClick} className="px-4 py-1 bg-white text-purple-600 rounded-sm font-medium text-sm hover:bg-gray-100">
             {action.label}
           </button>
         )}
@@ -594,7 +594,7 @@ export const AlertModernGlass: React.FC<AlertProps> = ({
     <div className={`p-4 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl ${className}`}>
       <div className="flex items-start gap-3">
         {showIcon && (
-          <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 ${colors.icon}`}>
+          <span className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 ${colors.icon}`}>
             {getIcon(type)}
           </span>
         )}
@@ -706,7 +706,7 @@ export const ToastEcommerceCart: React.FC<ToastProps & { productName?: string; p
   return (
     <div className={`bg-white rounded-xl shadow-2xl border border-gray-200 p-4 min-w-[360px] max-w-md ${className}`}>
       <div className="flex items-start gap-4">
-        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
+        <div className="w-16 h-16 bg-gray-100 rounded-lg shrink-0 overflow-hidden">
           {productImage ? (
             <img src={productImage} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -750,10 +750,10 @@ export const ToastGamingAchievement: React.FC<ToastProps & { achievementName?: s
   if (!isVisible) return null;
   
   return (
-    <div className={`bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 rounded-xl shadow-2xl p-1 min-w-[340px] max-w-md ${className}`}>
+    <div className={`bg-linear-to-r from-yellow-500 via-amber-500 to-orange-500 rounded-xl shadow-2xl p-1 min-w-[340px] max-w-md ${className}`}>
       <div className="bg-gray-900 rounded-lg p-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center text-2xl shadow-lg">
+          <div className="w-14 h-14 bg-linear-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center text-2xl shadow-lg">
             🏆
           </div>
           <div className="flex-1">
@@ -801,7 +801,7 @@ export const ToastSocialNotification: React.FC<ToastProps & { userName?: string;
               <div className="w-full h-full flex items-center justify-center text-gray-400">👤</div>
             )}
           </div>
-          <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-sm shadow">
+          <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-sm shadow-sm">
             {icons[notificationType]}
           </span>
         </div>

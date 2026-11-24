@@ -8,7 +8,7 @@ import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { Range } from "./LookPanels";
 import { say } from "./say";
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 
 export function TrailPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: (label: string, ops: PageDraftOp[]) => void }) {
   const [library, setLibrary] = useState(false);
@@ -20,15 +20,15 @@ export function TrailPanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
   const save = (next: string[], nextSize = size) =>
     onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...node.props, trail: next.length ? { images: next, ...(nextSize !== 140 ? { size: nextSize } : {}) } : undefined } }]);
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-trail">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-trail">
       <div className="text-xs font-medium text-white/70">{label}</div>
       <p className="text-[10px] leading-4 text-white/40">{say("لما الماوس يمرق فوق القسم بتطلع صور ورا بعض وبتختفي. لحد 8 صور.|As the pointer crosses the section, pictures pop up along its way and fade. Up to 8.|כשהעכבר עובר מעל המקטע צצות תמונות לאורך הדרך ונעלמות. עד 8.")}</p>
       {images.length ? (
         <div className="grid grid-cols-4 gap-1">
           {images.map((src, i) => (
             <button key={`${src}-${i}`} type="button" disabled={busy} title={say("شيلها|Remove it|הסרה")} onClick={() => save(images.filter((_, k) => k !== i))} className="relative overflow-hidden rounded-md border border-white/10" data-testid="studio-trail-image">
-              <img src={src} alt="" className="aspect-[4/5] w-full object-cover" />
-              <span className="absolute end-0.5 top-0.5 rounded bg-black/60 px-1 text-[10px] text-white">✕</span>
+              <img src={src} alt="" className="aspect-4/5 w-full object-cover" />
+              <span className="absolute inset-e-0.5 top-0.5 rounded-sm bg-black/60 px-1 text-[10px] text-white">✕</span>
             </button>
           ))}
         </div>

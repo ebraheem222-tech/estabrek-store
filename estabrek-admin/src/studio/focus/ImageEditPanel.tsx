@@ -11,8 +11,8 @@ import { FILTERS, FILTER_RECIPE, RATIOS, cropFor, isPlain, recipeCss, safeRecipe
 import { Range } from "../LookPanels";
 import { say } from "../say";
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`;
 const FILTER_WORD: Record<Filter, string> = {
   none: "بدون|None|ללא", warm: "دافئ|Warm|חם", cool: "بارد|Cool|קר", mono: "أبيض وأسود|Black & white|שחור־לבן",
   soft: "ناعم|Soft|רך", vivid: "حيوي|Vivid|עז", vintage: "قديم|Vintage|וינטג׳",

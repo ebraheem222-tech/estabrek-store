@@ -75,7 +75,7 @@ export function ColorPicker({
           <button
             type="button"
             className={cn(
-              "h-10 w-10 rounded-xl border border-white/10 shadow-sm",
+              "h-10 w-10 rounded-xl border border-white/10 shadow-xs",
               disabled ? "opacity-60 cursor-not-allowed" : "hover:border-white/20"
             )}
             style={{ backgroundColor: preview }}
@@ -87,7 +87,7 @@ export function ColorPicker({
             type="text"
             className={cn(
               "h-10 w-full rounded-xl bg-white/5 border border-white/10 px-3 text-sm",
-              "focus:outline-none focus:ring-2 focus:ring-white/10",
+              "focus:outline-hidden focus:ring-2 focus:ring-white/10",
               disabled ? "opacity-60 cursor-not-allowed" : "hover:border-white/20"
             )}
             value={normalized}
@@ -113,12 +113,12 @@ export function ColorPicker({
         {open && !disabled ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
               onClick={() => setOpen(false)}
               aria-hidden="true"
             />
             <div
-              className="relative w-[92vw] max-w-[420px] rounded-2xl border border-white/10 bg-black/90 backdrop-blur p-3 shadow-xl"
+              className="relative w-[92vw] max-w-[420px] rounded-2xl border border-white/10 bg-black/90 backdrop-blur-sm p-3 shadow-xl"
               role="dialog"
               aria-modal="true"
               onClick={(e) => e.stopPropagation()}

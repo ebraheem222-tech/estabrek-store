@@ -38,7 +38,7 @@ export default function OrderDetailsPage() {
   const handover = useOrderDelivery(order?.id ?? "", order?.status ?? "");
   const noShipping = Boolean(handover.data?.needed && !handover.data.kinds.shipping);
 
-  if (q.isLoading) return <div className="space-y-3">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />)}</div>;
+  if (q.isLoading) return <div className="space-y-3">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-white/4" />)}</div>;
   if (!order) return <div className="glass rounded-2xl p-10 text-center text-sm text-white/70">{tr("لم نجد هذا الطلب.", "We couldn't find this order.")} <Link className="text-accent-300" to="/admin/orders">{tr("رجوع للطلبات", "Back to orders")}</Link></div>;
 
   const total = orderTotal(order);
@@ -73,8 +73,8 @@ export default function OrderDetailsPage() {
           <p className="mt-1 text-xs text-white/50">{dateTime(order.createdAt)} · {timeAgo(order.createdAt)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={`/print/orders?ids=${order.id}`} target="_blank" rel="noreferrer" className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm leading-10 text-white/85 hover:bg-white/[0.06]">{tr("🖨 الفاتورة", "🖨 Invoice")}</a>
-          <a href={`/print/orders?ids=${order.id}&type=slip`} target="_blank" rel="noreferrer" className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm leading-10 text-white/85 hover:bg-white/[0.06]">{tr("🏷 ملصق التوصيل", "🏷 Delivery label")}</a>
+          <a href={`/print/orders?ids=${order.id}`} target="_blank" rel="noreferrer" className="h-10 rounded-xl border border-white/10 px-4 text-sm leading-10 text-white/85 hover:bg-white/6">{tr("🖨 الفاتورة", "🖨 Invoice")}</a>
+          <a href={`/print/orders?ids=${order.id}&type=slip`} target="_blank" rel="noreferrer" className="h-10 rounded-xl border border-white/10 px-4 text-sm leading-10 text-white/85 hover:bg-white/6">{tr("🏷 ملصق التوصيل", "🏷 Delivery label")}</a>
         </div>
       </div>
 
@@ -94,15 +94,15 @@ export default function OrderDetailsPage() {
           {/* Items */}
           <section className="glass rounded-2xl p-4 sm:p-5">
             <h2 className="mb-3 text-base font-semibold text-white">{tr("القطع (", "Items (")}{orderLines(order).reduce((s, l) => s + l.quantity, 0)})</h2>
-            <ul className="divide-y divide-white/[0.06]">
+            <ul className="divide-y divide-white/6">
               {orderLines(order).map((l, i) => (
                 <li key={i} className="flex items-center gap-3 py-3">
                   <Thumb src={l.imageUrl} className="h-20 w-16 rounded-xl" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-white">{l.productTitle}</div>
                     <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
-                      {l.colorName && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-white/70">{tr("اللون:", "Colour:")} {l.colorName}</span>}
-                      {l.sizeName && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-white/70">{tr("المقاس:", "Size:")} {l.sizeName}</span>}
+                      {l.colorName && <span className="rounded-full bg-white/6 px-2 py-0.5 text-white/70">{tr("اللون:", "Colour:")} {l.colorName}</span>}
+                      {l.sizeName && <span className="rounded-full bg-white/6 px-2 py-0.5 text-white/70">{tr("المقاس:", "Size:")} {l.sizeName}</span>}
                       {l.sku && <span className="px-1 text-white/35" dir="ltr">{l.sku}</span>}
                     </div>
                   </div>
@@ -114,7 +114,7 @@ export default function OrderDetailsPage() {
               ))}
             </ul>
 
-            <dl className="mt-3 space-y-2 rounded-xl bg-white/[0.03] p-4 text-sm">
+            <dl className="mt-3 space-y-2 rounded-xl bg-white/3 p-4 text-sm">
               <Row label={tr("المجموع", "Total")}>{moneyText(subtotal)}</Row>
               {discount > 0 && <Row label={tr(`الخصم${order.couponCode ? ` (${order.couponCode})` : ""}`, "Discount{0}", [order.couponCode ? ` (${order.couponCode})` : ""])} className="text-emerald-300">−{moneyText(discount)}</Row>}
               <Row label={tr(`التوصيل${d.zone ? ` — ${d.zone.name}` : ""}`, "Delivery{0}", [d.zone ? ` — ${d.zone.name}` : ""])}>
@@ -126,13 +126,13 @@ export default function OrderDetailsPage() {
               </div>
             </dl>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] p-3">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/8 p-3">
               <div className="flex items-center gap-2 text-sm text-white/80"><PaidChip order={order} /> {tr("الدفع نقداً عند الاستلام", "Cash on delivery")}</div>
               <button
                 type="button"
                 disabled={updateDetails.isPending}
                 onClick={() => updateDetails.mutate({ id: order.id, body: isPaid(order) ? { paymentStatus: "UNPAID" } : { paymentStatus: "PAID", paymentProvider: order.paymentProvider || "COD" } }, { onSuccess: () => toast.success(isPaid(order) ? tr("أُلغي تسجيل الدفع", "Payment record removed") : tr(`سُجّل استلام ${moneyText(collect)}`, "Recorded receiving {0}", [moneyText(collect)])) })}
-                className={cn("h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-60", isPaid(order) ? "border border-white/[0.1] text-white/70 hover:bg-white/[0.06]" : "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30")}
+                className={cn("h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-60", isPaid(order) ? "border border-white/10 text-white/70 hover:bg-white/6" : "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30")}
               >
                 {isPaid(order) ? tr("إلغاء تسجيل الدفع", "Undo payment record") : tr(`✓ استلمنا المبلغ ${moneyText(collect)}`, "✓ We received {0}", [moneyText(collect)])}
               </button>
@@ -190,7 +190,7 @@ function StatusCard({ order, next, busy, onMove }: { order: FullOrder; next: Ord
           return (
             <li key={s} aria-current={current ? "step" : undefined} className="flex shrink-0 items-center gap-1 sm:min-w-0 sm:flex-1 sm:shrink">
               <span className={cn("flex min-w-0 items-center gap-2 whitespace-nowrap rounded-full px-2.5 py-1 text-xs", current ? "bg-accent-500/25 text-white" : done ? "text-emerald-300" : "text-white/40")}>
-                <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px]", current ? "bg-accent-500 text-white" : done ? "bg-emerald-500/25" : "bg-white/[0.06]")}>{done ? "✓" : i + 1}</span>
+                <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px]", current ? "bg-accent-500 text-white" : done ? "bg-emerald-500/25" : "bg-white/6")}>{done ? "✓" : i + 1}</span>
                 {STATUS_INFO[s].label}
               </span>
               {i < FLOW.length - 1 && <span className={cn("h-px min-w-[12px] flex-1", done ? "bg-emerald-500/40" : "bg-white/10")} aria-hidden />}
@@ -206,15 +206,15 @@ function StatusCard({ order, next, busy, onMove }: { order: FullOrder; next: Ord
             {busy ? tr("جارٍ الحفظ…", "Saving…") : <>{NEXT_STEP_LABEL[next]} <span className="inline-block ltr:-scale-x-100">←</span></>}
           </button>
         )}
-        <button type="button" onClick={() => setOther((v) => !v)} className="h-11 rounded-xl border border-white/[0.1] px-4 text-sm text-white/75 hover:bg-white/[0.06]">{other ? tr("إغلاق", "Close") : tr("حالة أخرى / ملاحظة", "Other status / note")}</button>
+        <button type="button" onClick={() => setOther((v) => !v)} className="h-11 rounded-xl border border-white/10 px-4 text-sm text-white/75 hover:bg-white/6">{other ? tr("إغلاق", "Close") : tr("حالة أخرى / ملاحظة", "Other status / note")}</button>
       </div>
       {other && (
-        <div className="mt-3 grid gap-2 rounded-xl border border-white/[0.08] p-3 sm:grid-cols-[200px_1fr_auto]">
-          <select value={to} onChange={(e) => setTo(e.target.value as OrderStatus)} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("الحالة الجديدة", "New status")}>
+        <div className="mt-3 grid gap-2 rounded-xl border border-white/8 p-3 sm:grid-cols-[200px_1fr_auto]">
+          <select value={to} onChange={(e) => setTo(e.target.value as OrderStatus)} className="h-10 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white" aria-label={tr("الحالة الجديدة", "New status")}>
             <option value="">{tr("اختيار الحالة…", "Choose the status…")}</option>
             {ORDER_STATUSES.filter((s) => s !== order.status).map((s) => <option key={s} value={s}>{STATUS_INFO[s].label}</option>)}
           </select>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tr("ملاحظة (اختياري): مثلاً اتصلنا وما في رد", "Note (optional): e.g. we called, no answer")} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("ملاحظة الحالة", "Status note")} />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tr("ملاحظة (اختياري): مثلاً اتصلنا وما في رد", "Note (optional): e.g. we called, no answer")} className="h-10 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("ملاحظة الحالة", "Status note")} />
           <button type="button" disabled={!to || busy} onClick={() => to && void onMove(to, note).then((ok) => { if (ok) { setOther(false); setTo(""); setNote(""); } })} className="h-10 rounded-xl bg-accent-500/25 px-4 text-sm text-white hover:bg-accent-500/35 disabled:opacity-50">{tr("حفظ", "Save")}</button>
           {to && <p className="text-xs text-white/50 sm:col-span-3">{STATUS_INFO[to].hint}</p>}
         </div>
@@ -243,7 +243,7 @@ function CustomerCard({ order, noShipping, saving, onSave }: { order: FullOrder;
     setF({ customerName: order.customerName ?? "", phone: order.phone ?? "", whatsapp: order.whatsapp ?? "", email: order.email ?? "", city: order.city ?? "", address: order.address ?? "" });
     setEdit(true);
   };
-  const field = "h-10 w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35";
+  const field = "h-10 w-full rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white placeholder:text-white/35";
   const copy = (text: string) => { void navigator.clipboard?.writeText(text).then(() => toast.success(tr("نُسخ", "Copied"))); };
   const fullAddress = [order.city, order.address].filter(Boolean).join(tr("، ", ", "));
 
@@ -319,12 +319,12 @@ function WhatsAppComposer({ order, storeName, audience, deliveryFee }: { order: 
       <div className="mb-2 flex flex-wrap gap-1.5">
         {MESSAGE_KINDS.map((m) => (
           <button key={m.kind} type="button" onClick={() => { setKind(m.kind); setEdited(null); }} aria-pressed={kind === m.kind}
-            className={cn("h-8 rounded-full border px-3 text-xs", kind === m.kind ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100" : "border-white/[0.08] text-white/65 hover:text-white")}>
+            className={cn("h-8 rounded-full border px-3 text-xs", kind === m.kind ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100" : "border-white/8 text-white/65 hover:text-white")}>
             {m.label}
           </button>
         ))}
       </div>
-      <textarea value={text} onChange={(e) => setEdited(e.target.value)} dir={isRtl(messageLang(order)) ? "rtl" : "ltr"} className="h-44 w-full resize-y rounded-xl border border-white/[0.1] bg-surface-925 p-3 text-sm leading-6 text-white" aria-label={tr("نص الرسالة", "Message text")} />
+      <textarea value={text} onChange={(e) => setEdited(e.target.value)} dir={isRtl(messageLang(order)) ? "rtl" : "ltr"} className="h-44 w-full resize-y rounded-xl border border-white/10 bg-surface-925 p-3 text-sm leading-6 text-white" aria-label={tr("نص الرسالة", "Message text")} />
       {href ? (
         <a href={href} target="_blank" rel="noreferrer" className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-400">
           <WhatsAppIcon className="h-4 w-4" />{tr("فتح واتساب وإرسال", "Open WhatsApp and send")}
@@ -349,22 +349,22 @@ function Timeline({ order, onAddNote }: { order: FullOrder; onAddNote: (note: st
     <section className="glass rounded-2xl p-4 sm:p-5">
       <h2 className="mb-3 text-base font-semibold text-white">{tr("سجل الطلب", "Order history")}</h2>
       <div className="mb-4 flex gap-2">
-        <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void add(); }} placeholder={tr("ملاحظة داخلية…", "Add an internal note…")} className="h-10 flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("ملاحظة داخلية", "Internal note")} />
-        <button type="button" disabled={!note.trim() || saving} onClick={() => void add()} className="h-10 rounded-xl bg-white/[0.08] px-4 text-sm text-white hover:bg-white/[0.12] disabled:opacity-40">{tr("إضافة", "Add")}</button>
+        <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void add(); }} placeholder={tr("ملاحظة داخلية…", "Add an internal note…")} className="h-10 flex-1 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("ملاحظة داخلية", "Internal note")} />
+        <button type="button" disabled={!note.trim() || saving} onClick={() => void add()} className="h-10 rounded-xl bg-white/8 px-4 text-sm text-white hover:bg-white/12 disabled:opacity-40">{tr("إضافة", "Add")}</button>
       </div>
-      <ol className="relative space-y-4 border-s border-white/[0.08] ps-4">
+      <ol className="relative space-y-4 border-s border-white/8 ps-4">
         {items.map((h) => (
           <li key={h.id} className="relative">
-            <span className="absolute -start-[1.36rem] top-1 h-2.5 w-2.5 rounded-full bg-accent-400" aria-hidden />
+            <span className="absolute inset-s-[-1.36rem] top-1 h-2.5 w-2.5 rounded-full bg-accent-400" aria-hidden />
             <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
-              {h.fromStatus !== h.toStatus ? <StatusPill status={h.toStatus} /> : <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-white/60">{tr("ملاحظة", "Note")}</span>}
+              {h.fromStatus !== h.toStatus ? <StatusPill status={h.toStatus} /> : <span className="rounded-full bg-white/6 px-2 py-0.5 text-white/60">{tr("ملاحظة", "Note")}</span>}
               {dateTime(h.at)}
             </div>
             {h.note && <p className="mt-1 whitespace-pre-line text-sm text-white/85">{h.note}</p>}
           </li>
         ))}
         <li className="relative">
-          <span className="absolute -start-[1.36rem] top-1 h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden />
+          <span className="absolute inset-s-[-1.36rem] top-1 h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden />
           <div className="text-xs text-white/50">{tr("وصل الطلب ·", "Order received ·")} {dateTime(order.createdAt)}</div>
         </li>
       </ol>

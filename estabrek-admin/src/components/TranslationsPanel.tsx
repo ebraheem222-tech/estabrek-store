@@ -13,7 +13,7 @@ import { LANG_LABEL, type Lang } from "../lib/storeIdentity";
 import { countDone, readPath, rowId, writePath, type TranslationRow, type Translations } from "../lib/translations";
 import { tr } from "@/lib/words";
 
-const field = "w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 export function TranslationsPanel({
   langs,
@@ -78,7 +78,7 @@ export function TranslationsPanel({
 
   let lastGroup: string | undefined;
   return (
-    <div data-testid="translations-panel" className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div data-testid="translations-panel" className="rounded-2xl border border-white/10 bg-white/3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-medium">{tr("الترجمة", "Translation")}</div>

@@ -40,11 +40,11 @@ function DefaultCategoryCard({ category, onClick, className }: CategoryCardProps
     <div
       onClick={() => onClick?.(category)}
       className={cn(
-        "group relative overflow-hidden rounded-2xl cursor-pointer bg-[var(--color-surface)] border border-[var(--color-border)] transition-all hover:shadow-xl hover:border-[var(--color-accent)]",
+        "group relative overflow-hidden rounded-2xl cursor-pointer bg-(--color-surface) border border-(--color-border) transition-all hover:shadow-xl hover:border-(--color-accent)",
         className
       )}
     >
-      <div className="aspect-[4/3] overflow-hidden">
+      <div className="aspect-4/3 overflow-hidden">
         <img
           src={category.image || "/placeholder.jpg"}
           alt={category.nameAr || category.name}
@@ -54,7 +54,7 @@ function DefaultCategoryCard({ category, onClick, className }: CategoryCardProps
       <div className="p-4">
         <h3 className="font-bold text-lg">{category.nameAr || category.name}</h3>
         {category.productCount !== undefined && (
-          <p className="text-sm text-[var(--color-text-muted)]">{category.productCount} منتج</p>
+          <p className="text-sm text-(--color-text-muted)">{category.productCount} منتج</p>
         )}
       </div>
     </div>
@@ -86,7 +86,7 @@ function OverlayCategoryCard({ category, onClick, className, size = "md" }: Cate
         alt={category.nameAr || category.name}
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
         <h3 className="font-bold text-xl mb-1">{category.nameAr || category.name}</h3>
         {category.productCount !== undefined && (
@@ -116,7 +116,7 @@ function CircleCategoryCard({ category, onClick, className, size = "md" }: Categ
     >
       <div
         className={cn(
-          "rounded-full overflow-hidden border-2 border-[var(--color-border)] transition-all group-hover:border-[var(--color-accent)] group-hover:shadow-lg",
+          "rounded-full overflow-hidden border-2 border-(--color-border) transition-all group-hover:border-(--color-accent) group-hover:shadow-lg",
           sizeClasses[size]
         )}
       >
@@ -126,7 +126,7 @@ function CircleCategoryCard({ category, onClick, className, size = "md" }: Categ
           className="w-full h-full object-cover"
         />
       </div>
-      <span className="font-medium text-center group-hover:text-[var(--color-accent)] transition-colors">
+      <span className="font-medium text-center group-hover:text-(--color-accent) transition-colors">
         {category.nameAr || category.name}
       </span>
     </div>
@@ -142,7 +142,7 @@ function IconCategoryCard({ category, onClick, className }: CategoryCardProps) {
     <div
       onClick={() => onClick?.(category)}
       className={cn(
-        "flex flex-col items-center gap-3 p-6 rounded-2xl cursor-pointer bg-[var(--color-surface)] border border-[var(--color-border)] transition-all hover:shadow-lg hover:border-[var(--color-accent)] group",
+        "flex flex-col items-center gap-3 p-6 rounded-2xl cursor-pointer bg-(--color-surface) border border-(--color-border) transition-all hover:shadow-lg hover:border-(--color-accent) group",
         className
       )}
     >
@@ -157,7 +157,7 @@ function IconCategoryCard({ category, onClick, className }: CategoryCardProps) {
           />
         </div>
       )}
-      <span className="font-medium text-center group-hover:text-[var(--color-accent)] transition-colors">
+      <span className="font-medium text-center group-hover:text-(--color-accent) transition-colors">
         {category.nameAr || category.name}
       </span>
     </div>

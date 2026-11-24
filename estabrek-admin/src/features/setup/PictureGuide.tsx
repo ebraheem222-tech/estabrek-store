@@ -68,7 +68,7 @@ export function PictureGuide({ testid, title, link, steps, open }: { testid: str
       </a>
       <ol className="mt-3 grid gap-3 sm:grid-cols-2">
         {steps.map(({ draw: Draw, words }, i) => (
-          <li key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-2" data-testid={`${testid}-${i + 1}`}>
+          <li key={i} className="rounded-xl border border-white/10 bg-white/3 p-2" data-testid={`${testid}-${i + 1}`}>
             <Draw />
             <p className="mt-2 text-xs leading-6 text-white/75">
               <span className="me-1 inline-grid h-5 w-5 place-items-center rounded-full bg-accent-500/25 text-[11px] font-bold">{i + 1}</span>

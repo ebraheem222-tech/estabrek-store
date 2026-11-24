@@ -50,15 +50,15 @@ export function BackgroundPicker({ value, onChange }: { value: Background; onCha
   return (
     <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={tr("الخلفية", "Background")}>
       <button type="button" role="radio" aria-checked={value === "transparent"} onClick={() => onChange("transparent")} className={chip(value === "transparent")} data-testid="cutout-bg-transparent">
-        <span className="h-4 w-4 rounded border border-white/20" style={{ background: CHECKER, backgroundSize: "8px 8px" }} />
+        <span className="h-4 w-4 rounded-sm border border-white/20" style={{ background: CHECKER, backgroundSize: "8px 8px" }} />
         {tr("شفافة", "Transparent")}
       </button>
       <button type="button" role="radio" aria-checked={value.toLowerCase() === "#ffffff"} onClick={() => onChange("#ffffff")} className={chip(value.toLowerCase() === "#ffffff")} data-testid="cutout-bg-white">
-        <span className="h-4 w-4 rounded border border-white/20" style={{ background: "#ffffff" }} />
+        <span className="h-4 w-4 rounded-sm border border-white/20" style={{ background: "#ffffff" }} />
         {tr("بيضا", "White")}
       </button>
       <label className={cn(chip(isColour), "relative cursor-pointer")} title={tr("لون", "Colour")}>
-        <span className="h-4 w-4 rounded border border-white/20" style={{ background: isColour ? value : "linear-gradient(135deg,#f9a8d4,#93c5fd)" }} />
+        <span className="h-4 w-4 rounded-sm border border-white/20" style={{ background: isColour ? value : "linear-gradient(135deg,#f9a8d4,#93c5fd)" }} />
         {tr("لون", "Colour")}
         <input type="color" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={isColour ? value : "#f4e7ec"} onChange={(e) => onChange(e.target.value)} aria-label={tr("لون الخلفية", "Background colour")} data-testid="cutout-bg-colour" />
       </label>

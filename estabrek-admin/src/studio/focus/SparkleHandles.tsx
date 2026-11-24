@@ -30,7 +30,7 @@ export function SparkleHandles({ box, points, chosen, busy, onMove, onRemove, on
         return (
           <button
             key={i} type="button" tabIndex={-1}
-            className={`pointer-events-auto absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 ${chosen === i ? "border-sky-300 bg-sky-400/70" : "border-white bg-amber-300/80"} shadow ${busy ? "" : "cursor-move"}`}
+            className={`pointer-events-auto absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 ${chosen === i ? "border-sky-300 bg-sky-400/70" : "border-white bg-amber-300/80"} shadow-sm ${busy ? "" : "cursor-move"}`}
             style={{ left: `${at.x * 100}%`, top: `${at.y * 100}%` }}
             aria-label={`${say("نجمة|Star|כוכב")} ${i + 1}`}
             onPointerDown={(e) => {

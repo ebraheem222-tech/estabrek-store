@@ -398,7 +398,7 @@ const doImport = async () => {
           <div>
             <label className="mb-2 block text-sm font-medium">{tr("الوصف (اختياري)", "Description (optional)")}</label>
             <textarea
-              className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
+              className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-hidden focus:border-white/20 focus:ring-2 focus:ring-white/10"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -465,7 +465,7 @@ const doImport = async () => {
             {importRows.length > 0 ? (
               <div className="mt-3 overflow-auto">
                 <table className="min-w-[700px] text-sm">
-  <thead className="sticky top-0 bg-zinc-950/80 backdrop-blur">
+  <thead className="sticky top-0 bg-zinc-950/80 backdrop-blur-sm">
     <tr className="text-zinc-400">
       <th className="px-3 py-2 text-start">#</th>
       <th className="px-3 py-2 text-start">{tr("العنوان", "Title")}</th>
@@ -530,7 +530,7 @@ const doImport = async () => {
               {importReport.summary?.failed ? (
                 <div className="mt-3 max-h-56 overflow-auto rounded-xl border border-white/10">
                   <table className="min-w-[700px] text-sm">
-                    <thead className="sticky top-0 bg-zinc-950/80 backdrop-blur">
+                    <thead className="sticky top-0 bg-zinc-950/80 backdrop-blur-sm">
                       <tr className="text-zinc-400">
                         <th className="px-3 py-2 text-start">#</th>
                         <th className="px-3 py-2 text-start">slug</th>
