@@ -218,13 +218,15 @@ export type NavItem = {
   noLanding?: boolean;
   /** Only for the store that owns the rose design (studio/storeThemes ownsRose): its guide's page. */
   roseOnly?: boolean;
+  /** A shop's page (selling): tucked away from a whole site that sells nothing (siteKind.ts showsShop). */
+  shop?: boolean;
 };
 
 const NAV_MAIN: NavItem[] = [
   { to: "/admin/dashboard", label: tr("لوحة التحكم", "Dashboard"), icon: Icons.dashboard, requirePermissions: ["dashboard:read"] },
-  { to: "/admin/orders", label: tr("الطلبات", "Orders"), icon: Icons.orders, requirePermissions: ["orders:read"] },
+  { to: "/admin/orders", label: tr("الطلبات", "Orders"), icon: Icons.orders, requirePermissions: ["orders:read"], shop: true },
   { to: "/admin/tickets", label: tr("التذاكر والدخول", "Tickets & entry"), icon: Icons.ticket, requirePermissions: ["orders:read"] },
-  { to: "/admin/requests", label: tr("الطلبات الخاصة", "Special requests"), icon: Icons.bell, requirePermissions: ["orders:read"] },
+  { to: "/admin/requests", label: tr("الطلبات الخاصة", "Special requests"), icon: Icons.bell, requirePermissions: ["orders:read"], shop: true },
   { to: "/admin/payment-requests", label: tr("الدفعات المطلوبة", "Payments asked for"), icon: Icons.orders, requirePermissions: ["orders:read"] },
   { to: "/admin/customers", label: tr("الزبائن", "Customers"), icon: Icons.profile, requirePermissions: ["customers:read"] },
   { to: "/admin/outbox", label: tr("الرسائل", "Messages"), icon: Icons.outbox, requirePermissions: ["outbox:read"] },
@@ -232,44 +234,44 @@ const NAV_MAIN: NavItem[] = [
 ];
 
 const NAV_CATALOG: NavItem[] = [
-  { to: "/admin/catalog/categories", label: tr("التصنيفات", "Categories"), icon: Icons.categories, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/products", label: tr("المنتجات", "Products"), icon: Icons.products, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/products/new", label: tr("+ منتج جديد", "+ New product"), icon: Icons.products, requirePermissions: ["catalog:write"] },
-  { to: "/admin/catalog/sizes", label: tr("المقاسات", "Sizes"), icon: Icons.sizes, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/types", label: tr("أنواع المنتجات", "Product types"), icon: Icons.categories, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/categories", label: tr("التصنيفات", "Categories"), icon: Icons.categories, requirePermissions: ["catalog:read"], shop: true },
+  { to: "/admin/catalog/products", label: tr("المنتجات", "Products"), icon: Icons.products, requirePermissions: ["catalog:read"], shop: true },
+  { to: "/admin/catalog/products/new", label: tr("+ منتج جديد", "+ New product"), icon: Icons.products, requirePermissions: ["catalog:write"], shop: true },
+  { to: "/admin/catalog/sizes", label: tr("المقاسات", "Sizes"), icon: Icons.sizes, requirePermissions: ["catalog:read"], shop: true },
+  { to: "/admin/catalog/types", label: tr("أنواع المنتجات", "Product types"), icon: Icons.categories, requirePermissions: ["catalog:read"], shop: true },
 ];
 
 const NAV_INVENTORY: NavItem[] = [
-  { to: "/admin/inventory/stock", label: tr("المخزون والباركود", "Stock & barcodes"), icon: Icons.stock, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/low-stock", label: tr("تنبيهات المخزون", "Low stock"), icon: Icons.inventory, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/forecast", label: tr("توقّع المخزون", "Stock forecast"), icon: Icons.forecast, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/back-in-stock", label: tr("بانتظار التوفّر", "Waiting for stock"), icon: Icons.bell, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/adjustments", label: tr("سجل المخزون", "Stock log"), icon: Icons.inventory, requirePermissions: ["inventory:write"] },
+  { to: "/admin/inventory/stock", label: tr("المخزون والباركود", "Stock & barcodes"), icon: Icons.stock, requirePermissions: ["inventory:read"], shop: true },
+  { to: "/admin/inventory/low-stock", label: tr("تنبيهات المخزون", "Low stock"), icon: Icons.inventory, requirePermissions: ["inventory:read"], shop: true },
+  { to: "/admin/inventory/forecast", label: tr("توقّع المخزون", "Stock forecast"), icon: Icons.forecast, requirePermissions: ["inventory:read"], shop: true },
+  { to: "/admin/inventory/back-in-stock", label: tr("بانتظار التوفّر", "Waiting for stock"), icon: Icons.bell, requirePermissions: ["inventory:read"], shop: true },
+  { to: "/admin/inventory/adjustments", label: tr("سجل المخزون", "Stock log"), icon: Icons.inventory, requirePermissions: ["inventory:write"], shop: true },
 ];
 
 const NAV_DISCOUNTS: NavItem[] = [
-  { to: "/admin/discounts/coupons", label: tr("الكوبونات", "Coupons"), icon: Icons.coupon, requirePermissions: ["discounts:read"] },
-  { to: "/admin/discounts/coupons/test", label: tr("تجربة كوبون", "Coupon tester"), icon: Icons.coupon, requirePermissions: ["discounts:write"] },
-  { to: "/admin/discounts/smart", label: tr("البيع الذكي", "Smart selling"), icon: Icons.forecast, requirePermissions: ["discounts:read"] },
-  { to: "/admin/discounts/ab", label: tr("تجارب A/B", "A/B tests"), icon: Icons.toggles, requirePermissions: ["discounts:read"] },
+  { to: "/admin/discounts/coupons", label: tr("الكوبونات", "Coupons"), icon: Icons.coupon, requirePermissions: ["discounts:read"], shop: true },
+  { to: "/admin/discounts/coupons/test", label: tr("تجربة كوبون", "Coupon tester"), icon: Icons.coupon, requirePermissions: ["discounts:write"], shop: true },
+  { to: "/admin/discounts/smart", label: tr("البيع الذكي", "Smart selling"), icon: Icons.forecast, requirePermissions: ["discounts:read"], shop: true },
+  { to: "/admin/discounts/ab", label: tr("تجارب A/B", "A/B tests"), icon: Icons.toggles, requirePermissions: ["discounts:read"], shop: true },
 ];
 
 const NAV_SITE: NavItem[] = [
   { to: "/admin/features", label: tr("الميزات", "Features"), icon: Icons.toggles, requirePermissions: ["settings:read"] },
   { to: "/admin/razan", label: tr("رزان (دليلة المتجر)", "Rose (store guide)"), icon: Icons.chatbot, requirePermissions: ["settings:read"], roseOnly: true, noLanding: true },
-  { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"] },
+  { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"], shop: true },
   { to: "/admin/ai", label: tr("الذكاء الاصطناعي ✨", "AI ✨"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
-  { to: "/admin/ai/social", label: say("منشورات السوشال ✨|Social posts ✨|פוסטים לרשתות ✨"), icon: Icons.pages, requirePermissions: ["catalog:read"] },
+  { to: "/admin/ai/social", label: say("منشورات السوشال ✨|Social posts ✨|פוסטים לרשתות ✨"), icon: Icons.pages, requirePermissions: ["catalog:read"], shop: true },
   { to: "/admin/ai/eval", label: say("جرّب النموذج 🧪|Try the model 🧪|לנסות את המודל 🧪"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
-  { to: "/admin/ai/seo", label: say("طبيب جوجل (SEO)|Search doctor (SEO)|רופא החיפוש (SEO)"), icon: Icons.forecast, requirePermissions: ["catalog:read"] },
+  { to: "/admin/ai/seo", label: say("طبيب جوجل (SEO)|Search doctor (SEO)|רופא החיפוש (SEO)"), icon: Icons.forecast, requirePermissions: ["catalog:read"], shop: true },
   { to: "/admin/settings", label: tr("الإعدادات", "Settings"), icon: Icons.settings, requirePermissions: ["settings:read"] },
-  { to: "/admin/visual-controls", label: tr("بطاقات المنتجات والتفاعلات", "Cards and interactions"), icon: Icons.toggles, requirePermissions: ["settings:read"] },
+  { to: "/admin/visual-controls", label: tr("بطاقات المنتجات والتفاعلات", "Cards and interactions"), icon: Icons.toggles, requirePermissions: ["settings:read"], shop: true },
   { to: "/setup", label: tr("إعداد المتجر", "Store setup"), icon: Icons.sun, requirePermissions: ["settings:write"] },
   { to: "/admin/media", label: tr("الوسائط", "Media"), icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/media/videos", label: tr("الفيديوهات", "Videos"), icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/media/scan", label: tr("مسح 3D من فيديو", "3D scan from a video"), icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/media/spin", label: tr("360° من فيديو عادي", "360° from a plain video"), icon: Icons.media, requirePermissions: ["media:read"] },
-  { to: "/admin/chatbot", label: tr("مساعد المتجر (AI)", "Store assistant (AI)"), icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
+  { to: "/admin/chatbot", label: tr("مساعد المتجر (AI)", "Store assistant (AI)"), icon: Icons.chatbot, requirePermissions: ["chatbot:read"], shop: true },
   { to: "/admin/nav", label: tr("القوائم", "Menus"), icon: Icons.nav, requirePermissions: ["nav:write"] },
   { to: "/admin/pages", label: tr("الصفحات", "Pages"), icon: Icons.pages, requirePermissions: ["pages:read"] },
   { to: "/admin/stories", label: say("القصص (ستوريز)|Stories|סטוריז"), icon: Icons.media, requirePermissions: ["pages:read"] },
@@ -281,7 +283,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/connections", label: say("الاتصالات والأسرار|Connections & secrets|חיבורים וסודות"), icon: Icons.security, requirePermissions: ["connections:read"] },
   { to: "/admin/webhooks", label: say("Webhooks طالعة|Outgoing webhooks|Webhooks יוצאים"), icon: Icons.jobs, requirePermissions: ["connections:read"] },
   { to: "/admin/themes", label: tr("ثيمات المتجر", "Store themes"), icon: Icons.sun, requirePermissions: ["settings:read"] },
-  { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
+  { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"], shop: true },
   { to: "/admin/ugc/comments", label: tr("التعليقات", "Comments"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
 ];
 
