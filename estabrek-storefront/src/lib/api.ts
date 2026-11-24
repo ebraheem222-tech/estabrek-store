@@ -7,12 +7,16 @@ import type { CatalogCategory, CatalogProduct, CatalogProductsList } from "./cat
 import type { Lang } from "./i18n";
 import { localizeCategories, localizeList, localizeProduct, localizeProducts } from "./localize";
 import { identityOf } from "./storeIdentity";
-import { setArabicTone } from "./words";
+import { setArabicTone, setPlainWords } from "./words";
+import { roseDesignOn } from "./roseTheme";
 import type { PageTree } from "@/pageTree/tree";
 import { storyProductIds, storyReelsOf, type StoryProduct, type StoryReelRaw } from "@/pageTree/storyData";
 
 /** The store's way of speaking Arabic comes with its settings (admin → هوية المتجر). */
-const toneFrom = (site: unknown) => setArabicTone(identityOf(site as Parameters<typeof identityOf>[0]).audience);
+const toneFrom = (site: unknown) => {
+  setArabicTone(identityOf(site as Parameters<typeof identityOf>[0]).audience);
+  setPlainWords(!roseDesignOn((site as { header?: unknown } | null | undefined)?.header));
+};
 
 function baseUrl() {
   return (

@@ -34,7 +34,7 @@ import { MarketingPixels } from "@/components/MarketingPixels";
 import { identityOf, nameOf, pick } from "@/lib/storeIdentity";
 import { StoreLookProvider } from "@/store/storeLook";
 import { themePalette } from "@/storeThemes/css";
-import { setArabicTone, tr } from "@/lib/words";
+import { setArabicTone, setPlainWords, tr } from "@/lib/words";
 import { roseDesignOn, roseOwned, storeThemeOf, themeCss } from "@/storeThemes";
 import { kitCss, kitOfHeader } from "@/storeThemes/packs";
 import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
@@ -154,6 +154,8 @@ export default async function RootLayout({
   const regions = ownedDesign ? await getStoreDesignRegions().catch(() => ({ header: null, footer: null })) : null;
   const identity = identityOf({ siteName: bootstrap.site.siteName, header, currencyCode: (bootstrap.site as any).currencyCode });
   setArabicTone(identity.audience);
+  // The clothes shop's words (bag, look, fabric) are the rose design's; any other store speaks plainly.
+  setPlainWords(!roseDesignOn(header));
   // Admin → Settings → أكواد متقدمة → "إيقاف الأكواد المخصصة مؤقتاً": custom CSS,
   // scripts and tracking pixels are not added while it is on (nothing is deleted).
   const safeMode = header?.safeMode === true;

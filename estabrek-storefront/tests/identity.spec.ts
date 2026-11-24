@@ -71,7 +71,8 @@ test("another store: its own name everywhere, nothing of Estabrek", async ({ pag
     }
   }
   await open(page, "/cart", "ar");
-  await expect(page.locator("main")).toContainText("الحقيبة فارغة حالياً.");
+  // A store on any theme but the rose design has a cart, not a bag (lib/words.plain.ts).
+  await expect(page.locator("main")).toContainText("السلة فارغة حالياً.");
   await open(page, "/", "ar");
   await expect(page.locator(".atelier-brand .brand-arabic").first()).toHaveText("نور");
   await expect(page.locator(".atelier-brand .brand-english").first()).toHaveText("ALL TECH IN ONE PLACE");
@@ -101,7 +102,7 @@ test("another hijab shop: its kind's theme, nothing of Estabrek's design or guid
   test.setTimeout(240_000);
   await page.request.post(`${API}/__test/identity`, { data: LAMA });
   await settle(page);
-  for (const path of ["/", "/shop", "/about", "/contact", "/cart"]) {
+  for (const path of ["/", "/shop", "/search?q=x", "/about", "/contact", "/cart", "/request"]) {
     await open(page, path, "ar");
     await expect(page.locator("html"), path).toHaveAttribute("data-store-theme", "runway-3d");
     await expect(page.locator(".hero-mascot, .rose-companion, .rose-film"), path).toHaveCount(0);
@@ -111,6 +112,11 @@ test("another hijab shop: its kind's theme, nothing of Estabrek's design or guid
       // The mock's home has its owner's own hero title (a line of its own); the rose design's lines end otherwise.
       .replace(/^أناقة تليق بكِ$/gm, "");
     expect(all, path).not.toMatch(/استبرق|estabrek|رزان|أناقة تليق بكِ|عالم الأقمشة|متجر للحجاب والملابس المحتشمة/i);
+    // The clothes shop's words in the shop's own lines: a cart, not a bag; no looks or fabrics. (The mock's
+    // products and their fabric filter are its owner's words, so the pages listing them are checked line by line.)
+    // (A fashion theme from the library speaks of looks in its own copy: that's the picked theme's voice.)
+    if (["/about", "/contact", "/cart", "/request"].includes(path)) expect(all, path).not.toMatch(/حقيب|القماش|عباية|حجاب/);
+    else expect(all, path).not.toMatch(/طرق أخرى لاكتشاف|اكتبي اسم القطعة، اللون أو القماش|للحقيبة|الحقيبة/);
   }
   // Its home's title is its own name, without Estabrek's line.
   await open(page, "/", "ar");

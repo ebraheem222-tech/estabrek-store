@@ -1,29 +1,16 @@
 import { applyCustom, cleanCustom } from "./custom";
 import { themeById } from "./registry";
 import type { StoreTheme, StoreThemeChoice } from "./types";
-import { independentDesign, readThemeSnapshot } from "./snapshot";
+import { readThemeSnapshot } from "./snapshot";
 
 export { STORE_THEMES, themeById } from "./registry";
 export { themeCss, themePalette } from "./css";
 export type { StoreTheme, StoreThemeChoice } from "./types";
 export { applyCustom, cleanCustom, customFromParam, customToParam, type ThemeCustom } from "./custom";
 
-/**
- * The rose design (its hijab film, seasons, fabric story and the guide Razan) is one store's own
- * theme: it shows only where that store picked it (header.storeTheme.id = "rose"), and only stores
- * that own it (header.privateThemes) see it in the admin's gallery. Nothing falls back to it.
- */
-export const ROSE_THEME_ID = "rose";
-
-/** The store wears the rose design: it picked it, and its pages aren't its own design (cms). */
-export const roseDesignOn = (header: unknown): boolean =>
-  !independentDesign(header) && (header as { storeTheme?: { id?: unknown } } | null | undefined)?.storeTheme?.id === ROSE_THEME_ID;
-
-/** The rose design is this store's own: it wears it, or owns it while on another theme (only it may preview it). */
-export const roseOwned = (header: unknown): boolean => {
-  const h = header as { storeTheme?: { id?: unknown }; privateThemes?: unknown } | null | undefined;
-  return h?.storeTheme?.id === ROSE_THEME_ID || (Array.isArray(h?.privateThemes) && h.privateThemes.includes(ROSE_THEME_ID));
-};
+// The rose design is one store's own theme (lib/roseTheme.ts).
+import { ROSE_THEME_ID } from "@/lib/roseTheme";
+export { ROSE_THEME_ID, roseDesignOn, roseOwned } from "@/lib/roseTheme";
 
 /** What each kind of store wears when it hasn't picked a theme: its kind's theme, never the rose design. */
 export const DEFAULT_THEME: Record<string, string> = {
