@@ -52,9 +52,9 @@ export function QrScanner({ onCode, onClose }: { onCode: (text: string) => void;
   }, []);
 
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.12] bg-black">
+    <div className="mt-4 overflow-hidden rounded-2xl border border-white/12 bg-black">
       {error ? <p className="p-4 text-sm text-red-200">{error}</p> : <video ref={video} className="mx-auto aspect-square w-full max-w-sm object-cover" muted playsInline />}
-      <button type="button" onClick={onClose} className="h-11 w-full bg-white/[0.06] text-sm text-white/80">{tr("إغلاق الكاميرا", "Close camera")}</button>
+      <button type="button" onClick={onClose} className="h-11 w-full bg-white/6 text-sm text-white/80">{tr("إغلاق الكاميرا", "Close camera")}</button>
     </div>
   );
 }

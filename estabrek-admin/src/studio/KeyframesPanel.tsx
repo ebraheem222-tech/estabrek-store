@@ -21,9 +21,9 @@ import {
 } from "./keyframes";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const sel = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const sel = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 const EASES: Array<[string, () => string]> = [
   ["smooth", () => say("ناعم|Smooth|חלק")], ["soft", () => say("هادي|Gentle|עדין")], ["strong", () => say("قوي|Strong|חזק")], ["back", () => say("يرجع شوي|Overshoots|חורג וחוזר")],
   ["elastic", () => say("مطاطي|Elastic|אלסטי")], ["bounce", () => say("ينط|Bouncy|קופצני")], ["linear", () => say("ثابت|Steady|אחיד")], ["fall", () => say("بيتسارع|Speeds up|מאיץ")],
@@ -51,7 +51,7 @@ function LayerLook({ part, layer, busy, onSave }: { part: "before" | "after"; la
   const inset = l.inset ?? [0, 0, 0, 0];
   const at = l.at ?? "fill";
   return (
-    <div className="space-y-2 rounded-lg bg-white/[0.03] p-2" data-testid={`layer-${part}`}>
+    <div className="space-y-2 rounded-lg bg-white/3 p-2" data-testid={`layer-${part}`}>
       <div className="text-[11px] font-medium text-white/60">{say("شكل الطبقة|The layer's look|מראה השכבה")}</div>
       <ColourPick label={say("لونها|Its colour|הצבע שלה")} value={l.bg} busy={busy} onPick={(c) => set({ bg: c ?? undefined })} testId={`layer-${part}-bg`} />
       <ColourPick label={say("لون تاني (تدرّج)|Second colour (gradient)|צבע שני (מעבר)")} value={l.to} busy={busy} onPick={(c) => set({ to: c ?? undefined })} />
@@ -85,7 +85,7 @@ function LayerLook({ part, layer, busy, onSave }: { part: "before" | "after"; la
 /** One moment: its time, how it gets here, and each thing it changes (a tick turns it on). */
 function FrameEditor({ frame, busy, onSave, onDrop, canDrop }: { frame: KeyFrame; busy: boolean; onSave: (patch: Partial<KeyFrame>) => void; onDrop: () => void; canDrop: boolean }) {
   return (
-    <div className="space-y-1.5 rounded-lg bg-white/[0.03] p-2" data-testid="key-frame">
+    <div className="space-y-1.5 rounded-lg bg-white/3 p-2" data-testid="key-frame">
       <div className="grid grid-cols-2 gap-2">
         <Range label={say("الوقت|Time|זמן")} min={0} max={100} unit="%" busy={busy} value={frame.at} onSave={(at) => onSave({ at })} testId="key-frame-at" />
         <EaseChoice label={say("الوصول لهون|Getting here|ההגעה לכאן")} value={frame.ease} none={say("حسب الكل|As the whole|כמו הכלל")} names={EASES.map(([k, name]): [string, string] => [k, name()])} busy={busy} onPick={(ease) => onSave({ ease })} testId="key-frame-ease" />
@@ -157,7 +157,7 @@ export function KeyframesPanel({ node, busy, onOps, onPlay }: { node: PageTreeNo
                 <div className="mb-1 text-[10px] font-medium text-white/50">{title()}</div>
                 <div className="grid grid-cols-2 gap-1">
                   {list.map((p) => (
-                    <button key={p.key} type="button" disabled={busy} className="truncate rounded-lg border border-white/[0.08] px-2 py-1.5 text-start text-[11px] text-white/75 hover:bg-white/[0.05] disabled:opacity-40" title={p.name()} data-key-preset={p.key}
+                    <button key={p.key} type="button" disabled={busy} className="truncate rounded-lg border border-white/8 px-2 py-1.5 text-start text-[11px] text-white/75 hover:bg-white/5 disabled:opacity-40" title={p.name()} data-key-preset={p.key}
                       onClick={() => { onOps(`${L()}: ${p.name()}`, presetOps(node, p)); setPart((Object.keys(p.keys.parts)[0] as KeyPart) ?? "self"); setFrameAt(0); setShowPresets(false); onPlay(); }}>
                       {p.name()}
                     </button>
@@ -205,7 +205,7 @@ export function KeyframesPanel({ node, busy, onOps, onPlay }: { node: PageTreeNo
           <div className="flex flex-wrap gap-1" role="tablist" aria-label={say("القطع|Pieces|חלקים")}>
             {parts.map((pt) => (
               <button key={pt} type="button" role="tab" aria-selected={shown === pt} onClick={() => { setPart(pt); setFrameAt(0); }} data-part={pt}
-                className={`rounded-lg border px-2 py-1 text-[11px] ${shown === pt ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/60 hover:bg-white/[0.05]"}`}>
+                className={`rounded-lg border px-2 py-1 text-[11px] ${shown === pt ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/8 text-white/60 hover:bg-white/5"}`}>
                 {PART_NAME[pt]()}{keys.parts[pt] ? " ●" : ""}
               </button>
             ))}
@@ -213,7 +213,7 @@ export function KeyframesPanel({ node, busy, onOps, onPlay }: { node: PageTreeNo
 
           {frames.length >= 2 ? (
             <>
-              <div className="relative h-8 rounded-lg bg-white/[0.05]" data-testid="key-timeline"
+              <div className="relative h-8 rounded-lg bg-white/5" data-testid="key-timeline"
                 onDoubleClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); const rtl = getComputedStyle(e.currentTarget).direction === "rtl"; const at = ((rtl ? r.right - e.clientX : e.clientX - r.left) / r.width) * 100; setFrames(addFrame(frames, at)); }}>
                 {[0, 25, 50, 75, 100].map((t) => <span key={t} className="absolute top-0 h-full w-px bg-white/10" style={{ insetInlineStart: `${t}%` }} />)}
                 {frames.map((f, j) => (

@@ -112,7 +112,7 @@ export function CustomFormFields({ p, lang, busy, setProps }: { p: Record<string
       <div className={part}>{say("الخانات|The fields|השדות")} <span className="text-white/70">{fields.length}/{FORM_MAX.fields}</span></div>
       <ol className="space-y-1.5">
         {fields.map((f, i) => (
-          <li key={i} className="space-y-1.5 rounded-lg bg-white/[0.04] p-2" data-testid={`form-field-${i}`}>
+          <li key={i} className="space-y-1.5 rounded-lg bg-white/4 p-2" data-testid={`form-field-${i}`}>
             <div className="flex items-end gap-1">
               <div className="flex-1"><Pick label={`${i + 1}. ${say("النوع|Kind|סוג")}`} value={f.kind} options={FORM_KINDS.map(([k, n]): [string, string] => [k, n()])} busy={busy} testId={`form-field-${i}-kind`}
                 onPick={(kind) => {

@@ -155,7 +155,7 @@ export default function OrderMessageModal({ open, order, onClose }: Props) {
           <label className="mb-2 block text-sm font-medium">payloadJson (اختياري)</label>
           <textarea
             className={
-              "min-h-[160px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-none focus:ring-2 focus:ring-white/10 " +
+              "min-h-[160px] w-full rounded-xl border bg-white/5 p-3 text-sm outline-hidden focus:ring-2 focus:ring-white/10 " +
               (errors.payloadText ? "border-red-400/30 focus:border-red-400/40" : "border-white/10 focus:border-white/20")
             }
             value={payloadText}

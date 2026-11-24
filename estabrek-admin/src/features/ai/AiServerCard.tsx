@@ -11,7 +11,7 @@ import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const pill = (on: boolean) => `rounded-full border px-3 py-1.5 text-xs transition ${on ? "border-accent-400/70 bg-accent-500/20" : "border-white/10 text-white/70 hover:border-white/25"}`;
 
 /** Open models that write Arabic well and may be used in a store that is sold on (Apache 2.0, checked 2026-11-21). */
@@ -176,7 +176,7 @@ export function AiServerCard({ server, canWrite, openaiReady }: { server: AiServ
               <span className="mt-1 block text-[11px] leading-5 text-white/45">{say("للبحث بالمعنى عن المنتجات («بدي إشي للعرس»)، مثل BGE-M3 (رخصة MIT).|For search by meaning («something for a wedding»), e.g. BGE-M3 (MIT licence).|לחיפוש לפי משמעות («משהו לחתונה»), למשל BGE-M3 (רישיון MIT).")}</span>
             </label>
           </div>
-          <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] leading-5 text-white/55">
+          <p className="rounded-xl border border-white/10 bg-white/3 p-3 text-[11px] leading-5 text-white/55">
             {say(
               "استوديو الصور (مشاهد جديدة للقطعة) بيضل على OpenAI بس: النماذج النصية ما بتعمل صور. بالسيرفر الحقيقي العنوان لازم يبلّش بـ https:// ويكون على الإنترنت — لو النموذج على كمبيوترك، افتحله رابط https (مثل Cloudflare Tunnel).|The photo studio (new scenes for a piece) stays on OpenAI only: text models don't make pictures. On the live server the address must start with https:// and be on the internet — for a model on your own computer, give it an https link (e.g. Cloudflare Tunnel).|סטודיו התמונות נשאר ב־OpenAI בלבד: מודלי טקסט לא יוצרים תמונות. בשרת החי הכתובת חייבת להתחיל ב־https:// ולהיות באינטרנט — למודל במחשב שלך צריך קישור https (למשל Cloudflare Tunnel).",
             )}

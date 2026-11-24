@@ -16,7 +16,7 @@ import { AiServerCard } from "./AiServerCard";
 import { AiStatsCard } from "./AiStatsCard";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 
 export default function AiPage() {
   const q = useQuery({ queryKey: ["ai"], queryFn: AiAPI.getAi });
@@ -77,7 +77,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
       {groups.map((g) => (
         <section key={g.title} className={box}>
           <h2 className="font-semibold">{g.title}</h2>
-          <div className="mt-2 divide-y divide-white/[0.06]">
+          <div className="mt-2 divide-y divide-white/6">
             {g.keys.map((k) => {
               const needsKey = k !== "orderFlags";
               // Newer servers say per feature (pictures read, pictures made, or words); older ones only "a key".
@@ -112,7 +112,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
       </section>
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur-sm lg:static lg:border-0 lg:bg-transparent lg:p-0">
           <div className="mx-auto flex max-w-3xl justify-end">
             <Button variant="primary" isLoading={save.isPending} onClick={() => save.mutate()}>حفظ</Button>
           </div>
@@ -140,7 +140,7 @@ function Ask() {
         {EXAMPLES.map((x) => <button key={x} type="button" className="rounded-full border border-white/10 px-2.5 py-1 text-xs hover:border-white/25" onClick={() => go(x)}>{x}</button>)}
       </div>
       {ask.data ? (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid="ai-answer">
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/3 p-3" data-testid="ai-answer">
           <p className="whitespace-pre-wrap text-sm leading-7">{ask.data.answer}</p>
           {ask.data.figures.length ? (
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">

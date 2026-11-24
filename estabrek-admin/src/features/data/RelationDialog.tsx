@@ -79,7 +79,7 @@ export function RelationDialog({ table, lang, initialTo, onClose, onDone }: { ta
       }
     >
       <div className="space-y-4" data-testid="relation-dialog">
-        <div className="rounded-lg bg-white/[0.03] p-3 text-xs" data-testid="relation-now">
+        <div className="rounded-lg bg-white/3 p-3 text-xs" data-testid="relation-now">
           <div className="mb-1.5 text-white/55">{say("علاقات هالجدول هلأ|This table's relations now|הקישורים של הטבלה כעת")}</div>
           {!has.length && !from.length ? <div className="text-white/40">{say("ما في ولا علاقة لسا.|None yet.|עדיין אין.")}</div> : null}
           <ul className="space-y-1">
@@ -87,11 +87,11 @@ export function RelationDialog({ table, lang, initialTo, onClose, onDone }: { ta
               <li key={f.id} className="flex flex-wrap items-center gap-1.5" data-testid={`relation-has-${f.id}`}>
                 <bdi className="font-medium text-white/85">{words(f.name, lang) || f.id}</bdi>
                 {/* This table's side first, then the linked table's: in the page's own direction, like the cards below. */}
-                <b className="rounded bg-white/10 px-1.5 tabular-nums text-white/70">{LINK_MARKS[linkKind(f)][0]}</b>
+                <b className="rounded-sm bg-white/10 px-1.5 tabular-nums text-white/70">{LINK_MARKS[linkKind(f)][0]}</b>
                 <span className="text-white/40" aria-hidden>
                   ─
                 </span>
-                <b className="rounded bg-white/10 px-1.5 tabular-nums text-white/70">{LINK_MARKS[linkKind(f)][1]}</b>
+                <b className="rounded-sm bg-white/10 px-1.5 tabular-nums text-white/70">{LINK_MARKS[linkKind(f)][1]}</b>
                 <bdi className="text-white/75">{nameOf(f.to)}</bdi>
                 <span className="text-white/40">· {say(LINK_KIND_SHORT[linkKind(f)])}</span>
               </li>
@@ -141,17 +141,17 @@ export function RelationDialog({ table, lang, initialTo, onClose, onDone }: { ta
               aria-checked={kind === k}
               onClick={() => setKind(k)}
               data-testid={`relation-kind-${k}`}
-              className={`rounded-xl border p-3 text-start ${kind === k ? "border-accent-500/70 bg-accent-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"}`}
+              className={`rounded-xl border p-3 text-start ${kind === k ? "border-accent-500/70 bg-accent-500/10" : "border-white/10 bg-white/3 hover:bg-white/6"}`}
             >
               <span className="block text-sm font-medium">{say(LINK_KIND_SHORT[k])}</span>
               <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-white/80">
-                <bdi className="max-w-[9rem] truncate">{here}</bdi>
-                <b className="rounded bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[k][0]}</b>
+                <bdi className="max-w-36 truncate">{here}</bdi>
+                <b className="rounded-sm bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[k][0]}</b>
                 <span className="text-white/40" aria-hidden>
                   ─
                 </span>
-                <b className="rounded bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[k][1]}</b>
-                <bdi className="max-w-[9rem] truncate">{there}</bdi>
+                <b className="rounded-sm bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[k][1]}</b>
+                <bdi className="max-w-36 truncate">{there}</bdi>
               </span>
               <span className="mt-1.5 block text-[11px] leading-5 text-white/50">{say(LINK_KIND_NAME[k])}</span>
             </button>

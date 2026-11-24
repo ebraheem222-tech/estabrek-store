@@ -14,8 +14,8 @@ import { matesToAdd, readings, SIZE_MAX, SIZE_MIN, sizesOnScale, spacesOnScale, 
 export { starterTokens };
 
 type Api = { tokens: DesignTokens; hasDraft: boolean; busy: boolean; save: (t: DesignTokens) => Promise<boolean>; publish: () => Promise<boolean>; drop: () => Promise<boolean> };
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const input = "w-full min-w-0 rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const input = "w-full min-w-0 rounded-md border border-white/10 bg-surface-925 px-1.5 py-1 text-xs text-white";
 const GROUPS: TokenGroup[] = ["colors", "fonts", "sizes", "spaces", "radii", "shadows"];
 /** The ready set's font sizes: a store that has variables but no sizes yet gets these names with its scale. */
 const READY_SIZES = starterTokens([]).sizes;
@@ -62,7 +62,7 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
       <p className="px-1 text-[11px] leading-5 text-white/45">{say("لون أو خط أو مسافة بإسم: أي عنصر بياخده بالإسم، وتغييره هون بيغيّر كل الصفحات.|A colour, font or space by name: any element takes it by name, and changing it here changes every page.|צבע, גופן או מרווח בשם: כל אובייקט לוקח אותו בשם, ושינוי כאן משנה את כל הדפים.")}</p>
       {empty ? <button type="button" className={`${btn} w-full`} disabled={api.busy} onClick={() => void api.save(starterTokens(fonts.map((f) => f.slug)))} data-testid="variables-starter">✦ {say("ابدأ بمجموعة جاهزة|Start from a ready set|התחל מסט מוכן")}</button> : null}
       <div className="flex flex-wrap gap-1" role="tablist">
-        {GROUPS.map((g) => <button key={g} type="button" role="tab" aria-selected={open === g} className={`rounded-md px-2 py-1 text-[11px] ${open === g ? "bg-accent-500/20 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} onClick={() => setOpen(g)} data-testid={`variables-tab-${g}`}>{say(TOKEN_GROUP_NAMES[g])} <span className="text-white/35">{t[g].length}</span></button>)}
+        {GROUPS.map((g) => <button key={g} type="button" role="tab" aria-selected={open === g} className={`rounded-md px-2 py-1 text-[11px] ${open === g ? "bg-accent-500/20 text-white" : "text-white/60 hover:bg-white/6"}`} onClick={() => setOpen(g)} data-testid={`variables-tab-${g}`}>{say(TOKEN_GROUP_NAMES[g])} <span className="text-white/35">{t[g].length}</span></button>)}
       </div>
       <div className="space-y-1.5" data-testid={`variables-${open}`}>
         {open === "colors" && t.colors.length && weakGrounds(t) !== null ? (
@@ -73,7 +73,7 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
         {open === "sizes" ? (() => {
           const next = sizesOnScale(t, sizeScale.base, sizeScale.ratio, READY_SIZES);
           return (
-            <div className="space-y-1 rounded-lg border border-white/[0.06] p-1.5" data-testid="variables-size-scale">
+            <div className="space-y-1 rounded-lg border border-white/6 p-1.5" data-testid="variables-size-scale">
               <div className="text-[11px] leading-5 text-white/60">{say("سلّم أحجام: كل حجم قد اللي قبله مضروب بنسبة ثابتة، من الأصغر للأكبر|A scale of sizes: each one is the one before it times a fixed ratio, smallest first|סולם גדלים: כל גודל הוא הקודם כפול יחס קבוע, מהקטן לגדול")}</div>
               <div className="flex gap-1">
                 <input type="number" className={input} min={SIZE_MIN} max={40} value={sizeScale.base} aria-label={say("أصغر حجم|The smallest size|הגודל הקטן ביותר")} title={say("أصغر حجم|The smallest size|הגודל הקטן ביותר")} onChange={(e) => { const v = num(e.target.value, SIZE_MIN, 40); if (v !== null) setSizeScale({ ...sizeScale, base: v }); }} data-testid="variables-size-scale-base" />
@@ -89,7 +89,7 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
         {open === "spaces" ? (() => {
           const next = spacesOnScale(t, scale.base, scale.ratio);
           return (
-            <div className="space-y-1 rounded-lg border border-white/[0.06] p-1.5" data-testid="variables-scale">
+            <div className="space-y-1 rounded-lg border border-white/6 p-1.5" data-testid="variables-scale">
               <div className="text-[11px] leading-5 text-white/60">{say("سلّم مسافات: كل مسافة قد اللي قبلها مضروبة بنسبة ثابتة|A scale of spaces: each one is the one before it times a fixed ratio|סולם מרווחים: כל מרווח הוא הקודם כפול יחס קבוע")}</div>
               <div className="flex gap-1">
                 <input type="number" className={input} min={1} max={64} value={scale.base} aria-label={say("أصغر مسافة|The smallest space|המרווח הקטן ביותר")} title={say("أصغر مسافة|The smallest space|המרווח הקטן ביותר")} onChange={(e) => { const v = num(e.target.value, 1, 64); if (v !== null) setScale({ ...scale, base: v }); }} data-testid="variables-scale-base" />
@@ -103,13 +103,13 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
           );
         })() : null}
         {(t[open] as Item[]).map((x, i) => (
-          <div key={x.id} className="space-y-1 rounded-lg border border-white/[0.06] p-1.5" data-token={x.id}>
+          <div key={x.id} className="space-y-1 rounded-lg border border-white/6 p-1.5" data-token={x.id}>
             <div className="flex items-center gap-1">
               <input key={`${x.id}:${tokenName(x)}`} className={input} defaultValue={tokenName(x)} aria-label={say("الإسم|Name|שם")} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== tokenName(x)) set(open, i, { name: { ...(x.name ?? {}), [lang]: v.slice(0, 60) } }); }} data-testid="variable-name" />
               <code className="shrink-0 text-[10px] text-white/35" dir="ltr">${x.id}</code>
               <button type="button" className="shrink-0 px-1 text-red-300/80 hover:text-red-300" disabled={api.busy} aria-label={say("احذف|Delete|מחק")} onClick={() => drop(open, i)} data-testid="variable-delete">×</button>
             </div>
-            {open === "colors" ? <input type="color" className="h-7 w-full cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={api.busy} defaultValue={(x as DesignTokens["colors"][number]).value.slice(0, 7)} onBlur={(e) => set(open, i, { value: e.target.value } as never)} data-testid="variable-colour" /> : null}
+            {open === "colors" ? <input type="color" className="h-7 w-full cursor-pointer rounded-sm border border-white/10 bg-transparent" disabled={api.busy} defaultValue={(x as DesignTokens["colors"][number]).value.slice(0, 7)} onBlur={(e) => set(open, i, { value: e.target.value } as never)} data-testid="variable-colour" /> : null}
             {open === "colors" ? (() => {
               const c = x as DesignTokens["colors"][number];
               const tones = tonesToAdd(t, c, (step) => ({ [lang]: `${tokenName(c)} ${step}`.slice(0, 60) }));
@@ -117,9 +117,9 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
                 <div className="space-y-1" data-testid="variable-maths">
                   <div className="flex flex-wrap items-center gap-1 text-[10px] text-white/60">
                     {readings(t, c.value).map((r) => (
-                      <span key={r.on} className={`inline-flex items-center gap-1 rounded-md border px-1 py-0.5 ${r.grade === "fail" ? "border-amber-400/40 text-amber-200/90" : "border-white/[0.08]"}`}
+                      <span key={r.on} className={`inline-flex items-center gap-1 rounded-md border px-1 py-0.5 ${r.grade === "fail" ? "border-amber-400/40 text-amber-200/90" : "border-white/8"}`}
                         title={`${r.on === "paper" ? say("مع لون الورق|With the paper colour|עם צבע הנייר") : say("مع لون الحبر|With the ink colour|עם צבע הדיו")}: ${say(GRADE_NAMES[r.grade])}`} data-testid="variable-reading" data-on={r.on} data-grade={r.grade} data-best={r.best ? "1" : undefined}>
-                        <span className="rounded px-1 font-semibold" style={{ background: r.ground, color: c.value.slice(0, 7) }}>Aa</span>
+                        <span className="rounded-sm px-1 font-semibold" style={{ background: r.ground, color: c.value.slice(0, 7) }}>Aa</span>
                         <span dir="ltr">{r.ratio.toFixed(1)}</span>
                         <span>{say(GRADE_NAMES[r.grade])}</span>
                         {r.best ? <span aria-hidden>✓</span> : null}
@@ -150,7 +150,7 @@ export function VariablesPanel({ api, canPublish }: { api: Api; canPublish: bool
               return (
                 <div className="grid grid-cols-4 gap-1">
                   {(["x", "y", "blur", "spread"] as const).map((k) => <input key={k} type="number" className={input} aria-label={k} title={k} disabled={api.busy} defaultValue={s[k] ?? 0} onBlur={(e) => { const v = num(e.target.value, k === "blur" ? 0 : -100, k === "blur" ? 200 : 100); if (v !== null) set(open, i, { [k]: v } as never); }} data-testid={`variable-shadow-${k}`} />)}
-                  <input type="color" className="col-span-4 h-7 w-full cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={api.busy} defaultValue={s.color.slice(0, 7)} onBlur={(e) => set(open, i, { color: `${e.target.value}${s.color.length === 9 ? s.color.slice(7) : ""}` } as never)} />
+                  <input type="color" className="col-span-4 h-7 w-full cursor-pointer rounded-sm border border-white/10 bg-transparent" disabled={api.busy} defaultValue={s.color.slice(0, 7)} onBlur={(e) => set(open, i, { color: `${e.target.value}${s.color.length === 9 ? s.color.slice(7) : ""}` } as never)} />
                 </div>
               );
             })() : null}

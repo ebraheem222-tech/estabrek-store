@@ -18,7 +18,7 @@ import type { DiffItem, ProjectPreview, ProjectSize, Snapshot } from "../../api/
 import { ACTION_NAME, ACTION_TONE, KINDS, KIND_GROUP, REASON_NAME, bytesText, impactText, iso, listText, partsText, reasonText, sizeText } from "./projectText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 
 /** What is being looked at: a file brought from this computer, or a saved copy to go back to. */
 type Looking = { kind: "file"; file: unknown; name: string } | { kind: "back"; snapshot: Snapshot };
@@ -160,7 +160,7 @@ function Snapshots({ list, onBack, onDownload, downloading }: { list: Snapshot[]
   return (
     <>
       {dialog}
-      <ul className="mt-3 divide-y divide-white/[0.06]" data-testid="project-snapshots">
+      <ul className="mt-3 divide-y divide-white/6" data-testid="project-snapshots">
         {list.map((s) => (
           <li key={s.id} className="flex flex-wrap items-start gap-3 py-3" data-testid={`snapshot-${s.id}`}>
             <div className="min-w-0 flex-1">
@@ -344,7 +344,7 @@ function Needs({ p }: { p: ProjectPreview }) {
   );
   if (!missing.secrets.length && !missing.sites.length && !missing.connections.length) return null;
   return (
-    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm" data-testid="project-needs">
+    <div className="mt-3 rounded-xl border border-white/10 bg-white/3 p-3 text-sm" data-testid="project-needs">
       <p className="font-medium">{say("الـ functions بتحتاج شغلات كل نسخة إلها تبعها:|The functions need things each copy keeps for itself:|הפונקציות צריכות דברים שלכל עותק יש משלו:")}</p>
       {missing.secrets.length ? <p className="mt-1 text-xs text-white/70">{say("أسرار مش موجودة هون:|Secrets not here:|סודות שאין כאן:")} <bdi dir="ltr">{missing.secrets.join(", ")}</bdi></p> : null}
       {missing.sites.length ? <p className="mt-1 text-xs text-white/70">{say("مواقع مش مسموحة هون:|Sites not allowed here:|אתרים שלא מותרים כאן:")} <bdi dir="ltr">{missing.sites.join(", ")}</bdi></p> : null}
@@ -363,7 +363,7 @@ function KindList({ kind, items, remove, onRemove }: { kind: DiffItem["kind"]; i
     <div data-testid={`project-kind-${kind}`}>
       <h3 className="text-sm font-semibold text-white/80">{say(KIND_GROUP[kind])}</h3>
       {shown.length ? (
-        <ul className="mt-1 divide-y divide-white/[0.06]">
+        <ul className="mt-1 divide-y divide-white/6">
           {shown.map((i) => (
             <li key={i.ref} className="flex flex-wrap items-start gap-2 py-2 text-sm" data-testid={`look-${i.ref}`} data-action={i.action}>
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${ACTION_TONE[i.action]}`}>{say(ACTION_NAME[i.action])}</span>

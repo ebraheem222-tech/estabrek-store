@@ -21,8 +21,8 @@ import { TokenGuide } from "../setup/TokenGuide";
 import { CloudflareGuide, NeonGuide, RailwayGuide } from "./hostingGuides";
 
 type Kind = "railway" | "neon" | "vercel" | "cloudflare";
-const box = "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4";
-const field = "w-full min-w-[12rem] flex-1 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm outline-none focus:border-accent-400";
+const box = "rounded-2xl border border-white/8 bg-white/3 p-4 space-y-4";
+const field = "w-full min-w-48 flex-1 rounded-xl border border-white/10 bg-white/4 px-3 py-2 text-sm outline-hidden focus:border-accent-400";
 
 /** The database's maker, in the page's language (asked at each draw: the language can change). */
 const providerName = (p: Hosting["database"]["provider"]) =>
@@ -30,7 +30,7 @@ const providerName = (p: Hosting["database"]["provider"]) =>
 
 function Fact({ name, children, t }: { name: string; children: React.ReactNode; t: string }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.06] py-1.5 text-sm last:border-0" data-testid={t}>
+    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/6 py-1.5 text-sm last:border-0" data-testid={t}>
       <span className="text-white/60">{name}</span>
       <span className="font-medium">{children}</span>
     </div>
@@ -68,7 +68,7 @@ function Account({ kind, label, conns, canRead, canWrite, guide }: { kind: Kind;
   if (!conns?.kinds?.some((k) => k.kind === kind)) return null;
   const mine = (conns.ready ?? []).filter((r) => r.kind === kind);
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.06] p-3" data-testid={`hosting-${kind}-account`}>
+    <div className="space-y-3 rounded-xl border border-white/6 p-3" data-testid={`hosting-${kind}-account`}>
       <div className="text-sm font-medium">{say(`حسابك بـ ${label}|Your ${label} account|החשבון שלך ב-${label}`)}</div>
       {mine.length ? (
         <ul className="space-y-3">

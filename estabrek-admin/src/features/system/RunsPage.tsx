@@ -169,7 +169,7 @@ function RunRow({ run, now, onName }: { run: Run; now: number; onName: () => voi
             </Link>
           ) : null}
         </div>
-        <div className={`break-words text-sm ${run.ok ? "text-white/70" : "text-red-300"}`} data-testid={`run-did-${run.id}`}>
+        <div className={`wrap-break-word text-sm ${run.ok ? "text-white/70" : "text-red-300"}`} data-testid={`run-did-${run.id}`}>
           <bdi>{run.kind === "function" && !run.ok && run.error ? failText(run.error, lang) : runDid(run, lang)}</bdi>
         </div>
         {fn?.answer ? (

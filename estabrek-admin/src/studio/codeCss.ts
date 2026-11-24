@@ -1,6 +1,6 @@
 /**
  * An element's own CSS in the editor (docs/cms-big-engine-plan.ar.md C): Tailwind classes turned into rules for that
- * element only, by Tailwind 4 itself running here in the admin (`tailwind4`, loaded only when it's used), and CSS
+ * element only, by Tailwind 4 itself running here in the admin (`tailwindcss`, the same one that builds the admin, loaded only when it's used), and CSS
  * written for it wrapped in its own class. What comes out (`out`) is what the shop puts in the page, after
  * checking it again (shared/cssCode.ts; the backend checks it too).
  *  - Tailwind's colours, sizes and shadows come as its theme's variables and its own registered properties: both are
@@ -62,9 +62,9 @@ export async function tailwindFor(tw: string, id: string): Promise<CodeResult> {
   if (!classes) return { error: "bad" };
   if (!classes.length) return { out: "" };
   const [{ compile }, theme, utilities] = await Promise.all([
-    import("tailwind4"),
-    import("tailwind4/theme.css?raw").then((m) => m.default as string),
-    import("tailwind4/utilities.css?raw").then((m) => m.default as string),
+    import("tailwindcss"),
+    import("tailwindcss/theme.css?raw").then((m) => m.default as string),
+    import("tailwindcss/utilities.css?raw").then((m) => m.default as string),
   ]);
   const files: Record<string, string> = { "tailwindcss/theme.css": theme, "tailwindcss/utilities.css": utilities };
   const input = `@import "tailwindcss/theme.css" layer(theme);\n@import "tailwindcss/utilities.css" layer(utilities);\n.pt-${id} { @apply ${classes.join(" ")}; }`;

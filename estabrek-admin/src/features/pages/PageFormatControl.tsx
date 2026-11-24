@@ -28,7 +28,7 @@ export function PageFormatControl({ page }: { page: Pick<PagesAPI.Page, "id" | "
   return (
     <div className="flex flex-wrap items-center justify-between gap-2" data-testid="page-format">
       <span
-        className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] ${isTree ? "bg-accent-500/15 text-accent-200" : "bg-white/[0.06] text-white/55"}`}
+        className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] ${isTree ? "bg-accent-500/15 text-accent-200" : "bg-white/6 text-white/55"}`}
         title={isTree ? tr("بتنعرض من شجرة العناصر (المحرر الجديد)", "Drawn from its element tree (the new editor)") : tr("بتنعرض من قائمة الأقسام", "Drawn from its list of sections")}
       >
         {isTree ? tr("الشكل الجديد", "New format") : tr("أقسام", "Sections")}

@@ -42,7 +42,7 @@ export function StoreTemplatePicker({ families, categoryHint, selected, mode, on
         <p className="mt-1 text-xs leading-6 text-white/50">{tr("اختَر الشكل وشوف الصفحة قبل تطبيقها. المحتوى والصور قابلين للتعديل، والمنتجات التجريبية للمعاينة فقط.", "Preview a complete page before applying it. Edit its content and illustrations later; sample products are for previews only.")}</p></div>
       {selected ? <button type="button" onClick={() => onPick(null)} className="rounded-lg bg-white/5 px-3 py-2 text-xs">{tr("إلغاء الاختيار", "Clear selection")}</button> : null}
     </div>
-    {onMotionOptions ? <div className="space-y-2 rounded-xl bg-white/[0.03] p-3">
+    {onMotionOptions ? <div className="space-y-2 rounded-xl bg-white/3 p-3">
       <div className="text-xs text-white/70">{tr("حركة القالب", "Template motion")}</div>
       <MotionProfileFields value={motionOptions} onChange={onMotionOptions} />
       <p className="text-[11px] leading-5 text-white/45">{tr("المعاينة والنسخة اللي إلك بيستخدموا نفس خيارات الحركة. بتقدر تغيّرها بعدين بالمحرّر.", "The preview and your copy use the same motion choices. Change them later in the editor.")}</p>

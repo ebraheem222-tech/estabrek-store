@@ -73,7 +73,7 @@ export function NewOrderAlerts() {
 
   if (!cards.length) return null;
   return (
-    <div className="fixed bottom-24 end-4 z-[45] flex w-[min(340px,calc(100vw-2rem))] flex-col gap-2 lg:bottom-4" aria-live="polite" data-testid="new-order-alerts">
+    <div className="fixed bottom-24 inset-e-4 z-45 flex w-[min(340px,calc(100vw-2rem))] flex-col gap-2 lg:bottom-4" aria-live="polite" data-testid="new-order-alerts">
       {cards.map((o, i) => (
         // On phones only the newest card shows, so the screen stays usable.
         <div key={o.id} className={`glass animate-fade-in-up rounded-2xl border border-sky-400/30 bg-surface-950/95 p-3 shadow-2xl ${i > 0 ? "hidden sm:block" : ""}`}>
@@ -106,16 +106,16 @@ export function OrdersBell() {
   return (
     <div className="flex items-center gap-1.5">
       {perm === "default" && (
-        <button type="button" onClick={() => void Notification.requestPermission().then(setPerm)} className="hidden h-9 rounded-xl border border-white/10 px-3 text-xs text-white/70 hover:bg-white/[0.06] md:inline-flex md:items-center">
+        <button type="button" onClick={() => void Notification.requestPermission().then(setPerm)} className="hidden h-9 rounded-xl border border-white/10 px-3 text-xs text-white/70 hover:bg-white/6 md:inline-flex md:items-center">
           {tr("🔔 تفعيل تنبيه الطلبات", "🔔 Turn on order alerts")}
         </button>
       )}
-      <button type="button" onClick={() => { const v = !sound; setSound(v); setSoundEnabled(v); if (v) chime(); }} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/[0.06]" title={sound ? tr("إيقاف صوت الطلبات", "Mute order sounds") : tr("تشغيل صوت الطلبات", "Play order sounds")} aria-label={sound ? tr("إيقاف صوت الطلبات", "Mute order sounds") : tr("تشغيل صوت الطلبات", "Play order sounds")}>
+      <button type="button" onClick={() => { const v = !sound; setSound(v); setSoundEnabled(v); if (v) chime(); }} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/6" title={sound ? tr("إيقاف صوت الطلبات", "Mute order sounds") : tr("تشغيل صوت الطلبات", "Play order sounds")} aria-label={sound ? tr("إيقاف صوت الطلبات", "Mute order sounds") : tr("تشغيل صوت الطلبات", "Play order sounds")}>
         {sound ? "🔊" : "🔈"}
       </button>
-      <Link to="/admin/orders?status=NEW" className="relative inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs text-white/80 hover:bg-white/[0.06]" aria-label={tr(`${count} طلبات جديدة`, "{0} new orders", [count])}>
+      <Link to="/admin/orders?status=NEW" className="relative inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs text-white/80 hover:bg-white/6" aria-label={tr(`${count} طلبات جديدة`, "{0} new orders", [count])}>
         🛍 <span className="hidden sm:inline">{tr("طلبات جديدة", "New orders")}</span>
-        <span className={count > 0 ? "min-w-[1.25rem] rounded-full bg-sky-400 px-1.5 text-center text-[11px] font-bold text-sky-950" : "text-white/40"}>{count}</span>
+        <span className={count > 0 ? "min-w-5 rounded-full bg-sky-400 px-1.5 text-center text-[11px] font-bold text-sky-950" : "text-white/40"}>{count}</span>
       </Link>
     </div>
   );

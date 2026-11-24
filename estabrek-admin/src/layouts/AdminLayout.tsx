@@ -59,27 +59,27 @@ function NavItemLink({ to, label, icon }: NavItem) {
           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
           collapsed ? "justify-center" : "",
           isActive
-            ? "bg-accent-500/[0.12] text-white"
-            : "text-white/60 hover:bg-white/[0.05] hover:text-white/90"
+            ? "bg-accent-500/12 text-white"
+            : "text-white/60 hover:bg-white/5 hover:text-white/90"
         )
       }
     >
       {({ isActive }) => (
         <>
           {isActive && (
-            <span className="absolute start-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-accent-500 rounded-e-full" />
+            <span className="absolute inset-s-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-accent-500 rounded-e-full" />
           )}
           <span className={cn("transition-colors", isActive ? "text-accent-400" : "text-white/45 group-hover:text-white/70")}>
             {icon}
           </span>
           {!collapsed && <span>{label}</span>}
           {badge > 0 && (
-            <span className={cn("rounded-full bg-sky-500 px-1.5 text-center text-[10px] font-bold leading-4 text-white", collapsed ? "absolute end-1.5 top-1.5" : "ms-auto min-w-[1.2rem]")} aria-label={tr(`${badge} جديد`, "{0} new", [badge])}>
+            <span className={cn("rounded-full bg-sky-500 px-1.5 text-center text-[10px] font-bold leading-4 text-white", collapsed ? "absolute inset-e-1.5 top-1.5" : "ms-auto min-w-[1.2rem]")} aria-label={tr(`${badge} جديد`, "{0} new", [badge])}>
               {badge}
             </span>
           )}
           {collapsed && (
-            <span className="absolute start-full ms-2 px-2 py-1 text-xs bg-surface-800 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10">
+            <span className="absolute inset-s-full ms-2 px-2 py-1 text-xs bg-surface-800 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10">
               {label}
             </span>
           )}
@@ -118,7 +118,7 @@ function BrandMark({ name, logoUrl }: { name: string; logoUrl?: string | null })
     );
   }
   return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-glow" title={name}>
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-accent-500 to-accent-600 text-white shadow-glow" title={name}>
       {/* a small rose */}
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M12 13.5c-2.6 0-4.5-1.9-4.5-4.4 0-1.6.9-3 2.3-3.7.6 1.2 1.3 1.8 2.2 1.8s1.6-.6 2.2-1.8c1.4.7 2.3 2.1 2.3 3.7 0 2.5-1.9 4.4-4.5 4.4Z" />
@@ -332,8 +332,8 @@ export default function AdminLayout() {
       <div className="min-h-screen bg-surface-950" data-skin-shell={skin}>
         {/* Soft background glow */}
         <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-0 start-0 w-[500px] h-[500px] bg-accent-500/[0.04] rounded-full blur-3xl" />
-          <div className="absolute bottom-0 end-0 w-[400px] h-[400px] bg-accent-600/[0.03] rounded-full blur-3xl" />
+          <div className="absolute top-0 inset-s-0 w-[500px] h-[500px] bg-accent-500/4 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 inset-e-0 w-[400px] h-[400px] bg-accent-600/3 rounded-full blur-3xl" />
         </div>
 
         <div className="relative flex min-h-screen">
@@ -349,7 +349,7 @@ export default function AdminLayout() {
           {/* Sidebar */}
           <aside
             className={cn(
-              "fixed top-0 start-0 z-50 flex h-full flex-col border-e border-white/[0.07] bg-surface-950/95 backdrop-blur-xl transition-all duration-300 lg:z-40 lg:translate-x-0 lg:bg-surface-950/80",
+              "fixed top-0 inset-s-0 z-50 flex h-full flex-col border-e border-white/[0.07] bg-surface-950/95 backdrop-blur-xl transition-all duration-300 lg:z-40 lg:translate-x-0 lg:bg-surface-950/80",
               // Off-screen on its own side: the right in Arabic and Hebrew, the left in English.
               mobileOpen ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full lg:rtl:translate-x-0 lg:ltr:translate-x-0",
               "w-[82vw] max-w-[320px]",
@@ -384,7 +384,7 @@ export default function AdminLayout() {
                   onClick={(event) => { event.stopPropagation(); void showShop(); }}
                   disabled={showingShop}
                   title={say("موقعك ما بيبيع إشي هلّق، فأقسام المتجر مخبّاية. بترجعهم بكبسة.|Your site sells nothing yet, so the shop's sections are tucked away. One click brings them back.|האתר שלך עוד לא מוכר כלום, אז חלקי החנות מוסתרים. לחיצה אחת מחזירה אותם.")}
-                  className="w-full rounded-xl border border-dashed border-white/[0.12] px-3 py-2.5 text-start text-xs text-white/55 hover:text-white hover:border-white/25 transition-colors"
+                  className="w-full rounded-xl border border-dashed border-white/12 px-3 py-2.5 text-start text-xs text-white/55 hover:text-white hover:border-white/25 transition-colors"
                 >
                   {say("＋ أقسام المتجر (منتجات، طلبات، مخزون)|+ The shop's sections (products, orders, stock)|+ חלקי החנות (מוצרים, הזמנות, מלאי)")}
                 </button>
@@ -414,7 +414,7 @@ export default function AdminLayout() {
                   <button
                     onClick={onLogout}
                     disabled={logout.isPending}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/60 hover:text-white hover:bg-white/[0.05] rounded-lg transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                   >
                     {logout.isPending ? (
                       <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
@@ -430,7 +430,7 @@ export default function AdminLayout() {
                   <button
                     onClick={onLogout}
                     disabled={logout.isPending}
-                    className="w-full flex items-center justify-center p-2 text-white/60 hover:text-white hover:bg-white/[0.05] rounded-lg transition-colors"
+                    className="w-full flex items-center justify-center p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                     title={tr("تسجيل الخروج", "Sign out")}
                   >
                     {logout.isPending ? (
@@ -446,7 +446,7 @@ export default function AdminLayout() {
             {/* Collapse button */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="absolute -end-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-surface-800 text-white/40 shadow-lg transition-all hover:bg-surface-700 hover:text-white lg:flex"
+              className="absolute -inset-e-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-surface-800 text-white/40 shadow-lg transition-all hover:bg-surface-700 hover:text-white lg:flex"
               aria-label={collapsed ? tr("توسيع القائمة", "Expand the menu") : tr("تصغير القائمة", "Collapse the menu")}
             >
               <span className={cn("transition-transform duration-300 ltr:-scale-x-100", collapsed ? "rotate-180" : "")}>
@@ -463,7 +463,7 @@ export default function AdminLayout() {
                 <div className="flex min-w-0 items-center gap-3">
                   <button
                     type="button"
-                    className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] sm:inline-flex lg:hidden"
+                    className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/4 text-white/70 hover:bg-white/8 sm:inline-flex lg:hidden"
                     onClick={() => setMobileOpen(true)}
                     aria-label={tr("فتح القائمة", "Open the menu")}
                   >
@@ -479,7 +479,7 @@ export default function AdminLayout() {
                 <button
                   type="button"
                   onClick={() => setPaletteOpen(true)}
-                  className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 text-sm text-white/45 transition hover:border-white/15 hover:text-white/70 md:flex [&_svg]:h-4 [&_svg]:w-4"
+                  className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-xl border border-white/9 bg-white/3 px-3 text-sm text-white/45 transition hover:border-white/15 hover:text-white/70 md:flex [&_svg]:h-4 [&_svg]:w-4"
                   data-testid="open-search"
                 >
                   {Icons.search}
@@ -491,7 +491,7 @@ export default function AdminLayout() {
                   <button
                     type="button"
                     onClick={() => setPaletteOpen(true)}
-                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/[0.06] md:hidden [&_svg]:h-[18px] [&_svg]:w-[18px]"
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/6 md:hidden [&_svg]:h-[18px] [&_svg]:w-[18px]"
                     aria-label={tr("بحث", "Search")}
                   >
                     {Icons.search}

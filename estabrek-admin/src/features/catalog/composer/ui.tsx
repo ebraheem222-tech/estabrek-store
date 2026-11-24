@@ -34,7 +34,7 @@ export function Chip({ active, onClick, children, title, disabled, className }: 
         "inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm transition-all duration-150 disabled:opacity-40",
         active
           ? "border-accent-500/60 bg-accent-500/20 text-white shadow-[0_0_0_3px_rgb(var(--sk-accent-500,139_92_246)/0.12)]"
-          : "border-white/[0.1] bg-white/[0.03] text-white/75 hover:border-white/[0.2] hover:text-white",
+          : "border-white/10 bg-white/3 text-white/75 hover:border-white/20 hover:text-white",
         className,
       )}
     >
@@ -48,7 +48,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
     <label className="inline-flex min-h-10 cursor-pointer select-none items-center gap-2.5 text-sm text-white/80 sm:min-h-0">
       <span className={cn("relative h-6 w-11 rounded-full transition-colors", checked ? "bg-accent-500" : "bg-white/15")}>
         <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "start-[1.375rem]" : "start-0.5")} />
+        <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all", checked ? "inset-s-5.5" : "inset-s-0.5")} />
       </span>
       {label}
     </label>

@@ -129,7 +129,7 @@ export default function CustomersPage() {
 }
 
 /** The one-click switch: shopper accounts on the storefront (off = visitors only). */
-function AccountsSwitch({ enabled, emailReady }: { enabled: boolean; emailReady: boolean }) {
+export function AccountsSwitch({ enabled, emailReady }: { enabled: boolean; emailReady: boolean }) {
   const qc = useQueryClient();
   const { hasPermission } = useAuth();
   const canChange = hasPermission("settings:write");
@@ -169,6 +169,12 @@ function AccountsSwitch({ enabled, emailReady }: { enabled: boolean; emailReady:
           {!emailReady && !enabled ? (
             <p className="mt-2 text-xs text-amber-200">
               {tr("قبل التشغيل: لازم يكون إرسال الإيميل (Resend) مضبوط بالسيرفر، حتى توصل أكواد الدخول للزبائن.", "Before turning it on: email sending (Resend) has to be set up on the server so sign-in codes reach customers.")}
+            </p>
+          ) : null}
+          {/* On, with no email: the shop says so to a shopper who asks for a code (EMAIL_NOT_READY), and so does this. */}
+          {!emailReady && enabled ? (
+            <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100" role="alert" data-testid="accounts-email-missing">
+              {tr("الحسابات شغّالة، بس إرسال الإيميل مش مضبوط بالسيرفر، فأكواد الدخول ما بتوصل للزبائن. حطّ RESEND_API_KEY و EMAIL_FROM بمتغيّرات السيرفر (Railway ← Variables)، أو شغّل الدخول بـ Google أو Discord.", "Accounts are on, but email sending isn't set up on the server, so sign-in codes don't reach customers. Add RESEND_API_KEY and EMAIL_FROM to the server's variables (Railway → Variables), or turn on signing in with Google or Discord.")}
             </p>
           ) : null}
           {!canChange ? <p className="mt-2 text-xs text-white/50">{tr("تغيير هذا بدّه صلاحية «تعديل الإعدادات».", "Changing this needs the “Edit settings” permission.")}</p> : null}
@@ -405,7 +411,7 @@ export function RolesSection({ id, roles, groups, canWrite }: { id: string; role
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-xl border border-white/10 bg-white/3 p-3">
       <div className="text-xs text-white/50">{label}</div>
       <div className="mt-1 font-semibold">{value}</div>
     </div>

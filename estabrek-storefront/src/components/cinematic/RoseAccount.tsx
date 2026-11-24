@@ -23,15 +23,20 @@ import { DiscordSignIn, GameAccounts, GameLink, SignInProblem } from "@/componen
  * `discord` / `steam`: signing in with Discord and linking Steam are on (a game server's site; lib/socialSignIn.ts).
  */
 type Ways = { googleClientId: string | null; discord: boolean; steam: boolean };
-export function RoseAccount({ googleClientId = null, discord = false, steam = false }: Partial<Ways> = {}) {
+/**
+ * `mode`: signing in (/account, /account/login) or opening a new account (/account/register). Both are the same
+ * code on the email (no password); a new account also gives its name, saved once the code is right.
+ */
+export type AccountMode = "login" | "register";
+export function RoseAccount({ googleClientId = null, discord = false, steam = false, mode = "login" }: Partial<Ways> & { mode?: AccountMode } = {}) {
   return (
     <Suspense fallback={null}>
-      <AccountInner googleClientId={googleClientId} discord={discord} steam={steam} />
+      <AccountInner googleClientId={googleClientId} discord={discord} steam={steam} mode={mode} />
     </Suspense>
   );
 }
 
-function AccountInner({ googleClientId, discord, steam }: Ways) {
+function AccountInner({ googleClientId, discord, steam, mode }: Ways & { mode: AccountMode }) {
   const { status } = useAccount();
   if (status === "loading") {
     return (
@@ -40,7 +45,7 @@ function AccountInner({ googleClientId, discord, steam }: Ways) {
       </section>
     );
   }
-  return status === "signedIn" ? <SignedIn steam={steam} /> : <SignIn googleClientId={googleClientId} discord={discord} />;
+  return status === "signedIn" ? <SignedIn steam={steam} /> : <SignIn googleClientId={googleClientId} discord={discord} mode={mode} />;
 }
 
 /* ============================== Sign in ============================== */
@@ -49,10 +54,12 @@ function safeNext(v: string | null) {
   return v && v.startsWith("/") && !v.startsWith("//") ? v : null;
 }
 
-function SignIn({ googleClientId, discord }: { googleClientId: string | null; discord: boolean }) {
+function SignIn({ googleClientId, discord, mode }: { googleClientId: string | null; discord: boolean; mode: AccountMode }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
-  const { sendCode, verifyCode } = useAccount();
+  const { sendCode, verifyCode, api, setUser } = useAccount();
+  const joining = mode === "register";
+  const [name, setName] = useState("");
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
   const [step, setStep] = useState<"email" | "code">("email");
@@ -72,6 +79,10 @@ function SignIn({ googleClientId, discord }: { googleClientId: string | null; di
 
   const send = async (e?: FormEvent) => {
     e?.preventDefault();
+    if (joining && name.trim().length < 2) {
+      setErr(tr(lang, "اكتبي اسمكِ.", "Enter your name."));
+      return;
+    }
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setErr(tr(lang, "اكتبي إيميل صحيح.", "Enter a valid email."));
       return;
@@ -111,7 +122,17 @@ function SignIn({ googleClientId, discord }: { googleClientId: string | null; di
     setBusy(true);
     setErr(null);
     try {
-      welcome(await verifyCode(email.trim(), code.trim()));
+      let user = await verifyCode(email.trim(), code.trim());
+      // A new account: the name given is kept (an account that already had one keeps its own).
+      if (joining && name.trim() && !user.name?.trim()) {
+        try {
+          user = await api<Customer>("/customer/me", { method: "PATCH", body: JSON.stringify({ name: name.trim().slice(0, 80) }) });
+          setUser(user);
+        } catch {
+          /* signed in all the same; the name can be given under «تفاصيلي» */
+        }
+      }
+      welcome(user);
     } catch (x) {
       setErr(accountErrorText(x, lang));
     } finally {
@@ -120,12 +141,19 @@ function SignIn({ googleClientId, discord }: { googleClientId: string | null; di
   };
 
   return (
-    <section className="rose-account rose-account-signin" data-testid="account-signin">
+    <section className="rose-account rose-account-signin" data-testid="account-signin" data-mode={mode}>
       <span className="rose-cart-empty-icon"><Icon name="user" /></span>
-      <span className="atelier-eyebrow">{tr(lang, "حسابي", "MY ACCOUNT")}</span>
-      <h1>{tr(lang, "أهلاً فيكِ.", "Welcome.")}</h1>
+      <span className="atelier-eyebrow">{joining ? tr(lang, "حساب جديد", "NEW ACCOUNT") : tr(lang, "حسابي", "MY ACCOUNT")}</span>
+      <h1>{joining ? tr(lang, "افتحي حسابكِ.", "Open your account.") : tr(lang, "أهلاً فيكِ.", "Welcome.")}</h1>
       <p>
         {tr(lang, "بدون كلمة مرور: بنبعتلكِ كود على إيميلكِ. بالحساب بتلاقي طلباتكِ ومفضّلتكِ على كل أجهزتكِ، وعنوانكِ جاهز للطلب الجاي.", "No password: we email you a code. Your orders and favourites follow you on every device, and your address is ready next time.")}
+      </p>
+      <p className="rose-account-muted" data-testid="account-switch">
+        {joining ? (
+          <>{tr(lang, "عندكِ حساب؟", "Have an account?")} <Link href="/account/login">{tr(lang, "تسجيل الدخول", "Sign in")}</Link></>
+        ) : (
+          <>{tr(lang, "ما عندكِ حساب؟", "No account yet?")} <Link href="/account/register">{tr(lang, "حساب جديد", "New account")}</Link></>
+        )}
       </p>
         <p className="rose-account-muted"><Link href="/track">{tr(lang, "طلبتي بدون حساب؟ تابعي طلبكِ من هون", "Ordered without an account? Track your order here")}</Link></p>
 
@@ -141,9 +169,15 @@ function SignIn({ googleClientId, discord }: { googleClientId: string | null; di
       ) : null}
       {step === "email" ? (
         <form className="rose-cart-form rose-account-form" onSubmit={send} noValidate>
+          {joining ? (
+            <label>
+              <span>{tr(lang, "الاسم", "Name")}</span>
+              <input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required autoFocus data-testid="account-name" />
+            </label>
+          ) : null}
           <label>
             <span>{tr(lang, "الإيميل", "Email")}</span>
-            <input type="email" inputMode="email" autoComplete="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" required autoFocus />
+            <input type="email" inputMode="email" autoComplete="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" required autoFocus={!joining} />
           </label>
           {err ? <p className="rose-form-error" role="alert">{err}</p> : null}
           <button type="submit" className="atelier-button button-dark" disabled={busy}>

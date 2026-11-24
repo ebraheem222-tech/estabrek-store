@@ -16,7 +16,7 @@ import { Spin360 } from "../../scan3d/Spin360";
 import type { ComposerDraft } from "./composerModel";
 import { Section } from "./ui";
 
-const btn = "rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs hover:bg-white/[0.1] disabled:opacity-30";
+const btn = "rounded-lg bg-white/6 px-3 py-1.5 text-xs hover:bg-white/10 disabled:opacity-30";
 const showable = (s: Scan) => Boolean(s.manifest?.frames?.length && s.manifest.cols && s.manifest.cellW && s.manifest.cellH);
 
 export function SpinSection({ draft, step }: { draft: ComposerDraft; step: number }) {
@@ -53,11 +53,11 @@ export function SpinSection({ draft, step }: { draft: ComposerDraft; step: numbe
           {mine.length ? (
             <ul className="grid gap-3 sm:grid-cols-2">
               {mine.map((s) => (
-                <li key={s.id} className="space-y-2 rounded-xl border border-white/[0.08] p-2" data-testid="spin-linked" data-scan={s.id}>
+                <li key={s.id} className="space-y-2 rounded-xl border border-white/8 p-2" data-testid="spin-linked" data-scan={s.id}>
                   <Spin360 source={{ kind: "sheet", url: s.url, cols: s.manifest.cols, cellW: s.manifest.cellW, cellH: s.manifest.cellH, count: s.manifest.frames.length }} height={160} />
                   <div className="truncate text-xs text-white/80">{s.displayName ?? tr("عرض 360°", "360° view")}</div>
                   {colours.length > 1 ? (
-                    <select className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" disabled={busy} value={s.manifest.product?.itemId ?? ""} onChange={(e) => void link(s, { productId: productId, itemId: e.target.value || null }, tr("تغيّر اللون", "The colour changed"))} aria-label={tr("لأي لون", "For which colour")}>
+                    <select className="w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white" disabled={busy} value={s.manifest.product?.itemId ?? ""} onChange={(e) => void link(s, { productId: productId, itemId: e.target.value || null }, tr("تغيّر اللون", "The colour changed"))} aria-label={tr("لأي لون", "For which colour")}>
                       <option value="">{tr("كل الألوان", "Every colour")}</option>
                       {colours.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -84,8 +84,8 @@ export function SpinSection({ draft, step }: { draft: ComposerDraft; step: numbe
             <ul className="grid gap-2 sm:grid-cols-3" data-testid="spin-saved">
               {(all.data?.items ?? []).filter((s) => showable(s) && s.manifest.product?.id !== productId).map((s) => (
                 <li key={s.id}>
-                  <button type="button" disabled={busy} onClick={() => void link(s, { productId, itemId: null }, tr("انربط بالمنتج", "Linked to the product")).then(() => setChoosing(false))} className="w-full space-y-1 rounded-xl border border-white/[0.08] p-2 text-start hover:bg-white/[0.04] disabled:opacity-40" data-scan={s.id}>
-                    <img src={s.url} alt="" className="h-16 w-full rounded object-cover object-left-top" />
+                  <button type="button" disabled={busy} onClick={() => void link(s, { productId, itemId: null }, tr("انربط بالمنتج", "Linked to the product")).then(() => setChoosing(false))} className="w-full space-y-1 rounded-xl border border-white/8 p-2 text-start hover:bg-white/4 disabled:opacity-40" data-scan={s.id}>
+                    <img src={s.url} alt="" className="h-16 w-full rounded-sm object-cover object-top-left" />
                     <span className="block truncate text-[11px] text-white/75">{s.displayName ?? tr("عرض 360°", "360° view")}</span>
                     {s.manifest.product ? <span className="block text-[10px] text-amber-200/70">{tr("مربوط بمنتج تاني: بينتقل لهون", "Linked to another product: it moves here")}</span> : null}
                   </button>

@@ -16,7 +16,7 @@ import { readXlsx } from "./xlsx";
 import { field, input } from "./GridCells";
 import { LANGS, LANG_NAME, doubledTargets, guessTarget, issueSay, rowsFromCsv, targetName, targetsOf, type Target } from "./dataText";
 
-const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 const MAX_BYTES = 20 * 1024 * 1024;
 const SHOW_REJECTED = 50;
@@ -118,7 +118,7 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
             </p>
             <div className="overflow-x-auto rounded-xl border border-white/10">
               <table className="w-full text-xs">
-                <thead className="bg-white/[0.04] text-white/60">
+                <thead className="bg-white/4 text-white/60">
                   <tr>
                     <th className="px-2 py-1.5 text-start font-medium">{say("عمود الملف|The file's column|עמודת הקובץ")}</th>
                     <th className="px-2 py-1.5 text-start font-medium">{say("أول قيمة|First value|ערך ראשון")}</th>
@@ -127,9 +127,9 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
                 </thead>
                 <tbody>
                   {file.head.map((h, i) => (
-                    <tr key={i} className="border-t border-white/[0.06]">
+                    <tr key={i} className="border-t border-white/6">
                       <td className="px-2 py-1.5 font-medium">{h || `#${i + 1}`}</td>
-                      <td className="max-w-[14rem] truncate px-2 py-1.5 text-white/55">{file.lines[0]?.[i] ?? ""}</td>
+                      <td className="max-w-56 truncate px-2 py-1.5 text-white/55">{file.lines[0]?.[i] ?? ""}</td>
                       <td className="px-2 py-1.5">
                         <select
                           className={`${input} ${targets[i] && doubled.includes(targets[i]) ? "border-red-400/60" : ""}`}
@@ -178,7 +178,7 @@ export function ImportDialog({ table, lang, wordsLang, batch, onClose, onDone }:
         ) : null}
 
         {checked ? (
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs" data-testid="import-report">
+          <div className="rounded-xl border border-white/10 bg-white/3 p-3 text-xs" data-testid="import-report">
             <p className="font-medium text-white">
               {say(
                 `رح ينضاف ${checked.created}، يتعدّل ${checked.updated}، وينرفض ${checked.rejected.length}.|${checked.created} will be added, ${checked.updated} changed, ${checked.rejected.length} refused.|${checked.created} יתווספו, ${checked.updated} ישתנו, ${checked.rejected.length} יידחו.`,

@@ -102,12 +102,12 @@ const PageCard = ({
 
   const statusLabel = isScheduled ? "مجدول" : isExpired ? "منتهي" : isLive ? "منشور" : "مسودة";
   const statusClass = isScheduled
-    ? "bg-amber-500/15 text-amber-300 border border-amber-500/25 shadow-sm shadow-amber-500/10"
+    ? "bg-amber-500/15 text-amber-300 border border-amber-500/25 shadow-xs shadow-amber-500/10"
     : isExpired
       ? "bg-zinc-500/20 text-zinc-300 border border-zinc-500/30"
       : isLive
-        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shadow-sm shadow-emerald-500/10"
-        : "bg-white/[0.06] text-white/50 border border-white/10";
+        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shadow-xs shadow-emerald-500/10"
+        : "bg-white/6 text-white/50 border border-white/10";
   const statusDotClass = isScheduled
     ? "bg-amber-300"
     : isExpired
@@ -128,11 +128,11 @@ const PageCard = ({
       onMouseLeave={handleMouseLeave}
     >
       {/* Card Header with gradient */}
-      <div className="relative px-5 py-4 border-b border-white/[0.06]">
-        <div className="absolute inset-0 bg-gradient-to-r from-accent-500/5 via-transparent to-accent-500/5" />
+      <div className="relative px-5 py-4 border-b border-white/6">
+        <div className="absolute inset-0 bg-linear-to-r from-accent-500/5 via-transparent to-accent-500/5" />
         <div className="relative flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/20 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/20 flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -142,7 +142,7 @@ const PageCard = ({
               <p dir="ltr" className="mt-0.5 text-xs text-white/40 font-mono truncate">/{page.slug}</p>
             </div>
           </div>
-          <span className={`flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${statusClass}`}>
+          <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${statusClass}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
             {statusLabel}
           </span>
@@ -163,7 +163,7 @@ const PageCard = ({
       </div>
 
       {/* Card Actions */}
-      <div className="px-5 py-3 bg-black/20 border-t border-white/[0.04]">
+      <div className="px-5 py-3 bg-black/20 border-t border-white/4">
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="ghost" className="flex-1 btn-shine" onClick={onEdit}>
             <svg className="w-3.5 h-3.5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -203,7 +203,7 @@ const EmptyState = ({ onCreateClick }: { onCreateClick: () => void }) => (
     <FloatingRing className="bottom-8 left-1/3" />
     
     <div className="relative">
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] flex items-center justify-center animate-float-sphere">
+      <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-white/5 to-white/2 border border-white/8 flex items-center justify-center animate-float-sphere">
         <svg className="w-10 h-10 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
         </svg>
@@ -357,20 +357,20 @@ const onSave = async () => {
   return (
     <div dir="rtl" className="space-y-6 perspective-container">
       {/* Header Card with 3D Elements */}
-      <div className="relative rounded-2xl border border-white/[0.06] glass-premium p-6 overflow-hidden">
+      <div className="relative rounded-2xl border border-white/6 glass-premium p-6 overflow-hidden">
         {/* 3D Background decorations */}
         <FloatingCube className="top-[-20px] right-[-20px] opacity-20" />
         <FloatingSphere className="bottom-[-30px] left-[10%] opacity-15" />
         
         {/* Ambient glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-gradient-to-b from-accent-500/10 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-linear-to-b from-accent-500/10 to-transparent blur-3xl pointer-events-none" />
         
         {/* Top highlight */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-500/30 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-accent-500/30 to-transparent" />
         
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/25 flex items-center justify-center shadow-lg shadow-accent-500/10 animate-pulse-glow-3d">
+            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/25 flex items-center justify-center shadow-lg shadow-accent-500/10 animate-pulse-glow-3d">
               <svg className="w-7 h-7 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
               </svg>
@@ -418,7 +418,7 @@ const onSave = async () => {
       <StorePagesPanel pages={pages} canWrite={auth.hasPermission("pages:write")} canReadSettings={auth.hasPermission("settings:read")} onOpen={id => { window.location.href = `/studio/${id}`; }} />
 
       {/* Content Area */}
-      <div className="relative rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.02] to-transparent overflow-hidden min-h-[300px]">
+      <div className="relative rounded-2xl border border-white/6 bg-linear-to-br from-white/2 to-transparent overflow-hidden min-h-[300px]">
         {q.isLoading ? (
           <LoadingState />
         ) : q.isError ? (

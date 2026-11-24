@@ -18,10 +18,10 @@ export function LibraryCard({ item, busy, onPick, pickLabel, onPreview }: { item
   const [c0, c1, c2] = item.colors ?? [];
   const swatch = c0 ? `linear-gradient(135deg, ${c0} 0%, ${c0} 45%, ${c1 ?? c0} 75%, ${c2 ?? c1 ?? c0} 100%)` : "linear-gradient(135deg, rgb(var(--accent-600, 79 70 229) / .55), rgba(255,255,255,.06))";
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02]" data-testid="lib-card" data-item={item.id} data-kind={item.kind}>
-      <div className="relative aspect-[16/10] w-full overflow-hidden" style={{ background: swatch }}>
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-white/8 bg-white/2" data-testid="lib-card" data-item={item.id} data-kind={item.kind}>
+      <div className="relative aspect-16/10 w-full overflow-hidden" style={{ background: swatch }}>
         {!noPic ? <img src={libThumb(item.id)} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-top" onError={() => setNoPic(true)} /> : (
-          <span className="absolute inset-0 grid place-items-center px-3 text-center text-sm font-semibold text-white/85 drop-shadow">{libName(item)}</span>
+          <span className="absolute inset-0 grid place-items-center px-3 text-center text-sm font-semibold text-white/85 drop-shadow-sm">{libName(item)}</span>
         )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-1 p-2.5">
@@ -33,7 +33,7 @@ export function LibraryCard({ item, busy, onPick, pickLabel, onPreview }: { item
             {pickLabel}
           </button>
           {onPreview ? (
-            <button type="button" onClick={() => onPreview(item.id)} className="rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] text-white/75 hover:bg-white/[0.1]" data-testid="lib-preview">
+            <button type="button" onClick={() => onPreview(item.id)} className="rounded-lg bg-white/6 px-2 py-1 text-[11px] text-white/75 hover:bg-white/10" data-testid="lib-preview">
               {say("معاينة|Preview|תצוגה")}
             </button>
           ) : null}
@@ -84,7 +84,7 @@ export function LibraryShelf({ busy, onPick, pickLabel, onPreview, initialKind =
             type="button"
             aria-pressed={!q.trim() && kind === k}
             onClick={() => { setKind(k); setCat(""); setQ(""); setShown(PAGE); }}
-            className={`flex shrink-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start text-xs ${!q.trim() && kind === k ? "bg-accent-500/25 text-white" : "text-white/70 hover:bg-white/[0.06]"}`}
+            className={`flex shrink-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start text-xs ${!q.trim() && kind === k ? "bg-accent-500/25 text-white" : "text-white/70 hover:bg-white/6"}`}
             data-testid="lib-kind"
             data-kind={k}
           >
@@ -101,18 +101,18 @@ export function LibraryShelf({ busy, onPick, pickLabel, onPreview, initialKind =
             onChange={(e) => { setQ(e.target.value); setShown(PAGE); }}
             placeholder={say(`دوّر بين ${sites} موقع و${LIB_ITEMS.length - sites} قسم…|Search ${sites} sites and ${LIB_ITEMS.length - sites} sections…|חיפוש ב-${sites} אתרים ו-${LIB_ITEMS.length - sites} מקטעים…`)}
             aria-label={say("دوّر بالمكتبة|Search the library|חיפוש בספרייה")}
-            className="min-w-[12rem] flex-1 rounded-lg border border-white/[0.1] bg-surface-925 px-3 py-2 text-xs text-white"
+            className="min-w-48 flex-1 rounded-lg border border-white/10 bg-surface-925 px-3 py-2 text-xs text-white"
             data-testid="lib-search"
           />
           <span className="text-[11px] text-white/45" data-testid="lib-count">{say(`${list.length} قطعة|${list.length} pieces|${list.length} פריטים`)}</span>
         </div>
         {!q.trim() && kind === "site" ? (
           <div className="flex flex-wrap gap-1" role="group" aria-label={say("الفئات|Categories|קטגוריות")}>
-            <button type="button" aria-pressed={!cat} onClick={() => { setCat(""); setShown(PAGE); }} className={`rounded-full px-2.5 py-1 text-[11px] ${!cat ? "bg-white/15 text-white" : "bg-white/[0.05] text-white/65 hover:bg-white/[0.1]"}`}>
+            <button type="button" aria-pressed={!cat} onClick={() => { setCat(""); setShown(PAGE); }} className={`rounded-full px-2.5 py-1 text-[11px] ${!cat ? "bg-white/15 text-white" : "bg-white/5 text-white/65 hover:bg-white/10"}`}>
               {say("الكل|All|הכול")}
             </button>
             {cats.map(([c, n]) => (
-              <button key={c} type="button" aria-pressed={cat === c} onClick={() => { setCat(c); setShown(PAGE); }} className={`rounded-full px-2.5 py-1 text-[11px] ${cat === c ? "bg-white/15 text-white" : "bg-white/[0.05] text-white/65 hover:bg-white/[0.1]"}`} data-testid="lib-cat" data-cat={c}>
+              <button key={c} type="button" aria-pressed={cat === c} onClick={() => { setCat(c); setShown(PAGE); }} className={`rounded-full px-2.5 py-1 text-[11px] ${cat === c ? "bg-white/15 text-white" : "bg-white/5 text-white/65 hover:bg-white/10"}`} data-testid="lib-cat" data-cat={c}>
                 {LIB_SITE_CATS[c] ? say(LIB_SITE_CATS[c]) : c} <span className="text-white/35">{n}</span>
               </button>
             ))}
@@ -127,7 +127,7 @@ export function LibraryShelf({ busy, onPick, pickLabel, onPreview, initialKind =
         )}
         {list.length > shown ? (
           <div className="flex justify-center">
-            <button type="button" onClick={() => setShown((s) => s + PAGE)} className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs text-white/75 hover:bg-white/[0.1]" data-testid="lib-more">
+            <button type="button" onClick={() => setShown((s) => s + PAGE)} className="rounded-lg bg-white/6 px-3 py-1.5 text-xs text-white/75 hover:bg-white/10" data-testid="lib-more">
               {say(`ورجيني كمان (${list.length - shown})|Show more (${list.length - shown})|הצג עוד (${list.length - shown})`)}
             </button>
           </div>
@@ -147,8 +147,8 @@ export function LibraryPreview({ id, busy, pickLabel, onPick, onClose }: { id: s
         <div className="space-y-3" data-testid="lib-preview-window" data-item={item.id}>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1" role="group" aria-label={say("حجم الشاشة|Screen size|גודל מסך")}>
-              <button type="button" aria-pressed={wide} onClick={() => setWide(true)} className={`rounded-lg px-2.5 py-1 text-[11px] ${wide ? "bg-white/15 text-white" : "bg-white/[0.05] text-white/65"}`}>{say("كمبيوتر|Computer|מחשב")}</button>
-              <button type="button" aria-pressed={!wide} onClick={() => setWide(false)} className={`rounded-lg px-2.5 py-1 text-[11px] ${!wide ? "bg-white/15 text-white" : "bg-white/[0.05] text-white/65"}`}>{say("موبايل|Phone|נייד")}</button>
+              <button type="button" aria-pressed={wide} onClick={() => setWide(true)} className={`rounded-lg px-2.5 py-1 text-[11px] ${wide ? "bg-white/15 text-white" : "bg-white/5 text-white/65"}`}>{say("كمبيوتر|Computer|מחשב")}</button>
+              <button type="button" aria-pressed={!wide} onClick={() => setWide(false)} className={`rounded-lg px-2.5 py-1 text-[11px] ${!wide ? "bg-white/15 text-white" : "bg-white/5 text-white/65"}`}>{say("موبايل|Phone|נייד")}</button>
             </div>
             {item.blurb ? <p className="min-w-0 flex-1 text-[11px] text-white/50">{item.blurb}</p> : <span className="flex-1" />}
             <button type="button" disabled={busy} onClick={() => onPick(item.id)} className="rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40" data-testid="lib-preview-pick">{pickLabel}</button>

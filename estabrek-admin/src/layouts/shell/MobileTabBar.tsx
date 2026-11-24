@@ -17,7 +17,7 @@ export function MobileTabBar({ ordersBadge, canOrders, canAddProduct, canProduct
   const tone = ({ isActive }: { isActive: boolean }) => cn(tab, isActive ? "text-accent-400" : "text-white/55");
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-surface-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-surface-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       aria-label={tr("التنقل السريع", "Quick navigation")}
       data-testid="mobile-tabbar"
     >

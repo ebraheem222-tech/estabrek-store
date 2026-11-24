@@ -26,7 +26,7 @@ import { CARD, autoLayout, diagramOf, edgeLine, extent, readPlaces, type Diagram
 import { RelationDialog } from "./RelationDialog";
 import { LINK_MARKS } from "./relationField";
 
-const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
 const KEY = "estabrek.diagram.v1";
 const ZOOMS = [0.5, 0.65, 0.8, 1, 1.25] as const;
 
@@ -190,7 +190,7 @@ export default function RelationsDiagramPage() {
       {tables.isLoading ? <div className="text-sm text-white/50">…</div> : null}
       {tables.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(tables.error)}</div> : null}
       {tables.data && !tables.data.length ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/60" data-testid="diagram-empty">
+        <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm text-white/60" data-testid="diagram-empty">
           {say("ما في جداول لسا. اعمل أول جدول من «المجموعات»، وبعدها اربطه من هون.|No tables yet. Make the first one in Collections, then link it here.|אין עדיין טבלאות. צור את הראשונה ב״אוספים״, ואז קשר אותה מכאן.")}
         </div>
       ) : null}
@@ -200,11 +200,11 @@ export default function RelationsDiagramPage() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-accent-500/40 bg-accent-500/[0.07] px-4 py-3 text-sm" data-testid="edge-details">
           <span className="flex flex-wrap items-center gap-1.5 font-medium">
             <bdi>{chosen.a.name}</bdi>
-            <b className="rounded bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[chosen.e.kind][0]}</b>
+            <b className="rounded-sm bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[chosen.e.kind][0]}</b>
             <span className="text-white/40" aria-hidden>
               ─
             </span>
-            <b className="rounded bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[chosen.e.kind][1]}</b>
+            <b className="rounded-sm bg-white/10 px-1.5 tabular-nums">{LINK_MARKS[chosen.e.kind][1]}</b>
             <bdi>{chosen.b.name}</bdi>
           </span>
           <span className="text-xs text-white/60">
@@ -237,7 +237,7 @@ export default function RelationsDiagramPage() {
 
       {diagram.nodes.length ? (
         // The canvas counts from its left edge whatever the page's direction; each card's own words follow the page.
-        <div ref={canvas} className="overflow-auto rounded-2xl border border-white/10 bg-white/[0.02]" style={{ height: "calc(100vh - 230px)", minHeight: 420 }} dir="ltr" data-testid="diagram-canvas" data-tables={diagram.nodes.length} data-relations={diagram.edges.length}>
+        <div ref={canvas} className="overflow-auto rounded-2xl border border-white/10 bg-white/2" style={{ height: "calc(100vh - 230px)", minHeight: 420 }} dir="ltr" data-testid="diagram-canvas" data-tables={diagram.nodes.length} data-relations={diagram.edges.length}>
           <div style={{ width: size.w * zoom, height: size.h * zoom }}>
             <div ref={layer} className="relative" style={{ width: size.w, height: size.h, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
               <svg className="absolute inset-0 text-white/40" width={size.w} height={size.h} aria-hidden>
@@ -271,7 +271,7 @@ export default function RelationsDiagramPage() {
                   className={`absolute overflow-hidden rounded-xl border bg-surface-925 shadow-lg ${pull && pull.from !== n.id ? "border-accent-500/60" : n.store ? "border-dashed border-white/25" : "border-white/15"}`}
                   style={{ left: pos[n.id].x, top: pos[n.id].y, width: n.w, height: n.h }}
                 >
-                  <div className={`flex cursor-grab items-center gap-2 px-3 ${n.store ? "bg-white/[0.04]" : "bg-accent-500/15"}`} style={{ height: CARD.head, touchAction: "none" }} onPointerDown={(e) => startMove(n, e)} data-testid={`head-${n.store ? "store-" : ""}${n.slug}`}>
+                  <div className={`flex cursor-grab items-center gap-2 px-3 ${n.store ? "bg-white/4" : "bg-accent-500/15"}`} style={{ height: CARD.head, touchAction: "none" }} onPointerDown={(e) => startMove(n, e)} data-testid={`head-${n.store ? "store-" : ""}${n.slug}`}>
                     <span className="min-w-0 flex-1">
                       <bdi className="block truncate text-sm font-medium">{n.name}</bdi>
                       <span className="block truncate text-[10px] text-white/45">
@@ -279,7 +279,7 @@ export default function RelationsDiagramPage() {
                         {n.items !== undefined ? ` · ${n.items.toLocaleString("en")} ${say("سطر|rows|שורות")}` : ""}
                       </span>
                     </span>
-                    <Link to={gridOf(n)} className="shrink-0 rounded px-1 text-white/50 hover:bg-white/10 hover:text-white" aria-label={say("افتح الجدول|Open the table|פתח את הטבלה")} title={say("افتح الجدول|Open the table|פתח את הטבלה")} data-testid={`open-${n.store ? "store-" : ""}${n.slug}`}>
+                    <Link to={gridOf(n)} className="shrink-0 rounded-sm px-1 text-white/50 hover:bg-white/10 hover:text-white" aria-label={say("افتح الجدول|Open the table|פתח את הטבלה")} title={say("افتح الجدول|Open the table|פתח את הטבלה")} data-testid={`open-${n.store ? "store-" : ""}${n.slug}`}>
                       ↗
                     </Link>
                     {!n.store && mayLink ? (
@@ -305,10 +305,10 @@ export default function RelationsDiagramPage() {
                     ) : null}
                   </div>
                   {n.rows.map((r) => (
-                    <div key={r.id} className={`flex items-center gap-2 border-t border-white/[0.06] px-3 text-xs ${r.marks ? "text-white/90" : "text-white/70"}`} style={{ height: CARD.row }} data-testid={`row-${n.slug}-${r.id}`}>
+                    <div key={r.id} className={`flex items-center gap-2 border-t border-white/6 px-3 text-xs ${r.marks ? "text-white/90" : "text-white/70"}`} style={{ height: CARD.row }} data-testid={`row-${n.slug}-${r.id}`}>
                       <bdi className="min-w-0 flex-1 truncate">{r.name}</bdi>
                       {r.marks ? (
-                        <span className="shrink-0 rounded bg-accent-500/20 px-1 text-[10px] tabular-nums" title={r.to === null ? say("جدول مش موجود|A table that isn't there|טבלה שאינה קיימת") : undefined}>
+                        <span className="shrink-0 rounded-sm bg-accent-500/20 px-1 text-[10px] tabular-nums" title={r.to === null ? say("جدول مش موجود|A table that isn't there|טבלה שאינה קיימת") : undefined}>
                           {r.to === null ? "?" : `${r.marks[0]} ─ ${r.marks[1]}`}
                         </span>
                       ) : (
@@ -317,7 +317,7 @@ export default function RelationsDiagramPage() {
                     </div>
                   ))}
                   {n.more ? (
-                    <div className="flex items-center border-t border-white/[0.06] px-3 text-[11px] text-white/45" style={{ height: CARD.row }}>
+                    <div className="flex items-center border-t border-white/6 px-3 text-[11px] text-white/45" style={{ height: CARD.row }}>
                       {`＋${n.more} ${say("حقل|more fields|שדות נוספים")}`}
                     </div>
                   ) : null}

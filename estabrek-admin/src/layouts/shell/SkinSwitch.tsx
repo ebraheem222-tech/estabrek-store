@@ -14,7 +14,7 @@ export function SkinToggleButton() {
     <button
       type="button"
       onClick={() => setSkin(next)}
-      className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 transition hover:bg-white/[0.06] hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px]"
+      className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 transition hover:bg-white/6 hover:text-white [&_svg]:h-[18px] [&_svg]:w-[18px]"
       title={label}
       aria-label={label}
       data-testid="skin-toggle"

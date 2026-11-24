@@ -30,11 +30,11 @@ export function PartKindCard({ kind, preview, owner, live, count, onOwner }: {
   const k = KIND[kind];
   const words = preview?.replace(/\s+/g, " ").trim().slice(0, 40);
   return (
-    <div className="space-y-2 rounded-xl border border-accent-400/30 bg-accent-500/[0.06] p-3" data-testid="studio-part-kind" data-kind={kind}>
+    <div className="space-y-2 rounded-xl border border-accent-400/30 bg-accent-500/6 p-3" data-testid="studio-part-kind" data-kind={kind}>
       <div className="flex items-center gap-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-500/25 text-sm font-semibold text-white" aria-hidden="true">{k.mark}</span>
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-white" data-testid="studio-part-kind-name">{k.name()}{live ? <span className="ms-1.5 rounded bg-white/10 px-1 py-px text-[10px] font-normal text-white/70">{tr("قيمة حيّة", "Live value")}</span> : null}</div>
+          <div className="text-sm font-semibold text-white" data-testid="studio-part-kind-name">{k.name()}{live ? <span className="ms-1.5 rounded-sm bg-white/10 px-1 py-px text-[10px] font-normal text-white/70">{tr("قيمة حيّة", "Live value")}</span> : null}</div>
           {words ? <div className="truncate text-[11px] text-white/55">«{words}»</div> : null}
         </div>
       </div>

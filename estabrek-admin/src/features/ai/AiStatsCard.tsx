@@ -55,7 +55,7 @@ export function AiStatsCard() {
               {uses.map((u) => {
                 const bad = u.calls ? Math.round((u.failed / u.calls) * 100) : 0;
                 return (
-                  <tr key={u.use} className="border-t border-white/[0.06]" data-testid="ai-stats-row">
+                  <tr key={u.use} className="border-t border-white/6" data-testid="ai-stats-row">
                     <td className="p-1.5" title={u.lastError ?? undefined}>{aiUseName(u.use)}</td>
                     <td className="p-1.5 tabular-nums">{u.calls}</td>
                     <td className={`p-1.5 tabular-nums ${bad >= 20 ? "text-amber-300" : ""}`}>{u.failed ? `${u.failed} (${bad}%)` : "0"}</td>

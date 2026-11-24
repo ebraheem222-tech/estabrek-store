@@ -111,7 +111,7 @@ export function ProductList({ products, categories, loading, failed, status, onS
   };
 
   const chip = (active: boolean) =>
-    cn("inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm transition", active ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/[0.1] bg-white/[0.03] text-white/70 hover:text-white");
+    cn("inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm transition", active ? "border-accent-500/60 bg-accent-500/20 text-white" : "border-white/10 bg-white/3 text-white/70 hover:text-white");
 
   return (
     <div className="space-y-4" data-testid="product-list">
@@ -125,9 +125,9 @@ export function ProductList({ products, categories, loading, failed, status, onS
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={onImport} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("استيراد CSV", "Import CSV")}</button>
-            {hasSummary ? <button type="button" onClick={exportSheet} disabled={exporting} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">{exporting ? "…" : tr("تصدير Excel", "Export Excel")}</button> : null}
-            <Link to="/admin/inventory/stock" className="grid h-10 place-items-center rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("المخزون", "Stock")}</Link>
+            <button type="button" onClick={onImport} className="h-10 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6">{tr("استيراد CSV", "Import CSV")}</button>
+            {hasSummary ? <button type="button" onClick={exportSheet} disabled={exporting} className="h-10 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6 disabled:opacity-50">{exporting ? "…" : tr("تصدير Excel", "Export Excel")}</button> : null}
+            <Link to="/admin/inventory/stock" className="grid h-10 place-items-center rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6">{tr("المخزون", "Stock")}</Link>
             <button type="button" onClick={() => nav("/admin/catalog/products/new")} className="h-10 rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white hover:bg-accent-400">{tr("+ منتج جديد", "+ New product")}</button>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function ProductList({ products, categories, loading, failed, status, onS
                 key={key}
                 type="button"
                 onClick={() => { setStock(key); setParam("stock", key === "all" ? "" : key); }}
-                className={cn("rounded-xl border px-3 py-2.5 text-start transition", stock === key ? "border-accent-500/50 bg-accent-500/10" : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]")}
+                className={cn("rounded-xl border px-3 py-2.5 text-start transition", stock === key ? "border-accent-500/50 bg-accent-500/10" : "border-white/8 bg-white/2 hover:border-white/16")}
                 aria-pressed={stock === key}
               >
                 <div className={cn("text-xl font-semibold text-white", tone)}>{n}</div>
@@ -162,12 +162,12 @@ export function ProductList({ products, categories, loading, failed, status, onS
               value={q}
               onChange={(e) => { setQ(e.target.value); setParam("q", e.target.value); }}
               placeholder={tr("بحث بالاسم أو كود SKU أو اللون…", "Search by name, SKU or colour…")}
-              className="h-10 w-full rounded-xl border border-white/[0.1] bg-surface-925 pe-3 ps-9 text-sm text-white placeholder:text-white/35 focus:border-accent-500/40 focus:outline-none"
+              className="h-10 w-full rounded-xl border border-white/10 bg-surface-925 pe-3 ps-9 text-sm text-white placeholder:text-white/35 focus:border-accent-500/40 focus:outline-hidden"
               aria-label={tr("بحث في المنتجات", "Search products")}
             />
-            <span className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-white/35" aria-hidden>⌕</span>
+            <span className="pointer-events-none absolute inset-s-3 top-1/2 -translate-y-1/2 text-white/35" aria-hidden>⌕</span>
           </div>
-          <select value={cat} onChange={(e) => { setCat(e.target.value); setParam("category", e.target.value); }} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("القسم", "Category")}>
+          <select value={cat} onChange={(e) => { setCat(e.target.value); setParam("category", e.target.value); }} className="h-10 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white" aria-label={tr("القسم", "Category")}>
             <option value="">{tr("كل الأقسام", "All categories")}</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.parentId ? `— ${c.name}` : c.name}</option>)}
           </select>
@@ -176,7 +176,7 @@ export function ProductList({ products, categories, loading, failed, status, onS
               <button key={k} type="button" className={chip(status === k)} onClick={() => onStatus(k)} aria-pressed={status === k}>{l}</button>
             ))}
           </div>
-          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("الترتيب", "Order")}>
+          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-10 rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white" aria-label={tr("الترتيب", "Order")}>
             <option value="new">{tr("الأحدث", "Newest")}</option>
             <option value="stock">{tr("الأقل مخزوناً", "Lowest stock")}</option>
             <option value="name">{tr("الاسم", "Name")}</option>
@@ -201,11 +201,11 @@ export function ProductList({ products, categories, loading, failed, status, onS
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-2 text-xs text-white/50">
+            <div className="flex items-center gap-3 border-b border-white/6 px-4 py-2 text-xs text-white/50">
               <label className="flex items-center gap-2"><input type="checkbox" checked={allChecked} onChange={(e) => toggleAll(e.target.checked)} aria-label={tr("تحديد الكل", "Select all")} /> {tr("تحديد الكل", "Select all")}</label>
               <span className="ms-auto">{shown.length} {tr("منتج", "Product")}</span>
             </div>
-            <ul className="divide-y divide-white/[0.06]">
+            <ul className="divide-y divide-white/6">
               {shown.map((p) => (
                 <ProductRow
                   key={p.id}
@@ -239,16 +239,16 @@ function ProductRow({ p, catName, checked, onCheck, onOpen, onStock, onQuickEdit
   const discount = s?.compareAtMax && s.priceMin && s.compareAtMax > s.priceMin ? Math.round((1 - s.priceMin / s.compareAtMax) * 100) : null;
   const stockTone = !s ? "text-white/40" : s.stockTotal <= 0 ? "text-red-300" : s.lowCount || s.outCount ? "text-amber-200" : "text-emerald-300";
   return (
-    <li className="grid grid-cols-[auto_56px_minmax(0,1fr)] items-center gap-3 px-4 py-3 hover:bg-white/[0.02] md:grid-cols-[auto_56px_minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]" data-testid="product-row">
+    <li className="grid grid-cols-[auto_56px_minmax(0,1fr)] items-center gap-3 px-4 py-3 hover:bg-white/2 md:grid-cols-[auto_56px_minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto]" data-testid="product-row">
       <input type="checkbox" checked={checked} onChange={(e) => onCheck(e.target.checked)} aria-label={tr(`تحديد ${p.title}`, "Select {0}", [p.title])} />
       <button type="button" onClick={onOpen} className="relative h-14 w-14 overflow-hidden rounded-xl border border-white/10 bg-black/20" aria-label={tr(`فتح ${p.title}`, "Open {0}", [p.title])}>
         {s?.thumbUrl ? <img src={s.thumbUrl} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="grid h-full place-items-center text-[10px] text-white/40">{tr("لا صورة", "No photo")}</span>}
-        {discount ? <span className="absolute bottom-0.5 end-0.5 rounded bg-[#7d2448] px-1 text-[9px] font-semibold text-white">−{discount}%</span> : null}
+        {discount ? <span className="absolute bottom-0.5 inset-e-0.5 rounded-sm bg-[#7d2448] px-1 text-[9px] font-semibold text-white">−{discount}%</span> : null}
       </button>
       <div className="min-w-0">
         <button type="button" onClick={onOpen} className="block max-w-full truncate text-start text-sm font-semibold text-white hover:text-accent-200">{p.title}</button>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/50">
-          <span className={cn("rounded-full px-2 py-0.5", p.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-white/[0.08] text-white/60")}>{p.isActive ? tr("منشور", "Live") : tr("مسودة", "Draft")}</span>
+          <span className={cn("rounded-full px-2 py-0.5", p.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-white/8 text-white/60")}>{p.isActive ? tr("منشور", "Live") : tr("مسودة", "Draft")}</span>
           <span>{catName || "—"}</span>
           {s?.colors?.length ? (
             <span className="inline-flex items-center gap-1">
@@ -268,7 +268,7 @@ function ProductRow({ p, catName, checked, onCheck, onOpen, onStock, onQuickEdit
         <div className="text-white">{price}</div>
         {s ? <div className="text-[11px] text-white/45">{s.variantCount} SKU</div> : null}
       </div>
-      <button type="button" onClick={onStock} className="hidden rounded-xl px-2 py-1 text-start hover:bg-white/[0.04] md:block" title={tr("تعديل الكميات بسرعة", "Quick quantity edit")}>
+      <button type="button" onClick={onStock} className="hidden rounded-xl px-2 py-1 text-start hover:bg-white/4 md:block" title={tr("تعديل الكميات بسرعة", "Quick quantity edit")}>
         <div className={cn("text-sm font-semibold", stockTone)}>{s ? tr(`${s.stockTotal} قطعة`, "{0} pcs", [s.stockTotal]) : tr("الكميات", "Quantities")}</div>
         <div className="text-[11px] text-white/50">
           {s?.outCount ? <span className="text-red-300">{s.outCount} {tr("نفد", "sold out")}</span> : null}
@@ -279,14 +279,14 @@ function ProductRow({ p, catName, checked, onCheck, onOpen, onStock, onQuickEdit
       </button>
       <div className="relative col-span-3 flex flex-wrap justify-end gap-2 md:col-span-1">
         <button type="button" onClick={onOpen} className="h-9 rounded-xl bg-accent-500 px-3 text-sm font-medium text-white hover:bg-accent-400">{tr("تعديل", "Edit")}</button>
-        <button type="button" onClick={onStock} className="h-9 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("الكميات", "Quantities")}</button>
-        <button type="button" onClick={() => setMenu((m) => !m)} className="h-9 w-9 rounded-xl border border-white/[0.12] text-white/70 hover:bg-white/[0.06]" aria-label={tr("المزيد", "More")} aria-expanded={menu}>⋯</button>
+        <button type="button" onClick={onStock} className="h-9 rounded-xl border border-white/12 px-3 text-sm text-white/80 hover:bg-white/6">{tr("الكميات", "Quantities")}</button>
+        <button type="button" onClick={() => setMenu((m) => !m)} className="h-9 w-9 rounded-xl border border-white/12 text-white/70 hover:bg-white/6" aria-label={tr("المزيد", "More")} aria-expanded={menu}>⋯</button>
         {menu && (
-          <div className="absolute end-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-white/[0.1] bg-surface-925 py-1 text-sm shadow-xl" onMouseLeave={() => setMenu(false)}>
-            <button type="button" className="block w-full px-3 py-2 text-start text-white/80 hover:bg-white/[0.06]" onClick={() => { setMenu(false); onQuickEdit(); }}>{tr("الاسم والقسم بسرعة", "Quick name and category")}</button>
-            <button type="button" className="block w-full px-3 py-2 text-start text-white/80 hover:bg-white/[0.06]" onClick={() => { setMenu(false); onCopy(); }}>{tr("نسخ كمنتج جديد", "Copy as a new product")}</button>
-            <Link className="block px-3 py-2 text-white/80 hover:bg-white/[0.06]" to={`/admin/catalog/products/${p.id}/advanced`}>{tr("المحرر المتقدم", "Advanced editor")}</Link>
-            <Link className="block px-3 py-2 text-white/80 hover:bg-white/[0.06]" to={`/print/labels?productId=${p.id}`} target="_blank">{tr("ملصقات باركود", "Barcode labels")}</Link>
+          <div className="absolute inset-e-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-surface-925 py-1 text-sm shadow-xl" onMouseLeave={() => setMenu(false)}>
+            <button type="button" className="block w-full px-3 py-2 text-start text-white/80 hover:bg-white/6" onClick={() => { setMenu(false); onQuickEdit(); }}>{tr("الاسم والقسم بسرعة", "Quick name and category")}</button>
+            <button type="button" className="block w-full px-3 py-2 text-start text-white/80 hover:bg-white/6" onClick={() => { setMenu(false); onCopy(); }}>{tr("نسخ كمنتج جديد", "Copy as a new product")}</button>
+            <Link className="block px-3 py-2 text-white/80 hover:bg-white/6" to={`/admin/catalog/products/${p.id}/advanced`}>{tr("المحرر المتقدم", "Advanced editor")}</Link>
+            <Link className="block px-3 py-2 text-white/80 hover:bg-white/6" to={`/print/labels?productId=${p.id}`} target="_blank">{tr("ملصقات باركود", "Barcode labels")}</Link>
             <button type="button" className="block w-full px-3 py-2 text-start text-red-300 hover:bg-red-500/10" onClick={() => { setMenu(false); onDelete(); }}>{tr("حذف", "Delete")}</button>
           </div>
         )}

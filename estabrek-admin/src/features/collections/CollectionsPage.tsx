@@ -30,8 +30,8 @@ import { isComputedField } from "./computedText";
 import { RichTextBox } from "../data/RichTextBox";
 import { listPages, updatePage } from "../../api/pages.api";
 
-const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
-const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
+const card = "rounded-2xl border border-white/10 bg-white/3 p-4";
+const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/12 disabled:opacity-40";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:brightness-110 disabled:opacity-40";
 const input = "w-full rounded-lg border border-white/15 bg-surface-925 px-2 py-1.5 text-sm";
 const PRESET_ICON: Record<string, string> = { blog: "✎", lookbook: "◐", branches: "⌂", faq: "?" };
@@ -86,7 +86,7 @@ export default function CollectionsPage() {
           {collections.isLoading ? <p className="text-sm text-white/50">…</p> : null}
           {!collections.data?.length && !collections.isLoading ? <p className="text-sm text-white/50">{say("لسا ما في مجموعات.|No collections yet.|אין עדיין אוספים.")}</p> : null}
           {collections.data?.map((c) => (
-            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={current?.id === c.id} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-start text-sm ${current?.id === c.id ? "bg-accent-500/20 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid={`collection-${c.slug}`}>
+            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={current?.id === c.id} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-start text-sm ${current?.id === c.id ? "bg-accent-500/20 text-white" : "text-white/75 hover:bg-white/6"}`} data-testid={`collection-${c.slug}`}>
               <span className="truncate">{words(c.name, lang) || c.slug}</span>
               <span className="text-xs text-white/40" dir="ltr">{c.published}/{c.items}</span>
             </button>
@@ -100,7 +100,7 @@ export default function CollectionsPage() {
                 <p className="text-xs text-white/45" dir="ltr">/{current.slug}/…</p>
               </div>
               <div className="flex gap-1" role="tablist">
-                {(["items", "fields", "page"] as const).map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-white/[0.12]" : "text-white/60 hover:bg-white/[0.06]"}`} onClick={() => setTab(t)} data-testid={`collection-tab-${t}`}>{say({ items: "العناصر|Items|פריטים", fields: "الحقول|Fields|שדות", page: "صفحة العنصر|Item page|דף פריט" }[t])}</button>)}
+                {(["items", "fields", "page"] as const).map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-white/12" : "text-white/60 hover:bg-white/6"}`} onClick={() => setTab(t)} data-testid={`collection-tab-${t}`}>{say({ items: "العناصر|Items|פריטים", fields: "الحقول|Fields|שדות", page: "صفحة العنصر|Item page|דף פריט" }[t])}</button>)}
               </div>
             </div>
             {tab === "items" ? <Items key={current.id} collection={current} lang={lang} onChanged={refresh} /> : null}
@@ -216,11 +216,11 @@ function Items({ collection, lang, onChanged }: { collection: Collection; lang: 
         <Link to={`/admin/data?table=${encodeURIComponent(collection.slug)}`} className={btn} data-testid="items-as-grid">{say("افتحها كجدول: فلترة، تعديل جماعي، Excel|Open as a table: filters, many at once, Excel|פתח כטבלה: סינון, שינוי קבוצתי, Excel")}</Link>
       </div>
       {items.data?.length ? (
-        <ul className="divide-y divide-white/[0.06]">
+        <ul className="divide-y divide-white/6">
           {items.data.map((it) => (
             <li key={it.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid="item-row" data-slug={it.slug}>
               <button type="button" className="min-w-0 flex-1 truncate text-start text-sm hover:underline" onClick={() => setEditing(it)}>{titleOf(collection.fields, it.data, lang) || it.slug} <span className="text-xs text-white/35" dir="ltr">/{collection.slug}/{it.slug}</span></button>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] ${it.status === "PUBLISHED" ? "bg-emerald-500/15 text-emerald-200" : "bg-white/[0.06] text-white/55"}`}>{say(STATUS_NAME[it.status])}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] ${it.status === "PUBLISHED" ? "bg-emerald-500/15 text-emerald-200" : "bg-white/6 text-white/55"}`}>{say(STATUS_NAME[it.status])}</span>
               <button type="button" className={btn} disabled={status.isPending} onClick={() => status.mutate({ item: it, to: it.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED" })} data-testid="item-publish">{it.status === "PUBLISHED" ? say("خبّيه|Unpublish|הסתר") : say("انشره|Publish|פרסם")}</button>
               <button type="button" className={`${btn} text-red-300`} disabled={remove.isPending} onClick={() => { if (window.confirm(say("نحذف العنصر؟|Delete the item?|למחוק את הפריט?"))) remove.mutate(it); }}>{say("احذف|Delete|מחק")}</button>
             </li>
@@ -261,7 +261,7 @@ function ItemForm({ collection, lang, item, onDone, onCancel }: { collection: Co
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void save(); }} data-testid="item-form">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-white/50">{say("لغة الكلام|Words in|שפת הטקסט")}</span>
-        {LANGS.map((l) => <button key={l} type="button" className={`rounded-md px-2 py-1 text-xs ${wordsLang === l ? "bg-accent-500/25" : "bg-white/[0.05]"}`} onClick={() => setWordsLang(l)} data-testid={`item-lang-${l}`}>{l.toUpperCase()}</button>)}
+        {LANGS.map((l) => <button key={l} type="button" className={`rounded-md px-2 py-1 text-xs ${wordsLang === l ? "bg-accent-500/25" : "bg-white/5"}`} onClick={() => setWordsLang(l)} data-testid={`item-lang-${l}`}>{l.toUpperCase()}</button>)}
       </div>
       {collection.fields.map((f) => <FieldInput key={f.id} field={f} lang={lang} wordsLang={wordsLang} value={values[f.id]} problem={problems[f.id]} onChange={(v) => set(f.id, v)} onPick={() => setPicking(f.id)} />)}
       <label className="block text-xs text-white/60">{say("العنوان بالرابط|Address word|מילה בכתובת")}<input className={input} dir="ltr" value={slug} placeholder={slugOf(title)} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} data-testid="item-slug" /></label>
@@ -279,7 +279,7 @@ function FieldInput({ field: f, lang, wordsLang, value, problem, onChange, onPic
   const label = <span className="flex items-center gap-1">{words(f.name, lang) || f.id}{f.required ? <span className="text-red-300">*</span> : null}<span className="text-white/30">· {say(TYPE_NAME[f.type])}</span></span>;
   const wrap = (el: ReactNode) => <label className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}{el}{problem ? <span className="text-red-300">{problem}</span> : null}</label>;
   // A formula or a rollup: what it works out to (nothing to write).
-  if (isComputedField(f)) return <div className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}<span className="block rounded-lg bg-white/[0.04] px-2 py-1.5 text-sm text-white/80">{shownText(f, value, lang) || "—"}</span></div>;
+  if (isComputedField(f)) return <div className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}<span className="block rounded-lg bg-white/4 px-2 py-1.5 text-sm text-white/80">{shownText(f, value, lang) || "—"}</span></div>;
   // A relation's box holds buttons (its chips, the rows to pick): a label around it would press the first one on any click.
   if (f.type === "relation") return <div className="block space-y-1 text-xs text-white/60" data-testid={`item-field-${f.id}`}>{label}<KindBox field={f} lang={lang} value={value} onChange={onChange} />{problem ? <span className="text-red-300">{problem}</span> : null}</div>;
   if (WORD_TYPES.includes(f.type)) {
@@ -288,7 +288,7 @@ function FieldInput({ field: f, lang, wordsLang, value, problem, onChange, onPic
     if (f.type === "richText") return wrap(<RichTextBox value={v[wordsLang] ?? ""} onChange={put} className={`${input} min-h-[96px]`} dir={wordsLang === "en" ? "ltr" : "rtl"} testId={`item-rich-${f.id}`} />);
     return wrap(f.type === "text" ? <input className={input} dir={wordsLang === "en" ? "ltr" : "rtl"} value={v[wordsLang] ?? ""} onChange={(e) => put(e.target.value)} /> : <textarea className={`${input} min-h-[96px]`} dir={wordsLang === "en" ? "ltr" : "rtl"} value={v[wordsLang] ?? ""} onChange={(e) => put(e.target.value)} />);
   }
-  if (f.type === "image") return wrap(<span className="flex items-center gap-2">{typeof value === "string" && value ? <img src={value} alt="" className="h-12 w-12 rounded object-cover" /> : null}<button type="button" className={btn} onClick={onPick}>{say("اختار صورة|Pick a picture|בחר תמונה")}</button><input className={input} dir="ltr" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder="https://…" /></span>);
+  if (f.type === "image") return wrap(<span className="flex items-center gap-2">{typeof value === "string" && value ? <img src={value} alt="" className="h-12 w-12 rounded-sm object-cover" /> : null}<button type="button" className={btn} onClick={onPick}>{say("اختار صورة|Pick a picture|בחר תמונה")}</button><input className={input} dir="ltr" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder="https://…" /></span>);
   if (f.type === "number") return wrap(<input type="number" className={input} value={typeof value === "number" || typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />);
   if (f.type === "date") return wrap(<input type="date" className={input} value={typeof value === "string" ? value.slice(0, 10) : ""} onChange={(e) => onChange(e.target.value)} />);
   if (f.type === "link") return wrap(<input className={input} dir="ltr" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder="/shop or https://…" />);
@@ -358,7 +358,7 @@ function Fields({ collection, lang, onSaved, onDeleted }: { collection: Collecti
       </div>
       <ul className="space-y-2">
         {fields.map((f, i) => (
-          <li key={f.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] p-2" data-testid="field-row" data-field={f.id}>
+          <li key={f.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-white/6 p-2" data-testid="field-row" data-field={f.id}>
             <input className={`${input} w-40 flex-1`} value={f.name?.[lang] ?? ""} placeholder={f.id} onChange={(e) => setFields((fs) => fs.map((x, j) => (j === i ? { ...x, name: { ...x.name, [lang]: e.target.value } } : x)))} aria-label={say("إسم الحقل|Field name|שם השדה")} />
             <span className="text-xs text-white/40">{say(TYPE_NAME[f.type])}</span>
             <code className="text-[10px] text-white/30" dir="ltr">{f.id}</code>

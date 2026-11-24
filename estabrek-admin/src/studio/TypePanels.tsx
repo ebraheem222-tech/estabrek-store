@@ -22,14 +22,14 @@ import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanel
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Obj = Record<string, any>;
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const control = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const control = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
 const isObj = (v: unknown): v is Obj => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 
 function Fold({ title, open, children, testId }: { title: string; open?: boolean; children: React.ReactNode; testId?: string }) {
   return (
-    <details className="rounded-lg border border-white/[0.06] px-2 py-1.5" open={open} data-testid={testId}>
+    <details className="rounded-lg border border-white/6 px-2 py-1.5" open={open} data-testid={testId}>
       <summary className="cursor-pointer select-none text-[11px] font-medium text-white/70">{title}</summary>
       <div className="mt-2 space-y-2.5">{children}</div>
     </details>
@@ -135,8 +135,8 @@ export function FontPicker({ node, screen, busy, onOps }: { node: PageTreeNode; 
   const [more, setMore] = useState({ view, n: PAGE_FONTS });
   const count = more.view === view ? more.n : PAGE_FONTS;
   const groups = (Object.keys(KIND_LABEL) as Array<TreeFontInfo["kind"]>).map((k) => [k, shown.slice(0, count).filter((f) => f.kind === k)] as const).filter(([, list]) => list.length);
-  const item = (on: boolean) => `flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-start text-xs ${on ? "bg-accent-500/20 text-white" : "text-white/80 hover:bg-white/[0.06]"}`;
-  const chip = (on: boolean) => `rounded-full px-2 py-0.5 text-[10px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"}`;
+  const item = (on: boolean) => `flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-start text-xs ${on ? "bg-accent-500/20 text-white" : "text-white/80 hover:bg-white/6"}`;
+  const chip = (on: boolean) => `rounded-full px-2 py-0.5 text-[10px] ${on ? "bg-accent-500/30 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`;
   return (
     <div className="text-[11px] text-white/55">
       {tr("الخط", "Font")}
@@ -145,7 +145,7 @@ export function FontPicker({ node, screen, busy, onOps }: { node: PageTreeNode; 
         <span aria-hidden="true">▾</span>
       </button>
       {open ? (
-        <div className="mt-1 max-h-96 space-y-2 overflow-y-auto rounded-lg border border-white/[0.1] bg-surface-950 p-2" data-testid="studio-font-list">
+        <div className="mt-1 max-h-96 space-y-2 overflow-y-auto rounded-lg border border-white/10 bg-surface-950 p-2" data-testid="studio-font-list">
           <input className={control} placeholder={tr("دوّر على خط", "Find a font")} value={find} onChange={(e) => setFind(e.target.value)} data-testid="studio-font-find" />
           <div className="flex flex-wrap gap-1" role="group" aria-label={tr("الحروف", "Letters")}>
             {(["", "arabic", "hebrew", "latin"] as Script[]).map((sc) => (
@@ -224,7 +224,7 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
     <div className={box} data-testid="studio-type-more">
       <Head title={inState ? tr("طلاء الكلام", "The words' paint") : tr("الكلام بالتفصيل", "The words in detail")} screen={screen} />
       <Fold title={`${tr("تأثيرات جاهزة للكلام", "Ready word effects")} · ${TEXT_EFFECTS.length}`} open={Boolean(effectOf(v))} testId="studio-type-effects">
-        <input type="search" value={fxFind} disabled={busy} onChange={(e) => setFxFind(e.target.value)} placeholder={tr("دوّر على تأثير…", "Find an effect…")} aria-label={tr("دوّر على تأثير", "Find an effect")} className="mb-2 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-type-effects-search" />
+        <input type="search" value={fxFind} disabled={busy} onChange={(e) => setFxFind(e.target.value)} placeholder={tr("دوّر على تأثير…", "Find an effect…")} aria-label={tr("دوّر على تأثير", "Find an effect")} className="mb-2 w-full rounded-lg border border-white/10 bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-type-effects-search" />
         {[...EFFECT_GROUPS, ["", () => tr("أخرى", "Others")] as const].map(([group, title]) => {
           const q = fxFind.trim().toLowerCase();
           const list = TEXT_EFFECTS.filter((e) => (e.group ?? "") === group && (!inState || Object.keys(e.paint).length) && (!q || e.name().toLowerCase().includes(q) || e.key.includes(q) || title().toLowerCase().includes(q)));
@@ -328,7 +328,7 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
         {shadows.map((sh, i) => {
           const put = (patch: Obj) => save(tr("ظلال الكلام", "The words' shadows"), { shadows: shadows.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
           return (
-            <div key={i} className="space-y-1 rounded-lg bg-white/[0.03] p-2" data-testid="studio-type-shadow">
+            <div key={i} className="space-y-1 rounded-lg bg-white/3 p-2" data-testid="studio-type-shadow">
               <div className="flex items-center justify-between text-[11px] text-white/50">
                 <span>{tr("ظل", "Shadow")} {i + 1}</span>
                 <button type="button" className="text-red-300 hover:underline" disabled={busy} onClick={() => save(tr("ظلال الكلام", "The words' shadows"), { shadows: shadows.length > 1 ? shadows.filter((_, j) => j !== i) : null })}>{tr("شيل", "Remove")}</button>
@@ -385,7 +385,7 @@ export function BoxPanel({ node, screen, busy, onOps, skip = [] }: { node: PageT
       {skip.includes("bg") ? null : <ColourPick label={tr("لون الخلفية", "Background colour")} value={v("bg") ?? ""} busy={busy} onPick={(c) => save(tr("الخلفية", "Background"), { bg: c })} testId="studio-box-bg" />}
       {toggle(tr("خلفية متدرّجة", "A gradient background"), Boolean(grad), busy, (on) => save(tr("خلفية متدرّجة", "Gradient background"), { gradient: on ? { color: "accent-soft", to: "bg", angle: 160 } : null }), "studio-box-gradient")}
       {grad ? (
-        <div className="space-y-2 rounded-lg bg-white/[0.03] p-2">
+        <div className="space-y-2 rounded-lg bg-white/3 p-2">
           <ColourPick label={tr("من", "From")} value={grad.color} busy={busy} onPick={(c) => c && save(tr("خلفية متدرّجة", "Gradient background"), { gradient: { ...grad, color: c } })} />
           <ColourPick label={tr("بالنص (أو بلا)", "Through (or none)")} value={grad.via ?? ""} busy={busy} onPick={(c) => save(tr("خلفية متدرّجة", "Gradient background"), { gradient: { ...grad, via: c ?? undefined } })} />
           <ColourPick label={tr("لـ", "To")} value={grad.to} busy={busy} onPick={(c) => c && save(tr("خلفية متدرّجة", "Gradient background"), { gradient: { ...grad, to: c } })} />
@@ -480,13 +480,13 @@ export function FiltersPanel({ node, screen, busy, onOps }: { node: PageTreeNode
 export function StatesBar({ node, state, onState }: { node: PageTreeNode; state: StateChoice; onState: (s: StateChoice) => void }) {
   const has = new Set(statesOf(node));
   return (
-    <div className="space-y-1.5 rounded-xl border border-accent-400/25 bg-accent-500/[0.05] p-2" data-testid="studio-states">
+    <div className="space-y-1.5 rounded-xl border border-accent-400/25 bg-accent-500/5 p-2" data-testid="studio-states">
       <div className="text-[11px] text-white/60">{tr("شكله لما…", "Its look when…")}</div>
       <div className="grid grid-cols-4 gap-1" role="tablist" aria-label={tr("الحالة", "State")}>
         {(["normal", ...STATES] as StateChoice[]).map((s) => (
-          <button key={s} type="button" role="tab" aria-selected={state === s} onClick={() => onState(s)} className={`relative rounded-lg px-1 py-1.5 text-[11px] leading-tight ${state === s ? "bg-accent-500/80 text-white" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"}`} data-state={s} title={STATE_LABEL[s]()}>
+          <button key={s} type="button" role="tab" aria-selected={state === s} onClick={() => onState(s)} className={`relative rounded-lg px-1 py-1.5 text-[11px] leading-tight ${state === s ? "bg-accent-500/80 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"}`} data-state={s} title={STATE_LABEL[s]()}>
             {STATE_LABEL[s]()}
-            {s !== "normal" && has.has(s as StateName) ? <span className="absolute end-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden="true" /> : null}
+            {s !== "normal" && has.has(s as StateName) ? <span className="absolute inset-e-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden="true" /> : null}
           </button>
         ))}
       </div>
@@ -517,7 +517,7 @@ export function StatePresets({ node, view, state, screen, busy, onOps, onOwn }: 
       {groups.length > 1 ? (
         <div className="flex flex-wrap gap-1" role="group" aria-label={tr("المجموعة", "Group")}>
           {[["", () => tr("الكل", "All")] as const, ...groups].map(([g, name]) => (
-            <button key={g || "all"} type="button" aria-pressed={group === g} onClick={() => setGroup(g)} className={`rounded-full px-2 py-0.5 text-[10px] ${group === g ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"}`} data-group={g || "all"}>
+            <button key={g || "all"} type="button" aria-pressed={group === g} onClick={() => setGroup(g)} className={`rounded-full px-2 py-0.5 text-[10px] ${group === g ? "bg-accent-500/30 text-white" : "bg-white/5 text-white/60 hover:bg-white/10"}`} data-group={g || "all"}>
               {name()}
             </button>
           ))}
@@ -526,7 +526,7 @@ export function StatePresets({ node, view, state, screen, busy, onOps, onOwn }: 
       <div className="grid max-h-72 grid-cols-2 gap-1 overflow-y-auto">
         {shown.map((p) => (
           <button
-            key={p.key} type="button" disabled={busy} className="truncate rounded-lg border border-white/[0.08] px-1.5 py-1.5 text-start text-[11px] text-white/80 hover:bg-white/[0.05] disabled:opacity-40" data-preset={p.key}
+            key={p.key} type="button" disabled={busy} className="truncate rounded-lg border border-white/8 px-1.5 py-1.5 text-start text-[11px] text-white/80 hover:bg-white/5 disabled:opacity-40" data-preset={p.key}
             onClick={() => {
               onOps(p.label(), [styleOp(view, screen, p.look)]);
               const normal = NEEDS_NORMAL[p.key];

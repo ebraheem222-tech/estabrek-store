@@ -152,7 +152,7 @@ function TaskRow({ task, now, canWrite, busy, onRetry, onCancel }: { task: Task;
           </span>
         </div>
         {task.lastError && task.status !== "done" ? (
-          <div className={`break-words text-sm ${task.status === "failed" ? "text-red-300" : "text-white/70"}`} data-testid={`task-error-${task.id}`}>
+          <div className={`wrap-break-word text-sm ${task.status === "failed" ? "text-red-300" : "text-white/70"}`} data-testid={`task-error-${task.id}`}>
             {task.status === "failed" ? null : <span>{say("آخر مرة فشلت:|Last time it failed:|בפעם האחרונה נכשלה:")} </span>}
             <bdi>{task.lastError}</bdi>
           </div>

@@ -19,7 +19,7 @@ export function StatusPill({ status, className }: { status: string; className?: 
 export function SourceChip({ source }: { source?: string | null }) {
   const wa = source === "WHATSAPP_CART";
   return (
-    <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px]", wa ? "bg-emerald-500/12 text-emerald-300" : "bg-white/[0.06] text-white/60")}>
+    <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px]", wa ? "bg-emerald-500/12 text-emerald-300" : "bg-white/6 text-white/60")}>
       {wa && <WhatsAppIcon className="h-3 w-3" />}
       {sourceLabel(source)}
     </span>
@@ -29,7 +29,7 @@ export function SourceChip({ source }: { source?: string | null }) {
 export function PaidChip({ order }: { order: { paymentStatus?: string | null } }) {
   return isPaid(order)
     ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-300">{tr("✓ تم الدفع", "✓ Paid")}</span>
-    : <span className="inline-flex items-center whitespace-nowrap rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-white/50">{tr("الدفع عند الاستلام", "Pay on delivery")}</span>;
+    : <span className="inline-flex items-center whitespace-nowrap rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/50">{tr("الدفع عند الاستلام", "Pay on delivery")}</span>;
 }
 
 export function WhatsAppIcon({ className }: { className?: string }) {
@@ -42,7 +42,7 @@ export function WhatsAppIcon({ className }: { className?: string }) {
 
 export function Thumb({ src, className }: { src?: string | null; className?: string }) {
   return (
-    <span className={cn("relative block shrink-0 overflow-hidden rounded-lg bg-white/[0.06]", className)}>
+    <span className={cn("relative block shrink-0 overflow-hidden rounded-lg bg-white/6", className)}>
       {src ? <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
     </span>
   );
@@ -69,7 +69,7 @@ function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: ()
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const field = "h-10 w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/30 focus:border-accent-500/50 focus:outline-none";
+  const field = "h-10 w-full rounded-xl border border-white/10 bg-surface-925 px-3 text-sm text-white placeholder:text-white/30 focus:border-accent-500/50 focus:outline-hidden";
   const submit = async () => {
     await save.mutateAsync({
       zones: zones.filter((z) => z.name.trim()).map((z) => {
@@ -94,15 +94,15 @@ function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: ()
             <h2 className="text-lg font-semibold text-white">{tr("أسعار التوصيل", "Delivery prices")}</h2>
             <p className="mt-1 text-xs leading-5 text-white/55">{tr("مناطق التوصيل وسعر كل منطقة. بنختار المنطقة من مدينة الزبون تلقائياً، وبتظهر بالطلب والفاتورة ورسالة الواتساب.", "Delivery areas and each one's price. We pick the area from the customer's city automatically; it shows on the order, the invoice and the WhatsApp message.")}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-white/60 hover:bg-white/[0.06] hover:text-white" aria-label={tr("إغلاق", "Close")}>✕</button>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-white/60 hover:bg-white/6 hover:text-white" aria-label={tr("إغلاق", "Close")}>✕</button>
         </div>
         <div className="mt-4 space-y-3">
           {zones.map((z, i) => (
-            <div key={z.id} className="grid gap-2 rounded-xl border border-white/[0.08] p-3 sm:grid-cols-[1fr_110px_auto]">
+            <div key={z.id} className="grid gap-2 rounded-xl border border-white/8 p-3 sm:grid-cols-[1fr_110px_auto]">
               <input className={field} placeholder={tr("اسم المنطقة (مثلاً: القدس)", "Area name (e.g. Jerusalem)")} value={z.name} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} aria-label={tr("اسم المنطقة", "Area name")} />
               <div className="relative">
                 <input className={cn(field, "ps-7")} inputMode="decimal" placeholder={tr("السعر", "Price")} value={z.feeText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, feeText: e.target.value.replace(/[^\d.]/g, "") } : x)))} aria-label={tr("سعر التوصيل", "Delivery price")} />
-                <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-xs text-white/40">{currencySign()}</span>
+                <span className="pointer-events-none absolute inset-s-2.5 top-1/2 -translate-y-1/2 text-xs text-white/40">{currencySign()}</span>
               </div>
               <button type="button" onClick={() => setZones((all) => all.filter((_, j) => j !== i))} className="h-10 rounded-xl px-3 text-sm text-red-300/80 hover:bg-red-500/10">{tr("حذف", "Delete")}</button>
               <input className={cn(field, "sm:col-span-3")} placeholder={tr("المدن (مفصولة بفاصلة): القدس، بيت حنينا، شعفاط", "Cities (separated by commas): Jerusalem, Beit Hanina, Shuafat")} value={z.citiesText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, citiesText: e.target.value } : x)))} aria-label={tr("المدن", "Cities")} />
@@ -130,7 +130,7 @@ function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: ()
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm text-white/70 hover:bg-white/[0.06]">{tr("إلغاء", "Cancel")}</button>
+          <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm text-white/70 hover:bg-white/6">{tr("إلغاء", "Cancel")}</button>
           <button type="button" disabled={save.isPending} onClick={() => void submit()} className="h-10 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white hover:bg-accent-400 disabled:opacity-60">{save.isPending ? tr("جارٍ الحفظ…", "Saving…") : tr("حفظ", "Save")}</button>
         </div>
       </div>

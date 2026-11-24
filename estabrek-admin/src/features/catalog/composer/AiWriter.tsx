@@ -50,7 +50,7 @@ export function AiWriter({ draft, update, type, categoryName }: Props) {
   const applyOne = (patch: (d: ComposerDraft) => ComposerDraft) => update(patch);
 
   return (
-    <div className="mb-4 rounded-2xl border border-accent-400/25 bg-accent-500/[0.06] p-3" data-testid="ai-writer">
+    <div className="mb-4 rounded-2xl border border-accent-400/25 bg-accent-500/6 p-3" data-testid="ai-writer">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -77,7 +77,7 @@ export function AiWriter({ draft, update, type, categoryName }: Props) {
           {result.colors.length ? <p className="text-xs text-white/50">{tr("الألوان اللي انشافت:", "Colours it saw:")} {result.colors.join(tr("، ", ", "))}</p> : null}
           <div className="flex flex-wrap gap-2 pt-1">
             <button type="button" onClick={useAll} className="h-9 rounded-xl bg-accent-500 px-4 text-sm text-white">{tr("استعمال الكل", "Use all")}</button>
-            <button type="button" onClick={() => setResult(null)} className="h-9 rounded-xl border border-white/[0.12] px-4 text-sm text-white/75">{tr("تجاهل", "Ignore")}</button>
+            <button type="button" onClick={() => setResult(null)} className="h-9 rounded-xl border border-white/12 px-4 text-sm text-white/75">{tr("تجاهل", "Ignore")}</button>
           </div>
         </div>
       ) : null}
@@ -89,12 +89,12 @@ function Suggestion({ label, value, onUse, multiline }: { label: string; value: 
   const [used, setUsed] = useState(false);
   if (!value) return null;
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-white/[0.08] bg-black/10 p-2">
+    <div className="flex items-start gap-2 rounded-xl border border-white/8 bg-black/10 p-2">
       <div className="min-w-0 flex-1">
         <span className="block text-[11px] text-white/45">{label}</span>
         <span className={cn("block text-white/90", multiline ? "whitespace-pre-wrap leading-6" : "truncate")}>{value}</span>
       </div>
-      <button type="button" onClick={() => { onUse(); setUsed(true); }} className="shrink-0 rounded-lg border border-white/[0.12] px-2 py-1 text-xs text-white/80 hover:border-white/25">{used ? "✓" : tr("استعمال", "Use")}</button>
+      <button type="button" onClick={() => { onUse(); setUsed(true); }} className="shrink-0 rounded-lg border border-white/12 px-2 py-1 text-xs text-white/80 hover:border-white/25">{used ? "✓" : tr("استعمال", "Use")}</button>
     </div>
   );
 }

@@ -14,7 +14,7 @@ import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm disabled:opacity-60";
 const KEY_SHAPE = /^[0-9a-f]{16,64}-[a-z]{2,4}\d{1,3}$/i;
 
 export function MailchimpCard() {
@@ -67,7 +67,7 @@ export function MailchimpCard() {
         ) : (
           <div className="space-y-4" data-testid="mailchimp-card">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className={`rounded-full px-2.5 py-1 ${s.enabled ? "bg-emerald-500/15 text-emerald-300" : "bg-white/[0.06] text-white/60"}`} data-testid="mailchimp-status">
+              <span className={`rounded-full px-2.5 py-1 ${s.enabled ? "bg-emerald-500/15 text-emerald-300" : "bg-white/6 text-white/60"}`} data-testid="mailchimp-status">
                 {s.enabled ? say("موصول|Connected|מחובר") : say("مش موصول|Not connected|לא מחובר")}
               </span>
               <span className="text-white/55">{say(`${s.inAudience} من ${s.subscribers} مشترك بالجمهور|${s.inAudience} of ${s.subscribers} subscribers in the audience|${s.inAudience} מתוך ${s.subscribers} מנויים בקהל`)}</span>

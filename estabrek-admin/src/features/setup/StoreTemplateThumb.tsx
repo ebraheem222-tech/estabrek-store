@@ -31,6 +31,6 @@ export function StoreTemplateThumb({ template, lang }: { template: StoreTemplate
   const [bg, surface, accent, strong, ink] = template.swatch;
   const colours = { bg, surface, accent: strong ?? accent, "accent-soft": surface, "accent-contrast": bg, text: ink, muted: ink, border: surface };
   return <div ref={box} className="mb-3 h-40 w-full overflow-hidden rounded-lg" style={{ background: bg }} aria-hidden="true">
-    {picture ? <img src={picture} alt="" loading="lazy" className="h-full w-full object-cover object-top" /> : preview.data ? <TemplateThumb key={template.id} build={() => preview.data!.sections} colours={colours} lang={lang} width={width} height={160} /> : <div className="flex h-full items-end gap-2 p-3" style={{ color: ink }}><span className="h-2/3 flex-1 rounded opacity-40" style={{ background: accent }} /><span className="h-1/2 flex-1 rounded opacity-30" style={{ background: strong }} /></div>}
+    {picture ? <img src={picture} alt="" loading="lazy" className="h-full w-full object-cover object-top" /> : preview.data ? <TemplateThumb key={template.id} build={() => preview.data!.sections} colours={colours} lang={lang} width={width} height={160} /> : <div className="flex h-full items-end gap-2 p-3" style={{ color: ink }}><span className="h-2/3 flex-1 rounded-sm opacity-40" style={{ background: accent }} /><span className="h-1/2 flex-1 rounded-sm opacity-30" style={{ background: strong }} /></div>}
   </div>;
 }

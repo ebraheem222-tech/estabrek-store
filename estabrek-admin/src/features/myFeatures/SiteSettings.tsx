@@ -124,7 +124,7 @@ export function SettingsEditor({ featureId, view, onSaved, title }: { featureId:
       case "color":
         return (
           <span className="flex items-center gap-2">
-            <input type="color" className="h-9 w-12 rounded border border-white/10 bg-transparent" value={typeof v === "string" ? v : "#000000"} disabled={!may} aria-label={label} onChange={(e) => set(d.key, e.target.value)} data-testid={`${id}-input`} />
+            <input type="color" className="h-9 w-12 rounded-sm border border-white/10 bg-transparent" value={typeof v === "string" ? v : "#000000"} disabled={!may} aria-label={label} onChange={(e) => set(d.key, e.target.value)} data-testid={`${id}-input`} />
             <span className="font-mono text-xs text-white/60" dir="ltr">{String(v ?? "")}</span>
           </span>
         );
@@ -174,12 +174,12 @@ export function SettingsEditor({ featureId, view, onSaved, title }: { featureId:
             {g.name ? <h3 className="mb-2 text-sm font-semibold text-white/80">{g.name}</h3> : null}
             <ul className="space-y-3">
               {g.decls.map((d) => (
-                <li key={d.key} className="rounded-xl border border-white/5 bg-white/[0.03] p-3" data-testid={`site-setting-${d.key}`} data-kind={d.kind} data-changed={d.key in changed}>
+                <li key={d.key} className="rounded-xl border border-white/5 bg-white/3 p-3" data-testid={`site-setting-${d.key}`} data-kind={d.kind} data-changed={d.key in changed}>
                   <div className={d.kind === "toggle" ? "flex items-center justify-between gap-3" : "space-y-2"}>
                     <div>
                       <div className="text-sm font-medium">
                         {inLang(d.label, lang)}
-                        <span className={`ms-2 rounded px-1.5 py-0.5 text-[11px] ${d.public ? "bg-sky-400/10 text-sky-200" : "bg-white/10 text-white/60"}`} data-testid={`site-setting-${d.key}-who`}>
+                        <span className={`ms-2 rounded-sm px-1.5 py-0.5 text-[11px] ${d.public ? "bg-sky-400/10 text-sky-200" : "bg-white/10 text-white/60"}`} data-testid={`site-setting-${d.key}-who`}>
                           {d.public ? say("بيبيّن عالمتجر|On the shop|מוצג בחנות") : say("خاص: للمنطق بس|Private: functions only|פרטי: לפונקציות בלבד")}
                         </span>
                       </div>

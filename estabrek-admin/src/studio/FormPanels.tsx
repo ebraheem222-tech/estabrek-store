@@ -21,10 +21,10 @@ import {
 } from "../../../shared/shapeForm";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const box = "space-y-2 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
-const field = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 font-mono text-xs text-white";
+const box = "space-y-2 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`;
+const field = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 font-mono text-xs text-white";
 
 const CORNER_WORD: Record<string, string> = {
   square: "حادّة|Square|חדה", round: "مدوّرة|Round|מעוגלת", squircle: "سكويركل|Squircle|סקווירקל", bevel: "مقصوصة|Bevel|משופעת",
@@ -95,7 +95,7 @@ export function FormPanel({ node, screen, busy, onOps }: { node: PageTreeNode; s
         <div className="text-xs font-medium text-white/70">{label}</div>
         {form ? <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(null)} data-testid="studio-form-clear">{say("شيله|Remove|הסר")}</button> : null}
       </div>
-      <svg viewBox="-12 -12 244 164" className="w-full rounded-lg bg-white/[0.03]" data-testid="studio-form-preview" role="group" aria-label={label}>
+      <svg viewBox="-12 -12 244 164" className="w-full rounded-lg bg-white/3" data-testid="studio-form-preview" role="group" aria-label={label}>
         <path d={path} fill="rgb(236 72 153 / .35)" stroke="rgb(244 114 182)" strokeWidth="1.5" data-testid="studio-form-path" />
         {!whole ? [...CORNERS, ...EDGES].map((k) => (
           <circle key={k} cx={SPOT[k][0] * 220} cy={SPOT[k][1] * 140} r={target === k ? 8 : 6} className="cursor-pointer" fill={target === k ? "rgb(244 114 182)" : "rgb(255 255 255 / .25)"} stroke="white" strokeWidth="1" onClick={() => setTarget(k)} data-testid="studio-form-target" data-target={k}>
@@ -179,7 +179,7 @@ export function FormPanel({ node, screen, busy, onOps }: { node: PageTreeNode; s
         </div>
       )}
 
-      <details className="rounded-lg bg-white/[0.03] p-2">
+      <details className="rounded-lg bg-white/3 p-2">
         <summary className="cursor-pointer text-[11px] text-white/60">{say("أشكال جاهزة|Ready shapes|צורות מוכנות")}</summary>
         <div className="mt-2 grid grid-cols-3 gap-1">
           {PRESETS.map((p) => (
@@ -222,7 +222,7 @@ export function CodePanel({ node, busy, onOps }: { node: PageTreeNode; busy: boo
     onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...props, code: Object.keys(next).length ? next : undefined } }]);
   };
   return (
-    <details className="rounded-xl border border-white/[0.08] p-3" data-testid="studio-code" open={Boolean(code.out) || undefined}>
+    <details className="rounded-xl border border-white/8 p-3" data-testid="studio-code" open={Boolean(code.out) || undefined}>
       <summary className="cursor-pointer select-none text-xs text-white/70">{label} <span className="text-white/35">· Tailwind / CSS</span></summary>
       <div className="mt-2 space-y-2">
         <label className="block text-[11px] text-white/55">Tailwind

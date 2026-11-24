@@ -32,9 +32,9 @@ import { withLook, type StageDraftApi } from "./stageDraft";
 /** The editor's tools: the handle, snapping, motion on or paused, sizing together, and which end of the path the handles move. */
 export type SceneTool = { mode: "translate" | "rotate" | "scale"; play: boolean; snap: boolean; lockScale: boolean; key: "start" | "end" };
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-30";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-30";
 const on = "bg-accent-500/25 text-white";
-const field = "w-full rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
+const field = "w-full rounded-md border border-white/10 bg-surface-925 px-1.5 py-1 text-xs text-white";
 
 const MODE_LABEL = { translate: () => tr("تحريك", "Move"), rotate: () => tr("تدوير", "Turn"), scale: () => tr("تكبير", "Size") };
 const ANIM_LABEL: Record<StageAnim["type"], () => string> = {
@@ -83,7 +83,7 @@ const round = (v: number, step: number) => {
 
 function Group({ title, children, onReset, testId }: { title: string; children: ReactNode; onReset?: () => void; testId?: string }) {
   return (
-    <div className="space-y-2 rounded-xl bg-white/[0.03] p-2" data-testid={testId}>
+    <div className="space-y-2 rounded-xl bg-white/3 p-2" data-testid={testId}>
       <div className="flex items-center gap-2">
         <h4 className="me-auto text-xs font-medium text-white/75">{title}</h4>
         {onReset ? (
@@ -135,7 +135,7 @@ function Slider({ label, value, min, max, step, onChange, testId, values }: { la
           ))}
         </select>
       ) : (
-        <input type="range" className="col-span-2 accent-[var(--color-accent-500,#a43b64)]" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} data-testid={testId} />
+        <input type="range" className="col-span-2 accent-(--color-accent-500,#a43b64)" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} data-testid={testId} />
       )}
     </label>
   );
@@ -253,11 +253,11 @@ export function SceneEditor({
         </button>
       </div>
 
-      <div className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5 text-[11px] text-white/60">
+      <div className="flex items-center gap-2 rounded-lg bg-white/3 px-2 py-1.5 text-[11px] text-white/60">
         <span className="shrink-0">{tr("معاينة السكرول", "Scroll preview")}</span>
         <input
           type="range"
-          className="min-w-0 flex-1 accent-[var(--color-accent-500,#a43b64)]"
+          className="min-w-0 flex-1 accent-(--color-accent-500,#a43b64)"
           min={0}
           max={1}
           step={0.01}
@@ -399,10 +399,10 @@ export function SceneEditor({
           {STAGE_PARTS.map((part) => {
             const value = look.colours?.[part];
             return (
-              <div key={part} className="flex items-center gap-1.5 rounded-md bg-white/[0.03] px-1.5 py-1">
+              <div key={part} className="flex items-center gap-1.5 rounded-md bg-white/3 px-1.5 py-1">
                 <input
                   type="color"
-                  className="h-6 w-7 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent"
+                  className="h-6 w-7 shrink-0 cursor-pointer rounded-sm border border-white/10 bg-transparent"
                   value={value ?? theme.swatch[2] ?? "#888888"}
                   onChange={(e) => set((l) => ({ ...l, colours: { ...l.colours, [part]: e.target.value } }), `colour-${part}`)}
                   aria-label={PART_LABEL[part]()}

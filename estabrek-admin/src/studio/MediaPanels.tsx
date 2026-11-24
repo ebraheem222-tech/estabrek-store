@@ -24,10 +24,10 @@ import { typeLabel } from "./treeIndex";
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Props = { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops };
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
-const box = "space-y-3 rounded-xl border border-white/[0.08] p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
+const box = "space-y-3 rounded-xl border border-white/8 p-3";
 const head = "text-xs font-medium text-white/70";
-const part = "border-t border-white/[0.06] pt-2 text-[11px] font-medium text-white/60";
+const part = "border-t border-white/6 pt-2 text-[11px] font-medium text-white/60";
 const hint = "text-[10px] leading-4 text-white/40";
 const SAFE_LINK = /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i;
 const SAFE_FILE = /^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i;

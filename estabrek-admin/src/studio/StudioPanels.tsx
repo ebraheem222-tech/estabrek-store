@@ -13,7 +13,7 @@ import { adminLang, type Lang } from "../lib/lang";
 import { ROSE_ID, type StoreThemeInfo } from "./storeThemes";
 import { ROSE_PALETTES } from "./themes";
 
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 /** The film opening's own line colours (the shop's RoseHeroFilm LINE_COLORS). */
 const FILM_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
 const PALETTE_LABEL: Record<string, () => string> = {
@@ -44,7 +44,7 @@ export function Field({ label, value, multiline, onSave, testId, maxLength }: { 
     setV(value);
   }
   const save = () => v !== value && onSave(v);
-  const cls = "mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
+  const cls = "mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white";
   return (
     <label className="block text-[11px] text-white/55">
       {label}
@@ -76,11 +76,11 @@ export function SectionSettings({ type, data, words, busy, onSet, rose = false }
     </label>
   );
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-settings">
+    <div className="space-y-3 rounded-xl border border-white/8 p-3" data-testid="studio-settings">
       <div className="text-xs font-medium text-white/70">{tr("إعدادات القسم", "Section settings")}</div>
       <label className="block text-[11px] text-white/55">
         {tr("ألوان القسم", "Section colours")}
-        <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs" disabled={busy} value={p.palette ?? ""} onChange={(e) => onSet(["rosePresentation", "palette"], e.target.value || null)}>
+        <select className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs" disabled={busy} value={p.palette ?? ""} onChange={(e) => onSet(["rosePresentation", "palette"], e.target.value || null)}>
           <option value="">{tr("تلقائية حسب المشهد", "Automatic for the scene")}</option>
           {ROSE_PALETTES.map((k) => <option key={k} value={k}>{PALETTE_LABEL[k]()}</option>)}
         </select>
@@ -88,7 +88,7 @@ export function SectionSettings({ type, data, words, busy, onSet, rose = false }
       </label>
       <label className="block text-[11px] text-white/55">
         {tr("الحركة", "Motion")}
-        <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs" disabled={busy} value={p.motionIntensity ?? "cinematic"} onChange={(e) => onSet(["rosePresentation", "motionIntensity"], e.target.value)}>
+        <select className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs" disabled={busy} value={p.motionIntensity ?? "cinematic"} onChange={(e) => onSet(["rosePresentation", "motionIntensity"], e.target.value)}>
           <option value="cinematic">{tr("سينمائية", "Cinematic")}</option>
           <option value="subtle">{tr("هادئة", "Subtle")}</option>
         </select>
@@ -98,7 +98,7 @@ export function SectionSettings({ type, data, words, busy, onSet, rose = false }
         <Field label={tr("الـ HTML تبع القسم", "The section's HTML")} multiline value={typeof words.html === "string" ? words.html : ""} onSave={(v) => onSet(["html"], v, true)} testId="studio-custom-html" />
       ) : null}
       {type === "HERO" && rose ? (
-        <div className="space-y-2 border-t border-white/[0.06] pt-3">
+        <div className="space-y-2 border-t border-white/6 pt-3">
           {toggle("roseHeroFilm", tr("فيلم الافتتاح مع السكرول", "The scroll film opening"))}
           {toggle("roseVideoEnabled", tr("الفيديو تحت الافتتاح", "The clip under the opening"))}
           {toggle("rose3dEnabled", tr("مشهد القماش", "The fabric scene"))}
@@ -162,7 +162,7 @@ export function SeedPick({ label, value, own, busy, onPick, testId }: { label: s
   }
   return (
     <div className="flex items-center gap-2 text-[11px] text-white/60" data-testid={testId}>
-      <input type="color" aria-label={label} className="h-7 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={hex} onChange={(e) => setHex(e.target.value)} onBlur={() => hex.toLowerCase() !== (mine ?? own).toLowerCase() && onPick(hex)} />
+      <input type="color" aria-label={label} className="h-7 w-9 shrink-0 cursor-pointer rounded-sm border border-white/10 bg-transparent" disabled={busy} value={hex} onChange={(e) => setHex(e.target.value)} onBlur={() => hex.toLowerCase() !== (mine ?? own).toLowerCase() && onPick(hex)} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {mine ? (
         <button type="button" className={btn} disabled={busy} onClick={() => onPick(null)}>{tr("الجاهز", "The shop's own")}</button>
@@ -205,7 +205,7 @@ export function SceneSettings({ block, scene, shown, busy, onShown, onSeed }: {
 }) {
   const seeds = SCENE_SEEDS[block] ?? [];
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-scene">
+    <div className="space-y-3 rounded-xl border border-white/8 p-3" data-testid="studio-scene">
       <div className="text-xs font-medium text-white/70">{tr("إعدادات المشهد", "Scene settings")}</div>
       <label className="flex items-center justify-between gap-2 text-xs">
         <span className="text-white/75">{tr("ظاهر بالصفحة", "Shown on the page")}</span>
@@ -245,7 +245,7 @@ export function WordsPanel({ langs, main, names, multiline, busy, valueOf, onSav
 }) {
   const order = [main, ...langs.filter((l) => l !== main)];
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-words">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-words">
       <div className="text-xs font-medium text-white/70">{tr("الكلام بكل لغة", "The words in each language")}</div>
       {order.map((l) => (
         <div key={l} className={busy ? "pointer-events-none opacity-60" : ""} data-lang={l}>
@@ -271,7 +271,7 @@ const sourceOf = (name: string) =>
 export function PartInfo({ extra }: { extra: { kind: "part"; name: string; n: number; count: number } | { kind: "auto"; tag: string } }) {
   const source = extra.kind === "part" ? sourceOf(extra.name) : "design";
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3 text-[11px] leading-5 text-white/55" data-testid="studio-part">
+    <div className="space-y-2 rounded-xl border border-white/8 p-3 text-[11px] leading-5 text-white/55" data-testid="studio-part">
       <p>{PART_SOURCE[source]()}</p>
       {extra.kind === "part" && extra.count > 1 ? <p className="text-white/40">{tr(`واحدة من ${extra.count} متلها بهالقسم.`, "One of {0} alike in this section.", [extra.count])}</p> : null}
       {source === "products" ? <Link to="/admin/catalog/products" className="block text-accent-300 hover:underline">{tr("صفحة المنتجات", "The products page")}</Link> : null}
@@ -304,7 +304,7 @@ export function MediaSlot({ kind, value, busy, onSet }: { kind: "image" | "video
         <>
           <label className="block text-[11px] text-white/55">
             {tr("رابط الفيديو (MP4، من مكتبة الفيديوهات أو أي رابط https)", "Video link (MP4, from the video library or any https link)")}
-            <input dir="ltr" className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/clip.mp4" data-testid="studio-video-url" />
+            <input dir="ltr" className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/clip.mp4" data-testid="studio-video-url" />
           </label>
           <div className="flex flex-wrap gap-1">
             <button type="button" className={btn} disabled={busy || !ok || url.trim() === value} onClick={() => onSet(url.trim())}>{tr("حفظ", "Save")}</button>
@@ -332,7 +332,7 @@ export function ThemePanel({ themes, failed, current, preview, mode, currentMode
       {failed ? <p className="text-[11px] text-amber-200/80">{tr("ما قدرنا نجيب الثيمات من المتجر.", "The themes couldn't be loaded from the store.")}</p> : null}
       <div className="grid grid-cols-1 gap-2">
         {options.map((t) => (
-          <button key={t.id} type="button" onClick={() => onPreview(t.id === current ? null : t.id)} aria-pressed={shown === t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-start text-xs ${shown === t.id ? "border-accent-400/60 bg-white/[0.08]" : "border-white/[0.08] hover:bg-white/[0.04]"}`} data-testid="studio-theme-option" data-theme-id={t.id}>
+          <button key={t.id} type="button" onClick={() => onPreview(t.id === current ? null : t.id)} aria-pressed={shown === t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-start text-xs ${shown === t.id ? "border-accent-400/60 bg-white/8" : "border-white/8 hover:bg-white/4"}`} data-testid="studio-theme-option" data-theme-id={t.id}>
             <span className="flex">
               {t.swatch.map((c, i) => <span key={i} className="-ms-1 h-4 w-4 rounded-full border border-white/20 first:ms-0" style={{ background: c }} />)}
             </span>

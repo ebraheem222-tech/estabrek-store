@@ -14,8 +14,8 @@ import { say } from "../say";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 export type FindAsk = { mode: SparkleMode; count: number; spread: number; productOnly: boolean };
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const control = "w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white";
 const MODE_WORD: Record<SparkleMode, string> = {
   all: "الكل (زوايا ولمعات)|All (corners and highlights)|הכול (פינות והברקות)",
   corners: "الزوايا|Corners|פינות",
@@ -56,7 +56,7 @@ export function SparklePanel({ node, busy, onOps, onFind, finding, note, pen, on
         {sparkle ? <button type="button" className={btn} disabled={busy} onClick={() => save(say("شيل النجوم|Remove the stars|הסרת הכוכבים"), null)} data-testid="studio-sparkle-clear">{say("امسحها|Clear|נקה")}</button> : null}
       </div>
 
-      <div className="space-y-2 rounded-lg border border-white/[0.08] p-2">
+      <div className="space-y-2 rounded-lg border border-white/8 p-2">
         <label className="block text-[11px] text-white/55">
           {say("وين تلمع|Where they shine|איפה הם נוצצים")}
           <select className={`${control} mt-1`} disabled={busy || finding} value={ask.mode} onChange={(e) => setAsk({ ...ask, mode: e.target.value as SparkleMode })} data-testid="studio-sparkle-mode">
@@ -92,7 +92,7 @@ export function SparklePanel({ node, busy, onOps, onFind, finding, note, pen, on
           <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label={say("رسمتها|Its drawing|הציור")}>
             {SPARKLE_SHAPES.map((sh) => (
               <button key={sh} type="button" role="radio" aria-checked={(sparkle.shape ?? "glint") === sh} title={say(SHAPE_WORD[sh])} disabled={busy}
-                className={`grid place-items-center rounded-lg p-1.5 ${(sparkle.shape ?? "glint") === sh ? "bg-accent-500/30" : "bg-white/[0.06] hover:bg-white/[0.1]"}`}
+                className={`grid place-items-center rounded-lg p-1.5 ${(sparkle.shape ?? "glint") === sh ? "bg-accent-500/30" : "bg-white/6 hover:bg-white/10"}`}
                 onClick={() => set({ shape: sh })} data-testid="studio-sparkle-shape" data-shape={sh}>
                 <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-100" aria-hidden="true"><path d={SPARKLE_PATHS[sh]} fill="currentColor" /></svg>
               </button>

@@ -14,7 +14,7 @@ export const GLASS_NAV: NavTemplate[] = [
       link: "text-gray-700 text-sm font-medium transition-colors duration-200",
       linkHover: "hover:text-gray-900",
       linkActive: "text-gray-900",
-      button: "bg-gray-900/90 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 transition-colors",
+      button: "bg-gray-900/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 transition-colors",
     },
   },
   {
@@ -30,7 +30,7 @@ export const GLASS_NAV: NavTemplate[] = [
       link: "text-gray-300 text-sm font-medium transition-colors duration-200",
       linkHover: "hover:text-white",
       linkActive: "text-white",
-      button: "bg-white/90 backdrop-blur text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white transition-colors",
+      button: "bg-white/90 backdrop-blur-sm text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white transition-colors",
     },
   },
   {
@@ -47,7 +47,7 @@ export const GLASS_NAV: NavTemplate[] = [
       linkHover: "hover:text-gray-900",
       linkActive: "text-gray-900",
       button:
-        "bg-white/50 backdrop-blur text-gray-900 px-4 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/70 transition-colors",
+        "bg-white/50 backdrop-blur-sm text-gray-900 px-4 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/70 transition-colors",
     },
   },
   {
@@ -56,7 +56,7 @@ export const GLASS_NAV: NavTemplate[] = [
     nameAr: "زجاج ملون",
     category: "glass",
     styles: {
-      nav: "bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50",
+      nav: "bg-linear-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -64,7 +64,7 @@ export const GLASS_NAV: NavTemplate[] = [
       linkHover: "hover:text-white",
       linkActive: "text-white",
       button:
-        "bg-white/20 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/30 transition-colors",
+        "bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/30 hover:bg-white/30 transition-colors",
     },
   },
   {
@@ -81,7 +81,7 @@ export const GLASS_NAV: NavTemplate[] = [
       linkHover: "hover:text-cyan-400",
       linkActive: "text-cyan-400",
       button:
-        "bg-cyan-500/20 backdrop-blur text-cyan-400 px-4 py-2 rounded-lg text-sm font-medium border border-cyan-500/50 hover:bg-cyan-500/30 transition-colors",
+        "bg-cyan-500/20 backdrop-blur-sm text-cyan-400 px-4 py-2 rounded-lg text-sm font-medium border border-cyan-500/50 hover:bg-cyan-500/30 transition-colors",
     },
   },
   {
@@ -90,7 +90,7 @@ export const GLASS_NAV: NavTemplate[] = [
     nameAr: "زجاج شفق",
     category: "glass",
     styles: {
-      nav: "bg-gradient-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50",
+      nav: "bg-linear-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden md:flex items-center gap-8",
@@ -98,7 +98,7 @@ export const GLASS_NAV: NavTemplate[] = [
       linkHover: "hover:text-white",
       linkActive: "text-white",
       button:
-        "bg-white/10 backdrop-blur text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/20 hover:bg-white/20 transition-colors",
+        "bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/20 hover:bg-white/20 transition-colors",
     },
   },
   {
@@ -131,7 +131,7 @@ export const GLASS_NAV: NavTemplate[] = [
       linkHover: "hover:text-white hover:drop-shadow-lg",
       linkActive: "text-white drop-shadow-lg",
       button:
-        "bg-white/20 backdrop-blur text-white px-4 py-2 rounded-xl text-sm font-medium border border-white/30 hover:bg-white/30 transition-all shadow-lg",
+        "bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-xl text-sm font-medium border border-white/30 hover:bg-white/30 transition-all shadow-lg",
     },
   },
 ];

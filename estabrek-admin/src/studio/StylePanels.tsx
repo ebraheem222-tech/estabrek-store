@@ -16,8 +16,8 @@ import { say } from "./say";
 import { TokenSelect } from "./designTokens";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
-const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+const box = "space-y-2.5 rounded-xl border border-white/8 p-3";
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40";
 
 const WEIGHTS: Array<[string, () => string]> = [
   ["", () => tr("متل التصميم", "As designed")],
@@ -58,7 +58,7 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
       {has("weight") ? (
         <label className="block text-[11px] text-white/55">
           {tr("سماكة الخط", "Weight")}
-          <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" disabled={busy} value={String(v("weight") ?? "")} onChange={(e) => save(tr("سماكة الخط", "Weight"), { weight: e.target.value ? Number(e.target.value) : null })} data-testid="studio-style-weight">
+          <select className="mt-1 w-full rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white" disabled={busy} value={String(v("weight") ?? "")} onChange={(e) => save(tr("سماكة الخط", "Weight"), { weight: e.target.value ? Number(e.target.value) : null })} data-testid="studio-style-weight">
             {WEIGHTS.map(([k, name]) => <option key={k} value={k} disabled={!hasWeight(k)}>{name()}{hasWeight(k) ? "" : ` (${tr("مش بهالخط", "not in this font")})`}</option>)}
           </select>
         </label>
@@ -162,7 +162,7 @@ export function MediaStylePanel({ node, screen, busy, onOps, onFindSubject }: {
         <div className="mt-1 flex items-start gap-3">
           <div className="grid w-20 shrink-0 grid-cols-3 gap-1" role="group" aria-label={tr("النقطة اللي بتضل ظاهرة", "The point that stays in sight")} data-testid="studio-media-focus">
             {SPOTS.map(([x, y]) => (
-              <button key={`${x}-${y}`} type="button" disabled={busy} aria-pressed={focus.x === x && focus.y === y} onClick={() => save(tr("نقطة التركيز", "Focus point"), { focus: x === 50 && y === 50 ? null : { x, y } })} className={`h-5 rounded ${focus.x === x && focus.y === y ? "bg-accent-500/70" : "bg-white/[0.08] hover:bg-white/[0.14]"}`} data-spot={`${x},${y}`} />
+              <button key={`${x}-${y}`} type="button" disabled={busy} aria-pressed={focus.x === x && focus.y === y} onClick={() => save(tr("نقطة التركيز", "Focus point"), { focus: x === 50 && y === 50 ? null : { x, y } })} className={`h-5 rounded-sm ${focus.x === x && focus.y === y ? "bg-accent-500/70" : "bg-white/8 hover:bg-white/[0.14]"}`} data-spot={`${x},${y}`} />
             ))}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
@@ -196,7 +196,7 @@ export function ShowOnPanel({ node, busy, onOps }: { node: PageTreeNode; busy: b
     ]);
   };
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/[0.08] px-3 py-2 text-[11px] text-white/60" data-testid="studio-show-on">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/8 px-3 py-2 text-[11px] text-white/60" data-testid="studio-show-on">
       <span>{tr("بيبيّن على", "Shows on")}</span>
       {(["base", "tablet", "mobile"] as const).map((s) => (
         <label key={s} className="flex items-center gap-1">

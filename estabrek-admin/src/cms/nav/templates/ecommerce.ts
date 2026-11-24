@@ -7,7 +7,7 @@ export const ECOMMERCE_NAV: NavTemplate[] = [
     nameAr: "تجارة حديث",
     category: "ecommerce",
     styles: {
-      nav: "bg-white shadow-sm sticky top-0 z-50",
+      nav: "bg-white shadow-xs sticky top-0 z-50",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-gray-900",
       links: "hidden lg:flex items-center gap-6",
@@ -56,7 +56,7 @@ export const ECOMMERCE_NAV: NavTemplate[] = [
     nameAr: "تجارة ملون",
     category: "ecommerce",
     styles: {
-      nav: "bg-gradient-to-r from-pink-500 to-orange-500 sticky top-0 z-50",
+      nav: "bg-linear-to-r from-pink-500 to-orange-500 sticky top-0 z-50",
       container: "max-w-7xl mx-auto px-4 h-16 flex items-center justify-between",
       logo: "text-xl font-bold text-white",
       links: "hidden lg:flex items-center gap-6",
@@ -110,7 +110,7 @@ export const ECOMMERCE_NAV: NavTemplate[] = [
       link: "text-gray-400 text-sm font-bold uppercase tracking-wider transition-colors duration-200",
       linkHover: "hover:text-red-500",
       linkActive: "text-red-500",
-      button: "bg-red-600 text-white px-4 py-2 rounded text-sm font-bold uppercase hover:bg-red-500 transition-colors",
+      button: "bg-red-600 text-white px-4 py-2 rounded-sm text-sm font-bold uppercase hover:bg-red-500 transition-colors",
     },
   },
   {

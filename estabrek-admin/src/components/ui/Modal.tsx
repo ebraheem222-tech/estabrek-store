@@ -97,7 +97,7 @@ export function Modal({
           aria-modal="true"
           onMouseMove={handleMouseMove}
           className={cn(
-            "modal-spotlight relative w-full max-h-[90vh] flex flex-col rounded-2xl border border-white/[0.08] shadow-elevated overflow-hidden animate-modal-enter",
+            "modal-spotlight relative w-full max-h-[90vh] flex flex-col rounded-2xl border border-white/8 shadow-elevated overflow-hidden animate-modal-enter",
             widthClassName
           )}
           style={{ 
@@ -105,7 +105,7 @@ export function Modal({
           }}
         >
           {/* Top gradient line */}
-          <div className="absolute top-0 end-0 start-0 h-px bg-gradient-to-r from-transparent via-accent-500/40 to-transparent" />
+          <div className="absolute top-0 inset-e-0 inset-s-0 h-px bg-linear-to-r from-transparent via-accent-500/40 to-transparent" />
           
           {/* Ambient glow top */}
           <div className="ambient-glow-top" />
@@ -114,13 +114,13 @@ export function Modal({
           <div className="ambient-glow-bottom" />
           
           {/* Header */}
-          <div className="relative flex flex-col gap-3 px-5 pt-5 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6 sm:pt-6 border-b border-white/[0.06]">
+          <div className="relative flex flex-col gap-3 px-5 pt-5 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6 sm:pt-6 border-b border-white/6">
             {/* Header accent line */}
-            <div className="absolute bottom-0 end-6 start-6 h-px bg-gradient-to-r from-transparent via-accent-500/20 to-transparent" />
+            <div className="absolute bottom-0 inset-e-6 inset-s-6 h-px bg-linear-to-r from-transparent via-accent-500/20 to-transparent" />
             
             <div className="flex items-start gap-4">
               {icon && (
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/25 flex items-center justify-center flex-shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-linear-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/25 flex items-center justify-center shrink-0">
                   {icon}
                 </div>
               )}
@@ -135,7 +135,7 @@ export function Modal({
             </div>
             <button
               onClick={close}
-              className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200 self-end sm:self-auto group"
+              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white bg-white/3 hover:bg-white/8 border border-white/6 hover:border-white/12 transition-all duration-200 self-end sm:self-auto group"
             >
               <svg className="w-4 h-4 transition-transform group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -150,7 +150,7 @@ export function Modal({
 
           {/* Footer */}
           {(footer || closeText) && (
-            <div className="relative flex flex-col-reverse gap-3 px-5 py-4 border-t border-white/[0.06] sm:flex-row sm:items-center sm:justify-between sm:px-6"
+            <div className="relative flex flex-col-reverse gap-3 px-5 py-4 border-t border-white/6 sm:flex-row sm:items-center sm:justify-between sm:px-6"
               style={{
                 background: 'var(--modal-header, linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.1) 100%))'
               }}

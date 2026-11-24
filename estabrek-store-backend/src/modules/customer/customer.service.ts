@@ -7,7 +7,7 @@ import { AppError, NotFound } from "../../utils/httpError.js";
 import { env } from "../../config/env.js";
 import { signCustomerToken } from "../../config/security.js";
 import { policy } from "../../lib/securityPolicy.js";
-import { sendEmail } from "../outbox/sender/email.js";
+import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
 import { shopperLanguage } from "../../lib/shopperLanguage.js";
 import { GoogleTokenError, googleOf, verifyGoogleToken } from "../../lib/googleSignIn.js";
 import { DISCORD_SECRET, SocialError, discordProfile, discordUrl, readState, socialOf, steamId, steamUrl } from "../../lib/socialSignIn.js";
@@ -31,6 +31,9 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 /** Sends a sign-in code. Always answers the same way (doesn't reveal who has an account). */
 export async function startLogin(emailRaw: string, ctx: { ip?: string; lang?: string }) {
   const email = normalizeEmail(emailRaw);
+  // A live store that can't send emails says so, the same for everyone: it used to answer "sent" for a code that
+  // was only written to the server's log, and the shopper waited for an email that never came.
+  if (env.NODE_ENV === "production" && !emailConfigured()) throw fail(503, "EMAIL_NOT_READY", "This store can't send emails yet");
   const recent = await prisma.customerOtp.count({ where: { email, createdAt: { gt: new Date(Date.now() - 15 * 60_000) } } });
   if (recent >= CODES_PER_15_MIN) throw fail(429, "TOO_MANY_CODES", "Too many codes requested; try again in a few minutes");
 
@@ -44,7 +47,13 @@ export async function startLogin(emailRaw: string, ctx: { ip?: string; lang?: st
   });
   // A suspended account gets no code (and the answer looks the same).
   if (user?.status !== "SUSPENDED") {
-    await sendEmail({ to: email, template: "CUSTOMER_LOGIN_CODE", payload: { code, minutes }, lang: (await shopperLanguage(ctx.lang)).lang });
+    const sent = await sendEmail({ to: email, template: "CUSTOMER_LOGIN_CODE", payload: { code, minutes }, lang: (await shopperLanguage(ctx.lang)).lang });
+    // The email didn't go (the provider refused it: a sender it doesn't know, a key that ran out): the code can't
+    // reach anyone, so it stops working and the shopper is told, instead of waiting for it.
+    if (!sent.ok) {
+      await prisma.customerOtp.updateMany({ where: { email, usedAt: null }, data: { usedAt: new Date() } });
+      throw fail(502, "EMAIL_FAILED", "The code's email couldn't be sent");
+    }
   }
   return { ok: true as const, minutes, ...(env.NODE_ENV !== "production" ? { devCode: code } : {}) };
 }

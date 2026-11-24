@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
           />
 
           {token && (
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            <div className="p-4 rounded-xl bg-white/3 border border-white/6">
               <p className="text-xs text-white/60 mb-2">{tr("Token (للتطوير فقط):", "Token (development only):")}</p>
               <div className="text-xs font-mono text-white/80 break-all">{token}</div>
               <div className="mt-3 flex gap-2">

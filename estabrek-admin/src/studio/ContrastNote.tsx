@@ -24,14 +24,14 @@ export function ContrastNote({ ink, busy, onFix }: { ink: InkReading | null; bus
   if (!ink) return null;
   if ("unknown" in ink) {
     if (ink.unknown !== "picture") return null;
-    return <p className="rounded-lg border border-white/[0.06] px-2 py-1 text-[11px] leading-5 text-white/45" data-testid="studio-contrast" data-ok="unknown">{say("الكلام فوق صورة أو تدرّج ألوان: تأكد بعينك إنو بينقرأ.|The words are over a picture or a gradient: check by eye that they read.|המילים מעל תמונה או מעבר צבעים: בדוק בעין שהן קריאות.")}</p>;
+    return <p className="rounded-lg border border-white/6 px-2 py-1 text-[11px] leading-5 text-white/45" data-testid="studio-contrast" data-ok="unknown">{say("الكلام فوق صورة أو تدرّج ألوان: تأكد بعينك إنو بينقرأ.|The words are over a picture or a gradient: check by eye that they read.|המילים מעל תמונה או מעבר צבעים: בדוק בעין שהן קריאות.")}</p>;
   }
   const v = contrastVerdict(ink);
   if (!v) return null;
-  const swatch = (color: string) => <span className="rounded px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: ink.ground, color }} aria-hidden>Aa</span>;
+  const swatch = (color: string) => <span className="rounded-sm px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: ink.ground, color }} aria-hidden>Aa</span>;
   if (v.ok) {
     return (
-      <p className="flex items-center gap-2 rounded-lg border border-white/[0.06] px-2 py-1 text-[11px] leading-5 text-white/55" data-testid="studio-contrast" data-ok="1" data-ratio={v.ratio}>
+      <p className="flex items-center gap-2 rounded-lg border border-white/6 px-2 py-1 text-[11px] leading-5 text-white/55" data-testid="studio-contrast" data-ok="1" data-ratio={v.ratio}>
         {swatch(ink.color)}
         <span>{say("الكلام بينقرأ منيح على خلفيته|The words read well on their background|המילים קריאות היטב על הרקע")} <span dir="ltr">({v.ratio.toFixed(1)})</span></span>
       </p>

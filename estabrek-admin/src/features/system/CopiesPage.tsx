@@ -22,7 +22,7 @@ import { CopyRuns } from "./CopyRuns";
 import { SiteAsks } from "./SiteAsks";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "h-10 w-full min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-10 w-full min-w-0 rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 const label = "text-xs text-white/70";
 
 /** What each service's token must be allowed to do, for a copy to be made with it. */
@@ -92,7 +92,7 @@ export default function CopiesPage() {
             "نسخة لزبون هي متجر كامل إله لحاله: قاعدة بياناته وسيرفره ومتجره ولوحة إدارته، بحساباتك إنت على Neon و Railway و Vercel و Cloudflare، ومن نفس الكود. كل دمج بيوصلها لحالها، وأول نشر بيجهّز قاعدتها الفاضية. كل نسخة بتزيد مصروف شهري على حساباتك.|A client's copy is a whole store of its own: its database, server, shop and admin, in your own Neon, Railway, Vercel and Cloudflare accounts, built from the same code. Every merge reaches it by itself, and its first deploy sets up its empty database. Each copy adds a monthly cost to your accounts.|עותק ללקוח הוא חנות שלמה משלו: מסד הנתונים, השרת, החנות ולוח הניהול שלו, בחשבונות Neon, Railway, Vercel ו-Cloudflare שלך, מאותו קוד. כל מיזוג מגיע אליו מעצמו, והפריסה הראשונה מכינה את מסד הנתונים הריק שלו. כל עותק מוסיף עלות חודשית לחשבונות שלך.",
           )}
         </p>
-        <p className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/80" data-testid="copies-how">
+        <p className="mt-2 rounded-xl border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80" data-testid="copies-how">
           {say(
             "أول شي بتشوف شو رح ينعمل، وكل خدمة بتنسأل إذا الأسماء فاضية: هاد ما بيعمل ولا شي. بعدين، لما تكتب إيميل صاحب المتجر الجديد وكلمة سره وتأكّد، السيرفر بيعمل النسخة خطوة خطوة وإنت بتتابع: القاعدة، السيرفر (وعنوانه أول ما يجهز)، حساب صاحب المتجر، المتجر، والإدارة.|First you see what would be made, and each service is asked whether the names are free: that makes nothing. Then, once you type the new store owner's email and password and confirm, the server makes the copy step by step while you watch: the database, the server (its address as soon as it has one), the owner's account, the shop, and the admin.|קודם רואים מה ייווצר, וכל שירות נשאל אם השמות פנויים: זה לא יוצר כלום. אחר כך, כשכותבים את האימייל והסיסמה של הבעלים החדשים ומאשרים, השרת יוצר את העותק שלב אחר שלב ואתם עוקבים: מסד הנתונים, השרת (והכתובת שלו ברגע שיש לו), החשבון של הבעלים, החנות, והניהול.",
           )}

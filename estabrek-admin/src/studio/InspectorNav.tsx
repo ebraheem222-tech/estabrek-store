@@ -29,7 +29,7 @@ export function InspectorGroup({ id }: { id: InspectorGroupId }) {
     <h3 className="insp-group flex items-center gap-2 pt-2 text-[11px] font-semibold uppercase tracking-wide text-accent-200/90" data-insp-group={id}>
       <span aria-hidden="true">{GROUP_ICON[id]}</span>
       <span>{say(GROUP_WORD[id])}</span>
-      <span className="h-px flex-1 bg-white/[0.1]" aria-hidden="true" />
+      <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
     </h3>
   );
 }
@@ -128,26 +128,26 @@ export function InspectorJump({ watch, sections = false, tabs = true, active, on
   // -top-3: a stuck bar is measured from inside its list's padding (12px), so top-0 left a strip above it where
   // the cards scrolled by; this puts it flush with the list's top edge.
   return (
-    <div ref={bar} className="sticky -top-3 z-[5] -mx-3 -mt-3 mb-3 space-y-1.5 border-b border-white/[0.08] bg-surface-950/95 px-3 py-2 backdrop-blur" data-testid="studio-insp-jump" data-sections={sections ? "" : undefined}>
+    <div ref={bar} className="sticky -top-3 z-5 -mx-3 -mt-3 mb-3 space-y-1.5 border-b border-white/8 bg-surface-950/95 px-3 py-2 backdrop-blur-sm" data-testid="studio-insp-jump" data-sections={sections ? "" : undefined}>
       <div className="flex items-center gap-1">
         <input
           type="search" value={query} onChange={(e) => setQuery(e.target.value)}
           placeholder={say("دوّر على إعداد: لون، ظل، حركة…|Find a setting: colour, shadow, motion…|חיפוש הגדרה: צבע, צל, תנועה…")}
-          className="min-w-0 flex-1 rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white placeholder:text-white/35"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white placeholder:text-white/35"
           data-testid="studio-insp-find"
         />
         {onSections ? (
-          <button type="button" aria-pressed={sections} onClick={() => onSections(!sections)} className={`h-7 shrink-0 rounded-lg px-1.5 text-[11px] ${sections ? "bg-accent-500/25 text-white" : "bg-white/[0.06] text-white/60"}`} title={say("قسم واحد كل مرة، أو كل الإعدادات بقائمة وحدة|One section at a time, or every setting in one list|קבוצה אחת בכל פעם, או הכול ברשימה אחת")} data-testid="studio-insp-sections">
+          <button type="button" aria-pressed={sections} onClick={() => onSections(!sections)} className={`h-7 shrink-0 rounded-lg px-1.5 text-[11px] ${sections ? "bg-accent-500/25 text-white" : "bg-white/6 text-white/60"}`} title={say("قسم واحد كل مرة، أو كل الإعدادات بقائمة وحدة|One section at a time, or every setting in one list|קבוצה אחת בכל פעם, או הכול ברשימה אחת")} data-testid="studio-insp-sections">
             {sections ? say("أقسام|Sections|קבוצות") : say("الكل|All|הכול")}
           </button>
         ) : null}
         {onDock ? (
-          <button type="button" aria-pressed={dock === "beside"} onClick={() => onDock(dock === "beside" ? "side" : "beside")} className={`h-7 shrink-0 rounded-lg px-1.5 text-[11px] ${dock === "beside" ? "bg-accent-500/25 text-white" : "bg-white/[0.06] text-white/60"}`} title={say("الإعدادات جنب العنصر، أو بلوح ثابت عالجنب|Settings beside the element, or in a fixed panel at the side|הגדרות ליד הרכיב, או בלוח קבוע בצד")} data-testid="studio-insp-dock">
+          <button type="button" aria-pressed={dock === "beside"} onClick={() => onDock(dock === "beside" ? "side" : "beside")} className={`h-7 shrink-0 rounded-lg px-1.5 text-[11px] ${dock === "beside" ? "bg-accent-500/25 text-white" : "bg-white/6 text-white/60"}`} title={say("الإعدادات جنب العنصر، أو بلوح ثابت عالجنب|Settings beside the element, or in a fixed panel at the side|הגדרות ליד הרכיב, או בלוח קבוע בצד")} data-testid="studio-insp-dock">
             {dock === "beside" ? say("جنبه|Beside|לידו") : say("ثابت|Docked|קבוע")}
           </button>
         ) : null}
         {onHide ? (
-          <button type="button" onClick={onHide} className="grid h-7 w-6 shrink-0 place-items-center rounded-lg bg-white/[0.06] text-[11px] text-white/60 hover:text-white" title={say("سكّر اللوحة (الصفحة تحتها بتبيّن)|Close the panel (the page under it shows)|סגירת הלוח")} aria-label={say("سكّر اللوحة|Close the panel|סגירת הלוח")} data-testid="studio-insp-hide">
+          <button type="button" onClick={onHide} className="grid h-7 w-6 shrink-0 place-items-center rounded-lg bg-white/6 text-[11px] text-white/60 hover:text-white" title={say("سكّر اللوحة (الصفحة تحتها بتبيّن)|Close the panel (the page under it shows)|סגירת הלוח")} aria-label={say("سكّر اللوحة|Close the panel|סגירת הלוח")} data-testid="studio-insp-hide">
             <span aria-hidden="true">✕</span>
           </button>
         ) : null}
@@ -162,7 +162,7 @@ export function InspectorJump({ watch, sections = false, tabs = true, active, on
       ) : groups.length ? (
         <div className="flex flex-wrap gap-1" role={sections ? "tablist" : "navigation"} aria-label={say("مجموعات الإعدادات|Groups of settings|קבוצות הגדרות")}>
           {groups.map((g) => (
-            <button key={g} type="button" role={sections ? "tab" : undefined} aria-selected={sections ? shown === g : undefined} onClick={() => go(g)} className={`rounded-full px-2 py-0.5 text-[11px] ${sections && shown === g ? "bg-accent-500 text-white" : "bg-white/[0.06] text-white/75 hover:bg-accent-500/25 hover:text-white"}`} data-testid="studio-insp-chip" data-group={g}>
+            <button key={g} type="button" role={sections ? "tab" : undefined} aria-selected={sections ? shown === g : undefined} onClick={() => go(g)} className={`rounded-full px-2 py-0.5 text-[11px] ${sections && shown === g ? "bg-accent-500 text-white" : "bg-white/6 text-white/75 hover:bg-accent-500/25 hover:text-white"}`} data-testid="studio-insp-chip" data-group={g}>
               <span aria-hidden="true">{GROUP_ICON[g]}</span> {say(GROUP_WORD[g])}
             </button>
           ))}

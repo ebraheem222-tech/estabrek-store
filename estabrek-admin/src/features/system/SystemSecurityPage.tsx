@@ -267,8 +267,8 @@ export default function SystemSecurityPage() {
       </div>
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:start-72" data-testid="security-save-bar">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--surface,#fff)] p-3 shadow-xl">
+        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:inset-s-72" data-testid="security-save-bar">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-(--surface,#fff) p-3 shadow-xl">
             <span className="text-sm">
               {bad.length ? (
                 <span className="text-red-300">في قيم برّا الحد المسموح: {describeChanged(bad)}</span>
@@ -371,7 +371,7 @@ function NumberField({
           value={Number.isFinite(value) ? value : ""}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value === "" ? NaN : Math.round(Number(e.target.value)))}
-          className={`h-10 w-28 rounded-xl border bg-white/[0.03] px-3 text-sm ${invalid ? "border-red-500/60" : "border-white/[0.08]"} disabled:opacity-60`}
+          className={`h-10 w-28 rounded-xl border bg-white/3 px-3 text-sm ${invalid ? "border-red-500/60" : "border-white/8"} disabled:opacity-60`}
           data-policy={path}
         />
         <span className="text-sm text-white/60">{unit}</span>
@@ -456,7 +456,7 @@ function IpListField({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder={"203.0.113.10\n198.51.100.0/24"}
-        className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 font-mono text-xs disabled:opacity-60"
+        className="mt-2 w-full rounded-xl border border-white/8 bg-white/3 p-3 font-mono text-xs disabled:opacity-60"
         aria-label={label}
       />
       {onAddMine && !disabled ? (

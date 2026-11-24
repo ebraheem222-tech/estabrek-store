@@ -2,7 +2,7 @@
 
 export function Stat({ label, value, note, testId }: { label: string; value: string; note?: string; testId?: string }) {
   return (
-    <div className="rounded-xl bg-white/[0.04] p-3">
+    <div className="rounded-xl bg-white/4 p-3">
       <div className="text-xs text-white/60">{label}</div>
       <div className="mt-1 text-xl font-semibold tabular-nums" data-testid={testId}>
         {value}
@@ -63,7 +63,7 @@ export function NumberInput({
           value={Number.isFinite(value) ? value : ""}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value === "" ? NaN : Math.round(Number(e.target.value)))}
-          className={`h-9 w-24 rounded-xl border bg-white/[0.03] px-3 text-sm ${invalid ? "border-red-500/60" : "border-white/[0.08]"} disabled:opacity-60`}
+          className={`h-9 w-24 rounded-xl border bg-white/3 px-3 text-sm ${invalid ? "border-red-500/60" : "border-white/8"} disabled:opacity-60`}
         />
         {unit ? <span className="text-xs text-white/60">{unit}</span> : null}
         {hint && Number.isFinite(value) ? <span className="text-xs text-white/50">({hint(value)})</span> : null}

@@ -73,7 +73,7 @@ export default function ProtectedRoute({ children, requireSuperAdmin = true, req
           <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-6">
             <div className="text-xl font-semibold">{tr("غير مصرح", "Not allowed")}</div>
             <div className="mt-2 text-sm opacity-80">{tr("الحساب لا يملك الصلاحيات المطلوبة لهذه الصفحة.", "This account doesn't have permission for this page.")}</div>
-            <div className="mt-3 text-xs opacity-70 break-words">Missing: {missing.join(", ")}</div>
+            <div className="mt-3 text-xs opacity-70 wrap-break-word">Missing: {missing.join(", ")}</div>
             <div className="mt-6">
               <a
                 className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm hover:bg-white/15"

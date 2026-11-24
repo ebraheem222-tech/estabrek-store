@@ -218,7 +218,7 @@ export default function FeaturePage() {
                       {say(STATE_NAME[state])}
                     </Badge>
                   </div>
-                  {x.note ? <div className="break-words text-sm text-white/70">{x.note}</div> : null}
+                  {x.note ? <div className="wrap-break-word text-sm text-white/70">{x.note}</div> : null}
                   <div className="text-xs text-white/60">
                     {triggersText(x.triggers, lang)}
                     {x.runs ? ` · ${say("اشتغلت {n} مرة|ran {n} times|רצה {n} פעמים").replace("{n}", x.runs.toLocaleString("en"))}` : ""}

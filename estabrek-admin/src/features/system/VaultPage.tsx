@@ -19,7 +19,7 @@ import { buildCommand, countdown, eventText, eventTone, nextVersion, shortHash }
 import { formatBytes } from "../catalog/composer/protectedText";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
-const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
+const field = "h-10 w-full rounded-xl border border-white/8 bg-white/3 px-3 text-sm";
 
 function useNow(active: boolean) {
   const [now, setNow] = useState(() => Date.now());
@@ -102,7 +102,7 @@ export default function VaultPage() {
         )}
 
         {d.on && d.files.inDatabase > 0 && left && canWrite ? (
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-white/[0.04] p-3 text-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-white/4 p-3 text-sm">
             <span className="text-white/70">في {d.files.inDatabase} ملف من قبل الخزنة لسا بقاعدة البيانات.</span>
             <Button size="sm" variant="secondary" isLoading={moveIn.isPending} onClick={() => moveIn.mutate()} data-testid="vault-move-in">
               دخّليهن الخزنة
@@ -115,7 +115,7 @@ export default function VaultPage() {
         <section className={box} data-testid="vault-events">
           <h2 className="mb-2 text-sm font-semibold">سجل الخزنة</h2>
           {events.data?.length ? (
-            <ul className="max-h-80 divide-y divide-white/[0.06] overflow-auto text-xs">
+            <ul className="max-h-80 divide-y divide-white/6 overflow-auto text-xs">
               {events.data.map((e, i) => (
                 <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
                   <span className={eventTone(e) === "bad" ? "text-red-300" : eventTone(e) === "info" ? "text-accent-200" : "text-white/75"}>{eventText(e)}</span>
@@ -165,7 +165,7 @@ function UnlockModal({ onClose, onOpened }: { onClose: () => void; onOpened: () 
         </label>
         <label className="block">
           <span className="mb-1 block text-xs text-white/55">الكود من التطبيق</span>
-          <input dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={8} className={`${field} max-w-[10rem] text-center font-mono tracking-widest`} value={code} onChange={(e) => setCode(e.target.value)} aria-label="كود التحقق" />
+          <input dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={8} className={`${field} max-w-40 text-center font-mono tracking-widest`} value={code} onChange={(e) => setCode(e.target.value)} aria-label="كود التحقق" />
         </label>
         <button type="submit" className="hidden" aria-hidden />
       </form>
@@ -205,7 +205,7 @@ function LauncherSection({ d, canWrite, onChange }: { d: VaultAPI.VaultState; ca
         الزبونة بتضيف الملف المشفّر والسيريال عليه مرة وحدة، وبيتفعّل على جهازها بس ({d.checkEveryDays ? `بيتأكد أونلاين كل ${d.checkEveryDays} أيام، وبدون إنترنت بيضل شغّال ${d.offlineGraceDays} يوم` : ""}). بيشغّل
         سكربتات Python و PowerShell و Batch و Node و AutoHotkey مباشرة، وباقي الملفات (Roblox، AutoCAD، الطباعة 3D) بيحفظها بمجلد.
       </p>
-      <div className="mt-3 rounded-xl bg-white/[0.04] p-3 text-xs leading-6 text-white/65">
+      <div className="mt-3 rounded-xl bg-white/4 p-3 text-xs leading-6 text-white/65">
         <b className="text-white/80">بناء البرنامج على جهازك</b> (ويندوز، بدون تنزيل إشي). بالمجلد الرئيسي للمشروع:
         <code dir="ltr" className="mt-1 block select-all overflow-x-auto whitespace-nowrap rounded-lg bg-black/30 px-3 py-2 font-mono text-[11px] text-white/80" data-testid="launcher-command">{command}</code>
         بيطلع بـ <code dir="ltr">estabrek-launcher\dist\EstabrekLauncher.exe</code>. ارفعيه هون. ابنيه من جديد إذا تغيّر مفتاح التوقيع (مثلاً لما تركّبي الخزنة).
@@ -232,7 +232,7 @@ function LauncherSection({ d, canWrite, onChange }: { d: VaultAPI.VaultState; ca
       ) : null}
 
       {d.launchers.length > 1 ? (
-        <ul className="mt-3 divide-y divide-white/[0.06] text-xs">
+        <ul className="mt-3 divide-y divide-white/6 text-xs">
           {d.launchers.filter((l) => !l.isActive).map((l) => (
             <li key={l.id} className="flex items-center justify-between gap-2 py-1.5 text-white/55">
               <span dir="ltr">{l.version}</span>

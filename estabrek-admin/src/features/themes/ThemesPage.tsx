@@ -245,7 +245,7 @@ export default function ThemesPage() {
         </div>
         <div className="flex max-w-3xl flex-wrap gap-1" role="group" aria-label={tr("نوع المتجر", "Kind of store")}>
           {[["all", null] as const, ...sectors, ...(servers ? [["servers", null] as const] : []), ["classic", null] as const].map(([g, name]) => (
-            <button key={g} type="button" onClick={() => setGroup(g)} aria-pressed={group === g} className={`rounded-lg px-3 py-1.5 text-xs ${group === g ? "bg-accent-500/25 text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"}`} data-testid="themes-group" data-group={g}>
+            <button key={g} type="button" onClick={() => setGroup(g)} aria-pressed={group === g} className={`rounded-lg px-3 py-1.5 text-xs ${group === g ? "bg-accent-500/25 text-white" : "bg-white/4 text-white/60 hover:bg-white/8"}`} data-testid="themes-group" data-group={g}>
               {g === "all" ? tr("كل التصاميم", "Every design") : g === "classic" ? tr("الثيمات الكلاسيكية", "Classic themes") : g === "servers" ? FAMILY_LABEL.servers() : name?.[lang] || name?.en}
             </button>
           ))}
@@ -263,7 +263,7 @@ export default function ThemesPage() {
           <li className="sticky top-0 z-10 bg-surface-950 pb-1">
             <input
               type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={tr(`دوّر بين ${themes.filter((t) => t.design?.variant === "first").length} تصميم`, "Search {0} designs", [themes.filter((t) => t.design?.variant === "first").length])}
-              className="w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 py-2 text-sm text-white" data-testid="themes-find"
+              className="w-full rounded-xl border border-white/10 bg-surface-925 px-3 py-2 text-sm text-white" data-testid="themes-find"
             />
           </li>
           {list.map((t) => {
@@ -274,7 +274,7 @@ export default function ThemesPage() {
                   type="button"
                   onClick={() => pickTheme(t.id)}
                   aria-pressed={on}
-                  className={`w-full rounded-2xl border p-3 text-start transition ${on ? "border-accent-400/70 bg-white/[0.07]" : "border-white/[0.08] hover:bg-white/[0.04]"}`}
+                  className={`w-full rounded-2xl border p-3 text-start transition ${on ? "border-accent-400/70 bg-white/[0.07]" : "border-white/8 hover:bg-white/4"}`}
                   data-testid="theme-card"
                   data-theme-id={t.id}
                 >
@@ -296,13 +296,13 @@ export default function ThemesPage() {
           })}
         </ul>
 
-        <section className="min-w-0 space-y-3 rounded-2xl border border-white/[0.08] p-3" aria-label={tr("المعاينة", "Preview")}>
+        <section className="min-w-0 space-y-3 rounded-2xl border border-white/8 p-3" aria-label={tr("المعاينة", "Preview")}>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="me-auto text-sm font-semibold">{shown.name[lang] || shown.name.en}</h2>
             {variants.length > 1 ? (
               <div className="flex gap-1" role="group" aria-label={tr("نسخة التصميم", "The design's variant")} data-testid="theme-variants">
                 {variants.map((v) => (
-                  <button key={v.id} type="button" onClick={() => pickTheme(v.id)} aria-pressed={v.id === shown.id} className={`rounded-lg px-2 py-1 text-xs ${v.id === shown.id ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid="theme-variant" data-theme-id={v.id}>
+                  <button key={v.id} type="button" onClick={() => pickTheme(v.id)} aria-pressed={v.id === shown.id} className={`rounded-lg px-2 py-1 text-xs ${v.id === shown.id ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/6"}`} data-testid="theme-variant" data-theme-id={v.id}>
                     {VARIANT_LABEL[v.design!.variant]()}
                   </button>
                 ))}
@@ -311,7 +311,7 @@ export default function ThemesPage() {
             {shown.modes.length > 1 ? (
               <div className="flex gap-1" role="group" aria-label={tr("فاتح أو غامق", "Light or dark")}>
                 {shown.modes.map((m) => (
-                  <button key={m} type="button" onClick={() => setMode(m)} aria-pressed={shownMode === m} className={`rounded-lg px-2 py-1 text-xs ${shownMode === m ? "bg-white/[0.14]" : "text-white/60 hover:bg-white/[0.06]"}`}>
+                  <button key={m} type="button" onClick={() => setMode(m)} aria-pressed={shownMode === m} className={`rounded-lg px-2 py-1 text-xs ${shownMode === m ? "bg-white/[0.14]" : "text-white/60 hover:bg-white/6"}`}>
                     {m === "light" ? tr("فاتح", "Light") : tr("غامق", "Dark")}
                   </button>
                 ))}
@@ -319,14 +319,14 @@ export default function ThemesPage() {
             ) : null}
             <div className="flex gap-1" role="group" aria-label={tr("الصفحة", "Page")}>
               {(["home", "product", "cart"] as View[]).map((v) => (
-                <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} disabled={v === "product" && !product} className={`rounded-lg px-2 py-1 text-xs disabled:opacity-30 ${view === v ? "bg-white/[0.14]" : "text-white/60 hover:bg-white/[0.06]"}`}>
+                <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} disabled={v === "product" && !product} className={`rounded-lg px-2 py-1 text-xs disabled:opacity-30 ${view === v ? "bg-white/[0.14]" : "text-white/60 hover:bg-white/6"}`}>
                   {v === "home" ? tr("الرئيسية", "Home") : v === "product" ? tr("صفحة منتج", "Product page") : tr("السلة", "Cart")}
                 </button>
               ))}
             </div>
             <div className="flex gap-1" role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
               {(Object.keys(SIZES) as Array<keyof typeof SIZES>).map((k) => (
-                <button key={k} type="button" onClick={() => setSize(k)} aria-pressed={size === k} className={`rounded-lg px-2 py-1 text-xs ${size === k ? "bg-white/[0.14]" : "text-white/60 hover:bg-white/[0.06]"}`}>
+                <button key={k} type="button" onClick={() => setSize(k)} aria-pressed={size === k} className={`rounded-lg px-2 py-1 text-xs ${size === k ? "bg-white/[0.14]" : "text-white/60 hover:bg-white/6"}`}>
                   {k === "computer" ? tr("كمبيوتر", "Computer") : tr("موبايل", "Phone")}
                 </button>
               ))}

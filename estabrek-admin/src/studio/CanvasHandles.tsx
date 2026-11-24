@@ -258,7 +258,7 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
       {shownQuad && <svg className="pointer-events-none absolute overflow-visible" style={{ left: 0, top: 0, width: 1, height: 1 }} aria-hidden="true" data-testid="studio-plane-outline"><polygon points={shownQuad.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke="currentColor" strokeWidth={1} className="text-accent-300" strokeDasharray={live?.change ? "5 3" : undefined} /></svg>}
       {live?.change ? (
         <div className={`pointer-events-none absolute ${shownPlane ? "" : "border-2 border-dashed border-accent-300"}`} style={shownFrame && !shownPlane ? { left: shown.x + shown.w / 2 - shownFrame.w / 2, top: shown.y + shown.h / 2 - shownFrame.h / 2, width: shownFrame.w, height: shownFrame.h, transform: `rotate(${shownFrame.rotation}deg)` } : { left: shown.x, top: shown.y, width: shown.w, height: shown.h }} data-testid="studio-sizing">
-          <span className="absolute -bottom-6 start-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-accent-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr">
+          <span className="absolute -bottom-6 inset-s-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-accent-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr">
             {Math.round(shownWidth)} × {Math.round(shownHeight)}
           </span>
         </div>
@@ -282,7 +282,7 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
             aria-valuenow={Math.round(h === "n" || h === "s" ? shownHeight : shownWidth)}
             aria-valuetext={`${Math.round(shownWidth)} × ${Math.round(shownHeight)}`}
             aria-label={tr("اسحب لتغيير الحجم، كبستين للحجم الطبيعي", "Drag to resize, double-click for its natural size")}
-            className="pointer-events-auto absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-sm border border-accent-500 bg-white shadow"
+            className="pointer-events-auto absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-xs border border-accent-500 bg-white shadow-sm"
             style={{ left: at.x, top: at.y, cursor: CURSOR[h] }}
             data-studio-handle=""
             onPointerDown={(e) => start(e, { kind: "size", h, start: { ...box }, p0: local(e), zoom: scale, frame: frame ? { ...frame } : undefined, geometry: captureGeometry(geometry), proportional, ratioLimits: limitsFor(h) ? { ...limitsFor(h)! } : undefined })}
@@ -311,7 +311,7 @@ export function SelectionHandles({ box, zoom, frame, geometry, proportional, rat
             aria-valuemax={180}
             aria-label={tr("اسحب لتدويره (Shift كل 15°)", "Drag to turn it (Shift: every 15°)")}
             aria-valuenow={live?.deg ?? turn}
-            className="pointer-events-auto absolute z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-accent-500 bg-white shadow"
+            className="pointer-events-auto absolute z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-accent-500 bg-white shadow-sm"
             style={{ left: knob.x, top: knob.y, cursor: "grab" }}
             data-studio-handle=""
             onPointerDown={(e) => start(e, { kind: "turn", c: { x: box.x + box.w / 2, y: box.y + box.h / 2 }, a0: angleAt({ x: box.x + box.w / 2, y: box.y + box.h / 2 }, local(e)), base: turn })}
@@ -346,7 +346,7 @@ export function Guides({ guides, gaps, zoom }: { guides: Guide[]; gaps: Gap[]; z
         {guides.map((g,i)=><line key={`g${i}`} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#ec4899" strokeWidth={1} data-testid="studio-guide" />)}
         {gaps.map((g,i)=><line key={`d${i}`} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#f43f5e" strokeWidth={1} data-testid="studio-gap" />)}
       </svg>
-      {gaps.map((g,i)=><span key={`label${i}`} className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-rose-500 px-1 text-[10px] text-white" style={{left:(g.x1+g.x2)/2,top:(g.y1+g.y2)/2}} dir="ltr">{Math.round(g.length/zoom)}</span>)}
+      {gaps.map((g,i)=><span key={`label${i}`} className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-sm bg-rose-500 px-1 text-[10px] text-white" style={{left:(g.x1+g.x2)/2,top:(g.y1+g.y2)/2}} dir="ltr">{Math.round(g.length/zoom)}</span>)}
     </>
   );
 }

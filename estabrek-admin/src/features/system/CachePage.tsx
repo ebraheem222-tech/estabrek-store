@@ -381,8 +381,8 @@ export default function CachePage() {
       </section>
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:start-72" data-testid="cache-save-bar">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--surface,#fff)] p-3 shadow-xl">
+        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:inset-s-72" data-testid="cache-save-bar">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-(--surface,#fff) p-3 shadow-xl">
             <span className="text-sm">
               {bad.length ? (
                 <span className="text-red-300">في قيم برّا الحد المسموح: {describeChanged(bad)}</span>
@@ -469,10 +469,10 @@ function LiveCard({ live }: { live: CacheLive }) {
           <span>آخر ساعة (كل عمود دقيقة)</span>
           <span className="flex gap-3">
             <span className="flex items-center gap-1">
-              <i className="inline-block h-2 w-2 rounded-sm bg-emerald-400/80" /> من الكاش
+              <i className="inline-block h-2 w-2 rounded-xs bg-emerald-400/80" /> من الكاش
             </span>
             <span className="flex items-center gap-1">
-              <i className="inline-block h-2 w-2 rounded-sm bg-amber-400/80" /> من قاعدة البيانات
+              <i className="inline-block h-2 w-2 rounded-xs bg-amber-400/80" /> من قاعدة البيانات
             </span>
           </span>
         </div>
@@ -533,7 +533,7 @@ function NamespaceCard({
   const served = live.hits + live.staleHits;
   const hasBad = bad.some((b) => b.startsWith(`namespaces.${live.name}.`));
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4" data-testid={`cache-ns-${live.name}`}>
+    <div className="rounded-xl border border-white/10 bg-white/3 p-4" data-testid={`cache-ns-${live.name}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

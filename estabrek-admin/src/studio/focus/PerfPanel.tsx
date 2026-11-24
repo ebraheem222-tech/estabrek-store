@@ -15,8 +15,8 @@ import { autoOf, costOf, lightenAll, pageBudget, type Level, type Perf } from ".
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const COLOUR: Record<Level, string> = { low: "bg-emerald-500/25 text-emerald-200 border-emerald-400/40", mid: "bg-amber-500/25 text-amber-100 border-amber-400/40", high: "bg-rose-500/25 text-rose-100 border-rose-400/50" };
 const WORD: Record<Level, string> = { low: "خفيف|Light|קל", mid: "متوسط|Medium|בינוני", high: "تقيل|Heavy|כבד" };
-const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] hover:bg-white/[0.1] disabled:opacity-40";
-const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"}`;
+const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-40";
+const chip = (on: boolean) => `rounded-lg px-2 py-1 text-[11px] ${on ? "bg-accent-500/30 text-white" : "bg-white/6 text-white/60 hover:bg-white/10"}`;
 
 export function PerfBadge({ level, points }: { level: Level; points: number }) {
   return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${COLOUR[level]}`} data-testid="studio-perf-badge" data-level={level}>⚡ {say(WORD[level])} · {points}</span>;
@@ -34,7 +34,7 @@ export function PerfPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boo
     onOps(say("السرعة|Speed|מהירות"), [{ op: "setProps", nodeId: node.id, props: { ...props, perf: Object.keys(next).length ? next : undefined } }]);
   };
   return (
-    <details className="rounded-xl border border-white/[0.08] p-3" data-testid="studio-perf" open={cost.level === "high" || undefined}>
+    <details className="rounded-xl border border-white/8 p-3" data-testid="studio-perf" open={cost.level === "high" || undefined}>
       <summary className="flex cursor-pointer select-none items-center justify-between gap-2 text-xs text-white/70">
         <span>{say("السرعة على جهاز الزبون|Speed on the shopper's device|מהירות במכשיר הקונה")}</span>
         <PerfBadge level={cost.level} points={cost.points} />
@@ -62,7 +62,7 @@ export function PerfPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boo
         {cost.canvas ? (
           <label className="flex items-center justify-between gap-2 text-[11px] text-white/55">
             {say("أقصى إطارات بالثانية|Most frames a second|מקסימום פריימים")}
-            <select className="rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" disabled={busy} value={perf.fps ?? ""} onChange={(e) => save({ fps: e.target.value ? (Number(e.target.value) as Perf["fps"]) : undefined })} data-testid="studio-perf-fps">
+            <select className="rounded-lg border border-white/10 bg-surface-925 px-2 py-1 text-xs text-white" disabled={busy} value={perf.fps ?? ""} onChange={(e) => save({ fps: e.target.value ? (Number(e.target.value) as Perf["fps"]) : undefined })} data-testid="studio-perf-fps">
               <option value="">{say("تلقائي|Automatic|אוטומטי")}</option>
               <option value="60">60</option>
               <option value="30">30</option>
@@ -88,7 +88,7 @@ export function PageBudget({ root, busy, onPick, onMeasure, onOps }: { root: Pag
   const [sample, setSample] = useState<Sample | null>(null);
   const [measuring, setMeasuring] = useState(false);
   return (
-    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-page-budget" data-level={b.level}>
+    <div className="space-y-2 rounded-xl border border-white/8 p-3" data-testid="studio-page-budget" data-level={b.level}>
       <div className="flex items-center justify-between gap-2 text-xs text-white/70">
         <span>{say("ميزانية سرعة الصفحة|The page's speed budget|תקציב המהירות")}</span>
         <PerfBadge level={b.level} points={b.points} />
@@ -118,7 +118,7 @@ export function PageBudget({ root, busy, onPick, onMeasure, onOps }: { root: Pag
         </div>
       ) : null}
       {onOps ? (
-        <div className="space-y-1 rounded-lg bg-white/[0.03] p-2" data-testid="studio-budget-auto" data-on={auto.on ? "" : undefined}>
+        <div className="space-y-1 rounded-lg bg-white/3 p-2" data-testid="studio-budget-auto" data-on={auto.on ? "" : undefined}>
           <label className="flex items-center gap-2 text-[11px] text-white/70">
             <input type="checkbox" checked={auto.on} disabled={busy} onChange={(e) => onOps(say("تخفيف تلقائي|Automatic lightening|הקלה אוטומטית"), [{ op: "setProps", nodeId: root.id, props: { ...(root.props ?? {}), perfAuto: e.target.checked ? undefined : false } }])} data-testid="studio-budget-auto-on" />
             {say("المتجر بيخفّف لحاله|The shop lightens it by itself|החנות מקלה לבד")}

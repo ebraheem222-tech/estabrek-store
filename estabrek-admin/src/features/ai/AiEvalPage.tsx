@@ -136,7 +136,7 @@ export default function AiEvalPage() {
               <span className={`text-xs tabular-nums ${lines.length > limit ? "text-amber-300" : "text-white/45"}`}>{lines.length} / {limit}</span>
             </div>
             <textarea
-              className="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm leading-7"
+              className="mt-2 w-full rounded-xl border border-white/8 bg-white/3 p-3 text-sm leading-7"
               rows={8}
               value={text ?? ""}
               disabled={!canWrite}
@@ -186,7 +186,7 @@ export default function AiEvalPage() {
                 </thead>
                 <tbody>
                   {d.questions.map((qq) => (
-                    <tr key={qq.id} className="border-t border-white/[0.06]">
+                    <tr key={qq.id} className="border-t border-white/6">
                       <td className="p-2 align-top text-sm">{qq.text}</td>
                       {d.runs.map((r) => (
                         <Cell key={r.id} run={r} a={r.answers.find((x) => x.qid === qq.id)} canWrite={canWrite} />

@@ -27,9 +27,9 @@ import { matSvg, type MatStyle } from "./mat";
 import { Spin360 } from "./Spin360";
 import { cropOf, cutout, evenFrames, frameAt, openVideo, readFrames, renderSheet, type OpenVideo } from "./video";
 
-const btn = "rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs hover:bg-white/[0.1] disabled:opacity-30";
+const btn = "rounded-lg bg-white/6 px-3 py-1.5 text-xs hover:bg-white/10 disabled:opacity-30";
 const primary = "rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40";
-const card = "space-y-3 rounded-2xl border border-white/[0.08] p-4";
+const card = "space-y-3 rounded-2xl border border-white/8 p-4";
 const ANALYSIS_WIDTH = 400;
 const MAX_FRAMES = 180;
 const MAX_SECONDS = 120;
@@ -422,7 +422,7 @@ export default function ScanPage() {
         {phase ? (
           <div className="space-y-1" data-testid="scan-progress">
             <div className="text-xs text-white/60">{stepLabel[phase.step]}</div>
-            <div className="h-1.5 overflow-hidden rounded bg-white/[0.08]">
+            <div className="h-1.5 overflow-hidden rounded-sm bg-white/8">
               <div className="h-full bg-accent-500 transition-[width]" style={{ width: pct(phase.progress) }} />
             </div>
           </div>
@@ -486,14 +486,14 @@ export default function ScanPage() {
               <div className="text-[11px] text-white/45">{tr("القص على 8 زوايا (الغامق خلفية):", "The cut at 8 angles (dimmed = background):")}</div>
               <div className="grid grid-cols-4 gap-1 sm:grid-cols-8" data-testid="scan-strip">
                 {result!.strip.map((src, i) => (
-                  <img key={i} src={src} alt="" className="w-full rounded" />
+                  <img key={i} src={src} alt="" className="w-full rounded-sm" />
                 ))}
               </div>
             </div>
           ) : null}
           {a.verdict !== "reject" && a.turn.length ? (
-            <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3">
-              <input className="w-60 rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" value={name} onChange={(e) => setName(e.target.value)} placeholder={tr("اسم المسح", "The scan's name")} aria-label={tr("اسم المسح", "The scan's name")} data-testid="scan-name" />
+            <div className="flex flex-wrap items-center gap-2 border-t border-white/6 pt-3">
+              <input className="w-60 rounded-lg border border-white/10 bg-surface-925 px-2 py-1.5 text-xs text-white" value={name} onChange={(e) => setName(e.target.value)} placeholder={tr("اسم المسح", "The scan's name")} aria-label={tr("اسم المسح", "The scan's name")} data-testid="scan-name" />
               <button type="button" className={primary} disabled={Boolean(phase)} onClick={() => void save()} data-testid="scan-save">
                 {tr("احفظ المسح", "Save the scan")}
               </button>
@@ -528,7 +528,7 @@ export default function ScanPage() {
               {building ? (
                 <div className="space-y-1" data-testid="scan-build-progress">
                   <div className="text-xs text-white/60">{buildLabel[building.step]}</div>
-                  <div className="h-1.5 overflow-hidden rounded bg-white/[0.08]">
+                  <div className="h-1.5 overflow-hidden rounded-sm bg-white/8">
                     <div className="h-full bg-accent-500 transition-[width]" style={{ width: pct(building.progress) }} />
                   </div>
                 </div>
@@ -588,7 +588,7 @@ export default function ScanPage() {
         {saved.length ? (
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="scan-list">
             {saved.map((s) => (
-              <li key={s.id} className="space-y-2 rounded-xl bg-white/[0.03] p-3" data-testid="scan-item">
+              <li key={s.id} className="space-y-2 rounded-xl bg-white/3 p-3" data-testid="scan-item">
                 <Spin360 source={{ kind: "sheet", url: s.url, cols: s.manifest.cols, cellW: s.manifest.cellW, cellH: s.manifest.cellH, count: s.manifest.frames.length }} height={180} />
                 <div className="flex items-center gap-2 text-xs">
                   <span className="me-auto truncate font-medium">{s.displayName || tr("مسح", "Scan")}</span>

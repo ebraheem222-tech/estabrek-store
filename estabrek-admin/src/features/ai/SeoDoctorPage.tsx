@@ -13,7 +13,7 @@ import { toast } from "../../lib/toast";
 import { say } from "../../studio/say";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
-const field = "w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm";
+const field = "w-full rounded-xl border border-white/8 bg-white/3 px-3 py-2 text-sm";
 const LIMITS = { title: [20, 60], desc: [70, 160] } as const;
 
 export const issueName = (i: SeoIssue) =>
@@ -166,7 +166,7 @@ export default function SeoDoctorPage() {
             {!list.length ? (
               <p className="text-sm text-emerald-200" data-testid="seo-all-good">{say("كل القطع تمام ✓|Every piece is fine ✓|כל הפריטים תקינים ✓")}</p>
             ) : (
-              <ul className="divide-y divide-white/[0.06]">
+              <ul className="divide-y divide-white/6">
                 {list.slice(0, 120).map((p) => (
                   <li key={p.id} className="flex flex-wrap items-start gap-3 py-3" data-testid="seo-row">
                     <span className={`w-10 shrink-0 text-center text-lg font-semibold tabular-nums ${tone(p.score)}`}>{p.score}</span>
@@ -174,7 +174,7 @@ export default function SeoDoctorPage() {
                       <Link to={`/admin/catalog/products/${p.id}`} className="text-sm font-medium hover:underline">{p.title}</Link>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {p.issues.map((i) => (
-                          <span key={i} className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/70">
+                          <span key={i} className="rounded-full bg-white/6 px-2 py-0.5 text-[11px] text-white/70">
                             {issueName(i)}{i === "noAlt" ? ` (${p.missingAlts})` : ""}
                           </span>
                         ))}

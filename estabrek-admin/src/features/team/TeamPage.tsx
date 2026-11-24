@@ -431,7 +431,7 @@ function MemberDetailsModal({ id, onClose }: { id: string | null; onClose: () =>
             {d.sessions.length ? (
               <ul className="mt-2 space-y-2">
                 {d.sessions.map((s) => (
-                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/3 p-3 text-xs">
                     <span>{describeDevice(s.userAgent)}</span>
                     <span className="text-white/60" dir="ltr">
                       {s.ip ?? "—"}
@@ -537,7 +537,7 @@ function RolesTab({ canWrite }: { canWrite: boolean }) {
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="team-roles">
           {(roles.data ?? []).map((r) => (
-            <div key={r.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div key={r.id} className="rounded-2xl border border-white/10 bg-white/3 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="font-medium">{r.name}</div>

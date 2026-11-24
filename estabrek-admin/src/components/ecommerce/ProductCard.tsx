@@ -89,7 +89,7 @@ function Badge({ variant, children }: { variant?: string; children: React.ReactN
     hot: "bg-orange-500 text-white",
     limited: "bg-purple-500 text-white",
     soldout: "bg-gray-500 text-white",
-    default: "bg-[var(--color-accent)] text-white",
+    default: "bg-(--color-accent) text-white",
   };
   return (
     <span className={cn("px-2 py-1 text-xs font-bold rounded-lg", variants[variant || "default"])}>
@@ -113,7 +113,7 @@ function Rating({ value, count }: { value: number; count?: number }) {
           </svg>
         ))}
       </div>
-      {count !== undefined && <span className="text-xs text-[var(--color-text-muted)]">({count})</span>}
+      {count !== undefined && <span className="text-xs text-(--color-text-muted)">({count})</span>}
     </div>
   );
 }
@@ -138,7 +138,7 @@ function QuickViewButton({ onClick }: { onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="p-2 rounded-full bg-white/80 text-gray-600 hover:bg-[var(--color-accent)] hover:text-white transition-all"
+      className="p-2 rounded-full bg-white/80 text-gray-600 hover:bg-(--color-accent) hover:text-white transition-all"
     >
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -150,10 +150,10 @@ function QuickViewButton({ onClick }: { onClick?: () => void }) {
 
 function AddToCartButton({ onClick, inStock = true, variant = "default" }: { onClick?: () => void; inStock?: boolean; variant?: string }) {
   const variants: Record<string, string> = {
-    default: "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white",
-    outline: "border-2 border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white",
-    ghost: "text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10",
-    gold: "bg-[var(--color-gold)] hover:opacity-90 text-white",
+    default: "bg-(--color-accent) hover:bg-(--color-accent-hover) text-white",
+    outline: "border-2 border-(--color-accent) text-(--color-accent) hover:bg-(--color-accent) hover:text-white",
+    ghost: "text-(--color-accent) hover:bg-(--color-accent)/10",
+    gold: "bg-(--color-gold) hover:opacity-90 text-white",
     neon: "bg-transparent border border-[#00FFFF] text-[#00FFFF] hover:bg-[#00FFFF] hover:text-black",
   };
 
@@ -185,7 +185,7 @@ function DefaultCard({ product, onAddToCart, onQuickView, onWishlist, showRating
 
   return (
     <div
-      className={cn("group relative bg-[var(--color-surface)] rounded-2xl overflow-hidden border border-[var(--color-border)] transition-all hover:shadow-xl", className)}
+      className={cn("group relative bg-(--color-surface) rounded-2xl overflow-hidden border border-(--color-border) transition-all hover:shadow-xl", className)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -215,7 +215,7 @@ function DefaultCard({ product, onAddToCart, onQuickView, onWishlist, showRating
         {/* Quick Add */}
         {showQuickAdd && (
           <div className={cn(
-            "absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent transition-all",
+            "absolute bottom-0 left-0 right-0 p-3 bg-linear-to-t from-black/60 to-transparent transition-all",
             isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
           )}>
             <AddToCartButton onClick={() => onAddToCart?.(product)} inStock={product.inStock} />
@@ -226,9 +226,9 @@ function DefaultCard({ product, onAddToCart, onQuickView, onWishlist, showRating
       {/* Content */}
       <div className="p-4">
         {product.categoryAr && (
-          <p className="text-xs text-[var(--color-text-muted)] mb-1">{product.categoryAr}</p>
+          <p className="text-xs text-(--color-text-muted) mb-1">{product.categoryAr}</p>
         )}
-        <h3 className="font-bold text-[var(--color-text)] mb-2 line-clamp-2">
+        <h3 className="font-bold text-(--color-text) mb-2 line-clamp-2">
           {product.nameAr || product.name}
         </h3>
         
@@ -239,11 +239,11 @@ function DefaultCard({ product, onAddToCart, onQuickView, onWishlist, showRating
         )}
 
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-[var(--color-accent)]">
+          <span className="text-lg font-bold text-(--color-accent)">
             {formatPrice(product.price, product.currency)}
           </span>
           {product.comparePrice && (
-            <span className="text-sm text-[var(--color-text-muted)] line-through">
+            <span className="text-sm text-(--color-text-muted) line-through">
               {formatPrice(product.comparePrice, product.currency)}
             </span>
           )}
@@ -267,10 +267,10 @@ function MinimalCard({ product, onAddToCart, className }: ProductCardProps) {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
       </div>
-      <h3 className="font-medium text-[var(--color-text)] mb-1 line-clamp-1">
+      <h3 className="font-medium text-(--color-text) mb-1 line-clamp-1">
         {product.nameAr || product.name}
       </h3>
-      <p className="text-[var(--color-accent)] font-bold">
+      <p className="text-(--color-accent) font-bold">
         {formatPrice(product.price, product.currency)}
       </p>
     </div>
@@ -285,8 +285,8 @@ function HorizontalCard({ product, onAddToCart, showRating, className }: Product
   const discount = product.comparePrice ? Math.round((1 - product.price / product.comparePrice) * 100) : 0;
 
   return (
-    <div className={cn("flex gap-4 p-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)]", className)}>
-      <div className="relative w-32 h-32 flex-shrink-0 overflow-hidden rounded-xl">
+    <div className={cn("flex gap-4 p-4 bg-(--color-surface) rounded-2xl border border-(--color-border)", className)}>
+      <div className="relative w-32 h-32 shrink-0 overflow-hidden rounded-xl">
         <img
           src={product.images[0] || "/placeholder.jpg"}
           alt={product.nameAr || product.name}
@@ -302,9 +302,9 @@ function HorizontalCard({ product, onAddToCart, showRating, className }: Product
       <div className="flex-1 flex flex-col justify-between">
         <div>
           {product.categoryAr && (
-            <p className="text-xs text-[var(--color-text-muted)] mb-1">{product.categoryAr}</p>
+            <p className="text-xs text-(--color-text-muted) mb-1">{product.categoryAr}</p>
           )}
-          <h3 className="font-bold text-[var(--color-text)] mb-2">
+          <h3 className="font-bold text-(--color-text) mb-2">
             {product.nameAr || product.name}
           </h3>
           {showRating && product.rating && (
@@ -314,18 +314,18 @@ function HorizontalCard({ product, onAddToCart, showRating, className }: Product
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-[var(--color-accent)]">
+            <span className="text-lg font-bold text-(--color-accent)">
               {formatPrice(product.price, product.currency)}
             </span>
             {product.comparePrice && (
-              <span className="text-sm text-[var(--color-text-muted)] line-through">
+              <span className="text-sm text-(--color-text-muted) line-through">
                 {formatPrice(product.comparePrice, product.currency)}
               </span>
             )}
           </div>
           <button
             onClick={() => onAddToCart?.(product)}
-            className="p-2 rounded-xl bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+            className="p-2 rounded-xl bg-(--color-accent) text-white hover:bg-(--color-accent-hover) transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -354,7 +354,7 @@ function GamingCard({ product, onAddToCart, className }: ProductCardProps) {
     <div
       className={cn(
         "group relative overflow-hidden rounded-2xl transition-all duration-300",
-        "bg-gradient-to-br from-[#1a1a2e] to-[#16213e]",
+        "bg-linear-to-br from-[#1a1a2e] to-[#16213e]",
         className
       )}
       style={{ 
@@ -455,13 +455,13 @@ function LuxuryCard({ product, onAddToCart, className }: ProductCardProps) {
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFD700] to-transparent" />
 
       {/* Image */}
-      <div className="relative aspect-[3/4] overflow-hidden">
+      <div className="relative aspect-3/4 overflow-hidden">
         <img
           src={product.images[0] || "/placeholder.jpg"}
           alt={product.nameAr || product.name}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
         
         {product.badge && (
           <div className="absolute top-4 right-4">

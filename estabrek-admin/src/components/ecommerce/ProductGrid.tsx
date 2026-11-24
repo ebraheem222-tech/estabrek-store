@@ -58,10 +58,10 @@ export function ProductGrid({
   if (products.length === 0) {
     return (
       <div className="text-center py-12">
-        <svg className="w-16 h-16 mx-auto text-[var(--color-text-muted)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-16 h-16 mx-auto text-(--color-text-muted) mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
-        <p className="text-[var(--color-text-muted)]">{emptyMessage}</p>
+        <p className="text-(--color-text-muted)">{emptyMessage}</p>
       </div>
     );
   }
@@ -187,13 +187,13 @@ export function ProductSlider({
               <h2 className="text-2xl font-bold">{titleAr || title}</h2>
             )}
             {subtitle && (
-              <p className="text-[var(--color-text-muted)] mt-1">{subtitle}</p>
+              <p className="text-(--color-text-muted) mt-1">{subtitle}</p>
             )}
           </div>
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="text-[var(--color-accent)] hover:underline flex items-center gap-1"
+              className="text-(--color-accent) hover:underline flex items-center gap-1"
             >
               عرض الكل
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +210,7 @@ export function ProductSlider({
         {showArrows && canScrollLeft && (
           <button
             onClick={scrollLeft}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-[var(--color-accent)] hover:text-white hover:border-[var(--color-accent)]"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-(--color-surface) border border-(--color-border) rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-(--color-accent) hover:text-white hover:border-(--color-accent)"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -222,7 +222,7 @@ export function ProductSlider({
         {showArrows && canScrollRight && (
           <button
             onClick={scrollRight}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-[var(--color-accent)] hover:text-white hover:border-[var(--color-accent)]"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-(--color-surface) border border-(--color-border) rounded-full shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-(--color-accent) hover:text-white hover:border-(--color-accent)"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -239,7 +239,7 @@ export function ProductSlider({
           {products.map((product) => (
             <div
               key={product.id}
-              className={cn("flex-shrink-0", slideWidthClasses[slidesPerView])}
+              className={cn("shrink-0", slideWidthClasses[slidesPerView])}
               style={{ scrollSnapAlign: "start" }}
             >
               <ProductCard
@@ -265,7 +265,7 @@ export function ProductSlider({
               key={i}
               className={cn(
                 "cms-product-dot w-2 h-2 rounded-full transition-all",
-                i === currentIndex ? "is-active bg-[var(--color-accent)] w-6" : "is-inactive bg-[var(--color-border)]"
+                i === currentIndex ? "is-active bg-(--color-accent) w-6" : "is-inactive bg-(--color-border)"
               )}
               onClick={() => {
                 if (containerRef.current) {
