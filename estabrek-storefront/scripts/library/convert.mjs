@@ -47,8 +47,31 @@ const outPath = (src) => {
  * The runtime's helpers under names no piece uses itself (a piece's own "cv", a canvas, once hid the colour helper
  * and broke it): the import is { cv as lx$cv, … }.
  */
-const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w", canvasText: "lx$ct", canvasMeasure: "lx$mt", lxIn: "lx$in" };
+const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w", canvasText: "lx$ct", canvasMeasure: "lx$mt", lxIn: "lx$in", spell: "lx$sp" };
+/** The runtime's helpers: the strings given to them (a canvas method's name…) are never a piece's words. */
+const RT_CALLS = new Set(Object.values(RT));
 const CANVAS_TEXT = new Set(["fillText", "strokeText"]);
+/**
+ * What a piece does to a text before it shows it, letter by letter or changed ("LIQUID".split("") into letters that
+ * move one by one, a word typed out with slice, a name in capitals): the text is put in the owner's words first
+ * (runtime.tsx spell), or the letters kept spelling the library's word after the owner changed it.
+ */
+const STR_OPS = new Set(["split", "slice", "substring", "substr", "charAt", "padEnd", "padStart", "toUpperCase", "toLowerCase", "toLocaleUpperCase", "toLocaleLowerCase", "repeat", "trim", "at", "concat", "join"]);
+// Not what a piece looks up in a text to work (match, indexOf, includes, replace…): its own logic keeps the library's
+// words, or the owner's words broke it (a regex playground's samples).
+/** A comparison: a text read letter by letter is compared in the owner's words too (a word typed out is done when it is the word). */
+const SAME = new Set(["===", "!==", "==", "!="]);
+/** Names that are never a piece's text (what spell would only pass through). */
+const NOT_TEXTS = new Set(["Math", "JSON", "Object", "Array", "Number", "String", "Date", "console", "window", "document", "navigator", "location", "localStorage", "sessionStorage", "crypto", "performance", "Promise", "Reflect", "Intl", "Symbol", "React", "motion", "URL", "BigInt", "Map", "Set", "undefined", "arguments"]);
+/** Where a piece reads something once, when it begins (or its timers keep what they began with). */
+const ONCE = new Set(["useEffect", "useLayoutEffect", "useInsertionEffect", "useState", "useMemo", "useCallback", "useRef", "useReducer", "setInterval", "setTimeout", "requestAnimationFrame"]);
+/** What a shopper types or presses, or an element on the page (e.target.value, e.key, ref.current): never the piece's words. */
+const typedIn = (n) => {
+  for (let m = n; t.isMemberExpression(m); m = m.object) if (t.isIdentifier(m.property) && /^(target|currentTarget|value|current|key|code|files|dataset|clipboardData|dataTransfer)$/.test(m.property.name)) return true;
+  return false;
+};
+/** SVG elements whose texts are drawn: a text there in the editor is marked by a tspan (a span shows nothing in SVG). */
+const SVG_TEXT = new Set(["text", "tspan", "textPath"]);
 const TEXT_ATTRS = new Set(["alt", "title", "placeholder", "aria-label", "label"]);
 /** Props of the library's own components that are never words. */
 const NOT_WORDS = /^(className|class|id|key|href|to|src|type|variant|size|icon|as|ring|kind|mode|name|value|ref|style|role|tabIndex|htmlFor|target|rel|method|action|autoComplete|inputMode|pattern|min|max|step|viewBox|d|points|transform|fill|stroke|.*Class|.*class|.*Id|.*Color|.*color|on[A-Z].*)$/;
@@ -86,9 +109,19 @@ const isWords = (s) => {
   if (tokens.every((x) => /^[!a-z0-9:_\-[\]().%#/,'"=+*<>@&]+$/.test(x)) && tokens.some((x) => /[-:[/]/.test(x))) return false;
   // A single lowercase ascii word is a code word.
   if (tokens.length === 1 && /^[a-z0-9_-]+$/.test(v)) return false;
+  // A CSS size ("0.5em" showed in a piece's words to change).
+  if (/^-?\d*\.?\d+(px|em|rem|vh|vw|vmin|vmax|%|ms|s|deg|fr|ch)$/i.test(v)) return false;
   // An SVG path, a CSS function, a font list.
   if (/^[MmLlHhVvCcSsQqTtAaZz][\d\s.,MmLlHhVvCcSsQqTtAaZz-]*$/.test(v) || /^[a-z-]+\(.*\)$/i.test(v) || /\b(serif|sans-serif|monospace|cursive|system-ui)\b/.test(v)) return false;
   return true;
+};
+/** A string given to a runtime helper that is not a text: a colour's (cv), what's done to a text (spell), a canvas method's name. */
+const helperArg = (call, arg) => {
+  const name = call.callee.name;
+  if (name === RT.cv || name === RT.cvs) return true;
+  if (name === RT.spell) return call.arguments[2] === arg;
+  if (name === RT.canvasText) return call.arguments[1] === arg;
+  return false;
 };
 /** Object keys whose strings are never words (class names, colours, icons, addresses). */
 const NOT_WORD_KEYS = /^(className|cls|class|c|c2|color|colour|bg|grad|gradient|tint|accent|icon|href|to|url|id|key|img|src|font|style|d|path|filter|shadow|ring|tone|kind|type|variant|slug|code|hex|seed)$/;
@@ -125,12 +158,12 @@ function convertFile(src, manifest) {
   };
   const bucket = (p) => {
     const name = topNameOf(p);
-    return (decls[name] ??= { words: new Set(), families: new Set(), hexes: new Set(), refs: new Set(), draws: false });
+    return (decls[name] ??= { words: new Set(), families: new Set(), hexes: new Set(), refs: new Set(), draws: false, fresh: false });
   };
   const words = { add: (p, w) => bucket(p).words.add(w) };
   const families = { add: (p, f) => bucket(p).families.add(f) };
   const hexes = { add: (p, h) => bucket(p).hexes.add(h) };
-  let usesT = false, usesLx = false, usesCv = false, usesCanvas = false, usesIn = false;
+  let usesT = false, usesLx = false, usesCv = false, usesCanvas = false, usesIn = false, usesSpell = false;
   const cvCall = (e) => { usesCv = true; return t.callExpression(t.identifier(RT.cv), [e]); };
   const lxIn = (p) => {
     // lx() inside a component reads its own item's words (useLx at the top of it); outside, the last ones.
@@ -158,11 +191,49 @@ function convertFile(src, manifest) {
     let f = fn, found = null;
     while (f) {
       const id = f.node.id?.name ?? (f.parentPath?.isVariableDeclarator() ? f.parentPath.node.id?.name : null);
-      if (id && /^[A-Z]/.test(id)) found = f;
+      // Or a hook of the file (useTypewriter): called from a component, it can read that one's words itself.
+      if (id && (/^[A-Z]/.test(id) || /^use[A-Z0-9]/.test(id))) found = f;
       f = f.parentPath ? f.parentPath.getFunctionParent() : null;
     }
     return found;
   };
+  const isHook = (fn) => /^use[A-Z0-9]/.test(fn.node.id?.name ?? (fn.parentPath?.isVariableDeclarator() ? fn.parentPath.node.id?.name ?? "" : ""));
+  /** A text the piece reads letter by letter or changes before showing it: in the item's words first (spell). */
+  const spellOf = (q, op) => {
+    const n = q.node;
+    const text = t.isStringLiteral(n) ? /\p{L}/u.test(n.value)
+      : t.isIdentifier(n) ? !NOT_TEXTS.has(n.name) && !RT_CALLS.has(n.name)
+      : t.isMemberExpression(n) ? !t.isThisExpression(n.object) && !(t.isIdentifier(n.object) && NOT_TEXTS.has(n.object.name)) && !typedIn(n)
+      // A value put into a sentence (`${pick(NAMES)} joined`, "Hi " + name()): whatever it gives.
+      : (op === "tpl" || op === "cat" || op === "join") && ((t.isCallExpression(n) && !(t.isIdentifier(n.callee) && RT_CALLS.has(n.callee.name)) && !(t.isMemberExpression(n.callee) && t.isIdentifier(n.callee.object) && NOT_TEXTS.has(n.callee.object.name))) || (op === "tpl" && (t.isLogicalExpression(n) || t.isConditionalExpression(n))));
+    if (!text || (t.isCallExpression(n) && t.isIdentifier(n.callee) && n.callee.name === RT.spell)) return;
+    // Read once at the top of the file (before any piece is drawn): no piece's words to read it in.
+    const fn = q.getFunctionParent();
+    if (!fn) return;
+    if (q.parentPath.isAssignmentExpression({ left: n }) || q.parentPath.isUpdateExpression()) return;
+    const comp = componentOf(fn);
+    let own = t.nullLiteral();
+    if (comp && (drawsJsx(comp) || isHook(comp))) { comp.node.__lx = true; own = t.identifier(RT.words); }
+    // Read in an effect, a timer or a first state (not while it's drawn, nor in a click: those see new words): the
+    // piece starts again when its words change (LibBlock's key), or it kept the words it began with.
+    for (let f = fn; f && f !== comp; f = f.parentPath?.getFunctionParent()) {
+      const call = f.parentPath;
+      const callee = call?.isCallExpression() ? call.node.callee : null;
+      const name = t.isIdentifier(callee) ? callee.name : t.isMemberExpression(callee) && t.isIdentifier(callee.property) ? callee.property.name : "";
+      if (ONCE.has(name)) { bucket(q).fresh = true; break; }
+    }
+    usesSpell = true;
+    q.replaceWith(t.callExpression(t.identifier(RT.spell), [own, n, t.stringLiteral(op)]));
+  };
+  // The names a piece reads letter by letter somewhere (text.split(""), TEXT.slice(0, n)…): their length is the
+  // owner's words' length too (a word typed out stopped at the library's word's length).
+  const spelled = new Set();
+  traverse(ast, {
+    CallExpression(p) {
+      const c = p.node.callee;
+      if (t.isMemberExpression(c) && !c.computed && t.isIdentifier(c.property) && STR_OPS.has(c.property.name) && t.isIdentifier(c.object) && !NOT_TEXTS.has(c.object.name)) spelled.add(c.object.name);
+    },
+  });
 
   traverse(ast, {
     ImportDeclaration(p) {
@@ -175,8 +246,12 @@ function convertFile(src, manifest) {
       if ((top.has(p.node.name) || imports[p.node.name]) && (p.parentPath.isJSXOpeningElement() || p.parentPath.isJSXMemberExpression())) bucket(p).refs.add(p.node.name);
     },
     CallExpression(p) {
-      // A text drawn on a canvas, or measured for it: in the item's words (runtime.tsx canvasText).
       const c = p.node.callee;
+      // A text read letter by letter or changed before it's shown ("LIQUID".split(""), TEXT.slice(0, n)): in the
+      // item's words first (runtime.tsx spell).
+      if (t.isMemberExpression(c) && !c.computed && t.isIdentifier(c.property) && STR_OPS.has(c.property.name)) spellOf(p.get("callee.object"), c.property.name);
+      else if (t.isMemberExpression(c) && t.isIdentifier(c.object, { name: "Array" }) && t.isIdentifier(c.property, { name: "from" }) && p.node.arguments.length && !t.isSpreadElement(p.node.arguments[0])) spellOf(p.get("arguments.0"), "from");
+      // A text drawn on a canvas, or measured for it: in the item's words (runtime.tsx canvasText).
       if (!t.isMemberExpression(c) || c.computed || !t.isIdentifier(c.property) || !p.node.arguments.length) return;
       const m = c.property.name;
       if (!CANVAS_TEXT.has(m) && m !== "measureText") return;
@@ -186,6 +261,59 @@ function convertFile(src, manifest) {
       const own = canvasWords(p);
       if (CANVAS_TEXT.has(m)) p.replaceWith(t.callExpression(t.identifier(RT.canvasText), [c.object, t.stringLiteral(m), own, ...p.node.arguments]));
       else p.replaceWith(t.callExpression(t.identifier(RT.canvasMeasure), [c.object, own, p.node.arguments[0]]));
+    },
+    // The length of a text read letter by letter (a word typed out up to its length), the letters of one spread into
+    // a list, or gone through one by one: the owner's words.
+    MemberExpression(p) {
+      const n = p.node;
+      if (n.computed || !t.isIdentifier(n.property, { name: "length" }) || !t.isIdentifier(n.object) || !spelled.has(n.object.name)) return;
+      if (p.parentPath.isAssignmentExpression({ left: n }) || p.parentPath.isUpdateExpression()) return;
+      spellOf(p.get("object"), "length");
+    },
+    // Letters spread into a list or gone through one by one ([...line], for (const ch of word)): a list passes as
+    // it is, a text in the owner's words.
+    SpreadElement(p) {
+      const a = p.node.argument;
+      if (p.parentPath.isArrayExpression() && (t.isIdentifier(a) || t.isMemberExpression(a) || t.isStringLiteral(a))) spellOf(p.get("argument"), "spread");
+    },
+    ForOfStatement(p) {
+      const r = p.node.right;
+      if (t.isIdentifier(r) || t.isMemberExpression(r) || t.isStringLiteral(r)) spellOf(p.get("right"), "of");
+    },
+    // A component that gives back a text as it is (a highlighter with nothing to mark: `return text`): shown
+    // without <T/>, so in the owner's words here.
+    ReturnStatement(p) {
+      const a = p.node.argument;
+      if (!a || !(t.isIdentifier(a) || t.isMemberExpression(a))) return;
+      const fn = p.getFunctionParent();
+      const comp = fn ? componentOf(fn) : null;
+      if (!comp || comp !== fn || isHook(comp) || !drawsJsx(comp)) return;
+      spellOf(p.get("argument"), "ret");
+    },
+    // A sentence put together from the piece's words (`${name} joined the game`, "Hi " + name): each one in the
+    // owner's words (the sentence as a whole is no text of the library's to look up).
+    TemplateLiteral(p) {
+      if (p.parentPath.isTaggedTemplateExpression() || !p.getFunctionParent()) return;
+      p.get("expressions").forEach((q) => { if (t.isIdentifier(q.node) || t.isMemberExpression(q.node) || t.isCallExpression(q.node) || t.isLogicalExpression(q.node) || t.isConditionalExpression(q.node)) spellOf(q, "tpl"); });
+    },
+    BinaryExpression(p) {
+      const { left, right, operator } = p.node;
+      if (operator === "+") {
+        const words = (n) => (t.isStringLiteral(n) && /\p{L}/u.test(n.value)) || t.isTemplateLiteral(n);
+        if (!words(left) && !words(right)) return;
+        for (const side of ["left", "right"]) {
+          const n = p.node[side];
+          if (t.isIdentifier(n) || t.isMemberExpression(n) || t.isCallExpression(n)) spellOf(p.get(side), "cat");
+        }
+        return;
+      }
+      if (!SAME.has(operator)) return;
+      const read = (n) => t.isIdentifier(n) && spelled.has(n.name);
+      if (!read(left) && !read(right)) return;
+      for (const side of ["left", "right"]) {
+        const n = p.node[side];
+        if (t.isIdentifier(n) || t.isMemberExpression(n) || (t.isStringLiteral(n) && /\p{L}/u.test(n.value))) spellOf(p.get(side), "same");
+      }
     },
     StringLiteral(p) {
       for (const h of p.node.value.match(HEX) ?? []) hexes.add(p, normHex(h));
@@ -200,7 +328,7 @@ function convertFile(src, manifest) {
         } else if (parent.isObjectProperty() && parent.node.value === p.node) {
           const k = t.isIdentifier(parent.node.key) ? parent.node.key.name : t.isStringLiteral(parent.node.key) ? parent.node.key.value : "";
           if (!NOT_WORD_KEYS.test(k)) words.add(p, p.node.value.trim());
-        } else if (!parent.isCallExpression() || !t.isIdentifier(parent.node.callee) || ![RT.cv, RT.cvs].includes(parent.node.callee.name)) {
+        } else if (!parent.isCallExpression() || !t.isIdentifier(parent.node.callee) || !helperArg(parent.node, p.node)) {
           words.add(p, p.node.value.trim());
         }
       }
@@ -221,9 +349,13 @@ function convertFile(src, manifest) {
       if (!p.parentPath.isJSXElement() && !p.parentPath.isJSXFragment()) return;
       if (t.isJSXEmptyExpression(e) || t.isArrowFunctionExpression(e) || t.isFunctionExpression(e)) return;
       if (t.isJSXElement(e) || t.isJSXFragment(e)) return;
-      // A child shown on the page: <T s={…}/> (returns it as it is, or the owner's words for it).
+      // A child shown on the page: <T s={…}/> (returns it as it is, or the owner's words for it). In an SVG text it
+      // says so (svg): marked in the editor by a tspan, as a span there shows nothing.
       usesT = true;
-      p.replaceWith(t.jsxElement(t.jsxOpeningElement(t.jsxIdentifier(RT.T), [t.jsxAttribute(t.jsxIdentifier("s"), t.jsxExpressionContainer(e))], true), null, [], true));
+      const at = p.parentPath.isJSXElement() ? p.parentPath.node.openingElement.name : null;
+      const tag = t.isJSXIdentifier(at) ? at.name : t.isJSXMemberExpression(at) ? at.property.name : "";
+      const attrs = [t.jsxAttribute(t.jsxIdentifier("s"), t.jsxExpressionContainer(e)), ...(SVG_TEXT.has(tag) ? [t.jsxAttribute(t.jsxIdentifier("svg"))] : [])];
+      p.replaceWith(t.jsxElement(t.jsxOpeningElement(t.jsxIdentifier(RT.T), attrs, true), null, [], true));
     },
     JSXAttribute(p) {
       const name = typeof p.node.name.name === "string" ? p.node.name.name : null;
@@ -321,12 +453,12 @@ function convertFile(src, manifest) {
 
   const out = outPath(src);
   const runtime = path.relative(path.dirname(out), path.join(OUT, "runtime")).split(path.sep).join("/");
-  const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs", usesCanvas && "canvasText", usesCanvas && "canvasMeasure", usesIn && "lxIn"].filter(Boolean);
+  const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs", usesCanvas && "canvasText", usesCanvas && "canvasMeasure", usesIn && "lxIn", usesSpell && "spell"].filter(Boolean);
   if (names.length) ast.program.body.unshift(t.importDeclaration(names.map((n) => t.importSpecifier(t.identifier(RT[n]), t.identifier(n))), t.stringLiteral(runtime.startsWith(".") ? runtime : `./${runtime}`)));
   const body = generate(ast, { retainLines: false, jsescOption: { minimal: true } }, code).code;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `// @ts-nocheck\n/* eslint-disable */\n// Made by scripts/library/convert.mjs from the owner's Themes folder (${path.relative(THEMES, src).split(path.sep).join("/")}): do not edit.\n${body}\n`);
-  const asList = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { words: [...v.words], families: [...v.families], hexes: [...v.hexes], refs: [...v.refs], draws: v.draws }]));
+  const asList = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { words: [...v.words], families: [...v.families], hexes: [...v.hexes], refs: [...v.refs], draws: v.draws, fresh: v.fresh }]));
   manifest.files[path.relative(OUT, out).split(path.sep).join("/")] = { decls: asList(decls), imports, defaultName };
   return out;
 }
@@ -368,7 +500,7 @@ for (const item of ITEMS) {
   }
   const file = path.relative(OUT, outPath(entry)).split(path.sep).join("/");
   // What the item's own export reaches: its words, colour families and colours, nothing of the file's other sections.
-  const got = { words: new Set(), families: new Set(), hexes: new Set(), draws: false };
+  const got = { words: new Set(), families: new Set(), hexes: new Set(), draws: false, fresh: false };
   const seen = new Set();
   const walk = (f, name) => {
     const key = `${f}#${name}`;
@@ -382,6 +514,7 @@ for (const item of ITEMS) {
       if (!d) continue;
       for (const k of ["words", "families", "hexes"]) for (const v of d[k]) got[k].add(v);
       if (d.draws) got.draws = true;
+      if (d.fresh) got.fresh = true;
       for (const r of d.refs) {
         if (info.decls[r]) walk(f, r);
         else if (info.imports[r]) walk(info.imports[r].file, info.imports[r].name);
@@ -391,14 +524,14 @@ for (const item of ITEMS) {
   walk(file, item.exp);
   // The made-up brand isn't one of its words: the store's name takes its place.
   const own = [...got.words].filter((w) => !item.brand || (w !== item.brand && w !== item.brand.toUpperCase()));
-  manifest.items.push({ ...item, file: file.replace(/\.tsx$/, ""), families: [...got.families], hexes: [...got.hexes], words: own, draws: got.draws });
+  manifest.items.push({ ...item, file: file.replace(/\.tsx$/, ""), families: [...got.families], hexes: [...got.hexes], words: own, draws: got.draws, fresh: got.fresh });
 }
 const GEN = "// Made by scripts/library/convert.mjs: do not edit.\n";
 fs.mkdirSync(OUT, { recursive: true });
 
 // The list, for bundle.mjs to finish (with each piece's file and styles) into src/library/index.gen.ts.
 const cssKey = (file) => file.split("/").join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
-fs.writeFileSync(path.join(OUT, "index.json"), JSON.stringify(manifest.items.map(({ id, kind, cat, name, brand, minH, blurb, tags, colors, file, draws }) => ({ id, kind, ...(cat ? { cat } : {}), name, brand, minH, ...(blurb ? { blurb } : {}), ...(tags ? { tags } : {}), ...(colors ? { colors } : {}), css: cssKey(file), ...(draws ? { draws: 1 } : {}) }))));
+fs.writeFileSync(path.join(OUT, "index.json"), JSON.stringify(manifest.items.map(({ id, kind, cat, name, brand, minH, blurb, tags, colors, file, draws, fresh }) => ({ id, kind, ...(cat ? { cat } : {}), name, brand, minH, ...(blurb ? { blurb } : {}), ...(tags ? { tags } : {}), ...(colors ? { colors } : {}), css: cssKey(file), ...(draws ? { draws: 1 } : {}), ...(fresh && !draws ? { fresh: 1 } : {}) }))));
 // What a piece's panel offers: the words it shows, its colour families and its colours (6 digits); whether it draws
 // words on a canvas (their size has a setting of its own).
 fs.rmSync(path.join(LIB, "details"), { recursive: true, force: true });

@@ -76,8 +76,8 @@ const GEN = "// Made by scripts/library/bundle.mjs: do not edit.\n";
 fs.writeFileSync(
   path.join(LIB, "index.gen.ts"),
   `${GEN}/* eslint-disable */\n` +
-    `/** A library piece: its id, kind (site, hero, navbar…), category (a site's or a hero's), name, made-up brand (a site's name, the store's to replace), height while it loads; a site's description, tags and colours; its file (public/library/js) and its styles' file (public/library/css); whether it draws words on a canvas. */\n` +
-    `export type LibItem = { id: string; kind: string; cat?: string; name: string; brand: string; minH: number; blurb?: string; tags?: string[]; colors?: string[]; js: string; css: string; draws?: 1 };\n\n` +
+    `/** A library piece: its id, kind (site, hero, navbar…), category (a site's or a hero's), name, made-up brand (a site's name, the store's to replace), height while it loads; a site's description, tags and colours; its file (public/library/js) and its styles' file (public/library/css); whether it draws words on a canvas, or reads them once (in an effect or a timer: it starts again when they change). */\n` +
+    `export type LibItem = { id: string; kind: string; cat?: string; name: string; brand: string; minH: number; blurb?: string; tags?: string[]; colors?: string[]; js: string; css: string; draws?: 1; fresh?: 1 };\n\n` +
     `/** The styles' version (their content), so a new build of them is fetched again. */\nexport const LIB_CSS_VERSION = ${JSON.stringify(cssVersion)};\n\n` +
     `export const LIB_INDEX: readonly LibItem[] = [\n${items.map((i) => " " + JSON.stringify({ ...i, js: jsOf[i.id] }) + ",").join("\n")}\n];\n`,
 );

@@ -1700,13 +1700,17 @@ function StudioDocument() {
   /* ----------------------------------------------------------- drawing */
 
   /** An inner object's kind by name: a box inside a widget is a box, never a "section". */
-  const detailKind = (kind: PagesAPI.LookKind) => (kind === "box" ? tr("صندوق", "Box") : typeLabel(kind));
+  const detailKind = (kind: PagesAPI.LookKind, drawing?: "canvas" | "svg") => (drawing === "canvas" ? tr("رسم متحرك", "Live drawing") : drawing === "svg" ? tr("رسمة", "Drawing") : kind === "box" ? tr("صندوق", "Box") : typeLabel(kind));
   const label = (sid: string) => {
     const x = extras.get(sid);
     if (x?.kind === "region") return x.region === "header" ? tr("الهيدر", "Header") : tr("الفوتر", "Footer");
     if (x?.kind === "block" || sid.startsWith("block:")) return `${tr("مشهد", "Scene")} · ${BLOCK_LABEL[x?.kind === "block" ? x.block : sid.slice(6)]?.() ?? sid}`;
     if (x?.kind === "part") return x.count > 1 ? `${partLabel(x.name)} ${x.n + 1}` : partLabel(x.name);
-    if (x?.kind === "detail") return x.name ? partLabel(x.name) : x.label ? `${detailKind(x.lookKind)} · ${x.label}` : detailKind(x.lookKind);
+    // A part of a theme library piece says the words it shows or draws (its "Box · …" said nothing of a canvas).
+    if (x?.kind === "detail") {
+      const said = x.label ?? (x.words?.length ? x.words.map((w) => w.shown).join(" · ").slice(0, 40) : undefined);
+      return x.name ? partLabel(x.name) : said ? `${detailKind(x.lookKind, x.tag)} · ${said}` : detailKind(x.lookKind, x.tag);
+    }
     if (x?.kind === "auto") return x.label ? `${tagLabel(x.tag)} · ${x.label.length > 30 ? `${x.label.slice(0, 30)}…` : x.label}` : tagLabel(x.tag);
     if (x?.kind === "slot" || sid.startsWith("slot:")) {
       const path = x?.kind === "slot" ? x.path : sid.split(":").slice(2).join(":");
@@ -1730,9 +1734,13 @@ function StudioDocument() {
     const style = { left: seen.box.x - frameBox.x, top: seen.box.y - frameBox.y, width: seen.box.w, height: seen.box.h };
     // Turned, skewed or tipped: its real outline is drawn, and the box around it only hinted.
     const quad = kind !== "parent" && s.outline && !outlineIsBox(s.outline, s.box) ? s.outline : null;
-    // Tiny on screen: a ring around it, so what's selected (or about to be) can be seen.
+    // Tiny on screen: a ring around it, so what's selected (or about to be) can be seen. Thin and long (a line of
+    // small words across a library piece, a rule): a pill hugging it, not a circle as wide as it is (that one
+    // covered the whole piece and its name went off the side).
     const tiny = kind !== "parent" && Math.min(s.box.w, s.box.h) < TINY_SEEN;
-    const ring = Math.max(s.box.w, s.box.h) + 14;
+    const round = Math.max(s.box.w, s.box.h) <= 64;
+    const ringW = (round ? Math.max(s.box.w, s.box.h) : Math.max(s.box.w, TINY_SEEN)) + 14;
+    const ringH = (round ? Math.max(s.box.w, s.box.h) : Math.max(s.box.h, TINY_SEEN)) + 14;
     const cls = quad
       ? (kind === "selected" ? "border border-dashed border-accent-400/40" : "border border-dashed border-accent-300/30")
       : kind === "selected" ? "border-2 border-accent-400 bg-accent-400/6" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
@@ -1745,12 +1753,12 @@ function StudioDocument() {
           <polygon points={quad.map((pt) => `${pt.x - frameBox.x},${pt.y - frameBox.y}`).join(" ")} fill="currentColor" fillOpacity={kind === "selected" ? 0.06 : 0} stroke="currentColor" strokeWidth={kind === "selected" ? 2 : 1} strokeDasharray={kind === "selected" ? undefined : "4 3"} strokeLinejoin="round" />
         </svg>
       ) : null}
-      {tiny ? <div className={`pointer-events-none absolute rounded-full ${kind === "selected" ? "border-2 border-accent-400/80 bg-accent-400/8" : "border border-dashed border-accent-300/80"}`} style={{ left: s.box.x + s.box.w / 2 - frameBox.x - ring / 2, top: s.box.y + s.box.h / 2 - frameBox.y - ring / 2, width: ring, height: ring }} data-testid={`studio-${kind}-ring`} /> : null}
+      {tiny ? <div className={`pointer-events-none absolute rounded-full ${kind === "selected" ? "border-2 border-accent-400/80 bg-accent-400/8" : "border border-dashed border-accent-300/80"}`} style={{ left: s.box.x + s.box.w / 2 - frameBox.x - ringW / 2, top: s.box.y + s.box.h / 2 - frameBox.y - ringH / 2, width: ringW, height: ringH }} data-testid={`studio-${kind}-ring`} data-pill={round ? undefined : "1"} /> : null}
       <div className={`pointer-events-none absolute ${cls}`} style={{ ...style, ...cut }} data-testid={`studio-${kind}`} data-cut={seen.above || seen.below ? "1" : undefined} data-quad={quad ? "1" : undefined}>
         {kind !== "parent" ? (
           // Above the box; inside it when the box touches the top of the frame (or goes on above it).
           // A tiny one's name stands beside its ring, clear of its handles and its turning knob.
-          <span className={`absolute inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${tiny ? "inset-s-full top-1/2 ms-5 -translate-y-1/2" : `inset-s-0 ${style.top < 24 || seen.above ? "top-0" : "-top-6"}`} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`} data-testid={`studio-${kind}-name`}>
+          <span className={`absolute inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${tiny && round ? "inset-s-full top-1/2 ms-5 -translate-y-1/2" : `inset-s-0 ${style.top < 24 || seen.above ? "top-0" : "-top-6"}`} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`} data-testid={`studio-${kind}-name`}>
             {seen.above ? <span aria-hidden="true">↑</span> : null}
             <span>{label(sid!)}</span>
             {/* Its own size: along its real sides when it's turned, not the box around it. */}
@@ -1770,7 +1778,7 @@ function StudioDocument() {
     if (n) return n.type === "roseBlock" ? tr("مشهد", "Scene") : typeLabel(n.type);
     const x = extras.get(pid);
     if (x?.kind === "part") return partLabel(x.name);
-    if (x?.kind === "detail") return x.name ? partLabel(x.name) : detailKind(x.lookKind);
+    if (x?.kind === "detail") return x.name ? partLabel(x.name) : detailKind(x.lookKind, x.tag);
     if (x?.kind === "auto") return tagLabel(x.tag);
     if (x?.kind === "slot") return x.edit === "media" ? (x.media === "video" ? typeLabel("video") : typeLabel("image")) : x.link ? typeLabel("button") : typeLabel("text");
     return pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text");
@@ -3206,11 +3214,12 @@ function StudioDocument() {
             live={selExtra.kind === "detail" && !partContent && lookTarget.kind === "text" && (ownerType === "countdown" || ownerType === "clock")}
             count={selExtra.kind === "detail" || selExtra.kind === "part" ? selExtra.count : 1}
             onOwner={selExtra.kind === "detail" || selExtra.kind === "auto" ? () => select(ownerId ?? index!.root, true) : undefined}
+            drawing={selExtra.kind === "detail" && ownerType === "lib" ? selExtra.tag : undefined}
           />;
         })() : null}
         {/* A click inside a theme library piece picks a part of it: the piece's own words, sizes and colours stay at hand. */}
         {selExtra?.kind === "detail" && !selectedRegion && nodeOf(selExtra.owner.slice(2))?.type === "lib" ? (
-          <LibraryPanel key={`lib:${selExtra.owner}`} node={nodeOf(selExtra.owner.slice(2))!} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+          <LibraryPanel key={`lib:${selExtra.owner}`} node={nodeOf(selExtra.owner.slice(2))!} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} part={{ words: selExtra.words ?? [], drawing: selExtra.tag }} />
         ) : null}
 
         {partContent ? <fieldset disabled={busy} className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-part-content">
@@ -3227,7 +3236,7 @@ function StudioDocument() {
             }
           }} /> : null}
         </fieldset> : null}
-        {selExtra?.kind === "detail" && !selectedRegion && !partContent && selExtra.lookKind === "text" ? <p className="text-xs leading-5 text-white/60" data-testid="studio-part-source">{nodeOf(selExtra.owner.slice(2))?.type === "countdown" ? tr("هذا رقم حي يحسبه العدّاد. لتغيير قيمته، افتح إعدادات العنصر الأصلي وعدّل موعد العدّ. يمكنك تغيير خطه وشكله هنا.", "This is a live countdown value. Open Owner settings to change the end time. Its type and appearance can be changed here.") : tr("محتوى هذا الجزء مرتبط ببيانات العنصر. افتح إعدادات العنصر الأصلي لتعديله؛ الشكل والخط قابلان للتعديل هنا.", "This content comes from the object's data. Open Owner settings to edit its source; its appearance and typography can be edited here.")}</p> : null}
+        {selExtra?.kind === "detail" && !selectedRegion && !partContent && selExtra.lookKind === "text" && nodeOf(selExtra.owner.slice(2))?.type !== "lib" ? <p className="text-xs leading-5 text-white/60" data-testid="studio-part-source">{nodeOf(selExtra.owner.slice(2))?.type === "countdown" ? tr("هذا رقم حي يحسبه العدّاد. لتغيير قيمته، افتح إعدادات العنصر الأصلي وعدّل موعد العدّ. يمكنك تغيير خطه وشكله هنا.", "This is a live countdown value. Open Owner settings to change the end time. Its type and appearance can be changed here.") : tr("محتوى هذا الجزء مرتبط ببيانات العنصر. افتح إعدادات العنصر الأصلي لتعديله؛ الشكل والخط قابلان للتعديل هنا.", "This content comes from the object's data. Open Owner settings to edit its source; its appearance and typography can be edited here.")}</p> : null}
 
 
         {selExtra?.kind === "slot" && selExtra.edit === "list" ? (

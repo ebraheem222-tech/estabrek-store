@@ -194,6 +194,33 @@ describe("a piece's panel", () => {
     expect(screen.queryByTestId("studio-lib-drawn-size")).toBeNull();
   });
 
+  it("a part picked on the page offers its own words first: a text's, or the words a canvas draws", async () => {
+    const onOps = vi.fn();
+    // A canvas inside the piece, drawing two words (one the owner changed already).
+    const { rerender } = render(<LibraryPanel node={node({ item: "premium-particle-text", words: { MOTION: { en: "Moves" } } })} lang="en" busy={false} onOps={onOps}
+      part={{ drawing: "canvas", words: [{ src: "DESIGN", shown: "DESIGN" }, { src: "MOTION", shown: "Moves" }] }} />);
+    const here = screen.getByTestId("studio-lib-part-words");
+    expect(here.textContent).toMatch(/drawn here|المرسوم/i);
+    const field = (src: string) => within(screen.getAllByTestId("studio-lib-part-word").find((el) => el.dataset.src === src)!).getByRole("textbox") as HTMLInputElement;
+    expect(field("MOTION").value).toBe("Moves");
+    fireEvent.change(field("DESIGN"), { target: { value: "Samoray" } });
+    fireEvent.keyDown(field("DESIGN"), { key: "Enter" });
+    expect(lastProps(onOps).words).toEqual({ MOTION: { en: "Moves" }, DESIGN: { en: "Samoray" } });
+    // Emptied: the library's word again.
+    fireEvent.change(field("MOTION"), { target: { value: "" } });
+    fireEvent.blur(field("MOTION"));
+    expect(lastProps(onOps).words).toBeUndefined();
+    // A text: "this part's words"; a canvas drawing no words says so; nothing picked, nothing extra.
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} part={{ words: [{ src: "Studio Kinetik · est. 2026", shown: "Studio Kinetik · est. 2026" }] }} />);
+    expect(screen.getByTestId("studio-lib-part-words").textContent).toMatch(/this part's words|كلام هالجزء/i);
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} part={{ drawing: "canvas", words: [] }} />);
+    expect(screen.queryByTestId("studio-lib-part-words")).toBeNull();
+    expect(screen.getByTestId("studio-lib-part-drawing")).toBeTruthy();
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} />);
+    expect(screen.queryByTestId("studio-lib-part-words")).toBeNull();
+    expect(screen.queryByTestId("studio-lib-part-drawing")).toBeNull();
+  });
+
   it("puts everything back in one click; a piece the library doesn't have says so", () => {
     const onOps = vi.fn();
     render(<LibraryPanel node={node({ item: "faq-classic", words: { General: { en: "All" } }, families: { indigo: "theme" } })} lang="en" busy={false} onOps={onOps} />);

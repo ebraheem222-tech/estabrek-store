@@ -66,7 +66,13 @@ function Swatch({ value, was, busy, label, onPick, testId, data }: { value: stri
 
 const SHOWN = 40;
 
-export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
+/**
+ * A part of the piece picked on the page (a text, a button, a canvas): the words it shows or draws, offered first,
+ * so a click on them is one step from changing them (before: a canvas was only a "box").
+ */
+export type LibPart = { words: ReadonlyArray<{ src: string; shown: string }>; drawing?: "canvas" | "svg" };
+
+export function LibraryPanel({ node, lang, busy, onOps, part }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops; part?: LibPart }) {
   const p = rec(node.props);
   const item = libItemOf(p.item);
   const [q, setQ] = useState("");
@@ -115,6 +121,19 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
 
   return (
     <div className="space-y-3" data-testid="studio-lib-panel" data-item={item.id}>
+      {part?.words.length ? (
+        <section className={box} aria-label={part.drawing === "canvas" ? say("الكلام المرسوم هون|The words drawn here|המילים המצוירות כאן") : say("كلام هالجزء|This part's words|המילים של החלק הזה")} data-testid="studio-lib-part-words">
+          <h4 className="text-[11px] font-medium text-white/70">{part.drawing === "canvas" ? say("الكلام المرسوم هون|The words drawn here|המילים המצוירות כאן") : say("كلام هالجزء|This part's words|המילים של החלק הזה")}</h4>
+          {part.words.map((w) => (
+            <div key={w.src} data-testid="studio-lib-part-word" data-src={w.src}>
+              <Field label={w.src.length > 60 ? `${w.src.slice(0, 60)}…` : w.src} value={inLang(own[w.src], lang) || w.shown} multiline={w.src.length > 60} maxLength={600} onSave={(v) => setWord(w.src, v.trim() ? v : w.src)} />
+            </div>
+          ))}
+          {part.drawing === "canvas" ? <p className="text-[10px] leading-4 text-white/40">{say("بتتغيّر بالرسم فوراً. حجمها من «الكلمة الكبيرة المرسومة» تحت.|They change in the drawing at once. Their size is «The big drawn words» below.|הן משתנות בציור מיד. הגודל שלהן ב«המילים הגדולות המצוירות» למטה.")}</p> : null}
+        </section>
+      ) : part?.drawing === "canvas" ? (
+        <p className="rounded-xl border border-white/8 p-3 text-[11px] leading-5 text-white/55" data-testid="studio-lib-part-drawing">{say("هاد رسم متحرك من القطعة: ما بيرسم كلام هلق. ألوانه تحت، أو اختار القطعة كلها لإعداداتها.|This is a live drawing of the piece: it draws no words now. Its colours are below, or pick the whole piece for its settings.|זה ציור חי של הפריט: הוא לא מצייר מילים עכשיו. הצבעים שלו למטה, או בחירת הפריט כולו להגדרות שלו.")}</p>
+      ) : null}
       <div className={box}>
         <div className="flex items-start justify-between gap-2">
           <div>

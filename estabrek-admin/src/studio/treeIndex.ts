@@ -228,7 +228,7 @@ export type BridgeItem =
   | { kind: "slot"; owner?: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string; within?: string; rect: Box }
   | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: Box }
   | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string; within?: string; rect: Box }
-  | { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; within?: string; rect: Box; geometry?: BridgeGeometry }
+  | { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; within?: string; rect: Box; geometry?: BridgeGeometry; tag?: "canvas" | "svg"; words?: LibPartWord[] }
   | { kind: "block"; block: string; rect: Box };
 
 /** How a field is written: words in place (one line, or several), a list of lines in the panel, a picture or clip. */
@@ -245,7 +245,9 @@ export type Extra =
   | { kind: "part"; owner: string; name: string; n: number; count: number }
   | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string }
   | DetailExtra;
-export type DetailExtra = { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number };
+export type DetailExtra = { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; tag?: "canvas" | "svg"; words?: LibPartWord[] };
+/** Inside a theme library piece: words a part shows or draws, as the library wrote them (the key of the owner's words) and as they show. */
+export type LibPartWord = { src: string; shown: string };
 export const slotId = (sectionId: string, path: string) => `slot:${sectionId}:${path}`;
 export const blockId = (index: TreeIndex, block: string) => (index.nodes.has(`rb-${block}`) ? `rb-${block}` : `block:${block}`);
 /** A field's id: its section's, or its scene's. */

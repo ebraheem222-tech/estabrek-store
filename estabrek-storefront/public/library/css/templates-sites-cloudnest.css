@@ -114,6 +114,9 @@
 .lx-f-templates-sites-cloudnest .ml-auto {
     margin-left: auto;
   }
+.lx-f-templates-sites-cloudnest .\!grid {
+    display: grid !important;
+  }
 .lx-f-templates-sites-cloudnest .block {
     display: block;
   }

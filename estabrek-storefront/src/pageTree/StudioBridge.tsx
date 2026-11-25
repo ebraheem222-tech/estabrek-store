@@ -19,7 +19,7 @@ import { INTERACTION_EVENTS } from "@/lib/visualControls";
 import { emitVisualInteraction } from "@/lib/visualInteractions";
 import { collectSelectionParts, domPartPath, partId, SELECTION_HELPERS, type PartKind, type PartOwner } from "./selectionParts";
 import { inkOf } from "./studioInk";
-import { drawnWordAt } from "@/library/runtime";
+import { drawnWordAt, libWordsIn, spelledAt } from "@/library/runtime";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -49,7 +49,7 @@ export type StudioItem =
   | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: StudioRect }
   /** Anything else seen inside an owner: a picture, words, a link, a drawing. */
   | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string; within?: string; rect: StudioRect }
-  | { kind: "detail"; owner: string; key: string; target: string; lookKind: PartKind; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; within?: string; rect: StudioRect; geometry?: NodeGeometry }
+  | { kind: "detail"; owner: string; key: string; target: string; lookKind: PartKind; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; within?: string; rect: StudioRect; geometry?: NodeGeometry; tag?: "canvas" | "svg"; words?: Array<{ src: string; shown: string }> }
   /** The rose home's scenes: seasons, collection stories, Instagram, the fabric study ([data-rose-block]). */
   | { kind: "block"; block: string; rect: StudioRect };
 export type StudioLayout = {
@@ -400,7 +400,11 @@ export function measureStudio(): StudioItem[] {
     const retained = owner?.retained?.has(part.target);
     if ((rect.w < 3 || rect.h < 3 || !shown(part.el, owner?.el ?? part.el)) && !retained) continue;
     markPick(part.el, partId(part.owner, part.key));
-    items.push({ kind: "detail", owner: part.owner, key: part.key, target: part.target, lookKind: part.kind, ...(part.propPath ? { propPath: part.propPath, ...(part.propLine !== undefined ? { propLine: part.propLine } : {}) } : {}), ...(part.text !== undefined ? { text: part.text } : {}), ...(part.label ? { label: part.label } : {}), ...(part.name ? { name: part.name } : {}), count: part.count, ...(part.within ? { within: part.within } : {}), rect, ...(part.el instanceof HTMLElement && rect.w > 0 && rect.h > 0 && rect.y < scrollY + innerHeight + 300 && rect.y + rect.h > scrollY - 300 ? { geometry: nodeGeometry(part.el, planes) } : {}) });
+    // Inside a theme library piece: a drawing says so, and a part says which of the piece's words it shows or
+    // draws (runtime.tsx libWordsIn), for the editor's panel to offer them.
+    const drawing = part.el.localName === "canvas" ? "canvas" : part.el.localName === "svg" ? "svg" : undefined;
+    const lib = owner && (part.kind === "text" || part.kind === "button" || drawing === "canvas") && part.el.closest(".lx-scope") ? libWordsIn(part.el) : [];
+    items.push({ kind: "detail", owner: part.owner, key: part.key, target: part.target, lookKind: part.kind, ...(drawing ? { tag: drawing } : {}), ...(lib.length ? { words: lib } : {}), ...(part.propPath ? { propPath: part.propPath, ...(part.propLine !== undefined ? { propLine: part.propLine } : {}) } : {}), ...(part.text !== undefined ? { text: part.text } : {}), ...(part.label ? { label: part.label } : {}), ...(part.name ? { name: part.name } : {}), count: part.count, ...(part.within ? { within: part.within } : {}), rect, ...(part.el instanceof HTMLElement && rect.w > 0 && rect.h > 0 && rect.y < scrollY + innerHeight + 300 && rect.y + rect.h > scrollY - 300 ? { geometry: nodeGeometry(part.el, planes) } : {}) });
   }
   return items;
 }
@@ -753,7 +757,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       finishLib(true);
       const host = document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(nodeId)}"]`);
       // The text under the point: its own box (display: contents has none), so by its text's place on the page.
-      let el: HTMLElement | null = null;
+      let el: Element | null = null;
       if (host) {
         for (const at of document.elementsFromPoint(x, y)) {
           if (!host.contains(at)) continue;
@@ -769,29 +773,34 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         }
       }
       let e: NonNullable<typeof libEdit>;
-      if (el) {
+      if (el instanceof HTMLElement) {
         e = { el, before: el.textContent ?? "", nodeId, from: el.getAttribute("data-lx-src") ?? "", done: false };
         el.style.display = "inline";
+      } else if (el) {
+        // Words in an SVG drawing (a tspan: it can't be written in): a box over them.
+        const shown = el.textContent ?? "";
+        e = { el: drawnWordBox({ shown, rect: el.getBoundingClientRect() }, x, y), before: shown, nodeId, from: el.getAttribute("data-lx-src") ?? "", done: false, float: true };
       } else {
-        // Words drawn on a canvas under the point: a box over them (or at the point, for a word drawn in particles).
-        const drawn = host ? drawnWordAt(host, x, y) : null;
-        if (!drawn) return send({ type: "libWordCancelled", nodeId, none: true });
-        el = drawnWordBox(drawn, x, y);
-        e = { el, before: drawn.shown, nodeId, from: drawn.src, done: false, float: true };
+        // Words spelled out in letters that move one by one, or drawn on a canvas, under the point: a box over them
+        // (or at the point, for a word drawn in particles).
+        const found = host ? spelledAt(host, x, y) ?? drawnWordAt(host, x, y) : null;
+        if (!found) return send({ type: "libWordCancelled", nodeId, none: true });
+        e = { el: drawnWordBox(found, x, y), before: found.shown, nodeId, from: found.src, done: false, float: true };
       }
       libEdit = e;
-      el.style.outline = "2px solid #a43b64";
-      el.style.outlineOffset = "3px";
-      el.setAttribute("contenteditable", "plaintext-only");
-      if (el.contentEditable !== "plaintext-only") el.setAttribute("contenteditable", "true");
-      focusInFrame(el);
+      const w = e.el;
+      w.style.outline = "2px solid #a43b64";
+      w.style.outlineOffset = "3px";
+      w.setAttribute("contenteditable", "plaintext-only");
+      if (w.contentEditable !== "plaintext-only") w.setAttribute("contenteditable", "true");
+      focusInFrame(w);
       const range = document.createRange();
-      range.selectNodeContents(el);
+      range.selectNodeContents(w);
       const sel = window.getSelection();
       sel?.removeAllRanges();
       sel?.addRange(range);
-      e.stop = stayFocused(el, () => libEdit === e && !e.done, () => finishLib(true));
-      el.addEventListener("keydown", (k: KeyboardEvent) => {
+      e.stop = stayFocused(w, () => libEdit === e && !e.done, () => finishLib(true));
+      w.addEventListener("keydown", (k: KeyboardEvent) => {
         k.stopPropagation();
         if (k.key === "Escape") {
           k.preventDefault();
@@ -802,7 +811,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         }
       });
       // A link or a button around it doesn't go anywhere while it's being written.
-      el.addEventListener("click", (c) => { c.preventDefault(); c.stopPropagation(); }, true);
+      w.addEventListener("click", (c) => { c.preventDefault(); c.stopPropagation(); }, true);
     };
 
     /** A box to write a canvas's words in, over where they're drawn (on the page, above everything). */
