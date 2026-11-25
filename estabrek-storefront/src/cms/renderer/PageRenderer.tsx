@@ -1467,7 +1467,7 @@ function Section({
               </h3>
             ) : null}
             <div
-              className={cls("prose prose-invert max-w-none", htmlEffectClass)}
+              className={cls("prose cms-prose max-w-none", htmlEffectClass)}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(d.html ?? "") }}
             />
           </SectionTextScope>
@@ -1487,7 +1487,7 @@ function Section({
       <section {...attrs} className={cls("rounded-3xl border border-white/8 bg-white/3 p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-4xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            <div className={cls("prose prose-invert max-w-none", htmlEffectClass)} dangerouslySetInnerHTML={{ __html: sanitizeHtml(d.html ?? "") }} />
+            <div className={cls("prose cms-prose max-w-none", htmlEffectClass)} dangerouslySetInnerHTML={{ __html: sanitizeHtml(d.html ?? "") }} />
           </SectionTextScope>
           {componentsBlock}
         </div>

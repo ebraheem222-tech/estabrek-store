@@ -15,11 +15,19 @@ test.afterAll(async ({ request }) => {
 });
 
 const quiz = (page: Page) => page.getByTestId("razan-quiz");
+/** Taps «رزان بتختارلك» until her quiz shows: the page may still be waking up when it's first there to tap. */
+async function openQuiz(page: Page) {
+  const open = page.getByRole("button", { name: /رزان بتختارلك/ });
+  await expect(async () => {
+    if (!(await quiz(page).isVisible())) await open.click();
+    await expect(quiz(page)).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30_000 });
+}
 
 test("from the shop page: a few taps, pieces with reasons, 👍/👎, and her taste kept on the device", async ({ page }) => {
   await setRazan(page, { styleQuiz: { enabled: true, results: 6, variety: "medium" }, seasonal: { mode: "off" } });
   await page.goto("/shop");
-  await page.getByRole("button", { name: /رزان بتختارلك/ }).click();
+  await openQuiz(page);
   await expect(quiz(page)).toBeVisible();
   await quiz(page).getByRole("button", { name: "يلا نبلّش" }).click();
   await quiz(page).getByRole("button", { name: /الأعراس/ }).click();
@@ -59,7 +67,7 @@ test("next time she can reuse her answers; nothing close points to «اطلبي 
   await setRazan(page, { styleQuiz: { enabled: true }, seasonal: { mode: "off" } });
   await page.goto("/shop");
   await page.evaluate(() => localStorage.setItem("razan_taste", JSON.stringify({ answers: { colors: [], budgetMax: 20 }, liked: [], disliked: [], at: Date.now() })));
-  await page.getByRole("button", { name: /رزان بتختارلك/ }).click();
+  await openQuiz(page);
   await quiz(page).getByRole("button", { name: /اختياراتي من آخر مرة/ }).click();
   await expect(quiz(page)).toContainText("ما لقيت إشي");
   await expect(quiz(page).getByRole("link", { name: "احكي معنا" })).toHaveAttribute("href", "/contact");

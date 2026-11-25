@@ -51,7 +51,7 @@ test.describe("a community's pulse and its codes", () => {
     await expect(dc.getByTestId("game-copy")).toHaveCount(0);
     await expect(dc).toContainText("Gamers' Diwan");
     // Its chart's top is its own busiest hour, not its members (far more than are ever on).
-    await expect(dc.locator('[data-gp="bar"]').last()).toHaveAttribute("style", /height: 100%/);
+    await expect(dc.locator('[data-gp="bar"]').last()).toHaveAttribute("style", /height: ?100%/);
     const rb = node(page, "rb");
     await expect(rb.getByTestId("game-players")).toHaveText("4,321 playing now");
     await expect(rb.getByTestId("game-join")).toHaveAttribute("href", "https://www.roblox.com/games/1234567890");
@@ -89,8 +89,8 @@ test.describe("a community's pulse and its codes", () => {
     await expect(card.getByTestId("game-copy")).toHaveCount(0);
     await expect(card.getByTestId("game-join")).toHaveAttribute("href", "https://panel.playcloud.example/");
     // The day: a full bar for each hour it was up, a short one for the hour it was down.
-    await expect(card.locator('[data-gp="bar"]').nth(4)).toHaveAttribute("style", /height: 100%/);
-    await expect(card.locator('[data-gp="bar"]').nth(5)).toHaveAttribute("style", /height: 12%/);
+    await expect(card.locator('[data-gp="bar"]').nth(4)).toHaveAttribute("style", /height: ?100%/);
+    await expect(card.locator('[data-gp="bar"]').nth(5)).toHaveAttribute("style", /height: ?12%/);
     const machines = node(page, "nodes").locator("article");
     await expect(machines.nth(0).getByTestId("server-web")).toHaveText("Up 38 ms");
     await expect(machines.nth(1).getByTestId("server-web")).toHaveText("Down");

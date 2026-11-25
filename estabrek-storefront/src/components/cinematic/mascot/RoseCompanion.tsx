@@ -10,7 +10,7 @@ import { whatsappLink } from "@/lib/whatsapp";
 import { useLanguage } from "../Language";
 import { RoseMascot, useSceneRoseOnScreen, type MascotHandle } from "./RoseMascot";
 import { useRazan } from "@/store/razan";
-import { RAZAN_OPEN_EVENT, isPhone, onQuietPage, razanCount, razanMaySpeak } from "@/lib/razanRuntime";
+import { RAZAN_OPEN_EVENT, isPhone, onQuietPage, razanCount, razanMaySpeak, razanWanted } from "@/lib/razanRuntime";
 import { noteVisit, piecesSeenThisVisit } from "@/lib/razanHistory";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
 import { RazanHistory } from "./RazanHistory";
@@ -254,14 +254,18 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
 
   // Anywhere in the shop can open her panel on a tab (e.g. «رزان بتختارلك» on the shop page).
   useEffect(() => {
-    const onOpen = (e: Event) => {
-      const want = (e as CustomEvent<string>).detail;
+    const openOn = (want: string | null) => {
+      razanWanted();
       setOffer(null);
       setTab(want === "quiz" || want === "history" || want === "help" ? want : "chat");
       setOpen(true);
       rose.current?.wave();
     };
+    const onOpen = (e: Event) => openOn((e as CustomEvent<string>).detail);
     window.addEventListener(RAZAN_OPEN_EVENT, onOpen);
+    // Asked for before she was here (her panel loads after the page wakes up).
+    const early = razanWanted();
+    if (early) openOn(early);
     return () => window.removeEventListener(RAZAN_OPEN_EVENT, onOpen);
   }, []);
 

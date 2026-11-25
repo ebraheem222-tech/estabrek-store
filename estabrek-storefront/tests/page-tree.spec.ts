@@ -7,6 +7,7 @@ import { Fragment, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { hasRich, parseRich, richNodes } from "../src/pageTree/rich";
 import { countUpText, scrambleChars } from "../src/pageTree/textMotion";
+import { placeStreamedHtml } from "./streamed";
 import { PARTICLE_KINDS, particleOptions, particlesOf } from "../src/pageTree/particles";
 import { model3dMoves, model3dOf } from "../src/pageTree/model3d";
 
@@ -19,10 +20,12 @@ const setTree = async (request: APIRequestContext, on: boolean) => {
 };
 /** The page's server HTML, from <main> to its end (no scripts run). */
 const mainHtml = async (request: APIRequestContext, path: string) => {
-  // A cold page can stream parts of <main> after it (a pending "<!--$?-->" placeholder, filled in later): fetch
-  // again until the page comes whole, so two fetches compare like for like.
-  let html = await (await request.get(path)).text();
-  for (let i = 0; i < 4 && html.slice(html.indexOf("<main"), html.lastIndexOf("</main>")).includes("<!--$?-->"); i++) html = await (await request.get(path)).text();
+  // A page streams parts of <main> after it (a pending "<!--$?-->" placeholder, filled in later in the same answer;
+  // Next 16's dev server always does): put them in place (tests/streamed.ts), and fetch again while one is still
+  // missing, so two fetches compare like for like.
+  const fetchWhole = async () => placeStreamedHtml(await (await request.get(path)).text());
+  let html = await fetchWhole();
+  for (let i = 0; i < 4 && html.slice(html.indexOf("<main"), html.lastIndexOf("</main>")).includes("<!--$?-->"); i++) html = await fetchWhole();
   const start = html.indexOf("<main");
   const end = html.lastIndexOf("</main>");
   expect(start, `${path} has a <main>`).toBeGreaterThan(-1);
@@ -30,6 +33,8 @@ const mainHtml = async (request: APIRequestContext, path: string) => {
   return html
     .slice(start, end + 7)
     .replace(/<template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING"[^>]*><\/template>/g, "<template/>")
+    // Next 16 writes the same note without its old name.
+    .replace(/<template data-dgst="" data-msg="Switched to client rendering because a component requested it\."[^>]*><\/template>/g, "<template/>")
     .replace(/\?v=\d+/g, "");
 };
 
