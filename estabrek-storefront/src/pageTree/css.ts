@@ -1039,6 +1039,8 @@ export const BASE_CSS = [
   ".pt-inner{max-width:1200px;margin-inline:auto;padding-inline:16px}",
   // Sections whose grounds span the whole screen (a premium theme's) meet with no gap between them.
   "[data-cms-sections]>.pt-bleed-wrap{margin-block:0!important}",
+  // The CMS layout's box, dropped by a page whose sections bleed (tree.ts WIDE_PAGE_SCRIPT on the home).
+  ".cms-page-layout.cms-page-wide{max-width:none;width:100%;margin-inline:0;padding:0}",
   // An element's two extra layers (before behind its content, after too unless in front) and its words as a piece.
   ".pt-pc{position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit}.pt-pc-front{z-index:2}",
   ".pt-pc-in{display:inline-block;position:relative;will-change:transform}:is(h1,h2,h3,h4,h5,h6,p)>.pt-pc-in{display:block}",

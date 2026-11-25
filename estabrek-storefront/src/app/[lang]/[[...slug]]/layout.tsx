@@ -11,12 +11,14 @@ export default async function SiteLayout(props: { children: React.ReactNode; par
   const slug = paramsToSlug(params);
   // The segment's loading.tsx streams inside this layout. Resolve missing custom
   // pages above that boundary so their HTTP status can still be404.
-  const page = await getPageBySlug(slug, routeLang(params)).catch(() => null);
+  const page = slug === "/" ? null : await getPageBySlug(slug, routeLang(params));
   if (slug !== "/" && !page) notFound();
-  // A page whose sections spread their ground over the whole screen (a premium theme's) drops the side margins.
+  // A page whose sections spread their ground over the whole screen (a premium theme's) drops the side margins. The
+  // home isn't read here (waiting on it before anything is drawn made the home's own scripts late, the home order
+  // test's side B among them): a home that bleeds drops them itself (renderCmsPage.tsx, WIDE_PAGE_SCRIPT).
   const wide = (page as { format?: number } | null)?.format === 2 && bleedTree((page as { tree?: unknown }).tree);
   return (
-    <main id="main-content" tabIndex={-1} className={wide ? "cms-page-layout cms-page-wide w-full" : "cms-page-layout mx-auto max-w-6xl px-4 py-8"} data-page-wide={wide ? "" : undefined}>
+    <main id="main-content" tabIndex={-1} className={wide ? "cms-page-layout cms-page-wide w-full" : "cms-page-layout mx-auto max-w-6xl px-4 py-8"} data-page-wide={wide ? "" : undefined} suppressHydrationWarning>
       {children}
     </main>
   );
