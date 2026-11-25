@@ -67,7 +67,7 @@ const ContactFormThemesDemo: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white py-12">
+      <div className="bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">📬 Contact Form Templates</h1>
           <p className="text-emerald-100 text-lg">100 Ready-to-Use Contact Form Designs</p>
@@ -122,7 +122,7 @@ const ContactFormThemesDemo: React.FC = () => {
             placeholder="🔍 Search forms by name, category, or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-xs"
           />
         </div>
 
@@ -175,11 +175,11 @@ const ContactFormThemesDemo: React.FC = () => {
                 onClick={() => setSelectedTheme(selectedTheme === theme.id ? null : theme.id)}
               >
                 {/* Preview Thumbnail */}
-                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                <div className="aspect-4/3 bg-gray-100 relative overflow-hidden">
                   <div className="absolute inset-0 transform scale-[0.35] origin-top-left w-[285%] h-[285%]">
                     {renderFormPreview(theme)}
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
                   <span className="absolute top-2 right-2 text-xs font-medium px-2 py-1 rounded-full bg-black/50 text-white">
                     #{index + 1}
                   </span>

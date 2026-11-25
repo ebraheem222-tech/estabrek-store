@@ -142,7 +142,7 @@ export default function FallbackContact() {
               className="info-card"
               style={{ animationDelay: `${i * 100}ms` }}
             >
-              <div className={`icon-wrapper bg-gradient-to-br ${item.color}`}>
+              <div className={`icon-wrapper bg-linear-to-br ${item.color}`}>
                 {item.icon}
               </div>
               <div className="info-content">

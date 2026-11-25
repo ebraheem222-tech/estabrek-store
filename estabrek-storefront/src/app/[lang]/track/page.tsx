@@ -3,7 +3,8 @@ import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
 import { routeLang } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
 
-export async function generateMetadata({ params }: { params: { lang: string } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  const params = await props.params;
   return { title: tr(routeLang(params), "تابعي طلبكِ", "Track your order"), robots: { index: false, follow: false } };
 }
 

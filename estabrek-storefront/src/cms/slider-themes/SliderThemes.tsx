@@ -315,12 +315,12 @@ export const SliderBasicSimple: React.FC<SliderProps> = ({
             {slide.image ? (
               <img src={slide.image} alt={slide.title || ''} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <div className="w-full h-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                 <span className="text-white text-2xl font-bold">{slide.title || `Slide ${index + 1}`}</span>
               </div>
             )}
             {(slide.title || slide.description) && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+              <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent p-6">
                 {slide.title && <h3 className="text-white text-xl font-bold">{slide.title}</h3>}
                 {slide.description && <p className="text-white/80">{slide.description}</p>}
               </div>
@@ -369,7 +369,7 @@ export const SliderProductCarousel: React.FC<SliderProps> = ({
           {slides.map((slide) => (
             <div 
               key={slide.id} 
-              className="flex-shrink-0"
+              className="shrink-0"
               style={{ width: `calc(${100 / slidesToShow}% - ${gap * (slidesToShow - 1) / slidesToShow}px)` }}
             >
               <div className="bg-white rounded-xl shadow-md overflow-hidden group hover:shadow-xl transition-shadow">
@@ -382,7 +382,7 @@ export const SliderProductCarousel: React.FC<SliderProps> = ({
                     </div>
                   )}
                   {slide.badge && (
-                    <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">{slide.badge}</span>
+                    <span className="absolute top-3 left-3 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-sm">{slide.badge}</span>
                   )}
                 </div>
                 <div className="p-4">
@@ -446,13 +446,13 @@ export const SliderHeroFullscreen: React.FC<SliderProps> = ({
           {slide.image ? (
             <img src={slide.image} alt={slide.title || ''} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800" />
+            <div className="w-full h-full bg-linear-to-br from-gray-900 to-gray-800" />
           )}
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-white px-4 max-w-4xl">
               {slide.badge && (
-                <span className="inline-block px-4 py-2 mb-6 text-sm font-medium bg-white/20 backdrop-blur-sm rounded-full">{slide.badge}</span>
+                <span className="inline-block px-4 py-2 mb-6 text-sm font-medium bg-white/20 backdrop-blur-xs rounded-full">{slide.badge}</span>
               )}
               {slide.title && <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6">{slide.title}</h2>}
               {slide.description && <p className="text-xl md:text-2xl text-white/80 mb-8">{slide.description}</p>}
@@ -604,7 +604,7 @@ export const SliderGalleryThumbnails: React.FC<SliderProps> = ({
           <button
             key={slide.id}
             onClick={() => setCurrentIndex(index)}
-            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${index === currentIndex ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-transparent hover:border-gray-300'}`}
+            className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${index === currentIndex ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-transparent hover:border-gray-300'}`}
           >
             {slide.image ? (
               <img src={slide.image} alt="" className="w-full h-full object-cover" />
@@ -646,15 +646,15 @@ export const SliderGamingNeon: React.FC<SliderProps> = ({
               {slide.image ? (
                 <img src={slide.image} alt={slide.title || ''} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-purple-900/50 to-cyan-900/50" />
+                <div className="w-full h-full bg-linear-to-br from-purple-900/50 to-cyan-900/50" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-gray-950 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-8">
                 {slide.badge && (
-                  <span className="inline-block px-3 py-1 mb-4 text-sm font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded">{slide.badge}</span>
+                  <span className="inline-block px-3 py-1 mb-4 text-sm font-bold bg-linear-to-r from-purple-500 to-cyan-500 text-white rounded-sm">{slide.badge}</span>
                 )}
                 {slide.title && (
-                  <h3 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400">{slide.title}</h3>
+                  <h3 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-pink-500 to-cyan-400">{slide.title}</h3>
                 )}
                 {slide.description && <p className="text-gray-400 mt-2 max-w-2xl">{slide.description}</p>}
               </div>
@@ -679,7 +679,7 @@ export const SliderGamingNeon: React.FC<SliderProps> = ({
               <button
                 key={i}
                 onClick={() => goToSlide(i)}
-                className={`cms-slider-dot cms-slider-dot--line h-1 rounded-full transition-all ${i === currentIndex ? 'is-active w-8 bg-gradient-to-r from-purple-500 to-cyan-500' : 'is-inactive w-4 bg-gray-700 hover:bg-gray-600'}`}
+                className={`cms-slider-dot cms-slider-dot--line h-1 rounded-full transition-all ${i === currentIndex ? 'is-active w-8 bg-linear-to-r from-purple-500 to-cyan-500' : 'is-inactive w-4 bg-gray-700 hover:bg-gray-600'}`}
               />
             ))}
           </div>
@@ -702,11 +702,11 @@ export const SliderCorporateClients: React.FC<SliderProps> = ({
       <div className="relative">
         <div className="flex animate-scroll">
           {[...slides, ...slides].map((slide, index) => (
-            <div key={`${slide.id}-${index}`} className="flex-shrink-0 px-8">
+            <div key={`${slide.id}-${index}`} className="shrink-0 px-8">
               {slide.image ? (
                 <img src={slide.image} alt={slide.title || ''} className="h-12 w-auto grayscale hover:grayscale-0 transition-all opacity-60 hover:opacity-100" />
               ) : (
-                <div className="h-12 w-32 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-sm">
+                <div className="h-12 w-32 bg-gray-200 rounded-sm flex items-center justify-center text-gray-400 text-sm">
                   {slide.title || 'Logo'}
                 </div>
               )}
@@ -779,7 +779,7 @@ export const SliderCreativeSplit: React.FC<SliderProps> = ({
               {slide.image ? (
                 <img src={slide.image} alt={slide.title || ''} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
+                <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900" />
               )}
             </div>
           ))}

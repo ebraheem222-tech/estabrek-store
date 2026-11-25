@@ -33,8 +33,8 @@ export function RecentActivityPopup() {
   if (!item) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 w-72 rounded-2xl border border-white/10 bg-[color:var(--surface)]/95 p-3 shadow-lg backdrop-blur">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">نشاط مؤخراً</div>
+    <div className="fixed bottom-4 left-4 z-40 w-72 rounded-2xl border border-white/10 bg-(--surface)/95 p-3 shadow-lg backdrop-blur-sm">
+      <div className="text-[10px] uppercase tracking-wider text-(--muted)">نشاط مؤخراً</div>
       <div className="mt-2 flex items-center gap-3">
         {item.image ? (
           <LoadingImg
@@ -49,11 +49,11 @@ export function RecentActivityPopup() {
         <div className="min-w-0">
           <Link
             href={`/p/${item.slug}`}
-            className="block text-sm font-semibold text-[var(--text)] hover:text-[var(--accent)] truncate"
+            className="block text-sm font-semibold text-(--text) hover:text-(--accent) truncate"
           >
             {item.title}
           </Link>
-          <div className="text-xs text-[var(--muted)]">منذ {formatTimeAgo(item.viewedAt)}</div>
+          <div className="text-xs text-(--muted)">منذ {formatTimeAgo(item.viewedAt)}</div>
         </div>
       </div>
     </div>

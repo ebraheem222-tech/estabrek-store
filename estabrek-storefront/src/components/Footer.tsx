@@ -22,12 +22,12 @@ function FooterItem({ item }: { item: NavItem }) {
       className={linkClassName}
     >
       <span className="relative z-10">{item.label}</span>
-      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
+      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-(--accent) to-(--accent-2) group-hover:w-full transition-all duration-300"></span>
     </a>
   ) : (
     <Link href={href} className={linkClassName}>
       <span className="relative z-10">{item.label}</span>
-      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
+      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-(--accent) to-(--accent-2) group-hover:w-full transition-all duration-300"></span>
     </Link>
   );
 
@@ -66,10 +66,10 @@ export function Footer({
 
   const bgClass =
     bgPreset === "glass"
-      ? "border-t border-white/[0.08] bg-white/[0.04] backdrop-blur-xl"
+      ? "border-t border-white/8 bg-white/4 backdrop-blur-xl"
       : bgPreset === "gradient"
-      ? "border-t border-[var(--accent)]/20 bg-gradient-to-b from-[var(--surface)]/80 via-[var(--surface-2)]/60 to-black/70 backdrop-blur-md"
-      : "border-t border-white/[0.08] bg-black/30";
+      ? "border-t border-(--accent)/20 bg-linear-to-b from-(--surface)/80 via-(--surface-2)/60 to-black/70 backdrop-blur-md"
+      : "border-t border-white/8 bg-black/30";
 
   const columns: any[] = Array.isArray(cfg?.columns) ? cfg.columns : [];
   const socials = cfg?.social && typeof cfg.social === "object" ? cfg.social : {};
@@ -114,12 +114,12 @@ export function Footer({
                           {/^https?:\/\//.test(String(l.href || "")) ? (
                             <a href={String(l.href)} target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white transition-all duration-200 hover:translate-x-1 inline-block relative group">
                               <span className="relative z-10">{l.label || l.href}</span>
-                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-(--accent) to-(--accent-2) group-hover:w-full transition-all duration-300"></span>
                             </a>
                           ) : (
                             <Link href={String(l.href || "#")} className="text-sm text-white/70 hover:text-white transition-all duration-200 hover:translate-x-1 inline-block relative group">
                               <span className="relative z-10">{l.label || l.href}</span>
-                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-(--accent) to-(--accent-2) group-hover:w-full transition-all duration-300"></span>
                             </Link>
                           )}
                         </div>
@@ -148,7 +148,7 @@ export function Footer({
                     <div className="text-sm font-semibold text-white/90">{newsletter.title || "اشترك بالنشرة"}</div>
                     <div className="mt-2 flex gap-2">
                       <input
-                        className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-white/10"
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-hidden focus:ring-2 focus:ring-white/10"
                         placeholder={newsletter.placeholder || "email"}
                       />
                       <button className="rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15">
@@ -185,7 +185,7 @@ export function Footer({
         </div>
 
         {bottom?.enabled !== false ? (
-          <div className="border-t border-white/[0.08] py-4 text-center text-xs text-white/50">
+          <div className="border-t border-white/8 py-4 text-center text-xs text-white/50">
             {bottom?.copyright ? bottom.copyright : (
               <>© {new Date().getFullYear()} {site.siteName || "Store"}</>
             )}
@@ -196,7 +196,7 @@ export function Footer({
   }
 
   return (
-    <footer data-studio-region="footer" className="footer-candy-glass font-arabic mt-10 border-t border-white/[0.08] bg-black/30">
+    <footer data-studio-region="footer" className="footer-candy-glass font-arabic mt-10 border-t border-white/8 bg-black/30">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-4">
         <div className="space-y-2">
           <div className="text-base font-semibold">{site.siteName || "Store"}</div>
@@ -225,7 +225,7 @@ export function Footer({
         </div>
       </div>
 
-      <div className="border-t border-white/[0.08] py-4 text-center text-xs text-white/50">
+      <div className="border-t border-white/8 py-4 text-center text-xs text-white/50">
         © {new Date().getFullYear()} {site.siteName || "Store"}
       </div>
     </footer>

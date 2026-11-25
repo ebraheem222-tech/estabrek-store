@@ -18,7 +18,7 @@ const STEPS = 10;
  * are measured when the page is laid out, and colour transitions wait while the palette moves (data-palette-moving,
  * cinematic.css).
  */
-export function ScrollPalette({ root }: { root: RefObject<HTMLDivElement> }) {
+export function ScrollPalette({ root }: { root: RefObject<HTMLDivElement | null> }) {
   const theme = useRoseTheme();
   const settings = useStorefrontSettings();
   const apply = theme?.apply, reset = theme?.reset;

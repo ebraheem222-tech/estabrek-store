@@ -75,7 +75,7 @@ export function Product360View({
   
   const containerRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
-  const autoPlayRef = useRef<NodeJS.Timeout>();
+  const autoPlayRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const totalFrames = images.length;
 

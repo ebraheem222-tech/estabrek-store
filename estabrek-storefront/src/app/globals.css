@@ -1,11 +1,1199 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source(none);
+/* Classes are looked for where Tailwind 3 looked (its config's content): the shop's pages, components and CMS
+   renderer. The page builder (src/pageTree), the themes and the library keep their class names to themselves. */
+@source "../app";
+@source "../components";
+@source "../cms";
+@plugin "@tailwindcss/typography";
 
 /* ============================================================ */
 /* ULTRA PREMIUM HOME PAGE STYLES */
 /* ============================================================ */
-@import '../../home-premium-styles.css';
+@import '../../home-premium-styles.css' layer(utilities);
+
+@theme {
+  --color-accent-500: hsl(220 90% 60%);
+  --color-accent-600: hsl(220 90% 52%);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-gradient {
+  /* Text gradient */
+  @apply bg-clip-text text-transparent bg-linear-to-r from-white to-white/60;
+}
+
+@utility no-scrollbar {
+  /* Hide scrollbar but keep functionality */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer utilities {
+  /* Not inside a theme library piece (src/library, .lx-scope): it keeps its own colours. */
+  [data-theme="light"] .text-white:where(:not(.lx-scope *)) { color: var(--text) !important; }
+  [data-theme="light"] .text-white\/90:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 90%, transparent) !important; }
+  [data-theme="light"] .text-white\/85:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 85%, transparent) !important; }
+  [data-theme="light"] .text-white\/80:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 80%, transparent) !important; }
+  [data-theme="light"] .text-white\/75:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 75%, transparent) !important; }
+  [data-theme="light"] .text-white\/70:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 70%, transparent) !important; }
+  [data-theme="light"] .text-white\/60:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 60%, transparent) !important; }
+  [data-theme="light"] .text-white\/50:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 50%, transparent) !important; }
+  [data-theme="light"] .text-white\/40:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 40%, transparent) !important; }
+  [data-theme="light"] .text-white\/30:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 30%, transparent) !important; }
+  [data-theme="light"] .text-white\/20:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 20%, transparent) !important; }
+  [data-theme="light"] .border-white\/10:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/15:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/20:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/25:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/30:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/\[0\.08\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .border-white\/8:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/\[0\.10\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .border-white\/10:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/\[0\.12\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .border-white\/12:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .border-white\/\[0\.15\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .border-white\/15:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
+  [data-theme="light"] .bg-black\/\[0\.04\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-black\/4:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 4%, var(--surface) 96% ) !important; }
+  [data-theme="light"] .bg-black\/20:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 12%, var(--surface) 88% ) !important; }
+  [data-theme="light"] .bg-black\/30:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 16%, var(--surface) 84% ) !important; }
+  [data-theme="light"] .bg-black\/40:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 20%, var(--surface) 80% ) !important; }
+  [data-theme="light"] .bg-black\/50:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 24%, var(--surface) 76% ) !important; }
+  [data-theme="light"] .bg-black\/60:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 30%, var(--surface) 70% ) !important; }
+  [data-theme="light"] .bg-black\/70:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 34%, var(--surface) 66% ) !important; }
+  [data-theme="light"] .bg-black\/80:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--text) 38%, var(--surface) 62% ) !important; }
+  [data-theme="light"] .bg-white\/5:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 95%, var(--text) 5% ) !important; }
+  [data-theme="light"] .bg-white\/10:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 90%, var(--text) 10% ) !important; }
+  [data-theme="light"] .bg-white\/15:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 86%, var(--text) 14% ) !important; }
+  [data-theme="light"] .bg-white\/20:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 82%, var(--text) 18% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.02\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/2:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 98%, var(--text) 2% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.03\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/3:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 97%, var(--text) 3% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.04\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/4:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 96%, var(--text) 4% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.06\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/6:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 94%, var(--text) 6% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.07\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/7:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 93%, var(--text) 7% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.08\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/8:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 92%, var(--text) 8% ) !important; }
+  [data-theme="light"] .bg-white\/\[0\.10\]:where(:not(.lx-scope *)),
+  [data-theme="light"] .bg-white\/10:where(:not(.lx-scope *)) { background-color: color-mix( in srgb, var(--surface) 90%, var(--text) 10% ) !important; }
+}
+
+@utility cms-inline-bg {
+  background-color: var(--cms-bg-color) !important;
+  background-image: none !important;
+}
+
+@utility cms-inline-text {
+  color: var(--cms-text-color) !important;
+}
+
+@utility cms-section-text {
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(:where(.cms-typography-color-override, .cms-text-effects)) {
+    color: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(.cms-typography-size-override) {
+    font-size: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(.cms-typography-weight-override) {
+    font-weight: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(.cms-typography-lineheight-override) {
+    line-height: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(:where(.cms-typography-letterspacing-override, .cms-text-effects)) {
+    letter-spacing: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(.cms-typography-align-override) {
+    text-align: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(.cms-typography-family-override) {
+    font-family: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(:where(.cms-typography-transform-override, .cms-text-effects)) {
+    text-transform: inherit;
+  }
+  &
+    :where(
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      li,
+      small,
+      blockquote,
+      div,
+      a,
+      button
+    ):not(:where(.cms-typography-decoration-override, .cms-text-effects)) {
+    text-decoration: inherit;
+  }
+}
+
+@utility cms-media-shape-rectangle {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: none;
+  }
+
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: none;
+  }
+}
+
+@utility cms-media-target {
+  .cms-media-shape-rectangle
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: none;
+  }
+
+  .cms-media-shape-rectangle:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: none;
+  }
+  .cms-media-shape-rounded
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 1.25rem;
+    clip-path: inset(0 round 1.25rem);
+  }
+
+  .cms-media-shape-rounded:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 1.25rem;
+    clip-path: inset(0 round 1.25rem);
+  }
+  .cms-media-shape-circle
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 9999px;
+    clip-path: circle(50% at 50% 50%);
+  }
+
+  .cms-media-shape-circle:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 9999px;
+    clip-path: circle(50% at 50% 50%);
+  }
+  .cms-media-shape-pill
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 9999px;
+    clip-path: inset(0 round 9999px);
+  }
+
+  .cms-media-shape-pill:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 9999px;
+    clip-path: inset(0 round 9999px);
+  }
+  .cms-media-shape-diamond
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+
+  .cms-media-shape-diamond:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+  .cms-media-shape-hexagon
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%);
+  }
+
+  .cms-media-shape-hexagon:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%);
+  }
+  .cms-media-shape-blob
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      16% 27%,
+      31% 8%,
+      55% 4%,
+      78% 10%,
+      92% 28%,
+      95% 54%,
+      84% 79%,
+      62% 93%,
+      35% 96%,
+      14% 85%,
+      5% 58%
+    );
+  }
+
+  .cms-media-shape-blob:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      16% 27%,
+      31% 8%,
+      55% 4%,
+      78% 10%,
+      92% 28%,
+      95% 54%,
+      84% 79%,
+      62% 93%,
+      35% 96%,
+      14% 85%,
+      5% 58%
+    );
+  }
+  .cms-media-shape-arch
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 9999px 9999px 1rem 1rem;
+    clip-path: inset(0 round 9999px 9999px 1rem 1rem);
+  }
+
+  .cms-media-shape-arch:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 9999px 9999px 1rem 1rem;
+    clip-path: inset(0 round 9999px 9999px 1rem 1rem);
+  }
+  .cms-media-shape-parallelogram
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%);
+  }
+
+  .cms-media-shape-parallelogram:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%);
+  }
+  .cms-media-shape-octagon
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      30% 0%,
+      70% 0%,
+      100% 30%,
+      100% 70%,
+      70% 100%,
+      30% 100%,
+      0% 70%,
+      0% 30%
+    );
+  }
+
+  .cms-media-shape-octagon:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      30% 0%,
+      70% 0%,
+      100% 30%,
+      100% 70%,
+      70% 100%,
+      30% 100%,
+      0% 70%,
+      0% 30%
+    );
+  }
+  .cms-media-shape-star
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      61% 35%,
+      98% 35%,
+      68% 57%,
+      79% 91%,
+      50% 70%,
+      21% 91%,
+      32% 57%,
+      2% 35%,
+      39% 35%
+    );
+  }
+
+  .cms-media-shape-star:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      61% 35%,
+      98% 35%,
+      68% 57%,
+      79% 91%,
+      50% 70%,
+      21% 91%,
+      32% 57%,
+      2% 35%,
+      39% 35%
+    );
+  }
+  .cms-media-shape-rhombus
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
+  }
+
+  .cms-media-shape-rhombus:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
+  }
+  .cms-media-shape-leaf
+    :where(
+      img,
+      video,
+      &,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      78% 10%,
+      92% 36%,
+      86% 66%,
+      68% 88%,
+      50% 100%,
+      32% 88%,
+      14% 66%,
+      8% 36%,
+      22% 10%
+    );
+  }
+
+  .cms-media-shape-leaf:is(
+    img,
+    video,
+    &,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      78% 10%,
+      92% 36%,
+      86% 66%,
+      68% 88%,
+      50% 100%,
+      32% 88%,
+      14% 66%,
+      8% 36%,
+      22% 10%
+    );
+  }
+}
+
+@utility cms-media-shape-rounded {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 1.25rem;
+    clip-path: inset(0 round 1.25rem);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 1.25rem;
+    clip-path: inset(0 round 1.25rem);
+  }
+}
+
+@utility cms-media-shape-circle {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 9999px;
+    clip-path: circle(50% at 50% 50%);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 9999px;
+    clip-path: circle(50% at 50% 50%);
+  }
+}
+
+@utility cms-media-shape-pill {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 9999px;
+    clip-path: inset(0 round 9999px);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 9999px;
+    clip-path: inset(0 round 9999px);
+  }
+}
+
+@utility cms-media-shape-diamond {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+}
+
+@utility cms-media-shape-hexagon {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%);
+  }
+}
+
+@utility cms-media-shape-blob {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      16% 27%,
+      31% 8%,
+      55% 4%,
+      78% 10%,
+      92% 28%,
+      95% 54%,
+      84% 79%,
+      62% 93%,
+      35% 96%,
+      14% 85%,
+      5% 58%
+    );
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      16% 27%,
+      31% 8%,
+      55% 4%,
+      78% 10%,
+      92% 28%,
+      95% 54%,
+      84% 79%,
+      62% 93%,
+      35% 96%,
+      14% 85%,
+      5% 58%
+    );
+  }
+}
+
+@utility cms-media-shape-arch {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 9999px 9999px 1rem 1rem;
+    clip-path: inset(0 round 9999px 9999px 1rem 1rem);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 9999px 9999px 1rem 1rem;
+    clip-path: inset(0 round 9999px 9999px 1rem 1rem);
+  }
+}
+
+@utility cms-media-shape-parallelogram {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%);
+  }
+}
+
+@utility cms-media-shape-octagon {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      30% 0%,
+      70% 0%,
+      100% 30%,
+      100% 70%,
+      70% 100%,
+      30% 100%,
+      0% 70%,
+      0% 30%
+    );
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      30% 0%,
+      70% 0%,
+      100% 30%,
+      100% 70%,
+      70% 100%,
+      30% 100%,
+      0% 70%,
+      0% 30%
+    );
+  }
+}
+
+@utility cms-media-shape-star {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      61% 35%,
+      98% 35%,
+      68% 57%,
+      79% 91%,
+      50% 70%,
+      21% 91%,
+      32% 57%,
+      2% 35%,
+      39% 35%
+    );
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      61% 35%,
+      98% 35%,
+      68% 57%,
+      79% 91%,
+      50% 70%,
+      21% 91%,
+      32% 57%,
+      2% 35%,
+      39% 35%
+    );
+  }
+}
+
+@utility cms-media-shape-rhombus {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
+  }
+}
+
+@utility cms-media-shape-leaf {
+  &
+    :where(
+      img,
+      video,
+      .cms-media-target,
+      [data-cms-media-surface],
+      [style*='background-image']
+    ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      78% 10%,
+      92% 36%,
+      86% 66%,
+      68% 88%,
+      50% 100%,
+      32% 88%,
+      14% 66%,
+      8% 36%,
+      22% 10%
+    );
+  }
+  &:is(
+    img,
+    video,
+    .cms-media-target,
+    [data-cms-media-surface],
+    [style*='background-image']
+  ) {
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0%,
+      78% 10%,
+      92% 36%,
+      86% 66%,
+      68% 88%,
+      50% 100%,
+      32% 88%,
+      14% 66%,
+      8% 36%,
+      22% 10%
+    );
+  }
+}
+
+@utility font-arabic {
+  font-family: var(--font-arabic, inherit);
+}
+
+@utility font-display {
+  font-family: var(--font-display, inherit);
+}
+
+@utility line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+@utility line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@utility line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@utility line-clamp-4 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+@utility line-clamp-5 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+@utility line-clamp-6 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+@utility animation-delay-0 {
+  /* Animation delay presets (ms) */
+  animation-delay: 0ms;
+}
+
+@utility animation-delay-75 {
+  animation-delay: 75ms;
+}
+
+@utility animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+@utility animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+@utility animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+@utility animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+@utility animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+@utility animation-delay-700 {
+  animation-delay: 700ms;
+}
+
+@utility animation-delay-1000 {
+  animation-delay: 1000ms;
+}
+
+@utility animation-duration-150 {
+  /* Animation duration presets (ms) */
+  animation-duration: 150ms;
+}
+
+@utility animation-duration-200 {
+  animation-duration: 200ms;
+}
+
+@utility animation-duration-300 {
+  animation-duration: 300ms;
+}
+
+@utility animation-duration-400 {
+  animation-duration: 400ms;
+}
+
+@utility animation-duration-600 {
+  animation-duration: 600ms;
+}
+
+@utility animation-duration-800 {
+  animation-duration: 800ms;
+}
+
+@utility animation-duration-1000 {
+  animation-duration: 1000ms;
+}
+
+@utility anim-fade-up {
+  /* Motion presets */
+  animation-name: fadeUp;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@utility anim-zoom-in {
+  animation-name: zoomIn;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@utility anim-slide-up {
+  animation-name: slideUp;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
 
 @keyframes slideInRight {
   from { transform: translateX(10px); opacity: 0.6; }
@@ -904,142 +2092,6 @@ html {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.18) transparent;
-}
-
-
-@layer utilities {
-  /* Text gradient */
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60;
-  }
-
-  /* Hide scrollbar but keep functionality */
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-  /* Not inside a theme library piece (src/library, .lx-scope): it keeps its own colours. */
-  [data-theme="light"] .text-white:where(:not(.lx-scope *)) { color: var(--text) !important; }
-  [data-theme="light"] .text-white\/90:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 90%, transparent) !important; }
-  [data-theme="light"] .text-white\/85:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 85%, transparent) !important; }
-  [data-theme="light"] .text-white\/80:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 80%, transparent) !important; }
-  [data-theme="light"] .text-white\/75:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 75%, transparent) !important; }
-  [data-theme="light"] .text-white\/70:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 70%, transparent) !important; }
-  [data-theme="light"] .text-white\/60:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 60%, transparent) !important; }
-  [data-theme="light"] .text-white\/50:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 50%, transparent) !important; }
-  [data-theme="light"] .text-white\/40:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 40%, transparent) !important; }
-  [data-theme="light"] .text-white\/30:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 30%, transparent) !important; }
-  [data-theme="light"] .text-white\/20:where(:not(.lx-scope *)) { color: color-mix(in srgb, var(--text) 20%, transparent) !important; }
-  [data-theme="light"] .border-white\/10:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/15:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/20:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/25:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/30:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/\[0\.08\]:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/\[0\.10\]:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/\[0\.12\]:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-  [data-theme="light"] .border-white\/\[0\.15\]:where(:not(.lx-scope *)) { border-color: var(--border) !important; }
-
-  [data-theme="light"] .bg-black\/\[0\.04\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 4%, var(--surface) 96%) !important; }
-  [data-theme="light"] .bg-black\/20:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 12%, var(--surface) 88%) !important; }
-  [data-theme="light"] .bg-black\/30:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 16%, var(--surface) 84%) !important; }
-  [data-theme="light"] .bg-black\/40:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 20%, var(--surface) 80%) !important; }
-  [data-theme="light"] .bg-black\/50:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 24%, var(--surface) 76%) !important; }
-  [data-theme="light"] .bg-black\/60:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 30%, var(--surface) 70%) !important; }
-  [data-theme="light"] .bg-black\/70:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 34%, var(--surface) 66%) !important; }
-  [data-theme="light"] .bg-black\/80:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--text) 38%, var(--surface) 62%) !important; }
-
-  [data-theme="light"] .bg-white\/5:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 95%, var(--text) 5%) !important; }
-  [data-theme="light"] .bg-white\/10:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 90%, var(--text) 10%) !important; }
-  [data-theme="light"] .bg-white\/15:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 86%, var(--text) 14%) !important; }
-  [data-theme="light"] .bg-white\/20:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 82%, var(--text) 18%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.02\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 98%, var(--text) 2%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.03\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 97%, var(--text) 3%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.04\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 96%, var(--text) 4%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.06\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 94%, var(--text) 6%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.07\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 93%, var(--text) 7%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.08\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 92%, var(--text) 8%) !important; }
-  [data-theme="light"] .bg-white\/\[0\.10\]:where(:not(.lx-scope *)) { background-color: color-mix(in srgb, var(--surface) 90%, var(--text) 10%) !important; }
-
-  .cms-inline-bg {
-    background-color: var(--cms-bg-color) !important;
-    background-image: none !important;
-  }
-
-  .cms-inline-text {
-    color: var(--cms-text-color) !important;
-  }
-
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-size-override) { font-size: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-weight-override) { font-weight: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-lineheight-override) { line-height: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-letterspacing-override,.cms-text-effects)) { letter-spacing: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-align-override) { text-align: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-family-override) { font-family: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-transform-override,.cms-text-effects)) { text-transform: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-decoration-override,.cms-text-effects)) { text-decoration: inherit; }
-
-  .cms-media-shape-rectangle :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-rectangle:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: none; }
-  .cms-media-shape-rounded :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-rounded:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 1.25rem; clip-path: inset(0 round 1.25rem); }
-  .cms-media-shape-circle :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-circle:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 9999px; clip-path: circle(50% at 50% 50%); }
-  .cms-media-shape-pill :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-pill:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 9999px; clip-path: inset(0 round 9999px); }
-  .cms-media-shape-diamond :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-diamond:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
-  .cms-media-shape-hexagon :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-hexagon:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%); }
-  .cms-media-shape-blob :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-blob:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(16% 27%, 31% 8%, 55% 4%, 78% 10%, 92% 28%, 95% 54%, 84% 79%, 62% 93%, 35% 96%, 14% 85%, 5% 58%); }
-  .cms-media-shape-arch :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-arch:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 9999px 9999px 1rem 1rem; clip-path: inset(0 round 9999px 9999px 1rem 1rem); }
-  .cms-media-shape-parallelogram :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-parallelogram:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%); }
-  .cms-media-shape-octagon :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-octagon:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); }
-  .cms-media-shape-star :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-star:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-  .cms-media-shape-rhombus :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-rhombus:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%); }
-  .cms-media-shape-leaf :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
-  .cms-media-shape-leaf:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(50% 0%, 78% 10%, 92% 36%, 86% 66%, 68% 88%, 50% 100%, 32% 88%, 14% 66%, 8% 36%, 22% 10%); }
-
-  .font-arabic { font-family: var(--font-arabic, inherit); }
-  .font-display { font-family: var(--font-display, inherit); }
-
-  .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
-  .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
-  .line-clamp-4 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
-  .line-clamp-5 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
-  .line-clamp-6 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; }
-
-  /* Animation delay presets (ms) */
-  .animation-delay-0 { animation-delay: 0ms; }
-  .animation-delay-75 { animation-delay: 75ms; }
-  .animation-delay-100 { animation-delay: 100ms; }
-  .animation-delay-150 { animation-delay: 150ms; }
-  .animation-delay-200 { animation-delay: 200ms; }
-  .animation-delay-300 { animation-delay: 300ms; }
-  .animation-delay-500 { animation-delay: 500ms; }
-  .animation-delay-700 { animation-delay: 700ms; }
-  .animation-delay-1000 { animation-delay: 1000ms; }
-
-  /* Animation duration presets (ms) */
-  .animation-duration-150 { animation-duration: 150ms; }
-  .animation-duration-200 { animation-duration: 200ms; }
-  .animation-duration-300 { animation-duration: 300ms; }
-  .animation-duration-400 { animation-duration: 400ms; }
-  .animation-duration-600 { animation-duration: 600ms; }
-  .animation-duration-800 { animation-duration: 800ms; }
-  .animation-duration-1000 { animation-duration: 1000ms; }
-
-  /* Motion presets */
-  .anim-fade-up { animation-name: fadeUp; animation-timing-function: ease-out; animation-fill-mode: both; }
-  .anim-zoom-in { animation-name: zoomIn; animation-timing-function: ease-out; animation-fill-mode: both; }
-  .anim-slide-up { animation-name: slideUp; animation-timing-function: ease-out; animation-fill-mode: both; }
 }
 
 
@@ -14657,4 +15709,25 @@ html[data-ab-hero="film"] .rose-opening {
 @media (max-width: 1023px) {
   html[data-bottom-nav] .store-bar-cart { display: none; }
   html[data-bottom-nav] .store-bar[data-only-cart] { display: none; }
+}
+/* The page builder's rich text (PageRenderer: RICH_TEXT, CUSTOM_HTML) speaks in the colour around it: the store's
+   words colour, or the section's own. It was the typography plugin's light greys, unreadable on a light store. */
+.cms-prose {
+  color: inherit;
+  --tw-prose-body: currentColor;
+  --tw-prose-headings: currentColor;
+  --tw-prose-bold: currentColor;
+  --tw-prose-links: currentColor;
+  --tw-prose-quotes: currentColor;
+  --tw-prose-code: currentColor;
+  --tw-prose-pre-code: currentColor;
+  --tw-prose-lead: color-mix(in srgb, currentColor 78%, transparent);
+  --tw-prose-counters: color-mix(in srgb, currentColor 70%, transparent);
+  --tw-prose-bullets: color-mix(in srgb, currentColor 55%, transparent);
+  --tw-prose-captions: color-mix(in srgb, currentColor 70%, transparent);
+  --tw-prose-hr: color-mix(in srgb, currentColor 18%, transparent);
+  --tw-prose-quote-borders: color-mix(in srgb, currentColor 22%, transparent);
+  --tw-prose-th-borders: color-mix(in srgb, currentColor 22%, transparent);
+  --tw-prose-td-borders: color-mix(in srgb, currentColor 14%, transparent);
+  --tw-prose-pre-bg: color-mix(in srgb, currentColor 8%, transparent);
 }

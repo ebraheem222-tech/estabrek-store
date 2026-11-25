@@ -297,12 +297,12 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
       {/* Cart Header */}
       <div className="cart-header">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+          <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
             <ShoppingCartIcon />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[var(--text)]">سلة المشتريات</h1>
-            <p className="text-sm text-[var(--muted)]">
+            <h1 className="text-2xl font-bold text-(--text)">سلة المشتريات</h1>
+            <p className="text-sm text-(--muted)">
               {items.length === 0 ? "لا توجد منتجات" : `${items.length} منتج${items.length > 1 ? "ات" : ""}`}
             </p>
           </div>
@@ -321,14 +321,14 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
       {/* Empty Cart State */}
       {items.length === 0 ? (
         <div className="empty-cart">
-          <div className="empty-cart-icon text-[var(--muted)]">
+          <div className="empty-cart-icon text-(--muted)">
             <EmptyCartIcon />
           </div>
-          <h3 className="text-xl font-semibold text-[var(--text)] mb-2">سلة المشتريات فارغة</h3>
-          <p className="text-sm text-[var(--muted)] mb-6">ابدأ التسوق الآن واستمتع بأفضل المنتجات</p>
+          <h3 className="text-xl font-semibold text-(--text) mb-2">سلة المشتريات فارغة</h3>
+          <p className="text-sm text-(--muted) mb-6">ابدأ التسوق الآن واستمتع بأفضل المنتجات</p>
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-linear-to-r from-(--accent) to-(--accent-2) text-white font-medium hover:opacity-90 transition-opacity"
           >
             <ArrowLeftIcon />
             تصفح المتجر
@@ -378,8 +378,8 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-white/[0.03]">
-                        <svg className="w-8 h-8 text-[var(--muted)] opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <div className="h-full w-full flex items-center justify-center bg-white/3">
+                        <svg className="w-8 h-8 text-(--muted) opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       </div>
@@ -393,19 +393,19 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                         {line?.productSlug ? (
                           <Link 
                             href={`/p/${line.productSlug}`} 
-                            className="text-[var(--text)] font-semibold hover:text-[var(--accent)] transition-colors line-clamp-2"
+                            className="text-(--text) font-semibold hover:text-(--accent) transition-colors line-clamp-2"
                           >
                             {title}
                           </Link>
                         ) : (
-                          <div className="text-[var(--text)] font-semibold line-clamp-2">{title}</div>
+                          <div className="text-(--text) font-semibold line-clamp-2">{title}</div>
                         )}
                         {meta && (
-                          <div className="mt-1 text-xs text-[var(--muted)]">{meta}</div>
+                          <div className="mt-1 text-xs text-(--muted)">{meta}</div>
                         )}
                         {unitPrice && (
-                          <div className="mt-2 text-sm text-[var(--muted)]">
-                            سعر الوحدة: <span className="text-[var(--text)]">{unitPrice}</span>
+                          <div className="mt-2 text-sm text-(--muted)">
+                            سعر الوحدة: <span className="text-(--text)">{unitPrice}</span>
                           </div>
                         )}
                       </div>
@@ -418,7 +418,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
 
                     {/* Quantity Controls */}
                     <div className="mt-4 flex items-center gap-4">
-                      <span className="text-xs text-[var(--muted)]">الكمية:</span>
+                      <span className="text-xs text-(--muted)">الكمية:</span>
                       <div className="qty-controls">
                         <button
                           onClick={() => setQty(it.variantId, Math.max(1, it.quantity - 1))}
@@ -447,12 +447,12 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
           {/* Cart Summary */}
           <aside className="cart-summary">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
                 <TagIcon />
               </div>
               <div>
-                <h3 className="font-bold text-[var(--text)]">ملخص الطلب</h3>
-                <p className="text-xs text-[var(--muted)]">{items.length} منتج</p>
+                <h3 className="font-bold text-(--text)">ملخص الطلب</h3>
+                <p className="text-xs text-(--muted)">{items.length} منتج</p>
               </div>
             </div>
 
@@ -467,18 +467,18 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                 />
               ) : (
                 <>
-                  <label className="text-xs text-[var(--muted)] mb-2 block">رمز الخصم</label>
+                  <label className="text-xs text-(--muted) mb-2 block">رمز الخصم</label>
                   <div className="flex gap-2">
                     <input
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
                       placeholder="أدخل كود الخصم"
-                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-(--text) placeholder:text-(--muted) focus:border-(--accent) focus:outline-hidden transition-colors"
                       dir="ltr"
                     />
                     <button
                       onClick={() => void refreshQuote()}
-                      className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                      className="px-4 py-2.5 rounded-xl bg-(--accent) text-white text-sm font-medium hover:opacity-90 transition-opacity"
                     >
                       تطبيق
                     </button>
@@ -492,7 +492,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
               <div className="py-4">
                 <LoadingIndicator
                   className="flex items-center justify-center"
-                  fallback={<div className="text-sm text-[var(--muted)]">يتم الحساب...</div>}
+                  fallback={<div className="text-sm text-(--muted)">يتم الحساب...</div>}
                 />
               </div>
             ) : err ? (
@@ -507,7 +507,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                 )}
                 <div className="h-px bg-white/10 my-3" />
                 <div className="flex items-center justify-between py-2">
-                  <span className="font-semibold text-[var(--text)]">الإجمالي</span>
+                  <span className="font-semibold text-(--text)">الإجمالي</span>
                   <span className="cart-summary-total price-gradient">{formatAmount(quote.total, currencyCode)}</span>
                 </div>
               </div>
@@ -516,41 +516,41 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
             {/* Customer Info Form */}
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-xs text-[var(--muted)] mb-2 block">الاسم الكامل *</label>
+                <label className="text-xs text-(--muted) mb-2 block">الاسم الكامل *</label>
                 <input
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="أدخل اسمك"
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-(--text) placeholder:text-(--muted) focus:border-(--accent) focus:outline-hidden transition-colors"
                 />
               </div>
               <div>
-                <label className="text-xs text-[var(--muted)] mb-2 block">رقم الهاتف *</label>
+                <label className="text-xs text-(--muted) mb-2 block">رقم الهاتف *</label>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="05XXXXXXXX"
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-(--text) placeholder:text-(--muted) focus:border-(--accent) focus:outline-hidden transition-colors"
                   dir="ltr"
                 />
               </div>
               <div>
-                <label className="text-xs text-[var(--muted)] mb-2 block">العنوان</label>
+                <label className="text-xs text-(--muted) mb-2 block">العنوان</label>
                 <input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="أدخل عنوان التوصيل"
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-(--text) placeholder:text-(--muted) focus:border-(--accent) focus:outline-hidden transition-colors"
                 />
               </div>
               <div>
-                <label className="text-xs text-[var(--muted)] mb-2 block">ملاحظات</label>
+                <label className="text-xs text-(--muted) mb-2 block">ملاحظات</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="أي ملاحظات إضافية..."
                   rows={3}
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors resize-none"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-(--text) placeholder:text-(--muted) focus:border-(--accent) focus:outline-hidden transition-colors resize-none"
                 />
               </div>
             </div>
@@ -666,7 +666,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                     setSubmitting(false);
                   }
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-linear-to-r from-(--accent) to-(--accent-2) text-white font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
                 <SendIcon />
                 {submitting ? "جارٍ الإرسال..." : "إرسال الطلب"}
@@ -734,7 +734,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                       setSubmitting(false);
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-[var(--text)] font-medium hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-(--text) font-medium hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <MailIcon />
                   إرسال عبر البريد
@@ -770,8 +770,8 @@ function Row({
   const display = formatAmount(value, currencyCode);
   return (
     <div className="cart-summary-row">
-      <span className="text-[var(--muted)]">{label}</span>
-      <span className={isDiscount ? "text-emerald-400" : "text-[var(--text)]"} dir="ltr">
+      <span className="text-(--muted)">{label}</span>
+      <span className={isDiscount ? "text-emerald-400" : "text-(--text)"} dir="ltr">
         {isDiscount ? `-${display}` : display}
       </span>
     </div>

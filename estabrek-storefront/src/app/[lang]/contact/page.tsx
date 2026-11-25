@@ -7,7 +7,9 @@ import { routeLang } from "@/lib/seoLang";
 
 type SP = Record<string, string | string[] | undefined>;
 
-export default async function ContactPage({ params, searchParams }: { params: { lang: string }; searchParams?: SP }) {
+export default async function ContactPage(props: { params: Promise<{ lang: string }>; searchParams?: Promise<SP> }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   // Look up the CMS page alongside the settings instead of after them (one wait, not two).
   void getPageBySlug("/contact", lang);

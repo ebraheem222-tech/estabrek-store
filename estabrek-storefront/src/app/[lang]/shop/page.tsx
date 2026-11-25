@@ -5,7 +5,6 @@ import ShopBrowseClient from "@/components/ShopBrowseClient";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
-import dynamic from "next/dynamic";
 import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
 import { RoseShopIntro } from "@/components/cinematic/RoseShopIntro";
 import { RoseShopTools } from "@/components/cinematic/RoseShopTools";
@@ -14,15 +13,8 @@ import { tr } from "@/lib/words";
 import { getProductPrimaryImage } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 
-const ImageSearchPanel = dynamic(
-  () => import("@/components/ImageSearchPanel").then((m) => m.ImageSearchPanel),
-  { ssr: false, loading: () => null }
-);
-
-const AIRecommendations = dynamic(
-  () => import("@/components/AIRecommendations").then((m) => m.AIRecommendations),
-  { ssr: false, loading: () => null }
-);
+// Parts drawn only in the browser (picture search, AI suggestions), made in a client file (Next 15+).
+import { AIRecommendations, ImageSearchPanel } from "@/components/ShopBrowserParts";
 
 type SP = Record<string, string | string[] | undefined>;
 export const revalidate = 60;
@@ -58,7 +50,9 @@ function pick(sp: SP, key: string): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
 
-export async function generateMetadata({ params, searchParams }: { params: { lang: string }; searchParams: SP }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ lang: string }>; searchParams: Promise<SP> }): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   const f = normalizeFiltersFromSearchParams(searchParams);
   const qs = buildCanonicalQuery(f);
@@ -75,7 +69,9 @@ export async function generateMetadata({ params, searchParams }: { params: { lan
   };
 }
 
-export default async function ShopPage({ params, searchParams }: { params: { lang: string }; searchParams: SP }) {
+export default async function ShopPage(props: { params: Promise<{ lang: string }>; searchParams: Promise<SP> }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   // Ask the catalog straight away: it is the slow request (≈1–2 s on the hosted
   // API), and it used to wait for the settings and the CMS page lookup first.
@@ -145,36 +141,36 @@ export default async function ShopPage({ params, searchParams }: { params: { lan
       
       {/* Breadcrumb */}
       {breadcrumbsEnabled ? (
-        <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
-          <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
+        <nav className="flex items-center gap-2 text-sm text-(--muted)">
+          <Link href="/" className="flex items-center gap-1 hover:text-(--text) transition-colors">
             <HomeIcon />
             الرئيسية
           </Link>
           <ChevronLeftIcon />
-          <span className="text-[var(--text)]">المتجر</span>
+          <span className="text-(--text)">المتجر</span>
         </nav>
       ) : null}
 
       {/* Shop Header - Enhanced with Premium Design */}
-      <div className="shop-hero relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[var(--accent)]/10 via-[var(--accent-2)]/10 to-transparent border border-[var(--accent)]/20 backdrop-blur-sm">
+      <div className="shop-hero relative overflow-hidden rounded-3xl p-8 bg-linear-to-br from-(--accent)/10 via-(--accent-2)/10 to-transparent border border-(--accent)/20 backdrop-blur-xs">
         {/* Animated Background Shapes */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/10 rounded-full blur-3xl float-animation pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[var(--accent-2)]/10 rounded-full blur-3xl float-animation pointer-events-none" style={{animationDelay: '1s'}}></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-(--accent)/10 rounded-full blur-3xl float-animation pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-(--accent-2)/10 rounded-full blur-3xl float-animation pointer-events-none" style={{animationDelay: '1s'}}></div>
 
         <div className="relative z-10">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white shadow-premium">
+              <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white shadow-premium">
                 <ShopIcon />
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gradient-animated">المتجر</h1>
-                <p className="text-[var(--muted)] text-sm mt-1 slide-in-up">
+                <p className="text-(--muted) text-sm mt-1 slide-in-up">
                   تصفح جميع منتجاتنا المميزة
                 </p>
               </div>
             </div>
-            <div className="search-results-count flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--accent)]/20 to-[var(--accent-2)]/20 border border-[var(--accent)]/30 backdrop-blur-sm card-lift">
+            <div className="search-results-count flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-(--accent)/20 to-(--accent-2)/20 border border-(--accent)/30 backdrop-blur-xs card-lift">
               <ProductsIcon />
               <span className="font-bold text-gradient-primary">{out.total ?? 0}</span>
               <span className="text-sm">منتج</span>

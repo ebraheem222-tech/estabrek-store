@@ -303,7 +303,7 @@ export const HeroBasicSplit: React.FC<HeroProps> = ({
         {imageSrc ? (
           <img src={imageSrc} alt={imageAlt} className="w-full rounded-2xl shadow-2xl" loading="eager" decoding="async" />
         ) : (
-          <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+          <div className="aspect-video bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
             <span className="text-gray-400">Image Placeholder</span>
           </div>
         )}
@@ -322,10 +322,10 @@ export const HeroTechSaas: React.FC<HeroProps> = ({
   features,
   className = '',
 }) => (
-  <section className={`py-24 px-4 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 ${className}`}>
+  <section className={`py-24 px-4 bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 ${className}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
       {badge && (
-        <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 backdrop-blur-sm rounded-full">
+        <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 backdrop-blur-xs rounded-full">
           {badge}
         </span>
       )}
@@ -387,11 +387,11 @@ export const HeroGamingNeon: React.FC<HeroProps> = ({
     <div className="relative max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
         {badge && (
-          <span className="inline-block px-4 py-1.5 mb-6 text-sm font-bold bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-full">
+          <span className="inline-block px-4 py-1.5 mb-6 text-sm font-bold bg-linear-to-r from-purple-500 to-cyan-500 text-white rounded-full">
             {badge}
           </span>
         )}
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 mb-6">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-pink-500 to-cyan-400 mb-6">
           {headline}
         </h1>
         {description && (
@@ -401,7 +401,7 @@ export const HeroGamingNeon: React.FC<HeroProps> = ({
           {primaryCta && (
             <button
               onClick={primaryCta.onClick}
-              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all"
+              className="px-8 py-3 bg-linear-to-r from-purple-600 to-cyan-600 text-white font-bold rounded-lg hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all"
             >
               {primaryCta.text}
             </button>
@@ -420,7 +420,7 @@ export const HeroGamingNeon: React.FC<HeroProps> = ({
         {imageSrc ? (
           <img src={imageSrc} alt="Game" className="w-full rounded-2xl" loading="eager" decoding="async" />
         ) : (
-          <div className="aspect-video bg-gradient-to-br from-purple-900/50 to-cyan-900/50 rounded-2xl border border-purple-500/30 flex items-center justify-center">
+          <div className="aspect-video bg-linear-to-br from-purple-900/50 to-cyan-900/50 rounded-2xl border border-purple-500/30 flex items-center justify-center">
             <span className="text-purple-400">Game Preview</span>
           </div>
         )}
@@ -444,7 +444,7 @@ export const HeroEcommerceFashion: React.FC<HeroProps> = ({
       {imageSrc ? (
         <img src={imageSrc} alt="Fashion" className="w-full h-full object-cover opacity-60" loading="eager" decoding="async" />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
+        <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900" />
       )}
     </div>
     
@@ -489,7 +489,7 @@ export const HeroCorporateProfessional: React.FC<HeroProps> = ({
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
         {badge && (
-          <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded">
+          <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded-sm">
             {badge}
           </span>
         )}
@@ -503,7 +503,7 @@ export const HeroCorporateProfessional: React.FC<HeroProps> = ({
           {primaryCta && (
             <button
               onClick={primaryCta.onClick}
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors"
+              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-sm hover:bg-blue-700 transition-colors"
             >
               {primaryCta.text}
             </button>
@@ -511,7 +511,7 @@ export const HeroCorporateProfessional: React.FC<HeroProps> = ({
           {secondaryCta && (
             <button
               onClick={secondaryCta.onClick}
-              className="px-8 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded hover:border-slate-400 transition-colors"
+              className="px-8 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-sm hover:border-slate-400 transition-colors"
             >
               {secondaryCta.text}
             </button>
@@ -532,7 +532,7 @@ export const HeroCorporateProfessional: React.FC<HeroProps> = ({
         {imageSrc ? (
           <img src={imageSrc} alt="Business" className="w-full rounded-lg shadow-xl" loading="eager" decoding="async" />
         ) : (
-          <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-slate-100 rounded-lg flex items-center justify-center">
+          <div className="aspect-4/3 bg-linear-to-br from-blue-100 to-slate-100 rounded-lg flex items-center justify-center">
             <span className="text-slate-400">Business Image</span>
           </div>
         )}
@@ -550,8 +550,8 @@ export const HeroCreativeAgency: React.FC<HeroProps> = ({
 }) => (
   <section className={`relative py-32 px-4 bg-black overflow-hidden ${className}`}>
     {/* Abstract shapes */}
-    <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur-3xl opacity-30" />
-    <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl opacity-30" />
+    <div className="absolute top-20 left-10 w-64 h-64 bg-linear-to-r from-yellow-400 to-orange-500 rounded-full blur-3xl opacity-30" />
+    <div className="absolute bottom-20 right-10 w-96 h-96 bg-linear-to-r from-purple-400 to-pink-500 rounded-full blur-3xl opacity-30" />
     
     <div className="relative max-w-6xl mx-auto text-center">
       <h1 className="text-5xl md:text-7xl lg:text-9xl font-black text-white mb-8 leading-none">
@@ -593,7 +593,7 @@ export const HeroFoodRestaurant: React.FC<HeroProps> = ({
       {imageSrc ? (
         <img src={imageSrc} alt="Restaurant" className="w-full h-full object-cover" loading="eager" decoding="async" />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-amber-900 to-orange-900" />
+        <div className="w-full h-full bg-linear-to-br from-amber-900 to-orange-900" />
       )}
       <div className="absolute inset-0 bg-black/50" />
     </div>
@@ -648,9 +648,9 @@ export const HeroFitnessGym: React.FC<HeroProps> = ({
       {imageSrc ? (
         <img src={imageSrc} alt="Gym" className="w-full h-full object-cover" loading="eager" decoding="async" />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black" />
+        <div className="w-full h-full bg-linear-to-br from-gray-900 to-black" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-r from-black via-black/70 to-transparent" />
     </div>
     
     <div className="relative z-10 max-w-7xl mx-auto px-4 py-24">
@@ -690,14 +690,14 @@ export const HeroTravelHotel: React.FC<HeroProps> = ({
       {imageSrc ? (
         <img src={imageSrc} alt="Hotel" className="w-full h-full object-cover" loading="eager" decoding="async" />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-sky-900 to-blue-900" />
+        <div className="w-full h-full bg-linear-to-br from-sky-900 to-blue-900" />
       )}
       <div className="absolute inset-0 bg-black/40" />
     </div>
     
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
       {badge && (
-        <span className="inline-block px-6 py-2 mb-8 text-sm tracking-widest uppercase bg-white/10 backdrop-blur-sm rounded-full">
+        <span className="inline-block px-6 py-2 mb-8 text-sm tracking-widest uppercase bg-white/10 backdrop-blur-xs rounded-full">
           {badge}
         </span>
       )}
@@ -714,10 +714,10 @@ export const HeroTravelHotel: React.FC<HeroProps> = ({
       {children || (
         <div className="bg-white rounded-lg p-4 max-w-3xl mx-auto shadow-2xl">
           <div className="grid md:grid-cols-4 gap-4">
-            <input type="text" placeholder="Destination" className="px-4 py-3 bg-gray-100 rounded text-gray-800" />
-            <input type="text" placeholder="Check In" className="px-4 py-3 bg-gray-100 rounded text-gray-800" />
-            <input type="text" placeholder="Check Out" className="px-4 py-3 bg-gray-100 rounded text-gray-800" />
-            <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+            <input type="text" placeholder="Destination" className="px-4 py-3 bg-gray-100 rounded-sm text-gray-800" />
+            <input type="text" placeholder="Check In" className="px-4 py-3 bg-gray-100 rounded-sm text-gray-800" />
+            <input type="text" placeholder="Check Out" className="px-4 py-3 bg-gray-100 rounded-sm text-gray-800" />
+            <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded-sm hover:bg-blue-700">
               {primaryCta?.text || 'Search'}
             </button>
           </div>
@@ -734,7 +734,7 @@ export const HeroComingSoon: React.FC<HeroProps> = ({
   primaryCta,
   className = '',
 }) => (
-  <section className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 ${className}`}>
+  <section className={`min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 via-purple-900 to-gray-900 ${className}`}>
     <div className="max-w-2xl mx-auto px-4 text-center text-white">
       <div className="mb-8">
         <span className="text-6xl">🚀</span>
@@ -749,7 +749,7 @@ export const HeroComingSoon: React.FC<HeroProps> = ({
         <input
           type="email"
           placeholder="Enter your email"
-          className="flex-1 px-5 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="flex-1 px-5 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
         />
         <button className="px-8 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors">
           {primaryCta?.text || 'Notify Me'}
@@ -767,7 +767,7 @@ export const HeroAppDownload: React.FC<HeroProps> = ({
   imageSrc,
   className = '',
 }) => (
-  <section className={`py-20 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 ${className}`}>
+  <section className={`py-20 px-4 bg-linear-to-br from-blue-600 to-indigo-700 ${className}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div className="text-white">
         {badge && (

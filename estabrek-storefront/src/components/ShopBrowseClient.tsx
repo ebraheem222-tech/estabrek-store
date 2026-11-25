@@ -119,7 +119,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
   };
 
   return (
-    <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""} ${commerce ? "cms-shop-browse" : ""}`} data-cms-filters={commerce?.showFilters === false ? "off" : undefined}>
+    <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px_1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""} ${commerce ? "cms-shop-browse" : ""}`} data-cms-filters={commerce?.showFilters === false ? "off" : undefined}>
       {appearance === "rose" && (navCategories ? navCategories.length > 0 : true) && <nav className="rose-shop-categories" aria-label={tr(lang, "أقسام المتجر", "Shop categories")}><button onClick={() => handleCategorySelect(defaultCategoryId)} aria-pressed={!selectedCategoryId || selectedCategoryId === defaultCategoryId}>{tr(lang, "كل المجموعة", "All pieces")}</button>{(navCategories ?? categories.filter(c => !c.parentId)).map(c => <button key={c.id} onClick={() => handleCategorySelect(c.id)} aria-pressed={selectedCategoryId === c.id}>{c.name}</button>)}</nav>}
       {/* Desktop Sidebar */}
       {commerce?.showFilters !== false ? <aside data-cms-part="shop-filters" className="hidden lg:block filters-sidebar shop-right-filters-candy">

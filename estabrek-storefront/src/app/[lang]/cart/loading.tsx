@@ -7,7 +7,7 @@ export default function LoadingCart() {
     <main data-route-loading="" className="mx-auto max-w-6xl px-4 py-8">
       <LoadingIndicator
         className="flex items-center justify-center py-24"
-        fallback={<div className="text-sm text-[var(--muted)]"><LoadingText ar="جارٍ التحميل..." en="Loading…" /></div>}
+        fallback={<div className="text-sm text-(--muted)"><LoadingText ar="جارٍ التحميل..." en="Loading…" /></div>}
       />
     </main>
   );

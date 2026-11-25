@@ -517,7 +517,7 @@ export function ProductFiltersBar({
             onChange={(e) => setQInput(e.target.value)}
             placeholder={tr(lang, "ابحث عن منتج...", "Search products…")}
           />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted)">
             <SearchIcon />
           </div>
         </div>
@@ -598,7 +598,7 @@ export function ProductFiltersBar({
               inputMode="numeric"
               dir="ltr"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">₪</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-(--muted)">₪</span>
           </div>
           <div className="flex items-center justify-center w-8">
             <span className="price-range-separator">—</span>
@@ -612,7 +612,7 @@ export function ProductFiltersBar({
               inputMode="numeric"
               dir="ltr"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">₪</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-(--muted)">₪</span>
           </div>
         </div>
       </div>
@@ -628,7 +628,7 @@ export function ProductFiltersBar({
           <div className="flex items-center gap-3">
             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
               inStockParam 
-                ? "bg-[var(--accent)] border-[var(--accent)]" 
+                ? "bg-(--accent) border-(--accent)" 
                 : "border-white/20 bg-transparent"
             }`}>
               {inStockParam && <CheckIcon />}
@@ -756,13 +756,13 @@ export function ProductFiltersBar({
       <div className={`filters-container filters-candy-surface hidden ${appearance === "rose" ? "lg:block" : "md:block"}`}>
         <div className="filters-header">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
               <FilterIcon />
             </div>
             <div>
-              <h3 className="font-bold text-[var(--text)]">{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</h3>
+              <h3 className="font-bold text-(--text)">{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</h3>
               {activeFiltersCount > 0 && (
-                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
+                <p className="text-xs text-(--muted)">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
               )}
             </div>
           </div>
@@ -778,7 +778,7 @@ export function ProductFiltersBar({
 
       {/* Mobile Filters Modal */}
       {mobileOpen && (
-        <div ref={mobileDialog} className={`fixed inset-0 z-[1300] ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={own.filtersLabel || tr(lang, "الفلاتر", "Filters")}>
+        <div ref={mobileDialog} className={`fixed inset-0 z-1300 ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={own.filtersLabel || tr(lang, "الفلاتر", "Filters")}>
           <div 
             className={`absolute inset-0 filter-backdrop filter-backdrop-candy ${isClosing ? "closing" : "opening"}`} 
             onClick={closeMobile} 
@@ -789,20 +789,20 @@ export function ProductFiltersBar({
             {/* Mobile Header */}
             <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-white/40 filter-mobile-header-candy">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+                <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--accent) to-(--accent-2) flex items-center justify-center text-white">
                   <FilterIcon />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[var(--text)]">{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</h3>
+                  <h3 className="font-bold text-(--text)">{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</h3>
                   {activeFiltersCount > 0 && (
-                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
+                    <p className="text-xs text-(--muted)">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
                   )}
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={closeMobile} 
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[var(--text)] transition-all duration-300 filter-mobile-close-btn"
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-(--text) transition-all duration-300 filter-mobile-close-btn"
                 aria-label="Close filters"
               >
                 <CloseIcon />
@@ -830,7 +830,7 @@ export function ProductFiltersBar({
                 <button 
                   type="button" 
                   onClick={clearAll} 
-                  className="flex-1 py-3 rounded-xl border border-white/45 text-[var(--text)] font-medium transition-all duration-300 filter-mobile-clear-btn"
+                  className="flex-1 py-3 rounded-xl border border-white/45 text-(--text) font-medium transition-all duration-300 filter-mobile-clear-btn"
                 >
                   {own.clearLabel || tr(lang, "مسح الكل", "Clear all")}
                 </button>
@@ -1190,10 +1190,15 @@ export function ProductFiltersBar({
           border-color: transparent;
         }
 
+        /* A store on a theme: its own colour (the rose is the rose design's own). */
         .filter-candy-shell .clear-filters-btn {
           background: linear-gradient(145deg, rgba(254, 226, 226, 0.92), rgba(252, 165, 165, 0.34));
           border-color: rgba(252, 165, 165, 0.6);
-          color: #be123c;
+          color: var(--th-accent, #be123c);
+        }
+        :global(:root[data-store-theme]) .filter-candy-shell .clear-filters-btn {
+          background: color-mix(in srgb, var(--th-accent) 10%, transparent);
+          border-color: color-mix(in srgb, var(--th-accent) 28%, transparent);
         }
 
         .filter-candy-shell .clear-filters-btn:hover {

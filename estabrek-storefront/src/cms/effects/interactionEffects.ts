@@ -155,8 +155,8 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "Sink",
     nameAr: "غرق",
     category: "transform",
-    hoverClassName: "transition-all duration-300 hover:translate-y-1 hover:shadow-sm",
-    focusClassName: "transition-all duration-300 focus-within:translate-y-1 focus-within:shadow-sm",
+    hoverClassName: "transition-all duration-300 hover:translate-y-1 hover:shadow-xs",
+    focusClassName: "transition-all duration-300 focus-within:translate-y-1 focus-within:shadow-xs",
   },
   {
     id: "hover-grow-rotate",
@@ -301,9 +301,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "خلفية متدرجة",
     category: "color",
     hoverClassName:
-      "transition-all duration-300 bg-gray-100 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:text-white",
+      "transition-all duration-300 bg-gray-100 hover:bg-linear-to-r hover:from-blue-500 hover:to-purple-500 hover:text-white",
     focusClassName:
-      "transition-all duration-300 bg-gray-100 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:to-purple-500 focus-within:text-white",
+      "transition-all duration-300 bg-gray-100 focus-within:bg-linear-to-r focus-within:from-blue-500 focus-within:to-purple-500 focus-within:text-white",
   },
   {
     id: "hover-text-blue",
@@ -319,9 +319,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "نص متدرج",
     category: "color",
     hoverClassName:
-      "transition-all duration-300 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:bg-clip-text hover:text-transparent",
+      "transition-all duration-300 hover:bg-linear-to-r hover:from-blue-500 hover:to-purple-500 hover:bg-clip-text hover:text-transparent",
     focusClassName:
-      "transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:to-purple-500 focus-within:bg-clip-text focus-within:text-transparent",
+      "transition-all duration-300 focus-within:bg-linear-to-r focus-within:from-blue-500 focus-within:to-purple-500 focus-within:bg-clip-text focus-within:text-transparent",
   },
   {
     id: "hover-invert",
@@ -430,9 +430,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "Outline",
     nameAr: "إطار خارجي",
     category: "border",
-    hoverClassName: "outline-none transition-all duration-300 hover:outline hover:outline-2 hover:outline-blue-500 hover:outline-offset-2",
+    hoverClassName: "outline-hidden transition-all duration-300 hover:outline-solid hover:outline-2 hover:outline-blue-500 hover:outline-offset-2",
     focusClassName:
-      "outline-none transition-all duration-300 focus-within:outline focus-within:outline-2 focus-within:outline-blue-500 focus-within:outline-offset-2",
+      "outline-hidden transition-all duration-300 focus-within:outline-solid focus-within:outline-2 focus-within:outline-blue-500 focus-within:outline-offset-2",
   },
   {
     id: "hover-ring",
@@ -456,8 +456,8 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "Rounded Corners",
     nameAr: "زوايا مستديرة",
     category: "border",
-    hoverClassName: "rounded transition-all duration-300 hover:rounded-xl",
-    focusClassName: "rounded transition-all duration-300 focus-within:rounded-xl",
+    hoverClassName: "rounded-sm transition-all duration-300 hover:rounded-xl",
+    focusClassName: "rounded-sm transition-all duration-300 focus-within:rounded-xl",
   },
   {
     id: "hover-rounded-full",
@@ -618,17 +618,17 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "Image Blur",
     nameAr: "ضبابية الصورة",
     category: "image",
-    hoverClassName: "[&_img]:transition-all [&_img]:duration-500 [&:hover_img]:blur-sm",
-    focusClassName: "[&_img]:transition-all [&_img]:duration-500 [&:focus-within_img]:blur-sm",
+    hoverClassName: "[&_img]:transition-all [&_img]:duration-500 [&:hover_img]:blur-xs",
+    focusClassName: "[&_img]:transition-all [&_img]:duration-500 [&:focus-within_img]:blur-xs",
   },
   {
     id: "hover-img-unblur",
     name: "Image Unblur",
     nameAr: "إزالة الضبابية",
     category: "image",
-    hoverClassName: "[&_img]:blur-sm [&_img]:transition-all [&_img]:duration-500 [&:hover_img]:blur-0",
+    hoverClassName: "[&_img]:blur-xs [&_img]:transition-all [&_img]:duration-500 [&:hover_img]:blur-0",
     focusClassName:
-      "[&_img]:blur-sm [&_img]:transition-all [&_img]:duration-500 [&:focus-within_img]:blur-0",
+      "[&_img]:blur-xs [&_img]:transition-all [&_img]:duration-500 [&:focus-within_img]:blur-0",
   },
   {
     id: "hover-img-brightness",
@@ -700,9 +700,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "تغطية متدرجة",
     category: "overlay",
     hoverClassName:
-      "relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-t before:from-black/0 before:to-transparent before:transition-all before:duration-300 hover:before:from-black/70",
+      "relative overflow-hidden before:absolute before:inset-0 before:bg-linear-to-t before:from-black/0 before:to-transparent before:transition-all before:duration-300 hover:before:from-black/70",
     focusClassName:
-      "relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-t before:from-black/0 before:to-transparent before:transition-all before:duration-300 focus-within:before:from-black/70",
+      "relative overflow-hidden before:absolute before:inset-0 before:bg-linear-to-t before:from-black/0 before:to-transparent before:transition-all before:duration-300 focus-within:before:from-black/70",
   },
   {
     id: "hover-overlay-blue",
@@ -878,9 +878,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "تعبئة من اليسار",
     category: "button",
     hoverClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-x-[-100%] before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-x-0 hover:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:-translate-x-full before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-x-0 hover:text-white",
     focusClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-x-[-100%] before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-x-0 focus-within:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:-translate-x-full before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-x-0 focus-within:text-white",
   },
   {
     id: "hover-btn-fill-right",
@@ -888,9 +888,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "تعبئة من اليمين",
     category: "button",
     hoverClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-x-[100%] before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-x-0 hover:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-x-full before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-x-0 hover:text-white",
     focusClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-x-[100%] before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-x-0 focus-within:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-x-full before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-x-0 focus-within:text-white",
   },
   {
     id: "hover-btn-fill-up",
@@ -898,9 +898,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "تعبئة من الأسفل",
     category: "button",
     hoverClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-y-[100%] before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-y-0 hover:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-y-full before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-y-0 hover:text-white",
     focusClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-y-[100%] before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-y-0 focus-within:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-y-full before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-y-0 focus-within:text-white",
   },
   {
     id: "hover-btn-fill-down",
@@ -908,9 +908,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "تعبئة من الأعلى",
     category: "button",
     hoverClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-y-[-100%] before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-y-0 hover:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:-translate-y-full before:bg-blue-600 before:transition-transform before:duration-300 hover:before:translate-y-0 hover:text-white",
     focusClassName:
-      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:translate-y-[-100%] before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-y-0 focus-within:text-white",
+      "relative overflow-hidden z-10 before:absolute before:inset-0 before:-z-10 before:-translate-y-full before:bg-blue-600 before:transition-transform before:duration-300 focus-within:before:translate-y-0 focus-within:text-white",
   },
   {
     id: "hover-btn-fill-center",
@@ -966,9 +966,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "زر لامع",
     category: "button",
     hoverClassName:
-      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full",
+      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-full",
     focusClassName:
-      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 focus-within:before:translate-x-full",
+      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/30 before:to-transparent before:transition-transform before:duration-700 focus-within:before:translate-x-full",
   },
   {
     id: "hover-btn-ripple",
@@ -985,9 +985,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "Button Gradient Shift",
     nameAr: "تحول التدرج",
     category: "button",
-    hoverClassName: "bg-gradient-to-r from-blue-500 to-purple-500 bg-[length:200%_100%] bg-left transition-all duration-500 hover:bg-right",
+    hoverClassName: "bg-linear-to-r from-blue-500 to-purple-500 bg-size-[200%_100%] bg-left transition-all duration-500 hover:bg-right",
     focusClassName:
-      "bg-gradient-to-r from-blue-500 to-purple-500 bg-[length:200%_100%] bg-left transition-all duration-500 focus-within:bg-right",
+      "bg-linear-to-r from-blue-500 to-purple-500 bg-size-[200%_100%] bg-left transition-all duration-500 focus-within:bg-right",
   },
 
   // ============================================================
@@ -1015,18 +1015,18 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "بطاقة ثلاثية الأبعاد",
     category: "card",
     hoverClassName:
-      "[transform-style:preserve-3d] transition-transform duration-500 hover:[transform:perspective(1000px)_rotateX(5deg)_rotateY(-5deg)]",
+      "transform-3d transition-transform duration-500 hover:transform-[perspective(1000px)_rotateX(5deg)_rotateY(-5deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-500 focus-within:[transform:perspective(1000px)_rotateX(5deg)_rotateY(-5deg)]",
+      "transform-3d transition-transform duration-500 focus-within:transform-[perspective(1000px)_rotateX(5deg)_rotateY(-5deg)]",
   },
   {
     id: "hover-card-flip",
     name: "Card Flip",
     nameAr: "قلب البطاقة",
     category: "card",
-    hoverClassName: "[transform-style:preserve-3d] transition-transform duration-700 hover:[transform:rotateY(180deg)]",
+    hoverClassName: "transform-3d transition-transform duration-700 hover:transform-[rotateY(180deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-700 focus-within:[transform:rotateY(180deg)]",
+      "transform-3d transition-transform duration-700 focus-within:transform-[rotateY(180deg)]",
   },
   {
     id: "hover-card-pop",
@@ -1071,9 +1071,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "لمعان البطاقة",
     category: "card",
     hoverClassName:
-      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:transition-transform before:duration-1000 hover:before:translate-x-full",
+      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/20 before:to-transparent before:transition-transform before:duration-1000 hover:before:translate-x-full",
     focusClassName:
-      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:transition-transform before:duration-1000 focus-within:before:translate-x-full",
+      "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/20 before:to-transparent before:transition-transform before:duration-1000 focus-within:before:translate-x-full",
   },
   {
     id: "hover-card-expand",
@@ -1131,8 +1131,8 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "Link Background",
     nameAr: "خلفية الرابط",
     category: "link",
-    hoverClassName: "px-1 -mx-1 transition-all duration-300 hover:bg-blue-100 hover:text-blue-600 rounded",
-    focusClassName: "px-1 -mx-1 transition-all duration-300 focus-within:bg-blue-100 focus-within:text-blue-600 rounded",
+    hoverClassName: "px-1 -mx-1 transition-all duration-300 hover:bg-blue-100 hover:text-blue-600 rounded-sm",
+    focusClassName: "px-1 -mx-1 transition-all duration-300 focus-within:bg-blue-100 focus-within:text-blue-600 rounded-sm",
   },
   {
     id: "hover-link-border-bottom",
@@ -1169,54 +1169,54 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     name: "3D Perspective",
     nameAr: "منظور ثلاثي الأبعاد",
     category: "3d",
-    hoverClassName: "[transform-style:preserve-3d] transition-transform duration-500 hover:[transform:perspective(800px)_rotateY(15deg)]",
+    hoverClassName: "transform-3d transition-transform duration-500 hover:transform-[perspective(800px)_rotateY(15deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-500 focus-within:[transform:perspective(800px)_rotateY(15deg)]",
+      "transform-3d transition-transform duration-500 focus-within:transform-[perspective(800px)_rotateY(15deg)]",
   },
   {
     id: "hover-3d-rotate-x",
     name: "3D Rotate X",
     nameAr: "دوران أفقي ثلاثي الأبعاد",
     category: "3d",
-    hoverClassName: "[transform-style:preserve-3d] transition-transform duration-500 hover:[transform:perspective(800px)_rotateX(15deg)]",
+    hoverClassName: "transform-3d transition-transform duration-500 hover:transform-[perspective(800px)_rotateX(15deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-500 focus-within:[transform:perspective(800px)_rotateX(15deg)]",
+      "transform-3d transition-transform duration-500 focus-within:transform-[perspective(800px)_rotateX(15deg)]",
   },
   {
     id: "hover-3d-rotate-y",
     name: "3D Rotate Y",
     nameAr: "دوران عمودي ثلاثي الأبعاد",
     category: "3d",
-    hoverClassName: "[transform-style:preserve-3d] transition-transform duration-500 hover:[transform:perspective(800px)_rotateY(-15deg)]",
+    hoverClassName: "transform-3d transition-transform duration-500 hover:transform-[perspective(800px)_rotateY(-15deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-500 focus-within:[transform:perspective(800px)_rotateY(-15deg)]",
+      "transform-3d transition-transform duration-500 focus-within:transform-[perspective(800px)_rotateY(-15deg)]",
   },
   {
     id: "hover-3d-float",
     name: "3D Float",
     nameAr: "طفو ثلاثي الأبعاد",
     category: "3d",
-    hoverClassName: "[transform-style:preserve-3d] transition-all duration-500 hover:[transform:perspective(800px)_translateZ(30px)_rotateX(5deg)]",
+    hoverClassName: "transform-3d transition-all duration-500 hover:transform-[perspective(800px)_translateZ(30px)_rotateX(5deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-all duration-500 focus-within:[transform:perspective(800px)_translateZ(30px)_rotateX(5deg)]",
+      "transform-3d transition-all duration-500 focus-within:transform-[perspective(800px)_translateZ(30px)_rotateX(5deg)]",
   },
   {
     id: "hover-3d-flip-x",
     name: "3D Flip X",
     nameAr: "قلب أفقي ثلاثي الأبعاد",
     category: "3d",
-    hoverClassName: "[transform-style:preserve-3d] transition-transform duration-700 hover:[transform:perspective(800px)_rotateX(180deg)]",
+    hoverClassName: "transform-3d transition-transform duration-700 hover:transform-[perspective(800px)_rotateX(180deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-700 focus-within:[transform:perspective(800px)_rotateX(180deg)]",
+      "transform-3d transition-transform duration-700 focus-within:transform-[perspective(800px)_rotateX(180deg)]",
   },
   {
     id: "hover-3d-flip-y",
     name: "3D Flip Y",
     nameAr: "قلب عمودي ثلاثي الأبعاد",
     category: "3d",
-    hoverClassName: "[transform-style:preserve-3d] transition-transform duration-700 hover:[transform:perspective(800px)_rotateY(180deg)]",
+    hoverClassName: "transform-3d transition-transform duration-700 hover:transform-[perspective(800px)_rotateY(180deg)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-700 focus-within:[transform:perspective(800px)_rotateY(180deg)]",
+      "transform-3d transition-transform duration-700 focus-within:transform-[perspective(800px)_rotateY(180deg)]",
   },
   {
     id: "hover-3d-tilt",
@@ -1224,9 +1224,9 @@ export const INTERACTION_EFFECTS: InteractionEffect[] = [
     nameAr: "ميلان ثلاثي الأبعاد",
     category: "3d",
     hoverClassName:
-      "[transform-style:preserve-3d] transition-transform duration-300 hover:[transform:perspective(1000px)_rotateX(5deg)_rotateY(5deg)_scale(1.02)]",
+      "transform-3d transition-transform duration-300 hover:transform-[perspective(1000px)_rotateX(5deg)_rotateY(5deg)_scale(1.02)]",
     focusClassName:
-      "[transform-style:preserve-3d] transition-transform duration-300 focus-within:[transform:perspective(1000px)_rotateX(5deg)_rotateY(5deg)_scale(1.02)]",
+      "transform-3d transition-transform duration-300 focus-within:transform-[perspective(1000px)_rotateX(5deg)_rotateY(5deg)_scale(1.02)]",
   },
   {
     id: "hover-3d-shadow-layer",

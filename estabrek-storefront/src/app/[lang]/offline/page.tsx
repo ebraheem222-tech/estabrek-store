@@ -9,7 +9,8 @@ import { tr } from "@/lib/words";
  */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-export default function OfflinePage({ params }: { params: { lang: string } }) {
+export default async function OfflinePage(props: { params: Promise<{ lang: string }> }) {
+  const params = await props.params;
   const lang: Lang = isLang(params.lang) ? params.lang : "ar";
   return (
     <main id="main-content" data-testid="offline-page" style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 20px" }}>

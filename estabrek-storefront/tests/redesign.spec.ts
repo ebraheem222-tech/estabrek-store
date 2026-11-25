@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { placeStreamed } from "./streamed";
 
 function contrast(a: string, b: string) {
   const luminance = (color: string) => { const rgb = color.match(/[\d.]+/g)!.slice(0,3).map(Number).map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4); return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722; };
@@ -12,6 +13,8 @@ test("native CMS templates remain server-rendered when their libraries are split
   const context = await browser.newContext({ javaScriptEnabled: false });
   const staticPage = await context.newPage();
   await staticPage.goto("http://127.0.0.1:3000/native-templates");
+  // What the server sent after the first part, put in place as React's own script would (tests/streamed.ts).
+  await placeStreamed(staticPage);
   for (const title of ["حملة بالقالب المنشور", "مزايا القالب المنشور", "خيارات القالب المنشور", "نموذج القالب المنشور", "صور القالب المنشور"]) {
     await expect(staticPage.getByText(title, { exact: true })).toBeVisible();
   }
@@ -73,7 +76,18 @@ test("authored campaign headings keep readable contrast on the stable home surfa
 
 test("native rich text remains readable on the neutral contact surface", async ({ page }) => {
   await page.goto("/contact");
-  const colors = await page.locator("#our-message .prose p").evaluate(el => [getComputedStyle(el).color, getComputedStyle(el.closest("section")!).backgroundColor]);
+  // As painted: the words' colour, and what is really behind them (see-through backgrounds laid over what is under
+  // them, oklch and color() turned into plain RGB by a canvas). A see-through section once read as black here.
+  const colors = await page.locator("#our-message .prose p").evaluate(el => {
+    const ctx = Object.assign(document.createElement("canvas"), { width: 1, height: 1 }).getContext("2d", { willReadFrequently: true })!;
+    const rgba = (c: string) => { ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = "#000"; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data; return [r, g, b, a / 255]; };
+    const chain: Element[] = [];
+    for (let e: Element | null = el; e; e = e.parentElement) chain.unshift(e);
+    let back = [255, 255, 255];
+    for (const e of chain) { const [r, g, b, a] = rgba(getComputedStyle(e).backgroundColor); back = [r, g, b].map((v, i) => back[i] * (1 - a) + v * a); }
+    const [r, g, b] = rgba(getComputedStyle(el).color);
+    return [`rgb(${r}, ${g}, ${b})`, `rgb(${back.map(Math.round).join(", ")})`];
+  });
   expect(contrast(colors[0],colors[1])).toBeGreaterThanOrEqual(4.5);
 });
 

@@ -46,7 +46,7 @@ export function loadPiece(js: string, css: string, version: string): Promise<Com
   let p = pieces.get(js);
   if (!p) {
     shopsOwn();
-    const mod = import(/* webpackIgnore: true */ `${BASE}/js/${js}`) as Promise<{ default: ComponentType }>;
+    const mod = import(/* webpackIgnore: true */ /* turbopackIgnore: true */ `${BASE}/js/${js}`) as Promise<{ default: ComponentType }>;
     p = Promise.all([mod, libSheet(`${BASE}/lib.css?v=${version}`), libSheet(`${BASE}/css/${css}.css?v=${version}`)]).then(([m]) => m.default);
     p.catch(() => pieces.delete(js));
     pieces.set(js, p);

@@ -18,7 +18,11 @@ export const metadata = { robots: { index: false, follow: false } };
 type SP = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-export default async function DesignFrame({ params, searchParams }: { params?: { lang?: string }; searchParams?: SP }) {
+export default async function DesignFrame(
+  props0: { params?: Promise<{ lang?: string }>; searchParams?: Promise<SP> }
+) {
+  const searchParams = await props0.searchParams;
+  const params = await props0.params;
   const lang = routeLang(params);
   const template = one(searchParams?.template);
   const kind = template ?? one(searchParams?.kit) ?? "";

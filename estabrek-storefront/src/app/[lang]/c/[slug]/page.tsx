@@ -27,13 +27,14 @@ function pick(sp: SP, key: string): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: { slug: string; lang: string };
-  searchParams: SP;
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ slug: string; lang: string }>;
+    searchParams: Promise<SP>;
+  }
+): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   const f = normalizeFiltersFromSearchParams(searchParams);
   const qs = buildCanonicalQuery(f);
@@ -73,13 +74,14 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({
-  params,
-  searchParams,
-}: {
-  params: { slug: string; lang: string };
-  searchParams: SP;
-}) {
+export default async function CategoryPage(
+  props: {
+    params: Promise<{ slug: string; lang: string }>;
+    searchParams: Promise<SP>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const lang = routeLang(params);
   const f = normalizeFiltersFromSearchParams(searchParams);
   const sort = ["latest", "title_asc", "title_desc", "price_asc", "price_desc"].includes(
@@ -155,17 +157,17 @@ export default async function CategoryPage({
   }
 
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const breadcrumbLd = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: crumbs.map((c, i) => ({
-    "@type": "ListItem",
-    position: i + 1,
-    name: c.label,
-    item: new URL(c.href, SITE).toString(),
-  })),
-};
+  const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.label,
+      item: new URL(c.href, SITE).toString(),
+    })),
+  };
 
 
   return (

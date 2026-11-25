@@ -20,7 +20,7 @@ export function TermsAgree({ agreed, onChange, lang, invalid, className }: { agr
   const link = terms.url ? <a href={terms.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{w.terms}</a> : <span>{w.terms}</span>;
   return (
     <label className={`terms-agree flex items-start gap-2 text-sm${invalid ? " terms-agree-invalid" : ""}${className ? ` ${className}` : ""}`} data-testid="terms-agree">
-      <input type="checkbox" checked={agreed} onChange={(e) => onChange(e.target.checked)} aria-invalid={invalid || undefined} className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" data-testid="terms-agree-box" />
+      <input type="checkbox" checked={agreed} onChange={(e) => onChange(e.target.checked)} aria-invalid={invalid || undefined} className="mt-1 h-4 w-4 shrink-0 accent-(--accent)" data-testid="terms-agree-box" />
       <span>{w.own ? <>{w.own} ({link})</> : <>{w.agree} {link}</>}</span>
     </label>
   );

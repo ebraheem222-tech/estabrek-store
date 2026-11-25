@@ -63,7 +63,7 @@ const SpotlightThemesDemo: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-12">
+      <div className="bg-linear-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">✨ Spotlight Themes Collection</h1>
           <p className="text-indigo-100 text-lg">150 Interactive Mouse-Following Light Effects</p>
@@ -125,7 +125,7 @@ const SpotlightThemesDemo: React.FC = () => {
             placeholder="🔍 Search themes by name, category, or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-xs"
           />
         </div>
 
@@ -170,7 +170,7 @@ const SpotlightThemesDemo: React.FC = () => {
           {filteredThemes.map((theme, index) => (
             <div
               key={theme.id}
-              className={`relative ${needsDarkBg(theme) ? 'p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900' : ''}`}
+              className={`relative ${needsDarkBg(theme) ? 'p-4 rounded-2xl bg-linear-to-br from-slate-800 to-slate-900' : ''}`}
             >
               {/* Index Badge */}
               <span className="absolute top-2 right-2 z-20 text-xs font-medium px-2 py-1 rounded-full bg-black/50 text-white">

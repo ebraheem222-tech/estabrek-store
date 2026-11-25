@@ -49,8 +49,8 @@ function NavNode({
         .join(" ")
     : "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition " +
       (active
-        ? "bg-black/5 dark:bg-white/10 text-[color:var(--text)]"
-        : "text-[color:var(--text)] opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10");
+        ? "bg-black/5 dark:bg-white/10 text-(--text)"
+        : "text-(--text) opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10");
 
   const iconPaths: Record<string, string> = {
     home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
@@ -122,7 +122,7 @@ function NavNode({
       </a>
 
       <div className="absolute left-0 top-full z-50 hidden min-w-[240px] pt-2 group-hover:block">
-        <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
+        <div className="relative overflow-hidden rounded-2xl border border-(--border) bg-(--surface)/95 backdrop-blur-sm p-3">
           <GradientBg id={`nav-dd-${item.id ?? item.label}`} />
           {mode === "mega" ? (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -255,17 +255,17 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const allowMiniCart = settings.miniCartEnabled && isDesktop;
   const padMap: Record<string, string> = { compact: "py-2", normal: "py-3", comfortable: "py-4" };
   const padCls = `${padMap[heightMobile]} md:${padMap[heightDesktop]}`;
-  const navTextBase = "text-[color:var(--text)]";
-  const navTextMuted = "text-[color:var(--text)] opacity-80 hover:opacity-100";
+  const navTextBase = "text-(--text)";
+  const navTextMuted = "text-(--text) opacity-80 hover:opacity-100";
   const navPill =
     "rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm " +
     navTextMuted +
     " hover:bg-black/10 dark:hover:bg-white/15";
   const navCtaBase =
-    "rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-contrast)] hover:opacity-90";
+    "rounded-xl bg-(--accent) px-3 py-2 text-sm font-semibold text-(--accent-contrast) hover:opacity-90";
   const navDrawerItem = "rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 p-3";
-  const navDrawerLink = "font-semibold text-[color:var(--text)]";
-  const navDrawerSubLink = "block text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
+  const navDrawerLink = "font-semibold text-(--text)";
+  const navDrawerSubLink = "block text-sm text-(--text) opacity-75 hover:opacity-100";
 
   function SearchControl({ withLabel }: { withLabel?: boolean }) {
     if (searchStyle !== "icon") return <SearchBox styleId={searchInputStyleId} />;
@@ -327,7 +327,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   const headerClassName = (() => {
     if (!navTemplate) {
-      return (sticky ? "sticky top-0 z-40 " : "relative z-40 ") + "border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur";
+      return (sticky ? "sticky top-0 z-40 " : "relative z-40 ") + "border-b border-(--border) bg-(--surface)/80 backdrop-blur-sm";
     }
 
     const rawNavCls = navTemplate.styles.nav ?? "";
@@ -381,7 +381,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     decoding="sync"
                   />
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
+                  <div className="h-8 w-8 rounded-lg bg-white/8" />
                 )}
                 <div className={siteNameClass} style={navTemplateTextStyle}>
                   {site.siteName || "Store"}
@@ -474,7 +474,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     decoding="sync"
                   />
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
+                  <div className="h-8 w-8 rounded-lg bg-white/8" />
                 )}
                 <div className={siteNameClass} style={navTemplateTextStyle}>
                   {site.siteName || "Store"}
@@ -544,7 +544,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
       {/* Mobile drawer */}
       {mobileOpen ? (
-        <div className="md:hidden border-t border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur">
+        <div className="md:hidden border-t border-(--border) bg-(--surface)/95 backdrop-blur-sm">
           <div className="mx-auto max-w-6xl px-4 py-4 space-y-3">
             {showSearch ? (
               <div className="w-full">

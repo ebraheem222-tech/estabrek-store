@@ -262,7 +262,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
       >
         <Link href={`/p/${product.slug}`} className="block" prefetch={prefetchEnabled}>
           {/* Image Container */}
-          <div data-cms-part="card-image" className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
+          <div data-cms-part="card-image" className="relative aspect-4/5 w-full overflow-hidden bg-(--surface-2)">
             {discountPercent ? (
               <span className="discount-shape-badge discount-shape-badge--sm pointer-events-none absolute right-3 top-3 z-20 border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
                 -{discountPercent}%
@@ -276,10 +276,10 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
                   className={
                     "product-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-lg " +
                     (badge.tone === "danger"
-                      ? "bg-gradient-to-r from-red-500 to-red-600 text-white"
+                      ? "bg-linear-to-r from-red-500 to-red-600 text-white"
                       : badge.tone === "gold"
-                      ? "bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-black pulse-glow"
-                      : "bg-[var(--text)]/90 text-[var(--bg)]")
+                      ? "bg-linear-to-r from-amber-400 via-yellow-500 to-orange-500 text-black pulse-glow"
+                      : "bg-(--text)/90 text-(--bg)")
                   }
                 >
                   {badge.tone === "neutral" && (
@@ -324,7 +324,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
                 />
               </>
             ) : (
-              <div className="image-skeleton flex h-full w-full items-center justify-center text-xs text-[var(--muted)]">
+              <div className="image-skeleton flex h-full w-full items-center justify-center text-xs text-(--muted)">
                 <svg className="w-8 h-8 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -332,11 +332,11 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
             )}
 
             {/* Gradient Overlay - Enhanced for dramatic effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
 
             {/* Shimmer Effect on Hover */}
             <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
-              <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl" />
+              <div className="absolute -inset-24 rotate-12 bg-linear-to-r from-transparent via-white/10 to-transparent blur-2xl" />
             </div>
 
             {/* Quick View */}
@@ -357,7 +357,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
             {/* Quick Add Button - Slides up on hover with gradient */}
             <div className="absolute inset-x-0 bottom-0 p-3 z-20">
               <div data-cms-part="card-actions" className="quick-add-slide">
-                <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="w-full backdrop-blur-sm bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] hover:shadow-glow-medium transition-all duration-300" />
+                <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="w-full backdrop-blur-xs bg-linear-to-r from-(--accent) to-(--accent-2) hover:shadow-glow-medium transition-all duration-300" />
               </div>
             </div>
 
@@ -381,24 +381,24 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
             {/* Title & Price */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h3 data-cms-part="card-name" className="truncate text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                <h3 data-cms-part="card-name" className="truncate text-sm font-semibold text-(--text) group-hover:text-(--accent) transition-colors">
                   {product.title}
                 </h3>
-                <p data-cms-part="card-category" className="mt-0.5 text-xs text-[var(--muted)] flex items-center gap-1">
+                <p data-cms-part="card-category" className="mt-0.5 text-xs text-(--muted) flex items-center gap-1">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
                   {(product as any).category?.name ?? "—"}
                 </p>
               </div>
-              <div data-cms-part="card-price" className="price-shine shrink-0 text-sm font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+              <div data-cms-part="card-price" className="price-shine shrink-0 text-sm font-bold bg-linear-to-r from-(--accent) to-(--accent-2) bg-clip-text text-transparent">
                 {minPrice != null ? formatMoney(minPrice, "ILS") : "—"}
               </div>
             </div>
 
             {/* Animated Underline */}
-            <div className="relative h-px bg-[var(--border)] overflow-hidden">
-              <div className="absolute inset-y-0 left-0 w-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] transition-all duration-500 group-hover:w-full" />
+            <div className="relative h-px bg-(--border) overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-0 bg-linear-to-r from-(--accent) to-(--accent-2) transition-all duration-500 group-hover:w-full" />
             </div>
 
             {/* Color Swatches */}
@@ -411,8 +411,8 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
                     type="button"
                     className={`color-swatch h-5 w-5 rounded-full border-2 transition-all duration-200 ${
                       activeSwatch === s.key
-                        ? 'border-[var(--accent)] scale-110 active ring-2 ring-[var(--accent)] ring-opacity-30'
-                        : 'border-[var(--border)] hover:border-white/30 hover:scale-105 hover:shadow-md'
+                        ? 'border-(--accent) scale-110 active ring-2 ring-(--accent) ring-opacity-30'
+                        : 'border-(--border) hover:border-white/30 hover:scale-105 hover:shadow-md'
                     }`}
                     style={{ background: s.hex ?? "linear-gradient(135deg, #ddd, #999)" }}
                     title={s.name}
@@ -433,7 +433,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
                   />
                 ))}
                 {(product.items?.length ?? 0) > swatches.length ? (
-                  <span className="text-xs text-[var(--muted)] font-medium">
+                  <span className="text-xs text-(--muted) font-medium">
                     +{(product.items?.length ?? 0) - swatches.length}
                   </span>
                 ) : null}

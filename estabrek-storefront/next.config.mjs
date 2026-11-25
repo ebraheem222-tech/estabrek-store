@@ -41,6 +41,9 @@ const nextConfig = {
     ];
   },
   images: {
+    // Next 16 won't fetch a picture from a private address (SSRF): allowed only off production, where the test API
+    // and a local server hand out http://127.0.0.1/... pictures. A live shop's pictures are on public addresses.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },
       { protocol: 'http', hostname: '127.0.0.1' },

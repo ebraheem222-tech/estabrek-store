@@ -156,11 +156,11 @@ export const PricingModernGradientBorder: React.FC<PricingTableProps> = ({
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`${plan.popular ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' : 'bg-gray-700'} p-[2px] rounded-2xl`}
+              className={`${plan.popular ? 'bg-linear-to-r from-purple-500 via-pink-500 to-red-500' : 'bg-gray-700'} p-[2px] rounded-2xl`}
             >
               <div className="bg-gray-900 rounded-2xl p-8 h-full">
                 {plan.badge && (
-                  <span className="inline-block px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full mb-4">
+                  <span className="inline-block px-3 py-1 bg-linear-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full mb-4">
                     {plan.badge}
                   </span>
                 )}
@@ -187,7 +187,7 @@ export const PricingModernGradientBorder: React.FC<PricingTableProps> = ({
                   onClick={() => handlePlanSelect(plan)}
                   className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                     plan.popular
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90'
+                      ? 'bg-linear-to-r from-purple-500 to-pink-500 text-white hover:opacity-90'
                       : 'bg-gray-700 text-white hover:bg-gray-600'
                   }`}
                 >
@@ -534,7 +534,7 @@ export const PricingCorporateProfessional: React.FC<PricingTableProps> = ({
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`bg-white rounded-lg p-8 shadow-sm ${
+              className={`bg-white rounded-lg p-8 shadow-xs ${
                 plan.popular ? 'ring-2 ring-slate-900' : 'border border-slate-200'
               }`}
             >
@@ -670,7 +670,7 @@ export const PricingAppLifetime: React.FC<PricingTableProps> = ({
   className = '',
 }) => {
   return (
-    <section className={`py-16 px-4 bg-gradient-to-b from-gray-900 to-gray-950 ${className}`}>
+    <section className={`py-16 px-4 bg-linear-to-b from-gray-900 to-gray-950 ${className}`}>
       <div className="max-w-4xl mx-auto">
         {(title || subtitle || description) && (
           <div className="text-center mb-12">
@@ -692,7 +692,7 @@ export const PricingAppLifetime: React.FC<PricingTableProps> = ({
                   <div className="flex items-center gap-3">
                     <h3 className="text-xl font-bold text-white">{plan.name}</h3>
                     {plan.badge && (
-                      <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">
+                      <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-sm">
                         {plan.badge}
                       </span>
                     )}

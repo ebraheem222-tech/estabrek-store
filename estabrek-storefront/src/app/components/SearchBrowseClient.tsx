@@ -72,13 +72,13 @@ export default function SearchBrowseClient({
     <main className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
       {/* Breadcrumb */}
       {breadcrumbsEnabled ? (
-        <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
-          <a href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
+        <nav className="flex items-center gap-2 text-sm text-(--muted)">
+          <a href="/" className="flex items-center gap-1 hover:text-(--text) transition-colors">
             <HomeIcon />
             الرئيسية
           </a>
           <ChevronLeftIcon />
-          <span className="text-[var(--text)]">البحث</span>
+          <span className="text-(--text)">البحث</span>
         </nav>
       ) : null}
 
@@ -90,7 +90,7 @@ export default function SearchBrowseClient({
               <SearchIcon />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-[var(--text)]">
+              <h1 className="text-2xl md:text-3xl font-bold text-(--text)">
                 {query ? "نتائج البحث" : "البحث في المتجر"}
               </h1>
               {query && (
@@ -124,16 +124,16 @@ export default function SearchBrowseClient({
 
       {!hasItems && !loading ? (
         <div className="no-results">
-          <div className="no-results-icon text-[var(--muted)]">
+          <div className="no-results-icon text-(--muted)">
             <EmptyIcon />
           </div>
-          <h3 className="text-xl font-semibold text-[var(--text)] mb-2">لا توجد نتائج</h3>
-          <p className="text-sm text-[var(--muted)] mb-6 max-w-md">
+          <h3 className="text-xl font-semibold text-(--text) mb-2">لا توجد نتائج</h3>
+          <p className="text-sm text-(--muted) mb-6 max-w-md">
             لم نتمكن من العثور على منتجات تطابق بحثك. جرب تعديل الفلاتر أو البحث بكلمات مختلفة.
           </p>
           <a
             href="/shop"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-linear-to-r from-(--accent) to-(--accent-2) text-white font-medium hover:opacity-90 transition-opacity"
           >
             تصفح جميع المنتجات
             <ChevronLeftIcon />

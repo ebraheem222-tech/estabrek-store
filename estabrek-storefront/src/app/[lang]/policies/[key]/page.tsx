@@ -11,7 +11,8 @@ const MAP: Record<string, string> = {
   shipping: "shipping-policy",
 };
 
-export default async function PolicyPage({ params }: { params: { key: string; lang: string } }) {
+export default async function PolicyPage(props: { params: Promise<{ key: string; lang: string }> }) {
+  const params = await props.params;
   const lang = routeLang(params);
   const slug = MAP[params.key];
   if (!slug) return notFound();

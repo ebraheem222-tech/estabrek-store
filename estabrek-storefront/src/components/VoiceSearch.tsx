@@ -44,7 +44,7 @@ export function VoiceSearchModal({
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   // Check browser support
   useEffect(() => {
@@ -186,9 +186,9 @@ export function VoiceSearchModal({
         {/* Visualization */}
         <div className="voice-visualization">
           <div className="voice-rings">
-            <div className="ring ring-1" style={{ transform: `scale(${1 + volume * 0.5})` }} />
-            <div className="ring ring-2" style={{ transform: `scale(${1 + volume * 0.3})` }} />
-            <div className="ring ring-3" style={{ transform: `scale(${1 + volume * 0.1})` }} />
+            <div className="ring-3 ring-1" style={{ transform: `scale(${1 + volume * 0.5})` }} />
+            <div className="ring-3 ring-2" style={{ transform: `scale(${1 + volume * 0.3})` }} />
+            <div className="ring-3 ring-3" style={{ transform: `scale(${1 + volume * 0.1})` }} />
           </div>
           
           <button

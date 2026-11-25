@@ -9,7 +9,7 @@ export function ScrollExperience({
   root,
   language,
 }: {
-  root: RefObject<HTMLDivElement>;
+  root: RefObject<HTMLDivElement | null>;
   language: Language;
 }) {
   const settings = useStorefrontSettings();

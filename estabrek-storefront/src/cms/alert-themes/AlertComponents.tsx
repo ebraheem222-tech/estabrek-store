@@ -59,7 +59,7 @@ export const AlertRounded: React.FC<AlertProps> = ({
     <div className={`p-4 rounded-2xl border ${colors[type]} ${className}`}>
       <div className="flex items-start gap-3">
         {showIcon && (
-          <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-white ${iconColors[type]}`}>
+          <span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-white ${iconColors[type]}`}>
             {getIcon(type)}
           </span>
         )}
@@ -159,7 +159,7 @@ export const ToastWithAvatar: React.FC<AlertProps & { avatar?: string; userName?
   return (
     <div className={`bg-white rounded-xl shadow-lg border border-gray-200 p-4 min-w-[320px] ${className}`}>
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shrink-0">
           {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">👤</div>}
         </div>
         <div className="flex-1">
@@ -284,7 +284,7 @@ export const BannerWithIcon: React.FC<AlertProps> = ({
         {showIcon && <span>{getIcon(type)}</span>}
         <p>{message}</p>
         {action && (
-          <button onClick={action.onClick} className="px-3 py-1 bg-white/20 rounded text-sm font-medium hover:bg-white/30">
+          <button onClick={action.onClick} className="px-3 py-1 bg-white/20 rounded-sm text-sm font-medium hover:bg-white/30">
             {action.label}
           </button>
         )}
@@ -308,12 +308,12 @@ export const BannerPromo: React.FC<AlertProps & { code?: string }> = ({
   className = '',
 }) => {
   return (
-    <div className={`bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 ${className}`}>
+    <div className={`bg-linear-to-r from-purple-600 to-pink-600 text-white py-3 px-4 ${className}`}>
       <div className="max-w-7xl mx-auto flex items-center justify-center gap-4 flex-wrap">
         <span className="text-2xl">🎉</span>
         <p className="font-medium">{message}</p>
         {code && (
-          <span className="px-3 py-1 bg-white/20 rounded font-mono font-bold">{code}</span>
+          <span className="px-3 py-1 bg-white/20 rounded-sm font-mono font-bold">{code}</span>
         )}
         {closable && (
           <button onClick={onClose} className="ml-auto opacity-70 hover:opacity-100">{Icons.close}</button>
@@ -378,7 +378,7 @@ export const AlertNeumorphism: React.FC<AlertProps> = ({
     <div className={`p-5 rounded-2xl bg-gray-100 shadow-[8px_8px_16px_#d1d1d1,-8px_-8px_16px_#ffffff] ${className}`}>
       <div className="flex items-start gap-4">
         {showIcon && (
-          <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-white shadow-md ${iconColors[type]}`}>
+          <span className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-white shadow-md ${iconColors[type]}`}>
             {getIcon(type)}
           </span>
         )}
@@ -515,7 +515,7 @@ export const AlertMacOS: React.FC<AlertProps & { appIcon?: string; appName?: str
   return (
     <div className={`bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 p-4 min-w-[340px] ${className}`}>
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl shadow-lg">
+        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl shadow-lg">
           {appIcon || '📱'}
         </div>
         <div className="flex-1">
@@ -555,7 +555,7 @@ export const AlertOrderStatus: React.FC<AlertProps & { orderNumber?: string; sta
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 ${s.color} text-white text-xs font-bold rounded`}>{s.label}</span>
+            <span className={`px-2 py-0.5 ${s.color} text-white text-xs font-bold rounded-sm`}>{s.label}</span>
             {orderNumber && <span className="text-gray-400 text-sm">#{orderNumber}</span>}
           </div>
           <p className="text-gray-700 mt-1">{message}</p>
@@ -583,10 +583,10 @@ export const AlertLevelUp: React.FC<AlertProps & { level?: number; reward?: stri
   className = '',
 }) => {
   return (
-    <div className={`bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 rounded-xl p-1 ${className}`}>
+    <div className={`bg-linear-to-r from-purple-600 via-pink-600 to-red-600 rounded-xl p-1 ${className}`}>
       <div className="bg-gray-900 rounded-lg p-4">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg">
+          <div className="w-16 h-16 bg-linear-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg">
             {level || '?'}
           </div>
           <div className="flex-1">

@@ -390,7 +390,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
       >
         <div className={`flex items-center gap-2 p-2 ${isDragging ? 'opacity-50' : ''}`}>
           {/* Search Icon */}
-          <div className="flex items-center justify-center w-10 h-10 text-[var(--muted)]">
+          <div className="flex items-center justify-center w-10 h-10 text-(--muted)">
             <SearchIcon />
           </div>
 
@@ -421,7 +421,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                 setProducts([]);
                 setCategories([]);
               }}
-              className="search-action-btn !w-8 !h-8"
+              className="search-action-btn w-8! h-8!"
               aria-label="مسح البحث"
             >
               <CloseIcon />
@@ -469,7 +469,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
 
         {/* Drag Overlay */}
         {imageSearchEnabled && isDragging && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[var(--accent)]/20 border-2 border-dashed border-[var(--accent)] rounded-2xl z-20">
+          <div className="absolute inset-0 flex items-center justify-center bg-(--accent)/20 border-2 border-dashed border-(--accent) rounded-2xl z-20">
             <div className="text-center">
               <UploadIcon />
               <p className="mt-2 text-sm font-medium">أفلت الصورة هنا</p>
@@ -491,15 +491,15 @@ export function SearchBox({ styleId }: { styleId?: string }) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="drag-icon text-[var(--muted)] mb-3">
+            <div className="drag-icon text-(--muted) mb-3">
               <UploadIcon />
             </div>
-            <p className="text-sm text-[var(--muted)] mb-2">اسحب وأفلت صورة هنا</p>
-            <p className="text-xs text-[var(--muted)]/60 mb-4">أو</p>
+            <p className="text-sm text-(--muted) mb-2">اسحب وأفلت صورة هنا</p>
+            <p className="text-xs text-(--muted)/60 mb-4">أو</p>
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              className="px-4 py-2 rounded-xl bg-(--accent) text-white text-sm font-medium hover:opacity-90 transition-opacity"
               disabled={imageLoading}
             >
               {imageLoading ? (
@@ -511,7 +511,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                 "اختر صورة من جهازك"
               )}
             </button>
-            <p className="text-xs text-[var(--muted)]/60 mt-3">PNG, JPG, WEBP حتى 5MB</p>
+            <p className="text-xs text-(--muted)/60 mt-3">PNG, JPG, WEBP حتى 5MB</p>
           </div>
         </div>
       )}
@@ -536,11 +536,11 @@ export function SearchBox({ styleId }: { styleId?: string }) {
 
       {/* Voice Active Indicator */}
       {voiceActive && (
-        <div className="mt-2 p-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-sm text-[var(--accent)] flex items-center gap-2">
+        <div className="mt-2 p-3 rounded-xl bg-(--accent)/10 border border-(--accent)/20 text-sm text-(--accent) flex items-center gap-2">
           <div className="flex gap-1">
-            <span className="w-1 h-4 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-            <span className="w-1 h-4 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-            <span className="w-1 h-4 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+            <span className="w-1 h-4 bg-(--accent) rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+            <span className="w-1 h-4 bg-(--accent) rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+            <span className="w-1 h-4 bg-(--accent) rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
           </div>
           جاري الاستماع... تحدث الآن
         </div>
@@ -552,7 +552,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
           {showRecent ? (
             <div className="p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+                <span className="text-xs font-semibold text-(--muted) flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -564,7 +564,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                     saveRecent([]);
                     setRecent([]);
                   }}
-                  className="text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                  className="text-xs text-(--muted) hover:text-(--text) transition-colors"
                 >
                   مسح الكل
                 </button>
@@ -575,7 +575,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                     key={r}
                     type="button"
                     onClick={() => commitSearch(r)}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-(--text)/80 hover:bg-white/6 transition-colors"
                   >
                     <span className="truncate">{r}</span>
                     <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -588,18 +588,18 @@ export function SearchBox({ styleId }: { styleId?: string }) {
           ) : null}
 
           {showResults ? (
-            <div className="p-3 border-t border-white/[0.06]">
+            <div className="p-3 border-t border-white/6">
               {showDidYouMean ? (
-                <div className="mb-3 p-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-sm">
-                  <span className="text-[var(--muted)]">هل تقصد </span>
+                <div className="mb-3 p-3 rounded-xl bg-(--accent)/10 border border-(--accent)/20 text-sm">
+                  <span className="text-(--muted)">هل تقصد </span>
                   <button
                     type="button"
                     onClick={() => commitSearch(didYouMean as string)}
-                    className="font-semibold text-[var(--accent)] hover:underline"
+                    className="font-semibold text-(--accent) hover:underline"
                   >
                     {didYouMean}
                   </button>
-                  <span className="text-[var(--muted)]">؟</span>
+                  <span className="text-(--muted)">؟</span>
                 </div>
               ) : null}
 
@@ -607,14 +607,14 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                 <div className="flex items-center justify-center py-4">
                   <LoadingIndicator
                     className="flex items-center justify-center"
-                    fallback={<div className="text-sm text-[var(--muted)]">جاري البحث...</div>}
+                    fallback={<div className="text-sm text-(--muted)">جاري البحث...</div>}
                   />
                 </div>
               ) : null}
 
               {categories.length ? (
                 <div className="mb-3">
-                  <div className="px-2 py-1 text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+                  <div className="px-2 py-1 text-xs font-semibold text-(--muted) flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
@@ -628,7 +628,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                         setOpen(false);
                         router.push(`/c/${c.slug}`);
                       }}
-                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
+                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-(--text)/80 hover:bg-white/6 transition-colors"
                     >
                       <span className="truncate">{c.name}</span>
                       <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -641,7 +641,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
 
               {products.length ? (
                 <div>
-                  <div className="px-2 py-1 text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+                  <div className="px-2 py-1 text-xs font-semibold text-(--muted) flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
@@ -655,7 +655,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                         setOpen(false);
                         router.push(`/p/${p.slug}`);
                       }}
-                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
+                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-(--text)/80 hover:bg-white/6 transition-colors"
                     >
                       <span className="truncate">{p.title}</span>
                       <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -667,7 +667,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
               ) : null}
 
               {(!loading && !categories.length && !products.length) ? (
-                <div className="text-center py-4 text-sm text-[var(--muted)]">
+                <div className="text-center py-4 text-sm text-(--muted)">
                   <svg className="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -678,7 +678,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
               <button
                 type="button"
                 onClick={() => commitSearch(q)}
-                className="mt-3 w-full rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                className="mt-3 w-full rounded-xl bg-(--accent) px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
                 <SearchIcon />
                 عرض كل النتائج

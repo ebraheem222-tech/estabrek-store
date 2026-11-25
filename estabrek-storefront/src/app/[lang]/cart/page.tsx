@@ -8,12 +8,12 @@ import { tr } from "@/lib/words";
 
 export const revalidate = 300;
 
-export async function generateMetadata({ params }: { params: { lang: string } }) {
-  return { title: tr(routeLang(params), "سلة المشتريات", "Shopping bag") };
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  return { title: tr(routeLang(await props.params), "سلة المشتريات", "Shopping bag") };
 }
 
-export default async function CartPage({ params }: { params: { lang: string } }) {
-  const lang = routeLang(params);
+export default async function CartPage(props: { params: Promise<{ lang: string }> }) {
+  const lang = routeLang(await props.params);
   const settings = await getPublicSettings().catch(() => null);
   const site = settings?.site || {};
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};

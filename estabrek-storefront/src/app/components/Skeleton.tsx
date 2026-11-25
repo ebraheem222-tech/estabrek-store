@@ -136,7 +136,7 @@ export function FilterSkeleton() {
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
-            <Skeleton className="w-5 h-5 rounded" />
+            <Skeleton className="w-5 h-5 rounded-sm" />
             <Skeleton className="h-4 flex-1" />
           </div>
         ))}

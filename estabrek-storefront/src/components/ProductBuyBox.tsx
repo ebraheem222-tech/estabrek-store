@@ -184,26 +184,26 @@ export default function ProductBuyBox({
   }
 
   return (
-    <div className="buy-box glass-card rounded-3xl p-6 text-[color:var(--text)]">
+    <div className="buy-box glass-card rounded-3xl p-6 text-(--text)">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 pb-5 border-b border-white/[0.08]">
+      <div className="flex items-start justify-between gap-4 pb-5 border-b border-white/8">
         <div>
-          <h3 className="text-lg font-bold text-[color:var(--text)] flex items-center gap-2">
-            <svg className="w-5 h-5 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <h3 className="text-lg font-bold text-(--text) flex items-center gap-2">
+            <svg className="w-5 h-5 text-(--accent)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             الشراء
           </h3>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">اختاري اللون والمقاس، ثم أضيفي القطعة للحقيبة</p>
+          <p className="mt-1 text-sm text-(--muted)">اختاري اللون والمقاس، ثم أضيفي القطعة للحقيبة</p>
         </div>
         {selectedPrice != null && selectedPrice > 0 ? (
           <div className="text-right">
-            <div className="text-2xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+            <div className="text-2xl font-bold bg-linear-to-r from-(--accent) to-(--accent-2) bg-clip-text text-transparent">
               {formatMoney(selectedPrice, undefined)}
             </div>
             {hasCompareDiscount ? (
               <div className="mt-1 flex items-center justify-end gap-2">
-                <span className="text-xs text-[color:var(--muted)] line-through">
+                <span className="text-xs text-(--muted) line-through">
                   {formatMoney(compareAt, undefined)}
                 </span>
                 <span className="discount-shape-badge discount-shape-badge--sm inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
@@ -211,10 +211,10 @@ export default function ProductBuyBox({
                 </span>
               </div>
             ) : null}
-            <div className="text-xs text-[color:var(--muted)]">شامل الضريبة</div>
+            <div className="text-xs text-(--muted)">شامل الضريبة</div>
           </div>
         ) : (
-          <div className="text-right text-sm text-[color:var(--muted)]">تواصل للسعر</div>
+          <div className="text-right text-sm text-(--muted)">تواصل للسعر</div>
         )}
       </div>
 
@@ -223,16 +223,16 @@ export default function ProductBuyBox({
         <div className="mt-5 buy-box-section">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-(--accent)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
               </svg>
               <span className="text-sm font-semibold">الألوان</span>
-              <span className="text-xs text-[color:var(--muted)] bg-white/5 px-2 py-0.5 rounded-full">{colorKeys.length}</span>
+              <span className="text-xs text-(--muted) bg-white/5 px-2 py-0.5 rounded-full">{colorKeys.length}</span>
             </div>
             <button
               type="button"
               onClick={() => setColorsOpen(true)}
-              className="text-xs text-[var(--accent)] hover:text-[var(--accent-2)] transition-colors flex items-center gap-1"
+              className="text-xs text-(--accent) hover:text-(--accent-2) transition-colors flex items-center gap-1"
             >
               عرض الكل
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -242,7 +242,7 @@ export default function ProductBuyBox({
           </div>
 
           {/* Selected Color Display */}
-          <div className="buy-box-color-selected-candy mb-3 flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3">
+          <div className="buy-box-color-selected-candy mb-3 flex items-center gap-3 rounded-xl border border-white/6 bg-black/20 p-3">
             <span
               className="h-8 w-8 shrink-0 rounded-xl border-2 border-white/20 shadow-lg sm:h-10 sm:w-10"
               style={{ 
@@ -252,8 +252,8 @@ export default function ProductBuyBox({
               aria-hidden
             />
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-[color:var(--text)]">{selectedColorName || "اختر لون"}</div>
-              <div className="text-xs text-[color:var(--muted)]">اللون المحدد</div>
+              <div className="font-medium text-(--text)">{selectedColorName || "اختر لون"}</div>
+              <div className="text-xs text-(--muted)">اللون المحدد</div>
             </div>
           </div>
 
@@ -289,7 +289,7 @@ export default function ProductBuyBox({
               <button
                 type="button"
                 onClick={() => setColorsOpen(true)}
-                className="flex h-8 shrink-0 items-center gap-1 rounded-xl border border-white/15 bg-white/5 px-3 text-xs text-[color:var(--text)] transition-colors hover:bg-white/10 sm:h-9 sm:px-4"
+                className="flex h-8 shrink-0 items-center gap-1 rounded-xl border border-white/15 bg-white/5 px-3 text-xs text-(--text) transition-colors hover:bg-white/10 sm:h-9 sm:px-4"
               >
                 +{colorKeys.length - 10}
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -302,24 +302,24 @@ export default function ProductBuyBox({
           {/* Color Picker Modal */}
           {colorsOpen ? (
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <div className="buy-box-color-overlay-candy absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setColorsOpen(false)} aria-hidden />
+              <div className="buy-box-color-overlay-candy absolute inset-0 bg-black/70 backdrop-blur-xs" onClick={() => setColorsOpen(false)} aria-hidden />
 
               <div className="color-modal color-modal-candy relative w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl glass-card shadow-2xl max-h-[72dvh] sm:max-h-[80vh] flex flex-col">
                 {/* Modal Header */}
                 <div className="color-modal-header-candy flex items-start justify-between gap-3 border-b border-white/10 p-5">
                   <div>
                     <h4 className="text-lg font-bold flex items-center gap-2">
-                      <svg className="w-5 h-5 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-5 h-5 text-(--accent)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                       </svg>
                       اختر اللون
                     </h4>
-                    <p className="mt-1 text-sm text-[color:var(--muted)]">الألوان غير المتوفرة معطّلة</p>
+                    <p className="mt-1 text-sm text-(--muted)">الألوان غير المتوفرة معطّلة</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setColorsOpen(false)}
-                    className="color-modal-close-candy w-10 h-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center text-[color:var(--text)] hover:bg-white/10 transition-colors"
+                    className="color-modal-close-candy w-10 h-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center text-(--text) hover:bg-white/10 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -330,14 +330,14 @@ export default function ProductBuyBox({
                 {/* Search */}
                 <div className="color-modal-search-wrap-candy p-5 border-b border-white/10">
                   <div className="relative">
-                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input
                       value={colorSearch}
                       onChange={(e) => setColorSearch(e.target.value)}
                       placeholder="ابحث عن لون…"
-                      className="color-modal-search-input-candy w-full rounded-xl border border-white/15 bg-black/30 pr-10 pl-4 py-3 text-sm text-[color:var(--text)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none"
+                      className="color-modal-search-input-candy w-full rounded-xl border border-white/15 bg-black/30 pr-10 pl-4 py-3 text-sm text-(--text) placeholder:text-(--muted) focus:border-(--accent) focus:ring-2 focus:ring-(--accent)/20 transition-all outline-hidden"
                     />
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function ProductBuyBox({
                             (disabled
                               ? "border-white/10 opacity-25 cursor-not-allowed"
                               : active
-                              ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-105"
+                              ? "border-(--accent) ring-2 ring-(--accent)/30 scale-105"
                               : "border-white/15 hover:scale-105 hover:border-white/30")
                           }
                           style={{ 
@@ -378,7 +378,7 @@ export default function ProductBuyBox({
                     })}
                   </div>
 
-                  <div className="mt-4 text-center text-sm text-[color:var(--muted)]">
+                  <div className="mt-4 text-center text-sm text-(--muted)">
                     {filteredColorKeys.length} لون متاح
                   </div>
                 </div>
@@ -392,7 +392,7 @@ export default function ProductBuyBox({
       {sizeKeys.length > 0 ? (
         <div className="mt-4 buy-box-section">
           <div className="flex items-center gap-2 mb-3">
-            <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-(--accent)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
             <span className="text-sm font-semibold">المقاسات</span>
@@ -412,10 +412,10 @@ export default function ProductBuyBox({
                   className={
                     "size-btn rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all " +
                     (disabled
-                      ? "border-white/10 bg-white/5 text-[color:var(--muted)] opacity-40 cursor-not-allowed"
+                      ? "border-white/10 bg-white/5 text-(--muted) opacity-40 cursor-not-allowed"
                       : active
                       ? "active border-transparent"
-                      : "border-white/15 bg-white/5 text-[color:var(--text)] hover:border-white/25 hover:bg-white/10")
+                      : "border-white/15 bg-white/5 text-(--text) hover:border-white/25 hover:bg-white/10")
                   }
                 >
                   {k === "default" ? "مقاس واحد" : k}
@@ -458,7 +458,7 @@ export default function ProductBuyBox({
               min={1}
               value={qty}
               onChange={(e) => setQty(Math.max(1, Number(e.target.value || 1)))}
-              className="w-12 text-center bg-transparent text-sm font-semibold outline-none"
+              className="w-12 text-center bg-transparent text-sm font-semibold outline-hidden"
             />
             <button
               type="button"
@@ -479,8 +479,8 @@ export default function ProductBuyBox({
             className={
               "add-to-cart-btn flex-1 rounded-xl px-6 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 " +
               (canAdd
-                ? "bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white shadow-lg"
-                : "bg-white/10 text-[color:var(--muted)] cursor-not-allowed")
+                ? "bg-linear-to-r from-(--accent) to-(--accent-2) text-white shadow-lg"
+                : "bg-white/10 text-(--muted) cursor-not-allowed")
             }
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -514,7 +514,7 @@ export default function ProductBuyBox({
             {showStockAlert ? (
               <button
                 type="button"
-                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-[color:var(--text)] hover:bg-white/10 transition-colors disabled:opacity-60"
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-(--text) hover:bg-white/10 transition-colors disabled:opacity-60"
                 onClick={() => {
                   if (stockAlertActive) return;
                   setStockAlertActive(true);
@@ -528,7 +528,7 @@ export default function ProductBuyBox({
             {showPriceAlert ? (
               <button
                 type="button"
-                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-[color:var(--text)] hover:bg-white/10 transition-colors disabled:opacity-60"
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-(--text) hover:bg-white/10 transition-colors disabled:opacity-60"
                 onClick={() => {
                   if (priceAlertActive) return;
                   setPriceAlertActive(true);

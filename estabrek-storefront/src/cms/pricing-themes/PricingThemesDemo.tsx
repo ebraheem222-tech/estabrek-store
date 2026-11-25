@@ -139,7 +139,7 @@ const PricingThemesDemo: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white py-12">
+      <div className="bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">💰 Pricing Table Themes</h1>
           <p className="text-violet-100 text-lg">
@@ -204,7 +204,7 @@ const PricingThemesDemo: React.FC = () => {
             placeholder="🔍 Search pricing tables by name, category, or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 shadow-sm"
+            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-violet-500 shadow-xs"
           />
         </div>
 
@@ -304,7 +304,7 @@ const PricingThemesDemo: React.FC = () => {
                       e.stopPropagation();
                       navigator.clipboard.writeText(theme.id);
                     }}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+                    className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-sm hover:bg-gray-200"
                   >
                     Copy ID
                   </button>

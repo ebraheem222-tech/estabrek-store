@@ -12,7 +12,8 @@ export const metadata = { robots: { index: false, follow: false } };
 
 type SP = Record<string, string | string[] | undefined>;
 
-export default function LibPreview({ searchParams }: { searchParams?: SP }) {
+export default async function LibPreview(props: { searchParams?: Promise<SP> }) {
+  const searchParams = await props.searchParams;
   const id = searchParams?.item;
   const item = libItem(typeof id === "string" ? id : null);
   if (!item) notFound();

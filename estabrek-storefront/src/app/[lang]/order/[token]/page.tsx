@@ -3,12 +3,14 @@ import { RoseOrderAccess } from "@/components/cinematic/RoseOrderAccess";
 import { routeLang, seoAlternates } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
 
-export async function generateMetadata({ params }: { params: { lang: string } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }) {
+  const params = await props.params;
   return { title: tr(routeLang(params), "طلبكِ", "Your order"), robots: { index: false, follow: false }, referrer: "no-referrer" as const };
 }
 
 /** The private link sent after paying / acceptance: downloads and tickets. */
-export default function OrderAccessPage({ params }: { params: { token: string } }) {
+export default async function OrderAccessPage(props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   return (
     <main id="main-content" tabIndex={-1}>
       <RosePageFrame className="rose-shop rose-cart-page rose-account-page">

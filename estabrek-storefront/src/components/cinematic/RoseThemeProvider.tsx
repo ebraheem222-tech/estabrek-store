@@ -10,7 +10,7 @@ import { MIX_PAINTS, mixPaints } from "@/lib/mixPaints";
 import { isNearWhite } from "@/lib/storefrontPalette";
 import { colourBlendOn } from "@/lib/colourEngine";
 
-type Theme = { root: RefObject<HTMLDivElement>; apply: (background: string) => void; reset: () => void };
+type Theme = { root: RefObject<HTMLDivElement | null>; apply: (background: string) => void; reset: () => void };
 const ThemeContext = createContext<Theme | null>(null);
 const properties = ["--atelier-bg", "--atelier-ink", "--atelier-muted", "--atelier-line", "--bg", "--text", "--muted", "--border", "--color-bg", "--color-text", "--color-text-muted", "--color-border"];
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;

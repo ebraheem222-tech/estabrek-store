@@ -76,7 +76,7 @@ const AnimatedShapesDemo: React.FC = () => {
       case "dark":
         return "bg-gray-900";
       case "gradient":
-        return "bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500";
+        return "bg-linear-to-br from-purple-600 via-blue-600 to-cyan-500";
       default:
         return "bg-white";
     }
@@ -129,7 +129,7 @@ const AnimatedShapesDemo: React.FC = () => {
       <style dangerouslySetInnerHTML={{ __html: animationKeyframes }} />
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white py-12">
+      <div className="bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">
             ✨ Animated Shape Themes
@@ -171,11 +171,11 @@ const AnimatedShapesDemo: React.FC = () => {
                 <p className="text-sm text-gray-500">{theme.nameAr}</p>
 
                 <div className="flex gap-2 mt-2">
-                  <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                  <span className="text-xs px-2 py-1 bg-gray-100 rounded-sm">
                     {categoryIcons[theme.category]}
                     {theme.category}
                   </span>
-                  <span className="text-xs px-2 py-1 bg-pink-100 rounded">
+                  <span className="text-xs px-2 py-1 bg-pink-100 rounded-sm">
                     {animationIcons[theme.animation]}
                     {theme.animation}
                   </span>

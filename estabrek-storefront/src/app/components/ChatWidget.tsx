@@ -245,7 +245,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
   }
 
   return (
-    <div ref={containerRef} className="fixed z-[60]" style={positionStyle}>
+    <div ref={containerRef} className="fixed z-60" style={positionStyle}>
       {/* Launcher */}
       {!open ? (
         <button
@@ -253,9 +253,9 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
           onClick={() => setOpen(true)}
           onPointerDown={handlePointerDown}
           style={draggable ? { touchAction: "none" } : undefined}
-          className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 px-4 py-3 shadow-lg backdrop-blur hover:bg-white transition"
+          className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm hover:bg-white transition"
         >
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--accent-2)] text-black shadow-sm">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-(--accent-2) text-black shadow-xs">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path
                 strokeLinecap="round"
@@ -273,7 +273,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
       {open ? (
         <div
           dir="rtl"
-          className="mt-3 w-[92vw] max-w-sm overflow-hidden rounded-2xl border border-black/10 bg-white/95 shadow-xl backdrop-blur"
+          className="mt-3 w-[92vw] max-w-sm overflow-hidden rounded-2xl border border-black/10 bg-white/95 shadow-xl backdrop-blur-sm"
         >
           <div
             className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3"
@@ -319,7 +319,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
                       "whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-relaxed " +
                       (m.role === "user"
                         ? "bg-black text-white"
-                        : "bg-[color:var(--accent-1)]/15 text-black border border-black/10")
+                        : "bg-(--accent-1)/15 text-black border border-black/10")
                     }
                   >
                     {m.text}
@@ -333,7 +333,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
                           href={`/p/${encodeURIComponent(p.slug)}`}
                           className="overflow-hidden rounded-xl border border-black/10 bg-white hover:bg-white/90 transition"
                         >
-                          <div className="aspect-[4/3] w-full bg-black/[0.04]">
+                          <div className="aspect-4/3 w-full bg-black/4">
                             {p.imageUrl ? (
                               <LoadingImg
                                 src={cldUrl(p.imageUrl, { w: 320, h: 240, c: "fill", g: "auto" })}
@@ -373,7 +373,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="اكتب سؤالك..."
-                className="min-h-[44px] max-h-[120px] w-full resize-none rounded-2xl border border-black/10 bg-white px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+                className="min-h-[44px] max-h-[120px] w-full resize-none rounded-2xl border border-black/10 bg-white px-3 py-2 text-sm text-black outline-hidden focus:ring-2 focus:ring-(--accent-2)/30"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -387,7 +387,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
                 disabled={!canSend}
                 className={
                   "inline-flex h-11 w-11 items-center justify-center rounded-2xl transition " +
-                  (canSend ? "bg-[color:var(--accent-2)] text-black" : "bg-black/10 text-black/40 cursor-not-allowed")
+                  (canSend ? "bg-(--accent-2) text-black" : "bg-black/10 text-black/40 cursor-not-allowed")
                 }
                 aria-label="إرسال"
               >

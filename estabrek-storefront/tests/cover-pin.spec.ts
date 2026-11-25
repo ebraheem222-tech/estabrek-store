@@ -48,6 +48,12 @@ const scrollPast = async (page: Page, docTop: number, y: number) => {
   await page.evaluate((top) => window.scrollTo({ top, behavior: "instant" as ScrollBehavior }), docTop + y);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 };
+/** How far the next one is pulled up: its own margin, with the space the stack leaves under the one before it. */
+const pull = (page: Page) => page.evaluate(() => {
+  const at = document.querySelector('[data-tree-node="next"]')!.parentElement!;
+  const before = at.previousElementSibling;
+  return parseFloat(getComputedStyle(at).marginTop) + (before ? parseFloat(getComputedStyle(before).marginBottom) : 0);
+});
 const covered = (page: Page) => page.evaluate(() => Number(getComputedStyle(document.querySelector('[data-tree-node="held"]')!).getPropertyValue("--pt-cv-p")));
 const topAt = (page: Page, x: number, y: number) => page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.closest("[data-tree-node]")?.closest("section")?.getAttribute("data-tree-node") ?? null, [x, y] as const);
 
@@ -68,7 +74,7 @@ test.describe("a held section on a page", () => {
     const held = page.locator('[data-tree-node="held"]');
     await expect(held).toHaveAttribute("data-pt-cover", /"hold":1/);
     // Measured: the next one comes a whole screen over it, and is pulled up by as much.
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('[data-tree-node="next"]')!.parentElement!).marginTop)).toBe("-800px");
+    await expect.poll(() => pull(page)).toBe(-800);
     const start = await page.evaluate(() => window.scrollY + document.querySelector('[data-tree-node="held"]')!.getBoundingClientRect().top);
 
     // Held: half way through its screen of holding, it hasn't moved and the next one isn't in sight.
@@ -112,7 +118,7 @@ test.describe("a held section on a page", () => {
     ]);
     await page.goto("/en/publication-fixture-en");
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('[data-tree-node="held"]')!).getPropertyValue("--pt-cv-top").trim())).toBe("-600px");
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('[data-tree-node="next"]')!.parentElement!).marginTop)).toBe("-300px");
+    await expect.poll(() => pull(page)).toBe(-300);
     const start = await page.evaluate(() => window.scrollY + document.querySelector('[data-tree-node="held"]')!.getBoundingClientRect().top);
     // Scrolled to its end: held there, its end at the screen's end.
     await scrollPast(page, start, 600 + 150);
@@ -169,7 +175,7 @@ test("in a store with its own design (the layout's runtime), held and covered to
     await expect(page.locator(".rose-home, .cinematic-shell")).toHaveCount(0);
     // The window scrolls (not the body), so what sticks sticks.
     await expect(page.locator("html")).toHaveAttribute("data-store-design", "cms");
-    await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('[data-tree-node="next"]')!.parentElement!).marginTop)).toBe("-800px");
+    await expect.poll(() => pull(page)).toBe(-800);
     const start = await page.evaluate(() => window.scrollY + document.querySelector('[data-tree-node="held"]')!.getBoundingClientRect().top);
     await scrollPast(page, start, 400);
     expect((await box(page, "held")).top).toBe(0);

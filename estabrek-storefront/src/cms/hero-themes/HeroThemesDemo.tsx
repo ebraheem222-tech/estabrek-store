@@ -65,7 +65,7 @@ const HeroThemesDemo: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white py-12">
+      <div className="bg-linear-to-r from-orange-500 via-red-500 to-pink-500 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">🎯 Hero Section Templates</h1>
           <p className="text-orange-100 text-lg">100 Ready-to-Use Hero Sections for All Industries</p>
@@ -116,7 +116,7 @@ const HeroThemesDemo: React.FC = () => {
             placeholder="🔍 Search templates by name, category, or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-orange-500 shadow-xs"
           />
         </div>
 
@@ -173,7 +173,7 @@ const HeroThemesDemo: React.FC = () => {
                   <div className="absolute inset-0 transform scale-[0.4] origin-top-left w-[250%] h-[250%]">
                     {renderHeroPreview(theme)}
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
                   <span className="absolute top-2 right-2 text-xs font-medium px-2 py-1 rounded-full bg-black/50 text-white">
                     #{index + 1}
                   </span>

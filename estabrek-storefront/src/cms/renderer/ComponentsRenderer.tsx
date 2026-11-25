@@ -112,11 +112,11 @@ function baseButtonClasses(variant?: string): string {
   const v = variant ?? "primary";
   switch (v) {
     case "secondary":
-      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] hover:bg-[color:var(--surface-2)]";
+      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-(--border) bg-(--surface) text-(--text) hover:bg-(--surface-2)";
     case "ghost":
-      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-transparent text-[color:var(--text)] hover:bg-[color:var(--surface-2)]";
+      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-transparent text-(--text) hover:bg-(--surface-2)";
     default:
-      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-[color:var(--accent-2)] text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95";
+      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-(--accent-2) text-(--accent-contrast,#0B0B0B) hover:brightness-95";
   }
 }
 
@@ -562,7 +562,7 @@ export function ComponentsRenderer({
                   <li key={it.id ?? it.href ?? it.label} className="relative group">
                     <a
                       href={it.href ?? "#"}
-                      className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-white/[0.06]"
+                      className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-white/6"
                     >
                       <Icon name={it.icon} />
                       <span>{it.label ?? "Item"}</span>
@@ -571,7 +571,7 @@ export function ComponentsRenderer({
 
                     {hasChildren ? (
                       <div className="absolute left-0 top-full z-50 mt-2 hidden min-w-[220px] group-hover:block">
-                        <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
+                        <div className="relative overflow-hidden rounded-2xl border border-(--border) bg-(--surface)/95 backdrop-blur-sm p-3">
                           <GradientBg />
                           {mode === "mega" ? (
                             <div className="grid gap-2 sm:grid-cols-2">
@@ -579,7 +579,7 @@ export function ComponentsRenderer({
                                 <a
                                   key={ch.id ?? ch.href ?? ch.label}
                                   href={ch.href ?? "#"}
-                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
+                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/6"
                                 >
                                   <Icon name={ch.icon} />
                                   <span>{ch.label ?? "Child"}</span>
@@ -592,7 +592,7 @@ export function ComponentsRenderer({
                                 <a
                                   key={ch.id ?? ch.href ?? ch.label}
                                   href={ch.href ?? "#"}
-                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
+                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/6"
                                 >
                                   <Icon name={ch.icon} />
                                   <span>{ch.label ?? "Child"}</span>
@@ -671,7 +671,7 @@ export function ComponentsRenderer({
               name={c.props?.name ?? undefined}
               placeholder={c.props?.placeholder ?? ""}
               required={!!c.props?.required}
-              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+              className="w-full bg-transparent border-0 p-0 text-sm outline-hidden focus:ring-2 focus:ring-(--accent-2)/30"
             />
           </div>
         );
@@ -688,7 +688,7 @@ export function ComponentsRenderer({
               name={c.props?.name ?? undefined}
               placeholder={c.props?.placeholder ?? ""}
               required={!!c.props?.required}
-              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+              className="w-full bg-transparent border-0 p-0 text-sm outline-hidden focus:ring-2 focus:ring-(--accent-2)/30"
             />
           </div>
         );
@@ -704,7 +704,7 @@ export function ComponentsRenderer({
             <select
               name={c.props?.name ?? undefined}
               required={!!c.props?.required}
-              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+              className="w-full bg-transparent border-0 p-0 text-sm outline-hidden focus:ring-2 focus:ring-(--accent-2)/30"
             >
               {c.props?.placeholder ? <option value="">{c.props?.placeholder}</option> : null}
               {options.map((opt, idx) => (
@@ -727,7 +727,7 @@ export function ComponentsRenderer({
               name={c.props?.name ?? undefined}
               defaultChecked={!!c.props?.checked}
               required={!!c.props?.required}
-              className="h-4 w-4 rounded border border-[color:var(--border)] bg-transparent"
+              className="h-4 w-4 rounded-sm border border-(--border) bg-transparent"
             />
             <span className="text-sm">{label}</span>
           </label>
@@ -938,7 +938,7 @@ export function ComponentsRenderer({
             {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
             <div className="flex gap-4 overflow-x-auto pb-2">
               {ids.map((id) => (
-                <div key={id} className="min-w-[220px] max-w-[260px] flex-shrink-0">
+                <div key={id} className="min-w-[220px] max-w-[260px] shrink-0">
                   <ProductCard productId={id} />
                 </div>
               ))}
@@ -961,11 +961,11 @@ export function ComponentsRenderer({
                   key={it.href ?? idx2}
                   href={it.href ?? "#"}
                   className={
-                    "group relative overflow-hidden rounded-2xl border border-black/10 bg-white/70 shadow-sm transition " +
-                    "hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-[color:var(--accent-2)]"
+                    "group relative overflow-hidden rounded-2xl border border-black/10 bg-white/70 shadow-xs transition " +
+                    "hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-(--accent-2)"
                   }
                 >
-                  <div className="relative aspect-[16/9] bg-black/[0.04]">
+                  <div className="relative aspect-video bg-black/4">
                     {it.imageUrl ? (
                       <LoadingImg
                         src={it.imageUrl}
@@ -976,12 +976,12 @@ export function ComponentsRenderer({
                     ) : null}
 
                     {/* gradient wash */}
-                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-70" />
+                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent opacity-70" />
                   </div>
 
                   <div className="p-4">
                     <div className="text-sm font-semibold text-[#0B0B0B]">{it.title ?? "Category"}</div>
-                    <div className="mt-2 h-px w-0 bg-[color:var(--accent-2)] transition-all duration-300 group-hover:w-full" />
+                    <div className="mt-2 h-px w-0 bg-(--accent-2) transition-all duration-300 group-hover:w-full" />
                   </div>
                 </a>
               ))}

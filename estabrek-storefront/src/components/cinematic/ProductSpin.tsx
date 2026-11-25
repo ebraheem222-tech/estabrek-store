@@ -65,7 +65,7 @@ export function SpinView({ spin, lang, label, auto = true, className, testId = "
       aria-valuemax={count - 1}
       aria-valuenow={at}
       aria-valuetext={`${Math.round((at * 360) / count)}°`}
-      className={`relative w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--selection-accent,#7d2448)] ${className ?? ""}`}
+      className={`relative w-full touch-pan-y select-none outline-hidden focus-visible:ring-2 focus-visible:ring-(--selection-accent,#7d2448) ${className ?? ""}`}
       style={{
         aspectRatio: `${spin.cellW} / ${spin.cellH}`,
         cursor: "grab",
@@ -125,12 +125,12 @@ export function SpinDialog({ spin, title, lang, onClose }: { spin: ProductSpinDa
     };
   }, [onClose]);
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label={`${title} · 360°`} className="fixed inset-0 z-[90] flex items-center justify-center bg-[color-mix(in_srgb,var(--selection-surface,#fff8f4)_94%,transparent)] p-4 backdrop-blur" data-testid="product-spin-dialog" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div role="dialog" aria-modal="true" aria-label={`${title} · 360°`} className="fixed inset-0 z-90 flex items-center justify-center bg-[color-mix(in_srgb,var(--selection-surface,#fff8f4)_94%,transparent)] p-4 backdrop-blur-sm" data-testid="product-spin-dialog" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="flex w-full max-w-[min(92vw,640px)] flex-col items-center gap-3">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex gap-1" role="tablist" aria-label={title}>
-            <button type="button" role="tab" aria-selected={tab === "spin"} onClick={() => setTab("spin")} className={`rounded-full px-4 py-1.5 text-sm ${tab === "spin" ? "bg-[var(--selection-accent,#7d2448)] text-[var(--selection-surface,#fff8f4)]" : "bg-black/5"}`}>360°</button>
-            {spin.modelUrl ? <button type="button" role="tab" aria-selected={tab === "3d"} onClick={() => setTab("3d")} className={`rounded-full px-4 py-1.5 text-sm ${tab === "3d" ? "bg-[var(--selection-accent,#7d2448)] text-[var(--selection-surface,#fff8f4)]" : "bg-black/5"}`} data-testid="product-spin-3d">3D</button> : null}
+            <button type="button" role="tab" aria-selected={tab === "spin"} onClick={() => setTab("spin")} className={`rounded-full px-4 py-1.5 text-sm ${tab === "spin" ? "bg-(--selection-accent,#7d2448) text-(--selection-surface,#fff8f4)" : "bg-black/5"}`}>360°</button>
+            {spin.modelUrl ? <button type="button" role="tab" aria-selected={tab === "3d"} onClick={() => setTab("3d")} className={`rounded-full px-4 py-1.5 text-sm ${tab === "3d" ? "bg-(--selection-accent,#7d2448) text-(--selection-surface,#fff8f4)" : "bg-black/5"}`} data-testid="product-spin-3d">3D</button> : null}
           </div>
           <button ref={closeRef} type="button" onClick={onClose} className="grid h-11 w-11 place-items-center rounded-full bg-black/5 text-xl" aria-label={tr(lang, "إغلاق", "Close")}>×</button>
         </div>

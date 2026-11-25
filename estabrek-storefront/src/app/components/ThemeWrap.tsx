@@ -214,7 +214,7 @@ export function ThemeWrap({
       data-theme={mode}
       data-glass-effects={glassEnabled ? "1" : "0"}
       className={
-        "min-h-screen w-full bg-[var(--bg)] text-[var(--text)] overflow-x-hidden" +
+        "min-h-screen w-full bg-(--bg) text-(--text) overflow-x-hidden" +
         (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
       }
       style={

@@ -137,7 +137,7 @@ export default async function FallbackHome() {
 
           {/* Main Title with Gradient Animation */}
           <h1 className="hero-mega-title">
-            <span className="block text-[var(--text)]">اكتشف عالماً من</span>
+            <span className="block text-(--text)">اكتشف عالماً من</span>
             <span className="block gradient-text">المنتجات المميزة</span>
           </h1>
 

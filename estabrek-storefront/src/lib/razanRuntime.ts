@@ -71,6 +71,17 @@ export function razanCount(key: string) {
 
 /** Opens Razan's panel on a tab from anywhere in the shop (e.g. «رزان بتختارلك» on the shop page). */
 export const RAZAN_OPEN_EVENT = "razan:open";
-export function razanOpen(tab: "chat" | "help" | "quiz" | "history") {
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(RAZAN_OPEN_EVENT, { detail: tab }));
+type RazanTab = "chat" | "help" | "quiz" | "history";
+let wanted: { tab: RazanTab; at: number } | null = null;
+export function razanOpen(tab: RazanTab) {
+  if (typeof window === "undefined") return;
+  // Her panel loads after the page wakes up: a tap before it's there waits for it (razanWanted) instead of being lost.
+  wanted = { tab, at: Date.now() };
+  window.dispatchEvent(new CustomEvent(RAZAN_OPEN_EVENT, { detail: tab }));
+}
+/** The tab asked for before her panel was there (once, for a few seconds), for the panel to open on when it comes. */
+export function razanWanted(): RazanTab | null {
+  const asked = wanted;
+  wanted = null;
+  return asked && Date.now() - asked.at < 15_000 ? asked.tab : null;
 }
