@@ -49,7 +49,6 @@ src/
     contact-forms/
       ContactFormThemes.tsx
       ContactFormComponents.tsx
-      ContactFormThemesDemo.tsx
       index.ts
 ```
 

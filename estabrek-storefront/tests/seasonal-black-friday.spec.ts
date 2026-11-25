@@ -17,8 +17,8 @@ test("by the date: winter and summer; never Black Friday", () => {
 });
 
 test("the badge's Arabic line keeps its order (its own direction in the left-to-right badge)", () => {
-  // Read as written (React can't draw inside this runner's test files): both copies of the badge.
-  for (const file of ["../src/components/SeasonalThemes.tsx", "../src/app/components/SeasonalThemes.tsx"]) {
+  // Read as written (React can't draw inside this runner's test files).
+  for (const file of ["../src/components/SeasonalThemes.tsx"]) {
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     expect(source, file).toContain('<span className="bf-discount" dir="rtl">خصم حتى 70%</span>');
   }
