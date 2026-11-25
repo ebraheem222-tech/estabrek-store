@@ -5,8 +5,9 @@ import { MemoryRouter } from "react-router-dom";
 import { TemplatesGallery } from "./TemplatesGallery";
 import { ROSE_COLOURS } from "./templates/colours";
 import { getStoreTemplates, getStoreTemplateImport } from "../api/storeTemplates.api";
+import * as PagesAPI from "../api/pages.api";
 vi.mock("../api/storeTemplates.api", () => ({ getStoreTemplates: vi.fn(), getStoreTemplateImport: vi.fn(), getStoreTemplatePreview: vi.fn() }));
-vi.mock("../api/pages.api", () => ({ listPages: vi.fn().mockResolvedValue([]), listTemplates: vi.fn().mockResolvedValue([]), createTemplate: vi.fn(), deletePage: vi.fn(), getPageTree: vi.fn() }));
+vi.mock("../api/pages.api", () => ({ listPages: vi.fn().mockResolvedValue([]), listTemplates: vi.fn().mockResolvedValue([]), createTemplate: vi.fn(), deletePage: vi.fn(), getPageTree: vi.fn(), createPage: vi.fn(), setPageFormat: vi.fn(), getPageDraft: vi.fn(), changePageDraft: vi.fn() }));
 vi.mock("../api/settings.api", () => ({ getSettings: vi.fn().mockResolvedValue({ header: { identity: { industry: "fashion", audience: "women" } } }) }));
 vi.mock("./storeThemes", async importOriginal => ({ ...await importOriginal<typeof import("./storeThemes")>(), shopOrigin: () => "https://shop.example.com" }));
 const words = (text: string) => ({ ar: text, en: text, he: text });
@@ -141,4 +142,33 @@ test("the look and mood filters reach the whole pages too", async () => {
   fireEvent.change(screen.getByTestId("studio-tpl-look"), { target: { value: "neon" } });
   const ids = screen.getAllByTestId("studio-tpl-card").map((c) => c.getAttribute("data-id"));
   expect(ids.sort()).toEqual(["p:premium-neon-about", "p:premium-neon-contact", "p:premium-neon-home"]);
+});
+test("a whole premium theme goes into the store's pages' drafts in one go, then its first page opens", async () => {
+  vi.mocked(getStoreTemplates).mockResolvedValue({ categories: [], templates: [template] });
+  vi.mocked(PagesAPI.listPages).mockResolvedValue([{ id: "home-1", slug: "/", name: "Home", status: "PUBLISHED" }]);
+  vi.mocked(PagesAPI.createPage).mockResolvedValue({ id: "about-1" } as never);
+  vi.mocked(PagesAPI.getPageDraft).mockResolvedValue({ draft: null, main: "ar" });
+  vi.mocked(PagesAPI.getPageTree).mockResolvedValue({ format: 2, saved: true, tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "old", type: "section", props: {} }] } } });
+  vi.mocked(PagesAPI.changePageDraft).mockResolvedValue({ draft: { rev: 1 } as never });
+  const onThemeApplied = vi.fn(), onClose = vi.fn();
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><TemplatesGallery open onClose={onClose} lang="ar" family="fashion" colours={ROSE_COLOURS} pics={[]} busy={false} here={null} pageName="Home" storeName={words("Own store")} pageSections={() => []} selectedSection={null} makeIds={() => (p) => p} onUse={vi.fn()} onThemeApplied={onThemeApplied} /></MemoryRouter></QueryClientProvider>);
+  fireEvent.click(await screen.findByTestId("studio-tpl-tab-pages"));
+  fireEvent.click(screen.getAllByTestId("studio-tpl-group").find((b) => b.getAttribute("data-group") === "themes")!);
+  fireEvent.click(screen.getAllByTestId("studio-tpl-card").find((c) => c.getAttribute("data-id") === "p:premium-midnight-home")!);
+  fireEvent.click(screen.getByTestId("studio-tpl-theme-whole"));
+  // Where each part goes: the home into the home's draft, About and Contact as new pages; a store whose header and
+  // footer come with its theme has nowhere to put the theme's.
+  await waitFor(() => expect(screen.getAllByTestId("studio-tpl-whole-part")).toHaveLength(5));
+  const part = (p: string) => screen.getAllByTestId("studio-tpl-whole-part").find((b) => b.getAttribute("data-part") === p) as HTMLInputElement;
+  expect([part("home").checked, part("about").checked, part("contact").checked]).toEqual([true, true, true]);
+  expect(part("header")).toBeDisabled();
+  expect(part("footer").getAttribute("data-skip")).toBe("no-design");
+  fireEvent.click(part("contact"));
+  fireEvent.click(screen.getByTestId("studio-tpl-whole-go"));
+  await waitFor(() => expect(onThemeApplied).toHaveBeenCalledWith("home-1"));
+  expect(PagesAPI.createPage).toHaveBeenCalledTimes(1);
+  expect(PagesAPI.createPage).toHaveBeenCalledWith(expect.objectContaining({ slug: "/about" }));
+  expect(vi.mocked(PagesAPI.changePageDraft).mock.calls.map(([id]) => id)).toEqual(["home-1", "about-1"]);
+  expect(vi.mocked(PagesAPI.changePageDraft).mock.calls[0][1][0]).toEqual({ op: "remove", nodeId: "old" });
+  expect(onClose).toHaveBeenCalled();
 });

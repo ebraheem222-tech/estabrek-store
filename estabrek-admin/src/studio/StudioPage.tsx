@@ -34,7 +34,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useShopOrigin } from "../hooks/useShopOrigin";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { flushSync } from "react-dom";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../api/pages.api";
 import { getApiErrorMessage } from "../api/http";
@@ -235,7 +235,9 @@ type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anc
 
 export default function StudioPage() {
   const { id = "" } = useParams();
-  return <StudioDocument key={id} />;
+  // ?v= opens the document afresh (a whole theme was just put into this page's draft, from the gallery).
+  const v = new URLSearchParams(useLocation().search).get("v") ?? "";
+  return <StudioDocument key={`${id}:${v}`} />;
 }
 
 /** A document owns its preview ticket, history and pending editor gestures. */
@@ -244,6 +246,7 @@ function StudioDocument() {
   // The page a saved block was opened from (its "edit the block").
   const fromPage = new URLSearchParams(window.location.search).get("from");
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const treeQ = useQuery({ queryKey: ["pages", id, "tree"], queryFn: () => PagesAPI.getPageTree(id), enabled: Boolean(id) });
   const pageQ = useQuery({ queryKey: ["pages", id], queryFn: () => PagesAPI.getPage(id), enabled: Boolean(id) });
   const draftQ = useQuery({ queryKey: ["pages", id, "draft"], queryFn: () => PagesAPI.getPageDraft(id), enabled: Boolean(id) });
@@ -4873,6 +4876,11 @@ function StudioDocument() {
         makeIds={makeIds}
         onUse={placeTemplate}
         kit={templateKit}
+        onThemeApplied={(pageId) => {
+          // Every page's draft may have changed: read them all again, and open the theme's first page afresh.
+          qc.removeQueries({ queryKey: ["pages"] });
+          navigate(`/studio/${encodeURIComponent(pageId)}?v=${Date.now().toString(36)}`);
+        }}
       />
     </Shell>
     </TokensContext.Provider></StoreKitContext.Provider>
