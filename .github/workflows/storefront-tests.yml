@@ -86,5 +86,9 @@ jobs:
       # The admin's tsconfig.json lists no files (it only points at the two below), so "-p ." checks nothing.
       - name: Typecheck
         run: npx tsc --noEmit -p tsconfig.app.json
+      # No file nothing uses, nothing kept twice in the shop and the admin (shop, admin and backend; a few seconds).
+      - name: Unused or copied code
+        run: node scripts/code-diet-check.mjs
+        working-directory: .
       - name: Tests
         run: npx vitest run
