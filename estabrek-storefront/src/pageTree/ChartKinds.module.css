@@ -1,0 +1,103 @@
+/* The chart's new kinds (ChartKinds.tsx): the store's own colours (text, surface, border, accent), light or dark. */
+.chart{margin:0;min-width:0;width:100%;padding:24px;border:1px solid var(--border,#77817755);border-radius:16px;background:var(--surface,#ffffff08);color:var(--text,inherit);overflow:hidden}
+.title{font-size:18px;font-weight:600;margin-bottom:18px}
+.note{margin:0;padding:18px;border:1px dashed var(--border,#77817788);border-radius:12px;font-size:13px;opacity:.8}
+
+.split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px;align-items:center}
+.splitMap{grid-template-columns:minmax(0,1.9fr) minmax(0,1fr)}
+.side{min-width:0}
+.sideTitle{margin:0 0 10px;font-weight:600;font-size:15px}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:340px;overflow:auto;scrollbar-width:thin}
+.row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:10px;font-size:13px;cursor:default}
+.row:not(:disabled){cursor:pointer}
+.row:hover,.row:focus-visible,.row[aria-pressed=true]{background:color-mix(in srgb,currentColor 8%,transparent)}
+.row:focus-visible{outline:2px solid var(--accent,#86b696);outline-offset:1px}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.value,.share{font-variant-numeric:tabular-nums;white-space:nowrap}
+.share{opacity:.55;font-size:12px}
+.back{all:unset;cursor:pointer;margin-bottom:8px;font-size:13px;color:var(--accent,#86b696);padding:4px 2px}
+.back:focus-visible{outline:2px solid var(--accent,#86b696)}
+.tap{cursor:pointer}
+
+.sun,.sankey,.map,.iso,.liveSvg{direction:ltr}
+
+/* Sunburst */
+.sun{display:block;width:100%;max-width:440px;height:auto;margin:0 auto;overflow:visible}
+.sun path{transition:opacity .2s}
+.sliceText{font-size:11px;font-weight:600;fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:#0005;stroke-width:2px}
+.hub{fill:var(--surface,#ffffff10);stroke:var(--border,#77817755)}
+.hubName{font-size:12px;text-anchor:middle;fill:currentColor;opacity:.65;pointer-events:none}
+.hubValue{font-size:24px;font-weight:700;text-anchor:middle;fill:currentColor;pointer-events:none;font-variant-numeric:tabular-nums}
+.hubBack,.hubHint{font-size:10px;text-anchor:middle;fill:var(--accent,#86b696);pointer-events:none}
+.hubHint{fill:currentColor;opacity:.5}
+
+/* Sankey */
+.sankeyBox{position:relative}
+.tip{margin:0 0 8px;min-height:1.5em;font-size:13px;text-align:center}
+.tip span{opacity:.55}
+.sankey{display:block;width:100%;height:auto;overflow:visible}
+.ribbon{transition:opacity .25s}
+.stream{fill:none;stroke:#fff;stroke-width:1.5;stroke-dasharray:2 18;pointer-events:none;animation:ptFlow 1.2s linear infinite;transition:opacity .25s}
+.nodeText{font-size:15px;dominant-baseline:middle;fill:currentColor}
+.nodeName{font-weight:600}
+.nodeValue{opacity:.55}
+@keyframes ptFlow{to{stroke-dashoffset:-20}}
+
+/* Flights */
+.map{display:block;width:100%;height:auto;border-radius:12px}
+.land{fill:color-mix(in srgb,currentColor 16%,transparent)}
+.route{transition:opacity .25s}
+.arc{fill:none;stroke:var(--accent,#86b696);stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:ptDraw 1s cubic-bezier(.2,.7,.2,1) forwards}
+.plane{fill:currentColor}
+.city{fill:var(--accent,#86b696);stroke:var(--surface,#fff);stroke-width:2}
+.cityText,.hubText{font-size:24px;fill:currentColor;paint-order:stroke;stroke:var(--bg,#fff);stroke-opacity:.85;stroke-width:6px;stroke-linejoin:round}
+.hubText{font-weight:700}
+.hubDot{fill:var(--accent,#86b696);stroke:#fff;stroke-width:2}
+.hubPulse{fill:var(--accent,#86b696);opacity:.35;transform-box:fill-box;transform-origin:center;animation:ptPulse 2.4s ease-out infinite}
+@keyframes ptDraw{to{stroke-dashoffset:0}}
+@keyframes ptPulse{from{transform:scale(1);opacity:.45}to{transform:scale(3.4);opacity:0}}
+
+/* Bars in 3D */
+.iso{display:block;width:100%;height:auto;overflow:visible}
+.floor{fill:color-mix(in srgb,currentColor 5%,transparent);stroke:color-mix(in srgb,currentColor 12%,transparent)}
+.bar{cursor:pointer}
+.axis{font-size:9px;fill:currentColor;opacity:.5}
+.rowName{opacity:.75;font-weight:600;paint-order:stroke;stroke:var(--bg,#fff);stroke-opacity:.8;stroke-width:3px;stroke-linejoin:round}
+.card{padding:16px 18px;border-radius:14px;background:color-mix(in srgb,currentColor 6%,transparent);margin-bottom:12px}
+.cardLabel{margin:0;font-size:13px;opacity:.6}
+.cardValue{margin:4px 0 0;font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* Live */
+.live{min-width:0}
+.liveHead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 24px;margin-bottom:14px}
+.liveNow{display:flex;align-items:baseline;gap:10px;margin:0;flex-wrap:wrap}
+.liveNow b{font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+.liveWord{font-size:13px;color:var(--accent,#86b696);font-weight:600}
+.liveEvery{font-size:13px;opacity:.55}
+.liveDot{position:relative;width:9px;height:9px;border-radius:50%;background:var(--accent,#86b696);align-self:center}
+.liveDot::after{content:"";position:absolute;inset:0;border-radius:inherit;background:inherit;animation:ptPing 1.6s ease-out infinite}
+.stats{display:flex;gap:18px;margin:0;font-size:13px}
+.stats dt{opacity:.5}
+.stats dd{margin:0;font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:4px;padding:3px;border-radius:12px;background:color-mix(in srgb,currentColor 6%,transparent)}
+.chip{all:unset;cursor:pointer;white-space:nowrap;padding:6px 12px;border-radius:9px;font-size:12px;font-weight:600;opacity:.65}
+.chip[aria-pressed=true]{background:var(--accent,#86b696);color:var(--surface,#fff);opacity:1}
+.chip:focus-visible{outline:2px solid var(--accent,#86b696)}
+.liveNote{margin:0 0 8px;font-size:13px;opacity:.7}
+.liveSvg{display:block;width:100%;height:auto;touch-action:pan-y;cursor:crosshair}
+.grid{stroke:currentColor;opacity:.08}
+.liveLine{fill:none;stroke:var(--accent,#86b696);stroke-width:2.5;stroke-linejoin:round;transition:d .5s}
+.liveStop0{stop-color:var(--accent,#86b696);stop-opacity:.35}
+.liveStop1{stop-color:var(--accent,#86b696);stop-opacity:0}
+.liveHeadDot{fill:#fff;stroke:var(--accent,#86b696);stroke-width:2}
+.livePulse{fill:var(--accent,#86b696);transform-box:fill-box;transform-origin:center;animation:ptPulse 1.8s ease-out infinite}
+.cross line{stroke:currentColor;opacity:.35;stroke-dasharray:4 4}
+.cross circle{fill:currentColor}
+.cross text{font-size:12px;fill:currentColor;paint-order:stroke;stroke:var(--surface,#0000);stroke-width:4px;font-variant-numeric:tabular-nums}
+@keyframes ptPing{from{transform:scale(1);opacity:.7}to{transform:scale(3);opacity:0}}
+
+@media (prefers-reduced-motion:reduce){.stream,.hubPulse,.livePulse,.liveDot::after{animation:none}.arc{animation:none;stroke-dashoffset:0}.liveLine{transition:none}}
+@media (max-width:720px){.chart{padding:16px}.split{grid-template-columns:minmax(0,1fr)}.liveNow b{font-size:32px}.list{max-height:240px}
+  /* The drawings shrink to the phone's width: their words grow to stay readable. */
+  .nodeText{font-size:28px}.liveSvg .axis{font-size:18px}.cross text{font-size:20px}.cityText,.hubText{font-size:32px}.sliceText{font-size:14px}}

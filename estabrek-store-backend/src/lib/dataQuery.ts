@@ -372,6 +372,18 @@ export async function queryRows(db: Db, table: { id: string; fields: Field[]; in
   return { rows, total: count[0]?.n ?? 0 };
 }
 
+/**
+ * How many rows were added in each minute, hour or day since `since` (a chart's live line: the shop's
+ * pageTree/ChartKinds.tsx), of the rows the same question would list. `only`: as for queryRows.
+ */
+export async function rowsPer(db: Db, table: { id: string; fields: Field[]; incoming?: Incoming[] }, q: GridQuery, every: "minute" | "hour" | "day", since: Date, only?: Prisma.Sql): Promise<Array<{ at: Date; n: number }>> {
+  const asked = gridWhere(table.id, table.fields, q, table.incoming);
+  const where = only ? Prisma.sql`${asked} AND ${only}` : asked;
+  return db.$queryRaw<Array<{ at: Date; n: number }>>(
+    Prisma.sql`SELECT date_trunc(${every}, i."createdAt") AS "at", count(*)::int AS n FROM "CollectionItem" i WHERE ${where} AND i."createdAt" >= ${utc(since)} GROUP BY 1 ORDER BY 1`,
+  );
+}
+
 /** Rows in order, a slice at a time (the export). */
 export async function rowsSlice(db: Db, table: { id: string; fields: Field[]; incoming?: Incoming[] }, q: GridQuery, offset: number, limit: number): Promise<GridRow[]> {
   return db.$queryRaw<GridRow[]>(Prisma.sql`SELECT ${ROW} FROM "CollectionItem" i WHERE ${gridWhere(table.id, table.fields, q, table.incoming)} ORDER BY ${gridOrder(table.fields, q, table.incoming)} LIMIT ${limit} OFFSET ${offset}`);

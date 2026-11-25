@@ -1848,6 +1848,33 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       });
       return;
     }
+    // A chart's live line (charts.spec.ts): the backend's GET /v1/data/<table>/per/<every>, played. The "visits" table's
+    // counts are set by POST /__test/per-counts { counts: [{ ago, n }] } (ago: how many buckets back, 0 = this one);
+    // "closed-table" answers as a table not open to visitors. Each reading is remembered (GET /__test/per-counts).
+    if (/^\/v1\/data\/[^/]+\/per\/[^/]+$/.test(pathname) && req.method === "GET") {
+      const [, , , table, , every] = pathname.split("/");
+      const q = new URL(req.url, "http://localhost").searchParams;
+      const per = (globalThis.perCounts ??= { counts: [], reads: [] });
+      per.reads.push({ table, every, last: q.get("last") });
+      if (table === "closed-table") { res.statusCode = 404; return res.end(JSON.stringify({ error: "NOT_FOUND" })); }
+      const step = { minute: 60_000, hour: 3_600_000, day: 86_400_000 }[every];
+      if (!step) { res.statusCode = 400; return res.end(JSON.stringify({ error: "BAD_QUERY" })); }
+      const end = Math.floor(Date.now() / step) * step;
+      const counts = per.counts.map((c) => ({ at: new Date(end - c.ago * step).toISOString(), n: c.n }));
+      return res.end(JSON.stringify({ every, last: Number(q.get("last") || 24), since: new Date(end - 23 * step).toISOString(), counts, total: counts.reduce((t, c) => t + c.n, 0) }));
+    }
+    if (pathname === "/__test/per-counts") {
+      const per = (globalThis.perCounts ??= { counts: [], reads: [] });
+      if (req.method === "GET") return res.end(JSON.stringify(per));
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
+        globalThis.perCounts = { counts: Array.isArray(body.counts) ? body.counts : [], reads: body.keepReads ? per.reads : [] };
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
     // The "live-board" table: its rows (newest first) and one row by its id, as a page shows them.
     if (/^\/v1\/data\/live-board(\/[^/]+)?$/.test(pathname) && req.method === "GET") {
       (globalThis.listReads ??= []).push({ table: "live-board", query: Object.fromEntries(new URL(req.url, "http://localhost").searchParams), shopper: null });

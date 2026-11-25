@@ -1058,7 +1058,21 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     glfx: z.object({ kind: z.enum(["ripple", "liquid", "shift"]), strength: z.number().min(0.1).max(1).optional() }).strict().optional(),
   }),
   instrument: z.object({ kind: z.enum(["piano", "guitar"]).default("piano"), label: local(160).optional(), sound: z.boolean().optional(), volume: z.number().finite().min(0).max(1).optional(), octave: z.number().int().min(2).max(6).optional(), octaves: z.number().int().min(1).max(2).optional(), frets: z.number().int().min(4).max(12).optional(), sustain: z.number().finite().min(.1).max(3).optional(), waveform: z.enum(["sine", "triangle", "sawtooth"]).optional(), theme: z.enum(["dark", "light"]).optional(), showNotes: z.boolean().optional(), melody: z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"]).optional(), playlist: z.array(z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"])).min(1).max(6).optional(), showPlayer: z.boolean().optional(), tempo: z.number().int().min(40).max(200).optional(), repeat: z.boolean().optional() }),
-  chart: z.object({ kind: z.enum(["bar", "line", "donut"]).default("bar"), label: local(160).optional(), items: z.array(z.object({ label: local(80), value: z.number().finite().min(0).max(1000000), color: color.optional() })).min(1).max(24), showValues: z.boolean().optional() }),
+  // A chart of the owner's own values (the shop's pageTree/ChartView.tsx, the new kinds in ChartKinds.tsx, plan 3.7):
+  // sunburst and bars3d group items (`group`: the inner ring, a row of bars); a sankey item flows from its label to `to`;
+  // flights go from the `hub` city to each item's `city` (pageTree/chartMaths.ts CITIES); live counts a table's rows
+  // added each minute, hour or day, the `last` few of them (GET /v1/data/<table>/per/<every>), and needs no items.
+  chart: z.object({
+    kind: z.enum(["bar", "line", "donut", "sunburst", "sankey", "flights", "bars3d", "live"]).default("bar"),
+    label: local(160).optional(),
+    items: z.array(z.object({ label: local(80), value: z.number().finite().min(0).max(1000000), color: color.optional(), group: local(80).optional(), to: local(80).optional(), city: z.string().regex(/^[a-z][a-z-]{1,30}$/).optional() })).min(1).max(40),
+    showValues: z.boolean().optional(),
+    unit: local(16).optional(),
+    hub: z.string().regex(/^[a-z][a-z-]{1,30}$/).optional(),
+    table: z.string().regex(/^[a-z0-9][a-z0-9-]{0,40}$/).optional(),
+    every: z.enum(["minute", "hour", "day"]).optional(),
+    last: z.number().int().min(6).max(60).optional(),
+  }),
   // A whole game server site's live status (lib/gameSites.ts fills it as the page is served; the shop asks again every
   // minute): up or down, players, name and map, the last 24 hours, and a way in (the game's own link, or the address to copy).
   gameStatus: z.object({ join: local(40).optional(), copy: local(40).optional(), chart: z.boolean().optional(), size: z.enum(["big", "small"]).optional() }),

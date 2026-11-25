@@ -42,7 +42,7 @@ import { instrumentOf } from "./instrument";
 import { formOf, formWords, storeFormOf, type FormWay } from "./formSpec";
 import { whatsappLink } from "@/lib/whatsapp";
 import { liveOf, rowBind } from "./rowsSpec";
-import { ChartView } from "./ChartView";
+import { ChartView, NEW_CHART_KINDS, chartItemsOf } from "./ChartView";
 import { FilterGalleryBlock } from "./FilterGalleryBlock";
 import { scheduleOf, comparisonOf } from "./referenceData";
 import { showcaseOf } from "./showcase";
@@ -55,7 +55,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, BookingView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, BookingView, ChartKindView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -433,8 +433,24 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     }
     case "instrument":
       return <div className={cls(node)} {...mark}><InstrumentView spec={instrumentOf(p)} lang={ctx.lang} label={say(p.label)} /></div>;
-    case "chart":
-      return <div className={cls(node)} {...mark}><ChartView props={p} say={say} label={say(p.label) || ({ ar: "الرسم البياني", en: "Chart", he: "תרשים" }[ctx.lang])} /></div>;
+    case "chart": {
+      const label = say(p.label) || ({ ar: "الرسم البياني", en: "Chart", he: "תרשים" }[ctx.lang]);
+      const kind = (NEW_CHART_KINDS as readonly string[]).includes(String(p.kind)) ? (p.kind as (typeof NEW_CHART_KINDS)[number]) : null;
+      if (!kind) return <div className={cls(node)} {...mark}><ChartView props={p} say={say} label={label} /></div>;
+      // The new kinds (plan 3.7, ChartKinds.tsx). One not set yet (no flows, no city to start from, no table) shows
+      // the editor what's missing and isn't in the shop.
+      const items = chartItemsOf(p, say);
+      const hub = typeof p.hub === "string" && /^[a-z][a-z-]{1,30}$/.test(p.hub) ? p.hub : "";
+      const table = typeof p.table === "string" && /^[a-z0-9][a-z0-9-]{0,40}$/.test(p.table) ? p.table : "";
+      const every = p.every === "minute" || p.every === "day" ? p.every : "hour";
+      const last = typeof p.last === "number" && p.last >= 6 && p.last <= 60 ? Math.round(p.last) : 24;
+      const unset = kind === "live" ? !table : kind === "flights" ? !hub || !items.some((x) => x.city && x.city !== hub) : kind === "sankey" ? !items.some((x) => x.to.trim()) : !items.length;
+      return (
+        <div className={cls(node)} {...mark} data-pt-needs-product={unset ? "" : undefined}>
+          <ChartKindView kind={kind} label={label} items={items} unit={say(p.unit).slice(0, 16)} showValues={p.showValues !== false} hub={hub} table={table} every={every} last={last} lang={ctx.lang} />
+        </div>
+      );
+    }
     case "clock":
       return <div className={cls(node)} {...mark}><ClockView timezone={typeof p.timezone === "string" ? p.timezone.slice(0, 80) : "UTC"} format={p.format === "12" ? "12" : "24"} seconds={p.seconds !== false} date={p.date === true} lang={ctx.lang} label={say(p.label)} /></div>;
     case "tebexPackages":

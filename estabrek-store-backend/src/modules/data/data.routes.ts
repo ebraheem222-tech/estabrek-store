@@ -12,6 +12,8 @@
  * GET    /v1/data/:table               — a page of rows: ?page ?pageSize ?sort=-price,title ?search ?lang
  *                                        ?status ?fields ?expand ?mine ?shown, filters as field[question]=value, ?match=any
  * GET    /v1/data/:table/:row          — one row, by id or address
+ * GET    /v1/data/:table/per/:every    — how many rows were added each minute, hour or day (?last=1…60 of them):
+ *                                        a page's live chart (only counts, of the rows this caller could list)
  * POST   /v1/data/:table               { values, slug?, status?, lang? } — a new row (without a key: a draft)
  * PATCH  /v1/data/:table/:row          { values?, slug?, status?, lang? } — some of a row; the rest stays
  * DELETE /v1/data/:table/:row          — to the trash (30 days), as the relations linking it allow
@@ -49,7 +51,7 @@ import { FILE_LIMITS, fileIssues, privateLinks, saveUpload } from "../../lib/sho
 import { UPLOAD_MAX_MB, fileRefId } from "../../lib/fileKinds.js";
 import { openApi } from "../../lib/apiDocs.js";
 import { API_LIMITS, DATA_API_BASE, allow, apiRow, askable, docTables, fieldView, isOpen, listAsk, mineAsked, privateOf, reachFields, seenFields, shapeAsk, tableFrom, type ApiRow, type ApiTable, type As, type LinkModes, type ListAsk, type Mine, type Viewer } from "../../lib/dataApi.js";
-import { queryRows } from "../../lib/dataQuery.js";
+import { queryRows, rowsPer } from "../../lib/dataQuery.js";
 import { LANGS } from "../../lib/dataRows.js";
 import { switchedOff } from "../../lib/featureGate.js";
 import { emitRow } from "../../lib/fnTriggers.js";
@@ -287,6 +289,43 @@ r.get(
     const by = owner && part !== "tome" ? await adders(table, owner, who) : owner ? [owner] : [];
     const page = await queryRows(prisma, { id: table.id, fields: askable(fields, as) }, ask.q, owner ? theirs(owner, email, reachFields(fields), part, by) : undefined);
     res.json({ data: await shape(table, as, who, page.rows, { ...ask, theirs: sees === "customer" }, links), page: ask.q.page, pageSize: ask.q.pageSize, total: page.total, pages: Math.ceil(page.total / ask.q.pageSize) });
+  }),
+);
+
+/**
+ * A live chart's counts (the shop's pageTree/ChartKinds.tsx): the rows added in each of the last `last` minutes,
+ * hours or days, of the ones this caller could list (anyone: the published rows; a shopper: their own where the
+ * table is theirs). Only how many, never which. What anyone asks is kept a few seconds: every visitor of a page
+ * asks the same at once when a row is added.
+ */
+const PER_EVERY = ["minute", "hour", "day"] as const;
+const PER_MS = { minute: MINUTE, hour: 60 * MINUTE, day: 24 * 60 * MINUTE } as const;
+const perKept = new Map<string, { at: number; body: unknown }>();
+r.get(
+  "/:table/per/:every",
+  asyncHandler(async (req: Request, res: Response) => {
+    const every = String(req.params.every) as (typeof PER_EVERY)[number];
+    if (!PER_EVERY.includes(every)) throw new AppError(400, "BAD_QUERY", "every: minute, hour or day");
+    const rawLast = req.query.last === undefined ? "24" : String(req.query.last);
+    const last = /^\d{1,2}$/.test(rawLast) ? Number(rawLast) : NaN;
+    if (!(last >= 1 && last <= 60)) throw new AppError(400, "BAD_QUERY", "last: 1 to 60");
+    const { table, as, fields, who } = await enter(req, "read");
+    const { sees, owner, email, part } = reach(as, who, req.query as Record<string, unknown>);
+    const step = PER_MS[every];
+    const since = new Date(Math.floor(Date.now() / step) * step - (last - 1) * step);
+    const key = sees === "public" ? `${table.id}|${every}|${last}|${since.getTime()}` : "";
+    const kept = key ? perKept.get(key) : undefined;
+    if (kept && Date.now() - kept.at < 5000) return res.json(kept.body);
+    const ask = listAsk(fields, {}, sees);
+    const by = owner && part !== "tome" ? await adders(table, owner, who) : owner ? [owner] : [];
+    const rows = await rowsPer(prisma, { id: table.id, fields: askable(fields, as) }, ask.q, every, since, owner ? theirs(owner, email, reachFields(fields), part, by) : undefined);
+    const counts = rows.map((x) => ({ at: new Date(x.at).toISOString(), n: x.n }));
+    const body = { every, last, since: since.toISOString(), counts, total: counts.reduce((s, x) => s + x.n, 0) };
+    if (key) {
+      if (perKept.size > 500) perKept.clear();
+      perKept.set(key, { at: Date.now(), body });
+    }
+    res.json(body);
   }),
 );
 
