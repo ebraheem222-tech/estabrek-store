@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { PageTreeNode } from "../api/pages.api";
 import { accepts, idMaker } from "./columns";
 import { insertOps, makeNode, type InsertCtx } from "./insert";
@@ -161,6 +161,64 @@ describe("a piece's panel", () => {
     rerender(<LibraryPanel node={node({ item: "faq-classic", dir: "rtl" })} lang="ar" busy={false} onOps={onOps} />);
     fireEvent.click(screen.getByTestId("studio-lib-dir").querySelector('[data-dir="ltr"]')!);
     expect(lastProps(onOps)).toEqual({ item: "faq-classic", dir: undefined });
+  });
+
+  it("sizes its words; a piece that draws words on a canvas sizes those too, and says how to write over them", async () => {
+    const onOps = vi.fn();
+    const slide = (testId: string, v: number) => {
+      const input = screen.getByTestId(testId);
+      fireEvent.change(input, { target: { value: String(v) } });
+      fireEvent.pointerUp(input);
+    };
+    // Particle Text draws its word in dots (its details say so).
+    expect((await libDetails("premium-particle-text"))?.draws).toBe(true);
+    expect((await libDetails("faq-classic"))?.draws).toBeUndefined();
+    const { rerender } = render(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} />);
+    await screen.findByTestId("studio-lib-drawn-size");
+    expect(screen.getByTestId("studio-lib-drawn-hint").textContent).toMatch(/دبل كليك|double-click/i);
+    slide("studio-lib-drawn-size", 60);
+    expect(lastProps(onOps)).toEqual({ item: "premium-particle-text", drawnSize: 0.6 });
+    slide("studio-lib-text-size", 150);
+    expect(lastProps(onOps).textSize).toBe(1.5);
+    // Back to as it was made: no setting at all; and in one click.
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text", textSize: 1.5, drawnSize: 0.6 })} lang="en" busy={false} onOps={onOps} />);
+    slide("studio-lib-text-size", 100);
+    expect(lastProps(onOps)).toEqual({ item: "premium-particle-text", drawnSize: 0.6 });
+    fireEvent.click(screen.getByTestId("studio-lib-sizes-reset"));
+    expect(lastProps(onOps)).toEqual({ item: "premium-particle-text" });
+    // A piece that draws nothing: only the size of all its words.
+    cleanup();
+    render(<LibraryPanel node={node({ item: "faq-classic" })} lang="en" busy={false} onOps={onOps} />);
+    await screen.findByTestId("studio-lib-text-size");
+    await waitFor(() => expect(screen.queryByTestId("studio-lib-loading")).toBeNull());
+    expect(screen.queryByTestId("studio-lib-drawn-size")).toBeNull();
+  });
+
+  it("a part picked on the page offers its own words first: a text's, or the words a canvas draws", async () => {
+    const onOps = vi.fn();
+    // A canvas inside the piece, drawing two words (one the owner changed already).
+    const { rerender } = render(<LibraryPanel node={node({ item: "premium-particle-text", words: { MOTION: { en: "Moves" } } })} lang="en" busy={false} onOps={onOps}
+      part={{ drawing: "canvas", words: [{ src: "DESIGN", shown: "DESIGN" }, { src: "MOTION", shown: "Moves" }] }} />);
+    const here = screen.getByTestId("studio-lib-part-words");
+    expect(here.textContent).toMatch(/drawn here|المرسوم/i);
+    const field = (src: string) => within(screen.getAllByTestId("studio-lib-part-word").find((el) => el.dataset.src === src)!).getByRole("textbox") as HTMLInputElement;
+    expect(field("MOTION").value).toBe("Moves");
+    fireEvent.change(field("DESIGN"), { target: { value: "Samoray" } });
+    fireEvent.keyDown(field("DESIGN"), { key: "Enter" });
+    expect(lastProps(onOps).words).toEqual({ MOTION: { en: "Moves" }, DESIGN: { en: "Samoray" } });
+    // Emptied: the library's word again.
+    fireEvent.change(field("MOTION"), { target: { value: "" } });
+    fireEvent.blur(field("MOTION"));
+    expect(lastProps(onOps).words).toBeUndefined();
+    // A text: "this part's words"; a canvas drawing no words says so; nothing picked, nothing extra.
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} part={{ words: [{ src: "Studio Kinetik · est. 2026", shown: "Studio Kinetik · est. 2026" }] }} />);
+    expect(screen.getByTestId("studio-lib-part-words").textContent).toMatch(/this part's words|كلام هالجزء/i);
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} part={{ drawing: "canvas", words: [] }} />);
+    expect(screen.queryByTestId("studio-lib-part-words")).toBeNull();
+    expect(screen.getByTestId("studio-lib-part-drawing")).toBeTruthy();
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} />);
+    expect(screen.queryByTestId("studio-lib-part-words")).toBeNull();
+    expect(screen.queryByTestId("studio-lib-part-drawing")).toBeNull();
   });
 
   it("puts everything back in one click; a piece the library doesn't have says so", () => {

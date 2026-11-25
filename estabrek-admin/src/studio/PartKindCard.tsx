@@ -15,8 +15,16 @@ const KIND: Record<PartKind, { mark: string; name: () => string; can: () => stri
   box: { mark: "▢", name: () => tr("صندوق (حاوية)", "Box (container)"), can: () => tr("الخلفية، الإطار، الزوايا، الظل والمسافات الداخلية", "Background, border, corners, shadow and inner spacing") },
 };
 
-export function PartKindCard({ kind, preview, owner, live, count, onOwner }: {
+/** A drawing inside a theme library piece: a live one (a canvas, painted as it moves) or a still one (SVG). */
+const DRAWING: Record<"canvas" | "svg", { mark: string; name: () => string; can: () => string }> = {
+  canvas: { mark: "✦", name: () => tr("رسم متحرك", "Live drawing"), can: () => tr("الكلام المرسوم فيه وحجمه (تحت)، ودبل كليك عليه بالمعاينة لتكتب فوقه", "The words drawn in it and their size (below); double-click them in the preview to write over them") },
+  svg: { mark: "◇", name: () => tr("رسمة", "Drawing"), can: () => tr("كلامها تحت، أو دبل كليك عليه بالمعاينة", "Its words below, or double-click them in the preview") },
+};
+
+export function PartKindCard({ kind, preview, owner, live, count, onOwner, drawing }: {
   kind: PartKind;
+  /** A drawing inside a theme library piece: named as one, not as a box. */
+  drawing?: "canvas" | "svg";
   /** Its words or name as seen on the page (cut short). */
   preview?: string;
   /** The element it belongs to ("Countdown"). */
@@ -27,10 +35,10 @@ export function PartKindCard({ kind, preview, owner, live, count, onOwner }: {
   count: number;
   onOwner?: () => void;
 }) {
-  const k = KIND[kind];
+  const k = drawing ? DRAWING[drawing] : KIND[kind];
   const words = preview?.replace(/\s+/g, " ").trim().slice(0, 40);
   return (
-    <div className="space-y-2 rounded-xl border border-accent-400/30 bg-accent-500/6 p-3" data-testid="studio-part-kind" data-kind={kind}>
+    <div className="space-y-2 rounded-xl border border-accent-400/30 bg-accent-500/6 p-3" data-testid="studio-part-kind" data-kind={drawing ?? kind}>
       <div className="flex items-center gap-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent-500/25 text-sm font-semibold text-white" aria-hidden="true">{k.mark}</span>
         <div className="min-w-0">

@@ -944,6 +944,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       .optional(),
     // Its direction: as the library made it (left to right), or turned for a right-to-left page.
     dir: z.enum(["ltr", "rtl"]).optional(),
+    // The size of its words (1 as the library made them), and of the big words it draws on a canvas.
+    textSize: z.number().min(0.5).max(2).optional(),
+    drawnSize: z.number().min(0.5).max(2).optional(),
   }),
   rive: z.object({
     src: src.refine((v) => /\.riv([?#]|$)/i.test(v), "A Rive file ends in .riv").optional(),

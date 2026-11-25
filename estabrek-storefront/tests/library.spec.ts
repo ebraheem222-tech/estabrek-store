@@ -2,9 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 // The owner's theme library (docs/themes-library-plan.ar.md): a piece of it on a page, in the owner's words and
 // colours, drawn by the shop (src/library); added and changed from the editor's Add panel and the piece's panel.
-const API = "http://127.0.0.1:4100";
-const SITE = "http://127.0.0.1:3000";
-const editor = "http://127.0.0.1:5178/tests/fixtures/editor-controls.html?lang=en&editingRegression";
+// The test API, the shop and the editor's page: their usual ports, or a second run's beside another session's.
+const API = `http://127.0.0.1:${process.env.CATALOG_PORT || 4100}`;
+const SITE = `http://127.0.0.1:${process.env.SHOP_PORT || 3000}`;
+const editor = `http://127.0.0.1:${process.env.ADMIN_PORT || 5178}/tests/fixtures/editor-controls.html?lang=en&editingRegression`;
 
 /** Whether any element inside `sel` is painted in `rgb` (its words, its fill or its frame). */
 const painted = (page: Page, sel: string, rgb: string) =>

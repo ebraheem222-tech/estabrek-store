@@ -7,9 +7,9 @@
  * - families: a Tailwind colour family the item uses → one colour (or "theme": the store theme's accent), its
  *   whole scale made from it (--color-<family>-50 … 950).
  */
-import { useEffect, useState, type ComponentType, type CSSProperties } from "react";
+import { Component, useEffect, useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { loadPiece } from "./loader";
-import { LibWordsProvider, hexKey } from "./runtime";
+import { LibWordsProvider, hexKey, libHost, type Drawn, type LibWords, type Spelled } from "./runtime";
 
 /** The library's fonts (its index.html): the browser fetches only the ones an item's text uses. */
 const FONTS =
@@ -44,8 +44,28 @@ export function libVars(colours: unknown, families: unknown): CSSProperties {
   return vars as CSSProperties;
 }
 
+/**
+ * A piece that throws while it's drawn: the page never goes down with it (a piece crashing took the whole page to
+ * the shop's error screen). LibBlock shows it again in the words the library wrote, and else not at all.
+ */
+class Guard extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+/** A size the owner gave (½ to twice as made), or 1. */
+const sizeOf = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && Math.abs(v - 1) > 0.001 ? Math.min(2, Math.max(0.5, v)) : 1);
+
 /** What the server's list (meta.ts) says of the piece: a page never downloads the whole library's list. */
-export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "ltr", words, colours, families, brand, className, ...rest }: {
+export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "ltr", words, colours, families, brand, textSize, drawnSize, draws, fresh, className, ...rest }: {
   item: string;
   kind: string;
   /** The piece's made-up brand (a site's name), the store's name replaces. */
@@ -62,6 +82,14 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
   colours?: Record<string, string>;
   families?: Record<string, string>;
   brand?: string;
+  /** The size of all its words (1 as the library made them): its styles' sizes are times --lx-ts (build-css.mjs). */
+  textSize?: number;
+  /** The size of the big words it draws on a canvas (runtime.tsx canvasText). */
+  drawnSize?: number;
+  /** It draws words on a canvas (convert.mjs): their size is a setting of its own. */
+  draws?: boolean;
+  /** It reads its words once (a canvas, an effect, a timer: convert.mjs): it starts again when they change. */
+  fresh?: boolean;
   className?: string;
   [data: `data-${string}`]: unknown;
 }) {
@@ -89,19 +117,58 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
     return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
   }, [kind]);
   // The store's name wherever the item says its made-up one (as written, and in capitals for the letter-spaced logos).
-  const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
-  const own = { map: { ...(words ?? {}) }, swaps, marks: studio };
+  // One object while they're the same (what it drew lately is noted on it in the editor: runtime.tsx canvasText).
+  const wordsKey = JSON.stringify(words ?? {});
+  // Its colours as the owner has them, for what it draws on a canvas or in a shader (runtime.tsx paint, glsl).
+  const coloursKey = JSON.stringify(colours ?? {});
+  const drawn = sizeOf(drawnSize);
+  // What it drew lately, kept across its words' objects (a loop started early still notes where the editor looks).
+  // And what each text shown was written as, and the words it read letter by letter (runtime.tsx spell).
+  const [seen] = useState<Drawn[]>(() => []);
+  const [origin] = useState(() => new Map<string, string>());
+  const [spelled] = useState(() => new Map<string, Spelled>());
+  const own = useMemo<LibWords>(() => {
+    const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
+    const paint: Record<string, string> = {};
+    for (const [from, to] of Object.entries(JSON.parse(coloursKey) as Record<string, unknown>)) {
+      if (/^[0-9a-f]{6}$/i.test(from) && typeof to === "string" && HEX6.test(to)) paint[from.toLowerCase()] = to;
+    }
+    return { map: JSON.parse(wordsKey) as Record<string, string>, swaps, marks: studio, drawn, seen, paint, ...(studio ? { origin, spelled } : {}) };
+  }, [wordsKey, coloursKey, brand, madeUp, studio, drawn, seen, origin, spelled]);
+  // Safe: 0 as the owner has it. 1 it threw in the owner's words (a word its own code uses to work, as a key it
+  // looks up): its code keeps the library's words, what it shows is still the owner's. 2 it threw so too: all in the
+  // library's words. 3 it threw as made: not shown. Tried again from 0 when the words change.
+  const [safe, setSafe] = useState(0);
+  useEffect(() => setSafe(0), [wordsKey, brand]);
+  const shownOnly = useMemo<LibWords>(() => ({ ...own, shownOnly: true }), [own]);
+  const plain = useMemo<LibWords>(() => ({ map: {}, swaps: [], marks: studio, drawn, seen, paint: own.paint }), [studio, drawn, seen, own.paint]);
+  const ts = sizeOf(textSize);
   // A whole website brings its own bar and footer: on its page the store's step aside (drawn with the page, no flash).
   const site = kind === "site";
   return (
-    <div className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`} dir={dir} data-lib={item} data-lib-kind={kind} data-lib-ready={Piece ? "" : undefined} style={libVars(colours, families)} {...rest}>
+    <div
+      ref={(el) => libHost(el, own)}
+      className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`}
+      dir={dir}
+      data-lib={item}
+      data-lib-kind={kind}
+      data-lib-ready={Piece ? "" : undefined}
+      data-lib-safe={safe ? (["", "shown", "words", "off"] as const)[safe] : undefined}
+      // Its words' size: what its styles size is times --lx-ts; what it doesn't (it takes the page's) from here.
+      style={{ ...libVars(colours, families), ...(ts !== 1 ? { "--lx-ts": String(ts), fontSize: `${ts}em` } : {}) } as CSSProperties}
+      {...rest}
+    >
       <link rel="stylesheet" href={FONTS} />
       {site ? <style>{".atelier-announcement,.atelier-header,.atelier-footer{display:none!important}[data-lib-kind=site]{width:calc(100vw - var(--lx-sbw,0px));margin-inline:calc(50% - 50vw + var(--lx-sbw,0px) / 2)}"}</style> : null}
       {/* What scrolls inside a piece (a carousel, a scrolling phone…) scrolls without a bar showing. */}
       <style>{".lx-scope,.lx-scope *{scrollbar-width:none}.lx-scope::-webkit-scrollbar,.lx-scope *::-webkit-scrollbar{display:none}"}</style>
       {Piece ? (
-        <LibWordsProvider words={own}>
-          <Piece />
+        <LibWordsProvider words={safe === 1 ? shownOnly : safe ? plain : own}>
+          <Guard key={safe} onError={() => setSafe((s) => (s < 2 && (wordsKey !== "{}" || brand) ? s + 1 : 3))}>
+            {/* What it draws on a canvas is drawn once (a word sampled into particles), and what it reads in an
+                effect or a timer is read once: new words or size, it starts again. */}
+            {safe < 3 ? <Piece key={draws || fresh ? `${wordsKey}|${brand ?? ""}|${drawn}|${coloursKey}` : undefined} /> : null}
+          </Guard>
         </LibWordsProvider>
       ) : (
         <div aria-hidden="true" style={{ minHeight: failed ? undefined : minH ? `min(${Math.round(minH)}px, 100vh)` : undefined }} />

@@ -639,7 +639,7 @@
     background-image: linear-gradient(var(--tw-gradient-stops));
   }
 .lx-f-templates-sites-skyport .bg-\[linear-gradient\(rgba\(255\,255\,255\,\.04\)_1px\,transparent_1px\)\,linear-gradient\(90deg\,rgba\(255\,255\,255\,\.04\)_1px\,transparent_1px\)\] {
-    background-image: linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+    background-image: linear-gradient(color-mix(in srgb, var(--lx-ffffff, #ffffff) 4%, transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb, var(--lx-ffffff, #ffffff) 4%, transparent) 1px,transparent 1px);
   }
 .lx-f-templates-sites-skyport .from-amber-300 {
     --tw-gradient-from: var(--color-amber-300);
@@ -852,42 +852,42 @@
     font-family: var(--font-sans);
   }
 .lx-f-templates-sites-skyport .text-3xl {
-    font-size: var(--text-3xl);
+    font-size: calc(var(--text-3xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-3xl--line-height));
   }
 .lx-f-templates-sites-skyport .text-4xl {
-    font-size: var(--text-4xl);
+    font-size: calc(var(--text-4xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-4xl--line-height));
   }
 .lx-f-templates-sites-skyport .text-5xl {
-    font-size: var(--text-5xl);
+    font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-5xl--line-height));
   }
 .lx-f-templates-sites-skyport .text-base {
-    font-size: var(--text-base);
+    font-size: calc(var(--text-base) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-base--line-height));
   }
 .lx-f-templates-sites-skyport .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-templates-sites-skyport .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-templates-sites-skyport .text-xl {
-    font-size: var(--text-xl);
+    font-size: calc(var(--text-xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xl--line-height));
   }
 .lx-f-templates-sites-skyport .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-templates-sites-skyport .text-\[10px\] {
-    font-size: 10px;
+    font-size: calc(10px * var(--lx-ts, 1));
   }
 .lx-f-templates-sites-skyport .text-\[11px\] {
-    font-size: 11px;
+    font-size: calc(11px * var(--lx-ts, 1));
   }
 .lx-f-templates-sites-skyport .leading-\[0\.95\] {
     --tw-leading: 0.95;
@@ -1002,7 +1002,7 @@
     opacity: 70%;
   }
 .lx-f-templates-sites-skyport .shadow-2xl {
-    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, color-mix(in srgb, var(--lx-000000, #000000) 25%, transparent));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 .lx-f-templates-sites-skyport .shadow-\[inset_0_-2px_0\] {
@@ -1010,7 +1010,7 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 .lx-f-templates-sites-skyport .shadow-sm {
-    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, color-mix(in srgb, var(--lx-000000, #000000) 10%, transparent)), 0 1px 2px -1px var(--tw-shadow-color, color-mix(in srgb, var(--lx-000000, #000000) 10%, transparent));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 .lx-f-templates-sites-skyport .ring {
@@ -1182,7 +1182,7 @@
       padding-inline: calc(var(--spacing) * 8);
     }
     .lx-f-templates-sites-skyport .sm\:text-7xl {
-      font-size: var(--text-7xl);
+      font-size: calc(var(--text-7xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-7xl--line-height));
     }
   }
@@ -1239,7 +1239,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .lx-f-templates-sites-skyport ::selection {
-  background: rgb(139 92 246 / 0.45);
+  background: color-mix(in srgb, var(--lx-8b5cf6, #8b5cf6) 45%, transparent);
   color: white;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1255,10 +1255,10 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 .lx-f-templates-sites-skyport .scanlines {
-  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--lx-ffffff, #ffffff) 4%, transparent) 0 1px, transparent 1px 3px);
 }
 .lx-f-templates-sites-skyport .synth-grid {
-  background-image: linear-gradient(rgba(255, 46, 136, 0.9) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 46, 136, 0.9) 2px, transparent 2px);
+  background-image: linear-gradient(color-mix(in srgb, var(--lx-ff2e88, #ff2e88) 90%, transparent) 2px, transparent 2px), linear-gradient(90deg, color-mix(in srgb, var(--lx-ff2e88, #ff2e88) 90%, transparent) 2px, transparent 2px);
   background-size: 64px 64px;
   animation: lx-h-grid-move 0.9s linear infinite;
 }
@@ -1269,11 +1269,11 @@
   image-rendering: pixelated;
 }
 .lx-f-templates-sites-skyport .text-stroke-white {
-  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--lx-ffffff, #ffffff) 85%, transparent);
   color: transparent;
 }
 .lx-f-templates-sites-skyport .text-stroke-dark {
-  -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85);
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--lx-000000, #000000) 85%, transparent);
   color: transparent;
 }
 @media (prefers-reduced-motion: reduce) {

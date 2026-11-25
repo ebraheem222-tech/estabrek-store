@@ -11,7 +11,8 @@ import { LIB_INDEX, type LibItem } from "../../../estabrek-storefront/src/librar
 
 type Ids = (prefix: string) => string;
 export type { LibItem };
-export type LibDetails = { words: string[]; families: string[]; hexes: string[] };
+/** A piece's words, colour families and colours; whether it draws words on a canvas (their size is a setting). */
+export type LibDetails = { words: string[]; families: string[]; hexes: string[]; draws?: boolean };
 
 export const LIB_ITEMS: readonly LibItem[] = LIB_INDEX;
 const BY_ID = new Map(LIB_INDEX.map((i) => [i.id, i]));

@@ -291,10 +291,10 @@
     --radius-xl: 0.75rem;
     --radius-2xl: 1rem;
     --radius-3xl: 1.5rem;
-    --drop-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.15);
-    --drop-shadow-lg: 0 4px 4px rgb(0 0 0 / 0.15);
-    --drop-shadow-xl: 0 9px 7px rgb(0 0 0 / 0.1);
-    --drop-shadow-2xl: 0 25px 25px rgb(0 0 0 / 0.15);
+    --drop-shadow-sm: 0 1px 2px color-mix(in srgb, var(--lx-000000, #000000) 15%, transparent);
+    --drop-shadow-lg: 0 4px 4px color-mix(in srgb, var(--lx-000000, #000000) 15%, transparent);
+    --drop-shadow-xl: 0 9px 7px color-mix(in srgb, var(--lx-000000, #000000) 10%, transparent);
+    --drop-shadow-2xl: 0 25px 25px color-mix(in srgb, var(--lx-000000, #000000) 15%, transparent);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);

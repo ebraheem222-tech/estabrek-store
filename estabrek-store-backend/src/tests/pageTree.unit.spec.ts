@@ -509,6 +509,12 @@ describe("checking a page tree", () => {
     // Right to left, or as made.
     expect(ok({ item: "site-maison", dir: "rtl" })).toBe(true);
     expect(issuesOf(one({ item: "site-maison", dir: "up" })).length).toBeGreaterThan(0);
+    // Its words' size and its drawn words' size: kept (not dropped on the way), from half to twice as made.
+    const sized = checkTree(one({ item: "premium-particle-text", textSize: 0.8, drawnSize: 1.4 }));
+    expect(sized.ok && sized.tree.root.children![0].props).toMatchObject({ textSize: 0.8, drawnSize: 1.4 });
+    expect(issuesOf(one({ item: "premium-particle-text", textSize: 3 })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ item: "premium-particle-text", drawnSize: 0.1 })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ item: "premium-particle-text", drawnSize: "big" })).length).toBeGreaterThan(0);
   });
 
   test("a section's WebGL background from the theme library, in the owner's colours", () => {
