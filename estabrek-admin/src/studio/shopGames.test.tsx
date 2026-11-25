@@ -54,4 +54,24 @@ describe("the shop's games in the editor", () => {
     expect(props().faces).toHaveLength(2);
     expect(removers()[0]).toBeDisabled();
   });
+
+  it("a new gift card and configurator wait for their product; the configurator's parts are added and taken away", () => {
+    const gift = newElement("giftCard", "en", ids()) as PageTreeNode;
+    expect(gift.props).toMatchObject({ title: { en: "A gift card" }, look: "rose" });
+    expect(gift.props).not.toHaveProperty("product");
+    const build = newElement("configurator", "en", ids()) as PageTreeNode;
+    expect((build.props as { parts: Array<{ options: unknown[] }> }).parts[0].options).toHaveLength(3);
+
+    render(<Editor node={build} />);
+    fireEvent.click(screen.getByTestId("build-part-add"));
+    expect(props().parts).toHaveLength(2);
+    fireEvent.click(screen.getAllByTestId("build-option-add")[1]);
+    expect(props().parts[1].options).toHaveLength(2);
+    fireEvent.change(screen.getAllByTestId("build-part-name")[1], { target: { value: "The box" } });
+    fireEvent.blur(screen.getAllByTestId("build-part-name")[1]);
+    expect(props().parts[1].name.en).toBe("The box");
+    fireEvent.click(screen.getAllByRole("button", { name: /Remove the part|شيلي القطعة|הסרת החלק/ })[0]);
+    expect(props().parts).toHaveLength(1);
+    expect(props().parts[0].name.en).toBe("The box");
+  });
 });

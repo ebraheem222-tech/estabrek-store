@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LineDetails } from "../catalog/catalog.schemas.js";
 
 export const PageBySlugQuery = z.object({
   slug: z.string().min(1),
@@ -21,6 +22,7 @@ export const StorefrontCheckoutCreateBody = z.object({
       z.object({
         variantId: z.string().min(1),
         quantity: z.coerce.number().int().min(1),
+        details: LineDetails.optional(),
       })
     )
     .min(1),

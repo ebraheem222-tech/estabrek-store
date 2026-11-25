@@ -98,6 +98,8 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["storyBar", () => typeLabel("storyBar"), "◎"],
       ["scratchCard", () => typeLabel("scratchCard"), "🎟"],
       ["memoryGame", () => typeLabel("memoryGame"), "🃏"],
+      ["giftCard", () => typeLabel("giftCard"), "🎁"],
+      ["configurator", () => typeLabel("configurator"), "🎨"],
       ["categories", () => typeLabel("categories"), "▤"],
       ["form", () => typeLabel("form"), "✉"],
     ],

@@ -14,6 +14,13 @@ export type ProWords = {
   stories: StoryWords;
   /** The shop's games (ShopGames.tsx): a scratch card and a memory game that give a coupon. */
   games: GameWords;
+  /** The gift card and the configurator (ShopBuild.tsx). */
+  build: BuildWords;
+};
+
+export type BuildWords = {
+  to: string; from: string; message: string; toHint: string; messageHint: string; amount: string; added: string; giftMissing: string;
+  colour: string; size: string; buildMissing: string;
 };
 
 export type GameWords = {
@@ -30,6 +37,7 @@ export const PRO_WORDS: Record<TreeLang, ProWords> = {
     flip: "قلّب البطاقة",
     stories: { label: "قصص", open: "افتحي القصة", close: "سكّري", prev: "اللي قبل", next: "اللي بعد", pause: "وقّفي", play: "كمّلي", sound: "شغّلي الصوت", mute: "سكّتي الصوت", shopThis: "تسوّقي هالقطعة", empty: "لسا ما في قصص. ضيفيها من «القصص» بلوحة التحكم.", seen: "شفتيها" },
     games: { scratch: "اخدشي هون", reveal: "اكشفي الجائزة", won: "ربحتي!", code: "كود الخصم", copy: "انسخي الكود", copied: "انتسخ!", inBag: "حطّيناه بالحقيبة، بينطبق لحاله.", memory: "لاقي الأزواج", moves: "الحركات", left: "باقي", again: "جرّبي كمان مرة", lost: "خلصت الحركات. جرّبي كمان مرة!", card: "بطاقة", matched: "لقيتيها" },
+    build: { to: "إلى", from: "من", message: "الرسالة", toHint: "لمين الهدية؟", messageHint: "اكتبي رسالة حلوة…", amount: "القيمة", added: "انضافت للحقيبة ✓", giftMissing: "بطاقة الهدية: اختاري منتج بطاقة الهدية من الإعدادات (مقاساته هي القيم).", colour: "اللون", size: "المقاس", buildMissing: "المُخصِّص: اختاري المنتج من الإعدادات." },
   },
   en: {
     toc: "On this page", tocEmpty: "No headings on this page yet.",
@@ -39,6 +47,7 @@ export const PRO_WORDS: Record<TreeLang, ProWords> = {
     flip: "Turn the card",
     stories: { label: "Stories", open: "Open the story", close: "Close", prev: "Previous", next: "Next", pause: "Pause", play: "Play", sound: "Sound on", mute: "Sound off", shopThis: "Shop this piece", empty: "No stories yet. Add them under “Stories” in the admin.", seen: "seen" },
     games: { scratch: "Scratch here", reveal: "Reveal the prize", won: "You won!", code: "Discount code", copy: "Copy the code", copied: "Copied!", inBag: "It’s in your bag and applies by itself.", memory: "Find the pairs", moves: "Moves", left: "left", again: "Try again", lost: "Out of moves. Try again!", card: "Card", matched: "matched" },
+    build: { to: "To", from: "From", message: "Message", toHint: "Who is it for?", messageHint: "Write a sweet message…", amount: "Amount", added: "Added to your bag ✓", giftMissing: "Gift card: pick the gift card product in its settings (its sizes are the amounts).", colour: "Colour", size: "Size", buildMissing: "Configurator: pick the product in its settings." },
   },
   he: {
     toc: "בעמוד הזה", tocEmpty: "עדיין אין כותרות בעמוד.",
@@ -48,5 +57,6 @@ export const PRO_WORDS: Record<TreeLang, ProWords> = {
     flip: "הפיכת הכרטיס",
     stories: { label: "סטוריז", open: "פתיחת הסטורי", close: "סגירה", prev: "הקודם", next: "הבא", pause: "השהיה", play: "המשך", sound: "הפעלת קול", mute: "השתקה", shopThis: "לקנות את הפריט", empty: "עדיין אין סטוריז. הוסיפו אותם ב„סטוריז” בניהול.", seen: "נצפה" },
     games: { scratch: "גרדו כאן", reveal: "גילוי הפרס", won: "זכיתם!", code: "קוד הנחה", copy: "העתקת הקוד", copied: "הועתק!", inBag: "הוא בסל ומופעל לבד.", memory: "מצאו את הזוגות", moves: "מהלכים", left: "נותרו", again: "נסו שוב", lost: "נגמרו המהלכים. נסו שוב!", card: "כרטיס", matched: "נמצא" },
+    build: { to: "אל", from: "מאת", message: "הודעה", toHint: "למי המתנה?", messageHint: "כתבו הודעה מתוקה…", amount: "סכום", added: "נוסף לסל ✓", giftMissing: "כרטיס מתנה: בחרו את מוצר כרטיס המתנה בהגדרות (המידות שלו הן הסכומים).", colour: "צבע", size: "מידה", buildMissing: "מעצב המוצר: בחרו את המוצר בהגדרות." },
   },
 };

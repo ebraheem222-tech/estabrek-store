@@ -105,6 +105,11 @@ export default function OrderDetailsPage() {
                       {l.sizeName && <span className="rounded-full bg-white/6 px-2 py-0.5 text-white/70">{tr("المقاس:", "Size:")} {l.sizeName}</span>}
                       {l.sku && <span className="px-1 text-white/35" dir="ltr">{l.sku}</span>}
                     </div>
+                    {Array.isArray(l.details) && l.details.length ? (
+                      <dl className="mt-1.5 space-y-0.5 rounded-lg bg-accent-500/10 px-2 py-1.5 text-[11px]" data-testid="order-line-details">
+                        {l.details.map((d, j) => <div key={j} className="flex gap-1.5"><dt className="text-white/55">{d.label}:</dt><dd className="whitespace-pre-line text-white/85">{d.value}</dd></div>)}
+                      </dl>
+                    ) : null}
                   </div>
                   <div className="text-end text-sm">
                     <div className="text-white/60">{moneyText(l.unitPrice)} × {l.quantity}</div>

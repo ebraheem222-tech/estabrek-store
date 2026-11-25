@@ -108,7 +108,7 @@ export type OrderLike = {
   createdAt: string;
   /** The language the shopper ordered in (ar/en/he); old orders have none. */
   locale?: string | null;
-  items?: Array<{ productTitle: string; quantity: number; unitPrice?: number | string; lineSubtotal?: number | string; lineTotal?: number | string; colorName?: string | null; sizeName?: string | null; imageUrl?: string | null; sku?: string | null }>;
+  items?: Array<{ productTitle: string; quantity: number; unitPrice?: number | string; lineSubtotal?: number | string; lineTotal?: number | string; colorName?: string | null; sizeName?: string | null; imageUrl?: string | null; sku?: string | null; details?: Array<{ label: string; value: string }> | null }>;
   variant?: { item?: { colorName?: string | null; product?: { title?: string } | null; images?: Array<{ url: string }> } | null; size?: { name?: string } | null; sku?: string } | null;
 };
 

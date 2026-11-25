@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MiniCart } from "@/components/MiniCart";
-import { useCart } from "@/store/cart";
+import { lineKey, useCart, type LineDetail } from "@/store/cart";
 
 type Quote = {
   currencyCode?: string | null;
   lines?: Array<{
     variantId: string;
+    details?: LineDetail[] | null;
     quantity: number;
     unitPrice?: string | number;
     productId?: string;
@@ -83,9 +84,10 @@ export function StorefrontMiniCart({
     const lines = quote?.lines ?? [];
     return lines.map((line) => {
       const colorLabel = [line.colorName, line.boxLabel].filter(Boolean).join(" — ");
-      const variantLabel = [colorLabel, line.sizeName].filter(Boolean).join(" / ");
+      const variantLabel = [colorLabel, line.sizeName, ...(line.details ?? []).map((d) => `${d.label}: ${d.value}`)].filter(Boolean).join(" / ");
       return {
-        id: line.variantId,
+        // The line's key (by its variant alone, a gift card for someone else would go with it).
+        id: lineKey(line.variantId, line.details),
         variantId: line.variantId,
         productId: line.productId ?? "",
         title: line.productTitle ?? "Item",

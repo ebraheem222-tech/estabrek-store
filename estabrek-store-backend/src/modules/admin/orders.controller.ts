@@ -62,6 +62,7 @@ const ORDER_REQUEST_ITEM_SELECT = {
   sizeName: true,
   sku: true,
   imageUrl: true,
+  details: true,
   createdAt: true,
 } as const;
 

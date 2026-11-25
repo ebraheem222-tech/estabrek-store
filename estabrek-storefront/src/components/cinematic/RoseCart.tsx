@@ -3,7 +3,7 @@ import { bagItems, rememberPurchase, trackBeginCheckout, trackLead } from "@/lib
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { gsap } from "gsap";
-import { useCart } from "@/store/cart";
+import { lineKey, useCart, type LineDetail } from "@/store/cart";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { LqipImage } from "@/components/LqipImage";
 import { cldUrl } from "@/lib/cloudinary";
@@ -29,6 +29,8 @@ import { WON_COUPON_EVENT, forgetWonCoupon, wonCoupon } from "@/lib/wonCoupon";
 
 type Line = {
   variantId: string;
+  /** The shopper's own details for this line (a gift card's name and message…). */
+  details?: LineDetail[] | null;
   quantity: number;
   productTitle?: string;
   /** The product's other languages (src/lib/localize.ts). */
@@ -235,18 +237,19 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const wantsPaypal = (checkoutMode === "PAYPAL" || checkoutMode === "PAYMENTS") && !!paypalEnabled;
   const allowManual = checkoutMode === "WHATSAPP" || settings.allowManualCheckoutWithPayments === true;
   const waReady = Boolean(whatsappLink(whatsappNumber, undefined, countryCode));
-  const payload = useMemo(() => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })), [items]);
+  const payload = useMemo(() => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity, ...(i.details ? { details: i.details } : {}) })), [items]);
   const currency = quote?.currencyCode ?? null;
-  const lineBy = useMemo(() => new Map((quote?.lines ?? []).map((l) => [l.variantId, l])), [quote]);
+  // By the line's key (its variant, or its variant and the shopper's details: two gift cards for two people).
+  const lineBy = useMemo(() => new Map((quote?.lines ?? []).map((l) => [lineKey(l.variantId, l.details), l])), [quote]);
   const count = items.reduce((a, b) => a + b.quantity, 0);
   const discount = Number(quote?.discountAmount ?? 0);
   // Pieces asked in a larger quantity than is left (the store refuses those orders).
-  const shortLines = items.filter((i) => { const a = lineBy.get(i.variantId)?.available; return typeof a === "number" && i.quantity > a; });
+  const shortLines = items.filter((i) => { const a = lineBy.get(i.key)?.available; return typeof a === "number" && i.quantity > a; });
   const fitToStock = () => {
     for (const i of shortLines) {
-      const a = lineBy.get(i.variantId)?.available ?? 0;
-      if (a <= 0) removeItem(i.variantId);
-      else setQty(i.variantId, a);
+      const a = lineBy.get(i.key)?.available ?? 0;
+      if (a <= 0) removeItem(i.key);
+      else setQty(i.key, a);
     }
     setErr(null);
   };
@@ -322,13 +325,13 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [coupon, JSON.stringify(payload)]);
 
-  const remove = (variantId: string) => {
+  const remove = (key: string) => {
     // Razan's history: "شلتيها من الحقيبة" (only while the owner has it on).
-    const l = lineBy.get(variantId);
-    if (l) rememberRemoved({ id: variantId, title: l.productTitle ?? "", slug: l.productSlug, image: l.imageUrl, color: l.colorName, size: l.sizeName });
-    const row = list.current?.querySelector<HTMLElement>(`[data-variant="${CSS.escape(variantId)}"]`);
-    if (!row) return removeItem(variantId);
-    gsap.to(row, { opacity: 0, x: isRtl(lang) ? 40 : -40, height: 0, marginBottom: 0, paddingBlock: 0, duration: 0.35, ease: "power2.in", onComplete: () => removeItem(variantId) });
+    const l = lineBy.get(key);
+    if (l) rememberRemoved({ id: l.variantId, title: l.productTitle ?? "", slug: l.productSlug, image: l.imageUrl, color: l.colorName, size: l.sizeName });
+    const row = list.current?.querySelector<HTMLElement>(`[data-line="${CSS.escape(key)}"]`);
+    if (!row) return removeItem(key);
+    gsap.to(row, { opacity: 0, x: isRtl(lang) ? 40 : -40, height: 0, marginBottom: 0, paddingBlock: 0, duration: 0.35, ease: "power2.in", onComplete: () => removeItem(key) });
   };
 
   const applyCoupon = async (event: FormEvent) => {
@@ -521,11 +524,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
         <div>
           <ul ref={list} className="rose-cart-lines">
             {items.map((it) => {
-              const l = lineBy.get(it.variantId);
+              const l = lineBy.get(it.key);
               const href = l?.productSlug ? `/p/${encodeURIComponent(l.productSlug)}` : "/shop";
               const color = [l?.colorLabel ?? l?.colorName, l?.boxLabel].filter(Boolean).join(" — ");
               return (
-                <li key={it.variantId} data-variant={it.variantId} className="rose-cart-line">
+                <li key={it.key} data-variant={it.variantId} data-line={it.key} className="rose-cart-line">
                   <Link href={href} className="rose-cart-thumb">
                     {l?.imageUrl ? <LqipImage src={cldUrl(l.imageUrl, { w: 240, h: 300, c: "fill", g: "auto" })} alt={l.productTitle ?? ""} fill sizes="110px" blurDataUrl={l.imageBlurDataUrl ?? undefined} className="object-cover" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
                   </Link>
@@ -535,6 +538,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                       {color && color.toLowerCase() !== "default" && <span>{tr(lang, "اللون", "Colour")}: {color}</span>}
                       {l?.sizeName && l.sizeName.toLowerCase() !== "default" && <span>{tr(lang, "المقاس", "Size")}: {l.sizeName}</span>}
                       {l?.fulfillment === "DIGITAL" && <span data-testid="cart-digital">{tr(lang, "⬇️ تنزيل رقمي", "⬇️ Digital download")}</span>}
+                      {it.details?.map((d) => <span key={d.label} data-testid="cart-detail">{d.label}: {d.value}</span>)}
                       {l?.fulfillment === "BOOKING" && <span data-testid="cart-booking">🎟️ {l.eventStartsAt ? eventDate(l.eventStartsAt, lang) : tr(lang, "حجز", "Booking")}</span>}
                     </div>
                     <span className="rose-cart-unit">{money(l?.unitPrice, currency)}</span>
@@ -545,13 +549,13 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                     ) : null}
                   </div>
                   <div data-cms-part="cart-quantity" className="rose-cart-qty" aria-label={tr(lang, "الكمية", "Quantity")}>
-                    <button data-cms-part="cart-more" type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty(it.variantId, it.quantity + 1)}>+</button>
+                    <button data-cms-part="cart-more" type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty(it.key, it.quantity + 1)}>+</button>
                     <span data-cms-part="cart-quantity-value" aria-live="polite">{it.quantity}</span>
-                    <button data-cms-part="cart-less" type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => (it.quantity <= 1 ? remove(it.variantId) : setQty(it.variantId, it.quantity - 1))}>−</button>
+                    <button data-cms-part="cart-less" type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => (it.quantity <= 1 ? remove(it.key) : setQty(it.key, it.quantity - 1))}>−</button>
                   </div>
                   <div className="rose-cart-line-end">
                     <strong>{money(l?.lineTotal ?? l?.lineSubtotal, currency)}</strong>
-                    <button type="button" className="rose-cart-remove" onClick={() => remove(it.variantId)} aria-label={`${tr(lang, "إزالة", "Remove")} ${l?.productTitle ?? ""}`}>
+                    <button type="button" className="rose-cart-remove" onClick={() => remove(it.key)} aria-label={`${tr(lang, "إزالة", "Remove")} ${l?.productTitle ?? ""}`}>
                       {tr(lang, "إزالة", "Remove")}
                     </button>
                   </div>

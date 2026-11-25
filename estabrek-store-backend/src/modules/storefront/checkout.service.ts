@@ -11,7 +11,7 @@ type CheckoutCreateInput = {
   provider: CheckoutProvider;
   /** Signed-in shopper (from her token, never from the request body). */
   userId?: string | null;
-  items: Array<{ variantId: string; quantity: number }>;
+  items: Array<{ variantId: string; quantity: number; details?: Array<{ label: string; value: string }> }>;
   customerName: string;
   phone: string;
   email?: string | null;

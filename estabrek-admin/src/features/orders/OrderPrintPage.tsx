@@ -121,7 +121,7 @@ export default function OrderPrintPage() {
                   <tr key={i}>
                     <td style={{ width: 40 }}>{l.imageUrl ? <img className="thumb" src={l.imageUrl} alt="" /> : null}</td>
                     <td><b>{l.productTitle}</b>{l.sku ? <div className="muted" dir="ltr">{l.sku}</div> : null}</td>
-                    <td>{[l.colorName, l.sizeName].filter(Boolean).join(" / ") || "—"}</td>
+                    <td>{[l.colorName, l.sizeName, ...(Array.isArray(l.details) ? l.details.map((d) => `${d.label}: ${d.value}`) : [])].filter(Boolean).join(" / ") || "—"}</td>
                     <td className="n">{moneyText(l.unitPrice)}</td>
                     <td className="n">{l.quantity}</td>
                     <td className="n">{moneyText(l.lineTotal ?? l.lineSubtotal ?? num(l.unitPrice) * l.quantity)}</td>

@@ -226,6 +226,8 @@ export const CORNER_PARTS: Record<string, readonly string[]> = {
   share: [" .pt-shr-btn"],
   scratchCard: [" .pt-scr-card"],
   memoryGame: [" .pt-mem-card"],
+  giftCard: [" .pt-gift-card"],
+  configurator: [" .pt-cfg-stage"],
 };
 /** A screen's corners as CSS (a number of px, or a variable of the design), if it sets any. */
 const radiusCss = (s: ScreenStyle | undefined) => (s ? tokenVar(s.radius, "radii") ?? (num(s.radius, 0, 999) !== undefined ? `${s.radius}px` : undefined) : undefined);
@@ -1276,6 +1278,26 @@ export const BASE_CSS = [
   ".pt-tc-boxed{padding:18px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}.pt-tc-boxed .pt-tc-list a[aria-current]{background:var(--accent-soft,rgba(0,0,0,.05))}",
   "[id^=pt-h-]{scroll-margin-top:96px}",
   // A flip card: two faces, the back coming round (or sliding over, fading in, growing) under the mouse, a tap or the keyboard.
+  // The gift card and the configurator (ShopBuild.tsx).
+  ".pt-gift{display:grid;gap:18px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}@media (max-width:720px){.pt-gift{grid-template-columns:1fr}}",
+  ".pt-gift-card{position:relative;aspect-ratio:1.6;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:6px;color:#fff;overflow:hidden;box-shadow:0 18px 40px #0003;background:var(--pt-gift-pic,none) center/cover,linear-gradient(135deg,#e7a3bd,#b8577f)}",
+  ".pt-gift-night{background:var(--pt-gift-pic,none) center/cover,linear-gradient(135deg,#29243f,#0e0c1c)}.pt-gift-gold{background:var(--pt-gift-pic,none) center/cover,linear-gradient(135deg,#f3d98b,#b8892f);color:#3b2a06}.pt-gift-brand{background:var(--pt-gift-pic,none) center/cover,linear-gradient(135deg,var(--accent,#9b5de5),color-mix(in srgb,var(--accent,#9b5de5) 55%,#000))}",
+  ".pt-gift-amount{font-size:2.2em;font-weight:800;letter-spacing:.02em;line-height:1.1}.pt-gift-to{font-weight:600;margin-top:auto}.pt-gift-message{font-size:.95em;opacity:.92;white-space:pre-line;overflow-wrap:anywhere;max-height:4.6em;overflow:hidden}.pt-gift-from{font-size:.85em;opacity:.8}",
+  ".pt-build-label{font-size:.85em;opacity:.75;margin:8px 0 6px}.pt-build-options{display:flex;flex-wrap:wrap;gap:8px}",
+  ".pt-build-chip{border:1.5px solid color-mix(in srgb,currentColor 22%,transparent);border-radius:999px;padding:6px 14px;background:none;color:inherit;font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px}.pt-build-chip img{width:22px;height:22px;border-radius:6px;object-fit:cover}",
+  ".pt-build-chip[aria-checked=true]{border-color:var(--accent,#9b5de5);background:color-mix(in srgb,var(--accent,#9b5de5) 12%,transparent)}",
+  ".pt-build-swatch{width:30px;height:30px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px color-mix(in srgb,currentColor 25%,transparent);background:var(--pt-sw,#ddd);cursor:pointer;padding:0}.pt-build-swatch[aria-checked=true]{box-shadow:0 0 0 2.5px var(--accent,#9b5de5)}",
+  ".pt-build-chip:focus-visible,.pt-build-swatch:focus-visible{outline:2px solid var(--accent,#9b5de5);outline-offset:2px}",
+  ".pt-build-field{display:grid;gap:4px;margin-top:10px;font-size:.9em}.pt-build-field span{opacity:.75}.pt-build-field input,.pt-build-field textarea{font:inherit;border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:12px;padding:8px 12px;background:var(--surface,#fff);color:var(--text,inherit);resize:vertical}",
+  ".pt-build-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.pt-build-foot strong{font-size:1.2em}.pt-build-foot button:disabled{opacity:.5;cursor:not-allowed}",
+  ".pt-build-ghost{display:inline-block;min-width:60px;min-height:30px;border-radius:999px;background:color-mix(in srgb,currentColor 8%,transparent);animation:pt-build-pulse 1.2s ease-in-out infinite}@keyframes pt-build-pulse{50%{opacity:.5}}",
+  // No product picked yet: only the editor shows it (with its hint), never the shop.
+  "html:not([data-pt-all]) [data-pt-needs-product]{display:none!important}",
+  ".pt-build-missing{border:1.5px dashed color-mix(in srgb,currentColor 30%,transparent);border-radius:12px;padding:12px;font-size:.9em;opacity:.8}",
+  ".pt-cfg{display:grid;gap:22px;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}@media (max-width:720px){.pt-cfg{grid-template-columns:1fr}}",
+  ".pt-cfg-stage{position:relative;aspect-ratio:4/5;border-radius:20px;overflow:hidden;background:color-mix(in srgb,currentColor 5%,transparent)}.pt-cfg-base,.pt-cfg-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.pt-cfg-layer{pointer-events:none}",
+  ".pt-cfg-title{font-weight:700;font-size:1.2em}",
+  "@media (prefers-reduced-motion:reduce){.pt-build-ghost{animation:none}}",
   // The shop's games (ShopGames.tsx): a scratch card and a memory game that give a coupon.
   ".pt-game-title{font-weight:700;font-size:1.15em;margin:0 0 4px}.pt-game-text{margin:0 0 12px;opacity:.8}",
   ".pt-scr{display:grid;gap:10px;justify-items:center}.pt-scr-card{position:relative;width:min(100%,420px);height:var(--pt-scr-h,220px);border-radius:18px;overflow:hidden;background:var(--surface,#fff);color:var(--text,#222);box-shadow:0 10px 30px #0002;isolation:isolate}",
