@@ -86,6 +86,7 @@ import { LibraryPanel } from "./LibraryPanel";
 import { LibraryBrowser } from "./LibraryBrowser";
 import { ShaderPanel } from "./ShaderPanel";
 import { GlScenePanel } from "./GlScenePanel";
+import { GameStagePanel } from "./GameStagePanel";
 import { TrailPanel } from "./TrailPanel";
 import { SpacePanel } from "./SpacePanel";
 import { withLibWord } from "./library";
@@ -3463,6 +3464,7 @@ function StudioDocument() {
             {selFree.type === "chart" ? <ChartPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "clock" ? <ClockPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "model3d" ? <Model3dPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "game" ? <GameStagePanel key={`game:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "glScene" ? <GlScenePanel key={`gl:${selFree.id}`} node={selFree} mode="element" lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "video" ? <div data-insp-as="look"><VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /></div> : null}

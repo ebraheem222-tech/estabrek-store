@@ -32,6 +32,7 @@ import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
 import { shaderOf } from "./shader";
 import { glHeightOf, glSceneOf, type GlSpec } from "./glScene";
+import { STAGE_WORDS, gameOf } from "./gameSpec";
 import { flashOf, trailOf } from "./pointerSpec";
 import { spaceOf } from "./spaceSpec";
 import { model3dOf } from "./model3d";
@@ -56,7 +57,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, BookingView, ChartKindView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, GlSceneView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, BookingView, ChartKindView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, GlSceneView, GameView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -660,6 +661,19 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
             look={pick(p.look, ["silver", "gold", "brand", "pink"] as const, "silver")} cover={color(p.cover)}
             once={p.once !== false} save={p.save !== false} words={W}
           />
+          {after}
+        </div>
+      );
+    }
+    case "game": {
+      // A game on the page, the owner's or a ready one (the games stage: gameSpec.ts, gameEngine.ts, GameView.tsx).
+      const spec = gameOf(p.game, say);
+      if (!spec) return null;
+      const colours = Object.fromEntries([spec.bg, ...spec.things.map((t) => t.look.color)].map((n) => [n, color(n) ?? n]));
+      return (
+        <div className={cls(node)} {...mark}>
+          {before}
+          <GameView id={node.id} spec={spec} colours={colours} words={STAGE_WORDS[ctx.lang as "ar"] ?? STAGE_WORDS.ar} prizeWords={(PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar).games} rtl={ctx.lang !== "en"} />
           {after}
         </div>
       );
