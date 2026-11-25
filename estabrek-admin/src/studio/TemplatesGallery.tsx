@@ -19,7 +19,7 @@ import { TemplateThumb } from "./TemplateThumb";
 import type { ThumbColours } from "./templates/colours";
 import type { TemplateKit } from "./packs";
 import type { Ids, MotionLevel } from "./templates/build";
-import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_AREAS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
+import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, PREMIUM_THEMES, SECTION_AREAS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, templateById, themeKitOf, toFile, type Template } from "./templates/catalog";
 import { FAMILIES, PACKS, type Family, type W } from "./templates/words";
 import { LOOKS, MOODS, MOOD_NAMES } from "./templates/dna";
 import { StoreTemplatePicker } from "../features/setup/StoreTemplatePicker";
@@ -27,6 +27,9 @@ import { getStoreTemplateImport, type StoreTemplate } from "../api/storeTemplate
 import { copyOf } from "./columns";
 import type { MotionProfile } from "./motionProfiles";
 import { personaliseStoreWords } from "../lib/templateWords";
+import { THEME_PART_NAMES } from "./templates/dna/themes";
+import { putTheme, readThemePlan, type ThemePartKey, type ThemeTarget } from "./themeApply";
+import type { ThemeKit } from "./templates/catalog";
 
 type Tab = "designs" | "sections" | "pages" | "mine";
 export type UseWhere = "here" | "end";
@@ -52,6 +55,11 @@ function readFavs(): Set<string> {
 /** The section DNA's designs (studio/templates/dna) are the new ones. */
 const isNew = (t: Template) => Boolean(t.look);
 const areaOf = (g: string) => SECTION_AREAS.find((a) => g === `area:${a.key}`);
+/** The whole premium themes (plan 3.9b) are listed by their homes, one card a theme. */
+const THEMES_GROUP = "themes";
+const isThemeHome = (t: Template) => Boolean(t.theme) && t.group === "home";
+/** A theme's part is the one shown, whatever colour a header or footer is shown in. */
+const samePart = (part: string, id: string | null) => Boolean(id) && (part === id || (part.startsWith("s:") && designOf({ kind: "section", id } as Template) === part.split(":")[1]));
 
 /** Counted ids for drawings (the page's own ids are made when something is added). */
 const drawIds = (): Ids => {
@@ -67,7 +75,7 @@ function download(name: string, nodes: PageTreeNode[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function TemplatesGallery({ open, onClose, lang, family, colours, pics, kit, busy, here, pageName, storeName, pageSections, selectedSection, makeIds, onUse }: {
+export function TemplatesGallery({ open, onClose, lang, family, colours, pics, kit, busy, here, pageName, storeName, pageSections, selectedSection, makeIds, onUse, onThemeApplied }: {
   open: boolean;
   onClose: () => void;
   /** The shop language being edited (the templates' words). */
@@ -89,6 +97,8 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   selectedSection: PageTreeNode | null;
   makeIds: () => Ids;
   onUse: (nodes: PageTreeNode[], where: UseWhere, label: string) => void;
+  /** A whole premium theme was put into the store's pages' drafts (plan 3.9c): the page to open, its home's first. */
+  onThemeApplied?: (pageId: string) => void;
 }) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("designs");
@@ -120,6 +130,8 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const [saving, setSaving] = useState<"page" | "section" | "file" | null>(null);
   const [saveName, setSaveName] = useState("");
   const [sure, setSure] = useState<string | null>(null);
+  // «استعمل الثيم كله»: the theme, where each of its parts would go, which are chosen, and the part being put.
+  const [whole, setWhole] = useState<{ kit: ThemeKit; plan: ThemeTarget[] | null; chosen: Set<ThemePartKey>; putting: ThemePartKey | null } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mine = useQuery({ queryKey: ["page-templates"], queryFn: listTemplates, enabled: open, staleTime: 30_000 });
 
@@ -128,7 +140,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
     const source = tab === "sections" ? SECTION_TEMPLATES : tab === "pages" ? PAGE_TEMPLATES : [];
     // A kind's homes show for that kind only.
     const area = areaOf(group);
-    const inGroup = (t: Template) => group === "all" || t.group === group || (area ? (area.cats as string[]).includes(t.group) : group === "favs" ? favs.has(designOf(t)) : group === "new" && isNew(t));
+    const inGroup = (t: Template) => group === THEMES_GROUP ? isThemeHome(t) : group === "all" || t.group === group || (area ? (area.cats as string[]).includes(t.group) : group === "favs" ? favs.has(designOf(t)) : group === "new" && isNew(t));
     const found = source.filter((t) => inGroup(t) && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood) && matches(t, q));
     // One card for each design: its colours are picked in the preview. The card shows the first colour that
     // matches what's looked for (looking for "inverted" shows the designs that have it, inverted).
@@ -139,6 +151,10 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const count = (g: string) => counted((t) => t.group === g);
   const favCount = counted((t) => favs.has(designOf(t)));
   const newCount = tab === "sections" ? counted(isNew) : 0;
+  const themeCount = tab === "pages" ? counted(isThemeHome) : 0;
+  /** The premium theme what's shown is a part of: its parts are picked in the preview. */
+  const shownId = shown?.kind === "library" ? shown.t.id : null;
+  const themeKit = shownId ? themeKitOf(shownId) : null;
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -205,6 +221,34 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
     } catch (error) { toast.error(getApiErrorMessage(error)); }
     finally { if (request === importEpoch.current) setImporting(false); }
   };
+  const openWhole = async (k: ThemeKit) => {
+    setWhole({ kit: k, plan: null, chosen: new Set(), putting: null });
+    try {
+      const plan = await readThemePlan(k);
+      setWhole((w) => (w?.kit === k ? { ...w, plan, chosen: new Set(plan.filter((t) => !t.skip).map((t) => t.part)) } : w));
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+      setWhole(null);
+    }
+  };
+  const putWhole = async () => {
+    if (!whole?.plan || whole.putting || !whole.chosen.size) return;
+    // Fresh ids for each page (the pages are the store's other ones, not the one open here).
+    const stamp = Date.now().toString(36);
+    let n = 0;
+    const build = (template: string) => buildTemplate(template, { ...opts, ids: (p) => `${p}-${stamp}${(n++).toString(36)}` });
+    const name = nameOf(whole.kit.theme.name);
+    try {
+      const done = await putTheme(whole.plan, whole.chosen, build, { home: THEME_PART_NAMES.home, about: THEME_PART_NAMES.about, contact: THEME_PART_NAMES.contact }, adminLang(), (part) => setWhole((w) => (w ? { ...w, putting: part } : w)));
+      toast.success(say(`«${name}» انحط عالمسودات: راجعي كل صفحة وانشريها.|${name} is in the drafts: look over each page and publish it.|${name} נמצאת בטיוטות: עברו על כל דף ופרסמו אותו.`));
+      setWhole(null);
+      onClose();
+      if (done.length) onThemeApplied?.(done[0].pageId);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+      setWhole((w) => (w ? { ...w, putting: null } : w));
+    }
+  };
   return (
     <Modal open={open} onClose={onClose} title={tr("القوالب", "Templates")} widthClassName="max-w-6xl">
       <div className="flex min-h-0 flex-col gap-3" data-testid="studio-templates">
@@ -224,7 +268,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                 if (e.target.value.trim()) setGroup("all");
                 setLimit(PAGE_SIZE);
               }} data-testid="studio-tpl-search" />
-              {tab === "sections" ? (
+              {tab === "sections" || tab === "pages" ? (
                 <>
                   <label className="flex items-center gap-1 text-[11px] text-white/60">
                     {say("الستايل|Look|סגנון")}
@@ -319,14 +363,21 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                       </ul>
                     </li>
                   ))
-                  : PAGE_KINDS.map((g) => (
+                  : [themeCount > 0 ? (
+                    <li key={THEMES_GROUP} className="pb-1">
+                      <button type="button" onClick={() => { setGroup(THEMES_GROUP); setLimit(PAGE_SIZE); }} aria-pressed={group === THEMES_GROUP} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === THEMES_GROUP ? "bg-accent-500/20 text-white" : "text-accent-200 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={THEMES_GROUP}>
+                        <span className="truncate">✦ {say("ثيمات بريميوم كاملة|Whole premium themes|ערכות פרימיום שלמות")}</span>
+                        <span className="text-white/35">{themeCount}</span>
+                      </button>
+                    </li>
+                  ) : null, ...PAGE_KINDS.map((g) => (
                     <li key={g}>
                       <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={g}>
                         <span className="truncate">{nameOf(PAGE_KIND_NAMES[g])}</span>
                         <span className="text-white/35">{count(g)}</span>
                       </button>
                     </li>
-                  ))}
+                  ))]}
               </ul>
             )}
           </nav>
@@ -373,10 +424,10 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                         {/* The star: kept in this browser, the design whatever its colour. */}
                         <button type="button" onClick={() => star(t)} aria-pressed={favs.has(designOf(t))} aria-label={favs.has(designOf(t)) ? say("شيلها من المفضلة|Remove from favourites|הסרה מהמועדפים") : say("ضيفها للمفضلة|Add to favourites|הוספה למועדפים")} className={`absolute inset-e-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-sm ${favs.has(designOf(t)) ? "text-amber-300" : "text-white/70 hover:text-white"}`} data-testid="studio-tpl-star">{favs.has(designOf(t)) ? "★" : "☆"}</button>
                         {isNew(t) ? <span className="pointer-events-none absolute inset-s-1.5 top-1.5 z-10 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white" data-testid="studio-tpl-new">{say("جديد|New|חדש")}</span> : null}
-                        <button type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/8 hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
+                        <button type="button" onClick={() => { setShown({ kind: "library", t }); if (!whole?.putting) setWhole(null); }} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/8 hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
                           <TemplateThumb key={`${t.id}:${fam}:${motion}:${all}`} build={thumbOf(t)} colours={colours} lang={lang} width={220} height={tab === "pages" ? 190 : 130} />
-                          <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{nameOf(t.name)}</span>
-                          <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{t.kind === "section" ? (colours_ > 1 ? say(`${colours_} ألوان|${colours_} colours|${colours_} צבעים`) : t.skin ? nameOf(SKIN_NAMES[t.skin]) : "") : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
+                          <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{group === THEMES_GROUP && themeKitOf(t.id) ? nameOf(themeKitOf(t.id)!.theme.name) : nameOf(t.name)}</span>
+                          <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{group === THEMES_GROUP && themeKitOf(t.id) ? nameOf(themeKitOf(t.id)!.theme.line) : t.kind === "section" ? (colours_ > 1 ? say(`${colours_} ألوان|${colours_} colours|${colours_} צבעים`) : t.skin ? nameOf(SKIN_NAMES[t.skin]) : "") : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
                         </button>
                       </li>
                     );
@@ -402,12 +453,64 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                   <button type="button" className={btn} onClick={() => setSaving(null)}>{tr("إلغاء", "Cancel")}</button>
                 </div>
               </form>
+            ) : whole ? (
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto text-xs" data-testid="studio-tpl-whole">
+                <div className="font-medium text-white/85">✦ {say(`استعمل «${nameOf(whole.kit.theme.name)}» كله|Use all of ${nameOf(whole.kit.theme.name)}|להשתמש בכל ${nameOf(whole.kit.theme.name)}`)}</div>
+                {!whole.plan ? <p className="text-white/50">{say("عم نشوف صفحات متجرك…|Looking at your store's pages…|בודקים את דפי החנות…")}</p> : (
+                  <ul className="space-y-1">
+                    {whole.plan.map((t) => {
+                      const where = t.skip ? say("هيدر وفوتر متجرك جايين مع ثيمه: ما في وين ينحطّوا.|Your store's header and footer come with its theme: there's nowhere to put them.|הכותרות של החנות באות עם ערכת הנושא שלה: אין איפה לשים אותן.")
+                        : t.part === "header" || t.part === "footer" ? say("بمسودة هيدر وفوتر متجرك|Into your store's header and footer drafts|לטיוטות הכותרות של החנות")
+                        : t.pageId ? say(`بمسودة صفحة ${t.slug}|Into the draft of ${t.slug}|לטיוטה של ${t.slug}`) : say(`صفحة جديدة ${t.slug} (مسودة)|A new page ${t.slug} (a draft)|דף חדש ${t.slug} (טיוטה)`);
+                      return (
+                        <li key={t.part}>
+                          <label className={`flex items-start gap-2 rounded-lg border border-white/8 px-2 py-1.5 ${t.skip ? "opacity-50" : ""}`}>
+                            <input type="checkbox" className="mt-0.5" disabled={Boolean(t.skip) || Boolean(whole.putting)} checked={whole.chosen.has(t.part)} onChange={(e) => setWhole((w) => {
+                              if (!w) return w;
+                              const chosen = new Set(w.chosen);
+                              if (e.target.checked) chosen.add(t.part); else chosen.delete(t.part);
+                              return { ...w, chosen };
+                            })} data-testid="studio-tpl-whole-part" data-part={t.part} data-skip={t.skip ?? undefined} />
+                            <span className="min-w-0">
+                              <span className="block text-white/85">{nameOf(THEME_PART_NAMES[t.part])}{whole.putting === t.part ? ` · ${say("عم ينحط…|Putting…|מוסיפים…")}` : ""}</span>
+                              <span className="block text-[10px] leading-4 text-white/45">{where}</span>
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <p className="text-[10px] leading-4 text-white/40">{say("كل جزء بيروح عمسودة صفحته: متجرك ما بيتغيّر لحد ما تنشري كل صفحة. اللي بالمسودة هلّق بيتبدّل (الأقسام القديمة بتستنّى بسلّتها)، و«تجاهل المسودة» بيرجّع الصفحة متل ما كانت.|Each part goes into its page's draft: your store doesn't change until you publish each page. What's in the draft now is replaced (the old sections wait in its bin), and discarding the draft puts the page back as it was.|כל חלק נכנס לטיוטה של הדף שלו: החנות לא משתנה עד שתפרסמו כל דף. מה שבטיוטה עכשיו מוחלף (המקטעים הישנים מחכים בסל), וביטול הטיוטה מחזיר את הדף כמו שהיה.")}</p>
+                <div className="flex flex-wrap gap-1">
+                  <button type="button" className={main} disabled={busy || !whole.plan || !whole.chosen.size || Boolean(whole.putting)} onClick={() => void putWhole()} data-testid="studio-tpl-whole-go">{whole.putting ? say("عم ينحط…|Putting…|מוסיפים…") : say("حطّه عالمسودات|Put it in the drafts|להכניס לטיוטות")}</button>
+                  <button type="button" className={btn} disabled={Boolean(whole.putting)} onClick={() => setWhole(null)} data-testid="studio-tpl-whole-cancel">{tr("إلغاء", "Cancel")}</button>
+                </div>
+              </div>
             ) : shown ? (
               <>
                 <div className="min-h-0 flex-1 overflow-y-auto rounded-lg">
                   <TemplateThumb key={`${shown.kind === "library" ? shown.t.id : shownName}:${fam}:${motion}:${all}:${shown.kind}`} build={() => shownNodes(drawIds())} colours={colours} lang={lang} width={300} />
                 </div>
                 <div className="truncate text-xs text-white/85" data-testid="studio-tpl-shown-name">{shownName}</div>
+                {/* A whole premium theme: its pages, header and footer, each added where it goes. */}
+                {themeKit ? (
+                  <div className="space-y-1.5" data-testid="studio-tpl-theme">
+                    <div className="text-[11px] leading-4 text-white/55">{nameOf(themeKit.theme.line)}</div>
+                    <div className="flex flex-wrap items-center gap-1" role="group" aria-label={say("أجزاء الثيم|The theme's parts|חלקי הערכה")}>
+                      {themeKit.parts.map((p) => {
+                        const t = templateById(p.id);
+                        return t ? (
+                          <button key={p.id} type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={samePart(p.id, shownId)} className={`rounded-full border px-2 py-0.5 text-[11px] ${samePart(p.id, shownId) ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/12 text-white/65 hover:text-white"}`} data-testid="studio-tpl-theme-part" data-part={p.part}>
+                            {nameOf(p.name)}
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                    <p className="text-[10px] leading-4 text-white/40">{say("كل جزء بمحلّه: الرئيسية بصفحتك الرئيسية، «من نحن» و«تواصل» بصفحاتهم، والهيدر والفوتر بصفحة الهيدر والفوتر. كلهم بنفس الستايل.|Each part where it goes: the home on your home page, About and Contact on theirs, the header and footer on the header and footer pages. All in the same look.|כל חלק במקומו: דף הבית בדף הבית שלכם, אודות וצור קשר בדפים שלהם, הכותרות העליונה והתחתונה בדפים שלהן. כולם באותו סגנון.")}</p>
+                    <button type="button" className={`${main} w-full`} disabled={busy} onClick={() => void openWhole(themeKit)} data-testid="studio-tpl-theme-whole">✦ {say("استعمل الثيم كله|Use the whole theme|להשתמש בכל הערכה")}</button>
+                  </div>
+                ) : null}
                 {/* A section design's colours: the same design in each of the skins it comes in. */}
                 {shown.kind === "library" && shown.t.kind === "section" && (COLOURS_OF.get(designOf(shown.t))?.length ?? 0) > 1 ? (
                   <div className="flex flex-wrap items-center gap-1" role="group" aria-label={say("ألوان التصميم|The design's colours|צבעי העיצוב")} data-testid="studio-tpl-skins">

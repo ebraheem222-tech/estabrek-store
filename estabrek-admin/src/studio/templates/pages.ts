@@ -8,6 +8,7 @@ import { B, CARD, COLS, GRID, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type
 import { RECIPES, campaignHero, campaignOffer, campaignStrip } from "./sections";
 import { BUDGETS, C, CAMPAIGNS, FAMILIES, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, MEASURE, PACKS, SIZE_TABS, w, type Campaign, type Family, type W } from "./words";
 import { X } from "./wordsMore";
+import { THEME_PAGES } from "./dna/themes";
 
 export const PAGE_KINDS = ["home", "shop", "cart", "about", "contact", "faq", "policy", "gifts", "journal", "services", "thanks", "track", "landing", "soon", "notfound", "campaign"] as const;
 export type PageKind = (typeof PAGE_KINDS)[number];
@@ -30,7 +31,11 @@ export const PAGE_KIND_NAMES: Record<PageKind, W> = {
   campaign: w("مناسبات وحملات", "Occasions and campaigns", "אירועים וקמפיינים"),
 };
 
-export type PageRecipe = { key: string; kind: PageKind; name: W; build: (c: Ctx) => N[]; fam?: Family; campaign?: Campaign };
+export type PageRecipe = {
+  key: string; kind: PageKind; name: W; build: (c: Ctx) => N[]; fam?: Family; campaign?: Campaign;
+  /** A page of a whole premium theme (dna/themes.ts): the theme's key, and the look it wears with its mood. */
+  theme?: string; dna?: { look: string; mood: string };
+};
 
 const BY_KEY = new Map(RECIPES.map((r) => [r.key, r]));
 /** A library section in a skin. */
@@ -238,3 +243,6 @@ for (const cp of CAMPAIGNS) {
     },
   });
 }
+
+/* Plan 3.9b of the themes library: the whole premium themes' pages (home, about, contact), each in its theme's look. */
+for (const tp of THEME_PAGES) PAGES.push({ key: tp.key, kind: tp.part, name: tp.name, build: tp.build, theme: tp.theme.key, dna: { look: tp.look.key, mood: tp.look.mood } });

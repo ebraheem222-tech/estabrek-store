@@ -361,6 +361,13 @@ export function asTree(value: unknown): PageTree | null {
   return Array.isArray(v.root.children) ? v : null;
 }
 
+/**
+ * A page with a section whose ground spans the whole screen (`bleed`, a premium theme's): the store draws the page
+ * without its side margins (app/[lang]/[[...slug]]/layout.tsx), as the editor shows every page, and each section's
+ * content still keeps to the page's width unless it says otherwise.
+ */
+export const bleedTree = (value: unknown): boolean => Boolean(asTree(value)?.root.children?.some((n) => n.type === "section" && (n.props as { bleed?: unknown } | undefined)?.bleed === true));
+
 /** The words in this language, else the store's main one, else any. */
 export function pickText(t: unknown, lang: TreeLang, main: TreeLang): string {
   if (typeof t === "string") return t;
