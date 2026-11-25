@@ -39,7 +39,7 @@ import type { StorefrontPage } from "@/lib/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { langConfigOf, type Lang } from "@/lib/i18n";
 import { localizeCategories } from "@/lib/localize";
-import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
+import { WIDE_PAGE_SCRIPT, asTree, bleedTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
 import { designTokensOf, tokenFamilies, tokensCss } from "@/pageTree/designTokens";
 import { bindStore, categoryValues, productValues } from "@/pageTree/storeBind";
 import { withStoreLogo } from "@/pageTree/storeLogo";
@@ -624,6 +624,9 @@ export async function renderCmsPageBySlug(
 
   const body = (
     <>
+      {/* A page whose sections spread their ground over the whole screen (a premium theme's): the layout's box
+          drops its side margins first (the layout doesn't read the home to know it). */}
+      {tree && bleedTree(tree) ? <script dangerouslySetInnerHTML={{ __html: WIDE_PAGE_SCRIPT }} /> : null}
       <span hidden aria-hidden="true" data-cms-page-id={page.id} data-cms-publication={page.publicationRevision ?? undefined} />
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
