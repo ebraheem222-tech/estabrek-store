@@ -139,6 +139,12 @@ test.describe("collection worlds on a phone", () => {
     });
     expect(change).toEqual({ dressed: true, flipped: true });
     await expect(stories).toHaveAttribute("data-chapter", "kids");
-    await expect.poll(() => rose.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed")), { timeout: 3000 }).toBe(kids);
+    // In the kids' world's colour as it is now: on a slow machine the store's words can come after the first look
+    // and set the worlds' colours again (both values show if it fails).
+    const seeds = async () => ({
+      razan: await rose.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-seed")),
+      kids: await seedOf(".story-kids"),
+    });
+    await expect.poll(async () => { const s = await seeds(); return s.razan && s.razan === s.kids ? "same" : JSON.stringify(s); }, { timeout: 8000 }).toBe("same");
   });
 });

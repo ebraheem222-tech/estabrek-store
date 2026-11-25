@@ -45,7 +45,6 @@ src/
   components/
     spotlight-themes/
       SpotlightThemes.tsx
-      SpotlightThemesDemo.tsx
       index.ts
 ```
 

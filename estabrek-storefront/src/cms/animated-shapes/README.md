@@ -49,7 +49,6 @@ src/
     animated-shapes/
       AnimatedShapes.tsx
       AnimatedShapesExtra.tsx
-      AnimatedShapesDemo.tsx
       index.ts
 ```
 

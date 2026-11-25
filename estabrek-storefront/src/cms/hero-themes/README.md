@@ -36,7 +36,6 @@ src/
     hero-themes/
       HeroThemes.tsx
       HeroComponents.tsx
-      HeroThemesDemo.tsx
       index.ts
 ```
 
