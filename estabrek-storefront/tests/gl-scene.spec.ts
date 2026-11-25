@@ -6,7 +6,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 const API = `http://127.0.0.1:${process.env.CATALOG_PORT || 4100}`;
 const EDITOR = `http://127.0.0.1:${process.env.ADMIN_PORT || 5178}/tests/fixtures/editor-controls.html?lang=en&editingRegression`;
 
-type Run = { sample(): Array<{ n: number; cx: number; cy: number; inside: number; spread: number }>; near(x: number, y: number, r: number): number };
+type Run = { sample(): Array<{ n: number; cx: number; cy: number; inside: number; spread: number }>; near(x: number, y: number, r: number): number; stats(): { t: number; queued: number; frames: number } };
 const scene = (id: string, gl: Record<string, unknown>, height = 420) => ({ id: `s-${id}`, type: "section", props: { contained: true }, children: [{ id, type: "glScene", props: { gl, height } }] });
 async function show(page: Page, nodes: unknown[]) {
   await page.request.post(`${API}/__test/library-page`, { data: { nodes } });
@@ -16,12 +16,20 @@ async function show(page: Page, nodes: unknown[]) {
 const box = (page: Page, id: string) => page.locator(`[data-tree-node="${id}"] [data-pt-gl]`).first();
 /** Brought to the middle of the window (scrolling "if needed" leaves a half-seen box where it is: a press at its middle missed). */
 const centre = (el: Locator) => el.evaluate((e) => e.scrollIntoView({ block: "center" }));
-/** A press at a point of the scene (0…1 of its box), as the browser hands it to the scene's canvas. */
-const press = (el: Locator, x = 0.5, y = 0.5) => el.evaluate((e, [px, py]) => {
+/**
+ * A press at a point of the scene (0…1 of its box), as the browser hands it to the scene's canvas; then the scene
+ * stepped `seconds` of its own time at once (so what follows doesn't hang on how often the machine draws). Gives the
+ * presses the scene was holding for its next step right after the press (1: it took it).
+ */
+const press = (el: Locator, seconds: number, x = 0.5, y = 0.5) => el.evaluate((e, [px, py, s]) => {
   const c = e.querySelector("canvas")!, r = c.getBoundingClientRect(), at = { bubbles: true, clientX: r.left + r.width * px, clientY: r.top + r.height * py, pointerId: 1, isPrimary: true };
   c.dispatchEvent(new PointerEvent("pointerdown", at));
   c.dispatchEvent(new PointerEvent("pointerup", at));
-}, [x, y]);
+  const g = (e as HTMLElement & { __glRun: { stats(): { queued: number }; warm(s: number): void } }).__glRun;
+  const queued = g.stats().queued;
+  g.warm(s);
+  return queued;
+}, [x, y, seconds]);
 const run = <T,>(el: Locator, fn: (r: Run) => T) => el.evaluate((e, src) => new Function("r", `return (${src})(r)`)((e as HTMLElement & { __glRun: Run }).__glRun), fn.toString()) as Promise<T>;
 
 test.afterAll(async ({ request }) => {
@@ -65,8 +73,11 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   await page.waitForTimeout(2500);
   const middle = await run(ball, (r) => r.near(0.5, 0.5, 0.15));
   expect(middle).toBeGreaterThan(0.1);
-  await press(ball);
-  await expect.poll(() => run(ball, (r) => r.near(0.5, 0.5, 0.15)), { timeout: 5_000, intervals: [50] }).toBeLessThan(middle * 0.5);
+  // It runs (its own time goes on, it draws), and the press is taken at its next step.
+  const ran = await run(ball, (r) => r.stats());
+  await expect.poll(() => run(ball, (r) => r.stats().t), { timeout: 5_000 }).toBeGreaterThan(ran.t);
+  expect(await press(ball, 0.15)).toBe(1);
+  expect(await run(ball, (r) => r.near(0.5, 0.5, 0.15))).toBeLessThan(middle * 0.5);
   await expect.poll(() => run(ball, (r) => r.near(0.5, 0.5, 0.15)), { timeout: 15_000 }).toBeGreaterThan(middle * 0.85);
 
   // A press takes the next form: a small cloud becomes a wide grid.
@@ -75,7 +86,7 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   await expect(morph).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   await page.waitForTimeout(2500);
   const cloud = await run(morph, (r) => r.sample()[0].spread);
-  await press(morph);
+  expect(await press(morph, 1.2)).toBe(1);
   await expect.poll(() => run(morph, (r) => r.sample()[0].spread), { timeout: 10_000 }).toBeGreaterThan(cloud * 1.4);
 });
 
@@ -188,8 +199,7 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
   await centre(pend);
   await expect(pend).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   // A press starts them all again (it may have begun before it came into view).
-  await press(pend);
-  await page.waitForTimeout(150);
+  expect(await press(pend, 1 / 60)).toBe(1);
   expect((await run(pend, (r) => r.sample()[0])).spread).toBeLessThan(0.02);
   await expect.poll(() => run(pend, (r) => r.sample()[0].spread), { timeout: 30_000, intervals: [1000] }).toBeGreaterThan(0.05);
 
