@@ -10,6 +10,9 @@ layer(base);
 @source "../../estabrek-storefront/src/cms/style/{cursorStyles,searchStyles}.ts";
 @source "../../estabrek-storefront/src/theme/presets.ts";
 @source "../../estabrek-storefront/src/theme/cursorTheme.ts";
+@source "../../estabrek-storefront/src/cms/themes/cms-themes-gallery.jsx";
+@source "../../estabrek-storefront/src/cms/alert-themes/AlertThemes.tsx";
+@source "../../estabrek-storefront/src/cms/alert-themes/AlertComponents.tsx";
 
 @custom-variant dark (&:is(.dark *));
 
