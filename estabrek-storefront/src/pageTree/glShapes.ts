@@ -26,6 +26,9 @@ const TAU = Math.PI * 2;
 /** n points of a form (not words or a picture), in the unit space. */
 export function formPoints(form: Exclude<GlForm, "text" | "image">, n: number, rand: Rand): Float32Array {
   const out = new Float32Array(n * 3);
+  // The chaos game's running point (the Sierpiński pyramid, the fern), started well inside.
+  const cg = [0, 0, 0];
+  for (let k = 0; k < 30; k++) chaosStep(form, cg, rand);
   const put = (i: number, x: number, y: number, z: number) => {
     out[i * 3] = x;
     out[i * 3 + 1] = y;
@@ -154,9 +157,105 @@ export function formPoints(form: Exclude<GlForm, "text" | "image">, n: number, r
         put(i, Math.cos(a) * r, Math.sin(a) * r, 0);
         break;
       }
+      case "lissajous": {
+        // A Lissajous knot: three sines of 2, 3 and 5 turns, with a thin tube round it.
+        const t = TAU * u, j = 0.025;
+        put(i, Math.sin(2 * t + 0.5) * 0.85 + gauss(rand) * j, Math.sin(3 * t) * 0.85 + gauss(rand) * j, Math.sin(5 * t + 1) * 0.85 + gauss(rand) * j);
+        break;
+      }
+      case "mobius": {
+        // A Möbius strip: one side, one edge.
+        const a = TAU * u, w = (v * 2 - 1) * 0.36, R = 0.68 + w * Math.cos(a / 2);
+        put(i, R * Math.cos(a), w * Math.sin(a / 2), R * Math.sin(a));
+        break;
+      }
+      case "klein": {
+        // A Klein bottle (the figure-eight one): no inside, no outside.
+        const a = TAU * u, b = TAU * v, r = 2, k = r + Math.cos(a / 2) * Math.sin(b) - Math.sin(a / 2) * Math.sin(2 * b);
+        put(i, k * Math.cos(a) * 0.26, (Math.sin(a / 2) * Math.sin(b) + Math.cos(a / 2) * Math.sin(2 * b)) * 0.26, k * Math.sin(a) * 0.26);
+        break;
+      }
+      case "supershape": {
+        // Gielis's superformula in two directions (fitted to the box after).
+        const th = TAU * u - Math.PI, ph = Math.asin(v * 2 - 1);
+        const r1 = superformula(th, 7, 0.2, 1.7, 1.7), r2 = superformula(ph, 7, 0.2, 1.7, 1.7);
+        put(i, r1 * Math.cos(th) * r2 * Math.cos(ph), r2 * Math.sin(ph), r1 * Math.sin(th) * r2 * Math.cos(ph));
+        break;
+      }
+      case "gyroid": {
+        // A gyroid (sin x cos y + sin y cos z + sin z cos x = 0) inside a ball: a surface that is everywhere a saddle.
+        let x = 0, y = 0, z = 0;
+        for (let tries = 0; tries < 400; tries++) {
+          x = (rand() * 2 - 1) * Math.PI; y = (rand() * 2 - 1) * Math.PI; z = (rand() * 2 - 1) * Math.PI;
+          if (x * x + y * y + z * z < Math.PI * Math.PI && Math.abs(Math.sin(x) * Math.cos(y) + Math.sin(y) * Math.cos(z) + Math.sin(z) * Math.cos(x)) < 0.09) break;
+        }
+        put(i, (x / Math.PI) * 0.9, (y / Math.PI) * 0.9, (z / Math.PI) * 0.9);
+        break;
+      }
+      case "hopf": {
+        // The Hopf fibration: each point of a sphere is a circle in four dimensions, seen here from the fourth.
+        // Fibres in order (particle i on fibre i·F/n), so each can take its own colour; three rings of twelve.
+        const fibres = 3 * 12, f = Math.min(fibres - 1, Math.floor((i * fibres) / n)), ring = Math.floor(f / 12), lat = (0.4 + ring * 0.17) * Math.PI, lon = ((f % 12) / 12) * TAU + ring * 0.26;
+        const a = Math.sin(lat) * Math.cos(lon), b = Math.sin(lat) * Math.sin(lon), c = Math.cos(lat);
+        let x = 0, y = 0, z = 0;
+        for (let tries = 0; tries < 20; tries++) {
+          const t = TAU * rand(), k = 1 / Math.sqrt(2 * (1 + c));
+          const q0 = (1 + c) * Math.cos(t) * k, q1 = (a * Math.sin(t) - b * Math.cos(t)) * k, q2 = (a * Math.cos(t) + b * Math.sin(t)) * k, q3 = (1 + c) * Math.sin(t) * k;
+          const s = 1 / Math.max(0.05, 1 - q3);
+          x = q0 * s; y = q2 * s; z = q1 * s;
+          if (x * x + y * y + z * z < 9) break;
+        }
+        put(i, x * 0.34, y * 0.34, z * 0.34);
+        break;
+      }
+      case "sierpinski":
+      case "fern":
+        chaosStep(form, cg, rand);
+        if (form === "fern") put(i, (cg[0] - 0.24) / 5.6, (cg[1] - 5) / 5.6, gauss(rand) * 0.02);
+        else put(i, cg[0], cg[1], cg[2]);
+        break;
+      case "rose": {
+        // A rose of five petals (r = cos 5θ), filled.
+        const th = TAU * u, r = Math.cos(5 * th) * Math.sqrt(v) * 0.95;
+        put(i, Math.cos(th) * r, Math.sin(th) * r, gauss(rand) * 0.03);
+        break;
+      }
+      case "blob": {
+        // A sphere swollen by spherical harmonics.
+        const y = 1 - (2 * (i + 0.5)) / n, s = Math.sqrt(1 - y * y), a = i * GOLDEN, th = Math.acos(y);
+        const r = 0.6 + 0.2 * Math.sin(3 * th) * Math.cos(4 * a) + 0.08 * Math.sin(6 * th);
+        put(i, Math.cos(a) * s * r, y * r, Math.sin(a) * s * r);
+        break;
+      }
     }
   }
+  if (form === "supershape") {
+    // Its biggest reach fitted to the unit space.
+    let m = 1e-6;
+    for (let i = 0; i < n * 3; i++) m = Math.max(m, Math.abs(out[i]));
+    for (let i = 0; i < n * 3; i++) out[i] *= 0.92 / m;
+  }
   return out;
+}
+
+/** Gielis's superformula: a radius for an angle. */
+function superformula(a: number, m: number, n1: number, n2: number, n3: number) {
+  const t = Math.pow(Math.abs(Math.cos((m * a) / 4)), n2) + Math.pow(Math.abs(Math.sin((m * a) / 4)), n3);
+  return t === 0 ? 0 : Math.pow(t, -1 / n1);
+}
+const TETRA = [[1, 1, 1], [-1, -1, 1], [-1, 1, -1], [1, -1, -1]].map((v) => v.map((x) => x * 0.62));
+/** One move of the chaos game: halfway to a corner of a tetrahedron, or one of Barnsley's four maps. */
+function chaosStep(form: string, p: number[], rand: Rand) {
+  if (form === "sierpinski") {
+    const c = TETRA[Math.floor(rand() * 4)];
+    p[0] = (p[0] + c[0]) / 2; p[1] = (p[1] + c[1]) / 2; p[2] = (p[2] + c[2]) / 2;
+  } else if (form === "fern") {
+    const r = rand(), x = p[0], y = p[1];
+    if (r < 0.01) { p[0] = 0; p[1] = 0.16 * y; }
+    else if (r < 0.86) { p[0] = 0.85 * x + 0.04 * y; p[1] = -0.04 * x + 0.85 * y + 1.6; }
+    else if (r < 0.93) { p[0] = 0.2 * x - 0.26 * y; p[1] = 0.23 * x + 0.22 * y + 1.6; }
+    else { p[0] = -0.15 * x + 0.28 * y; p[1] = 0.26 * x + 0.24 * y + 0.44; }
+  }
 }
 
 /** The pixels of a 2D canvas that are drawn on, as points (and their colours): a word or a picture made into dots. */
@@ -232,7 +331,7 @@ export function textPoints(text: string, n: number, rand: Rand, o: { family: str
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#fff";
   ctx.fillText(text, W / 2, H / 2);
-  return sampled(ctx, W, H, n, rand, o.maxW, o.maxH, false)?.pos ?? null;
+  return sampled(ctx, W, H, n, rand, o.maxW, o.maxH, true);
 }
 
 /** A loaded picture as n points and their colours, at most maxW × maxH of the scene's units. */

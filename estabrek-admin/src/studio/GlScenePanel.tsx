@@ -40,19 +40,29 @@ export const GL_SHAPE_NAMES: Record<GlShape, string> = {
   wave: "بحر بيموج|Waving sea|ים גלי", grid: "شبكة نقاط|Grid of dots|רשת נקודות", cylinder: "أسطوانة|Cylinder|גליל", cone: "إعصار|Tornado|טורנדו",
   heart: "قلب|Heart|לב", star: "نجمة|Star|כוכב", cloud: "غيمة|Cloud|ענן", globe: "الكرة الأرضية|The globe|כדור הארץ", spiral: "دوّار الشمس|Sunflower|חמנייה",
   text: "كلامك|Your words|המילים שלך", image: "صورتك|Your picture|התמונה שלך",
+  lissajous: "عقدة ليساجو|Lissajous knot|קשר ליסז'ו", mobius: "شريط موبيوس|Möbius strip|רצועת מביוס", klein: "قنينة كلاين|Klein bottle|בקבוק קליין",
+  supershape: "شكل الصيغة الخارقة|Superformula shape|צורת נוסחת־העל", gyroid: "جايرويد|Gyroid|גירואיד", hopf: "ألياف هوبف|Hopf fibration|סיבי הופף",
+  sierpinski: "هرم سيربنسكي|Sierpiński pyramid|פירמידת שרפינסקי", fern: "سرخس بارنسلي|Barnsley fern|שרך בארנסלי", rose: "وردة رياضية|Rose curve|עקומת ורד", blob: "كرة توافقية|Harmonic blob|כדור הרמוני",
   rain: "مطر|Rain|גשם", snow: "تلج|Snow|שלג", rise: "فقاعات طالعة|Rising bubbles|בועות עולות", warp: "سرعة الضو|Light speed|מהירות האור",
   fountain: "نافورة|Fountain|מזרקה", fireworks: "ألعاب نارية|Fireworks|זיקוקים", vortex: "دوّامة|Whirlpool|מערבולת", flow: "خطوط منسابة|Flowing lines|קווים זורמים",
   orbit: "مدارات|Orbits|מסלולים", fireflies: "يراعات|Fireflies|גחליליות",
+  lorenz: "فراشة لورنز (فوضى)|Lorenz butterfly (chaos)|פרפר לורנץ (כאוס)", aizawa: "جاذب أيزاوا|Aizawa attractor|מושך אייזאווה", thomas: "جاذب توماس|Thomas attractor|מושך תומאס",
+  flock: "سرب طيور (بويدز)|A flock (boids)|להקה (בוידס)", gravity: "جاذبية وشموس|Gravity and suns|כבידה ושמשות", pendulum: "بندولات الفوضى|Chaos pendulums|מטוטלות כאוס",
+  charge: "خطوط حقل كهربائي|Electric field lines|קווי שדה חשמלי", cloth: "قماش معلّق|Hanging cloth|בד תלוי", pond: "بركة بتموج|Rippling pond|בריכה מגלגלת",
 };
+/** Where the forms and the flows part into their groups: the maths ones after. */
+const FIRST_MATHS_FORM = GL_FORMS.indexOf("lissajous");
+const FIRST_PHYSICS_FLOW = GL_FLOWS.indexOf("lorenz");
 const SPRITE_NAMES: Record<(typeof GL_SPRITES)[number], string> = {
   soft: "ضو ناعم|Soft glow|זוהר רך", dot: "نقطة|Dot|נקודה", ring: "حلقة|Ring|טבעת", square: "مربّع|Square|ריבוע", star: "نجمة بتلمع|Sparkle|נצנוץ",
   spark: "شرارة|Spark|ניצוץ", plus: "زائد|Plus|פלוס", heart: "قلب|Heart|לב", glyph: "حروف (مطر أكواد)|Letters (code rain)|אותיות (גשם קוד)",
+  streak: "خط ورا حركته|A streak behind it|שובל מאחוריו",
 };
 const COLOURING_NAMES: Record<(typeof GL_COLOURING)[number], string> = {
   one: "لون واحد|One colour|צבע אחד", blend: "لونين متدرّجين|Two blended|שניים במעבר", three: "تلات ألوان|Three colours|שלושה צבעים",
   rainbow: "قوس قزح|Rainbow|קשת", random: "مخلوطين|Mixed|מעורבים", picture: "ألوان الصورة|The picture's own|של התמונה",
 };
-const POINTER_NAMES: Record<(typeof GL_POINTER)[number], string> = { none: "ولا شي|Nothing|כלום", repel: "بتهرب منه|Flee it|בורחים", attract: "بتنجذب إله|Drawn to it|נמשכים", swirl: "بتلف حوله|Swirl round it|מסתחררים", bulge: "بتنتفخ لقدّام|Swell forward|מתנפחים" };
+const POINTER_NAMES: Record<(typeof GL_POINTER)[number], string> = { none: "ولا شي|Nothing|כלום", repel: "بتهرب منه|Flee it|בורחים", attract: "بتنجذب إله|Drawn to it|נמשכים", swirl: "بتلف حوله|Swirl round it|מסתחררים", bulge: "بتنتفخ لقدّام|Swell forward|מתנפחים", gravity: "شمس بتجذبها لمدار|A sun pulling them into orbit|שמש שמושכת למסלול" };
 const CLICK_NAMES: Record<(typeof GL_CLICK)[number], string> = { none: "ولا شي|Nothing|כלום", burst: "بتنفجر وبترجع|Burst and come back|מתפוצצים וחוזרים", shock: "موجة صدمة|A shock wave|גל הדף", next: "الشكل اللي بعده|The next form|הצורה הבאה" };
 const SCROLL_NAMES: Record<(typeof GL_SCROLL)[number], string> = { none: "ولا شي|Nothing|כלום", spin: "بتلف|Turns|מסתובב", zoom: "بتقرّب|Comes near|מתקרב", scatter: "بتتجمّع بالنص وبتتفرّق|Gathers in the middle, scatters|מתאסף באמצע ומתפזר", rise: "بتطلع لفوق|Rises|עולה" };
 const MORPH_NAMES: Record<(typeof GL_MORPH_BY)[number], string> = { auto: "لحالها كل شوي|By itself|לבד", scroll: "مع السكرول|With the scroll|עם הגלילה", click: "بكبسة|On a press|בלחיצה", hover: "لما يمرّ الماوس|Under the pointer|מתחת לעכבר" };
@@ -81,7 +91,8 @@ function scenePicture(key: string, gl: Obj, lang: Lang, done: (url: string | nul
         const colours = { bg: [spec.bg.c1, spec.bg.c2, spec.bg.c3, spec.bg.c4].map(asRgb), layers: spec.layers.map((l) => [l.c1, l.c2, l.c3].map(asRgb)) };
         const run = startGl(canvas, { ...spec, layers: spec.layers.map((l) => ({ ...l, count: Math.min(l.count, 6000) })) }, { colours, family: "system-ui, sans-serif", rtl: lang !== "en", preserve: true, dpr: 1 });
         if (run) {
-          run.warm(3);
+          // A morphing design is caught on a whole form, not on its way between two.
+          run.warm(spec.morph.by === "auto" && spec.layers.some((l) => l.shapes.length > 1) ? Math.min(3, spec.morph.hold + 0.5) : 3);
           url = canvas.toDataURL("image/jpeg", 0.8);
           run.dispose();
         }
@@ -226,16 +237,29 @@ export function GlScenePanel({ node, mode, lang, busy, onOps }: { node: PageTree
                   <div className="space-y-2" data-testid="studio-gl-layer">
                     <div className={head}>{say("الشكل اللي بتعمله|The form they make|הצורה שהם יוצרים")}</div>
                     <div className="flex flex-wrap gap-1" data-testid="studio-gl-forms">
-                      {GL_FORMS.map((f) => (
+                      {GL_FORMS.slice(0, FIRST_MATHS_FORM).map((f) => (
+                        <button key={f} type="button" className={`${btn} ${shown.shapes[0] === f ? "bg-accent-500/30 text-white" : ""}`} aria-pressed={shown.shapes[0] === f} disabled={busy} onClick={() => setLayer(say("الشكل|The form|הצורה"), { shapes: isFlow(shown.shapes[0]) ? [f] : [f, ...shown.shapes.slice(1)] })} data-testid="studio-gl-shape" data-shape={f}>{say(GL_SHAPE_NAMES[f])}</button>
+                      ))}
+                    </div>
+                    <div className={head}>{say("أشكال من الرياضيات|Forms from mathematics|צורות מהמתמטיקה")}</div>
+                    <div className="flex flex-wrap gap-1" data-testid="studio-gl-maths">
+                      {GL_FORMS.slice(FIRST_MATHS_FORM).map((f) => (
                         <button key={f} type="button" className={`${btn} ${shown.shapes[0] === f ? "bg-accent-500/30 text-white" : ""}`} aria-pressed={shown.shapes[0] === f} disabled={busy} onClick={() => setLayer(say("الشكل|The form|הצורה"), { shapes: isFlow(shown.shapes[0]) ? [f] : [f, ...shown.shapes.slice(1)] })} data-testid="studio-gl-shape" data-shape={f}>{say(GL_SHAPE_NAMES[f])}</button>
                       ))}
                     </div>
                     <div className={head}>{say("أو حركة ما بتوقف|Or a motion that never stops|או תנועה שלא נעצרת")}</div>
                     <div className="flex flex-wrap gap-1">
-                      {GL_FLOWS.map((f) => (
+                      {GL_FLOWS.slice(0, FIRST_PHYSICS_FLOW).map((f) => (
                         <button key={f} type="button" className={`${btn} ${shown.shapes[0] === f ? "bg-accent-500/30 text-white" : ""}`} aria-pressed={shown.shapes[0] === f} disabled={busy} onClick={() => setLayer(say("الحركة|The motion|התנועה"), { shapes: [f] })} data-testid="studio-gl-shape" data-shape={f}>{say(GL_SHAPE_NAMES[f])}</button>
                       ))}
                     </div>
+                    <div className={head}>{say("فيزياء ورياضيات حقيقية (فوضى، جاذبية، موج…)|Real physics and maths (chaos, gravity, waves…)|פיזיקה ומתמטיקה אמיתיות (כאוס, כבידה, גלים…)")}</div>
+                    <div className="flex flex-wrap gap-1" data-testid="studio-gl-physics">
+                      {GL_FLOWS.slice(FIRST_PHYSICS_FLOW).map((f) => (
+                        <button key={f} type="button" className={`${btn} ${shown.shapes[0] === f ? "bg-accent-500/30 text-white" : ""}`} aria-pressed={shown.shapes[0] === f} disabled={busy} onClick={() => setLayer(say("الحركة|The motion|התנועה"), { shapes: [f] })} data-testid="studio-gl-shape" data-shape={f}>{say(GL_SHAPE_NAMES[f])}</button>
+                      ))}
+                    </div>
+                    {shown.shapes[0] === "pendulum" ? <p className="text-[10px] leading-4 text-white/40">{say("كل البندولات بتبلّش فرق شعرة عن بعض، وبعد ثواني كل واحد بروح بطريق: هاي الفوضى. كبسة بتعيدهم من الأول.|Every pendulum starts a hair apart from the next, and within seconds each goes its own way: that is chaos. A press starts them again.|כל מטוטלת מתחילה במרחק שערה מהבאה, ותוך שניות כל אחת הולכת לדרכה: זה כאוס. לחיצה מתחילה מחדש.")}</p> : null}
                     {!isFlow(shown.shapes[0]) ? (
                       <div className="space-y-1" data-testid="studio-gl-morph">
                         <div className={head}>{say("وبتتحوّل بعدها لـ|And then morphs into|ואז הופכת ל")}</div>
@@ -269,12 +293,13 @@ export function GlScenePanel({ node, mode, lang, busy, onOps }: { node: PageTree
                         <MediaLibraryModal open={picking} onClose={() => setPicking(false)} title={say("الصورة|The picture|התמונה")} onSelect={(u) => { setPicking(false); setLayer(say("الصورة|The picture|התמונה"), { image: u, colouring: "picture" }); }} />
                       </div>
                     ) : null}
+                    {shown.shapes.includes("image") ? <Range label={say("الصورة بارزة (الفاتح لقدّام)|The picture in relief (light comes forward)|התמונה בתבליט (הבהיר קדימה)")} value={shown.relief} min={0} max={1} step={0.05} busy={busy} onSave={(relief) => setLayer(say("البروز|Relief|תבליט"), { relief: relief || undefined })} testId="studio-gl-relief" /> : null}
                     <Range label={say("كم جزيء|How many particles|כמה חלקיקים")} value={shown.count} min={50} max={30000} step={50} busy={busy} onSave={(count) => setLayer(say("العدد|How many|כמה"), { count })} testId="studio-gl-count" />
                     <Range label={say("حجم الجزيء|Particle size|גודל החלקיק")} value={shown.size} min={0.5} max={24} step={0.1} unit="px" busy={busy} onSave={(size) => setLayer(say("الحجم|Size|גודל"), { size })} testId="studio-gl-size" />
                     <Range label={say("قديش بتختلف أحجامها|How much their sizes differ|כמה הגדלים שונים")} value={shown.vary} min={0} max={1} step={0.05} busy={busy} onSave={(vary) => setLayer(say("اختلاف الأحجام|Sizes differ|גדלים שונים"), { vary })} testId="studio-gl-vary" />
                     <Choice label={say("شكل الجزيء|Each particle looks like|כל חלקיק נראה כמו")} value={shown.sprite as string} busy={busy} options={GL_SPRITES.map((s) => [s, say(SPRITE_NAMES[s])])} onPick={(sprite) => setLayer(say("شكل الجزيء|Particle look|מראה החלקיק"), { sprite })} testId="studio-gl-sprite" />
                     {shown.sprite === "glyph" ? <Field label={say("الحروف اللي بتطلع|The letters it shows|האותיות שמופיעות")} value={shown.glyphs} maxLength={64} onSave={(glyphs) => setLayer(say("الحروف|The letters|האותיות"), { glyphs: glyphs.replace(/\s/g, "") || undefined })} testId="studio-gl-glyphs" /> : null}
-                    <Choice label={say("الألوان|Colours|צבעים")} value={shown.colouring as string} busy={busy} options={GL_COLOURING.filter((c) => c !== "picture" || shown.shapes.includes("image")).map((c) => [c, say(COLOURING_NAMES[c])])} onPick={(colouring) => setLayer(say("الألوان|Colours|צבעים"), { colouring })} testId="studio-gl-colouring" />
+                    <Choice label={say("الألوان|Colours|צבעים")} value={shown.colouring as string} busy={busy} options={GL_COLOURING.filter((c) => c !== "picture" || shown.shapes.includes("image") || shown.shapes.includes("text")).map((c) => [c, say(COLOURING_NAMES[c])])} onPick={(colouring) => setLayer(say("الألوان|Colours|צבעים"), { colouring })} testId="studio-gl-colouring" />
                     {shown.colouring !== "rainbow" && shown.colouring !== "picture" ? (
                       (["c1", "c2", "c3"] as const).slice(0, shown.colouring === "one" ? 1 : shown.colouring === "blend" ? 2 : 3).map((k, i) => (
                         <ColourPick key={k} label={say(["اللون الأول|First colour|צבע ראשון", "اللون التاني|Second colour|צבע שני", "اللون التالت|Third colour|צבע שלישי"][i])} value={shown[k] ?? DEFAULT_COLOURS[i]} busy={busy} onPick={(v) => setLayer(say("لون الجزيئات|Particle colour|צבע החלקיקים"), { [k]: v ?? undefined })} testId={`studio-gl-${k}`} />
@@ -316,6 +341,8 @@ export function GlScenePanel({ node, mode, lang, busy, onOps }: { node: PageTree
                 <Range label={say("الميلان|Tilt|הטיה")} value={spec.camera.tilt} min={-80} max={80} step={1} unit="°" busy={busy} onSave={(tilt) => setIn("camera", say("الكاميرا|The camera|המצלמה"), { tilt })} testId="studio-gl-cam-tilt" />
                 <Range label={say("القرب|Zoom|זום")} value={spec.camera.zoom} min={0.3} max={3} step={0.05} busy={busy} onSave={(zoom) => setIn("camera", say("الكاميرا|The camera|המצלמה"), { zoom })} testId="studio-gl-cam-zoom" />
                 <Range label={say("عمق المنظر|Depth of the view|עומק המבט")} value={spec.camera.depth} min={0} max={1} step={0.05} busy={busy} onSave={(depth) => setIn("camera", say("الكاميرا|The camera|המצלמה"), { depth })} testId="studio-gl-cam-depth" />
+                <Range label={say("ضبابية العدسة (البعيد والقريب مغبّشين)|Lens blur (near and far are soft)|טשטוש עדשה (הקרוב והרחוק רכים)")} value={spec.camera.blur} min={0} max={1} step={0.05} busy={busy} onSave={(blur) => setIn("camera", say("ضبابية العدسة|Lens blur|טשטוש עדשה"), { blur: blur || undefined })} testId="studio-gl-cam-blur" />
+                {spec.camera.blur > 0 ? <Range label={say("وين الوضوح (لورا … لقدّام)|Where it's sharp (back … front)|איפה זה חד (אחורה … קדימה)")} value={spec.camera.focus} min={-1} max={1} step={0.05} busy={busy} onSave={(focus) => setIn("camera", say("الوضوح|Focus|מיקוד"), { focus: focus || undefined })} testId="studio-gl-cam-focus" /> : null}
                 {mode === "element" ? (
                   <label className="flex items-center justify-between gap-2 text-xs text-white/75">
                     <span>{say("الزبون بيلفّها بإيده (سحب)|The shopper turns it by hand (drag)|הקונה מסובב ביד (גרירה)")}</span>
@@ -344,6 +371,8 @@ export function GlScenePanel({ node, mode, lang, busy, onOps }: { node: PageTree
               <div className={sub} data-testid="studio-gl-finish">
                 <div className={head}>{say("اللمسة الأخيرة|The finish|הגימור")}</div>
                 <Range label={say("أثر ورا الجزيئات|A trail behind them|שובל מאחוריהם")} value={spec.trails} min={0} max={0.95} step={0.05} busy={busy} onSave={(trails) => set(say("الأثر|Trails|שובל"), { trails: trails || undefined })} testId="studio-gl-trails" />
+                <Range label={say("توهّج حوالين الضو (بلوم)|A glow round the light (bloom)|זוהר סביב האור (בלום)")} value={spec.bloom} min={0} max={1} step={0.05} busy={busy} onSave={(bloom) => set(say("التوهّج|Bloom|בלום"), { bloom: bloom || undefined })} testId="studio-gl-bloom" />
+                <Range label={say("ألوان بتنفصل عالأطراف (عدسة)|Colours parting at the edges (lens)|צבעים שנפרדים בקצוות (עדשה)")} value={spec.chroma} min={0} max={1} step={0.05} busy={busy} onSave={(chroma) => set(say("انفصال الألوان|Colour fringes|פיצול צבעים"), { chroma: chroma || undefined })} testId="studio-gl-chroma" />
                 <Range label={say("حبيبات الفيلم|Film grain|גרעיניות")} value={spec.grain} min={0} max={0.4} step={0.02} busy={busy} onSave={(grain) => set(say("الحبيبات|Grain|גרעיניות"), { grain: grain || undefined })} testId="studio-gl-grain" />
                 <Range label={say("تغميق الأطراف|Darker edges|קצוות כהים")} value={spec.vignette} min={0} max={1} step={0.05} busy={busy} onSave={(vignette) => set(say("الأطراف|Edges|קצוות"), { vignette: vignette || undefined })} testId="studio-gl-vignette" />
                 {mode === "bg" ? <Range label={say("تغميق للكلام فوقها|Darken for the words on it|הכהיה למילים מעליו")} value={spec.veil} min={0} max={0.85} step={0.05} busy={busy} onSave={(veil) => set(say("التغميق|Veil|הכהיה"), { veil: veil || undefined })} testId="studio-gl-veil" /> : null}
