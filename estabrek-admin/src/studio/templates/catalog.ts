@@ -47,6 +47,7 @@ export const SECTION_AREAS: Array<{ key: string; name: W; cats: SectionCat[] }> 
   { key: "story", name: w("القصة والمحتوى", "Story and content", "סיפור ותוכן"), cats: ["story", "split", "gallery", "team", "steps", "faq", "data"] },
   { key: "site", name: w("أجزاء الموقع", "Site parts", "חלקי האתר"), cats: ["header", "footer", "cta", "newsletter", "contact", "notice", "popup"] },
   { key: "occasions", name: w("المناسبات", "Occasions", "אירועים"), cats: ["campaign"] },
+  { key: "wow", name: w("بريميوم", "Premium", "פרימיום"), cats: ["wowopen", "wowstory", "wowsell", "wowdata"] },
 ];
 
 const SECTION_BY_KEY = new Map(RECIPES.map((r) => [r.key, r]));

@@ -84,7 +84,8 @@ describe("the section DNA", () => {
       // An opening holds the page's one big heading; the other kinds only headings under it.
       let h1 = 0, headings = 0;
       walk(built, (n) => { if (n.type === "heading") { headings++; if ((n.props as { level?: number }).level === 1) h1++; } });
-      expect(h1, r.key).toBe(r.cat === "hero" ? 1 : 0);
+      // The openings hold the page's one big heading: the DNA's and the premium ones (dna/wow.ts).
+      expect(h1, r.key).toBe(r.cat === "hero" || r.cat === "wowopen" ? 1 : 0);
       expect(headings, r.key).toBeGreaterThan(0);
       const print = JSON.stringify(built);
       expect(seen.get(print), `${r.key} looks like ${seen.get(print)}`).toBeUndefined();
