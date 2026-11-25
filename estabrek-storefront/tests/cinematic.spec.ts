@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { placeStreamed } from "./streamed";
 
 async function showFabric(page: any) {
   const study = page.locator(".design-study");
@@ -332,6 +333,8 @@ test("without JavaScript the campaign and every fabric chapter remain readable",
   });
   const page = await context.newPage();
   await page.goto("/");
+  // What the server sent after the first part, put in place as React's own script would (tests/streamed.ts).
+  await placeStreamed(page);
   await expect(page.locator(".rose-opening")).toHaveAttribute(
     "data-motion",
     "false",

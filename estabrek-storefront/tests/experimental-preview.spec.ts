@@ -25,8 +25,12 @@ for (const design of designs) test(`${design.id} is an editable, responsive mult
     await expect(page.locator("h1").first()).toContainText(design.title);
     await expect(page.locator(".pt-showcase-toggle")).toHaveCount(3);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth), { message: `${design.id}/${lang} overflow` }).toBeLessThanOrEqual(1);
-    await page.locator(".pt-showcase-toggle").last().click();
-    await expect(page.locator(".pt-showcase-toggle").last()).toHaveAttribute("aria-expanded", "true");
+    // Opened as soon as its HTML is in: React may still be waking the page up, so a click can land before it listens.
+    const toggle = page.locator(".pt-showcase-toggle").last();
+    await expect(async () => {
+      if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "true", { timeout: 2000 });
+    }).toPass({ timeout: 30_000 });
     await expect(page.locator(".pt-showcase-link:visible")).toHaveAttribute("href", lang === "ar" ? "/shop" : `/${lang}/shop`);
     const images = page.locator('img[src*="/templates/experimental/"]');
     await expect(images.first()).toBeAttached();

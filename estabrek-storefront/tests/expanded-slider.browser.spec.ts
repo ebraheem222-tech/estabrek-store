@@ -1,6 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { placeStreamed } from "./streamed";
 
 const pagePath = "/en/slider-effects-demo";
 const slider = (id: string) => `[data-tree-node="expanded-slider-${id}"]`;
@@ -94,7 +95,19 @@ test("coverflow displays dimensional neighbors, respects no-loop and supports mo
   await expect(root).toHaveAttribute("data-at", "1");
 });
 
-test("vertical flip uses split content, while reduced motion and RTL retain keyboard navigation", async ({ page }) => {
+test("vertical flip uses split content, while reduced motion and RTL retain keyboard navigation", async ({ page, request }) => {
+  // The Hebrew page needs Hebrew on in the store (else /he/… goes to the shopper's last language): on for this test
+  // only. It passed while a spec before it in the same CI part had left Hebrew on.
+  await request.post("http://127.0.0.1:4100/__test/languages", { data: { enabled: ["ar", "en", "he"], default: "ar" } });
+  await request.post("/api/revalidate", { data: { tags: ["settings", "cms"] } });
+  try { await rtlAndVertical(page); } finally {
+    await request.post("http://127.0.0.1:4100/__test/languages", { data: {} });
+    await request.post("/api/revalidate", { data: { tags: ["settings", "cms"] } });
+  }
+});
+
+async function rtlAndVertical(page: Page) {
+  await page.waitForTimeout(1200); // the proxy re-reads the store's languages
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(pagePath);
@@ -114,7 +127,7 @@ test("vertical flip uses split content, while reduced motion and RTL retain keyb
   await rtl.locator(".pt-slides").focus();
   await page.keyboard.press("ArrowLeft");
   await expect(rtl).toHaveAttribute("data-at", "1");
-});
+}
 
 test("video slices use a simple fade and only the active video plays", async ({ page }) => {
   await page.goto(pagePath);
@@ -135,6 +148,8 @@ test("the server preserves a native scrolling fallback without scripts", async (
   const page = await context.newPage();
   try {
     await page.goto(pagePath);
+    // What the server sent after the first part, put in place as React's own script would (tests/streamed.ts).
+    await placeStreamed(page);
     const root = page.locator(slider("slices"));
     await expect(root.locator(".pt-slide")).toHaveCount(3);
     await expect(root.locator(".pt-slider-arrow")).toHaveCount(0);

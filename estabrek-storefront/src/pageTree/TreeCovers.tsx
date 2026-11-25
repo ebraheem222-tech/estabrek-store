@@ -98,7 +98,9 @@ function mountCover(el: HTMLElement, spec: CoverSpec, env: { phone: boolean; red
     put(room, "--pt-cv-d", `${Math.round(m.d)}px`);
     if (next && m.d > 0) {
       const below = after === box ? 0 : Math.max(0, after.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom);
-      put(next, "margin-top", `${-Math.round(m.d + below)}px`, "important");
+      // And the space the stack leaves under it (Tailwind 4's space-y puts it under each part, not over the next).
+      const gap = Math.max(0, parseFloat(getComputedStyle(after).marginBottom) || 0);
+      put(next, "margin-top", `${-Math.round(m.d + below + gap)}px`, "important");
     } else if (next) {
       next.style.removeProperty("margin-top");
     }
