@@ -93,6 +93,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   memoryGame: () => say("لعبة ذاكرة بكوبون|Memory game with a coupon|משחק זיכרון עם קופון"),
   giftCard: () => say("بطاقة هدية|Gift card|כרטיס מתנה"),
   configurator: () => say("صمّمي المنتج|Product configurator|מעצב מוצר"),
+  bookingCalendar: () => say("تقويم الحجوزات|Booking calendar|יומן תורים"),
   products: () => tr("منتجات", "Products"),
   categories: () => tr("أقسام المتجر", "Store categories"),
   form: () => tr("نموذج", "Form"),

@@ -38,7 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "serverList", "tebexPackages", "leaderboard", "wipeCountdown", "streamers",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator",
+  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator", "bookingCalendar",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
   "lib",
 ] as const;
@@ -1346,6 +1346,20 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     })).max(4).optional(),
     button: local(40).optional(),
   }),
+  // A service of the store's (`product`) booked for a day and a time: open weekdays (0 Sunday … 6), opening and
+  // closing time, a time every so many minutes, so many days ahead, days off; one order holds each time.
+  bookingCalendar: z.object({
+    title: local(120).optional(),
+    text: local(300).optional(),
+    product: z.string().regex(/^[\w-]{1,120}$/).optional(),
+    days: z.array(z.number().int().min(0).max(6)).min(1).max(7).refine((l) => new Set(l).size === l.length, "A day twice").optional(),
+    from: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+    to: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+    every: z.number().int().min(10).max(240).optional(),
+    ahead: z.number().int().min(1).max(120).optional(),
+    closed: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(60).optional(),
+    button: local(40).optional(),
+  }).refine((b) => !b.from || !b.to || b.from < b.to, "Opening comes before closing"),
   // The store's story circles (admin → القصص): all the live ones in the owner's order, or only `reels` (their ids);
   // each opens full screen. Round, rounded squares or tall cards, three sizes, their names under them or not.
   storyBar: z.object({

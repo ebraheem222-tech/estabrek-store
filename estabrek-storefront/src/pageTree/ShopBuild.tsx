@@ -10,7 +10,7 @@
  * words or choices make it a line of its own in the bag (store/cart.tsx details).
  */
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { getProductBySlugClient } from "@/lib/apiClient";
+import { apiBaseClient, getProductBySlugClient } from "@/lib/apiClient";
 import { formatMoney, getVariantEffectivePrice, type CatalogItem, type CatalogProduct, type CatalogVariant } from "@/lib/catalog";
 import type { Lang } from "@/lib/i18n";
 import { useCart, type LineDetail } from "@/store/cart";
@@ -186,6 +186,129 @@ export function ConfiguratorView({ product: slug, lang, parts, button, words }: 
         <div className="pt-build-foot">
           <strong data-pt-build-price="">{variant ? formatMoney(priceOf(variant), currency) : ""}</strong>
           <button type="button" className="pt-btn pt-btn-solid" disabled={!variant} onClick={add} data-pt-build-add="">{added ? words.added : button}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- booking calendar */
+
+export type BookingProps = {
+  product: string; lang: Lang; days: number[]; from: string; to: string; every: number; ahead: number; closed: string[];
+  button: string; words: BuildWords;
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const minutes = (hm: string) => { const [h, m] = hm.split(":").map(Number); return h * 60 + m; };
+const LOCALE: Record<string, string> = { ar: "ar", en: "en-GB", he: "he" };
+
+/** The day's times, from opening to closing, `every` minutes apart (the last one ends by closing time). */
+function timesOf(from: string, to: string, every: number): string[] {
+  const out: string[] = [];
+  for (let t = minutes(from); t + every <= minutes(to) && out.length < 96; t += every) out.push(`${pad(Math.floor(t / 60))}:${pad(t % 60)}`);
+  return out;
+}
+
+export function BookingView({ product: slug, lang, days, from, to, every, ahead, closed, button, words }: BookingProps) {
+  const { product, state } = useProduct(slug, lang);
+  const { addItem } = useCart();
+  const [added, markAdded] = useAdded();
+  // The days are the shopper's own (her clock), worked out once the page wakes (the server doesn't know her day).
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => { const d = new Date(); d.setHours(0, 0, 0, 0); setToday(d); }, []);
+  const [month, setMonth] = useState(0);
+  const [day, setDay] = useState<string | null>(null);
+  const [time, setTime] = useState<string | null>(null);
+  const [taken, setTaken] = useState<Set<string>>(new Set());
+  const [inBag, setInBag] = useState<Set<string>>(new Set());
+  const variants = useMemo(() => (product?.items?.[0]?.variants ?? []).filter(sellable), [product]);
+  const [chosen, setChosen] = useState<string | null>(null);
+  useEffect(() => { if (!chosen && variants[0]) setChosen(variants[0].id); }, [variants, chosen]);
+  const variant = variants.find((v) => v.id === chosen);
+  const last = useMemo(() => (today ? new Date(today.getTime() + (ahead - 1) * 86_400_000) : null), [today, ahead]);
+
+  // The times other orders hold, for the days on offer (never who holds them).
+  useEffect(() => {
+    if (!today || !last || !slug) return;
+    let alive = true;
+    fetch(`${apiBaseClient()}/catalog/booking-slots?product=${encodeURIComponent(slug)}&from=${ymd(today)}&to=${ymd(last)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j && Array.isArray(j.taken)) setTaken(new Set(j.taken.filter((s: unknown) => typeof s === "string"))); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [today, last, slug]);
+
+  if (state === "missing") return <Missing note={words.bookMissing} />;
+  const locale = LOCALE[lang] ?? lang;
+  const open = (d: Date) => !!today && !!last && d >= today && d <= last && days.includes(d.getDay()) && !closed.includes(ymd(d));
+  // The month shown, and its weeks (Sunday first).
+  const first = today ? new Date(today.getFullYear(), today.getMonth() + month, 1) : null;
+  const cells: Array<Date | null> = [];
+  if (first) {
+    for (let i = 0; i < first.getDay(); i++) cells.push(null);
+    for (let d = 1; d <= new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate(); d++) cells.push(new Date(first.getFullYear(), first.getMonth(), d));
+  }
+  const canBack = month > 0;
+  const canOn = !!first && !!last && new Date(first.getFullYear(), first.getMonth() + 1, 1) <= last;
+  const weekdays = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(2026, 10, 1 + i)));
+  const now = new Date();
+  const soon = now.getHours() * 60 + now.getMinutes() + 30;
+  const times = day ? timesOf(from, to, every).filter((t) => !(today && day === ymd(today) && minutes(t) < soon)) : [];
+  const when = day && time ? `${day} ${time}` : null;
+  const shown = day ? new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${day}T00:00`)) : "";
+  const add = () => {
+    if (!variant || !when) return;
+    addItem(variant.id, 1, [{ label: words.when, value: when }]);
+    setInBag((prev) => new Set(prev).add(when));
+    setTime(null);
+    markAdded();
+  };
+  return (
+    <div className="pt-book" data-ready={state === "ready" && today ? "true" : "false"}>
+      <div className="pt-book-cal">
+        <div className="pt-book-head">
+          <button type="button" className="pt-book-nav" disabled={!canBack} onClick={() => setMonth((m) => m - 1)} aria-label={words.prev}>‹</button>
+          <strong>{first ? new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(first) : ""}</strong>
+          <button type="button" className="pt-book-nav" disabled={!canOn} onClick={() => setMonth((m) => m + 1)} aria-label={words.next}>›</button>
+        </div>
+        <div className="pt-book-grid" role="grid" aria-label={words.pickDay}>
+          {weekdays.map((w) => <span key={w} className="pt-book-wd" aria-hidden="true">{w}</span>)}
+          {cells.map((d, i) => d ? (
+            <button key={i} type="button" className="pt-book-day" disabled={!open(d)} aria-pressed={day === ymd(d)} data-pt-day={ymd(d)}
+              onClick={() => { setDay(ymd(d)); setTime(null); }}>{d.getDate()}</button>
+          ) : <span key={i} />)}
+        </div>
+      </div>
+      <div className="pt-book-side">
+        {variants.length > 1 ? (
+          <div className="pt-build-options" role="radiogroup">
+            {variants.map((v) => (
+              <button key={v.id} type="button" role="radio" aria-checked={v.id === chosen} className="pt-build-chip" onClick={() => setChosen(v.id)}>
+                {v.size?.name || formatMoney(priceOf(v), currencyOf(product))}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="pt-build-label">{day ? shown : words.pickDay}</div>
+        {day ? (
+          times.length ? (
+            <div className="pt-book-times" role="radiogroup" aria-label={words.pickTime}>
+              {times.map((t) => {
+                const busy = taken.has(`${day} ${t}`) || inBag.has(`${day} ${t}`);
+                return (
+                  <button key={t} type="button" role="radio" aria-checked={time === t} className="pt-build-chip" disabled={busy} data-pt-time={t} title={busy ? words.booked : undefined} onClick={() => setTime(t)}>
+                    <span dir="ltr">{t}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : <p className="pt-book-none">{words.noTimes}</p>
+        ) : null}
+        <div className="pt-build-foot">
+          <strong>{variant ? formatMoney(priceOf(variant), currencyOf(product)) : ""}</strong>
+          <button type="button" className="pt-btn pt-btn-solid" disabled={!variant || !when} onClick={add} data-pt-build-add="">{added ? words.added : button}</button>
         </div>
       </div>
     </div>

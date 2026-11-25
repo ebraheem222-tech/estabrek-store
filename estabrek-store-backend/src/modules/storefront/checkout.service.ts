@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { activeCustomerId } from "../customer/customer.service.js";
 import { prisma } from "../../lib/prisma.js";
 import { SITE_ROW_ORDER, getOrCreateSiteRow } from "../../lib/siteRow.js";
-import { quoteCart, submitOrderRequest } from "../catalog/catalog.service.js";
+import { assertSlotsFree, quoteCart, submitOrderRequest } from "../catalog/catalog.service.js";
 import { releaseOrder, sendDeliveryEmail } from "../fulfillment/fulfillment.service.js";
 
 type CheckoutProvider = "stripe" | "paypal";
@@ -276,6 +276,8 @@ export async function createCheckoutSession(input: CheckoutCreateInput) {
   if (!quote?.lines?.length) {
     throw httpError("EMPTY_CART", "السلة فارغة.", 400);
   }
+  // A booked time another order holds: refused before the money is taken (the order itself never refuses after it).
+  await assertSlotsFree(prisma, quote.lines as Array<{ productId: string; productTitle: string; details?: Array<{ label: string; value: string }> | null }>);
 
   const payload = {
     items: input.items,

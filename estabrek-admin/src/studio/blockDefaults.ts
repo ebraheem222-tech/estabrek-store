@@ -49,7 +49,7 @@ const HELP: Array<[Words, string]> = [
 ];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator", "bookingCalendar"] as const;
 /** A moving headline's words, ready to change. */
 const TURNS: Words[] = [w("ناعمة", "soft", "רכים"), w("أنيقة", "elegant", "אלגנטיים"), w("لكل يوم", "for every day", "לכל יום")];
 /** Links under a menu link, ready to change. */
@@ -250,6 +250,9 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): Pa
           ] }],
         },
       };
+    case "bookingCalendar":
+      // Its service product is picked in its settings; Sunday to Thursday, 10 to 6, an hour each, a month ahead.
+      return { id: id("booking"), type: "bookingCalendar", props: { title: one(lang, w("احجزي موعدك", "Book your time", "קבעו תור")), days: [0, 1, 2, 3, 4], from: "10:00", to: "18:00", every: 60, ahead: 30 } };
     case "headline":
       return { id: id("headline"), type: "headline", props: { before: one(lang, w("قطع", "Pieces", "פריטים")), words: TURNS.map((t) => one(lang, t)), level: 2, mode: "rotate", effect: "slide", seconds: 2.5 } };
   }

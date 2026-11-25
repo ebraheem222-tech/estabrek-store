@@ -1103,6 +1103,20 @@ http
       scenesOn = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
       return res.end(JSON.stringify({ ok: true, scenes: scenesOn }));
     }
+    // The booking calendar: the times taken of a product (`product` its slug), and a way to clear them.
+    if (pathname === "/v1/catalog/booking-slots") {
+      const q = new URL(req.url, "http://localhost").searchParams;
+      const slug = q.get("product") || "";
+      const from = q.get("from") || "", to = q.get("to") || "";
+      const taken = [...(globalThis.bookedSlots ?? new Set())].filter((x) => x.startsWith(`${slug}|`)).map((x) => x.split("|")[1]).filter((t) => t.slice(0, 10) >= from && t.slice(0, 10) <= to).sort();
+      return res.end(JSON.stringify({ taken }));
+    }
+    if (pathname === "/__test/booked-slots" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => { const d = JSON.parse(body || "{}"); globalThis.bookedSlots = new Set(Array.isArray(d.slots) ? d.slots : []); res.end("{}"); });
+      return;
+    }
     if (pathname === "/__test/last-order") return res.end(JSON.stringify(globalThis.lastOrder ? { ...globalThis.lastOrder, signedIn: globalThis.lastOrderSignedIn ?? false } : null));
     // The shop as an app (pwa.spec.ts): POST the app's settings (header.app), {} for none (off, as a new store).
     if (pathname === "/__test/app" && req.method === "POST") {
@@ -2189,6 +2203,12 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         const short = lines.filter((l) => l.quantity > l.available);
         if (pathname.endsWith("/order-requests") && short.length) { res.statusCode = 409; return res.end(JSON.stringify({ error: "OUT_OF_STOCK", details: { lines: short.map((l) => ({ variantId: l.variantId, productTitle: l.productTitle, colorName: l.colorName, sizeName: l.sizeName, requested: l.quantity, available: l.available })) } })); }
         if (pathname.endsWith("/order-requests")) {
+          // Booked times (the booking calendar): one order each, as the real server keeps them.
+          const booked = (globalThis.bookedSlots ??= new Set());
+          const slots = (data.items || []).flatMap((it) => (Array.isArray(it.details) ? it.details : []).filter((d) => /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(d?.value ?? "")).map((d) => `${lines.find((l) => l.variantId === it.variantId)?.productSlug}|${d.value}`));
+          const taken = slots.find((x) => booked.has(x));
+          if (taken) { res.statusCode = 409; return res.end(JSON.stringify({ error: "SLOT_TAKEN", details: { slot: taken.split("|")[1] } })); }
+          for (const x of slots) booked.add(x);
           globalThis.lastOrder = data;
           const placed = { id: "ORD-1042", phone: data.phone, city: data.city ?? null, status: "NEW", steps: [{ status: "NEW", at: new Date().toISOString() }], total: subtotal - off, items: lines.map((l) => ({ productTitle: l.productTitle, productSlug: l.productSlug, colorName: l.colorName, sizeName: l.sizeName, quantity: l.quantity, imageUrl: l.imageUrl })) };
           globalThis.placedOrders = [placed];

@@ -213,6 +213,7 @@ function makeElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTree
     case "memoryGame":
     case "giftCard":
     case "configurator":
+    case "bookingCalendar":
       return newBlock(kind, lang, id, src);
     case "popup":
       return newPopup(lang, id);

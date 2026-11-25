@@ -100,6 +100,7 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["memoryGame", () => typeLabel("memoryGame"), "🃏"],
       ["giftCard", () => typeLabel("giftCard"), "🎁"],
       ["configurator", () => typeLabel("configurator"), "🎨"],
+      ["bookingCalendar", () => typeLabel("bookingCalendar"), "📅"],
       ["categories", () => typeLabel("categories"), "▤"],
       ["form", () => typeLabel("form"), "✉"],
     ],

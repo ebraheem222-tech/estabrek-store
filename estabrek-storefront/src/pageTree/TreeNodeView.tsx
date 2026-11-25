@@ -55,7 +55,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, BookingView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -688,6 +688,29 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
           {say(p.title) ? <div className="pt-game-title" data-pt-field="title">{say(p.title)}</div> : null}
           {say(p.text) ? <p className="pt-game-text" data-pt-field="text">{say(p.text)}</p> : null}
           <ConfiguratorView product={product} lang={ctx.lang} parts={parts} button={say(p.button) || (({ ar: "أضيفي للحقيبة", en: "Add to bag", he: "הוספה לסל" } as Record<string, string>)[ctx.lang] ?? "")} words={W.build} />
+          {after}
+        </div>
+      );
+    }
+    case "bookingCalendar": {
+      // A service of the store's booked for a day and a time: open days, opening hours, every so many minutes, so many
+      // days ahead (ShopBuild.tsx BookingView); the time goes with the line ("YYYY-MM-DD HH:MM"), one order each.
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      const product = typeof p.product === "string" && /^[\w-]{1,120}$/.test(p.product) ? p.product : "";
+      const hm = (v: unknown, d: string) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : d);
+      const days = (Array.isArray(p.days) ? p.days : [0, 1, 2, 3, 4]).filter((d: unknown): d is number => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 6);
+      const every = typeof p.every === "number" && p.every >= 10 && p.every <= 240 ? Math.round(p.every) : 60;
+      const ahead = typeof p.ahead === "number" && p.ahead >= 1 && p.ahead <= 120 ? Math.round(p.ahead) : 30;
+      const closed = (Array.isArray(p.closed) ? p.closed : []).filter((d: unknown): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 60);
+      return (
+        <div className={cls(node)} {...mark} data-pt-needs-product={product ? undefined : ""}>
+          {before}
+          {say(p.title) ? <div className="pt-game-title" data-pt-field="title">{say(p.title)}</div> : null}
+          {say(p.text) ? <p className="pt-game-text" data-pt-field="text">{say(p.text)}</p> : null}
+          <BookingView
+            product={product} lang={ctx.lang} days={days} from={hm(p.from, "10:00")} to={hm(p.to, "18:00")} every={every} ahead={ahead} closed={closed}
+            button={say(p.button) || (({ ar: "احجزي", en: "Book", he: "להזמנה" } as Record<string, string>)[ctx.lang] ?? "")} words={W.build}
+          />
           {after}
         </div>
       );
