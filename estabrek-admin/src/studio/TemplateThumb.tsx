@@ -189,6 +189,8 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
     }
     case "icon":
       return <span style={{ display: "inline-grid", placeItems: "center", width: 48, height: 48, borderRadius: "50%", background: c["accent-soft"], color: c.accent, fontSize: 24, ...s }}>✦</span>;
+    case "glScene":
+      return <div style={{ width: "100%", height: 220, borderRadius: 18, background: `radial-gradient(circle at 50% 50%, ${c.accent}55, #07070d 70%)`, ...s }} />;
     case "model3d":
       return <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 24, display: "grid", placeItems: "center", background: `radial-gradient(circle at 50% 45%, ${c["accent-soft"]}, transparent 65%)`, color: c.accent, fontSize: 160, ...s }}>◆</div>;
     case "products": {

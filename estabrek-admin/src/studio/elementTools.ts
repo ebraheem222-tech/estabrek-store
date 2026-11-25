@@ -61,6 +61,9 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
     add("model-spots", "📍", "نقاط على المجسّم|Spots on the model|נקודות על המודל", "نقطة بكلام ورابط على أي مكان منه|A spot with words and a link anywhere on it|נקודה עם מילים וקישור בכל מקום עליו", { kind: "focus", card: "studio-model-spots" });
     add("model-parts", "🎨", "أجزاء المجسّم|The model's parts|חלקי המודל", "اكبس على جزء منه: لوّنه، خبّيه أو ضوّيه|Press a part of it: colour it, hide it or make it glow|לחץ על חלק: צבע, הסתר או האר אותו", { kind: "focus" });
   }
+  if (node.type === "glScene") {
+    add("gl-build", "✨", "ابنِ المشهد|Build the scene|בנה את הסצנה", "تصاميم جاهزة، طبقات جزيئات (أشكال بتتحوّل، كلامك وصورتك من نقاط، مطر، ألعاب نارية…)، الخلفية، الكاميرا، الماوس والسكرول|Ready designs, layers of particles (forms that morph, your words and picture in dots, rain, fireworks…), the background, camera, pointer and scroll|עיצובים מוכנים, שכבות חלקיקים, רקע, מצלמה, עכבר וגלילה", { kind: "group", group: "content", card: "studio-gl" });
+  }
   if (node.type === "svg") {
     add("svg-parts", "✏", "أشكال الرسمة|The drawing's shapes|צורות הציור", "كل شكل لحاله: لونه، خطّه، حركته، وتحوّله لشكل تاني|Each shape on its own: its colour, its line, its motion, and morphing into another|כל צורה בנפרד: צבע, קו, תנועה והתמרה", { kind: "focus" });
   }
@@ -83,6 +86,11 @@ export function elementTools(node: PageTreeNode, parent?: PageTreeNode | null, p
   if (parent && WORLD_HOSTS.has(parent.type) && !NOT_A_BODY.has(node.type)) {
     if (worldOfNode(parent)) add("body", "🧲", "جسم فيزيائي|A physics body|גוף פיזיקלי", "شكله، وزنه، نطّه، ثابت بمكانه، معلّق بحبل أو نابض، مربوط بعنصر تاني|Its shape, weight, bounce, fixed in place, hung from a rope or a spring, tied to another element|צורה, משקל, קפיצות, קבוע במקום, תלוי בחבל או קפיץ", { kind: "group", group: "motion", card: "studio-body" });
     else if (!WORLD_HOSTS.has(node.type)) add("body-on", "🧲", "فيزياء لهالعنصر|Physics for this element|פיזיקה לרכיב הזה", `${parentName ? `«${parentName}» ` : ""}${say("بيصير عالم فيزيائي: كل اللي جوّاه بيصيروا أجسام، وهالعنصر واحد منهم|becomes a physics world: everything it holds becomes a body, this element one of them|הופך לעולם פיזיקלי: כל מה שבתוכו הופך לגופים")}`, { kind: "worldOn", hostId: parent.id, card: "studio-body" });
+  }
+
+  // A section's background built of particles (after physics, which a section shows first).
+  if (node.type === "section") {
+    add("gl-bg", "✨", "خلفية WebGL تبنيها|A WebGL background you build|רקע WebGL שבונים", "جزيئات بأشكال وحركات ورا كلام القسم: كلام من نجوم، مجرّة، تلج، ألعاب نارية…|Particles in forms and motions behind the section's words: words in stars, a galaxy, snow, fireworks…|חלקיקים בצורות ותנועות מאחורי מילות המקטע", { kind: "group", group: "decor", card: "studio-gl" });
   }
 
   // What every element has.
