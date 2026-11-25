@@ -14,6 +14,8 @@ async function show(page: Page, nodes: unknown[]) {
   await page.goto("/en/library-demo");
 }
 const box = (page: Page, id: string) => page.locator(`[data-tree-node="${id}"] [data-pt-gl]`).first();
+/** Brought to the middle of the window (scrolling "if needed" leaves a half-seen box where it is: a press at its middle missed). */
+const centre = (el: Locator) => el.evaluate((e) => e.scrollIntoView({ block: "center" }));
 const run = <T,>(el: Locator, fn: (r: Run) => T) => el.evaluate((e, src) => new Function("r", `return (${src})(r)`)((e as HTMLElement & { __glRun: Run }).__glRun), fn.toString()) as Promise<T>;
 
 test.afterAll(async ({ request }) => {
@@ -52,7 +54,7 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   await expect.poll(() => run(word, (r) => r.near(0.5, 0.5, 0.12)), { timeout: 10_000 }).toBeGreaterThan(before * 0.8);
   // A press bursts them apart from where it was, then they gather again (a ball, the pointer doing nothing else).
   const ball = box(page, "burst");
-  await ball.scrollIntoViewIfNeeded();
+  await centre(ball);
   await expect(ball).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   await page.waitForTimeout(2500);
   const middle = await run(ball, (r) => r.near(0.5, 0.5, 0.15));
@@ -64,7 +66,7 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
 
   // A press takes the next form: a small cloud becomes a wide grid.
   const morph = box(page, "morph");
-  await morph.scrollIntoViewIfNeeded();
+  await centre(morph);
   await expect(morph).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   await page.waitForTimeout(2500);
   const cloud = await run(morph, (r) => r.sample()[0].spread);
@@ -88,7 +90,7 @@ test("flows with trails draw and move, a section's background keeps its words, a
   await show(page, nodes);
   for (const id of ["fire", "warp", "code"]) {
     const el = box(page, id);
-    await el.scrollIntoViewIfNeeded();
+    await centre(el);
     await expect(el).toHaveAttribute("data-gl-state", "running", { timeout: 60_000 });
     await page.waitForTimeout(1200);
     // Drawn and moving: two moments differ (a scene whose particles were never drawn stays one flat colour).
@@ -99,7 +101,7 @@ test("flows with trails draw and move, a section's background keeps its words, a
   }
   // Behind a section's words, which keep every click.
   const bg = page.locator('[data-tree-node="bg"] > [data-pt-gl="bg"]');
-  await bg.scrollIntoViewIfNeeded();
+  await centre(bg);
   await expect(bg).toHaveAttribute("data-gl-state", "running", { timeout: 60_000 });
   expect(await bg.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
   const button = page.getByText("Over the scene");
