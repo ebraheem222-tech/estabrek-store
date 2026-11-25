@@ -188,9 +188,7 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
   await centre(pend);
   await expect(pend).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   // A press starts them all again (it may have begun before it came into view).
-  const pb = (await pend.boundingBox())!;
-  await page.mouse.click(pb.x + pb.width * 0.5, pb.y + pb.height * 0.5);
-  await page.mouse.move(pb.x + pb.width * 0.5, pb.y - 200);
+  await press(pend);
   await page.waitForTimeout(150);
   expect((await run(pend, (r) => r.sample()[0])).spread).toBeLessThan(0.02);
   await expect.poll(() => run(pend, (r) => r.sample()[0].spread), { timeout: 30_000, intervals: [1000] }).toBeGreaterThan(0.05);
