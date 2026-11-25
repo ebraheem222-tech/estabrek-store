@@ -20,6 +20,22 @@ export const libItemOf = (id: unknown): LibItem | null => (typeof id === "string
 /** A library piece as the Add panel offers it. */
 export type LibKind = `lib:${string}`;
 export const isLibKind = (kind: string): kind is LibKind => kind.startsWith("lib:") && BY_ID.has(kind.slice(4));
+/**
+ * A piece's props with one of its texts in the owner's words, in one language (the others kept): the text as the
+ * library wrote it is the key; empty (or the library's own words again) puts that language back as it was.
+ */
+export function withLibWord(props: Record<string, unknown>, from: string, lang: Lang, text: string): Record<string, unknown> {
+  const rec = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+  const words = { ...rec(props.words) };
+  const value = text.trim() === from.trim() ? "" : text;
+  const one = { ...(typeof words[from] === "string" ? {} : rec(words[from])) } as Partial<Record<Lang, string>>;
+  if (value.trim()) one[lang] = value;
+  else delete one[lang];
+  if (Object.keys(one).length) words[from] = one;
+  else delete words[from];
+  return { ...props, words: Object.keys(words).length ? words : undefined };
+}
+
 /** A piece's own name, as the library wrote it (a design's name, like a font's). */
 export const libName = (i: LibItem) => i.name;
 

@@ -723,6 +723,75 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       });
     };
 
+    // Writing over a word of a theme library piece in place (src/library: in the editor each of its texts carries
+    // the words the library wrote, data-lx-src): the one under the double-click becomes writable; what's written goes
+    // back as the piece's own words for that text (its "words" setting), Esc leaves it as it was.
+    let libEdit: { el: HTMLElement; before: string; nodeId: string; from: string; done: boolean; stop?: () => void } | null = null;
+    const finishLib = (keep: boolean) => {
+      const e = libEdit;
+      if (!e || e.done) return;
+      e.done = true;
+      libEdit = null;
+      e.stop?.();
+      const value = (e.el.textContent ?? "").replace(/\s+/g, " ").trim();
+      e.el.removeAttribute("contenteditable");
+      e.el.style.display = "contents";
+      e.el.style.outline = "";
+      e.el.style.outlineOffset = "";
+      if (!keep || !value) e.el.textContent = e.before;
+      send(keep && value && value !== e.before ? { type: "libWordEdited", nodeId: e.nodeId, from: e.from, value } : { type: "libWordCancelled", nodeId: e.nodeId });
+      soon();
+    };
+    const startLibWord = (nodeId: string, x: number, y: number) => {
+      finish(true);
+      finishNode(true);
+      finishLib(true);
+      const host = document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(nodeId)}"]`);
+      // The text under the point: its own box (display: contents has none), so by its text's place on the page.
+      let el: HTMLElement | null = null;
+      if (host) {
+        for (const at of document.elementsFromPoint(x, y)) {
+          if (!host.contains(at)) continue;
+          const words = Array.from(at.querySelectorAll<HTMLElement>(":scope > [data-lx-src]"));
+          const hit = words.find((w) => {
+            const range = document.createRange();
+            range.selectNodeContents(w);
+            return Array.from(range.getClientRects()).some((r) => x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2);
+          });
+          if (hit) { el = hit; break; }
+          const own = at.closest<HTMLElement>("[data-lx-src]");
+          if (own && host.contains(own)) { el = own; break; }
+        }
+      }
+      if (!el) return send({ type: "libWordCancelled", nodeId, none: true });
+      const e: NonNullable<typeof libEdit> = { el, before: el.textContent ?? "", nodeId, from: el.getAttribute("data-lx-src") ?? "", done: false };
+      libEdit = e;
+      el.style.display = "inline";
+      el.style.outline = "2px solid #a43b64";
+      el.style.outlineOffset = "3px";
+      el.setAttribute("contenteditable", "plaintext-only");
+      if (el.contentEditable !== "plaintext-only") el.setAttribute("contenteditable", "true");
+      focusInFrame(el);
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      e.stop = stayFocused(el, () => libEdit === e && !e.done, () => finishLib(true));
+      el.addEventListener("keydown", (k: KeyboardEvent) => {
+        k.stopPropagation();
+        if (k.key === "Escape") {
+          k.preventDefault();
+          finishLib(false);
+        } else if (k.key === "Enter") {
+          k.preventDefault();
+          finishLib(true);
+        }
+      });
+      // A link or a button around it doesn't go anywhere while it's being written.
+      el.addEventListener("click", (c) => { c.preventDefault(); c.stopPropagation(); }, true);
+    };
+
     // A place the editor asked to see (after the frame reloads with a change, or a new element):
     // the page still grows while pictures and scenes load, so it's taken again a few times.
     let held: (() => void) | null = null;
@@ -1145,7 +1214,12 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         return startEdit("", d.path, typeof d.value === "string" ? d.value : null, { nodeId: d.nodeId, target: part.target, lang: String(part.lang), ...(Number.isInteger(part.line) ? { line: part.line as number } : {}) });
       }
       if (d.type === "editNode" && d.nodeId) return startNodeEdit(d.nodeId, (e.data as { lines?: unknown }).lines === true, (e.data as { linkable?: unknown }).linkable === true);
+      if (d.type === "editLibWord" && d.nodeId) {
+        const at = e.data as { x?: unknown; y?: unknown };
+        if (typeof at.x === "number" && typeof at.y === "number" && Number.isFinite(at.x) && Number.isFinite(at.y)) return startLibWord(d.nodeId, at.x, at.y);
+      }
       if (d.type === "stopEdit") {
+        finishLib(true);
         finishNode(true);
         return finish(true);
       }

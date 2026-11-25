@@ -74,15 +74,31 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
     loadPiece(js, css, version).then((c) => live && setPiece(() => c), () => live && setFailed(true));
     return () => { live = false; };
   }, [js, css, version]);
+  // In the editor's frame its words can be written over in place (runtime.tsx T, StudioBridge "editLibWord").
+  const [studio, setStudio] = useState(false);
+  useEffect(() => setStudio(window.parent !== window && /\/studio-frame/.test(window.location.pathname)), []);
+  // A whole site spans the screen less the page's own scrollbar (100vw counts it: it stuck out by its width).
+  useEffect(() => {
+    if (kind !== "site") return;
+    const root = document.documentElement;
+    const measure = () => root.style.setProperty("--lx-sbw", `${Math.max(0, window.innerWidth - root.clientWidth)}px`);
+    measure();
+    window.addEventListener("resize", measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
+  }, [kind]);
   // The store's name wherever the item says its made-up one (as written, and in capitals for the letter-spaced logos).
   const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
-  const own = { map: { ...(words ?? {}) }, swaps };
+  const own = { map: { ...(words ?? {}) }, swaps, marks: studio };
   // A whole website brings its own bar and footer: on its page the store's step aside (drawn with the page, no flash).
   const site = kind === "site";
   return (
     <div className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`} dir={dir} data-lib={item} data-lib-kind={kind} data-lib-ready={Piece ? "" : undefined} style={libVars(colours, families)} {...rest}>
       <link rel="stylesheet" href={FONTS} />
-      {site ? <style>{".atelier-announcement,.atelier-header,.atelier-footer{display:none!important}[data-lib-kind=site]{width:100vw;margin-inline:calc(50% - 50vw)}"}</style> : null}
+      {site ? <style>{".atelier-announcement,.atelier-header,.atelier-footer{display:none!important}[data-lib-kind=site]{width:calc(100vw - var(--lx-sbw,0px));margin-inline:calc(50% - 50vw + var(--lx-sbw,0px) / 2)}"}</style> : null}
+      {/* What scrolls inside a piece (a carousel, a scrolling phone…) scrolls without a bar showing. */}
+      <style>{".lx-scope,.lx-scope *{scrollbar-width:none}.lx-scope::-webkit-scrollbar,.lx-scope *::-webkit-scrollbar{display:none}"}</style>
       {Piece ? (
         <LibWordsProvider words={own}>
           <Piece />

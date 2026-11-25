@@ -7,7 +7,12 @@
  */
 import { createContext, useContext, type ReactNode } from "react";
 
-export type LibWords = { map: Readonly<Record<string, string>>; swaps: ReadonlyArray<readonly [string, string]> };
+export type LibWords = {
+  map: Readonly<Record<string, string>>;
+  swaps: ReadonlyArray<readonly [string, string]>;
+  /** In the editor's frame: each text carries the words it was written as, to be written over in place. */
+  marks?: boolean;
+};
 
 const Words = createContext<LibWords | null>(null);
 /** Outside a component (a helper building a piece of the page): the words of the item drawn last. */
@@ -37,6 +42,11 @@ export function swapWords(words: LibWords | null, v: unknown): unknown {
 export function T({ s }: { s: unknown }) {
   const words = useContext(Words);
   const v = swapWords(words, s);
+  // In the editor, a text says what the library wrote (the key of the owner's words for it) on a box that takes no
+  // room of its own (display: contents), so a double-click on it can write over it (StudioBridge, "editLibWord").
+  if (words?.marks && typeof s === "string" && typeof v === "string" && s.trim() && /\p{L}/u.test(s)) {
+    return <span data-lx-src={s.trim()} style={{ display: "contents" }}>{v}</span>;
+  }
   return (v === undefined ? null : v) as ReactNode;
 }
 

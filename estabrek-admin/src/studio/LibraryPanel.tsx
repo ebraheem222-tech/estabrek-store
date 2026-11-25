@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
-import { LIB_KIND_NAME, libDetails, libItemOf, libName, type LibDetails } from "./library";
+import { LIB_KIND_NAME, libDetails, libItemOf, libName, withLibWord, type LibDetails } from "./library";
 import { Field } from "./StudioPanels";
 import { say } from "./say";
 
@@ -84,18 +84,14 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
 
   const setProps = (patch: Record<string, unknown>, label = say("تعديل قطعة المكتبة|Edit the library piece|עריכת פריט הספרייה")) =>
     onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
-  const setWord = (from: string, text: string) => {
-    const next = { ...own };
-    const v = withLang(own[from], lang, text === from ? "" : text);
-    if (v) next[from] = v;
-    else delete next[from];
-    setProps({ words: Object.keys(next).length ? next : undefined }, say("كلام قطعة المكتبة|The library piece's words|המילים של פריט הספרייה"));
-  };
+  const setWord = (from: string, text: string) =>
+    onOps(say("كلام قطعة المكتبة|The library piece's words|המילים של פריט הספרייה"), [{ op: "setProps", nodeId: node.id, props: withLibWord(p, from, lang, text) }]);
   const find = q.trim().toLowerCase();
   const found = find ? words.filter((w) => w.toLowerCase().includes(find) || inLang(own[w], lang).toLowerCase().includes(find)) : words;
   // What the owner already changed comes first.
   const ordered = [...found.filter((w) => inLang(own[w], lang)), ...found.filter((w) => !inLang(own[w], lang))];
-  const shown = all || find ? ordered : ordered.slice(0, SHOWN);
+  const mine = ordered.filter((w) => inLang(own[w], lang));
+  const shown = find ? ordered.slice(0, all ? ordered.length : SHOWN) : all ? ordered : mine;
 
   const families = rec(p.families);
   const colours = rec(p.colours);
@@ -157,6 +153,9 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-[11px] font-medium text-white/70">{say("الكلام|The words|המילים")} <span className="text-white/35">({words.length})</span></h4>
         </div>
+        <p className="rounded-lg bg-accent-500/10 px-2 py-1.5 text-[11px] leading-4 text-white/80" data-testid="studio-lib-write-hint">
+          {say("دبل كليك على أي كلمة بالمعاينة واكتب مكانها، Enter بتحفظ وEsc بترجّع.|Double-click any words in the preview and write over them; Enter keeps them, Esc puts them back.|לחיצה כפולה על מילים בתצוגה וכתיבה במקומן; Enter שומר, Esc מחזיר.")}
+        </p>
         <input
           type="search"
           value={q}
@@ -173,9 +172,9 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
               <Field label={w.length > 90 ? `${w.slice(0, 90)}…` : w} value={inLang(own[w], lang)} multiline={w.length > 60} maxLength={600} onSave={(v) => setWord(w, v)} />
             </div>
           ))}
-          {!shown.length ? <p className="text-[11px] text-white/45">{say("ما في كلمة هيك.|No such word.|אין מילה כזו.")}</p> : null}
+          {!shown.length ? <p className="text-[11px] text-white/45">{find ? say("ما في كلمة هيك.|No such word.|אין מילה כזו.") : say("لسا ما غيّرت ولا كلمة: دوّر على وحدة، أو دبل كليك عليها بالمعاينة.|No words changed yet: look one up, or double-click it in the preview.|עוד לא שונו מילים: חפשו מילה, או לחיצה כפולה עליה בתצוגה.")}</p> : null}
         </div>
-        {!all && !find && ordered.length > SHOWN ? (
+        {!all && (find ? ordered.length > SHOWN : ordered.length > mine.length) ? (
           <button type="button" className={small} onClick={() => setAll(true)} data-testid="studio-lib-more">
             {say(`ورجيني الكل (${ordered.length})|Show all (${ordered.length})|הצג הכול (${ordered.length})`)}
           </button>

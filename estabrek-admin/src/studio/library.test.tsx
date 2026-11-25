@@ -97,7 +97,11 @@ describe("the library's browser", () => {
 describe("a piece's panel", () => {
   const node = (props: Record<string, unknown>): PageTreeNode => ({ id: "lib1", type: "lib", props });
   const lastProps = (onOps: ReturnType<typeof vi.fn>) => (onOps.mock.calls.at(-1)![1] as Array<{ props: Record<string, unknown> }>)[0].props;
-  const wordBox = async (w: string) => within((await screen.findAllByTestId("studio-lib-word")).find((el) => el.dataset.word === w)!).getByRole("textbox");
+  // A word's box: looked up by its words (only the changed ones show until a word is looked for).
+  const wordBox = async (w: string) => {
+    fireEvent.change(await screen.findByTestId("studio-lib-search"), { target: { value: w } });
+    return within((await screen.findAllByTestId("studio-lib-word")).find((el) => el.dataset.word === w)!).getByRole("textbox");
+  };
 
   it("changes a word in the language being edited, and emptied it is the library's again", async () => {
     const onOps = vi.fn();
@@ -119,9 +123,13 @@ describe("a piece's panel", () => {
     expect(lastProps(onOps)).toEqual({ item: "faq-classic", words: undefined });
   });
 
-  it("finds a word, and shows the changed ones first", async () => {
+  it("shows only the changed words, says how to write on the page, finds any word, and all on asking", async () => {
     render(<LibraryPanel node={node({ item: "faq-classic", words: { "Is my data secure?": { en: "Safe?" } } })} lang="en" busy={false} onOps={vi.fn()} />);
-    expect((await screen.findAllByTestId("studio-lib-word"))[0].dataset.word).toBe("Is my data secure?");
+    expect(screen.getByTestId("studio-lib-write-hint").textContent).toMatch(/دبل كليك|Double-click/);
+    expect((await screen.findAllByTestId("studio-lib-word")).map((el) => el.dataset.word)).toEqual(["Is my data secure?"]);
+    fireEvent.click(screen.getByTestId("studio-lib-more"));
+    expect(screen.getAllByTestId("studio-lib-word").length).toBeGreaterThan(5);
+    expect(screen.getAllByTestId("studio-lib-word")[0].dataset.word).toBe("Is my data secure?");
     fireEvent.change(screen.getByTestId("studio-lib-search"), { target: { value: "export" } });
     expect(screen.getAllByTestId("studio-lib-word").map((el) => el.dataset.word)).toEqual(["Can I export my data?"]);
   });
