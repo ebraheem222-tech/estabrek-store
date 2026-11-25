@@ -47,6 +47,8 @@ export type GlRun = {
   sample(): GlSample[];
   /** The share of all particles within `r` (of the box's height) of a point, 0…1 from its top left (tests). */
   near(x: number, y: number, r: number): number;
+  /** How far it has run (seconds of its own time), the presses waiting for its next step, and the frames drawn (tests). */
+  stats(): { t: number; queued: number; frames: number };
   readonly particles: number;
   dispose(): void;
 };
@@ -378,12 +380,14 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   }
 
   /* ---------------------------------------------------------------- state */
-  let t = 0, last = -1, dead = false;
+  let t = 0, last = -1, dead = false, frames = 0;
   let stillAt: number | null = null;
   const ptr = { on: false, x: 0, y: 0, tx: 0, ty: 0 };
   let hovering = false, scrolled = 0.5, yawDrag = 0, pitchDrag = 0;
   const presses: Array<{ x: number; y: number }> = [];
   let shock: { x: number; y: number; t: number } | null = null;
+  /** How firmly forms hold their places (0 just after a burst or a shock wave, back to 1 over two seconds). */
+  let calm = 1;
   const camD = () => 28 + (2.6 - 28) * spec.camera.depth;
   const zoomNow = () => spec.camera.zoom * (spec.scroll === "zoom" ? 0.72 + scrolled * 0.66 : 1);
   const yawNow = () => spec.camera.spin * t * 0.35 + yawDrag + (spec.scroll === "spin" ? (scrolled - 0.5) * Math.PI * 1.3 : 0);
@@ -687,6 +691,10 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     const press = presses.shift();
     if (press && spec.click === "next") nextForm();
     if (press && spec.click === "shock") shock = { ...world(press.x, press.y), t };
+    if (press && (spec.click === "burst" || spec.click === "shock")) calm = 0;
+    calm = Math.min(1, calm + 1 / 120);
+    // Let go after a burst, the particles drift out and are gathered back slowly, not snapped.
+    const hold = 0.03 + 0.97 * calm * calm * calm;
     const pw = press ? world(press.x, press.y) : null;
     const shockR = shock ? (t - shock.t) * 2.4 : 0;
     if (shock && shockR > 5) shock = null;
@@ -697,7 +705,7 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       const { n, p, v } = run;
       const form = !run.flow;
       const turning = !form && TURNING.has(run.flow!);
-      const stiff = 0.05 + 0.03 * Math.min(2, run.l.speed);
+      const stiff = (0.05 + 0.03 * Math.min(2, run.l.speed)) * hold;
       for (let i = 0; i < n; i++) {
         const j = i * 3;
         if (form || TURNING.has(run.flow!)) {
@@ -843,6 +851,7 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     }
   }
   function draw() {
+    frames++;
     if (G.isContextLost()) return;
     for (const run of runs) fill(run);
     G.bindFramebuffer(G.FRAMEBUFFER, null);
@@ -1023,6 +1032,9 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
         const spread = Math.sqrt(pts.reduce((s, [x, y]) => s + (x - cx) ** 2 + (y - cy) ** 2, 0) / run.n);
         return { n: run.n, cx, cy, inside: inside / run.n, spread };
       });
+    },
+    stats() {
+      return { t, queued: presses.length, frames };
     },
     near(x, y, r) {
       const d = camD(), z = zoomNow();
