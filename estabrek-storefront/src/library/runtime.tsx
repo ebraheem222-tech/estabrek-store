@@ -25,6 +25,8 @@ export type LibWords = {
    * looks up: lx, spell) keeps the library's words; what it shows as it is (<T/>, a canvas's text) is still theirs.
    */
   shownOnly?: boolean;
+  /** The owner's colours: one as the library wrote it (6 hex digits) → theirs (#rrggbb), for what a canvas or a shader draws. */
+  paint?: Readonly<Record<string, string>>;
 };
 
 /** A word the piece's own code handles: the owner's, unless the piece threw with them (shownOnly). */
@@ -379,10 +381,114 @@ export const hexKey = (h: string) => {
   return x.length === 3 ? x.split("").map((c) => c + c).join("") : x;
 };
 
-/** A colour value (or a gradient, a shadow…) with each colour in it as a variable the item's wrapper may set. */
+/** A colour written rgb()/rgba() (commas or spaces; an alpha, as a number or a percentage, or none). */
+const RGBX = /rgba?\(\s*(\d{1,3})(?:\s*,\s*|\s+)(\d{1,3})(?:\s*,\s*|\s+)(\d{1,3})\s*(?:(?:,|\/)\s*([\d.]+%?)\s*)?\)/g;
+const hex2 = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+const keyOf = (r: number, g: number, b: number) => hex2(r) + hex2(g) + hex2(b);
+const rgbOf = (hex: string): [number, number, number] => {
+  const h = hexKey(hex);
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+};
+const alphaOf = (a: string) => (a.endsWith("%") ? Number(a.slice(0, -1)) / 100 : Number(a));
+
+/**
+ * A colour value (or a gradient, a shadow…) with each colour in it as a variable the item's wrapper may set; an
+ * rgba() colour too (as its hex, its alpha kept): the owner's colour for the hex is the rgba's colour as well.
+ */
 export function cv(v: unknown): unknown {
-  if (typeof v !== "string" || !v.includes("#") || v.includes("var(--lx-")) return v;
-  return v.replace(HEX, (h) => `var(--lx-${hexKey(h)}, ${h})`);
+  if (typeof v !== "string" || v.includes("var(--lx-") || (!v.includes("#") && !v.includes("rgb"))) return v;
+  let out = v.includes("#") ? v.replace(HEX, (h) => `var(--lx-${hexKey(h)}, ${h})`) : v;
+  if (out.includes("rgb")) {
+    out = out.replace(RGBX, (m, r: string, g: string, b: string, a?: string) => {
+      if ([r, g, b].some((x) => Number(x) > 255)) return m;
+      const k = keyOf(Number(r), Number(g), Number(b));
+      return a === undefined ? `var(--lx-${k}, ${m})` : `color-mix(in srgb, var(--lx-${k}, #${k}) ${Math.round(alphaOf(a) * 1000) / 10}%, transparent)`;
+    });
+  }
+  return out;
+}
+
+/** A CSS variable of the piece's colours (var(--lx-hex, fallback)), as a canvas can't read one: what it stands for. */
+const VARX = /var\(--lx-([0-9a-f]{6}),\s*([^()]*?(?:\([^()]*\))?)\s*\)/g;
+const anyPaint = (words: LibWords | null): words is LibWords & { paint: Readonly<Record<string, string>> } => Boolean(words?.paint && Object.keys(words.paint).length);
+/** A colour as a canvas takes it (a hex, rgb(), rgba(), or the page's variable for one): the owner's for it. */
+export function paintIn(words: LibWords | null, v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  let out = v;
+  const map = anyPaint(words) ? words.paint : null;
+  if (out.includes("var(--lx-")) out = out.replace(VARX, (_m, k: string, fallback: string) => map?.[k] ?? fallback);
+  if (!map) return out;
+  if (out.includes("#")) out = out.replace(HEX, (h) => map[hexKey(h)] ?? h);
+  if (out.includes("rgb")) {
+    out = out.replace(RGBX, (m, r: string, g: string, b: string, a?: string) => {
+      const to = map[keyOf(Number(r), Number(g), Number(b))];
+      if (!to) return m;
+      const [R, G, B] = rgbOf(to);
+      return a === undefined ? `rgb(${R}, ${G}, ${B})` : `rgba(${R}, ${G}, ${B}, ${alphaOf(a)})`;
+    });
+  }
+  return out;
+}
+
+/**
+ * A colour handed to a canvas (ctx.fillStyle = …, a gradient's colour stop: convert.mjs): the owner's colour for
+ * it. A trail painted over a whole piece every frame (rgba(5, 5, 12, 0.35)) hid the owner's background.
+ */
+export function paint(target: unknown, own: unknown, v: unknown): unknown {
+  return paintIn(wordsFor(target as Ctx2D, own), v);
+}
+
+const VEC3X = /vec3\(\s*(\d*\.?\d+)\s*,\s*(\d*\.?\d+)\s*,\s*(\d*\.?\d+)\s*\)/g;
+const glFloat = (n: number) => (Math.round(n * 10000) / 10000).toFixed(4);
+/** A shader's source (gl.shaderSource): each colour written in it (vec3(0.48, 0.23, 0.93)) the owner's for it. */
+export function glsl(gl: unknown, own: unknown, src: unknown): unknown {
+  const words = wordsFor(gl as Ctx2D, own);
+  if (typeof src !== "string" || !anyPaint(words)) return src;
+  const map = words.paint;
+  return src.replace(VEC3X, (m, a: string, b: string, c: string) => {
+    const v = [a, b, c].map(Number);
+    if (v.some((x) => x > 1)) return m;
+    const to = map[keyOf(v[0] * 255, v[1] * 255, v[2] * 255)];
+    if (!to) return m;
+    const [R, G, B] = rgbOf(to);
+    return `vec3(${glFloat(R / 255)}, ${glFloat(G / 255)}, ${glFloat(B / 255)})`;
+  });
+}
+
+/**
+ * A colour handed to WebGL as numbers (gl.clearColor, uniform3f/4f, uniform3fv/4fv): the owner's, when the numbers
+ * are one of the piece's colours (a hex the piece turned into numbers itself).
+ */
+export function glNum(gl: unknown, how: string, own: unknown, ...args: unknown[]): unknown {
+  const g = gl as Record<string, (...a: unknown[]) => unknown>;
+  const words = wordsFor(gl as Ctx2D, own);
+  if (!anyPaint(words)) return g[how](...args);
+  const map = words.paint;
+  const swap = (r: unknown, gg: unknown, b: unknown): [number, number, number] | null => {
+    if (![r, gg, b].every((n) => typeof n === "number" && n >= 0 && n <= 1)) return null;
+    const to = map[keyOf((r as number) * 255, (gg as number) * 255, (b as number) * 255)];
+    return to ? (rgbOf(to).map((x) => x / 255) as [number, number, number]) : null;
+  };
+  if (how === "clearColor") {
+    const c = swap(args[0], args[1], args[2]);
+    return g[how](...(c ? [...c, ...args.slice(3)] : args));
+  }
+  if (how === "uniform3f" || how === "uniform4f") {
+    const c = swap(args[1], args[2], args[3]);
+    return g[how](...(c ? [args[0], ...c, ...args.slice(4)] : args));
+  }
+  const list = args[1] as ArrayLike<number> | undefined;
+  if (list && typeof list.length === "number") {
+    const step = how === "uniform3fv" ? 3 : 4;
+    const a = Array.from(list);
+    let changed = false;
+    for (let i = 0; i + 2 < a.length; i += step) {
+      const c = swap(a[i], a[i + 1], a[i + 2]);
+      if (c) { [a[i], a[i + 1], a[i + 2]] = c; changed = true; }
+    }
+    if (changed) return g[how](args[0], new Float32Array(a), ...args.slice(2));
+  }
+  return g[how](...args);
 }
 
 /** A whole style object (given from a variable): its colours the same way. Motion values pass untouched. */

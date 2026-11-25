@@ -119,6 +119,8 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
   // The store's name wherever the item says its made-up one (as written, and in capitals for the letter-spaced logos).
   // One object while they're the same (what it drew lately is noted on it in the editor: runtime.tsx canvasText).
   const wordsKey = JSON.stringify(words ?? {});
+  // Its colours as the owner has them, for what it draws on a canvas or in a shader (runtime.tsx paint, glsl).
+  const coloursKey = JSON.stringify(colours ?? {});
   const drawn = sizeOf(drawnSize);
   // What it drew lately, kept across its words' objects (a loop started early still notes where the editor looks).
   // And what each text shown was written as, and the words it read letter by letter (runtime.tsx spell).
@@ -127,15 +129,19 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
   const [spelled] = useState(() => new Map<string, Spelled>());
   const own = useMemo<LibWords>(() => {
     const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
-    return { map: JSON.parse(wordsKey) as Record<string, string>, swaps, marks: studio, drawn, seen, ...(studio ? { origin, spelled } : {}) };
-  }, [wordsKey, brand, madeUp, studio, drawn, seen, origin, spelled]);
+    const paint: Record<string, string> = {};
+    for (const [from, to] of Object.entries(JSON.parse(coloursKey) as Record<string, unknown>)) {
+      if (/^[0-9a-f]{6}$/i.test(from) && typeof to === "string" && HEX6.test(to)) paint[from.toLowerCase()] = to;
+    }
+    return { map: JSON.parse(wordsKey) as Record<string, string>, swaps, marks: studio, drawn, seen, paint, ...(studio ? { origin, spelled } : {}) };
+  }, [wordsKey, coloursKey, brand, madeUp, studio, drawn, seen, origin, spelled]);
   // Safe: 0 as the owner has it. 1 it threw in the owner's words (a word its own code uses to work, as a key it
   // looks up): its code keeps the library's words, what it shows is still the owner's. 2 it threw so too: all in the
   // library's words. 3 it threw as made: not shown. Tried again from 0 when the words change.
   const [safe, setSafe] = useState(0);
   useEffect(() => setSafe(0), [wordsKey, brand]);
   const shownOnly = useMemo<LibWords>(() => ({ ...own, shownOnly: true }), [own]);
-  const plain = useMemo<LibWords>(() => ({ map: {}, swaps: [], marks: studio, drawn, seen }), [studio, drawn, seen]);
+  const plain = useMemo<LibWords>(() => ({ map: {}, swaps: [], marks: studio, drawn, seen, paint: own.paint }), [studio, drawn, seen, own.paint]);
   const ts = sizeOf(textSize);
   // A whole website brings its own bar and footer: on its page the store's step aside (drawn with the page, no flash).
   const site = kind === "site";
@@ -161,7 +167,7 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
           <Guard key={safe} onError={() => setSafe((s) => (s < 2 && (wordsKey !== "{}" || brand) ? s + 1 : 3))}>
             {/* What it draws on a canvas is drawn once (a word sampled into particles), and what it reads in an
                 effect or a timer is read once: new words or size, it starts again. */}
-            {safe < 3 ? <Piece key={draws || fresh ? `${wordsKey}|${brand ?? ""}|${drawn}` : undefined} /> : null}
+            {safe < 3 ? <Piece key={draws || fresh ? `${wordsKey}|${brand ?? ""}|${drawn}|${coloursKey}` : undefined} /> : null}
           </Guard>
         </LibWordsProvider>
       ) : (

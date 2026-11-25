@@ -47,10 +47,41 @@ const outPath = (src) => {
  * The runtime's helpers under names no piece uses itself (a piece's own "cv", a canvas, once hid the colour helper
  * and broke it): the import is { cv as lx$cv, … }.
  */
-const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w", canvasText: "lx$ct", canvasMeasure: "lx$mt", lxIn: "lx$in", spell: "lx$sp" };
+const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w", canvasText: "lx$ct", canvasMeasure: "lx$mt", lxIn: "lx$in", spell: "lx$sp", paint: "lx$pt", glsl: "lx$gs", glNum: "lx$gn" };
 /** The runtime's helpers: the strings given to them (a canvas method's name…) are never a piece's words. */
 const RT_CALLS = new Set(Object.values(RT));
 const CANVAS_TEXT = new Set(["fillText", "strokeText"]);
+/**
+ * Where a canvas or WebGL takes a colour (runtime.tsx paint, glsl, glNumbers): the page's CSS follows the owner's
+ * colours (var(--lx-…)), a canvas or a shader only what it's handed, so these are handed the owner's colour.
+ */
+const PAINT_PROPS = new Set(["fillStyle", "strokeStyle", "shadowColor"]);
+const GL_NUMBERS = new Set(["clearColor", "uniform3f", "uniform4f", "uniform3fv", "uniform4fv"]);
+/** A colour written as rgb()/rgba() (commas or spaces, an alpha or not): the owner changes it as the hex it is. */
+const RGB = /rgba?\(\s*(\d{1,3})(?:\s*,\s*|\s+)(\d{1,3})(?:\s*,\s*|\s+)(\d{1,3})\s*(?:(?:,|\/)\s*[\d.]+%?\s*)?\)/g;
+/** A colour in a shader (vec3(0.48, 0.23, 0.93)): the owner changes it as the hex it is, rounded. */
+const VEC3 = /vec3\(\s*(\d*\.?\d+)\s*,\s*(\d*\.?\d+)\s*,\s*(\d*\.?\d+)\s*\)/g;
+const GLSL = /gl_FragColor|void\s+main\s*\(|precision\s+(?:high|medium|low)p/;
+const toHex = (r, g, b) => [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+/** The colours a text holds, each as 6 hex digits: #hex, rgb()/rgba(), and in a shader its vec3 colours. */
+function coloursIn(text, shader) {
+  const out = [];
+  for (const h of text.match(HEX) ?? []) out.push(normHex(h));
+  HEX.lastIndex = 0;
+  for (const m of text.matchAll(RGB)) if ([m[1], m[2], m[3]].every((v) => Number(v) <= 255)) out.push(toHex(Number(m[1]), Number(m[2]), Number(m[3])));
+  if (shader) for (const m of text.matchAll(VEC3)) {
+    // A rainbow's phases (0.5 + 0.5 * cos(6.28 * (t + vec3(0.0, 0.33, 0.67)))): no colour of its own.
+    const line = text.slice(text.lastIndexOf("\n", m.index) + 1, m.index);
+    const wave = line.search(/\b(?:cos|sin)\s*\(/);
+    if (wave >= 0) {
+      const after = line.slice(wave);
+      if ((after.match(/\(/g) ?? []).length > (after.match(/\)/g) ?? []).length) continue;
+    }
+    const c = [m[1], m[2], m[3]].map(Number);
+    if (c.every((v) => v <= 1) && !c.every((v) => v === 0 || v === 1)) out.push(toHex(...c.map((v) => v * 255)));
+  }
+  return out;
+}
 /**
  * What a piece does to a text before it shows it, letter by letter or changed ("LIQUID".split("") into letters that
  * move one by one, a word typed out with slice, a name in capitals): the text is put in the owner's words first
@@ -115,12 +146,17 @@ const isWords = (s) => {
   if (/^[MmLlHhVvCcSsQqTtAaZz][\d\s.,MmLlHhVvCcSsQqTtAaZz-]*$/.test(v) || /^[a-z-]+\(.*\)$/i.test(v) || /\b(serif|sans-serif|monospace|cursive|system-ui)\b/.test(v)) return false;
   return true;
 };
+/** Inside a <style> or <script> of a piece: code, never words. */
+const inCode = (p) => {
+  const el = p.parentPath?.isJSXElement() ? p.parentPath.node.openingElement.name : null;
+  return t.isJSXIdentifier(el) && (el.name === "style" || el.name === "script");
+};
 /** A string given to a runtime helper that is not a text: a colour's (cv), what's done to a text (spell), a canvas method's name. */
 const helperArg = (call, arg) => {
   const name = call.callee.name;
   if (name === RT.cv || name === RT.cvs) return true;
   if (name === RT.spell) return call.arguments[2] === arg;
-  if (name === RT.canvasText) return call.arguments[1] === arg;
+  if (name === RT.canvasText || name === RT.glNum) return call.arguments[1] === arg;
   return false;
 };
 /** Object keys whose strings are never words (class names, colours, icons, addresses). */
@@ -163,7 +199,7 @@ function convertFile(src, manifest) {
   const words = { add: (p, w) => bucket(p).words.add(w) };
   const families = { add: (p, f) => bucket(p).families.add(f) };
   const hexes = { add: (p, h) => bucket(p).hexes.add(h) };
-  let usesT = false, usesLx = false, usesCv = false, usesCanvas = false, usesIn = false, usesSpell = false;
+  let usesT = false, usesLx = false, usesCv = false, usesCanvas = false, usesIn = false, usesSpell = false, usesPaint = false, usesGl = false;
   const cvCall = (e) => { usesCv = true; return t.callExpression(t.identifier(RT.cv), [e]); };
   const lxIn = (p) => {
     // lx() inside a component reads its own item's words (useLx at the top of it); outside, the last ones.
@@ -251,6 +287,22 @@ function convertFile(src, manifest) {
       // item's words first (runtime.tsx spell).
       if (t.isMemberExpression(c) && !c.computed && t.isIdentifier(c.property) && STR_OPS.has(c.property.name)) spellOf(p.get("callee.object"), c.property.name);
       else if (t.isMemberExpression(c) && t.isIdentifier(c.object, { name: "Array" }) && t.isIdentifier(c.property, { name: "from" }) && p.node.arguments.length && !t.isSpreadElement(p.node.arguments[0])) spellOf(p.get("arguments.0"), "from");
+      // A colour handed to a canvas's gradient, a shader's source, or WebGL as numbers: the owner's.
+      if (t.isMemberExpression(c) && !c.computed && t.isIdentifier(c.property) && !p.node.__lxPaint && !p.node.arguments.some((a) => t.isSpreadElement(a))) {
+        const m = c.property.name, a = p.node.arguments;
+        if (m === "addColorStop" && a.length === 2) {
+          usesPaint = true; bucket(p).fresh = true;
+          a[1] = t.callExpression(t.identifier(RT.paint), [c.object, canvasWords(p), a[1]]);
+        } else if (m === "shaderSource" && a.length === 2) {
+          usesGl = true; bucket(p).fresh = true;
+          a[1] = t.callExpression(t.identifier(RT.glsl), [c.object, canvasWords(p), a[1]]);
+        } else if (GL_NUMBERS.has(m)) {
+          usesGl = true; bucket(p).fresh = true;
+          p.node.__lxPaint = true;
+          p.replaceWith(t.callExpression(t.identifier(RT.glNum), [c.object, t.stringLiteral(m), canvasWords(p), ...a]));
+          return;
+        }
+      }
       // A text drawn on a canvas, or measured for it: in the item's words (runtime.tsx canvasText).
       if (!t.isMemberExpression(c) || c.computed || !t.isIdentifier(c.property) || !p.node.arguments.length) return;
       const m = c.property.name;
@@ -316,9 +368,9 @@ function convertFile(src, manifest) {
       }
     },
     StringLiteral(p) {
-      for (const h of p.node.value.match(HEX) ?? []) hexes.add(p, normHex(h));
+      for (const h of coloursIn(p.node.value, GLSL.test(p.node.value))) hexes.add(p, h);
       for (const m of p.node.value.matchAll(/\b(?:bg|text|border|from|via|to|ring|fill|stroke|shadow|outline|decoration|divide|accent|caret|placeholder)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d{2,3})/g)) families.add(p, m[1]);
-      if (isWords(p.node.value) && !p.parentPath.isImportDeclaration() && !p.parentPath.isExportDeclaration?.()) {
+      if (isWords(p.node.value) && !p.parentPath.isImportDeclaration() && !p.parentPath.isExportDeclaration?.() && !(p.parentPath.isJSXExpressionContainer() && inCode(p.parentPath))) {
         const parent = p.parentPath;
         if (parent.isJSXAttribute()) {
           const attr = parent.node.name.name;
@@ -334,9 +386,22 @@ function convertFile(src, manifest) {
       }
     },
     TemplateElement(p) {
-      for (const h of p.node.value.raw.match(HEX) ?? []) hexes.add(p, normHex(h));
+      const shader = p.parentPath.isTemplateLiteral() && p.parentPath.node.quasis.some((q) => GLSL.test(q.value.raw));
+      for (const h of coloursIn(p.node.value.raw, shader)) hexes.add(p, h);
+    },
+    // A colour handed to a canvas (ctx.fillStyle = "#05050c", a trail of rgba(5, 5, 12, 0.35) over the whole piece):
+    // the owner's. Read in its loop: the piece starts again when its colours change (fresh).
+    AssignmentExpression(p) {
+      const l = p.node.left;
+      if (p.node.operator !== "=" || !t.isMemberExpression(l) || l.computed || !t.isIdentifier(l.property) || !PAINT_PROPS.has(l.property.name)) return;
+      const r = p.node.right;
+      if (t.isCallExpression(r) && t.isIdentifier(r.callee) && r.callee.name === RT.paint) return;
+      usesPaint = true;
+      bucket(p).fresh = true;
+      p.node.right = t.callExpression(t.identifier(RT.paint), [l.object, canvasWords(p), r]);
     },
     JSXText(p) {
+      if (inCode(p)) return;
       const s = cleanJsxText(p.node.value);
       if (!/\p{L}/u.test(s)) return;
       words.add(p, s.trim());
@@ -348,6 +413,14 @@ function convertFile(src, manifest) {
       const e = p.node.expression;
       if (!p.parentPath.isJSXElement() && !p.parentPath.isJSXFragment()) return;
       if (t.isJSXEmptyExpression(e) || t.isArrowFunctionExpression(e) || t.isFunctionExpression(e)) return;
+      // A <style>'s CSS: never words (in the editor <T/> marked it with a span, which a <style> ignores: its
+      // animations stopped there); its animations named as the library's CSS names them, its colours the owner's.
+      if (inCode(p)) {
+        if (p.parentPath.node.openingElement.name.name !== "style" || (t.isCallExpression(e) && t.isIdentifier(e.callee, { name: RT.cv }))) return;
+        renameKeyframes(e);
+        p.node.expression = cvCall(e);
+        return;
+      }
       if (t.isJSXElement(e) || t.isJSXFragment(e)) return;
       // A child shown on the page: <T s={…}/> (returns it as it is, or the owner's words for it). In an SVG text it
       // says so (svg): marked in the editor by a tspan, as a span there shows nothing.
@@ -453,7 +526,7 @@ function convertFile(src, manifest) {
 
   const out = outPath(src);
   const runtime = path.relative(path.dirname(out), path.join(OUT, "runtime")).split(path.sep).join("/");
-  const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs", usesCanvas && "canvasText", usesCanvas && "canvasMeasure", usesIn && "lxIn", usesSpell && "spell"].filter(Boolean);
+  const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs", usesCanvas && "canvasText", usesCanvas && "canvasMeasure", usesIn && "lxIn", usesSpell && "spell", usesPaint && "paint", usesGl && "glsl", usesGl && "glNum"].filter(Boolean);
   if (names.length) ast.program.body.unshift(t.importDeclaration(names.map((n) => t.importSpecifier(t.identifier(RT[n]), t.identifier(n))), t.stringLiteral(runtime.startsWith(".") ? runtime : `./${runtime}`)));
   const body = generate(ast, { retainLines: false, jsescOption: { minimal: true } }, code).code;
   fs.mkdirSync(path.dirname(out), { recursive: true });

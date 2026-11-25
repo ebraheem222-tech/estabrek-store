@@ -36,6 +36,16 @@ const input = `@import "tailwindcss";\n${[...new Set(own)].join("\n")}`;
 
 const KF = new RegExp(`(^|[^\\w-])(${KEYFRAMES.map((k) => k.replace(/-/g, "\\-")).join("|")})(?![\\w-])`, "g");
 const HEX = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+/** A colour written rgb()/rgba() (a shadow's rgba(124, 58, 237, 0.5)): the owner's colour for its hex, its alpha kept. */
+const RGB = /rgba?\(\s*(\d{1,3})(?:\s*,\s*|\s+)(\d{1,3})(?:\s*,\s*|\s+)(\d{1,3})\s*(?:(?:,|\/)\s*([\d.]+%?)\s*)?\)/g;
+const hex2 = (n) => Math.max(0, Math.min(255, Number(n))).toString(16).padStart(2, "0");
+const rgbVar = (v) => v.replace(RGB, (m, r, g, b, a) => {
+  if ([r, g, b].some((x) => Number(x) > 255)) return m;
+  const k = hex2(r) + hex2(g) + hex2(b);
+  if (a === undefined) return `var(--lx-${k}, ${m})`;
+  const alpha = a.endsWith("%") ? Number(a.slice(0, -1)) / 100 : Number(a);
+  return `color-mix(in srgb, var(--lx-${k}, #${k}) ${Math.round(alpha * 1000) / 10}%, transparent)`;
+});
 /** A size of words of its own (not its parent's: no %, no em, no keyword): the owner's size multiplies it. */
 const ownSize = (v) => !/%|\d(\.\d+)?em\b|\b(inherit|initial|unset|revert|smaller|larger|medium|small|large)\b|--lx-ts/.test(v) && /\d(\.\d+)?(px|rem|vw|vh|vmin|vmax|svh|dvh|lvh|cqw|cqi|pt)\b|var\(--text-/.test(v);
 const hexKey = (h) => {
@@ -110,6 +120,7 @@ const shopRules = (scope, part, page = ".lx-scope") => ({
       }
       if (/^(animation|animation-name)$/.test(d.prop) || d.prop.startsWith("--animate")) d.value = d.value.replace(KF, (_m, pre, name) => `${pre}lx-${name}`);
       if (HEX.test(d.value) && !/url\(/.test(d.value)) d.value = d.value.replace(HEX, (h) => `var(--lx-${hexKey(h)}, ${h})`);
+      if (/rgba?\(/.test(d.value) && !/url\(/.test(d.value)) d.value = rgbVar(d.value);
       if (d.prop === "font-size" && ownSize(d.value)) d.value = `calc(${d.value} * var(--lx-ts, 1))`;
       HEX.lastIndex = 0;
     });

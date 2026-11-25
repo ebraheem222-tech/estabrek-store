@@ -7,8 +7,8 @@ import { expect, test, type Page } from "@playwright/test";
 const API = `http://127.0.0.1:${process.env.CATALOG_PORT || 4100}`;
 const EDITOR = `http://127.0.0.1:${process.env.ADMIN_PORT || 5178}/tests/fixtures/editor-controls.html?lang=en&editingRegression`;
 
-async function showPieces(page: Page, nodes: Array<{ id: string; item: string; words: Record<string, { en: string }> }>) {
-  await page.request.post(`${API}/__test/library-page`, { data: { nodes: nodes.map(({ id, item, words }) => ({ id, type: "lib", props: { item, words } })) } });
+async function showPieces(page: Page, nodes: Array<{ id: string; item: string; words: Record<string, { en: string }>; colours?: Record<string, string> }>) {
+  await page.request.post(`${API}/__test/library-page`, { data: { nodes: nodes.map(({ id, item, words, colours }) => ({ id, type: "lib", props: { item, words, ...(colours ? { colours } : {}) } })) } });
   await page.request.post("/api/revalidate", { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["cms", "cms:pages"] } });
   await page.goto("/library-demo");
   for (const n of nodes) await expect(page.locator(`[data-lib="${n.item}"]`)).toHaveAttribute("data-lib-ready", "", { timeout: 90_000 });
@@ -43,6 +43,44 @@ test("letters that move one by one, a word typed out and an SVG picture's labels
   const git = page.locator('[data-lib="hero-git-graph"] svg text').filter({ hasText: "feat: samoray" });
   await expect(git).toHaveCount(1);
   await expect(page.locator('[data-lib="hero-git-graph"] svg text').filter({ hasText: "feat: auth" })).toHaveCount(0);
+});
+
+// The owner's colours (2026-11-25, "colours don't change either"): the page's CSS followed them, what a canvas or a
+// shader paints didn't (runtime.tsx paint, glsl), nor an rgba() of the same colour (build-css.mjs).
+test("colours: what a canvas paints, a shader's colours and an rgba() shadow follow the owner's colours", async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shaders: string[] };
+    w.__shaders = [];
+    const keep = WebGLRenderingContext.prototype.shaderSource;
+    WebGLRenderingContext.prototype.shaderSource = function (sh: WebGLShader, src: string) {
+      w.__shaders.push(String(src));
+      return keep.call(this, sh, src);
+    };
+  });
+  await showPieces(page, [
+    // Particle Text paints rgba(5, 5, 12, 0.35) over its whole canvas every frame: its background, #05050c.
+    { id: "c-dots", item: "premium-particle-text", words: {}, colours: { "05050c": "#1e3a8a" } },
+    // The aurora's shader mixes vec3(0.42, 0.14, 0.95): #6b24f2 in the piece's colours.
+    { id: "c-aurora", item: "premium-aurora", words: {}, colours: { "6b24f2": "#ff00ff" } },
+    // A phone's shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]: black, #000000.
+    { id: "c-story", item: "premium-scroll-story", words: {}, colours: { "000000": "#ff0000" } },
+  ]);
+  // The canvas's corner, where only the trail is painted: the owner's navy, not the library's near black.
+  const dots = page.locator('[data-lib="premium-particle-text"] canvas').first();
+  await dots.scrollIntoViewIfNeeded();
+  await expect.poll(async () => {
+    const [r, , b] = await dots.evaluate((c: HTMLCanvasElement) => Array.from(c.getContext("2d")!.getImageData(4, 4, 1, 1).data));
+    return b > 90 && r < 60;
+  }, { timeout: 20_000 }).toBe(true);
+  // The shader was handed the owner's colour in place of the library's.
+  await page.locator('[data-lib="premium-aurora"]').scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __shaders: string[] }).__shaders.join("\n")), { timeout: 20_000 }).toContain("vec3(1.0000, 0.0000, 1.0000)");
+  expect(await page.evaluate(() => (window as unknown as { __shaders: string[] }).__shaders.join("\n"))).not.toContain("vec3(0.42, 0.14, 0.95)");
+  // The rgba() shadow: red at its own 80%.
+  const shadow = await page.locator('[data-lib="premium-scroll-story"] [class*="rgba(0,0,0,0.8)"]').first().evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(shadow).toMatch(/255, 0, 0, 0\.8|srgb 1 0 0 \/ 0\.8/);
 });
 
 test("from the editor: letters, an SVG label and a canvas's words written over; a thin line's ring hugs it", async ({ page }) => {
