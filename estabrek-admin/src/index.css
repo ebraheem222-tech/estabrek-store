@@ -3,6 +3,14 @@ layer(base);
 
 @import 'tailwindcss';
 
+/* The shop's files the admin uses as its own (one copy for both): their class names too. */
+@source "../../estabrek-storefront/src/cms/nav";
+@source "../../estabrek-storefront/src/cms/themes/templates/{dark,gradient,light,luxury,modern}.ts";
+@source "../../estabrek-storefront/src/cms/effects/loadingAnimations.ts";
+@source "../../estabrek-storefront/src/cms/style/{cursorStyles,searchStyles}.ts";
+@source "../../estabrek-storefront/src/theme/presets.ts";
+@source "../../estabrek-storefront/src/theme/cursorTheme.ts";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

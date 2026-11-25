@@ -1,4 +1,4 @@
-import { generateThemeCssVars, getThemePreset } from "./presets";
+import { generateThemeCssVars, getThemePreset } from "../../../estabrek-storefront/src/theme/presets";
 
 export type AdminThemeConfig = {
   presetId?: string;

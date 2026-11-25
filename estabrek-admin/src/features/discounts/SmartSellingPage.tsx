@@ -14,7 +14,7 @@ import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { listCategories } from "../../api/catalog.api";
-import { THEME_PRESETS } from "../../theme/presets";
+import { THEME_PRESETS } from "../../../../estabrek-storefront/src/theme/presets";
 import * as SellingAPI from "../../api/selling.api";
 import type { Campaign, RuleName, RuleSettings, Suggestion, SuggestionsPage } from "../../api/selling.api";
 import { NumberInput, Segmented, Toggle } from "../system/cacheParts";

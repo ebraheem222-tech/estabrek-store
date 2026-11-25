@@ -19,7 +19,7 @@ vi.mock("../hooks/useAuth", () => ({
 }));
 vi.mock("../hooks/useSettings", () => ({ useSettings: () => ({ data: { header } }) }));
 vi.mock("../theme/adminTheme", () => ({ applyAdminTheme: vi.fn() }));
-vi.mock("../theme/cursorTheme", () => ({ applyCursorTheme: vi.fn() }));
+vi.mock("../../../estabrek-storefront/src/theme/cursorTheme", () => ({ applyCursorTheme: vi.fn() }));
 vi.mock("../theme/buttonTheme", () => ({ applyButtonTheme: vi.fn(), clearButtonTheme: vi.fn() }));
 const updateSettings = vi.fn(async (_body: unknown) => ({}));
 vi.mock("../api/settings.api", () => ({ getSettings: vi.fn(async () => ({ header })), updateSettings: (body: unknown) => updateSettings(body) }));
