@@ -16,6 +16,12 @@ async function show(page: Page, nodes: unknown[]) {
 const box = (page: Page, id: string) => page.locator(`[data-tree-node="${id}"] [data-pt-gl]`).first();
 /** Brought to the middle of the window (scrolling "if needed" leaves a half-seen box where it is: a press at its middle missed). */
 const centre = (el: Locator) => el.evaluate((e) => e.scrollIntoView({ block: "center" }));
+/** A press at a point of the scene (0…1 of its box), as the browser hands it to the scene's canvas. */
+const press = (el: Locator, x = 0.5, y = 0.5) => el.evaluate((e, [px, py]) => {
+  const c = e.querySelector("canvas")!, r = c.getBoundingClientRect(), at = { bubbles: true, clientX: r.left + r.width * px, clientY: r.top + r.height * py, pointerId: 1, isPrimary: true };
+  c.dispatchEvent(new PointerEvent("pointerdown", at));
+  c.dispatchEvent(new PointerEvent("pointerup", at));
+}, [x, y]);
 const run = <T,>(el: Locator, fn: (r: Run) => T) => el.evaluate((e, src) => new Function("r", `return (${src})(r)`)((e as HTMLElement & { __glRun: Run }).__glRun), fn.toString()) as Promise<T>;
 
 test.afterAll(async ({ request }) => {
@@ -59,8 +65,7 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   await page.waitForTimeout(2500);
   const middle = await run(ball, (r) => r.near(0.5, 0.5, 0.15));
   expect(middle).toBeGreaterThan(0.1);
-  const bb = (await ball.boundingBox())!;
-  await page.mouse.click(bb.x + bb.width * 0.5, bb.y + bb.height * 0.5);
+  await press(ball);
   await expect.poll(() => run(ball, (r) => r.near(0.5, 0.5, 0.15)), { timeout: 5_000, intervals: [50] }).toBeLessThan(middle * 0.5);
   await expect.poll(() => run(ball, (r) => r.near(0.5, 0.5, 0.15)), { timeout: 15_000 }).toBeGreaterThan(middle * 0.85);
 
@@ -70,8 +75,7 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   await expect(morph).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   await page.waitForTimeout(2500);
   const cloud = await run(morph, (r) => r.sample()[0].spread);
-  const m = (await morph.boundingBox())!;
-  await page.mouse.click(m.x + m.width * 0.5, m.y + m.height * 0.5);
+  await press(morph);
   await expect.poll(() => run(morph, (r) => r.sample()[0].spread), { timeout: 10_000 }).toBeGreaterThan(cloud * 1.4);
 });
 
