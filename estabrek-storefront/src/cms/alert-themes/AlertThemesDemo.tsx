@@ -5,8 +5,8 @@ import {
   alertThemes,
   alertCategories,
   alertComponents,
-  AlertTheme,
-  AlertType,
+  type AlertTheme,
+  type AlertType,
 } from "./AlertThemes";
 import { additionalAlertComponents } from "./AlertComponents";
 

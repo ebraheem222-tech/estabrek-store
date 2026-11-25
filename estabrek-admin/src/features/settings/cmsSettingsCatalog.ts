@@ -7,7 +7,7 @@ import {
 import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../../../estabrek-storefront/src/cms/effects/loadingAnimations";
 import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../../../estabrek-storefront/src/cms/style/searchStyles";
 import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../../../estabrek-storefront/src/cms/style/cursorStyles";
-import { alertThemes, getAlertTheme } from "../../cms/alert-themes";
+import { alertThemes, getAlertTheme } from "../../../../estabrek-storefront/src/cms/alert-themes";
 import {
   buttonThemes,
   BUTTON_THEME_CATEGORY_LABELS_AR,

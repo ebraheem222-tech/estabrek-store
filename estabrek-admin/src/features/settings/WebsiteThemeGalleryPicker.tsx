@@ -9,7 +9,7 @@ import {
 import { getWebsiteThemeById } from "../../cms/themes/websiteThemes";
 import { CurrentStoreDesign } from "../themes/CurrentStoreDesign";
 // @ts-expect-error - JS visual gallery module without TS declarations.
-import { CMS_THEME_GALLERY_THEMES } from "../../cms/themes/cms-themes-gallery.jsx";
+import { CMS_THEME_GALLERY_THEMES } from "../../../../estabrek-storefront/src/cms/themes/cms-themes-gallery.jsx";
 
 type GalleryVisualTheme = {
   id?: unknown;

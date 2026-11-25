@@ -28,6 +28,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // The shop's files the admin uses (estabrek-storefront/src/…) take the admin's own React, not the shop's copy
+    // (two Reacts in one page break hooks; Cloudflare's build has no shop packages at all).
+    dedupe: ["react", "react-dom"],
   },
   build: {
     rollupOptions: {
