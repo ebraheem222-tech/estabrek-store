@@ -181,7 +181,7 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
 
   // Pendulums started a ten-thousandth of a radian apart: one tip at first, then all over (chaos).
   const pend = box(page, "pend");
-  await pend.scrollIntoViewIfNeeded();
+  await centre(pend);
   await expect(pend).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   // A press starts them all again (it may have begun before it came into view).
   const pb = (await pend.boundingBox())!;
@@ -193,7 +193,7 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
 
   // The pointer as a small sun: particles are drawn to it.
   const sun = box(page, "sun");
-  await sun.scrollIntoViewIfNeeded();
+  await centre(sun);
   await expect(sun).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   await page.waitForTimeout(2500);
   const before = await run(sun, (r) => r.near(0.62, 0.5, 0.08));
@@ -210,7 +210,7 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
   const p2 = await still.newPage();
   await p2.goto("/en/library-demo");
   const streak = box(p2, "streak");
-  await streak.scrollIntoViewIfNeeded();
+  await centre(streak);
   await expect(streak).toHaveAttribute("data-gl-state", "still", { timeout: 60_000 });
   const lit = await streak.evaluate(async (e) => {
     const c = e.querySelector("canvas") as HTMLCanvasElement;
