@@ -1,12 +1,12 @@
-import { ALL_NAV_TEMPLATES, NAV_CATEGORY_LABELS_AR, getNavTemplateById } from "../../cms/nav/navTemplates";
+import { ALL_NAV_TEMPLATES, NAV_CATEGORY_LABELS_AR, getNavTemplateById } from "../../../../estabrek-storefront/src/cms/nav/navTemplates";
 import {
   ALL_WEBSITE_THEMES,
   WEBSITE_THEME_CATEGORY_LABELS_AR,
   getWebsiteThemeById,
 } from "../../cms/themes/websiteThemes";
-import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
-import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
-import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../cms/style/cursorStyles";
+import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../../../estabrek-storefront/src/cms/effects/loadingAnimations";
+import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../../../estabrek-storefront/src/cms/style/searchStyles";
+import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../../../estabrek-storefront/src/cms/style/cursorStyles";
 import { alertThemes, getAlertTheme } from "../../cms/alert-themes";
 import {
   buttonThemes,

@@ -5,7 +5,7 @@ import App from "./App.tsx";
 import "./index.css";
 import "./App.css";
 import "./theme/skins.css";
-import "./cms/effects/effects.css";
+import "../../estabrek-storefront/src/cms/effects/effects.css";
 // The admin's language and direction before anything renders (src/lib/lang.ts).
 import "./lib/lang";
 import { queryClient } from "./lib/queryClient";

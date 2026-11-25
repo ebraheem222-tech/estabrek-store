@@ -1,4 +1,4 @@
-import type { WebsiteThemeCategory } from "./types";
+import type { WebsiteThemeCategory } from "../../../../estabrek-storefront/src/cms/themes/types";
 // @ts-expect-error - JS visual gallery module without TS declarations.
 import { CMS_THEME_GALLERY_THEMES } from "./cms-themes-gallery.jsx";
 

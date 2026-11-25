@@ -14,7 +14,7 @@ import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { env } from "../../config/env";
-import { THEME_PRESETS } from "../../theme/presets";
+import { THEME_PRESETS } from "../../../../estabrek-storefront/src/theme/presets";
 import * as ScheduleAPI from "../../api/schedule.api";
 import type { PreviewLine, ScheduleInput, ScheduleKind, ScheduleOptions, ScheduledChange } from "../../api/schedule.api";
 import type { StorefrontMotion } from "../../api/cache.api";

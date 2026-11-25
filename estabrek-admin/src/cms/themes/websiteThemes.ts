@@ -1,10 +1,10 @@
-import { DARK_THEMES } from "./templates/dark";
-import { LIGHT_THEMES } from "./templates/light";
-import { LUXURY_THEMES } from "./templates/luxury";
-import { GRADIENT_THEMES } from "./templates/gradient";
-import { MODERN_THEMES } from "./templates/modern";
+import { DARK_THEMES } from "../../../../estabrek-storefront/src/cms/themes/templates/dark";
+import { LIGHT_THEMES } from "../../../../estabrek-storefront/src/cms/themes/templates/light";
+import { LUXURY_THEMES } from "../../../../estabrek-storefront/src/cms/themes/templates/luxury";
+import { GRADIENT_THEMES } from "../../../../estabrek-storefront/src/cms/themes/templates/gradient";
+import { MODERN_THEMES } from "../../../../estabrek-storefront/src/cms/themes/templates/modern";
 import { GALLERY_EXTRA_THEMES } from "./templates/galleryExtra";
-import type { WebsiteTheme, WebsiteThemeCategory } from "./types";
+import type { WebsiteTheme, WebsiteThemeCategory } from "../../../../estabrek-storefront/src/cms/themes/types";
 
 export type { WebsiteTheme, WebsiteThemeCategory };
 

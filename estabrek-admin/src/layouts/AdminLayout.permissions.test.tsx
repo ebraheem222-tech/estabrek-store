@@ -25,7 +25,7 @@ vi.mock("../theme/adminTheme", () => ({
   applyAdminTheme: vi.fn(),
 }));
 
-vi.mock("../theme/cursorTheme", () => ({
+vi.mock("../../../estabrek-storefront/src/theme/cursorTheme", () => ({
   applyCursorTheme: vi.fn(),
 }));
 

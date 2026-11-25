@@ -10,7 +10,7 @@ import { cn } from "../components/ui/cn";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Spinner } from "../components/ui/Spinner";
 import { applyAdminTheme } from "../theme/adminTheme";
-import { applyCursorTheme } from "../theme/cursorTheme";
+import { applyCursorTheme } from "../../../estabrek-storefront/src/theme/cursorTheme";
 import { applyButtonTheme, clearButtonTheme } from "../theme/buttonTheme";
 import { applySkin, useSkin } from "../theme/skin";
 import { Icons, NAV_GROUPS, type NavItem } from "./adminNav";

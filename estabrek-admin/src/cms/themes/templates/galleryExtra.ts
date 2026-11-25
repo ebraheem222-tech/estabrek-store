@@ -3,7 +3,7 @@ import {
   mapGalleryCategoryToWebsiteThemeCategory,
   type GalleryThemeSpecCategory,
 } from "../galleryThemeSpecs";
-import type { WebsiteTheme } from "../types";
+import type { WebsiteTheme } from "../../../../../estabrek-storefront/src/cms/themes/types";
 
 type ThemePalette = {
   colors: Omit<WebsiteTheme["colors"], "success" | "warning" | "error">;
