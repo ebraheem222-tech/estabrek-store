@@ -55,7 +55,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -604,6 +604,51 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
             </div>
           </div>
           {fx}
+          {after}
+        </div>
+      );
+    }
+    case "scratchCard": {
+      // A cover scratched away to a prize and its coupon code (ShopGames.tsx); the code goes to the bag by itself.
+      const W = (PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar).games;
+      const code = typeof p.coupon === "string" && /^[A-Za-z0-9_-]{2,32}$/.test(p.coupon) ? p.coupon : "";
+      const prize = say(p.prize);
+      if (!prize && !code) return null;
+      const height = typeof p.height === "number" && p.height >= 140 && p.height <= 480 ? Math.round(p.height) : 220;
+      return (
+        <div className={cls(node)} {...mark}>
+          {before}
+          {say(p.title) ? <div className="pt-game-title" data-pt-field="title">{say(p.title)}</div> : null}
+          {say(p.text) ? <p className="pt-game-text" data-pt-field="text">{say(p.text)}</p> : null}
+          <ScratchCardView
+            id={node.id} code={code} prize={prize} coverText={say(p.coverText) || W.scratch} height={height}
+            look={pick(p.look, ["silver", "gold", "brand", "pink"] as const, "silver")} cover={color(p.cover)}
+            once={p.once !== false} save={p.save !== false} words={W}
+          />
+          {after}
+        </div>
+      );
+    }
+    case "memoryGame": {
+      // Cards turned two at a time; all the pairs found (within `moves`, if set) wins the prize (ShopGames.tsx).
+      const W = (PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar).games;
+      const code = typeof p.coupon === "string" && /^[A-Za-z0-9_-]{2,32}$/.test(p.coupon) ? p.coupon : "";
+      const faces = (Array.isArray(p.faces) ? p.faces : []).slice(0, 8).map((f: unknown) => {
+        const x = f && typeof f === "object" ? (f as Record<string, unknown>) : {};
+        const src = safeSrc(x.src);
+        return src ? { src } : { icon: typeof x.icon === "string" && /^[a-z]{2,20}$/.test(x.icon) ? x.icon : "star" };
+      });
+      if (faces.length < 2) return null;
+      const moves = typeof p.moves === "number" && p.moves >= faces.length && p.moves <= 60 ? Math.round(p.moves) : 0;
+      return (
+        <div className={cls(node)} {...mark}>
+          {before}
+          {say(p.title) ? <div className="pt-game-title" data-pt-field="title">{say(p.title)}</div> : null}
+          {say(p.text) ? <p className="pt-game-text" data-pt-field="text">{say(p.text)}</p> : null}
+          <MemoryGameView
+            id={node.id} code={code} prize={say(p.prize)} faces={faces} moves={moves}
+            look={pick(p.look, ["cards", "tiles", "round"] as const, "cards")} once={p.once !== false} save={p.save !== false} words={W}
+          />
           {after}
         </div>
       );

@@ -28,6 +28,8 @@ export const TocView = early("./ProWidgets", () => import("./ProWidgets").then((
 export const ShareView = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.ShareView));
 export const ReadProgress = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.ReadProgress));
 export const HeadlineMotion = early("./ProWidgets", () => import("./ProWidgets").then((m) => m.HeadlineMotion));
+export const ScratchCardView = early("./ShopGames", () => import("./ShopGames").then((m) => m.ScratchCardView));
+export const MemoryGameView = early("./ShopGames", () => import("./ShopGames").then((m) => m.MemoryGameView));
 export const WhenWatch = early("./TreeWhen", () => import("./TreeWhen").then((m) => m.WhenWatch));
 export const StoryBar = early("./StoryBar", () => import("./StoryBar").then((m) => m.StoryBar));
 export const SpinView = early("@/components/cinematic/ProductSpin", () => import("@/components/cinematic/ProductSpin").then((m) => m.SpinView));

@@ -10,6 +10,7 @@ import { CheckoutProgress, CouponInput } from "@/components/CheckoutEnhancements
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { TermsAgree, termsMissing, useCheckoutTerms } from "@/components/TermsAgree";
 import { termsWords } from "@/lib/checkoutTerms";
+import { WON_COUPON_EVENT, forgetWonCoupon, wonCoupon } from "@/lib/wonCoupon";
 
 // Icons
 const ShoppingCartIcon = () => (
@@ -292,11 +293,27 @@ export default function CartClient(props: {
     }
   }
 
+  // A coupon won in the page (a scratch card, a memory game: lib/wonCoupon.ts) goes in with the price, by itself;
+  // one the store doesn't take is forgotten.
+  const tryWon = async (won: string) => {
+    const data = await refreshQuote(won);
+    if (!data?.coupon?.code) {
+      if (data) forgetWonCoupon(won);
+      setCouponCode("");
+    }
+  };
   useEffect(() => {
-
-    refreshQuote();
+    const won = couponCode.trim() ? null : wonCoupon();
+    if (won) void tryWon(won);
+    else refreshQuote();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(payloadItems)]);
+  useEffect(() => {
+    const on = (e: Event) => { const won = (e as CustomEvent<string>).detail; if (typeof won === "string" && !couponCode.trim()) void tryWon(won); };
+    window.addEventListener(WON_COUPON_EVENT, on);
+    return () => window.removeEventListener(WON_COUPON_EVENT, on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [couponCode, JSON.stringify(payloadItems)]);
 
   const handleApplyCoupon = async (code: string): Promise<CouponResult> => {
     const data = await refreshQuote(code);

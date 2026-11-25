@@ -20,12 +20,25 @@ const ids = () => {
 };
 
 describe("the pro widgets the editor adds", () => {
-  test.each(["toc", "flipBox", "share", "progress", "headline", "storyBar"] as NewKind[])("a new %s, in each language, saves as it is", (kind) => {
+  test.each(["toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame"] as NewKind[])("a new %s, in each language, saves as it is", (kind) => {
     for (const lang of ["ar", "en", "he"] as const) {
       const made = newElement(kind, lang, ids(), "https://res.cloudinary.com/x/image/upload/a.jpg") as Node;
       expect(made.type).toBe(kind);
       expect(issues(page(made)), `${kind} ${lang}`).toEqual([]);
     }
+  });
+
+  test("the games' coupon is a code as the owner wrote it; a memory game has 2 to 8 pairs of icons or pictures", () => {
+    const scratch = (props: Record<string, unknown>) => issues(page({ id: "g", type: "scratchCard", props: { prize: { ar: "خصم" }, ...props } }));
+    expect(scratch({ coupon: "ROSE10" })).toEqual([]);
+    expect(scratch({ coupon: "ROSE 10" })).not.toEqual([]);
+    expect(scratch({ coupon: "<b>x</b>" })).not.toEqual([]);
+    const memory = (faces: unknown[], more: Record<string, unknown> = {}) => issues(page({ id: "m", type: "memoryGame", props: { faces, ...more } }));
+    expect(memory([{ icon: "heart" }, { src: "https://res.cloudinary.com/x/image/upload/a.jpg" }], { moves: 8, coupon: "ROSE10" })).toEqual([]);
+    expect(memory([{ icon: "heart" }])).not.toEqual([]);
+    expect(memory(Array.from({ length: 9 }, () => ({ icon: "star" })))).not.toEqual([]);
+    expect(memory([{ icon: "heart" }, { icon: "nope" }])).not.toEqual([]);
+    expect(memory([{ icon: "heart" }, { src: "javascript:alert(1)" }])).not.toEqual([]);
   });
 
   test("a menu link with links of its own, made by the editor, saves", () => {

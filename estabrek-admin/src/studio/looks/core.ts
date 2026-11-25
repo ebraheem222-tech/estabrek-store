@@ -19,7 +19,7 @@ const BOXES = [
   "stack", "cell", "grid", "columns", "section", "popup", "form",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown",
   "search", "menu", "showcase", "products", "categories", "chart", "clock", "instrument", "filterGallery", "deck",
-  "collectionList", "shop", "cartItems", "cartSummary", "cartCheckout", "productDetail", "toc", "share", "storyBar",
+  "collectionList", "shop", "cartItems", "cartSummary", "cartCheckout", "productDetail", "toc", "share", "storyBar", "scratchCard", "memoryGame",
 ] as const;
 const WORDS = ["heading", "text", "button", "headline"] as const;
 /** Pictures and clips, and what's shown in a frame like one (a drawing, a 3D model, a map, a before/after). */

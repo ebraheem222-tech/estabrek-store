@@ -38,7 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "serverList", "tebexPackages", "leaderboard", "wipeCountdown", "streamers",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "toc", "flipBox", "share", "progress", "headline", "storyBar",
+  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
   "lib",
 ] as const;
@@ -97,6 +97,8 @@ const local = (max: number) =>
 
 const NO_ODD_CHARS = /^[^\s<>"'`\\]+$/;
 /** Links: a page of the shop, an anchor, https/http, mail or phone. Never javascript:/data:. */
+/** A store coupon's code, as the owner wrote it in «الخصومات» (letters, digits, - and _). */
+const COUPON_CODE = z.string().regex(/^[A-Za-z0-9_-]{2,32}$/);
 const href = z
   .string()
   .trim()
@@ -1294,6 +1296,33 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     place: z.enum(["top", "bottom"]).optional(),
     thickness: z.number().int().min(2).max(12).optional(),
     label: local(80).optional(),
+  }),
+  // A prize under a cover the shopper scratches away (a button does it from the keyboard), with a `coupon` code the
+  // bag then puts in by itself; `once`: already scratched stays revealed on the next visit.
+  scratchCard: z.object({
+    title: local(120).optional(),
+    text: local(300).optional(),
+    prize: local(120),
+    coupon: COUPON_CODE.optional(),
+    coverText: local(40).optional(),
+    look: z.enum(["silver", "gold", "brand", "pink"]).optional(),
+    cover: z.string().max(40).optional(),
+    height: z.number().int().min(140).max(480).optional(),
+    once: z.boolean().optional(),
+    save: z.boolean().optional(),
+  }),
+  // Cards turned two at a time; finding all the pairs (within `moves`, if set) wins `prize` and its `coupon` code.
+  // Each pair shows an icon of the page tree's or a picture.
+  memoryGame: z.object({
+    title: local(120).optional(),
+    text: local(300).optional(),
+    prize: local(120).optional(),
+    coupon: COUPON_CODE.optional(),
+    faces: z.array(z.union([z.object({ icon: z.enum(ICON_NAMES) }).strict(), z.object({ src }).strict()])).min(2).max(8),
+    moves: z.number().int().min(2).max(60).optional(),
+    look: z.enum(["cards", "tiles", "round"]).optional(),
+    once: z.boolean().optional(),
+    save: z.boolean().optional(),
   }),
   // The store's story circles (admin → القصص): all the live ones in the owner's order, or only `reels` (their ids);
   // each opens full screen. Round, rounded squares or tall cards, three sizes, their names under them or not.

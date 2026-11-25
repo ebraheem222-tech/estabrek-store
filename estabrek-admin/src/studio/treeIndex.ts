@@ -89,6 +89,8 @@ export const TYPE_LABEL: Record<string, () => string> = {
   progress: () => say("شريط القراءة|Reading bar|פס קריאה"),
   headline: () => say("عنوان متحرك|Moving headline|כותרת זזה"),
   storyBar: () => say("شريط القصص (ستوريز)|Story bar|פס סטוריז"),
+  scratchCard: () => say("بطاقة خدش بكوبون|Scratch card with a coupon|כרטיס גירוד עם קופון"),
+  memoryGame: () => say("لعبة ذاكرة بكوبون|Memory game with a coupon|משחק זיכרון עם קופון"),
   products: () => tr("منتجات", "Products"),
   categories: () => tr("أقسام المتجر", "Store categories"),
   form: () => tr("نموذج", "Form"),
