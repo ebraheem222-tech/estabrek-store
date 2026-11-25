@@ -15,7 +15,7 @@ import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import type { Lang } from "../lib/lang";
 import {
-  GL_BG_SHADERS, GL_CLICK, GL_COLOURING, GL_FLOWS, GL_FONTS, GL_FORMS, GL_LAYER_DEFAULT, GL_MAX_FORMS, GL_MAX_LAYERS, GL_MORPH_BY, GL_POINTER, GL_SCROLL, GL_SPRITES,
+  GL_BG_SHADERS, GL_CLICK, GL_COLOURING, GL_FLOWS, GL_FONTS, GL_FORMS, GL_LAYER_DEFAULT, GL_MAX_FORMS, GL_MAX_LAYERS, GL_MORPH_BY, GL_PICTURE_MODES, GL_POINTER, GL_SCROLL, GL_SPRITES,
   glSceneOf, isFlow, type GlShape,
 } from "../../../estabrek-storefront/src/pageTree/glScene";
 import { startGl, type Rgb } from "../../../estabrek-storefront/src/pageTree/glEngine";
@@ -66,6 +66,15 @@ const POINTER_NAMES: Record<(typeof GL_POINTER)[number], string> = { none: "ول
 const CLICK_NAMES: Record<(typeof GL_CLICK)[number], string> = { none: "ولا شي|Nothing|כלום", burst: "بتنفجر وبترجع|Burst and come back|מתפוצצים וחוזרים", shock: "موجة صدمة|A shock wave|גל הדף", next: "الشكل اللي بعده|The next form|הצורה הבאה" };
 const SCROLL_NAMES: Record<(typeof GL_SCROLL)[number], string> = { none: "ولا شي|Nothing|כלום", spin: "بتلف|Turns|מסתובב", zoom: "بتقرّب|Comes near|מתקרב", scatter: "بتتجمّع بالنص وبتتفرّق|Gathers in the middle, scatters|מתאסף באמצע ומתפזר", rise: "بتطلع لفوق|Rises|עולה" };
 const MORPH_NAMES: Record<(typeof GL_MORPH_BY)[number], string> = { auto: "لحالها كل شوي|By itself|לבד", scroll: "مع السكرول|With the scroll|עם הגלילה", click: "بكبسة|On a press|בלחיצה", hover: "لما يمرّ الماوس|Under the pointer|מתחת לעכבר" };
+/** How words or a picture become dots (the shop's glPicture.ts). */
+const PICTURE_MODE_NAMES: Record<(typeof GL_PICTURE_MODES)[number], string> = {
+  pixels: "نقطة عكل بكسل|A dot on every pixel|נקודה על כל פיקסל",
+  edges: "خطوط حوافها (رسمة)|Its outlines (a drawing)|קווי המתאר (ציור)",
+  stipple: "تنقيط بالحبر|Ink stipple|נקודות דיו",
+  blobs: "بقع بأحجامها وألوانها|Blobs, each its size and colour|כתמים, כל אחד בגודלו ובצבעו",
+  features: "شرارات على زواياها|Sparks on its corners|ניצוצות על הפינות",
+  palette: "بألوانها الأساسية (بوستر)|In its main colours (a poster)|בצבעים העיקריים (פוסטר)",
+};
 const FONT_NAMES: Record<(typeof GL_FONTS)[number], string> = { page: "خط الصفحة|The page's font|גופן העמוד", sans: "بسيط|Plain|פשוט", serif: "كلاسيكي|Classic|קלאסי", mono: "آلة كاتبة|Typewriter|מכונת כתיבה", display: "عريض|Bold display|עבה" };
 const BG_NAMES: Array<[string, string]> = [["none", "شفافة (خلفية القسم)|See-through (the section's)|שקוף (של המקטע)"], ["color", "لون|A colour|צבע"], ["gradient", "تدرّج|A gradient|מעבר צבעים"], ["radial", "ضو بالنص|A glow in the middle|זוהר באמצע"], ["shader", "شيدر حيّ من المكتبة|A live shader from the library|שיידר חי מהספרייה"]];
 const DEFAULT_COLOURS = ["#8b5cf6", "#22d3ee", "#f472b6"];
@@ -293,7 +302,27 @@ export function GlScenePanel({ node, mode, lang, busy, onOps }: { node: PageTree
                         <MediaLibraryModal open={picking} onClose={() => setPicking(false)} title={say("الصورة|The picture|התמונה")} onSelect={(u) => { setPicking(false); setLayer(say("الصورة|The picture|התמונה"), { image: u, colouring: "picture" }); }} />
                       </div>
                     ) : null}
-                    {shown.shapes.includes("image") ? <Range label={say("الصورة بارزة (الفاتح لقدّام)|The picture in relief (light comes forward)|התמונה בתבליט (הבהיר קדימה)")} value={shown.relief} min={0} max={1} step={0.05} busy={busy} onSave={(relief) => setLayer(say("البروز|Relief|תבליט"), { relief: relief || undefined })} testId="studio-gl-relief" /> : null}
+                    {shown.shapes.filter((f) => f === "text" || f === "image").map((f, k, all) => (
+                      <Choice
+                        key={`mode-${k}`}
+                        label={`${say("كيف بتصير نقاط|How it becomes dots|איך זה הופך לנקודות")}: ${say(GL_SHAPE_NAMES[f])}${all.length > 1 ? ` (${k + 1})` : ""}`}
+                        value={(shown.pictureModes[k] ?? "pixels") as string}
+                        busy={busy}
+                        options={GL_PICTURE_MODES.map((m) => [m, say(PICTURE_MODE_NAMES[m])])}
+                        onPick={(m) => {
+                          const modes = all.map((_, j) => (j === k ? m : shown.pictureModes[j] ?? "pixels"));
+                          while (modes.length && modes[modes.length - 1] === "pixels") modes.pop();
+                          setLayer(say("طريقة النقاط|The way of the dots|דרך הנקודות"), { pictureModes: modes.length ? modes : undefined });
+                        }}
+                        testId="studio-gl-picture-mode"
+                      />
+                    ))}
+                    {shown.shapes.includes("text") || shown.shapes.includes("image") ? (
+                      <>
+                        <Range label={say("النقاط بتتحرك على خطوطها (ضربات فرشاة)|The dots move along its lines (brush strokes)|הנקודות זזות לאורך הקווים (משיכות מכחול)")} value={shown.strokes} min={0} max={1} step={0.05} busy={busy} onSave={(strokes) => setLayer(say("ضربات الفرشاة|Brush strokes|משיכות מכחול"), { strokes: strokes || undefined })} testId="studio-gl-strokes" />
+                        <Range label={say("بارزة (الفاتح لقدّام)|In relief (light comes forward)|בתבליט (הבהיר קדימה)")} value={shown.relief} min={0} max={1} step={0.05} busy={busy} onSave={(relief) => setLayer(say("البروز|Relief|תבליט"), { relief: relief || undefined })} testId="studio-gl-relief" />
+                      </>
+                    ) : null}
                     <Range label={say("كم جزيء|How many particles|כמה חלקיקים")} value={shown.count} min={50} max={30000} step={50} busy={busy} onSave={(count) => setLayer(say("العدد|How many|כמה"), { count })} testId="studio-gl-count" />
                     <Range label={say("حجم الجزيء|Particle size|גודל החלקיק")} value={shown.size} min={0.5} max={24} step={0.1} unit="px" busy={busy} onSave={(size) => setLayer(say("الحجم|Size|גודל"), { size })} testId="studio-gl-size" />
                     <Range label={say("قديش بتختلف أحجامها|How much their sizes differ|כמה הגדלים שונים")} value={shown.vary} min={0} max={1} step={0.05} busy={busy} onSave={(vary) => setLayer(say("اختلاف الأحجام|Sizes differ|גדלים שונים"), { vary })} testId="studio-gl-vary" />
