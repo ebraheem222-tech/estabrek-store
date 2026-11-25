@@ -224,6 +224,8 @@ export const CORNER_PARTS: Record<string, readonly string[]> = {
   flipBox: [" .pt-flip-face"],
   toc: [" .pt-tc-boxed"],
   share: [" .pt-shr-btn"],
+  scratchCard: [" .pt-scr-card"],
+  memoryGame: [" .pt-mem-card"],
 };
 /** A screen's corners as CSS (a number of px, or a variable of the design), if it sets any. */
 const radiusCss = (s: ScreenStyle | undefined) => (s ? tokenVar(s.radius, "radii") ?? (num(s.radius, 0, 999) !== undefined ? `${s.radius}px` : undefined) : undefined);
@@ -1274,6 +1276,26 @@ export const BASE_CSS = [
   ".pt-tc-boxed{padding:18px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}.pt-tc-boxed .pt-tc-list a[aria-current]{background:var(--accent-soft,rgba(0,0,0,.05))}",
   "[id^=pt-h-]{scroll-margin-top:96px}",
   // A flip card: two faces, the back coming round (or sliding over, fading in, growing) under the mouse, a tap or the keyboard.
+  // The shop's games (ShopGames.tsx): a scratch card and a memory game that give a coupon.
+  ".pt-game-title{font-weight:700;font-size:1.15em;margin:0 0 4px}.pt-game-text{margin:0 0 12px;opacity:.8}",
+  ".pt-scr{display:grid;gap:10px;justify-items:center}.pt-scr-card{position:relative;width:min(100%,420px);height:var(--pt-scr-h,220px);border-radius:18px;overflow:hidden;background:var(--surface,#fff);color:var(--text,#222);box-shadow:0 10px 30px #0002;isolation:isolate}",
+  ".pt-scr-under{position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center}",
+  ".pt-scr-cover,.pt-scr-canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit}.pt-scr-canvas{touch-action:none;cursor:grab}.pt-scr-card[data-painted] .pt-scr-cover{display:none}.pt-scr-canvas:active{cursor:grabbing}",
+  ".pt-scr-cover{display:grid;place-items:center;font-weight:600;color:#0009;background:linear-gradient(135deg,#d9dde3,#eef1f5 50%,#b6bcc6)}.pt-scr-gold{background:linear-gradient(135deg,#f3d98b,#fff0c2 50%,#c9a243)}.pt-scr-pink{background:linear-gradient(135deg,#f6c7d8,#ffe4ee 50%,#d98aa8)}.pt-scr-brand{background:var(--accent,#9b5de5);color:#fffc}",
+  ".pt-game-reveal{border:0;border-radius:999px;padding:8px 16px;font:inherit;font-size:.9em;cursor:pointer;background:color-mix(in srgb,var(--accent,#9b5de5) 14%,transparent);color:inherit}.pt-game-reveal:focus-visible{outline:2px solid var(--accent,#9b5de5);outline-offset:2px}",
+  ".pt-game-prize{display:grid;gap:8px;justify-items:center;text-align:center;animation:pt-game-in .5s cubic-bezier(.2,.8,.2,1)}.pt-game-won{font-weight:800;font-size:1.3em;color:var(--accent,#9b5de5)}.pt-game-what{font-size:1.1em;font-weight:600}",
+  ".pt-game-code{display:inline-flex;align-items:center;gap:10px;border:1.5px dashed color-mix(in srgb,var(--accent,#9b5de5) 60%,transparent);border-radius:12px;padding:8px 14px;background:color-mix(in srgb,var(--accent,#9b5de5) 8%,transparent);color:inherit;font:inherit;cursor:pointer}.pt-game-code b{letter-spacing:.08em;font-size:1.15em}.pt-game-code-label,.pt-game-copy{font-size:.75em;opacity:.7}.pt-game-note{margin:0;font-size:.85em;opacity:.75}",
+  "@keyframes pt-game-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}",
+  ".pt-mem{display:grid;gap:12px}.pt-mem-bar{display:flex;justify-content:space-between;gap:12px;font-size:.9em;opacity:.85}.pt-mem-grid{display:grid;grid-template-columns:repeat(var(--pt-mem-cols,4),minmax(0,1fr));gap:10px;max-width:520px;width:100%;margin-inline:auto}",
+  ".pt-mem-card{aspect-ratio:3/4;border:0;padding:0;background:none;cursor:pointer;perspective:700px;border-radius:14px}.pt-mem-card:focus-visible{outline:2px solid var(--accent,#9b5de5);outline-offset:3px}.pt-mem-card:disabled{cursor:default}",
+  ".pt-mem-inner{position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.2,.8,.2,1)}.pt-mem-card[data-up=true] .pt-mem-inner{transform:rotateY(180deg)}",
+  ".pt-mem-back,.pt-mem-front{position:absolute;inset:0;display:grid;place-items:center;border-radius:inherit;backface-visibility:hidden;border-radius:14px}",
+  ".pt-mem-back{background:linear-gradient(135deg,var(--accent,#9b5de5),color-mix(in srgb,var(--accent,#9b5de5) 55%,#000));box-shadow:inset 0 0 0 3px #fff3}",
+  ".pt-mem-front{transform:rotateY(180deg);background:var(--surface,#fff);color:var(--accent,#9b5de5);box-shadow:0 4px 14px #0002;font-size:2em}.pt-mem-front img{width:100%;height:100%;object-fit:cover;border-radius:inherit}.pt-mem-front svg{width:44%;height:44%}",
+  ".pt-mem-card[data-up=true]:disabled .pt-mem-front{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#9b5de5) 50%,transparent)}",
+  ".pt-mem-tiles .pt-mem-card,.pt-mem-tiles .pt-mem-back,.pt-mem-tiles .pt-mem-front{border-radius:6px}.pt-mem-tiles .pt-mem-card{aspect-ratio:1}.pt-mem-round .pt-mem-card{aspect-ratio:1;border-radius:50%}.pt-mem-round .pt-mem-back,.pt-mem-round .pt-mem-front{border-radius:50%}",
+  ".pt-mem-lost{display:grid;gap:8px;justify-items:center;text-align:center}.pt-mem-lost p{margin:0}",
+  "@media (prefers-reduced-motion:reduce){.pt-mem-inner{transition:none}.pt-game-prize{animation:none}}",
   ".pt-flipBox{position:relative;height:var(--pt-flip-h,300px);perspective:1200px;border-radius:18px;outline:none}.pt-flipBox:focus-visible{outline:2px solid var(--accent);outline-offset:3px}",
   ".pt-flip-inner{position:relative;width:100%;height:100%;border-radius:inherit;transition:transform .7s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d}",
   ".pt-flip-face{position:absolute;inset:0;isolation:isolate;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;border-radius:inherit;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}",

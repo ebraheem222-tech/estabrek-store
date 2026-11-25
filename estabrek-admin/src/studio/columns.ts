@@ -209,6 +209,8 @@ function makeElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTree
     case "progress":
     case "headline":
     case "storyBar":
+    case "scratchCard":
+    case "memoryGame":
       return newBlock(kind, lang, id, src);
     case "popup":
       return newPopup(lang, id);

@@ -96,6 +96,8 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["stack", () => tr("حاوية للعناصر", "Container for objects"), "▣"],
       ["products", () => typeLabel("products"), "▦"],
       ["storyBar", () => typeLabel("storyBar"), "◎"],
+      ["scratchCard", () => typeLabel("scratchCard"), "🎟"],
+      ["memoryGame", () => typeLabel("memoryGame"), "🃏"],
       ["categories", () => typeLabel("categories"), "▤"],
       ["form", () => typeLabel("form"), "✉"],
     ],

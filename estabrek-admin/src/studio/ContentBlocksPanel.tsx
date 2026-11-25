@@ -4,7 +4,7 @@
  * removed and moved up or down, and each item's words (in the language shown), links,
  * pictures, stars and switches are changed. One change = one step back with undo.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { COUNTDOWN_WORD_FIELDS, defaultPartWords } from "../../../shared/partWords";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
@@ -328,6 +328,71 @@ const SHARE_NETS: Array<[string, () => string]> = [
 ];
 const FLIP_ICONS: Array<[string, string]> = [["", "—"], ["sparkle", "✦"], ["heart", "♥"], ["star", "★"], ["gift", "🎁"], ["truck", "🚚"], ["shield", "🛡"], ["check", "✓"], ["bag", "👜"], ["return", "↺"], ["phone", "☎"], ["mail", "✉"], ["whatsapp", "💬"]];
 
+const GAME_ICONS = FLIP_ICONS.filter(([v]) => v);
+const CODE = /^[A-Za-z0-9_-]{2,32}$/;
+
+/** The scratch card's and the memory game's settings: the prize, the owner's coupon code, and how it plays. */
+function GamePanel({ kind, p, lang, busy, set, words, toggle }: {
+  kind: "scratchCard" | "memoryGame"; p: Item; lang: Lang; busy: boolean;
+  set: (label: string, patch: Item) => void; words: (key: string, label: string, multiline?: boolean) => ReactNode; toggle: (key: string, label: string, defaultValue?: boolean) => ReactNode;
+}) {
+  const faces = (Array.isArray(p.faces) ? p.faces : []) as Array<{ icon?: string; src?: string }>;
+  const setFaces = (next: typeof faces) => set(say("الكروت|The cards|הקלפים"), { faces: next });
+  void lang;
+  return (
+    <>
+      {words("title", say("العنوان (اختياري)|Title (optional)|כותרת (רשות)"))}
+      {words("text", say("الكلام (اختياري)|Words (optional)|מילים (רשות)"), true)}
+      {words("prize", say("الجائزة|The prize|הפרס"))}
+      <Field
+        label={say("كود الكوبون (من «الخصومات»)|Coupon code (from “Discounts”)|קוד הקופון (מ„הנחות”)")} value={typeof p.coupon === "string" ? p.coupon : ""} testId="block-game-code"
+        onSave={(t) => { const v = t.trim(); if (!v) set(say("الكود|The code|הקוד"), { coupon: undefined }); else if (CODE.test(v)) set(say("الكود|The code|הקוד"), { coupon: v }); }}
+      />
+      <p className="text-[10px] leading-4 text-white/35">{say("الكود بيبيّن بالصفحة لما يربح الزبون، وبينحط بالحقيبة لحاله. استعملي كوبون إله حد استعمال.|The code shows on the page when the shopper wins and goes in their bag by itself. Use a coupon with a usage limit.|הקוד מופיע בעמוד כשהלקוח זוכה ונכנס לסל לבד. השתמשו בקופון עם הגבלת שימוש.")}</p>
+      {kind === "scratchCard" ? (
+        <>
+          {words("coverText", say("الكلام على الغطاء (فاضي = اخدشي هون)|Words on the cover (empty = Scratch here)|מילים על הכיסוי (ריק = גרדו כאן)"))}
+          <Choice label={say("الغطاء|The cover|הכיסוי")} value={String(p.look ?? "silver")} busy={busy} testId="block-game-look"
+            options={[["silver", say("فضي|Silver|כסף")], ["gold", say("دهبي|Gold|זהב")], ["pink", say("زهري|Pink|ורוד")], ["brand", say("لون المتجر|The store's colour|צבע החנות")]]}
+            onPick={(v) => set(say("الغطاء|The cover|הכיסוי"), { look: v })} />
+          <Range label={say("الطول|Height|גובה")} min={140} max={480} unit="px" busy={busy} value={typeof p.height === "number" ? p.height : 220} onSave={(v) => set(say("الطول|Height|גובה"), { height: v })} testId="block-game-height" />
+        </>
+      ) : (
+        <>
+          <div className="text-[11px] text-white/55">{say("الأزواج (2 لـ 8)|The pairs (2 to 8)|הזוגות (2 עד 8)")}</div>
+          <div className="flex flex-wrap gap-1" data-testid="block-game-faces">
+            {faces.map((f, i) => (
+              <span key={i} className="flex items-center gap-1 rounded-lg bg-white/6 px-1.5 py-1 text-xs">
+                {f.src ? <img src={f.src} alt="" className="h-5 w-5 rounded object-cover" /> : (
+                  <select className="bg-transparent text-xs" disabled={busy} value={f.icon ?? "star"} aria-label={say("الأيقونة|Icon|אייקון")}
+                    onChange={(e) => setFaces(faces.map((x, j) => (j === i ? { icon: e.target.value } : x)))}>
+                    {GAME_ICONS.map(([v, mark]) => <option key={v} value={v}>{mark}</option>)}
+                  </select>
+                )}
+                <button type="button" className="text-red-300 disabled:opacity-40" disabled={busy || faces.length <= 2} onClick={() => setFaces(faces.filter((_, j) => j !== i))} aria-label={say("شيلي هالزوج|Remove this pair|הסרת הזוג")}>×</button>
+              </span>
+            ))}
+            {faces.length < 8 ? (
+              <button type="button" className={btn} disabled={busy} data-testid="block-game-add"
+                onClick={() => setFaces([...faces, { icon: GAME_ICONS.map(([v]) => v).find((v) => !faces.some((f) => f.icon === v)) ?? "star" }])}>
+                {say("+ زوج|+ A pair|+ זוג")}
+              </button>
+            ) : null}
+          </div>
+          {faces.length < 8 ? <PictureField label={say("زوج بصورة|A pair with a picture|זוג עם תמונה")} value="" busy={busy} onPick={(u) => setFaces([...faces, { src: u }])} testId="block-game-picture" /> : null}
+          <Range label={say("أكتر حركات (0 = بلا حد)|Most moves (0 = no limit)|הכי הרבה מהלכים (0 = בלי הגבלה)")} min={0} max={60} unit="" busy={busy} value={typeof p.moves === "number" ? p.moves : 0}
+            onSave={(v) => set(say("الحركات|Moves|מהלכים"), { moves: v >= faces.length ? v : undefined })} testId="block-game-moves" />
+          <Choice label={tr("الشكل", "Look")} value={String(p.look ?? "cards")} busy={busy} testId="block-game-look"
+            options={[["cards", say("كروت|Cards|קלפים")], ["tiles", say("مربعات|Tiles|אריחים")], ["round", say("دواير|Round|עגולים")]]}
+            onPick={(v) => set(tr("الشكل", "Look"), { look: v })} />
+        </>
+      )}
+      {toggle("once", say("مرة وحدة لكل زبون (بيضل رابح بزيارته الجاية)|Once per shopper (stays won on the next visit)|פעם אחת ללקוח (נשאר זוכה בביקור הבא)"), true)}
+      {toggle("save", say("الكود بينحط بالحقيبة لحاله|The code goes in the bag by itself|הקוד נכנס לסל לבד"), true)}
+    </>
+  );
+}
+
 export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
   if (node.type === "schedule" || node.type === "comparison") return <ReferenceDataPanel node={node} lang={lang} busy={busy} onOps={onOps} />;
   const p = (node.props ?? {}) as Item;
@@ -511,6 +576,7 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           <p className="text-[10px] leading-4 text-white/35">{say("بيجمع عناوين الصفحة لحاله، واللي عم ينقرا بيضوي.|It gathers the page's headings by itself, and the one being read lights up.|הוא אוסף את כותרות העמוד לבד, וזו שנקראת מוארת.")}</p>
         </>
       ) : null}
+      {kind === "scratchCard" || kind === "memoryGame" ? <GamePanel kind={kind} p={p} lang={lang} busy={busy} set={set} words={words} toggle={toggle} /> : null}
       {kind === "flipBox" ? (
         <>
           <div className="text-[11px] font-medium text-white/60">{say("الوجه|The front|הצד הקדמי")}</div>

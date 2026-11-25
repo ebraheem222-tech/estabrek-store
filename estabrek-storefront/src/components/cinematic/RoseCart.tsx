@@ -25,6 +25,7 @@ import { localizeCartLine } from "@/lib/localize";
 import { toneAr } from "@/lib/words";
 import { blendColours, isHex } from "@/lib/colourMix";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { WON_COUPON_EVENT, forgetWonCoupon, wonCoupon } from "@/lib/wonCoupon";
 
 type Line = {
   variantId: string;
@@ -298,7 +299,28 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       setLoading(false);
     }
   }
-  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(payload)]);
+  // A coupon won in the page (a scratch card, a memory game: lib/wonCoupon.ts) goes in with the price, by itself;
+  // one the store doesn't take is forgotten.
+  const tryWon = async (won: string) => {
+    const data = await refresh(won);
+    if (data?.coupon?.code) {
+      setCoupon(won);
+      setCouponOpen(true);
+      setCouponMsg(tr(lang, `تم تطبيق الكوبون ${data.coupon.code}`, "Coupon {0} applied", [data.coupon.code]));
+    } else if (data) forgetWonCoupon(won);
+  };
+  useEffect(() => {
+    const won = coupon.trim() ? null : wonCoupon();
+    if (won) void tryWon(won);
+    else void refresh();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [JSON.stringify(payload)]);
+  useEffect(() => {
+    const on = (e: Event) => { const won = (e as CustomEvent<string>).detail; if (typeof won === "string" && !coupon.trim()) void tryWon(won); };
+    window.addEventListener(WON_COUPON_EVENT, on);
+    return () => window.removeEventListener(WON_COUPON_EVENT, on);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [coupon, JSON.stringify(payload)]);
 
   const remove = (variantId: string) => {
     // Razan's history: "شلتيها من الحقيبة" (only while the owner has it on).

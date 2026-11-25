@@ -49,7 +49,7 @@ const HELP: Array<[Words, string]> = [
 ];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline", "storyBar"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame"] as const;
 /** A moving headline's words, ready to change. */
 const TURNS: Words[] = [w("ناعمة", "soft", "רכים"), w("أنيقة", "elegant", "אלגנטיים"), w("لكل يوم", "for every day", "לכל יום")];
 /** Links under a menu link, ready to change. */
@@ -220,6 +220,23 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): Pa
     case "storyBar":
       // All the store's live story circles (admin → القصص), in its order.
       return { id: id("stories"), type: "storyBar", props: { look: "circles", size: "m" } };
+    case "scratchCard":
+      // The code is the owner's own coupon («الخصومات»): left empty until they write it, the prize shows without one.
+      return {
+        id: id("scratch"), type: "scratchCard",
+        props: {
+          title: one(lang, w("اخدشي واربحي", "Scratch and win", "גרדו וזכו")), prize: one(lang, w("خصم 10% على طلبك", "10% off your order", "10% הנחה על ההזמנה")),
+          look: "silver", height: 220, once: true, save: true,
+        },
+      };
+    case "memoryGame":
+      return {
+        id: id("memory"), type: "memoryGame",
+        props: {
+          title: one(lang, w("لاقي الأزواج واربحي", "Match the pairs and win", "מצאו את הזוגות וזכו")), prize: one(lang, w("خصم 10% على طلبك", "10% off your order", "10% הנחה על ההזמנה")),
+          faces: ["heart", "star", "gift", "sparkle", "bag", "truck"].map((icon) => ({ icon })), moves: 14, look: "cards", once: true, save: true,
+        },
+      };
     case "headline":
       return { id: id("headline"), type: "headline", props: { before: one(lang, w("قطع", "Pieces", "פריטים")), words: TURNS.map((t) => one(lang, t)), level: 2, mode: "rotate", effect: "slide", seconds: 2.5 } };
   }
