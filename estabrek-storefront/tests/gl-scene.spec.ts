@@ -26,7 +26,8 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await show(page, [
     scene("word", { bg: { kind: "radial" }, layers: [{ shapes: ["text"], text: { en: "HELLO" }, count: 4000, size: 2.4, wander: 0, twinkle: 0, spin: 0 }], pointer: { mode: "repel", radius: 0.3, strength: 2 }, click: "burst" }),
-    scene("morph", { bg: { kind: "color", c1: "#000000" }, layers: [{ shapes: ["sphere", "grid"], count: 3000, wander: 0, spin: 0 }], morph: { by: "click", time: 0.6 }, click: "next", pointer: { mode: "none" } }),
+    scene("burst", { bg: { kind: "color", c1: "#000000" }, layers: [{ shapes: ["ball"], count: 3000, wander: 0, spin: 0 }], pointer: { mode: "none" }, click: "burst" }),
+    scene("morph", { bg: { kind: "color", c1: "#000000" }, layers: [{ shapes: ["cloud", "grid"], count: 3000, wander: 0, spin: 0 }], morph: { by: "click", time: 0.6 }, click: "next", pointer: { mode: "none" } }),
   ]);
   const word = box(page, "word");
   await expect(word).toHaveAttribute("data-gl-state", "running", { timeout: 90_000 });
@@ -49,23 +50,27 @@ test("the owner's words in stars: they gather, flee the pointer and come back, a
   expect(await run(word, (r) => r.near(0.5, 0.5, 0.12))).toBeLessThan(before * 0.4);
   await page.mouse.move(b.x + b.width * 0.5, b.y + b.height + 300);
   await expect.poll(() => run(word, (r) => r.near(0.5, 0.5, 0.12)), { timeout: 10_000 }).toBeGreaterThan(before * 0.8);
-  // A press bursts them apart, then they gather again.
-  await page.mouse.move(b.x + b.width * 0.5, b.y + b.height * 0.5);
-  await page.mouse.down();
-  await page.mouse.up();
-  await page.mouse.move(b.x + b.width * 0.5, b.y + b.height + 300);
-  await expect.poll(() => run(word, (r) => r.sample()[0].spread), { timeout: 5_000 }).toBeGreaterThan(settled.spread * 1.25);
-  await expect.poll(() => run(word, (r) => r.sample()[0].spread), { timeout: 15_000 }).toBeLessThan(settled.spread * 1.08);
+  // A press bursts them apart from where it was, then they gather again (a ball, the pointer doing nothing else).
+  const ball = box(page, "burst");
+  await ball.scrollIntoViewIfNeeded();
+  await expect(ball).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
+  await page.waitForTimeout(2500);
+  const middle = await run(ball, (r) => r.near(0.5, 0.5, 0.15));
+  expect(middle).toBeGreaterThan(0.1);
+  const bb = (await ball.boundingBox())!;
+  await page.mouse.click(bb.x + bb.width * 0.5, bb.y + bb.height * 0.5);
+  await expect.poll(() => run(ball, (r) => r.near(0.5, 0.5, 0.15)), { timeout: 5_000, intervals: [50] }).toBeLessThan(middle * 0.5);
+  await expect.poll(() => run(ball, (r) => r.near(0.5, 0.5, 0.15)), { timeout: 15_000 }).toBeGreaterThan(middle * 0.85);
 
-  // A press takes the next form: a sphere becomes a wide grid.
+  // A press takes the next form: a small cloud becomes a wide grid.
   const morph = box(page, "morph");
   await morph.scrollIntoViewIfNeeded();
   await expect(morph).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
   await page.waitForTimeout(2500);
-  const sphere = await run(morph, (r) => r.sample()[0].spread);
+  const cloud = await run(morph, (r) => r.sample()[0].spread);
   const m = (await morph.boundingBox())!;
   await page.mouse.click(m.x + m.width * 0.5, m.y + m.height * 0.5);
-  await expect.poll(() => run(morph, (r) => r.sample()[0].spread), { timeout: 10_000 }).toBeGreaterThan(sphere * 1.3);
+  await expect.poll(() => run(morph, (r) => r.sample()[0].spread), { timeout: 10_000 }).toBeGreaterThan(cloud * 1.4);
 });
 
 test("flows with trails draw and move, a section's background keeps its words, and less motion is a still frame", async ({ page, browser }) => {
