@@ -577,7 +577,7 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           <p className="text-[10px] leading-4 text-white/35">{say("بيجمع عناوين الصفحة لحاله، واللي عم ينقرا بيضوي.|It gathers the page's headings by itself, and the one being read lights up.|הוא אוסף את כותרות העמוד לבד, וזו שנקראת מוארת.")}</p>
         </>
       ) : null}
-      {kind === "giftCard" || kind === "configurator" ? <ShopBuildPanel kind={kind} p={p} lang={lang} busy={busy} set={set} words={words} /> : null}
+      {kind === "giftCard" || kind === "configurator" || kind === "bookingCalendar" ? <ShopBuildPanel kind={kind} p={p} lang={lang} busy={busy} set={set} words={words} /> : null}
       {kind === "scratchCard" || kind === "memoryGame" ? <GamePanel kind={kind} p={p} lang={lang} busy={busy} set={set} words={words} toggle={toggle} /> : null}
       {kind === "flipBox" ? (
         <>

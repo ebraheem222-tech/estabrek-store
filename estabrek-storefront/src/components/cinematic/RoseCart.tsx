@@ -350,6 +350,10 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     : code === "COUPON_EXPIRED" ? (tr(lang, "هالكوبون خلصت مدته.", "This coupon has expired."))
     : code === "COUPON_NOT_FOUND" || code === "COUPON_INACTIVE" ? (tr(lang, "الكوبون مش صالح.", "This coupon isn't valid."))
     : null;
+  /** A booked time another order holds, or a day gone (the booking calendar). */
+  const slotMessage = (data: any) => data?.error === "SLOT_TAKEN"
+    ? tr(lang, `موعد «${data?.details?.slot ?? ""}» انحجز قبل شوي. شيليه من الحقيبة واختاري موعد تاني.`, "The time {0} was just booked; remove it from your bag and pick another.", [data?.details?.slot ?? ""])
+    : data?.error === "SLOT_PAST" ? tr(lang, `موعد «${data?.details?.slot ?? ""}» مرق. شيليه من الحقيبة.`, "The time {0} has passed; remove it from your bag.", [data?.details?.slot ?? ""]) : null;
   const eventOverMessage = (data: any) => {
     const t = data?.details?.productTitle ?? "";
     return tr(lang, `موعد «${t}» مرق، فما عاد فينا نحجزه. شيليه من الحقيبة.`, "\"{0}\" has already taken place; please remove it from your bag.", [t]);
@@ -425,6 +429,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
       if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
+      if (slotMessage(data)) throw new Error(slotMessage(data)!);
       if (couponMessage(data?.error)) throw new Error(couponMessage(data?.error)!);
       if (!res.ok) throw new Error(tr(lang, `تعذّر إرسال الطلب (${res.status})`, "Could not send the order ({0})", [res.status]));
       const orderId = data?.id ? String(data.id) : undefined;

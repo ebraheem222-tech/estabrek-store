@@ -18,6 +18,7 @@ import {
   CreateOrderRequestBody,
   QuoteBody,
   CartQuoteBody,
+  BookingSlotsQuery,
 } from "./catalog.schemas.js";
 import {
   listProducts,
@@ -28,6 +29,7 @@ import {
   createReview,
   createComment,
   submitOrderRequest,
+  takenSlots,
   quoteOrderRequest,
   quoteCart,
 } from "./catalog.service.js";
@@ -143,6 +145,16 @@ r.post("/order-requests/track", validate({ body: TrackBody }), asyncHandler(asyn
 r.post("/quote", validate({ body: QuoteBody }), asyncHandler(async (req, res) => {
   const out = await quoteOrderRequest(req.body);
   res.json(out);
+}));
+
+// The times already booked of a product (the booking calendar): only the times, never who booked them.
+r.get("/booking-slots", validate({ query: BookingSlotsQuery }), asyncHandler(async (req, res) => {
+  const q = req.query as unknown as { product: string; from: string; to: string };
+  const days = (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000;
+  if (!(days >= 0 && days <= 125)) return res.status(400).json({ error: "RANGE", message: "From a day to a later one, at most 4 months" });
+  const product = await prisma.product.findFirst({ where: { slug: q.product, isActive: true }, select: { id: true } });
+  if (!product) return res.status(404).json({ error: "NOT_FOUND" });
+  res.json({ taken: await takenSlots(prisma, product.id, q.from, q.to) });
 }));
 
 // cart quote (multi items)

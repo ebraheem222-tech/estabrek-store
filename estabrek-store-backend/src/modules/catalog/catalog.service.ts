@@ -1387,6 +1387,49 @@ export function lineKey(variantId: string, details?: LineDetail[] | null): strin
   return details?.length ? `${variantId}|${details.map((d) => `${d.label}=${d.value}`).join("|")}` : variantId;
 }
 
+/**
+ * A booked time (the booking calendar, plan 3.6c): a line's detail whose value is "YYYY-MM-DD HH:MM" (the shop
+ * writes it so in every language). One order holds a time of a product until it is turned down, cancelled or
+ * refunded.
+ */
+export const SLOT = /^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})$/;
+export const slotOf = (details?: LineDetail[] | null) => details?.find((d) => SLOT.test(d.value))?.value ?? null;
+const HOLDING = ["NEW", "CONTACTED", "ACCEPTED", "SHIPPED", "CLOSED"] as const;
+
+/** The times of a product already held by orders, between two days (inclusive). */
+export async function takenSlots(db: any, productId: string, from: string, to: string): Promise<string[]> {
+  const rows = await db.orderRequestItem.findMany({
+    where: { productId, createdAt: { gte: new Date(Date.now() - 400 * 86_400_000) }, orderRequest: { status: { in: [...HOLDING] } } },
+    select: { details: true },
+  });
+  const out = new Set<string>();
+  for (const r of rows) {
+    const slot = slotOf(Array.isArray(r.details) ? (r.details as LineDetail[]) : null);
+    if (slot && slot.slice(0, 10) >= from && slot.slice(0, 10) <= to) out.add(slot);
+  }
+  return [...out].sort();
+}
+
+/** Throws SLOT_TAKEN (409) for a time another order holds (or this order asks twice), SLOT_PAST (400) for a day gone. */
+export async function assertSlotsFree(db: any, lines: Array<{ productId: string; productTitle: string; details?: LineDetail[] | null }>) {
+  const asked = new Map<string, string[]>();
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  for (const l of lines) {
+    const slot = slotOf(l.details);
+    if (!slot) continue;
+    if (slot.slice(0, 10) < yesterday) throw httpError("SLOT_PAST", "This time has passed", 400, { slot, productTitle: l.productTitle });
+    const list = asked.get(l.productId) ?? [];
+    if (list.includes(slot)) throw httpError("SLOT_TAKEN", "This time is taken", 409, { slot, productTitle: l.productTitle });
+    asked.set(l.productId, [...list, slot]);
+  }
+  for (const [productId, slots] of asked) {
+    const days = slots.map((s) => s.slice(0, 10)).sort();
+    const taken = new Set(await takenSlots(db, productId, days[0], days[days.length - 1]));
+    const hit = slots.find((s) => taken.has(s));
+    if (hit) throw httpError("SLOT_TAKEN", "This time is taken", 409, { slot: hit, productTitle: lines.find((l) => l.productId === productId)?.productTitle ?? "" });
+  }
+}
+
 /** One line per variant and details: the same piece twice adds up, two gift cards for two people stay apart. */
 function normalizeCartItems(items: CartItemInput[]): CartItemInput[] {
   const map = new Map<string, CartItemInput>();
@@ -1657,6 +1700,8 @@ export async function submitOrderRequest(data: {
     // A paid order is recorded even if the event started meanwhile (the money was taken).
     const lines = await loadLinesForItems(tx as any, normalized, { allowPastEvents: opts?.skipStockCheck });
     if (!opts?.skipStockCheck) assertAvailable(lines, await availability(tx, lines));
+    // A booked time held by another order (a paid order was checked before the payment: never refused after it).
+    if (!opts?.skipStockCheck) await assertSlotsFree(tx, lines);
     const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
     const site = await tx.siteSettings.findFirst({ orderBy: SITE_ROW_ORDER, select: { currencyCode: true, storeCountryCode: true, checkoutTermsRequired: true } });
     // The store asks for its terms to be agreed to (a paid order was asked before the payment: never refused after it).

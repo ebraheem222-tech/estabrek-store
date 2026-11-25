@@ -20,6 +20,13 @@ export const LineDetails = z
   .transform((list) => list.filter((d) => d.label && d.value))
   .transform((list) => (list.length ? list : undefined));
 
+/** The times already booked of a product (the booking calendar, plan 3.6c), between two days (at most 4 months). */
+export const BookingSlotsQuery = z.object({
+  product: z.string().regex(/^[\w-]{1,120}$/),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
 const CartItemBody = z.object({
   variantId: z.string().cuid(),
   quantity: z.number().int().min(1).default(1),

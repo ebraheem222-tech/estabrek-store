@@ -1022,4 +1022,6 @@ export const HE: Record<string, string> = {
   "Enter your name.": "צריך לכתוב שם.",
   "This store can't send emails yet, so the code won't arrive. Try another way in, or contact us.": "החנות עוד לא יכולה לשלוח מיילים, אז הקוד לא יגיע. אפשר לנסות דרך כניסה אחרת או ליצור איתנו קשר.",
   "We couldn't email the code just now. Try again in a little while, or another way in.": "לא הצלחנו לשלוח את הקוד במייל כרגע. אפשר לנסות שוב עוד מעט, או בדרך כניסה אחרת.",
+  "The time {0} was just booked; remove it from your bag and pick another.": "המועד {0} הוזמן הרגע; צריך להסיר אותו מהתיק ולבחור מועד אחר.",
+  "The time {0} has passed; remove it from your bag.": "המועד {0} עבר; צריך להסיר אותו מהתיק.",
 };

@@ -74,4 +74,21 @@ describe("the shop's games in the editor", () => {
     expect(props().parts).toHaveLength(1);
     expect(props().parts[0].name.en).toBe("The box");
   });
+
+  it("a new booking calendar opens Sunday to Thursday, 10 to 6, an hour each; days, length and days off are set", () => {
+    const cal = newElement("bookingCalendar", "en", ids()) as PageTreeNode;
+    expect(cal.props).toMatchObject({ days: [0, 1, 2, 3, 4], from: "10:00", to: "18:00", every: 60, ahead: 30 });
+    render(<Editor node={cal} />);
+    const dayButton = (d: number) => screen.getByTestId("booking-settings").querySelector(`[data-day="${d}"]`)!;
+    fireEvent.click(dayButton(4));
+    fireEvent.click(dayButton(6));
+    expect(props().days).toEqual([0, 1, 2, 3, 6]);
+    fireEvent.click(screen.getByTestId("booking-every").querySelector('[data-value="30"]')!);
+    expect(props().every).toBe(30);
+    fireEvent.change(screen.getByTestId("booking-to"), { target: { value: "09:00" } });
+    expect(props().to).toBe("18:00");
+    fireEvent.change(screen.getByTestId("booking-off"), { target: { value: "2026-12-25" } });
+    fireEvent.click(screen.getByTestId("booking-off-add"));
+    expect(props().closed).toEqual(["2026-12-25"]);
+  });
 });

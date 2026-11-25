@@ -228,6 +228,7 @@ export const CORNER_PARTS: Record<string, readonly string[]> = {
   memoryGame: [" .pt-mem-card"],
   giftCard: [" .pt-gift-card"],
   configurator: [" .pt-cfg-stage"],
+  bookingCalendar: [" .pt-book-cal"],
 };
 /** A screen's corners as CSS (a number of px, or a variable of the design), if it sets any. */
 const radiusCss = (s: ScreenStyle | undefined) => (s ? tokenVar(s.radius, "radii") ?? (num(s.radius, 0, 999) !== undefined ? `${s.radius}px` : undefined) : undefined);
@@ -1278,6 +1279,15 @@ export const BASE_CSS = [
   ".pt-tc-boxed{padding:18px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}.pt-tc-boxed .pt-tc-list a[aria-current]{background:var(--accent-soft,rgba(0,0,0,.05))}",
   "[id^=pt-h-]{scroll-margin-top:96px}",
   // A flip card: two faces, the back coming round (or sliding over, fading in, growing) under the mouse, a tap or the keyboard.
+  // The booking calendar (ShopBuild.tsx BookingView).
+  ".pt-book{display:grid;gap:22px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}@media (max-width:720px){.pt-book{grid-template-columns:1fr}}",
+  ".pt-book-cal{border-radius:18px;padding:14px;background:color-mix(in srgb,currentColor 4%,transparent)}.pt-book-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}",
+  ".pt-book-nav{border:0;background:none;color:inherit;font-size:1.5em;line-height:1;padding:2px 10px;cursor:pointer;border-radius:8px}.pt-book-nav:disabled{opacity:.25;cursor:default}",
+  ".pt-book-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}.pt-book-wd{font-size:.75em;opacity:.6;padding:4px 0}",
+  ".pt-book-day{aspect-ratio:1;border:0;border-radius:10px;background:none;color:inherit;font:inherit;cursor:pointer}.pt-book-day:not(:disabled):hover{background:color-mix(in srgb,var(--accent,#9b5de5) 12%,transparent)}",
+  ".pt-book-day:disabled{opacity:.28;cursor:default}.pt-book-day[aria-pressed=true]{background:var(--accent,#9b5de5);color:#fff}.pt-book-day:focus-visible{outline:2px solid var(--accent,#9b5de5);outline-offset:2px}",
+  ".pt-book-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}.pt-book-times .pt-build-chip{justify-content:center}.pt-book-times .pt-build-chip:disabled{opacity:.35;text-decoration:line-through;cursor:not-allowed}",
+  ".pt-book-none{opacity:.7;font-size:.9em}",
   // The gift card and the configurator (ShopBuild.tsx).
   ".pt-gift{display:grid;gap:18px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}@media (max-width:720px){.pt-gift{grid-template-columns:1fr}}",
   ".pt-gift-card{position:relative;aspect-ratio:1.6;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:6px;color:#fff;overflow:hidden;box-shadow:0 18px 40px #0003;background:var(--pt-gift-pic,none) center/cover,linear-gradient(135deg,#e7a3bd,#b8577f)}",
