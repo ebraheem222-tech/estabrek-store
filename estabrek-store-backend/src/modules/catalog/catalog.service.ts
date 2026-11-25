@@ -1379,21 +1379,31 @@ async function computeCouponDiscountWithClient(
   return { coupon, discount };
 }
 
-type CartItemInput = { variantId: string; quantity: number };
+type LineDetail = { label: string; value: string };
+type CartItemInput = { variantId: string; quantity: number; details?: LineDetail[] };
 
+/** A line's key: its variant, or its variant and the shopper's details (the shop's store/cart.tsx lineKey). */
+export function lineKey(variantId: string, details?: LineDetail[] | null): string {
+  return details?.length ? `${variantId}|${details.map((d) => `${d.label}=${d.value}`).join("|")}` : variantId;
+}
+
+/** One line per variant and details: the same piece twice adds up, two gift cards for two people stay apart. */
 function normalizeCartItems(items: CartItemInput[]): CartItemInput[] {
-  const map = new Map<string, number>();
+  const map = new Map<string, CartItemInput>();
   for (const it of items) {
-    const id = it.variantId;
+    const key = lineKey(it.variantId, it.details);
     const q = Math.max(1, Math.floor(it.quantity || 1));
-    map.set(id, (map.get(id) ?? 0) + q);
+    const had = map.get(key);
+    map.set(key, had ? { ...had, quantity: had.quantity + q } : { variantId: it.variantId, quantity: q, ...(it.details?.length ? { details: it.details } : {}) });
   }
-  return Array.from(map.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
+  return Array.from(map.values());
 }
 
 type CartLine = {
   variantId: string;
   quantity: number;
+  /** The shopper's own details for this line (a gift card's name and message…). */
+  details?: LineDetail[] | null;
   unitPrice: number;
   lineSubtotal: number;
   productId: string;
@@ -1521,6 +1531,7 @@ async function loadLinesForItems(
     out.push({
       variantId: v.id,
       quantity: it.quantity,
+      details: it.details?.length ? it.details : null,
       unitPrice,
       lineSubtotal,
       productId: v.item.productId,
@@ -1734,6 +1745,7 @@ export async function submitOrderRequest(data: {
           create: lines.map((l) => ({
             variantId: l.variantId,
             quantity: l.quantity,
+            ...(l.details?.length ? { details: l.details } : {}),
             unitPrice: l.unitPrice,
             lineSubtotal: l.lineSubtotal,
             productId: l.productId,

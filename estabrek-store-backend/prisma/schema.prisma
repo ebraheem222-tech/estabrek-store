@@ -2327,6 +2327,9 @@ model OrderRequestItem {
   sizeName     String?
   sku          String?
   imageUrl     String?
+  /// What the shopper wrote or chose for this line ([{label, value}]: a gift card's name and message, a
+  /// configurator's parts).
+  details      Json?
 
   createdAt DateTime @default(now())
 

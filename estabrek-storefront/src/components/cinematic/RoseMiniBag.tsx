@@ -2,7 +2,7 @@
 import type React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCart, BAG_ADDED, BAG_OPEN } from "@/store/cart";
+import { useCart, BAG_ADDED, BAG_OPEN, lineKey, type LineDetail } from "@/store/cart";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { LqipImage } from "@/components/LqipImage";
 import { cldUrl } from "@/lib/cloudinary";
@@ -20,6 +20,8 @@ import { Icon } from "./Icons";
 
 type Line = {
   variantId: string;
+  /** The shopper's own details for this line (a gift card's name and message…). */
+  details?: LineDetail[] | null;
   quantity: number;
   productTitle?: string;
   productTranslations?: unknown;
@@ -109,7 +111,7 @@ export function RoseMiniBag({ freeOver = null }: { freeOver?: number | null }) {
     };
   }, [open]);
 
-  const payload = useMemo(() => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })), [items]);
+  const payload = useMemo(() => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity, ...(i.details ? { details: i.details } : {}) })), [items]);
   const key = JSON.stringify(payload);
   useEffect(() => {
     if (!open) return;
@@ -171,9 +173,9 @@ export function RoseMiniBag({ freeOver = null }: { freeOver?: number | null }) {
         freeOver={freeOver}
         panel={panel}
         close={() => setOpen(false)}
-        less={(line) => (line.quantity > 1 ? setQty(line.variantId, line.quantity - 1) : removeItem(line.variantId))}
-        more={(line) => setQty(line.variantId, line.quantity + 1)}
-        remove={(line) => removeItem(line.variantId)}
+        less={(line) => (line.quantity > 1 ? setQty(lineKey(line.variantId, line.details), line.quantity - 1) : removeItem(lineKey(line.variantId, line.details)))}
+        more={(line) => setQty(lineKey(line.variantId, line.details), line.quantity + 1)}
+        remove={(line) => removeItem(lineKey(line.variantId, line.details))}
       />
     );
   }
@@ -202,10 +204,10 @@ export function RoseMiniBag({ freeOver = null }: { freeOver?: number | null }) {
         <ul className="rose-minibag-lines" data-loading={loading && !lines.length ? "true" : undefined}>
           {!lines.length && loading ? [0, 1].map((i) => <li key={i} className="rose-minibag-ghost" />) : null}
           {shown.map((line) => {
-            const detail = [line.colorLabel || line.colorName, line.boxLabel, line.sizeName].filter(Boolean).join(" · ");
+            const detail = [line.colorLabel || line.colorName, line.boxLabel, line.sizeName, ...(line.details ?? []).map((d) => `${d.label}: ${d.value}`)].filter(Boolean).join(" · ");
             const price = Number(line.lineTotal ?? Number(line.unitPrice ?? 0) * line.quantity);
             return (
-              <li key={line.variantId} data-fresh={line.variantId === fresh ? "true" : undefined}>
+              <li key={lineKey(line.variantId, line.details)} data-fresh={line.variantId === fresh ? "true" : undefined}>
                 <span className="rose-minibag-photo">
                   {line.imageUrl ? <LqipImage src={cldUrl(line.imageUrl, { w: 160, h: 200, c: "fill", g: "auto" })} alt="" fill sizes="72px" className="object-cover" blurDataUrl={line.imageBlurDataUrl ?? undefined} showSkeleton={false} /> : null}
                 </span>
@@ -213,9 +215,9 @@ export function RoseMiniBag({ freeOver = null }: { freeOver?: number | null }) {
                   <strong>{line.productTitle}</strong>
                   {detail ? <small>{detail}</small> : null}
                   <span className="rose-minibag-qty">
-                    <button type="button" aria-label={tr(lang, "قطعة أقل", "One less")} onClick={() => (line.quantity > 1 ? setQty(line.variantId, line.quantity - 1) : removeItem(line.variantId))}>−</button>
+                    <button type="button" aria-label={tr(lang, "قطعة أقل", "One less")} onClick={() => (line.quantity > 1 ? setQty(lineKey(line.variantId, line.details), line.quantity - 1) : removeItem(lineKey(line.variantId, line.details)))}>−</button>
                     <output aria-live="polite">{line.quantity}</output>
-                    <button type="button" aria-label={tr(lang, "قطعة كمان", "One more")} onClick={() => setQty(line.variantId, line.quantity + 1)}>+</button>
+                    <button type="button" aria-label={tr(lang, "قطعة كمان", "One more")} onClick={() => setQty(lineKey(line.variantId, line.details), line.quantity + 1)}>+</button>
                   </span>
                 </span>
                 <span className="rose-minibag-price">{formatMoney(price, currency)}</span>
@@ -306,11 +308,11 @@ function DesignedBag({
         <ul className="mb-lines" data-loading={loading && !lines.length ? "true" : undefined}>
           {!lines.length && loading ? [0, 1].map((i) => <li key={i} className="mb-ghost" />) : null}
           {lines.map((line, i) => {
-            const detail = [line.colorLabel || line.colorName, line.boxLabel, line.sizeName].filter(Boolean).join(" · ");
+            const detail = [line.colorLabel || line.colorName, line.boxLabel, line.sizeName, ...(line.details ?? []).map((d) => `${d.label}: ${d.value}`)].filter(Boolean).join(" · ");
             const price = Number(line.lineTotal ?? Number(line.unitPrice ?? 0) * line.quantity);
             const big = bigPhotos(x, i === 0);
             return (
-              <li key={line.variantId} className="mb-line" data-fresh={line.variantId === fresh ? "true" : undefined} style={{ "--i": i } as React.CSSProperties}>
+              <li key={lineKey(line.variantId, line.details)} className="mb-line" data-fresh={line.variantId === fresh ? "true" : undefined} style={{ "--i": i } as React.CSSProperties}>
                 <span className="mb-pic">
                   {line.imageUrl && x.lines !== "receipt" ? (
                     <LqipImage

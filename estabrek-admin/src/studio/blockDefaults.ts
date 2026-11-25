@@ -49,7 +49,7 @@ const HELP: Array<[Words, string]> = [
 ];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery", "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator"] as const;
 /** A moving headline's words, ready to change. */
 const TURNS: Words[] = [w("ناعمة", "soft", "רכים"), w("أنيقة", "elegant", "אלגנטיים"), w("لكل يوم", "for every day", "לכל יום")];
 /** Links under a menu link, ready to change. */
@@ -235,6 +235,19 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): Pa
         props: {
           title: one(lang, w("لاقي الأزواج واربحي", "Match the pairs and win", "מצאו את הזוגות וזכו")), prize: one(lang, w("خصم 10% على طلبك", "10% off your order", "10% הנחה על ההזמנה")),
           faces: ["heart", "star", "gift", "sparkle", "bag", "truck"].map((icon) => ({ icon })), moves: 14, look: "cards", once: true, save: true,
+        },
+      };
+    case "giftCard":
+      // Its product is picked in its settings (a "gift card" product whose sizes are the amounts).
+      return { id: id("gift"), type: "giftCard", props: { title: one(lang, w("بطاقة هدية", "A gift card", "כרטיס מתנה")), text: one(lang, w("اختاري القيمة واكتبي رسالتك، وإحنا منوصّلها.", "Pick the amount and write your message; we'll deliver it.", "בחרו סכום וכתבו הודעה, ואנחנו נעביר אותה.")), look: "rose" } };
+    case "configurator":
+      return {
+        id: id("build"), type: "configurator",
+        props: {
+          title: one(lang, w("صمّميها على ذوقك", "Make it yours", "עצבו בטעם שלכם")),
+          parts: [{ name: one(lang, w("الشريطة", "The ribbon", "הסרט")), options: [
+            { name: one(lang, w("زهري", "Pink", "ורוד")), color: "#e7a3bd" }, { name: one(lang, w("دهبي", "Gold", "זהב")), color: "#d4b35a" }, { name: one(lang, w("أسود", "Black", "שחור")), color: "#222222" },
+          ] }],
         },
       };
     case "headline":

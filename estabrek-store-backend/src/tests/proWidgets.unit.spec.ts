@@ -20,7 +20,7 @@ const ids = () => {
 };
 
 describe("the pro widgets the editor adds", () => {
-  test.each(["toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame"] as NewKind[])("a new %s, in each language, saves as it is", (kind) => {
+  test.each(["toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator"] as NewKind[])("a new %s, in each language, saves as it is", (kind) => {
     for (const lang of ["ar", "en", "he"] as const) {
       const made = newElement(kind, lang, ids(), "https://res.cloudinary.com/x/image/upload/a.jpg") as Node;
       expect(made.type).toBe(kind);

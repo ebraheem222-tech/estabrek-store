@@ -10,9 +10,20 @@ const Boolish = z.preprocess((v) => {
   return v;
 }, z.boolean());
 
+/**
+ * What the shopper wrote or chose for one line (a gift card's name and message, a configurator's parts): up to 6, a
+ * label and a value, trimmed; empty ones are dropped. Two lines of one variant with different details stay apart.
+ */
+export const LineDetails = z
+  .array(z.object({ label: z.string().trim().max(40), value: z.string().trim().max(300) }))
+  .max(6)
+  .transform((list) => list.filter((d) => d.label && d.value))
+  .transform((list) => (list.length ? list : undefined));
+
 const CartItemBody = z.object({
   variantId: z.string().cuid(),
   quantity: z.number().int().min(1).default(1),
+  details: LineDetails.optional(),
 });
 
 

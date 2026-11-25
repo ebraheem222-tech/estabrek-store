@@ -38,7 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "serverList", "tebexPackages", "leaderboard", "wipeCountdown", "streamers",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame",
+  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
   "lib",
 ] as const;
@@ -1323,6 +1323,28 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     look: z.enum(["cards", "tiles", "round"]).optional(),
     once: z.boolean().optional(),
     save: z.boolean().optional(),
+  }),
+  // One of the store's products (`product`, its address) sold as a gift card: its sizes are the amounts; the shopper
+  // writes to, from and a message, kept with the line in the order.
+  giftCard: z.object({
+    title: local(120).optional(),
+    text: local(300).optional(),
+    product: z.string().regex(/^[\w-]{1,120}$/).optional(),
+    look: z.enum(["rose", "night", "gold", "brand"]).optional(),
+    picture: src.optional(),
+    button: local(40).optional(),
+  }),
+  // One of the store's products with its colours and sizes, and up to 4 parts of the owner's (a name and up to 8
+  // options: a colour, or a picture laid over the product's); her choices go with the line to the order.
+  configurator: z.object({
+    title: local(120).optional(),
+    text: local(300).optional(),
+    product: z.string().regex(/^[\w-]{1,120}$/).optional(),
+    parts: z.array(z.object({
+      name: local(40),
+      options: z.array(z.object({ name: local(40), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), src: src.optional() })).min(1).max(8),
+    })).max(4).optional(),
+    button: local(40).optional(),
   }),
   // The store's story circles (admin → القصص): all the live ones in the owner's order, or only `reels` (their ids);
   // each opens full screen. Round, rounded squares or tall cards, three sizes, their names under them or not.

@@ -55,7 +55,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, ClockView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -649,6 +649,45 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
             id={node.id} code={code} prize={say(p.prize)} faces={faces} moves={moves}
             look={pick(p.look, ["cards", "tiles", "round"] as const, "cards")} once={p.once !== false} save={p.save !== false} words={W}
           />
+          {after}
+        </div>
+      );
+    }
+    case "giftCard": {
+      // One of the store's products sold as a gift card: its sizes are the amounts, she writes to/from/a message and
+      // sees the card as she writes (ShopBuild.tsx); her words go with the line to the bag and the order.
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      const product = typeof p.product === "string" && /^[\w-]{1,120}$/.test(p.product) ? p.product : "";
+      return (
+        <div className={cls(node)} {...mark} data-pt-needs-product={product ? undefined : ""}>
+          {before}
+          {say(p.title) ? <div className="pt-game-title" data-pt-field="title">{say(p.title)}</div> : null}
+          {say(p.text) ? <p className="pt-game-text" data-pt-field="text">{say(p.text)}</p> : null}
+          <GiftCardView product={product} lang={ctx.lang} look={pick(p.look, ["rose", "night", "gold", "brand"] as const, "rose")} picture={safeSrc(p.picture) ?? undefined} button={say(p.button) || (({ ar: "أضيفي للحقيبة", en: "Add to bag", he: "הוספה לסל" } as Record<string, string>)[ctx.lang] ?? "")} words={W.build} />
+          {after}
+        </div>
+      );
+    }
+    case "configurator": {
+      // One of the store's products with its own colours and sizes, and the owner's extra parts laid over its picture
+      // (ShopBuild.tsx); her choices of parts go with the line to the bag and the order.
+      const W = PRO_WORDS[ctx.lang] ?? PRO_WORDS.ar;
+      const product = typeof p.product === "string" && /^[\w-]{1,120}$/.test(p.product) ? p.product : "";
+      const parts = (Array.isArray(p.parts) ? p.parts : []).slice(0, 4).map((part: unknown) => {
+        const x = part && typeof part === "object" ? (part as Record<string, unknown>) : {};
+        const options = (Array.isArray(x.options) ? x.options : []).slice(0, 8).map((o: unknown) => {
+          const y = o && typeof o === "object" ? (o as Record<string, unknown>) : {};
+          const hex = typeof y.color === "string" && /^#[0-9a-f]{6}$/i.test(y.color) ? y.color : undefined;
+          return { name: say(y.name), ...(hex ? { color: hex } : {}), ...(safeSrc(y.src) ? { src: safeSrc(y.src)! } : {}) };
+        }).filter((o: { name: string }) => o.name);
+        return { name: say(x.name), options };
+      }).filter((part: { name: string; options: unknown[] }) => part.name && part.options.length);
+      return (
+        <div className={cls(node)} {...mark} data-pt-needs-product={product ? undefined : ""}>
+          {before}
+          {say(p.title) ? <div className="pt-game-title" data-pt-field="title">{say(p.title)}</div> : null}
+          {say(p.text) ? <p className="pt-game-text" data-pt-field="text">{say(p.text)}</p> : null}
+          <ConfiguratorView product={product} lang={ctx.lang} parts={parts} button={say(p.button) || (({ ar: "أضيفي للحقيبة", en: "Add to bag", he: "הוספה לסל" } as Record<string, string>)[ctx.lang] ?? "")} words={W.build} />
           {after}
         </div>
       );

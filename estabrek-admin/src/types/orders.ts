@@ -35,6 +35,8 @@ export type OrderRequestItem = {
   sizeName?: string | null;
   sku?: string | null;
   imageUrl?: string | null;
+  /** What the shopper wrote or chose for this line (a gift card's name and message, a configurator's parts). */
+  details?: Array<{ label: string; value: string }> | null;
 
   createdAt?: ISODateString;
 };

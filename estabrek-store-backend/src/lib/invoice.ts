@@ -19,7 +19,7 @@ export const INVOICE_SELECT = {
   paymentProvider: true, paymentStatus: true, locale: true, termsAcceptedAt: true, createdAt: true, userId: true,
   items: {
     orderBy: { createdAt: "asc" as const },
-    select: { productTitle: true, colorName: true, colorHex: true, sizeName: true, sku: true, imageUrl: true, quantity: true, unitPrice: true, lineSubtotal: true },
+    select: { productTitle: true, colorName: true, colorHex: true, sizeName: true, sku: true, imageUrl: true, quantity: true, unitPrice: true, lineSubtotal: true, details: true },
   },
   variant: { include: VARIANT_INCLUDE },
 } satisfies Prisma.OrderRequestSelect;
@@ -63,14 +63,19 @@ export const INVOICE_WORDS: Record<InvoiceLang, Words> = {
 const escapeHtml = (v: unknown) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 
+/** A line's details as saved (what the shopper wrote or chose), or none. */
+const lineDetails = (raw: unknown): Array<{ label: string; value: string }> | null =>
+  Array.isArray(raw) ? raw.filter((d) => d && typeof d.label === "string" && typeof d.value === "string").map((d) => ({ label: String(d.label), value: String(d.value) })) : null;
+
 /** The order's lines: its own (each piece as ordered), or one made from an old order's single piece. */
 export function invoiceLines(order: InvoiceOrder) {
   const raw = order.items.length
-    ? order.items.map((it) => ({ productTitle: it.productTitle, colorName: it.colorName, sizeName: it.sizeName, sku: it.sku, imageUrl: it.imageUrl, quantity: it.quantity ?? 1, unitPrice: Number(it.unitPrice ?? 0), lineSubtotal: Number(it.lineSubtotal ?? 0) }))
+    ? order.items.map((it) => ({ productTitle: it.productTitle, colorName: it.colorName, sizeName: it.sizeName, details: lineDetails(it.details), sku: it.sku, imageUrl: it.imageUrl, quantity: it.quantity ?? 1, unitPrice: Number(it.unitPrice ?? 0), lineSubtotal: Number(it.lineSubtotal ?? 0) }))
     : [{
         productTitle: order.variant?.item?.product?.title ?? "Item",
         colorName: order.variant?.item?.colorName ?? null,
         sizeName: order.variant?.size?.name ?? null,
+        details: null,
         sku: order.variant?.sku ?? null,
         imageUrl: order.variant?.item?.images?.[0]?.url ?? null,
         quantity: order.quantity ?? 1,
@@ -104,7 +109,7 @@ export function invoiceHtml(order: InvoiceOrder, site: InvoiceSite | null, opts:
   const linesHtml = lines.map((l) => `
         <tr>
           <td><div class="piece">${l.imageUrl ? `<img src="${escapeHtml(abs(l.imageUrl))}" alt="" />` : ""}<div><b>${escapeHtml(l.productTitle)}</b>${l.sku ? `<div class="muted">SKU: ${escapeHtml(l.sku)}</div>` : ""}</div></div></td>
-          <td class="muted">${[l.colorName, l.sizeName].filter(Boolean).map(escapeHtml).join(" / ")}</td>
+          <td class="muted">${[l.colorName, l.sizeName, ...(l.details ? l.details.map((d) => `${d.label}: ${d.value}`) : [])].filter(Boolean).map(escapeHtml).join(" / ")}</td>
           <td class="num">${l.quantity ?? 1}</td>
           <td class="num">${fmt(l.unitPrice)}</td>
           <td class="num">${fmt(l.lineSubtotal)}</td>

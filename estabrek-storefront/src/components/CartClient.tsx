@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useCart } from "@/store/cart";
+import { lineKey, useCart, type LineDetail } from "@/store/cart";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { LoadingImg } from "@/components/LoadingImg";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -105,6 +105,7 @@ type Quote = {
   } | null;
   lines?: Array<{
     variantId: string;
+    details?: LineDetail[] | null;
     quantity: number;
     productTitle?: string;
     productSlug?: string | null;
@@ -217,7 +218,7 @@ export default function CartClient(props: {
   }, []);
 
   const payloadItems = useMemo(
-    () => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+    () => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity, ...(i.details ? { details: i.details } : {}) })),
     [items]
   );
   const currencyCode = quote?.currencyCode ?? null;
@@ -240,7 +241,7 @@ export default function CartClient(props: {
   const lineByVariant = useMemo(() => {
     const map = new Map<string, NonNullable<Quote["lines"]>[number]>();
     for (const line of quote?.lines ?? []) {
-      if (line?.variantId) map.set(line.variantId, line);
+      if (line?.variantId) map.set(lineKey(line.variantId, line.details), line);
     }
     return map;
   }, [quote]);
@@ -430,10 +431,10 @@ export default function CartClient(props: {
           {/* Cart Items */}
           <div className="space-y-4">
             {items.map((it, idx) => {
-              const line = lineByVariant.get(it.variantId);
+              const line = lineByVariant.get(it.key);
               const title = line?.productTitle ?? "منتج";
               const colorLabel = [line?.colorName, line?.boxLabel].filter(Boolean).join(" — ");
-              const metaParts = [colorLabel, line?.sizeName].filter(Boolean) as string[];
+              const metaParts = [colorLabel, line?.sizeName, ...(it.details ?? []).map((d) => `${d.label}: ${d.value}`)].filter(Boolean) as string[];
               if (line?.sku) metaParts.push(`SKU ${line.sku}`);
               const meta = metaParts.join(" • ");
               const lineAmount =
@@ -445,13 +446,13 @@ export default function CartClient(props: {
               
               return (
                 <div
-                  key={it.variantId}
+                  key={it.key}
                   className="cart-item stagger-item"
                   style={{ animationDelay: `${idx * 50}ms` }}
                 >
                   {/* Remove Button */}
                   <button
-                    onClick={() => removeItem(it.variantId)}
+                    onClick={() => removeItem(it.key)}
                     className="cart-item-remove"
                     title="إزالة"
                   >
@@ -512,7 +513,7 @@ export default function CartClient(props: {
                       <span className="text-xs text-(--muted)">الكمية:</span>
                       <div className="qty-controls">
                         <button
-                          onClick={() => setQty(it.variantId, Math.max(1, it.quantity - 1))}
+                          onClick={() => setQty(it.key, Math.max(1, it.quantity - 1))}
                           disabled={it.quantity <= 1}
                         >
                           <MinusIcon />
@@ -521,10 +522,10 @@ export default function CartClient(props: {
                           type="number"
                           min={1}
                           value={it.quantity}
-                          onChange={(e) => setQty(it.variantId, Math.max(1, Number(e.target.value || 1)))}
+                          onChange={(e) => setQty(it.key, Math.max(1, Number(e.target.value || 1)))}
                           dir="ltr"
                         />
-                        <button onClick={() => setQty(it.variantId, it.quantity + 1)}>
+                        <button onClick={() => setQty(it.key, it.quantity + 1)}>
                           <PlusIcon />
                         </button>
                       </div>
