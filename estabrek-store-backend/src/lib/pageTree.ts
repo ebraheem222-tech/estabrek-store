@@ -38,7 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "serverList", "tebexPackages", "leaderboard", "wipeCountdown", "streamers",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "giftCard", "configurator", "bookingCalendar",
+  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "glScene", "giftCard", "configurator", "bookingCalendar",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
   "lib",
 ] as const;
@@ -725,6 +725,28 @@ export const SHADER_KINDS = [
   "cloth", "murmuration", "sand", "magnetic", "newton", "flow", "arcs", "constellation", "galaxy", "koi", "field", "goo", "earth", "solar",
 ] as const;
 
+/**
+ * A WebGL scene the owner builds in the editor (the shop's pageTree/glScene.ts, the same lists in the same order):
+ * up to four layers of particles, each holding forms it may morph between or moving in a flow, over a background.
+ */
+export const GL_FORMS = [
+  "sphere", "ball", "cube", "torus", "knot", "helix", "galaxy", "rings", "wave", "grid", "cylinder", "cone",
+  "heart", "star", "cloud", "globe", "spiral", "text", "image",
+] as const;
+export const GL_FLOWS = ["rain", "snow", "rise", "warp", "fountain", "fireworks", "vortex", "flow", "orbit", "fireflies"] as const;
+export const GL_SPRITES = ["soft", "dot", "ring", "square", "star", "spark", "plus", "heart", "glyph"] as const;
+export const GL_COLOURING = ["one", "blend", "three", "rainbow", "random", "picture"] as const;
+export const GL_FONTS = ["page", "sans", "serif", "mono", "display"] as const;
+export const GL_BGS = ["none", "color", "gradient", "radial", "shader"] as const;
+export const GL_POINTER = ["none", "repel", "attract", "swirl", "bulge"] as const;
+export const GL_CLICK = ["none", "burst", "shock", "next"] as const;
+export const GL_SCROLL = ["none", "spin", "zoom", "scatter", "rise"] as const;
+export const GL_MORPH_BY = ["auto", "scroll", "click", "hover"] as const;
+const GL_SHAPES = [...GL_FORMS, ...GL_FLOWS] as const;
+/** The shaders a scene may stand on: the WebGL ones (the physics canvases stay section backgrounds). */
+const GL_BG_SHADERS = SHADER_KINDS.slice(0, SHADER_KINDS.indexOf("cloth")) as unknown as readonly [string, ...string[]];
+const within = (min: number, max: number) => z.number().finite().min(min).max(max);
+
 /** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */
 export const SCENE_KINDS = [
   "constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix",
@@ -788,6 +810,45 @@ const FormSend = z.discriminatedUnion("to", [
   z.object({ to: z.literal("table"), table: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/, "A table's address").optional(), set: z.record(z.string().regex(/^[a-z][a-zA-Z0-9]{0,30}$/, "A field's id"), z.union([z.string().max(80), z.number().finite(), z.boolean()])).refine((s) => Object.keys(s).length <= 6, "6 values at most").optional() }).strict(),
 ]);
 
+/** One layer of a WebGL scene: its forms (a flow alone), words or a picture for them, and how its particles look and move. */
+const GlLayer = z.object({
+  shapes: z.array(z.enum(GL_SHAPES)).min(1).max(4).refine((list) => list.length === 1 || !list.some((x) => (GL_FLOWS as readonly string[]).includes(x)), "A flow moves alone"),
+  text: local(40).optional(),
+  font: z.enum(GL_FONTS).optional(),
+  weight: z.number().int().min(300).max(900).optional(),
+  image: src.optional(),
+  count: z.number().int().min(50).max(30000).optional(),
+  size: within(0.5, 40).optional(),
+  vary: within(0, 1).optional(),
+  sprite: z.enum(GL_SPRITES).optional(),
+  glyphs: z.string().max(256).refine((v) => Array.from(v).length <= 64 && !/[<>]/.test(v), "64 characters at most").optional(),
+  colouring: z.enum(GL_COLOURING).optional(),
+  c1: color.optional(), c2: color.optional(), c3: color.optional(),
+  opacity: within(0.05, 1).optional(),
+  glow: z.boolean().optional(),
+  scale: within(0.1, 3).optional(),
+  x: within(-1, 1).optional(), y: within(-1, 1).optional(), depth: within(0, 2).optional(),
+  speed: within(0, 4).optional(),
+  wander: within(0, 1).optional(), wave: within(0, 1).optional(), twinkle: within(0, 1).optional(), pulse: within(0, 1).optional(),
+  spin: within(-2, 2).optional(),
+  links: within(0, 1).optional(),
+}).strict();
+/** A WebGL scene: its background, its layers (60,000 particles at most in all), camera, pointer, press, scroll, morph and finish. */
+const GL_SCENE = {
+  bg: z.object({ kind: z.enum(GL_BGS), c1: color.optional(), c2: color.optional(), c3: color.optional(), c4: color.optional(), shader: z.enum(GL_BG_SHADERS).optional(), speed: within(0, 3).optional(), rainbow: z.boolean().optional() }).strict().optional(),
+  layers: z.array(GlLayer).max(4).refine((list) => list.reduce((n, l) => n + (l.count ?? 3000), 0) <= 60000, "60,000 particles at most in all").optional(),
+  camera: z.object({ spin: within(-2, 2), tilt: within(-80, 80), zoom: within(0.3, 3), depth: within(0, 1), drag: z.boolean() }).partial().strict().optional(),
+  pointer: z.object({ mode: z.enum(GL_POINTER), radius: within(0.05, 0.8), strength: within(0, 3) }).partial().strict().optional(),
+  click: z.enum(GL_CLICK).optional(),
+  scroll: z.enum(GL_SCROLL).optional(),
+  morph: z.object({ by: z.enum(GL_MORPH_BY), hold: within(0.3, 15), time: within(0.2, 6) }).partial().strict().optional(),
+  trails: within(0, 0.95).optional(),
+  grain: within(0, 0.4).optional(),
+  vignette: within(0, 1).optional(),
+  veil: within(0, 0.85).optional(),
+};
+export const GlSceneSpec = z.object(GL_SCENE).strict();
+
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
   // `cursor`: a mark that follows the mouse (a dot, a ring, or one that turns what's under it around), with
@@ -812,6 +873,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     trail: z.object({ images: z.array(src).min(1).max(8), size: z.number().int().min(80).max(280).optional() }).optional(),
     // A WebGL background from the theme library: its colours (unset: the shader's own), a rainbow one drawn in
     // the colours instead (rainbow false), its speed, following the pointer, film grain, a veil for the words on it.
+    // A WebGL scene the owner built (particles in forms and flows), behind its content.
+    gl: GlSceneSpec.optional(),
     shader: z.object({
       kind: z.enum(SHADER_KINDS),
       bg: color.optional(), c1: color.optional(), c2: color.optional(), c3: color.optional(),
@@ -1311,6 +1374,10 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     thickness: z.number().int().min(2).max(12).optional(),
     label: local(80).optional(),
   }),
+  // A WebGL scene the owner builds: particles that hold forms (words, a picture, a globe…) and morph between them, or
+  // move in a flow (rain, fireworks…), over a background (`gl`, as a section's background holds one); a box `height` px
+  // tall, named `label` for screen readers.
+  glScene: z.object({ gl: GlSceneSpec, height: z.number().int().min(160).max(1400).optional(), label: local(120).optional() }),
   // A prize under a cover the shopper scratches away (a button does it from the keyboard), with a `coupon` code the
   // bag then puts in by itself; `once`: already scratched stays revealed on the next visit.
   scratchCard: z.object({

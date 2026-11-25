@@ -31,6 +31,7 @@ import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
 import { shaderOf } from "./shader";
+import { glHeightOf, glSceneOf, type GlSpec } from "./glScene";
 import { flashOf, trailOf } from "./pointerSpec";
 import { spaceOf } from "./spaceSpec";
 import { model3dOf } from "./model3d";
@@ -55,7 +56,7 @@ import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
 import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 // The parts of each kind of element, and the home's two scenes: scripts of their own, loaded only where a page has
 // them (lazyParts.tsx says why).
-import { ArtMorph, BookingView, ChartKindView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
+import { ArtMorph, BookingView, ChartKindView, ClockView, ConfiguratorView, GiftCardView, MemoryGameView, ScratchCardView, CommerceShop, GameStatusView, ServerListView, LeaderboardView, StreamersView, TebexPackagesView, WipeCountdownView, ComparisonView, DeckView, FormView, HeadlineMotion, InstrumentView, Model3dSpot, PopupView, ProductDetail, ReadProgress, RowsView, ScheduleView, SceneView, ShaderView, GlSceneView, TrailView, Space3D, MarqueeSpeed, FlashReveal, ShareView, ShowcaseView, SliderControls, SpinView, StoryBar, TocView, WhenWatch } from "./lazyParts";
 import { whenOf } from "./pieces";
 import { PRO_WORDS } from "./proWords";
 import { storyViews, type StoryProduct, type StoryReelRaw } from "./storyData";
@@ -136,6 +137,9 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
   return node.type !== "page" && whenOf(node.props?.when) && view !== null ? <>{shown}<WhenWatch /></> : shown;
 }
 
+/** A WebGL scene's colours as CSS (a theme colour's variable, a design variable or a #hex), read where it is drawn. */
+const glCss = (s: GlSpec) => ({ bg: [s.bg.c1, s.bg.c2, s.bg.c3, s.bg.c4].map(color), layers: s.layers.map((l) => [l.c1, l.c2, l.c3].map(color)) });
+
 function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
   const p = node.props ?? {};
   const say = (t: unknown) => pickText(t, ctx.lang, ctx.main);
@@ -204,6 +208,8 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const scene = sceneOf(p.scene);
       // A WebGL background from the theme library (ShaderView), behind the scene and the content.
       const shader = shaderOf(p.shader);
+      // A WebGL scene the owner built (GlSceneView), behind the content.
+      const glBg = glSceneOf(p.gl, say);
       // Pictures left along the pointer's way over it (PointerParts.tsx TrailView).
       const trail = trailOf(p.trail);
       const tint = dots?.color ? color(dots.color) : undefined;
@@ -214,8 +220,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // The page's colour while it's in the middle of the screen (TreePaint).
       const paint = p.paint ? color(p.paint) : undefined;
       const held = (
-        <Tag className={`${cls(node)}${edges.length || dots || scene || shader || trail ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})} {...(paint ? { "data-pt-paint": paint } : {})}>
+        <Tag className={`${cls(node)}${edges.length || dots || scene || shader || glBg || trail ? " pt-has-edges" : ""}${coverClass}`} id={anchor} {...mark} {...(cover ? { "data-pt-cover": JSON.stringify(cover) } : {})} {...(paint ? { "data-pt-paint": paint } : {})}>
           {shader ? <ShaderView spec={shader} colours={{ bg: shader.bg ? color(shader.bg) : undefined, c1: shader.c1 ? color(shader.c1) : undefined, c2: shader.c2 ? color(shader.c2) : undefined, c3: shader.c3 ? color(shader.c3) : undefined }} /> : null}
+          {glBg ? <GlSceneView spec={glBg} css={glCss(glBg)} mode="bg" /> : null}
           {trail ? <TrailView images={trail.images} size={trail.size} /> : null}
           {scene ? <SceneView spec={scene} primary={color(scene.color ?? "accent")!} secondary={color(scene.secondary ?? "text")!} /> : null}
           {dots ? <div className="pt-particles" data-pt-particles={JSON.stringify({ kind: dots.kind, amount: dots.amount, speed: dots.speed })} style={tint ? { color: tint } : undefined} aria-hidden="true" /> : null}
@@ -620,6 +627,18 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
             </div>
           </div>
           {fx}
+          {after}
+        </div>
+      );
+    }
+    case "glScene": {
+      // A WebGL scene the owner built: particles in forms and flows over a background (GlSceneView, glEngine.ts).
+      const spec = glSceneOf(p.gl, say);
+      if (!spec) return null;
+      return (
+        <div className={cls(node)} {...mark}>
+          {before}
+          <GlSceneView spec={spec} css={glCss(spec)} mode="element" height={glHeightOf(p.height)} label={say(p.label) || undefined} />
           {after}
         </div>
       );

@@ -23,7 +23,7 @@ const BOXES = [
 ] as const;
 const WORDS = ["heading", "text", "button", "headline"] as const;
 /** Pictures and clips, and what's shown in a frame like one (a drawing, a 3D model, a map, a before/after). */
-const PICTURES = ["image", "video", "slider", "product360", "svg", "model3d", "lottie", "rive", "beforeAfter", "hotspots", "map"] as const;
+const PICTURES = ["image", "video", "slider", "product360", "svg", "model3d", "glScene", "lottie", "rive", "beforeAfter", "hotspots", "map"] as const;
 /** What each kind of look is called, the elements it fits ("*" = any), and the style and motion keys it owns. */
 export const KINDS: Record<ReadyKind, { name: () => string; types: readonly string[]; owns: readonly string[]; moves?: ReadonlyArray<keyof Motion> }> = {
   button: {

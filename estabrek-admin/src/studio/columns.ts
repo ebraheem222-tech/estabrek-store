@@ -12,6 +12,7 @@ import type { TreeIndex } from "./treeIndex";
 import { SHAPES, defaultsOf } from "./svgShapes";
 import { BLOCK_KINDS, newBlock, newPopup } from "./blockDefaults";
 import { newScrollScene } from "./scrollScene";
+import { GL_PRESETS } from "./glPresets";
 
 export const MAX_CELLS = 4;
 /** Columns › cell › columns, and no deeper. */
@@ -78,7 +79,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "scrollScene", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "scrollScene", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", "glScene", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -161,6 +162,9 @@ function makeElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTree
     case "model3d":
       // A built-in model turning slowly on a soft shadow; shoppers can turn it by hand.
       return { id: id("m3d"), type: "model3d", props: { model: "sneaker", anim: { type: "float", speed: 1, amount: 1, trigger: "always" }, auto: 0.6, drag: true }, style: { base: { width: "320px", maxWidth: "100%" } } };
+    case "glScene":
+      // A WebGL scene the owner builds (GlScenePanel.tsx): it starts as the first ready design, words in stars.
+      return { id: id("gl"), type: "glScene", props: { gl: structuredClone(GL_PRESETS[0].gl), height: 480 }, style: { base: { width: "100%" } } };
     case "lottie":
       // A small pulse the shop keeps, until its own file is chosen.
       return { id: id("lt"), type: "lottie", props: { src: "/lottie/pulse.json" } };
@@ -262,7 +266,7 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", "component", "collectionList", "productDetail", ...BLOCK_KINDS]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "glScene", "products", "categories", "form", "component", "collectionList", "productDetail", ...BLOCK_KINDS]);
 const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup", "scrollScene"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);

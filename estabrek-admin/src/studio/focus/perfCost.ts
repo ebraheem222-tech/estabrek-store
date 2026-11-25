@@ -76,7 +76,15 @@ export function costOf(node: PageTreeNode): Cost {
     case "scrollScene": canvas = true; add("scroll-scene", 35, say("مشهد مع السكرول (فيديو بيتبع الصفحة).|A scroll scene (a clip following the page).|סצנת גלילה."), { phone: "light" }); break;
     case "lottie": case "rive": canvas = true; endless = true; add("animation", 18, say("رسم متحرك (Lottie/Rive).|An animation (Lottie/Rive).|אנימציה."), { tier: "balanced" }); break;
     case "product360": canvas = true; add("360", 15, say("عرض 360°.|A 360° view.|תצוגת 360°.")); break;
+    case "glScene": {
+      canvas = true;
+      endless = true;
+      const many = (Array.isArray(obj(p.gl).layers) ? obj(p.gl).layers : []).reduce((n: number, l: unknown) => n + (Number(obj(l).count) || 3000), 0);
+      add("webgl", 24 + Math.round(Math.min(60000, many) / 2500), say("مشهد WebGL: كرت الشاشة بيرسم كل الجزيئات كل لحظة. جزيئات أقل = أخف.|A WebGL scene: the graphics card draws every particle every moment. Fewer particles = lighter.|סצנת WebGL: כרטיס המסך מצייר כל חלקיק בכל רגע."), { strong: true });
+      break;
+    }
     case "section":
+      if (p.gl) { canvas = true; endless = true; add("webgl", 24, say("خلفية WebGL مبنية.|A built WebGL background.|רקע WebGL בנוי."), { strong: true }); }
       if (p.particles) { canvas = true; endless = true; add("particles", 30, say("جزيئات متحركة بالقسم.|Moving particles in the section.|חלקיקים נעים."), { strong: true }); }
       if (p.scene) { canvas = true; endless = true; add("scene", 28 + (obj(p.scene).interactive ? 5 : 0), say("خلفية حيّة مرسومة.|A live drawn background.|רקע חי מצויר."), { fps: 24 }); }
       break;
