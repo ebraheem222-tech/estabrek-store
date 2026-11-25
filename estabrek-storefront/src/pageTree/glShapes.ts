@@ -4,7 +4,8 @@
  * canvas. Seeded, so a scene's still frame is the same every time. Plain maths (the admin draws thumbnails with it).
  */
 import { isLand } from "./chartMaths";
-import type { GlForm } from "./glScene";
+import type { GlForm, GlPictureMode } from "./glScene";
+import { picturePoints } from "./glPicture";
 
 export type Rand = () => number;
 /** A small seeded random (mulberry32). */
@@ -258,57 +259,6 @@ function chaosStep(form: string, p: number[], rand: Rand) {
   }
 }
 
-/** The pixels of a 2D canvas that are drawn on, as points (and their colours): a word or a picture made into dots. */
-function sampled(ctx: CanvasRenderingContext2D, w: number, h: number, n: number, rand: Rand, maxW: number, maxH: number, keepColour: boolean) {
-  let data: Uint8ClampedArray;
-  try {
-    data = ctx.getImageData(0, 0, w, h).data;
-  } catch {
-    // A picture from a site that doesn't allow reading it.
-    return null;
-  }
-  // A picture without see-through parts on a plain ground (a logo on white): its ground is left out.
-  const at = (x: number, y: number) => (y * w + x) * 4;
-  const corners = [at(0, 0), at(w - 1, 0), at(0, h - 1), at(w - 1, h - 1)];
-  const solid = corners.every((c) => data[c + 3] > 250);
-  const ground = solid ? [0, 1, 2].map((k) => corners.reduce((s, c) => s + data[c + k], 0) / 4) : null;
-  const plainGround = ground ? corners.every((c) => Math.abs(data[c] - ground[0]) + Math.abs(data[c + 1] - ground[1]) + Math.abs(data[c + 2] - ground[2]) < 40) : false;
-  const on: number[] = [];
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const k = at(x, y);
-      if (data[k + 3] < 110) continue;
-      if (plainGround && ground && Math.abs(data[k] - ground[0]) + Math.abs(data[k + 1] - ground[1]) + Math.abs(data[k + 2] - ground[2]) < 60) continue;
-      on.push(x, y);
-    }
-  }
-  if (on.length < 2) return null;
-  let minX = w, maxX = 0, minY = h, maxY = 0;
-  for (let i = 0; i < on.length; i += 2) {
-    minX = Math.min(minX, on[i]); maxX = Math.max(maxX, on[i]);
-    minY = Math.min(minY, on[i + 1]); maxY = Math.max(maxY, on[i + 1]);
-  }
-  const bw = maxX - minX + 1, bh = maxY - minY + 1, k = Math.min(maxW / bw, maxH / bh), cx = (minX + maxX + 1) / 2, cy = (minY + maxY + 1) / 2;
-  const pos = new Float32Array(n * 3);
-  const col = keepColour ? new Float32Array(n * 3) : undefined;
-  const count = on.length / 2;
-  for (let i = 0; i < n; i++) {
-    // Every pixel once before any twice, then at random.
-    const j = (i < count ? Math.floor((i / Math.min(n, count)) * count) : Math.floor(rand() * count)) * 2;
-    const px = on[j] + rand(), py = on[j + 1] + rand();
-    pos[i * 3] = (px - cx) * k;
-    pos[i * 3 + 1] = -(py - cy) * k;
-    pos[i * 3 + 2] = 0;
-    if (col) {
-      const d = at(on[j], on[j + 1]);
-      col[i * 3] = data[d] / 255;
-      col[i * 3 + 1] = data[d + 1] / 255;
-      col[i * 3 + 2] = data[d + 2] / 255;
-    }
-  }
-  return { pos, col };
-}
-
 const canvas2d = (w: number, h: number) => {
   const c = document.createElement("canvas");
   c.width = w;
@@ -317,8 +267,10 @@ const canvas2d = (w: number, h: number) => {
 };
 
 /** The owner's words as n points, at most maxW × maxH of the scene's units, in the font given (a CSS family). */
-export function textPoints(text: string, n: number, rand: Rand, o: { family: string; weight: number; rtl: boolean; maxW: number; maxH: number }) {
-  const W = 1200, H = 300;
+export function textPoints(text: string, n: number, rand: Rand, o: { family: string; weight: number; rtl: boolean; maxW: number; maxH: number; mode?: GlPictureMode }) {
+  // Finer for plain dots; a smaller canvas for the ways that read the picture all over (outlines, stipple, blobs).
+  const fine = !o.mode || o.mode === "pixels" || o.mode === "palette";
+  const W = fine ? 1200 : 800, H = fine ? 300 : 200;
   const ctx = canvas2d(W, H);
   if (!ctx || !text) return null;
   const font = (px: number) => `${o.weight} ${px}px ${o.family}`;
@@ -331,15 +283,26 @@ export function textPoints(text: string, n: number, rand: Rand, o: { family: str
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#fff";
   ctx.fillText(text, W / 2, H / 2);
-  return sampled(ctx, W, H, n, rand, o.maxW, o.maxH, true);
+  return pixelsOf(ctx, W, H, n, rand, o.mode ?? "pixels", o.maxW, o.maxH);
+}
+/** A canvas's pixels made into dots the way asked (glPicture.ts), or null when they can't be read. */
+function pixelsOf(ctx: CanvasRenderingContext2D, w: number, h: number, n: number, rand: Rand, mode: GlPictureMode, maxW: number, maxH: number) {
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    // A picture from a site that doesn't allow reading it.
+    return null;
+  }
+  return picturePoints(data, w, h, n, rand, mode, maxW, maxH);
 }
 
 /** A loaded picture as n points and their colours, at most maxW × maxH of the scene's units. */
-export function imagePoints(img: HTMLImageElement, n: number, rand: Rand, maxW: number, maxH: number) {
-  const side = 220, k = Math.min(1, side / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+export function imagePoints(img: HTMLImageElement, n: number, rand: Rand, maxW: number, maxH: number, mode: GlPictureMode = "pixels") {
+  const side = 256, k = Math.min(1, side / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
   const w = Math.max(2, Math.round((img.naturalWidth || side) * k)), h = Math.max(2, Math.round((img.naturalHeight || side) * k));
   const ctx = canvas2d(w, h);
   if (!ctx) return null;
   ctx.drawImage(img, 0, 0, w, h);
-  return sampled(ctx, w, h, n, rand, maxW, maxH, true);
+  return pixelsOf(ctx, w, h, n, rand, mode, maxW, maxH);
 }

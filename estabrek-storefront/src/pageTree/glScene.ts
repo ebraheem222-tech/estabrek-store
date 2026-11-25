@@ -39,6 +39,10 @@ export type GlSprite = (typeof GL_SPRITES)[number];
 export const GL_COLOURING = ["one", "blend", "three", "rainbow", "random", "picture"] as const;
 export type GlColouring = (typeof GL_COLOURING)[number];
 export const GL_FONTS = ["page", "sans", "serif", "mono", "display"] as const;
+/** How words or a picture become dots (glPicture.ts): every drawn pixel, the outlines, an engraver's stipple, blobs,
+ *  corners as sparks, or the picture's own few colours. */
+export const GL_PICTURE_MODES = ["pixels", "edges", "stipple", "blobs", "features", "palette"] as const;
+export type GlPictureMode = (typeof GL_PICTURE_MODES)[number];
 export type GlFont = (typeof GL_FONTS)[number];
 
 export const GL_BGS = ["none", "color", "gradient", "radial", "shader"] as const;
@@ -101,6 +105,10 @@ export type GlLayer = {
   links: number;
   /** A picture in relief: its light parts come forward. */
   relief: number;
+  /** How each of its words or pictures (in the order of its forms) becomes dots. */
+  pictureModes: GlPictureMode[];
+  /** The dots move along the picture's lines, like brush strokes. */
+  strokes: number;
 };
 export type GlBg = { kind: GlBgKind; c1?: string; c2?: string; c3?: string; c4?: string; shader: ShaderKind; speed: number; rainbow?: boolean };
 export type GlSpec = {
@@ -133,7 +141,7 @@ const SAFE_SRC = /^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i;
 export const GL_LAYER_DEFAULT: GlLayer = {
   shapes: ["sphere"], text: "", font: "page", weight: 800, count: 3000, size: 2.5, vary: 0.5, sprite: "soft", glyphs: "",
   colouring: "blend", opacity: 0.9, glow: true, scale: 1, x: 0, y: 0, depth: 0.3,
-  speed: 1, wander: 0.15, wave: 0, twinkle: 0.2, pulse: 0, spin: 0.2, links: 0, relief: 0,
+  speed: 1, wander: 0.15, wave: 0, twinkle: 0.2, pulse: 0, spin: 0.2, links: 0, relief: 0, pictureModes: [], strokes: 0,
 };
 
 /** A layer from its saved settings (`say` reads a text in the page's language). */
@@ -171,6 +179,8 @@ export function glLayerOf(raw: unknown, say: (t: unknown) => string = (t) => (ty
     spin: num(r.spin, -2, 2, d.spin),
     links: num(r.links, 0, 1, d.links),
     relief: num(r.relief, 0, 1, d.relief),
+    pictureModes: (Array.isArray(r.pictureModes) ? r.pictureModes : []).slice(0, GL_MAX_FORMS).map((m) => pick(m, GL_PICTURE_MODES, "pixels")),
+    strokes: num(r.strokes, 0, 1, d.strokes),
   };
   for (const k of ["c1", "c2", "c3"] as const) {
     const c = colour(r[k]);

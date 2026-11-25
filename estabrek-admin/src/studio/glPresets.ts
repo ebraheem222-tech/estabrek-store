@@ -161,6 +161,27 @@ export const GL_PRESETS: GlPreset[] = [
     id: "bokeh", name: "ضو مغبّش متل عدسة كاميرا|Soft bokeh, like a camera lens|בוקה רך, כמו עדשת מצלמה",
     gl: { bg: { kind: "radial", c1: "#3b0a2a", c2: "#05020a" }, camera: { spin: 0.15, depth: 0.9, focus: 0.3, blur: 0.8 }, chroma: 0.5, layers: [L(["ball"], { count: 2000, size: 2.6, scale: 1.7, colouring: "three", c1: "#fde68a", c2: "#fb7185", c3: "#a78bfa", twinkle: 0.4 })], pointer: { mode: "gravity" } },
   },
+  // Words or a picture read like a picture: outlines, stipple, blobs, corners (the shop's glPicture.ts).
+  {
+    id: "outline", name: "كلامك بخطوط حوافه بتتحرك متل الفرشاة|Your words in their outlines, moving like a brush|המילים בקווי המתאר, זזות כמו מכחול",
+    gl: { bg: { kind: "radial", c1: "#0f172a", c2: "#020617" }, bloom: 0.5, layers: [L(["text"], { text: W("استوديو", "STUDIO", "סטודיו"), pictureModes: ["edges"], strokes: 0.5, count: 6000, size: 1.6, colouring: "blend", c1: "#67e8f9", c2: "#f0abfc", spin: 0, wander: 0, twinkle: 0 })], pointer: { mode: "repel", radius: 0.2, strength: 1.2 }, click: "burst" },
+  },
+  {
+    id: "ink", name: "كلامك منقّط بالحبر عورق|Your words stippled in ink on paper|המילים בנקודות דיו על נייר",
+    gl: { bg: { kind: "color", c1: "#f5efe6" }, layers: [L(["text"], { text: W("حبر", "INK", "דיו"), pictureModes: ["stipple"], count: 5000, size: 2.2, sprite: "dot", glow: false, colouring: "one", c1: "#1c1917", spin: 0, wander: 0.04, twinkle: 0 })], pointer: { mode: "repel", radius: 0.15 } },
+  },
+  {
+    id: "blobs", name: "إيموجي من بقع ملوّنة بأحجامها|Emoji in coloured blobs of their own sizes|אמוג'י מכתמים צבעוניים בגדלים שלהם",
+    gl: { bg: { kind: "radial", c1: "#1e1b4b", c2: "#05030a" }, layers: [L(["text"], { text: W("🌸🍉🦋", "🌸🍉🦋", "🌸🍉🦋"), pictureModes: ["blobs"], count: 5000, size: 1.6, colouring: "picture", spin: 0, wander: 0.06, twinkle: 0.2 })], pointer: { mode: "swirl", radius: 0.25 }, click: "burst" },
+  },
+  {
+    id: "constellation-word", name: "زوايا كلامك نجوم موصولة|The corners of your words as linked stars|פינות המילים ככוכבים מחוברים",
+    gl: { bg: { kind: "color", c1: "#05070f" }, layers: [L(["text"], { text: W("نجوم", "STARS", "כוכבים"), pictureModes: ["features"], links: 0.7, count: 3000, size: 1.6, sprite: "spark", colouring: "one", c1: "#bfdbfe", spin: 0, wander: 0.05, twinkle: 0.5 })], pointer: { mode: "attract", radius: 0.25 } },
+  },
+  {
+    id: "read", name: "كلامك: نقاط ← خطوط ← بقع ← حبر|Your words: dots → outlines → blobs → ink|המילים: נקודות ← קווים ← כתמים ← דיו",
+    gl: { bg: { kind: "radial", c1: "#2a1036", c2: "#07030a" }, layers: [L(["text", "text", "text", "text"], { text: W("سحر", "MAGIC", "קסם"), pictureModes: ["pixels", "edges", "blobs", "stipple"], count: 6000, size: 1.8, colouring: "three", c1: "#fde68a", c2: "#f472b6", c3: "#818cf8", spin: 0, wander: 0.04, twinkle: 0 })], morph: { by: "auto", hold: 1.6, time: 1.4 }, click: "next" },
+  },
   {
     id: "aurora-stars", name: "شفق ونجوم بتلمع|Aurora and twinkling stars|זוהר וכוכבים מנצנצים",
     gl: { bg: { kind: "shader", shader: "aurora", speed: 0.5 }, layers: [L(["cloud"], { count: 900, size: 2.6, sprite: "star", colouring: "one", c1: "#ffffff", scale: 2.6, twinkle: 0.9, wander: 0.1, speed: 0.5, spin: 0 })], pointer: { mode: "none" } },

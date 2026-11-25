@@ -156,7 +156,7 @@ test("from the editor: added from the Add panel, built from a ready design, its 
   await page.locator('[data-testid="studio-tool"][data-tool="gl-build"]').click();
   const panel = page.getByTestId("studio-gl");
   await expect(panel).toBeVisible();
-  await expect(panel.getByTestId("studio-gl-preset")).toHaveCount(38);
+  await expect(panel.getByTestId("studio-gl-preset")).toHaveCount(43);
   await panel.locator('[data-testid="studio-gl-preset"][data-preset="galaxy"]').click();
   await expect.poll(async () => (await glNode()).props.gl.layers[0].shapes).toEqual(["galaxy"]);
   await ready();
@@ -184,6 +184,7 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
     scene("pend", { bg: black, layers: [{ shapes: ["pendulum"], count: 400, twinkle: 0 }], click: "none", pointer: { mode: "none" } }),
     scene("sun", { bg: black, layers: [{ shapes: ["cloud"], count: 3000, wander: 0, spin: 0 }], pointer: { mode: "gravity", strength: 2 } }),
     scene("streak", { bg: black, layers: [{ shapes: ["rain"], count: 600, sprite: "streak", size: 3 }] }),
+    scene("outline", { bg: black, layers: [{ shapes: ["text", "text"], text: { en: "O" }, pictureModes: ["edges", "blobs"], count: 3000, wander: 0, spin: 0, twinkle: 0 }], morph: { by: "click", time: 0.5 }, click: "next", pointer: { mode: "none" } }),
   ]);
   // The Lorenz attractor, drawn off the screen and finished with bloom and colour fringes: on the screen, and moving.
   const lorenz = box(page, "lorenz");
@@ -215,6 +216,16 @@ test("maths and physics: an attractor with bloom, pendulums a hair apart part wa
     await page.waitForTimeout(80);
   }
   expect(await run(sun, (r) => r.near(0.62, 0.5, 0.08))).toBeGreaterThan(Math.max(0.01, before * 1.4));
+  // Words read as a picture: their outlines (an O, its middle empty), then blobs of their own sizes.
+  const outline = box(page, "outline");
+  await centre(outline);
+  await expect(outline).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
+  await page.waitForTimeout(2500);
+  const edges = await run(outline, (r) => ({ inside: r.sample()[0].inside, hollow: r.near(0.5, 0.5, 0.06) }));
+  expect(edges.inside).toBeGreaterThan(0.95);
+  expect(edges.hollow).toBeLessThan(0.01);
+  expect(await press(outline, 1.5)).toBe(1);
+  expect((await run(outline, (r) => r.sample()[0])).inside).toBeGreaterThan(0.9);
   expect(warnings).toEqual([]);
 
   // Less motion: the streaks still drawn in the one still frame (each knows where it was a step before).

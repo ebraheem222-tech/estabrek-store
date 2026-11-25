@@ -741,6 +741,7 @@ export const GL_FLOWS = [
 export const GL_SPRITES = ["soft", "dot", "ring", "square", "star", "spark", "plus", "heart", "glyph", "streak"] as const;
 export const GL_COLOURING = ["one", "blend", "three", "rainbow", "random", "picture"] as const;
 export const GL_FONTS = ["page", "sans", "serif", "mono", "display"] as const;
+export const GL_PICTURE_MODES = ["pixels", "edges", "stipple", "blobs", "features", "palette"] as const;
 export const GL_BGS = ["none", "color", "gradient", "radial", "shader"] as const;
 export const GL_POINTER = ["none", "repel", "attract", "swirl", "bulge", "gravity"] as const;
 export const GL_CLICK = ["none", "burst", "shock", "next"] as const;
@@ -837,6 +838,8 @@ const GlLayer = z.object({
   spin: within(-2, 2).optional(),
   links: within(0, 1).optional(),
   relief: within(0, 1).optional(),
+  pictureModes: z.array(z.enum(GL_PICTURE_MODES)).max(4).optional(),
+  strokes: within(0, 1).optional(),
 }).strict();
 /** A WebGL scene: its background, its layers (60,000 particles at most in all), camera, pointer, press, scroll, morph and finish. */
 const GL_SCENE = {

@@ -162,7 +162,9 @@ type LayerRun = {
   n: number;
   flow: GlFlow | null;
   /** Each form's places, and whether they are in the unit space (fitted to the box) or already in its units. */
-  homes: Array<{ pos: Float32Array; unit: boolean; col?: Float32Array }>;
+  homes: Array<{ pos: Float32Array; unit: boolean; col?: Float32Array; rad?: Float32Array; tan?: Float32Array }>;
+  /** Each particle's own size now (a blob's, a spark's), blended through a morph; null when all are the layer's. */
+  own: Float32Array | null;
   rand: Rand;
   seed: Float32Array;
   /** A random direction each (for a morph's flight, a burst, a scatter). */
@@ -323,15 +325,17 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   const scale = o.phone ? 0.5 : 1;
   const forms = (l: GlLayer) => l.shapes.filter((s): s is GlForm => !isFlow(s));
   /** A layer's words or picture fitted to the box as it is now. */
-  const fitted = (run: LayerRun, form: GlForm, n: number): { pos: Float32Array; unit: boolean; col?: Float32Array } => {
-    const maxW = 1.84 * aspect * 0.94, maxH = 1.2;
+  /** The way the k-th word or picture of a layer (in its forms' order) becomes dots. */
+  const modeOf = (run: LayerRun, form: number) => run.l.pictureModes[run.l.shapes.slice(0, form).filter((s) => s === "text" || s === "image").length] ?? "pixels";
+  const fitted = (run: LayerRun, form: GlForm, n: number, index: number): LayerRun["homes"][number] => {
+    const maxW = 1.84 * aspect * 0.94, maxH = 1.2, mode = modeOf(run, index);
     if (form === "text") {
-      const got = textPoints(run.l.text || " ", n, run.rand, { family: familyOf(run.l.font), weight: run.l.weight, rtl: o.rtl, maxW, maxH });
-      if (got) return { pos: got.pos, unit: false, col: got.col };
+      const got = textPoints(run.l.text || " ", n, run.rand, { family: familyOf(run.l.font), weight: run.l.weight, rtl: o.rtl, maxW, maxH, mode });
+      if (got) return { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col, rad: got.rad, tan: got.tan };
     }
     if (form === "image" && run.img) {
-      const got = imagePoints(run.img, n, run.rand, maxW, maxH);
-      if (got) return { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col };
+      const got = imagePoints(run.img, n, run.rand, maxW, maxH, mode);
+      if (got) return { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col, rad: got.rad, tan: got.tan };
     } else if (form === "image" && run.l.image) loadImage(run, maxW, maxH);
     // Until the picture is read (or without words): a soft cloud the form gathers out of.
     return { pos: formPoints("cloud", n, run.rand), unit: true };
@@ -347,14 +351,17 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     img.onload = () => {
       if (dead) return;
       run.img = img;
-      const got = imagePoints(img, run.n, run.rand, maxW, maxH);
-      if (!got) return;
-      const pos = relieved(got.pos, got.col, run.l.relief);
+      let first: Float32Array | undefined;
       run.l.shapes.forEach((s, i) => {
-        if (s === "image") run.homes[i] = { pos, unit: false, col: got.col };
+        if (s !== "image") return;
+        const got = imagePoints(img, run.n, run.rand, maxW, maxH, modeOf(run, i));
+        if (!got) return;
+        run.homes[i] = { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col, rad: got.rad, tan: got.tan };
+        first ??= got.col;
       });
-      if (run.l.colouring === "picture" && got.col) {
-        pictureColours(run, got.col);
+      ownSizes(run);
+      if (run.l.colouring === "picture" && first) {
+        pictureColours(run, first);
         G.bindBuffer(G.ARRAY_BUFFER, run.st);
         G.bufferData(G.ARRAY_BUFFER, run.stat, G.STATIC_DRAW);
       }
@@ -391,6 +398,10 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     const out = new Float32Array(pos);
     for (let i = 0; i < out.length / 3; i++) out[i * 3 + 2] = (0.2126 * col[i * 3] + 0.7152 * col[i * 3 + 1] + 0.0722 * col[i * 3 + 2] - 0.5) * relief * 0.9;
     return out;
+  }
+  /** Whether any of a layer's forms gives its particles sizes of their own (blobs, sparks). */
+  function ownSizes(run: LayerRun) {
+    run.own = run.homes.some((h) => h.rad?.some((r) => r > 0)) ? new Float32Array(run.n) : null;
   }
   /** The particles in a picture's own colours (or the words' own: an emoji's). */
   function pictureColours(run: LayerRun, col: Float32Array) {
@@ -476,6 +487,17 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     let x = A.pos[i * 3] * fa + (B.pos[i * 3] * fb - A.pos[i * 3] * fa) * morphK;
     let y = A.pos[i * 3 + 1] * fa + (B.pos[i * 3 + 1] * fb - A.pos[i * 3 + 1] * fa) * morphK;
     let z = A.pos[i * 3 + 2] * fa + (B.pos[i * 3 + 2] * fb - A.pos[i * 3 + 2] * fa) * morphK;
+    if (run.own) {
+      // A blob's or a spark's own size, as a radius in the scene's units, blended through the morph.
+      const ra = A.rad ? A.rad[i] : 0, rb = B.rad ? B.rad[i] : 0;
+      run.own[i] = ra + (rb - ra) * morphK;
+    }
+    if (l.strokes && A.tan) {
+      // Along the picture's line through it, to and fro, like a brush.
+      const s = Math.sin(t * 1.4 * Math.max(0.2, l.speed) + run.seed[i] * 6.283) * l.strokes * 0.06;
+      x += A.tan[i * 2] * s;
+      y += A.tan[i * 2 + 1] * s;
+    }
     const flatNow = FLAT.has(l.shapes[morphK < 0.5 ? run.from : run.to] as GlForm);
     if (flatNow) z += (run.seed[i] - 0.5) * l.depth * 0.25;
     const sp = l.speed, s = run.seed[i];
@@ -867,6 +889,10 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
         case "fireflies": alpha *= 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * 2.2 * l.speed + s * 70)); break;
         default:
       }
+      if (run.own && run.own[i] > 0) {
+        // A size of its own: its radius in the scene's units, in the screen's pixels (never smaller than the layer's).
+        size = Math.max(size, run.own[i] * (canvas.clientHeight || canvas.height / dpr || 1) * zoomNow());
+      }
       if (run.phys?.look && run.c) {
         const [sm, am] = run.phys.look(run.c, i);
         size *= sm;
@@ -1094,8 +1120,9 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       if (run.flow || Math.abs(run.fitAspect - aspect) / aspect < 0.03) continue;
       run.fitAspect = aspect;
       forms(run.l).forEach((f, i) => {
-        if (f === "text" || f === "image") run.homes[i] = fitted(run, f, run.n);
+        if (f === "text" || f === "image") run.homes[i] = fitted(run, f, run.n, i);
       });
+      ownSizes(run);
     }
   };
 
@@ -1120,10 +1147,11 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       lines: null, lineBuf: null, lineCount: 0, atlas: null, glyphs: 0, colours,
       from: 0, to: 0, k: 0, since: -1, groups: null, round: null, fitAspect: aspect,
       f: { fit: 1, k: 1, cy: 1, sy: 0, cp: 1, sp: 0, ox: 0, oy: 0, apart: 0 },
-      phys, mem: {}, c: null,
+      phys, mem: {}, c: null, own: null,
       prev: null, streak: l.sprite === "streak" ? new Float32Array(n * 14) : null, streakBuf: l.sprite === "streak" ? G.createBuffer() : null,
     };
-    if (!flow) for (const f of forms(l)) run.homes.push(f === "text" || f === "image" ? fitted(run, f, n) : { pos: formPoints(f, n, rand), unit: true });
+    if (!flow) forms(l).forEach((f, i) => run.homes.push(f === "text" || f === "image" ? fitted(run, f, n, i) : { pos: formPoints(f, n, rand), unit: true }));
+    ownSizes(run);
     if (l.links > 0) {
       const m = Math.min(n, GL_LINK_MAX);
       run.lines = new Float32Array(Math.min(6000, (m * (m - 1)) / 2) * 8);
