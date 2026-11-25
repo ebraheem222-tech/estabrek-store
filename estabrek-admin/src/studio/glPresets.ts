@@ -104,6 +104,63 @@ export const GL_PRESETS: GlPreset[] = [
     id: "scroll", name: "كلام بيتجمّع مع السكرول|Words that gather as you scroll|מילים שמתאספות בגלילה",
     gl: { bg: { kind: "radial", c1: "#172554", c2: "#020617" }, scroll: "scatter", layers: [L(["text"], { text: W("أهلاً فيك", "HELLO", "שלום"), count: 7000, size: 2.2, colouring: "blend", c1: "#ffffff", c2: "#93c5fd", spin: 0, wander: 0.05 })], pointer: { mode: "repel", radius: 0.18 } },
   },
+  // Maths and physics (the shop's glPhysics.ts and its maths forms).
+  {
+    id: "lorenz", name: "فراشة لورنز: الفوضى بعينها|Lorenz's butterfly: chaos itself|הפרפר של לורנץ: הכאוס עצמו",
+    gl: { bg: { kind: "color", c1: "#04040a" }, camera: { spin: 0.18, tilt: 8, drag: true }, bloom: 0.55, layers: [L(["lorenz"], { count: 12000, size: 1.5, colouring: "three", c1: "#fde68a", c2: "#f472b6", c3: "#6366f1", twinkle: 0, wander: 0 })] },
+  },
+  {
+    id: "aizawa", name: "جاذب أيزاوا|The Aizawa attractor|מושך אייזאווה",
+    gl: { bg: { kind: "radial", c1: "#0f1b2d", c2: "#020308" }, camera: { spin: 0.25, tilt: 14, drag: true }, bloom: 0.45, layers: [L(["aizawa"], { count: 12000, size: 1.5, colouring: "three", c1: "#67e8f9", c2: "#a78bfa", c3: "#f0abfc", twinkle: 0 })] },
+  },
+  {
+    id: "thomas", name: "جاذب توماس بيلف|The turning Thomas attractor|מושך תומאס מסתובב",
+    gl: { bg: { kind: "color", c1: "#050308" }, camera: { spin: 0.3, drag: true }, layers: [L(["thomas"], { count: 12000, size: 1.5, scale: 1.4, colouring: "rainbow", twinkle: 0 })], trails: 0.4 },
+  },
+  {
+    id: "flock", name: "سرب طيور بيهرب من الماوس|A flock that flees the pointer|להקה שבורחת מהעכבר",
+    gl: { bg: { kind: "gradient", c1: "#fb923c", c2: "#3b0764" }, layers: [L(["flock"], { count: 1100, size: 2.6, sprite: "dot", colouring: "one", c1: "#1c1917", glow: false, twinkle: 0 })], pointer: { mode: "repel", radius: 0.3 } },
+  },
+  {
+    id: "gravity", name: "شموس وجاذبية: حط الماوس وصير شمس|Suns and gravity: your pointer is a sun too|שמשות וכבידה: העכבר הוא שמש",
+    gl: { bg: { kind: "color", c1: "#030308" }, trails: 0.85, bloom: 0.5, layers: [L(["gravity"], { count: 3500, size: 1.8, colouring: "three", c1: "#fef3c7", c2: "#fb923c", c3: "#6366f1", twinkle: 0 })], pointer: { mode: "gravity" } },
+  },
+  {
+    id: "pendulum", name: "بندولات الفوضى: فرق شعرة بيصير عالم|Chaos pendulums: a hair apart becomes a world apart|מטוטלות כאוס: שערה הופכת לעולם",
+    gl: { bg: { kind: "color", c1: "#05050a" }, trails: 0.9, bloom: 0.35, layers: [L(["pendulum"], { count: 1600, size: 2, colouring: "rainbow", twinkle: 0 })], click: "none" },
+  },
+  {
+    id: "field", name: "خطوط الحقل الكهربائي (الماوس شحنة)|Electric field lines (the pointer is a charge)|קווי שדה חשמלי (העכבר הוא מטען)",
+    gl: { bg: { kind: "color", c1: "#04060c" }, trails: 0.92, layers: [L(["charge"], { count: 3000, size: 1.4, colouring: "blend", c1: "#38bdf8", c2: "#f472b6", twinkle: 0 })], pointer: { mode: "repel", radius: 0.1, strength: 0.4 } },
+  },
+  {
+    id: "cloth", name: "قماش بالهوا (ادفعه بالماوس)|Cloth in the wind (push it)|בד ברוח (דחפו אותו)",
+    gl: { bg: { kind: "radial", c1: "#2a1036", c2: "#07030a" }, layers: [L(["cloth"], { count: 2400, size: 2.4, sprite: "dot", colouring: "blend", c1: "#f9a8d4", c2: "#7c3aed", twinkle: 0 })], pointer: { mode: "repel", radius: 0.22, strength: 1.6 }, click: "burst" },
+  },
+  {
+    id: "pond", name: "بركة بتموج تحت الماوس والمطر|A pond rippling under the pointer and rain|בריכה שמגלגלת מתחת לעכבר ולגשם",
+    gl: { bg: { kind: "gradient", c1: "#020617", c2: "#0c1a3a" }, camera: { tilt: 28 }, layers: [L(["pond"], { count: 8000, size: 1.8, sprite: "dot", colouring: "blend", c1: "#67e8f9", c2: "#1e40af", twinkle: 0 })] },
+  },
+  {
+    id: "hopf", name: "ألياف هوبف: دواير بأربع أبعاد|The Hopf fibration: circles in four dimensions|סיבי הופף: מעגלים בארבעה ממדים",
+    gl: { bg: { kind: "color", c1: "#05050b" }, camera: { spin: 0.2, tilt: 20, drag: true }, layers: [L(["hopf"], { count: 10000, size: 1.3, colouring: "rainbow", twinkle: 0 })] },
+  },
+  {
+    id: "maths", name: "كلاين ← موبيوس ← صيغة خارقة ← ليساجو|Klein → Möbius → superformula → Lissajous|קליין ← מביוס ← נוסחת־על ← ליסז'ו",
+    gl: { bg: { kind: "radial", c1: "#1e1b4b", c2: "#05050b" }, camera: { spin: 0.25, tilt: 22, drag: true }, layers: [L(["klein", "mobius", "supershape", "lissajous"], { count: 9000, size: 1.6, colouring: "three", c1: "#fde68a", c2: "#f472b6", c3: "#6366f1" })], morph: { by: "auto", hold: 2, time: 1.6 }, click: "next" },
+  },
+  {
+    id: "nature", name: "سرخس ← هرم سيربنسكي ← وردة (فراكتالات)|Fern → Sierpiński → rose (fractals)|שרך ← שרפינסקי ← ורד (פרקטלים)",
+    gl: { bg: { kind: "color", c1: "#04080a" }, layers: [L(["fern", "sierpinski", "rose", "gyroid"], { count: 10000, size: 1.5, colouring: "blend", c1: "#86efac", c2: "#0ea5e9", spin: 0.1 })], morph: { by: "auto", hold: 2.2, time: 1.6 }, click: "next" },
+  },
+  {
+    id: "emoji", name: "إيموجي بألوانه من نقاط|Emoji in their own colours, in dots|אמוג'י בצבעים שלהם מנקודות",
+    gl: { bg: { kind: "radial", c1: "#2e1065", c2: "#05030a" }, layers: [L(["text"], { text: W("🌸✨🦋", "🌸✨🦋", "🌸✨🦋"), count: 9000, size: 2.2, colouring: "picture", spin: 0, wander: 0.05 })], pointer: { mode: "repel", radius: 0.2, strength: 1.4 }, click: "burst" },
+  },
+  {
+    id: "bokeh", name: "ضو مغبّش متل عدسة كاميرا|Soft bokeh, like a camera lens|בוקה רך, כמו עדשת מצלמה",
+    gl: { bg: { kind: "radial", c1: "#3b0a2a", c2: "#05020a" }, camera: { spin: 0.15, depth: 0.9, focus: 0.3, blur: 0.8 }, chroma: 0.5, layers: [L(["ball"], { count: 2000, size: 2.6, scale: 1.7, colouring: "three", c1: "#fde68a", c2: "#fb7185", c3: "#a78bfa", twinkle: 0.4 })], pointer: { mode: "gravity" } },
+  },
   {
     id: "aurora-stars", name: "شفق ونجوم بتلمع|Aurora and twinkling stars|זוהר וכוכבים מנצנצים",
     gl: { bg: { kind: "shader", shader: "aurora", speed: 0.5 }, layers: [L(["cloud"], { count: 900, size: 2.6, sprite: "star", colouring: "one", c1: "#ffffff", scale: 2.6, twinkle: 0.9, wander: 0.1, speed: 0.5, spin: 0 })], pointer: { mode: "none" } },

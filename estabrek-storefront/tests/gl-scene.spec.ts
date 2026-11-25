@@ -139,7 +139,7 @@ test("from the editor: added from the Add panel, built from a ready design, its 
   await page.locator('[data-testid="studio-tool"][data-tool="gl-build"]').click();
   const panel = page.getByTestId("studio-gl");
   await expect(panel).toBeVisible();
-  await expect(panel.getByTestId("studio-gl-preset")).toHaveCount(24);
+  await expect(panel.getByTestId("studio-gl-preset")).toHaveCount(38);
   await panel.locator('[data-testid="studio-gl-preset"][data-preset="galaxy"]').click();
   await expect.poll(async () => (await glNode()).props.gl.layers[0].shapes).toEqual(["galaxy"]);
   await ready();
@@ -154,4 +154,77 @@ test("from the editor: added from the Add panel, built from a ready design, its 
   await expect.poll(async () => (await glNode()).props.gl.layers[0].text).toEqual({ en: "Our name" });
   await ready();
   await expect(frame.locator('[data-pt-gl="element"]')).toHaveAttribute("data-gl-state", "running", { timeout: 60_000 });
+});
+
+test("maths and physics: an attractor with bloom, pendulums a hair apart part ways, the pointer as a sun, streaks in a still frame", async ({ page, browser }) => {
+  test.setTimeout(240_000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const warnings: string[] = [];
+  page.on("console", (m) => { if (/INVALID_OPERATION|Feedback loop|WebGL/i.test(m.text())) warnings.push(m.text()); });
+  const black = { kind: "color", c1: "#000000" };
+  await show(page, [
+    scene("lorenz", { bg: black, bloom: 0.6, chroma: 0.5, layers: [{ shapes: ["lorenz"], count: 6000 }], pointer: { mode: "none" } }),
+    scene("pend", { bg: black, layers: [{ shapes: ["pendulum"], count: 400, twinkle: 0 }], click: "none", pointer: { mode: "none" } }),
+    scene("sun", { bg: black, layers: [{ shapes: ["cloud"], count: 3000, wander: 0, spin: 0 }], pointer: { mode: "gravity", strength: 2 } }),
+    scene("streak", { bg: black, layers: [{ shapes: ["rain"], count: 600, sprite: "streak", size: 3 }] }),
+  ]);
+  // The Lorenz attractor, drawn off the screen and finished with bloom and colour fringes: on the screen, and moving.
+  const lorenz = box(page, "lorenz");
+  await expect(lorenz).toHaveAttribute("data-gl-state", "running", { timeout: 90_000 });
+  await page.waitForTimeout(1500);
+  expect((await run(lorenz, (r) => r.sample()[0])).inside).toBeGreaterThan(0.95);
+  const one = await lorenz.screenshot();
+  await page.waitForTimeout(400);
+  expect(one.equals(await lorenz.screenshot())).toBe(false);
+
+  // Pendulums started a ten-thousandth of a radian apart: one tip at first, then all over (chaos).
+  const pend = box(page, "pend");
+  await pend.scrollIntoViewIfNeeded();
+  await expect(pend).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
+  // A press starts them all again (it may have begun before it came into view).
+  const pb = (await pend.boundingBox())!;
+  await page.mouse.click(pb.x + pb.width * 0.5, pb.y + pb.height * 0.5);
+  await page.mouse.move(pb.x + pb.width * 0.5, pb.y - 200);
+  await page.waitForTimeout(150);
+  expect((await run(pend, (r) => r.sample()[0])).spread).toBeLessThan(0.02);
+  await expect.poll(() => run(pend, (r) => r.sample()[0].spread), { timeout: 30_000, intervals: [1000] }).toBeGreaterThan(0.05);
+
+  // The pointer as a small sun: particles are drawn to it.
+  const sun = box(page, "sun");
+  await sun.scrollIntoViewIfNeeded();
+  await expect(sun).toHaveAttribute("data-gl-state", "running", { timeout: 30_000 });
+  await page.waitForTimeout(2500);
+  const before = await run(sun, (r) => r.near(0.62, 0.5, 0.08));
+  const sb = (await sun.boundingBox())!;
+  for (let i = 0; i < 30; i++) {
+    await page.mouse.move(sb.x + sb.width * 0.62 + (i % 2), sb.y + sb.height * 0.5);
+    await page.waitForTimeout(80);
+  }
+  expect(await run(sun, (r) => r.near(0.62, 0.5, 0.08))).toBeGreaterThan(Math.max(0.01, before * 1.4));
+  expect(warnings).toEqual([]);
+
+  // Less motion: the streaks still drawn in the one still frame (each knows where it was a step before).
+  const still = await browser.newContext({ reducedMotion: "reduce", baseURL: page.url().replace(/\/en\/library-demo.*$/, "") });
+  const p2 = await still.newPage();
+  await p2.goto("/en/library-demo");
+  const streak = box(p2, "streak");
+  await streak.scrollIntoViewIfNeeded();
+  await expect(streak).toHaveAttribute("data-gl-state", "still", { timeout: 60_000 });
+  const lit = await streak.evaluate(async (e) => {
+    const c = e.querySelector("canvas") as HTMLCanvasElement;
+    const img = new Image();
+    img.src = c.toDataURL("image/png");
+    await img.decode();
+    const k = document.createElement("canvas");
+    k.width = c.width;
+    k.height = c.height;
+    const x = k.getContext("2d")!;
+    x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, k.width, k.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 120) n++;
+    return n;
+  });
+  expect(lit).toBeGreaterThan(200);
+  await still.close();
 });

@@ -15,9 +15,17 @@ import { SHADER_KIND_LIST, type ShaderKind } from "./shader";
 export const GL_FORMS = [
   "sphere", "ball", "cube", "torus", "knot", "helix", "galaxy", "rings", "wave", "grid", "cylinder", "cone",
   "heart", "star", "cloud", "globe", "spiral", "text", "image",
+  // Maths: a Lissajous knot, a Möbius strip, a Klein bottle, a superformula shape, a gyroid, the Hopf fibration,
+  // a Sierpiński pyramid, a Barnsley fern, a rose curve, a blob of spherical harmonics.
+  "lissajous", "mobius", "klein", "supershape", "gyroid", "hopf", "sierpinski", "fern", "rose", "blob",
 ] as const;
 /** Flows: ways the particles keep moving (a flow never morphs). */
-export const GL_FLOWS = ["rain", "snow", "rise", "warp", "fountain", "fireworks", "vortex", "flow", "orbit", "fireflies"] as const;
+export const GL_FLOWS = [
+  "rain", "snow", "rise", "warp", "fountain", "fireworks", "vortex", "flow", "orbit", "fireflies",
+  // Maths and physics (glPhysics.ts): three strange attractors, a flock, gravity, double pendulums, electric field
+  // lines, a cloth, a pond.
+  "lorenz", "aizawa", "thomas", "flock", "gravity", "pendulum", "charge", "cloth", "pond",
+] as const;
 export const GL_SHAPES = [...GL_FORMS, ...GL_FLOWS] as const;
 export type GlForm = (typeof GL_FORMS)[number];
 export type GlFlow = (typeof GL_FLOWS)[number];
@@ -25,7 +33,7 @@ export type GlShape = (typeof GL_SHAPES)[number];
 export const isFlow = (s: GlShape): s is GlFlow => (GL_FLOWS as readonly string[]).includes(s);
 
 /** How one particle looks. */
-export const GL_SPRITES = ["soft", "dot", "ring", "square", "star", "spark", "plus", "heart", "glyph"] as const;
+export const GL_SPRITES = ["soft", "dot", "ring", "square", "star", "spark", "plus", "heart", "glyph", "streak"] as const;
 export type GlSprite = (typeof GL_SPRITES)[number];
 /** How a layer is coloured: one colour, two blended across it, three, a rainbow, mixed at random, or its picture's own. */
 export const GL_COLOURING = ["one", "blend", "three", "rainbow", "random", "picture"] as const;
@@ -38,7 +46,7 @@ export type GlBgKind = (typeof GL_BGS)[number];
 /** The library's WebGL shaders a scene may stand on (the physics canvases are 2D and stay section backgrounds). */
 export const GL_BG_SHADERS = SHADER_KIND_LIST.slice(0, SHADER_KIND_LIST.indexOf("cloth")) as readonly ShaderKind[];
 
-export const GL_POINTER = ["none", "repel", "attract", "swirl", "bulge"] as const;
+export const GL_POINTER = ["none", "repel", "attract", "swirl", "bulge", "gravity"] as const;
 export type GlPointer = (typeof GL_POINTER)[number];
 export const GL_CLICK = ["none", "burst", "shock", "next"] as const;
 export type GlClick = (typeof GL_CLICK)[number];
@@ -91,19 +99,24 @@ export type GlLayer = {
   spin: number;
   /** Lines between near particles (a constellation, a network). */
   links: number;
+  /** A picture in relief: its light parts come forward. */
+  relief: number;
 };
 export type GlBg = { kind: GlBgKind; c1?: string; c2?: string; c3?: string; c4?: string; shader: ShaderKind; speed: number; rainbow?: boolean };
 export type GlSpec = {
   bg: GlBg;
   layers: GlLayer[];
   /** It turns by itself (and how fast), its tilt in degrees, how near it is, how deep the view is, turned by hand. */
-  camera: { spin: number; tilt: number; zoom: number; depth: number; drag: boolean };
+  camera: { spin: number; tilt: number; zoom: number; depth: number; drag: boolean; focus: number; blur: number };
   pointer: { mode: GlPointer; radius: number; strength: number };
   click: GlClick;
   scroll: GlScroll;
   morph: { by: GlMorphBy; hold: number; time: number };
   /** Trails left behind (0 none … 0.95 long), film grain, a dark edge, a veil for words over it. */
   trails: number;
+  /** Light that spills round the bright parts (bloom), and colours that part at the edges (chromatic aberration). */
+  bloom: number;
+  chroma: number;
   grain: number;
   vignette: number;
   veil: number;
@@ -120,7 +133,7 @@ const SAFE_SRC = /^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i;
 export const GL_LAYER_DEFAULT: GlLayer = {
   shapes: ["sphere"], text: "", font: "page", weight: 800, count: 3000, size: 2.5, vary: 0.5, sprite: "soft", glyphs: "",
   colouring: "blend", opacity: 0.9, glow: true, scale: 1, x: 0, y: 0, depth: 0.3,
-  speed: 1, wander: 0.15, wave: 0, twinkle: 0.2, pulse: 0, spin: 0.2, links: 0,
+  speed: 1, wander: 0.15, wave: 0, twinkle: 0.2, pulse: 0, spin: 0.2, links: 0, relief: 0,
 };
 
 /** A layer from its saved settings (`say` reads a text in the page's language). */
@@ -157,6 +170,7 @@ export function glLayerOf(raw: unknown, say: (t: unknown) => string = (t) => (ty
     pulse: num(r.pulse, 0, 1, d.pulse),
     spin: num(r.spin, -2, 2, d.spin),
     links: num(r.links, 0, 1, d.links),
+    relief: num(r.relief, 0, 1, d.relief),
   };
   for (const k of ["c1", "c2", "c3"] as const) {
     const c = colour(r[k]);
@@ -196,12 +210,14 @@ export function glSceneOf(raw: unknown, say?: (t: unknown) => string): GlSpec | 
   return {
     bg,
     layers,
-    camera: { spin: num(c.spin, -2, 2, 0), tilt: num(c.tilt, -80, 80, 0), zoom: num(c.zoom, 0.3, 3, 1), depth: num(c.depth, 0, 1, 0.5), drag: c.drag === true },
+    camera: { spin: num(c.spin, -2, 2, 0), tilt: num(c.tilt, -80, 80, 0), zoom: num(c.zoom, 0.3, 3, 1), depth: num(c.depth, 0, 1, 0.5), drag: c.drag === true, focus: num(c.focus, -1, 1, 0), blur: num(c.blur, 0, 1, 0) },
     pointer: { mode: pick(p.mode, GL_POINTER, "repel"), radius: num(p.radius, 0.05, 0.8, 0.22), strength: num(p.strength, 0, 3, 1) },
     click: pick(r.click, GL_CLICK, "burst"),
     scroll: pick(r.scroll, GL_SCROLL, "none"),
     morph: { by: pick(m.by, GL_MORPH_BY, "auto"), hold: num(m.hold, 0.3, 15, 2.5), time: num(m.time, 0.2, 6, 1.6) },
     trails: num(r.trails, 0, 0.95, 0),
+    bloom: num(r.bloom, 0, 1, 0),
+    chroma: num(r.chroma, 0, 1, 0),
     grain: num(r.grain, 0, 0.4, 0),
     vignette: num(r.vignette, 0, 1, 0),
     veil: num(r.veil, 0, 0.85, 0),

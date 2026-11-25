@@ -14,6 +14,7 @@
 import { SHADERS, SHADER_HEAD } from "./shaderGlsl";
 import { formPoints, gauss, imagePoints, rng, textPoints, type Rand } from "./glShapes";
 import { GL_LINK_MAX, isFlow, type GlFlow, type GlForm, type GlLayer, type GlSpec } from "./glScene";
+import { PHYSICS, type FlowCtx, type PhysicsFlow } from "./glPhysics";
 
 export type Rgb = [number, number, number];
 /** The scene's colours, read where it is drawn: the background's four and each layer's three (null: the default). */
@@ -121,14 +122,37 @@ void main(){
 }`;
 const LINE_VS = `attribute vec3 a_p; attribute float a_a; ${VIEW} varying float v_a; void main(){ float k; gl_Position = placed(a_p, k); v_a = a_a; }`;
 const LINE_FS = "precision mediump float; varying float v_a; uniform vec3 u_col; void main(){ gl_FragColor = vec4(u_col * v_a, v_a); }";
-const SPRITE_NO: Record<GlLayer["sprite"], number> = { soft: 0, dot: 1, ring: 2, square: 3, star: 4, spark: 5, plus: 6, heart: 7, glyph: 8 };
+/** A streak: a line from where a particle is back along its way, in its own colour, fading to its tail. */
+const STREAK_VS = `attribute vec3 a_p; attribute vec4 a_c; ${VIEW} varying vec4 v_c; void main(){ float k; gl_Position = placed(a_p, k); v_c = a_c; }`;
+const STREAK_FS = "precision mediump float; varying vec4 v_c; void main(){ gl_FragColor = vec4(v_c.rgb * v_c.a, v_c.a); }";
+/** Bloom: the bright parts, blurred (a nine-tap Gaussian in two passes), added back over the picture. */
+const BRIGHT_FS = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_t;
+void main(){ vec4 c = texture2D(u_t, v_uv); gl_FragColor = c * smoothstep(0.18, 0.75, max(c.r, max(c.g, c.b))); }`;
+const BLUR_FS = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_t; uniform vec2 u_dir;
+void main(){
+  vec4 c = texture2D(u_t, v_uv) * 0.2270270270;
+  c += (texture2D(u_t, v_uv + u_dir * 1.3846153846) + texture2D(u_t, v_uv - u_dir * 1.3846153846)) * 0.3162162162;
+  c += (texture2D(u_t, v_uv + u_dir * 3.2307692308) + texture2D(u_t, v_uv - u_dir * 3.2307692308)) * 0.0702702703;
+  gl_FragColor = c;
+}`;
+/** The finished picture: the scene, its colours parted towards the edges (chromatic aberration), and its bloom. */
+const FINAL_FS = `precision mediump float; varying vec2 v_uv; uniform sampler2D u_s; uniform sampler2D u_b; uniform float u_k; uniform float u_chroma;
+void main(){
+  vec4 c = texture2D(u_s, v_uv);
+  if (u_chroma > 0.0) { vec2 d = (v_uv - 0.5) * u_chroma * 0.016; c.r = texture2D(u_s, v_uv + d).r; c.b = texture2D(u_s, v_uv - d).b; }
+  vec4 b = texture2D(u_b, v_uv) * u_k;
+  gl_FragColor = vec4(c.rgb + b.rgb, min(1.0, c.a + b.a));
+}`;
+const SPRITE_NO: Record<GlLayer["sprite"], number> = { soft: 0, dot: 1, ring: 2, square: 3, star: 4, spark: 5, plus: 6, heart: 7, glyph: 8, streak: 1 };
 
 /** Flows whose particles turn with the camera (the others fall, rise or cross the screen as it is). */
 const TURNING: ReadonlySet<GlFlow> = new Set(["orbit", "vortex"]);
 /** Forms that are flat (a picture's thickness is the layer's depth). */
-const FLAT: ReadonlySet<GlForm> = new Set(["text", "image", "spiral", "grid", "star", "heart"]);
+const FLAT: ReadonlySet<GlForm> = new Set(["text", "image", "spiral", "grid", "star", "heart", "fern", "rose"]);
 /** Forms coloured from the middle out, not from the bottom up. */
-const ROUND: ReadonlySet<string> = new Set(["galaxy", "rings", "spiral", "vortex", "orbit", "wave"]);
+const ROUND: ReadonlySet<string> = new Set(["galaxy", "rings", "spiral", "vortex", "orbit", "wave", "rose"]);
+/** Flows coloured along their particles' order (a family of pendulums, a path round an attractor, a sheet's rows). */
+const BY_ORDER: ReadonlySet<string> = new Set(["pendulum", "lorenz", "aizawa", "thomas", "cloth", "pond", "hopf"]);
 
 type Target = { fb: WebGLFramebuffer; tex: WebGLTexture; w: number; h: number };
 type LayerRun = {
@@ -136,7 +160,7 @@ type LayerRun = {
   n: number;
   flow: GlFlow | null;
   /** Each form's places, and whether they are in the unit space (fitted to the box) or already in its units. */
-  homes: Array<{ pos: Float32Array; unit: boolean }>;
+  homes: Array<{ pos: Float32Array; unit: boolean; col?: Float32Array }>;
   rand: Rand;
   seed: Float32Array;
   /** A random direction each (for a morph's flight, a burst, a scatter). */
@@ -170,6 +194,14 @@ type LayerRun = {
   img?: HTMLImageElement;
   /** What is the same for all its particles in this step: their fit, size, turn and offset. */
   f: { fit: number; k: number; cy: number; sy: number; cp: number; sp: number; ox: number; oy: number; apart: number };
+  /** A flow of maths or physics (glPhysics.ts), its memory, and what it was handed this step. */
+  phys: PhysicsFlow | null;
+  mem: Record<string, unknown>;
+  c: FlowCtx | null;
+  /** Streaks: where each particle was, and the lines drawn back to it. */
+  prev: Float32Array | null;
+  streak: Float32Array | null;
+  streakBuf: WebGLBuffer | null;
 };
 
 export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): GlRun | null {
@@ -200,6 +232,11 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   const copyProg = program(QUAD_VS, COPY_FS);
   const fillProg = program(SHADER_VS, FILL_FS);
   if (!pointProg || !lineProg || !plainProg || !copyProg || !fillProg) return null;
+  const streakProg = spec.layers.some((l) => l.sprite === "streak") ? program(STREAK_VS, STREAK_FS) : null;
+  const post = spec.bloom > 0 || spec.chroma > 0;
+  const finalProg = post ? program(QUAD_VS, FINAL_FS) : null;
+  const brightProg = spec.bloom > 0 ? program(QUAD_VS, BRIGHT_FS) : null;
+  const blurProg = spec.bloom > 0 ? program(QUAD_VS, BLUR_FS) : null;
   const shaderDef = spec.bg.kind === "shader" ? SHADERS[spec.bg.shader] : undefined;
   const shaderProg = shaderDef ? program(SHADER_VS, SHADER_HEAD + shaderDef.frag) : null;
 
@@ -249,6 +286,8 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   /* ---------------------------------------------------------------- the box */
   let w = 1, h = 1, aspect = 1, dpr = 1, quality = 1;
   let bgTarget: Target | null = null, trailTarget: Target | null = null;
+  // The scene drawn off the screen first when it is finished after (bloom, colour fringes), and its blur at a quarter.
+  let sceneTarget: Target | null = null, blurA: Target | null = null, blurB: Target | null = null;
   const size = () => {
     dpr = Math.min(2, o.dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1)) * quality;
     const cw = canvas.clientWidth || canvas.width || 1, ch = canvas.clientHeight || canvas.height || 1;
@@ -261,6 +300,11 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     dropTarget(trailTarget);
     bgTarget = shaderProg ? target(Math.max(1, Math.round(w * 0.55)), Math.max(1, Math.round(h * 0.55))) : null;
     trailTarget = spec.trails > 0 ? target(w, h) : null;
+    for (const t of [sceneTarget, blurA, blurB]) dropTarget(t);
+    sceneTarget = finalProg ? target(w, h) : null;
+    const bw = Math.max(1, Math.round(w / 4)), bh = Math.max(1, Math.round(h / 4));
+    blurA = brightProg && blurProg ? target(bw, bh) : null;
+    blurB = brightProg && blurProg ? target(bw, bh) : null;
   };
   size();
 
@@ -280,12 +324,12 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   const fitted = (run: LayerRun, form: GlForm, n: number): { pos: Float32Array; unit: boolean; col?: Float32Array } => {
     const maxW = 1.84 * aspect * 0.94, maxH = 1.2;
     if (form === "text") {
-      const pos = textPoints(run.l.text || " ", n, run.rand, { family: familyOf(run.l.font), weight: run.l.weight, rtl: o.rtl, maxW, maxH });
-      if (pos) return { pos, unit: false };
+      const got = textPoints(run.l.text || " ", n, run.rand, { family: familyOf(run.l.font), weight: run.l.weight, rtl: o.rtl, maxW, maxH });
+      if (got) return { pos: got.pos, unit: false, col: got.col };
     }
     if (form === "image" && run.img) {
       const got = imagePoints(run.img, n, run.rand, maxW, maxH);
-      if (got) return { pos: got.pos, unit: false, col: got.col };
+      if (got) return { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col };
     } else if (form === "image" && run.l.image) loadImage(run, maxW, maxH);
     // Until the picture is read (or without words): a soft cloud the form gathers out of.
     return { pos: formPoints("cloud", n, run.rand), unit: true };
@@ -303,16 +347,12 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       run.img = img;
       const got = imagePoints(img, run.n, run.rand, maxW, maxH);
       if (!got) return;
+      const pos = relieved(got.pos, got.col, run.l.relief);
       run.l.shapes.forEach((s, i) => {
-        if (s === "image") run.homes[i] = { pos: got.pos, unit: false };
+        if (s === "image") run.homes[i] = { pos, unit: false, col: got.col };
       });
       if (run.l.colouring === "picture" && got.col) {
-        for (let i = 0; i < run.n; i++) {
-          const j = (0.82 + 0.36 * ((run.seed[i] * 7.31) % 1));
-          run.stat[i * 4] = Math.min(1, got.col[i * 3] * j);
-          run.stat[i * 4 + 1] = Math.min(1, got.col[i * 3 + 1] * j);
-          run.stat[i * 4 + 2] = Math.min(1, got.col[i * 3 + 2] * j);
-        }
+        pictureColours(run, got.col);
         G.bindBuffer(G.ARRAY_BUFFER, run.st);
         G.bufferData(G.ARRAY_BUFFER, run.stat, G.STATIC_DRAW);
       }
@@ -343,6 +383,22 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   };
 
 
+  /** A picture in relief: its light parts come forward, its dark ones go back. */
+  function relieved(pos: Float32Array, col: Float32Array | undefined, relief: number) {
+    if (!col || !relief) return pos;
+    const out = new Float32Array(pos);
+    for (let i = 0; i < out.length / 3; i++) out[i * 3 + 2] = (0.2126 * col[i * 3] + 0.7152 * col[i * 3 + 1] + 0.0722 * col[i * 3 + 2] - 0.5) * relief * 0.9;
+    return out;
+  }
+  /** The particles in a picture's own colours (or the words' own: an emoji's). */
+  function pictureColours(run: LayerRun, col: Float32Array) {
+    for (let i = 0; i < run.n; i++) {
+      const j = 0.82 + 0.36 * ((run.seed[i] * 7.31) % 1);
+      run.stat[i * 4] = Math.min(1, col[i * 3] * j);
+      run.stat[i * 4 + 1] = Math.min(1, col[i * 3 + 1] * j);
+      run.stat[i * 4 + 2] = Math.min(1, col[i * 3 + 2] * j);
+    }
+  }
   /** Each particle's colour (and its seed, for the twinkle and the glyph it shows). */
   function colour(run: LayerRun) {
     const { l, n, seed } = run;
@@ -356,6 +412,7 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       const s = seed[i];
       let f = s;
       if (groups) f = (i % groups) / groups;
+      else if (BY_ORDER.has(first)) f = i / n;
       else if (home) {
         const x = home[i * 3], y = home[i * 3 + 1], z = home[i * 3 + 2];
         f = first === "text" || first === "image" ? x / (2 * maxX) + 0.5 : ROUND.has(first) ? Math.min(1, Math.hypot(x, z) / 1.05) : (y + 1) / 2;
@@ -452,6 +509,16 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   }
 
   /* ---------------------------------------------------------------- flows */
+  /** What a flow of maths or physics is handed for a step. */
+  const ctxOf = (run: LayerRun, press: { x: number; y: number } | null): FlowCtx => {
+    const c: FlowCtx = {
+      n: run.n, p: run.p, v: run.v, a: run.a, age: run.age, seed: run.seed, rand: run.rand, t, sp: run.l.speed, aspect,
+      S: run.l.scale * Math.min(1, aspect) * 0.95, cx: run.l.x * aspect, cy: run.l.y, depth: run.l.depth,
+      ptr: { on: ptr.on && spec.pointer.mode !== "none", x: ptr.x, y: ptr.y }, press, mem: run.mem,
+    };
+    run.c = c;
+    return c;
+  };
   function respawn(run: LayerRun, i: number, first: boolean) {
     const { l, p, v, a, rand } = run;
     const A = aspect * l.scale, cx = l.x * aspect, cy = l.y, dz = l.depth;
@@ -517,6 +584,10 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   }
   function startFlow(run: LayerRun) {
     if (!run.flow) return;
+    if (run.phys) {
+      run.phys.start(ctxOf(run, null));
+      return;
+    }
     if (run.flow === "fireworks") {
       const g = Math.max(3, Math.min(10, Math.round(run.n / 250)));
       run.groups = new Float32Array(g * 4);
@@ -619,7 +690,10 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   function turned(run: LayerRun, i: number, out: Float32Array) {
     const { l, a, v } = run, j = i * 3;
     let x: number, y: number, z: number;
-    if (run.flow === "orbit") {
+    if (run.phys?.place && run.c) {
+      run.phys.place(run.c, i, out);
+      x = out[0]; y = out[1]; z = out[2];
+    } else if (run.flow === "orbit") {
       const r = a[j] * l.scale * Math.min(1, aspect) * 0.95, ang = v[j];
       x = Math.cos(ang) * r; y = 0; z = Math.sin(ang) * r;
       const inc = a[j + 2], node = a[j + 1];
@@ -691,16 +765,20 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     const shockR = shock ? (t - shock.t) * 2.4 : 0;
     if (shock && shockR > 5) shock = null;
     for (const run of runs) {
+      // Where each was before this step (a streak is drawn back to it, so a still frame has them too).
+      if (run.streak) (run.prev ??= new Float32Array(run.p.length)).set(run.p);
       morphStep(run);
       frameOf(run);
-      if (run.flow) stepFlow(run);
+      if (run.phys) run.phys.step(ctxOf(run, pw));
+      else if (run.flow) stepFlow(run);
       const { n, p, v } = run;
       const form = !run.flow;
-      const turning = !form && TURNING.has(run.flow!);
+      const turning = !form && (TURNING.has(run.flow!) || Boolean(run.phys?.turning));
+      const hands = run.phys ? run.phys.hands : "push";
       const stiff = 0.05 + 0.03 * Math.min(2, run.l.speed);
       for (let i = 0; i < n; i++) {
         const j = i * 3;
-        if (form || TURNING.has(run.flow!)) {
+        if (form || turning) {
           if (form) place(run, i, tmp);
           else turned(run, i, tmp);
           if (form) {
@@ -715,7 +793,12 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
         const k = d / Math.max(0.05, d - p[j + 2]);
         const sx = p[j] * k, sy = p[j + 1] * k;
         let fx = 0, fy = 0, fz = 0;
-        if (ptr.on && spec.pointer.mode !== "none" && str > 0 && !turning) {
+        if (ptr.on && spec.pointer.mode === "gravity" && str > 0 && !turning && hands !== "none") {
+          // A small sun under the pointer: pulled in by the inverse square, and swung round it.
+          const dx = ptr.x - sx, dy = ptr.y - sy, d2 = dx * dx + dy * dy + 0.006, dd = Math.sqrt(d2), g = Math.min(0.05, (str * 0.0012) / d2);
+          fx += (dx / dd) * g - (dy / dd) * g * 0.55;
+          fy += (dy / dd) * g + (dx / dd) * g * 0.55;
+        } else if (ptr.on && spec.pointer.mode !== "none" && str > 0 && !turning && hands !== "none") {
           const dx = sx - ptr.x, dy = sy - ptr.y, d2 = dx * dx + dy * dy;
           if (d2 < R * R && d2 > 1e-8) {
             const dd = Math.sqrt(d2), f = (1 - dd / R) * (1 - dd / R) * str * 0.045;
@@ -726,11 +809,11 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
             else { fz += f * 1.6; fx += ux * f * 0.25; fy += uy * f * 0.25; }
           }
         }
-        if (pw && spec.click === "burst") {
+        if (pw && spec.click === "burst" && hands !== "none") {
           const dx = sx - pw.x, dy = sy - pw.y, dd = Math.max(0.02, Math.hypot(dx, dy)), f = (0.09 * Math.max(0.3, str)) / (0.25 + dd);
           fx += (dx / dd) * f; fy += (dy / dd) * f; fz += run.jit[j + 2] * f * 0.8;
         }
-        if (shock) {
+        if (shock && hands !== "none") {
           const dx = sx - shock.x, dy = sy - shock.y, dd = Math.max(0.02, Math.hypot(dx, dy)), off = Math.abs(dd - shockR);
           if (off < 0.18) { const f = (1 - off / 0.18) * 0.03 * Math.max(0.3, str); fx += (dx / dd) * f; fy += (dy / dd) * f; fz += f * 0.6; }
         }
@@ -738,9 +821,14 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
           v[j] += fx; v[j + 1] += fy; v[j + 2] += fz;
           p[j] += v[j]; p[j + 1] += v[j + 1]; p[j + 2] += v[j + 2];
         } else if (!turning && (fx || fy || fz)) {
-          // A flow is pushed aside where it is.
-          p[j] += fx * 6; p[j + 1] += fy * 6; p[j + 2] += fz * 3;
-          if (run.flow === "fireworks" || run.flow === "fireflies" || run.flow === "fountain") { v[j] += fx * 0.4; v[j + 1] += fy * 0.4; }
+          if (hands === "speed") {
+            // A flock or a body in orbit: the push goes into its speed.
+            v[j] += fx * 0.35; v[j + 1] += fy * 0.35;
+          } else {
+            // A flow is pushed aside where it is.
+            p[j] += fx * 6; p[j + 1] += fy * 6; p[j + 2] += fz * 3;
+            if (run.flow === "fireworks" || run.flow === "fireflies" || run.flow === "fountain") { v[j] += fx * 0.4; v[j + 1] += fy * 0.4; }
+          }
         }
       }
     }
@@ -750,6 +838,7 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   function fill(run: LayerRun) {
     const { l, n, p, out, seed } = run;
     const tw = l.twinkle;
+    const focus = spec.camera.focus * 0.9 * Math.max(0.3, l.scale), blur = spec.camera.blur;
     for (let i = 0; i < n; i++) {
       const j = i * 3, s = seed[i], o5 = i * 5;
       let size = l.size * (1 - l.vary + l.vary * 2 * ((s * 3.7) % 1));
@@ -770,11 +859,36 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
         case "fireflies": alpha *= 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * 2.2 * l.speed + s * 70)); break;
         default:
       }
+      if (run.phys?.look && run.c) {
+        const [sm, am] = run.phys.look(run.c, i);
+        size *= sm;
+        alpha *= am;
+      }
+      if (blur) {
+        // Depth of field: away from the plane in focus, bigger and fainter (a lens's soft circles).
+        const off = Math.abs(p[j + 2] - focus);
+        size *= 1 + blur * off * 2.6;
+        alpha /= 1 + blur * off * 3.2;
+      }
       out[o5] = p[j];
       out[o5 + 1] = p[j + 1];
       out[o5 + 2] = p[j + 2];
       out[o5 + 3] = size;
       out[o5 + 4] = alpha;
+    }
+    if (run.streak) {
+      // Each particle a line back along the way it came (its last few steps), bright at its head.
+      const prev = run.prev ?? p, sk = run.streak, st = run.stat;
+      for (let i = 0; i < n; i++) {
+        const j = i * 3, q = i * 14, al = out[i * 5 + 4];
+        const tx = p[j] + (prev[j] - p[j]) * 4, ty = p[j + 1] + (prev[j + 1] - p[j + 1]) * 4, tz = p[j + 2] + (prev[j + 2] - p[j + 2]) * 4;
+        // A jump (a particle that started again elsewhere) leaves no line across the box.
+        const far = Math.abs(tx - p[j]) + Math.abs(ty - p[j + 1]) > 0.8;
+        sk[q] = p[j]; sk[q + 1] = p[j + 1]; sk[q + 2] = p[j + 2];
+        sk[q + 3] = st[i * 4]; sk[q + 4] = st[i * 4 + 1]; sk[q + 5] = st[i * 4 + 2]; sk[q + 6] = far ? 0 : al;
+        sk[q + 7] = far ? p[j] : tx; sk[q + 8] = far ? p[j + 1] : ty; sk[q + 9] = far ? p[j + 2] : tz;
+        sk[q + 10] = st[i * 4]; sk[q + 11] = st[i * 4 + 1]; sk[q + 12] = st[i * 4 + 2]; sk[q + 13] = 0;
+      }
     }
     if (run.lines && run.lineBuf) {
       const m = Math.min(n, GL_LINK_MAX), L = 0.26 * l.scale, L2 = L * L, lines = run.lines, cap = lines.length / 8;
@@ -821,6 +935,17 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
         if (a >= 0) G.disableVertexAttribArray(a);
         if (b >= 0) G.disableVertexAttribArray(b);
       }
+      if (run.streak && run.streakBuf && streakProg) {
+        G.useProgram(streakProg);
+        setView(streakProg);
+        G.bindBuffer(G.ARRAY_BUFFER, run.streakBuf);
+        G.bufferData(G.ARRAY_BUFFER, run.streak, G.DYNAMIC_DRAW);
+        const a = attrib(streakProg, "a_p", run.streakBuf, 3, 28, 0), b = attrib(streakProg, "a_c", run.streakBuf, 4, 28, 12);
+        G.drawArrays(G.LINES, 0, run.n * 2);
+        if (a >= 0) G.disableVertexAttribArray(a);
+        if (b >= 0) G.disableVertexAttribArray(b);
+        continue;
+      }
       const P = pointProg!;
       G.useProgram(P);
       setView(P);
@@ -845,7 +970,8 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   function draw() {
     if (G.isContextLost()) return;
     for (const run of runs) fill(run);
-    G.bindFramebuffer(G.FRAMEBUFFER, null);
+    const outFb = sceneTarget?.fb ?? null;
+    G.bindFramebuffer(G.FRAMEBUFFER, outFb);
     G.viewport(0, 0, w, h);
     G.disable(G.BLEND);
     if (spec.bg.kind === "none") {
@@ -864,7 +990,7 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       G.uniform3fv(u(shaderProg, "u_c3"), bgc[3]);
       G.uniform1f(u(shaderProg, "u_rainbow"), (spec.bg.rainbow ?? Boolean(shaderDef?.rainbow)) ? 1 : 0);
       drawQuad(shaderProg);
-      G.bindFramebuffer(G.FRAMEBUFFER, null);
+      G.bindFramebuffer(G.FRAMEBUFFER, outFb);
       G.viewport(0, 0, w, h);
       G.useProgram(copyProg!);
       G.activeTexture(G.TEXTURE0);
@@ -896,7 +1022,7 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       drawQuad(fillProg!);
       G.blendEquation(G.FUNC_ADD);
       drawLayers();
-      G.bindFramebuffer(G.FRAMEBUFFER, null);
+      G.bindFramebuffer(G.FRAMEBUFFER, outFb);
       G.viewport(0, 0, w, h);
       G.blendFunc(G.ONE, G.ONE_MINUS_SRC_ALPHA);
       G.useProgram(copyProg!);
@@ -905,6 +1031,47 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       G.uniform1i(u(copyProg!, "u_t"), 0);
       drawQuad(copyProg!);
     } else drawLayers();
+    if (sceneTarget && finalProg) finish(sceneTarget);
+  }
+  /** Bloom and colour fringes over the scene drawn off the screen, onto the screen. */
+  function finish(scene: Target) {
+    G.disable(G.BLEND);
+    const tex = (unit: number, t: WebGLTexture | null) => {
+      G.activeTexture(G.TEXTURE0 + unit);
+      G.bindTexture(G.TEXTURE_2D, t);
+    };
+    if (blurA && blurB && brightProg && blurProg) {
+      G.bindFramebuffer(G.FRAMEBUFFER, blurA.fb);
+      G.viewport(0, 0, blurA.w, blurA.h);
+      tex(0, scene.tex);
+      G.useProgram(brightProg);
+      G.uniform1i(u(brightProg, "u_t"), 0);
+      drawQuad(brightProg);
+      for (let pass = 0; pass < 2; pass++) {
+        for (const [from, to, dx, dy] of [[blurA, blurB, 1, 0], [blurB, blurA, 0, 1]] as const) {
+          G.bindFramebuffer(G.FRAMEBUFFER, to.fb);
+          tex(0, from.tex);
+          G.useProgram(blurProg);
+          G.uniform1i(u(blurProg, "u_t"), 0);
+          G.uniform2f(u(blurProg, "u_dir"), (dx * (1 + pass)) / from.w, (dy * (1 + pass)) / from.h);
+          drawQuad(blurProg);
+        }
+      }
+    }
+    G.bindFramebuffer(G.FRAMEBUFFER, null);
+    G.viewport(0, 0, w, h);
+    tex(0, scene.tex);
+    tex(1, (blurA ?? scene).tex);
+    G.useProgram(finalProg!);
+    G.uniform1i(u(finalProg!, "u_s"), 0);
+    G.uniform1i(u(finalProg!, "u_b"), 1);
+    G.uniform1f(u(finalProg!, "u_k"), blurA ? spec.bloom * 1.6 : 0);
+    G.uniform1f(u(finalProg!, "u_chroma"), spec.chroma);
+    drawQuad(finalProg!);
+    // Nothing left bound that the next frame draws into.
+    tex(1, null);
+    G.activeTexture(G.TEXTURE0);
+    G.enable(G.BLEND);
   }
   function warm(seconds: number) {
     const steps = Math.round(seconds * 60);
@@ -924,8 +1091,9 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   };
 
   const runs: LayerRun[] = spec.layers.map((l, li) => {
-    const n = Math.max(50, Math.round(l.count * scale));
     const flow = isFlow(l.shapes[0]) ? (l.shapes[0] as GlFlow) : null;
+    const phys = flow ? PHYSICS[flow] ?? null : null;
+    const n = Math.min(phys?.cap ?? Infinity, Math.max(50, Math.round(l.count * scale)));
     const rand = rng(0x9e3779b1 ^ (li * 7919 + n));
     const seed = new Float32Array(n), jit = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
@@ -943,6 +1111,8 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       lines: null, lineBuf: null, lineCount: 0, atlas: null, glyphs: 0, colours,
       from: 0, to: 0, k: 0, since: -1, groups: null, round: null, fitAspect: aspect,
       f: { fit: 1, k: 1, cy: 1, sy: 0, cp: 1, sp: 0, ox: 0, oy: 0, apart: 0 },
+      phys, mem: {}, c: null,
+      prev: null, streak: l.sprite === "streak" ? new Float32Array(n * 14) : null, streakBuf: l.sprite === "streak" ? G.createBuffer() : null,
     };
     if (!flow) for (const f of forms(l)) run.homes.push(f === "text" || f === "image" ? fitted(run, f, n) : { pos: formPoints(f, n, rand), unit: true });
     if (l.links > 0) {
@@ -955,6 +1125,11 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       if (at) { run.atlas = at.tex; run.glyphs = at.n; }
     }
     colour(run);
+    if (l.colouring === "picture") {
+      const pic = run.homes.find((h) => h.col);
+      if (pic?.col) pictureColours(run, pic.col);
+    }
+    frameOf(run);
     startFlow(run);
     // A form gathers into its first place from all round.
     if (!flow) {
