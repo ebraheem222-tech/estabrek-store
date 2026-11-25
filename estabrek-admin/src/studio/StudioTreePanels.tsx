@@ -310,6 +310,11 @@ export function SectionPanel({ node, busy, onOps }: { node: PageTreeNode; busy: 
         <span className="text-white/75">{tr("المحتوى بعرض الصفحة", "Content at the page's width")}</span>
         <input type="checkbox" disabled={busy} checked={node.props?.contained === true} onChange={(e) => onOps(tr("تعديل", "Edit"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, contained: e.target.checked || undefined } }])} />
       </label>
+      {/* A premium theme's: the store draws the page without its side margins, as here. */}
+      <label className="flex items-center justify-between gap-2 text-xs" title={say("بالمتجر الصفحة بتترك هوامشها عالجنبين، والمحتوى بضل بعرض الصفحة.|On the store the page drops its side margins; the content keeps to the page's width.|בחנות הדף מוותר על השוליים בצדדים; התוכן נשאר ברוחב הדף.")}>
+        <span className="text-white/75">{say("الخلفية بعرض الشاشة كلها|The background across the whole screen|הרקע לרוחב כל המסך")}</span>
+        <input type="checkbox" disabled={busy} checked={node.props?.bleed === true} onChange={(e) => onOps(tr("تعديل", "Edit"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, bleed: e.target.checked || undefined } }])} data-testid="studio-section-bleed" />
+      </label>
       <ColourPick label={tr("الخلفية", "Background")} value={base.bg} busy={busy} onPick={(v) => onOps(tr("لون القسم", "Section colour"), [styleOp(node, "base", { bg: v })])} />
       <NumberField label={tr("المسافة فوق وتحت", "Space above and below")} suffix="px" value={pad} min={0} max={240} onSave={(v) => onOps(tr("المسافة", "Spacing"), [styleOp(node, "base", { pad: v === null ? null : [v, 0, v, 0] })])} />
     </div>

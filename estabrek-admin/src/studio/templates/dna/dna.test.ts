@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PageTreeNode } from "../../../api/pages.api";
-import { SECTION_TEMPLATES, buildTemplate } from "../catalog";
+import { PAGE_TEMPLATES, PREMIUM_THEMES, SECTION_TEMPLATES, buildTemplate, themeKitOf } from "../catalog";
 import { RECIPES } from "../sections";
 import { FAMILIES } from "../words";
 import { DNA_KINDS, DNA_RECIPES, LOOKS, MOODS, MOOD_NAMES } from ".";
 import { HERO_LAYOUTS, HERO_PICKS } from "./heroes";
+import { THEMES, THEME_PARTS, slotOf } from "./themes";
 
 // The section DNA (studio/templates/dna): looks × layouts, picked by hand. The catalog's own tests
 // (templates.test.ts) and the backend's tree check (templates.unit.spec.ts) take its designs like any other;
@@ -104,5 +105,85 @@ describe("the section DNA", () => {
     const titles = HERO_PICKS.split.map((look) => title(`dna-hero-split-${look}`));
     expect(new Set(titles).size).toBe(1);
     expect(titles[0].length).toBeGreaterThan(3);
+  });
+});
+
+describe("the whole premium themes (plan 3.9b)", () => {
+  it("are one for each look, each named and told in three languages", () => {
+    expect(THEMES.length).toBe(LOOKS.length);
+    expect(new Set(THEMES.map((t) => t.look)).size).toBe(LOOKS.length);
+    expect(new Set(THEMES.map((t) => t.key)).size).toBe(THEMES.length);
+    for (const lang of ["ar", "en", "he"] as const) expect(new Set(THEMES.map((t) => t.name[lang])).size, lang).toBe(THEMES.length);
+    for (const t of THEMES) {
+      expect(full(t.name) && full(t.line), t.key).toBe(true);
+      // Nothing in a theme's words names the platform or a store: they are the store's own.
+      expect(JSON.stringify([t.name, t.line]), t.key).not.toMatch(/estabrek|استبرق/i);
+    }
+  });
+
+  it("build every page from layouts worn in the theme's look, each in one of the look's colours", () => {
+    for (const t of THEMES) for (const part of THEME_PARTS) {
+      const slots = t.pages[part];
+      expect(slots.length, `${t.key} ${part}`).toBeGreaterThanOrEqual(part === "home" ? 7 : 4);
+      // No section twice on a page.
+      expect(new Set(slots.map((s) => s.split("@")[0])).size, `${t.key} ${part}`).toBe(slots.length);
+      for (const s of slots) expect(slotOf(t, s).problem, `${t.key} ${part}: ${s}`).toBeUndefined();
+      // A home opens with an opening (the big heading); about and contact with their own title.
+      const first = slotOf(t, slots[0]);
+      expect(part === "home" ? ["wowopen", "hero"].includes(first.kind) : first.top, `${t.key} ${part}`).toBe(true);
+      // Every home has something premium past its opening: a story that moves and a piece that sells in 3D or as a game.
+      if (part === "home") for (const kind of ["wowstory", "wowsell"]) expect(slots.some((s) => s.startsWith(`${kind} `)), `${t.key}: ${kind}`).toBe(true);
+    }
+  });
+
+  it("has a header and a footer that are the look's own designs in the gallery", () => {
+    for (const kit of PREMIUM_THEMES) {
+      expect(kit.parts.map((p) => p.part)).toEqual(["home", "about", "contact", "header", "footer"]);
+      for (const p of kit.parts) {
+        const tpl = [...PAGE_TEMPLATES, ...SECTION_TEMPLATES].find((x) => x.id === p.id);
+        expect(tpl, `${kit.theme.key} ${p.part}: ${p.id}`).toBeTruthy();
+        expect(tpl!.look, p.id).toBe(kit.theme.look);
+        expect(themeKitOf(p.id)?.theme.key, p.id).toBe(kit.theme.key);
+      }
+    }
+  });
+
+  it("builds every page for every kind of store, with one big heading and nothing the same twice", () => {
+    const seen = new Map<string, string>();
+    for (const kit of PREMIUM_THEMES) for (const p of kit.parts.slice(0, 3)) {
+      for (const [i, fam] of FAMILIES.entries()) {
+        const built = buildTemplate(p.id, { ids: ids(), fam, lang: (["ar", "en", "he"] as const)[i % 3], motion: i % 2 ? "rich" : "calm" });
+        expect(built?.length, `${p.id} ${fam}`).toBe(kit.theme.pages[p.part as "home"].length);
+      }
+      const built = buildTemplate(p.id, { ids: ids(), fam: "fashion", lang: "en" })!;
+      // Each section spreads its ground over the whole screen on the store (the page drops its side margins).
+      for (const sec of built) expect((sec.props as { bleed?: boolean }).bleed, `${p.id} ${sec.name}`).toBe(true);
+      let h1 = 0;
+      walk(built, (n) => { if (n.type === "heading" && (n.props as { level?: number }).level === 1) h1++; });
+      expect(h1, p.id).toBe(1);
+      const ids_ = new Set<string>();
+      walk(built, (n) => { expect(ids_.has(n.id), `${p.id}: ${n.id}`).toBe(false); ids_.add(n.id); });
+      const print = JSON.stringify(built);
+      expect(seen.get(print), `${p.id} looks like ${seen.get(print)}`).toBeUndefined();
+      seen.set(print, p.id);
+    }
+  });
+
+  it("doesn't say twice what the footer already holds: no sign-up over a footer with one, no promises over a footer of promises", () => {
+    for (const t of THEMES) for (const part of THEME_PARTS) {
+      const kinds = t.pages[part].map((s) => s.split(" ")[0]);
+      if (t.footer === "news") expect(kinds.includes("news") || t.pages[part].includes("drops countdown"), `${t.key} ${part}`).toBe(false);
+      if (t.footer === "perks") expect(kinds.includes("perks"), `${t.key} ${part}`).toBe(false);
+      // At most one sign-up on a page.
+      expect(t.pages[part].filter((s) => s.startsWith("news ") || s === "drops countdown").length, `${t.key} ${part}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("opens no two themes' homes the same way", () => {
+    const openings = THEMES.map((t) => `${t.pages.home[0].split("@")[0]} ${t.look}`);
+    expect(new Set(openings).size).toBe(THEMES.length);
+    // And no two themes are the same homes in another look: their sections differ.
+    const homes = THEMES.map((t) => t.pages.home.map((s) => s.split("@")[0]).join("|"));
+    expect(new Set(homes).size).toBe(THEMES.length);
   });
 });

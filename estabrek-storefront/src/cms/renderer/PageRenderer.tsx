@@ -3358,7 +3358,7 @@ export function CmsPageRenderer({
               : undefined;
 
           return (
-            <div key={String(sec.type) === "TREE_NODE" ? sec.id : `${sec.id}:${JSON.stringify(sec.data ?? {})}`} className={cls(colSpanClass)} style={rowStyle} data-cms-section={markSections ? sec.id : undefined}>
+            <div key={String(sec.type) === "TREE_NODE" ? sec.id : `${sec.id}:${JSON.stringify(sec.data ?? {})}`} className={cls(colSpanClass, String(sec.type) === "TREE_NODE" && (sec as any).data?.node?.props?.bleed === true ? "pt-bleed-wrap" : undefined)} style={rowStyle} data-cms-section={markSections ? sec.id : undefined}>
               <Section
                 section={sec as any}
                 renderProductCard={renderProductCard}
