@@ -879,7 +879,6 @@ layer(base);
   [data-admin-theme] .bg-accent-500\/\[0\.03\],
   [data-admin-theme] .bg-accent-500\/3 { background-color: color-mix( in srgb, var(--accent) 3%, transparent ) !important; }
   [data-admin-theme] .bg-accent-600 { background-color: var(--accent-hover) !important; }
-  [data-admin-theme] .bg-accent-600\/80 { background-color: color-mix( in srgb, var(--accent-hover) 80%, transparent ) !important; }
   [data-admin-theme] .bg-accent-600\/\[0\.02\],
   [data-admin-theme] .bg-accent-600\/2 { background-color: color-mix( in srgb, var(--accent-hover) 2%, transparent ) !important; }
   [data-admin-theme] .hover\:bg-accent-500:hover { background-color: var(--accent) !important; }
@@ -891,7 +890,6 @@ layer(base);
   [data-admin-theme] .border-accent-500\/60 { border-color: color-mix(in srgb, var(--accent) 60%, transparent) !important; }
   [data-admin-theme] .ring-accent-500\/40 { --tw-ring-color: color-mix( in srgb, var(--accent) 40%, transparent ) !important; }
   [data-admin-theme] .focus\:ring-accent-500\/30:focus { --tw-ring-color: color-mix( in srgb, var(--accent) 30%, transparent ) !important; }
-  [data-admin-theme] .focus-visible\:ring-accent-500\/50:focus-visible { --tw-ring-color: color-mix( in srgb, var(--accent) 50%, transparent ) !important; }
   [data-admin-theme] .focus-visible\:ring-offset-surface-950:focus-visible { --tw-ring-offset-color: var(--bg) !important; }
   [data-admin-theme] .focus\:border-accent-500\/50:focus { border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important; }
   [data-admin-theme] .from-accent-500 { --tw-gradient-from: var(--accent) var(--tw-gradient-from-position); --tw-gradient-to: color-mix(in srgb, var(--accent) 0%, transparent) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
@@ -2445,14 +2443,6 @@ layer(base);
   box-shadow: 0 0 20px rgb(var(--sk-accent-500, 139 92 246) / 0.6);
 }
 
-.floating-pyramid {
-  width: 0;
-  height: 0;
-  border-left: 30px solid transparent;
-  border-right: 30px solid transparent;
-  border-bottom: 50px solid rgb(var(--sk-accent-500, 139 92 246) / 0.15);
-  animation: float-rotate 25s linear infinite reverse;
-}
 
 /* Premium Glass Effect */
 .glass-premium {
@@ -2575,32 +2565,9 @@ layer(base);
 }
 
 /* Status Badges with Glow */
-.badge-glow {
-  position: relative;
-}
 
-.badge-glow::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: inherit;
-  filter: blur(8px);
-  opacity: 0.4;
-  z-index: -1;
-}
 
-.badge-published {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #34d399;
-}
 
-.badge-draft {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
-}
 
 /* Button Effects */
 .btn-glow {
@@ -2636,20 +2603,7 @@ layer(base);
 }
 
 /* Stagger Animation Enhanced */
-.stagger-children-3d > * {
-  opacity: 0;
-  transform: translateY(20px) rotateX(-10deg);
-  animation: stagger-in 0.5s ease forwards;
-}
 
-.stagger-children-3d > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children-3d > *:nth-child(2) { animation-delay: 60ms; }
-.stagger-children-3d > *:nth-child(3) { animation-delay: 120ms; }
-.stagger-children-3d > *:nth-child(4) { animation-delay: 180ms; }
-.stagger-children-3d > *:nth-child(5) { animation-delay: 240ms; }
-.stagger-children-3d > *:nth-child(6) { animation-delay: 300ms; }
-.stagger-children-3d > *:nth-child(7) { animation-delay: 360ms; }
-.stagger-children-3d > *:nth-child(8) { animation-delay: 420ms; }
 
 @keyframes stagger-in {
   to {
@@ -2720,16 +2674,8 @@ layer(base);
 }
 
 /* Animation Classes */
-.animate-float-rotate { animation: float-rotate 20s linear infinite; }
-.animate-ring-spin { animation: ring-spin 15s linear infinite; }
 .animate-float-sphere { animation: float-sphere 8s ease-in-out infinite; }
 .animate-pulse-glow-3d { animation: pulse-glow-3d 3s ease-in-out infinite; }
-.animate-shimmer-3d { 
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-  background-size: 200% 100%;
-  animation: shimmer-3d 2s linear infinite; 
-}
-.animate-morph { animation: morph 8s ease-in-out infinite; }
 .animate-orbit { animation: orbit 10s linear infinite; }
 .animate-modal-enter { animation: modal-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
