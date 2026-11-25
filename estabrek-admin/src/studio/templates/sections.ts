@@ -18,6 +18,8 @@ export const SECTION_CATS = [
   "steps", "faq", "cta", "newsletter", "offer", "pricing", "team", "compare", "details", "contact", "header", "footer", "notice", "popup", "campaign",
   // Wave 1 of the template plan: new kinds of selling sections (studio/templates/dna/sellMore.ts).
   "boxes", "sizes", "finder", "drops", "giftcards", "loyalty", "delivery", "specs",
+  // Plan 3.9a of the themes library: premium sections from its tricks (studio/templates/dna/wow.ts).
+  "wowopen", "wowstory", "wowsell", "wowdata",
 ] as const;
 export type SectionCat = (typeof SECTION_CATS)[number];
 
@@ -61,6 +63,10 @@ export const CAT_NAMES: Record<SectionCat, W> = {
   loyalty: w("نادي الزباين والدعوات", "Members' club and invites", "מועדון לקוחות והזמנות"),
   delivery: w("التوصيل والإرجاع", "Delivery and returns", "משלוחים והחזרות"),
   specs: w("مقارنة مواصفات", "Comparing specs", "השוואת מפרטים"),
+  wowopen: w("افتتاحيات حيّة", "Live openings", "פתיחים חיים"),
+  wowstory: w("قصص بتتحرّك", "Stories that move", "סיפורים שזזים"),
+  wowsell: w("بيع بـ3D وألعاب", "Selling in 3D and games", "מכירה בתלת־ממד ומשחקים"),
+  wowdata: w("أرقام ورسوم حيّة", "Numbers and live charts", "מספרים ותרשימים חיים"),
 };
 
 export type SectionRecipe = {

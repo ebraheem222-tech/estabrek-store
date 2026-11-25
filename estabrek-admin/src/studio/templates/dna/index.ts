@@ -12,13 +12,14 @@ import { BANNER_LAYOUTS, BANNER_PICKS, CATEGORY_LAYOUTS, CATEGORY_PICKS, OFFER_L
 import { PERK_LAYOUTS, PERK_PICKS, REVIEW_LAYOUTS, REVIEW_PICKS, STAT_LAYOUTS, STAT_PICKS, TRUST_LAYOUTS, TRUST_PICKS } from "./trust";
 import * as more from "./sellMore";
 import * as site from "./siteParts";
+import * as wow from "./wow";
 import { LOOK_BY_KEY, LOOKS, MOOD_NAMES, MOODS, type Look } from "./looks";
 
 export { LOOKS, LOOK_BY_KEY, MOODS, MOOD_NAMES };
 export type { Look };
 
-/** Full-picture layouts: the picture is the ground, so one skin is enough. */
-const PICTURE_GROUND = new Set(["cover", "cover-card"]);
+/** Full-picture layouts, and the premium ones on a live WebGL ground: the ground is their own, so one skin is enough. */
+const PICTURE_GROUND = new Set(["cover", "cover-card", "shader-center", "shader-split", "earth-reach", "canvas-word"]);
 
 function recipes(cat: SectionCat, kind: string, layouts: Layout[], picks: Record<string, string[]>): SectionRecipe[] {
   return layouts.flatMap((layout) =>
@@ -67,6 +68,11 @@ export const DNA_KINDS: Array<[SectionCat, string, Layout[], Record<string, stri
   ["cta", "cta", site.CTA_LAYOUTS, site.CTA_PICKS],
   ["newsletter", "news", site.NEWS_LAYOUTS, site.NEWS_PICKS],
   ["contact", "contact", site.CONTACT_LAYOUTS, site.CONTACT_PICKS],
+  // Plan 3.9a of the themes library: premium sections from its tricks (live grounds, 3D, scroll tricks, games, charts).
+  ["wowopen", "wowopen", wow.WOW_OPEN_LAYOUTS, wow.WOW_OPEN_PICKS],
+  ["wowstory", "wowstory", wow.WOW_STORY_LAYOUTS, wow.WOW_STORY_PICKS],
+  ["wowsell", "wowsell", wow.WOW_SELL_LAYOUTS, wow.WOW_SELL_PICKS],
+  ["wowdata", "wowdata", wow.WOW_DATA_LAYOUTS, wow.WOW_DATA_PICKS],
 ];
 
 export const DNA_RECIPES: SectionRecipe[] = DNA_KINDS.flatMap(([cat, kind, layouts, picks]) => recipes(cat, kind, layouts, picks));
