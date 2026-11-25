@@ -566,27 +566,27 @@
     font-family: var(--font-mono);
   }
 .lx-f-cards-cards-c .text-2xl {
-    font-size: var(--text-2xl);
+    font-size: calc(var(--text-2xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
 .lx-f-cards-cards-c .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-cards-cards-c .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-cards-cards-c .text-xl {
-    font-size: var(--text-xl);
+    font-size: calc(var(--text-xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xl--line-height));
   }
 .lx-f-cards-cards-c .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-cards-cards-c .text-\[11px\] {
-    font-size: 11px;
+    font-size: calc(11px * var(--lx-ts, 1));
   }
 .lx-f-cards-cards-c .font-black {
     --tw-font-weight: var(--font-weight-black);

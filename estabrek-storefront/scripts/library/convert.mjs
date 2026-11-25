@@ -6,6 +6,9 @@
 //     library's own components (text="…"). The logic keeps the original words; only what's shown changes.
 //   - every colour in a style or an SVG colour attribute passed through cv(), which names it as a CSS variable
 //     (--lx-<hex>) the item's wrapper can set; Tailwind's colour families are variables already (build-css.mjs).
+//   - every text drawn on a canvas (fillText, strokeText, and what's measured for it) through the item's words too
+//     (runtime.tsx canvasText): a headline drawn in the owner's size and fitted to its canvas; a helper of the file
+//     that draws for a component runs in that component's item's words (lxIn).
 //   - Framer Motion taken from the shop's own copy (motion/react), and the library's animations named lx-….
 // Every piece the library's folders list (registry.mjs). It also writes the list for bundle.mjs to finish into
 // src/library/index.gen.ts (each piece's kind, category, name, made-up brand and height), and
@@ -44,7 +47,8 @@ const outPath = (src) => {
  * The runtime's helpers under names no piece uses itself (a piece's own "cv", a canvas, once hid the colour helper
  * and broke it): the import is { cv as lx$cv, … }.
  */
-const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w" };
+const RT = { T: "Lx$T", lx: "lx$lx", useLx: "lx$useLx", cv: "lx$cv", cvs: "lx$cvs", words: "lx$w", canvasText: "lx$ct", canvasMeasure: "lx$mt", lxIn: "lx$in" };
+const CANVAS_TEXT = new Set(["fillText", "strokeText"]);
 const TEXT_ATTRS = new Set(["alt", "title", "placeholder", "aria-label", "label"]);
 /** Props of the library's own components that are never words. */
 const NOT_WORDS = /^(className|class|id|key|href|to|src|type|variant|size|icon|as|ring|kind|mode|name|value|ref|style|role|tabIndex|htmlFor|target|rel|method|action|autoComplete|inputMode|pattern|min|max|step|viewBox|d|points|transform|fill|stroke|.*Class|.*class|.*Id|.*Color|.*color|on[A-Z].*)$/;
@@ -121,12 +125,12 @@ function convertFile(src, manifest) {
   };
   const bucket = (p) => {
     const name = topNameOf(p);
-    return (decls[name] ??= { words: new Set(), families: new Set(), hexes: new Set(), refs: new Set() });
+    return (decls[name] ??= { words: new Set(), families: new Set(), hexes: new Set(), refs: new Set(), draws: false });
   };
   const words = { add: (p, w) => bucket(p).words.add(w) };
   const families = { add: (p, f) => bucket(p).families.add(f) };
   const hexes = { add: (p, h) => bucket(p).hexes.add(h) };
-  let usesT = false, usesLx = false, usesCv = false;
+  let usesT = false, usesLx = false, usesCv = false, usesCanvas = false, usesIn = false;
   const cvCall = (e) => { usesCv = true; return t.callExpression(t.identifier(RT.cv), [e]); };
   const lxIn = (p) => {
     // lx() inside a component reads its own item's words (useLx at the top of it); outside, the last ones.
@@ -135,6 +139,19 @@ function convertFile(src, manifest) {
     if (comp) { comp.node.__lx = true; return RT.words; }
     usesLx = true;
     return RT.lx;
+  };
+  /** A component's own words for what it draws on a canvas (lx$w carries them), or none outside one. */
+  const canvasWords = (p) => {
+    const comp = componentOf(p.getFunctionParent());
+    if (comp && drawsJsx(comp)) { comp.node.__lx = true; return t.identifier(RT.words); }
+    return t.nullLiteral();
+  };
+  /** A Capitalised function that shows something (JSX): a component, where a hook may go. */
+  const drawsJsx = (fn) => {
+    if (fn.node.__jsx !== undefined) return fn.node.__jsx;
+    let jsx = false;
+    fn.traverse({ JSXElement(q) { jsx = true; q.stop(); }, JSXFragment(q) { jsx = true; q.stop(); } });
+    return (fn.node.__jsx = jsx);
   };
   const componentOf = (fn) => {
     // The outermost function: a Capitalised function or one given to a Capitalised const (a component).
@@ -156,6 +173,19 @@ function convertFile(src, manifest) {
     },
     JSXIdentifier(p) {
       if ((top.has(p.node.name) || imports[p.node.name]) && (p.parentPath.isJSXOpeningElement() || p.parentPath.isJSXMemberExpression())) bucket(p).refs.add(p.node.name);
+    },
+    CallExpression(p) {
+      // A text drawn on a canvas, or measured for it: in the item's words (runtime.tsx canvasText).
+      const c = p.node.callee;
+      if (!t.isMemberExpression(c) || c.computed || !t.isIdentifier(c.property) || !p.node.arguments.length) return;
+      const m = c.property.name;
+      if (!CANVAS_TEXT.has(m) && m !== "measureText") return;
+      if (p.node.arguments.some((a) => t.isSpreadElement(a))) return;
+      usesCanvas = true;
+      bucket(p).draws = true;
+      const own = canvasWords(p);
+      if (CANVAS_TEXT.has(m)) p.replaceWith(t.callExpression(t.identifier(RT.canvasText), [c.object, t.stringLiteral(m), own, ...p.node.arguments]));
+      else p.replaceWith(t.callExpression(t.identifier(RT.canvasMeasure), [c.object, own, p.node.arguments[0]]));
     },
     StringLiteral(p) {
       for (const h of p.node.value.match(HEX) ?? []) hexes.add(p, normHex(h));
@@ -238,6 +268,46 @@ function convertFile(src, manifest) {
     },
   });
 
+  // A helper of the file (outside its components) that draws words on a canvas, called from a component: it runs in
+  // that component's item's words (lx$in), as when it samples a word into particles on a canvas of its own.
+  if (usesCanvas) {
+    const helpers = new Map();
+    for (const st of ast.program.body) {
+      const n = t.isExportNamedDeclaration(st) ? st.declaration : st;
+      if (t.isFunctionDeclaration(n) && n.id && !/^[A-Z]/.test(n.id.name)) helpers.set(n.id.name, n);
+      if (t.isVariableDeclaration(n)) for (const d of n.declarations) if (t.isIdentifier(d.id) && !/^[A-Z]/.test(d.id.name) && (t.isArrowFunctionExpression(d.init) || t.isFunctionExpression(d.init))) helpers.set(d.id.name, d.init);
+    }
+    const callsIn = (node) => {
+      const out = { draws: false, calls: new Set() };
+      t.traverseFast(node, (x) => {
+        if (!t.isCallExpression(x) || !t.isIdentifier(x.callee)) return;
+        const name = x.callee.name;
+        if ((name === RT.canvasText || name === RT.canvasMeasure) && t.isNullLiteral(x.arguments[name === RT.canvasText ? 2 : 1])) out.draws = true;
+        if (helpers.has(name)) out.calls.add(name);
+      });
+      return out;
+    };
+    const info = new Map([...helpers].map(([k, n]) => [k, callsIn(n)]));
+    const drawing = new Set([...info].filter(([, v]) => v.draws).map(([k]) => k));
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const [k, v] of info) if (!drawing.has(k) && [...v.calls].some((x) => drawing.has(x))) { drawing.add(k); grew = true; }
+    }
+    if (drawing.size) {
+      traverse(ast, {
+        CallExpression(p) {
+          if (!t.isIdentifier(p.node.callee) || !drawing.has(p.node.callee.name) || p.node.__lxIn) return;
+          if (p.scope.getBinding(p.node.callee.name)?.scope !== p.scope.getProgramParent()) return;
+          const own = canvasWords(p);
+          if (t.isNullLiteral(own)) return;
+          p.node.__lxIn = true;
+          usesIn = true;
+          p.replaceWith(t.callExpression(t.identifier(RT.lxIn), [own, t.arrowFunctionExpression([], p.node)]));
+        },
+      });
+    }
+  }
+
   // useLx at the top of every component that shows words through lx (hooks: always first, never conditional).
   traverse(ast, {
     Function(p) {
@@ -251,12 +321,12 @@ function convertFile(src, manifest) {
 
   const out = outPath(src);
   const runtime = path.relative(path.dirname(out), path.join(OUT, "runtime")).split(path.sep).join("/");
-  const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs"].filter(Boolean);
+  const names = [usesT && "T", usesLx && "lx", usesUseLx && "useLx", usesCv && "cv", usesCv && "cvs", usesCanvas && "canvasText", usesCanvas && "canvasMeasure", usesIn && "lxIn"].filter(Boolean);
   if (names.length) ast.program.body.unshift(t.importDeclaration(names.map((n) => t.importSpecifier(t.identifier(RT[n]), t.identifier(n))), t.stringLiteral(runtime.startsWith(".") ? runtime : `./${runtime}`)));
   const body = generate(ast, { retainLines: false, jsescOption: { minimal: true } }, code).code;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `// @ts-nocheck\n/* eslint-disable */\n// Made by scripts/library/convert.mjs from the owner's Themes folder (${path.relative(THEMES, src).split(path.sep).join("/")}): do not edit.\n${body}\n`);
-  const asList = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { words: [...v.words], families: [...v.families], hexes: [...v.hexes], refs: [...v.refs] }]));
+  const asList = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { words: [...v.words], families: [...v.families], hexes: [...v.hexes], refs: [...v.refs], draws: v.draws }]));
   manifest.files[path.relative(OUT, out).split(path.sep).join("/")] = { decls: asList(decls), imports, defaultName };
   return out;
 }
@@ -298,7 +368,7 @@ for (const item of ITEMS) {
   }
   const file = path.relative(OUT, outPath(entry)).split(path.sep).join("/");
   // What the item's own export reaches: its words, colour families and colours, nothing of the file's other sections.
-  const got = { words: new Set(), families: new Set(), hexes: new Set() };
+  const got = { words: new Set(), families: new Set(), hexes: new Set(), draws: false };
   const seen = new Set();
   const walk = (f, name) => {
     const key = `${f}#${name}`;
@@ -311,6 +381,7 @@ for (const item of ITEMS) {
       const d = info.decls[part];
       if (!d) continue;
       for (const k of ["words", "families", "hexes"]) for (const v of d[k]) got[k].add(v);
+      if (d.draws) got.draws = true;
       for (const r of d.refs) {
         if (info.decls[r]) walk(f, r);
         else if (info.imports[r]) walk(info.imports[r].file, info.imports[r].name);
@@ -320,18 +391,19 @@ for (const item of ITEMS) {
   walk(file, item.exp);
   // The made-up brand isn't one of its words: the store's name takes its place.
   const own = [...got.words].filter((w) => !item.brand || (w !== item.brand && w !== item.brand.toUpperCase()));
-  manifest.items.push({ ...item, file: file.replace(/\.tsx$/, ""), families: [...got.families], hexes: [...got.hexes], words: own });
+  manifest.items.push({ ...item, file: file.replace(/\.tsx$/, ""), families: [...got.families], hexes: [...got.hexes], words: own, draws: got.draws });
 }
 const GEN = "// Made by scripts/library/convert.mjs: do not edit.\n";
 fs.mkdirSync(OUT, { recursive: true });
 
 // The list, for bundle.mjs to finish (with each piece's file and styles) into src/library/index.gen.ts.
 const cssKey = (file) => file.split("/").join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
-fs.writeFileSync(path.join(OUT, "index.json"), JSON.stringify(manifest.items.map(({ id, kind, cat, name, brand, minH, blurb, tags, colors, file }) => ({ id, kind, ...(cat ? { cat } : {}), name, brand, minH, ...(blurb ? { blurb } : {}), ...(tags ? { tags } : {}), ...(colors ? { colors } : {}), css: cssKey(file) }))));
-// What a piece's panel offers: the words it shows, its colour families and its colours (6 digits).
+fs.writeFileSync(path.join(OUT, "index.json"), JSON.stringify(manifest.items.map(({ id, kind, cat, name, brand, minH, blurb, tags, colors, file, draws }) => ({ id, kind, ...(cat ? { cat } : {}), name, brand, minH, ...(blurb ? { blurb } : {}), ...(tags ? { tags } : {}), ...(colors ? { colors } : {}), css: cssKey(file), ...(draws ? { draws: 1 } : {}) }))));
+// What a piece's panel offers: the words it shows, its colour families and its colours (6 digits); whether it draws
+// words on a canvas (their size has a setting of its own).
 fs.rmSync(path.join(LIB, "details"), { recursive: true, force: true });
 fs.mkdirSync(path.join(LIB, "details"), { recursive: true });
-for (const i of manifest.items) fs.writeFileSync(path.join(LIB, "details", `${i.id}.json`), JSON.stringify({ words: i.words, families: i.families, hexes: i.hexes }) + "\n");
+for (const i of manifest.items) fs.writeFileSync(path.join(LIB, "details", `${i.id}.json`), JSON.stringify({ words: i.words, families: i.families, hexes: i.hexes, ...(i.draws ? { draws: true } : {}) }) + "\n");
 
 // Each piece's entry: its component as the default export (bundle.mjs makes each its own file), and which file's
 // classes it wears (build-css.mjs: css/<file>.css, kept to its pieces by .lx-f-<file>).

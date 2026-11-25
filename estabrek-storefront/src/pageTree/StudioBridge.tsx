@@ -19,6 +19,7 @@ import { INTERACTION_EVENTS } from "@/lib/visualControls";
 import { emitVisualInteraction } from "@/lib/visualInteractions";
 import { collectSelectionParts, domPartPath, partId, SELECTION_HELPERS, type PartKind, type PartOwner } from "./selectionParts";
 import { inkOf } from "./studioInk";
+import { drawnWordAt } from "@/library/runtime";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -725,8 +726,9 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
 
     // Writing over a word of a theme library piece in place (src/library: in the editor each of its texts carries
     // the words the library wrote, data-lx-src): the one under the double-click becomes writable; what's written goes
-    // back as the piece's own words for that text (its "words" setting), Esc leaves it as it was.
-    let libEdit: { el: HTMLElement; before: string; nodeId: string; from: string; done: boolean; stop?: () => void } | null = null;
+    // back as the piece's own words for that text (its "words" setting), Esc leaves it as it was. Words a piece draws
+    // on a canvas (a headline in particles) have no text on the page: a box to write in comes over them (float).
+    let libEdit: { el: HTMLElement; before: string; nodeId: string; from: string; done: boolean; stop?: () => void; float?: boolean } | null = null;
     const finishLib = (keep: boolean) => {
       const e = libEdit;
       if (!e || e.done) return;
@@ -734,11 +736,14 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       libEdit = null;
       e.stop?.();
       const value = (e.el.textContent ?? "").replace(/\s+/g, " ").trim();
-      e.el.removeAttribute("contenteditable");
-      e.el.style.display = "contents";
-      e.el.style.outline = "";
-      e.el.style.outlineOffset = "";
-      if (!keep || !value) e.el.textContent = e.before;
+      if (e.float) e.el.remove();
+      else {
+        e.el.removeAttribute("contenteditable");
+        e.el.style.display = "contents";
+        e.el.style.outline = "";
+        e.el.style.outlineOffset = "";
+        if (!keep || !value) e.el.textContent = e.before;
+      }
       send(keep && value && value !== e.before ? { type: "libWordEdited", nodeId: e.nodeId, from: e.from, value } : { type: "libWordCancelled", nodeId: e.nodeId });
       soon();
     };
@@ -763,10 +768,18 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
           if (own && host.contains(own)) { el = own; break; }
         }
       }
-      if (!el) return send({ type: "libWordCancelled", nodeId, none: true });
-      const e: NonNullable<typeof libEdit> = { el, before: el.textContent ?? "", nodeId, from: el.getAttribute("data-lx-src") ?? "", done: false };
+      let e: NonNullable<typeof libEdit>;
+      if (el) {
+        e = { el, before: el.textContent ?? "", nodeId, from: el.getAttribute("data-lx-src") ?? "", done: false };
+        el.style.display = "inline";
+      } else {
+        // Words drawn on a canvas under the point: a box over them (or at the point, for a word drawn in particles).
+        const drawn = host ? drawnWordAt(host, x, y) : null;
+        if (!drawn) return send({ type: "libWordCancelled", nodeId, none: true });
+        el = drawnWordBox(drawn, x, y);
+        e = { el, before: drawn.shown, nodeId, from: drawn.src, done: false, float: true };
+      }
       libEdit = e;
-      el.style.display = "inline";
       el.style.outline = "2px solid #a43b64";
       el.style.outlineOffset = "3px";
       el.setAttribute("contenteditable", "plaintext-only");
@@ -790,6 +803,24 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       });
       // A link or a button around it doesn't go anywhere while it's being written.
       el.addEventListener("click", (c) => { c.preventDefault(); c.stopPropagation(); }, true);
+    };
+
+    /** A box to write a canvas's words in, over where they're drawn (on the page, above everything). */
+    const drawnWordBox = (drawn: { shown: string; rect: DOMRect | null }, x: number, y: number) => {
+      const box = document.createElement("div");
+      box.setAttribute("data-lx-drawn", "");
+      box.textContent = drawn.shown;
+      const r = drawn.rect;
+      const size = Math.round(Math.min(56, Math.max(18, r ? r.height * 0.5 : 28)));
+      const cx = r ? r.left + r.width / 2 : x, cy = r ? r.top + r.height / 2 : y;
+      Object.assign(box.style, {
+        position: "fixed", left: `${Math.round(Math.min(Math.max(cx, 120), window.innerWidth - 120))}px`, top: `${Math.round(Math.min(Math.max(cy, 40), window.innerHeight - 40))}px`,
+        transform: "translate(-50%, -50%)", zIndex: "2147483647", minWidth: "120px", maxWidth: "min(90vw, 900px)", padding: "8px 16px",
+        borderRadius: "14px", background: "rgba(12, 12, 20, 0.88)", color: "#fff", font: `800 ${size}px system-ui, sans-serif`, lineHeight: "1.2",
+        textAlign: "center", whiteSpace: "pre-wrap", boxShadow: "0 12px 40px rgba(0,0,0,.45)", cursor: "text",
+      } satisfies Partial<CSSStyleDeclaration>);
+      document.body.appendChild(box);
+      return box;
     };
 
     // A place the editor asked to see (after the frame reloads with a change, or a new element):

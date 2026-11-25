@@ -9,7 +9,8 @@
 // and the shop's rules don't reach in unasked; the cascade layers are taken off (the shop's styles have none);
 // its animations are named lx-… (the shop has an "aurora" and a "blink" of its own); each colour written in a
 // class ([#c8a75d]) becomes a variable the piece's wrapper may set, as cv() does in code. Tailwind's colour
-// families are variables already (--color-stone-500…): the wrapper sets those too (LibBlock).
+// families are variables already (--color-stone-500…): the wrapper sets those too (LibBlock). Every size of words
+// that isn't its parent's (px, rem, Tailwind's text-…) is times --lx-ts: the owner's size for the piece's words.
 //
 //   node scripts/library/build-css.mjs [path to the Themes folder]
 import fs from "node:fs";
@@ -35,6 +36,8 @@ const input = `@import "tailwindcss";\n${[...new Set(own)].join("\n")}`;
 
 const KF = new RegExp(`(^|[^\\w-])(${KEYFRAMES.map((k) => k.replace(/-/g, "\\-")).join("|")})(?![\\w-])`, "g");
 const HEX = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+/** A size of words of its own (not its parent's: no %, no em, no keyword): the owner's size multiplies it. */
+const ownSize = (v) => !/%|\d(\.\d+)?em\b|\b(inherit|initial|unset|revert|smaller|larger|medium|small|large)\b|--lx-ts/.test(v) && /\d(\.\d+)?(px|rem|vw|vh|vmin|vmax|svh|dvh|lvh|cqw|cqi|pt)\b|var\(--text-/.test(v);
 const hexKey = (h) => {
   const x = h.slice(1).toLowerCase();
   return x.length === 3 ? x.split("").map((c) => c + c).join("") : x;
@@ -107,6 +110,7 @@ const shopRules = (scope, part, page = ".lx-scope") => ({
       }
       if (/^(animation|animation-name)$/.test(d.prop) || d.prop.startsWith("--animate")) d.value = d.value.replace(KF, (_m, pre, name) => `${pre}lx-${name}`);
       if (HEX.test(d.value) && !/url\(/.test(d.value)) d.value = d.value.replace(HEX, (h) => `var(--lx-${hexKey(h)}, ${h})`);
+      if (d.prop === "font-size" && ownSize(d.value)) d.value = `calc(${d.value} * var(--lx-ts, 1))`;
       HEX.lastIndex = 0;
     });
   },

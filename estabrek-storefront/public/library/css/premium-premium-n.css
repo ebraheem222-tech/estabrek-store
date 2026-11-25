@@ -766,39 +766,39 @@
     font-family: var(--font-mono);
   }
 .lx-f-premium-premium-n .text-2xl {
-    font-size: var(--text-2xl);
+    font-size: calc(var(--text-2xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
 .lx-f-premium-premium-n .text-3xl {
-    font-size: var(--text-3xl);
+    font-size: calc(var(--text-3xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-3xl--line-height));
   }
 .lx-f-premium-premium-n .text-4xl {
-    font-size: var(--text-4xl);
+    font-size: calc(var(--text-4xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-4xl--line-height));
   }
 .lx-f-premium-premium-n .text-5xl {
-    font-size: var(--text-5xl);
+    font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-5xl--line-height));
   }
 .lx-f-premium-premium-n .text-6xl {
-    font-size: var(--text-6xl);
+    font-size: calc(var(--text-6xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-6xl--line-height));
   }
 .lx-f-premium-premium-n .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-premium-premium-n .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-premium-premium-n .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-premium-premium-n .text-\[min\(13vw\,9rem\)\] {
-    font-size: min(13vw, 9rem);
+    font-size: calc(min(13vw, 9rem) * var(--lx-ts, 1));
   }
 .lx-f-premium-premium-n .leading-\[0\.85\] {
     --tw-leading: 0.85;
@@ -988,7 +988,7 @@
   }
 @media (width >= 40rem) {
     .lx-f-premium-premium-n .sm\:text-4xl {
-      font-size: var(--text-4xl);
+      font-size: calc(var(--text-4xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-4xl--line-height));
     }
   }
@@ -1027,7 +1027,7 @@
       text-align: right;
     }
     .lx-f-premium-premium-n .md\:text-5xl {
-      font-size: var(--text-5xl);
+      font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-5xl--line-height));
     }
   }

@@ -1019,53 +1019,53 @@
     font-family: var(--font-syne);
   }
 .lx-f-heros-heroes-heroes-h .text-2xl {
-    font-size: var(--text-2xl);
+    font-size: calc(var(--text-2xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-3xl {
-    font-size: var(--text-3xl);
+    font-size: calc(var(--text-3xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-3xl--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-4xl {
-    font-size: var(--text-4xl);
+    font-size: calc(var(--text-4xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-4xl--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-5xl {
-    font-size: var(--text-5xl);
+    font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-5xl--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-6xl {
-    font-size: var(--text-6xl);
+    font-size: calc(var(--text-6xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-6xl--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-base {
-    font-size: var(--text-base);
+    font-size: calc(var(--text-base) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-base--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-xl {
-    font-size: var(--text-xl);
+    font-size: calc(var(--text-xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xl--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-heros-heroes-heroes-h .text-\[11px\] {
-    font-size: 11px;
+    font-size: calc(11px * var(--lx-ts, 1));
   }
 .lx-f-heros-heroes-heroes-h .text-\[16vw\] {
-    font-size: 16vw;
+    font-size: calc(16vw * var(--lx-ts, 1));
   }
 .lx-f-heros-heroes-heroes-h .text-\[38vw\] {
-    font-size: 38vw;
+    font-size: calc(38vw * var(--lx-ts, 1));
   }
 .lx-f-heros-heroes-heroes-h .leading-\[0\.8\] {
     --tw-leading: 0.8;
@@ -1568,19 +1568,19 @@
       padding-bottom: calc(var(--spacing) * 28);
     }
     .lx-f-heros-heroes-heroes-h .sm\:text-5xl {
-      font-size: var(--text-5xl);
+      font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-5xl--line-height));
     }
     .lx-f-heros-heroes-heroes-h .sm\:text-6xl {
-      font-size: var(--text-6xl);
+      font-size: calc(var(--text-6xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-6xl--line-height));
     }
     .lx-f-heros-heroes-heroes-h .sm\:text-7xl {
-      font-size: var(--text-7xl);
+      font-size: calc(var(--text-7xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-7xl--line-height));
     }
     .lx-f-heros-heroes-heroes-h .sm\:text-8xl {
-      font-size: var(--text-8xl);
+      font-size: calc(var(--text-8xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-8xl--line-height));
     }
   }
@@ -1598,11 +1598,11 @@
       flex-direction: row;
     }
     .lx-f-heros-heroes-heroes-h .md\:text-9xl {
-      font-size: var(--text-9xl);
+      font-size: calc(var(--text-9xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-9xl--line-height));
     }
     .lx-f-heros-heroes-heroes-h .md\:text-\[6\.5vw\] {
-      font-size: 6.5vw;
+      font-size: calc(6.5vw * var(--lx-ts, 1));
     }
   }
 @media (width >= 64rem) {
@@ -1628,10 +1628,10 @@
       grid-template-columns: 1fr 1.3fr;
     }
     .lx-f-heros-heroes-heroes-h .lg\:text-\[8\.5rem\] {
-      font-size: 8.5rem;
+      font-size: calc(8.5rem * var(--lx-ts, 1));
     }
     .lx-f-heros-heroes-heroes-h .lg\:text-\[22rem\] {
-      font-size: 22rem;
+      font-size: calc(22rem * var(--lx-ts, 1));
     }
   }
 .lx-scope.lx-f-heros-heroes-heroes-h {

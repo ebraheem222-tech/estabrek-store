@@ -711,42 +711,42 @@
     font-family: var(--font-sans);
   }
 .lx-f-templates-sites-splitrun .text-2xl {
-    font-size: var(--text-2xl);
+    font-size: calc(var(--text-2xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
 .lx-f-templates-sites-splitrun .text-3xl {
-    font-size: var(--text-3xl);
+    font-size: calc(var(--text-3xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-3xl--line-height));
   }
 .lx-f-templates-sites-splitrun .text-5xl {
-    font-size: var(--text-5xl);
+    font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-5xl--line-height));
   }
 .lx-f-templates-sites-splitrun .text-base {
-    font-size: var(--text-base);
+    font-size: calc(var(--text-base) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-base--line-height));
   }
 .lx-f-templates-sites-splitrun .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-templates-sites-splitrun .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-templates-sites-splitrun .text-xl {
-    font-size: var(--text-xl);
+    font-size: calc(var(--text-xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xl--line-height));
   }
 .lx-f-templates-sites-splitrun .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-templates-sites-splitrun .text-\[10px\] {
-    font-size: 10px;
+    font-size: calc(10px * var(--lx-ts, 1));
   }
 .lx-f-templates-sites-splitrun .text-\[clamp\(2\.4rem\,6vw\,4\.4rem\)\] {
-    font-size: clamp(2.4rem, 6vw, 4.4rem);
+    font-size: calc(clamp(2.4rem, 6vw, 4.4rem) * var(--lx-ts, 1));
   }
 .lx-f-templates-sites-splitrun .leading-none {
     --tw-leading: 1;
@@ -967,7 +967,7 @@
       padding-inline: calc(var(--spacing) * 8);
     }
     .lx-f-templates-sites-splitrun .sm\:text-6xl {
-      font-size: var(--text-6xl);
+      font-size: calc(var(--text-6xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-6xl--line-height));
     }
   }

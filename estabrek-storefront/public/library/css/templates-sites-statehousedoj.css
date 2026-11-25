@@ -762,39 +762,39 @@
     font-family: var(--font-sans);
   }
 .lx-f-templates-sites-statehousedoj .text-2xl {
-    font-size: var(--text-2xl);
+    font-size: calc(var(--text-2xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-3xl {
-    font-size: var(--text-3xl);
+    font-size: calc(var(--text-3xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-3xl--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-4xl {
-    font-size: var(--text-4xl);
+    font-size: calc(var(--text-4xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-4xl--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-5xl {
-    font-size: var(--text-5xl);
+    font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-5xl--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-base {
-    font-size: var(--text-base);
+    font-size: calc(var(--text-base) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-base--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-templates-sites-statehousedoj .text-\[10px\] {
-    font-size: 10px;
+    font-size: calc(10px * var(--lx-ts, 1));
   }
 .lx-f-templates-sites-statehousedoj .leading-\[0\.95\] {
     --tw-leading: 0.95;
@@ -1072,7 +1072,7 @@
       padding-inline: calc(var(--spacing) * 8);
     }
     .lx-f-templates-sites-statehousedoj .sm\:text-7xl {
-      font-size: var(--text-7xl);
+      font-size: calc(var(--text-7xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-7xl--line-height));
     }
   }

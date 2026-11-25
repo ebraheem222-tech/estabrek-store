@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { PageTreeNode } from "../api/pages.api";
 import { accepts, idMaker } from "./columns";
 import { insertOps, makeNode, type InsertCtx } from "./insert";
@@ -161,6 +161,37 @@ describe("a piece's panel", () => {
     rerender(<LibraryPanel node={node({ item: "faq-classic", dir: "rtl" })} lang="ar" busy={false} onOps={onOps} />);
     fireEvent.click(screen.getByTestId("studio-lib-dir").querySelector('[data-dir="ltr"]')!);
     expect(lastProps(onOps)).toEqual({ item: "faq-classic", dir: undefined });
+  });
+
+  it("sizes its words; a piece that draws words on a canvas sizes those too, and says how to write over them", async () => {
+    const onOps = vi.fn();
+    const slide = (testId: string, v: number) => {
+      const input = screen.getByTestId(testId);
+      fireEvent.change(input, { target: { value: String(v) } });
+      fireEvent.pointerUp(input);
+    };
+    // Particle Text draws its word in dots (its details say so).
+    expect((await libDetails("premium-particle-text"))?.draws).toBe(true);
+    expect((await libDetails("faq-classic"))?.draws).toBeUndefined();
+    const { rerender } = render(<LibraryPanel node={node({ item: "premium-particle-text" })} lang="en" busy={false} onOps={onOps} />);
+    await screen.findByTestId("studio-lib-drawn-size");
+    expect(screen.getByTestId("studio-lib-drawn-hint").textContent).toMatch(/دبل كليك|double-click/i);
+    slide("studio-lib-drawn-size", 60);
+    expect(lastProps(onOps)).toEqual({ item: "premium-particle-text", drawnSize: 0.6 });
+    slide("studio-lib-text-size", 150);
+    expect(lastProps(onOps).textSize).toBe(1.5);
+    // Back to as it was made: no setting at all; and in one click.
+    rerender(<LibraryPanel node={node({ item: "premium-particle-text", textSize: 1.5, drawnSize: 0.6 })} lang="en" busy={false} onOps={onOps} />);
+    slide("studio-lib-text-size", 100);
+    expect(lastProps(onOps)).toEqual({ item: "premium-particle-text", drawnSize: 0.6 });
+    fireEvent.click(screen.getByTestId("studio-lib-sizes-reset"));
+    expect(lastProps(onOps)).toEqual({ item: "premium-particle-text" });
+    // A piece that draws nothing: only the size of all its words.
+    cleanup();
+    render(<LibraryPanel node={node({ item: "faq-classic" })} lang="en" busy={false} onOps={onOps} />);
+    await screen.findByTestId("studio-lib-text-size");
+    await waitFor(() => expect(screen.queryByTestId("studio-lib-loading")).toBeNull());
+    expect(screen.queryByTestId("studio-lib-drawn-size")).toBeNull();
   });
 
   it("puts everything back in one click; a piece the library doesn't have says so", () => {

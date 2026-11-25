@@ -1003,45 +1003,45 @@
     font-family: var(--font-syne);
   }
 .lx-f-heros-heroes-heroes-e .text-2xl {
-    font-size: var(--text-2xl);
+    font-size: calc(var(--text-2xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-4xl {
-    font-size: var(--text-4xl);
+    font-size: calc(var(--text-4xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-4xl--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-5xl {
-    font-size: var(--text-5xl);
+    font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-5xl--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-6xl {
-    font-size: var(--text-6xl);
+    font-size: calc(var(--text-6xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-6xl--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-lg {
-    font-size: var(--text-lg);
+    font-size: calc(var(--text-lg) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-sm {
-    font-size: var(--text-sm);
+    font-size: calc(var(--text-sm) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-xl {
-    font-size: var(--text-xl);
+    font-size: calc(var(--text-xl) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xl--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-xs {
-    font-size: var(--text-xs);
+    font-size: calc(var(--text-xs) * var(--lx-ts, 1));
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
 .lx-f-heros-heroes-heroes-e .text-\[8vw\] {
-    font-size: 8vw;
+    font-size: calc(8vw * var(--lx-ts, 1));
   }
 .lx-f-heros-heroes-heroes-e .text-\[10px\] {
-    font-size: 10px;
+    font-size: calc(10px * var(--lx-ts, 1));
   }
 .lx-f-heros-heroes-heroes-e .text-\[11px\] {
-    font-size: 11px;
+    font-size: calc(11px * var(--lx-ts, 1));
   }
 .lx-f-heros-heroes-heroes-e .leading-\[0\.88\] {
     --tw-leading: 0.88;
@@ -1592,19 +1592,19 @@
       padding-inline: calc(var(--spacing) * 8);
     }
     .lx-f-heros-heroes-heroes-e .sm\:text-5xl {
-      font-size: var(--text-5xl);
+      font-size: calc(var(--text-5xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-5xl--line-height));
     }
     .lx-f-heros-heroes-heroes-e .sm\:text-6xl {
-      font-size: var(--text-6xl);
+      font-size: calc(var(--text-6xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-6xl--line-height));
     }
     .lx-f-heros-heroes-heroes-e .sm\:text-7xl {
-      font-size: var(--text-7xl);
+      font-size: calc(var(--text-7xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-7xl--line-height));
     }
     .lx-f-heros-heroes-heroes-e .sm\:text-8xl {
-      font-size: var(--text-8xl);
+      font-size: calc(var(--text-8xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-8xl--line-height));
     }
   }
@@ -1613,7 +1613,7 @@
       display: flex;
     }
     .lx-f-heros-heroes-heroes-e .md\:text-8xl {
-      font-size: var(--text-8xl);
+      font-size: calc(var(--text-8xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-8xl--line-height));
     }
   }
@@ -1625,13 +1625,13 @@
       grid-template-columns: 1.2fr 1fr;
     }
     .lx-f-heros-heroes-heroes-e .lg\:text-9xl {
-      font-size: var(--text-9xl);
+      font-size: calc(var(--text-9xl) * var(--lx-ts, 1));
       line-height: var(--tw-leading, var(--text-9xl--line-height));
     }
   }
 @media (width >= 80rem) {
     .lx-f-heros-heroes-heroes-e .xl\:text-\[6\.5rem\] {
-      font-size: 6.5rem;
+      font-size: calc(6.5rem * var(--lx-ts, 1));
     }
   }
 .lx-scope.lx-f-heros-heroes-heroes-e {

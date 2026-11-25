@@ -3208,6 +3208,10 @@ function StudioDocument() {
             onOwner={selExtra.kind === "detail" || selExtra.kind === "auto" ? () => select(ownerId ?? index!.root, true) : undefined}
           />;
         })() : null}
+        {/* A click inside a theme library piece picks a part of it: the piece's own words, sizes and colours stay at hand. */}
+        {selExtra?.kind === "detail" && !selectedRegion && nodeOf(selExtra.owner.slice(2))?.type === "lib" ? (
+          <LibraryPanel key={`lib:${selExtra.owner}`} node={nodeOf(selExtra.owner.slice(2))!} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+        ) : null}
 
         {partContent ? <fieldset disabled={busy} className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-part-content">
           <Field label={tr("النص", "Text")} value={partContent.binding.value} multiline={partContent.binding.line === undefined && partContent.part.lookKind === "text"} testId="studio-part-words" onSave={value => savePartContent(selected, value)} />

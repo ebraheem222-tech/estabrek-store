@@ -7,9 +7,9 @@
  * - families: a Tailwind colour family the item uses → one colour (or "theme": the store theme's accent), its
  *   whole scale made from it (--color-<family>-50 … 950).
  */
-import { useEffect, useState, type ComponentType, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type CSSProperties } from "react";
 import { loadPiece } from "./loader";
-import { LibWordsProvider, hexKey } from "./runtime";
+import { LibWordsProvider, hexKey, libHost, type Drawn, type LibWords } from "./runtime";
 
 /** The library's fonts (its index.html): the browser fetches only the ones an item's text uses. */
 const FONTS =
@@ -44,8 +44,11 @@ export function libVars(colours: unknown, families: unknown): CSSProperties {
   return vars as CSSProperties;
 }
 
+/** A size the owner gave (½ to twice as made), or 1. */
+const sizeOf = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && Math.abs(v - 1) > 0.001 ? Math.min(2, Math.max(0.5, v)) : 1);
+
 /** What the server's list (meta.ts) says of the piece: a page never downloads the whole library's list. */
-export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "ltr", words, colours, families, brand, className, ...rest }: {
+export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "ltr", words, colours, families, brand, textSize, drawnSize, draws, className, ...rest }: {
   item: string;
   kind: string;
   /** The piece's made-up brand (a site's name), the store's name replaces. */
@@ -62,6 +65,12 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
   colours?: Record<string, string>;
   families?: Record<string, string>;
   brand?: string;
+  /** The size of all its words (1 as the library made them): its styles' sizes are times --lx-ts (build-css.mjs). */
+  textSize?: number;
+  /** The size of the big words it draws on a canvas (runtime.tsx canvasText). */
+  drawnSize?: number;
+  /** It draws words on a canvas (convert.mjs): drawn again from the start when they change. */
+  draws?: boolean;
   className?: string;
   [data: `data-${string}`]: unknown;
 }) {
@@ -89,19 +98,38 @@ export function LibBlock({ item, kind, madeUp, minH, js, css, version, dir = "lt
     return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
   }, [kind]);
   // The store's name wherever the item says its made-up one (as written, and in capitals for the letter-spaced logos).
-  const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
-  const own = { map: { ...(words ?? {}) }, swaps, marks: studio };
+  // One object while they're the same (what it drew lately is noted on it in the editor: runtime.tsx canvasText).
+  const wordsKey = JSON.stringify(words ?? {});
+  const drawn = sizeOf(drawnSize);
+  // What it drew lately, kept across its words' objects (a loop started early still notes where the editor looks).
+  const [seen] = useState<Drawn[]>(() => []);
+  const own = useMemo<LibWords>(() => {
+    const swaps: Array<readonly [string, string]> = brand && madeUp ? [[madeUp, brand], [madeUp.toUpperCase(), brand.toLocaleUpperCase()]] : [];
+    return { map: JSON.parse(wordsKey) as Record<string, string>, swaps, marks: studio, drawn, seen };
+  }, [wordsKey, brand, madeUp, studio, drawn, seen]);
+  const ts = sizeOf(textSize);
   // A whole website brings its own bar and footer: on its page the store's step aside (drawn with the page, no flash).
   const site = kind === "site";
   return (
-    <div className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`} dir={dir} data-lib={item} data-lib-kind={kind} data-lib-ready={Piece ? "" : undefined} style={libVars(colours, families)} {...rest}>
+    <div
+      ref={(el) => libHost(el, own)}
+      className={`lx-scope lx-f-${css}${className ? ` ${className}` : ""}`}
+      dir={dir}
+      data-lib={item}
+      data-lib-kind={kind}
+      data-lib-ready={Piece ? "" : undefined}
+      // Its words' size: what its styles size is times --lx-ts; what it doesn't (it takes the page's) from here.
+      style={{ ...libVars(colours, families), ...(ts !== 1 ? { "--lx-ts": String(ts), fontSize: `${ts}em` } : {}) } as CSSProperties}
+      {...rest}
+    >
       <link rel="stylesheet" href={FONTS} />
       {site ? <style>{".atelier-announcement,.atelier-header,.atelier-footer{display:none!important}[data-lib-kind=site]{width:calc(100vw - var(--lx-sbw,0px));margin-inline:calc(50% - 50vw + var(--lx-sbw,0px) / 2)}"}</style> : null}
       {/* What scrolls inside a piece (a carousel, a scrolling phone…) scrolls without a bar showing. */}
       <style>{".lx-scope,.lx-scope *{scrollbar-width:none}.lx-scope::-webkit-scrollbar,.lx-scope *::-webkit-scrollbar{display:none}"}</style>
       {Piece ? (
         <LibWordsProvider words={own}>
-          <Piece />
+          {/* What it draws on a canvas is drawn once (a word sampled into particles): new words or size, drawn again. */}
+          <Piece key={draws ? `${wordsKey}|${brand ?? ""}|${drawn}` : undefined} />
         </LibWordsProvider>
       ) : (
         <div aria-hidden="true" style={{ minHeight: failed ? undefined : minH ? `min(${Math.round(minH)}px, 100vh)` : undefined }} />

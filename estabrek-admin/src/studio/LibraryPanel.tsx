@@ -9,6 +9,7 @@ import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { LIB_KIND_NAME, libDetails, libItemOf, libName, withLibWord, type LibDetails } from "./library";
 import { Field } from "./StudioPanels";
+import { Range } from "./LookPanels";
 import { say } from "./say";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -107,7 +108,10 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
     else delete next[hex];
     setProps({ colours: Object.keys(next).length ? next : undefined }, say("ألوان قطعة المكتبة|The library piece's colours|הצבעים של פריט הספרייה"));
   };
-  const changed = Object.keys(own).length + Object.keys(families).length + Object.keys(colours).length + (p.brand ? 1 : 0) + (p.dir === "rtl" ? 1 : 0);
+  const changed = Object.keys(own).length + Object.keys(families).length + Object.keys(colours).length + (p.brand ? 1 : 0) + (p.dir === "rtl" ? 1 : 0) + (p.textSize ? 1 : 0) + (p.drawnSize ? 1 : 0);
+  // A size as a percentage of the piece's own (100 = as made: no setting at all).
+  const pct = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v * 100) : 100);
+  const setSize = (key: "textSize" | "drawnSize", v: number) => setProps({ [key]: v === 100 ? undefined : Math.min(2, Math.max(0.5, v / 100)) }, say("حجم كلام قطعة المكتبة|The library piece's words size|גודל המילים של פריט הספרייה"));
 
   return (
     <div className="space-y-3" data-testid="studio-lib-panel" data-item={item.id}>
@@ -119,7 +123,7 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             <div className="text-[10px] text-white/40">{say("من المكتبة: كل كلمة ولون فيها إلك تغيّرها|From the library: every word and colour in it is yours to change|מהספרייה: כל מילה וצבע בה שלך לשנות")}</div>
           </div>
           {changed ? (
-            <button type="button" className={small} disabled={busy} onClick={() => setProps({ words: undefined, colours: undefined, families: undefined, brand: undefined, dir: undefined }, say("رجّع القطعة متل ما كانت|Put the piece back as it was|החזרת הפריט כפי שהיה"))} data-testid="studio-lib-reset">
+            <button type="button" className={small} disabled={busy} onClick={() => setProps({ words: undefined, colours: undefined, families: undefined, brand: undefined, dir: undefined, textSize: undefined, drawnSize: undefined }, say("رجّع القطعة متل ما كانت|Put the piece back as it was|החזרת הפריט כפי שהיה"))} data-testid="studio-lib-reset">
               {say("رجّعها متل ما كانت|As it was|כפי שהיה")}
             </button>
           ) : null}
@@ -148,6 +152,22 @@ export function LibraryPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           <p className="text-[10px] leading-4 text-white/35">{say("أغلب القطع بتنقلب منيح؛ جرّب وشوف بالمعاينة.|Most pieces turn well; try it and look at the preview.|רוב הפריטים מתהפכים יפה; נסו ובדקו בתצוגה.")}</p>
         </div>
       </div>
+
+      <section className={box} aria-label={say("حجم الكلام|Words size|גודל המילים")} data-testid="studio-lib-sizes">
+        <h4 className="text-[11px] font-medium text-white/70">{say("حجم الكلام|Words size|גודל המילים")}</h4>
+        <Range label={say("كل الكلام بالقطعة|All its words|כל המילים בפריט")} value={pct(p.textSize)} min={50} max={200} step={5} unit="%" busy={busy} onSave={(v) => setSize("textSize", v)} testId="studio-lib-text-size" />
+        {details?.draws ? (
+          <>
+            <Range label={say("الكلمة الكبيرة المرسومة|The big drawn words|המילים הגדולות המצוירות")} value={pct(p.drawnSize)} min={50} max={200} step={5} unit="%" busy={busy} onSave={(v) => setSize("drawnSize", v)} testId="studio-lib-drawn-size" />
+            <p className="text-[10px] leading-4 text-white/35" data-testid="studio-lib-drawn-hint">{say("هالقطعة بترسم كلام (متل كلمة من نقاط): بتتصغّر لحالها لتوسع بعرضها. لتغيّرها دبل كليك عليها بالمعاينة، أو دوّر عليها تحت بالكلام.|This piece draws words (like a word made of dots): they shrink by themselves to fit its width. To change them, double-click them in the preview, or find them below in the words.|הפריט הזה מצייר מילים (כמו מילה מנקודות): הן מתכווצות לבד כדי להיכנס ברוחב. כדי לשנות אותן, לחיצה כפולה עליהן בתצוגה, או חיפוש למטה במילים.")}</p>
+          </>
+        ) : null}
+        {p.textSize || p.drawnSize ? (
+          <button type="button" className={small} disabled={busy} onClick={() => setProps({ textSize: undefined, drawnSize: undefined }, say("حجم كلام قطعة المكتبة|The library piece's words size|גודל המילים של פריט הספרייה"))} data-testid="studio-lib-sizes-reset">
+            {say("رجّع الحجم|Put the size back|החזרת הגודל")}
+          </button>
+        ) : null}
+      </section>
 
       <section className={box} aria-label={say("الكلام|The words|המילים")} data-testid="studio-lib-words">
         <div className="flex items-center justify-between gap-2">
