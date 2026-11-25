@@ -1,9 +1,21 @@
 import { color } from "./css";
+import type { ChartItem } from "./chartMaths";
+export { NEW_CHART_KINDS } from "./chartMaths";
 import styles from "./ChartView.module.css";
+
+const CITY = /^[a-z][a-z-]{1,30}$/;
+/** The items of a chart, in the page's language, the ones with a value only (40 at most). */
+export function chartItemsOf(props: Record<string, unknown>, say: (value: unknown) => string): ChartItem[] {
+  return (Array.isArray(props.items) ? props.items : []).slice(0, 40).flatMap((item: unknown) => {
+    const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    if (!(typeof row.value === "number" && Number.isFinite(row.value) && row.value >= 0 && row.value <= 1000000)) return [];
+    return [{ label: say(row.label).slice(0, 80), value: row.value, color: color(row.color) ?? null, group: say(row.group).slice(0, 80), to: say(row.to).slice(0, 80), city: typeof row.city === "string" && CITY.test(row.city) ? row.city : "" }];
+  });
+}
 
 /** Manual data only: semantic values accompany every plotted shape. */
 export function ChartView({ props, say, label }: { props: Record<string, unknown>; say: (value: unknown) => string; label: string }) {
-  const data = (Array.isArray(props.items) ? props.items : []).slice(0, 24).flatMap((item: unknown) => {
+  const data = (Array.isArray(props.items) ? props.items : []).slice(0, 40).flatMap((item: unknown) => {
     const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
     return typeof row.value === "number" && Number.isFinite(row.value) && row.value >= 0 && row.value <= 1000000 ? [{ label: say(row.label).slice(0, 80), value: row.value, color: color(row.color) ?? "var(--accent,#86b696)" }] : [];
   });

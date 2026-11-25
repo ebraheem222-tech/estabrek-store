@@ -33,6 +33,7 @@ export const MemoryGameView = early("./ShopGames", () => import("./ShopGames").t
 export const GiftCardView = early("./ShopBuild", () => import("./ShopBuild").then((m) => m.GiftCardView));
 export const ConfiguratorView = early("./ShopBuild", () => import("./ShopBuild").then((m) => m.ConfiguratorView));
 export const BookingView = early("./ShopBuild", () => import("./ShopBuild").then((m) => m.BookingView));
+export const ChartKindView = early("./ChartKinds", () => import("./ChartKinds").then((m) => m.ChartKindView));
 export const WhenWatch = early("./TreeWhen", () => import("./TreeWhen").then((m) => m.WhenWatch));
 export const StoryBar = early("./StoryBar", () => import("./StoryBar").then((m) => m.StoryBar));
 export const SpinView = early("@/components/cinematic/ProductSpin", () => import("@/components/cinematic/ProductSpin").then((m) => m.SpinView));
