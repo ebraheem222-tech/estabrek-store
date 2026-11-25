@@ -798,6 +798,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     contained: z.boolean().optional(), // the content keeps to the page width
+    bleed: z.boolean().optional(), // its ground spans the whole screen on the store (the page drops its side margins)
     edges: NodeEdges.optional(),
     particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
     scene: z.object({

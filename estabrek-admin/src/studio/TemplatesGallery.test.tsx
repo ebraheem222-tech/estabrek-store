@@ -111,3 +111,34 @@ test("kinds sit in areas; an area shows all of its kinds; stars keep favourites;
   fireEvent.click(screen.getAllByTestId("studio-tpl-group").find(b => b.getAttribute("data-group") === "favs")!);
   expect(screen.getAllByTestId("studio-tpl-card").map(c => c.getAttribute("data-id")!.split(":")[1])).toEqual([fresh[0].split(":")[1]]);
 });
+test("the whole premium themes: one card a theme, its parts picked in the preview, each added where it goes", async () => {
+  const { onUse } = mount();
+  fireEvent.click(await screen.findByTestId("studio-tpl-tab-pages"));
+  const group = screen.getAllByTestId("studio-tpl-group").find((b) => b.getAttribute("data-group") === "themes")!;
+  expect(group.textContent).toContain("24");
+  fireEvent.click(group);
+  const cards = screen.getAllByTestId("studio-tpl-card");
+  expect(cards).toHaveLength(24);
+  expect(cards.every((c) => /^p:premium-.+-home$/.test(c.getAttribute("data-id")!))).toBe(true);
+  // A theme's card is the theme: its name and its line.
+  const midnight = cards.find((c) => c.getAttribute("data-id") === "p:premium-midnight-home")!;
+  expect(midnight.textContent).toContain("منتصف الليل");
+  fireEvent.click(midnight);
+  const parts = () => screen.getAllByTestId("studio-tpl-theme-part");
+  expect(parts().map((b) => b.getAttribute("data-part"))).toEqual(["home", "about", "contact", "header", "footer"]);
+  expect(parts()[0]).toHaveAttribute("aria-pressed", "true");
+  // Its footer: the look's own design, a section, added as it is.
+  fireEvent.click(parts()[4]);
+  expect(parts()[4]).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByTestId("studio-tpl-end"));
+  await waitFor(() => expect(onUse).toHaveBeenCalledTimes(1));
+  expect(onUse.mock.calls[0][0]).toHaveLength(1);
+  expect(onUse.mock.calls[0][0][0].props.tag).toBe("footer");
+});
+test("the look and mood filters reach the whole pages too", async () => {
+  mount();
+  fireEvent.click(await screen.findByTestId("studio-tpl-tab-pages"));
+  fireEvent.change(screen.getByTestId("studio-tpl-look"), { target: { value: "neon" } });
+  const ids = screen.getAllByTestId("studio-tpl-card").map((c) => c.getAttribute("data-id"));
+  expect(ids.sort()).toEqual(["p:premium-neon-about", "p:premium-neon-contact", "p:premium-neon-home"]);
+});

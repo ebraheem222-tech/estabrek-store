@@ -198,11 +198,14 @@ export const BANNER_LAYOUTS: Layout[] = [
     section(c, L, [GRID(c, 3, [c.pack.collection, C.newIn, C.best].map((t) => onPicture(c, L, t, (k) => picWords(k, L, t), { aspect: "3 / 4" })), { gap: 20, phone: 1 })], c.pack.collection) },
   { key: "wide", name: w("بانر عريض والكلام بالبداية", "A wide banner, words at the start", "באנר רחב, מילים בהתחלה"), build: (c, L) =>
     section(c, L, [onPicture(c, L, c.pack.collection, (k) => picWords(k, L, c.pack.collection, SW.collectionSub), { aspect: "21 / 8", at: "start", phone: { aspect: "4 / 5" } })], c.pack.collection) },
-  { key: "colour-pic", name: w("بطاقة ملوّنة وصورة", "A coloured card and a picture", "כרטיס צבעוני ותמונה"), build: (c, L) =>
-    section(c, L, [COLS(c, [1, 1], [
-      [STACK(c, [...[over(c, L, SW.justDropped, { onPic: true })].filter((n): n is N => n !== null), head({ ...c, skin: "bold" }, L, c.pack.collection, 2), text({ ...c, skin: "bold" }, L, SW.collectionSub), button({ ...c, skin: "bold" }, L, C.shop, "/shop")], { gap: 18, pad: [56, 44, 56, 44], bg: "accent", color: "accent-contrast", radius: Math.min(L.pic.radius || L.btn.radius, 32), justify: "center", height: "100%" })],
-      [picture(c, L, c.pack.collection, { aspect: "1 / 1", bare: true })],
-    ], { gap: 0, align: "stretch" })], c.pack.collection) },
+  { key: "colour-pic", name: w("بطاقة ملوّنة وصورة", "A coloured card and a picture", "כרטיס צבעוני ותמונה"), build: (c, L) => {
+    // The card's own line in the card's colour (white read nowhere on a light accent); a tech look shows the picture
+    // first (its card alone was too like the bold looks' on a dark theme), and on a phone the card still leads.
+    const card = STACK(c, [...[over({ ...c, skin: "bold" }, L, SW.justDropped)].filter((n): n is N => n !== null), head({ ...c, skin: "bold" }, L, c.pack.collection, 2), text({ ...c, skin: "bold" }, L, SW.collectionSub), button({ ...c, skin: "bold" }, L, C.shop, "/shop")], { gap: 18, pad: [56, 44, 56, 44], bg: "accent", color: "accent-contrast", radius: Math.min(L.pic.radius || L.btn.radius, 32), justify: "center", height: "100%" });
+    const pic = picture(c, L, c.pack.collection, { aspect: "1 / 1", bare: true });
+    const flip = L.mood === "tech";
+    return section(c, L, [COLS(c, [1, 1], flip ? [[pic], [card]] : [[card], [pic]], { gap: 0, align: "stretch", ...(flip ? { phone: "reverse" } : {}) })], c.pack.collection);
+  } },
   { key: "big-two", name: w("بانر كبير وتنين صغار", "A big banner and two small ones", "באנר גדול ושניים קטנים"), build: (c, L) =>
     section(c, L, [COLS(c, [3, 2], [
       [onPicture(c, L, c.pack.collection, (k) => picWords(k, L, c.pack.collection, SW.collectionSub), { aspect: "4 / 5" })],

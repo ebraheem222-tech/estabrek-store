@@ -19,7 +19,7 @@ import { TemplateThumb } from "./TemplateThumb";
 import type { ThumbColours } from "./templates/colours";
 import type { TemplateKit } from "./packs";
 import type { Ids, MotionLevel } from "./templates/build";
-import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_AREAS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
+import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, PREMIUM_THEMES, SECTION_AREAS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, templateById, themeKitOf, toFile, type Template } from "./templates/catalog";
 import { FAMILIES, PACKS, type Family, type W } from "./templates/words";
 import { LOOKS, MOODS, MOOD_NAMES } from "./templates/dna";
 import { StoreTemplatePicker } from "../features/setup/StoreTemplatePicker";
@@ -52,6 +52,11 @@ function readFavs(): Set<string> {
 /** The section DNA's designs (studio/templates/dna) are the new ones. */
 const isNew = (t: Template) => Boolean(t.look);
 const areaOf = (g: string) => SECTION_AREAS.find((a) => g === `area:${a.key}`);
+/** The whole premium themes (plan 3.9b) are listed by their homes, one card a theme. */
+const THEMES_GROUP = "themes";
+const isThemeHome = (t: Template) => Boolean(t.theme) && t.group === "home";
+/** A theme's part is the one shown, whatever colour a header or footer is shown in. */
+const samePart = (part: string, id: string | null) => Boolean(id) && (part === id || (part.startsWith("s:") && designOf({ kind: "section", id } as Template) === part.split(":")[1]));
 
 /** Counted ids for drawings (the page's own ids are made when something is added). */
 const drawIds = (): Ids => {
@@ -128,7 +133,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
     const source = tab === "sections" ? SECTION_TEMPLATES : tab === "pages" ? PAGE_TEMPLATES : [];
     // A kind's homes show for that kind only.
     const area = areaOf(group);
-    const inGroup = (t: Template) => group === "all" || t.group === group || (area ? (area.cats as string[]).includes(t.group) : group === "favs" ? favs.has(designOf(t)) : group === "new" && isNew(t));
+    const inGroup = (t: Template) => group === THEMES_GROUP ? isThemeHome(t) : group === "all" || t.group === group || (area ? (area.cats as string[]).includes(t.group) : group === "favs" ? favs.has(designOf(t)) : group === "new" && isNew(t));
     const found = source.filter((t) => inGroup(t) && (!t.fam || t.fam === fam) && (look === "all" || t.look === look) && (mood === "all" || t.mood === mood) && matches(t, q));
     // One card for each design: its colours are picked in the preview. The card shows the first colour that
     // matches what's looked for (looking for "inverted" shows the designs that have it, inverted).
@@ -139,6 +144,10 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const count = (g: string) => counted((t) => t.group === g);
   const favCount = counted((t) => favs.has(designOf(t)));
   const newCount = tab === "sections" ? counted(isNew) : 0;
+  const themeCount = tab === "pages" ? counted(isThemeHome) : 0;
+  /** The premium theme what's shown is a part of: its parts are picked in the preview. */
+  const shownId = shown?.kind === "library" ? shown.t.id : null;
+  const themeKit = shownId ? themeKitOf(shownId) : null;
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -224,7 +233,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                 if (e.target.value.trim()) setGroup("all");
                 setLimit(PAGE_SIZE);
               }} data-testid="studio-tpl-search" />
-              {tab === "sections" ? (
+              {tab === "sections" || tab === "pages" ? (
                 <>
                   <label className="flex items-center gap-1 text-[11px] text-white/60">
                     {say("الستايل|Look|סגנון")}
@@ -319,14 +328,21 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                       </ul>
                     </li>
                   ))
-                  : PAGE_KINDS.map((g) => (
+                  : [themeCount > 0 ? (
+                    <li key={THEMES_GROUP} className="pb-1">
+                      <button type="button" onClick={() => { setGroup(THEMES_GROUP); setLimit(PAGE_SIZE); }} aria-pressed={group === THEMES_GROUP} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === THEMES_GROUP ? "bg-accent-500/20 text-white" : "text-accent-200 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={THEMES_GROUP}>
+                        <span className="truncate">✦ {say("ثيمات بريميوم كاملة|Whole premium themes|ערכות פרימיום שלמות")}</span>
+                        <span className="text-white/35">{themeCount}</span>
+                      </button>
+                    </li>
+                  ) : null, ...PAGE_KINDS.map((g) => (
                     <li key={g}>
                       <button type="button" onClick={() => { setGroup(g); setLimit(PAGE_SIZE); }} aria-pressed={group === g} className={`flex w-full justify-between gap-2 rounded-lg px-2 py-1.5 text-start ${group === g ? "bg-accent-500/20 text-white" : "text-white/65 hover:bg-white/5"}`} data-testid="studio-tpl-group" data-group={g}>
                         <span className="truncate">{nameOf(PAGE_KIND_NAMES[g])}</span>
                         <span className="text-white/35">{count(g)}</span>
                       </button>
                     </li>
-                  ))}
+                  ))]}
               </ul>
             )}
           </nav>
@@ -375,8 +391,8 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                         {isNew(t) ? <span className="pointer-events-none absolute inset-s-1.5 top-1.5 z-10 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-white" data-testid="studio-tpl-new">{say("جديد|New|חדש")}</span> : null}
                         <button type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={on} className={`w-full overflow-hidden rounded-xl border text-start ${on ? "border-accent-400 ring-1 ring-accent-400" : "border-white/8 hover:border-white/25"}`} data-testid="studio-tpl-card" data-id={t.id}>
                           <TemplateThumb key={`${t.id}:${fam}:${motion}:${all}`} build={thumbOf(t)} colours={colours} lang={lang} width={220} height={tab === "pages" ? 190 : 130} />
-                          <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{nameOf(t.name)}</span>
-                          <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{t.kind === "section" ? (colours_ > 1 ? say(`${colours_} ألوان|${colours_} colours|${colours_} צבעים`) : t.skin ? nameOf(SKIN_NAMES[t.skin]) : "") : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
+                          <span className="block truncate px-2 pt-1.5 text-[11px] text-white/85">{group === THEMES_GROUP && themeKitOf(t.id) ? nameOf(themeKitOf(t.id)!.theme.name) : nameOf(t.name)}</span>
+                          <span className="block truncate px-2 pb-1.5 text-[10px] text-white/40">{group === THEMES_GROUP && themeKitOf(t.id) ? nameOf(themeKitOf(t.id)!.theme.line) : t.kind === "section" ? (colours_ > 1 ? say(`${colours_} ألوان|${colours_} colours|${colours_} צבעים`) : t.skin ? nameOf(SKIN_NAMES[t.skin]) : "") : nameOf(PAGE_KIND_NAMES[t.group as keyof typeof PAGE_KIND_NAMES])}</span>
                         </button>
                       </li>
                     );
@@ -408,6 +424,23 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
                   <TemplateThumb key={`${shown.kind === "library" ? shown.t.id : shownName}:${fam}:${motion}:${all}:${shown.kind}`} build={() => shownNodes(drawIds())} colours={colours} lang={lang} width={300} />
                 </div>
                 <div className="truncate text-xs text-white/85" data-testid="studio-tpl-shown-name">{shownName}</div>
+                {/* A whole premium theme: its pages, header and footer, each added where it goes. */}
+                {themeKit ? (
+                  <div className="space-y-1.5" data-testid="studio-tpl-theme">
+                    <div className="text-[11px] leading-4 text-white/55">{nameOf(themeKit.theme.line)}</div>
+                    <div className="flex flex-wrap items-center gap-1" role="group" aria-label={say("أجزاء الثيم|The theme's parts|חלקי הערכה")}>
+                      {themeKit.parts.map((p) => {
+                        const t = templateById(p.id);
+                        return t ? (
+                          <button key={p.id} type="button" onClick={() => setShown({ kind: "library", t })} aria-pressed={samePart(p.id, shownId)} className={`rounded-full border px-2 py-0.5 text-[11px] ${samePart(p.id, shownId) ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/12 text-white/65 hover:text-white"}`} data-testid="studio-tpl-theme-part" data-part={p.part}>
+                            {nameOf(p.name)}
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                    <p className="text-[10px] leading-4 text-white/40">{say("كل جزء بمحلّه: الرئيسية بصفحتك الرئيسية، «من نحن» و«تواصل» بصفحاتهم، والهيدر والفوتر بصفحة الهيدر والفوتر. كلهم بنفس الستايل.|Each part where it goes: the home on your home page, About and Contact on theirs, the header and footer on the header and footer pages. All in the same look.|כל חלק במקומו: דף הבית בדף הבית שלכם, אודות וצור קשר בדפים שלהם, הכותרות העליונה והתחתונה בדפים שלהן. כולם באותו סגנון.")}</p>
+                  </div>
+                ) : null}
                 {/* A section design's colours: the same design in each of the skins it comes in. */}
                 {shown.kind === "library" && shown.t.kind === "section" && (COLOURS_OF.get(designOf(shown.t))?.length ?? 0) > 1 ? (
                   <div className="flex flex-wrap items-center gap-1" role="group" aria-label={say("ألوان التصميم|The design's colours|צבעי העיצוב")} data-testid="studio-tpl-skins">

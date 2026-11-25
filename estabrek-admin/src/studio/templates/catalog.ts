@@ -7,6 +7,7 @@ import { ctxOf, type BuildOptions, type Ids, type N, type Skin } from "./build";
 import { PAGES, PAGE_KINDS, PAGE_KIND_NAMES, type PageKind } from "./pages";
 import { CAT_NAMES, RECIPES, SECTION_CATS, type SectionCat } from "./sections";
 import { w, type Campaign, type Family, type W } from "./words";
+import { THEMES, THEME_PARTS, THEME_PART_NAMES, regionDesign, regionSkin, type PremiumTheme } from "./dna/themes";
 
 export type Template = {
   id: string;
@@ -24,6 +25,8 @@ export type Template = {
   look?: string;
   layout?: string;
   mood?: string;
+  /** A page of a whole premium theme (dna/themes.ts). */
+  theme?: string;
 };
 
 export const SKIN_NAMES: Record<Skin, W> = {
@@ -56,7 +59,25 @@ const PAGE_BY_KEY = new Map(PAGES.map((p) => [p.key, p]));
 export const SECTION_TEMPLATES: Template[] = RECIPES.flatMap((r) =>
   r.skins.map((skin): Template => ({ id: `s:${r.key}:${skin}`, kind: "section", group: r.cat, name: r.name, skin, ...(r.campaign ? { campaign: r.campaign } : {}), ...(r.cat === "popup" ? { popup: true } : {}), ...(r.dna ? { look: r.dna.look, layout: r.dna.layout, mood: r.dna.mood } : {}) })),
 );
-export const PAGE_TEMPLATES: Template[] = PAGES.map((p): Template => ({ id: `p:${p.key}`, kind: "page", group: p.kind, name: p.name, ...(p.fam ? { fam: p.fam } : {}), ...(p.campaign ? { campaign: p.campaign } : {}) }));
+export const PAGE_TEMPLATES: Template[] = PAGES.map((p): Template => ({ id: `p:${p.key}`, kind: "page", group: p.kind, name: p.name, ...(p.fam ? { fam: p.fam } : {}), ...(p.campaign ? { campaign: p.campaign } : {}), ...(p.theme ? { theme: p.theme } : {}), ...(p.dna ? { look: p.dna.look, mood: p.dna.mood } : {}) }));
+/**
+ * The whole premium themes (plan 3.9b): each one's parts as the gallery's templates, in order: its home, about and
+ * contact pages, then its header and footer (the look's own designs of them, sections the gallery lists too).
+ */
+export type ThemeKit = { theme: PremiumTheme; parts: Array<{ part: (typeof THEME_PARTS)[number] | "header" | "footer"; name: W; id: string }> };
+export const PREMIUM_THEMES: ThemeKit[] = THEMES.map((theme) => ({
+  theme,
+  parts: [
+    ...THEME_PARTS.map((part) => ({ part, name: THEME_PART_NAMES[part], id: `p:premium-${theme.key}-${part}` })),
+    ...(["header", "footer"] as const).map((part) => ({ part, name: THEME_PART_NAMES[part], id: `s:${regionDesign(theme, part)}:${regionSkin(theme)}` })),
+  ],
+}));
+/** The premium theme a template is a part of, if it is one. */
+export function themeKitOf(id: string): ThemeKit | null {
+  // A header or footer is the theme's whatever colour it is shown in ("s:dna-header-mast-noir:<skin>").
+  const design = (x: string) => (x.startsWith("s:") ? x.split(":")[1] : x);
+  return PREMIUM_THEMES.find((k) => k.parts.some((p) => design(p.id) === design(id))) ?? null;
+}
 export const templateById = (id: string) => SECTION_TEMPLATES.find((t) => t.id === id) ?? PAGE_TEMPLATES.find((t) => t.id === id) ?? null;
 
 /** A template's sections (or its popup), built for the store; null for an unknown one. */
