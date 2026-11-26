@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { gameOf } from "../../../estabrek-storefront/src/pageTree/gameSpec";
 import { READY_GAMES } from "../../../estabrek-storefront/src/pageTree/gameReady";
-import { ACT_NAMES, WHEN_NAMES, actPossible, freshId, newAct, newWhen, ruleText, rulesOf, thingsOf, whoOptions, withNewThing, withoutThing, type Obj } from "./gameEdit";
+import { ACT_NAMES, WHEN_NAMES, actPossible, freshId, newAct, newWhen, nextTileChar, paintCells, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withNewThing, withTiles, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
 
 // G0b: editing a game by hand, and what's edited still a whole game for the shop.
 const catchGame = () => structuredClone(READY_GAMES.find((g) => g.key === "catch")!.game) as Obj;
@@ -51,5 +51,32 @@ describe("editing a game", () => {
     }
     expect(actPossible("spawn", { things: [{ id: "a" }] })).toBe(false);
     expect(ruleText({ when: { on: "hit", a: "#player", b: "#good" }, do: [{ act: "destroy", who: "other" }, { act: "score", add: 1 }] })).toMatch(/#player.*#good.*\+1/);
+  });
+
+  test("G1: a tile map added three views wide with a floor; painted, resized, its kinds and the things they put taken away cleanly", () => {
+    const g = withTiles(catchGame());
+    const t = g.tiles as { cols: number; rows: number; size: number; map: string[] };
+    expect([t.cols, t.rows, t.size]).toEqual([60, 12, 48]);
+    expect(t.map.at(-1)).toBe("#".repeat(60));
+    expect(worldSize(g)).toEqual([2880, 576]);
+    expect((g.camera as Obj).follow).toBe("#player");
+    expect(read(g).tiles?.map.length).toBe(12);
+    expect(paintCells(["....", "...."], [[1, 0], [9, 9]], "#")).toEqual([".#..", "...."]);
+    expect(resizedMap(["#=", "##"], 3, 1)).toEqual(["#=."]);
+    expect(nextTileChar(g)).toBe("=");
+    // A kind of tile with a tag a rule names, and one that puts a thing: taken away with its cells and the rule.
+    const map = paintCells(paintCells(t.map, [[3, 5], [4, 5]], "^"), [[0, 4]], "o");
+    const withKinds: Obj = {
+      ...g,
+      tiles: { ...t, map, kinds: { ...((g.tiles as Obj).kinds as Obj), "^": { look: { kind: "box" }, tags: ["hazard"] }, o: { look: { kind: "box" }, thing: "gift" } } },
+      rules: [...rulesOf(g), { when: { on: "hit", a: "#player", b: "#hazard" }, do: [{ act: "lives", add: -1 }] }],
+    };
+    expect(whoOptions(withKinds).map(([v]) => v)).toContain("#hazard");
+    const noSpikes = withoutTileKind(withKinds, "^");
+    expect(JSON.stringify((noSpikes.tiles as Obj).map)).not.toContain("^");
+    expect(rulesOf(noSpikes).some((r) => JSON.stringify(r).includes("#hazard"))).toBe(false);
+    const noGift = withoutThing(withKinds, "gift");
+    expect(Object.keys((noGift.tiles as Obj).kinds as Obj)).not.toContain("o");
+    expect(read(noGift).tiles?.map.join("")).not.toContain("o");
   });
 });

@@ -125,12 +125,62 @@ const BALLOONS: Raw = {
   words: words(w("فقّع البالونات", "Pop the balloons", "פוצצו את הבלונים"), w("فقّع البالونات قبل ما تطير لفوق: كل وحدة بتطير بتاخد روح.", "Pop the balloons before they float off: each one that gets away takes a life.", "פוצצו את הבלונים לפני שהם עפים: כל אחד שבורח לוקח חיים.")),
 };
 
+/** Adventure (G1): a world three views wide on a tile map, the camera following the fox; pits, fire, snails, gems, a flag. */
+const ADV_COLS = 64, ADV_ROWS = 12, ADV_Z = 45;
+const advMap = (() => {
+  const g = Array.from({ length: ADV_ROWS }, () => Array<string>(ADV_COLS).fill("."));
+  const put = (c: number, r: number, ch: string) => { g[r][c] = ch; };
+  const pits = [[14, 16], [30, 32], [47, 49]];
+  for (let c = 0; c < ADV_COLS; c++) if (!pits.some(([a, b]) => c >= a && c <= b)) { put(c, 10, "#"); put(c, 11, "#"); }
+  const platforms: Array<[number, number, number]> = [[7, 11, 7], [17, 22, 6], [25, 28, 8], [34, 39, 7], [41, 44, 5], [51, 56, 7]];
+  for (const [a, b, r] of platforms) for (let c = a; c <= b; c++) { put(c, r, "="); if ((c - a) % 2 === 1) put(c, r - 1, "o"); }
+  for (const c of [5, 24, 37, 59]) put(c, 9, "o");
+  for (const c of [20, 21, 39, 58]) put(c, 9, "^");
+  for (const c of [11, 27, 44, 54]) put(c, 9, "e");
+  put(61, 9, "F");
+  return g.map((r) => r.join(""));
+})();
+const ADVENTURE: Raw = {
+  w: 960, h: 540, bg: "accent-soft", edges: "sides", gravity: 2500, lives: 3, time: 120, seed: 71,
+  camera: { follow: "#player", lerp: 0.14 },
+  layers: [
+    { kind: "gradient", color: "accent-soft", color2: "surface", factor: 0, y: 0, h: 1 },
+    { kind: "gradient", color: "surface", color2: "accent-soft", factor: 0.25, y: 0.55, h: 0.45 },
+  ],
+  tiles: {
+    size: ADV_Z, cols: ADV_COLS, rows: ADV_ROWS, map: advMap,
+    kinds: {
+      "#": { look: { kind: "box", color: "text" }, solid: true },
+      "=": { look: { kind: "box", color: "accent" }, oneWay: true },
+      "^": { look: { kind: "emoji", emoji: "🔥", color: "accent" }, tags: ["hazard"] },
+      "o": { look: { kind: "emoji", emoji: "💎", color: "accent" }, thing: "gem" },
+      "e": { look: { kind: "emoji", emoji: "🐌", color: "accent" }, thing: "snail" },
+      "F": { look: { kind: "emoji", emoji: "🏁", color: "accent" }, thing: "flag" },
+    },
+  },
+  things: [
+    { id: "fox", look: emoji("🦊"), x: 2 * ADV_Z + ADV_Z / 2, y: 9 * ADV_Z, w: 52, h: 52, body: "dynamic", control: "platform", speed: 330, jump: 960, tags: ["player"] },
+    { id: "gem", look: emoji("💎"), x: 0, y: 0, w: 34, h: 34, body: "none", template: true, behave: "spin", tags: ["gem"] },
+    { id: "snail", look: emoji("🐌"), x: 0, y: 0, w: 46, h: 40, body: "dynamic", behave: "patrol", speed: 70, template: true, tags: ["enemy"] },
+    { id: "flag", look: emoji("🏁"), x: 0, y: 0, w: 56, h: 70, body: "none", template: true, tags: ["goal"] },
+  ],
+  rules: [
+    { when: { on: "hit", a: "#player", b: "#gem" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "sound", kind: "pop" }] },
+    { when: { on: "hit", a: "#player", b: "#hazard" }, do: [{ act: "lives", add: -1 }, { act: "speed", who: "self", vx: 0, vy: -700 }, { act: "shake" }, { act: "sound", kind: "hit" }] },
+    { when: { on: "hit", a: "#player", b: "#enemy" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "lives", add: -1 }, { act: "shake" }, { act: "sound", kind: "hit" }] },
+    { when: { on: "hit", a: "#player", b: "#goal" }, do: [{ act: "win" }] },
+    { when: { on: "out", who: "#player" }, do: [{ act: "lose" }] },
+  ],
+  words: words(w("مغامرة الثعلب", "The fox's adventure", "ההרפתקה של השועל"), w("الأسهم بتمشّي والمسافة بتنطّ: لمّ الألماس، تفادى النار والحلازين، ووصل للعلم.", "Arrows to run, Space to jump: gather the gems, dodge the fire and the snails, and reach the flag.", "חצים לריצה, רווח לקפיצה: אספו יהלומים, התחמקו מהאש ומהחלזונות, והגיעו לדגל.")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
   { key: "tap", name: w("نقّير", "Tap", "הקשה"), line: w("انقر قبل ما يختفي", "Tap before it's gone", "הקישו לפני שזה נעלם"), icon: "⭐", game: TAP },
   { key: "jump", name: w("نطّاط", "Jumper", "קופץ"), line: w("اركض ونطّ فوق الحواجز", "Run and jump the obstacles", "רוצו וקפצו מעל המכשולים"), icon: "🐰", game: JUMP },
   { key: "bricks", name: w("كسّارة", "Brick breaker", "שובר לבנים"), line: w("طابة ولوح وحيط طوب", "A ball, a paddle and a wall of bricks", "כדור, מחבט וחומת לבנים"), icon: "🧱", game: BRICKS },
+  { key: "adventure", name: w("مغامرة", "Adventure", "הרפתקה"), line: w("منصّات وعالم أعرض من الشاشة", "Platforms in a world wider than the screen", "פלטפורמות בעולם רחב מהמסך"), icon: "🦊", game: ADVENTURE },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

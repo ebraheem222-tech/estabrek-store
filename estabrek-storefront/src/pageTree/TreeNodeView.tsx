@@ -673,7 +673,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       // A game on the page, the owner's or a ready one (the games stage: gameSpec.ts, gameEngine.ts, GameView.tsx).
       const spec = gameOf(p.game, say);
       if (!spec) return null;
-      const colours = Object.fromEntries([spec.bg, ...spec.things.map((t) => t.look.color)].map((n) => [n, color(n) ?? n]));
+      // Every colour the game names: its ground, its things', its tiles' and its layers'.
+      const named = [spec.bg, ...spec.things.map((t) => t.look.color), ...Object.values(spec.tiles?.kinds ?? {}).map((k) => k.look.color), ...spec.layers.flatMap((l) => [l.color, l.color2])];
+      const colours = Object.fromEntries(named.map((n) => [n, color(n) ?? n]));
       return (
         <div className={cls(node)} {...mark}>
           {before}

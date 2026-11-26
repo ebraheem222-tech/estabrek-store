@@ -39,4 +39,25 @@ describe("a game on the page", () => {
     // Words in three languages, a coupon to win.
     expect(issues({ things: [thing("a", { look: { kind: "text", text: { ar: "أهلا", en: "Hi" } } })], coupon: "WIN10", once: true, words: { title: { ar: "لعبة" }, help: { en: "Play" } } })).toEqual([]);
   });
+
+  test("G1: a tile map with its kinds, a sprite sheet, a camera and layers; a map that doesn't add up is refused", () => {
+    const kinds = { "#": { look: { kind: "box", color: "text" }, solid: true }, "^": { look: { kind: "emoji", emoji: "🔥" }, tags: ["hazard"] }, o: { look: { kind: "box" }, thing: "coin" } };
+    const base = {
+      w: 960, h: 540,
+      things: [thing("hero", { look: { kind: "sprite", src: "/m/hero.png", sheet: { cols: 4, rows: 2, fps: 12, anims: { idle: [0, 2], run: [2, 4] } } }, tags: ["player"] }), thing("coin", { template: true })],
+      tiles: { size: 45, cols: 4, rows: 2, map: ["o.^.", "####"], kinds },
+      camera: { follow: "#player", lerp: 0.2 },
+      layers: [{ kind: "gradient", color: "accent-soft", color2: "surface", factor: 0.3, y: 0.5, h: 0.5 }],
+      // A rule may name a tile's tag.
+      rules: [{ when: { on: "hit", a: "#player", b: "#hazard" }, do: [{ act: "lives", add: -1 }] }],
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, tiles: { ...base.tiles, map: ["o.^.x", "####"] } }).join()).toMatch(/bigger|No kind of tile/);
+    expect(issues({ ...base, tiles: { ...base.tiles, map: ["oZ^.", "####"] } }).join()).toMatch(/No kind of tile for “Z”/);
+    expect(issues({ ...base, tiles: { ...base.tiles, kinds: { ...kinds, o: { look: { kind: "box" }, thing: "hero" } } } }).join()).toMatch(/isn't a template/);
+    expect(issues({ ...base, tiles: { ...base.tiles, kinds: { ...kinds, ".": { look: { kind: "box" } } } } }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, layers: Array.from({ length: 5 }, () => base.layers[0]) }).length).toBeGreaterThan(0);
+    // A world of tiles alone, with nothing else at the start, is still a game.
+    expect(issues({ things: [], tiles: { size: 40, cols: 2, rows: 1, map: ["##"], kinds: { "#": { look: { kind: "box" }, solid: true } } } })).toEqual([]);
+  });
 });

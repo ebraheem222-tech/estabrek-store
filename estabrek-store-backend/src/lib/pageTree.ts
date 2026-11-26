@@ -870,9 +870,22 @@ const GAME_TAG = z.string().regex(/^[a-z][a-z0-9-]{0,15}$/);
 const GAME_WHO = z.string().regex(/^([a-z][a-z0-9-]{0,23}|#[a-z][a-z0-9-]{0,15})$/);
 const gnum = (lo: number, hi: number) => z.number().finite().min(lo).max(hi);
 const gint = (lo: number, hi: number) => z.number().int().min(lo).max(hi);
+/** A sprite sheet (G1): cols × rows frames, each state a run of them ([first, how many]), at fps. */
+const GameSheet = z.object({
+  cols: gint(1, 16), rows: gint(1, 16), fps: gint(1, 30).optional(),
+  anims: z.object(Object.fromEntries(["idle", "run", "jump", "fall"].map((a) => [a, z.tuple([gint(0, 255), gint(1, 256)]).optional()]))).strict().optional(),
+}).strict();
+const GameLook = z.object({ kind: z.enum(["box", "circle", "image", "emoji", "text", "sprite"]), color: color.optional(), src: src.optional(), emoji: z.string().min(1).max(8).optional(), text: local(40).optional(), sheet: GameSheet.optional() }).strict();
+/** The tile map (G1): its kinds by letter (solid, one-way, tags, or a template put in each cell), and its rows. */
+const GameTiles = z.object({
+  size: gint(16, 128), cols: gint(1, 200), rows: gint(1, 60),
+  map: z.array(z.string().max(200)).max(60),
+  kinds: z.record(z.string().regex(/^[!-~]$/).refine((c) => c !== ".", "“.” is an empty cell"), z.object({ look: GameLook, solid: z.boolean().optional(), oneWay: z.boolean().optional(), tags: z.array(GAME_TAG).max(4).optional(), thing: GAME_ID.optional() }).strict()).refine((k) => Object.keys(k).length <= 12, "At most 12 kinds of tile"),
+}).strict();
+const GameLayer = z.object({ kind: z.enum(["color", "gradient", "image"]), color: color.optional(), color2: color.optional(), src: src.optional(), factor: gnum(0, 1).optional(), y: gnum(0, 1).optional(), h: gnum(0.05, 1).optional() }).strict();
 const GameThing = z.object({
   id: GAME_ID,
-  look: z.object({ kind: z.enum(["box", "circle", "image", "emoji", "text"]), color: color.optional(), src: src.optional(), emoji: z.string().min(1).max(8).optional(), text: local(40).optional() }).strict(),
+  look: GameLook,
   x: gnum(-2000, 4000), y: gnum(-2000, 4000), w: gnum(4, 2000), h: gnum(4, 2000),
   template: z.boolean().optional(),
   body: z.enum(["none", "static", "dynamic", "kinematic"]).optional(),
@@ -915,10 +928,14 @@ const GameAct = z.discriminatedUnion("act", [
 /** A game: its world, its things (some templates for rules to make), its rules, lives, clock, the score that wins, its words and prize. */
 const GameSpecSchema = z.object({
   w: gint(320, 1920).optional(), h: gint(240, 1920).optional(),
+  ww: gint(320, 8000).optional(), wh: gint(240, 8000).optional(),
+  tiles: GameTiles.optional(),
+  camera: z.object({ follow: GAME_WHO.or(z.literal("")).optional(), lerp: gnum(0.02, 1).optional() }).strict().optional(),
+  layers: z.array(GameLayer).max(4).optional(),
   bg: color.optional(),
   gravity: gnum(0, 4000).optional(),
   edges: z.enum(["walls", "sides", "floor", "open"]).optional(),
-  things: z.array(GameThing).min(1).max(40),
+  things: z.array(GameThing).max(40),
   rules: z.array(z.object({ when: GameWhen, do: z.array(GameAct).min(1).max(8) }).strict()).max(40).optional(),
   lives: gint(0, 9).optional(),
   time: gint(0, 600).optional(),
@@ -931,10 +948,19 @@ const GameSpecSchema = z.object({
 }).strict().superRefine((g, ctx) => {
   // A rule's names are the game's own things and tags, and what it makes is one of its templates.
   const ids = new Set(g.things.map((t) => t.id));
-  const tags = new Set(g.things.flatMap((t) => t.tags ?? []));
   const templates = new Set(g.things.filter((t) => t.template).map((t) => t.id));
+  const kinds = g.tiles?.kinds ?? {};
+  // A rule names things' tags and the tile map's.
+  const tags = new Set([...g.things.flatMap((t) => t.tags ?? []), ...Object.values(kinds).flatMap((k) => k.tags ?? [])]);
   if (ids.size !== g.things.length) ctx.addIssue({ code: "custom", message: "Two things share a name", path: ["things"] });
-  if (!g.things.some((t) => !t.template)) ctx.addIssue({ code: "custom", message: "Nothing is in the world at the start", path: ["things"] });
+  if (g.tiles) {
+    const t = g.tiles;
+    if (t.map.length > t.rows || t.map.some((r) => r.length > t.cols)) ctx.addIssue({ code: "custom", message: "The map is bigger than its rows and columns", path: ["tiles", "map"] });
+    const bad = [...new Set(t.map.join("").replace(/\./g, ""))].filter((c) => !kinds[c]);
+    if (bad.length) ctx.addIssue({ code: "custom", message: `No kind of tile for “${bad.join("")}”`, path: ["tiles", "map"] });
+    for (const [c, k] of Object.entries(kinds)) if (k.thing && !templates.has(k.thing)) ctx.addIssue({ code: "custom", message: `Tile “${c}” puts “${k.thing}”, which isn't a template`, path: ["tiles", "kinds", c] });
+  }
+  if (!g.things.some((t) => !t.template) && !g.tiles?.map.some((r) => /[^.]/.test(r))) ctx.addIssue({ code: "custom", message: "Nothing is in the world at the start", path: ["things"] });
   const known = (who: string) => (who.startsWith("#") ? tags.has(who.slice(1)) : ids.has(who));
   (g.rules ?? []).forEach((r, i) => {
     const w = r.when as { a?: string; b?: string; who?: string };

@@ -3,6 +3,8 @@
  * big, its things dragged into place and their corners pulled to size; a thing's settings (its look, body, control,
  * behaviour, speeds, tags); the rules built from menus ("when … → do …"); the world's size, edges and gravity; and
  * «جرّبها» to play it right here (the shop's own engine, drawn on a 2D canvas with the shop's pictures of things).
+ * G1: the tile map (its size, its kinds of tile, a brush to paint them and a rubber), a world wider than the view
+ * (scrolled across), the camera and the layers behind, and a thing drawn from a sprite sheet with its states' frames.
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -11,11 +13,12 @@ import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import type { Lang } from "../lib/lang";
 import { gameOf, type GameLook } from "../../../estabrek-storefront/src/pageTree/gameSpec";
 import { NO_INPUT, STEP, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
-import { lookCanvas } from "../../../estabrek-storefront/src/pageTree/gameDraw";
+import { lookCanvas, sheetFrame } from "../../../estabrek-storefront/src/pageTree/gameDraw";
 import type { ThumbColours } from "./templates/colours";
 import {
   ACT_NAMES, BEHAVE_NAMES, BODY_NAMES, CONTROL_NAMES, EDGE_NAMES, KEY_NAMES, LOOK_STARTS, SIZES, SOUND_NAMES, SPOT_NAMES, WHEN_NAMES,
   actPossible, newAct, newWhen, ruleText, rulesOf, templatesOf, thingsOf, whoOptions, withNewThing, withoutThing, type Obj,
+  nextTileChar, paintCells, resizedMap, withTiles, withoutTileKind, worldSize,
 } from "./gameEdit";
 import { say } from "./say";
 
@@ -81,13 +84,19 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
 }) {
   const pal = useMemo(() => palette(colours), [colours]);
   const W = num(game.w, 960), H = num(game.h, 540);
+  const [WW, WH] = worldSize(game);
+  const tiles = obj(game.tiles);
+  const hasTiles = Object.keys(tiles).length > 0;
   const things = thingsOf(game);
+  const [tab, setTab] = useState<"things" | "tiles" | "camera">("things");
+  const [brush, setBrush] = useState("#");
+  const [stroke, setStroke] = useState<string[] | null>(null);
   const rules = rulesOf(game);
   const [sel, setSel] = useState<string | null>(things.find((t) => !t.template)?.id as string ?? null);
   const [rule, setRule] = useState(0);
   const [trying, setTrying] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState<null | "image" | "sprite">(null);
   const stage = useRef<HTMLDivElement>(null);
   const thing = things.find((t) => t.id === sel) ?? null;
 
@@ -97,7 +106,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   const setRuleAt = (i: number, r: Obj) => setRules(rules.map((x, j) => (j === i ? r : x)));
 
   /* ---- dragging a thing, or its corner, in the world's units */
-  const scale = () => { const r = stage.current!.getBoundingClientRect(); return { sx: W / r.width, sy: H / r.height }; };
+  const scale = () => { const r = stage.current!.getBoundingClientRect(); return { sx: WW / r.width, sy: WH / r.height }; };
   const startDrag = (t: Obj, mode: Drag["mode"]) => (e: RPointerEvent) => {
     if (busy || trying) return;
     e.stopPropagation();
@@ -112,10 +121,26 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
     const { sx, sy } = scale();
     const dx = (e.clientX - drag.px) * sx, dy = (e.clientY - drag.py) * sy;
     setMoved(drag.mode === "move"
-      ? { x: Math.round(Math.min(W, Math.max(0, drag.x + dx))), y: Math.round(Math.min(H, Math.max(0, drag.y + dy))), w: drag.w, h: drag.h }
+      ? { x: Math.round(Math.min(WW, Math.max(0, drag.x + dx))), y: Math.round(Math.min(WH, Math.max(0, drag.y + dy))), w: drag.w, h: drag.h }
       : { x: drag.x, y: drag.y, w: Math.round(Math.max(8, drag.w + dx * 2)), h: Math.round(Math.max(8, drag.h + dy * 2)) });
   };
+  /* ---- painting tiles: a stroke is one change, made when it ends */
+  const painting = tab === "tiles" && hasTiles && !trying;
+  const cellAt = (e: RPointerEvent): [number, number] | null => {
+    const r = stage.current!.getBoundingClientRect();
+    const z = num(tiles.size, 48);
+    const c = Math.floor((((e.clientX - r.left) / r.width) * WW) / z), row = Math.floor((((e.clientY - r.top) / r.height) * WH) / z);
+    return c >= 0 && row >= 0 && c < num(tiles.cols, 0) && row < num(tiles.rows, 0) ? [c, row] : null;
+  };
+  const paintAt = (e: RPointerEvent, from: string[]) => { const cell = cellAt(e); setStroke(cell ? paintCells(from, [cell], brush) : from); };
+  const startPaint = (e: RPointerEvent) => {
+    if (!painting || busy) return false;
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    paintAt(e, (Array.isArray(tiles.map) ? tiles.map : []) as string[]);
+    return true;
+  };
   const endDrag = () => {
+    if (stroke) { onChange(brush === "." ? say("محيت بلاط|Tiles rubbed out|אריחים נמחקו") : say("رسمت بلاط|Tiles painted|אריחים צוירו"), { ...game, tiles: { ...tiles, map: stroke } }); setStroke(null); return; }
     if (drag && moved) setThing(drag.id, moved, drag.mode === "move" ? say("نقلت شي|A thing moved|פריט הוזז") : say("كبّرت شي|A thing resized|פריט שונה בגודל"));
     setDrag(null);
     setMoved(null);
@@ -131,7 +156,8 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
     onChange(say("محيت شي|A thing removed|פריט הוסר"), withoutThing(game, id));
     setSel(null);
   };
-  const resize = (w: number, h: number) => onChange(say("حجم العالم|The world's size|גודל העולם"), {
+  // The view's size; on a tile map the world keeps its own (the camera shows a part of it).
+  const resize = (w: number, h: number) => onChange(say("حجم العالم|The world's size|גודל העולם"), hasTiles ? { ...game, w, h } : {
     ...game, w, h, things: things.map((t) => ({ ...t, x: Math.round(num(t.x, 0) * (w / W)), y: Math.round(num(t.y, 0) * (h / H)) })),
   });
 
@@ -153,8 +179,16 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
         </div>
 
         <div className="grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)_320px]">
-          {/* Things: add one, pick one, its settings. */}
+          {/* Things: add one, pick one, its settings. The tile map. The camera and the layers behind. */}
           <div className="max-h-[62vh] space-y-2 overflow-y-auto pe-1">
+            <div className="flex gap-1 rounded-lg bg-white/4 p-0.5" role="tablist">
+              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")]] as const).map(([k, l]) => (
+                <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-md px-1.5 py-1 text-[11px] ${tab === k ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid="game-ed-tab" data-tab={k}>{l}</button>
+              ))}
+            </div>
+            {tab === "tiles" ? <TilesPanel game={game} brush={brush} setBrush={setBrush} busy={busy || trying} colours={pal} lang={lang} onChange={onChange} /> : null}
+            {tab === "camera" ? <CameraPanel game={game} busy={busy || trying} whos={whos} onChange={onChange} /> : null}
+            {tab === "things" ? <>
             <div className="text-[11px] font-medium text-white/60">{say("ضيف شي|Add a thing|הוסיפו פריט")}</div>
             <div className="flex flex-wrap gap-1">
               {LOOK_STARTS.map(([key, label, look]) => <button key={key} type="button" className={btn} disabled={busy || trying} onClick={() => addThing(look, key === "emoji" ? "star" : key)} data-testid="game-ed-add" data-look={key}>+ {say(label)}</button>)}
@@ -166,26 +200,31 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                 </button>
               ))}
             </div>
-            {thing ? <ThingSettings key={String(thing.id)} thing={thing} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={() => setPicking(true)} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
+            {thing ? <ThingSettings key={String(thing.id)} thing={thing} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
+            </> : null}
           </div>
 
           {/* The world, or the game played. */}
           <div className="space-y-2">
             {trying ? <GameTry game={game} colours={pal} lang={lang} /> : (
               <>
-                <div ref={stage} className="relative w-full touch-none select-none overflow-hidden rounded-xl" style={{ aspectRatio: `${W} / ${H}`, background: pal[String(game.bg ?? "surface")] ?? "#eee" }} onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag} onPointerDown={() => setSel(null)} data-testid="game-ed-world">
+                <div className="w-full overflow-x-auto rounded-xl" data-testid="game-ed-scroll">
+                <div ref={stage} className={`relative touch-none select-none overflow-hidden ${painting ? "cursor-crosshair" : ""}`} style={{ width: `${(WW / W) * 100}%`, aspectRatio: `${WW} / ${WH}`, background: pal[String(game.bg ?? "surface")] ?? "#eee" }}
+                  onPointerMove={(e) => { if (stroke) paintAt(e, stroke); else onMove(e); }} onPointerUp={endDrag} onPointerCancel={endDrag} onPointerDown={(e) => { if (!startPaint(e)) setSel(null); }} data-testid="game-ed-world">
+                  {hasTiles ? <TilesCanvas tiles={tiles} map={stroke ?? ((Array.isArray(tiles.map) ? tiles.map : []) as string[])} ww={WW} wh={WH} colours={pal} lang={lang} /> : null}
                   {things.filter((t) => !t.template).map((t) => {
                     const id = String(t.id);
                     const m = drag?.id === id && moved ? moved : { x: num(t.x, 0), y: num(t.y, 0), w: num(t.w, 48), h: num(t.h, 48) };
                     return (
-                      <div key={id} className={`absolute cursor-move ${id === sel ? "outline outline-2 outline-accent-400" : "hover:outline hover:outline-1 hover:outline-white/50"}`}
-                        style={{ left: `${((m.x - m.w / 2) / W) * 100}%`, top: `${((m.y - m.h / 2) / H) * 100}%`, width: `${(m.w / W) * 100}%`, height: `${(m.h / H) * 100}%`, transform: `rotate(0deg)` }}
+                      <div key={id} className={`absolute cursor-move ${painting ? "pointer-events-none opacity-70" : ""} ${id === sel ? "outline outline-2 outline-accent-400" : "hover:outline hover:outline-1 hover:outline-white/50"}`}
+                        style={{ left: `${((m.x - m.w / 2) / WW) * 100}%`, top: `${((m.y - m.h / 2) / WH) * 100}%`, width: `${(m.w / WW) * 100}%`, height: `${(m.h / WH) * 100}%` }}
                         onPointerDown={startDrag(t, "move")} data-testid="game-ed-thing" data-thing={id}>
                         <LookView look={obj(t.look)} colours={pal} lang={lang} />
                         {id === sel ? <span className="absolute -bottom-1.5 -end-1.5 h-3 w-3 cursor-nwse-resize rounded-sm bg-accent-400" onPointerDown={startDrag(t, "size")} data-testid="game-ed-size-handle" /> : null}
                       </div>
                     );
                   })}
+                </div>
                 </div>
                 {templatesOf(game).length ? (
                   <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/50">
@@ -214,14 +253,20 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
           </div>
         </div>
       </div>
-      <MediaLibraryModal open={picking} onClose={() => setPicking(false)} title={say("صورة الشي|The thing's picture|תמונת הפריט")} onSelect={(u) => { setPicking(false); if (thing) setThing(String(thing.id), { look: { ...obj(thing.look), kind: "image", src: u } }); }} />
+      <MediaLibraryModal open={picking !== null} onClose={() => setPicking(null)} title={picking === "sprite" ? say("صورة الحركات|The sprite sheet|גיליון הספרייטים") : say("صورة الشي|The thing's picture|תמונת הפריט")} onSelect={(u) => {
+        const kind = picking;
+        setPicking(null);
+        if (!thing) return;
+        const look = obj(thing.look);
+        setThing(String(thing.id), { look: kind === "sprite" ? { ...look, kind: "sprite", src: u, sheet: obj(look.sheet).cols ? look.sheet : { cols: 4, rows: 1, fps: 10, anims: { idle: [0, 1], run: [0, 4] } } } : { ...look, kind: "image", src: u } });
+      }} />
     </Modal>
   );
 }
 
 /* ---------------------------------------------------------------- a thing's settings */
 
-function ThingSettings({ thing, lang, busy, set, onRemove, onPicture }: { thing: Obj; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: () => void }) {
+function ThingSettings({ thing, lang, busy, set, onRemove, onPicture }: { thing: Obj; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void }) {
   const look = obj(thing.look);
   const setLook = (c: Obj) => set({ look: { ...look, ...c } }, say("شكل الشي|A thing's look|מראה הפריט"));
   const tags = (Array.isArray(thing.tags) ? thing.tags : []).map(String).join(", ");
@@ -230,10 +275,11 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture }: { thing:
     <div className="space-y-1.5 rounded-lg bg-white/4 p-2" data-testid="game-ed-thing-settings">
       <div className="flex items-center justify-between text-[11px] text-white/75"><b>{String(thing.id)}</b><button type="button" className="text-red-300 hover:text-red-200" disabled={busy} onClick={onRemove} data-testid="game-ed-remove">{say("امحيه|Remove it|הסירו")}</button></div>
       <Row label={say("بيطلع بالقواعد بس ✦|Made by rules only ✦|נוצר רק בכללים ✦")}><input type="checkbox" checked={thing.template === true} disabled={busy} onChange={(e) => set({ template: e.target.checked || undefined })} data-testid="game-ed-template-box" /></Row>
-      <Row label={say("شكله|Its look|המראה")}><Choose label={say("شكله|Its look|המראה")} value={String(look.kind ?? "box")} options={[["emoji", "⭐"], ["box", say("مربّع|Box|ריבוע")], ["circle", say("دائرة|Circle|עיגול")], ["image", say("صورة|Picture|תמונה")], ["text", say("كلام|Words|מילים")]] as const} onPick={(k) => { if (k === "image") onPicture(); else setLook({ kind: k, ...(k === "emoji" && !look.emoji ? { emoji: "⭐" } : {}), ...(k === "text" && !look.text ? { text: { [lang]: say("نص|Text|טקסט") } } : {}) }); }} disabled={busy} testId="game-ed-look" /></Row>
+      <Row label={say("شكله|Its look|המראה")}><Choose label={say("شكله|Its look|המראה")} value={String(look.kind ?? "box")} options={[["emoji", "⭐"], ["box", say("مربّع|Box|ריבוע")], ["circle", say("دائرة|Circle|עיגול")], ["image", say("صورة|Picture|תמונה")], ["sprite", say("صورة حركات|Sprite sheet|גיליון ספרייטים")], ["text", say("كلام|Words|מילים")]] as const} onPick={(k) => { if (k === "image" || k === "sprite") onPicture(k); else setLook({ kind: k, ...(k === "emoji" && !look.emoji ? { emoji: "⭐" } : {}), ...(k === "text" && !look.text ? { text: { [lang]: say("نص|Text|טקסט") } } : {}) }); }} disabled={busy} testId="game-ed-look" /></Row>
       {look.kind === "emoji" ? <Row label={say("الإيموجي|The emoji|האימוג'י")}><input className={`${ctl} w-20`} defaultValue={String(look.emoji ?? "")} maxLength={8} onBlur={(e) => e.target.value.trim() && setLook({ emoji: e.target.value.trim() })} data-testid="game-ed-emoji" /></Row> : null}
       {look.kind === "text" ? <Row label={say("الكلام|The words|המילים")}><input className={`${ctl} w-28`} defaultValue={String(obj(look.text)[lang] ?? "")} maxLength={40} onBlur={(e) => setLook({ text: { ...obj(look.text), [lang]: e.target.value.trim() } })} data-testid="game-ed-words" /></Row> : null}
-      {look.kind !== "image" ? <Row label={say("لونه|Its colour|הצבע")}><Choose label={say("لونه|Its colour|הצבע")} value={String(look.color ?? "accent")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(c) => setLook({ color: c })} disabled={busy} testId="game-ed-colour" /></Row> : <button type="button" className={btn} disabled={busy} onClick={onPicture}>{say("بدّل الصورة|Change the picture|החליפו תמונה")}</button>}
+      {look.kind === "sprite" ? <SheetSettings look={look} busy={busy} set={setLook} onPicture={() => onPicture("sprite")} /> : null}
+      {look.kind !== "image" && look.kind !== "sprite" ? <Row label={say("لونه|Its colour|הצבע")}><Choose label={say("لونه|Its colour|הצבע")} value={String(look.color ?? "accent")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(c) => setLook({ color: c })} disabled={busy} testId="game-ed-colour" /></Row> : look.kind === "image" ? <button type="button" className={btn} disabled={busy} onClick={() => onPicture("image")}>{say("بدّل الصورة|Change the picture|החליפו תמונה")}</button> : null}
       <Row label={say("جسمه|Its body|הגוף")}><Choose label={say("جسمه|Its body|הגוף")} value={String(thing.body ?? "none")} options={named(BODY_NAMES)} onPick={(v) => set({ body: v })} disabled={busy} testId="game-ed-body" /></Row>
       <Row label={say("مين بيحرّكه|Who moves it|מי מזיז")}><Choose label={say("مين بيحرّكه|Who moves it|מי מזיז")} value={String(thing.control ?? "none")} options={named(CONTROL_NAMES)} onPick={(v) => set({ control: v })} disabled={busy} testId="game-ed-control" /></Row>
       <Row label={say("تصرّفه|Its behaviour|ההתנהגות")}><Choose label={say("تصرّفه|Its behaviour|ההתנהגות")} value={String(thing.behave ?? "none")} options={named(BEHAVE_NAMES)} onPick={(v) => set({ behave: v })} disabled={busy} testId="game-ed-behave" /></Row>
@@ -310,7 +356,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef<GameState | null>(null);
   const input = useRef<GameInput>({ ...NO_INPUT, pressed: [], taps: [] });
-  const [hud, setHud] = useState({ phase: "ready", score: 0, lives: 0, time: null as number | null });
+  const [hud, setHud] = useState({ phase: "ready", score: 0, lives: 0, time: null as number | null, cam: 0 });
   const spec = useMemo(() => gameOf(game, (t) => (t && typeof t === "object" ? String(obj(t)[lang] ?? obj(t).ar ?? obj(t).en ?? "") : "")), [game, lang]);
 
   useEffect(() => {
@@ -323,8 +369,25 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
     const looks = new Map<string, HTMLCanvasElement>();
     const lookOf = (of: string, look: GameLook, w: number, h: number) => {
       let c = looks.get(of);
-      if (!c) { c = lookCanvas(look, w, h, colours[look.color] ?? look.color, "sans-serif", lang !== "en", () => {}); looks.set(of, c); }
+      if (!c) { c = lookCanvas(look, w, h, colours[look.color] ?? look.color, "sans-serif", lang !== "en", () => { tilesV = -1; }); looks.set(of, c); }
       return c;
+    };
+    // Pictures (sprite sheets, layers) loaded once.
+    const pictures = new Map<string, HTMLImageElement>();
+    const pictureOf = (src: string) => {
+      let img = pictures.get(src);
+      if (!img) { img = new Image(); img.crossOrigin = "anonymous"; img.src = src; pictures.set(src, img); }
+      return img;
+    };
+    // The tile map drawn once on its own canvas (again when a rule takes a tile away).
+    let tilesV = -1;
+    const tileCanvas = spec.tiles ? document.createElement("canvas") : null;
+    const drawTiles = () => {
+      const t = spec.tiles, x = tileCanvas?.getContext?.("2d");
+      if (!t || !tileCanvas || !x || !s.tiles) return;
+      tileCanvas.width = spec.ww; tileCanvas.height = spec.wh;
+      x.clearRect(0, 0, spec.ww, spec.wh);
+      s.tiles.forEach((row, r) => row.forEach((ch, c) => { const k = t.kinds[ch]; if (k && !k.thing) x.drawImage(lookOf(`tile:${ch}`, k.look, t.size, t.size), c * t.size, r * t.size, t.size, t.size); }));
     };
     let frame = 0, last = performance.now(), acc = 0;
     const loop = (now: number) => {
@@ -340,15 +403,47 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
       if (ctx && cv) {
         ctx.fillStyle = colours[spec.bg] ?? spec.bg;
         ctx.fillRect(0, 0, spec.w, spec.h);
+        // The layers behind: a colour, a gradient, or a picture repeated across at its share of the camera's speed.
+        for (const l of spec.layers) {
+          const y = spec.h * l.y, h = spec.h * l.h;
+          if (l.kind === "image" && l.src) {
+            const img = pictureOf(l.src);
+            if (img.complete && img.naturalWidth) {
+              const iw = img.naturalWidth * (h / img.naturalHeight);
+              for (let x = -((s.cx * l.factor) % iw); x < spec.w; x += iw) ctx.drawImage(img, x, y, iw, h);
+            }
+            continue;
+          }
+          if (l.kind === "gradient") { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, colours[l.color] ?? l.color); g.addColorStop(1, colours[l.color2] ?? l.color2); ctx.fillStyle = g; } else ctx.fillStyle = colours[l.color] ?? l.color;
+          ctx.fillRect(0, y, spec.w, h);
+        }
+        ctx.save();
+        ctx.translate(-s.cx, -s.cy);
+        if (tileCanvas) { if (tilesV !== s.tilesV) { tilesV = s.tilesV; drawTiles(); } ctx.drawImage(tileCanvas, 0, 0); }
         for (const b of s.bodies) {
           ctx.save();
           ctx.translate(b.x, b.y);
           ctx.rotate(b.rot);
-          ctx.drawImage(lookOf(b.of, b.thing.look, b.thing.w, b.thing.h), -b.w / 2, -b.h / 2, b.w, b.h);
+          const look = b.thing.look;
+          if (look.kind === "sprite" && look.src) {
+            // The frame of its state, turned the way it faces.
+            const img = pictureOf(look.src);
+            if (img.complete && img.naturalWidth) {
+              const f = sheetFrame(look, b.anim, s.t), fw = img.naturalWidth / f.cols, fh = img.naturalHeight / f.rows;
+              ctx.scale(b.face, 1);
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(img, f.col * fw, f.row * fh, fw, fh, -b.w / 2, -b.h / 2, b.w, b.h);
+            }
+          } else {
+            if (b.thing.control === "platform") ctx.scale(b.face, 1);
+            ctx.drawImage(lookOf(b.of, look, b.thing.w, b.thing.h), -b.w / 2, -b.h / 2, b.w, b.h);
+          }
           ctx.restore();
         }
+        ctx.restore();
       }
-      setHud((h) => (h.phase === s.phase && h.score === s.score && h.lives === s.lives && h.time === timeLeft(s) ? h : { phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s) }));
+      const cam = Math.round(s.cx);
+      setHud((h) => (h.phase === s.phase && h.score === s.score && h.lives === s.lives && h.time === timeLeft(s) && h.cam === cam ? h : { phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), cam }));
     };
     frame = requestAnimationFrame(loop);
     const keys = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "Enter"]);
@@ -361,6 +456,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
       if (k === "ArrowRight") input.current.right = true;
       if (k === "ArrowUp") input.current.up = true;
       if (k === "ArrowDown") input.current.down = true;
+      if (k === "Space" || k === "ArrowUp") input.current.jumpHeld = true;
       if (!e.repeat) input.current.pressed.push(k);
     };
     const up = (e: KeyboardEvent) => {
@@ -369,6 +465,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
       if (k === "ArrowRight") input.current.right = false;
       if (k === "ArrowUp") input.current.up = false;
       if (k === "ArrowDown") input.current.down = false;
+      if (k === "Space" || k === "ArrowUp") input.current.jumpHeld = false;
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -376,16 +473,16 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
   }, [spec, colours, lang]);
 
   if (!spec) return <p className="rounded-xl bg-white/4 p-4 text-xs text-white/60">{say("ما في شي بالعالم ليتلعب. ضيف شي مش ✦.|Nothing is in the world to play. Add a thing that isn't ✦.|אין מה לשחק בעולם. הוסיפו פריט שאינו ✦.")}</p>;
-  const toWorld = (e: RPointerEvent) => { const r = canvas.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * spec.w, y: ((e.clientY - r.top) / r.height) * spec.h }; };
+  const toWorld = (e: RPointerEvent) => { const r = canvas.current!.getBoundingClientRect(), st = state.current; return { x: (st?.cx ?? 0) + ((e.clientX - r.left) / r.width) * spec.w, y: (st?.cy ?? 0) + ((e.clientY - r.top) / r.height) * spec.h }; };
   return (
-    <div className="space-y-1.5" data-testid="game-ed-trying" data-phase={hud.phase} data-score={hud.score}>
+    <div className="space-y-1.5" data-testid="game-ed-trying" data-phase={hud.phase} data-score={hud.score} data-cam={hud.cam}>
       <div className="flex flex-wrap items-center gap-3 text-[11px] text-white/70">
         <span>{say("النقاط|Score|ניקוד")}: <b>{hud.score}</b></span>
         {spec.lives ? <span>{say("الأرواح|Lives|חיים")}: <b>{hud.lives}</b></span> : null}
         {hud.time !== null ? <span>{say("الوقت|Time|זמן")}: <b>{hud.time}</b></span> : null}
         <span className="flex-1" />
         {hud.phase !== "playing" ? (
-          <button type="button" className={main} onClick={() => { if (state.current) { startGame(state.current); setHud({ phase: "playing", score: 0, lives: spec.lives, time: timeLeft(state.current) }); } }} data-testid="game-ed-play">
+          <button type="button" className={main} onClick={() => { if (state.current) { startGame(state.current); setHud({ phase: "playing", score: 0, lives: spec.lives, time: timeLeft(state.current), cam: Math.round(state.current.cx) }); } }} data-testid="game-ed-play">
             {hud.phase === "ready" ? say("▶ ابدأ|▶ Start|▶ התחלה") : hud.phase === "won" ? say("ربحت! العب كمان|Won! Play again|ניצחת! שוב") : say("خسرت، العب كمان|Lost, play again|הפסדת, שוב")}
           </button>
         ) : <span className="text-white/45">{say("الأسهم والمسافة والماوس|Arrows, Space and the mouse|חצים, רווח והעכבר")}</span>}
@@ -394,6 +491,175 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
         onPointerDown={(e) => { const p = toWorld(e); input.current.pointer = p; input.current.pointerDown = true; input.current.taps.push(p); }}
         onPointerMove={(e) => { input.current.pointer = toWorld(e); }}
         onPointerUp={() => { input.current.pointerDown = false; }} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- G1: a sprite sheet, the tile map, the camera */
+
+/** A raw look (the page's) as the shop's GameLook, its words in the language being edited. */
+function lookOf(raw: unknown, lang: Lang): GameLook {
+  const x = obj(raw);
+  return { kind: (String(x.kind ?? "box") as GameLook["kind"]), color: String(x.color ?? "text"), ...(typeof x.src === "string" ? { src: x.src } : {}), ...(typeof x.emoji === "string" ? { emoji: x.emoji } : {}), text: String(obj(x.text)[lang] ?? obj(x.text).ar ?? obj(x.text).en ?? ""), ...(x.sheet ? { sheet: obj(x.sheet) as GameLook["sheet"] } : {}) };
+}
+
+/** A sprite sheet's cells and each state's run of frames. */
+function SheetSettings({ look, busy, set, onPicture }: { look: Obj; busy: boolean; set: (c: Obj) => void; onPicture: () => void }) {
+  const sheet = obj(look.sheet);
+  const anims = obj(sheet.anims);
+  const cells = num(sheet.cols, 1) * num(sheet.rows, 1);
+  const setSheet = (c: Obj) => set({ sheet: { ...sheet, ...c } });
+  const names: Record<string, string> = { idle: "واقف|Standing|עומד", run: "بيركض|Running|רץ", jump: "طالع|Jumping|קופץ", fall: "نازل|Falling|נופל" };
+  return (
+    <div className="space-y-1 rounded-md border border-white/8 p-1.5" data-testid="game-ed-sheet">
+      <div className="flex items-center gap-2">
+        {typeof look.src === "string" ? <img src={look.src} alt="" className="h-8 max-w-[120px] rounded object-contain" style={{ imageRendering: "pixelated" }} /> : null}
+        <button type="button" className={btn} disabled={busy} onClick={onPicture}>{say("بدّل الصورة|Change the picture|החליפו תמונה")}</button>
+      </div>
+      <Num label={say("أعمدة|Columns|עמודות")} value={num(sheet.cols, 1)} min={1} max={16} onSave={(v) => setSheet({ cols: Math.round(v) })} testId="game-ed-sheet-cols" />
+      <Num label={say("صفوف|Rows|שורות")} value={num(sheet.rows, 1)} min={1} max={16} onSave={(v) => setSheet({ rows: Math.round(v) })} />
+      <Num label={say("إطارات بالثانية|Frames a second|פריימים לשנייה")} value={num(sheet.fps, 10)} min={1} max={30} onSave={(v) => setSheet({ fps: Math.round(v) })} />
+      {["idle", "run", "jump", "fall"].map((a) => {
+        const [from, count] = Array.isArray(anims[a]) ? (anims[a] as number[]) : [0, 0];
+        return (
+          <div key={a} className="flex items-center justify-between gap-1 text-[11px] text-white/60">
+            <span>{say(names[a])}</span>
+            <span className="flex items-center gap-1">
+              <input type="number" className={`${ctl} w-12`} min={0} max={cells - 1} defaultValue={from} aria-label={say("من إطار|From frame|מפריים")} onBlur={(e) => setSheet({ anims: { ...anims, [a]: [Math.max(0, Math.min(cells - 1, Number(e.target.value) || 0)), Math.max(1, count || 1)] } })} data-testid={`game-ed-anim-${a}-from`} />
+              <input type="number" className={`${ctl} w-12`} min={0} max={cells} defaultValue={count} aria-label={say("كم إطار|How many frames|כמה פריימים")} onBlur={(e) => { const n = Number(e.target.value) || 0; const next = { ...anims }; if (n > 0) next[a] = [from, Math.min(n, cells - from)]; else delete next[a]; setSheet({ anims: next }); }} data-testid={`game-ed-anim-${a}-count`} />
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The tile map drawn in the editor's world: each cell's look, a faint grid, a ✦ on the cells that put a thing. */
+function TilesCanvas({ tiles, map, ww, wh, colours, lang }: { tiles: Obj; map: string[]; ww: number; wh: number; colours: Record<string, string>; lang: Lang }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [loaded, setLoaded] = useState(0);
+  const kinds = obj(tiles.kinds), z = num(tiles.size, 48);
+  const looks = useMemo(() => new Map<string, HTMLCanvasElement>(), [kinds, colours, lang]);
+  useEffect(() => {
+    const cv = ref.current, ctx = cv?.getContext?.("2d") ?? null;
+    if (!cv || !ctx) return;
+    const k = Math.min(1, 2400 / ww);
+    cv.width = Math.round(ww * k);
+    cv.height = Math.round(wh * k);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.clearRect(0, 0, ww, wh);
+    ctx.strokeStyle = "rgba(127,127,127,0.18)";
+    ctx.lineWidth = 1 / k;
+    for (let c = 0; c <= num(tiles.cols, 0); c++) { ctx.beginPath(); ctx.moveTo(c * z, 0); ctx.lineTo(c * z, num(tiles.rows, 0) * z); ctx.stroke(); }
+    for (let r = 0; r <= num(tiles.rows, 0); r++) { ctx.beginPath(); ctx.moveTo(0, r * z); ctx.lineTo(num(tiles.cols, 0) * z, r * z); ctx.stroke(); }
+    map.forEach((row, r) => [...row].forEach((ch, c) => {
+      const kind = obj(kinds[ch]);
+      if (ch === "." || !Object.keys(kind).length) return;
+      let pic = looks.get(ch);
+      if (!pic) {
+        const look = lookOf(kind.look, lang);
+        pic = lookCanvas(look, z, z, colours[look.color] ?? look.color, "sans-serif", lang !== "en", () => setLoaded((n) => n + 1));
+        looks.set(ch, pic);
+      }
+      ctx.drawImage(pic, c * z, r * z, z, z);
+      if (kind.thing) { ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = `${Math.round(z * 0.3)}px sans-serif`; ctx.fillText("✦", c * z + 2, r * z + z * 0.3); }
+    }));
+  }, [map, ww, wh, kinds, z, colours, lang, looks, loaded, tiles.cols, tiles.rows]);
+  return <canvas ref={ref} className="pointer-events-none absolute inset-0 h-full w-full" data-testid="game-ed-tiles" />;
+}
+
+/** The tile map's settings: its size, its kinds (a brush each), a rubber, and the picked kind's look and ways. */
+function TilesPanel({ game, brush, setBrush, busy, colours, lang, onChange }: { game: Obj; brush: string; setBrush: (c: string) => void; busy: boolean; colours: Record<string, string>; lang: Lang; onChange: (label: string, next: Obj) => void }) {
+  const tiles = obj(game.tiles);
+  const [picking, setPicking] = useState(false);
+  if (!Object.keys(tiles).length) {
+    return (
+      <div className="space-y-2 rounded-lg bg-white/4 p-2 text-[11px] text-white/60">
+        <p>{say("خريطة بلاط: أرض وحيطان ومنصّات بترسميها بالفرشاة، والعالم بيصير أعرض من الشاشة والكاميرا بتلحق اللاعب.|A tile map: ground, walls and platforms painted with a brush; the world grows wider than the screen and the camera follows the player.|מפת אריחים: קרקע, קירות ופלטפורמות בצביעה במברשת; העולם רחב מהמסך והמצלמה עוקבת אחרי השחקן.")}</p>
+        <button type="button" className={main} disabled={busy} onClick={() => onChange(say("خريطة بلاط|A tile map|מפת אריחים"), withTiles(game))} data-testid="game-ed-tiles-on">+ {say("خريطة بلاط|A tile map|מפת אריחים")}</button>
+      </div>
+    );
+  }
+  const kinds = obj(tiles.kinds);
+  const map = (Array.isArray(tiles.map) ? tiles.map : []) as string[];
+  const setTiles = (c: Obj, label = say("البلاط|The tiles|האריחים")) => onChange(label, { ...game, tiles: { ...tiles, ...c } });
+  const kind = obj(kinds[brush]);
+  const setKind = (c: Obj) => setTiles({ kinds: { ...kinds, [brush]: { ...kind, ...c } } }, say("نوع بلاط|A kind of tile|סוג אריח"));
+  const look = obj(kind.look);
+  const templates = templatesOf(game).map((t) => [String(t.id), String(t.id)] as const);
+  const tagText = (Array.isArray(kind.tags) ? kind.tags : []).map(String).join(", ");
+  return (
+    <div className="space-y-2" data-testid="game-ed-tiles-panel">
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Num label={say("حجم البلاطة|A tile's size|גודל אריח")} value={num(tiles.size, 48)} min={16} max={128} onSave={(v) => setTiles({ size: Math.round(v) })} testId="game-ed-tile-size" />
+        <Num label={say("عرض الخريطة (بلاطات)|The map's width (tiles)|רוחב המפה (אריחים)")} value={num(tiles.cols, 20)} min={1} max={200} onSave={(v) => setTiles({ cols: Math.round(v), map: resizedMap(map, Math.round(v), num(tiles.rows, 12)) })} testId="game-ed-tile-cols" />
+        <Num label={say("طولها (بلاطات)|Its height (tiles)|גובה (אריחים)")} value={num(tiles.rows, 12)} min={1} max={60} onSave={(v) => setTiles({ rows: Math.round(v), map: resizedMap(map, num(tiles.cols, 20), Math.round(v)) })} testId="game-ed-tile-rows" />
+      </div>
+      <div className="text-[11px] text-white/55">{say("الفرشاة (ارسمي بالعالم):|The brush (paint in the world):|המברשת (ציירו בעולם):")}</div>
+      <div className="flex flex-wrap gap-1">
+        {Object.entries(kinds).map(([ch, k]) => (
+          <button key={ch} type="button" onClick={() => setBrush(ch)} aria-pressed={brush === ch} className={`h-9 w-9 overflow-hidden rounded-md border p-0.5 ${brush === ch ? "border-accent-400 bg-accent-500/20" : "border-white/12"}`} title={ch} data-testid="game-ed-brush" data-char={ch}>
+            <LookView look={obj(obj(k).look)} colours={colours} lang={lang} />
+          </button>
+        ))}
+        <button type="button" onClick={() => setBrush(".")} aria-pressed={brush === "."} className={`h-9 rounded-md border px-2 text-[11px] ${brush === "." ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/12 text-white/65"}`} data-testid="game-ed-brush" data-char=".">{say("ممحاة|Rubber|מחק")}</button>
+        <button type="button" className={btn} disabled={busy || !nextTileChar(game)} onClick={() => { const ch = nextTileChar(game); if (!ch) return; setTiles({ kinds: { ...kinds, [ch]: { look: { kind: "box", color: "accent" }, solid: true } } }, say("نوع بلاط جديد|A new kind of tile|סוג אריח חדש")); setBrush(ch); }} data-testid="game-ed-kind-add">+ {say("نوع|Kind|סוג")}</button>
+      </div>
+      {brush !== "." && Object.keys(kind).length ? (
+        <div className="space-y-1.5 rounded-lg bg-white/4 p-2" data-testid="game-ed-kind">
+          <Row label={say("شكله|Its look|המראה")}><Choose label={say("شكله|Its look|המראה")} value={String(look.kind ?? "box")} options={[["box", say("مربّع|Box|ריבוע")], ["emoji", "⭐"], ["image", say("صورة|Picture|תמונה")]] as const} onPick={(k) => { if (k === "image") setPicking(true); else setKind({ look: { ...look, kind: k, ...(k === "emoji" && !look.emoji ? { emoji: "🧱" } : {}) } }); }} disabled={busy} /></Row>
+          {look.kind === "emoji" ? <Row label={say("الإيموجي|The emoji|האימוג'י")}><input className={`${ctl} w-20`} defaultValue={String(look.emoji ?? "")} key={`${brush}:${String(look.emoji)}`} maxLength={8} onBlur={(e) => e.target.value.trim() && setKind({ look: { ...look, emoji: e.target.value.trim() } })} /></Row> : null}
+          {look.kind !== "image" ? <Row label={say("لونه|Its colour|הצבע")}><Choose label={say("لونه|Its colour|הצבע")} value={String(look.color ?? "text")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(c) => setKind({ look: { ...look, color: c } })} disabled={busy} /></Row> : null}
+          <Row label={say("بيحط شي مكانه (✦)|Puts a thing in its place (✦)|שם פריט במקומו (✦)")}><Choose label={say("بيحط شي|Puts a thing|שם פריט")} value={String(kind.thing ?? "")} options={[["", say("لأ|No|לא")] as const, ...templates]} onPick={(v) => setKind({ thing: v || undefined, ...(v ? { solid: undefined, oneWay: undefined } : {}) })} disabled={busy} testId="game-ed-kind-thing" /></Row>
+          {!kind.thing ? <>
+            <Row label={say("صلب|Solid|מוצק")}><input type="checkbox" checked={kind.solid === true} disabled={busy} onChange={(e) => setKind({ solid: e.target.checked || undefined, ...(e.target.checked ? { oneWay: undefined } : {}) })} data-testid="game-ed-kind-solid" /></Row>
+            <Row label={say("منصّة من فوق بس|A platform from above only|פלטפורמה מלמעלה בלבד")}><input type="checkbox" checked={kind.oneWay === true} disabled={busy} onChange={(e) => setKind({ oneWay: e.target.checked || undefined, ...(e.target.checked ? { solid: undefined } : {}) })} data-testid="game-ed-kind-oneway" /></Row>
+            <Row label={say("علامات (بفاصلة)|Tags (comma)|תגיות (פסיק)")}><input className={`${ctl} w-28`} defaultValue={tagText} key={`${brush}:${tagText}`} onBlur={(e) => { const next = e.target.value.split(/[,،\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[a-z][a-z0-9-]{0,15}$/.test(x)).slice(0, 4); setKind({ tags: next.length ? next : undefined }); }} data-testid="game-ed-kind-tags" /></Row>
+          </> : null}
+          <button type="button" className="text-[11px] text-red-300 hover:text-red-200" disabled={busy} onClick={() => { onChange(say("محيت نوع بلاط|A kind of tile removed|סוג אריח הוסר"), withoutTileKind(game, brush)); setBrush("."); }} data-testid="game-ed-kind-remove">{say("امحي هالنوع|Remove this kind|הסירו את הסוג")}</button>
+        </div>
+      ) : null}
+      <button type="button" className="text-[11px] text-white/45 hover:text-red-300" disabled={busy} onClick={() => { const next = { ...game }; delete next.tiles; onChange(say("شلت الخريطة|The map taken away|המפה הוסרה"), next); }} data-testid="game-ed-tiles-off">{say("شيل الخريطة كلها|Take the whole map away|הסירו את כל המפה")}</button>
+      <MediaLibraryModal open={picking} onClose={() => setPicking(false)} title={say("صورة البلاطة|The tile's picture|תמונת האריח")} onSelect={(u) => { setPicking(false); setKind({ look: { ...look, kind: "image", src: u } }); }} />
+    </div>
+  );
+}
+
+/** The camera (what it follows, how softly), a world wider than the view, and the layers behind. */
+function CameraPanel({ game, busy, whos, onChange }: { game: Obj; busy: boolean; whos: Array<[string, string]>; onChange: (label: string, next: Obj) => void }) {
+  const cam = obj(game.camera);
+  const layers = (Array.isArray(game.layers) ? game.layers : []) as Obj[];
+  const [picking, setPicking] = useState<number | null>(null);
+  const w = num(game.w, 960);
+  const hasTiles = Object.keys(obj(game.tiles)).length > 0;
+  const setLayers = (next: Obj[]) => onChange(say("الطبقات|The layers|השכבות"), { ...game, layers: next });
+  const setLayer = (i: number, c: Obj) => setLayers(layers.map((l, j) => (j === i ? { ...l, ...c } : l)));
+  return (
+    <div className="space-y-2" data-testid="game-ed-camera">
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Row label={say("الكاميرا بتلحق|The camera follows|המצלמה עוקבת אחרי")}><Choose label={say("الكاميرا|The camera|המצלמה")} value={String(cam.follow ?? "")} options={[["", say("اللاعب لحاله|The player, by itself|השחקן, לבד")] as const, ...whos]} onPick={(v) => onChange(say("الكاميرا|The camera|המצלמה"), { ...game, camera: { ...cam, follow: v } })} disabled={busy} testId="game-ed-follow" /></Row>
+        <Num label={say("نعومتها (0.02–1)|Its softness (0.02–1)|רכות (0.02–1)")} value={num(cam.lerp, 0.14)} min={0.02} max={1} step={0.02} onSave={(v) => onChange(say("الكاميرا|The camera|המצלמה"), { ...game, camera: { ...cam, lerp: v } })} />
+        {!hasTiles ? <Row label={say("عرض العالم|The world's width|רוחב העולם")}><Choose label={say("عرض العالم|The world's width|רוחב העולם")} value={String(Math.round(num(game.ww, w) / w))} options={[["1", "×1"], ["2", "×2"], ["3", "×3"], ["4", "×4"]] as const} onPick={(v) => onChange(say("عرض العالم|The world's width|רוחב העולם"), { ...game, ww: w * Number(v) })} disabled={busy} testId="game-ed-world-wide" /></Row> : null}
+      </div>
+      <div className="flex items-center justify-between text-[11px] text-white/55">
+        <span>{say("طبقات ورا اللعبة|Layers behind the game|שכבות מאחורי המשחק")}</span>
+        <button type="button" className={btn} disabled={busy || layers.length >= 4} onClick={() => setLayers([...layers, { kind: "gradient", color: "accent-soft", color2: "surface", factor: 0.3, y: layers.length ? 0.55 : 0, h: layers.length ? 0.45 : 1 }])} data-testid="game-ed-layer-add">+ {say("طبقة|Layer|שכבה")}</button>
+      </div>
+      {layers.map((l, i) => (
+        <div key={i} className="space-y-1 rounded-lg bg-white/4 p-2" data-testid="game-ed-layer">
+          <div className="flex items-center gap-1">
+            <Choose label={say("نوعها|Its kind|הסוג")} value={String(l.kind ?? "color")} options={[["color", say("لون|Colour|צבע")], ["gradient", say("تدرّج|Gradient|מעבר צבע")], ["image", say("صورة|Picture|תמונה")]] as const} onPick={(v) => { if (v === "image") setPicking(i); else setLayer(i, { kind: v }); }} disabled={busy} />
+            <span className="flex-1" />
+            <button type="button" className="text-[11px] text-white/40 hover:text-red-300" disabled={busy} onClick={() => setLayers(layers.filter((_, j) => j !== i))} aria-label={say("امحي|Remove|הסירו")}>✕</button>
+          </div>
+          {l.kind !== "image" ? <div className="flex flex-wrap gap-1"><Choose label={say("لونها|Its colour|צבע")} value={String(l.color ?? "accent-soft")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(v) => setLayer(i, { color: v })} disabled={busy} />{l.kind === "gradient" ? <Choose label={say("للون|To|אל")} value={String(l.color2 ?? "surface")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(v) => setLayer(i, { color2: v })} disabled={busy} /> : null}</div> : null}
+          <Num label={say("سرعتها مع الكاميرا (0–1)|Its speed with the camera (0–1)|מהירות עם המצלמה (0–1)")} value={num(l.factor, 0.3)} min={0} max={1} step={0.05} onSave={(v) => setLayer(i, { factor: v })} />
+          <Num label={say("من وين بتبلّش (0–1)|Where it starts (0–1)|איפה מתחילה (0–1)")} value={num(l.y, 0)} min={0} max={1} step={0.05} onSave={(v) => setLayer(i, { y: v })} />
+          <Num label={say("طولها (0–1)|Its height (0–1)|גובה (0–1)")} value={num(l.h, 1)} min={0.05} max={1} step={0.05} onSave={(v) => setLayer(i, { h: v })} />
+        </div>
+      ))}
+      <MediaLibraryModal open={picking !== null} onClose={() => setPicking(null)} title={say("صورة الطبقة|The layer's picture|תמונת השכבה")} onSelect={(u) => { const i = picking!; setPicking(null); setLayer(i, { kind: "image", src: u }); }} />
     </div>
   );
 }

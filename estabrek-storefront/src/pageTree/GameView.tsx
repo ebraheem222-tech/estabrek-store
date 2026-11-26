@@ -12,13 +12,16 @@
  *  - Over it: the score, lives and time; a start screen (its title, how to play, Start); an end screen (won or over,
  *    play again) and, won, the prize and its coupon for the bag (ShopGames.tsx's Prize, lib/wonCoupon.ts).
  *  - It rests off screen and in a hidden tab; in the editor it shows its first frame and waits.
+ *  - G1: the camera over a bigger world; the tile map, one instanced mesh for each kind of tile (made again only when
+ *    a rule takes a tile away); the layers behind, each moving at its own share of the camera's speed; a sprite's
+ *    frame for its state, turned the way it faces; an emoji that runs and jumps squashes and stretches a little.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
 import { saveWonCoupon } from "../lib/wonCoupon";
 import { NO_INPUT, STEP, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
 import type { GameSpec } from "./gameSpec";
-import { cssColour, lookCanvas } from "./gameDraw";
+import { cssColour, lookCanvas, sheetFrame } from "./gameDraw";
 import type { GameWords as PrizeWords } from "./proWords";
 import { Prize } from "./ShopGames";
 
@@ -132,6 +135,77 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         return tx;
       };
       const meshes = new Map<number, T.Mesh>();
+      const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin("anonymous");
+      const sheets = new Map<string, T.Texture>();
+      const sheetOf = (src: string) => {
+        let t = sheets.get(src);
+        if (!t) { t = loader.load(src); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.flipY = false; sheets.set(src, t); }
+        return t;
+      };
+
+      /* ---- the layers behind the world */
+      const layers = spec.layers.map((l, i) => {
+        let tx: T.Texture;
+        if (l.kind === "image" && l.src) { tx = loader.load(l.src); tx.colorSpace = THREE.SRGBColorSpace; }
+        else {
+          const c = document.createElement("canvas");
+          c.width = 4; c.height = 256;
+          const x = c.getContext("2d")!;
+          const a = cssColour(probe, colours[l.color] ?? l.color), b = cssColour(probe, colours[l.color2] ?? l.color2);
+          if (l.kind === "gradient") { const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, a); g.addColorStop(1, b); x.fillStyle = g; } else x.fillStyle = a;
+          x.fillRect(0, 0, 4, 256);
+          tx = new THREE.CanvasTexture(c);
+          tx.colorSpace = THREE.SRGBColorSpace;
+        }
+        tx.wrapS = THREE.RepeatWrapping;
+        tx.flipY = false;
+        const m = new THREE.Mesh(square, new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide, transparent: true, depthWrite: false }));
+        m.renderOrder = -10 + i;
+        scene.add(m);
+        return { l, m, tx };
+      });
+      const placeLayers = (cx: number, cy: number) => {
+        for (const { l, m, tx } of layers) {
+          const h = spec.h * l.h;
+          m.position.set(cx + spec.w / 2, cy + spec.h * l.y + h / 2, -5);
+          m.scale.set(spec.w, h, 1);
+          // A picture repeats across, at its own share of the camera's way.
+          if (l.kind === "image") { tx.repeat.set(1, 1); tx.offset.x = (cx * l.factor) / spec.w; }
+        }
+      };
+
+      /* ---- the tile map: an instanced mesh for each kind */
+      let tilesV = -1;
+      const tileMeshes: T.InstancedMesh[] = [];
+      const tileTextures: T.Texture[] = [];
+      const buildTiles = (st: GameState) => {
+        for (const m of tileMeshes) { scene.remove(m); (m.material as T.Material).dispose(); m.dispose(); }
+        tileMeshes.length = 0;
+        const t = spec.tiles;
+        if (!t || !st.tiles) return;
+        for (const [ch, kind] of Object.entries(t.kinds)) {
+          if (kind.thing) continue;
+          const cells: Array<[number, number]> = [];
+          st.tiles.forEach((row, r) => row.forEach((x, c) => { if (x === ch) cells.push([c, r]); }));
+          if (!cells.length) continue;
+          let tx = tileTextures[ch.charCodeAt(0)];
+          if (!tx) {
+            const fill = cssColour(probe, colours[kind.look.color] ?? kind.look.color);
+            const c = lookCanvas(kind.look, t.size, t.size, fill, font, rtl, () => { tx.needsUpdate = true; });
+            tx = new THREE.CanvasTexture(c);
+            tx.flipY = false;
+            tx.colorSpace = THREE.SRGBColorSpace;
+            tileTextures[ch.charCodeAt(0)] = tx;
+          }
+          const im = new THREE.InstancedMesh(square, new THREE.MeshBasicMaterial({ map: tx, transparent: true, side: THREE.DoubleSide }), cells.length);
+          const at = new THREE.Matrix4();
+          cells.forEach(([c, r], i) => { at.makeScale(t.size, t.size, 1); at.setPosition(c * t.size + t.size / 2, r * t.size + t.size / 2, -1); im.setMatrixAt(i, at); });
+          im.instanceMatrix.needsUpdate = true;
+          scene.add(im);
+          tileMeshes.push(im);
+        }
+      };
       type Spark = { m: T.Mesh; vx: number; vy: number; life: number };
       const sparks: Spark[] = [];
       const resize = () => {
@@ -151,16 +225,33 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         s.bodies.forEach((b, i) => {
           alive.add(b.n);
           let m = meshes.get(b.n);
+          const look = b.thing.look;
           if (!m) {
-            m = new THREE.Mesh(square, new THREE.MeshBasicMaterial({ map: textureOf(b), transparent: true, side: THREE.DoubleSide }));
+            // A sprite shares its sheet; its own square's corners pick its frame.
+            const sprite = look.kind === "sprite" && look.src;
+            m = new THREE.Mesh(sprite ? new THREE.PlaneGeometry(1, 1) : square, new THREE.MeshBasicMaterial({ map: sprite ? sheetOf(look.src!) : textureOf(b), transparent: true, side: THREE.DoubleSide }));
             scene.add(m);
             meshes.set(b.n, m);
           }
-          m.position.set(b.x, b.y, i * 0.001);
-          m.scale.set(b.w, b.h, 1);
+          let sx = b.w, sy = b.h, y = b.y;
+          if (look.kind === "sprite") {
+            const f = sheetFrame(look, b.anim, s.t);
+            const u0 = f.col / f.cols, u1 = (f.col + 1) / f.cols, top = f.row / f.rows, bottom = (f.row + 1) / f.rows;
+            const uv = m.geometry.getAttribute("uv") as T.BufferAttribute;
+            // The square's lower corners (its +y, the screen's lower side here) take the frame's bottom.
+            if (uv.getX(0) !== u0 || uv.getY(2) !== top) { uv.setXY(0, u0, bottom); uv.setXY(1, u1, bottom); uv.setXY(2, u0, top); uv.setXY(3, u1, top); uv.needsUpdate = true; }
+            sx *= b.face;
+          } else if (b.thing.control === "platform" && !lessMotion()) {
+            // An emoji that runs bobs, one that jumps stretches, one that falls squashes.
+            const k = b.anim === "jump" ? 1.1 : b.anim === "fall" ? 0.93 : b.anim === "run" ? 1 + Math.sin(s.t * 18) * 0.05 : 1;
+            sy *= k; sx /= Math.sqrt(k); y += (b.h - sy) / 2;
+            sx *= b.face;
+          }
+          m.position.set(b.x, y, i * 0.001);
+          m.scale.set(sx, sy, 1);
           m.rotation.z = b.rot;
         });
-        for (const [n, m] of meshes) if (!alive.has(n)) { scene.remove(m); (m.material as T.Material).dispose(); meshes.delete(n); }
+        for (const [n, m] of meshes) if (!alive.has(n)) { scene.remove(m); (m.material as T.Material).dispose(); if (m.geometry !== square) m.geometry.dispose(); meshes.delete(n); }
         for (const e of s.effects.splice(0)) {
           if (e.kind === "sound") { if (soundRef.current) beep(e.sound); }
           else if (e.kind === "burst") {
@@ -176,7 +267,13 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           }
         }
         const shake = s.shake > 0 && !lessMotion() ? 8 * (s.shake / 0.3) : 0;
-        camera.position.set((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, 5);
+        // The camera over its part of the world (and shaken a little).
+        const ox = (Math.random() - 0.5) * shake, oy = (Math.random() - 0.5) * shake;
+        camera.left = s.cx + ox; camera.right = s.cx + spec.w + ox; camera.top = s.cy + oy; camera.bottom = s.cy + spec.h + oy;
+        camera.updateProjectionMatrix();
+        camera.position.set(0, 0, 5);
+        if (s.tilesV !== tilesV) { tilesV = s.tilesV; buildTiles(s); }
+        placeLayers(s.cx, s.cy);
         renderer.render(scene, camera);
       };
 
@@ -223,6 +320,10 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         document.removeEventListener("visibilitychange", onVis);
         for (const m of meshes.values()) (m.material as T.Material).dispose();
         for (const t of textures.values()) t.dispose();
+        for (const t of sheets.values()) t.dispose();
+        for (const t of tileTextures) t?.dispose();
+        for (const m of tileMeshes) m.dispose();
+        for (const { tx, m } of layers) { tx.dispose(); (m.material as T.Material).dispose(); }
         square.dispose();
         renderer.dispose();
         probe.remove();
@@ -243,6 +344,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       if (k === "ArrowLeft") i.left = true;
       if (k === "ArrowRight") i.right = true;
       if (k === "ArrowUp") i.up = true;
+      if (k === "Space" || k === "ArrowUp") i.jumpHeld = true;
       if (k === "ArrowDown") i.down = true;
       if (!e.repeat) i.pressed.push(k);
     };
@@ -251,6 +353,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       if (k === "ArrowLeft") i.left = false;
       if (k === "ArrowRight") i.right = false;
       if (k === "ArrowUp") i.up = false;
+      if (k === "Space" || k === "ArrowUp") i.jumpHeld = false;
       if (k === "ArrowDown") i.down = false;
     };
     window.addEventListener("keydown", down);
@@ -261,7 +364,8 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   /* ---- the pointer on the stage, in the world's units */
   const toWorld = (e: RPointerEvent) => {
     const r = canvas.current!.getBoundingClientRect();
-    return { x: ((e.clientX - r.left) / r.width) * spec.w, y: ((e.clientY - r.top) / r.height) * spec.h };
+    const s = game.current!;
+    return { x: s.cx + ((e.clientX - r.left) / r.width) * spec.w, y: s.cy + ((e.clientY - r.top) / r.height) * spec.h };
   };
   const onDown = (e: RPointerEvent) => {
     if (hud.phase !== "playing") return;
@@ -294,7 +398,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const hold = (k: "left" | "right" | "up" | "down" | "jump", on: boolean) => (e: RPointerEvent) => {
     e.preventDefault();
     const i = input.current;
-    if (k === "jump") { if (on) i.pressed.push("Space"); return; }
+    if (k === "jump") { if (on) i.pressed.push("Space"); i.jumpHeld = on; return; }
     i[k] = on;
   };
   const playing = hud.phase === "playing";
@@ -354,7 +458,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           {needsUpDown ? <button type="button" aria-label={words.up} onPointerDown={hold("up", true)} onPointerUp={hold("up", false)} onPointerLeave={hold("up", false)}>▲</button> : null}
           {needsUpDown ? <button type="button" aria-label={words.down} onPointerDown={hold("down", true)} onPointerUp={hold("down", false)} onPointerLeave={hold("down", false)}>▼</button> : null}
           <button type="button" aria-label={words.right} onPointerDown={hold("right", true)} onPointerUp={hold("right", false)} onPointerLeave={hold("right", false)}>▶</button>
-          {needsJump ? <button type="button" className="pt-gs-jump" aria-label={words.jump} onPointerDown={hold("jump", true)}>⤒</button> : null}
+          {needsJump ? <button type="button" className="pt-gs-jump" aria-label={words.jump} onPointerDown={hold("jump", true)} onPointerUp={hold("jump", false)} onPointerLeave={hold("jump", false)}>⤒</button> : null}
         </div>
       ) : null}
     </div>
