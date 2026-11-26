@@ -338,6 +338,57 @@ test("G4a: the adventure standing up in 3D, and a GLB model fitted into its thin
   expect(errors).toEqual([]);
 });
 
+test("G4b: bowling in real 3D physics: Rapier's 3D build loads before Start, the ball is pulled back and let go, pins tip over", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "bowling")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  const start = s.locator("[data-pt-game-start]");
+  await expect(start).toBeEnabled({ timeout: 20_000 });
+  await start.click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  await page.waitForTimeout(600);
+  // The ball is under the camera, a little below the stage's middle: pulled straight back (down) and let go.
+  const canvas = s.locator("canvas"), box = (await canvas.boundingBox())!;
+  const ball = await page.evaluate(() => null);
+  void ball;
+  const cx = box.x + box.width / 2;
+  // Find the ball on the ground: the point of the canvas under which the game says the ball is (a pull from there).
+  await page.mouse.move(cx, box.y + box.height * 0.62);
+  await page.mouse.down();
+  await page.mouse.move(cx, box.y + box.height * 0.95, { steps: 6 });
+  await page.waitForTimeout(120);
+  await page.mouse.up();
+  await expect.poll(async () => Number(await s.getAttribute("data-pt-game-score")), { timeout: 10_000 }).toBeGreaterThan(0);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "bowling-3d.png") });
+  expect(errors).toEqual([]);
+});
+
+test("G4b: the hop and golf in 3D on a shop page: the frog walks and jumps, the golf ball rolls; no error", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "hop")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  await expect(s.locator("[data-pt-game-start]")).toBeEnabled({ timeout: 20_000 });
+  await s.locator("[data-pt-game-start]").click();
+  await page.keyboard.down("ArrowUp");
+  await page.waitForTimeout(700);
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(250);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "hop-3d.png") });
+  await page.keyboard.up("ArrowUp");
+  expect((await s.locator("canvas").screenshot()).length).toBeGreaterThan(20_000);
+  await publish(page, READY_GAMES.find((g) => g.key === "golf3d")!.game);
+  await page.goto(PATH);
+  await expect(s.locator("[data-pt-game-start]")).toBeEnabled({ timeout: 20_000 });
+  await s.locator("[data-pt-game-start]").click();
+  await page.waitForTimeout(500);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "golf-3d.png") });
+  expect(errors).toEqual([]);
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);

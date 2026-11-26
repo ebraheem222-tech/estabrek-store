@@ -18,6 +18,7 @@
  * G4a: the game seen in 3D (its world laid on the ground, or standing as a wall with depth): the camera, the light,
  * shadows, fog; each thing's shape in 3D (a box, a ball, a cylinder, a cone, a card that faces the camera, its convex
  * shape raised, or a GLB model), its height, how high it floats, how metal and how rough; a tile's height; a car.
+ * G4b: real 3D physics on the ground (its gravity down), a walker that jumps, a rule for a thing that tips over.
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -30,7 +31,7 @@ export const LAYER_KINDS = ["color", "gradient", "image"] as const;
 export const GAME_BODIES = ["none", "static", "dynamic", "kinematic", "rigid"] as const;
 /** A rigid thing's shape: its box, a circle in it, or a convex shape of points (each in the box, -0.5…0.5). */
 export const GAME_SHAPES = ["box", "circle", "poly"] as const;
-export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car"] as const;
+export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car", "walk"] as const;
 /** G4a: the 3D view: none (flat), the world on the ground, or the world standing as a wall with depth. */
 export const VIEW3D_MODES = ["", "ground", "wall"] as const;
 export const VIEW3D_CAMERAS = ["follow", "top", "angle", "fixed"] as const;
@@ -39,7 +40,7 @@ export const VIEW3D_LIGHTS = ["day", "sunset", "night", "studio"] as const;
 export const SHAPES3D = ["auto", "box", "ball", "cylinder", "cone", "card", "model"] as const;
 export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
-export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break", "beat", "press"] as const;
+export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break", "beat", "press", "tip"] as const;
 export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode", "cut", "note", "confetti", "flash"] as const;
 /** How two things are joined: a pin (they turn about it), a weld, a spring, a rope (no further than its length), a slider (along a line). */
 export const GAME_JOINTS = ["pin", "weld", "spring", "rope", "slider"] as const;
@@ -158,7 +159,9 @@ export type GameWhen =
   /** On the beat of the game's tempo (its music's): every so many beats, from `offset` beats in. */
   | { on: "beat"; every: number; offset: number }
   /** `key` pressed (or `a` tapped) while `a` touches `b`: a rhythm game's hit, a lock opened while standing at it. */
-  | { on: "press"; key: (typeof GAME_KEYS)[number]; a: string; b: string };
+  | { on: "press"; key: (typeof GAME_KEYS)[number]; a: string; b: string }
+  /** A thing in real 3D physics tips over (leans past fifty degrees), once. */
+  | { on: "tip"; who: string };
 export type GameAct =
   | { act: "spawn"; what: string; at: (typeof GAME_SPOTS)[number]; vx: number; vy: number }
   | { act: "destroy"; who: "self" | "other" | "both" }
@@ -204,7 +207,11 @@ export type GameSpec = {
   post: (typeof GAME_POST)[number];
   music: { mood: (typeof GAME_MOODS)[number]; tempo: number; volume: number };
   /** G4a: the 3D view ("" mode: flat), its camera, its tilt (degrees) and distance (× the view), its light, shadows, fog. */
-  view3d: { mode: (typeof VIEW3D_MODES)[number]; camera: (typeof VIEW3D_CAMERAS)[number]; tilt: number; distance: number; light: (typeof VIEW3D_LIGHTS)[number]; shadows: boolean; fog: boolean };
+  view3d: {
+    mode: (typeof VIEW3D_MODES)[number]; camera: (typeof VIEW3D_CAMERAS)[number]; tilt: number; distance: number; light: (typeof VIEW3D_LIGHTS)[number]; shadows: boolean; fog: boolean;
+    /** G4b: real 3D physics (on the ground): rigid things fall, roll, tumble and stack; walkers jump. Its gravity down. */
+    physics: boolean; gravity: number;
+  };
   bg: string;
   gravity: number;
   edges: (typeof GAME_EDGES)[number];
@@ -370,6 +377,7 @@ function whenOf(raw: unknown): GameWhen | null {
     case "break": { const who = whoOf(x.who); return who ? { on: "break", who } : null; }
     case "beat": return { on: "beat", every: num(x.every, 0.25, 16, 1), offset: num(x.offset, 0, 16, 0) };
     case "press": { const a = whoOf(x.a), b = whoOf(x.b); return a && b ? { on: "press", key: pick(x.key, GAME_KEYS, "Space"), a, b } : null; }
+    case "tip": { const who = whoOf(x.who); return who ? { on: "tip", who } : null; }
     default: return null;
   }
 }
@@ -457,7 +465,7 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     music: { mood: pick(obj(x.music).mood, GAME_MOODS, ""), tempo: int(obj(x.music).tempo, 60, 180, 110), volume: num(obj(x.music).volume, 0, 1, 0.5) },
     view3d: (() => {
       const v = obj(x.view3d);
-      return { mode: pick(v.mode, VIEW3D_MODES, ""), camera: pick(v.camera, VIEW3D_CAMERAS, "follow"), tilt: num(v.tilt, 10, 89, 55), distance: num(v.distance, 0.3, 3, 1), light: pick(v.light, VIEW3D_LIGHTS, "day"), shadows: v.shadows !== false, fog: v.fog === true };
+      return { mode: pick(v.mode, VIEW3D_MODES, ""), camera: pick(v.camera, VIEW3D_CAMERAS, "follow"), tilt: num(v.tilt, 10, 89, 55), distance: num(v.distance, 0.3, 3, 1), light: pick(v.light, VIEW3D_LIGHTS, "day"), shadows: v.shadows !== false, fog: v.fog === true, physics: v.physics === true, gravity: num(v.gravity, 200, 6000, 2000) };
     })(),
     bg: colourOf(x.bg, "surface"),
     gravity: num(x.gravity, 0, 4000, 0),
@@ -473,6 +481,18 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     words: { title: say(words.title), start: say(words.start), win: say(words.win), lose: say(words.lose), again: say(words.again), prize: say(words.prize), help: say(words.help) },
   };
 }
+
+/** A thing's shape in 3D (G4a): as it says, or from its look. */
+export function shapeOf3d(t: GameThing): "box" | "ball" | "cylinder" | "cone" | "card" | "model" | "poly" {
+  if (t.d3.shape === "model") return t.d3.src ? "model" : "box";
+  if (t.d3.shape !== "auto") return t.d3.shape;
+  if (t.look.poly) return "poly";
+  if (t.look.kind === "circle") return "ball";
+  if (t.look.kind === "box") return "box";
+  return "card";
+}
+/** Its height (on the ground) or depth (on the wall), in pixels. */
+export const heightOf3d = (t: GameThing, w: number, h: number) => t.d3.height || (shapeOf3d(t) === "card" ? Math.max(w, h) : Math.min(w, h));
 
 /** Does a target name this thing: its own id, or "#tag" for a tag it has. */
 export const isWho = (who: string, t: Pick<GameThing, "id" | "tags">) => (who.startsWith("#") ? t.tags.includes(who.slice(1)) : who === t.id);

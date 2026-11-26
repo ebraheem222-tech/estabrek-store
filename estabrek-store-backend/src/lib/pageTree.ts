@@ -902,7 +902,7 @@ const GameThing = z.object({
   bounce: gnum(0, 1).optional(),
   solid: z.boolean().optional(),
   vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional(),
-  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car"]).optional(),
+  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car", "walk"]).optional(),
   speed: gnum(0, 2000).optional(),
   jump: gnum(0, 3000).optional(),
   behave: z.enum(["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"]).optional(),
@@ -943,6 +943,7 @@ const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("break"), who: GAME_WHO }).strict(),
   z.object({ on: z.literal("beat"), every: gnum(0.25, 16), offset: gnum(0, 16).optional() }).strict(),
   z.object({ on: z.literal("press"), key: z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]), a: GAME_WHO, b: GAME_WHO }).strict(),
+  z.object({ on: z.literal("tip"), who: GAME_WHO }).strict(),
 ]);
 const GAME_SELF = z.enum(["self", "other"]);
 const GameAct = z.discriminatedUnion("act", [
@@ -993,7 +994,7 @@ const GameSpecSchema = z.object({
   post: z.enum(["", "vignette", "crt", "pixel", "mono", "dream"]).optional(),
   music: z.object({ mood: z.enum(["", "lively", "calm", "spooky", "arcade"]).optional(), tempo: gint(60, 180).optional(), volume: gnum(0, 1).optional() }).strict().optional(),
   // G4a: the 3D view.
-  view3d: z.object({ mode: z.enum(["", "ground", "wall"]).optional(), camera: z.enum(["follow", "top", "angle", "fixed"]).optional(), tilt: gnum(10, 89).optional(), distance: gnum(0.3, 3).optional(), light: z.enum(["day", "sunset", "night", "studio"]).optional(), shadows: z.boolean().optional(), fog: z.boolean().optional() }).strict().optional(),
+  view3d: z.object({ mode: z.enum(["", "ground", "wall"]).optional(), camera: z.enum(["follow", "top", "angle", "fixed"]).optional(), tilt: gnum(10, 89).optional(), distance: gnum(0.3, 3).optional(), light: z.enum(["day", "sunset", "night", "studio"]).optional(), shadows: z.boolean().optional(), fog: z.boolean().optional(), physics: z.boolean().optional(), gravity: gnum(200, 6000).optional() }).strict().optional(),
   bg: color.optional(),
   gravity: gnum(0, 4000).optional(),
   edges: z.enum(["walls", "sides", "floor", "open"]).optional(),

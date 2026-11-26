@@ -446,4 +446,25 @@ describe("the game editor", () => {
     fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
     expect(screen.queryByTestId("game-ed-thing-3d")).toBeNull();
   });
+
+  test("G4b: real 3D physics on the ground (its gravity), the walker, a rule for a thing that tips over", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "3d")!);
+    fireEvent.change(screen.getByTestId("game-ed-3d-mode"), { target: { value: "wall" } });
+    expect(screen.queryByTestId("game-ed-3d-physics")).toBeNull();
+    fireEvent.change(screen.getByTestId("game-ed-3d-mode"), { target: { value: "ground" } });
+    fireEvent.click(screen.getByTestId("game-ed-3d-physics"));
+    const g = screen.getByTestId("game-ed-3d-gravity");
+    fireEvent.change(g, { target: { value: "2600" } });
+    fireEvent.blur(g);
+    expect(last().view3d).toEqual({ mode: "ground", physics: true, gravity: 2600 });
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-control"), { target: { value: "walk" } });
+    expect(things().find((t) => t.id === "bag")!.control).toBe("walk");
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "tip" } });
+    fireEvent.change(screen.getByTestId("game-ed-who"), { target: { value: "#good" } });
+    expect((last().rules as Obj[]).at(-1)!.when).toEqual({ on: "tip", who: "#good" });
+  });
 });

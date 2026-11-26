@@ -29,11 +29,16 @@
  *    made where its template stands; a thing flashed (the views light it up a moment).
  *  - G4a: a car (up to go, down to slow and back, left and right to turn as it moves, gripping the road sideways but
  *    for a little drift); its heading is its turn (0: facing up the world).
+ *  - G4b: real 3D physics (gamePhysics3d.ts) when the game asks for it and is given Rapier's 3D build: its rigid
+ *    things and walkers are that world's (their height and turn read back); a walker goes across the ground as the
+ *    arrows say and jumps on Space; a thing that tips over has its rules; things meet only when their heights meet.
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
 import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
 import { findPath, mazeOf, onTrack, rayBox, rayCells, trackOf, type Track } from "./gameWorld";
 import { noteFreq } from "./gameSound";
+import { needs3d, physAdd3d, physExplode3d, physFree3d, physHome3d, physSpeed3d, physStep3d, physWorld3d, type Phys3, type Rapier3 } from "./gamePhysics3d";
+import { heightOf3d, shapeOf3d } from "./gameSpec";
 import { aimPath, isRigid, needsPhysics, physAdd, physCut, physExplode, physFree, physHome, physPush, physSpeed, physStep, physWorld, type Broken, type Phys, type Rapier } from "./gamePhysics";
 
 export const STEP = 1 / 60;
@@ -73,6 +78,10 @@ export type Body = {
   ride: number;
   /** When it was last flashed. */
   flash: number;
+  /** In real 3D physics: its middle's height (pixels), its speed up, and its turn (a quaternion: x, y, z, w). */
+  z: number;
+  vz: number;
+  q: [number, number, number, number] | null;
   /** Shot from the sling (when), still in the air or rolling, and how long it has been slow. */
   shotAt: number;
   flying: boolean;
@@ -143,6 +152,9 @@ export type GameState = {
   noteIx: number;
   /** Each "beat" rule's last beat. */
   beatAt: number[];
+  /** Rapier's 3D build, when the game was given it and asks for 3D physics, and the level's 3D world. */
+  rapier3: Rapier3 | null;
+  phys3: Phys3 | null;
 };
 
 /** Mulberry32: small, quick, and the same everywhere. */
@@ -157,10 +169,11 @@ function make(s: GameState, thing: GameThing, x: number, y: number, vx: number, 
   if (s.bodies.filter((b) => !b.dead).length >= GAME_LIMITS.alive) return null;
   const b: Body = {
     n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false,
-    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0, shotAt: -9, flying: false, slow: 0, flash: -9,
+    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0, shotAt: -9, flying: false, slow: 0, flash: -9, z: 0, vz: 0, q: null,
   };
   s.bodies.push(b);
   if (s.phys) physAdd(s.phys, b);
+  if (s.phys3) physAdd3d(s.phys3, b);
   return b;
 }
 
@@ -189,7 +202,9 @@ function setLevel(s: GameState, i: number) {
   s.dragging = null;
   s.aim = null;
   physFree(s.phys);
+  physFree3d(s.phys3);
   s.phys = null;
+  s.phys3 = null;
   s.tiles = spec.tiles ? levelMap(spec, i).map((r) => r.split("")) : null;
   s.tilesV++;
   for (const thing of spec.things) if (!thing.template) make(s, thing, thing.x, thing.y, thing.vx, thing.vy);
@@ -211,7 +226,8 @@ function setLevel(s: GameState, i: number) {
       if (b) { b.x = x; b.y = y; b.ox = x; b.oy = y; b.lx = x; b.ly = y; }
     }));
   }
-  if (s.rapier && needsPhysics(spec)) s.phys = physWorld(s.rapier, s);
+  if (s.rapier3) s.phys3 = physWorld3d(s.rapier3, s);
+  else if (s.rapier && needsPhysics(spec)) s.phys = physWorld(s.rapier, s);
   camera(s, 1);
 }
 
@@ -219,13 +235,16 @@ function setLevel(s: GameState, i: number) {
  * A new game, waiting to start: its first level. Given Rapier (loaded, its init() done), its rigid things are
  * Rapier's; without it they are the arcade's dynamic bodies.
  */
-export function newGame(spec: GameSpec, rapier: Rapier | null = null): GameState {
-  if (!rapier && needsPhysics(spec)) spec = { ...spec, things: spec.things.map((t) => (t.body === "rigid" ? { ...t, body: "dynamic" } : t)) };
+export function newGame(spec: GameSpec, rapier: Rapier | null = null, rapier3: Rapier3 | null = null): GameState {
+  // Real 3D physics when asked for and given; else Rapier's 2D; else the arcade's bodies.
+  const use3 = Boolean(rapier3 && needs3d(spec));
+  if (!use3 && !rapier && needsPhysics(spec)) spec = { ...spec, things: spec.things.map((t) => (t.body === "rigid" ? { ...t, body: "dynamic" } : t)) };
   const s: GameState = {
     spec, phase: "ready", t: 0, score: 0, lives: spec.lives, bodies: [], effects: [], shake: 0, speed: 1, next: 1,
     seed: spec.seed, every: spec.rules.map(() => 0), fired: new Set(), contacts: new Set(), dragging: null, steps: 0,
     cx: 0, cy: 0, tiles: null, tilesV: 0, level: 0, levelT: 0, trans: 0, goTo: -1, seeing: new Set(),
-    rapier: rapier && needsPhysics(spec) ? rapier : null, phys: null, aim: null, noteIx: 0, beatAt: spec.rules.map(() => -1),
+    rapier: !use3 && rapier && needsPhysics(spec) ? rapier : null, phys: null, aim: null, noteIx: 0, beatAt: spec.rules.map(() => -1),
+    rapier3: use3 ? rapier3 : null, phys3: null,
   };
   setLevel(s, 0);
   return s;
@@ -233,7 +252,7 @@ export function newGame(spec: GameSpec, rapier: Rapier | null = null): GameState
 
 export function startGame(s: GameState) {
   if (s.phase === "playing") return;
-  if (s.phase !== "ready") { physFree(s.phys); Object.assign(s, newGame(s.spec, s.rapier)); }
+  if (s.phase !== "ready") { physFree(s.phys); physFree3d(s.phys3); Object.assign(s, newGame(s.spec, s.rapier, s.rapier3)); }
   s.phase = "playing";
   run(s, (w) => w.on === "start", {});
   run(s, (w) => w.on === "level" && (w.at === 0 || w.at === 1), {});
@@ -242,12 +261,14 @@ export function startGame(s: GameState) {
 /** The game put away: its world of rigid things freed (the page left, the editor closed). */
 export function endGame(s: GameState) {
   physFree(s.phys);
+  physFree3d(s.phys3);
   s.phys = null;
+  s.phys3 = null;
 }
 
 /** A thing let go from the sling. */
 function shoot(s: GameState, b: Body, vx: number, vy: number) {
-  physSpeed(s.phys, b, vx, vy);
+  if (!physSpeed3d(s.phys3, b, vx, vy)) physSpeed(s.phys, b, vx, vy);
   b.flying = true;
   b.shotAt = s.t;
   b.slow = 0;
@@ -470,7 +491,7 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
     case "lives": s.lives = Math.max(0, s.lives + a.add); return;
     case "win": s.phase = "won"; s.effects.push({ kind: "sound", sound: "success" }); return;
     case "lose": s.phase = "lost"; return;
-    case "speed": { const b = a.who === "self" ? ctx.self : ctx.other; if (b) physSpeed(s.phys, b, a.vx, a.vy); return; }
+    case "speed": { const b = a.who === "self" ? ctx.self : ctx.other; if (b && !physSpeed3d(s.phys3, b, a.vx, a.vy)) physSpeed(s.phys, b, a.vx, a.vy); return; }
     case "faster": s.speed = Math.min(4, s.speed * a.by); return;
     case "shake": s.shake = 0.3; s.effects.push({ kind: "shake" }); return;
     case "sound": s.effects.push({ kind: "sound", sound: a.kind, x: ctx.self?.x }); return;
@@ -483,11 +504,12 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
     case "confetti": s.effects.push({ kind: "confetti" }); return;
     case "flash": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) b.flash = s.t; return; }
     case "burst": { const b = a.who === "other" ? ctx.other ?? ctx.self : ctx.self ?? ctx.other; if (b) s.effects.push({ kind: "burst", x: b.x, y: b.y, color: b.thing.look.color }); return; }
-    case "home": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) { physHome(s.phys, b); b.flying = false; } return; }
+    case "home": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) { if (!physHome3d(s.phys3, b)) physHome(s.phys, b); b.flying = false; } return; }
     case "explode": {
       const b = a.who === "other" ? ctx.other ?? ctx.self : ctx.self ?? ctx.other;
       if (!b) return;
       physExplode(s.phys, s, b.x, b.y, a.radius, a.power, b);
+      physExplode3d(s.phys3, s, b.x, b.y, a.radius, a.power, b);
       s.effects.push({ kind: "burst", x: b.x, y: b.y, color: b.thing.look.color }, { kind: "sound", sound: "hit" });
       s.shake = 0.3;
       s.effects.push({ kind: "shake" });
@@ -507,6 +529,16 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
 }
 
 type Box = Pick<Body, "x" | "y" | "w" | "h">;
+/** In real 3D: do two things' heights meet (a coin up high isn't met by a walker passing under it). */
+function heightsMeet(a: Body, b: Body): boolean {
+  const span = (x: Body): [number, number] => {
+    const h = shapeOf3d(x.thing) === "ball" ? Math.min(x.w, x.h) : heightOf3d(x.thing, x.w, x.h);
+    const mid = x.z || x.thing.d3.lift + h / 2;
+    return [mid - h / 2, mid + h / 2];
+  };
+  const [a0, a1] = span(a), [b0, b1] = span(b);
+  return a0 <= b1 + 2 && b0 <= a1 + 2;
+}
 /** A body's box; a turned rigid one's is the box round it. */
 function boxOf(b: Body): Box {
   if (!b.rot || !isRigid(b) || b.thing.shape === "circle") return b;
@@ -612,6 +644,14 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       case "pointer":
         if (input.pointer) { b.vx = 0; b.vy = 0; b.x += (input.pointer.x - b.x) * Math.min(1, dt * 18); b.y += (input.pointer.y - b.y) * Math.min(1, dt * 18); }
         break;
+      case "walk": {
+        // Across the ground as the arrows say (up the world for up); Space jumps it in real 3D physics.
+        const x = (input.right ? 1 : 0) - (input.left ? 1 : 0), y = (input.down ? 1 : 0) - (input.up ? 1 : 0), len = Math.hypot(x, y) || 1;
+        b.vx = (x / len) * t.speed; b.vy = (y / len) * t.speed;
+        if (input.pressed.includes("Space")) b.jumpAt = s.t;
+        if (x || y) b.face = x < 0 ? -1 : x > 0 ? 1 : b.face;
+        break;
+      }
       case "car": {
         // Its speed along where it faces, and across: it speeds up and slows down along, and grips across.
         const fx = Math.sin(b.rot), fy = -Math.cos(b.rot);
@@ -719,7 +759,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   /* ---- moving, solids and edges */
   const solids = s.bodies.filter((b) => !b.dead && b.thing.solid);
   for (const b of s.bodies) {
-    if (b.dead || !moves(b) || isRigid(b)) continue;
+    if (b.dead || !moves(b) || isRigid(b) || s.phys3?.bodies.has(b.n)) continue;
     if (b.thing.body === "dynamic") b.vy += spec.gravity * b.thing.gravity * dt;
     const dynamicOnTiles = b.thing.body === "dynamic" && s.tiles;
     // Carried by the moving thing it stands on.
@@ -759,13 +799,21 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   }
   // The rigid things: Rapier's step, with what the game moved put in place first.
   if (s.phys) for (const br of physStep(s.phys, s, dt, input)) snapped(s, br);
+  // Real 3D physics: its step, and the rules for each thing that has just tipped over.
+  if (s.phys3) {
+    for (const n of physStep3d(s.phys3, s, dt, input).tipped) {
+      const b = s.bodies.find((x) => x.n === n);
+      if (b) run(s, (w) => w.on === "tip" && isWho(w.who, { id: b.of, tags: b.thing.tags }), { self: b });
+    }
+  }
   const closed = { top: spec.edges === "walls" || spec.edges === "sides", sides: spec.edges === "walls" || spec.edges === "sides", bottom: spec.edges === "walls" || spec.edges === "floor" };
   for (const b of s.bodies) {
     if (b.dead || !moves(b)) continue;
     // A rigid thing's edges are Rapier's walls.
-    const keep = b.thing.keepIn && !isRigid(b);
+    const own3 = Boolean(s.phys3?.bodies.has(b.n));
+    const keep = b.thing.keepIn && !isRigid(b) && !own3;
     const bounce = b.thing.bounce;
-    const cl = isRigid(b) ? { top: false, sides: false, bottom: false } : closed;
+    const cl = isRigid(b) || own3 ? { top: false, sides: false, bottom: false } : closed;
     if ((cl.sides || keep) && b.x - b.w / 2 < 0) { b.x = b.w / 2; b.vx = bounce ? Math.abs(b.vx) * bounce : 0; b.dir = 1; }
     if ((cl.sides || keep) && b.x + b.w / 2 > W) { b.x = W - b.w / 2; b.vx = bounce ? -Math.abs(b.vx) * bounce : 0; b.dir = -1; }
     if ((cl.top || keep) && b.y - b.h / 2 < 0) { b.y = b.h / 2; b.vy = bounce ? Math.abs(b.vy) * bounce : 0; }
@@ -798,7 +846,9 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       const a = alive[i], b = alive[j];
       // Two in Rapier's world meet when it says they touch; the rest by their boxes (a turned rigid one's whole box).
       const both = s.phys?.bodies.has(a.n) && s.phys.bodies.has(b.n);
-      if (both ? !s.phys!.touching.has(`${Math.min(a.n, b.n)}:${Math.max(a.n, b.n)}`) : !overlap(boxOf(a), boxOf(b), 1)) continue;
+      const both3 = s.phys3?.bodies.has(a.n) && s.phys3.bodies.has(b.n);
+      const key2 = `${Math.min(a.n, b.n)}:${Math.max(a.n, b.n)}`;
+      if (both3 ? !s.phys3!.touching.has(key2) : both ? !s.phys!.touching.has(key2) : !overlap(boxOf(a), boxOf(b), 1) || (s.phys3 && !heightsMeet(a, b))) continue;
       const key = `${a.n}:${b.n}`;
       now.add(key);
       if (s.contacts.has(key)) continue;
@@ -828,7 +878,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
         let tile = cells.get(cell);
         if (!tile) {
           const thing = { id: `tile-${s.tiles[r][c]}`, look: k.look, tags: k.tags } as unknown as GameThing;
-          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0, shotAt: -9, flying: false, slow: 0, flash: -9 };
+          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0, shotAt: -9, flying: false, slow: 0, flash: -9, z: 0, vz: 0, q: null };
           cells.set(cell, tile);
         }
         for (const rule of hits) {

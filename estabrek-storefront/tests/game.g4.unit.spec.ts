@@ -11,7 +11,7 @@ const steps = (s: GameState, n: number, i: GameInput = NO_INPUT) => { for (let k
 
 test("the 3D view and a thing's 3D read safely: flat unless asked, each number in its range, a model only with its file", () => {
   const flat = gameOf({ things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 9, h: 9 }] }, say)!;
-  expect(flat.view3d).toEqual({ mode: "", camera: "follow", tilt: 55, distance: 1, light: "day", shadows: true, fog: false });
+  expect(flat.view3d).toEqual({ mode: "", camera: "follow", tilt: 55, distance: 1, light: "day", shadows: true, fog: false, physics: false, gravity: 2000 });
   expect(flat.things[0].d3).toEqual({ shape: "auto", height: 0, lift: 0, metal: 0.1, rough: 0.6 });
   const g = gameOf({
     view3d: { mode: "ground", camera: "top", tilt: 200, distance: 9, light: "night", shadows: false, fog: true },
@@ -22,7 +22,7 @@ test("the 3D view and a thing's 3D read safely: flat unless asked, each number i
     ],
     tiles: { size: 40, cols: 1, rows: 1, map: ["#"], kinds: { "#": { look: { kind: "box" }, solid: true, height: 25 } } },
   }, say)!;
-  expect(g.view3d).toEqual({ mode: "ground", camera: "top", tilt: 89, distance: 3, light: "night", shadows: false, fog: true });
+  expect(g.view3d).toEqual({ mode: "ground", camera: "top", tilt: 89, distance: 3, light: "night", shadows: false, fog: true, physics: false, gravity: 2000 });
   expect(g.things[0].d3).toEqual({ shape: "model", src: "/m/car.glb", height: 30, lift: 5, metal: 1, rough: 0 });
   expect(g.things[1].d3.shape).toBe("auto");
   expect(g.things[2].d3.shape).toBe("auto");

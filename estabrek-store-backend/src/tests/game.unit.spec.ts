@@ -91,6 +91,18 @@ describe("a game on the page", () => {
     expect(issues({ ...base, rules: [{ when: { on: "see", a: "#nobody", b: "#player" }, do: [{ act: "next" }] }] }).join()).toMatch(/No thing or tag “#nobody”/);
   });
 
+  test("G4b: real 3D physics on the ground, a walker, a rule for a thing that tips over", () => {
+    const base = {
+      view3d: { mode: "ground", physics: true, gravity: 2400 },
+      things: [thing("frog", { body: "dynamic", control: "walk", jump: 900, tags: ["player"] }), thing("pin", { body: "rigid", d3: { shape: "cylinder", height: 60 }, tags: ["pin"] })],
+      rules: [{ when: { on: "tip", who: "#pin" }, do: [{ act: "score", add: 1 }] }],
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, view3d: { mode: "ground", physics: true, gravity: 9000 } }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "tip", who: "#ghost" }, do: [{ act: "win" }] }] }).join()).toMatch(/No thing or tag “#ghost”/);
+    expect(issues({ ...base, things: [thing("frog", { control: "fly" })] }).length).toBeGreaterThan(0);
+  });
+
   test("G4a: the 3D view, a thing's shape and model in 3D, a tile's height, the car", () => {
     const base = {
       gravity: 0,

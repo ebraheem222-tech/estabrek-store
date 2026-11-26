@@ -10,11 +10,12 @@
  *  - The camera: following (behind a car as it turns), from the top, at an angle, or still over the whole world; the
  *    light of a day, a sunset, a night or a studio, the sun's shadows around what the camera looks at, fog.
  *  - Particles, the sling's dots and joints' lines in 3D; a tap or a pull found on the ground or the wall.
+ *  - G4b: a thing in real 3D physics is drawn at its own height and turn (a walker's card stays upright).
  * three.js is handed in (GameView loads it); GLB models load with three's own loader, only when a thing has one.
  */
 import type * as T from "three";
 import type { Body, GameState } from "./gameEngine";
-import type { GameSpec, GameThing } from "./gameSpec";
+import { heightOf3d, shapeOf3d, type GameSpec, type GameThing } from "./gameSpec";
 import { lookCanvas, sheetFrame } from "./gameDraw";
 import { alphaOf, burst, confetti, type Particles } from "./gameParticles";
 import { physJoints } from "./gamePhysics";
@@ -41,17 +42,7 @@ const LIGHTS = {
   studio: { sky: "", hemi: ["#ffffff", "#c9c9c9", 1.0], sun: ["#ffffff", 1.3], dir: [0.6, 1, 0.8] },
 } as const;
 
-/** A thing's shape in 3D: as it says, or from its look. */
-export function shapeOf3d(t: GameThing): "box" | "ball" | "cylinder" | "cone" | "card" | "model" | "poly" {
-  if (t.d3.shape === "model") return t.d3.src ? "model" : "box";
-  if (t.d3.shape !== "auto") return t.d3.shape;
-  if (t.look.poly) return "poly";
-  if (t.look.kind === "circle") return "ball";
-  if (t.look.kind === "box") return "box";
-  return "card";
-}
-/** Its height (on the ground) or depth (on the wall), in pixels. */
-export const heightOf3d = (t: GameThing, w: number, h: number) => t.d3.height || (shapeOf3d(t) === "card" ? Math.max(w, h) : Math.min(w, h));
+export { heightOf3d, shapeOf3d } from "./gameSpec";
 
 export function scene3d(o: Opts): Scene3D {
   const { THREE, renderer, spec, colours } = o;
@@ -275,7 +266,8 @@ void main() { vec2 p = gl_PointCoord - 0.5; float d = length(p), a;
       if (!m) { m = makeBody(b); made.set(b.n, m); }
       const t = b.thing, lift = t.d3.lift;
       const up = m.shape === "card" ? (ground ? t.h / 2 : 0) : m.shape === "ball" ? Math.min(t.w, t.h) / 2 : m.h3 / 2;
-      m.obj.position.copy(at(b.x, b.y, ground ? lift + up : lift));
+      // In real 3D physics: its own height; else its lift and size say where.
+      if (b.q) m.obj.position.set(b.x, b.z, b.y); else m.obj.position.copy(at(b.x, b.y, ground ? lift + up : lift));
       const lit = Math.max(0, 1 - (s.t - b.flash) / 0.25);
       let k = 1 + 0.15 * lit;
       if (t.fx === "pulse" && !o.lessMotion()) k *= 1 + Math.sin(tsec * 6) * 0.06;
@@ -283,7 +275,7 @@ void main() { vec2 p = gl_PointCoord - 0.5; float d = length(p), a;
       if (m.shape === "card") {
         // A card faces the camera (on the ground, turned about its upright); a runner's faces its way.
         if (ground) m.obj.rotation.set(0, -yaw, 0); else m.obj.rotation.set(0, 0, -b.rot);
-        if (t.control === "platform" || t.look.kind === "sprite") m.obj.scale.x *= b.face;
+        if (t.control === "platform" || t.control === "walk" || t.look.kind === "sprite") m.obj.scale.x *= b.face;
         if (m.uv && t.look.kind === "sprite") {
           const f = sheetFrame(t.look, b.anim, s.t);
           const u0 = f.col / f.cols, u1 = (f.col + 1) / f.cols, top = 1 - f.row / f.rows, bottom = 1 - (f.row + 1) / f.rows;
@@ -291,6 +283,8 @@ void main() { vec2 p = gl_PointCoord - 0.5; float d = length(p), a;
         }
       } else if (ground) m.obj.rotation.set(t.fx === "wobble" ? Math.sin(tsec * 6) * 0.12 : 0, -b.rot, 0);
       else m.obj.rotation.set(t.fx === "wobble" ? Math.sin(tsec * 6) * 0.12 : 0, 0, -b.rot);
+      // Its real turn (it rolls, tumbles, tips over).
+      if (b.q && m.shape !== "card") m.obj.quaternion.set(b.q[0], b.q[1], b.q[2], b.q[3]);
       if (m.mat) {
         // Its effect as light: a glow, a rainbow, a flash.
         if (t.fx === "glow") { m.mat.emissive.copy(m.mat.map ? glow : m.mat.color); m.mat.emissiveIntensity = 0.35 + Math.sin(tsec * 4) * 0.15; }
