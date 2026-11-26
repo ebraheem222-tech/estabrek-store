@@ -21,6 +21,8 @@ const MOVE_NAMES: Record<(typeof PHOTO3D_MOVES)[number], string> = {
   pointer: "مع الماوس (وميلان الموبايل)|With the pointer (and a phone's tilt)|עם העכבר (והטיית הטלפון)",
   scroll: "مع السكرول|With the scroll|עם הגלילה",
   auto: "بتلف لحالها|Turns by itself|מסתובבת לבד",
+  dolly: "كاميرا سينما بتدخل فيها لحالها|A film camera moves into it by itself|מצלמת קולנוע נכנסת לתוכה לבד",
+  dive: "الكاميرا بتغطس فيها مع السكرول|The camera dives into it with the scroll|המצלמה צוללת לתוכה עם הגלילה",
 };
 const ERRORS: Record<string, string> = {
   MODEL_DOWNLOAD: "ما قدرنا ننزّل الموديل. جرّب كمان مرة، أو استعمل العمق السريع.|The model couldn't be downloaded. Try again, or use the quick depth.|לא הצלחנו להוריד את המודל. נסה שוב, או השתמש בעומק המהיר.",

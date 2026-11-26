@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 // the picture, turning by itself, with the pointer or the scroll; the flat picture for less motion or when the depth
 // can't be read. The depth is made in the editor (by a model on the owner's device): here a drawn one stands in.
 const API = `http://127.0.0.1:${process.env.CATALOG_PORT || 4100}`;
-type Probe = { triangles: number; cut: number; yaw: number; pitch: number; frames: number; look: string };
+type Probe = { triangles: number; cut: number; yaw: number; pitch: number; frames: number; look: string; cam: { x: number; y: number; z: number } };
 
 /** A picture (colours, a disc in the middle) and its depth (the disc near), as PNGs made in a browser. */
 async function pictures(page: Page) {
@@ -92,6 +92,32 @@ test("a picture in 3D: lifted by its depth, turning by itself, with the pointer,
   await expect(lost).toHaveAttribute("data-pt-3d-state", "plain", { timeout: 30_000 });
   await expect(lost.locator("canvas.pt-3d")).toHaveCount(0);
   await expect(lost.locator("img")).toBeVisible();
+});
+
+test("a film camera: it moves into the picture by itself, and dives in as the page scrolls", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/en");
+  const files = await pictures(page);
+  await show(page, files, [
+    { id: "film", photo3d: { map: "/zz-3d/depth.png", move: "dolly", turn: 1 } },
+    { id: "pad", photo3d: { map: "/zz-3d/depth.png", move: "pointer" } },
+    { id: "dive", photo3d: { map: "/zz-3d/depth.png", move: "dive", turn: 1 } },
+  ]);
+  // By itself: in, over seconds, never still.
+  const film = frameOf(page, "film");
+  await centre(film);
+  await expect(film).toHaveAttribute("data-pt-3d-state", "on", { timeout: 60_000 });
+  const a = (await probe(film))!.cam.z;
+  await expect.poll(async () => (await probe(film))!.cam.z, { timeout: 8_000 }).toBeGreaterThan(a + 0.06);
+  // With the scroll: further down the page, further in.
+  const dive = frameOf(page, "dive");
+  await dive.evaluate((el) => el.scrollIntoView({ block: "end" }));
+  await expect(dive).toHaveAttribute("data-pt-3d-state", "on", { timeout: 30_000 });
+  await page.waitForTimeout(800);
+  const low = (await probe(dive))!.cam.z;
+  await dive.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await expect.poll(async () => (await probe(dive))!.cam.z, { timeout: 5_000 }).toBeGreaterThan(low + 0.12);
 });
 
 test("less motion: the flat picture, no canvas", async ({ browser, baseURL }) => {
