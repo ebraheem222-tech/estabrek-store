@@ -73,6 +73,12 @@ test("a picture in 3D: lifted by its depth, turning by itself, with the pointer,
   await expect.poll(async () => (await probe(hand))!.yaw, { timeout: 5_000 }).toBeGreaterThan(0.15);
   await page.mouse.move(box.x + box.width * 0.5, box.y - 150);
   await expect.poll(async () => Math.abs((await probe(hand))!.yaw), { timeout: 5_000 }).toBeLessThan(0.02);
+  // A computer with a mouse doesn't follow a tilt sensor's readings (they would leave it turned once the pointer left).
+  await page.evaluate(() => {
+    for (const [beta, gamma] of [[40, 0], [55, 20]]) window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { beta, gamma, alpha: 0 }));
+  });
+  await page.waitForTimeout(600);
+  expect(Math.abs((await probe(hand))!.yaw)).toBeLessThan(0.02);
 
   // As dots.
   const dots = frameOf(page, "dots");
