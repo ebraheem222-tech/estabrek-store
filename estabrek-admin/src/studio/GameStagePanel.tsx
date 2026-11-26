@@ -2,7 +2,7 @@
  * The games stage's settings in the editor (G0 of docs/game-engine-plan.ar.md): a ready game to start from, the
  * game's words in the language being edited, its lives, clock and the score that wins, its ground's colour, each
  * thing's look (an emoji, a shape in a colour, one of the store's pictures, or words) and size, and the prize with
- * its coupon. Placing things and writing rules by hand come next (G0b). The game itself is the shop's
+ * its coupon; and the game editor (GameEditor.tsx, G0b) to place things and write rules. The game itself is the shop's
  * (pageTree/gameSpec.ts reads it, gameEngine.ts runs it).
  */
 import { useState } from "react";
@@ -14,6 +14,8 @@ import { Range } from "./LookPanels";
 import { Field } from "./StudioPanels";
 import { Choice, ColourPick } from "./StudioTreePanels";
 import { say } from "./say";
+import { GameEditor } from "./GameEditor";
+import { ROSE_COLOURS, type ThumbColours } from "./templates/colours";
 
 type Obj = Record<string, unknown>;
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -33,13 +35,14 @@ const WORD_KEYS = [
 ] as const;
 const LOOK_KINDS = [["emoji", "إيموجي|Emoji|אימוג'י"], ["box", "مربّع|Box|ריבוע"], ["circle", "دائرة|Circle|עיגול"], ["image", "صورة|Picture|תמונה"], ["text", "كلام|Words|מילים"]] as const;
 
-export function GameStagePanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
+export function GameStagePanel({ node, lang, busy, onOps, colours = ROSE_COLOURS }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops; colours?: ThumbColours }) {
   const props = (node.props ?? {}) as Obj;
   const game = obj(props.game);
   const things = (Array.isArray(game.things) ? game.things : []) as Obj[];
   const words = obj(game.words);
   const [picking, setPicking] = useState<number | null>(null);
   const [at, setAt] = useState(0);
+  const [editing, setEditing] = useState(false);
   const put = (label: string, next: Obj) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...props, game: next } }]);
   const set = (label: string, change: Obj) => {
     const next: Obj = { ...game, ...change };
@@ -61,6 +64,9 @@ export function GameStagePanel({ node, lang, busy, onOps }: { node: PageTreeNode
   return (
     <div className={box} data-testid="studio-game">
       <div className={head}>{say("🎮 مسرح اللعبة|🎮 The game stage|🎮 במת המשחק")}</div>
+
+      <button type="button" disabled={busy} onClick={() => setEditing(true)} className="w-full rounded-lg bg-accent-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-accent-400 disabled:opacity-40" data-testid="studio-game-edit">{say("✏️ افتح محرّر اللعبة (رتّب الأشياء واكتب القواعد)|✏️ Open the game editor (place things, write rules)|✏️ פתחו את עורך המשחק (מקמו פריטים, כתבו כללים)")}</button>
+      <GameEditor open={editing} onClose={() => setEditing(false)} game={game} lang={lang} colours={colours} busy={busy} onChange={put} />
 
       {/* A ready game to start from: its things, rules and words replace this one's. */}
       <div className={sub}>
@@ -140,7 +146,7 @@ export function GameStagePanel({ node, lang, busy, onOps }: { node: PageTreeNode
         </label>
         <p className="text-[10px] leading-4 text-white/35">{say("لما يربح، الكود بيبيّن وبينحط بالحقيبة لحاله. استعملي كوبون إله حد استعمال.|When they win, the code shows and goes in their bag by itself. Use a coupon with a usage limit.|כשמנצחים, הקוד מופיע ונכנס לסל לבד. השתמשו בקופון עם הגבלת שימוש.")}</p>
       </div>
-      <p className="text-[10px] leading-4 text-white/35">{say("بالمحرر اللعبة بتستنّى؛ جرّبيها بالمعاينة أو بالمتجر. ترتيب الأشياء وكتابة القواعد بإيدك جايين بالخطوة الجاية.|In the editor the game waits; try it in the preview or the store. Placing things and writing rules by hand come next.|בעורך המשחק ממתין; נסו אותו בתצוגה המקדימה או בחנות. מיקום פריטים וכתיבת כללים ידנית יגיעו בשלב הבא.")}</p>
+      <p className="text-[10px] leading-4 text-white/35">{say("بالصفحة اللعبة بتستنّى؛ جرّبيها بمحرّر اللعبة («▶ جرّبها») أو بالمتجر.|On the page the game waits; try it in the game editor («▶ Try it») or the store.|בעמוד המשחק ממתין; נסו אותו בעורך המשחק («▶ נסו») או בחנות.")}</p>
       <MediaLibraryModal open={picking !== null} onClose={() => setPicking(null)} title={say("صورة الشي|The thing's picture|תמונת הפריט")} onSelect={(u) => { const i = picking!; setPicking(null); setLook(i, { kind: "image", src: u }); }} />
     </div>
   );
