@@ -355,6 +355,26 @@ const PINBALL: Raw = {
   words: words(w("كرة الدبابيس", "Pinball", "פינבול"), w("السهم الشمال والسهم اليمين (أو الأزرار تحت) بيرفعوا المضارب. خلّي الطابة فوق: كل صدّام بيعطيك 10، وعندك تلات طابات.", "The left and right arrows (or the buttons below) lift the flippers. Keep the ball up: each bumper gives 10, and you have three balls.", "החצים שמאלה וימינה (או הכפתורים למטה) מרימים את המחבטים. השאירו את הכדור למעלה: כל פגוש נותן 10, ויש לכם שלושה כדורים.")),
 };
 
+/** Night stars (G3): a glowing basket catches falling stars that sparkle, each one a bell's note up the scale (the
+ *  catching makes its own tune); comets trailing fire take a life; calm music, twinkling stars, a vignette, confetti. */
+const NIGHT: Raw = {
+  w: 960, h: 540, bg: "deep", edges: "open", lives: 3, winScore: 20, seed: 191,
+  weather: "stars", post: "vignette", music: { mood: "calm", tempo: 84, volume: 0.5 },
+  things: [
+    { id: "basket", look: emoji("🧺"), x: 480, y: 470, w: 90, h: 80, body: "kinematic", control: "leftRight", speed: 560, keepIn: true, fx: "glow", tags: ["player"] },
+    { id: "star", look: emoji("⭐"), x: 0, y: 0, w: 46, h: 46, body: "kinematic", vy: 210, template: true, behave: "spin", trail: "sparkle", tags: ["good"] },
+    { id: "comet", look: emoji("☄️"), x: 0, y: 0, w: 52, h: 52, body: "kinematic", vy: 300, template: true, trail: "fire", tags: ["bad"] },
+  ],
+  rules: [
+    { when: { on: "every", seconds: 0.9 }, do: [{ act: "spawn", what: "star", at: "top" }] },
+    { when: { on: "every", seconds: 2.4 }, do: [{ act: "spawn", what: "comet", at: "top" }] },
+    { when: { on: "hit", a: "#player", b: "#good" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "note", instrument: "bell", scale: "pentatonic", step: -1 }] },
+    { when: { on: "hit", a: "#player", b: "#bad" }, do: [{ act: "destroy", who: "other" }, { act: "lives", add: -1 }, { act: "shake" }, { act: "sound", kind: "boom" }] },
+    { when: { on: "score", at: 10 }, do: [{ act: "faster", by: 1.2 }, { act: "confetti" }, { act: "sound", kind: "power" }] },
+  ],
+  words: words(w("نجوم الليل", "Night stars", "כוכבי לילה"), w("حرّك السلّة ولقّط النجوم: كل نجمة بتعزف نغمة، والمذنّبات بتاخد روح. لمّ عشرين!", "Move the basket and catch the stars: each one plays a note, and comets take a life. Catch twenty!", "הזיזו את הסל ותפסו כוכבים: כל כוכב מנגן צליל, ושביטים לוקחים חיים. תפסו עשרים!")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
@@ -366,6 +386,7 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "cans", name: w("علب", "Cans", "פחיות"), line: w("طابة بالمقلاع على برج علب", "A slung ball at a tower of cans", "כדור מקלע אל מגדל פחיות"), icon: "🥫", game: CANS },
   { key: "golf", name: w("ميني غولف", "Mini golf", "מיני גולף"), line: w("تلات حفر وضربات قليلة", "Three holes, as few strokes as you can", "שלוש גומות, כמה שפחות מכות"), icon: "⛳", game: GOLF },
   { key: "pinball", name: w("دبابيس", "Pinball", "פינבול"), line: w("مضارب وصدّامات وطابة ما بتوقع", "Flippers, bumpers and a ball to keep up", "מחבטים, פגושים וכדור שלא ייפול"), icon: "🔴", game: PINBALL },
+  { key: "night", name: w("نجوم الليل", "Night stars", "כוכבי לילה"), line: w("لقّط النجوم وكل وحدة بتعزف", "Catch the stars, each one plays a note", "תפסו כוכבים, כל אחד מנגן"), icon: "🌙", game: NIGHT },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

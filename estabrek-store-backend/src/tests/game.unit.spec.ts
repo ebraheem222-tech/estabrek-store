@@ -91,6 +91,23 @@ describe("a game on the page", () => {
     expect(issues({ ...base, rules: [{ when: { on: "see", a: "#nobody", b: "#player" }, do: [{ act: "next" }] }] }).join()).toMatch(/No thing or tag “#nobody”/);
   });
 
+  test("G3: trails, a look's effect, the weather, an effect over the picture, music, notes, confetti, more sounds", () => {
+    const base = {
+      weather: "snow", post: "dream", music: { mood: "spooky", tempo: 90, volume: 0.4 },
+      things: [thing("star", { trail: "sparkle", fx: "glow" }), thing("comet", { trail: "fire", fx: "rainbow" })],
+      rules: [{ when: { on: "tap", who: "star" }, do: [{ act: "note", instrument: "bell", scale: "pentatonic", step: -1 }, { act: "note" }, { act: "confetti" }, { act: "sound", kind: "laser" }] }],
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, weather: "hail" }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, post: "blur" }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, music: { mood: "jazz" } }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, music: { mood: "calm", tempo: 300 } }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("star", { trail: "glitter" })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("star", { fx: "melt" })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "start" }, do: [{ act: "note", instrument: "harp" }] }] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "start" }, do: [{ act: "note", step: 21 }] }] }).length).toBeGreaterThan(0);
+  });
+
   test("G2b: joints between things in the world, motors on keys, breaking and cutting them", () => {
     const base = {
       things: [thing("flip", { body: "rigid", tags: ["flipper"] }), thing("plank", { body: "rigid" }), thing("post", { body: "static" }), thing("coin", { template: true })],

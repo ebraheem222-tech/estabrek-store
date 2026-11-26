@@ -45,7 +45,17 @@ export const ACT_NAMES = {
   home: "رجّعه لمكانه|Back where it started|חזרה למקום ההתחלה",
   explode: "انفجار بيدفع اللي حواليه|An explosion that pushes all round|פיצוץ שדוחף מסביב",
   cut: "فكّ مفاصله|Let go of its joints|שחררו את המפרקים שלו",
+  note: "نغمة على آلة|A note on an instrument|צליל בכלי נגינה",
+  confetti: "قصاقيص ملوّنة|Confetti|קונפטי",
 } as const;
+/* G3: effects and sound. */
+export const TRAIL_NAMES = { "": "ولا إشي|Nothing|כלום", sparkle: "لمعة|Sparkles|ניצוצות", smoke: "دخان|Smoke|עשן", fire: "نار|Fire|אש", bubbles: "فقاقيع|Bubbles|בועות" } as const;
+export const FX_NAMES = { "": "ولا إشي|Nothing|כלום", glow: "توهّج|Glow|זוהר", pulse: "نبض|Pulse|פעימה", wobble: "تموّج|Wobble|רעידה", rainbow: "قوس قزح|Rainbow|קשת" } as const;
+export const WEATHER_NAMES = { "": "صافي|Clear|בהיר", snow: "تلج|Snow|שלג", rain: "شتي|Rain|גשם", stars: "نجوم بتلمع|Twinkling stars|כוכבים מנצנצים", leaves: "ورق شجر|Falling leaves|עלים נושרים", bubbles: "فقاقيع طالعة|Rising bubbles|בועות עולות" } as const;
+export const POST_NAMES = { "": "ولا إشي|Nothing|כלום", vignette: "إطار معتّم|Vignette|וינייטה", crt: "شاشة قديمة|An old screen|מסך ישן", pixel: "بكسلات|Pixels|פיקסלים", mono: "أبيض وأسود|Black and white|שחור־לבן", dream: "حالم|Dreamy|חלומי" } as const;
+export const MOOD_NAMES = { "": "بلا موسيقى|No music|בלי מוזיקה", lively: "حيوية|Lively|עליזה", calm: "هادية|Calm|רגועה", spooky: "مخيفة|Spooky|מפחידה", arcade: "ألعاب قديمة|Arcade|ארקייד" } as const;
+export const INSTRUMENT_NAMES = { piano: "بيانو|Piano|פסנתר", bell: "جرس|Bell|פעמון", pluck: "أوتار|Pluck|מיתר", bass: "باص|Bass|בס", drum: "طبل|Drum|תוף" } as const;
+export const SCALE_NAMES = { pentatonic: "خماسي|Pentatonic|פנטטוני", major: "كبير|Major|מז'ור", minor: "صغير|Minor|מינור", blues: "بلوز|Blues|בלוז" } as const;
 /** How two things are joined (G2b). */
 export const JOINT_NAMES = {
   pin: "مسمار: بيدور حواليه|A pin: turns about it|ציר: מסתובב סביבו",
@@ -85,7 +95,10 @@ export const BEHAVE_NAMES = {
 } as const;
 export const TRANSITION_NAMES = { circle: "دائرة بتسكّر وبتفتح|A circle closing and opening|עיגול שנסגר ונפתח", wipe: "مسحة من جنب لجنب|A wipe across|מחיקה מצד לצד", fade: "تلاشي|A fade|דהייה", none: "على طول|At once|מיד" } as const;
 export const EDGE_NAMES = { walls: "حيطان من كل الجهات|Walls all round|קירות מכל הצדדים", sides: "حيطان إلا تحت|Walls but the bottom|קירות חוץ מלמטה", floor: "أرض بس|A floor only|רק רצפה", open: "مفتوح|Open|פתוח" } as const;
-export const SOUND_NAMES = { click: "كبسة|Click|קליק", pop: "فقعة|Pop|פופ", chime: "رنّة|Chime|צלצול", whoosh: "ووش|Whoosh|ווש", success: "نجاح|Success|הצלחה", hit: "ضربة|Hit|מכה" } as const;
+export const SOUND_NAMES = {
+  click: "كبسة|Click|קליק", pop: "فقعة|Pop|פופ", chime: "رنّة|Chime|צלצול", whoosh: "ووش|Whoosh|ווש", success: "نجاح|Success|הצלחה", hit: "ضربة|Hit|מכה",
+  coin: "عملة|Coin|מטבע", jump: "نطّة|Jump|קפיצה", laser: "ليزر|Laser|לייזר", boom: "بوم|Boom|בום", power: "قوّة|Power-up|כוח", blip: "بيب|Blip|ביפ",
+} as const;
 export const KEY_NAMES = { Space: "المسافة|Space|רווח", Enter: "Enter|Enter|Enter", ArrowUp: "⬆|⬆|⬆", ArrowDown: "⬇|⬇|⬇", ArrowLeft: "⬅|⬅|⬅", ArrowRight: "➡|➡|➡" } as const;
 export const SIZES: Array<[number, number, string]> = [
   [960, 540, "عريض 16:9|Wide 16:9|רחב 16:9"], [800, 600, "4:3|4:3|4:3"], [640, 640, "مربّع|Square|ריבוע"], [540, 960, "طولي للموبايل|Tall, for phones|גבוה, לטלפון"],
@@ -174,6 +187,7 @@ export function newAct(act: keyof typeof ACT_NAMES, game: Obj): Obj {
     case "burst": return { act, who: "self" };
     case "home": case "cut": return { act, who: "self" };
     case "explode": return { act, who: "self", radius: 160, power: 900 };
+    case "note": return { act, instrument: "bell", scale: "pentatonic", step: -1 };
     default: return { act };
   }
 }
@@ -209,6 +223,7 @@ export function ruleText(rule: Obj): string {
       case "lives": return `${Number(a.add) >= 0 ? "+" : ""}${n(a.add)} ${say("أرواح|lives|חיים")}`;
       case "faster": return `${say("أسرع|faster|מהר יותר")} ×${n(a.by)}`;
       case "sound": return `${say("صوت|sound|צליל")} ${say(SOUND_NAMES[a.kind as keyof typeof SOUND_NAMES] ?? n(a.kind))}`;
+      case "note": return `${say("نغمة|a note|צליל")} ${say(INSTRUMENT_NAMES[a.instrument as keyof typeof INSTRUMENT_NAMES] ?? n(a.instrument))}`;
       default: return say(ACT_NAMES[a.act as keyof typeof ACT_NAMES] ?? n(a.act));
     }
   });

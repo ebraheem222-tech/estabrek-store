@@ -911,6 +911,9 @@ const GameThing = z.object({
   drag: gnum(0, 20).optional(),
   spinLock: z.boolean().optional(),
   fast: z.boolean().optional(),
+  // G3: what it leaves behind as it moves, and its look's effect.
+  trail: z.enum(["", "sparkle", "smoke", "fire", "bubbles"]).optional(),
+  fx: z.enum(["", "glow", "pulse", "wobble", "rainbow"]).optional(),
 }).strict().refine((t) => t.shape !== "poly" || (t.points?.length ?? 0) >= 3, { message: "A convex shape needs three points or more", path: ["points"] });
 const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("start") }).strict(),
@@ -938,13 +941,15 @@ const GameAct = z.discriminatedUnion("act", [
   z.object({ act: z.literal("speed"), who: GAME_SELF.optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
   z.object({ act: z.literal("faster"), by: gnum(0.5, 2) }).strict(),
   z.object({ act: z.literal("shake") }).strict(),
-  z.object({ act: z.literal("sound"), kind: z.enum(["click", "pop", "chime", "whoosh", "success", "hit"]) }).strict(),
+  z.object({ act: z.literal("sound"), kind: z.enum(["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"]) }).strict(),
   z.object({ act: z.literal("burst"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("next") }).strict(),
   z.object({ act: z.literal("retry") }).strict(),
   z.object({ act: z.literal("home"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("explode"), who: GAME_SELF.optional(), radius: gnum(40, 1000).optional(), power: gnum(100, 5000).optional() }).strict(),
   z.object({ act: z.literal("cut"), who: GAME_SELF.optional() }).strict(),
+  z.object({ act: z.literal("note"), instrument: z.enum(["piano", "bell", "pluck", "bass", "drum"]).optional(), scale: z.enum(["major", "minor", "pentatonic", "blues"]).optional(), step: gint(-2, 20).optional() }).strict(),
+  z.object({ act: z.literal("confetti") }).strict(),
 ]);
 const GAME_KEY = z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 /** A joint (G2b): a and b (another thing in the world, or "" for the world), anchors, length, a spring's stiffness,
@@ -968,6 +973,10 @@ const GameSpecSchema = z.object({
   camera: z.object({ follow: GAME_WHO.or(z.literal("")).optional(), lerp: gnum(0.02, 1).optional() }).strict().optional(),
   layers: z.array(GameLayer).max(4).optional(),
   transition: z.enum(["fade", "wipe", "circle", "none"]).optional(),
+  // G3: the weather across the world, an effect over the whole picture, music made for a mood.
+  weather: z.enum(["", "snow", "rain", "stars", "leaves", "bubbles"]).optional(),
+  post: z.enum(["", "vignette", "crt", "pixel", "mono", "dream"]).optional(),
+  music: z.object({ mood: z.enum(["", "lively", "calm", "spooky", "arcade"]).optional(), tempo: gint(60, 180).optional(), volume: gnum(0, 1).optional() }).strict().optional(),
   bg: color.optional(),
   gravity: gnum(0, 4000).optional(),
   edges: z.enum(["walls", "sides", "floor", "open"]).optional(),
