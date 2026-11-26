@@ -26,6 +26,8 @@
  *    (glow, pulse, wobble, rainbow) in its own shader; an effect over the whole picture (vignette, an old screen,
  *    pixels, black and white, dreamy), the world drawn to a texture first. Less motion asked for: fewer particles, no
  *    falling weather.
+ *  - G3b: the music started at the game's own time (its beats where the beat rules are); a flashed thing lit up a
+ *    moment; the keys the rules ask for get their touch buttons.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
@@ -165,8 +167,11 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
 
   // What a touch screen needs: the controls the game's things use.
   const controls = new Set(spec.things.map((t) => t.control));
-  // A joint's motor on a key (a flipper) needs that key's button too.
-  const motorKeys = new Set(spec.joints.flatMap((j) => (j.motor?.key ? [j.motor.key] : [])));
+  // A joint's motor on a key (a flipper), and a rule's key (a rhythm game's arrows), need that key's button too.
+  const motorKeys = new Set([
+    ...spec.joints.flatMap((j) => (j.motor?.key ? [j.motor.key] : [])),
+    ...spec.rules.flatMap((r) => (r.when.on === "key" || r.when.on === "press" ? [r.when.key] : [])),
+  ]);
   const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay") || motorKeys.has("ArrowLeft") || motorKeys.has("ArrowRight");
   const needsUpDown = controls.has("fourWay") || motorKeys.has("ArrowUp") || motorKeys.has("ArrowDown");
   const needsJump = controls.has("platform") || motorKeys.has("Space");
@@ -406,6 +411,10 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           if (b.thing.fx === "glow") { sx *= 1.5; sy *= 1.5; }
           else if (b.thing.fx === "pulse" && !lessMotion()) { const k = 1 + Math.sin(performance.now() / 160) * 0.06; sx *= k; sy *= k; }
           if (b.thing.fx) ((m.material as T.ShaderMaterial).uniforms.uTime.value = performance.now() / 1000);
+          // Flashed a moment ago: bigger and brighter, fading back.
+          const lit = Math.max(0, 1 - (s.t - b.flash) / 0.25);
+          if (lit) { sx *= 1 + 0.15 * lit; sy *= 1 + 0.15 * lit; }
+          if (!b.thing.fx) (m.material as T.MeshBasicMaterial).color.setScalar(1 + 0.9 * lit);
           m.position.set(b.x, y, i * 0.001);
           m.scale.set(sx, sy, 1);
           m.rotation.z = b.rot;
@@ -589,7 +598,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   useEffect(() => {
     if (!mood || hud.phase !== "playing" || !sound || paused) return;
     const music = new Music();
-    music.start(mood, tempo, seed, volume);
+    music.start(mood, tempo, seed, volume, game.current?.t ?? 0);
     return () => music.stop();
   }, [mood, tempo, volume, seed, hud.phase, sound, paused]);
 

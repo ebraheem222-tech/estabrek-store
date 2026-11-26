@@ -91,6 +91,24 @@ describe("a game on the page", () => {
     expect(issues({ ...base, rules: [{ when: { on: "see", a: "#nobody", b: "#player" }, do: [{ act: "next" }] }] }).join()).toMatch(/No thing or tag “#nobody”/);
   });
 
+  test("G3b: on the beat, a key pressed while two things touch, a copy where its template stands, a flash", () => {
+    const base = {
+      music: { mood: "lively", tempo: 100 },
+      things: [thing("bar", { tags: ["bar"] }), thing("arrow", { template: true, tags: ["arrow"] })],
+      rules: [
+        { when: { on: "beat", every: 2, offset: 0.5 }, do: [{ act: "spawn", what: "arrow", at: "own" }] },
+        { when: { on: "beat", every: 1 }, do: [{ act: "flash" }] },
+        { when: { on: "press", key: "ArrowLeft", a: "bar", b: "#arrow" }, do: [{ act: "destroy", who: "other" }, { act: "flash", who: "self" }] },
+      ],
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, rules: [{ when: { on: "beat", every: 0.1 }, do: [{ act: "flash" }] }] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "beat", every: 1, offset: 17 }, do: [{ act: "flash" }] }] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "press", key: "KeyA", a: "bar", b: "#arrow" }, do: [{ act: "flash" }] }] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "press", key: "Space", a: "#ghost", b: "#arrow" }, do: [{ act: "flash" }] }] }).join()).toMatch(/No thing or tag “#ghost”/);
+    expect(issues({ ...base, rules: [{ when: { on: "start" }, do: [{ act: "spawn", what: "arrow", at: "mine" }] }] }).length).toBeGreaterThan(0);
+  });
+
   test("G3: trails, a look's effect, the weather, an effect over the picture, music, notes, confetti, more sounds", () => {
     const base = {
       weather: "snow", post: "dream", music: { mood: "spooky", tempo: 90, volume: 0.4 },

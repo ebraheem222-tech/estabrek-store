@@ -13,6 +13,8 @@
  * a motor (always, or while a key is held), and a stretch that breaks them; the rules (it breaks; cut it).
  * G3: effects and sound: a thing's trail and its look's effect (glow, pulse, wobble, rainbow), the weather across the
  * world, an effect over the whole picture, music made for a mood, more sounds, notes on instruments up a scale, confetti.
+ * G3b: on the beat of the game's tempo; a key pressed (or the first thing tapped) while two things touch; a copy made
+ * where its template stands; a thing flashed.
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -28,13 +30,13 @@ export const GAME_SHAPES = ["box", "circle", "poly"] as const;
 export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"] as const;
 export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
-export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break"] as const;
-export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode", "cut"] as const;
+export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break", "beat", "press"] as const;
+export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode", "cut", "note", "confetti", "flash"] as const;
 /** How two things are joined: a pin (they turn about it), a weld, a spring, a rope (no further than its length), a slider (along a line). */
 export const GAME_JOINTS = ["pin", "weld", "spring", "rope", "slider"] as const;
 /** How one level gives way to the next: a fade, a wipe across, a closing circle, or at once. */
 export const GAME_TRANSITIONS = ["fade", "wipe", "circle", "none"] as const;
-export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"] as const;
+export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center", "own"] as const;
 export const GAME_KEYS = ["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"] as const;
 /** G3: a thing's trail, its look's effect; the world's weather; an effect over the whole picture; the music's mood. */
@@ -141,7 +143,11 @@ export type GameWhen =
   | { on: "shot"; who: string }
   | { on: "rest"; who: string }
   /** A joint holding it breaks (stretched too far, or cut). */
-  | { on: "break"; who: string };
+  | { on: "break"; who: string }
+  /** On the beat of the game's tempo (its music's): every so many beats, from `offset` beats in. */
+  | { on: "beat"; every: number; offset: number }
+  /** `key` pressed (or `a` tapped) while `a` touches `b`: a rhythm game's hit, a lock opened while standing at it. */
+  | { on: "press"; key: (typeof GAME_KEYS)[number]; a: string; b: string };
 export type GameAct =
   | { act: "spawn"; what: string; at: (typeof GAME_SPOTS)[number]; vx: number; vy: number }
   | { act: "destroy"; who: "self" | "other" | "both" }
@@ -167,7 +173,9 @@ export type GameAct =
   /** A note on an instrument: the scale's next one (step -1), one at random (-2), or that step of it (0…20). */
   | { act: "note"; instrument: (typeof GAME_INSTRUMENTS)[number]; scale: (typeof GAME_SCALES)[number]; step: number }
   /** Confetti over the whole view. */
-  | { act: "confetti" };
+  | { act: "confetti" }
+  /** The thing lit up for a moment (a pad played, a note hit). */
+  | { act: "flash"; who: "self" | "other" };
 export type GameRule = { when: GameWhen; do: GameAct[] };
 export type GameWords = { title: string; start: string; win: string; lose: string; again: string; prize: string; help: string };
 export type GameSpec = {
@@ -340,6 +348,8 @@ function whenOf(raw: unknown): GameWhen | null {
     case "level": return { on: "level", at: int(x.at, 0, GAME_LIMITS.levels, 0) };
     case "shot": case "rest": { const who = whoOf(x.who); return who ? { on: x.on === "shot" ? "shot" : "rest", who } : null; }
     case "break": { const who = whoOf(x.who); return who ? { on: "break", who } : null; }
+    case "beat": return { on: "beat", every: num(x.every, 0.25, 16, 1), offset: num(x.offset, 0, 16, 0) };
+    case "press": { const a = whoOf(x.a), b = whoOf(x.b); return a && b ? { on: "press", key: pick(x.key, GAME_KEYS, "Space"), a, b } : null; }
     default: return null;
   }
 }
@@ -364,6 +374,7 @@ function actOf(raw: unknown): GameAct | null {
     case "cut": return { act: "cut", who: pick(x.who, ["self", "other"] as const, "self") };
     case "note": return { act: "note", instrument: pick(x.instrument, GAME_INSTRUMENTS, "piano"), scale: pick(x.scale, GAME_SCALES, "pentatonic"), step: int(x.step, -2, 20, -1) };
     case "confetti": return { act: "confetti" };
+    case "flash": return { act: "flash", who: pick(x.who, ["self", "other"] as const, "self") };
     case "explode": return { act: "explode", who: pick(x.who, ["self", "other"] as const, "self"), radius: num(x.radius, 40, 1000, 160), power: num(x.power, 100, 5000, 900) };
     default: return null;
   }

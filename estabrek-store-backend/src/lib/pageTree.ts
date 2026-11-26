@@ -929,10 +929,12 @@ const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("shot"), who: GAME_WHO }).strict(),
   z.object({ on: z.literal("rest"), who: GAME_WHO }).strict(),
   z.object({ on: z.literal("break"), who: GAME_WHO }).strict(),
+  z.object({ on: z.literal("beat"), every: gnum(0.25, 16), offset: gnum(0, 16).optional() }).strict(),
+  z.object({ on: z.literal("press"), key: z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]), a: GAME_WHO, b: GAME_WHO }).strict(),
 ]);
 const GAME_SELF = z.enum(["self", "other"]);
 const GameAct = z.discriminatedUnion("act", [
-  z.object({ act: z.literal("spawn"), what: GAME_ID, at: z.enum(["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"]).optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
+  z.object({ act: z.literal("spawn"), what: GAME_ID, at: z.enum(["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center", "own"]).optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
   z.object({ act: z.literal("destroy"), who: z.enum(["self", "other", "both"]).optional() }).strict(),
   z.object({ act: z.literal("score"), add: gint(-999, 999) }).strict(),
   z.object({ act: z.literal("lives"), add: gint(-9, 9) }).strict(),
@@ -950,6 +952,7 @@ const GameAct = z.discriminatedUnion("act", [
   z.object({ act: z.literal("cut"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("note"), instrument: z.enum(["piano", "bell", "pluck", "bass", "drum"]).optional(), scale: z.enum(["major", "minor", "pentatonic", "blues"]).optional(), step: gint(-2, 20).optional() }).strict(),
   z.object({ act: z.literal("confetti") }).strict(),
+  z.object({ act: z.literal("flash"), who: GAME_SELF.optional() }).strict(),
 ]);
 const GAME_KEY = z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 /** A joint (G2b): a and b (another thing in the world, or "" for the world), anchors, length, a spring's stiffness,

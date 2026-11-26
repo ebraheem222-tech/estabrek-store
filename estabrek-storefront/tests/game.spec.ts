@@ -223,6 +223,46 @@ test("G3: the night stars on a shop page: music, sparkles, a glow and a vignette
   expect(errors).toEqual([]);
 });
 
+test("G3b: the beats on a shop page: arrows fall to the music and the arrow keys score them; a phone gets the four arrows", async ({ page, browser }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "beats")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  await s.locator("[data-pt-game-start]").click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  // Every arrow key, again and again: those on their bars as they're pressed score.
+  for (let k = 0; k < 60; k++) {
+    for (const key of ["ArrowLeft", "ArrowDown", "ArrowUp", "ArrowRight"]) await page.keyboard.press(key);
+    await page.waitForTimeout(40);
+  }
+  await expect.poll(async () => Number(await s.getAttribute("data-pt-game-score"))).toBeGreaterThan(0);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "beats-playing.png") });
+  expect(errors).toEqual([]);
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: "no-preference" });
+  const p = await phone.newPage();
+  await p.goto(PATH);
+  await stage(p).locator("[data-pt-game-start]").tap();
+  await expect(p.locator(".pt-gs-pad button")).toHaveCount(4);
+  await phone.close();
+});
+
+test("G3b: the music pads on a shop page: a key tapped plays, lights and scores", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "pads")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  await s.locator("[data-pt-game-start]").click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  const box = (await s.locator("canvas").boundingBox())!;
+  const at = (x: number, y: number) => [box.x + (x / 960) * box.width, box.y + (y / 540) * box.height] as const;
+  for (const [x, y] of [[165, 190], [255, 190], [345, 190], [255, 430]] as const) { await page.mouse.click(...at(x, y)); await page.waitForTimeout(60); }
+  await expect.poll(async () => Number(await s.getAttribute("data-pt-game-score"))).toBe(4);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "pads-played.png") });
+  expect(errors).toEqual([]);
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);

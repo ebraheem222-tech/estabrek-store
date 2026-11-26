@@ -178,18 +178,22 @@ export function playNote(instrument: string, freq: number, x?: number, cx = 0, w
   }
 }
 
-/** The music: a mood's pattern from the seed, at a tempo, scheduled a little ahead on the audio clock while it plays. */
+/**
+ * The music: a mood's pattern from the seed, at a tempo, scheduled a little ahead on the audio clock while it plays;
+ * started `at` the game's own time (seconds played), so its beats fall where the game's beat rules do.
+ */
 export class Music {
   private timer: ReturnType<typeof setInterval> | null = null;
   private step = 0;
   private next = 0;
-  start(mood: Mood, tempo: number, seed: number, volume: number) {
+  start(mood: Mood, tempo: number, seed: number, volume: number, at = 0) {
     const o = sound();
     if (!o || this.timer) return;
     const pat = musicPattern(mood, seed), len = 60 / tempo / 4;
     o.music.gain.setTargetAtTime(volume * 0.5, o.ctx.currentTime, 0.2);
-    this.next = o.ctx.currentTime + 0.1;
-    this.step = 0;
+    // The next sixteenth of the game's time, that far ahead on the audio clock.
+    this.step = Math.ceil(at / len - 1e-6);
+    this.next = o.ctx.currentTime + 0.05 + (this.step * len - at);
     const kick = 98, snare = 330, hat = 900;
     this.timer = setInterval(() => {
       while (this.next < o.ctx.currentTime + 0.2) {
