@@ -46,6 +46,13 @@ export function lookCanvas(look: GameLook, w: number, h: number, fill: string, f
       try { x.drawImage(img, (c.width - iw) / 2, (c.height - ih) / 2, iw, ih); onPicture(c); } catch { box(); }
     };
     img.src = look.src;
+  } else if (look.poly && look.poly.length >= 3) {
+    // A rigid thing's convex shape, its points in its box.
+    x.fillStyle = fill;
+    x.beginPath();
+    look.poly.forEach(([px, py], i) => { const X = (px + 0.5) * c.width, Y = (py + 0.5) * c.height; if (i) x.lineTo(X, Y); else x.moveTo(X, Y); });
+    x.closePath();
+    x.fill();
   } else box();
   return c;
 }

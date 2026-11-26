@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { gameOf } from "../../../estabrek-storefront/src/pageTree/gameSpec";
 import { READY_GAMES } from "../../../estabrek-storefront/src/pageTree/gameReady";
-import { ACT_NAMES, WHEN_NAMES, actPossible, freshId, levelMaps, newAct, newWhen, nextTileChar, paintCells, pathPoints, resizedLevels, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withLevelMap, withNewLevel, withNewThing, withPathPoint, withTiles, withoutLevel, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
+import { ACT_NAMES, SHAPE_PICKS, WHEN_NAMES, actPossible, shapePick, freshId, levelMaps, newAct, newWhen, nextTileChar, paintCells, pathPoints, resizedLevels, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withLevelMap, withNewLevel, withNewThing, withPathPoint, withTiles, withoutLevel, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
 import { say } from "./say";
 
 // G0b: editing a game by hand, and what's edited still a whole game for the shop.
@@ -122,5 +122,25 @@ describe("editing a game", () => {
     }
     expect(ruleText({ when: { on: "see", a: "#enemy", b: "#player" }, do: [{ act: "retry" }] })).toMatch(/#enemy.*#player/);
     expect(ruleText({ when: { on: "level", at: 0 }, do: [{ act: "next" }] })).toContain(say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל"));
+  });
+
+  test("G2: the rules for a slung thing and its actions are read whole by the shop; a rigid thing's shape named among the picks", () => {
+    const g = catchGame();
+    for (const on of ["shot", "rest"] as const) for (const act of ["home", "explode"] as const) {
+      const edited = { ...g, rules: [{ when: newWhen(on, g), do: [newAct(act, g)] }] };
+      expect(read(edited).rules, `${on} ${act}`).toHaveLength(1);
+    }
+    expect(ruleText({ when: { on: "rest", who: "#ball" }, do: [{ act: "home", who: "self" }] })).toMatch(/#ball/);
+    const ramp = SHAPE_PICKS.find(([k]) => k === "ramp")![2]!;
+    expect(shapePick({ shape: "poly", points: ramp })).toBe("ramp");
+    expect(shapePick({ shape: "poly", points: [[0, 0], [0.5, 0], [0, 0.5]] })).toBe("poly");
+    expect(shapePick({ shape: "circle" })).toBe("circle");
+    expect(shapePick({})).toBe("box");
+    // Every pick is a shape the shop reads whole (a hexagon's points in its box).
+    for (const [, , pts] of SHAPE_PICKS) {
+      if (!pts) continue;
+      const spec = read({ ...g, things: [...thingsOf(g), { id: "shape", look: { kind: "box" }, x: 10, y: 10, w: 40, h: 40, body: "rigid", shape: "poly", points: pts }] });
+      expect(spec.things.find((t) => t.id === "shape")!.points).toEqual(pts);
+    }
   });
 });

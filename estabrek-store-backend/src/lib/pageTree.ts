@@ -892,12 +892,12 @@ const GameThing = z.object({
   look: GameLook,
   x: gnum(-2000, 4000), y: gnum(-2000, 4000), w: gnum(4, 2000), h: gnum(4, 2000),
   template: z.boolean().optional(),
-  body: z.enum(["none", "static", "dynamic", "kinematic"]).optional(),
+  body: z.enum(["none", "static", "dynamic", "kinematic", "rigid"]).optional(),
   gravity: gnum(0, 3).optional(),
   bounce: gnum(0, 1).optional(),
   solid: z.boolean().optional(),
   vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional(),
-  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag"]).optional(),
+  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"]).optional(),
   speed: gnum(0, 2000).optional(),
   jump: gnum(0, 3000).optional(),
   behave: z.enum(["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"]).optional(),
@@ -907,7 +907,15 @@ const GameThing = z.object({
   // G1b: how far it sees; the way it goes round (points after its start, from it).
   sight: gnum(0, 3000).optional(),
   path: z.object({ points: z.array(z.tuple([gnum(-8000, 8000), gnum(-8000, 8000)])).min(1).max(12), loop: z.boolean().optional(), smooth: z.boolean().optional() }).strict().optional(),
-}).strict();
+  // G2: a rigid thing's shape (a convex one's points in its box, -0.5…0.5) and material.
+  shape: z.enum(["box", "circle", "poly"]).optional(),
+  points: z.array(z.tuple([gnum(-0.5, 0.5), gnum(-0.5, 0.5)])).min(3).max(8).optional(),
+  density: gnum(0.05, 50).optional(),
+  friction: gnum(0, 2).optional(),
+  drag: gnum(0, 20).optional(),
+  spinLock: z.boolean().optional(),
+  fast: z.boolean().optional(),
+}).strict().refine((t) => t.shape !== "poly" || (t.points?.length ?? 0) >= 3, { message: "A convex shape needs three points or more", path: ["points"] });
 const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("start") }).strict(),
   z.object({ on: z.literal("every"), seconds: gnum(0.2, 60) }).strict(),
@@ -919,6 +927,8 @@ const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("time"), at: gnum(0, 600) }).strict(),
   z.object({ on: z.literal("see"), a: GAME_WHO, b: GAME_WHO }).strict(),
   z.object({ on: z.literal("level"), at: gint(0, 8) }).strict(),
+  z.object({ on: z.literal("shot"), who: GAME_WHO }).strict(),
+  z.object({ on: z.literal("rest"), who: GAME_WHO }).strict(),
 ]);
 const GAME_SELF = z.enum(["self", "other"]);
 const GameAct = z.discriminatedUnion("act", [
@@ -935,6 +945,8 @@ const GameAct = z.discriminatedUnion("act", [
   z.object({ act: z.literal("burst"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("next") }).strict(),
   z.object({ act: z.literal("retry") }).strict(),
+  z.object({ act: z.literal("home"), who: GAME_SELF.optional() }).strict(),
+  z.object({ act: z.literal("explode"), who: GAME_SELF.optional(), radius: gnum(40, 1000).optional(), power: gnum(100, 5000).optional() }).strict(),
 ]);
 /** A game: its world, its things (some templates for rules to make), its rules, lives, clock, the score that wins, its words and prize. */
 const GameSpecSchema = z.object({

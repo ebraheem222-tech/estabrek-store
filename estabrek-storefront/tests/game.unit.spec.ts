@@ -17,7 +17,7 @@ test("a game is read safely: bad names, numbers and actions left out; nothing to
     w: 99999, lives: 42, gravity: -5, edges: "nope", bg: "url(x)",
     things: [thing("Bad Id"), thing("ok", { x: 1e9, speed: -3, tags: ["fine", "NOT OK", "a", "b", "c", "d"] }), thing("ok"), thing("img", { look: { kind: "image", src: "javascript:alert(1)" } })],
     rules: [
-      { when: { on: "hit", a: "#fine", b: "ok" }, do: [{ act: "score", add: 5 }, { act: "explode" }] },
+      { when: { on: "hit", a: "#fine", b: "ok" }, do: [{ act: "score", add: 5 }, { act: "teleport" }] },
       { when: { on: "nope" }, do: [{ act: "win" }] },
       { when: { on: "start" }, do: [] },
       { when: { on: "every", seconds: 0 }, do: Array.from({ length: 20 }, () => ({ act: "score", add: 1 })) },

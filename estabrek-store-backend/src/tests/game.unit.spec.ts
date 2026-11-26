@@ -34,7 +34,7 @@ describe("a game on the page", () => {
     expect(issues({ things: [thing("a")], lives: 10 }).length).toBeGreaterThan(0);
     expect(issues({ things: [thing("a")], coupon: "no spaces" }).length).toBeGreaterThan(0);
     expect(issues({ things: [thing("a")], rules: [{ when: { on: "start" }, do: [] }] }).length).toBeGreaterThan(0);
-    expect(issues({ things: [thing("a")], rules: [{ when: { on: "start" }, do: [{ act: "explode" }] }] }).length).toBeGreaterThan(0);
+    expect(issues({ things: [thing("a")], rules: [{ when: { on: "start" }, do: [{ act: "teleport" }] }] }).length).toBeGreaterThan(0);
     expect(issues({ things: [thing("a")], extra: 1 }).length).toBeGreaterThan(0);
     // Words in three languages, a coupon to win.
     expect(issues({ things: [thing("a", { look: { kind: "text", text: { ar: "أهلا", en: "Hi" } } })], coupon: "WIN10", once: true, words: { title: { ar: "لعبة" }, help: { en: "Play" } } })).toEqual([]);
@@ -89,5 +89,29 @@ describe("a game on the page", () => {
     expect(issues({ ...base, things: [thing("hero", { path: { points: [] } })] }).length).toBeGreaterThan(0);
     expect(issues({ ...base, things: [thing("hero", { sight: -1 })] }).length).toBeGreaterThan(0);
     expect(issues({ ...base, rules: [{ when: { on: "see", a: "#nobody", b: "#player" }, do: [{ act: "next" }] }] }).join()).toMatch(/No thing or tag “#nobody”/);
+  });
+
+  test("G2: rigid things (shapes, materials), the sling, rest and home, explosions", () => {
+    const base = {
+      gravity: 2000,
+      things: [
+        thing("ball", { body: "rigid", shape: "circle", control: "sling", speed: 1500, density: 3, friction: 0.6, drag: 0.4, bounce: 0.3, fast: true, tags: ["ball"] }),
+        thing("ramp", { body: "rigid", shape: "poly", points: [[-0.5, 0.5], [0.5, 0.5], [0.5, -0.5]], spinLock: true }),
+        thing("bomb", { tags: ["bomb"] }),
+      ],
+      rules: [
+        { when: { on: "rest", who: "#ball" }, do: [{ act: "home", who: "self" }] },
+        { when: { on: "shot", who: "ball" }, do: [{ act: "score", add: 1 }] },
+        { when: { on: "tap", who: "#bomb" }, do: [{ act: "explode", who: "self", radius: 300, power: 1200 }, { act: "explode" }] },
+      ],
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, things: [thing("ramp", { body: "rigid", shape: "poly", points: [[0, 0], [0.5, 0.5]] })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("ramp", { body: "rigid", shape: "poly" })] }).join()).toMatch(/three points/);
+    expect(issues({ ...base, things: [thing("ramp", { body: "rigid", shape: "poly", points: [[0, 0], [0.9, 0], [0, 0.5]] })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("a", { body: "rigid", density: 0 })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("a", { body: "jelly" })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, rules: [{ when: { on: "rest", who: "#ghost" }, do: [{ act: "home" }] }] }).join()).toMatch(/No thing or tag “#ghost”/);
+    expect(issues({ ...base, rules: [{ when: { on: "start" }, do: [{ act: "explode", radius: 5 }] }] }).length).toBeGreaterThan(0);
   });
 });

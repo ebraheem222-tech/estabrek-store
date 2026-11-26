@@ -19,10 +19,14 @@
  *    seen, gives up), one that flees, a homing one that turns toward the player, and one that goes round its path
  *    (a moving platform carries what stands on it); the shortest way through a map (A*) for those that fly over it,
  *    a jump at a wall and a stop at a ledge for those on foot; a four-way player kept to the corridors' middles.
+ *  - G2: rigid things moved by Rapier (gamePhysics.ts) when the game is given it (newGame's second argument; without
+ *    it they fall back to the arcade's dynamic bodies); the sling (pulled back from the thing, the shot's way shown,
+ *    let go); a shot thing coming to rest; back home; an explosion's push. Rigid things meet by Rapier's touches.
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
 import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
 import { findPath, mazeOf, onTrack, rayBox, rayCells, trackOf, type Track } from "./gameWorld";
+import { aimPath, isRigid, needsPhysics, physAdd, physExplode, physFree, physHome, physSpeed, physStep, physWorld, type Phys, type Rapier } from "./gamePhysics";
 
 export const STEP = 1 / 60;
 
@@ -59,6 +63,10 @@ export type Body = {
   ox: number; oy: number;
   /** What it stands on (a moving platform carries it). */
   ride: number;
+  /** Shot from the sling (when), still in the air or rolling, and how long it has been slow. */
+  shotAt: number;
+  flying: boolean;
+  slow: number;
 };
 export type GameInput = {
   left: boolean; right: boolean; up: boolean; down: boolean;
@@ -113,6 +121,11 @@ export type GameState = {
   goTo: number;
   /** Who sees whom now (a rule's "sees" once, as it begins). */
   seeing: Set<string>;
+  /** Rapier, when the game was given it, and the level's world of rigid things. */
+  rapier: Rapier | null;
+  phys: Phys | null;
+  /** A sling pulled back: from which thing, the shot it would be, and its way. */
+  aim: { n: number; vx: number; vy: number; pull: number; pts: Array<[number, number]> } | null;
 };
 
 /** Mulberry32: small, quick, and the same everywhere. */
@@ -127,9 +140,10 @@ function make(s: GameState, thing: GameThing, x: number, y: number, vx: number, 
   if (s.bodies.filter((b) => !b.dead).length >= GAME_LIMITS.alive) return null;
   const b: Body = {
     n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false,
-    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0,
+    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0, shotAt: -9, flying: false, slow: 0,
   };
   s.bodies.push(b);
+  if (s.phys) physAdd(s.phys, b);
   return b;
 }
 
@@ -156,6 +170,9 @@ function setLevel(s: GameState, i: number) {
   s.contacts = new Set();
   s.seeing = new Set();
   s.dragging = null;
+  s.aim = null;
+  physFree(s.phys);
+  s.phys = null;
   s.tiles = spec.tiles ? levelMap(spec, i).map((r) => r.split("")) : null;
   s.tilesV++;
   for (const thing of spec.things) if (!thing.template) make(s, thing, thing.x, thing.y, thing.vx, thing.vy);
@@ -177,15 +194,21 @@ function setLevel(s: GameState, i: number) {
       if (b) { b.x = x; b.y = y; b.ox = x; b.oy = y; b.lx = x; b.ly = y; }
     }));
   }
+  if (s.rapier && needsPhysics(spec)) s.phys = physWorld(s.rapier, s);
   camera(s, 1);
 }
 
-/** A new game, waiting to start: its first level. */
-export function newGame(spec: GameSpec): GameState {
+/**
+ * A new game, waiting to start: its first level. Given Rapier (loaded, its init() done), its rigid things are
+ * Rapier's; without it they are the arcade's dynamic bodies.
+ */
+export function newGame(spec: GameSpec, rapier: Rapier | null = null): GameState {
+  if (!rapier && needsPhysics(spec)) spec = { ...spec, things: spec.things.map((t) => (t.body === "rigid" ? { ...t, body: "dynamic" } : t)) };
   const s: GameState = {
     spec, phase: "ready", t: 0, score: 0, lives: spec.lives, bodies: [], effects: [], shake: 0, speed: 1, next: 1,
     seed: spec.seed, every: spec.rules.map(() => 0), fired: new Set(), contacts: new Set(), dragging: null, steps: 0,
     cx: 0, cy: 0, tiles: null, tilesV: 0, level: 0, levelT: 0, trans: 0, goTo: -1, seeing: new Set(),
+    rapier: rapier && needsPhysics(spec) ? rapier : null, phys: null, aim: null,
   };
   setLevel(s, 0);
   return s;
@@ -193,10 +216,27 @@ export function newGame(spec: GameSpec): GameState {
 
 export function startGame(s: GameState) {
   if (s.phase === "playing") return;
-  if (s.phase !== "ready") Object.assign(s, newGame(s.spec));
+  if (s.phase !== "ready") { physFree(s.phys); Object.assign(s, newGame(s.spec, s.rapier)); }
   s.phase = "playing";
   run(s, (w) => w.on === "start", {});
   run(s, (w) => w.on === "level" && (w.at === 0 || w.at === 1), {});
+}
+
+/** The game put away: its world of rigid things freed (the page left, the editor closed). */
+export function endGame(s: GameState) {
+  physFree(s.phys);
+  s.phys = null;
+}
+
+/** A thing let go from the sling. */
+function shoot(s: GameState, b: Body, vx: number, vy: number) {
+  physSpeed(s.phys, b, vx, vy);
+  b.flying = true;
+  b.shotAt = s.t;
+  b.slow = 0;
+  b.grounded = false;
+  s.effects.push({ kind: "sound", sound: "whoosh" });
+  run(s, (w) => w.on === "shot" && isWho(w.who, { id: b.of, tags: b.thing.tags }), { self: b });
 }
 
 /** How much of the view the cover between two levels hides (0–1), and whether it's closing (on the old level). */
@@ -403,11 +443,21 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
     case "lives": s.lives = Math.max(0, s.lives + a.add); return;
     case "win": s.phase = "won"; s.effects.push({ kind: "sound", sound: "success" }); return;
     case "lose": s.phase = "lost"; return;
-    case "speed": { const b = a.who === "self" ? ctx.self : ctx.other; if (b) { b.vx = a.vx; b.vy = a.vy; } return; }
+    case "speed": { const b = a.who === "self" ? ctx.self : ctx.other; if (b) physSpeed(s.phys, b, a.vx, a.vy); return; }
     case "faster": s.speed = Math.min(4, s.speed * a.by); return;
     case "shake": s.shake = 0.3; s.effects.push({ kind: "shake" }); return;
     case "sound": s.effects.push({ kind: "sound", sound: a.kind }); return;
     case "burst": { const b = a.who === "other" ? ctx.other ?? ctx.self : ctx.self ?? ctx.other; if (b) s.effects.push({ kind: "burst", x: b.x, y: b.y, color: b.thing.look.color }); return; }
+    case "home": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) { physHome(s.phys, b); b.flying = false; } return; }
+    case "explode": {
+      const b = a.who === "other" ? ctx.other ?? ctx.self : ctx.self ?? ctx.other;
+      if (!b) return;
+      physExplode(s.phys, s, b.x, b.y, a.radius, a.power, b);
+      s.effects.push({ kind: "burst", x: b.x, y: b.y, color: b.thing.look.color }, { kind: "sound", sound: "hit" });
+      s.shake = 0.3;
+      s.effects.push({ kind: "shake" });
+      return;
+    }
     case "next": case "retry": {
       // Made when the cover has closed (at the next step), never in the middle of one.
       if (s.goTo >= 0) return;
@@ -421,6 +471,12 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
 }
 
 type Box = Pick<Body, "x" | "y" | "w" | "h">;
+/** A body's box; a turned rigid one's is the box round it. */
+function boxOf(b: Body): Box {
+  if (!b.rot || !isRigid(b) || b.thing.shape === "circle") return b;
+  const c = Math.abs(Math.cos(b.rot)), n = Math.abs(Math.sin(b.rot));
+  return { x: b.x, y: b.y, w: b.w * c + b.h * n, h: b.w * n + b.h * c };
+}
 const overlap = (a: Box, b: Box, pad = 0) => Math.abs(a.x - b.x) * 2 < a.w + b.w + pad && Math.abs(a.y - b.y) * 2 < a.h + b.h + pad;
 const at = (b: Body, x: number, y: number) => Math.abs(b.x - x) * 2 <= b.w && Math.abs(b.y - y) * 2 <= b.h;
 const moves = (b: Body) => b.thing.body !== "static";
@@ -497,6 +553,21 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       case "pointer":
         if (input.pointer) { b.vx = 0; b.vy = 0; b.x += (input.pointer.x - b.x) * Math.min(1, dt * 18); b.y += (input.pointer.y - b.y) * Math.min(1, dt * 18); }
         break;
+      case "sling": {
+        // Pulled back from the thing (near it, while it's still): the shot goes the other way, harder the further.
+        const PULL = 170, p = input.pointer, aiming = s.aim?.n === b.n;
+        const still = Math.hypot(b.vx, b.vy) < 12;
+        if (input.pointerDown && p && (aiming || (!s.aim && still && Math.abs(p.x - b.x) < b.w / 2 + 60 && Math.abs(p.y - b.y) < b.h / 2 + 60))) {
+          const dx = b.x - p.x, dy = b.y - p.y, len = Math.hypot(dx, dy) || 1, k = (Math.min(len, PULL) / PULL) * t.speed;
+          const vx = (dx / len) * k, vy = (dy / len) * k;
+          s.aim = { n: b.n, vx, vy, pull: Math.min(len, PULL), pts: aimPath(spec, t, b.x, b.y, vx, vy) };
+        } else if (aiming && !input.pointerDown) {
+          const a = s.aim!;
+          s.aim = null;
+          if (Math.hypot(a.vx, a.vy) > t.speed * 0.1) shoot(s, b, a.vx, a.vy);
+        }
+        break;
+      }
       case "drag":
         if (input.pointerDown && input.pointer) {
           if (s.dragging === null && at(b, input.pointer.x, input.pointer.y)) s.dragging = b.n;
@@ -570,7 +641,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   /* ---- moving, solids and edges */
   const solids = s.bodies.filter((b) => !b.dead && b.thing.solid);
   for (const b of s.bodies) {
-    if (b.dead || !moves(b)) continue;
+    if (b.dead || !moves(b) || isRigid(b)) continue;
     if (b.thing.body === "dynamic") b.vy += spec.gravity * b.thing.gravity * dt;
     const dynamicOnTiles = b.thing.body === "dynamic" && s.tiles;
     // Carried by the moving thing it stands on.
@@ -606,20 +677,31 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       }
     }
   }
+  // The rigid things: Rapier's step, with what the game moved put in place first.
+  if (s.phys) physStep(s.phys, s, dt);
   const closed = { top: spec.edges === "walls" || spec.edges === "sides", sides: spec.edges === "walls" || spec.edges === "sides", bottom: spec.edges === "walls" || spec.edges === "floor" };
   for (const b of s.bodies) {
     if (b.dead || !moves(b)) continue;
-    const keep = b.thing.keepIn;
+    // A rigid thing's edges are Rapier's walls.
+    const keep = b.thing.keepIn && !isRigid(b);
     const bounce = b.thing.bounce;
-    if ((closed.sides || keep) && b.x - b.w / 2 < 0) { b.x = b.w / 2; b.vx = bounce ? Math.abs(b.vx) * bounce : 0; b.dir = 1; }
-    if ((closed.sides || keep) && b.x + b.w / 2 > W) { b.x = W - b.w / 2; b.vx = bounce ? -Math.abs(b.vx) * bounce : 0; b.dir = -1; }
-    if ((closed.top || keep) && b.y - b.h / 2 < 0) { b.y = b.h / 2; b.vy = bounce ? Math.abs(b.vy) * bounce : 0; }
-    if ((closed.bottom || keep) && b.y + b.h / 2 > H) { b.y = H - b.h / 2; b.vy = bounce ? -Math.abs(b.vy) * bounce : 0; b.grounded = true; }
+    const cl = isRigid(b) ? { top: false, sides: false, bottom: false } : closed;
+    if ((cl.sides || keep) && b.x - b.w / 2 < 0) { b.x = b.w / 2; b.vx = bounce ? Math.abs(b.vx) * bounce : 0; b.dir = 1; }
+    if ((cl.sides || keep) && b.x + b.w / 2 > W) { b.x = W - b.w / 2; b.vx = bounce ? -Math.abs(b.vx) * bounce : 0; b.dir = -1; }
+    if ((cl.top || keep) && b.y - b.h / 2 < 0) { b.y = b.h / 2; b.vy = bounce ? Math.abs(b.vy) * bounce : 0; }
+    if ((cl.bottom || keep) && b.y + b.h / 2 > H) { b.y = H - b.h / 2; b.vy = bounce ? -Math.abs(b.vy) * bounce : 0; b.grounded = true; }
     // Out of the world: past a margin on its way out (a thing spawned at an edge, half out, is still coming in).
     const m = Math.max(b.w, b.h);
-    if (b.x < -m || b.x > W + m || b.y < -m * 1.5 || b.y > H + m * 0.6) {
+    const outside = () => b.x < -m || b.x > W + m || b.y < -m * 1.5 || b.y > H + m * 0.6;
+    if (outside()) {
       run(s, (w) => w.on === "out" && isWho(w.who, { id: b.of, tags: b.thing.tags }), { self: b });
-      b.dead = true;
+      // A rule may have put it back (home): then it stays.
+      if (outside()) b.dead = true;
+    }
+    // A shot thing that has come to rest.
+    if (b.flying && !b.dead) {
+      b.slow = Math.hypot(b.vx, b.vy) < 10 ? b.slow + dt : 0;
+      if (b.slow >= 0.4 && s.t - b.shotAt > 0.3) { b.flying = false; run(s, (w) => w.on === "rest" && isWho(w.who, { id: b.of, tags: b.thing.tags }), { self: b }); }
     }
     if (b.thing.life && s.t - b.born >= b.thing.life) b.dead = true;
     b.air = b.grounded ? 0 : b.air + dt;
@@ -634,7 +716,9 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   if (hits.length) {
     for (let i = 0; i < alive.length; i++) for (let j = i + 1; j < alive.length; j++) {
       const a = alive[i], b = alive[j];
-      if (!overlap(a, b, 1)) continue;
+      // Two in Rapier's world meet when it says they touch; the rest by their boxes (a turned rigid one's whole box).
+      const both = s.phys?.bodies.has(a.n) && s.phys.bodies.has(b.n);
+      if (both ? !s.phys!.touching.has(`${Math.min(a.n, b.n)}:${Math.max(a.n, b.n)}`) : !overlap(boxOf(a), boxOf(b), 1)) continue;
       const key = `${a.n}:${b.n}`;
       now.add(key);
       if (s.contacts.has(key)) continue;
@@ -664,7 +748,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
         let tile = cells.get(cell);
         if (!tile) {
           const thing = { id: `tile-${s.tiles[r][c]}`, look: k.look, tags: k.tags } as unknown as GameThing;
-          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0 };
+          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0, shotAt: -9, flying: false, slow: 0 };
           cells.set(cell, tile);
         }
         for (const rule of hits) {

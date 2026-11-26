@@ -88,6 +88,11 @@ export default defineConfig({
               return "vendor-zod";
             }
 
+            // Rapier (3.4 MB, its WebAssembly inside): its own chunk, loaded only when a game with rigid things is tried.
+            if (normalizedId.includes("/@dimforge/")) {
+              return "vendor-rapier";
+            }
+
             return "vendor";
           }
 

@@ -24,6 +24,8 @@ export const WHEN_NAMES = {
   time: "لما الوقت يوصل|When the time reaches|כשהזמן מגיע",
   see: "لما شي يشوف شي|When one thing sees another|כשדבר רואה דבר",
   level: "لما تبلّش مرحلة|When a level begins|כששלב מתחיל",
+  shot: "لما ينضرب شي بالمقلاع|When a thing is slung|כשדבר נורה בקלע",
+  rest: "لما يوقف بعد ما انضرب|When a slung thing comes to rest|כשדבר שנורה נעצר",
 } as const;
 export const ACT_NAMES = {
   spawn: "اعمل نسخة من|Make a copy of|צרו עותק של",
@@ -39,14 +41,31 @@ export const ACT_NAMES = {
   burst: "انفجار صغير|A little burst|פיצוץ קטן",
   next: "عالمرحلة الجاية|On to the next level|לשלב הבא",
   retry: "المرحلة من أولها|This level again|השלב מההתחלה",
+  home: "رجّعه لمكانه|Back where it started|חזרה למקום ההתחלה",
+  explode: "انفجار بيدفع اللي حواليه|An explosion that pushes all round|פיצוץ שדוחף מסביב",
 } as const;
 export const SPOT_NAMES = {
   top: "من فوق|From the top|מלמעלה", bottom: "من تحت|From the bottom|מלמטה", left: "من الشمال|From the left|משמאל", right: "من اليمين|From the right|מימין",
   random: "بأي مكان|Anywhere|בכל מקום", floorRight: "عالأرض من اليمين|On the floor, from the right|על הרצפה, מימין", floorLeft: "عالأرض من الشمال|On the floor, from the left|על הרצפה, משמאל",
   self: "مكان الأول|Where the first one is|איפה שהראשון", other: "مكان التاني|Where the second one is|איפה שהשני", center: "بالنص|In the middle|באמצע",
 } as const;
-export const BODY_NAMES = { none: "بلا جسم|No body|בלי גוף", static: "ثابت|Fixed|קבוע", dynamic: "بيوقع ويندفع|Falls and is pushed|נופל ונדחף", kinematic: "بيمشي بسرعته|Moves by its speed|זז במהירותו" } as const;
-export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר" } as const;
+export const BODY_NAMES = { none: "بلا جسم|No body|בלי גוף", static: "ثابت|Fixed|קבוע", dynamic: "بيوقع ويندفع|Falls and is pushed|נופל ונדחף", kinematic: "بيمشي بسرعته|Moves by its speed|זז במהירותו", rigid: "جسم حقيقي: بيوقع وبيدور وبينكوّم|Rigid: falls, tumbles and stacks|קשיח: נופל, מתגלגל ונערם" } as const;
+/** A rigid thing's shapes: its box, a circle, and convex shapes made of points in the box (-0.5…0.5). */
+export const SHAPE_PICKS: Array<[string, string, Array<[number, number]> | null]> = [
+  ["box", "مربّع|Box|ריבוע", null],
+  ["circle", "دائرة|Circle|עיגול", null],
+  ["triangle", "مثلّث|Triangle|משולש", [[0, -0.5], [0.5, 0.5], [-0.5, 0.5]]],
+  ["ramp", "منحدر|Ramp|רמפה", [[-0.5, 0.5], [0.5, 0.5], [0.5, -0.5]]],
+  ["diamond", "معيّن|Diamond|מעוין", [[0, -0.5], [0.5, 0], [0, 0.5], [-0.5, 0]]],
+  ["hexagon", "مسدّس|Hexagon|משושה", Array.from({ length: 6 }, (_, i): [number, number] => [Math.round(Math.cos((i * Math.PI) / 3) * 500) / 1000, Math.round(Math.sin((i * Math.PI) / 3) * 500) / 1000])],
+];
+/** Which of the picks a thing's shape is. */
+export function shapePick(thing: Obj): string {
+  if (thing.shape !== "poly") return thing.shape === "circle" ? "circle" : "box";
+  const pts = JSON.stringify(thing.points);
+  return SHAPE_PICKS.find(([, , p]) => p && JSON.stringify(p) === pts)?.[0] ?? "poly";
+}
+export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו" } as const;
 export const BEHAVE_NAMES = {
   none: "ولا إشي|Nothing|כלום", patrol: "رايح جاي|Back and forth|הלוך ושוב", chase: "بيلحق اللاعب|Chases the player|רודף אחרי השחקן", wander: "بيتجوّل|Wanders|משוטט", spin: "بيدور|Spins|מסתובב",
   guard: "حارس: بيدوّر، وإذا شافك بيلحقك|A guard: goes round, chases you once it sees you|שומר: מסתובב, ורודף כשהוא רואה אתכם",
@@ -121,7 +140,7 @@ export function newWhen(on: keyof typeof WHEN_NAMES, game: Obj): Obj {
   switch (on) {
     case "every": return { on, seconds: 1 };
     case "hit": return { on, a: who, b: whoOptions(game)[1]?.[0] ?? who };
-    case "out": case "tap": return { on, who };
+    case "out": case "tap": case "shot": case "rest": return { on, who };
     case "key": return { on, key: "Space" };
     case "score": return { on, at: 10 };
     case "time": return { on, at: 10 };
@@ -141,6 +160,8 @@ export function newAct(act: keyof typeof ACT_NAMES, game: Obj): Obj {
     case "faster": return { act, by: 1.2 };
     case "sound": return { act, kind: "pop" };
     case "burst": return { act, who: "self" };
+    case "home": return { act, who: "self" };
+    case "explode": return { act, who: "self", radius: 160, power: 900 };
     default: return { act };
   }
 }
@@ -161,6 +182,8 @@ export function ruleText(rule: Obj): string {
       case "score": return say(`لما النقاط توصل ${n(w.at)}|When the score reaches ${n(w.at)}|כשהניקוד מגיע ל־${n(w.at)}`);
       case "time": return say(`لما الوقت يوصل ${n(w.at)} ث|At ${n(w.at)} s|ב־${n(w.at)} שנ׳`);
       case "see": return say(`لما ${n(w.a)} يشوف ${n(w.b)}|When ${n(w.a)} sees ${n(w.b)}|כש־${n(w.a)} רואה את ${n(w.b)}`);
+      case "shot": return say(`لما ينضرب ${n(w.who)}|When ${n(w.who)} is slung|כש־${n(w.who)} נורה`);
+      case "rest": return say(`لما يوقف ${n(w.who)}|When ${n(w.who)} comes to rest|כש־${n(w.who)} נעצר`);
       case "level": return Number(w.at) ? say(`لما تبلّش المرحلة ${n(w.at)}|When level ${n(w.at)} begins|כששלב ${n(w.at)} מתחיל`) : say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל");
       default: return say(WHEN_NAMES.start);
     }

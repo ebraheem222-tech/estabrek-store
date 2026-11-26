@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { READY_GAMES } from "../../../estabrek-storefront/src/pageTree/gameReady";
 import { GameEditor } from "./GameEditor";
@@ -12,6 +12,7 @@ vi.mock("../components/ui/Modal", () => ({ Modal: ({ open, children }: { open: b
 // G0b: the game editor: the world dragged into place, things added and taken out, rules built from menus, and the
 // game tried right there.
 afterEach(cleanup);
+const obj = (v: unknown): Obj => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : {});
 const rect = { x: 0, y: 0, left: 0, top: 0, width: 960, height: 540, right: 960, bottom: 540, toJSON: () => ({}) };
 beforeEach(() => { vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(rect as DOMRect); });
 
@@ -247,4 +248,65 @@ describe("the game editor", () => {
     expect(["playing", "lost"]).toContain(trying.getAttribute("data-phase"));
     expect(trying.textContent).toMatch(/1\/3/);
   });
+
+  test("G2: a rigid thing: its shape (a ramp drawn as one), its material, never through a wall; the sling; the rules for a slung thing", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-body"), { target: { value: "rigid" } });
+    expect(screen.getByTestId("game-ed-rigid")).toBeTruthy();
+    fireEvent.change(screen.getByTestId("game-ed-shape"), { target: { value: "ramp" } });
+    const bag = () => things().find((t) => t.id === "bag")!;
+    expect(bag()).toMatchObject({ body: "rigid", shape: "poly", points: [[-0.5, 0.5], [0.5, 0.5], [0.5, -0.5]] });
+    const look = obj(bag().look);
+    // A box look is drawn as the ramp in the world (an emoji keeps its own look).
+    fireEvent.change(screen.getByTestId("game-ed-look"), { target: { value: "box" } });
+    expect(obj(bag().look).kind).toBe("box");
+    expect(screen.getAllByTestId("game-ed-thing").find((t) => t.getAttribute("data-thing") === "bag")!.querySelector("polygon")).toBeTruthy();
+    expect(look.kind).toBe("emoji");
+    const density = screen.getByTestId("game-ed-density");
+    fireEvent.change(density, { target: { value: "4" } });
+    fireEvent.blur(density);
+    fireEvent.click(screen.getByTestId("game-ed-fast"));
+    expect(bag()).toMatchObject({ density: 4, fast: true });
+    fireEvent.change(screen.getByTestId("game-ed-shape"), { target: { value: "circle" } });
+    expect(bag().shape).toBe("circle");
+    expect(bag().points).toBeUndefined();
+    fireEvent.change(screen.getByTestId("game-ed-control"), { target: { value: "sling" } });
+    expect(bag().control).toBe("sling");
+    // When it comes to rest: back home, and an explosion there.
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "rest" } });
+    fireEvent.change(screen.getByTestId("game-ed-who"), { target: { value: "bag" } });
+    fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "home" } });
+    fireEvent.change(screen.getByTestId("game-ed-act-add"), { target: { value: "explode" } });
+    const power = screen.getByTestId("game-ed-blast-power");
+    fireEvent.change(power, { target: { value: "1500" } });
+    fireEvent.blur(power);
+    expect((last().rules as Obj[]).at(-1)).toMatchObject({ when: { on: "rest", who: "bag" }, do: [{ act: "home", who: "self" }, { act: "explode", who: "self", radius: 160, power: 1500 }] });
+  });
+
+  test("G2: mini golf tried here: Rapier loaded, the ball slung from the canvas, a stroke counted", async () => {
+    let now = 0;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    mount("golf");
+    vi.mocked(Element.prototype.getBoundingClientRect).mockReturnValue({ ...rect, width: 945, height: 540, right: 945, bottom: 540 } as DOMRect);
+    fireEvent.click(screen.getByTestId("game-ed-try"));
+    const play = screen.getByTestId("game-ed-play");
+    await waitFor(() => expect(play.hasAttribute("disabled")).toBe(false), { timeout: 15_000 });
+    fireEvent.click(play);
+    const run = async (n: number) => { await act(async () => { for (let i = 0; i < n; i++) { now += 1000 / 60; frames.shift()?.(now); } }); };
+    await run(5);
+    // The ball's mark: cell (4, 3) of 45-pixel tiles.
+    const canvas = screen.getByTestId("game-ed-trying").querySelector("canvas")!;
+    fireEvent.pointerDown(canvas, { clientX: 202, clientY: 157, pointerId: 9 });
+    await run(2);
+    fireEvent.pointerMove(canvas, { clientX: 140, clientY: 190, pointerId: 9 });
+    await run(2);
+    fireEvent.pointerUp(canvas, { pointerId: 9 });
+    await run(3);
+    expect(screen.getByTestId("game-ed-trying").getAttribute("data-score")).toBe("1");
+  }, 30_000);
 });
