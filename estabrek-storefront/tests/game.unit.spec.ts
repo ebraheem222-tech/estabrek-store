@@ -158,7 +158,8 @@ test("every ready game: named in three languages, its rules name its own things,
     for (const x of [r.name, r.line]) expect(x.ar && x.en && x.he, r.key).toBeTruthy();
     const g = gameOf(r.game, say);
     expect(g, r.key).not.toBeNull();
-    const names = new Set(g!.things.flatMap((t) => [t.id, ...t.tags.map((x) => `#${x}`)]));
+    // Things' names and tags, and the tile map's tags.
+    const names = new Set([...g!.things.flatMap((t) => [t.id, ...t.tags.map((x) => `#${x}`)]), ...Object.values(g!.tiles?.kinds ?? {}).flatMap((k) => k.tags.map((x) => `#${x}`))]);
     for (const rule of g!.rules) {
       for (const who of [(rule.when as { a?: string }).a, (rule.when as { b?: string }).b, (rule.when as { who?: string }).who]) if (who) expect(names.has(who), `${r.key}: ${who}`).toBe(true);
       for (const a of rule.do) if (a.act === "spawn") expect(g!.things.some((t) => t.id === a.what && t.template), `${r.key}: ${a.what}`).toBe(true);

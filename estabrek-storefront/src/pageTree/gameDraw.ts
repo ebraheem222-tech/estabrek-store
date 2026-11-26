@@ -49,3 +49,11 @@ export function lookCanvas(look: GameLook, w: number, h: number, fill: string, f
   } else box();
   return c;
 }
+
+/** The frame of a sprite sheet to show: its state's run of frames ([first, how many]) at the sheet's speed. */
+export function sheetFrame(look: GameLook, anim: "idle" | "run" | "jump" | "fall", t: number): { col: number; row: number; cols: number; rows: number } {
+  const sh = look.sheet ?? { cols: 1, rows: 1, fps: 10, anims: { idle: [0, 1] as [number, number] } };
+  const [from, count] = sh.anims[anim] ?? sh.anims[anim === "fall" ? "jump" : "idle"] ?? sh.anims.idle ?? [0, 1];
+  const i = from + (Math.floor(t * sh.fps) % Math.max(1, count));
+  return { col: i % sh.cols, row: Math.floor(i / sh.cols), cols: sh.cols, rows: sh.rows };
+}

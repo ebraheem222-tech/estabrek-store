@@ -94,4 +94,71 @@ describe("the game editor", () => {
     // The clock ran (30 seconds less the two played).
     expect(screen.getByTestId("game-ed-trying").textContent).toMatch(/: (28|29)/);
   });
+
+  test("G1: a tile map turned on, a stroke painted in the world as one change, a kind added and its ways set", () => {
+    const { onChange, last } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "tiles")!);
+    fireEvent.click(screen.getByTestId("game-ed-tiles-on"));
+    const tiles = () => last().tiles as { map: string[]; kinds: Record<string, Obj>; cols: number };
+    expect(tiles().cols).toBe(60);
+    // The world is three views wide now (scrolled across): the stage's rect is the whole world.
+    vi.mocked(Element.prototype.getBoundingClientRect).mockReturnValue({ ...rect, width: 2880, height: 576, right: 2880, bottom: 576 } as DOMRect);
+    onChange.mockClear();
+    const world = screen.getByTestId("game-ed-world");
+    fireEvent.pointerDown(world, { clientX: 10, clientY: 10, pointerId: 3 });
+    fireEvent.pointerMove(world, { clientX: 60, clientY: 10, pointerId: 3 });
+    fireEvent.pointerMove(world, { clientX: 110, clientY: 10, pointerId: 3 });
+    fireEvent.pointerUp(world, { pointerId: 3 });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(tiles().map[0].slice(0, 4)).toBe("###.");
+    // A new kind: a one-way platform; the rubber takes cells away.
+    fireEvent.click(screen.getByTestId("game-ed-kind-add"));
+    expect(Object.keys(tiles().kinds)).toEqual(["#", "="]);
+    fireEvent.click(screen.getByTestId("game-ed-kind-oneway"));
+    expect(tiles().kinds["="]).toMatchObject({ oneWay: true });
+    expect(tiles().kinds["="].solid).toBeUndefined();
+    fireEvent.click(screen.getAllByTestId("game-ed-brush").find((b) => b.getAttribute("data-char") === ".")!);
+    fireEvent.pointerDown(world, { clientX: 60, clientY: 10, pointerId: 4 });
+    fireEvent.pointerUp(world, { pointerId: 4 });
+    expect(tiles().map[0].slice(0, 4)).toBe("#.#.");
+  });
+
+  test("G1: the camera and the layers behind; a thing drawn from a sprite sheet", () => {
+    const { last } = mount("adventure");
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "camera")!);
+    fireEvent.change(screen.getByTestId("game-ed-follow"), { target: { value: "fox" } });
+    expect((last().camera as Obj).follow).toBe("fox");
+    const before = (last().layers as Obj[]).length;
+    fireEvent.click(screen.getByTestId("game-ed-layer-add"));
+    expect((last().layers as Obj[]).length).toBe(before + 1);
+    // The fox drawn from a sheet (its picture chosen): the sheet's settings show.
+    const game = structuredClone(last());
+    (game.things as Obj[]).find((t) => t.id === "fox")!.look = { kind: "sprite", src: "https://cdn.example.com/fox.png", sheet: { cols: 4, rows: 1, fps: 10, anims: { idle: [0, 1], run: [0, 4] } } };
+    cleanup();
+    const onChange = vi.fn();
+    render(<Harness start={game} onChange={onChange} />);
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "fox")!);
+    expect(screen.getByTestId("game-ed-sheet")).toBeTruthy();
+    const cols = screen.getByTestId("game-ed-sheet-cols");
+    fireEvent.change(cols, { target: { value: "6" } });
+    fireEvent.blur(cols);
+    const fox = (onChange.mock.calls.at(-1)![1].things as Obj[]).find((t) => t.id === "fox")!;
+    expect((fox.look as Obj).sheet).toMatchObject({ cols: 6, anims: { run: [0, 4] } });
+  });
+
+  test("G1: the adventure tried here: the camera follows the fox across its wide world", async () => {
+    let now = 0;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    mount("adventure");
+    fireEvent.click(screen.getByTestId("game-ed-try"));
+    fireEvent.click(screen.getByTestId("game-ed-play"));
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => { for (let i = 0; i < 180; i++) { now += 1000 / 60; frames.shift()?.(now); } });
+    // Held right for three seconds the fox runs into the first pit (and loses): the camera went with it.
+    expect(["playing", "lost"]).toContain(screen.getByTestId("game-ed-trying").getAttribute("data-phase"));
+    expect(Number(screen.getByTestId("game-ed-trying").getAttribute("data-cam"))).toBeGreaterThan(100);
+  });
 });

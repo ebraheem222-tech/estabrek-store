@@ -8,9 +8,14 @@
  *    tapped, a key is pressed, the score or the clock reaches a number → spawn, destroy, score, lives, win, lose,
  *    speed, faster, shake, sound, burst.
  *  - Its own random numbers from the spec's seed: the same presses give the same game (a replay, a fair prize).
+ *  - G1: a tile map (solid tiles, one-way platforms, tiles rules meet by their tags and can remove, tiles that put a
+ *    thing in their place at the start), moved through one axis at a time so a body never snags on a seam; a world
+ *    bigger than the view with a camera that follows; a platformer's feel (a little time to jump after leaving an
+ *    edge, a press kept a moment before landing, a shorter jump when the key is let go); each body's state for its
+ *    frames (idle, run, jump, fall) and the way it faces; a patrol turns back at a ledge.
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
-import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing } from "./gameSpec";
+import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
 
 export const STEP = 1 / 60;
 
@@ -29,9 +34,17 @@ export type Body = {
   dir: number;
   turnAt: number;
   dead: boolean;
+  /** Its frames' state, the way it faces, seconds off the ground, when a jump was last pressed, a jump already cut. */
+  anim: "idle" | "run" | "jump" | "fall";
+  face: 1 | -1;
+  air: number;
+  jumpAt: number;
+  cut: boolean;
 };
 export type GameInput = {
   left: boolean; right: boolean; up: boolean; down: boolean;
+  /** The jump key held (a platformer's jump is shorter when it's let go early). */
+  jumpHeld?: boolean;
   /** Keys pressed since the last step (a rule's "key", a platformer's jump). */
   pressed: string[];
   /** The pointer in the world's units, and whether it is down. */
@@ -67,6 +80,11 @@ export type GameState = {
   contacts: Set<string>;
   dragging: number | null;
   steps: number;
+  /** The camera: the view's top-left in the world. */
+  cx: number; cy: number;
+  /** The tile map as it is now (a tile removed by a rule is "."), and a count that changes when it does. */
+  tiles: string[][] | null;
+  tilesV: number;
 };
 
 /** Mulberry32: small, quick, and the same everywhere. */
@@ -79,7 +97,7 @@ function random(s: GameState): number {
 
 function make(s: GameState, thing: GameThing, x: number, y: number, vx: number, vy: number): Body | null {
   if (s.bodies.filter((b) => !b.dead).length >= GAME_LIMITS.alive) return null;
-  const b: Body = { n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false };
+  const b: Body = { n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false };
   s.bodies.push(b);
   return b;
 }
@@ -89,8 +107,20 @@ export function newGame(spec: GameSpec): GameState {
   const s: GameState = {
     spec, phase: "ready", t: 0, score: 0, lives: spec.lives, bodies: [], effects: [], shake: 0, speed: 1, next: 1,
     seed: spec.seed, every: spec.rules.map(() => 0), fired: new Set(), contacts: new Set(), dragging: null, steps: 0,
+    cx: 0, cy: 0, tiles: spec.tiles ? spec.tiles.map.map((r) => r.split("")) : null, tilesV: 0,
   };
   for (const thing of spec.things) if (!thing.template) make(s, thing, thing.x, thing.y, thing.vx, thing.vy);
+  // The map's tiles that are things (a coin, an enemy, a flag): each made at its cell.
+  if (spec.tiles && s.tiles) {
+    const { size, kinds } = spec.tiles;
+    s.tiles.forEach((row, r) => row.forEach((ch, c) => {
+      const thing = kinds[ch]?.thing ? spec.things.find((t) => t.id === kinds[ch].thing) : null;
+      if (!thing) return;
+      make(s, thing, c * size + size / 2, r * size + size - thing.h / 2, thing.vx, thing.vy);
+      row[c] = ".";
+    }));
+  }
+  camera(s, 1);
   return s;
 }
 
@@ -107,20 +137,70 @@ function run(s: GameState, match: (w: GameRule["when"]) => boolean, ctx: Ctx) {
   s.spec.rules.forEach((r) => { if (match(r.when)) for (const a of r.do) act(s, a, ctx); });
 }
 
+/** Where a spawned thing starts: at an edge of the view (the camera's), anywhere in it, on the world's floor, at a thing. */
 function spot(s: GameState, at: string, w: number, h: number, ctx: Ctx): [number, number] {
-  const W = s.spec.w, H = s.spec.h;
+  const W = s.spec.w, H = s.spec.h, X = s.cx, Y = s.cy;
   const along = (len: number, size: number) => size / 2 + random(s) * Math.max(0, len - size);
   switch (at) {
-    case "top": return [along(W, w), -h / 2];
-    case "bottom": return [along(W, w), H + h / 2];
-    case "left": return [-w / 2, along(H, h)];
-    case "right": return [W + w / 2, along(H, h)];
-    case "random": return [along(W, w), along(H, h)];
-    case "floorRight": return [W + w / 2, H - h / 2];
-    case "floorLeft": return [-w / 2, H - h / 2];
-    case "self": return ctx.self ? [ctx.self.x, ctx.self.y] : [W / 2, H / 2];
-    case "other": return ctx.other ? [ctx.other.x, ctx.other.y] : [W / 2, H / 2];
-    default: return [W / 2, H / 2];
+    case "top": return [X + along(W, w), Y - h / 2];
+    case "bottom": return [X + along(W, w), Y + H + h / 2];
+    case "left": return [X - w / 2, Y + along(H, h)];
+    case "right": return [X + W + w / 2, Y + along(H, h)];
+    case "random": return [X + along(W, w), Y + along(H, h)];
+    case "floorRight": return [X + W + w / 2, s.spec.wh - h / 2];
+    case "floorLeft": return [X - w / 2, s.spec.wh - h / 2];
+    case "self": return ctx.self ? [ctx.self.x, ctx.self.y] : [X + W / 2, Y + H / 2];
+    case "other": return ctx.other ? [ctx.other.x, ctx.other.y] : [X + W / 2, Y + H / 2];
+    default: return [X + W / 2, Y + H / 2];
+  }
+}
+
+/** The camera moves toward what it follows (the player when the world is bigger and it names nothing), kept inside the world. */
+function camera(s: GameState, ease: number) {
+  const { spec } = s;
+  if (spec.ww <= spec.w && spec.wh <= spec.h) { s.cx = 0; s.cy = 0; return; }
+  const follow = spec.camera.follow;
+  const target = follow ? s.bodies.find((b) => !b.dead && isWho(follow, { id: b.of, tags: b.thing.tags })) : s.bodies.find((b) => !b.dead && b.thing.control !== "none");
+  if (!target) return;
+  const clamp = (v: number, hi: number) => Math.max(0, Math.min(hi, v));
+  const tx = clamp(target.x - spec.w / 2, spec.ww - spec.w), ty = clamp(target.y - spec.h / 2, spec.wh - spec.h);
+  s.cx += (tx - s.cx) * ease;
+  s.cy += (ty - s.cy) * ease;
+}
+
+/* ---- the tile map */
+const kindAt = (s: GameState, c: number, r: number): GameTileKind | null => {
+  const t = s.spec.tiles;
+  if (!t || !s.tiles || c < 0 || r < 0 || c >= t.cols || r >= t.rows) return null;
+  return t.kinds[s.tiles[r][c]] ?? null;
+};
+/** A body pushed out of the solid tiles it moved into along one axis (`prevBottom`: where its feet were, for one-way tiles). */
+function tileBlock(s: GameState, b: Body, axis: "x" | "y", prevBottom: number) {
+  const t = s.spec.tiles!;
+  const z = t.size;
+  const c0 = Math.floor((b.x - b.w / 2) / z), c1 = Math.floor((b.x + b.w / 2 - 0.001) / z);
+  const r0 = Math.floor((b.y - b.h / 2) / z), r1 = Math.floor((b.y + b.h / 2 - 0.001) / z);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const k = kindAt(s, c, r);
+    if (!k || !(k.solid || k.oneWay)) continue;
+    if (axis === "x") {
+      if (!k.solid) continue;
+      const right = b.vx > 0;
+      if (right) b.x = c * z - b.w / 2; else if (b.vx < 0) b.x = (c + 1) * z + b.w / 2; else continue;
+      b.vx = b.thing.bounce ? -b.vx * b.thing.bounce : 0;
+      // A patrol turns back from the wall it walked into.
+      b.dir = right ? -1 : 1;
+      return;
+    }
+    if (b.vy > 0) {
+      // A one-way platform stops only what comes down onto it from above.
+      if (!k.solid && prevBottom > r * z + 0.5) continue;
+      b.y = r * z - b.h / 2;
+      b.vy = b.thing.bounce ? -b.vy * b.thing.bounce : 0;
+      b.grounded = true;
+      return;
+    }
+    if (b.vy < 0 && k.solid) { b.y = (r + 1) * z + b.h / 2; b.vy = 0; return; }
   }
 }
 
@@ -151,7 +231,8 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
   }
 }
 
-const overlap = (a: Body, b: Body, pad = 0) => Math.abs(a.x - b.x) * 2 < a.w + b.w + pad && Math.abs(a.y - b.y) * 2 < a.h + b.h + pad;
+type Box = Pick<Body, "x" | "y" | "w" | "h">;
+const overlap = (a: Box, b: Box, pad = 0) => Math.abs(a.x - b.x) * 2 < a.w + b.w + pad && Math.abs(a.y - b.y) * 2 < a.h + b.h + pad;
 const at = (b: Body, x: number, y: number) => Math.abs(b.x - x) * 2 <= b.w && Math.abs(b.y - y) * 2 <= b.h;
 const moves = (b: Body) => b.thing.body !== "static";
 const player = (s: GameState) => s.bodies.find((b) => !b.dead && b.thing.control !== "none");
@@ -160,7 +241,7 @@ const player = (s: GameState) => s.bodies.find((b) => !b.dead && b.thing.control
 export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   if (s.phase !== "playing") return;
   const { spec } = s;
-  const W = spec.w, H = spec.h;
+  const W = spec.ww, H = spec.wh;
   s.t += dt;
   s.steps++;
   s.shake = Math.max(0, s.shake - dt);
@@ -175,7 +256,8 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   for (const key of input.pressed) run(s, (w) => w.on === "key" && w.key === key, {});
 
   /* ---- controls and behaviours */
-  const jumpPressed = input.up || input.pressed.some((k) => k === "Space" || k === "ArrowUp") || input.taps.length > 0;
+  const jumpPressed = input.pressed.some((k) => k === "Space" || k === "ArrowUp") || input.taps.length > 0;
+  const jumpHeld = input.up || input.jumpHeld === true || input.pointerDown;
   for (const b of s.bodies) {
     if (b.dead) continue;
     const t = b.thing;
@@ -193,8 +275,17 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       }
       case "platform": {
         const want = ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * t.speed;
-        b.vx += (want - b.vx) * Math.min(1, dt * 14);
-        if (jumpPressed && b.grounded) { b.vy = -t.jump; b.grounded = false; s.effects.push({ kind: "sound", sound: "whoosh" }); }
+        // Quicker to start than to stop on the ground; slower to turn in the air.
+        b.vx += (want - b.vx) * Math.min(1, dt * (b.grounded ? (want ? 14 : 18) : 7));
+        if (jumpPressed) b.jumpAt = s.t;
+        // A press a moment before landing still jumps, and so does one a moment after leaving an edge.
+        if (s.t - b.jumpAt <= 0.12 && (b.grounded || b.air <= 0.1)) {
+          b.vy = -t.jump; b.grounded = false; b.air = 1; b.jumpAt = -9; b.cut = false;
+          s.effects.push({ kind: "sound", sound: "whoosh" });
+        } else if (b.vy < 0 && !jumpHeld && !b.cut && b.air < 1.5 && b.air > 0) {
+          // Let go early: a shorter jump.
+          b.vy *= 0.5; b.cut = true;
+        }
         break;
       }
       case "pointer":
@@ -223,9 +314,20 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   for (const b of s.bodies) {
     if (b.dead || !moves(b)) continue;
     if (b.thing.body === "dynamic") b.vy += spec.gravity * b.thing.gravity * dt;
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
+    const dynamicOnTiles = b.thing.body === "dynamic" && s.tiles;
+    const prevBottom = b.y + b.h / 2;
     b.grounded = false;
+    b.x += b.vx * dt;
+    if (dynamicOnTiles) tileBlock(s, b, "x", prevBottom);
+    b.y += b.vy * dt;
+    if (dynamicOnTiles) tileBlock(s, b, "y", prevBottom);
+    // A patrol on the ground turns back at a ledge (no tile under the foot in front).
+    if (dynamicOnTiles && b.grounded && b.thing.behave === "patrol") {
+      const z = spec.tiles!.size;
+      const foot = Math.floor((b.x + b.dir * (b.w / 2 + 1)) / z), below = Math.floor((b.y + b.h / 2 + 2) / z);
+      const k = kindAt(s, foot, below);
+      if (!k || !(k.solid || k.oneWay)) b.dir = b.dir === 1 ? -1 : 1;
+    }
     // Only a dynamic body is pushed by solids (a kinematic one, a paddle or a falling coin, just moves by its speed).
     if (b.thing.body !== "dynamic") continue;
     for (const o of solids) {
@@ -261,6 +363,9 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       b.dead = true;
     }
     if (b.thing.life && s.t - b.born >= b.thing.life) b.dead = true;
+    b.air = b.grounded ? 0 : b.air + dt;
+    if (b.vx > 4) b.face = 1; else if (b.vx < -4) b.face = -1;
+    b.anim = b.grounded || b.thing.body !== "dynamic" ? (Math.abs(b.vx) > 20 ? "run" : "idle") : b.vy < 0 ? "jump" : "fall";
   }
 
   /* ---- meetings: each pair once, as it begins to touch */
@@ -282,6 +387,37 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       }
     }
   }
+  if (hits.length && s.tiles && spec.tiles) {
+    const z = spec.tiles.size;
+    const cells = new Map<number, Body>();
+    for (const a of alive) {
+      if (a.dead) continue;
+      const c0 = Math.floor((a.x - a.w / 2 - 1) / z), c1 = Math.floor((a.x + a.w / 2 + 1) / z);
+      const r0 = Math.floor((a.y - a.h / 2 - 1) / z), r1 = Math.floor((a.y + a.h / 2 + 1) / z);
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const k = kindAt(s, c, r);
+        if (!k || !k.tags.length) continue;
+        const cell = r * spec.tiles.cols + c;
+        const key = `${a.n}:t${cell}`;
+        now.add(key);
+        if (s.contacts.has(key)) continue;
+        // The tile, as a body for the rules (removing it clears its cell).
+        let tile = cells.get(cell);
+        if (!tile) {
+          const thing = { id: `tile-${s.tiles[r][c]}`, look: k.look, tags: k.tags } as unknown as GameThing;
+          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false };
+          cells.set(cell, tile);
+        }
+        for (const rule of hits) {
+          const w = rule.when as { a: string; b: string };
+          const one = { id: a.of, tags: a.thing.tags }, two = { id: tile.of, tags: k.tags };
+          const pair = isWho(w.a, one) && isWho(w.b, two) ? [a, tile] : isWho(w.a, two) && isWho(w.b, one) ? [tile, a] : null;
+          if (pair && !pair[0].dead && !pair[1].dead) for (const x of rule.do) act(s, x, { self: pair[0], other: pair[1] });
+        }
+      }
+    }
+    for (const [cell, tile] of cells) if (tile.dead) { s.tiles[Math.floor(cell / spec.tiles.cols)][cell % spec.tiles.cols] = "."; s.tilesV++; }
+  }
   s.contacts = now;
 
   /* ---- taps: the topmost thing under each */
@@ -295,6 +431,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
     if (r.when.on === "score" && !s.fired.has(i) && s.score >= r.when.at) { s.fired.add(i); for (const a of r.do) act(s, a, {}); }
   });
   s.bodies = s.bodies.filter((b) => !b.dead);
+  camera(s, 1 - Math.pow(1 - spec.camera.lerp, dt * 60));
   if (s.phase !== "playing") return;
   if (spec.winScore && s.score >= spec.winScore) { s.phase = "won"; s.effects.push({ kind: "sound", sound: "success" }); return; }
   if (spec.lives && s.lives <= 0) { s.phase = "lost"; return; }

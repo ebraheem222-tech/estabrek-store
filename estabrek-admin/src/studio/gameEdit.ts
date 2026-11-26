@@ -73,10 +73,13 @@ export function withNewThing(game: Obj, look: Obj, base: string): { game: Obj; i
   return { game: { ...game, things: [...thingsOf(game), thing] }, id };
 }
 
-/** The game without a thing, and without every rule that named it (or a tag only it had) and every copy of it made. */
+/** The game without a thing, and without every rule that named it (or a tag only it had), every copy of it made, and
+ *  every kind of tile that put it on the map. */
 export function withoutThing(game: Obj, id: string): Obj {
+  const tileKinds = Object.entries(obj(obj(game.tiles).kinds)).filter(([, k]) => obj(k).thing === id).map(([c]) => c);
+  if (tileKinds.length) game = tileKinds.reduce((g, c) => withoutTileKind(g, c), game);
   const things = thingsOf(game).filter((t) => t.id !== id);
-  const tags = new Set(things.flatMap((t) => list(t.tags).map(String)));
+  const tags = new Set([...things.flatMap((t) => list(t.tags).map(String)), ...Object.values(obj(obj(game.tiles).kinds)).flatMap((k) => list(obj(k).tags).map(String))]);
   const known = (who: unknown) => typeof who !== "string" || (who.startsWith("#") ? tags.has(who.slice(1)) : things.some((t) => t.id === who));
   const rules = rulesOf(game).flatMap((r) => {
     const w = obj(r.when);
@@ -94,7 +97,9 @@ export function whoOptions(game: Obj): Array<[string, string]> {
     const lk = obj(t.look);
     return `${lk.kind === "emoji" ? `${String(lk.emoji ?? "")} ` : ""}${String(t.id)}`;
   };
-  const tags = [...new Set(things.flatMap((t) => list(t.tags).map(String)))];
+  // Things' tags and the tile map's (a rule meets a tile by its tag).
+  const tileTags = Object.values(obj(obj(game.tiles).kinds)).flatMap((k) => list(obj(k).tags).map(String));
+  const tags = [...new Set([...things.flatMap((t) => list(t.tags).map(String)), ...tileTags])];
   return [...things.map((t): [string, string] => [String(t.id), label(t)]), ...tags.map((t): [string, string] => [`#${t}`, `#${t} (${say("كل اللي معهم هالعلامة|every thing with this tag|כל מה שיש לו התגית")})`])];
 }
 export const templatesOf = (game: Obj) => thingsOf(game).filter((t) => t.template === true);
@@ -157,4 +162,46 @@ export function ruleText(rule: Obj): string {
     }
   });
   return `${when} ${say("←|→|←")} ${acts.join(say("، |, |, "))}`;
+}
+
+/* ---------------------------------------------------------------- G1: the tile map, the world's size */
+
+/** The letters a kind of tile can be, in the order new kinds take them. */
+export const TILE_CHARS = "#=^*+%&$ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+export const nextTileChar = (game: Obj) => [...TILE_CHARS].find((c) => !(c in obj(obj(game.tiles).kinds))) ?? null;
+/** The world's size: its tile map's, else its own, else the view's. */
+export function worldSize(game: Obj): [number, number] {
+  const w = Number(game.w) || 960, h = Number(game.h) || 540;
+  const t = obj(game.tiles);
+  if (Object.keys(t).length) return [Math.max(w, (Number(t.cols) || 1) * (Number(t.size) || 48)), Math.max(h, (Number(t.rows) || 1) * (Number(t.size) || 48))];
+  return [Math.max(w, Number(game.ww) || w), Math.max(h, Number(game.wh) || h)];
+}
+/** A tile map for the game: three views wide, a floor along its bottom, and the camera on the player. */
+export function withTiles(game: Obj): Obj {
+  const w = Number(game.w) || 960, h = Number(game.h) || 540, size = 48;
+  const cols = Math.ceil(w / size) * 3, rows = Math.ceil(h / size);
+  const map = Array.from({ length: rows }, (_, r) => (r === rows - 1 ? "#" : ".").repeat(cols));
+  const player = thingsOf(game).find((t) => (Array.isArray(t.tags) ? t.tags : []).includes("player"));
+  return { ...game, tiles: { size, cols, rows, map, kinds: { "#": { look: { kind: "box", color: "text" }, solid: true } } }, camera: { follow: player ? "#player" : "", lerp: 0.14 } };
+}
+/** The map at a new size: rows and columns kept from the top-left, cut or filled with empty cells. */
+export function resizedMap(map: string[], cols: number, rows: number): string[] {
+  return Array.from({ length: rows }, (_, r) => (map[r] ?? "").slice(0, cols).padEnd(cols, "."));
+}
+/** Cells painted with a kind ("." rubs them out). */
+export function paintCells(map: string[], cells: Array<[number, number]>, ch: string): string[] {
+  const rows = map.map((r) => r.split(""));
+  for (const [c, r] of cells) if (rows[r] && c >= 0 && c < rows[r].length) rows[r][c] = ch;
+  return rows.map((r) => r.join(""));
+}
+/** The game without a kind of tile: its cells emptied, and the rules that named a tag only it had. */
+export function withoutTileKind(game: Obj, ch: string): Obj {
+  const t = obj(game.tiles);
+  const kinds = { ...obj(t.kinds) };
+  delete kinds[ch];
+  const map = (Array.isArray(t.map) ? (t.map as string[]) : []).map((r) => r.split(ch).join("."));
+  const next = { ...game, tiles: { ...t, kinds, map } };
+  const tags = new Set([...thingsOf(next).flatMap((x) => list(x.tags).map(String)), ...Object.values(kinds).flatMap((k) => list(obj(k).tags).map(String))]);
+  const known = (who: unknown) => typeof who !== "string" || !who.startsWith("#") || tags.has(who.slice(1));
+  return { ...next, rules: rulesOf(next).filter((r) => [obj(r.when).a, obj(r.when).b, obj(r.when).who].every(known)) };
 }
