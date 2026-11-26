@@ -326,6 +326,35 @@ const GOLF: Raw = {
   words: words(w("ميني غولف", "Mini golf", "מיני גולף"), w("اسحب الطابة لورا وفلّتها لتوصل للحفرة. النقاط هي عدد الضربات: كل ما كانت أقل، كان أحسن.", "Pull the ball back and let go to reach the hole. The score is your strokes: the fewer, the better.", "משכו את הכדור אחורה ושחררו כדי להגיע לגומה. הניקוד הוא מספר המכות: כמה שפחות, יותר טוב.")),
 };
 
+/** Pinball (G2b): two flippers on pins, lifted while their arrow is held; bumpers that kick the ball off; a bar that
+ *  turns by itself in the middle; guides down to the flippers; three balls. */
+const PINBALL: Raw = {
+  w: 540, h: 960, bg: "surface", edges: "sides", gravity: 1100, lives: 3, seed: 171,
+  layers: [{ kind: "gradient", color: "surface", color2: "accent-soft", factor: 0, y: 0, h: 1 }],
+  things: [
+    { id: "ball", look: { kind: "circle", color: "text" }, x: 270, y: 120, w: 26, h: 26, body: "rigid", shape: "circle", density: 1.2, bounce: 0.35, friction: 0.2, fast: true, tags: ["ball"] },
+    { id: "flipper-l", look: { kind: "box", color: "accent" }, x: 205, y: 840, w: 120, h: 22, body: "rigid", density: 4, gravity: 0, tags: ["flipper"] },
+    { id: "flipper-r", look: { kind: "box", color: "accent" }, x: 335, y: 840, w: 120, h: 22, body: "rigid", density: 4, gravity: 0, tags: ["flipper"] },
+    { id: "bumper-1", look: emoji("🔴"), x: 170, y: 330, w: 64, h: 64, body: "static", solid: true, shape: "circle", bounce: 1, tags: ["bumper"] },
+    { id: "bumper-2", look: emoji("🔴"), x: 370, y: 330, w: 64, h: 64, body: "static", solid: true, shape: "circle", bounce: 1, tags: ["bumper"] },
+    { id: "bumper-3", look: emoji("🔴"), x: 270, y: 470, w: 64, h: 64, body: "static", solid: true, shape: "circle", bounce: 1, tags: ["bumper"] },
+    { id: "guide-l", look: { kind: "box", color: "text" }, x: 75, y: 720, w: 150, h: 160, body: "static", solid: true, shape: "poly", points: [[-0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] },
+    { id: "guide-r", look: { kind: "box", color: "text" }, x: 465, y: 720, w: 150, h: 160, body: "static", solid: true, shape: "poly", points: [[0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] },
+    { id: "spinner", look: { kind: "box", color: "accent" }, x: 270, y: 620, w: 110, h: 14, body: "rigid", density: 1, gravity: 0, tags: ["spinner"] },
+  ],
+  joints: [
+    { kind: "pin", a: "flipper-l", b: "", ax: -60, ay: 0, limits: [-30, 30], motor: { speed: -900, key: "ArrowLeft", power: 200 } },
+    { kind: "pin", a: "flipper-r", b: "", ax: 60, ay: 0, limits: [-30, 30], motor: { speed: 900, key: "ArrowRight", power: 200 } },
+    { kind: "pin", a: "spinner", b: "", motor: { speed: 200, key: "", power: 40 } },
+  ],
+  rules: [
+    { when: { on: "hit", a: "#ball", b: "#bumper" }, do: [{ act: "explode", who: "other", radius: 80, power: 600 }, { act: "score", add: 10 }, { act: "sound", kind: "pop" }] },
+    { when: { on: "hit", a: "#ball", b: "#spinner" }, do: [{ act: "score", add: 1 }, { act: "sound", kind: "click" }] },
+    { when: { on: "out", who: "#ball" }, do: [{ act: "lives", add: -1 }, { act: "home", who: "self" }, { act: "sound", kind: "hit" }] },
+  ],
+  words: words(w("كرة الدبابيس", "Pinball", "פינבול"), w("السهم الشمال والسهم اليمين (أو الأزرار تحت) بيرفعوا المضارب. خلّي الطابة فوق: كل صدّام بيعطيك 10، وعندك تلات طابات.", "The left and right arrows (or the buttons below) lift the flippers. Keep the ball up: each bumper gives 10, and you have three balls.", "החצים שמאלה וימינה (או הכפתורים למטה) מרימים את המחבטים. השאירו את הכדור למעלה: כל פגוש נותן 10, ויש לכם שלושה כדורים.")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
@@ -336,6 +365,7 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "maze", name: w("متاهة", "Maze", "מבוך"), line: w("متاهة جديدة بكل مرحلة، وعناكب بتشوف", "A new maze each level, and spiders that see", "מבוך חדש בכל שלב, ועכבישים שרואים"), icon: "🐝", game: MAZE },
   { key: "cans", name: w("علب", "Cans", "פחיות"), line: w("طابة بالمقلاع على برج علب", "A slung ball at a tower of cans", "כדור מקלע אל מגדל פחיות"), icon: "🥫", game: CANS },
   { key: "golf", name: w("ميني غولف", "Mini golf", "מיני גולף"), line: w("تلات حفر وضربات قليلة", "Three holes, as few strokes as you can", "שלוש גומות, כמה שפחות מכות"), icon: "⛳", game: GOLF },
+  { key: "pinball", name: w("دبابيس", "Pinball", "פינבול"), line: w("مضارب وصدّامات وطابة ما بتوقع", "Flippers, bumpers and a ball to keep up", "מחבטים, פגושים וכדור שלא ייפול"), icon: "🔴", game: PINBALL },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

@@ -172,6 +172,35 @@ test("G2: rigid things: Rapier loads before Start, the ball is pulled back and l
   expect(errors).toEqual([]);
 });
 
+test("G2b: the pinball on a shop page: the flippers on their arrows, a bumper kicks the ball and scores, and the phone has their buttons", async ({ page, browser }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "pinball")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  const start = s.locator("[data-pt-game-start]");
+  await expect(start).toBeEnabled({ timeout: 20_000 });
+  await start.click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  await page.keyboard.down("ArrowLeft");
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(400);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "pinball-flippers-up.png") });
+  await page.keyboard.up("ArrowLeft");
+  await page.keyboard.up("ArrowRight");
+  await expect.poll(async () => Number(await s.getAttribute("data-pt-game-score")), { timeout: 8_000 }).toBeGreaterThanOrEqual(10);
+  expect(errors).toEqual([]);
+  // A phone: the left and right buttons for the flippers.
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: "no-preference" });
+  const p = await phone.newPage();
+  await p.goto(PATH);
+  const ps = stage(p);
+  await expect(ps.locator("[data-pt-game-start]")).toBeEnabled({ timeout: 20_000 });
+  await ps.locator("[data-pt-game-start]").tap();
+  await expect(p.locator(".pt-gs-pad button")).toHaveCount(2);
+  await phone.close();
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);

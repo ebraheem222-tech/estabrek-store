@@ -925,6 +925,7 @@ const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("level"), at: gint(0, 8) }).strict(),
   z.object({ on: z.literal("shot"), who: GAME_WHO }).strict(),
   z.object({ on: z.literal("rest"), who: GAME_WHO }).strict(),
+  z.object({ on: z.literal("break"), who: GAME_WHO }).strict(),
 ]);
 const GAME_SELF = z.enum(["self", "other"]);
 const GameAct = z.discriminatedUnion("act", [
@@ -943,7 +944,22 @@ const GameAct = z.discriminatedUnion("act", [
   z.object({ act: z.literal("retry") }).strict(),
   z.object({ act: z.literal("home"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("explode"), who: GAME_SELF.optional(), radius: gnum(40, 1000).optional(), power: gnum(100, 5000).optional() }).strict(),
+  z.object({ act: z.literal("cut"), who: GAME_SELF.optional() }).strict(),
 ]);
+const GAME_KEY = z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+/** A joint (G2b): a and b (another thing in the world, or "" for the world), anchors, length, a spring's stiffness,
+ *  limits (a pin's degrees, a slider's pixels), a slider's axis, a motor (always or on a key), the force that breaks it. */
+const GameJoint = z.object({
+  kind: z.enum(["pin", "weld", "spring", "rope", "slider"]),
+  a: GAME_ID, b: GAME_ID.or(z.literal("")).optional(),
+  ax: gnum(-2000, 2000).optional(), ay: gnum(-2000, 2000).optional(), bx: gnum(-8000, 8000).optional(), by: gnum(-8000, 8000).optional(),
+  length: gnum(0, 4000).optional(), stiffness: gnum(0.1, 1000).optional(), damping: gnum(0, 100).optional(),
+  limits: z.tuple([gnum(-4000, 4000), gnum(-4000, 4000)]).optional(),
+  axis: gnum(-360, 360).optional(),
+  motor: z.object({ speed: gnum(-3600, 3600), key: GAME_KEY.or(z.literal("")).optional(), power: gnum(1, 1000).optional() }).strict().optional(),
+  breakAt: gnum(0, 100000).optional(),
+  collide: z.boolean().optional(),
+}).strict();
 /** A game: its world, its things (some templates for rules to make), its rules, lives, clock, the score that wins, its words and prize. */
 const GameSpecSchema = z.object({
   w: gint(320, 1920).optional(), h: gint(240, 1920).optional(),
@@ -956,6 +972,7 @@ const GameSpecSchema = z.object({
   gravity: gnum(0, 4000).optional(),
   edges: z.enum(["walls", "sides", "floor", "open"]).optional(),
   things: z.array(GameThing).max(40),
+  joints: z.array(GameJoint).max(40).optional(),
   rules: z.array(z.object({ when: GameWhen, do: z.array(GameAct).min(1).max(8) }).strict()).max(40).optional(),
   lives: gint(0, 9).optional(),
   time: gint(0, 600).optional(),
@@ -988,6 +1005,14 @@ const GameSpecSchema = z.object({
   }
   if (!g.things.some((t) => !t.template) && !g.tiles?.map.some((r) => /[^.]/.test(r))) ctx.addIssue({ code: "custom", message: "Nothing is in the world at the start", path: ["things"] });
   const known = (who: string) => (who.startsWith("#") ? tags.has(who.slice(1)) : ids.has(who));
+  // A joint holds things in the world (not templates), two different ones; a motor turns a pin or pushes a slider.
+  const inWorld = new Set(g.things.filter((t) => !t.template).map((t) => t.id));
+  (g.joints ?? []).forEach((j, i) => {
+    for (const id of [j.a, j.b]) if (id && !inWorld.has(id)) ctx.addIssue({ code: "custom", message: `“${id}” isn't a thing in the world (a joint can't hold a template)`, path: ["joints", i] });
+    if (j.a === j.b) ctx.addIssue({ code: "custom", message: "A joint joins two different things", path: ["joints", i] });
+    if (j.motor && j.kind !== "pin" && j.kind !== "slider") ctx.addIssue({ code: "custom", message: "Only a pin or a slider has a motor", path: ["joints", i, "motor"] });
+    if (j.limits && j.kind === "pin" && j.limits.some((v) => Math.abs(v) > 360)) ctx.addIssue({ code: "custom", message: "A pin's limits are degrees, -360…360", path: ["joints", i, "limits"] });
+  });
   (g.rules ?? []).forEach((r, i) => {
     const w = r.when as { a?: string; b?: string; who?: string };
     if (r.when.on === "level" && r.when.at > 1 + (g.tiles?.levels?.length ?? 0)) ctx.addIssue({ code: "custom", message: `There's no level ${r.when.at}`, path: ["rules", i, "when"] });

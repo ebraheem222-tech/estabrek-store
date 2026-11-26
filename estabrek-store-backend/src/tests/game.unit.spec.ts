@@ -91,6 +91,32 @@ describe("a game on the page", () => {
     expect(issues({ ...base, rules: [{ when: { on: "see", a: "#nobody", b: "#player" }, do: [{ act: "next" }] }] }).join()).toMatch(/No thing or tag “#nobody”/);
   });
 
+  test("G2b: joints between things in the world, motors on keys, breaking and cutting them", () => {
+    const base = {
+      things: [thing("flip", { body: "rigid", tags: ["flipper"] }), thing("plank", { body: "rigid" }), thing("post", { body: "static" }), thing("coin", { template: true })],
+      joints: [
+        { kind: "pin", a: "flip", b: "", ax: -60, limits: [-30, 30], motor: { speed: -900, key: "ArrowLeft", power: 200 } },
+        { kind: "weld", a: "plank", b: "post", ax: 20, breakAt: 150 },
+        { kind: "rope", a: "plank", b: "", bx: 300, by: 20, length: 120 },
+        { kind: "slider", a: "flip", b: "post", axis: 90, limits: [-40, 40], motor: { speed: 100 } },
+        { kind: "spring", a: "post", b: "plank", stiffness: 30, damping: 1 },
+      ],
+      rules: [
+        { when: { on: "break", who: "plank" }, do: [{ act: "score", add: 1 }] },
+        { when: { on: "tap", who: "#flipper" }, do: [{ act: "cut", who: "self" }, { act: "cut" }] },
+      ],
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, joints: [{ kind: "pin", a: "coin", b: "" }] }).join()).toMatch(/can't hold a template/);
+    expect(issues({ ...base, joints: [{ kind: "pin", a: "ghost" }] }).join()).toMatch(/isn't a thing in the world/);
+    expect(issues({ ...base, joints: [{ kind: "weld", a: "plank", b: "plank" }] }).join()).toMatch(/two different things/);
+    expect(issues({ ...base, joints: [{ kind: "rope", a: "plank", motor: { speed: 10 } }] }).join()).toMatch(/Only a pin or a slider/);
+    expect(issues({ ...base, joints: [{ kind: "pin", a: "plank", limits: [-400, 0] }] }).join()).toMatch(/degrees/);
+    expect(issues({ ...base, joints: [{ kind: "hinge", a: "plank" }] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, joints: [{ kind: "pin", a: "plank", motor: { speed: 10, key: "KeyQ" } }] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, joints: Array.from({ length: 41 }, () => ({ kind: "pin", a: "plank" })) }).length).toBeGreaterThan(0);
+  });
+
   test("G2: rigid things (shapes, materials), the sling, rest and home, explosions", () => {
     const base = {
       gravity: 2000,

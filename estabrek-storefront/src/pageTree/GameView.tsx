@@ -19,12 +19,13 @@
  *    canvas, its style set each frame without React); a ❗ that rises over a guard as it sees the player.
  *  - G2: a game with rigid things loads Rapier (its 2D deterministic build, only then) and is made again with it;
  *    Start waits for it. A sling's shot is shown as dots along its way while it's pulled back.
+ *  - G2b: ropes, springs and sliders drawn as lines between their two ends; a motor's key gets its touch button.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
 import { saveWonCoupon } from "../lib/wonCoupon";
 import { NO_INPUT, STEP, coverOf, endGame, levelCount, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
-import { needsPhysics, type Rapier } from "./gamePhysics";
+import { needsPhysics, physJoints, type Rapier } from "./gamePhysics";
 import type { GameSpec } from "./gameSpec";
 import { coverCss, cssColour, lookCanvas, sheetFrame } from "./gameDraw";
 import type { GameWords as PrizeWords } from "./proWords";
@@ -110,9 +111,11 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
 
   // What a touch screen needs: the controls the game's things use.
   const controls = new Set(spec.things.map((t) => t.control));
-  const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay");
-  const needsUpDown = controls.has("fourWay");
-  const needsJump = controls.has("platform");
+  // A joint's motor on a key (a flipper) needs that key's button too.
+  const motorKeys = new Set(spec.joints.flatMap((j) => (j.motor?.key ? [j.motor.key] : [])));
+  const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay") || motorKeys.has("ArrowLeft") || motorKeys.has("ArrowRight");
+  const needsUpDown = controls.has("fourWay") || motorKeys.has("ArrowUp") || motorKeys.has("ArrowDown");
+  const needsJump = controls.has("platform") || motorKeys.has("Space");
 
   useEffect(() => {
     setTouch(window.matchMedia?.("(pointer: coarse)").matches === true);
@@ -241,6 +244,12 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       // The sling's way: dots, hidden but while it's pulled back.
       const dotTx = new THREE.CanvasTexture(lookCanvas({ kind: "circle", color: "text" }, 16, 16, cssColour(probe, colours.text ?? "#111"), font, rtl, () => {}));
       dotTx.colorSpace = THREE.SRGBColorSpace;
+      // Ropes, springs and sliders: lines between their ends.
+      const strings = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: new THREE.Color(cssColour(probe, colours.text ?? "#111")) }));
+      strings.geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(40 * 6), 3));
+      strings.renderOrder = 15;
+      strings.frustumCulled = false;
+      scene.add(strings);
       const dots = Array.from({ length: 22 }, (_, i) => {
         const m = new THREE.Mesh(square, new THREE.MeshBasicMaterial({ map: dotTx, transparent: true, opacity: 0.85 - i * 0.03, depthTest: false }));
         m.visible = false;
@@ -327,6 +336,13 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         camera.position.set(0, 0, 5);
         if (s.tilesV !== tilesV) { tilesV = s.tilesV; buildTiles(s); }
         dots.forEach((m, i) => { const p = s.aim?.pts[i]; m.visible = Boolean(p); if (p) m.position.set(p[0], p[1], 0.8); });
+        if (s.phys?.joints.length) {
+          const pos = strings.geometry.getAttribute("position") as T.BufferAttribute;
+          const lines = physJoints(s.phys, s).filter((j) => j.kind === "rope" || j.kind === "spring" || j.kind === "slider").slice(0, 40);
+          lines.forEach((l, i) => { pos.setXYZ(i * 2, l.from.x, l.from.y, 0.4); pos.setXYZ(i * 2 + 1, l.to.x, l.to.y, 0.4); });
+          strings.geometry.setDrawRange(0, lines.length * 2);
+          pos.needsUpdate = true;
+        }
         placeLayers(s.cx, s.cy);
         renderer.render(scene, camera);
       };
@@ -384,6 +400,8 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         for (const t of tileTextures) t?.dispose();
         alertTx?.dispose();
         dotTx.dispose();
+        strings.geometry.dispose();
+        (strings.material as T.Material).dispose();
         for (const m of dots) (m.material as T.Material).dispose();
         endGame(game.current!);
         for (const m of tileMeshes) m.dispose();

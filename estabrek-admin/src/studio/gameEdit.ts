@@ -26,6 +26,7 @@ export const WHEN_NAMES = {
   level: "لما تبلّش مرحلة|When a level begins|כששלב מתחיל",
   shot: "لما ينضرب شي بالمقلاع|When a thing is slung|כשדבר נורה בקלע",
   rest: "لما يوقف بعد ما انضرب|When a slung thing comes to rest|כשדבר שנורה נעצר",
+  break: "لما ينكسر مفصل شي|When a thing's joint breaks|כשמפרק של דבר נשבר",
 } as const;
 export const ACT_NAMES = {
   spawn: "اعمل نسخة من|Make a copy of|צרו עותק של",
@@ -43,6 +44,15 @@ export const ACT_NAMES = {
   retry: "المرحلة من أولها|This level again|השלב מההתחלה",
   home: "رجّعه لمكانه|Back where it started|חזרה למקום ההתחלה",
   explode: "انفجار بيدفع اللي حواليه|An explosion that pushes all round|פיצוץ שדוחף מסביב",
+  cut: "فكّ مفاصله|Let go of its joints|שחררו את המפרקים שלו",
+} as const;
+/** How two things are joined (G2b). */
+export const JOINT_NAMES = {
+  pin: "مسمار: بيدور حواليه|A pin: turns about it|ציר: מסתובב סביבו",
+  weld: "لحام: بيصيروا شي واحد|A weld: one piece|ריתוך: חתיכה אחת",
+  spring: "نابض|A spring|קפיץ",
+  rope: "حبل|A rope|חבל",
+  slider: "سكّة: على خط بس|A slider: along a line|מסילה: לאורך קו",
 } as const;
 export const SPOT_NAMES = {
   top: "من فوق|From the top|מלמעלה", bottom: "من تحت|From the bottom|מלמטה", left: "من الشمال|From the left|משמאל", right: "من اليمين|From the right|מימין",
@@ -109,6 +119,8 @@ export function withoutThing(game: Obj, id: string): Obj {
   const tileKinds = Object.entries(obj(obj(game.tiles).kinds)).filter(([, k]) => obj(k).thing === id).map(([c]) => c);
   if (tileKinds.length) game = tileKinds.reduce((g, c) => withoutTileKind(g, c), game);
   const things = thingsOf(game).filter((t) => t.id !== id);
+  // Its joints go with it.
+  if (Array.isArray(game.joints)) game = { ...game, joints: jointsOf(game).filter((j) => j.a !== id && j.b !== id) };
   const tags = new Set([...things.flatMap((t) => list(t.tags).map(String)), ...Object.values(obj(obj(game.tiles).kinds)).flatMap((k) => list(obj(k).tags).map(String))]);
   const known = (who: unknown) => typeof who !== "string" || (who.startsWith("#") ? tags.has(who.slice(1)) : things.some((t) => t.id === who));
   const rules = rulesOf(game).flatMap((r) => {
@@ -140,7 +152,7 @@ export function newWhen(on: keyof typeof WHEN_NAMES, game: Obj): Obj {
   switch (on) {
     case "every": return { on, seconds: 1 };
     case "hit": return { on, a: who, b: whoOptions(game)[1]?.[0] ?? who };
-    case "out": case "tap": case "shot": case "rest": return { on, who };
+    case "out": case "tap": case "shot": case "rest": case "break": return { on, who };
     case "key": return { on, key: "Space" };
     case "score": return { on, at: 10 };
     case "time": return { on, at: 10 };
@@ -160,7 +172,7 @@ export function newAct(act: keyof typeof ACT_NAMES, game: Obj): Obj {
     case "faster": return { act, by: 1.2 };
     case "sound": return { act, kind: "pop" };
     case "burst": return { act, who: "self" };
-    case "home": return { act, who: "self" };
+    case "home": case "cut": return { act, who: "self" };
     case "explode": return { act, who: "self", radius: 160, power: 900 };
     default: return { act };
   }
@@ -184,6 +196,7 @@ export function ruleText(rule: Obj): string {
       case "see": return say(`لما ${n(w.a)} يشوف ${n(w.b)}|When ${n(w.a)} sees ${n(w.b)}|כש־${n(w.a)} רואה את ${n(w.b)}`);
       case "shot": return say(`لما ينضرب ${n(w.who)}|When ${n(w.who)} is slung|כש־${n(w.who)} נורה`);
       case "rest": return say(`لما يوقف ${n(w.who)}|When ${n(w.who)} comes to rest|כש־${n(w.who)} נעצר`);
+      case "break": return say(`لما ينكسر مفصل ${n(w.who)}|When ${n(w.who)}'s joint breaks|כשמפרק של ${n(w.who)} נשבר`);
       case "level": return Number(w.at) ? say(`لما تبلّش المرحلة ${n(w.at)}|When level ${n(w.at)} begins|כששלב ${n(w.at)} מתחיל`) : say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל");
       default: return say(WHEN_NAMES.start);
     }
@@ -242,6 +255,18 @@ export function withoutTileKind(game: Obj, ch: string): Obj {
   const tags = new Set([...thingsOf(next).flatMap((x) => list(x.tags).map(String)), ...Object.values(kinds).flatMap((k) => list(obj(k).tags).map(String))]);
   const known = (who: unknown) => typeof who !== "string" || !who.startsWith("#") || tags.has(who.slice(1));
   return { ...next, rules: rulesOf(next).filter((r) => [obj(r.when).a, obj(r.when).b, obj(r.when).who].every(known)) };
+}
+
+/* ---------------------------------------------------------------- G2b: joints */
+
+export const jointsOf = (game: Obj) => list(game.joints);
+/** The things a joint can hold: those in the world (a template is made many times; a joint holds one thing). */
+export const jointable = (game: Obj) => thingsOf(game).filter((t) => t.template !== true);
+/** A new joint: the first thing in the world pinned to the world where it is (null: no thing, or as many as may be). */
+export function withNewJoint(game: Obj): Obj | null {
+  const a = jointable(game)[0];
+  if (!a || jointsOf(game).length >= GAME_LIMITS.joints) return null;
+  return { ...game, joints: [...jointsOf(game), { kind: "pin", a: String(a.id), b: "" }] };
 }
 
 /* ---------------------------------------------------------------- G1b: levels, a thing's path */

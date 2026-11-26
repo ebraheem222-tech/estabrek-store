@@ -10,6 +10,8 @@
  * the new brains and rules (sees, a level begins, next level, this level again); trying it shows the level and cover.
  * G2: a rigid thing (its shape, among boxes, circles and convex ones, and its material), the sling, the rules for a
  * slung thing (shot, at rest; back home, an explosion); trying a game with rigid things loads Rapier here too.
+ * G2b: the joints tab (a pin, a weld, a spring, a rope or a slider between two things or a thing and the world: its
+ * anchors, length, limits, a motor always or on a key, the force that breaks it), drawn in the world as lines.
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -19,7 +21,7 @@ import type { Lang } from "../lib/lang";
 import { gameOf, type GameLook } from "../../../estabrek-storefront/src/pageTree/gameSpec";
 import { NO_INPUT, STEP, coverOf, endGame, levelCount, levelMap, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
 import { drawCover, lookCanvas, sheetFrame } from "../../../estabrek-storefront/src/pageTree/gameDraw";
-import { needsPhysics, type Rapier } from "../../../estabrek-storefront/src/pageTree/gamePhysics";
+import { needsPhysics, physJoints, type Rapier } from "../../../estabrek-storefront/src/pageTree/gamePhysics";
 import type { ThumbColours } from "./templates/colours";
 import {
   ACT_NAMES, BEHAVE_NAMES, BODY_NAMES, CONTROL_NAMES, EDGE_NAMES, KEY_NAMES, LOOK_STARTS, SIZES, SOUND_NAMES, SPOT_NAMES, WHEN_NAMES,
@@ -27,6 +29,7 @@ import {
   nextTileChar, paintCells, withTiles, withoutTileKind, worldSize,
   TRANSITION_NAMES, levelMaps, pathPoints, resizedLevels, withLevelMap, withNewLevel, withPathPoint, withoutLevel,
   SHAPE_PICKS, shapePick,
+  JOINT_NAMES, jointable, jointsOf, withNewJoint,
 } from "./gameEdit";
 import { say } from "./say";
 
@@ -115,7 +118,8 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   const tiles = obj(game.tiles);
   const hasTiles = Object.keys(tiles).length > 0;
   const things = thingsOf(game);
-  const [tab, setTab] = useState<"things" | "tiles" | "camera">("things");
+  const [tab, setTab] = useState<"things" | "tiles" | "camera" | "joints">("things");
+  const [joint, setJoint] = useState(0);
   const [brush, setBrush] = useState("#");
   const [stroke, setStroke] = useState<string[] | null>(null);
   const rules = rulesOf(game);
@@ -255,12 +259,13 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
           {/* Things: add one, pick one, its settings. The tile map. The camera and the layers behind. */}
           <div className="max-h-[62vh] space-y-2 overflow-y-auto pe-1">
             <div className="flex gap-1 rounded-lg bg-white/4 p-0.5" role="tablist">
-              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")]] as const).map(([k, l]) => (
+              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["joints", say("المفاصل|Joints|מפרקים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")]] as const).map(([k, l]) => (
                 <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-md px-1.5 py-1 text-[11px] ${tab === k ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid="game-ed-tab" data-tab={k}>{l}</button>
               ))}
             </div>
             {tab === "tiles" ? <TilesPanel game={game} brush={brush} setBrush={setBrush} level={lv} setLevel={setLevel} busy={busy || trying} colours={pal} lang={lang} onChange={onChange} /> : null}
             {tab === "camera" ? <CameraPanel game={game} busy={busy || trying} whos={whos} onChange={onChange} /> : null}
+            {tab === "joints" ? <JointsPanel game={game} pick={joint} setPick={setJoint} busy={busy || trying} onChange={onChange} /> : null}
             {tab === "things" ? <>
             <div className="text-[11px] font-medium text-white/60">{say("ضيف شي|Add a thing|הוסיפו פריט")}</div>
             <div className="flex flex-wrap gap-1">
@@ -297,6 +302,21 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                       </div>
                     );
                   })}
+                  {jointsOf(game).length ? (
+                    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${WW} ${WH}`} preserveAspectRatio="none" data-testid="game-ed-joint-lines">
+                      {jointsOf(game).map((j, i) => {
+                        const ends = jointEnds(game, j);
+                        if (!ends) return null;
+                        const on = tab === "joints" && i === joint;
+                        return (
+                          <g key={i} opacity={tab === "joints" ? 1 : 0.55}>
+                            <line x1={ends.from[0]} y1={ends.from[1]} x2={ends.to[0]} y2={ends.to[1]} stroke={on ? "#f59e0b" : "#a78bfa"} strokeWidth={on ? 3 : 2} vectorEffect="non-scaling-stroke" strokeDasharray={j.kind === "spring" ? "3 3" : undefined} />
+                            <circle cx={ends.from[0]} cy={ends.from[1]} r={Math.max(4, WW / 240)} fill={on ? "#f59e0b" : "#a78bfa"} />
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  ) : null}
                   {selPath ? (
                     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${WW} ${WH}`} preserveAspectRatio="none" data-testid="game-ed-path-line">
                       <polyline points={(obj(thing?.path).loop ? [...selPath, selPath[0]] : selPath).map(([x, y]) => `${x},${y}`).join(" ")} fill="none" stroke="#a78bfa" strokeWidth={3} strokeDasharray="8 6" vectorEffect="non-scaling-stroke" />
@@ -383,6 +403,80 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
   );
 }
 
+/** A joint's two ends in the world, as the editor draws it: a's anchor, and b's (or the world's point; the same point
+ *  for a pin, a weld and a slider). */
+function jointEnds(game: Obj, j: Obj): { from: [number, number]; to: [number, number] } | null {
+  const things = thingsOf(game);
+  const A = things.find((t) => t.id === j.a), B = j.b ? things.find((t) => t.id === j.b) : null;
+  if (!A) return null;
+  const from: [number, number] = [num(A.x, 0) + num(j.ax, 0), num(A.y, 0) + num(j.ay, 0)];
+  if (j.kind === "pin" || j.kind === "weld" || j.kind === "slider") return { from, to: from };
+  const to: [number, number] = B ? [num(B.x, 0) + num(j.bx, 0), num(B.y, 0) + num(j.by, 0)] : [num(j.bx, 0), num(j.by, 0)];
+  return { from, to };
+}
+
+/** The joints: one picked from the list (or a new one), its two things, anchors, length, limits, motor and strength. */
+function JointsPanel({ game, pick, setPick, busy, onChange }: { game: Obj; pick: number; setPick: (i: number) => void; busy: boolean; onChange: (label: string, next: Obj) => void }) {
+  const joints = jointsOf(game);
+  const label = say("المفاصل|The joints|המפרקים");
+  const i = Math.min(pick, Math.max(0, joints.length - 1));
+  const j = joints[i];
+  const setJ = (c: Obj) => onChange(label, { ...game, joints: joints.map((x, k) => (k === i ? { ...x, ...c } : x)) });
+  const things = jointable(game).map((t) => [String(t.id), String(t.id)] as const);
+  const pinLike = j && (j.kind === "pin" || j.kind === "slider");
+  const lengthy = j && (j.kind === "rope" || j.kind === "spring");
+  const limits = (j?.limits ?? null) as [number, number] | null;
+  const motor = obj(j?.motor);
+  return (
+    <div className="space-y-2" data-testid="game-ed-joints">
+      <p className="text-[11px] leading-4 text-white/45">{say("المفصل بيمسك الأجسام الحقيقية: ببعض، أو بنقطة بالعالم.|A joint holds rigid things: to each other, or to a point in the world.|מפרק מחזיק גופים קשיחים: זה לזה, או לנקודה בעולם.")}</p>
+      <div className="flex flex-wrap gap-1">
+        {joints.map((x, k) => (
+          <button key={k} type="button" onClick={() => setPick(k)} aria-pressed={k === i} className={`rounded-full border px-2 py-0.5 text-[11px] ${k === i ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/12 text-white/65"}`} data-testid="game-ed-joint" data-joint={k}>
+            {String(x.a)} ↔ {x.b ? String(x.b) : say("العالم|the world|העולם")}
+          </button>
+        ))}
+        <button type="button" className={btn} disabled={busy || !withNewJoint(game)} onClick={() => { const next = withNewJoint(game); if (next) { onChange(say("مفصل جديد|A new joint|מפרק חדש"), next); setPick(joints.length); } }} data-testid="game-ed-joint-add">+ {say("مفصل|Joint|מפרק")}</button>
+      </div>
+      {j ? (
+        <div className="space-y-1.5 rounded-lg bg-white/4 p-2" data-testid="game-ed-joint-settings">
+          <Row label={say("نوعه|Its kind|הסוג")}><Choose label={say("نوعه|Its kind|הסוג")} value={String(j.kind ?? "pin")} options={named(JOINT_NAMES)} onPick={(v) => setJ({ kind: v, ...(v === "pin" || v === "slider" ? {} : { motor: undefined, limits: undefined }) })} disabled={busy} testId="game-ed-joint-kind" /></Row>
+          <Row label={say("الشي|The thing|הפריט")}><Choose label={say("الشي|The thing|הפריט")} value={String(j.a ?? "")} options={things} onPick={(v) => setJ({ a: v, ...(v === j.b ? { b: "" } : {}) })} disabled={busy} testId="game-ed-joint-a" /></Row>
+          <Row label={say("بـ|To|אל")}><Choose label={say("بـ|To|אל")} value={String(j.b ?? "")} options={[["", say("نقطة بالعالم|A point in the world|נקודה בעולם")] as const, ...things.filter(([v]) => v !== j.a)]} onPick={(v) => setJ({ b: v })} disabled={busy} testId="game-ed-joint-b" /></Row>
+          <Num label={say("مكانه عالشي ↔ (من نصّه)|Where on it ↔ (from its middle)|איפה עליו ↔ (מהאמצע)")} value={num(j.ax, 0)} min={-2000} max={2000} onSave={(v) => setJ({ ax: v || undefined })} testId="game-ed-joint-ax" />
+          <Num label={say("مكانه عالشي ↕|Where on it ↕|איפה עליו ↕")} value={num(j.ay, 0)} min={-2000} max={2000} onSave={(v) => setJ({ ay: v || undefined })} testId="game-ed-joint-ay" />
+          {lengthy ? <>
+            <Num label={j.b ? say("مكانه عالتاني ↔|Where on the other ↔|איפה על השני ↔") : say("النقطة بالعالم ↔|The world's point ↔|הנקודה בעולם ↔")} value={num(j.bx, 0)} min={-8000} max={8000} onSave={(v) => setJ({ bx: v || undefined })} testId="game-ed-joint-bx" />
+            <Num label={j.b ? say("مكانه عالتاني ↕|Where on the other ↕|איפה על השני ↕") : say("النقطة بالعالم ↕|The world's point ↕|הנקודה בעולם ↕")} value={num(j.by, 0)} min={-8000} max={8000} onSave={(v) => setJ({ by: v || undefined })} testId="game-ed-joint-by" />
+            <Num label={say("طوله (0 = قدّ ما بعاد)|Its length (0 = as far as they are)|אורך (0 = המרחק ביניהם)")} value={num(j.length, 0)} min={0} max={4000} onSave={(v) => setJ({ length: v || undefined })} testId="game-ed-joint-length" />
+          </> : null}
+          {j.kind === "spring" ? <>
+            <Num label={say("قساوته|Its stiffness|הקשיחות")} value={num(j.stiffness, 20)} min={0.1} max={1000} step={1} onSave={(v) => setJ({ stiffness: v })} testId="game-ed-joint-stiffness" />
+            <Num label={say("تهدئته|Its damping|הריסון")} value={num(j.damping, 1)} min={0} max={100} step={0.1} onSave={(v) => setJ({ damping: v })} />
+          </> : null}
+          {j.kind === "slider" ? <Num label={say("اتجاه السكّة (درجات)|The line's way (degrees)|כיוון המסילה (מעלות)")} value={num(j.axis, 0)} min={-360} max={360} step={5} onSave={(v) => setJ({ axis: v || undefined })} testId="game-ed-joint-axis" /> : null}
+          {pinLike ? <>
+            <Row label={j.kind === "pin" ? say("حدود الدوران|Turning limits|גבולות סיבוב") : say("حدود السكّة|The line's limits|גבולות המסילה")}><input type="checkbox" checked={Boolean(limits)} disabled={busy} onChange={(e) => setJ({ limits: e.target.checked ? (j.kind === "pin" ? [-30, 30] : [-100, 100]) : undefined })} data-testid="game-ed-joint-limits" /></Row>
+            {limits ? <div className="flex gap-1">
+              <Num label={say("من|From|מ־")} value={limits[0]} min={j.kind === "pin" ? -360 : -4000} max={j.kind === "pin" ? 360 : 4000} onSave={(v) => setJ({ limits: [v, limits[1]] })} testId="game-ed-joint-lo" />
+              <Num label={say("لـ|To|עד")} value={limits[1]} min={j.kind === "pin" ? -360 : -4000} max={j.kind === "pin" ? 360 : 4000} onSave={(v) => setJ({ limits: [limits[0], v] })} testId="game-ed-joint-hi" />
+            </div> : null}
+            <Row label={say("محرّك|A motor|מנוע")}><input type="checkbox" checked={Boolean(j.motor)} disabled={busy} onChange={(e) => setJ({ motor: e.target.checked ? { speed: j.kind === "pin" ? 180 : 100, key: "" } : undefined })} data-testid="game-ed-joint-motor" /></Row>
+            {j.motor ? <>
+              <Num label={j.kind === "pin" ? say("سرعته (درجة بالثانية)|Its speed (degrees a second)|מהירות (מעלות בשנייה)") : say("سرعته (بكسل بالثانية)|Its speed (pixels a second)|מהירות (פיקסלים בשנייה)")} value={num(motor.speed, 180)} min={-3600} max={3600} step={10} onSave={(v) => setJ({ motor: { ...motor, speed: v || 1 } })} testId="game-ed-joint-speed" />
+              <Row label={say("بيشتغل|It runs|הוא פועל")}><Choose label={say("بيشتغل|It runs|הוא פועל")} value={String(motor.key ?? "")} options={[["", say("دايماً|Always|תמיד")] as const, ...(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"] as const).map((k) => [k, `${say("لما ينكبس|While held:|כשלוחצים:")} ${say(KEY_NAMES[k])}`] as const)]} onPick={(v) => setJ({ motor: { ...motor, key: v || undefined } })} disabled={busy} testId="game-ed-joint-key" /></Row>
+              <Num label={say("قوّته|Its power|העוצמה")} value={num(motor.power, 60)} min={1} max={1000} onSave={(v) => setJ({ motor: { ...motor, power: v } })} />
+            </> : null}
+          </> : null}
+          <Num label={say("بينكسر فوق هالقوّة (0 = أبداً)|Breaks above this force (0: never)|נשבר מעל הכוח הזה (0: אף פעם)")} value={num(j.breakAt, 0)} min={0} max={100000} step={10} onSave={(v) => setJ({ breakAt: v || undefined })} testId="game-ed-joint-break" />
+          <Row label={say("التنين بيضلّوا يتخابطوا|The two still knock together|השניים עדיין מתנגשים")}><input type="checkbox" checked={j.collide === true} disabled={busy} onChange={(e) => setJ({ collide: e.target.checked || undefined })} /></Row>
+          <button type="button" className="text-[11px] text-red-300 hover:text-red-200" disabled={busy} onClick={() => { onChange(say("محيت مفصل|A joint removed|מפרק הוסר"), { ...game, joints: joints.filter((_, k) => k !== i) }); setPick(Math.max(0, i - 1)); }} data-testid="game-ed-joint-remove">{say("امحي المفصل|Remove the joint|הסירו את המפרק")}</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** A rigid thing: its shape and its material (density, friction, drag), not turning, never through a thin wall. */
 function RigidSettings({ thing, busy, set }: { thing: Obj; busy: boolean; set: (change: Obj, label?: string) => void }) {
   const label = say("جسم حقيقي|A rigid thing|גוף קשיח");
@@ -440,7 +534,7 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
         {when.on === "every" ? <Num label={say("كل (ثانية)|Every (seconds)|כל (שניות)")} value={num(when.seconds, 1)} min={0.2} max={60} step={0.1} onSave={(v) => setWhen({ seconds: v })} testId="game-ed-every" /> : null}
         {when.on === "hit" || when.on === "see" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
         {when.on === "level" ? <Num label={say("المرحلة (0 = كل وحدة)|The level (0 = each)|השלב (0 = כל אחד)")} value={num(when.at, 0)} min={0} max={8} onSave={(v) => setWhen({ at: Math.round(v) })} testId="game-ed-level-at" /> : null}
-        {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
+        {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" || when.on === "break" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
         {when.on === "key" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} /> : null}
         {when.on === "score" || when.on === "time" ? <Num label={when.on === "score" ? say("النقاط|The score|הניקוד") : say("الثانية|The second|השנייה")} value={num(when.at, 10)} min={when.on === "score" ? -9999 : 0} max={when.on === "score" ? 99999 : 600} onSave={(v) => setWhen({ at: v })} testId="game-ed-at" /> : null}
       </div>
@@ -459,7 +553,7 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
             {a.act === "speed" ? <><Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /><Num label="↔" value={num(a.vx, 0)} min={-3000} max={3000} step={10} onSave={(v) => setAct(i, { vx: v })} /><Num label="↕" value={num(a.vy, 0)} min={-3000} max={3000} step={10} onSave={(v) => setAct(i, { vy: v })} /></> : null}
             {a.act === "faster" ? <Num label="×" value={num(a.by, 1.2)} min={0.5} max={2} step={0.05} onSave={(v) => setAct(i, { by: v })} /> : null}
             {a.act === "sound" ? <Choose label={say("الصوت|The sound|הצליל")} value={String(a.kind ?? "pop")} options={named(SOUND_NAMES)} onPick={(v) => setAct(i, { kind: v })} disabled={busy} /> : null}
-            {a.act === "home" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
+            {a.act === "home" || a.act === "cut" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
             {a.act === "explode" ? <>
               <Choose label={say("وين|Where|איפה")} value={String(a.who ?? "self")} options={[["self", say("عند الأول|At the first|אצל הראשון")], ["other", say("عند التاني|At the second|אצל השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} />
               <Num label={say("لوين بيوصل|How far it reaches|כמה רחוק מגיע")} value={num(a.radius, 160)} min={40} max={1000} step={10} onSave={(v) => setAct(i, { radius: v })} testId="game-ed-blast-radius" />
@@ -583,6 +677,10 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
           }
           ctx.restore();
         }
+        // Ropes, springs and sliders: lines between their ends.
+        ctx.strokeStyle = colours.text ?? "#111111";
+        ctx.lineWidth = 2;
+        for (const l of physJoints(s.phys, s)) if (l.kind === "rope" || l.kind === "spring" || l.kind === "slider") { ctx.beginPath(); ctx.moveTo(l.from.x, l.from.y); ctx.lineTo(l.to.x, l.to.y); ctx.stroke(); }
         // A sling pulled back: dots along the shot's way.
         if (s.aim) {
           ctx.fillStyle = colours.text ?? "#111111";
