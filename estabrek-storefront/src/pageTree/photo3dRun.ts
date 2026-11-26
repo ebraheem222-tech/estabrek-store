@@ -110,7 +110,7 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
   const img = o.img ?? host.querySelector<HTMLImageElement>("img.pt-frame-media") ?? host.querySelector<HTMLImageElement>("img");
   if (!img) return;
   const me = {};
-  let gone = false, frame = 0, frames = 0, opening = false, hovered = false, resting = 0;
+  let gone = false, frame = 0, frames = 0, opening = false, hovered = false, resting = 0, last = 0;
   // The picture and its depth, read once (a card's comes back on its next hover).
   let got: { pic: HTMLImageElement; small: HTMLCanvasElement; dw: number; dh: number; grid: DepthGrid } | null = null;
   let sized: ResizeObserver | null = null;
@@ -295,6 +295,10 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
   const tick = (now: number) => {
     frame = 0;
     if (!draw) return;
+    // Eased by time, not by frames: a slow device (or a computer drawing it without a graphics card) settles as soon.
+    const dt = last ? Math.min(250, Math.max(1, now - last)) : 16.7;
+    last = now;
+    const step = 1 - Math.pow(0.88, dt / 16.7);
     if (spec.move === "auto") {
       const t = (now - born) / 1000;
       to.yaw = Math.sin(t * 0.45) * spec.turn * 0.3;
@@ -312,13 +316,15 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
     let busy = false;
     for (const key of ["yaw", "pitch", "lx", "ly"] as const) {
       const d = to[key] - at[key];
-      at[key] += d * 0.12;
+      at[key] += d * step;
       if (Math.abs(d) > 0.0005) busy = true;
     }
     draw();
     if ((busy || spec.move === "auto") && seen) frame = requestAnimationFrame(tick);
+    // At rest: the next move starts its own clock (a pause is no long step).
+    else last = 0;
     // A card's, turned back after the pointer left: it fades and is put away (a WebGL canvas less on the page).
-    else if (o.hover && !hovered && !busy && canvas && !resting) {
+    if (!frame && o.hover && !hovered && !busy && canvas && !resting) {
       canvas.removeAttribute("data-on");
       resting = window.setTimeout(() => {
         resting = 0;
@@ -383,7 +389,10 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
   window.addEventListener("scroll", scrolled, { passive: true });
   // A phone's tilt where it needs no asking (Android); iOS asks, so its pictures follow the finger instead.
   const asks = typeof DeviceOrientationEvent !== "undefined" && typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === "function";
-  if (!asks && "ondeviceorientation" in window) window.addEventListener("deviceorientation", tilted);
+  // Only where there is no mouse: a computer that has a tilt sensor (or says it has) would fight the pointer, and its
+  // readings would leave the picture turned after the pointer has gone.
+  const touch = window.matchMedia?.("(hover: none)").matches ?? false;
+  if (!asks && touch && "ondeviceorientation" in window) window.addEventListener("deviceorientation", tilted);
   // Made when it first comes near the screen; it rests while out of sight. (A card's waits for the pointer.)
   const sight = o.hover ? null : typeof IntersectionObserver === "function"
     ? new IntersectionObserver(([e]) => {
