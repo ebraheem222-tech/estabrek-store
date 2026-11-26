@@ -18,6 +18,7 @@ import { ViewRuntimeRegistry, viewTargets } from "./viewRuntime";
 import type { VideoLive } from "./videoPlay";
 import { studioLink } from "./studioLink";
 import { pictureFxOf } from "../../../shared/pictureFx";
+import { photo3dOf } from "../../../shared/photo3d";
 
 type Stop = () => void;
 /** Whether this page's run is still on (a player loaded after it ended is never started). */
@@ -178,6 +179,15 @@ async function particles(els: HTMLElement[], stops: Stop[], live: Live) {
   }
 }
 
+/** A picture in 3D (shared/photo3d.ts): its WebGL code is a script of its own, loaded by the first page that has one. */
+async function photo3d(host: HTMLElement, stops: Stop[], live: Live) {
+  // (data-pt-3d is dataset["pt-3d"]: a hyphen before a digit stays.)
+  const spec = photo3dOf(read<unknown>(host, "pt-3d"));
+  if (!spec) return;
+  const { runPhoto3d } = await import("./photo3dRun");
+  if (live()) runPhoto3d(host, spec, stops);
+}
+
 /** A picture's live effect: its WebGL code is a script of its own, loaded by the first page that has one. */
 async function pictureFx(host: HTMLElement, stops: Stop[], live: Live) {
   const spec = pictureFxOf(read<unknown>(host, "ptGlfx"));
@@ -204,6 +214,7 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
       else if (node.matches("canvas[data-pt-lottie]")) keep(lotties([node as HTMLCanvasElement], still, playerStops, playerLive));
       else if (node.matches("canvas[data-pt-rive]")) keep(rives([node as HTMLCanvasElement], still, playerStops, playerLive));
       else if (node.matches("[data-pt-glfx]")) keep(pictureFx(node as HTMLElement, playerStops, playerLive));
+      else if (node.matches("[data-pt-3d]")) keep(photo3d(node as HTMLElement, playerStops, playerLive));
       else keep(particles([node as HTMLElement], playerStops, playerLive));
       return () => { active = false; playerStops.splice(0).forEach(stop => stop()); };
     });
@@ -214,6 +225,8 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
       ...(still ? [] : viewTargets(document, "[data-pt-particles]", ["data-pt-particles", "$color"])),
       // Its picture's address is part of what it is: a changed picture starts again with the new one.
       ...(still ? [] : viewTargets(document, "[data-pt-glfx]", ["data-pt-glfx"]).map((t) => ({ ...t, config: `${t.config}|${t.node.querySelector("img")?.getAttribute("src") ?? ""}` }))),
+      // A 3D picture: also its own picture's address (a new picture is built again).
+      ...(still ? [] : viewTargets(document, "[data-pt-3d]", ["data-pt-3d"]).map((t) => ({ ...t, config: `${t.config}|${t.node.querySelector("img")?.getAttribute("src") ?? ""}` }))),
     ]);
     reconcile();
     if (studio) window.addEventListener("studio-view-updated", reconcile);

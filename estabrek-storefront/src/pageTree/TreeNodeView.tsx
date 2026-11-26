@@ -31,6 +31,7 @@ import { color } from "./css";
 import { particlesOf } from "./particles";
 import { sceneOf } from "./scene";
 import { shaderOf } from "./shader";
+import { photo3dOf } from "../../../shared/photo3d";
 import { glHeightOf, glSceneOf, type GlSpec } from "./glScene";
 import { STAGE_WORDS, gameOf } from "./gameSpec";
 import { flashOf, trailOf } from "./pointerSpec";
@@ -327,14 +328,17 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!src) return null;
       // Sparkling stars over it (focus mode, shared/sparkle.ts), drawn here and twinkling in CSS.
       const sparkle = safeSparkle(p.sparkle);
+      // In 3D, lifted by its depth picture (shared/photo3d.ts; TreeMedia lays its WebGL canvas over it).
+      const photo3d = photo3dOf(p.photo3d);
       // A live effect on it (shared/pictureFx.ts): TreeMedia lays a WebGL canvas over the picture when it is needed.
-      const glfx = pictureFxOf(p.glfx);
+      // (Not with 3D: one canvas over a picture.)
+      const glfx = photo3d ? null : pictureFxOf(p.glfx);
       // A second picture seen through a light that follows the pointer (PointerParts.tsx FlashReveal).
       const flash = flashOf(p.flash);
       // The page's first picture loads at once and first; the rest wait until they're near the screen.
       const load = ctx.lead === node.id || p.priority === true ? ({ loading: "eager", fetchPriority: "high" } as Record<string, string>) : ({ loading: "lazy" } as Record<string, string>);
       const img = framed(node, motion) ? (
-        <span className={cls(node, "pt-frame")} {...mark} data-pt-glfx={glfx ? JSON.stringify(glfx) : undefined}>
+        <span className={cls(node, "pt-frame")} {...mark} data-pt-glfx={glfx ? JSON.stringify(glfx) : undefined} data-pt-3d={photo3d ? JSON.stringify(photo3d) : undefined}>
           {before}
           <img className="pt-frame-media" src={src} alt={say(p.alt)} {...load} decoding="async" data-pt-row-src={row.src} data-pt-row-alt={row.alt} />
           {fx}

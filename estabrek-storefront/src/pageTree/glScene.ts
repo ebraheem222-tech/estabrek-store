@@ -75,8 +75,9 @@ export type GlLayer = {
   text: string;
   font: GlFont;
   weight: number;
-  /** A picture for an `image` form. */
+  /** A picture for an `image` form, and its depth picture (white = near), made in the editor. */
   image?: string;
+  depthMap?: string;
   count: number;
   /** A particle's size in px, and how much sizes differ (0 all the same … 1 very). */
   size: number;
@@ -153,12 +154,14 @@ export function glLayerOf(raw: unknown, say: (t: unknown) => string = (t) => (ty
   const kept = isFlow(shapes[0]) ? [shapes[0]] : shapes.filter((s) => !isFlow(s)).slice(0, GL_MAX_FORMS);
   const d = GL_LAYER_DEFAULT;
   const image = typeof r.image === "string" && SAFE_SRC.test(r.image.trim()) ? r.image.trim() : undefined;
+  const depthMap = typeof r.depthMap === "string" && SAFE_SRC.test(r.depthMap.trim()) ? r.depthMap.trim() : undefined;
   const out: GlLayer = {
     shapes: kept,
     text: say(r.text).replace(/\s+/g, " ").trim().slice(0, 40),
     font: pick(r.font, GL_FONTS, d.font),
     weight: Math.round(num(r.weight, 300, 900, d.weight) / 100) * 100,
     ...(image ? { image } : {}),
+    ...(depthMap ? { depthMap } : {}),
     count: Math.round(num(r.count, 50, GL_MAX_COUNT, d.count)),
     size: num(r.size, 0.5, 40, d.size),
     vary: num(r.vary, 0, 1, d.vary),

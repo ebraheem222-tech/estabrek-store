@@ -163,6 +163,7 @@ import { autoNeeded, perfNeeded } from "./perf";
 import { targetSelector } from "./selectionParts";
 import { videoPlay } from "./videoPlay";
 import { pictureFxOf } from "../../../shared/pictureFx";
+import { photo3dOf } from "../../../shared/photo3d";
 import { flashOf } from "./pointerSpec";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
@@ -323,6 +324,8 @@ export function framed(n: TreeNode, motion = motionOf(n)): boolean {
   if (n.type !== "image" && n.type !== "video") return false;
   // A picture's live effect is a canvas over it (pictureFxRun.ts): it needs the frame to sit in.
   if (n.type === "image" && pictureFxOf(n.props?.glfx)) return true;
+  // A 3D picture's canvas sits in it too (photo3dRun.ts).
+  if (n.type === "image" && photo3dOf(n.props?.photo3d)) return true;
   // A flashlight's second picture (PointerParts.tsx FlashReveal) sits in the frame over it.
   if (n.type === "image" && flashOf(n.props?.flash)) return true;
   const s = n.style ?? {};
@@ -415,6 +418,7 @@ export function treeNeeds(tree: PageTree) {
     if (((n.type === "lottie" || n.type === "rive") && typeof n.props?.src === "string") || (n.type === "section" && n.props?.particles)) media = true;
     if (n.type === "video" && typeof n.props?.src === "string" && videoPlay(n.props).live) media = true;
     if ((n.type === "image" || n.type === "slider") && pictureFxOf(n.props?.glfx)) media = true;
+    if (n.type === "image" && photo3dOf(n.props?.photo3d)) media = true;
   });
   const smooth = tree.root.props?.smooth === true;
   // Scroll scenes (TreeScenes) and triggers (TreeTriggers), each runtime loaded only then.

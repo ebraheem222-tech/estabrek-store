@@ -24,6 +24,8 @@ import { Field } from "./StudioPanels";
 import { Choice, ColourPick } from "./StudioTreePanels";
 import { SHADER_NAMES, shaderPicture } from "./ShaderPanel";
 import { GL_PRESETS, randomScene, type GlPreset } from "./glPresets";
+import { uploadImages } from "../api/uploads.api";
+import { DepthError, depthFile, estimateDepth } from "../lib/depth";
 import { say } from "./say";
 
 type Obj = Record<string, unknown>;
@@ -147,6 +149,37 @@ function ShaderTile({ kind, on, busy, onPick }: { kind: string; on: boolean; bus
       <span className="block aspect-16/10 w-full bg-white/5" style={pic ? { background: `center/cover url(${pic})` } : undefined} />
       <span className="block truncate px-1 py-0.5 text-[9px] text-white/70">{name}</span>
     </button>
+  );
+}
+
+/** «عمق حقيقي»: the picture's depth by the model on this device (lib/depth.ts), saved beside it, its dots then lifted by it. */
+function RealDepth({ image, has, busy, onDepth }: { image: string; has: boolean; busy: boolean; onDepth: (url: string | undefined) => void }) {
+  const [work, setWork] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const make = async () => {
+    setError(false);
+    setWork(say("عم نجهّز…|Getting ready…|מתכוננים…"));
+    try {
+      const map = await estimateDepth(image, { onProgress: (p) => setWork(p.phase === "download" ? `${say("عم ننزّل الموديل (مرة وحدة)|Downloading the model (once)|מורידים את המודל (פעם אחת)")} ${p.total ? Math.round(((p.loaded ?? 0) / p.total) * 100) : 0}%` : p.phase === "prepare" ? say("عم نجهّز الموديل…|Preparing the model…|מכינים את המודל…") : say("عم نقدّر العمق…|Working out the depth…|מעריכים את העומק…")) });
+      setWork(say("عم نحفظ…|Saving…|שומרים…"));
+      const up = await uploadImages([await depthFile(map, "scene")], { keepAsNew: true, tags: ["depth"] });
+      if (up.files[0]?.url) onDepth(up.files[0].url);
+    } catch (e) {
+      setError(!(e instanceof DepthError && e.code === "ABORTED"));
+    } finally {
+      setWork(null);
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-white/55" data-testid="studio-gl-depth">
+      {work ? <span>{work}</span> : (
+        <>
+          <button type="button" className={btn} disabled={busy} onClick={() => void make()} data-testid="studio-gl-depth-make">🧊 {has ? say("عمق حقيقي من جديد|Real depth again|עומק אמיתי מחדש") : say("عمق حقيقي بالذكاء (على جهازك)|Real depth by AI (on your device)|עומק אמיתי עם AI (במכשיר שלך)")}</button>
+          {has ? <button type="button" className={btn} disabled={busy} onClick={() => onDepth(undefined)} data-testid="studio-gl-depth-remove">{say("رجّع العمق من الإضاءة|Back to depth by light|חזרה לעומק לפי האור")}</button> : null}
+        </>
+      )}
+      {error ? <span className="text-red-300">{say("ما زبط، جرّب كمان مرة.|It didn't work; try again.|זה לא הצליח; נסה שוב.")}</span> : null}
+    </div>
   );
 }
 
@@ -320,7 +353,8 @@ export function GlScenePanel({ node, mode, lang, busy, onOps }: { node: PageTree
                     {shown.shapes.includes("text") || shown.shapes.includes("image") ? (
                       <>
                         <Range label={say("النقاط بتتحرك على خطوطها (ضربات فرشاة)|The dots move along its lines (brush strokes)|הנקודות זזות לאורך הקווים (משיכות מכחול)")} value={shown.strokes} min={0} max={1} step={0.05} busy={busy} onSave={(strokes) => setLayer(say("ضربات الفرشاة|Brush strokes|משיכות מכחול"), { strokes: strokes || undefined })} testId="studio-gl-strokes" />
-                        <Range label={say("بارزة (الفاتح لقدّام)|In relief (light comes forward)|בתבליט (הבהיר קדימה)")} value={shown.relief} min={0} max={1} step={0.05} busy={busy} onSave={(relief) => setLayer(say("البروز|Relief|תבליט"), { relief: relief || undefined })} testId="studio-gl-relief" />
+                        <Range label={shown.depthMap ? say("قديش عميقة (بعمقها الحقيقي)|How deep (by its real depth)|כמה עמוקה (לפי העומק האמיתי)") : say("بارزة (الفاتح لقدّام)|In relief (light comes forward)|בתבליט (הבהיר קדימה)")} value={shown.relief} min={0} max={1} step={0.05} busy={busy} onSave={(relief) => setLayer(say("البروز|Relief|תבליט"), { relief: relief || undefined })} testId="studio-gl-relief" />
+                        {shown.image && shown.shapes.includes("image") ? <RealDepth image={shown.image} has={Boolean(shown.depthMap)} busy={busy} onDepth={(url) => setLayer(say("العمق الحقيقي|Real depth|עומק אמיתי"), { depthMap: url, ...(url && !shown.relief ? { relief: 0.6 } : {}) })} /> : null}
                       </>
                     ) : null}
                     <Range label={say("كم جزيء|How many particles|כמה חלקיקים")} value={shown.count} min={50} max={30000} step={50} busy={busy} onSave={(count) => setLayer(say("العدد|How many|כמה"), { count })} testId="studio-gl-count" />

@@ -409,6 +409,9 @@ export const HOVER_KINDS = [
 export const FX_KINDS = ["shine", "gradient", "grain", "proximity", "particles"] as const;
 /** A picture's live effects (the shop's shared/pictureFx.ts PICTURE_FX). */
 export const PICTURE_FX = ["ripple", "liquid", "shift", "reveal"] as const;
+/** A picture in 3D (shared/photo3d.ts): drawn as a mesh or points, turned by the pointer, the scroll or itself. */
+export const PHOTO3D_LOOKS = ["mesh", "points"] as const;
+export const PHOTO3D_MOVES = ["pointer", "scroll", "auto"] as const;
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
 const MotionKeys = z.object({
   rx: z.number().finite().min(-180).max(180).optional(),
@@ -822,6 +825,7 @@ const GlLayer = z.object({
   font: z.enum(GL_FONTS).optional(),
   weight: z.number().int().min(300).max(900).optional(),
   image: src.optional(),
+  depthMap: src.optional(),
   count: z.number().int().min(50).max(30000).optional(),
   size: within(0.5, 40).optional(),
   vary: within(0, 1).optional(),
@@ -1050,6 +1054,16 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     // A live effect on it, drawn by the graphics card in the shop (shared/pictureFx.ts): rings of water, a flow
     // or a colour split under the pointer, or a soft reveal when it scrolls into view; and how strong.
     glfx: z.object({ kind: z.enum(PICTURE_FX), strength: z.number().min(0.1).max(1).optional() }).strict().optional(),
+    // In 3D, lifted by a depth picture made in the editor (white = near): a mesh or points, how deep, how far it
+    // turns and with what, and how much a light that follows the pointer shapes it.
+    photo3d: z.object({
+      map: src,
+      look: z.enum(PHOTO3D_LOOKS).optional(),
+      move: z.enum(PHOTO3D_MOVES).optional(),
+      depth: z.number().finite().min(0.1).max(1).optional(),
+      turn: z.number().finite().min(0.1).max(1).optional(),
+      light: z.number().finite().min(0).max(1).optional(),
+    }).strict().optional(),
   }),
   button: z.object({ label: local(120), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional(), rich: z.boolean().optional() }),
   video: z.object({
