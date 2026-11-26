@@ -659,6 +659,9 @@ export type CopyView = {
 
 /** A copy as the page shows it. `withCode`: its own page (the owner's alone), where the setup link is given. */
 export async function copyView(row: Row, withCode = false): Promise<CopyView> {
+  // A row read just before its making ended still says "making" once no one is making it (a copy's
+  // last state is kept first, then it stops being made here): read again before calling it stopped.
+  if (row.state === "making" && !making.has(row.id)) row = (await prisma.clientCopy.findUnique({ where: { id: row.id } })) ?? row;
   const now = making.has(row.id);
   const state: CopyState = row.state === "making" && !now ? "stopped" : (row.state as CopyState);
   const steps = stepsOf(row).map((s) => (s.state === "doing" && !now ? { ...s, state: "failed" as const, why: s.why ?? "The server stopped while doing it" } : s));
