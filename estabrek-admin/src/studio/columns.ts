@@ -5,6 +5,7 @@
  * cells. Shares are whole parts ([1, 2] = a third and two thirds); dragging works in
  * twelfths.
  */
+import { READY_GAMES } from "../../../estabrek-storefront/src/pageTree/gameReady";
 import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
@@ -79,7 +80,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "scrollScene", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", "glScene", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "scrollScene", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", "glScene", "game", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -162,6 +163,9 @@ function makeElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTree
     case "model3d":
       // A built-in model turning slowly on a soft shadow; shoppers can turn it by hand.
       return { id: id("m3d"), type: "model3d", props: { model: "sneaker", anim: { type: "float", speed: 1, amount: 1, trigger: "always" }, auto: 0.6, drag: true }, style: { base: { width: "320px", maxWidth: "100%" } } };
+    case "game":
+      // The games stage (GameStagePanel.tsx): it starts as the first ready game, whole width.
+      return { id: id("game"), type: "game", props: { game: structuredClone(READY_GAMES[0].game) }, style: { base: { width: "100%" } } };
     case "glScene":
       // A WebGL scene the owner builds (GlScenePanel.tsx): it starts as the first ready design, words in stars.
       return { id: id("gl"), type: "glScene", props: { gl: structuredClone(GL_PRESETS[0].gl), height: 480 }, style: { base: { width: "100%" } } };
@@ -266,7 +270,7 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "glScene", "products", "categories", "form", "component", "collectionList", "productDetail", ...BLOCK_KINDS]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "glScene", "game", "products", "categories", "form", "component", "collectionList", "productDetail", ...BLOCK_KINDS]);
 const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup", "scrollScene"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);

@@ -19,7 +19,7 @@ const wonBefore = (kind: string, id: string) => { try { return window.localStora
 const markWon = (kind: string, id: string) => { try { window.localStorage.setItem(keyOf(kind, id), "won"); } catch { /* the prize still shows */ } };
 
 /** The prize: what it is, its code to copy, and that the bag has it. */
-function Prize({ prize, code, saved, words }: { prize: string; code: string; saved: boolean; words: GameWords }) {
+export function Prize({ prize, code, saved, words }: { prize: string; code: string; saved: boolean; words: GameWords }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try { await navigator.clipboard.writeText(code); } catch { /* the code is on screen to copy by hand */ }

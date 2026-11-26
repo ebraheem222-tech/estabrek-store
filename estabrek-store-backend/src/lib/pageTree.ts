@@ -38,7 +38,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery", "gameStatus", "serverList", "tebexPackages", "leaderboard", "wipeCountdown", "streamers",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "glScene", "giftCard", "configurator", "bookingCalendar",
+  "toc", "flipBox", "share", "progress", "headline", "storyBar", "scratchCard", "memoryGame", "glScene", "game", "giftCard", "configurator", "bookingCalendar",
   "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
   "lib",
 ] as const;
@@ -859,6 +859,86 @@ const GL_SCENE = {
 };
 export const GlSceneSpec = z.object(GL_SCENE).strict();
 
+/* ---- The games stage (G0 of docs/game-engine-plan.ar.md; the shop's pageTree/gameSpec.ts reads it the same way) */
+const GAME_ID = z.string().regex(/^[a-z][a-z0-9-]{0,23}$/);
+const GAME_TAG = z.string().regex(/^[a-z][a-z0-9-]{0,15}$/);
+/** What a rule names: one thing (its id) or every thing with a tag ("#tag"). */
+const GAME_WHO = z.string().regex(/^([a-z][a-z0-9-]{0,23}|#[a-z][a-z0-9-]{0,15})$/);
+const gnum = (lo: number, hi: number) => z.number().finite().min(lo).max(hi);
+const gint = (lo: number, hi: number) => z.number().int().min(lo).max(hi);
+const GameThing = z.object({
+  id: GAME_ID,
+  look: z.object({ kind: z.enum(["box", "circle", "image", "emoji", "text"]), color: color.optional(), src: src.optional(), emoji: z.string().min(1).max(8).optional(), text: local(40).optional() }).strict(),
+  x: gnum(-2000, 4000), y: gnum(-2000, 4000), w: gnum(4, 2000), h: gnum(4, 2000),
+  template: z.boolean().optional(),
+  body: z.enum(["none", "static", "dynamic", "kinematic"]).optional(),
+  gravity: gnum(0, 3).optional(),
+  bounce: gnum(0, 1).optional(),
+  solid: z.boolean().optional(),
+  vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional(),
+  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag"]).optional(),
+  speed: gnum(0, 2000).optional(),
+  jump: gnum(0, 3000).optional(),
+  behave: z.enum(["none", "patrol", "chase", "wander", "spin"]).optional(),
+  tags: z.array(GAME_TAG).max(4).optional(),
+  life: gnum(0, 120).optional(),
+  keepIn: z.boolean().optional(),
+}).strict();
+const GameWhen = z.discriminatedUnion("on", [
+  z.object({ on: z.literal("start") }).strict(),
+  z.object({ on: z.literal("every"), seconds: gnum(0.2, 60) }).strict(),
+  z.object({ on: z.literal("hit"), a: GAME_WHO, b: GAME_WHO }).strict(),
+  z.object({ on: z.literal("out"), who: GAME_WHO }).strict(),
+  z.object({ on: z.literal("tap"), who: GAME_WHO }).strict(),
+  z.object({ on: z.literal("key"), key: z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) }).strict(),
+  z.object({ on: z.literal("score"), at: gint(-9999, 99999) }).strict(),
+  z.object({ on: z.literal("time"), at: gnum(0, 600) }).strict(),
+]);
+const GAME_SELF = z.enum(["self", "other"]);
+const GameAct = z.discriminatedUnion("act", [
+  z.object({ act: z.literal("spawn"), what: GAME_ID, at: z.enum(["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"]).optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
+  z.object({ act: z.literal("destroy"), who: z.enum(["self", "other", "both"]).optional() }).strict(),
+  z.object({ act: z.literal("score"), add: gint(-999, 999) }).strict(),
+  z.object({ act: z.literal("lives"), add: gint(-9, 9) }).strict(),
+  z.object({ act: z.literal("win") }).strict(),
+  z.object({ act: z.literal("lose") }).strict(),
+  z.object({ act: z.literal("speed"), who: GAME_SELF.optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
+  z.object({ act: z.literal("faster"), by: gnum(0.5, 2) }).strict(),
+  z.object({ act: z.literal("shake") }).strict(),
+  z.object({ act: z.literal("sound"), kind: z.enum(["click", "pop", "chime", "whoosh", "success", "hit"]) }).strict(),
+  z.object({ act: z.literal("burst"), who: GAME_SELF.optional() }).strict(),
+]);
+/** A game: its world, its things (some templates for rules to make), its rules, lives, clock, the score that wins, its words and prize. */
+const GameSpecSchema = z.object({
+  w: gint(320, 1920).optional(), h: gint(240, 1920).optional(),
+  bg: color.optional(),
+  gravity: gnum(0, 4000).optional(),
+  edges: z.enum(["walls", "sides", "floor", "open"]).optional(),
+  things: z.array(GameThing).min(1).max(40),
+  rules: z.array(z.object({ when: GameWhen, do: z.array(GameAct).min(1).max(8) }).strict()).max(40).optional(),
+  lives: gint(0, 9).optional(),
+  time: gint(0, 600).optional(),
+  timeWins: z.boolean().optional(),
+  winScore: gint(0, 99999).optional(),
+  seed: gint(1, 2 ** 31 - 1).optional(),
+  coupon: COUPON_CODE.optional(),
+  once: z.boolean().optional(),
+  words: z.object({ title: local(80), start: local(40), win: local(80), lose: local(80), again: local(40), prize: local(120), help: local(300) }).partial().strict().optional(),
+}).strict().superRefine((g, ctx) => {
+  // A rule's names are the game's own things and tags, and what it makes is one of its templates.
+  const ids = new Set(g.things.map((t) => t.id));
+  const tags = new Set(g.things.flatMap((t) => t.tags ?? []));
+  const templates = new Set(g.things.filter((t) => t.template).map((t) => t.id));
+  if (ids.size !== g.things.length) ctx.addIssue({ code: "custom", message: "Two things share a name", path: ["things"] });
+  if (!g.things.some((t) => !t.template)) ctx.addIssue({ code: "custom", message: "Nothing is in the world at the start", path: ["things"] });
+  const known = (who: string) => (who.startsWith("#") ? tags.has(who.slice(1)) : ids.has(who));
+  (g.rules ?? []).forEach((r, i) => {
+    const w = r.when as { a?: string; b?: string; who?: string };
+    for (const who of [w.a, w.b, w.who]) if (who !== undefined && !known(who)) ctx.addIssue({ code: "custom", message: `No thing or tag “${who}”`, path: ["rules", i, "when"] });
+    r.do.forEach((a, j) => { if (a.act === "spawn" && !templates.has(a.what)) ctx.addIssue({ code: "custom", message: `“${a.what}” isn't a template`, path: ["rules", i, "do", j] }); });
+  });
+});
+
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
   // `cursor`: a mark that follows the mouse (a dot, a ring, or one that turns what's under it around), with
@@ -1389,6 +1469,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // move in a flow (rain, fireworks…), over a background (`gl`, as a section's background holds one); a box `height` px
   // tall, named `label` for screen readers.
   glScene: z.object({ gl: GlSceneSpec, height: z.number().int().min(160).max(1400).optional(), label: local(120).optional() }),
+  // A game on the page: the games stage (G0), an owner's or a ready one.
+  game: z.object({ game: GameSpecSchema, label: local(120).optional() }),
   // A prize under a cover the shopper scratches away (a button does it from the keyboard), with a `coupon` code the
   // bag then puts in by itself; `once`: already scratched stays revealed on the next visit.
   scratchCard: z.object({

@@ -76,6 +76,10 @@ export function costOf(node: PageTreeNode): Cost {
     case "scrollScene": canvas = true; add("scroll-scene", 35, say("مشهد مع السكرول (فيديو بيتبع الصفحة).|A scroll scene (a clip following the page).|סצנת גלילה."), { phone: "light" }); break;
     case "lottie": case "rive": canvas = true; endless = true; add("animation", 18, say("رسم متحرك (Lottie/Rive).|An animation (Lottie/Rive).|אנימציה."), { tier: "balanced" }); break;
     case "product360": canvas = true; add("360", 15, say("عرض 360°.|A 360° view.|תצוגת 360°.")); break;
+    case "game":
+      canvas = true;
+      add("game", 20, say("لعبة: بترسم كل لحظة وهي شغّالة بس (بتوقف برّا الشاشة).|A game: it draws every moment only while played (it rests off screen).|משחק: מצייר בכל רגע רק בזמן משחק."), {});
+      break;
     case "glScene": {
       canvas = true;
       endless = true;

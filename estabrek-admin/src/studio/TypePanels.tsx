@@ -356,7 +356,7 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
  * frame.
  */
 export const CORNER_PART_KINDS = ["accordion", "testimonials", "pricing", "team", "tabs", "countdown", "categories", "products", "shop", "form", "chart", "instrument", "filterGallery", "showcase", "menu", "flipBox", "toc", "share", "scratchCard", "memoryGame", "giftCard", "configurator", "bookingCalendar"] as const;
-const CORNER_OWN_KINDS = ["button", "image", "video", "slider", "alert", "search", "svg", "model3d", "glScene", "product360", "map", "beforeAfter", "hotspots"] as const;
+const CORNER_OWN_KINDS = ["button", "image", "video", "slider", "alert", "search", "svg", "model3d", "glScene", "game", "product360", "map", "beforeAfter", "hotspots"] as const;
 const SURFACE_KEYS = ["bg", "gradient", "mesh", "pattern", "border", "backdrop", "overlay"] as const;
 /** A look some kinds only draw boxes in (a list of lines has no card to round). */
 const BOXED_LOOKS: Record<string, readonly string[]> = { accordion: ["cards"], menu: ["pills", "buttons"], toc: ["boxed"], share: ["round", "square", "pill"] };

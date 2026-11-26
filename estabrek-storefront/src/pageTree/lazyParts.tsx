@@ -19,6 +19,7 @@ export const ProductDetail = early("@/components/ProductDetail", () => import("@
 export const SceneView = early("./SceneView", () => import("./SceneView").then((m) => m.SceneView));
 export const ShaderView = early("./ShaderView", () => import("./ShaderView").then((m) => m.ShaderView));
 export const GlSceneView = early("./GlSceneView", () => import("./GlSceneView").then((m) => m.GlSceneView));
+export const GameView = early("./GameView", () => import("./GameView").then((m) => m.GameView));
 export const MarqueeSpeed = early("./PointerParts", () => import("./PointerParts").then((m) => m.MarqueeSpeed));
 export const FlashReveal = early("./PointerParts", () => import("./PointerParts").then((m) => m.FlashReveal));
 export const TrailView = early("./PointerParts", () => import("./PointerParts").then((m) => m.TrailView));
