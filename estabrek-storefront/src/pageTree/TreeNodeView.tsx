@@ -670,7 +670,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const spec = gameOf(p.game, say);
       if (!spec) return null;
       // Every colour the game names: its ground, its things', its tiles' and its layers'.
-      const named = [spec.bg, ...spec.things.map((t) => t.look.color), ...Object.values(spec.tiles?.kinds ?? {}).map((k) => k.look.color), ...spec.layers.flatMap((l) => [l.color, l.color2])];
+      const named = ["text", spec.bg, ...spec.things.map((t) => t.look.color), ...Object.values(spec.tiles?.kinds ?? {}).map((k) => k.look.color), ...spec.layers.flatMap((l) => [l.color, l.color2])];
       const colours = Object.fromEntries(named.map((n) => [n, color(n) ?? n]));
       return (
         <div className={cls(node)} {...mark}>

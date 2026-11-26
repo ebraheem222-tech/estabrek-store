@@ -125,7 +125,8 @@ const BALLOONS: Raw = {
   words: words(w("فقّع البالونات", "Pop the balloons", "פוצצו את הבלונים"), w("فقّع البالونات قبل ما تطير لفوق: كل وحدة بتطير بتاخد روح.", "Pop the balloons before they float off: each one that gets away takes a life.", "פוצצו את הבלונים לפני שהם עפים: כל אחד שבורח לוקח חיים.")),
 };
 
-/** Adventure (G1): a world three views wide on a tile map, the camera following the fox; pits, fire, snails, gems, a flag. */
+/** Adventure (G1, G1b): two levels, each a world three views wide on a tile map, the camera following the fox; pits,
+ *  fire, snails, gems, a flag to the next level; on the second a lift across a wide pit and a hedgehog that guards a wall. */
 const ADV_COLS = 64, ADV_ROWS = 12, ADV_Z = 45;
 const advMap = (() => {
   const g = Array.from({ length: ADV_ROWS }, () => Array<string>(ADV_COLS).fill("."));
@@ -140,15 +141,32 @@ const advMap = (() => {
   put(61, 9, "F");
   return g.map((r) => r.join(""));
 })();
+const advMap2 = (() => {
+  const g = Array.from({ length: ADV_ROWS }, () => Array<string>(ADV_COLS).fill("."));
+  const put = (c: number, r: number, ch: string) => { g[r][c] = ch; };
+  const pits = [[12, 13], [22, 29], [40, 42], [52, 53]];
+  for (let c = 0; c < ADV_COLS; c++) if (!pits.some(([a, b]) => c >= a && c <= b)) { put(c, 10, "#"); put(c, 11, "#"); }
+  const platforms: Array<[number, number, number]> = [[6, 9, 7], [15, 19, 6], [43, 47, 7], [55, 59, 6]];
+  for (const [a, b, r] of platforms) for (let c = a; c <= b; c++) { put(c, r, "="); if ((c - a) % 2 === 0) put(c, r - 1, "o"); }
+  // A lift across the wide pit (it goes there and back), gems over the pit, a low wall a hedgehog guards.
+  put(23, 10, "L");
+  for (const c of [24, 26, 28]) put(c, 7, "o");
+  put(34, 9, "#");
+  put(37, 9, "h");
+  for (const c of [17, 45, 57]) put(c, 9, "e");
+  for (const c of [32, 49]) put(c, 9, "^");
+  put(61, 9, "F");
+  return g.map((r) => r.join(""));
+})();
 const ADVENTURE: Raw = {
-  w: 960, h: 540, bg: "accent-soft", edges: "sides", gravity: 2500, lives: 3, time: 120, seed: 71,
+  w: 960, h: 540, bg: "accent-soft", edges: "sides", gravity: 2500, lives: 3, time: 120, seed: 71, transition: "circle",
   camera: { follow: "#player", lerp: 0.14 },
   layers: [
     { kind: "gradient", color: "accent-soft", color2: "surface", factor: 0, y: 0, h: 1 },
     { kind: "gradient", color: "surface", color2: "accent-soft", factor: 0.25, y: 0.55, h: 0.45 },
   ],
   tiles: {
-    size: ADV_Z, cols: ADV_COLS, rows: ADV_ROWS, map: advMap,
+    size: ADV_Z, cols: ADV_COLS, rows: ADV_ROWS, map: advMap, levels: [advMap2],
     kinds: {
       "#": { look: { kind: "box", color: "text" }, solid: true },
       "=": { look: { kind: "box", color: "accent" }, oneWay: true },
@@ -156,6 +174,8 @@ const ADVENTURE: Raw = {
       "o": { look: { kind: "emoji", emoji: "💎", color: "accent" }, thing: "gem" },
       "e": { look: { kind: "emoji", emoji: "🐌", color: "accent" }, thing: "snail" },
       "F": { look: { kind: "emoji", emoji: "🏁", color: "accent" }, thing: "flag" },
+      "L": { look: { kind: "box", color: "accent" }, thing: "lift" },
+      "h": { look: { kind: "emoji", emoji: "🦔", color: "accent" }, thing: "hedgehog" },
     },
   },
   things: [
@@ -163,15 +183,56 @@ const ADVENTURE: Raw = {
     { id: "gem", look: emoji("💎"), x: 0, y: 0, w: 34, h: 34, body: "none", template: true, behave: "spin", tags: ["gem"] },
     { id: "snail", look: emoji("🐌"), x: 0, y: 0, w: 46, h: 40, body: "dynamic", behave: "patrol", speed: 70, template: true, tags: ["enemy"] },
     { id: "flag", look: emoji("🏁"), x: 0, y: 0, w: 56, h: 70, body: "none", template: true, tags: ["goal"] },
+    { id: "lift", look: { kind: "box", color: "accent" }, x: 0, y: 0, w: 135, h: 24, body: "kinematic", solid: true, behave: "path", speed: 110, path: { points: [[225, 0]] }, template: true },
+    { id: "hedgehog", look: emoji("🦔"), x: 0, y: 0, w: 48, h: 40, body: "dynamic", behave: "guard", speed: 120, sight: 330, jump: 700, template: true, tags: ["enemy"] },
   ],
   rules: [
     { when: { on: "hit", a: "#player", b: "#gem" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "sound", kind: "pop" }] },
     { when: { on: "hit", a: "#player", b: "#hazard" }, do: [{ act: "lives", add: -1 }, { act: "speed", who: "self", vx: 0, vy: -700 }, { act: "shake" }, { act: "sound", kind: "hit" }] },
     { when: { on: "hit", a: "#player", b: "#enemy" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "lives", add: -1 }, { act: "shake" }, { act: "sound", kind: "hit" }] },
-    { when: { on: "hit", a: "#player", b: "#goal" }, do: [{ act: "win" }] },
-    { when: { on: "out", who: "#player" }, do: [{ act: "lose" }] },
+    { when: { on: "hit", a: "#player", b: "#goal" }, do: [{ act: "sound", kind: "chime" }, { act: "next" }] },
+    { when: { on: "out", who: "#player" }, do: [{ act: "lives", add: -1 }, { act: "retry" }] },
   ],
-  words: words(w("مغامرة الثعلب", "The fox's adventure", "ההרפתקה של השועל"), w("الأسهم بتمشّي والمسافة بتنطّ: لمّ الألماس، تفادى النار والحلازين، ووصل للعلم.", "Arrows to run, Space to jump: gather the gems, dodge the fire and the snails, and reach the flag.", "חצים לריצה, רווח לקפיצה: אספו יהלומים, התחמקו מהאש ומהחלזונות, והגיעו לדגל.")),
+  words: words(w("مغامرة الثعلب", "The fox's adventure", "ההרפתקה של השועל"), w("الأسهم بتمشّي والمسافة بتنطّ: لمّ الألماس، تفادى النار والحلازين والقنفذ، ووصل للعلم بالمرحلتين.", "Arrows to run, Space to jump: gather the gems, dodge the fire, the snails and the hedgehog, and reach the flag on both levels.", "חצים לריצה, רווח לקפיצה: אספו יהלומים, התחמקו מהאש, מהחלזונות ומהקיפוד, והגיעו לדגל בשני השלבים.")),
+};
+
+/** Maze (G1b): a new maze made from the seed on each of three levels; flowers to gather, spiders that chase the bee
+ *  once they see it (along the maze's shortest way), the hive to reach. */
+const MAZE_COLS = 27, MAZE_ROWS = 15;
+const mazeMarks = (spiders: Array<[number, number]>) => {
+  const g = Array.from({ length: MAZE_ROWS }, () => Array<string>(MAZE_COLS).fill("."));
+  g[1][1] = "P";
+  g[MAZE_ROWS - 2][MAZE_COLS - 2] = "H";
+  for (const [c, r] of [[7, 1], [13, 3], [19, 1], [3, 7], [9, 9], [15, 7], [21, 9], [5, 13], [13, 11], [23, 5]] as const) g[r][c] = "o";
+  for (const [c, r] of spiders) g[r][c] = "s";
+  return g.map((r) => r.join(""));
+};
+const MAZE: Raw = {
+  w: 972, h: 540, bg: "surface", edges: "walls", gravity: 0, lives: 3, seed: 101, transition: "circle",
+  tiles: {
+    size: 36, cols: MAZE_COLS, rows: MAZE_ROWS, gen: "maze",
+    map: mazeMarks([[13, 7], [23, 3]]),
+    levels: [mazeMarks([[13, 7], [23, 3], [5, 11]]), mazeMarks([[13, 7], [23, 3], [5, 11], [19, 13]])],
+    kinds: {
+      "#": { look: { kind: "box", color: "accent" }, solid: true },
+      "P": { look: { kind: "emoji", emoji: "🐝", color: "accent" }, thing: "bee" },
+      "o": { look: { kind: "emoji", emoji: "🌼", color: "accent" }, thing: "flower" },
+      "s": { look: { kind: "emoji", emoji: "🕷️", color: "accent" }, thing: "spider" },
+      "H": { look: { kind: "emoji", emoji: "🍯", color: "accent" }, thing: "hive" },
+    },
+  },
+  things: [
+    { id: "bee", look: emoji("🐝"), x: 54, y: 54, w: 26, h: 26, body: "dynamic", control: "fourWay", speed: 190, tags: ["player"] },
+    { id: "flower", look: emoji("🌼"), x: 0, y: 0, w: 22, h: 22, body: "none", template: true, tags: ["flower"] },
+    { id: "spider", look: emoji("🕷️"), x: 0, y: 0, w: 26, h: 26, body: "dynamic", behave: "guard", speed: 110, sight: 220, template: true, tags: ["enemy"] },
+    { id: "hive", look: emoji("🍯"), x: 0, y: 0, w: 30, h: 30, body: "none", template: true, tags: ["goal"] },
+  ],
+  rules: [
+    { when: { on: "hit", a: "#player", b: "#flower" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "sound", kind: "pop" }] },
+    { when: { on: "hit", a: "#player", b: "#enemy" }, do: [{ act: "lives", add: -1 }, { act: "shake" }, { act: "sound", kind: "hit" }, { act: "retry" }] },
+    { when: { on: "hit", a: "#player", b: "#goal" }, do: [{ act: "sound", kind: "chime" }, { act: "next" }] },
+  ],
+  words: words(w("النحلة بالمتاهة", "The bee in the maze", "הדבורה במבוך"), w("حرّك النحلة بالأسهم: لمّ الزهور ووصل للخلية. العناكب بتلحقك إذا شافتك، وكل مرحلة متاهة جديدة.", "Move the bee with the arrows: gather the flowers and reach the hive. The spiders chase you once they see you, and each level is a new maze.", "הזיזו את הדבורה בחצים: אספו פרחים והגיעו לכוורת. העכבישים רודפים אחריכם כשהם רואים אתכם, וכל שלב הוא מבוך חדש.")),
 };
 
 export const READY_GAMES: ReadyGame[] = [
@@ -180,7 +241,8 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "tap", name: w("نقّير", "Tap", "הקשה"), line: w("انقر قبل ما يختفي", "Tap before it's gone", "הקישו לפני שזה נעלם"), icon: "⭐", game: TAP },
   { key: "jump", name: w("نطّاط", "Jumper", "קופץ"), line: w("اركض ونطّ فوق الحواجز", "Run and jump the obstacles", "רוצו וקפצו מעל המכשולים"), icon: "🐰", game: JUMP },
   { key: "bricks", name: w("كسّارة", "Brick breaker", "שובר לבנים"), line: w("طابة ولوح وحيط طوب", "A ball, a paddle and a wall of bricks", "כדור, מחבט וחומת לבנים"), icon: "🧱", game: BRICKS },
-  { key: "adventure", name: w("مغامرة", "Adventure", "הרפתקה"), line: w("منصّات وعالم أعرض من الشاشة", "Platforms in a world wider than the screen", "פלטפורמות בעולם רחב מהמסך"), icon: "🦊", game: ADVENTURE },
+  { key: "adventure", name: w("مغامرة", "Adventure", "הרפתקה"), line: w("منصّات بمرحلتين وعالم أعرض من الشاشة", "Platforms over two levels, in a world wider than the screen", "פלטפורמות בשני שלבים, בעולם רחב מהמסך"), icon: "🦊", game: ADVENTURE },
+  { key: "maze", name: w("متاهة", "Maze", "מבוך"), line: w("متاهة جديدة بكل مرحلة، وعناكب بتشوف", "A new maze each level, and spiders that see", "מבוך חדש בכל שלב, ועכבישים שרואים"), icon: "🐝", game: MAZE },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

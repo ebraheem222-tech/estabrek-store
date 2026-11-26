@@ -15,17 +15,19 @@
  *  - G1: the camera over a bigger world; the tile map, one instanced mesh for each kind of tile (made again only when
  *    a rule takes a tile away); the layers behind, each moving at its own share of the camera's speed; a sprite's
  *    frame for its state, turned the way it faces; an emoji that runs and jumps squashes and stretches a little.
+ *  - G1b: the level in the bar; the cover between levels (a fade, a wipe or a circle in the theme's ink, over the
+ *    canvas, its style set each frame without React); a ❗ that rises over a guard as it sees the player.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
 import { saveWonCoupon } from "../lib/wonCoupon";
-import { NO_INPUT, STEP, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
+import { NO_INPUT, STEP, coverOf, levelCount, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
 import type { GameSpec } from "./gameSpec";
-import { cssColour, lookCanvas, sheetFrame } from "./gameDraw";
+import { coverCss, cssColour, lookCanvas, sheetFrame } from "./gameDraw";
 import type { GameWords as PrizeWords } from "./proWords";
 import { Prize } from "./ShopGames";
 
-export type StageWords = { start: string; again: string; win: string; lose: string; score: string; lives: string; time: string; sound: string; left: string; right: string; up: string; down: string; jump: string; paused: string };
+export type StageWords = { start: string; again: string; win: string; lose: string; score: string; lives: string; time: string; sound: string; left: string; right: string; up: string; down: string; jump: string; paused: string; level: string };
 
 const inEditor = () => typeof window !== "undefined" && window.parent !== window && /\/studio-frame/.test(window.location.pathname);
 const lessMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
@@ -70,14 +72,16 @@ export type GameViewProps = {
   rtl: boolean;
 };
 
-type Hud = { phase: Phase; score: number; lives: number; time: number | null };
+type Hud = { phase: Phase; score: number; lives: number; time: number | null; level: number };
 
 export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const game = useRef<GameState | null>(null);
   const input = useRef<GameInput>({ ...NO_INPUT, pressed: [], taps: [] });
-  const [hud, setHud] = useState<Hud>({ phase: "ready", score: 0, lives: spec.lives, time: spec.time || null });
+  const [hud, setHud] = useState<Hud>({ phase: "ready", score: 0, lives: spec.lives, time: spec.time || null, level: 1 });
+  const cover = useRef<HTMLDivElement>(null);
+  const levels = levelCount(spec);
   const [sound, setSound] = useState(true);
   const [touch, setTouch] = useState(false);
   const [editor, setEditor] = useState(false);
@@ -208,6 +212,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       };
       type Spark = { m: T.Mesh; vx: number; vy: number; life: number };
       const sparks: Spark[] = [];
+      let alertTx: T.CanvasTexture | null = null;
       const resize = () => {
         const r = el.getBoundingClientRect();
         renderer.setSize(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.width * (spec.h / spec.w))), false);
@@ -264,6 +269,18 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
               scene.add(m);
               sparks.push({ m, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.6 });
             }
+          } else if (e.kind === "alert") {
+            // A guard has seen the player: a ❗ that rises over it and fades.
+            if (!alertTx) {
+              alertTx = new THREE.CanvasTexture(lookCanvas({ kind: "emoji", emoji: "❗", color: "accent" }, 32, 32, "#e11d48", font, rtl, () => { if (alertTx) alertTx.needsUpdate = true; }));
+              alertTx.flipY = false;
+              alertTx.colorSpace = THREE.SRGBColorSpace;
+            }
+            const m = new THREE.Mesh(square, new THREE.MeshBasicMaterial({ map: alertTx, transparent: true, side: THREE.DoubleSide }));
+            m.position.set(e.x, e.y, 0.6);
+            m.scale.set(26, 26, 1);
+            scene.add(m);
+            sparks.push({ m, vx: 0, vy: -30, life: 0.9 });
           }
         }
         const shake = s.shake > 0 && !lessMotion() ? 8 * (s.shake / 0.3) : 0;
@@ -277,7 +294,10 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         renderer.render(scene, camera);
       };
 
-      let last = performance.now(), acc = 0, shown = "", wasResting = false;
+      let last = performance.now(), acc = 0, shown = "", wasResting = false, covered = "";
+      const ink = colours.text ?? "#111";
+      // Less motion asked for: the cover only fades.
+      const coverKind = lessMotion() && spec.transition !== "none" ? "fade" : spec.transition;
       const loop = (now: number) => {
         frame = requestAnimationFrame(loop);
         const s = game.current!;
@@ -307,7 +327,10 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           if (p.life <= 0) { scene.remove(p.m); (p.m.material as T.Material).dispose(); sparks.splice(i, 1); }
         }
         if (running || sparks.length || shown !== s.phase) draw(s);
-        const next: Hud = { phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s) };
+        // The cover between levels, set straight on its element (each frame, no React).
+        const c = coverOf(s), css = coverCss(coverKind, c.k, c.closing, ink);
+        if (css !== covered && cover.current) { covered = css; cover.current.style.cssText = css; }
+        const next: Hud = { phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), level: s.level + 1 };
         const key = JSON.stringify(next);
         if (key !== shown) { shown = key; setHud(next); }
       };
@@ -322,6 +345,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         for (const t of textures.values()) t.dispose();
         for (const t of sheets.values()) t.dispose();
         for (const t of tileTextures) t?.dispose();
+        alertTx?.dispose();
         for (const m of tileMeshes) m.dispose();
         for (const { tx, m } of layers) { tx.dispose(); (m.material as T.Material).dispose(); }
         square.dispose();
@@ -382,7 +406,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
     const s = game.current!;
     startGame(s);
     setSaved(false);
-    setHud({ phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s) });
+    setHud({ phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), level: s.level + 1 });
     if (soundRef.current) beep("click");
     host.current?.focus({ preventScroll: true });
   }, []);
@@ -414,6 +438,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       data-pt-game-score={hud.score}
       data-pt-game-lives={hud.lives}
       {...(hud.time !== null ? { "data-pt-game-time": hud.time } : {})}
+      {...(levels > 1 ? { "data-pt-game-level": hud.level } : {})}
     >
       <canvas
         ref={canvas}
@@ -426,11 +451,13 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         aria-label={spec.words.title || words.start}
         role="img"
       />
+      <div ref={cover} style={{ display: "none" }} aria-hidden="true" data-pt-game-cover="" />
       {playing || hud.phase !== "ready" ? (
         <div className="pt-gs-hud" aria-live="polite">
           <span data-pt-game-hud="score">{words.score}: <b>{hud.score}</b></span>
           {spec.lives ? <span data-pt-game-hud="lives" aria-label={`${words.lives}: ${hud.lives}`}>{"❤".repeat(Math.max(0, hud.lives)) || "—"}</span> : null}
           {hud.time !== null ? <span data-pt-game-hud="time">{words.time}: <b>{hud.time}</b></span> : null}
+          {levels > 1 ? <span data-pt-game-hud="level">{words.level} <b>{hud.level}</b>/{levels}</span> : null}
           <button type="button" className="pt-gs-sound" onClick={() => setSound((x) => !x)} aria-pressed={sound} aria-label={words.sound}>{sound ? "🔊" : "🔇"}</button>
         </div>
       ) : null}

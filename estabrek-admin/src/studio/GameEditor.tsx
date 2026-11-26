@@ -5,6 +5,9 @@
  * «جرّبها» to play it right here (the shop's own engine, drawn on a 2D canvas with the shop's pictures of things).
  * G1: the tile map (its size, its kinds of tile, a brush to paint them and a rubber), a world wider than the view
  * (scrolled across), the camera and the layers behind, and a thing drawn from a sprite sheet with its states' frames.
+ * G1b: levels (one map each, picked to paint, added as a copy, removed), a maze made by itself (its walls shown as
+ * they'll be played), the cover between levels, a thing's sight and its path (points put and dragged in the world),
+ * the new brains and rules (sees, a level begins, next level, this level again); trying it shows the level and cover.
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -12,13 +15,14 @@ import { Modal } from "../components/ui/Modal";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import type { Lang } from "../lib/lang";
 import { gameOf, type GameLook } from "../../../estabrek-storefront/src/pageTree/gameSpec";
-import { NO_INPUT, STEP, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
-import { lookCanvas, sheetFrame } from "../../../estabrek-storefront/src/pageTree/gameDraw";
+import { NO_INPUT, STEP, coverOf, levelCount, levelMap, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
+import { drawCover, lookCanvas, sheetFrame } from "../../../estabrek-storefront/src/pageTree/gameDraw";
 import type { ThumbColours } from "./templates/colours";
 import {
   ACT_NAMES, BEHAVE_NAMES, BODY_NAMES, CONTROL_NAMES, EDGE_NAMES, KEY_NAMES, LOOK_STARTS, SIZES, SOUND_NAMES, SPOT_NAMES, WHEN_NAMES,
   actPossible, newAct, newWhen, ruleText, rulesOf, templatesOf, thingsOf, whoOptions, withNewThing, withoutThing, type Obj,
-  nextTileChar, paintCells, resizedMap, withTiles, withoutTileKind, worldSize,
+  nextTileChar, paintCells, withTiles, withoutTileKind, worldSize,
+  TRANSITION_NAMES, levelMaps, pathPoints, resizedLevels, withLevelMap, withNewLevel, withPathPoint, withoutLevel,
 } from "./gameEdit";
 import { say } from "./say";
 
@@ -77,6 +81,7 @@ function LookView({ look, colours, lang }: { look: Obj; colours: Record<string, 
 }
 
 type Drag = { id: string; mode: "move" | "size"; px: number; py: number; x: number; y: number; w: number; h: number };
+type PointDrag = { i: number; px: number; py: number; x: number; y: number };
 
 export function GameEditor({ open, onClose, game, lang, colours, busy, onChange }: {
   open: boolean; onClose: () => void; game: Obj; lang: Lang; colours: ThumbColours; busy: boolean;
@@ -99,6 +104,25 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   const [picking, setPicking] = useState<null | "image" | "sprite">(null);
   const stage = useRef<HTMLDivElement>(null);
   const thing = things.find((t) => t.id === sel) ?? null;
+  // G1b: the level painted and shown; a thing's path being drawn.
+  const [level, setLevel] = useState(0);
+  const maps = levelMaps(game);
+  const lv = Math.min(level, Math.max(0, maps.length - 1));
+  const drawn = maps[lv] ?? [];
+  // Putting points on the path of the thing picked (another thing picked: no longer).
+  const [pathFor, setPathFor] = useState<string | null>(null);
+  const pathAdd = pathFor !== null && pathFor === sel;
+  const setPathAdd = (on: boolean) => setPathFor(on ? sel : null);
+  const [pointDrag, setPointDrag] = useState<PointDrag | null>(null);
+  const [pointAt, setPointAt] = useState<[number, number] | null>(null);
+  // A maze's walls as they'll be played, the marks where they're drawn.
+  const solidCh = (ch: string) => obj(obj(tiles.kinds)[ch]).solid === true;
+  const walls = useMemo(() => {
+    if (obj(game.tiles).gen !== "maze") return null;
+    const read = gameOf(game);
+    return read ? levelMap(read, lv) : null;
+  }, [game, lv]);
+  const shown = (m: string[]) => (walls ? walls.map((row, r) => [...row].map((ch, c) => { const d = m[r]?.[c] ?? "."; return d !== "." && !solidCh(d) ? d : solidCh(ch) ? ch : "."; }).join("")) : m);
 
   const setThing = (id: string, change: Obj, label = say("تعديل شي|A thing changed|פריט שונה")) =>
     onChange(label, { ...game, things: things.map((t) => (t.id === id ? { ...t, ...change } : t)) });
@@ -117,6 +141,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   };
   const [moved, setMoved] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const onMove = (e: RPointerEvent) => {
+    if (pointDrag) { const { sx, sy } = scale(); setPointAt([Math.round(pointDrag.x + (e.clientX - pointDrag.px) * sx), Math.round(pointDrag.y + (e.clientY - pointDrag.py) * sy)]); return; }
     if (!drag) return;
     const { sx, sy } = scale();
     const dx = (e.clientX - drag.px) * sx, dy = (e.clientY - drag.py) * sy;
@@ -136,11 +161,32 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   const startPaint = (e: RPointerEvent) => {
     if (!painting || busy) return false;
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    paintAt(e, (Array.isArray(tiles.map) ? tiles.map : []) as string[]);
+    paintAt(e, drawn);
+    return true;
+  };
+  /* ---- a path's points: one put where the world is clicked, one dragged */
+  const startPoint = (i: number) => (e: RPointerEvent) => {
+    if (busy || trying || !thing) return;
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    const p = pathPoints(thing)[i];
+    setPointDrag({ i, px: e.clientX, py: e.clientY, x: num(thing.x, 0) + p[0], y: num(thing.y, 0) + p[1] });
+  };
+  const addPoint = (e: RPointerEvent) => {
+    if (!pathAdd || !thing || thing.behave !== "path" || busy) return false;
+    const r = stage.current!.getBoundingClientRect();
+    setThing(String(thing.id), { path: withPathPoint(thing, ((e.clientX - r.left) / r.width) * WW, ((e.clientY - r.top) / r.height) * WH) }, say("نقطة جديدة بالمسار|A new path point|נקודת מסלול חדשה"));
     return true;
   };
   const endDrag = () => {
-    if (stroke) { onChange(brush === "." ? say("محيت بلاط|Tiles rubbed out|אריחים נמחקו") : say("رسمت بلاط|Tiles painted|אריחים צוירו"), { ...game, tiles: { ...tiles, map: stroke } }); setStroke(null); return; }
+    if (pointDrag) {
+      if (pointAt && thing) setThing(String(thing.id), { path: withPathPoint(thing, pointAt[0], pointAt[1], pointDrag.i) }, say("نقلت نقطة بالمسار|A path point moved|נקודת מסלול הוזזה"));
+      setPointDrag(null);
+      setPointAt(null);
+      return;
+    }
+    if (stroke) { onChange(brush === "." ? say("محيت بلاط|Tiles rubbed out|אריחים נמחקו") : say("رسمت بلاط|Tiles painted|אריחים צוירו"), withLevelMap(game, lv, stroke)); setStroke(null); return; }
     if (drag && moved) setThing(drag.id, moved, drag.mode === "move" ? say("نقلت شي|A thing moved|פריט הוזז") : say("كبّرت شي|A thing resized|פריט שונה בגודל"));
     setDrag(null);
     setMoved(null);
@@ -162,6 +208,11 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   });
 
   const whos = whoOptions(game);
+  // The picked thing's path, from where it is: [its place, each point].
+  const selPath: Array<[number, number]> | null = thing && thing.behave === "path" ? (() => {
+    const at = drag?.id === thing.id && moved ? moved : { x: num(thing.x, 0), y: num(thing.y, 0) };
+    return [[at.x, at.y] as [number, number], ...pathPoints(thing).map((p, j): [number, number] => (pointDrag?.i === j && pointAt ? pointAt : [at.x + p[0], at.y + p[1]]))];
+  })() : null;
   const tplOptions = templatesOf(game).map((t) => [String(t.id), String(t.id)] as const);
   const r = rules[Math.min(rule, Math.max(0, rules.length - 1))];
 
@@ -186,7 +237,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                 <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-md px-1.5 py-1 text-[11px] ${tab === k ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid="game-ed-tab" data-tab={k}>{l}</button>
               ))}
             </div>
-            {tab === "tiles" ? <TilesPanel game={game} brush={brush} setBrush={setBrush} busy={busy || trying} colours={pal} lang={lang} onChange={onChange} /> : null}
+            {tab === "tiles" ? <TilesPanel game={game} brush={brush} setBrush={setBrush} level={lv} setLevel={setLevel} busy={busy || trying} colours={pal} lang={lang} onChange={onChange} /> : null}
             {tab === "camera" ? <CameraPanel game={game} busy={busy || trying} whos={whos} onChange={onChange} /> : null}
             {tab === "things" ? <>
             <div className="text-[11px] font-medium text-white/60">{say("ضيف شي|Add a thing|הוסיפו פריט")}</div>
@@ -200,7 +251,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                 </button>
               ))}
             </div>
-            {thing ? <ThingSettings key={String(thing.id)} thing={thing} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
+            {thing ? <ThingSettings key={String(thing.id)} thing={thing} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
             </> : null}
           </div>
 
@@ -210,8 +261,8 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
               <>
                 <div className="w-full overflow-x-auto rounded-xl" data-testid="game-ed-scroll">
                 <div ref={stage} className={`relative touch-none select-none overflow-hidden ${painting ? "cursor-crosshair" : ""}`} style={{ width: `${(WW / W) * 100}%`, aspectRatio: `${WW} / ${WH}`, background: pal[String(game.bg ?? "surface")] ?? "#eee" }}
-                  onPointerMove={(e) => { if (stroke) paintAt(e, stroke); else onMove(e); }} onPointerUp={endDrag} onPointerCancel={endDrag} onPointerDown={(e) => { if (!startPaint(e)) setSel(null); }} data-testid="game-ed-world">
-                  {hasTiles ? <TilesCanvas tiles={tiles} map={stroke ?? ((Array.isArray(tiles.map) ? tiles.map : []) as string[])} ww={WW} wh={WH} colours={pal} lang={lang} /> : null}
+                  onPointerMove={(e) => { if (stroke) paintAt(e, stroke); else onMove(e); }} onPointerUp={endDrag} onPointerCancel={endDrag} onPointerDown={(e) => { if (addPoint(e)) return; if (!startPaint(e)) setSel(null); }} data-testid="game-ed-world">
+                  {hasTiles ? <TilesCanvas tiles={tiles} map={shown(stroke ?? drawn)} ww={WW} wh={WH} colours={pal} lang={lang} /> : null}
                   {things.filter((t) => !t.template).map((t) => {
                     const id = String(t.id);
                     const m = drag?.id === id && moved ? moved : { x: num(t.x, 0), y: num(t.y, 0), w: num(t.w, 48), h: num(t.h, 48) };
@@ -224,6 +275,14 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                       </div>
                     );
                   })}
+                  {selPath ? (
+                    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${WW} ${WH}`} preserveAspectRatio="none" data-testid="game-ed-path-line">
+                      <polyline points={(obj(thing?.path).loop ? [...selPath, selPath[0]] : selPath).map(([x, y]) => `${x},${y}`).join(" ")} fill="none" stroke="#a78bfa" strokeWidth={3} strokeDasharray="8 6" vectorEffect="non-scaling-stroke" />
+                    </svg>
+                  ) : null}
+                  {selPath ? selPath.slice(1).map(([x, y], i) => (
+                    <span key={i} className="absolute z-10 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 cursor-move rounded-full border-2 border-white bg-violet-400" style={{ left: `${(x / WW) * 100}%`, top: `${(y / WH) * 100}%` }} onPointerDown={startPoint(i)} data-testid="game-ed-path-point" />
+                  )) : null}
                 </div>
                 </div>
                 {templatesOf(game).length ? (
@@ -266,7 +325,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
 
 /* ---------------------------------------------------------------- a thing's settings */
 
-function ThingSettings({ thing, lang, busy, set, onRemove, onPicture }: { thing: Obj; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void }) {
+function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, setPathAdd }: { thing: Obj; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void; pathAdd: boolean; setPathAdd: (on: boolean) => void }) {
   const look = obj(thing.look);
   const setLook = (c: Obj) => set({ look: { ...look, ...c } }, say("شكل الشي|A thing's look|מראה הפריט"));
   const tags = (Array.isArray(thing.tags) ? thing.tags : []).map(String).join(", ");
@@ -282,7 +341,9 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture }: { thing:
       {look.kind !== "image" && look.kind !== "sprite" ? <Row label={say("لونه|Its colour|הצבע")}><Choose label={say("لونه|Its colour|הצבע")} value={String(look.color ?? "accent")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(c) => setLook({ color: c })} disabled={busy} testId="game-ed-colour" /></Row> : look.kind === "image" ? <button type="button" className={btn} disabled={busy} onClick={() => onPicture("image")}>{say("بدّل الصورة|Change the picture|החליפו תמונה")}</button> : null}
       <Row label={say("جسمه|Its body|הגוף")}><Choose label={say("جسمه|Its body|הגוף")} value={String(thing.body ?? "none")} options={named(BODY_NAMES)} onPick={(v) => set({ body: v })} disabled={busy} testId="game-ed-body" /></Row>
       <Row label={say("مين بيحرّكه|Who moves it|מי מזיז")}><Choose label={say("مين بيحرّكه|Who moves it|מי מזיז")} value={String(thing.control ?? "none")} options={named(CONTROL_NAMES)} onPick={(v) => set({ control: v })} disabled={busy} testId="game-ed-control" /></Row>
-      <Row label={say("تصرّفه|Its behaviour|ההתנהגות")}><Choose label={say("تصرّفه|Its behaviour|ההתנהגות")} value={String(thing.behave ?? "none")} options={named(BEHAVE_NAMES)} onPick={(v) => set({ behave: v })} disabled={busy} testId="game-ed-behave" /></Row>
+      <Row label={say("تصرّفه|Its behaviour|ההתנהגות")}><Choose label={say("تصرّفه|Its behaviour|ההתנהגות")} value={String(thing.behave ?? "none")} options={named(BEHAVE_NAMES)} onPick={(v) => set({ behave: v, ...(v === "path" && !pathPoints(thing).length ? { path: { points: [[200, 0]] } } : {}) })} disabled={busy} testId="game-ed-behave" /></Row>
+      {thing.behave === "guard" || thing.behave === "flee" ? <Num label={say("قدّيش بيشوف|How far it sees|כמה רחוק הוא רואה")} value={num(thing.sight, 320)} min={0} max={3000} step={10} onSave={(v) => set({ sight: v })} testId="game-ed-sight" /> : null}
+      {thing.behave === "path" ? <PathSettings thing={thing} busy={busy} set={set} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : null}
       <Num label={say("سرعته|Its speed|המהירות")} value={num(thing.speed, 360)} min={0} max={2000} step={10} onSave={(v) => set({ speed: v })} testId="game-ed-speed" />
       {thing.control === "platform" ? <Num label={say("قوّة النط|Jump strength|כוח קפיצה")} value={num(thing.jump, 720)} min={0} max={3000} step={10} onSave={(v) => set({ jump: v })} /> : null}
       <Num label={say("سرعة البداية ↔|Starting speed ↔|מהירות התחלה ↔")} value={num(thing.vx, 0)} min={-3000} max={3000} step={10} onSave={(v) => set({ vx: v })} testId="game-ed-vx" />
@@ -295,6 +356,23 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture }: { thing:
       <Row label={say("علامات (بفاصلة)|Tags (comma)|תגיות (פסיק)")}>
         <input className={`${ctl} w-28`} value={tagText} onChange={(e) => setTagText(e.target.value)} onBlur={() => { const next = tagText.split(/[,،\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => TAG.test(x)).slice(0, 4); setTagText(next.join(", ")); set({ tags: next.length ? next : undefined }); }} data-testid="game-ed-tags" />
       </Row>
+    </div>
+  );
+}
+
+/** A thing's path: points put in the world (and dragged there), the last taken off, a loop or there and back, smooth. */
+function PathSettings({ thing, busy, set, pathAdd, setPathAdd }: { thing: Obj; busy: boolean; set: (change: Obj, label?: string) => void; pathAdd: boolean; setPathAdd: (on: boolean) => void }) {
+  const path = obj(thing.path), pts = pathPoints(thing), n = pts.length;
+  const label = say("مسار الشي|A thing's path|מסלול הפריט");
+  return (
+    <div className="space-y-1 rounded-md border border-white/8 p-1.5" data-testid="game-ed-path" data-points={n}>
+      <div className="text-[11px] text-white/55">{say(`مساره: ${n} نقاط بعد مكانه، اسحبيها بالعالم|Its path: ${n} points after where it is, dragged in the world|המסלול: ${n} נקודות אחרי מקומו, גררו אותן בעולם`)}</div>
+      <div className="flex flex-wrap gap-1">
+        <button type="button" className={pathAdd ? main : btn} disabled={busy || n >= 12} onClick={() => setPathAdd(!pathAdd)} aria-pressed={pathAdd} data-testid="game-ed-path-add">{pathAdd ? say("✓ خلصت|✓ Done|✓ סיום") : say("+ نقطة بالعالم|+ A point in the world|+ נקודה בעולם")}</button>
+        <button type="button" className={btn} disabled={busy || !n} onClick={() => set({ path: n > 1 ? { ...path, points: pts.slice(0, -1) } : undefined }, label)} data-testid="game-ed-path-pop">{say("شيل آخر نقطة|Take the last point off|הסירו את הנקודה האחרונה")}</button>
+      </div>
+      <Row label={say("بيلفّ ويرجع لأوله|Goes round to its start|חוזר להתחלה בלולאה")}><input type="checkbox" checked={path.loop === true} disabled={busy || !n} onChange={(e) => set({ path: { ...path, loop: e.target.checked || undefined } }, label)} data-testid="game-ed-path-loop" /></Row>
+      <Row label={say("ناعم|Smooth|חלק")}><input type="checkbox" checked={path.smooth === true} disabled={busy || n < 2} onChange={(e) => set({ path: { ...path, smooth: e.target.checked || undefined } }, label)} data-testid="game-ed-path-smooth" /></Row>
     </div>
   );
 }
@@ -316,7 +394,8 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
       <div className="space-y-1">
         <Choose label={say("لما|When|כאשר")} value={String(when.on ?? "start")} options={named(WHEN_NAMES)} onPick={(v) => set({ ...rule, when: newWhen(v, game) })} disabled={busy} testId="game-ed-when" />
         {when.on === "every" ? <Num label={say("كل (ثانية)|Every (seconds)|כל (שניות)")} value={num(when.seconds, 1)} min={0.2} max={60} step={0.1} onSave={(v) => setWhen({ seconds: v })} testId="game-ed-every" /> : null}
-        {when.on === "hit" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
+        {when.on === "hit" || when.on === "see" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
+        {when.on === "level" ? <Num label={say("المرحلة (0 = كل وحدة)|The level (0 = each)|השלב (0 = כל אחד)")} value={num(when.at, 0)} min={0} max={8} onSave={(v) => setWhen({ at: Math.round(v) })} testId="game-ed-level-at" /> : null}
         {when.on === "out" || when.on === "tap" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
         {when.on === "key" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} /> : null}
         {when.on === "score" || when.on === "time" ? <Num label={when.on === "score" ? say("النقاط|The score|הניקוד") : say("الثانية|The second|השנייה")} value={num(when.at, 10)} min={when.on === "score" ? -9999 : 0} max={when.on === "score" ? 99999 : 600} onSave={(v) => setWhen({ at: v })} testId="game-ed-at" /> : null}
@@ -356,7 +435,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef<GameState | null>(null);
   const input = useRef<GameInput>({ ...NO_INPUT, pressed: [], taps: [] });
-  const [hud, setHud] = useState({ phase: "ready", score: 0, lives: 0, time: null as number | null, cam: 0 });
+  const [hud, setHud] = useState({ phase: "ready", score: 0, lives: 0, time: null as number | null, cam: 0, level: 1 });
   const spec = useMemo(() => gameOf(game, (t) => (t && typeof t === "object" ? String(obj(t)[lang] ?? obj(t).ar ?? obj(t).en ?? "") : "")), [game, lang]);
 
   useEffect(() => {
@@ -390,6 +469,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
       s.tiles.forEach((row, r) => row.forEach((ch, c) => { const k = t.kinds[ch]; if (k && !k.thing) x.drawImage(lookOf(`tile:${ch}`, k.look, t.size, t.size), c * t.size, r * t.size, t.size, t.size); }));
     };
     let frame = 0, last = performance.now(), acc = 0;
+    const alerts: Array<{ x: number; y: number; t: number }> = [];
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);
       const dt = Math.min(0.1, (now - last) / 1000);
@@ -397,8 +477,11 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
       if (s.phase === "playing") {
         acc += dt;
         let n = 0;
-        while (acc >= STEP && n < 5) { stepGame(s, input.current); input.current.pressed = []; input.current.taps = []; acc -= STEP; n++; }
-        s.effects.length = 0;
+        while (acc >= STEP && n < 5) {
+          stepGame(s, input.current); input.current.pressed = []; input.current.taps = []; acc -= STEP; n++;
+          for (const e of s.effects) if (e.kind === "alert") alerts.push({ x: e.x, y: e.y, t: s.t });
+          s.effects.length = 0;
+        }
       }
       if (ctx && cv) {
         ctx.fillStyle = colours[spec.bg] ?? spec.bg;
@@ -440,10 +523,22 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
           }
           ctx.restore();
         }
+        // A guard that has seen the player: a ❗ rising over it.
+        for (let i = alerts.length - 1; i >= 0; i--) {
+          const age = s.t - alerts[i].t;
+          if (age > 0.9 || age < 0) { alerts.splice(i, 1); continue; }
+          ctx.globalAlpha = 1 - age / 0.9;
+          ctx.font = "22px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("❗", alerts[i].x, alerts[i].y - age * 30);
+        }
+        ctx.globalAlpha = 1;
         ctx.restore();
+        const c = coverOf(s);
+        drawCover(ctx, spec.transition, c.k, c.closing, spec.w, spec.h, colours.text ?? "#111111");
       }
-      const cam = Math.round(s.cx);
-      setHud((h) => (h.phase === s.phase && h.score === s.score && h.lives === s.lives && h.time === timeLeft(s) && h.cam === cam ? h : { phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), cam }));
+      const cam = Math.round(s.cx), lvl = s.level + 1;
+      setHud((h) => (h.phase === s.phase && h.score === s.score && h.lives === s.lives && h.time === timeLeft(s) && h.cam === cam && h.level === lvl ? h : { phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), cam, level: lvl }));
     };
     frame = requestAnimationFrame(loop);
     const keys = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "Enter"]);
@@ -475,14 +570,15 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
   if (!spec) return <p className="rounded-xl bg-white/4 p-4 text-xs text-white/60">{say("ما في شي بالعالم ليتلعب. ضيف شي مش ✦.|Nothing is in the world to play. Add a thing that isn't ✦.|אין מה לשחק בעולם. הוסיפו פריט שאינו ✦.")}</p>;
   const toWorld = (e: RPointerEvent) => { const r = canvas.current!.getBoundingClientRect(), st = state.current; return { x: (st?.cx ?? 0) + ((e.clientX - r.left) / r.width) * spec.w, y: (st?.cy ?? 0) + ((e.clientY - r.top) / r.height) * spec.h }; };
   return (
-    <div className="space-y-1.5" data-testid="game-ed-trying" data-phase={hud.phase} data-score={hud.score} data-cam={hud.cam}>
+    <div className="space-y-1.5" data-testid="game-ed-trying" data-phase={hud.phase} data-score={hud.score} data-cam={hud.cam} data-level={hud.level}>
       <div className="flex flex-wrap items-center gap-3 text-[11px] text-white/70">
         <span>{say("النقاط|Score|ניקוד")}: <b>{hud.score}</b></span>
         {spec.lives ? <span>{say("الأرواح|Lives|חיים")}: <b>{hud.lives}</b></span> : null}
         {hud.time !== null ? <span>{say("الوقت|Time|זמן")}: <b>{hud.time}</b></span> : null}
+        {levelCount(spec) > 1 ? <span>{say("المرحلة|Level|שלב")}: <b>{hud.level}</b>/{levelCount(spec)}</span> : null}
         <span className="flex-1" />
         {hud.phase !== "playing" ? (
-          <button type="button" className={main} onClick={() => { if (state.current) { startGame(state.current); setHud({ phase: "playing", score: 0, lives: spec.lives, time: timeLeft(state.current), cam: Math.round(state.current.cx) }); } }} data-testid="game-ed-play">
+          <button type="button" className={main} onClick={() => { if (state.current) { startGame(state.current); setHud({ phase: "playing", score: 0, lives: spec.lives, time: timeLeft(state.current), cam: Math.round(state.current.cx), level: state.current.level + 1 }); } }} data-testid="game-ed-play">
             {hud.phase === "ready" ? say("▶ ابدأ|▶ Start|▶ התחלה") : hud.phase === "won" ? say("ربحت! العب كمان|Won! Play again|ניצחת! שוב") : say("خسرت، العب كمان|Lost, play again|הפסדת, שוב")}
           </button>
         ) : <span className="text-white/45">{say("الأسهم والمسافة والماوس|Arrows, Space and the mouse|חצים, רווח והעכבר")}</span>}
@@ -570,7 +666,7 @@ function TilesCanvas({ tiles, map, ww, wh, colours, lang }: { tiles: Obj; map: s
 }
 
 /** The tile map's settings: its size, its kinds (a brush each), a rubber, and the picked kind's look and ways. */
-function TilesPanel({ game, brush, setBrush, busy, colours, lang, onChange }: { game: Obj; brush: string; setBrush: (c: string) => void; busy: boolean; colours: Record<string, string>; lang: Lang; onChange: (label: string, next: Obj) => void }) {
+function TilesPanel({ game, brush, setBrush, level, setLevel, busy, colours, lang, onChange }: { game: Obj; brush: string; setBrush: (c: string) => void; level: number; setLevel: (i: number) => void; busy: boolean; colours: Record<string, string>; lang: Lang; onChange: (label: string, next: Obj) => void }) {
   const tiles = obj(game.tiles);
   const [picking, setPicking] = useState(false);
   if (!Object.keys(tiles).length) {
@@ -582,19 +678,35 @@ function TilesPanel({ game, brush, setBrush, busy, colours, lang, onChange }: { 
     );
   }
   const kinds = obj(tiles.kinds);
-  const map = (Array.isArray(tiles.map) ? tiles.map : []) as string[];
+  const maps = levelMaps(game);
+  const sizeLabel = say("حجم الخريطة|The map's size|גודל המפה");
   const setTiles = (c: Obj, label = say("البلاط|The tiles|האריחים")) => onChange(label, { ...game, tiles: { ...tiles, ...c } });
   const kind = obj(kinds[brush]);
   const setKind = (c: Obj) => setTiles({ kinds: { ...kinds, [brush]: { ...kind, ...c } } }, say("نوع بلاط|A kind of tile|סוג אריח"));
   const look = obj(kind.look);
-  const templates = templatesOf(game).map((t) => [String(t.id), String(t.id)] as const);
+  // A kind puts a template's copy in each cell (✦), or is where a thing in the world starts.
+  const putThings = thingsOf(game).map((t) => [String(t.id), `${String(t.id)} ${t.template ? "✦" : say("(بيبلّش هون)|(starts here)|(מתחיל כאן)")}`] as const);
   const tagText = (Array.isArray(kind.tags) ? kind.tags : []).map(String).join(", ");
   return (
     <div className="space-y-2" data-testid="game-ed-tiles-panel">
       <div className="space-y-1 rounded-lg bg-white/4 p-2">
         <Num label={say("حجم البلاطة|A tile's size|גודל אריח")} value={num(tiles.size, 48)} min={16} max={128} onSave={(v) => setTiles({ size: Math.round(v) })} testId="game-ed-tile-size" />
-        <Num label={say("عرض الخريطة (بلاطات)|The map's width (tiles)|רוחב המפה (אריחים)")} value={num(tiles.cols, 20)} min={1} max={200} onSave={(v) => setTiles({ cols: Math.round(v), map: resizedMap(map, Math.round(v), num(tiles.rows, 12)) })} testId="game-ed-tile-cols" />
-        <Num label={say("طولها (بلاطات)|Its height (tiles)|גובה (אריחים)")} value={num(tiles.rows, 12)} min={1} max={60} onSave={(v) => setTiles({ rows: Math.round(v), map: resizedMap(map, num(tiles.cols, 20), Math.round(v)) })} testId="game-ed-tile-rows" />
+        <Num label={say("عرض الخريطة (بلاطات)|The map's width (tiles)|רוחב המפה (אריחים)")} value={num(tiles.cols, 20)} min={1} max={200} onSave={(v) => onChange(sizeLabel, resizedLevels(game, Math.round(v), num(tiles.rows, 12)))} testId="game-ed-tile-cols" />
+        <Num label={say("طولها (بلاطات)|Its height (tiles)|גובה (אריחים)")} value={num(tiles.rows, 12)} min={1} max={60} onSave={(v) => onChange(sizeLabel, resizedLevels(game, num(tiles.cols, 20), Math.round(v)))} testId="game-ed-tile-rows" />
+      </div>
+      {/* The levels: one map each (the one painted is picked), a new one a copy of the picked one. */}
+      <div className="flex flex-wrap items-center gap-1 rounded-lg bg-white/4 p-2" data-testid="game-ed-levels">
+        <span className="text-[11px] text-white/55">{say("المرحلة:|Level:|שלב:")}</span>
+        {maps.map((_, i) => <button key={i} type="button" onClick={() => setLevel(i)} aria-pressed={i === level} className={`h-6 min-w-6 rounded-md px-1.5 text-[11px] ${i === level ? "bg-accent-500/40 text-white" : "bg-white/6 text-white/65"}`} data-testid="game-ed-level" data-level={i}>{i + 1}</button>)}
+        <button type="button" className={btn} disabled={busy || maps.length >= 8} onClick={() => { const next = withNewLevel(game, level); if (next) { onChange(say("مرحلة جديدة|A new level|שלב חדש"), next); setLevel(maps.length); } }} data-testid="game-ed-level-add">+ {say("مرحلة|Level|שלב")}</button>
+        {level > 0 ? <button type="button" className="text-[11px] text-white/45 hover:text-red-300" disabled={busy} onClick={() => { onChange(say("محيت مرحلة|A level removed|שלב הוסר"), withoutLevel(game, level)); setLevel(level - 1); }} data-testid="game-ed-level-remove">{say("امحيها|Remove it|הסירו")}</button> : null}
+      </div>
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Row label={say("متاهة بتنعمل لحالها|A maze made by itself|מבוך שנוצר מעצמו")}><input type="checkbox" checked={tiles.gen === "maze"} disabled={busy || !Object.values(kinds).some((k) => obj(k).solid === true)} onChange={(e) => setTiles({ gen: e.target.checked ? "maze" : undefined }, say("متاهة|A maze|מבוך"))} data-testid="game-ed-maze" /></Row>
+        {tiles.gen === "maze" ? <>
+          <p className="text-[11px] leading-4 text-white/45">{say("الحيطان بتنعمل من رقم اللعبة، وكل مرحلة متاهة غير. ارسمي العلامات (وين بيبلّش، الأشياء، الأعداء) وبتروح لأقرب ممرّ.|The walls are made from the game's number, a different maze on each level. Paint the marks (where it starts, the things, the enemies) and they go to the nearest corridor.|הקירות נוצרים ממספר המשחק, מבוך אחר בכל שלב. ציירו את הסימנים (איפה מתחילים, פריטים, אויבים) והם עוברים למעבר הקרוב.")}</p>
+          <button type="button" className={btn} disabled={busy} onClick={() => onChange(say("متاهة تانية|Another maze|מבוך אחר"), { ...game, seed: (num(game.seed, 7) % 2147483646) + 1 })} data-testid="game-ed-maze-again">🎲 {say("متاهة تانية|Another maze|מבוך אחר")}</button>
+        </> : null}
       </div>
       <div className="text-[11px] text-white/55">{say("الفرشاة (ارسمي بالعالم):|The brush (paint in the world):|המברשת (ציירו בעולם):")}</div>
       <div className="flex flex-wrap gap-1">
@@ -611,7 +723,7 @@ function TilesPanel({ game, brush, setBrush, busy, colours, lang, onChange }: { 
           <Row label={say("شكله|Its look|המראה")}><Choose label={say("شكله|Its look|המראה")} value={String(look.kind ?? "box")} options={[["box", say("مربّع|Box|ריבוע")], ["emoji", "⭐"], ["image", say("صورة|Picture|תמונה")]] as const} onPick={(k) => { if (k === "image") setPicking(true); else setKind({ look: { ...look, kind: k, ...(k === "emoji" && !look.emoji ? { emoji: "🧱" } : {}) } }); }} disabled={busy} /></Row>
           {look.kind === "emoji" ? <Row label={say("الإيموجي|The emoji|האימוג'י")}><input className={`${ctl} w-20`} defaultValue={String(look.emoji ?? "")} key={`${brush}:${String(look.emoji)}`} maxLength={8} onBlur={(e) => e.target.value.trim() && setKind({ look: { ...look, emoji: e.target.value.trim() } })} /></Row> : null}
           {look.kind !== "image" ? <Row label={say("لونه|Its colour|הצבע")}><Choose label={say("لونه|Its colour|הצבע")} value={String(look.color ?? "text")} options={COLOUR_TOKENS.map((c) => [c, c] as const)} onPick={(c) => setKind({ look: { ...look, color: c } })} disabled={busy} /></Row> : null}
-          <Row label={say("بيحط شي مكانه (✦)|Puts a thing in its place (✦)|שם פריט במקומו (✦)")}><Choose label={say("بيحط شي|Puts a thing|שם פריט")} value={String(kind.thing ?? "")} options={[["", say("لأ|No|לא")] as const, ...templates]} onPick={(v) => setKind({ thing: v || undefined, ...(v ? { solid: undefined, oneWay: undefined } : {}) })} disabled={busy} testId="game-ed-kind-thing" /></Row>
+          <Row label={say("بيحط شي مكانه (✦)|Puts a thing in its place (✦)|שם פריט במקומו (✦)")}><Choose label={say("بيحط شي|Puts a thing|שם פריט")} value={String(kind.thing ?? "")} options={[["", say("لأ|No|לא")] as const, ...putThings]} onPick={(v) => setKind({ thing: v || undefined, ...(v ? { solid: undefined, oneWay: undefined } : {}) })} disabled={busy} testId="game-ed-kind-thing" /></Row>
           {!kind.thing ? <>
             <Row label={say("صلب|Solid|מוצק")}><input type="checkbox" checked={kind.solid === true} disabled={busy} onChange={(e) => setKind({ solid: e.target.checked || undefined, ...(e.target.checked ? { oneWay: undefined } : {}) })} data-testid="game-ed-kind-solid" /></Row>
             <Row label={say("منصّة من فوق بس|A platform from above only|פלטפורמה מלמעלה בלבד")}><input type="checkbox" checked={kind.oneWay === true} disabled={busy} onChange={(e) => setKind({ oneWay: e.target.checked || undefined, ...(e.target.checked ? { solid: undefined } : {}) })} data-testid="game-ed-kind-oneway" /></Row>
@@ -640,6 +752,7 @@ function CameraPanel({ game, busy, whos, onChange }: { game: Obj; busy: boolean;
       <div className="space-y-1 rounded-lg bg-white/4 p-2">
         <Row label={say("الكاميرا بتلحق|The camera follows|המצלמה עוקבת אחרי")}><Choose label={say("الكاميرا|The camera|המצלמה")} value={String(cam.follow ?? "")} options={[["", say("اللاعب لحاله|The player, by itself|השחקן, לבד")] as const, ...whos]} onPick={(v) => onChange(say("الكاميرا|The camera|המצלמה"), { ...game, camera: { ...cam, follow: v } })} disabled={busy} testId="game-ed-follow" /></Row>
         <Num label={say("نعومتها (0.02–1)|Its softness (0.02–1)|רכות (0.02–1)")} value={num(cam.lerp, 0.14)} min={0.02} max={1} step={0.02} onSave={(v) => onChange(say("الكاميرا|The camera|המצלמה"), { ...game, camera: { ...cam, lerp: v } })} />
+        <Row label={say("بين المراحل|Between levels|בין שלבים")}><Choose label={say("بين المراحل|Between levels|בין שלבים")} value={String(game.transition ?? "circle")} options={named(TRANSITION_NAMES)} onPick={(v) => onChange(say("الانتقال|The transition|המעבר"), { ...game, transition: v })} disabled={busy} testId="game-ed-transition" /></Row>
         {!hasTiles ? <Row label={say("عرض العالم|The world's width|רוחב העולם")}><Choose label={say("عرض العالم|The world's width|רוחב העולם")} value={String(Math.round(num(game.ww, w) / w))} options={[["1", "×1"], ["2", "×2"], ["3", "×3"], ["4", "×4"]] as const} onPick={(v) => onChange(say("عرض العالم|The world's width|רוחב העולם"), { ...game, ww: w * Number(v) })} disabled={busy} testId="game-ed-world-wide" /></Row> : null}
       </div>
       <div className="flex items-center justify-between text-[11px] text-white/55">

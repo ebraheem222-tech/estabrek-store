@@ -13,9 +13,16 @@
  *    bigger than the view with a camera that follows; a platformer's feel (a little time to jump after leaving an
  *    edge, a press kept a moment before landing, a shorter jump when the key is let go); each body's state for its
  *    frames (idle, run, jump, fall) and the way it faces; a patrol turns back at a ledge.
+ *  - G1b: levels (a map each, or a maze from the seed), "next" and "again" with a cover between (closing on the old
+ *    level, the new one made under it, opening), a thing put at its level's start cell; sight (a ray through the
+ *    solid tiles and things); brains: a guard (goes round, sees the player and chases it, looks where it was last
+ *    seen, gives up), one that flees, a homing one that turns toward the player, and one that goes round its path
+ *    (a moving platform carries what stands on it); the shortest way through a map (A*) for those that fly over it,
+ *    a jump at a wall and a stop at a ledge for those on foot; a four-way player kept to the corridors' middles.
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
 import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
+import { findPath, mazeOf, onTrack, rayBox, rayCells, trackOf, type Track } from "./gameWorld";
 
 export const STEP = 1 / 60;
 
@@ -40,6 +47,18 @@ export type Body = {
   air: number;
   jumpAt: number;
   cut: boolean;
+  /** A guard's mind (going round, chasing, looking where it last saw the player), when and where it last saw it. */
+  mind: "patrol" | "chase" | "search";
+  seen: number;
+  lx: number; ly: number;
+  /** The cells of its way (A*) and when it works the way out again. */
+  route: Array<[number, number]>;
+  thinkAt: number;
+  /** How far along its path it has gone, from where it started (ox, oy). */
+  along: number;
+  ox: number; oy: number;
+  /** What it stands on (a moving platform carries it). */
+  ride: number;
 };
 export type GameInput = {
   left: boolean; right: boolean; up: boolean; down: boolean;
@@ -58,7 +77,9 @@ export const NO_INPUT: GameInput = { left: false, right: false, up: false, down:
 export type Effect =
   | { kind: "sound"; sound: string }
   | { kind: "burst"; x: number; y: number; color: string }
-  | { kind: "shake" };
+  | { kind: "shake" }
+  /** A guard has seen the player: a mark over it. */
+  | { kind: "alert"; x: number; y: number };
 export type Phase = "ready" | "playing" | "won" | "lost";
 export type GameState = {
   spec: GameSpec;
@@ -85,6 +106,13 @@ export type GameState = {
   /** The tile map as it is now (a tile removed by a rule is "."), and a count that changes when it does. */
   tiles: string[][] | null;
   tilesV: number;
+  /** The level played (from 0), when it began, the cover between levels (seconds left) and the level it goes to. */
+  level: number;
+  levelT: number;
+  trans: number;
+  goTo: number;
+  /** Who sees whom now (a rule's "sees" once, as it begins). */
+  seeing: Set<string>;
 };
 
 /** Mulberry32: small, quick, and the same everywhere. */
@@ -97,30 +125,69 @@ function random(s: GameState): number {
 
 function make(s: GameState, thing: GameThing, x: number, y: number, vx: number, vy: number): Body | null {
   if (s.bodies.filter((b) => !b.dead).length >= GAME_LIMITS.alive) return null;
-  const b: Body = { n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false };
+  const b: Body = {
+    n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false,
+    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0,
+  };
   s.bodies.push(b);
   return b;
 }
 
-/** A new game, waiting to start: the things that aren't templates in their places. */
+/** The cover between two levels lasts this long (closing, then opening). */
+const TRANS = 0.9;
+export const levelCount = (spec: GameSpec) => (spec.tiles ? 1 + spec.tiles.levels.length : 1);
+
+/** A level's map as it's played: as drawn, or a maze from the seed with the drawn marks in its corridors. */
+export function levelMap(spec: GameSpec, i: number): string[] {
+  const t = spec.tiles;
+  if (!t) return [];
+  const drawn = i === 0 ? t.map : t.levels[i - 1] ?? t.map;
+  if (t.gen !== "maze") return drawn;
+  const wall = Object.keys(t.kinds).find((c) => t.kinds[c].solid);
+  return wall ? mazeOf(drawn, t.cols, t.rows, wall, (c) => t.kinds[c]?.solid === true, spec.seed + i * 7919) : drawn;
+}
+
+/** A level made: its map, the things that aren't templates in their places (or at their start cells), the map's things. */
+function setLevel(s: GameState, i: number) {
+  const { spec } = s;
+  s.level = i;
+  s.levelT = s.t;
+  s.bodies = [];
+  s.contacts = new Set();
+  s.seeing = new Set();
+  s.dragging = null;
+  s.tiles = spec.tiles ? levelMap(spec, i).map((r) => r.split("")) : null;
+  s.tilesV++;
+  for (const thing of spec.things) if (!thing.template) make(s, thing, thing.x, thing.y, thing.vx, thing.vy);
+  if (spec.tiles && s.tiles) {
+    const { size, kinds } = spec.tiles;
+    const placed = new Set<string>();
+    s.tiles.forEach((row, r) => row.forEach((ch, c) => {
+      const id = kinds[ch]?.thing;
+      const thing = id ? spec.things.find((t) => t.id === id) : null;
+      if (!thing) return;
+      row[c] = ".";
+      // On its cell's floor in a world seen from the side; in its middle in one seen from above.
+      const x = c * size + size / 2, y = spec.gravity > 0 ? r * size + size - thing.h / 2 : r * size + size / 2;
+      if (thing.template) { make(s, thing, x, y, thing.vx, thing.vy); return; }
+      // A thing in the world starts here on this level (its first such cell).
+      if (placed.has(thing.id)) return;
+      placed.add(thing.id);
+      const b = s.bodies.find((o) => o.of === thing.id);
+      if (b) { b.x = x; b.y = y; b.ox = x; b.oy = y; b.lx = x; b.ly = y; }
+    }));
+  }
+  camera(s, 1);
+}
+
+/** A new game, waiting to start: its first level. */
 export function newGame(spec: GameSpec): GameState {
   const s: GameState = {
     spec, phase: "ready", t: 0, score: 0, lives: spec.lives, bodies: [], effects: [], shake: 0, speed: 1, next: 1,
     seed: spec.seed, every: spec.rules.map(() => 0), fired: new Set(), contacts: new Set(), dragging: null, steps: 0,
-    cx: 0, cy: 0, tiles: spec.tiles ? spec.tiles.map.map((r) => r.split("")) : null, tilesV: 0,
+    cx: 0, cy: 0, tiles: null, tilesV: 0, level: 0, levelT: 0, trans: 0, goTo: -1, seeing: new Set(),
   };
-  for (const thing of spec.things) if (!thing.template) make(s, thing, thing.x, thing.y, thing.vx, thing.vy);
-  // The map's tiles that are things (a coin, an enemy, a flag): each made at its cell.
-  if (spec.tiles && s.tiles) {
-    const { size, kinds } = spec.tiles;
-    s.tiles.forEach((row, r) => row.forEach((ch, c) => {
-      const thing = kinds[ch]?.thing ? spec.things.find((t) => t.id === kinds[ch].thing) : null;
-      if (!thing) return;
-      make(s, thing, c * size + size / 2, r * size + size - thing.h / 2, thing.vx, thing.vy);
-      row[c] = ".";
-    }));
-  }
-  camera(s, 1);
+  setLevel(s, 0);
   return s;
 }
 
@@ -129,6 +196,13 @@ export function startGame(s: GameState) {
   if (s.phase !== "ready") Object.assign(s, newGame(s.spec));
   s.phase = "playing";
   run(s, (w) => w.on === "start", {});
+  run(s, (w) => w.on === "level" && (w.at === 0 || w.at === 1), {});
+}
+
+/** How much of the view the cover between two levels hides (0–1), and whether it's closing (on the old level). */
+export function coverOf(s: GameState): { k: number; closing: boolean } {
+  if (s.trans <= 0) return { k: 0, closing: false };
+  return { k: Math.max(0, Math.min(1, 1 - Math.abs((s.trans / TRANS) * 2 - 1))), closing: s.goTo >= 0 };
 }
 
 type Ctx = { self?: Body; other?: Body };
@@ -204,6 +278,112 @@ function tileBlock(s: GameState, b: Body, axis: "x" | "y", prevBottom: number) {
   }
 }
 
+/** Is there ground (a solid tile or a one-way platform) under the foot in front, the way it goes. */
+function groundAhead(s: GameState, b: Body): boolean {
+  const z = s.spec.tiles!.size;
+  const k = kindAt(s, Math.floor((b.x + b.dir * (b.w / 2 + 1)) / z), Math.floor((b.y + b.h / 2 + 2) / z));
+  return Boolean(k && (k.solid || k.oneWay));
+}
+const wallAhead = (s: GameState, b: Body) => kindAt(s, Math.floor((b.x + b.dir * (b.w / 2 + 2)) / s.spec.tiles!.size), Math.floor(b.y / s.spec.tiles!.size))?.solid === true;
+/** It goes over the map (seen from above, or no gravity on it), rather than on foot. */
+const flies = (s: GameState, b: Body) => b.thing.body !== "dynamic" || s.spec.gravity * b.thing.gravity === 0;
+const cellOf = (s: GameState, x: number, y: number): [number, number] => [Math.floor(x / s.spec.tiles!.size), Math.floor(y / s.spec.tiles!.size)];
+const solidAt = (s: GameState) => (c: number, r: number) => kindAt(s, c, r)?.solid === true;
+
+/** Does `a` see `b`: in its sight, ahead of it in a world seen from the side (`ahead`), nothing solid between. */
+function sees(s: GameState, a: Body, b: Body, ahead = true): boolean {
+  const range = a.thing.sight;
+  if (!range) return false;
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (dx * dx + dy * dy > range * range) return false;
+  if (ahead && !flies(s, a) && dx * a.face < -a.w / 2) return false;
+  const t = s.spec.tiles;
+  if (t && s.tiles && rayCells(t.size, solidAt(s), a.x, a.y, b.x, b.y) < 1) return false;
+  for (const o of s.bodies) if (!o.dead && o.thing.solid && o !== a && o !== b && rayBox(a.x, a.y, b.x, b.y, o) < 1) return false;
+  return true;
+}
+
+/**
+ * A body steered toward a place: on foot, toward it across (jumping a wall, waiting at a ledge); over a tile map, along
+ * its shortest way (worked out again every so often), the way's other line kept to the corridor's middle; over open
+ * ground, straight. True once it's there (or there's no way there).
+ */
+function goToward(s: GameState, b: Body, tx: number, ty: number, speed: number): boolean {
+  const t = s.spec.tiles;
+  if (!flies(s, b)) {
+    const dx = tx - b.x;
+    b.vx = Math.abs(dx) > 6 ? Math.sign(dx) * speed : 0;
+    if (b.vx) b.dir = b.vx > 0 ? 1 : -1;
+    if (t && s.tiles && b.grounded && b.vx) {
+      if (wallAhead(s, b) && b.thing.jump) { b.vy = -b.thing.jump; b.grounded = false; }
+      else if (!groundAhead(s, b)) b.vx = 0;
+    }
+    return Math.abs(dx) <= 6;
+  }
+  if (!t || !s.tiles) {
+    const dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy);
+    if (d < 4) { b.vx = 0; b.vy = 0; return true; }
+    b.vx = (dx / d) * speed;
+    b.vy = (dy / d) * speed;
+    return false;
+  }
+  const z = t.size, here = cellOf(s, b.x, b.y), goal = cellOf(s, tx, ty);
+  if (s.t >= b.thinkAt || !b.route.length) {
+    b.thinkAt = s.t + 0.35;
+    b.route = findPath({ cols: t.cols, rows: t.rows, blocked: solidAt(s) }, here, goal, 3000) ?? [];
+  }
+  const near = Math.max(2, speed * STEP);
+  while (b.route.length) {
+    const [c, r] = b.route[0];
+    const cx = c * z + z / 2, cy = r * z + z / 2, dx = cx - b.x, dy = cy - b.y;
+    if (Math.abs(dx) <= near && Math.abs(dy) <= near) { b.route.shift(); continue; }
+    if (Math.abs(dx) >= Math.abs(dy)) { b.vx = Math.sign(dx) * speed; b.vy = Math.max(-speed, Math.min(speed, dy * 10)); }
+    else { b.vy = Math.sign(dy) * speed; b.vx = Math.max(-speed, Math.min(speed, dx * 10)); }
+    return false;
+  }
+  if (here[0] !== goal[0] || here[1] !== goal[1]) { b.vx = 0; b.vy = 0; return true; }
+  const dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy);
+  if (d < 3) { b.vx = 0; b.vy = 0; return true; }
+  b.vx = (dx / d) * speed;
+  b.vy = (dy / d) * speed;
+  return false;
+}
+
+/** A guard going round: on foot back and forth (turning at a wall or a ledge); over a map, to one near cell after another. */
+function goRound(s: GameState, b: Body) {
+  const t = s.spec.tiles, speed = b.thing.speed * 0.6;
+  if (!flies(s, b)) {
+    b.vx = speed * b.dir;
+    if (t && s.tiles && b.grounded && (wallAhead(s, b) || !groundAhead(s, b))) { b.dir = b.dir === 1 ? -1 : 1; b.vx = speed * b.dir; }
+    return;
+  }
+  if (!t || !s.tiles) {
+    if (s.t >= b.turnAt) { const a = random(s) * Math.PI * 2; b.vx = Math.cos(a) * speed; b.vy = Math.sin(a) * speed; b.turnAt = s.t + 1 + random(s) * 1.5; }
+    return;
+  }
+  if (s.t >= b.turnAt) {
+    const [hc, hr] = cellOf(s, b.x, b.y);
+    for (let k = 0; k < 8; k++) {
+      const c = hc + Math.floor(random(s) * 11) - 5, r = hr + Math.floor(random(s) * 11) - 5;
+      if (c < 0 || r < 0 || c >= t.cols || r >= t.rows || kindAt(s, c, r)?.solid) continue;
+      b.lx = c * t.size + t.size / 2;
+      b.ly = r * t.size + t.size / 2;
+      b.route = [];
+      break;
+    }
+    b.turnAt = s.t + 4;
+  }
+  if (goToward(s, b, b.lx, b.ly, speed)) b.turnAt = Math.min(b.turnAt, s.t + 0.3);
+}
+
+/** A thing's path, from where it starts, made ready once. */
+const tracks = new WeakMap<GameThing, Track>();
+function trackFor(thing: GameThing): Track {
+  let t = tracks.get(thing);
+  if (!t) { t = trackOf([[0, 0], ...(thing.path?.points ?? [])], thing.path?.loop === true, thing.path?.smooth === true); tracks.set(thing, t); }
+  return t;
+}
+
 function act(s: GameState, a: GameAct, ctx: Ctx) {
   if (s.phase !== "playing") return;
   switch (a.act) {
@@ -228,6 +408,15 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
     case "shake": s.shake = 0.3; s.effects.push({ kind: "shake" }); return;
     case "sound": s.effects.push({ kind: "sound", sound: a.kind }); return;
     case "burst": { const b = a.who === "other" ? ctx.other ?? ctx.self : ctx.self ?? ctx.other; if (b) s.effects.push({ kind: "burst", x: b.x, y: b.y, color: b.thing.look.color }); return; }
+    case "next": case "retry": {
+      // Made when the cover has closed (at the next step), never in the middle of one.
+      if (s.goTo >= 0) return;
+      const to = a.act === "retry" ? s.level : s.level + 1;
+      if (to >= levelCount(s.spec)) { s.phase = "won"; s.effects.push({ kind: "sound", sound: "success" }); return; }
+      s.goTo = to;
+      s.trans = s.spec.transition === "none" ? 0 : TRANS;
+      return;
+    }
   }
 }
 
@@ -241,6 +430,17 @@ const player = (s: GameState) => s.bodies.find((b) => !b.dead && b.thing.control
 export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   if (s.phase !== "playing") return;
   const { spec } = s;
+  // Between two levels: the cover closes on the old one, the new one is made under it, and it opens.
+  if (s.goTo >= 0 || s.trans > 0) {
+    s.trans = Math.max(0, s.trans - dt);
+    if (s.goTo >= 0 && s.trans <= TRANS / 2) {
+      const i = s.goTo;
+      s.goTo = -1;
+      setLevel(s, i);
+      run(s, (w) => w.on === "level" && (w.at === 0 || w.at === i + 1), {});
+    }
+    if (s.trans > 0) return;
+  }
   const W = spec.ww, H = spec.wh;
   s.t += dt;
   s.steps++;
@@ -271,6 +471,12 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
         const x = (input.right ? 1 : 0) - (input.left ? 1 : 0), y = (input.down ? 1 : 0) - (input.up ? 1 : 0);
         const len = Math.hypot(x, y) || 1;
         b.vx = (x / len) * t.speed; b.vy = (y / len) * t.speed;
+        // In a tile map's corridors: kept to the middle across its way, so it turns into an opening.
+        if (s.tiles && spec.tiles && t.body === "dynamic" && b.w <= spec.tiles.size && b.h <= spec.tiles.size) {
+          const z = spec.tiles.size, cap = (v: number) => Math.max(-t.speed, Math.min(t.speed, v));
+          if (b.vx && !b.vy) b.vy = cap(((Math.floor(b.y / z) + 0.5) * z - b.y) * 10);
+          else if (b.vy && !b.vx) b.vx = cap(((Math.floor(b.x / z) + 0.5) * z - b.x) * 10);
+        }
         break;
       }
       case "platform": {
@@ -305,6 +511,58 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
         if (s.t >= b.turnAt) { const a = random(s) * Math.PI * 2; b.vx = Math.cos(a) * t.speed; if (t.body !== "dynamic") b.vy = Math.sin(a) * t.speed; b.turnAt = s.t + 0.8 + random(s) * 1.4; }
         break;
       case "spin": b.rot += dt * Math.PI; break;
+      case "guard": {
+        const p = player(s);
+        if (p && p !== b && sees(s, b, p)) {
+          if (b.mind !== "chase") s.effects.push({ kind: "alert", x: b.x, y: b.y - b.h / 2 - 14 });
+          b.mind = "chase"; b.seen = s.t; b.lx = p.x; b.ly = p.y;
+        } else if (b.mind === "chase" && s.t - b.seen > 1.2) { b.mind = "search"; b.route = []; b.thinkAt = 0; }
+        if (b.mind === "chase" && p) goToward(s, b, p.x, p.y, t.speed * 1.3);
+        else if (b.mind === "search") { if (goToward(s, b, b.lx, b.ly, t.speed) || s.t - b.seen > 6) { b.mind = "patrol"; b.route = []; b.turnAt = 0; } }
+        else goRound(s, b);
+        break;
+      }
+      case "flee": {
+        const p = player(s);
+        if (!p || p === b || !sees(s, b, p, false)) { goRound(s, b); break; }
+        if (spec.tiles && s.tiles && flies(s, b)) {
+          // The open cell beside it furthest from the player.
+          const z = spec.tiles.size, [hc, hr] = cellOf(s, b.x, b.y);
+          let best: [number, number] = [hc, hr], far = -1;
+          for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const c = hc + dx, r = hr + dy;
+            if (c < 0 || r < 0 || c >= spec.tiles.cols || r >= spec.tiles.rows || kindAt(s, c, r)?.solid) continue;
+            const d = Math.hypot(c * z + z / 2 - p.x, r * z + z / 2 - p.y);
+            if (d > far) { far = d; best = [c, r]; }
+          }
+          b.route = [];
+          goToward(s, b, best[0] * z + z / 2, best[1] * z + z / 2, t.speed);
+        } else {
+          const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy) || 1;
+          b.vx = (dx / d) * t.speed;
+          if (flies(s, b)) b.vy = (dy / d) * t.speed;
+        }
+        break;
+      }
+      case "homing": {
+        // It turns toward the player a little at a time (it can be dodged), pointing the way it goes.
+        const p = player(s);
+        if (p && p !== b) {
+          const dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy) || 1, k = Math.min(1, dt * 2.5);
+          b.vx += ((dx / d) * t.speed - b.vx) * k;
+          b.vy += ((dy / d) * t.speed - b.vy) * k;
+        }
+        if (Math.hypot(b.vx, b.vy) > 1) b.rot = Math.atan2(b.vy, b.vx);
+        break;
+      }
+      case "path": {
+        if (!t.path) break;
+        b.along += t.speed * dt;
+        const [px, py] = onTrack(trackFor(t), b.along);
+        b.vx = (b.ox + px - b.x) / dt;
+        b.vy = (b.oy + py - b.y) / dt;
+        break;
+      }
     }
   }
   if (!input.pointerDown) s.dragging = null;
@@ -315,6 +573,12 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
     if (b.dead || !moves(b)) continue;
     if (b.thing.body === "dynamic") b.vy += spec.gravity * b.thing.gravity * dt;
     const dynamicOnTiles = b.thing.body === "dynamic" && s.tiles;
+    // Carried by the moving thing it stands on.
+    if (b.ride) {
+      const o = s.bodies.find((x) => x.n === b.ride);
+      if (o && !o.dead && moves(o)) { b.x += o.vx * dt; if (o.vy > 0) b.y += o.vy * dt; }
+      b.ride = 0;
+    }
     const prevBottom = b.y + b.h / 2;
     b.grounded = false;
     b.x += b.vx * dt;
@@ -322,12 +586,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
     b.y += b.vy * dt;
     if (dynamicOnTiles) tileBlock(s, b, "y", prevBottom);
     // A patrol on the ground turns back at a ledge (no tile under the foot in front).
-    if (dynamicOnTiles && b.grounded && b.thing.behave === "patrol") {
-      const z = spec.tiles!.size;
-      const foot = Math.floor((b.x + b.dir * (b.w / 2 + 1)) / z), below = Math.floor((b.y + b.h / 2 + 2) / z);
-      const k = kindAt(s, foot, below);
-      if (!k || !(k.solid || k.oneWay)) b.dir = b.dir === 1 ? -1 : 1;
-    }
+    if (dynamicOnTiles && b.grounded && b.thing.behave === "patrol" && !groundAhead(s, b)) b.dir = b.dir === 1 ? -1 : 1;
     // Only a dynamic body is pushed by solids (a kinematic one, a paddle or a falling coin, just moves by its speed).
     if (b.thing.body !== "dynamic") continue;
     for (const o of solids) {
@@ -342,7 +601,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       } else {
         const side = b.y < o.y ? -1 : 1;
         b.y += side * py;
-        if (side < 0) b.grounded = true;
+        if (side < 0) { b.grounded = true; b.ride = o.n; }
         b.vy = b.thing.bounce ? Math.abs(b.vy) * side * b.thing.bounce : 0;
       }
     }
@@ -405,7 +664,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
         let tile = cells.get(cell);
         if (!tile) {
           const thing = { id: `tile-${s.tiles[r][c]}`, look: k.look, tags: k.tags } as unknown as GameThing;
-          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false };
+          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0 };
           cells.set(cell, tile);
         }
         for (const rule of hits) {
@@ -419,6 +678,25 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
     for (const [cell, tile] of cells) if (tile.dead) { s.tiles[Math.floor(cell / spec.tiles.cols)][cell % spec.tiles.cols] = "."; s.tilesV++; }
   }
   s.contacts = now;
+
+  /* ---- sight: each pair once, as the first comes to see the second */
+  const looks = spec.rules.filter((r) => r.when.on === "see");
+  if (looks.length) {
+    const seeing = new Set<string>();
+    const living = s.bodies.filter((b) => !b.dead);
+    for (const r of looks) {
+      const w = r.when as { a: string; b: string };
+      const as = living.filter((x) => isWho(w.a, { id: x.of, tags: x.thing.tags })).slice(0, 24);
+      const bs = living.filter((x) => isWho(w.b, { id: x.of, tags: x.thing.tags })).slice(0, 24);
+      for (const a of as) for (const b of bs) {
+        if (a === b || a.dead || b.dead || !sees(s, a, b)) continue;
+        const key = `${a.n}>${b.n}`;
+        seeing.add(key);
+        if (!s.seeing.has(key)) for (const x of r.do) act(s, x, { self: a, other: b });
+      }
+    }
+    s.seeing = seeing;
+  }
 
   /* ---- taps: the topmost thing under each */
   for (const tap of input.taps) {
@@ -435,8 +713,9 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
   if (s.phase !== "playing") return;
   if (spec.winScore && s.score >= spec.winScore) { s.phase = "won"; s.effects.push({ kind: "sound", sound: "success" }); return; }
   if (spec.lives && s.lives <= 0) { s.phase = "lost"; return; }
-  if (spec.time && s.t >= spec.time) { s.phase = spec.timeWins ? "won" : "lost"; if (s.phase === "won") s.effects.push({ kind: "sound", sound: "success" }); }
+  // The clock is each level's own.
+  if (spec.time && s.t - s.levelT >= spec.time) { s.phase = spec.timeWins ? "won" : "lost"; if (s.phase === "won") s.effects.push({ kind: "sound", sound: "success" }); }
 }
 
-/** Seconds left on the clock (null: no clock). */
-export const timeLeft = (s: GameState) => (s.spec.time ? Math.max(0, Math.ceil(s.spec.time - s.t)) : null);
+/** Seconds left on this level's clock (null: no clock). */
+export const timeLeft = (s: GameState) => (s.spec.time ? Math.max(0, Math.ceil(s.spec.time - (s.t - s.levelT))) : null);

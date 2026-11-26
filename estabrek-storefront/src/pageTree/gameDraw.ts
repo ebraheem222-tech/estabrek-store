@@ -57,3 +57,32 @@ export function sheetFrame(look: GameLook, anim: "idle" | "run" | "jump" | "fall
   const i = from + (Math.floor(t * sh.fps) % Math.max(1, count));
   return { col: i % sh.cols, row: Math.floor(i / sh.cols), cols: sh.cols, rows: sh.rows };
 }
+
+/**
+ * The cover between two levels (gameEngine.ts coverOf): `k` of the view hidden, closing on the old level or opening
+ * on the new one. A fade, a wipe across (it closes from one side and opens on toward the other), or a circle closing
+ * to the middle and opening from it. As CSS for the shop's stage, and drawn on a 2D canvas for the editor's.
+ */
+export type Cover = "fade" | "wipe" | "circle" | "none";
+export function coverCss(kind: Cover, k: number, closing: boolean, colour: string): string {
+  if (k <= 0 || kind === "none") return "display:none";
+  const base = "position:absolute;inset:0;pointer-events:none;";
+  const pct = Math.round((1 - k) * 1000) / 10;
+  if (kind === "fade") return `${base}background:${colour};opacity:${Math.round(k * 1000) / 1000}`;
+  if (kind === "wipe") return `${base}background:${colour};clip-path:${closing ? `inset(0 ${pct}% 0 0)` : `inset(0 0 0 ${pct}%)`}`;
+  return `${base}background:radial-gradient(circle at 50% 50%, transparent ${pct}%, ${colour} ${Math.min(100, pct + 0.5)}%)`;
+}
+export function drawCover(x: CanvasRenderingContext2D, kind: Cover, k: number, closing: boolean, w: number, h: number, colour: string) {
+  if (k <= 0 || kind === "none") return;
+  x.save();
+  x.fillStyle = colour;
+  if (kind === "fade") { x.globalAlpha = k; x.fillRect(0, 0, w, h); }
+  else if (kind === "wipe") { if (closing) x.fillRect(0, 0, w * k, h); else x.fillRect(w * (1 - k), 0, w * k, h); }
+  else {
+    x.beginPath();
+    x.rect(0, 0, w, h);
+    x.arc(w / 2, h / 2, (1 - k) * Math.hypot(w, h) / 2, 0, Math.PI * 2, true);
+    x.fill("evenodd");
+  }
+  x.restore();
+}
