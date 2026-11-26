@@ -127,3 +127,34 @@ describe("a product picture's depth picture (the 3D card and product page)", () 
     expect(CARD_HOVERS).toContain("3d");
   });
 });
+
+describe("a film camera into the picture", () => {
+  test("by itself: in and out over 14 s, never past its reach, drifting little (more as it gets closer)", () => {
+    const at = (t: number) => shared.cameraAt("dolly", t, 0, 1);
+    expect(at(0).z).toBeCloseTo(0);
+    expect(at(7).z).toBeCloseTo(0.8);
+    expect(at(14).z).toBeCloseTo(0);
+    for (let t = 0; t < 60; t += 0.37) {
+      const c = at(t);
+      expect(c.z).toBeGreaterThanOrEqual(0);
+      expect(c.z).toBeLessThanOrEqual(0.8 + 1e-9);
+      // Its drift: never more than a tenth, and at most a fortieth while it is far (the picture's edges never show).
+      expect(Math.abs(c.x)).toBeLessThanOrEqual(0.1 * (0.25 + 0.75 * (c.z / 0.8)) + 1e-9);
+    }
+    expect(shared.cameraAt("dolly", 7, 0, 0.1).z).toBeCloseTo(0.305);
+  });
+  test("with the scroll: further in the further the page went, from nothing to its reach", () => {
+    const z = (p: number) => shared.cameraAt("dive", 0, p, 0.5).z;
+    expect(z(-0.4)).toBe(0);
+    expect(z(0)).toBe(0);
+    expect(z(1)).toBeCloseTo(0.525);
+    expect(z(1.5)).toBeCloseTo(0.525);
+    for (let p = 0; p < 1; p += 0.1) expect(z(p + 0.1)).toBeGreaterThan(z(p));
+  });
+  test("only those two move the camera; the others turn the picture", () => {
+    expect(shared.PHOTO3D_MOVES.filter(shared.cameraMove)).toEqual(["dolly", "dive"]);
+    for (const m of ["pointer", "scroll", "auto"] as const) expect(shared.cameraAt(m, 5, 0.5, 1)).toEqual({ x: 0, y: 0, z: 0 });
+    // The server takes them.
+    expect(checkTree(page({ map: "https://res.cloudinary.com/x/d.png", move: "dive" })).ok).toBe(true);
+  });
+});

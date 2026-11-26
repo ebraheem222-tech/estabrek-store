@@ -8,8 +8,12 @@
 
 export const PHOTO3D_LOOKS = ["mesh", "points"] as const;
 export type Photo3dLook = (typeof PHOTO3D_LOOKS)[number];
-/** What turns it: the pointer (and a phone's tilt), the page's scroll, or itself, slowly. */
-export const PHOTO3D_MOVES = ["pointer", "scroll", "auto"] as const;
+/**
+ * What turns it: the pointer (and a phone's tilt), the page's scroll, or itself, slowly. Or a camera that moves into
+ * it, as a film does (its near things grow faster than its far ones): by itself, in and out (`dolly`), or as the
+ * page scrolls through it (`dive`).
+ */
+export const PHOTO3D_MOVES = ["pointer", "scroll", "auto", "dolly", "dive"] as const;
 export type Photo3dMove = (typeof PHOTO3D_MOVES)[number];
 export type Photo3d = {
   /** The depth picture (white = near). */
@@ -22,6 +26,28 @@ export type Photo3d = {
   light: number;
 };
 export const PHOTO3D_DEFAULT = { look: "mesh", move: "pointer", depth: 0.5, turn: 0.5, light: 0.3 } as const;
+/** The camera moves (it travels toward the picture; the others turn it). */
+export const cameraMove = (move: Photo3dMove) => move === "dolly" || move === "dive";
+
+/**
+ * Where the camera is for a camera move, in the shop's units (the picture is 2 tall; z is toward it, at most
+ * 0.25 + 0.55 × turn: near things then grow about a third more than far ones, a film's push, not a dive into them): `dolly` by itself, in and out over 14 s, drifting a little more as it gets closer (its edges
+ * never show); `dive` as the page scrolls through it (`p` 0 as it comes in at the bottom … 1 as it leaves at the top).
+ */
+export function cameraAt(move: Photo3dMove, seconds: number, p: number, turn: number): { x: number; y: number; z: number } {
+  const reach = 0.25 + 0.55 * turn;
+  if (move === "dolly") {
+    const near = (1 - Math.cos((2 * Math.PI * seconds) / 14)) / 2;
+    const drift = turn * 0.1 * (0.25 + 0.75 * near);
+    return { x: Math.sin((2 * Math.PI * seconds) / 23) * drift, y: Math.sin((2 * Math.PI * seconds) / 31) * drift * 0.5, z: near * reach };
+  }
+  if (move === "dive") {
+    const q = Math.min(1, Math.max(0, p));
+    return { x: 0, y: (q - 0.5) * turn * 0.1 * (0.25 + 0.75 * q), z: q * reach };
+  }
+  return { x: 0, y: 0, z: 0 };
+}
+
 /** At most this many 3D pictures draw at once (each is a WebGL canvas). */
 export const PHOTO3D_LIVE = 4;
 

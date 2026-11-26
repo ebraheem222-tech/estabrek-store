@@ -10,7 +10,7 @@
  * pointer comes, put away once it has left and turned back), and a picture without its depth picture yet gets a
  * quick one from its own light (`map: null`).
  */
-import { PHOTO3D_LIVE, depthGrid, lightDepth, photoMesh, type DepthGrid, type Mesh, type Photo3d } from "../../../shared/photo3d";
+import { PHOTO3D_LIVE, cameraAt, cameraMove, depthGrid, lightDepth, photoMesh, type DepthGrid, type Mesh, type Photo3d } from "../../../shared/photo3d";
 import { canvasSize, fitUv } from "../../../shared/pictureFx";
 
 type Stop = () => void;
@@ -25,10 +25,11 @@ export type Photo3dOptions = {
   cols?: number;
 };
 /** What a test can read of a 3D picture that runs (host.__photo3d). */
-export type Photo3dProbe = { triangles: number; cut: number; yaw: number; pitch: number; frames: number; look: string; depth: "map" | "light" };
+export type Photo3dProbe = { triangles: number; cut: number; yaw: number; pitch: number; frames: number; look: string; depth: "map" | "light"; cam: { x: number; y: number; z: number } };
 
 // The camera stands D away; a point at z = 0 lands where the flat picture is. Near points (z > 0) grow, far ones shrink.
-const VIEW = `uniform float u_yaw, u_pitch, u_scale, u_aspect;
+// A camera move (u_cam) takes it toward the picture (z) and aside: near things then grow and pass faster than far ones.
+const VIEW = `uniform float u_yaw, u_pitch, u_scale, u_aspect; uniform vec3 u_cam;
 const float D = 4.0;
 vec3 turned(vec3 p){
   float cy = cos(u_yaw), sy = sin(u_yaw), cp = cos(u_pitch), sp = sin(u_pitch);
@@ -36,8 +37,9 @@ vec3 turned(vec3 p){
   return vec3(a.x, a.y * cp - a.z * sp, a.y * sp + a.z * cp) * u_scale;
 }
 vec4 placed(vec3 q){
-  float z = D - q.z;
-  return vec4(q.x * D / u_aspect, q.y * D, (z - D) * 0.5 * z, z);
+  vec3 c = vec3(q.x - u_cam.x, q.y - u_cam.y, q.z + u_cam.z);
+  float z = D - c.z;
+  return vec4(c.x * D / u_aspect, c.y * D, (z - D) * 0.25 * z, z);
 }`;
 const MESH_VS = `attribute vec3 a_p; attribute vec2 a_uv; attribute vec3 a_n;
 ${VIEW}
@@ -46,7 +48,7 @@ varying vec2 v_uv; varying vec3 v_n;
 void main(){
   vec3 q = turned(a_p);
   gl_Position = placed(q);
-  gl_PointSize = u_point * D / max(0.5, D - q.z);
+  gl_PointSize = u_point * D / max(0.5, D - q.z - u_cam.z);
   v_uv = a_uv;
   v_n = turned(a_n) / u_scale;
 }`;
@@ -118,12 +120,12 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
   let draw: (() => void) | null = null;
   let mesh: Mesh | null = null;
   // Where it is turned now, where it is going, and the light.
-  const at = { yaw: 0, pitch: 0, lx: -0.4, ly: 0.5 }, to = { yaw: 0, pitch: 0, lx: -0.4, ly: 0.5 };
+  const at = { yaw: 0, pitch: 0, lx: -0.4, ly: 0.5, cx: 0, cy: 0, cz: 0 }, to = { yaw: 0, pitch: 0, lx: -0.4, ly: 0.5, cx: 0, cy: 0, cz: 0 };
   let tilt0: { b: number; g: number } | null = null;
   let seen = false;
   const born = performance.now();
   const say = (s: string) => host.setAttribute("data-pt-3d-state", s);
-  (host as HTMLElement & { __photo3d?: () => Photo3dProbe }).__photo3d = () => ({ triangles: mesh ? mesh.index.length / 3 : 0, cut: mesh?.cut ?? 0, yaw: at.yaw, pitch: at.pitch, frames, look: spec.look, depth: spec.map ? "map" : "light" });
+  (host as HTMLElement & { __photo3d?: () => Photo3dProbe }).__photo3d = () => ({ triangles: mesh ? mesh.index.length / 3 : 0, cut: mesh?.cut ?? 0, yaw: at.yaw, pitch: at.pitch, frames, look: spec.look, depth: spec.map ? "map" : "light", cam: { x: at.cx, y: at.cy, z: at.cz } });
 
   const close = () => {
     cancelAnimationFrame(frame);
@@ -245,6 +247,7 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
         // A little bigger, so its edges never show as it turns.
         c.uniform1f(u("u_scale"), 1 + spec.turn * 0.09);
         c.uniform1f(u("u_aspect"), aspect);
+        c.uniform3f(u("u_cam"), at.cx, at.cy, at.cz);
         c.uniform2f(u("u_light"), at.lx, at.ly);
         c.uniform1f(u("u_shade"), spec.light);
         c.uniform1i(u("u_tex"), 0);
@@ -312,15 +315,24 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
       to.pitch = -p * spec.turn * 0.3;
       to.lx = -0.3;
       to.ly = 0.6 - p * 0.4;
+    } else if (cameraMove(spec.move)) {
+      // A film camera: by itself, in and out, or diving in as the page scrolls through it (0 coming in … 1 leaving).
+      const r = host.getBoundingClientRect(), vh = window.innerHeight || 1;
+      const cam = cameraAt(spec.move, (now - born) / 1000, (vh - r.top) / (vh + r.height), spec.turn);
+      to.cx = cam.x;
+      to.cy = cam.y;
+      to.cz = cam.z;
+      to.lx = -0.35 + cam.x * 2;
+      to.ly = 0.55;
     }
     let busy = false;
-    for (const key of ["yaw", "pitch", "lx", "ly"] as const) {
+    for (const key of ["yaw", "pitch", "lx", "ly", "cx", "cy", "cz"] as const) {
       const d = to[key] - at[key];
       at[key] += d * step;
       if (Math.abs(d) > 0.0005) busy = true;
     }
     draw();
-    if ((busy || spec.move === "auto") && seen) frame = requestAnimationFrame(tick);
+    if ((busy || spec.move === "auto" || spec.move === "dolly") && seen) frame = requestAnimationFrame(tick);
     // At rest: the next move starts its own clock (a pause is no long step).
     else last = 0;
     // A card's, turned back after the pointer left: it fades and is put away (a WebGL canvas less on the page).
@@ -365,7 +377,7 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o
     to.ly = -y;
     kick();
   };
-  const scrolled = () => { if (spec.move === "scroll") kick(); };
+  const scrolled = () => { if (spec.move === "scroll" || spec.move === "dive") kick(); };
   // A card's: only a mouse brings it (a finger's touch opens the product).
   const came = (e: PointerEvent) => {
     if (!o.hover || e.pointerType !== "mouse" || gone) return;

@@ -411,7 +411,7 @@ export const FX_KINDS = ["shine", "gradient", "grain", "proximity", "particles"]
 export const PICTURE_FX = ["ripple", "liquid", "shift", "reveal"] as const;
 /** A picture in 3D (shared/photo3d.ts): drawn as a mesh or points, turned by the pointer, the scroll or itself. */
 export const PHOTO3D_LOOKS = ["mesh", "points"] as const;
-export const PHOTO3D_MOVES = ["pointer", "scroll", "auto"] as const;
+export const PHOTO3D_MOVES = ["pointer", "scroll", "auto", "dolly", "dive"] as const;
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
 const MotionKeys = z.object({
   rx: z.number().finite().min(-180).max(180).optional(),
