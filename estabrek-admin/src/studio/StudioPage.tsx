@@ -50,6 +50,7 @@ import { TokensContext, useDesignTokens, withGroup } from "./designTokens";
 import { coloursToAdd } from "./variableMaths";
 import { PictureColoursCard, type PictureLook } from "./PictureColours";
 import { PictureFxPanel } from "./PictureFxPanel";
+import { Photo3dPanel } from "./Photo3dPanel";
 import { AiWordsCard, plainWords, type AiWordsKind } from "./AiWordsCard";
 import { pageWords, pagesAiStatus, pictureAlt } from "../api/ai.api";
 import { backdropOf, type PictureColour, type PicturePoint, type PictureRoles } from "../../../shared/pictureSense";
@@ -3516,6 +3517,7 @@ function StudioDocument() {
               }}
               onPlay={() => send({ type: "motionPlay", nodeId: selected })}
             />
+            {selFree.type === "image" ? <Photo3dPanel key={`p3d:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "image" || selFree.type === "slider" ? <PictureFxPanel key={`glfx:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} onTry={() => send({ type: "motionGlfx", nodeId: selFree.id })} /> : null}
             {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {WORLD_HOSTS.has(selFree.type) ? (

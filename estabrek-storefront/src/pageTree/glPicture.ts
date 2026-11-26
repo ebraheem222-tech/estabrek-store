@@ -22,6 +22,8 @@ export type PictureDots = {
   col: Float32Array;
   rad: Float32Array;
   tan: Float32Array;
+  /** Each dot's depth from the picture's depth picture (0 far … 1 near), when it has one. */
+  dep?: Float32Array;
 };
 
 /** A three-pass box blur (about a Gaussian of σ ≈ r). */
@@ -50,7 +52,7 @@ function blur(src: Float32Array, w: number, h: number, r: number): Float32Array 
 }
 
 /** A picture's dots for `mode`, or null when it has nothing drawn (or can't be read). */
-export function picturePoints(data: Uint8ClampedArray, w: number, h: number, n: number, rand: Rand, mode: GlPictureMode, maxW: number, maxH: number): PictureDots | null {
+export function picturePoints(data: Uint8ClampedArray, w: number, h: number, n: number, rand: Rand, mode: GlPictureMode, maxW: number, maxH: number, depth?: Uint8ClampedArray): PictureDots | null {
   const N = w * h, at = (x: number, y: number) => (y * w + x) * 4;
   // What is drawn: not see-through, and not a plain ground (a logo on white).
   const corners = [at(0, 0), at(w - 1, 0), at(0, h - 1), at(w - 1, h - 1)];
@@ -89,7 +91,7 @@ export function picturePoints(data: Uint8ClampedArray, w: number, h: number, n: 
   }
   const px = (x: number, y: number) => [x, y] as const;
   const bw = maxX - minX + 1, bh = maxY - minY + 1, K = Math.min(maxW / bw, maxH / bh), cx = (minX + maxX + 1) / 2, cy = (minY + maxY + 1) / 2;
-  const out: PictureDots = { pos: new Float32Array(n * 3), col: new Float32Array(n * 3), rad: new Float32Array(n), tan: new Float32Array(n * 2) };
+  const out: PictureDots = { pos: new Float32Array(n * 3), col: new Float32Array(n * 3), rad: new Float32Array(n), tan: new Float32Array(n * 2), ...(depth ? { dep: new Float32Array(n) } : {}) };
   /** Particle i at picture point (x, y), with its own size r (in picture pixels) and colour (the pixel's by default). */
   const put = (i: number, x: number, y: number, r = 0, rgb?: [number, number, number]) => {
     out.pos[i * 3] = (x - cx) * K;
@@ -99,6 +101,7 @@ export function picturePoints(data: Uint8ClampedArray, w: number, h: number, n: 
     out.col[i * 3 + 1] = rgb ? rgb[1] : data[k + 1] / 255;
     out.col[i * 3 + 2] = rgb ? rgb[2] : data[k + 2] / 255;
     out.rad[i] = r * K;
+    if (out.dep && depth) out.dep[i] = depth[k] / 255;
     const m = mag[j] || 1;
     // Along the line (across the gradient), in the scene's up-is-up units.
     out.tan[i * 2] = mag[j] ? -gy[j] / m : 1;

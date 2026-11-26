@@ -286,7 +286,7 @@ export function textPoints(text: string, n: number, rand: Rand, o: { family: str
   return pixelsOf(ctx, W, H, n, rand, o.mode ?? "pixels", o.maxW, o.maxH);
 }
 /** A canvas's pixels made into dots the way asked (glPicture.ts), or null when they can't be read. */
-function pixelsOf(ctx: CanvasRenderingContext2D, w: number, h: number, n: number, rand: Rand, mode: GlPictureMode, maxW: number, maxH: number) {
+function pixelsOf(ctx: CanvasRenderingContext2D, w: number, h: number, n: number, rand: Rand, mode: GlPictureMode, maxW: number, maxH: number, depth?: Uint8ClampedArray) {
   let data: Uint8ClampedArray;
   try {
     data = ctx.getImageData(0, 0, w, h).data;
@@ -294,15 +294,26 @@ function pixelsOf(ctx: CanvasRenderingContext2D, w: number, h: number, n: number
     // A picture from a site that doesn't allow reading it.
     return null;
   }
-  return picturePoints(data, w, h, n, rand, mode, maxW, maxH);
+  return picturePoints(data, w, h, n, rand, mode, maxW, maxH, depth);
 }
 
 /** A loaded picture as n points and their colours, at most maxW × maxH of the scene's units. */
-export function imagePoints(img: HTMLImageElement, n: number, rand: Rand, maxW: number, maxH: number, mode: GlPictureMode = "pixels") {
+export function imagePoints(img: HTMLImageElement, n: number, rand: Rand, maxW: number, maxH: number, mode: GlPictureMode = "pixels", depthImg?: HTMLImageElement | null) {
   const side = 256, k = Math.min(1, side / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
   const w = Math.max(2, Math.round((img.naturalWidth || side) * k)), h = Math.max(2, Math.round((img.naturalHeight || side) * k));
   const ctx = canvas2d(w, h);
   if (!ctx) return null;
   ctx.drawImage(img, 0, 0, w, h);
-  return pixelsOf(ctx, w, h, n, rand, mode, maxW, maxH);
+  // Its depth picture at the same size: each dot takes the depth under it.
+  let depth: Uint8ClampedArray | undefined;
+  if (depthImg) {
+    const d = canvas2d(w, h);
+    try {
+      d?.drawImage(depthImg, 0, 0, w, h);
+      depth = d?.getImageData(0, 0, w, h).data;
+    } catch {
+      depth = undefined;
+    }
+  }
+  return pixelsOf(ctx, w, h, n, rand, mode, maxW, maxH, depth);
 }

@@ -1148,6 +1148,8 @@ export const BASE_CSS = [
   // waiting for its reveal is unseen until then.
   ".pt-glfx{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0;transition:opacity .2s ease}",
   ".pt-glfx[data-on]{opacity:1}",
+  // A picture in 3D (photo3dRun.ts): its canvas over the picture, faded in once drawn.
+  ".pt-3d{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0;transition:opacity .35s ease}.pt-3d[data-on]{opacity:1}",
   ".pt-frame[data-pt-glfx-wait]>.pt-frame-media{opacity:0}",
   // On a slide the words over the picture stay over the canvas.
   ".pt-slide[data-pt-glfx] .pt-slide-caption{z-index:2}",

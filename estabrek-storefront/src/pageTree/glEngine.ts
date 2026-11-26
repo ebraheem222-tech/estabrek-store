@@ -196,6 +196,7 @@ type LayerRun = {
   /** The size of the box its words or picture were fitted to, and its picture once read. */
   fitAspect: number;
   img?: HTMLImageElement;
+  depthImg?: HTMLImageElement | null;
   /** What is the same for all its particles in this step: their fit, size, turn and offset. */
   f: { fit: number; k: number; cy: number; sy: number; cp: number; sp: number; ox: number; oy: number; apart: number };
   /** A flow of maths or physics (glPhysics.ts), its memory, and what it was handed this step. */
@@ -334,8 +335,8 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
       if (got) return { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col, rad: got.rad, tan: got.tan };
     }
     if (form === "image" && run.img) {
-      const got = imagePoints(run.img, n, run.rand, maxW, maxH, mode);
-      if (got) return { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col, rad: got.rad, tan: got.tan };
+      const got = imagePoints(run.img, n, run.rand, maxW, maxH, mode, run.depthImg);
+      if (got) return { pos: relieved(got.pos, got.col, run.l.relief, got.dep), unit: false, col: got.col, rad: got.rad, tan: got.tan };
     } else if (form === "image" && run.l.image) loadImage(run, maxW, maxH);
     // Until the picture is read (or without words): a soft cloud the form gathers out of.
     return { pos: formPoints("cloud", n, run.rand), unit: true };
@@ -348,15 +349,26 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
     img.crossOrigin = "anonymous";
     img.decoding = "async";
     images.push(img);
-    img.onload = () => {
+    // Its depth picture too, when it has one (a picture without it lifts by its light).
+    const depthLoaded = new Promise<HTMLImageElement | null>((ok) => {
+      if (!run.l.depthMap) return ok(null);
+      const d = new Image();
+      d.crossOrigin = "anonymous";
+      d.onload = () => ok(d);
+      d.onerror = () => ok(null);
+      d.src = run.l.depthMap;
+    });
+    img.onload = async () => {
       if (dead) return;
       run.img = img;
+      run.depthImg = await depthLoaded;
+      if (dead) return;
       let first: Float32Array | undefined;
       run.l.shapes.forEach((s, i) => {
         if (s !== "image") return;
-        const got = imagePoints(img, run.n, run.rand, maxW, maxH, modeOf(run, i));
+        const got = imagePoints(img, run.n, run.rand, maxW, maxH, modeOf(run, i), run.depthImg);
         if (!got) return;
-        run.homes[i] = { pos: relieved(got.pos, got.col, run.l.relief), unit: false, col: got.col, rad: got.rad, tan: got.tan };
+        run.homes[i] = { pos: relieved(got.pos, got.col, run.l.relief, got.dep), unit: false, col: got.col, rad: got.rad, tan: got.tan };
         first ??= got.col;
       });
       ownSizes(run);
@@ -392,11 +404,14 @@ export function startGl(canvas: HTMLCanvasElement, spec: GlSpec, o: GlStart): Gl
   };
 
 
-  /** A picture in relief: its light parts come forward, its dark ones go back. */
-  function relieved(pos: Float32Array, col: Float32Array | undefined, relief: number) {
-    if (!col || !relief) return pos;
+  /** A picture in relief: by its real depth when it has a depth picture (near forward), else its light parts come
+   *  forward and its dark ones go back. */
+  function relieved(pos: Float32Array, col: Float32Array | undefined, relief: number, dep?: Float32Array) {
+    if (!relief || (!col && !dep)) return pos;
     const out = new Float32Array(pos);
-    for (let i = 0; i < out.length / 3; i++) out[i * 3 + 2] = (0.2126 * col[i * 3] + 0.7152 * col[i * 3 + 1] + 0.0722 * col[i * 3 + 2] - 0.5) * relief * 0.9;
+    for (let i = 0; i < out.length / 3; i++) {
+      out[i * 3 + 2] = dep ? (dep[i] - 0.5) * relief * 1.3 : (0.2126 * col![i * 3] + 0.7152 * col![i * 3 + 1] + 0.0722 * col![i * 3 + 2] - 0.5) * relief * 0.9;
+    }
     return out;
   }
   /** Whether any of a layer's forms gives its particles sizes of their own (blobs, sparks). */
