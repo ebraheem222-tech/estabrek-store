@@ -785,6 +785,8 @@ export function pieceDeclarations(l: PieceLayerSpec | undefined): string[] {
   if (l.blend) d.push(`mix-blend-mode:${l.blend}`);
   if (l.blur) d.push(`filter:blur(${l.blur}px)`);
   if (l.border) d.push(`border:${l.border.width}px ${l.border.style ?? "solid"} ${color(l.border.color)}`);
+  // A picture of its own, laid exactly as the element's picture is (its fit and focus are on the element).
+  if (l.image) d.push(`background-image:url("${l.image}")`, "background-size:var(--pt-fit,cover)", "background-position:var(--pt-focus,50% 50%)", "background-repeat:no-repeat");
   return d;
 }
 
@@ -850,6 +852,10 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
         for (const part of ["before", "after"] as const) {
           const d = pieceDeclarations(layers?.[part]);
           if (d.length) fx.push(`${sel}>.pt-pc-${part},${sel}>.pt-inner>.pt-pc-${part},${sel}>.pt-ss-stage>.pt-ss-layer>.pt-pc-${part}{${d.join(";")}}`);
+          // It comes toward the viewer: as the pointer comes, or as it scrolls through (where the browser can).
+          const pop = layers?.[part]?.pop;
+          if (pop === "hover") fx.push(`@media (prefers-reduced-motion:no-preference){${sel}>.pt-pc-${part}{transition:transform .55s cubic-bezier(.2,.7,.3,1),filter .55s ease}${sel}:hover>.pt-pc-${part}{transform:scale(1.06) translateY(-2%);filter:drop-shadow(0 14px 18px rgba(0,0,0,.35))}}`);
+          else if (pop === "scroll") fx.push(`@media (prefers-reduced-motion:no-preference){@supports (animation-timeline:view()){${sel}>.pt-pc-${part}{animation:pt-pop-out linear both;animation-timeline:view();animation-range:entry 10% cover 55%}}}`);
         }
       }
       const origin = motion?.keys?.origin;
@@ -1043,6 +1049,7 @@ export const BASE_CSS = [
   ".cms-page-layout.cms-page-wide{max-width:none;width:100%;margin-inline:0;padding:0}",
   // An element's two extra layers (before behind its content, after too unless in front) and its words as a piece.
   ".pt-pc{position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit}.pt-pc-front{z-index:2}",
+  "@keyframes pt-pop-out{from{transform:none;filter:none}to{transform:scale(1.07) translateY(-2.5%);filter:drop-shadow(0 18px 22px rgba(0,0,0,.33))}}",
   ".pt-pc-in{display:inline-block;position:relative;will-change:transform}:is(h1,h2,h3,h4,h5,h6,p)>.pt-pc-in{display:block}",
   // A scroll scene: its stage holds on the screen while the page scrolls past it (pin: `length` screens;
   // flow: what it holds scrolls over it). Its picture or clip fills the stage; blur, dim and zoom follow

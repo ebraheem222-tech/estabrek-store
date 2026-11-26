@@ -566,6 +566,8 @@ const PartLooks = z.record(z.string().regex(PART_TARGET), LookEntry).refine(r =>
  * a colour or gradient of their own, their own place over it (inset px from top, end, bottom, start;
  * minus = beyond its edges), corners, see-through, mixing, blur and frame. Behind its content unless `front`.
  */
+/** How a layer's own picture comes toward the viewer (the shop's pageTree/pieces.ts LAYER_POPS). */
+export const LAYER_POPS = ["hover", "scroll"] as const;
 const PieceLayer = z.object({
   bg: color.optional(),
   to: color.optional(),
@@ -582,6 +584,9 @@ const PieceLayer = z.object({
   blur: px(0, 60).optional(),
   border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
   front: z.boolean().optional(),
+  // A picture of its own (a thing cut out of the element's picture) and how it comes toward the viewer.
+  image: src.optional(),
+  pop: z.enum(LAYER_POPS).optional(),
 });
 export const NodeLayers = z.object({ before: PieceLayer.optional(), after: PieceLayer.optional() });
 
