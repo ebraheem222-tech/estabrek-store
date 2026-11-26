@@ -18,6 +18,7 @@
  * G4a: the 3D tab (flat, on the ground or standing; the camera, its tilt and distance, the light, shadows, fog), each
  * thing's 3D (its shape, a GLB model's address, height, how high it floats, metal, rough), a tile's height, the car;
  * trying it stays flat here (the store shows it in 3D).
+ * G4b: real 3D physics on the ground (its gravity down), the walker, the rule for a thing that tips over.
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -433,6 +434,10 @@ function View3DPanel({ game, busy, onChange }: { game: Obj; busy: boolean; onCha
           <Row label={say("الضو|The light|האור")}><Choose label={say("الضو|The light|האור")} value={String(v.light ?? "day")} options={named(LIGHT3D_NAMES)} onPick={(l) => set({ light: l })} disabled={busy} testId="game-ed-3d-light" /></Row>
           <Row label={say("ظلال|Shadows|צללים")}><input type="checkbox" checked={v.shadows !== false} disabled={busy} onChange={(e) => set({ shadows: e.target.checked ? undefined : false })} data-testid="game-ed-3d-shadows" /></Row>
           <Row label={say("ضباب|Fog|ערפל")}><input type="checkbox" checked={v.fog === true} disabled={busy} onChange={(e) => set({ fog: e.target.checked || undefined })} /></Row>
+          {v.mode === "ground" ? <>
+            <Row label={say("فيزياء 3D حقيقية (بتوقع، بتتدحرج، بتنكوّم)|Real 3D physics (falling, rolling, stacking)|פיזיקה תלת־ממדית אמיתית (נופל, מתגלגל, נערם)")}><input type="checkbox" checked={v.physics === true} disabled={busy} onChange={(e) => set({ physics: e.target.checked || undefined })} data-testid="game-ed-3d-physics" /></Row>
+            {v.physics ? <Num label={say("الجاذبية لتحت|Gravity down|כוח משיכה למטה")} value={num(v.gravity, 2000)} min={200} max={6000} step={100} onSave={(g) => set({ gravity: g })} testId="game-ed-3d-gravity" /> : null}
+          </> : null}
           <p className="text-[11px] leading-4 text-white/45">{say("نفس اللعبة بقواعدها، بس بتنرسم بالـ 3D بالمتجر: «جرّبها» هون بتضل مسطّحة. البلاط بيصير مكعّبات، والأشياء بتاخد أشكالها من تبويب الأشياء.|The same game and rules, drawn in 3D in the store (trying it here stays flat). Tiles become blocks; each thing's 3D shape is set on the things tab.|אותו משחק וכללים, מצויר בתלת־ממד בחנות (הניסיון כאן נשאר שטוח). אריחים הופכים לקוביות; צורת כל פריט נקבעת בלשונית הפריטים.")}</p>
         </> : null}
       </div>
@@ -625,7 +630,7 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
         </div> : null}
         {when.on === "hit" || when.on === "see" || when.on === "press" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : when.on === "press" ? say("بيلمس|touches|נוגע ב") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
         {when.on === "level" ? <Num label={say("المرحلة (0 = كل وحدة)|The level (0 = each)|השלב (0 = כל אחד)")} value={num(when.at, 0)} min={0} max={8} onSave={(v) => setWhen({ at: Math.round(v) })} testId="game-ed-level-at" /> : null}
-        {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" || when.on === "break" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
+        {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" || when.on === "break" || when.on === "tip" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
         {when.on === "key" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} /> : null}
         {when.on === "score" || when.on === "time" ? <Num label={when.on === "score" ? say("النقاط|The score|הניקוד") : say("الثانية|The second|השנייה")} value={num(when.at, 10)} min={when.on === "score" ? -9999 : 0} max={when.on === "score" ? 99999 : 600} onSave={(v) => setWhen({ at: v })} testId="game-ed-at" /> : null}
       </div>

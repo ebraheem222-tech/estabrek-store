@@ -30,12 +30,14 @@
  *    moment; the keys the rules ask for get their touch buttons.
  *  - G4a: a game seen in 3D is drawn by gameScene3d.ts (its own camera, light and shadows) in place of the flat
  *    drawing; a tap or a pull is found on its ground or wall; a car gets the four arrows on a touch screen.
+ *  - G4b: a game with real 3D physics loads Rapier's 3D build (only then) and is made again with it.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
 import { saveWonCoupon } from "../lib/wonCoupon";
 import { NO_INPUT, STEP, coverOf, endGame, levelCount, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
 import { needsPhysics, physJoints, type Rapier } from "./gamePhysics";
+import { needs3d, type Rapier3 } from "./gamePhysics3d";
 import { Music, playNote, playSound } from "./gameSound";
 import { alphaOf, burst, confetti, newParticles, placeOf, stepParticles } from "./gameParticles";
 import { GAME_FX, GAME_POST } from "./gameSpec";
@@ -63,6 +65,16 @@ const loadRapier = () => (rapierLoad ??= import("@dimforge/rapier2d-deterministi
     return R as Rapier;
   })
   // Not loaded (offline): the game plays with the arcade's bodies.
+  .catch(() => null));
+
+/** Rapier's 3D build, loaded once for every game on the page with real 3D physics. */
+let rapier3Load: Promise<Rapier3 | null> | null = null;
+const loadRapier3 = () => (rapier3Load ??= import("@dimforge/rapier3d-deterministic-compat")
+  .then(async (m) => {
+    const R = (m.default ?? m) as unknown as Rapier3 & { init(): Promise<void> };
+    await R.init();
+    return R as Rapier3;
+  })
   .catch(() => null));
 
 /* ---------------------------------------------------------------- shaders (G3) */
@@ -154,8 +166,10 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const [hud, setHud] = useState<Hud>({ phase: "ready", score: 0, lives: spec.lives, time: spec.time || null, level: 1 });
   const cover = useRef<HTMLDivElement>(null);
   const levels = levelCount(spec);
-  const physics = needsPhysics(spec);
-  const [physReady, setPhysReady] = useState(!physics);
+  // Real 3D physics (its own build) or the 2D one: whichever the game needs, loaded before it starts.
+  const physics3 = needs3d(spec);
+  const physics = needsPhysics(spec) && !physics3;
+  const [physReady, setPhysReady] = useState(!physics && !physics3);
   const [sound, setSound] = useState(true);
   const [touch, setTouch] = useState(false);
   const [editor, setEditor] = useState(false);
@@ -194,13 +208,13 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
     if (!el || !cv) return;
     let stop = false, frame = 0, visible = true, hidden = document.hidden;
     let cleanup = () => {};
-    void Promise.all([import("three"), physics ? loadRapier() : Promise.resolve(null)]).then(([THREE, R]) => {
+    void Promise.all([import("three"), physics ? loadRapier() : Promise.resolve(null), physics3 ? loadRapier3() : Promise.resolve(null)]).then(([THREE, R, R3]) => {
       if (stop) return;
       // Its rigid things are Rapier's now: the game made again with it (still waiting to start).
-      if (physics) {
-        if (R) {
+      if (physics || physics3) {
+        if (R || R3) {
           endGame(game.current!);
-          game.current = newGame(spec, R);
+          game.current = newGame(spec, R, R3);
           if (spec.coupon && spec.once && wonBefore(id)) game.current.phase = "won";
         }
         setPhysReady(true);
@@ -554,7 +568,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       };
     });
     return () => { stop = true; cleanup(); };
-  }, [spec, colours, rtl, physics, id]);
+  }, [spec, colours, rtl, physics, physics3, id]);
 
   /* ---- the keyboard, while it plays */
   useEffect(() => {

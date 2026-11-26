@@ -314,8 +314,8 @@ const GOLF: Raw = {
   },
   things: [
     { id: "ball", look: { kind: "circle", color: "white" }, x: 200, y: 160, w: 20, h: 20, body: "rigid", shape: "circle", control: "sling", speed: 1100, drag: 1.1, bounce: 0.9, friction: 0.1, fast: true, tags: ["ball"] },
-    { id: "hole", look: { kind: "circle", color: "black" }, x: 0, y: 0, w: 26, h: 26, body: "none", template: true, tags: ["hole"] },
-    { id: "bumper", look: { kind: "circle", color: "accent" }, x: 0, y: 0, w: 40, h: 40, body: "static", solid: true, shape: "circle", bounce: 1, template: true, tags: ["bumper"] },
+    { id: "hole", look: { kind: "circle", color: "black" }, x: 0, y: 0, w: 26, h: 26, body: "none", template: true, d3: { shape: "cylinder", height: 2 }, tags: ["hole"] },
+    { id: "bumper", look: { kind: "circle", color: "accent" }, x: 0, y: 0, w: 40, h: 40, body: "static", solid: true, shape: "circle", bounce: 1, template: true, d3: { shape: "cylinder", height: 34 }, tags: ["bumper"] },
     { id: "slider", look: { kind: "box", color: "accent" }, x: 0, y: 0, w: 30, h: 100, body: "kinematic", solid: true, behave: "path", speed: 110, path: { points: [[0, 90]] }, template: true },
   ],
   rules: [
@@ -453,6 +453,75 @@ const ADVENTURE_3D: Raw = {
   words: words(w("مغامرة الثعلب 3D", "The fox's adventure in 3D", "ההרפתקה של השועל בתלת־ממד"), w("نفس المغامرة بالـ 3D: الأسهم بتمشّي والمسافة بتنطّ، لمّ الألماس ووصل للعلم بالمرحلتين.", "The same adventure in 3D: arrows to run, Space to jump; gather the gems and reach the flag on both levels.", "אותה הרפתקה בתלת־ממד: חצים לריצה, רווח לקפיצה; אספו יהלומים והגיעו לדגל בשני השלבים.")),
 };
 
+/** Bowling (G4b, real 3D physics): a heavy ball rolled up a lane at ten pins standing; each pin that tips over
+ *  scores; the ball comes back after each roll; all ten in a minute wins. Pull the ball back and let go. */
+const PIN_ROWS = [[360, 1], [330, 2], [300, 3], [270, 4]] as const;
+const BOWLING: Raw = {
+  w: 960, h: 540, ww: 480, wh: 2000, bg: "#d9b17c", edges: "walls", gravity: 0, lives: 0, time: 60, winScore: 10, seed: 251,
+  view3d: { mode: "ground", camera: "follow", tilt: 34, distance: 1.05, light: "studio", physics: true, gravity: 2400 },
+  things: [
+    { id: "ball", look: { kind: "circle", color: "#3b4cca" }, x: 240, y: 1850, w: 44, h: 44, body: "rigid", control: "sling", speed: 1700, density: 7, friction: 0.25, drag: 0.05, fast: true, d3: { metal: 0.6, rough: 0.25 }, tags: ["ball"] },
+    ...PIN_ROWS.flatMap(([y, n], r) => Array.from({ length: n }, (_, i) => ({ id: `pin-${r}-${i}`, look: { kind: "box", color: "white" }, x: 240 + (i - (n - 1) / 2) * 34, y, w: 18, h: 18, body: "rigid", density: 0.5, friction: 0.4, d3: { shape: "cylinder", height: 64, rough: 0.4 }, tags: ["pin"] }))),
+  ],
+  rules: [
+    { when: { on: "tip", who: "#pin" }, do: [{ act: "score", add: 1 }, { act: "sound", kind: "pop" }] },
+    { when: { on: "rest", who: "#ball" }, do: [{ act: "home", who: "self" }] },
+    { when: { on: "out", who: "#ball" }, do: [{ act: "home", who: "self" }] },
+    { when: { on: "score", at: 10 }, do: [{ act: "confetti" }] },
+  ],
+  words: words(w("بولينغ", "Bowling", "באולינג"), w("اسحب الطابة لورا (لتحت) وفلّتها: كل دبّوس بيوقع بنقطة. وقّع العشرة بدقيقة.", "Pull the ball back (down) and let go: each pin that falls is a point. Knock all ten down in a minute.", "משכו את הכדור אחורה (למטה) ושחררו: כל פין שנופל הוא נקודה. הפילו את כל העשרה בדקה.")),
+};
+
+/** Hop (G4b, real 3D physics): a frog walks and jumps up a stair of blocks to the flag on the highest, gathering
+ *  coins on the ground and on the blocks' tops. Arrows to walk, Space to jump. */
+const HOP_COLS = 16, HOP_ROWS = 40;
+const hopMap = (() => {
+  const g = Array.from({ length: HOP_ROWS }, () => Array<string>(HOP_COLS).fill("."));
+  const block = (ch: string, r0: number, c0: number, c1: number) => { for (let r = r0; r < r0 + 3; r++) for (let c = c0; c <= c1; c++) g[r][c] = ch; };
+  block("1", 30, 4, 11);
+  block("2", 24, 3, 9);
+  block("3", 18, 6, 12);
+  block("4", 12, 5, 10);
+  // Coins on the ground (a mark on an empty cell); those on the blocks' tops and the flag are things of their own,
+  // since a mark in a block would leave a hole in it.
+  for (const [r, c] of [[35, 3], [35, 12], [28, 8], [22, 4], [16, 11]] as const) g[r][c] = "o";
+  g[37][7] = "P";
+  return g.map((r) => r.join(""));
+})();
+const HOP: Raw = {
+  w: 960, h: 540, bg: "#7cc46b", edges: "walls", gravity: 0, lives: 0, time: 90, seed: 263,
+  view3d: { mode: "ground", camera: "follow", tilt: 40, distance: 0.85, light: "day", physics: true, gravity: 2600 },
+  tiles: {
+    size: 60, cols: HOP_COLS, rows: HOP_ROWS, map: hopMap,
+    kinds: {
+      "1": { look: { kind: "box", color: "#e9d8a6" }, solid: true, height: 50 },
+      "2": { look: { kind: "box", color: "#ee9b00" }, solid: true, height: 100 },
+      "3": { look: { kind: "box", color: "#ca6702" }, solid: true, height: 150 },
+      "4": { look: { kind: "box", color: "#9b2226" }, solid: true, height: 200 },
+      P: { look: { kind: "emoji", emoji: "🐸" }, thing: "frog" },
+      o: { look: { kind: "circle", color: "#ffc83d" }, thing: "coin" },
+    },
+  },
+  things: [
+    { id: "frog", look: emoji("🐸"), x: 450, y: 2250, w: 46, h: 46, body: "dynamic", control: "walk", speed: 320, jump: 1000, tags: ["player"] },
+    { id: "coin", look: { kind: "circle", color: "#ffc83d" }, x: 0, y: 0, w: 28, h: 28, body: "none", template: true, fx: "glow", d3: { lift: 10, metal: 0.8, rough: 0.25 }, tags: ["coin"] },
+    ...([[390, 1890, 52], [330, 1530, 102], [570, 1170, 152]] as const).map(([x, y, lift], i) => ({ id: `coin-up-${i + 1}`, look: { kind: "circle", color: "#ffc83d" }, x, y, w: 28, h: 28, body: "none", fx: "glow", d3: { lift, metal: 0.8, rough: 0.25 }, tags: ["coin"] })),
+    { id: "flag", look: emoji("🏁"), x: 450, y: 810, w: 56, h: 56, body: "none", d3: { lift: 200 }, tags: ["goal"] },
+  ],
+  rules: [
+    { when: { on: "hit", a: "#player", b: "#coin" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "sound", kind: "coin" }] },
+    { when: { on: "hit", a: "#player", b: "#goal" }, do: [{ act: "confetti" }, { act: "win" }] },
+  ],
+  words: words(w("نطّ نطّ", "Hop", "קפיצות"), w("الأسهم بتمشّي الضفدع والمسافة بتنطّه: اطلع الدرج للعلم فوق ولمّ العملات عالطريق.", "Arrows walk the frog and Space jumps it: climb the stair to the flag on top, gathering the coins on the way.", "החצים מזיזים את הצפרדע והרווח מקפיץ אותה: טפסו במדרגות אל הדגל למעלה ואספו מטבעות בדרך.")),
+};
+
+/** Mini golf 3D (G4b): the same three holes, the ball rolling for real on the grass in 3D. */
+const GOLF_3D: Raw = {
+  ...GOLF,
+  view3d: { mode: "ground", camera: "angle", tilt: 52, distance: 1.1, light: "day", physics: true },
+  words: words(w("ميني غولف 3D", "Mini golf 3D", "מיני גולף בתלת־ממד"), w("نفس الغولف بالـ 3D: اسحب الطابة لورا وفلّتها لتوصل للحفرة بأقل ضربات.", "The same golf in 3D: pull the ball back and let go to reach the hole in the fewest strokes.", "אותו גולף בתלת־ממד: משכו את הכדור אחורה ושחררו כדי להגיע לגומה בכמה שפחות מכות.")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
@@ -469,6 +538,9 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "pads", name: w("لوحة العزف", "Music pads", "משטח נגינה"), line: w("مفاتيح وطبول تعزف عليها", "Keys and drums to play", "קלידים ותופים לנגן"), icon: "🎹", game: PADS },
   { key: "rally", name: w("رالي", "Rally", "ראלי"), line: w("سيارة بالـ 3D حوالين جزيرة", "A 3D car round an island", "מכונית בתלת־ממד סביב אי"), icon: "🏎️", game: RALLY },
   { key: "adventure3d", name: w("مغامرة 3D", "Adventure 3D", "הרפתקה בתלת־ממד"), line: w("المغامرة واقفة بالـ 3D", "The adventure standing up in 3D", "ההרפתקה בתלת־ממד"), icon: "🦊", game: ADVENTURE_3D },
+  { key: "bowling", name: w("بولينغ", "Bowling", "באולינג"), line: w("طابة تقيلة وعشر دبابيس بفيزياء 3D", "A heavy ball and ten pins in 3D physics", "כדור כבד ועשרה פינים בפיזיקה תלת־ממדית"), icon: "🎳", game: BOWLING },
+  { key: "hop", name: w("نطّ نطّ", "Hop", "קפיצות"), line: w("ضفدع بينطّ عدرج بالـ 3D", "A frog jumping up a stair in 3D", "צפרדע קופצת במדרגות בתלת־ממד"), icon: "🐸", game: HOP },
+  { key: "golf3d", name: w("ميني غولف 3D", "Mini golf 3D", "מיני גולף בתלת־ממד"), line: w("الطابة بتتدحرج عن جد", "The ball rolls for real", "הכדור מתגלגל באמת"), icon: "⛳", game: GOLF_3D },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

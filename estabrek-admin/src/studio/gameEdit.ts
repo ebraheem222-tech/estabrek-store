@@ -29,6 +29,7 @@ export const WHEN_NAMES = {
   break: "لما ينكسر مفصل شي|When a thing's joint breaks|כשמפרק של דבר נשבר",
   beat: "عالإيقاع|On the beat|לפי הקצב",
   press: "لما ينكبس زر وشي بيلمس شي|When a key is pressed as one thing touches another|כשנלחץ מקש בזמן שדבר נוגע בדבר",
+  tip: "لما شي يوقع على جنبه (فيزياء 3D)|When a thing tips over (3D physics)|כשדבר נופל על הצד (פיזיקה תלת־ממדית)",
 } as const;
 export const ACT_NAMES = {
   spawn: "اعمل نسخة من|Make a copy of|צרו עותק של",
@@ -89,7 +90,7 @@ export function shapePick(thing: Obj): string {
   const pts = JSON.stringify(thing.points);
   return SHAPE_PICKS.find(([, , p]) => p && JSON.stringify(p) === pts)?.[0] ?? "poly";
 }
-export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו", car: "سيارة: لفوق بتمشي، ويمين وشمال بتلف|A car: up drives, left and right turn|מכונית: למעלה נוסעת, ימינה ושמאלה פונה" } as const;
+export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו", car: "سيارة: لفوق بتمشي، ويمين وشمال بتلف|A car: up drives, left and right turn|מכונית: למעלה נוסעת, ימינה ושמאלה פונה", walk: "بيمشي بالأسهم وبينطّ بالمسافة (فيزياء 3D)|Walks on the arrows, jumps on Space (3D physics)|הולך בחצים, קופץ ברווח (פיזיקה תלת־ממדית)" } as const;
 /* G4a: the 3D view. */
 export const VIEW3D_NAMES = { "": "مسطّح (2D)|Flat (2D)|שטוח (2D)", ground: "عالأرض بالـ 3D (من فوق ولقدّام)|On the ground in 3D (seen from above and ahead)|על הקרקע בתלת־ממד", wall: "واقف بالـ 3D (من جنب، بعمق)|Standing in 3D (from the side, with depth)|עומד בתלת־ממד (מהצד, עם עומק)" } as const;
 export const CAMERA3D_NAMES = { follow: "بتلحق اللاعب|Follows the player|עוקבת אחרי השחקן", top: "من فوق|From the top|מלמעלה", angle: "من زاوية|At an angle|בזווית", fixed: "ثابتة عالعالم كله|Still, over the whole world|קבועה על כל העולם" } as const;
@@ -174,7 +175,7 @@ export function newWhen(on: keyof typeof WHEN_NAMES, game: Obj): Obj {
   switch (on) {
     case "every": return { on, seconds: 1 };
     case "hit": return { on, a: who, b: whoOptions(game)[1]?.[0] ?? who };
-    case "out": case "tap": case "shot": case "rest": case "break": return { on, who };
+    case "out": case "tap": case "shot": case "rest": case "break": case "tip": return { on, who };
     case "key": return { on, key: "Space" };
     case "score": return { on, at: 10 };
     case "time": return { on, at: 10 };
@@ -223,6 +224,7 @@ export function ruleText(rule: Obj): string {
       case "rest": return say(`لما يوقف ${n(w.who)}|When ${n(w.who)} comes to rest|כש־${n(w.who)} נעצר`);
       case "beat": return say(`كل ${n(w.every)} نبضة|Every ${n(w.every)} beats|כל ${n(w.every)} פעימות`) + (Number(w.offset) ? say(` (من ${n(w.offset)})| (from ${n(w.offset)})| (מ־${n(w.offset)})`) : "");
       case "press": return say(`لما ينكبس ${say(KEY_NAMES[w.key as keyof typeof KEY_NAMES] ?? n(w.key))} و${n(w.a)} بيلمس ${n(w.b)}|When ${n(w.key)} is pressed as ${n(w.a)} touches ${n(w.b)}|כשנלחץ ${n(w.key)} בזמן ש־${n(w.a)} נוגע ב־${n(w.b)}`);
+      case "tip": return say(`لما يوقع ${n(w.who)}|When ${n(w.who)} tips over|כש־${n(w.who)} נופל`);
       case "break": return say(`لما ينكسر مفصل ${n(w.who)}|When ${n(w.who)}'s joint breaks|כשמפרק של ${n(w.who)} נשבר`);
       case "level": return Number(w.at) ? say(`لما تبلّش المرحلة ${n(w.at)}|When level ${n(w.at)} begins|כששלב ${n(w.at)} מתחיל`) : say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל");
       default: return say(WHEN_NAMES.start);
