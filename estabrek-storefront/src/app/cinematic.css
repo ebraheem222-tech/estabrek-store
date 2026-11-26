@@ -3305,6 +3305,8 @@ html[data-scrolling]::after { content: ""; position: fixed; inset: 0; z-index: 2
 }
 .rose-pdp-spin:hover { transform: scale(1.06); }
 .rose-pdp-spin:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 3px; }
+/* On a phone the details slide up over the photo's bottom edge (rose-showcase.css): the pill sits above it. */
+@media (max-width: 900px) { .cinematic-interior-shell .rose-pdp-spin { bottom: 60px; } }
 /* Icons (Phosphor Light): the heart fills in when the piece is in the wishlist. */
 svg[data-icon="heart"] .icon-fill { opacity: 0; transition: opacity .25s ease; }
 [aria-pressed="true"] > svg[data-icon="heart"] .icon-fill { opacity: 1; }

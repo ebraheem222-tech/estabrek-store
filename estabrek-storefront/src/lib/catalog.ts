@@ -86,6 +86,10 @@ export type CatalogProduct = {
   delivery?: { shipsFrom: string | null; minDays: number | null; maxDays: number | null } | null;
   /** Protected digital product: a serial and an encrypted copy marked with her order. */
   isProtected?: boolean;
+  /** «شوفها على حيطك»: a piece for a wall, its real size (cm) and frame (shared/wallArt.ts). */
+  wallWidthCm?: number | null;
+  wallHeightCm?: number | null;
+  wallFrame?: string | null;
   /** Its approved reviews in short (average to one decimal); null with none yet. */
   rating?: { count: number; average: number } | null;
 };
