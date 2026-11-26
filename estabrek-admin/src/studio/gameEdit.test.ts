@@ -167,4 +167,15 @@ describe("editing a game", () => {
     expect(ruleText({ when: { on: "start" }, do: [{ act: "note", instrument: "bell" }] })).toContain(say(INSTRUMENT_NAMES.bell));
     expect(Object.keys(SOUND_NAMES)).toEqual(["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"]);
   });
+
+  test("G3b: on the beat, a key pressed while two things touch, a copy where its template stands, a flash: read whole by the shop and told in words", () => {
+    const g = catchGame();
+    for (const on of ["beat", "press"] as const) {
+      const edited = { ...g, rules: [{ when: newWhen(on, g), do: [newAct("flash", g), { act: "spawn", what: "gift", at: "own" }] }] };
+      expect(read(edited).rules[0].do, on).toHaveLength(2);
+    }
+    expect(newWhen("press", g)).toEqual({ on: "press", key: "Space", a: "bag", b: "gift" });
+    expect(ruleText({ when: { on: "beat", every: 2, offset: 1 }, do: [{ act: "flash" }] })).toMatch(/2/);
+    expect(ruleText({ when: { on: "press", key: "ArrowLeft", a: "bar", b: "#arrow" }, do: [{ act: "flash" }] })).toMatch(/bar.*#arrow/);
+  });
 });

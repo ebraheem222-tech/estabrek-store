@@ -27,6 +27,8 @@ export const WHEN_NAMES = {
   shot: "لما ينضرب شي بالمقلاع|When a thing is slung|כשדבר נורה בקלע",
   rest: "لما يوقف بعد ما انضرب|When a slung thing comes to rest|כשדבר שנורה נעצר",
   break: "لما ينكسر مفصل شي|When a thing's joint breaks|כשמפרק של דבר נשבר",
+  beat: "عالإيقاع|On the beat|לפי הקצב",
+  press: "لما ينكبس زر وشي بيلمس شي|When a key is pressed as one thing touches another|כשנלחץ מקש בזמן שדבר נוגע בדבר",
 } as const;
 export const ACT_NAMES = {
   spawn: "اعمل نسخة من|Make a copy of|צרו עותק של",
@@ -47,6 +49,7 @@ export const ACT_NAMES = {
   cut: "فكّ مفاصله|Let go of its joints|שחררו את המפרקים שלו",
   note: "نغمة على آلة|A note on an instrument|צליל בכלי נגינה",
   confetti: "قصاقيص ملوّنة|Confetti|קונפטי",
+  flash: "خلّيه يلمع|Light it up|הדליקו אותו",
 } as const;
 /* G3: effects and sound. */
 export const TRAIL_NAMES = { "": "ولا إشي|Nothing|כלום", sparkle: "لمعة|Sparkles|ניצוצות", smoke: "دخان|Smoke|עשן", fire: "نار|Fire|אש", bubbles: "فقاقيع|Bubbles|בועות" } as const;
@@ -68,6 +71,7 @@ export const SPOT_NAMES = {
   top: "من فوق|From the top|מלמעלה", bottom: "من تحت|From the bottom|מלמטה", left: "من الشمال|From the left|משמאל", right: "من اليمين|From the right|מימין",
   random: "بأي مكان|Anywhere|בכל מקום", floorRight: "عالأرض من اليمين|On the floor, from the right|על הרצפה, מימין", floorLeft: "عالأرض من الشمال|On the floor, from the left|על הרצפה, משמאל",
   self: "مكان الأول|Where the first one is|איפה שהראשון", other: "مكان التاني|Where the second one is|איפה שהשני", center: "بالنص|In the middle|באמצע",
+  own: "مكانه هو (وين حطّيتيه)|Where it was put|איפה שהוא הונח",
 } as const;
 export const BODY_NAMES = { none: "بلا جسم|No body|בלי גוף", static: "ثابت|Fixed|קבוע", dynamic: "بيوقع ويندفع|Falls and is pushed|נופל ונדחף", kinematic: "بيمشي بسرعته|Moves by its speed|זז במהירותו", rigid: "جسم حقيقي: بيوقع وبيدور وبينكوّم|Rigid: falls, tumbles and stacks|קשיח: נופל, מתגלגל ונערם" } as const;
 /** A rigid thing's shapes: its box, a circle, and convex shapes made of points in the box (-0.5…0.5). */
@@ -170,6 +174,8 @@ export function newWhen(on: keyof typeof WHEN_NAMES, game: Obj): Obj {
     case "score": return { on, at: 10 };
     case "time": return { on, at: 10 };
     case "see": return { on, a: who, b: whoOptions(game)[1]?.[0] ?? who };
+    case "beat": return { on, every: 1, offset: 0 };
+    case "press": return { on, key: "Space", a: who, b: whoOptions(game)[1]?.[0] ?? who };
     case "level": return { on, at: 0 };
     default: return { on: "start" };
   }
@@ -185,7 +191,7 @@ export function newAct(act: keyof typeof ACT_NAMES, game: Obj): Obj {
     case "faster": return { act, by: 1.2 };
     case "sound": return { act, kind: "pop" };
     case "burst": return { act, who: "self" };
-    case "home": case "cut": return { act, who: "self" };
+    case "home": case "cut": case "flash": return { act, who: "self" };
     case "explode": return { act, who: "self", radius: 160, power: 900 };
     case "note": return { act, instrument: "bell", scale: "pentatonic", step: -1 };
     default: return { act };
@@ -210,6 +216,8 @@ export function ruleText(rule: Obj): string {
       case "see": return say(`لما ${n(w.a)} يشوف ${n(w.b)}|When ${n(w.a)} sees ${n(w.b)}|כש־${n(w.a)} רואה את ${n(w.b)}`);
       case "shot": return say(`لما ينضرب ${n(w.who)}|When ${n(w.who)} is slung|כש־${n(w.who)} נורה`);
       case "rest": return say(`لما يوقف ${n(w.who)}|When ${n(w.who)} comes to rest|כש־${n(w.who)} נעצר`);
+      case "beat": return say(`كل ${n(w.every)} نبضة|Every ${n(w.every)} beats|כל ${n(w.every)} פעימות`) + (Number(w.offset) ? say(` (من ${n(w.offset)})| (from ${n(w.offset)})| (מ־${n(w.offset)})`) : "");
+      case "press": return say(`لما ينكبس ${say(KEY_NAMES[w.key as keyof typeof KEY_NAMES] ?? n(w.key))} و${n(w.a)} بيلمس ${n(w.b)}|When ${n(w.key)} is pressed as ${n(w.a)} touches ${n(w.b)}|כשנלחץ ${n(w.key)} בזמן ש־${n(w.a)} נוגע ב־${n(w.b)}`);
       case "break": return say(`لما ينكسر مفصل ${n(w.who)}|When ${n(w.who)}'s joint breaks|כשמפרק של ${n(w.who)} נשבר`);
       case "level": return Number(w.at) ? say(`لما تبلّش المرحلة ${n(w.at)}|When level ${n(w.at)} begins|כששלב ${n(w.at)} מתחיל`) : say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל");
       default: return say(WHEN_NAMES.start);

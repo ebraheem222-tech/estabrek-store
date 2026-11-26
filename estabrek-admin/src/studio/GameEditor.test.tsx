@@ -393,4 +393,22 @@ describe("the game editor", () => {
     expect(trying.querySelector("canvas")!.getAttribute("data-post")).toBe("vignette");
     expect(trying.querySelector("div.pointer-events-none")).toBeTruthy();
   });
+
+  test("G3b: a rule on the beat (every, from), one for a key pressed as one thing touches another, a flash", () => {
+    const { last } = mount();
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "beat" } });
+    const every = screen.getByTestId("game-ed-beat-every");
+    fireEvent.change(every, { target: { value: "2" } });
+    fireEvent.blur(every);
+    const from = screen.getByTestId("game-ed-beat-offset");
+    fireEvent.change(from, { target: { value: "0.5" } });
+    fireEvent.blur(from);
+    expect((last().rules as Obj[]).at(-1)!.when).toEqual({ on: "beat", every: 2, offset: 0.5 });
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "press" } });
+    fireEvent.change(screen.getByTestId("game-ed-press-key"), { target: { value: "ArrowLeft" } });
+    fireEvent.change(screen.getByTestId("game-ed-hit-b"), { target: { value: "#good" } });
+    fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "flash" } });
+    expect((last().rules as Obj[]).at(-1)).toMatchObject({ when: { on: "press", key: "ArrowLeft", a: "bag", b: "#good" }, do: [{ act: "flash", who: "self" }] });
+  });
 });

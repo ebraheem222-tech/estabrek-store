@@ -572,7 +572,12 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
       <div className="space-y-1">
         <Choose label={say("لما|When|כאשר")} value={String(when.on ?? "start")} options={named(WHEN_NAMES)} onPick={(v) => set({ ...rule, when: newWhen(v, game) })} disabled={busy} testId="game-ed-when" />
         {when.on === "every" ? <Num label={say("كل (ثانية)|Every (seconds)|כל (שניות)")} value={num(when.seconds, 1)} min={0.2} max={60} step={0.1} onSave={(v) => setWhen({ seconds: v })} testId="game-ed-every" /> : null}
-        {when.on === "hit" || when.on === "see" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
+        {when.on === "press" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} testId="game-ed-press-key" /> : null}
+        {when.on === "beat" ? <div className="flex gap-1">
+          <Num label={say("كل كم نبضة|Every how many beats|כל כמה פעימות")} value={num(when.every, 1)} min={0.25} max={16} step={0.25} onSave={(v) => setWhen({ every: v })} testId="game-ed-beat-every" />
+          <Num label={say("من نبضة|From beat|מפעימה")} value={num(when.offset, 0)} min={0} max={16} step={0.25} onSave={(v) => setWhen({ offset: v || undefined })} testId="game-ed-beat-offset" />
+        </div> : null}
+        {when.on === "hit" || when.on === "see" || when.on === "press" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : when.on === "press" ? say("بيلمس|touches|נוגע ב") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
         {when.on === "level" ? <Num label={say("المرحلة (0 = كل وحدة)|The level (0 = each)|השלב (0 = כל אחד)")} value={num(when.at, 0)} min={0} max={8} onSave={(v) => setWhen({ at: Math.round(v) })} testId="game-ed-level-at" /> : null}
         {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" || when.on === "break" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
         {when.on === "key" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} /> : null}
@@ -598,7 +603,7 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
               <Choose label={say("السلّم|The scale|הסולם")} value={String(a.scale ?? "pentatonic")} options={named(SCALE_NAMES)} onPick={(v) => setAct(i, { scale: v })} disabled={busy} testId="game-ed-note-scale" />
               <Choose label={say("أي نغمة|Which note|איזה צליל")} value={String(a.step ?? -1)} options={[["-1", say("اللي بعدها (لحن طالع)|The next (a tune going up)|הבא (מנגינה עולה)")], ["-2", say("عشوائية|At random|אקראי")], ...Array.from({ length: 15 }, (_, k) => [String(k), `${k + 1}`] as const)] as const} onPick={(v) => setAct(i, { step: Number(v) })} disabled={busy} testId="game-ed-note-step" />
             </div> : null}
-            {a.act === "home" || a.act === "cut" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
+            {a.act === "home" || a.act === "cut" || a.act === "flash" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
             {a.act === "explode" ? <>
               <Choose label={say("وين|Where|איפה")} value={String(a.who ?? "self")} options={[["self", say("عند الأول|At the first|אצל הראשון")], ["other", say("عند التاني|At the second|אצל השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} />
               <Num label={say("لوين بيوصل|How far it reaches|כמה רחוק מגיע")} value={num(a.radius, 160)} min={40} max={1000} step={10} onSave={(v) => setAct(i, { radius: v })} testId="game-ed-blast-radius" />
@@ -641,7 +646,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
   useEffect(() => {
     if (!mood || hud.phase !== "playing") return;
     const music = new Music();
-    music.start(mood, tempo, seed, volume);
+    music.start(mood, tempo, seed, volume, state.current?.t ?? 0);
     return () => music.stop();
   }, [mood, tempo, volume, seed, hud.phase]);
 
@@ -745,10 +750,13 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
             if (b.thing.control === "platform") ctx.scale(b.face, 1);
             // Its look's effect, as a 2D canvas can: a glow, a pulse, a wobble, a rainbow.
             const fx = b.thing.fx, t = now / 1000;
+            // Flashed a moment ago: bigger and brighter.
+            const lit = Math.max(0, 1 - (s.t - b.flash) / 0.25);
+            if (lit) { ctx.scale(1 + 0.15 * lit, 1 + 0.15 * lit); ctx.filter = `brightness(${(1 + 0.9 * lit).toFixed(2)})`; }
             if (fx === "glow") { ctx.shadowColor = colours.accent ?? "#f59e0b"; ctx.shadowBlur = 16 + Math.sin(t * 4) * 4; }
             else if (fx === "pulse") { const p = 1 + Math.sin(t * 6) * 0.06; ctx.scale(p, p); }
             else if (fx === "wobble") ctx.transform(1, 0, Math.sin(t * 6) * 0.12, 1, 0, 0);
-            else if (fx === "rainbow") ctx.filter = `hue-rotate(${Math.round((t * 115) % 360)}deg)`;
+            else if (fx === "rainbow") ctx.filter = `${lit ? ctx.filter : ""} hue-rotate(${Math.round((t * 115) % 360)}deg)`.trim();
             ctx.drawImage(lookOf(b.of, look, b.thing.w, b.thing.h), -b.w / 2, -b.h / 2, b.w, b.h);
             ctx.filter = "none";
           }

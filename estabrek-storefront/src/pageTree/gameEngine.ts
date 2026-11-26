@@ -25,6 +25,8 @@
  *  - G2b: joints (gamePhysics.ts), their motors driven by the keys held, and the rules when one breaks or is cut; a
  *    rigid crate pushed along by a body that walks into its side.
  *  - G3: a sound knows where it happened (the view pans it); a note on an instrument up a scale; confetti.
+ *  - G3b: rules on the beat of the game's tempo; a key pressed (or a thing tapped) while two things touch; a copy
+ *    made where its template stands; a thing flashed (the views light it up a moment).
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
 import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
@@ -67,6 +69,8 @@ export type Body = {
   ox: number; oy: number;
   /** What it stands on (a moving platform carries it). */
   ride: number;
+  /** When it was last flashed. */
+  flash: number;
   /** Shot from the sling (when), still in the air or rolling, and how long it has been slow. */
   shotAt: number;
   flying: boolean;
@@ -135,6 +139,8 @@ export type GameState = {
   aim: { n: number; vx: number; vy: number; pull: number; pts: Array<[number, number]> } | null;
   /** The scale's step the next "note" plays. */
   noteIx: number;
+  /** Each "beat" rule's last beat. */
+  beatAt: number[];
 };
 
 /** Mulberry32: small, quick, and the same everywhere. */
@@ -149,7 +155,7 @@ function make(s: GameState, thing: GameThing, x: number, y: number, vx: number, 
   if (s.bodies.filter((b) => !b.dead).length >= GAME_LIMITS.alive) return null;
   const b: Body = {
     n: s.next++, of: thing.id, thing, x, y, w: thing.w, h: thing.h, vx, vy, rot: 0, born: s.t, grounded: false, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false,
-    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0, shotAt: -9, flying: false, slow: 0,
+    mind: "patrol", seen: -9, lx: x, ly: y, route: [], thinkAt: 0, along: 0, ox: x, oy: y, ride: 0, shotAt: -9, flying: false, slow: 0, flash: -9,
   };
   s.bodies.push(b);
   if (s.phys) physAdd(s.phys, b);
@@ -217,7 +223,7 @@ export function newGame(spec: GameSpec, rapier: Rapier | null = null): GameState
     spec, phase: "ready", t: 0, score: 0, lives: spec.lives, bodies: [], effects: [], shake: 0, speed: 1, next: 1,
     seed: spec.seed, every: spec.rules.map(() => 0), fired: new Set(), contacts: new Set(), dragging: null, steps: 0,
     cx: 0, cy: 0, tiles: null, tilesV: 0, level: 0, levelT: 0, trans: 0, goTo: -1, seeing: new Set(),
-    rapier: rapier && needsPhysics(spec) ? rapier : null, phys: null, aim: null, noteIx: 0,
+    rapier: rapier && needsPhysics(spec) ? rapier : null, phys: null, aim: null, noteIx: 0, beatAt: spec.rules.map(() => -1),
   };
   setLevel(s, 0);
   return s;
@@ -448,7 +454,8 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
     case "spawn": {
       const thing = s.spec.things.find((t) => t.id === a.what);
       if (!thing) return;
-      const [x, y] = spot(s, a.at, thing.w, thing.h, ctx);
+      // "own": where the template itself stands (a lane's top, a spawner's place).
+      const [x, y] = a.at === "own" ? [thing.x, thing.y] : spot(s, a.at, thing.w, thing.h, ctx);
       const vx = (a.vx || thing.vx) * s.speed, vy = (a.vy || thing.vy) * s.speed;
       make(s, thing, x, y, vx, vy);
       return;
@@ -472,6 +479,7 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
       return;
     }
     case "confetti": s.effects.push({ kind: "confetti" }); return;
+    case "flash": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) b.flash = s.t; return; }
     case "burst": { const b = a.who === "other" ? ctx.other ?? ctx.self : ctx.self ?? ctx.other; if (b) s.effects.push({ kind: "burst", x: b.x, y: b.y, color: b.thing.look.color }); return; }
     case "home": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) { physHome(s.phys, b); b.flying = false; } return; }
     case "explode": {
@@ -536,6 +544,29 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
     } else if (r.when.on === "time" && !s.fired.has(i) && s.t >= r.when.at) { s.fired.add(i); for (const a of r.do) act(s, a, {}); }
   });
   for (const key of input.pressed) run(s, (w) => w.on === "key" && w.key === key, {});
+  // On the beat of the game's tempo: each rule its beats, from its offset in.
+  const beat = 60 / spec.music.tempo;
+  spec.rules.forEach((r, i) => {
+    if (r.when.on !== "beat") return;
+    const k = Math.floor((s.t - r.when.offset * beat) / (r.when.every * beat) + 1e-9);
+    if (k >= 0 && k > s.beatAt[i]) { s.beatAt[i] = k; for (const a of r.do) act(s, a, {}); }
+  });
+  // A key pressed, or a thing tapped, while it touches another: each pair that touches.
+  const presses = spec.rules.filter((r) => r.when.on === "press");
+  if (presses.length && (input.pressed.length || input.taps.length)) {
+    const tapped = input.taps.map((tp) => [...s.bodies].reverse().find((b) => !b.dead && at(b, tp.x, tp.y))).filter((b): b is Body => Boolean(b));
+    for (const r of presses) {
+      const w = r.when as { key: string; a: string; b: string };
+      const byKey = input.pressed.includes(w.key);
+      for (const a of s.bodies) {
+        if (a.dead || !isWho(w.a, { id: a.of, tags: a.thing.tags }) || !(byKey || tapped.includes(a))) continue;
+        for (const b of s.bodies) {
+          if (b === a || b.dead || !isWho(w.b, { id: b.of, tags: b.thing.tags }) || !overlap(boxOf(a), boxOf(b), 1)) continue;
+          for (const x of r.do) act(s, x, { self: a, other: b });
+        }
+      }
+    }
+  }
 
   /* ---- controls and behaviours */
   const jumpPressed = input.pressed.some((k) => k === "Space" || k === "ArrowUp") || input.taps.length > 0;
@@ -776,7 +807,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
         let tile = cells.get(cell);
         if (!tile) {
           const thing = { id: `tile-${s.tiles[r][c]}`, look: k.look, tags: k.tags } as unknown as GameThing;
-          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0, shotAt: -9, flying: false, slow: 0 };
+          tile = { n: -1 - cell, of: thing.id, thing, x: c * z + z / 2, y: r * z + z / 2, w: z, h: z, vx: 0, vy: 0, rot: 0, born: 0, grounded: true, dir: 1, turnAt: 0, dead: false, anim: "idle", face: 1, air: 0, jumpAt: -9, cut: false, mind: "patrol", seen: -9, lx: 0, ly: 0, route: [], thinkAt: 0, along: 0, ox: 0, oy: 0, ride: 0, shotAt: -9, flying: false, slow: 0, flash: -9 };
           cells.set(cell, tile);
         }
         for (const rule of hits) {

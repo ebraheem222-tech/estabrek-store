@@ -375,6 +375,45 @@ const NIGHT: Raw = {
   words: words(w("نجوم الليل", "Night stars", "כוכבי לילה"), w("حرّك السلّة ولقّط النجوم: كل نجمة بتعزف نغمة، والمذنّبات بتاخد روح. لمّ عشرين!", "Move the basket and catch the stars: each one plays a note, and comets take a life. Catch twenty!", "הזיזו את הסל ותפסו כוכבים: כל כוכב מנגן צליל, ושביטים לוקחים חיים. תפסו עשרים!")),
 };
 
+/** Beats (G3b): arrows fall in four lanes on the music's beat and reach their bar two beats later, on the beat; the
+ *  arrow key (or a tap on the bar) as one is on its bar plays it; one that falls past takes a life; 45 seconds. */
+const LANES = [["l", "ArrowLeft", "⬅️", 330], ["d", "ArrowDown", "⬇️", 430], ["u", "ArrowUp", "⬆️", 530], ["r", "ArrowRight", "➡️", 630]] as const;
+// Tempo 100: a beat is 0.6 s; an arrow falls 500 px from its lane's top to its bar in two beats.
+const BEATS: Raw = {
+  w: 960, h: 540, bg: "deep", edges: "open", lives: 5, time: 45, timeWins: true, seed: 211,
+  music: { mood: "lively", tempo: 100, volume: 0.6 }, weather: "stars", post: "vignette",
+  things: [
+    ...LANES.map(([k, , , x]) => ({ id: `bar-${k}`, look: { kind: "box", color: "accent" }, x, y: 470, w: 86, h: 22, body: "static", tags: ["bar"] })),
+    ...LANES.map(([k, , e, x]) => ({ id: `arrow-${k}`, look: emoji(e), x, y: -30, w: 56, h: 56, body: "kinematic", vy: 500 / 1.2, template: true, trail: "sparkle", tags: ["arrow", `arrow-${k}`] })),
+  ],
+  rules: [
+    // Each lane its beats: together, a pattern that goes round every eight beats.
+    { when: { on: "beat", every: 2, offset: 0 }, do: [{ act: "spawn", what: "arrow-l", at: "own" }] },
+    { when: { on: "beat", every: 2, offset: 1 }, do: [{ act: "spawn", what: "arrow-r", at: "own" }] },
+    { when: { on: "beat", every: 4, offset: 0.5 }, do: [{ act: "spawn", what: "arrow-u", at: "own" }] },
+    { when: { on: "beat", every: 4, offset: 2.5 }, do: [{ act: "spawn", what: "arrow-d", at: "own" }] },
+    { when: { on: "beat", every: 8, offset: 3 }, do: [{ act: "spawn", what: "arrow-u", at: "own" }] },
+    ...LANES.map(([k, key]) => ({ when: { on: "press", key, a: `bar-${k}`, b: `#arrow-${k}` }, do: [{ act: "destroy", who: "other" }, { act: "burst", who: "other" }, { act: "flash", who: "self" }, { act: "score", add: 1 }, { act: "note", instrument: "pluck", scale: "pentatonic", step: -1 }] })),
+    { when: { on: "out", who: "#arrow" }, do: [{ act: "lives", add: -1 }, { act: "sound", kind: "blip" }] },
+    { when: { on: "score", at: 30 }, do: [{ act: "confetti" }] },
+  ],
+  words: words(w("إيقاع", "Beats", "קצב"), w("الأسهم بتنزل عالإيقاع: اكبس نفس السهم (أو انقر عالخط) لما يكون عالخط. كل سهم بيفلت بياخد روح.", "Arrows fall to the beat: press the same arrow (or tap the bar) while it's on its bar. Each one that slips past takes a life.", "חצים נופלים לפי הקצב: לחצו על אותו חץ (או הקישו על הפס) כשהוא על הפס. כל חץ שמחמיץ לוקח חיים.")),
+};
+
+/** Pads (G3b): eight keys of a pentatonic piano and four drums to tap; each one played lights up and scores. */
+const PADS: Raw = {
+  w: 960, h: 540, bg: "surface", edges: "walls", lives: 0, seed: 223, post: "vignette",
+  things: [
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `key-${i + 1}`, look: { kind: "box", color: i % 2 ? "accent-soft" : "accent" }, x: 165 + i * 90, y: 190, w: 80, h: 200, body: "static", tags: ["key"] })),
+    ...([["kick", "🥁", 0], ["snare", "👏", 3], ["hat", "✨", 6], ["boom", "🔔", 1]] as const).map(([id, e], i) => ({ id, look: emoji(e), x: 255 + i * 150, y: 430, w: 110, h: 110, body: "static", tags: ["drum"] })),
+  ],
+  rules: [
+    ...Array.from({ length: 8 }, (_, i) => ({ when: { on: "tap", who: `key-${i + 1}` }, do: [{ act: "note", instrument: "piano", scale: "pentatonic", step: i + 3 }, { act: "flash", who: "self" }, { act: "score", add: 1 }] })),
+    ...([["kick", 0], ["snare", 3], ["hat", 6], ["boom", 1]] as const).map(([id, step]) => ({ when: { on: "tap", who: id }, do: [{ act: "note", instrument: id === "boom" ? "bell" : "drum", scale: "pentatonic", step }, { act: "flash", who: "self" }, { act: "burst", who: "self" }, { act: "score", add: 1 }] })),
+  ],
+  words: words(w("لوحة العزف", "Music pads", "משטח נגינה"), w("انقر على المفاتيح والطبول واعزف: كل نغمة بتلمع.", "Tap the keys and the drums and play: each note lights up.", "הקישו על הקלידים והתופים ונגנו: כל צליל נדלק.")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
@@ -387,6 +426,8 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "golf", name: w("ميني غولف", "Mini golf", "מיני גולף"), line: w("تلات حفر وضربات قليلة", "Three holes, as few strokes as you can", "שלוש גומות, כמה שפחות מכות"), icon: "⛳", game: GOLF },
   { key: "pinball", name: w("دبابيس", "Pinball", "פינבול"), line: w("مضارب وصدّامات وطابة ما بتوقع", "Flippers, bumpers and a ball to keep up", "מחבטים, פגושים וכדור שלא ייפול"), icon: "🔴", game: PINBALL },
   { key: "night", name: w("نجوم الليل", "Night stars", "כוכבי לילה"), line: w("لقّط النجوم وكل وحدة بتعزف", "Catch the stars, each one plays a note", "תפסו כוכבים, כל אחד מנגן"), icon: "🌙", game: NIGHT },
+  { key: "beats", name: w("إيقاع", "Beats", "קצב"), line: w("أسهم بتنزل عالموسيقى", "Arrows that fall to the music", "חצים שנופלים לפי המוזיקה"), icon: "🎵", game: BEATS },
+  { key: "pads", name: w("لوحة العزف", "Music pads", "משטח נגינה"), line: w("مفاتيح وطبول تعزف عليها", "Keys and drums to play", "קלידים ותופים לנגן"), icon: "🎹", game: PADS },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;
