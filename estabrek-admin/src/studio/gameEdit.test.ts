@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { gameOf } from "../../../estabrek-storefront/src/pageTree/gameSpec";
 import { READY_GAMES } from "../../../estabrek-storefront/src/pageTree/gameReady";
-import { ACT_NAMES, SHAPE_PICKS, WHEN_NAMES, actPossible, shapePick, freshId, levelMaps, newAct, newWhen, nextTileChar, paintCells, pathPoints, resizedLevels, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withLevelMap, withNewLevel, withNewThing, withPathPoint, withTiles, withoutLevel, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
+import { ACT_NAMES, SHAPE_PICKS, WHEN_NAMES, actPossible, jointable, jointsOf, shapePick, withNewJoint, freshId, levelMaps, newAct, newWhen, nextTileChar, paintCells, pathPoints, resizedLevels, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withLevelMap, withNewLevel, withNewThing, withPathPoint, withTiles, withoutLevel, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
 import { say } from "./say";
 
 // G0b: editing a game by hand, and what's edited still a whole game for the shop.
@@ -142,5 +142,18 @@ describe("editing a game", () => {
       const spec = read({ ...g, things: [...thingsOf(g), { id: "shape", look: { kind: "box" }, x: 10, y: 10, w: 40, h: 40, body: "rigid", shape: "poly", points: pts }] });
       expect(spec.things.find((t) => t.id === "shape")!.points).toEqual(pts);
     }
+  });
+
+  test("G2b: a joint added holds the first thing in the world; a thing taken out takes its joints; the rules for a joint read whole", () => {
+    const g = catchGame();
+    const one = withNewJoint(g)!;
+    expect(jointsOf(one)).toEqual([{ kind: "pin", a: "bag", b: "" }]);
+    expect(jointable(g).map((t) => t.id)).toEqual(["bag"]);
+    expect(read(one).joints).toHaveLength(1);
+    expect(jointsOf(withoutThing(one, "bag"))).toEqual([]);
+    expect(withNewJoint({ ...g, things: thingsOf(g).filter((t) => t.template) })).toBeNull();
+    const edited = { ...one, rules: [{ when: newWhen("break", one), do: [newAct("cut", one)] }] };
+    expect(read(edited).rules).toHaveLength(1);
+    expect(ruleText({ when: { on: "break", who: "bag" }, do: [{ act: "cut", who: "self" }] })).toMatch(/bag/);
   });
 });

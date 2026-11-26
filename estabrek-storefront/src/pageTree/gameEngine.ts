@@ -22,11 +22,13 @@
  *  - G2: rigid things moved by Rapier (gamePhysics.ts) when the game is given it (newGame's second argument; without
  *    it they fall back to the arcade's dynamic bodies); the sling (pulled back from the thing, the shot's way shown,
  *    let go); a shot thing coming to rest; back home; an explosion's push. Rigid things meet by Rapier's touches.
+ *  - G2b: joints (gamePhysics.ts), their motors driven by the keys held, and the rules when one breaks or is cut; a
+ *    rigid crate pushed along by a body that walks into its side.
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
 import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
 import { findPath, mazeOf, onTrack, rayBox, rayCells, trackOf, type Track } from "./gameWorld";
-import { aimPath, isRigid, needsPhysics, physAdd, physExplode, physFree, physHome, physSpeed, physStep, physWorld, type Phys, type Rapier } from "./gamePhysics";
+import { aimPath, isRigid, needsPhysics, physAdd, physCut, physExplode, physFree, physHome, physPush, physSpeed, physStep, physWorld, type Broken, type Phys, type Rapier } from "./gamePhysics";
 
 export const STEP = 1 / 60;
 
@@ -237,6 +239,15 @@ function shoot(s: GameState, b: Body, vx: number, vy: number) {
   b.grounded = false;
   s.effects.push({ kind: "sound", sound: "whoosh" });
   run(s, (w) => w.on === "shot" && isWho(w.who, { id: b.of, tags: b.thing.tags }), { self: b });
+}
+
+/** A joint let go: the rules for each of its two things ("break"), the other as the second. */
+function snapped(s: GameState, br: Broken) {
+  const A = s.bodies.find((x) => x.n === br.a), B = br.b >= 0 ? s.bodies.find((x) => x.n === br.b) : undefined;
+  for (const [self, other] of [[A, B], [B, A]] as const) {
+    if (!self) continue;
+    run(s, (w) => w.on === "break" && isWho(w.who, { id: self.of, tags: self.thing.tags }), { self, other });
+  }
 }
 
 /** How much of the view the cover between two levels hides (0–1), and whether it's closing (on the old level). */
@@ -458,6 +469,7 @@ function act(s: GameState, a: GameAct, ctx: Ctx) {
       s.effects.push({ kind: "shake" });
       return;
     }
+    case "cut": { const b = a.who === "other" ? ctx.other : ctx.self; if (b) for (const br of physCut(s.phys, b.n)) snapped(s, br); return; }
     case "next": case "retry": {
       // Made when the cover has closed (at the next step), never in the middle of one.
       if (s.goTo >= 0) return;
@@ -666,6 +678,8 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       const px = (b.w + o.w) / 2 - Math.abs(b.x - o.x), py = (b.h + o.h) / 2 - Math.abs(b.y - o.y);
       if (px < py) {
         const side = b.x < o.x ? -1 : 1;
+        // Walked into a rigid crate's side: it's pushed along.
+        if (isRigid(o)) physPush(s.phys, o, side, b.vx);
         b.x += side * px;
         b.vx = b.thing.bounce ? Math.abs(b.vx) * side * b.thing.bounce : 0;
         if (b.thing.behave === "patrol") b.dir = side;
@@ -678,7 +692,7 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
     }
   }
   // The rigid things: Rapier's step, with what the game moved put in place first.
-  if (s.phys) physStep(s.phys, s, dt);
+  if (s.phys) for (const br of physStep(s.phys, s, dt, input)) snapped(s, br);
   const closed = { top: spec.edges === "walls" || spec.edges === "sides", sides: spec.edges === "walls" || spec.edges === "sides", bottom: spec.edges === "walls" || spec.edges === "floor" };
   for (const b of s.bodies) {
     if (b.dead || !moves(b)) continue;

@@ -9,12 +9,14 @@
  * and path, the brains (guard, flee, homing, path), and the rules for them (sees, a level begins, next, again).
  * G2: rigid things (a box, a circle or a convex shape; density, friction, drag, turning or not, fast), the sling
  * (pulled back and let go), and the rules for them (it's shot, it comes to rest; back home, an explosion).
+ * G2b: joints between two things or a thing and the world (a pin, a weld, a spring, a rope, a slider), with limits,
+ * a motor (always, or while a key is held), and a stretch that breaks them; the rules (it breaks; cut it).
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
 type Say = (w: unknown) => string;
 
-export const GAME_LIMITS = { things: 40, rules: 40, acts: 8, tags: 4, alive: 200, tileKinds: 12, cols: 200, rows: 60, layers: 4, levels: 8, path: 12 } as const;
+export const GAME_LIMITS = { things: 40, rules: 40, acts: 8, tags: 4, alive: 200, tileKinds: 12, cols: 200, rows: 60, layers: 4, levels: 8, path: 12, joints: 40 } as const;
 export const GAME_LOOKS = ["box", "circle", "image", "emoji", "text", "sprite"] as const;
 export const GAME_ANIMS = ["idle", "run", "jump", "fall"] as const;
 export const LAYER_KINDS = ["color", "gradient", "image"] as const;
@@ -24,8 +26,10 @@ export const GAME_SHAPES = ["box", "circle", "poly"] as const;
 export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"] as const;
 export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
-export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest"] as const;
-export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode"] as const;
+export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break"] as const;
+export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode", "cut"] as const;
+/** How two things are joined: a pin (they turn about it), a weld, a spring, a rope (no further than its length), a slider (along a line). */
+export const GAME_JOINTS = ["pin", "weld", "spring", "rope", "slider"] as const;
 /** How one level gives way to the next: a fade, a wipe across, a closing circle, or at once. */
 export const GAME_TRANSITIONS = ["fade", "wipe", "circle", "none"] as const;
 export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"] as const;
@@ -46,6 +50,26 @@ export type GameTiles = {
   levels: string[][];
   /** "maze": each level's walls made from the seed, its marks (not walls) moved to the nearest corridor. */
   gen: "" | "maze";
+};
+/**
+ * A joint (G2b): `a` joined to `b` (another thing in the world, or "" for the world itself). A pin, a weld and a
+ * slider are at a's anchor (ax, ay: pixels from its middle); a spring and a rope run from a's anchor to b's (bx, by;
+ * on the world, a point in it), `length` long (0: as far apart as they start). A pin's limits are degrees either way,
+ * a slider's pixels along its `axis` (degrees); a motor turns a pin (degrees a second) or pushes a slider (pixels a
+ * second), always or while its key is held (back the other way when it's let go). It breaks when one of its two
+ * things is hit or pressed on harder than `breakAt` (newtons of the world, a 40-pixel box of density 1 weighs about 26
+ * under a gravity of 2000), or caught in an explosion (0: never). `collide`: the two still knock into each other.
+ */
+export type GameJoint = {
+  kind: (typeof GAME_JOINTS)[number];
+  a: string; b: string;
+  ax: number; ay: number; bx: number; by: number;
+  length: number; stiffness: number; damping: number;
+  limits: [number, number] | null;
+  axis: number;
+  motor: { speed: number; key: "" | (typeof GAME_KEYS)[number]; power: number } | null;
+  breakAt: number;
+  collide: boolean;
 };
 /** A way a thing goes round (its `behave` "path"): the points after where it starts, from it; a loop, or there and back. */
 export type GamePath = { points: Array<[number, number]>; loop: boolean; smooth: boolean };
@@ -102,7 +126,9 @@ export type GameWhen =
   | { on: "level"; at: number }
   /** It's shot (let go from the sling), and it comes to rest after. */
   | { on: "shot"; who: string }
-  | { on: "rest"; who: string };
+  | { on: "rest"; who: string }
+  /** A joint holding it breaks (stretched too far, or cut). */
+  | { on: "break"; who: string };
 export type GameAct =
   | { act: "spawn"; what: string; at: (typeof GAME_SPOTS)[number]; vx: number; vy: number }
   | { act: "destroy"; who: "self" | "other" | "both" }
@@ -122,7 +148,9 @@ export type GameAct =
   /** Back where it started, still. */
   | { act: "home"; who: "self" | "other" }
   /** Everything within `radius` pushed away, by up to `power` (px/s) the nearer it is. */
-  | { act: "explode"; who: "self" | "other"; radius: number; power: number };
+  | { act: "explode"; who: "self" | "other"; radius: number; power: number }
+  /** Every joint holding it let go. */
+  | { act: "cut"; who: "self" | "other" };
 export type GameRule = { when: GameWhen; do: GameAct[] };
 export type GameWords = { title: string; start: string; win: string; lose: string; again: string; prize: string; help: string };
 export type GameSpec = {
@@ -139,6 +167,7 @@ export type GameSpec = {
   gravity: number;
   edges: (typeof GAME_EDGES)[number];
   things: GameThing[];
+  joints: GameJoint[];
   rules: GameRule[];
   lives: number;
   /** Seconds (0: no clock). When it runs out: `timeWins` → won, else lost. */
@@ -287,6 +316,7 @@ function whenOf(raw: unknown): GameWhen | null {
     case "see": { const a = whoOf(x.a), b = whoOf(x.b); return a && b ? { on: "see", a, b } : null; }
     case "level": return { on: "level", at: int(x.at, 0, GAME_LIMITS.levels, 0) };
     case "shot": case "rest": { const who = whoOf(x.who); return who ? { on: x.on === "shot" ? "shot" : "rest", who } : null; }
+    case "break": { const who = whoOf(x.who); return who ? { on: "break", who } : null; }
     default: return null;
   }
 }
@@ -308,9 +338,34 @@ function actOf(raw: unknown): GameAct | null {
     case "next": return { act: "next" };
     case "retry": return { act: "retry" };
     case "home": return { act: "home", who: pick(x.who, ["self", "other"] as const, "self") };
+    case "cut": return { act: "cut", who: pick(x.who, ["self", "other"] as const, "self") };
     case "explode": return { act: "explode", who: pick(x.who, ["self", "other"] as const, "self"), radius: num(x.radius, 40, 1000, 160), power: num(x.power, 100, 5000, 900) };
     default: return null;
   }
+}
+
+/** A joint between things in the world (not templates: a joint holds one thing, not its copies). */
+function jointOf(raw: unknown, inWorld: Set<string>): GameJoint | null {
+  const x = obj(raw);
+  const a = typeof x.a === "string" && inWorld.has(x.a) ? x.a : "";
+  const b = typeof x.b === "string" && inWorld.has(x.b) && x.b !== a ? x.b : "";
+  if (!a) return null;
+  const kind = pick(x.kind, GAME_JOINTS, "pin");
+  const lim = Array.isArray(x.limits) && typeof x.limits[0] === "number" && typeof x.limits[1] === "number" ? x.limits : null;
+  const range = kind === "slider" ? 4000 : 360;
+  const limits: [number, number] | null = lim ? [num(lim[0], -range, range, 0), num(lim[1], -range, range, 0)].sort((p, q) => p - q) as [number, number] : null;
+  const m = obj(x.motor);
+  const motor = (kind === "pin" || kind === "slider") && typeof m.speed === "number" && Number.isFinite(m.speed) && m.speed !== 0
+    ? { speed: num(m.speed, -3600, 3600, 0), key: pick(m.key, ["", ...GAME_KEYS] as const, ""), power: num(m.power, 1, 1000, 60) }
+    : null;
+  return {
+    kind, a, b,
+    ax: num(x.ax, -2000, 2000, 0), ay: num(x.ay, -2000, 2000, 0), bx: num(x.bx, -8000, 8000, 0), by: num(x.by, -8000, 8000, 0),
+    length: num(x.length, 0, 4000, 0), stiffness: num(x.stiffness, 0.1, 1000, 20), damping: num(x.damping, 0, 100, 1),
+    limits, axis: num(x.axis, -360, 360, 0), motor,
+    breakAt: num(x.breakAt, 0, 100000, 0),
+    collide: x.collide === true,
+  };
 }
 
 /** A page's game, read into a spec safe to run; null when there's nothing to play (no thing in the world). */
@@ -329,6 +384,8 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     return when && acts.length ? [{ when, do: acts }] : [];
   });
   const words = obj(x.words);
+  const inWorld = new Set(unique.filter((t) => !t.template).map((t) => t.id));
+  const joints = (Array.isArray(x.joints) ? x.joints : []).slice(0, GAME_LIMITS.joints).map((j) => jointOf(j, inWorld)).filter((j): j is GameJoint => Boolean(j));
   const w = int(x.w, 320, 1920, 960), h = int(x.h, 240, 1920, 540);
   const cam = obj(x.camera);
   return {
@@ -342,7 +399,7 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     bg: colourOf(x.bg, "surface"),
     gravity: num(x.gravity, 0, 4000, 0),
     edges: pick(x.edges, GAME_EDGES, "walls"),
-    things: unique, rules,
+    things: unique, joints, rules,
     lives: int(x.lives, 0, 9, 3),
     time: int(x.time, 0, 600, 0),
     timeWins: x.timeWins === true,

@@ -309,4 +309,41 @@ describe("the game editor", () => {
     await run(3);
     expect(screen.getByTestId("game-ed-trying").getAttribute("data-score")).toBe("1");
   }, 30_000);
+
+  test("G2b: the joints tab: a joint added, made a flipper (a pin at its end, limits, a motor on a key, a strength), then a rope to another thing; drawn in the world", () => {
+    const { last } = mount();
+    // A second thing in the world to tie a rope to.
+    fireEvent.click(screen.getAllByTestId("game-ed-add").find((b) => b.getAttribute("data-look") === "box")!);
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "joints")!);
+    fireEvent.click(screen.getByTestId("game-ed-joint-add"));
+    const joints = () => last().joints as Obj[];
+    expect(joints()).toEqual([{ kind: "pin", a: "bag", b: "" }]);
+    const ax = screen.getByTestId("game-ed-joint-ax");
+    fireEvent.change(ax, { target: { value: "-40" } });
+    fireEvent.blur(ax);
+    fireEvent.click(screen.getByTestId("game-ed-joint-limits"));
+    fireEvent.click(screen.getByTestId("game-ed-joint-motor"));
+    fireEvent.change(screen.getByTestId("game-ed-joint-key"), { target: { value: "ArrowLeft" } });
+    const speed = screen.getByTestId("game-ed-joint-speed");
+    fireEvent.change(speed, { target: { value: "-900" } });
+    fireEvent.blur(speed);
+    const strength = screen.getByTestId("game-ed-joint-break");
+    fireEvent.change(strength, { target: { value: "300" } });
+    fireEvent.blur(strength);
+    expect(joints()[0]).toMatchObject({ kind: "pin", a: "bag", b: "", ax: -40, limits: [-30, 30], motor: { speed: -900, key: "ArrowLeft" }, breakAt: 300 });
+    // The pin drawn at its place on the bag (480 - 40, 480).
+    const dot = screen.getByTestId("game-ed-joint-lines").querySelector("circle")!;
+    expect([dot.getAttribute("cx"), dot.getAttribute("cy")]).toEqual(["440", "480"]);
+    // A rope from the bag to the new box, 120 long: no motor or limits on a rope.
+    fireEvent.change(screen.getByTestId("game-ed-joint-kind"), { target: { value: "rope" } });
+    fireEvent.change(screen.getByTestId("game-ed-joint-b"), { target: { value: "box" } });
+    const length = screen.getByTestId("game-ed-joint-length");
+    fireEvent.change(length, { target: { value: "120" } });
+    fireEvent.blur(length);
+    expect(joints()[0]).toMatchObject({ kind: "rope", b: "box", length: 120 });
+    expect(joints()[0].motor).toBeUndefined();
+    expect(screen.getByTestId("game-ed-joint-lines").querySelector("line")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("game-ed-joint-remove"));
+    expect(joints()).toEqual([]);
+  });
 });
