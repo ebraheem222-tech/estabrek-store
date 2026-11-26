@@ -258,6 +258,10 @@ const baseProductSelect = {
   isProtected: true,
   deliveryMinDays: true,
   deliveryMaxDays: true,
+  // «شوفها على حيطك»: a piece for a wall, its real size and frame.
+  wallWidthCm: true,
+  wallHeightCm: true,
+  wallFrame: true,
   createdAt: true,
   updatedAt: true,
 };

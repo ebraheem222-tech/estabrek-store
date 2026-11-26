@@ -118,6 +118,7 @@ export function deepInputFromSnapshot(s: Snap, current: Current) {
       eventStartsAt: date(s.eventStartsAt),
       eventEndsAt: date(s.eventEndsAt),
       eventLocation: s.eventLocation,
+      ...((s as { wallWidthCm?: number | null }).wallWidthCm !== undefined ? { wallWidthCm: (s as { wallWidthCm?: number | null }).wallWidthCm ?? null, wallHeightCm: (s as { wallHeightCm?: number | null }).wallHeightCm ?? null, wallFrame: ((s as { wallFrame?: string | null }).wallFrame ?? null) as never } : {}),
     },
     items: s.items.map((it) => ({
       ...(items.has(it.id) ? { id: it.id } : {}),

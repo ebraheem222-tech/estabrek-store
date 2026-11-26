@@ -35,6 +35,9 @@ type DeepInput = {
     shipsFrom: string | null;
     deliveryMinDays: number | null;
     deliveryMaxDays: number | null;
+    wallWidthCm: number | null;
+    wallHeightCm: number | null;
+    wallFrame: string | null;
     redeemNote: string | null;
     isProtected: boolean;
     licenceHours: number | null;

@@ -56,6 +56,8 @@ import { tr } from "@/lib/words";
 import { useStoreLook } from "@/store/storeLook";
 import { translatedTypeLabel } from "@/lib/localize";
 import type { Lang } from "@/lib/i18n";
+import { wallArtOf } from "../../../../shared/wallArt";
+import { WallViewButton, WallViewDialog } from "./WallView";
 
 type Crumb = { label: string; href: string };
 
@@ -86,6 +88,13 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   // Its 360° view (made in the admin from a video): this colour's own, else the one for every colour.
   const spin = useMemo(() => spinFor(product.spins, item?.id), [product.spins, item?.id]);
   const [spinning, setSpinning] = useState(false);
+  // «شوفها على حيطك»: a piece for a wall, at its real size (a link with ?wall=1 opens it at once: the code a computer shows).
+  const wall = useMemo(() => wallArtOf(product), [product]);
+  const [walling, setWalling] = useState(false);
+  useEffect(() => {
+    if (wall && new URLSearchParams(window.location.search).get("wall") === "1") setWalling(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
   const frame = useRef<HTMLDivElement>(null);
   const zoom = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
@@ -266,6 +275,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
                 <span aria-hidden="true">⟲</span> 360°
               </button>
             ) : null}
+            {wall && currentImage ? <WallViewButton lang={lang} onOpen={() => setWalling(true)} /> : null}
             <div
               ref={zoom}
               className="rose-pdp-zoom"
@@ -293,6 +303,18 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </div>
           </div>
           {spinning && spin ? <SpinDialog spin={spin} title={product.title} lang={lang} onClose={() => setSpinning(false)} /> : null}
+          {walling && wall && currentImage ? (
+            <WallViewDialog
+              art={wall}
+              picture={cldUrl(currentImage, { w: 1600, c: "limit" })}
+              title={product.title}
+              lang={lang}
+              sizes={sizes.filter((k) => k !== "default")}
+              size={sizeKey}
+              onSize={(key) => { setSizeKey(key); setStatus(null); }}
+              onClose={() => setWalling(false)}
+            />
+          ) : null}
           {viewer && (
             <RoseImageViewer
               images={images}

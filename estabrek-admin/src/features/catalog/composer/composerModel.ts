@@ -1,5 +1,6 @@
 // State, validation and save payload for the one-screen product page (add and edit).
 import type { CatalogCategory, CatalogSize, ProductDeep, ProductDeepUpdateBody } from "../../../api/catalog.api";
+import { wallArtOf } from "../../../../../shared/wallArt";
 import { colorCode, makeSlug, parsePrice, skuPart } from "../../../lib/productComposer";
 import { translationsOf, type Translations } from "../../../lib/translations";
 import { tr } from "@/lib/words";
@@ -66,6 +67,8 @@ export type ComposerDraft = {
   delivery: { shipsFrom: string; minDays: string; maxDays: string };
   /** Codes (game keys, gift cards): how to use one. */
   redeemNote: string;
+  /** «شوفها على حيطك»: a piece for a wall, its real size (cm, as typed) and frame (shared/wallArt.ts). */
+  wall?: { on: boolean; w: string; h: string; frame: string };
   /** Protected digital product: a serial + an encrypted, marked copy per piece (empty = the defaults). */
   protection: { on: boolean; hours: string; downloads: string; devices?: string };
   /** Search-engine title and description; empty = the product's own title and description. */
@@ -113,6 +116,7 @@ export function emptyDraft(partial?: Partial<ComposerDraft>): ComposerDraft {
     event: { startsAt: "", endsAt: "", location: "" },
     delivery: { shipsFrom: "", minDays: "", maxDays: "" },
     redeemNote: "",
+    wall: { on: false, w: "", h: "", frame: "none" },
     protection: { on: false, hours: "", downloads: "", devices: "" },
     seoTitle: "",
     seoDescription: "",
@@ -429,6 +433,7 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
     event: eventOf(p),
     delivery: deliveryOf(p),
     redeemNote: (p as { redeemNote?: string | null }).redeemNote ?? "",
+    wall: wallOf(p),
     protection: protectionOf(p),
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
@@ -494,6 +499,7 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
     event: eventOf(p),
     delivery: deliveryOf(p),
     redeemNote: (p as { redeemNote?: string | null }).redeemNote ?? "",
+    wall: wallOf(p),
     protection: protectionOf(p),
     translations: carriedTranslations(p.translations),
     price: Number.isFinite(price) && price > 0 ? String(price) : "",
@@ -656,4 +662,15 @@ export function eventForSave(d: Pick<ComposerDraft, "event">) {
     eventEndsAt: fromLocalInput(d.event?.endsAt ?? ""),
     eventLocation: d.event?.location?.trim() || null,
   };
+}
+
+/** A saved product's wall size, as the composer edits it. */
+function wallOf(p: unknown): NonNullable<ComposerDraft["wall"]> {
+  const art = wallArtOf(p as Parameters<typeof wallArtOf>[0]);
+  return art ? { on: true, w: String(art.w), h: String(art.h), frame: art.frame } : { on: false, w: "", h: "", frame: "none" };
+}
+/** The wall size as the server takes it (all null when it isn't a piece for a wall, or its size isn't right). */
+export function wallForSave(d: Pick<ComposerDraft, "wall">) {
+  const art = d.wall?.on ? wallArtOf({ wallWidthCm: Number(d.wall.w), wallHeightCm: Number(d.wall.h), wallFrame: d.wall.frame }) : null;
+  return { wallWidthCm: art?.w ?? null, wallHeightCm: art?.h ?? null, wallFrame: art ? art.frame : null };
 }

@@ -1870,6 +1870,10 @@ model Product {
   shipsFrom       String?
   deliveryMinDays Int?
   deliveryMaxDays Int?
+  /// «شوفها على حيطك»: a piece for a wall, its real size (cm) and frame (shared/wallArt.ts); empty: not one.
+  wallWidthCm   Float?
+  wallHeightCm  Float?
+  wallFrame     String?
   /// Codes (game keys, gift cards): how to use one, shown next to the code.
   redeemNote    String?
   /// Protected digital product (scripts…): each piece gets a serial and an encrypted,

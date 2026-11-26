@@ -1,0 +1,77 @@
+/* «شوفها على حيطك» (WallView.tsx): the button on the product page's frame, and the room drawn by centimetres. */
+.rose-pdp-wall {
+  position: absolute; z-index: 3; bottom: 14px; inset-inline-start: 14px; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px;
+  background: color-mix(in srgb, var(--selection-surface, #fff8f4) 88%, transparent); backdrop-filter: blur(8px);
+  color: var(--selection-accent, #7d2448); transition: transform .3s cubic-bezier(.3,1.6,.5,1);
+}
+.rose-pdp-wall:hover { transform: scale(1.06); }
+.rose-pdp-wall:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 3px; }
+/* On a phone the details slide up over the photo's bottom edge (rose-showcase.css): the pill sits above it. */
+@media (max-width: 900px) { .cinematic-interior-shell .rose-pdp-wall { bottom: 60px; } }
+
+.wall-view {
+  position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 12px;
+  background: color-mix(in srgb, var(--selection-surface, #fff8f4) 90%, transparent); backdrop-filter: blur(6px);
+}
+.wall-view-card {
+  width: min(94vw, 760px); max-height: 94vh; overflow: auto; display: flex; flex-direction: column; gap: 12px;
+  padding: 14px; border-radius: 24px; background: var(--selection-surface, #fff8f4); color: var(--text, #222);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .18);
+}
+.wall-view-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wall-view-head > div { display: flex; flex-direction: column; gap: 2px; }
+.wall-view-head span { font-size: 13px; opacity: .7; }
+.wall-view-close { width: 44px; height: 44px; border-radius: 999px; background: rgba(0, 0, 0, .05); font-size: 22px; }
+
+/* The room: 360 cm of wall across (its width), 260 cm of it up, and 40 of floor. */
+.wall-room {
+  --cm: calc(100cqw / 360);
+  position: relative; width: 100%; aspect-ratio: 360 / 300; container-type: inline-size; overflow: hidden; border-radius: 16px;
+  background: var(--wall); color: #5f6b75;
+}
+.wall-room[data-dark] { color: #b8a58d; }
+.wall-room-wall {
+  position: absolute; inset: 0 0 calc(var(--cm) * 40) 0;
+  background:
+    radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, .28), transparent 60%),
+    linear-gradient(180deg, rgba(0, 0, 0, .07), transparent 35%),
+    var(--wall);
+}
+.wall-room-floor {
+  position: absolute; inset: auto 0 0 0; height: calc(var(--cm) * 40);
+  border-top: calc(var(--cm) * 1.6) solid rgba(255, 255, 255, .55);
+  background: repeating-linear-gradient(90deg, rgba(0, 0, 0, .05) 0 calc(var(--cm) * .5), transparent calc(var(--cm) * .5) calc(var(--cm) * 24)), linear-gradient(180deg, #b38b66, #8a6547);
+}
+.wall-art {
+  position: absolute; box-sizing: border-box;
+  left: calc(var(--cm) * var(--art-left)); bottom: calc(var(--cm) * (40 + var(--art-bottom)));
+  width: calc(var(--cm) * var(--art-w)); height: calc(var(--cm) * var(--art-h));
+  border: calc(var(--cm) * var(--frame-cm)) solid var(--frame);
+  background: #ddd;
+  box-shadow: 0 calc(var(--cm) * 2.5) calc(var(--cm) * 6) rgba(0, 0, 0, .28), 0 0 0 1px rgba(0, 0, 0, .06);
+}
+.wall-art-bare { border: none; box-shadow: calc(var(--cm) * 1.2) calc(var(--cm) * 2.5) calc(var(--cm) * 5) rgba(0, 0, 0, .3), 0 0 0 1px rgba(0, 0, 0, .08); }
+.wall-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.wall-sofa { position: absolute; bottom: calc(var(--cm) * 30); left: calc(var(--cm) * (360 - var(--sofa)) / 2); width: calc(var(--cm) * var(--sofa)); height: calc(var(--cm) * var(--sofa-h)); }
+.wall-scale { position: absolute; inset-inline-start: calc(var(--cm) * 6); bottom: calc(var(--cm) * 6); font-size: 11px; color: rgba(255, 255, 255, .85); }
+
+.wall-view-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wall-paint { width: 34px; height: 34px; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .15); }
+.wall-paint[aria-checked="true"] { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 3px; }
+.wall-size { min-height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .15); font-size: 13px; }
+.wall-size[aria-checked="true"] { background: var(--selection-accent, #7d2448); color: var(--selection-surface, #fff8f4); border-color: transparent; }
+.wall-view-camera {
+  min-height: 48px; border-radius: 999px; font-weight: 600;
+  background: var(--selection-accent, #7d2448); color: var(--selection-surface, #fff8f4);
+}
+.wall-view-camera:disabled { opacity: .5; }
+.wall-view-note { font-size: 13px; opacity: .8; }
+.wall-view-code { display: flex; align-items: center; gap: 14px; font-size: 13px; line-height: 1.6; }
+.wall-view-code svg { flex: none; border-radius: 10px; }
+
+/* Over the camera (Android's AR): words on top, buttons at the bottom. */
+.wall-ar-layer { display: none; position: fixed; inset: 0; z-index: 95; flex-direction: column; justify-content: space-between; padding: 24px 16px 32px; pointer-events: none; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .6); text-align: center; }
+.wall-ar-layer[data-on] { display: flex; }
+.wall-ar-layer > div { display: flex; justify-content: center; gap: 10px; }
+.wall-ar-layer button { pointer-events: auto; min-height: 48px; padding: 0 20px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; backdrop-filter: blur(6px); }
