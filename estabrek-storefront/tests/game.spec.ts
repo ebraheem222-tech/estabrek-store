@@ -263,6 +263,81 @@ test("G3b: the music pads on a shop page: a key tapped plays, lights and scores"
   expect(errors).toEqual([]);
 });
 
+/** A tiny GLB file: a cube in a red, a little metal (its positions and corners only; three gives it flat light). */
+function cubeGlb(): Buffer {
+  const pos = new Float32Array([-0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5]);
+  const idx = new Uint16Array([0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 7, 6, 3, 6, 2, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5]);
+  const bin = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer)]);
+  const json = Buffer.from(JSON.stringify({
+    asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1, material: 0 }] }],
+    materials: [{ pbrMetallicRoughness: { baseColorFactor: [0.9, 0.25, 0.2, 1], metallicFactor: 0.3, roughnessFactor: 0.5 } }],
+    buffers: [{ byteLength: bin.length }],
+    bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 96, target: 34962 }, { buffer: 0, byteOffset: 96, byteLength: 72, target: 34963 }],
+    accessors: [{ bufferView: 0, componentType: 5126, count: 8, type: "VEC3", min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] }, { bufferView: 1, componentType: 5123, count: 36, type: "SCALAR" }],
+  }));
+  const pad = (b: Buffer, fill: number) => Buffer.concat([b, Buffer.alloc((4 - (b.length % 4)) % 4, fill)]);
+  const j = pad(json, 0x20), bn = pad(bin, 0);
+  const head = Buffer.alloc(12), jh = Buffer.alloc(8), bh = Buffer.alloc(8);
+  head.writeUInt32LE(0x46546c67, 0); head.writeUInt32LE(2, 4); head.writeUInt32LE(12 + 8 + j.length + 8 + bn.length, 8);
+  jh.writeUInt32LE(j.length, 0); jh.writeUInt32LE(0x4e4f534a, 4);
+  bh.writeUInt32LE(bn.length, 0); bh.writeUInt32LE(0x004e4942, 4);
+  return Buffer.concat([head, jh, j, bh, bn]);
+}
+
+test("G4a: the rally in 3D: the car drives on with the camera behind it, lit and shadowed, no error", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (m) => { if (m.type() === "error" && /shader|WebGL|THREE/i.test(m.text())) errors.push(m.text()); });
+  await publish(page, READY_GAMES.find((g) => g.key === "rally")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  await expect(s).toHaveAttribute("data-pt-game-3d", "ground");
+  await s.locator("[data-pt-game-start]").click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  await page.keyboard.down("ArrowUp");
+  await page.waitForTimeout(1200);
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(500);
+  await page.keyboard.up("ArrowRight");
+  await page.keyboard.up("ArrowUp");
+  if (OUT) await s.screenshot({ path: path.join(OUT, "rally-3d.png") });
+  expect((await s.locator("canvas").screenshot()).length).toBeGreaterThan(20_000);
+  expect(errors).toEqual([]);
+});
+
+test("G4a: the adventure standing up in 3D, and a GLB model fitted into its thing's size", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "adventure3d")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  await expect(s).toHaveAttribute("data-pt-game-3d", "wall");
+  await s.locator("[data-pt-game-start]").click();
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(900);
+  await page.keyboard.up("ArrowRight");
+  if (OUT) await s.screenshot({ path: path.join(OUT, "adventure-3d.png") });
+  expect((await s.locator("canvas").screenshot()).length).toBeGreaterThan(20_000);
+  // A model: served here as a file from another site.
+  const glb = cubeGlb();
+  await page.route("https://models.example.test/**", (route) => route.fulfill({ status: 200, body: glb, headers: { "content-type": "model/gltf-binary", "access-control-allow-origin": "*" } }));
+  await publish(page, {
+    w: 960, h: 540, bg: "surface", edges: "walls", lives: 0, seed: 3,
+    view3d: { mode: "ground", camera: "angle", tilt: 45, light: "studio" },
+    things: [
+      { id: "crate", look: { kind: "box", color: "accent" }, x: 480, y: 270, w: 160, h: 160, body: "static", d3: { shape: "model", src: "https://models.example.test/box.glb", height: 160 } },
+      { id: "ball", look: { kind: "circle", color: "text" }, x: 300, y: 300, w: 60, h: 60, body: "static", d3: { metal: 0.9, rough: 0.2 } },
+    ],
+    words: { title: en("A model"), start: en("Look") },
+  });
+  await page.goto(PATH);
+  await expect(s).toHaveAttribute("data-pt-game-models", "1", { timeout: 20_000 });
+  await s.locator("[data-pt-game-start]").click();
+  if (OUT) { await page.waitForTimeout(400); await s.screenshot({ path: path.join(OUT, "model-3d.png") }); }
+  expect(errors).toEqual([]);
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);

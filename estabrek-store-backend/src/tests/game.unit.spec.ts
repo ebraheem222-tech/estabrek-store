@@ -91,6 +91,25 @@ describe("a game on the page", () => {
     expect(issues({ ...base, rules: [{ when: { on: "see", a: "#nobody", b: "#player" }, do: [{ act: "next" }] }] }).join()).toMatch(/No thing or tag “#nobody”/);
   });
 
+  test("G4a: the 3D view, a thing's shape and model in 3D, a tile's height, the car", () => {
+    const base = {
+      gravity: 0,
+      view3d: { mode: "ground", camera: "follow", tilt: 40, distance: 0.9, light: "sunset", shadows: true, fog: true },
+      things: [
+        thing("car", { body: "dynamic", control: "car", d3: { shape: "model", src: "https://cdn.example.com/car.glb", height: 30, lift: 0, metal: 0.6, rough: 0.3 } }),
+        thing("coin", { d3: { shape: "cylinder", height: 8, lift: 15 } }),
+      ],
+      tiles: { size: 40, cols: 2, rows: 1, map: ["#."], kinds: { "#": { look: { kind: "box" }, solid: true, height: 30 } } },
+    };
+    expect(issues(base)).toEqual([]);
+    expect(issues({ ...base, view3d: { mode: "space" } }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, view3d: { mode: "ground", tilt: 95 } }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("car", { d3: { shape: "model" } })] }).join()).toMatch(/needs its file/);
+    expect(issues({ ...base, things: [thing("car", { d3: { shape: "model", src: "javascript:alert(1)" } })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("car", { d3: { shape: "pyramid" } })] }).length).toBeGreaterThan(0);
+    expect(issues({ ...base, things: [thing("car", { d3: { metal: 2 } })] }).length).toBeGreaterThan(0);
+  });
+
   test("G3b: on the beat, a key pressed while two things touch, a copy where its template stands, a flash", () => {
     const base = {
       music: { mood: "lively", tempo: 100 },

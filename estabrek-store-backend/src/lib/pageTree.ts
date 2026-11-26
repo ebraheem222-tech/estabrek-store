@@ -880,7 +880,7 @@ const GameTiles = z.object({
   map: GameMap,
   levels: z.array(GameMap).max(7).optional(),
   gen: z.enum(["maze"]).optional(),
-  kinds: z.record(z.string().regex(/^[!-~]$/).refine((c) => c !== ".", "“.” is an empty cell"), z.object({ look: GameLook, solid: z.boolean().optional(), oneWay: z.boolean().optional(), tags: z.array(GAME_TAG).max(4).optional(), thing: GAME_ID.optional() }).strict()).refine((k) => Object.keys(k).length <= 12, "At most 12 kinds of tile"),
+  kinds: z.record(z.string().regex(/^[!-~]$/).refine((c) => c !== ".", "“.” is an empty cell"), z.object({ look: GameLook, solid: z.boolean().optional(), oneWay: z.boolean().optional(), tags: z.array(GAME_TAG).max(4).optional(), thing: GAME_ID.optional(), height: gnum(0, 1000).optional() }).strict()).refine((k) => Object.keys(k).length <= 12, "At most 12 kinds of tile"),
 }).strict();
 const GameLayer = z.object({ kind: z.enum(["color", "gradient", "image"]), color: color.optional(), color2: color.optional(), src: src.optional(), factor: gnum(0, 1).optional(), y: gnum(0, 1).optional(), h: gnum(0.05, 1).optional() }).strict();
 const GameThing = z.object({
@@ -893,7 +893,7 @@ const GameThing = z.object({
   bounce: gnum(0, 1).optional(),
   solid: z.boolean().optional(),
   vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional(),
-  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"]).optional(),
+  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car"]).optional(),
   speed: gnum(0, 2000).optional(),
   jump: gnum(0, 3000).optional(),
   behave: z.enum(["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"]).optional(),
@@ -914,6 +914,9 @@ const GameThing = z.object({
   // G3: what it leaves behind as it moves, and its look's effect.
   trail: z.enum(["", "sparkle", "smoke", "fire", "bubbles"]).optional(),
   fx: z.enum(["", "glow", "pulse", "wobble", "rainbow"]).optional(),
+  // G4a: its shape in 3D (a model needs its file), its height, how high it floats, how metal and rough.
+  d3: z.object({ shape: z.enum(["auto", "box", "ball", "cylinder", "cone", "card", "model"]).optional(), height: gnum(0, 2000).optional(), lift: gnum(-500, 2000).optional(), src: src.optional(), metal: gnum(0, 1).optional(), rough: gnum(0, 1).optional() }).strict()
+    .refine((d) => d.shape !== "model" || Boolean(d.src), { message: "A model needs its file (.glb)", path: ["src"] }).optional(),
 }).strict().refine((t) => t.shape !== "poly" || (t.points?.length ?? 0) >= 3, { message: "A convex shape needs three points or more", path: ["points"] });
 const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("start") }).strict(),
@@ -980,6 +983,8 @@ const GameSpecSchema = z.object({
   weather: z.enum(["", "snow", "rain", "stars", "leaves", "bubbles"]).optional(),
   post: z.enum(["", "vignette", "crt", "pixel", "mono", "dream"]).optional(),
   music: z.object({ mood: z.enum(["", "lively", "calm", "spooky", "arcade"]).optional(), tempo: gint(60, 180).optional(), volume: gnum(0, 1).optional() }).strict().optional(),
+  // G4a: the 3D view.
+  view3d: z.object({ mode: z.enum(["", "ground", "wall"]).optional(), camera: z.enum(["follow", "top", "angle", "fixed"]).optional(), tilt: gnum(10, 89).optional(), distance: gnum(0.3, 3).optional(), light: z.enum(["day", "sunset", "night", "studio"]).optional(), shadows: z.boolean().optional(), fog: z.boolean().optional() }).strict().optional(),
   bg: color.optional(),
   gravity: gnum(0, 4000).optional(),
   edges: z.enum(["walls", "sides", "floor", "open"]).optional(),

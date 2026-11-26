@@ -15,6 +15,9 @@
  * world, an effect over the whole picture, music made for a mood, more sounds, notes on instruments up a scale, confetti.
  * G3b: on the beat of the game's tempo; a key pressed (or the first thing tapped) while two things touch; a copy made
  * where its template stands; a thing flashed.
+ * G4a: the game seen in 3D (its world laid on the ground, or standing as a wall with depth): the camera, the light,
+ * shadows, fog; each thing's shape in 3D (a box, a ball, a cylinder, a cone, a card that faces the camera, its convex
+ * shape raised, or a GLB model), its height, how high it floats, how metal and how rough; a tile's height; a car.
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -27,7 +30,13 @@ export const LAYER_KINDS = ["color", "gradient", "image"] as const;
 export const GAME_BODIES = ["none", "static", "dynamic", "kinematic", "rigid"] as const;
 /** A rigid thing's shape: its box, a circle in it, or a convex shape of points (each in the box, -0.5…0.5). */
 export const GAME_SHAPES = ["box", "circle", "poly"] as const;
-export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"] as const;
+export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car"] as const;
+/** G4a: the 3D view: none (flat), the world on the ground, or the world standing as a wall with depth. */
+export const VIEW3D_MODES = ["", "ground", "wall"] as const;
+export const VIEW3D_CAMERAS = ["follow", "top", "angle", "fixed"] as const;
+export const VIEW3D_LIGHTS = ["day", "sunset", "night", "studio"] as const;
+/** A thing's shape in 3D ("auto": from its look; "card": a picture that faces the camera; "model": a GLB file). */
+export const SHAPES3D = ["auto", "box", "ball", "cylinder", "cone", "card", "model"] as const;
 export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
 export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break", "beat", "press"] as const;
@@ -55,7 +64,7 @@ export type GameLook = { kind: (typeof GAME_LOOKS)[number]; color: string; src?:
 /** A kind of tile on the map: how it looks; solid (stops bodies), a one-way platform (only from above), its tags (rules
  *  meet it by them); or, `thing`, a template put at each of its cells when the game starts (a coin, an enemy, a flag),
  *  or a thing in the world (the player) put at its first cell: where it starts on that level. */
-export type GameTileKind = { look: GameLook; solid: boolean; oneWay: boolean; tags: string[]; thing: string };
+export type GameTileKind = { look: GameLook; solid: boolean; oneWay: boolean; tags: string[]; thing: string; height: number };
 export type GameTiles = {
   size: number; cols: number; rows: number; map: string[]; kinds: Record<string, GameTileKind>;
   /** The levels after the first (whose map is `map`), each a map of the same size. */
@@ -125,6 +134,8 @@ export type GameThing = {
   /** G3: what it leaves behind as it moves, and its look's effect. */
   trail: (typeof GAME_TRAILS)[number];
   fx: (typeof GAME_FX)[number];
+  /** G4a: its shape in 3D, its height (pixels; 0: from its size), how high it floats, a model's file, metal and rough. */
+  d3: { shape: (typeof SHAPES3D)[number]; height: number; lift: number; src?: string; metal: number; rough: number };
 };
 export type GameWhen =
   | { on: "start" }
@@ -192,6 +203,8 @@ export type GameSpec = {
   weather: (typeof GAME_WEATHER)[number];
   post: (typeof GAME_POST)[number];
   music: { mood: (typeof GAME_MOODS)[number]; tempo: number; volume: number };
+  /** G4a: the 3D view ("" mode: flat), its camera, its tilt (degrees) and distance (× the view), its light, shadows, fog. */
+  view3d: { mode: (typeof VIEW3D_MODES)[number]; camera: (typeof VIEW3D_CAMERAS)[number]; tilt: number; distance: number; light: (typeof VIEW3D_LIGHTS)[number]; shadows: boolean; fog: boolean };
   bg: string;
   gravity: number;
   edges: (typeof GAME_EDGES)[number];
@@ -254,7 +267,7 @@ function tilesOf(raw: unknown, say: Say, ids: Set<string>): GameTiles | null {
     if (look.kind === "text") look.text = say(lk.text).slice(0, 4);
     const thing = typeof kk.thing === "string" && ids.has(kk.thing) ? kk.thing : "";
     const tags = (Array.isArray(kk.tags) ? kk.tags : []).filter((t): t is string => typeof t === "string" && TAG.test(t)).slice(0, GAME_LIMITS.tags);
-    kinds[ch] = { look, solid: !thing && kk.solid === true, oneWay: !thing && kk.oneWay === true, tags, thing };
+    kinds[ch] = { look, solid: !thing && kk.solid === true, oneWay: !thing && kk.oneWay === true, tags, thing, height: num(kk.height, 0, 1000, 0) };
   }
   // Each row as long as the map is wide; what isn't a kind of tile is empty.
   const mapOf = (v: unknown) => {
@@ -324,7 +337,14 @@ function thingOf(raw: unknown, say: Say): GameThing | null {
     fast: x.fast === true,
     trail: pick(x.trail, GAME_TRAILS, ""),
     fx: pick(x.fx, GAME_FX, ""),
+    d3: d3Of(x.d3),
   };
+}
+function d3Of(raw: unknown): GameThing["d3"] {
+  const x = obj(raw);
+  const src = srcOf(x.src);
+  const shape = pick(x.shape, SHAPES3D, "auto");
+  return { shape: shape === "model" && !src ? "auto" : shape, height: num(x.height, 0, 2000, 0), lift: num(x.lift, -500, 2000, 0), ...(src ? { src } : {}), metal: num(x.metal, 0, 1, 0.1), rough: num(x.rough, 0, 1, 0.6) };
 }
 function pathOf(raw: unknown): GamePath | null {
   const x = obj(raw);
@@ -435,6 +455,10 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     weather: pick(x.weather, GAME_WEATHER, ""),
     post: pick(x.post, GAME_POST, ""),
     music: { mood: pick(obj(x.music).mood, GAME_MOODS, ""), tempo: int(obj(x.music).tempo, 60, 180, 110), volume: num(obj(x.music).volume, 0, 1, 0.5) },
+    view3d: (() => {
+      const v = obj(x.view3d);
+      return { mode: pick(v.mode, VIEW3D_MODES, ""), camera: pick(v.camera, VIEW3D_CAMERAS, "follow"), tilt: num(v.tilt, 10, 89, 55), distance: num(v.distance, 0.3, 3, 1), light: pick(v.light, VIEW3D_LIGHTS, "day"), shadows: v.shadows !== false, fog: v.fog === true };
+    })(),
     bg: colourOf(x.bg, "surface"),
     gravity: num(x.gravity, 0, 4000, 0),
     edges: pick(x.edges, GAME_EDGES, "walls"),

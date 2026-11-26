@@ -28,6 +28,8 @@
  *    falling weather.
  *  - G3b: the music started at the game's own time (its beats where the beat rules are); a flashed thing lit up a
  *    moment; the keys the rules ask for get their touch buttons.
+ *  - G4a: a game seen in 3D is drawn by gameScene3d.ts (its own camera, light and shadows) in place of the flat
+ *    drawing; a tap or a pull is found on its ground or wall; a car gets the four arrows on a touch screen.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
@@ -37,6 +39,7 @@ import { needsPhysics, physJoints, type Rapier } from "./gamePhysics";
 import { Music, playNote, playSound } from "./gameSound";
 import { alphaOf, burst, confetti, newParticles, placeOf, stepParticles } from "./gameParticles";
 import { GAME_FX, GAME_POST } from "./gameSpec";
+import { scene3d, type Scene3D } from "./gameScene3d";
 import type { GameSpec } from "./gameSpec";
 import { coverCss, cssColour, lookCanvas, sheetFrame } from "./gameDraw";
 import type { GameWords as PrizeWords } from "./proWords";
@@ -172,8 +175,10 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
     ...spec.joints.flatMap((j) => (j.motor?.key ? [j.motor.key] : [])),
     ...spec.rules.flatMap((r) => (r.when.on === "key" || r.when.on === "press" ? [r.when.key] : [])),
   ]);
-  const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay") || motorKeys.has("ArrowLeft") || motorKeys.has("ArrowRight");
-  const needsUpDown = controls.has("fourWay") || motorKeys.has("ArrowUp") || motorKeys.has("ArrowDown");
+  const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay") || controls.has("car") || motorKeys.has("ArrowLeft") || motorKeys.has("ArrowRight");
+  const needsUpDown = controls.has("fourWay") || controls.has("car") || motorKeys.has("ArrowUp") || motorKeys.has("ArrowDown");
+  // A game seen in 3D: its scene (set once three.js has loaded), for finding a tap on its ground.
+  const view3d = useRef<Scene3D | null>(null);
   const needsJump = controls.has("platform") || motorKeys.has("Space");
 
   useEffect(() => {
@@ -364,9 +369,14 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         return { rt, material, quad, scene: scene2, camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
       })() : null;
 
+      // Seen in 3D: its own scene, camera, light and shadows draw it.
+      const v3 = spec.view3d.mode ? scene3d({ THREE, renderer, spec, colours, css: (c) => cssColour(probe, c), font, rtl, lessMotion, sound: () => soundRef.current, parts }) : null;
+      view3d.current = v3;
+
       const resize = () => {
         const r = el.getBoundingClientRect();
         renderer.setSize(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.width * (spec.h / spec.w))), false);
+        v3?.resize(r.width, r.width * (spec.h / spec.w));
         if (post) {
           const v = renderer.getDrawingBufferSize(new THREE.Vector2());
           post.rt.setSize(v.x, v.y);
@@ -465,7 +475,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         } else renderer.render(scene, camera);
       };
 
-      let last = performance.now(), acc = 0, shown = "", wasResting = false, covered = "", partied = false;
+      let last = performance.now(), acc = 0, shown = "", wasResting = false, covered = "", partied = false, modelsShown = 0;
       const ink = colours.text ?? "#111";
       // Less motion asked for: the cover only fades.
       const coverKind = lessMotion() && spec.transition !== "none" ? "fade" : spec.transition;
@@ -501,7 +511,12 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         if (s.phase === "won" && !partied) { partied = true; confetti(parts, s.cx, s.cy, spec.w, lessMotion()); }
         if (s.phase === "playing") partied = false;
         if (running || parts.list.length) stepParticles(parts, s, dt, lessMotion());
-        if (running || sparks.length || parts.list.length || shown !== s.phase) draw(s);
+        // A model that has come in is shown even before the game starts.
+        const models = v3?.models() ?? 0;
+        if (models !== modelsShown) { modelsShown = models; el.dataset.ptGameModels = String(models); }
+        if (running || sparks.length || parts.list.length || shown !== s.phase || (v3 && models !== Number(el.dataset.ptGameDrawn ?? -1))) {
+          if (v3) { v3.draw(s, now); el.dataset.ptGameDrawn = String(models); } else draw(s);
+        }
         // The cover between levels, set straight on its element (each frame, no React).
         const c = coverOf(s), css = coverCss(coverKind, c.k, c.closing, ink);
         if (css !== covered && cover.current) { covered = css; cover.current.style.cssText = css; }
@@ -509,7 +524,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         const key = JSON.stringify(next);
         if (key !== shown) { shown = key; setHud(next); }
       };
-      draw(game.current!);
+      if (v3) v3.draw(game.current!, performance.now()); else draw(game.current!);
       frame = requestAnimationFrame(loop);
       cleanup = () => {
         cancelAnimationFrame(frame);
@@ -529,6 +544,8 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         (strings.material as T.Material).dispose();
         for (const m of dots) (m.material as T.Material).dispose();
         endGame(game.current!);
+        v3?.dispose();
+        view3d.current = null;
         for (const m of tileMeshes) m.dispose();
         for (const { tx, m } of layers) { tx.dispose(); (m.material as T.Material).dispose(); }
         square.dispose();
@@ -572,6 +589,9 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const toWorld = (e: RPointerEvent) => {
     const r = canvas.current!.getBoundingClientRect();
     const s = game.current!;
+    // In 3D: where the pointer's ray meets the ground (or the wall).
+    const p3 = view3d.current?.toWorld(e.clientX, e.clientY, r);
+    if (p3) return p3;
     return { x: s.cx + ((e.clientX - r.left) / r.width) * spec.w, y: s.cy + ((e.clientY - r.top) / r.height) * spec.h };
   };
   const onDown = (e: RPointerEvent) => {
@@ -628,6 +648,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       data-pt-game-phase={hud.phase}
       data-pt-game-score={hud.score}
       data-pt-game-lives={hud.lives}
+      {...(spec.view3d.mode ? { "data-pt-game-3d": spec.view3d.mode } : {})}
       {...(hud.time !== null ? { "data-pt-game-time": hud.time } : {})}
       {...(levels > 1 ? { "data-pt-game-level": hud.level } : {})}
     >
