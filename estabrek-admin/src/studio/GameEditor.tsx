@@ -8,6 +8,8 @@
  * G1b: levels (one map each, picked to paint, added as a copy, removed), a maze made by itself (its walls shown as
  * they'll be played), the cover between levels, a thing's sight and its path (points put and dragged in the world),
  * the new brains and rules (sees, a level begins, next level, this level again); trying it shows the level and cover.
+ * G2: a rigid thing (its shape, among boxes, circles and convex ones, and its material), the sling, the rules for a
+ * slung thing (shot, at rest; back home, an explosion); trying a game with rigid things loads Rapier here too.
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -15,18 +17,30 @@ import { Modal } from "../components/ui/Modal";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import type { Lang } from "../lib/lang";
 import { gameOf, type GameLook } from "../../../estabrek-storefront/src/pageTree/gameSpec";
-import { NO_INPUT, STEP, coverOf, levelCount, levelMap, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
+import { NO_INPUT, STEP, coverOf, endGame, levelCount, levelMap, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
 import { drawCover, lookCanvas, sheetFrame } from "../../../estabrek-storefront/src/pageTree/gameDraw";
+import { needsPhysics, type Rapier } from "../../../estabrek-storefront/src/pageTree/gamePhysics";
 import type { ThumbColours } from "./templates/colours";
 import {
   ACT_NAMES, BEHAVE_NAMES, BODY_NAMES, CONTROL_NAMES, EDGE_NAMES, KEY_NAMES, LOOK_STARTS, SIZES, SOUND_NAMES, SPOT_NAMES, WHEN_NAMES,
   actPossible, newAct, newWhen, ruleText, rulesOf, templatesOf, thingsOf, whoOptions, withNewThing, withoutThing, type Obj,
   nextTileChar, paintCells, withTiles, withoutTileKind, worldSize,
   TRANSITION_NAMES, levelMaps, pathPoints, resizedLevels, withLevelMap, withNewLevel, withPathPoint, withoutLevel,
+  SHAPE_PICKS, shapePick,
 } from "./gameEdit";
 import { say } from "./say";
 
 const obj = (v: unknown): Obj => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : {});
+
+/** Rapier (the admin's own copy of the shop's), loaded once when a game with rigid things is tried. */
+let rapierLoad: Promise<Rapier | null> | null = null;
+const loadRapier = () => (rapierLoad ??= import("@dimforge/rapier2d-deterministic-compat")
+  .then(async (m) => {
+    const R = (m.default ?? m) as unknown as Rapier & { init(): Promise<void> };
+    await R.init();
+    return R as Rapier;
+  })
+  .catch(() => null));
 const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
 const ctl = "rounded-md border border-white/10 bg-surface-925 px-1.5 py-1 text-[11px] text-white";
 const btn = "rounded-lg bg-white/6 px-2 py-1 text-[11px] text-white/80 hover:bg-white/10 disabled:opacity-40";
@@ -66,8 +80,16 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** A thing as the editor shows it: its emoji or words on an SVG that fits its box, its shape, or its picture. */
-function LookView({ look, colours, lang }: { look: Obj; colours: Record<string, string>; lang: Lang }) {
+function LookView({ look, colours, lang, poly }: { look: Obj; colours: Record<string, string>; lang: Lang; poly?: unknown }) {
   const fill = colours[String(look.color ?? "accent")] ?? String(look.color ?? "#888");
+  // A rigid thing's convex shape, its points in its box.
+  if (Array.isArray(poly) && poly.length >= 3 && (look.kind ?? "box") === "box") {
+    return (
+      <svg viewBox="-0.5 -0.5 1 1" preserveAspectRatio="none" className="h-full w-full overflow-visible">
+        <polygon points={(poly as number[][]).map(([x, y]) => `${x},${y}`).join(" ")} fill={fill} />
+      </svg>
+    );
+  }
   if (look.kind === "image" && typeof look.src === "string") return <img src={look.src} alt="" draggable={false} className="h-full w-full object-cover" />;
   if (look.kind === "emoji" || look.kind === "text") {
     const words = look.kind === "emoji" ? String(look.emoji ?? "⭐") : String(obj(look.text)[lang] ?? obj(look.text).ar ?? obj(look.text).en ?? "");
@@ -270,7 +292,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                       <div key={id} className={`absolute cursor-move ${painting ? "pointer-events-none opacity-70" : ""} ${id === sel ? "outline outline-2 outline-accent-400" : "hover:outline hover:outline-1 hover:outline-white/50"}`}
                         style={{ left: `${((m.x - m.w / 2) / WW) * 100}%`, top: `${((m.y - m.h / 2) / WH) * 100}%`, width: `${(m.w / WW) * 100}%`, height: `${(m.h / WH) * 100}%` }}
                         onPointerDown={startDrag(t, "move")} data-testid="game-ed-thing" data-thing={id}>
-                        <LookView look={obj(t.look)} colours={pal} lang={lang} />
+                        <LookView look={obj(t.look)} colours={pal} lang={lang} poly={t.shape === "poly" ? t.points : undefined} />
                         {id === sel ? <span className="absolute -bottom-1.5 -end-1.5 h-3 w-3 cursor-nwse-resize rounded-sm bg-accent-400" onPointerDown={startDrag(t, "size")} data-testid="game-ed-size-handle" /> : null}
                       </div>
                     );
@@ -344,6 +366,7 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
       <Row label={say("تصرّفه|Its behaviour|ההתנהגות")}><Choose label={say("تصرّفه|Its behaviour|ההתנהגות")} value={String(thing.behave ?? "none")} options={named(BEHAVE_NAMES)} onPick={(v) => set({ behave: v, ...(v === "path" && !pathPoints(thing).length ? { path: { points: [[200, 0]] } } : {}) })} disabled={busy} testId="game-ed-behave" /></Row>
       {thing.behave === "guard" || thing.behave === "flee" ? <Num label={say("قدّيش بيشوف|How far it sees|כמה רחוק הוא רואה")} value={num(thing.sight, 320)} min={0} max={3000} step={10} onSave={(v) => set({ sight: v })} testId="game-ed-sight" /> : null}
       {thing.behave === "path" ? <PathSettings thing={thing} busy={busy} set={set} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : null}
+      {thing.body === "rigid" ? <RigidSettings thing={thing} busy={busy} set={set} /> : null}
       <Num label={say("سرعته|Its speed|המהירות")} value={num(thing.speed, 360)} min={0} max={2000} step={10} onSave={(v) => set({ speed: v })} testId="game-ed-speed" />
       {thing.control === "platform" ? <Num label={say("قوّة النط|Jump strength|כוח קפיצה")} value={num(thing.jump, 720)} min={0} max={3000} step={10} onSave={(v) => set({ jump: v })} /> : null}
       <Num label={say("سرعة البداية ↔|Starting speed ↔|מהירות התחלה ↔")} value={num(thing.vx, 0)} min={-3000} max={3000} step={10} onSave={(v) => set({ vx: v })} testId="game-ed-vx" />
@@ -356,6 +379,27 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
       <Row label={say("علامات (بفاصلة)|Tags (comma)|תגיות (פסיק)")}>
         <input className={`${ctl} w-28`} value={tagText} onChange={(e) => setTagText(e.target.value)} onBlur={() => { const next = tagText.split(/[,،\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => TAG.test(x)).slice(0, 4); setTagText(next.join(", ")); set({ tags: next.length ? next : undefined }); }} data-testid="game-ed-tags" />
       </Row>
+    </div>
+  );
+}
+
+/** A rigid thing: its shape and its material (density, friction, drag), not turning, never through a thin wall. */
+function RigidSettings({ thing, busy, set }: { thing: Obj; busy: boolean; set: (change: Obj, label?: string) => void }) {
+  const label = say("جسم حقيقي|A rigid thing|גוף קשיח");
+  return (
+    <div className="space-y-1 rounded-md border border-white/8 p-1.5" data-testid="game-ed-rigid">
+      <Row label={say("شكله بالفيزياء|Its shape in the physics|הצורה בפיזיקה")}>
+        <Choose label={say("الشكل|The shape|הצורה")} value={shapePick(thing)} options={[...SHAPE_PICKS.map(([k, l]) => [k, say(l)] as const), ...(shapePick(thing) === "poly" ? [["poly", say("شكل خاص|Its own shape|צורה משלו")] as const] : [])]} onPick={(k) => {
+          const pick = SHAPE_PICKS.find(([key]) => key === k);
+          if (!pick) return;
+          set(pick[2] ? { shape: "poly", points: pick[2] } : { shape: k === "circle" ? "circle" : "box", points: undefined }, label);
+        }} disabled={busy} testId="game-ed-shape" />
+      </Row>
+      <Num label={say("كثافته (أتقل = أصعب ينزاح)|Density (heavier: harder to push)|צפיפות (כבד יותר: קשה להזיז)")} value={num(thing.density, 1)} min={0.05} max={50} step={0.1} onSave={(v) => set({ density: v }, label)} testId="game-ed-density" />
+      <Num label={say("الاحتكاك (0–2)|Friction (0–2)|חיכוך (0–2)")} value={num(thing.friction, 0.5)} min={0} max={2} step={0.1} onSave={(v) => set({ friction: v }, label)} testId="game-ed-friction" />
+      <Num label={say("التباطؤ (هوا أو عشب)|Drag (air or grass)|גרר (אוויר או דשא)")} value={num(thing.drag, 0)} min={0} max={20} step={0.1} onSave={(v) => set({ drag: v || undefined }, label)} testId="game-ed-drag" />
+      <Row label={say("ما بيدور|Doesn't turn|לא מסתובב")}><input type="checkbox" checked={thing.spinLock === true} disabled={busy} onChange={(e) => set({ spinLock: e.target.checked || undefined }, label)} data-testid="game-ed-spinlock" /></Row>
+      <Row label={say("سريع (ما بيقطع من الحيط)|Fast (never through a wall)|מהיר (לא עובר דרך קיר)")}><input type="checkbox" checked={thing.fast === true} disabled={busy} onChange={(e) => set({ fast: e.target.checked || undefined }, label)} data-testid="game-ed-fast" /></Row>
     </div>
   );
 }
@@ -396,7 +440,7 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
         {when.on === "every" ? <Num label={say("كل (ثانية)|Every (seconds)|כל (שניות)")} value={num(when.seconds, 1)} min={0.2} max={60} step={0.1} onSave={(v) => setWhen({ seconds: v })} testId="game-ed-every" /> : null}
         {when.on === "hit" || when.on === "see" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
         {when.on === "level" ? <Num label={say("المرحلة (0 = كل وحدة)|The level (0 = each)|השלב (0 = כל אחד)")} value={num(when.at, 0)} min={0} max={8} onSave={(v) => setWhen({ at: Math.round(v) })} testId="game-ed-level-at" /> : null}
-        {when.on === "out" || when.on === "tap" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
+        {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
         {when.on === "key" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} /> : null}
         {when.on === "score" || when.on === "time" ? <Num label={when.on === "score" ? say("النقاط|The score|הניקוד") : say("الثانية|The second|השנייה")} value={num(when.at, 10)} min={when.on === "score" ? -9999 : 0} max={when.on === "score" ? 99999 : 600} onSave={(v) => setWhen({ at: v })} testId="game-ed-at" /> : null}
       </div>
@@ -415,6 +459,12 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
             {a.act === "speed" ? <><Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /><Num label="↔" value={num(a.vx, 0)} min={-3000} max={3000} step={10} onSave={(v) => setAct(i, { vx: v })} /><Num label="↕" value={num(a.vy, 0)} min={-3000} max={3000} step={10} onSave={(v) => setAct(i, { vy: v })} /></> : null}
             {a.act === "faster" ? <Num label="×" value={num(a.by, 1.2)} min={0.5} max={2} step={0.05} onSave={(v) => setAct(i, { by: v })} /> : null}
             {a.act === "sound" ? <Choose label={say("الصوت|The sound|הצליל")} value={String(a.kind ?? "pop")} options={named(SOUND_NAMES)} onPick={(v) => setAct(i, { kind: v })} disabled={busy} /> : null}
+            {a.act === "home" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
+            {a.act === "explode" ? <>
+              <Choose label={say("وين|Where|איפה")} value={String(a.who ?? "self")} options={[["self", say("عند الأول|At the first|אצל הראשון")], ["other", say("عند التاني|At the second|אצל השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} />
+              <Num label={say("لوين بيوصل|How far it reaches|כמה רחוק מגיע")} value={num(a.radius, 160)} min={40} max={1000} step={10} onSave={(v) => setAct(i, { radius: v })} testId="game-ed-blast-radius" />
+              <Num label={say("قوّته|Its power|העוצמה")} value={num(a.power, 900)} min={100} max={5000} step={50} onSave={(v) => setAct(i, { power: v })} testId="game-ed-blast-power" />
+            </> : null}
             {a.act === "burst" ? <Choose label={say("وين|Where|איפה")} value={String(a.who ?? "self")} options={[["self", say("عند الأول|At the first|אצל הראשון")], ["other", say("عند التاني|At the second|אצל השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
           </div>
         ))}
@@ -437,10 +487,20 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
   const input = useRef<GameInput>({ ...NO_INPUT, pressed: [], taps: [] });
   const [hud, setHud] = useState({ phase: "ready", score: 0, lives: 0, time: null as number | null, cam: 0, level: 1 });
   const spec = useMemo(() => gameOf(game, (t) => (t && typeof t === "object" ? String(obj(t)[lang] ?? obj(t).ar ?? obj(t).en ?? "") : "")), [game, lang]);
+  const physics = spec ? needsPhysics(spec) : false;
+  const [rapier, setRapier] = useState<Rapier | null>(null);
+  const [rapierTried, setRapierTried] = useState(false);
+  useEffect(() => {
+    if (!physics) return;
+    let live = true;
+    void loadRapier().then((R) => { if (live) { setRapier(R); setRapierTried(true); } });
+    return () => { live = false; };
+  }, [physics]);
+  const waiting = physics && !rapierTried;
 
   useEffect(() => {
-    if (!spec) return;
-    const s = newGame(spec);
+    if (!spec || waiting) return;
+    const s = newGame(spec, physics ? rapier : null);
     state.current = s;
     const cv = canvas.current;
     const ctx = cv?.getContext?.("2d") ?? null;
@@ -523,6 +583,12 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
           }
           ctx.restore();
         }
+        // A sling pulled back: dots along the shot's way.
+        if (s.aim) {
+          ctx.fillStyle = colours.text ?? "#111111";
+          s.aim.pts.forEach(([x, y], i) => { ctx.globalAlpha = Math.max(0.15, 0.85 - i * 0.03); ctx.beginPath(); ctx.arc(x, y, 4.5 - i * 0.1, 0, Math.PI * 2); ctx.fill(); });
+          ctx.globalAlpha = 1;
+        }
         // A guard that has seen the player: a ❗ rising over it.
         for (let i = alerts.length - 1; i >= 0; i--) {
           const age = s.t - alerts[i].t;
@@ -564,8 +630,8 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, [spec, colours, lang]);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); endGame(s); };
+  }, [spec, colours, lang, waiting, physics, rapier]);
 
   if (!spec) return <p className="rounded-xl bg-white/4 p-4 text-xs text-white/60">{say("ما في شي بالعالم ليتلعب. ضيف شي مش ✦.|Nothing is in the world to play. Add a thing that isn't ✦.|אין מה לשחק בעולם. הוסיפו פריט שאינו ✦.")}</p>;
   const toWorld = (e: RPointerEvent) => { const r = canvas.current!.getBoundingClientRect(), st = state.current; return { x: (st?.cx ?? 0) + ((e.clientX - r.left) / r.width) * spec.w, y: (st?.cy ?? 0) + ((e.clientY - r.top) / r.height) * spec.h }; };
@@ -578,7 +644,7 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
         {levelCount(spec) > 1 ? <span>{say("المرحلة|Level|שלב")}: <b>{hud.level}</b>/{levelCount(spec)}</span> : null}
         <span className="flex-1" />
         {hud.phase !== "playing" ? (
-          <button type="button" className={main} onClick={() => { if (state.current) { startGame(state.current); setHud({ phase: "playing", score: 0, lives: spec.lives, time: timeLeft(state.current), cam: Math.round(state.current.cx), level: state.current.level + 1 }); } }} data-testid="game-ed-play">
+          <button type="button" className={main} disabled={waiting} onClick={() => { if (state.current) { startGame(state.current); setHud({ phase: "playing", score: 0, lives: spec.lives, time: timeLeft(state.current), cam: Math.round(state.current.cx), level: state.current.level + 1 }); } }} data-testid="game-ed-play">
             {hud.phase === "ready" ? say("▶ ابدأ|▶ Start|▶ התחלה") : hud.phase === "won" ? say("ربحت! العب كمان|Won! Play again|ניצחת! שוב") : say("خسرت، العب كمان|Lost, play again|הפסדת, שוב")}
           </button>
         ) : <span className="text-white/45">{say("الأسهم والمسافة والماوس|Arrows, Space and the mouse|חצים, רווח והעכבר")}</span>}

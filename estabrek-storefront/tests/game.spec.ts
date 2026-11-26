@@ -147,6 +147,31 @@ test("G1b: the flag goes on to the next level under a closing circle, the bar sh
   expect(errors).toEqual([]);
 });
 
+test("G2: rigid things: Rapier loads before Start, the ball is pulled back and let go with the mouse, the cans fall", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await publish(page, READY_GAMES.find((g) => g.key === "cans")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  const start = s.locator("[data-pt-game-start]");
+  await expect(start).toBeEnabled({ timeout: 20_000 });
+  await start.click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  await page.waitForTimeout(800);
+  // The ball sits at (150, 360) of the 960 × 540 world: pulled back down-left, let go.
+  const box = (await s.locator("canvas").boundingBox())!;
+  const at = (x: number, y: number) => [box.x + (x / 960) * box.width, box.y + (y / 540) * box.height] as const;
+  await page.mouse.move(...at(150, 360));
+  await page.mouse.down();
+  await page.mouse.move(...at(70, 380), { steps: 4 });
+  await page.mouse.move(...at(-10, 400), { steps: 4 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+  await expect.poll(async () => Number(await s.getAttribute("data-pt-game-score")), { timeout: 8_000 }).toBeGreaterThan(0);
+  if (OUT) await s.screenshot({ path: path.join(OUT, "cans-hit.png") });
+  expect(errors).toEqual([]);
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);

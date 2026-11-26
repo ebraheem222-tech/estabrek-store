@@ -17,11 +17,14 @@
  *    frame for its state, turned the way it faces; an emoji that runs and jumps squashes and stretches a little.
  *  - G1b: the level in the bar; the cover between levels (a fade, a wipe or a circle in the theme's ink, over the
  *    canvas, its style set each frame without React); a ❗ that rises over a guard as it sees the player.
+ *  - G2: a game with rigid things loads Rapier (its 2D deterministic build, only then) and is made again with it;
+ *    Start waits for it. A sling's shot is shown as dots along its way while it's pulled back.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
 import { saveWonCoupon } from "../lib/wonCoupon";
-import { NO_INPUT, STEP, coverOf, levelCount, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
+import { NO_INPUT, STEP, coverOf, endGame, levelCount, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
+import { needsPhysics, type Rapier } from "./gamePhysics";
 import type { GameSpec } from "./gameSpec";
 import { coverCss, cssColour, lookCanvas, sheetFrame } from "./gameDraw";
 import type { GameWords as PrizeWords } from "./proWords";
@@ -35,6 +38,17 @@ const keyOf = (id: string) => `estabrek_game_stage_${id}`;
 const wonBefore = (id: string) => { try { return window.localStorage.getItem(keyOf(id)) === "won"; } catch { return false; } };
 const markWon = (id: string) => { try { window.localStorage.setItem(keyOf(id), "won"); } catch { /* the prize still shows */ } };
 const KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "Enter"]);
+
+/** Rapier, loaded once for every game on the page that needs it. */
+let rapierLoad: Promise<Rapier | null> | null = null;
+const loadRapier = () => (rapierLoad ??= import("@dimforge/rapier2d-deterministic-compat")
+  .then(async (m) => {
+    const R = (m.default ?? m) as unknown as Rapier & { init(): Promise<void> };
+    await R.init();
+    return R as Rapier;
+  })
+  // Not loaded (offline): the game plays with the arcade's bodies.
+  .catch(() => null));
 
 /* ---------------------------------------------------------------- sounds */
 
@@ -82,6 +96,8 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const [hud, setHud] = useState<Hud>({ phase: "ready", score: 0, lives: spec.lives, time: spec.time || null, level: 1 });
   const cover = useRef<HTMLDivElement>(null);
   const levels = levelCount(spec);
+  const physics = needsPhysics(spec);
+  const [physReady, setPhysReady] = useState(!physics);
   const [sound, setSound] = useState(true);
   const [touch, setTouch] = useState(false);
   const [editor, setEditor] = useState(false);
@@ -111,8 +127,17 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
     if (!el || !cv) return;
     let stop = false, frame = 0, visible = true, hidden = document.hidden;
     let cleanup = () => {};
-    void import("three").then((THREE) => {
+    void Promise.all([import("three"), physics ? loadRapier() : Promise.resolve(null)]).then(([THREE, R]) => {
       if (stop) return;
+      // Its rigid things are Rapier's now: the game made again with it (still waiting to start).
+      if (physics) {
+        if (R) {
+          endGame(game.current!);
+          game.current = newGame(spec, R);
+          if (spec.coupon && spec.once && wonBefore(id)) game.current.phase = "won";
+        }
+        setPhysReady(true);
+      }
       const probe = document.createElement("span");
       probe.style.display = "none";
       el.appendChild(probe);
@@ -213,6 +238,17 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       type Spark = { m: T.Mesh; vx: number; vy: number; life: number };
       const sparks: Spark[] = [];
       let alertTx: T.CanvasTexture | null = null;
+      // The sling's way: dots, hidden but while it's pulled back.
+      const dotTx = new THREE.CanvasTexture(lookCanvas({ kind: "circle", color: "text" }, 16, 16, cssColour(probe, colours.text ?? "#111"), font, rtl, () => {}));
+      dotTx.colorSpace = THREE.SRGBColorSpace;
+      const dots = Array.from({ length: 22 }, (_, i) => {
+        const m = new THREE.Mesh(square, new THREE.MeshBasicMaterial({ map: dotTx, transparent: true, opacity: 0.85 - i * 0.03, depthTest: false }));
+        m.visible = false;
+        m.renderOrder = 20;
+        m.scale.set(9 - i * 0.2, 9 - i * 0.2, 1);
+        scene.add(m);
+        return m;
+      });
       const resize = () => {
         const r = el.getBoundingClientRect();
         renderer.setSize(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.width * (spec.h / spec.w))), false);
@@ -290,6 +326,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         camera.updateProjectionMatrix();
         camera.position.set(0, 0, 5);
         if (s.tilesV !== tilesV) { tilesV = s.tilesV; buildTiles(s); }
+        dots.forEach((m, i) => { const p = s.aim?.pts[i]; m.visible = Boolean(p); if (p) m.position.set(p[0], p[1], 0.8); });
         placeLayers(s.cx, s.cy);
         renderer.render(scene, camera);
       };
@@ -346,6 +383,9 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         for (const t of sheets.values()) t.dispose();
         for (const t of tileTextures) t?.dispose();
         alertTx?.dispose();
+        dotTx.dispose();
+        for (const m of dots) (m.material as T.Material).dispose();
+        endGame(game.current!);
         for (const m of tileMeshes) m.dispose();
         for (const { tx, m } of layers) { tx.dispose(); (m.material as T.Material).dispose(); }
         square.dispose();
@@ -354,7 +394,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       };
     });
     return () => { stop = true; cleanup(); };
-  }, [spec, colours, rtl]);
+  }, [spec, colours, rtl, physics, id]);
 
   /* ---- the keyboard, while it plays */
   useEffect(() => {
@@ -403,13 +443,14 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const onUp = () => { input.current.pointerDown = false; };
 
   const play = useCallback(() => {
+    if (!physReady) return;
     const s = game.current!;
     startGame(s);
     setSaved(false);
     setHud({ phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), level: s.level + 1 });
     if (soundRef.current) beep("click");
     host.current?.focus({ preventScroll: true });
-  }, []);
+  }, [physReady]);
 
   // Won: the prize, and its code for the bag.
   useEffect(() => {
@@ -466,7 +507,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         <div className="pt-gs-screen">
           {spec.words.title ? <div className="pt-gs-title" data-pt-field="title">{spec.words.title}</div> : null}
           {spec.words.help ? <p className="pt-gs-help" data-pt-field="help">{spec.words.help}</p> : null}
-          <button type="button" className="pt-gs-go" onClick={play} disabled={editor} data-pt-game-start="">{spec.words.start || words.start}</button>
+          <button type="button" className="pt-gs-go" onClick={play} disabled={editor || !physReady} aria-busy={!physReady} data-pt-game-start="">{spec.words.start || words.start}</button>
         </div>
       ) : null}
       {hud.phase === "won" || hud.phase === "lost" ? (

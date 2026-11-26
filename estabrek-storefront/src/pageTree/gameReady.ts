@@ -235,6 +235,97 @@ const MAZE: Raw = {
   words: words(w("النحلة بالمتاهة", "The bee in the maze", "הדבורה במבוך"), w("حرّك النحلة بالأسهم: لمّ الزهور ووصل للخلية. العناكب بتلحقك إذا شافتك، وكل مرحلة متاهة جديدة.", "Move the bee with the arrows: gather the flowers and reach the hive. The spiders chase you once they see you, and each level is a new maze.", "הזיזו את הדבורה בחצים: אספו פרחים והגיעו לכוורת. העכבישים רודפים אחריכם כשהם רואים אתכם, וכל שלב הוא מבוך חדש.")),
 };
 
+/** Cans (G2): a ball slung at ten cans stacked on a table; each knocked off scores, all ten in 45 seconds wins. */
+const CAN_ROWS: Array<[number, number[]]> = [[385, [-1.5, -0.5, 0.5, 1.5]], [339, [-1, 0, 1]], [293, [-0.5, 0.5]], [247, [0]]];
+const CANS: Raw = {
+  w: 960, h: 540, bg: "accent-soft", edges: "sides", gravity: 2000, lives: 0, time: 45, winScore: 10, seed: 131,
+  layers: [{ kind: "gradient", color: "surface", color2: "accent-soft", factor: 0, y: 0, h: 1 }],
+  things: [
+    { id: "ball", look: emoji("🥎"), x: 150, y: 360, w: 40, h: 40, body: "rigid", shape: "circle", control: "sling", speed: 1700, density: 3, bounce: 0.25, friction: 0.6, fast: true, tags: ["ball"] },
+    { id: "perch", look: { kind: "box", color: "text" }, x: 150, y: 392, w: 70, h: 24, body: "static", solid: true },
+    { id: "table", look: { kind: "box", color: "text" }, x: 720, y: 420, w: 300, h: 24, body: "static", solid: true },
+    ...CAN_ROWS.flatMap(([y, xs], r) => xs.map((k, i) => ({ id: `can-${r}-${i}`, look: emoji("🥫"), x: 720 + k * 38, y, w: 36, h: 46, body: "rigid", density: 0.4, friction: 0.5, tags: ["can"] }))),
+  ],
+  rules: [
+    { when: { on: "out", who: "#can" }, do: [{ act: "score", add: 1 }, { act: "sound", kind: "pop" }] },
+    { when: { on: "out", who: "#ball" }, do: [{ act: "home", who: "self" }] },
+    { when: { on: "rest", who: "#ball" }, do: [{ act: "home", who: "self" }] },
+  ],
+  words: words(w("وقّع العلب", "Knock the cans down", "הפילו את הפחיות"), w("اسحب الطابة لورا وفلّتها: وقّع العلب العشرة عن الطاولة قبل ما يخلص الوقت.", "Pull the ball back and let go: knock all ten cans off the table before the time runs out.", "משכו את הכדור אחורה ושחררו: הפילו את כל עשר הפחיות מהשולחן לפני שהזמן נגמר.")),
+};
+
+/** Mini golf (G2): three holes seen from above; the ball slung, slowed by the grass, bouncing off walls and bumpers,
+ *  a block that slides across the way; each shot a stroke. */
+const GOLF_HOLES = [
+  [
+    "#####################",
+    "#####################",
+    "###...............###",
+    "###.P.....X.....O.###",
+    "###...............###",
+    "###.......#.......###",
+    "###...............###",
+    "#####################",
+    "#####################",
+    "#####################",
+    "#####################",
+    "#####################",
+  ],
+  [
+    "#####################",
+    "#.......#############",
+    "#.P.....#############",
+    "#.......#############",
+    "#.......#############",
+    "#...................#",
+    "#........S..........#",
+    "#...................#",
+    "#############.....O.#",
+    "#############.......#",
+    "#############.......#",
+    "#####################",
+  ],
+  [
+    "#####################",
+    "#.P.....#...........#",
+    "#.......#.....X.....#",
+    "#.......#...........#",
+    "#...X...#.....#######",
+    "#.......#...........#",
+    "#...........X.......#",
+    "#.......#...........#",
+    "######..#######.....#",
+    "#.......#.........O.#",
+    "#.......#...........#",
+    "#####################",
+  ],
+];
+const GOLF: Raw = {
+  w: 945, h: 540, bg: "accent-soft", edges: "walls", gravity: 0, lives: 0, seed: 151, transition: "wipe",
+  tiles: {
+    size: 45, cols: 21, rows: 12, map: GOLF_HOLES[0], levels: GOLF_HOLES.slice(1),
+    kinds: {
+      "#": { look: { kind: "box", color: "text" }, solid: true },
+      P: { look: { kind: "circle", color: "white" }, thing: "ball" },
+      O: { look: { kind: "circle", color: "black" }, thing: "hole" },
+      X: { look: { kind: "circle", color: "accent" }, thing: "bumper" },
+      S: { look: { kind: "box", color: "accent" }, thing: "slider" },
+    },
+  },
+  things: [
+    { id: "ball", look: { kind: "circle", color: "white" }, x: 200, y: 160, w: 20, h: 20, body: "rigid", shape: "circle", control: "sling", speed: 1100, drag: 1.1, bounce: 0.9, friction: 0.1, fast: true, tags: ["ball"] },
+    { id: "hole", look: { kind: "circle", color: "black" }, x: 0, y: 0, w: 26, h: 26, body: "none", template: true, tags: ["hole"] },
+    { id: "bumper", look: { kind: "circle", color: "accent" }, x: 0, y: 0, w: 40, h: 40, body: "static", solid: true, shape: "circle", bounce: 1, template: true, tags: ["bumper"] },
+    { id: "slider", look: { kind: "box", color: "accent" }, x: 0, y: 0, w: 30, h: 100, body: "kinematic", solid: true, behave: "path", speed: 110, path: { points: [[0, 90]] }, template: true },
+  ],
+  rules: [
+    { when: { on: "shot", who: "#ball" }, do: [{ act: "score", add: 1 }] },
+    { when: { on: "hit", a: "#ball", b: "#hole" }, do: [{ act: "sound", kind: "chime" }, { act: "next" }] },
+    { when: { on: "hit", a: "#ball", b: "#bumper" }, do: [{ act: "sound", kind: "pop" }] },
+  ],
+  words: words(w("ميني غولف", "Mini golf", "מיני גולף"), w("اسحب الطابة لورا وفلّتها لتوصل للحفرة. النقاط هي عدد الضربات: كل ما كانت أقل، كان أحسن.", "Pull the ball back and let go to reach the hole. The score is your strokes: the fewer, the better.", "משכו את הכדור אחורה ושחררו כדי להגיע לגומה. הניקוד הוא מספר המכות: כמה שפחות, יותר טוב.")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
@@ -243,6 +334,8 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "bricks", name: w("كسّارة", "Brick breaker", "שובר לבנים"), line: w("طابة ولوح وحيط طوب", "A ball, a paddle and a wall of bricks", "כדור, מחבט וחומת לבנים"), icon: "🧱", game: BRICKS },
   { key: "adventure", name: w("مغامرة", "Adventure", "הרפתקה"), line: w("منصّات بمرحلتين وعالم أعرض من الشاشة", "Platforms over two levels, in a world wider than the screen", "פלטפורמות בשני שלבים, בעולם רחב מהמסך"), icon: "🦊", game: ADVENTURE },
   { key: "maze", name: w("متاهة", "Maze", "מבוך"), line: w("متاهة جديدة بكل مرحلة، وعناكب بتشوف", "A new maze each level, and spiders that see", "מבוך חדש בכל שלב, ועכבישים שרואים"), icon: "🐝", game: MAZE },
+  { key: "cans", name: w("علب", "Cans", "פחיות"), line: w("طابة بالمقلاع على برج علب", "A slung ball at a tower of cans", "כדור מקלע אל מגדל פחיות"), icon: "🥫", game: CANS },
+  { key: "golf", name: w("ميني غولف", "Mini golf", "מיני גולף"), line: w("تلات حفر وضربات قليلة", "Three holes, as few strokes as you can", "שלוש גומות, כמה שפחות מכות"), icon: "⛳", game: GOLF },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

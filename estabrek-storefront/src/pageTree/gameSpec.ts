@@ -7,6 +7,8 @@
  * every list at most so long, every name a plain word. Pure (no React, no "@/" imports): the admin reads it too.
  * G1b: levels (more maps of the same size, or mazes made from the seed), the cover between them, a thing's sight
  * and path, the brains (guard, flee, homing, path), and the rules for them (sees, a level begins, next, again).
+ * G2: rigid things (a box, a circle or a convex shape; density, friction, drag, turning or not, fast), the sling
+ * (pulled back and let go), and the rules for them (it's shot, it comes to rest; back home, an explosion).
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -16,12 +18,14 @@ export const GAME_LIMITS = { things: 40, rules: 40, acts: 8, tags: 4, alive: 200
 export const GAME_LOOKS = ["box", "circle", "image", "emoji", "text", "sprite"] as const;
 export const GAME_ANIMS = ["idle", "run", "jump", "fall"] as const;
 export const LAYER_KINDS = ["color", "gradient", "image"] as const;
-export const GAME_BODIES = ["none", "static", "dynamic", "kinematic"] as const;
-export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag"] as const;
+export const GAME_BODIES = ["none", "static", "dynamic", "kinematic", "rigid"] as const;
+/** A rigid thing's shape: its box, a circle in it, or a convex shape of points (each in the box, -0.5…0.5). */
+export const GAME_SHAPES = ["box", "circle", "poly"] as const;
+export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"] as const;
 export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
-export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level"] as const;
-export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry"] as const;
+export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest"] as const;
+export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode"] as const;
 /** How one level gives way to the next: a fade, a wipe across, a closing circle, or at once. */
 export const GAME_TRANSITIONS = ["fade", "wipe", "circle", "none"] as const;
 export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"] as const;
@@ -30,7 +34,8 @@ export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit"]
 
 /** A picture of frames (a sprite sheet): `cols` × `rows` cells, each of the body's states a run of them ([first, how many]). */
 export type GameSheet = { cols: number; rows: number; fps: number; anims: Partial<Record<(typeof GAME_ANIMS)[number], [number, number]>> };
-export type GameLook = { kind: (typeof GAME_LOOKS)[number]; color: string; src?: string; emoji?: string; text?: string; sheet?: GameSheet };
+/** `poly`: a box drawn as the thing's convex shape (its points, each in the box, -0.5…0.5). */
+export type GameLook = { kind: (typeof GAME_LOOKS)[number]; color: string; src?: string; emoji?: string; text?: string; sheet?: GameSheet; poly?: Array<[number, number]> };
 /** A kind of tile on the map: how it looks; solid (stops bodies), a one-way platform (only from above), its tags (rules
  *  meet it by them); or, `thing`, a template put at each of its cells when the game starts (a coin, an enemy, a flag),
  *  or a thing in the world (the player) put at its first cell: where it starts on that level. */
@@ -72,6 +77,15 @@ export type GameThing = {
   /** How far it sees (0: blind): a guard's, one that flees, and a rule's "sees". */
   sight: number;
   path: GamePath | null;
+  /** A rigid thing (G2): its shape (and its points, for "poly"), density, friction, drag (slowing in the air or on
+   *  the ground seen from above), not turning, and continuous collision (fast: never through a thin wall). */
+  shape: (typeof GAME_SHAPES)[number];
+  points: Array<[number, number]>;
+  density: number;
+  friction: number;
+  drag: number;
+  spinLock: boolean;
+  fast: boolean;
 };
 export type GameWhen =
   | { on: "start" }
@@ -85,7 +99,10 @@ export type GameWhen =
   /** `a` comes to see `b` (in its sight, nothing solid between). */
   | { on: "see"; a: string; b: string }
   /** A level begins (0: each one). */
-  | { on: "level"; at: number };
+  | { on: "level"; at: number }
+  /** It's shot (let go from the sling), and it comes to rest after. */
+  | { on: "shot"; who: string }
+  | { on: "rest"; who: string };
 export type GameAct =
   | { act: "spawn"; what: string; at: (typeof GAME_SPOTS)[number]; vx: number; vy: number }
   | { act: "destroy"; who: "self" | "other" | "both" }
@@ -101,7 +118,11 @@ export type GameAct =
   /** The next level (after the last: won). */
   | { act: "next" }
   /** This level again, from its start. */
-  | { act: "retry" };
+  | { act: "retry" }
+  /** Back where it started, still. */
+  | { act: "home"; who: "self" | "other" }
+  /** Everything within `radius` pushed away, by up to `power` (px/s) the nearer it is. */
+  | { act: "explode"; who: "self" | "other"; radius: number; power: number };
 export type GameRule = { when: GameWhen; do: GameAct[] };
 export type GameWords = { title: string; start: string; win: string; lose: string; again: string; prize: string; help: string };
 export type GameSpec = {
@@ -212,6 +233,12 @@ function thingOf(raw: unknown, say: Say): GameThing | null {
     else { look.src = src; look.sheet = sheetOf(lk.sheet); }
   }
   const tags = (Array.isArray(x.tags) ? x.tags : []).filter((t): t is string => typeof t === "string" && TAG.test(t)).slice(0, GAME_LIMITS.tags);
+  // Its shape (a circle look is a circle unless told), a convex shape's points in its box.
+  const points = (Array.isArray(x.points) ? x.points : []).slice(0, 8).flatMap((p): Array<[number, number]> =>
+    Array.isArray(p) && typeof p[0] === "number" && typeof p[1] === "number" && Number.isFinite(p[0]) && Number.isFinite(p[1]) ? [[num(p[0], -0.5, 0.5, 0), num(p[1], -0.5, 0.5, 0)]] : []);
+  let shape = pick(x.shape, GAME_SHAPES, look.kind === "circle" ? "circle" : "box");
+  if (shape === "poly" && points.length < 3) shape = "box";
+  if (shape === "poly" && look.kind === "box") look.poly = points;
   return {
     id, look,
     x: num(x.x, -2000, 4000, 100), y: num(x.y, -2000, 4000, 100),
@@ -231,6 +258,12 @@ function thingOf(raw: unknown, say: Say): GameThing | null {
     keepIn: x.keepIn === true,
     sight: num(x.sight, 0, 3000, 320),
     path: pathOf(x.path),
+    shape, points,
+    density: num(x.density, 0.05, 50, 1),
+    friction: num(x.friction, 0, 2, 0.5),
+    drag: num(x.drag, 0, 20, 0),
+    spinLock: x.spinLock === true,
+    fast: x.fast === true,
   };
 }
 function pathOf(raw: unknown): GamePath | null {
@@ -253,6 +286,7 @@ function whenOf(raw: unknown): GameWhen | null {
     case "time": return { on: "time", at: num(x.at, 0, 600, 10) };
     case "see": { const a = whoOf(x.a), b = whoOf(x.b); return a && b ? { on: "see", a, b } : null; }
     case "level": return { on: "level", at: int(x.at, 0, GAME_LIMITS.levels, 0) };
+    case "shot": case "rest": { const who = whoOf(x.who); return who ? { on: x.on === "shot" ? "shot" : "rest", who } : null; }
     default: return null;
   }
 }
@@ -273,6 +307,8 @@ function actOf(raw: unknown): GameAct | null {
     case "burst": return { act: "burst", who: pick(x.who, ["self", "other"] as const, "self") };
     case "next": return { act: "next" };
     case "retry": return { act: "retry" };
+    case "home": return { act: "home", who: pick(x.who, ["self", "other"] as const, "self") };
+    case "explode": return { act: "explode", who: pick(x.who, ["self", "other"] as const, "self"), radius: num(x.radius, 40, 1000, 160), power: num(x.power, 100, 5000, 900) };
     default: return null;
   }
 }
