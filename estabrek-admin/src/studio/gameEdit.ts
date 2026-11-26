@@ -89,7 +89,12 @@ export function shapePick(thing: Obj): string {
   const pts = JSON.stringify(thing.points);
   return SHAPE_PICKS.find(([, , p]) => p && JSON.stringify(p) === pts)?.[0] ?? "poly";
 }
-export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו" } as const;
+export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו", car: "سيارة: لفوق بتمشي، ويمين وشمال بتلف|A car: up drives, left and right turn|מכונית: למעלה נוסעת, ימינה ושמאלה פונה" } as const;
+/* G4a: the 3D view. */
+export const VIEW3D_NAMES = { "": "مسطّح (2D)|Flat (2D)|שטוח (2D)", ground: "عالأرض بالـ 3D (من فوق ولقدّام)|On the ground in 3D (seen from above and ahead)|על הקרקע בתלת־ממד", wall: "واقف بالـ 3D (من جنب، بعمق)|Standing in 3D (from the side, with depth)|עומד בתלת־ממד (מהצד, עם עומק)" } as const;
+export const CAMERA3D_NAMES = { follow: "بتلحق اللاعب|Follows the player|עוקבת אחרי השחקן", top: "من فوق|From the top|מלמעלה", angle: "من زاوية|At an angle|בזווית", fixed: "ثابتة عالعالم كله|Still, over the whole world|קבועה על כל העולם" } as const;
+export const LIGHT3D_NAMES = { day: "نهار|Day|יום", sunset: "غروب|Sunset|שקיעה", night: "ليل|Night|לילה", studio: "ستوديو|Studio|סטודיו" } as const;
+export const SHAPE3D_NAMES = { auto: "من شكله|From its look|לפי המראה", box: "مكعّب|Box|קובייה", ball: "كرة|Ball|כדור", cylinder: "أسطوانة|Cylinder|גליל", cone: "مخروط|Cone|חרוט", card: "صورة بتطلّع عالكاميرا|A picture facing the camera|תמונה מול המצלמה", model: "موديل GLB|A GLB model|מודל GLB" } as const;
 export const BEHAVE_NAMES = {
   none: "ولا إشي|Nothing|כלום", patrol: "رايح جاي|Back and forth|הלוך ושוב", chase: "بيلحق اللاعب|Chases the player|רודף אחרי השחקן", wander: "بيتجوّل|Wanders|משוטט", spin: "بيدور|Spins|מסתובב",
   guard: "حارس: بيدوّر، وإذا شافك بيلحقك|A guard: goes round, chases you once it sees you|שומר: מסתובב, ורודף כשהוא רואה אתכם",

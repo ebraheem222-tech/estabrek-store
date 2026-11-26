@@ -27,6 +27,8 @@
  *  - G3: a sound knows where it happened (the view pans it); a note on an instrument up a scale; confetti.
  *  - G3b: rules on the beat of the game's tempo; a key pressed (or a thing tapped) while two things touch; a copy
  *    made where its template stands; a thing flashed (the views light it up a moment).
+ *  - G4a: a car (up to go, down to slow and back, left and right to turn as it moves, gripping the road sideways but
+ *    for a little drift); its heading is its turn (0: facing up the world).
  * Things are placed by their centre. Pure (no DOM, no React): GameView.tsx feeds it presses and draws its state.
  */
 import { GAME_LIMITS, isWho, type GameAct, type GameRule, type GameSpec, type GameThing, type GameTileKind } from "./gameSpec";
@@ -610,6 +612,25 @@ export function stepGame(s: GameState, input: GameInput = NO_INPUT, dt = STEP) {
       case "pointer":
         if (input.pointer) { b.vx = 0; b.vy = 0; b.x += (input.pointer.x - b.x) * Math.min(1, dt * 18); b.y += (input.pointer.y - b.y) * Math.min(1, dt * 18); }
         break;
+      case "car": {
+        // Its speed along where it faces, and across: it speeds up and slows down along, and grips across.
+        const fx = Math.sin(b.rot), fy = -Math.cos(b.rot);
+        let along = b.vx * fx + b.vy * fy, across = b.vx * Math.cos(b.rot) + b.vy * Math.sin(b.rot);
+        const thr = (input.up ? 1 : 0) - (input.down ? 1 : 0), steer = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+        const top = t.speed, accel = t.speed * 1.4;
+        if (thr > 0) along += accel * dt;
+        else if (thr < 0) along -= (along > 0 ? accel * 1.6 : accel * 0.6) * dt;
+        else along -= along * Math.min(1, dt * 1.2);
+        along = Math.max(-top * 0.4, Math.min(top, along));
+        across *= 1 - Math.min(1, dt * 7);
+        // It turns only as it moves, and the other way backing up.
+        const grip = Math.min(1, Math.abs(along) / (top * 0.35));
+        b.rot += steer * 2.6 * grip * Math.sign(along || 1) * dt;
+        const nx = Math.sin(b.rot), ny = -Math.cos(b.rot);
+        b.vx = nx * along + Math.cos(b.rot) * across;
+        b.vy = ny * along + Math.sin(b.rot) * across;
+        break;
+      }
       case "sling": {
         // Pulled back from the thing (near it, while it's still): the shot goes the other way, harder the further.
         const PULL = 170, p = input.pointer, aiming = s.aim?.n === b.n;

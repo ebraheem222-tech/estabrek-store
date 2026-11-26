@@ -411,4 +411,39 @@ describe("the game editor", () => {
     fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "flash" } });
     expect((last().rules as Obj[]).at(-1)).toMatchObject({ when: { on: "press", key: "ArrowLeft", a: "bag", b: "#good" }, do: [{ act: "flash", who: "self" }] });
   });
+
+  test("G4a: the 3D tab (on the ground, the camera, the light, shadows), a thing's 3D (a model's address, metal), the car", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "3d")!);
+    expect(screen.queryByTestId("game-ed-3d-camera")).toBeNull();
+    fireEvent.change(screen.getByTestId("game-ed-3d-mode"), { target: { value: "ground" } });
+    fireEvent.change(screen.getByTestId("game-ed-3d-camera"), { target: { value: "top" } });
+    fireEvent.change(screen.getByTestId("game-ed-3d-light"), { target: { value: "night" } });
+    fireEvent.click(screen.getByTestId("game-ed-3d-shadows"));
+    const tilt = screen.getByTestId("game-ed-3d-tilt");
+    fireEvent.change(tilt, { target: { value: "120" } });
+    fireEvent.blur(tilt);
+    expect(last().view3d).toEqual({ mode: "ground", camera: "top", light: "night", shadows: false, tilt: 89 });
+    // In 3D, a thing's own 3D settings show.
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-3d-shape"), { target: { value: "model" } });
+    const src = screen.getByTestId("game-ed-3d-src");
+    fireEvent.change(src, { target: { value: "javascript:alert(1)" } });
+    fireEvent.blur(src);
+    expect(obj(things().find((t) => t.id === "bag")!.d3).src).toBeUndefined();
+    fireEvent.change(src, { target: { value: "https://cdn.example.com/bag.glb" } });
+    fireEvent.blur(src);
+    const metal = screen.getByTestId("game-ed-3d-metal");
+    fireEvent.change(metal, { target: { value: "0.8" } });
+    fireEvent.blur(metal);
+    expect(things().find((t) => t.id === "bag")!.d3).toEqual({ shape: "model", src: "https://cdn.example.com/bag.glb", metal: 0.8 });
+    fireEvent.change(screen.getByTestId("game-ed-control"), { target: { value: "car" } });
+    expect(things().find((t) => t.id === "bag")!.control).toBe("car");
+    // Flat again: no 3D settings on the thing.
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "3d")!);
+    fireEvent.change(screen.getByTestId("game-ed-3d-mode"), { target: { value: "" } });
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    expect(screen.queryByTestId("game-ed-thing-3d")).toBeNull();
+  });
 });

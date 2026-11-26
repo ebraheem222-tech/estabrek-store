@@ -15,6 +15,9 @@
  * G3: the effects tab (the weather, an effect over the whole picture, music for a mood, heard here), a thing's trail
  * and its look's effect, notes and confetti in the rules; trying it plays the sounds and the music and draws the
  * particles and effects on its 2D canvas (the shop draws them on the graphics card).
+ * G4a: the 3D tab (flat, on the ground or standing; the camera, its tilt and distance, the light, shadows, fog), each
+ * thing's 3D (its shape, a GLB model's address, height, how high it floats, metal, rough), a tile's height, the car;
+ * trying it stays flat here (the store shows it in 3D).
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -36,6 +39,7 @@ import {
   SHAPE_PICKS, shapePick,
   JOINT_NAMES, jointable, jointsOf, withNewJoint,
   FX_NAMES, INSTRUMENT_NAMES, MOOD_NAMES, POST_NAMES, SCALE_NAMES, TRAIL_NAMES, WEATHER_NAMES,
+  CAMERA3D_NAMES, LIGHT3D_NAMES, SHAPE3D_NAMES, VIEW3D_NAMES,
 } from "./gameEdit";
 import { say } from "./say";
 
@@ -124,7 +128,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   const tiles = obj(game.tiles);
   const hasTiles = Object.keys(tiles).length > 0;
   const things = thingsOf(game);
-  const [tab, setTab] = useState<"things" | "tiles" | "camera" | "joints" | "effects">("things");
+  const [tab, setTab] = useState<"things" | "tiles" | "camera" | "joints" | "effects" | "3d">("things");
   const [joint, setJoint] = useState(0);
   const [brush, setBrush] = useState("#");
   const [stroke, setStroke] = useState<string[] | null>(null);
@@ -265,13 +269,14 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
           {/* Things: add one, pick one, its settings. The tile map. The camera and the layers behind. */}
           <div className="max-h-[62vh] space-y-2 overflow-y-auto pe-1">
             <div className="flex gap-1 rounded-lg bg-white/4 p-0.5" role="tablist">
-              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["joints", say("المفاصل|Joints|מפרקים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")], ["effects", say("المؤثرات والصوت|Effects and sound|אפקטים וצליל")]] as const).map(([k, l]) => (
+              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["joints", say("المفاصل|Joints|מפרקים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")], ["effects", say("المؤثرات والصوت|Effects and sound|אפקטים וצליל")], ["3d", "3D"]] as const).map(([k, l]) => (
                 <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-md px-1.5 py-1 text-[11px] ${tab === k ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid="game-ed-tab" data-tab={k}>{l}</button>
               ))}
             </div>
             {tab === "tiles" ? <TilesPanel game={game} brush={brush} setBrush={setBrush} level={lv} setLevel={setLevel} busy={busy || trying} colours={pal} lang={lang} onChange={onChange} /> : null}
             {tab === "camera" ? <CameraPanel game={game} busy={busy || trying} whos={whos} onChange={onChange} /> : null}
             {tab === "effects" ? <EffectsPanel game={game} busy={busy || trying} onChange={onChange} /> : null}
+            {tab === "3d" ? <View3DPanel game={game} busy={busy || trying} onChange={onChange} /> : null}
             {tab === "joints" ? <JointsPanel game={game} pick={joint} setPick={setJoint} busy={busy || trying} onChange={onChange} /> : null}
             {tab === "things" ? <>
             <div className="text-[11px] font-medium text-white/60">{say("ضيف شي|Add a thing|הוסיפו פריט")}</div>
@@ -285,7 +290,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                 </button>
               ))}
             </div>
-            {thing ? <ThingSettings key={String(thing.id)} thing={thing} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
+            {thing ? <ThingSettings key={String(thing.id)} thing={thing} is3d={Boolean(obj(game.view3d).mode)} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
             </> : null}
           </div>
 
@@ -374,7 +379,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
 
 /* ---------------------------------------------------------------- a thing's settings */
 
-function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, setPathAdd }: { thing: Obj; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void; pathAdd: boolean; setPathAdd: (on: boolean) => void }) {
+function ThingSettings({ thing, is3d, lang, busy, set, onRemove, onPicture, pathAdd, setPathAdd }: { thing: Obj; is3d: boolean; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void; pathAdd: boolean; setPathAdd: (on: boolean) => void }) {
   const look = obj(thing.look);
   const setLook = (c: Obj) => set({ look: { ...look, ...c } }, say("شكل الشي|A thing's look|מראה הפריט"));
   const tags = (Array.isArray(thing.tags) ? thing.tags : []).map(String).join(", ");
@@ -395,6 +400,7 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
       {thing.behave === "path" ? <PathSettings thing={thing} busy={busy} set={set} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : null}
       {thing.body === "rigid" ? <RigidSettings thing={thing} busy={busy} set={set} /> : null}
       <Row label={say("أثره وهو ماشي|What it leaves behind|מה שהוא משאיר")}><Choose label={say("أثره|Its trail|השובל")} value={String(thing.trail ?? "")} options={named(TRAIL_NAMES)} onPick={(v) => set({ trail: v || undefined })} disabled={busy} testId="game-ed-trail" /></Row>
+      {is3d ? <Thing3DSettings thing={thing} busy={busy} set={set} /> : null}
       <Row label={say("مؤثّر على شكله|An effect on its look|אפקט על המראה")}><Choose label={say("مؤثّر|An effect|אפקט")} value={String(thing.fx ?? "")} options={named(FX_NAMES)} onPick={(v) => set({ fx: v || undefined })} disabled={busy} testId="game-ed-fx" /></Row>
       <Num label={say("سرعته|Its speed|המהירות")} value={num(thing.speed, 360)} min={0} max={2000} step={10} onSave={(v) => set({ speed: v })} testId="game-ed-speed" />
       {thing.control === "platform" ? <Num label={say("قوّة النط|Jump strength|כוח קפיצה")} value={num(thing.jump, 720)} min={0} max={3000} step={10} onSave={(v) => set({ jump: v })} /> : null}
@@ -408,6 +414,46 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
       <Row label={say("علامات (بفاصلة)|Tags (comma)|תגיות (פסיק)")}>
         <input className={`${ctl} w-28`} value={tagText} onChange={(e) => setTagText(e.target.value)} onBlur={() => { const next = tagText.split(/[,،\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => TAG.test(x)).slice(0, 4); setTagText(next.join(", ")); set({ tags: next.length ? next : undefined }); }} data-testid="game-ed-tags" />
       </Row>
+    </div>
+  );
+}
+
+/** The 3D view: flat, on the ground or standing; the camera, its tilt and distance, the light, shadows and fog. */
+function View3DPanel({ game, busy, onChange }: { game: Obj; busy: boolean; onChange: (label: string, next: Obj) => void }) {
+  const v = obj(game.view3d);
+  const set = (c: Obj) => onChange(say("عرض الـ 3D|The 3D view|תצוגת תלת־ממד"), { ...game, view3d: { ...v, ...c } });
+  return (
+    <div className="space-y-2" data-testid="game-ed-3d">
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Row label={say("كيف بتنشاف|How it's seen|איך רואים אותו")}><Choose label={say("كيف بتنشاف|How it's seen|איך רואים אותו")} value={String(v.mode ?? "")} options={named(VIEW3D_NAMES)} onPick={(m) => set({ mode: m || undefined })} disabled={busy} testId="game-ed-3d-mode" /></Row>
+        {v.mode ? <>
+          <Row label={say("الكاميرا|The camera|המצלמה")}><Choose label={say("الكاميرا|The camera|המצלמה")} value={String(v.camera ?? "follow")} options={named(CAMERA3D_NAMES)} onPick={(c) => set({ camera: c })} disabled={busy} testId="game-ed-3d-camera" /></Row>
+          <Num label={say("ميلانها (درجات)|Its tilt (degrees)|ההטיה (מעלות)")} value={num(v.tilt, 55)} min={10} max={89} onSave={(t) => set({ tilt: t })} testId="game-ed-3d-tilt" />
+          <Num label={say("بعدها (× الشاشة)|Its distance (× the view)|המרחק (× התצוגה)")} value={num(v.distance, 1)} min={0.3} max={3} step={0.1} onSave={(d) => set({ distance: d })} />
+          <Row label={say("الضو|The light|האור")}><Choose label={say("الضو|The light|האור")} value={String(v.light ?? "day")} options={named(LIGHT3D_NAMES)} onPick={(l) => set({ light: l })} disabled={busy} testId="game-ed-3d-light" /></Row>
+          <Row label={say("ظلال|Shadows|צללים")}><input type="checkbox" checked={v.shadows !== false} disabled={busy} onChange={(e) => set({ shadows: e.target.checked ? undefined : false })} data-testid="game-ed-3d-shadows" /></Row>
+          <Row label={say("ضباب|Fog|ערפל")}><input type="checkbox" checked={v.fog === true} disabled={busy} onChange={(e) => set({ fog: e.target.checked || undefined })} /></Row>
+          <p className="text-[11px] leading-4 text-white/45">{say("نفس اللعبة بقواعدها، بس بتنرسم بالـ 3D بالمتجر: «جرّبها» هون بتضل مسطّحة. البلاط بيصير مكعّبات، والأشياء بتاخد أشكالها من تبويب الأشياء.|The same game and rules, drawn in 3D in the store (trying it here stays flat). Tiles become blocks; each thing's 3D shape is set on the things tab.|אותו משחק וכללים, מצויר בתלת־ממד בחנות (הניסיון כאן נשאר שטוח). אריחים הופכים לקוביות; צורת כל פריט נקבעת בלשונית הפריטים.")}</p>
+        </> : null}
+      </div>
+    </div>
+  );
+}
+
+/** A thing in 3D: its shape (or a GLB model's address), height, how high it floats, how metal and how rough. */
+function Thing3DSettings({ thing, busy, set }: { thing: Obj; busy: boolean; set: (change: Obj, label?: string) => void }) {
+  const d = obj(thing.d3);
+  const label = say("الشي بالـ 3D|The thing in 3D|הפריט בתלת־ממד");
+  const setD = (c: Obj) => set({ d3: { ...d, ...c } }, label);
+  const [src, setSrc] = useState(String(d.src ?? ""));
+  return (
+    <div className="space-y-1 rounded-md border border-white/8 p-1.5" data-testid="game-ed-thing-3d">
+      <Row label={say("شكله بالـ 3D|Its 3D shape|הצורה בתלת־ממד")}><Choose label={say("شكله بالـ 3D|Its 3D shape|הצורה בתלת־ממד")} value={String(d.shape ?? "auto")} options={named(SHAPE3D_NAMES)} onPick={(v) => setD({ shape: v === "auto" ? undefined : v })} disabled={busy} testId="game-ed-3d-shape" /></Row>
+      {d.shape === "model" ? <Row label={say("رابط الموديل (.glb)|The model's address (.glb)|כתובת המודל (.glb)")}><input className={`${ctl} w-40`} value={src} placeholder="https://…/car.glb" onChange={(e) => setSrc(e.target.value)} onBlur={() => { const v = src.trim(); if (/^(https:\/\/|\/)\S+$/.test(v)) setD({ src: v }); }} data-testid="game-ed-3d-src" /></Row> : null}
+      <Num label={say("طوله لفوق (بكسل، 0 = من حجمه)|Its height (pixels, 0 = from its size)|הגובה (פיקסלים, 0 = לפי הגודל)")} value={num(d.height, 0)} min={0} max={2000} onSave={(v) => setD({ height: v || undefined })} testId="game-ed-3d-height" />
+      <Num label={say("قدّيش طاير فوق الأرض|How high it floats|כמה גבוה הוא מרחף")} value={num(d.lift, 0)} min={-500} max={2000} onSave={(v) => setD({ lift: v || undefined })} />
+      <Num label={say("معدن (0–1)|Metal (0–1)|מתכת (0–1)")} value={num(d.metal, 0.1)} min={0} max={1} step={0.1} onSave={(v) => setD({ metal: v })} testId="game-ed-3d-metal" />
+      <Num label={say("خشونة (0–1)|Rough (0–1)|חספוס (0–1)")} value={num(d.rough, 0.6)} min={0} max={1} step={0.1} onSave={(v) => setD({ rough: v })} />
     </div>
   );
 }
