@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { PHOTO3D_LOOKS, PHOTO3D_MOVES, checkTree } from "../lib/pageTree.js";
+import { LAYER_POPS, PHOTO3D_LOOKS, PHOTO3D_MOVES, checkTree } from "../lib/pageTree.js";
+import { LAYER_POPS as SHOP_LAYER_POPS, layersOf } from "../../../estabrek-storefront/src/pageTree/pieces";
 import { ProductDeepUpdateBody, SetImageDepthBody } from "../modules/admin/catalog.schemas.js";
 import { CARD_HOVERS } from "../lib/visualControls.js";
 import * as shared from "../../../shared/photo3d";
@@ -125,5 +126,23 @@ describe("a product picture's depth picture (the 3D card and product page)", () 
   });
   test("the card's 3D hover is one of its kinds, here as in the shop", () => {
     expect(CARD_HOVERS).toContain("3d");
+  });
+});
+
+describe("a picture's cut thing as its front layer («طلّع الغرض من الصورة»)", () => {
+  const withLayers = (layers: unknown) => ({ version: 1, root: { id: "page", type: "page", children: [{ id: "s", type: "section", props: {}, children: [{ id: "pic", type: "image", props: { src: "https://res.cloudinary.com/x/pic.jpg", layers } }] }] } });
+  test("a picture of its own and how it comes forward, as the shop reads it; nothing unsafe", () => {
+    expect([...LAYER_POPS]).toEqual([...SHOP_LAYER_POPS]);
+    const after = { image: "https://res.cloudinary.com/x/cut.png", front: true, pop: "hover" };
+    const got = checkTree(withLayers({ after }));
+    expect(got.ok).toBe(true);
+    if (got.ok) expect(got.tree.root.children![0].children![0].props!.layers).toEqual({ after });
+    expect(layersOf({ after })).toEqual({ after });
+    for (const bad of [{ image: "javascript:alert(1)" }, { image: "data:image/png;base64,x" }, { image: "/x.png", pop: "spin" }]) {
+      expect(checkTree(withLayers({ after: bad })).ok, JSON.stringify(bad)).toBe(false);
+    }
+    // The shop never draws an unsafe one either.
+    expect(layersOf({ after: { image: "javascript:alert(1)", front: true } })).toEqual({ after: { front: true } });
+    expect(layersOf({ after: { image: '/x.png") ; background:red' } })?.after?.image).toBeUndefined();
   });
 });

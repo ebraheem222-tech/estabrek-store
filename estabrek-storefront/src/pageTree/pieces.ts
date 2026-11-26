@@ -133,7 +133,12 @@ export type PieceLayerSpec = {
   radius?: number; opacity?: number; blend?: string; blur?: number;
   border?: { width: number; color: string; style?: "solid" | "dashed" | "dotted" };
   front?: boolean;
+  /** A picture of its own (a thing cut out of the element's picture: «طلّع الغرض»), laid as the picture is (its fit
+   *  and focus), and how it comes toward the viewer: as the pointer comes, or as it scrolls through. */
+  image?: string;
+  pop?: (typeof LAYER_POPS)[number];
 };
+export const LAYER_POPS = ["hover", "scroll"] as const;
 export type LayersSpec = { before?: PieceLayerSpec; after?: PieceLayerSpec };
 const BLENDS = ["normal", "multiply", "screen", "overlay", "soft-light", "color", "luminosity"] as const;
 
@@ -165,6 +170,10 @@ function layerOf(raw: unknown): PieceLayerSpec | undefined {
   const bw = within(b?.width, 0, 20);
   if (b && bw !== undefined && isColor(b.color)) out.border = { width: bw, color: b.color, ...(inList(b.style, ["solid", "dashed", "dotted"] as const) ? { style: b.style as "solid" } : {}) };
   if (r.front === true) out.front = true;
+  const image = safeSrc(r.image);
+  if (image) out.image = image;
+  const pop = inList(r.pop, LAYER_POPS);
+  if (pop) out.pop = pop;
   return out;
 }
 
