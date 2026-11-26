@@ -40,7 +40,7 @@ export type StorefrontSettings = {
   productDeliveryCity: boolean;
   /** What the product page's big picture does under the pointer: the zoom ("none"), or a live effect the graphics
    *  card draws in its place (shared/pictureFx.ts; lib/usePictureFx.ts). */
-  productPictureFx: "none" | PointerFxKind;
+  productPictureFx: "none" | PointerFxKind | "3d";
 
   // Search & Discovery
   voiceSearchEnabled: boolean;
@@ -328,7 +328,7 @@ export function normalizeStorefrontSettings(
   // One of the small bag's designs, or none.
   next.miniBagDesign = miniBagById(raw.miniBagDesign)?.id ?? "";
   next.colorStrength = toEnum(raw.colorStrength, COLOUR_STRENGTHS, base.colorStrength);
-  next.productPictureFx = raw.productPictureFx === "none" ? "none" : pointerFxOf(raw.productPictureFx) ?? base.productPictureFx;
+  next.productPictureFx = raw.productPictureFx === "none" || raw.productPictureFx === "3d" ? raw.productPictureFx : pointerFxOf(raw.productPictureFx) ?? base.productPictureFx;
   const scenes = raw.colorScenes && typeof raw.colorScenes === "object" ? (raw.colorScenes as Record<string, unknown>) : {};
   next.colorScenes = Object.fromEntries(SCENE_COLOUR_KEYS.map((key) => [key, typeof scenes[key] === "boolean" ? (scenes[key] as boolean) : base.colorScenes[key]])) as Record<SceneColourKey, boolean>;
 

@@ -63,6 +63,8 @@ export type ProductItemImage = {
   alt?: string | null;
   position: number;
   isPrimary: boolean;
+  /** Its depth picture (grey, white = near) for the shop's 3D, made in the admin. */
+  depthUrl?: string | null;
 };
 
 export type ProductVariant = {
@@ -265,6 +267,7 @@ export type ProductDeepUpdateBody = {
       position?: number;
       isPrimary?: boolean;
       view?: string | null;
+      depthUrl?: string | null;
     }>;
     variants?: Array<{
       id?: string;

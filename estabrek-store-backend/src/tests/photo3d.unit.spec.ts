@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { PHOTO3D_LOOKS, PHOTO3D_MOVES, checkTree } from "../lib/pageTree.js";
+import { ProductDeepUpdateBody, SetImageDepthBody } from "../modules/admin/catalog.schemas.js";
+import { CARD_HOVERS } from "../lib/visualControls.js";
 import * as shared from "../../../shared/photo3d";
 import { fitUv } from "../../../shared/pictureFx";
 import { picturePoints } from "../../../estabrek-storefront/src/pageTree/glPicture";
@@ -103,5 +105,25 @@ describe("a WebGL scene's picture with its real depth", () => {
       // Left (far, 0) to right (near, 1), as the depth picture says.
       expect(Math.abs(d.dep![i] - (x / 1 + 0.5))).toBeLessThan(0.1);
     }
+  });
+});
+
+describe("a product picture's depth picture (the 3D card and product page)", () => {
+  test("an http(s) address or none; never a script, data or another kind of address", () => {
+    expect(SetImageDepthBody.parse({ depthUrl: "https://res.cloudinary.com/x/a-depth.png" })).toEqual({ depthUrl: "https://res.cloudinary.com/x/a-depth.png" });
+    expect(SetImageDepthBody.parse({ depthUrl: null })).toEqual({ depthUrl: null });
+    for (const bad of ["javascript:alert(1)", "data:image/png;base64,AAAA", "ftp://x/y.png", "", "nothing"]) expect(SetImageDepthBody.safeParse({ depthUrl: bad }).success, bad).toBe(false);
+    expect(SetImageDepthBody.safeParse({}).success).toBe(false);
+    expect(SetImageDepthBody.safeParse({ depthUrl: null, other: 1 }).success).toBe(false);
+  });
+  test("a product's save may carry it with each picture, or leave it out (kept as it is)", () => {
+    const items = (depthUrl?: unknown) => ({ items: [{ colorName: "Black", skuBase: "B", images: [{ url: "https://res.cloudinary.com/x/a.jpg", ...(depthUrl !== undefined ? { depthUrl } : {}) }] }] });
+    expect(ProductDeepUpdateBody.parse(items("https://res.cloudinary.com/x/a-depth.png")).items![0].images![0].depthUrl).toBe("https://res.cloudinary.com/x/a-depth.png");
+    expect(ProductDeepUpdateBody.parse(items()).items![0].images![0]).not.toHaveProperty("depthUrl");
+    expect(ProductDeepUpdateBody.parse(items(null)).items![0].images![0].depthUrl).toBeNull();
+    expect(ProductDeepUpdateBody.safeParse(items("javascript:alert(1)")).success).toBe(false);
+  });
+  test("the card's 3D hover is one of its kinds, here as in the shop", () => {
+    expect(CARD_HOVERS).toContain("3d");
   });
 });

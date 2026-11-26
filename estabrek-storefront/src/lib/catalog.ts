@@ -19,6 +19,8 @@ export type CatalogImage = {
   position?: number;
   blurDataUrl?: string | null;
   view?: string | null;
+  /** Its depth picture (grey, white = near), made in the admin: the card and the product page draw it in 3D. */
+  depthUrl?: string | null;
 };
 
 export type CatalogSize = { id: string; name: string; value?: string | null };
@@ -265,6 +267,18 @@ export function getProductImageBlurDataUrl(p: CatalogProduct, url?: string | nul
     }
   }
 
+  return null;
+}
+
+/** A product picture's depth picture (made in the admin), or null: the 3D card and product page lift it by it. */
+export function getProductImageDepthUrl(p: CatalogProduct, url?: string | null): string | null {
+  const target = String(url ?? "").trim();
+  if (!target || isModelUrl(target)) return null;
+  const safe = (v: unknown) => (typeof v === "string" && /^(https?:\/\/|\/(?!\/))[^\s<>"'`\\]+$/i.test(v.trim()) ? v.trim() : null);
+  const productImages = (p as any).images as Array<{ url?: string; depthUrl?: string | null }> | undefined;
+  const hit = Array.isArray(productImages) ? productImages.find((im) => im?.url === target) : undefined;
+  if (hit?.depthUrl) return safe(hit.depthUrl);
+  for (const it of p.items ?? []) for (const im of it.images ?? []) if (im?.url === target) return safe(im.depthUrl);
   return null;
 }
 

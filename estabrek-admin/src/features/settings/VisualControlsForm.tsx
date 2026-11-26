@@ -3,6 +3,7 @@ import { tr } from "../../lib/words";
 import { INTERACTION_EVENTS, readCardDesign, readPolicy, type CardDesign, type InteractionAction, type InteractionEvent, type InteractionPolicy } from "../../../../estabrek-storefront/src/lib/visualControls";
 import { say } from "../../studio/say";
 import { CARD_BADGE_NAMES, CARD_BUTTON_NAMES, CARD_ENTER_NAMES, CARD_HOVER_NAMES, CARD_LIFT_NAMES, CARD_PRESETS, CARD_RATIO_NAMES, withPreset } from "./cardPresets";
+import { ProductDepthsPanel } from "./ProductDepthsPanel";
 export type { CardDesign, InteractionPolicy };
 const input = "w-full rounded-lg border border-white/15 bg-surface-925 px-2 py-1.5 text-xs";
 const box = "space-y-3 rounded-xl border border-white/10 p-3";
@@ -26,6 +27,7 @@ export function CardDesignFields({ value, onChange, disabled = false }: { value?
       </div>
       <div className="grid grid-cols-1 gap-2" data-testid="card-motion">
         {([["hover", say("الصورة لما يمر الماوس|The picture on hover|התמונה במעבר עכבר"), CARD_HOVER_NAMES], ["cardHover", say("الكرت كله لما يمر الماوس|The whole card on hover|הכרטיס כולו במעבר עכבר"), CARD_LIFT_NAMES], ["enter", say("كيف بتدخل الكروت|How the cards come in|איך הכרטיסים נכנסים"), CARD_ENTER_NAMES], ["buttonStyle", say("شكل زر الإضافة|The add button's look|מראה כפתור ההוספה"), CARD_BUTTON_NAMES]] as [keyof CardDesign, string, [string, string][]][]).map(([key, label, options]) => <label key={key} className="block text-xs">{label}<select className={input} data-testid={`card-${key}`} value={String(d[key] ?? options[0][0])} onChange={e => set(key, e.target.value)}>{options.map(([v, text]) => <option key={v} value={v}>{say(text)}</option>)}</select></label>)}
+        {d.hover === "3d" ? <ProductDepthsPanel /> : null}
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-xs">{say("الكلام|The words|הטקסט")}<select className={input} data-testid="card-align" value={d.align ?? "start"} onChange={e => set("align", e.target.value)}><option value="start">{say("من البداية|From the start|מההתחלה")}</option><option value="center">{say("بالنص|Centred|ממורכז")}</option></select></label>
           <label className="block text-xs">{say("الظل|Shadow|צל")}<select className={input} data-testid="card-shadow" value={d.shadow ?? "none"} onChange={e => set("shadow", e.target.value)}><option value="none">{say("بلا|None|ללא")}</option><option value="soft">{say("خفيف|Soft|רך")}</option><option value="deep">{say("عميق|Deep|עמוק")}</option></select></label>

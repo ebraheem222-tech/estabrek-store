@@ -2109,6 +2109,8 @@ dominantColorHex String?
 palette          Json?
 /** low-res placeholder (base64 data URL) */
 blurDataUrl      String?
+/** its depth picture (grey, white = near), made in the admin: the shop draws it in 3D */
+depthUrl         String?
 /** perceptual hash for deduplication */
 imageHash       String?
 /** image embedding (vector as JSON array) */

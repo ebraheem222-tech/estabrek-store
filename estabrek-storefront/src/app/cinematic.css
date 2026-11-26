@@ -3284,6 +3284,10 @@ html[data-scrolling]::after { content: ""; position: fixed; inset: 0; z-index: 2
 .rose-pdp-zoom > .pt-glfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .2s ease; transform-origin: var(--zoom-origin); }
 .rose-pdp-zoom > .pt-glfx[data-on] { opacity: 1; }
 @media (hover: hover) { .rose-pdp-zoom[data-pt-glfx-state]:not([data-pt-glfx-state="plain"]):hover img { transform: none; } }
+/* The big picture in 3D (lib/usePhoto3d.ts): drawn over the picture, which stays under it (and doesn't zoom). */
+.rose-pdp-zoom > .pt-3d { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+.rose-pdp-zoom > .pt-3d[data-on] { opacity: 1; }
+@media (hover: hover) { .rose-pdp-zoom[data-pt-3d-state="on"]:hover img { transform: none; } }
 .rose-pdp-frame .rose-badge { top: 18px; inset-inline-start: 18px; z-index: 3; }
 .rose-pdp-wish {
   position: absolute; z-index: 3; top: 14px; inset-inline-end: 14px; width: 44px; height: 44px; border-radius: 50%;

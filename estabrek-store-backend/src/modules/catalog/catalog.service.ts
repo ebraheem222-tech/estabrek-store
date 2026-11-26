@@ -291,6 +291,7 @@ function buildItemsSelect(lite: boolean) {
             dominantColorHex: true,
             palette: true,
             blurDataUrl: true,
+            depthUrl: true,
           },
         },
         variants: {
@@ -319,6 +320,7 @@ function buildItemsSelect(lite: boolean) {
           isPrimary: true,
           view: true,
           blurDataUrl: true,
+          depthUrl: true,
         },
       },
       variants: {
@@ -1031,6 +1033,7 @@ export async function getProductById(id: string) {
               dominantColorHex: true,
               palette: true,
               blurDataUrl: true,
+              depthUrl: true,
             },
           },
           variants: { include: { size: true } },
@@ -1075,6 +1078,7 @@ export async function getProductBySlug(slug: string) {
               dominantColorHex: true,
               palette: true,
               blurDataUrl: true,
+              depthUrl: true,
             },
           },
           variants: { include: { size: true } },
@@ -1142,6 +1146,7 @@ export async function listProductItems(productId: string) {
           dominantColorHex: true,
           palette: true,
           blurDataUrl: true,
+          depthUrl: true,
         },
       },
       variants: { include: { size: true } },
@@ -1173,6 +1178,7 @@ export async function getVariant(id: string) {
               dominantColorHex: true,
               palette: true,
               blurDataUrl: true,
+              depthUrl: true,
             },
           },
         },
@@ -1204,6 +1210,7 @@ export function listProductImages(productId: string) {
       dominantColorHex: true,
       palette: true,
       blurDataUrl: true,
+      depthUrl: true,
     },
   });
 }

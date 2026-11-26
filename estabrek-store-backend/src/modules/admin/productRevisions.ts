@@ -136,6 +136,7 @@ export function deepInputFromSnapshot(s: Snap, current: Current) {
         view: im.view ?? null,
         dominantColorHex: im.dominantColorHex ?? null,
         palette: im.palette ?? null,
+        depthUrl: (im as { depthUrl?: string | null }).depthUrl ?? null,
       })),
       variants: it.variants.map((v) => ({
         ...(variants.has(v.id) ? { id: v.id } : { stock: v.stock }),

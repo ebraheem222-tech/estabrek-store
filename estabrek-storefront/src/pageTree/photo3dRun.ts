@@ -5,13 +5,27 @@
  * the page's scroll or by itself; a light follows the pointer. Loaded only by pages that have one (TreeMedia), and
  * nothing here runs for whoever asked for less motion: the picture stays as it is (as it does without WebGL, for a
  * picture or a depth picture whose pixels can't be read, or past PHOTO3D_LIVE at once).
+ *
+ * Product pictures use it too (lib/usePhoto3d.ts): a card's only while the pointer is on it (`hover`: made as the
+ * pointer comes, put away once it has left and turned back), and a picture without its depth picture yet gets a
+ * quick one from its own light (`map: null`).
  */
-import { PHOTO3D_LIVE, depthGrid, photoMesh, type Mesh, type Photo3d } from "../../../shared/photo3d";
+import { PHOTO3D_LIVE, depthGrid, lightDepth, photoMesh, type DepthGrid, type Mesh, type Photo3d } from "../../../shared/photo3d";
 import { canvasSize, fitUv } from "../../../shared/pictureFx";
 
 type Stop = () => void;
+/** What to draw: a picture's settings, its depth picture's address or null for a quick depth from its light. */
+export type Photo3dRun = Omit<Photo3d, "map"> & { map: string | null };
+export type Photo3dOptions = {
+  /** Made while the pointer (a mouse) is on it, put away after it left; else made as it comes near the screen. */
+  hover?: boolean;
+  /** The picture to lift (else the host's first picture). */
+  img?: HTMLImageElement | null;
+  /** How many columns the mesh has (fewer for a small card). */
+  cols?: number;
+};
 /** What a test can read of a 3D picture that runs (host.__photo3d). */
-export type Photo3dProbe = { triangles: number; cut: number; yaw: number; pitch: number; frames: number; look: string };
+export type Photo3dProbe = { triangles: number; cut: number; yaw: number; pitch: number; frames: number; look: string; depth: "map" | "light" };
 
 // The camera stands D away; a point at z = 0 lands where the flat picture is. Near points (z > 0) grow, far ones shrink.
 const VIEW = `uniform float u_yaw, u_pitch, u_scale, u_aspect;
@@ -72,12 +86,34 @@ const loaded = (src: string) => new Promise<HTMLImageElement>((ok, no) => {
   i.src = src;
 });
 
+/** The depth as a small picture: the depth picture's pixels, or the picture's own light (lightDepth). */
+function depthOf(source: HTMLImageElement, quick: boolean) {
+  // Small: the depth is shapes, not detail.
+  const k = Math.min(1, 256 / Math.max(source.naturalWidth, source.naturalHeight));
+  const dw = Math.max(2, Math.round(source.naturalWidth * k)), dh = Math.max(2, Math.round(source.naturalHeight * k));
+  const small = document.createElement("canvas");
+  small.width = dw;
+  small.height = dh;
+  const g2 = small.getContext("2d", { willReadFrequently: true });
+  if (!g2) throw new Error("2d");
+  g2.drawImage(source, 0, 0, dw, dh);
+  let px = g2.getImageData(0, 0, dw, dh).data;
+  if (quick) {
+    px = lightDepth(px, dw, dh) as typeof px;
+    g2.putImageData(new ImageData(new Uint8ClampedArray(px), dw, dh), 0, 0);
+  }
+  return { small, dw, dh, grid: depthGrid(px, dw, dh) };
+}
+
 /** Starts a picture's 3D in its frame; `stops` gets what puts everything back. */
-export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
-  const img = host.querySelector<HTMLImageElement>("img.pt-frame-media") ?? host.querySelector<HTMLImageElement>("img");
+export function runPhoto3d(host: HTMLElement, spec: Photo3dRun, stops: Stop[], o: Photo3dOptions = {}) {
+  const img = o.img ?? host.querySelector<HTMLImageElement>("img.pt-frame-media") ?? host.querySelector<HTMLImageElement>("img");
   if (!img) return;
   const me = {};
-  let gone = false, frame = 0, frames = 0;
+  let gone = false, frame = 0, frames = 0, opening = false, hovered = false, resting = 0;
+  // The picture and its depth, read once (a card's comes back on its next hover).
+  let got: { pic: HTMLImageElement; small: HTMLCanvasElement; dw: number; dh: number; grid: DepthGrid } | null = null;
+  let sized: ResizeObserver | null = null;
   let canvas: HTMLCanvasElement | null = null, gl: WebGLRenderingContext | null = null;
   let draw: (() => void) | null = null;
   let mesh: Mesh | null = null;
@@ -87,11 +123,14 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
   let seen = false;
   const born = performance.now();
   const say = (s: string) => host.setAttribute("data-pt-3d-state", s);
-  (host as HTMLElement & { __photo3d?: () => Photo3dProbe }).__photo3d = () => ({ triangles: mesh ? mesh.index.length / 3 : 0, cut: mesh?.cut ?? 0, yaw: at.yaw, pitch: at.pitch, frames, look: spec.look });
+  (host as HTMLElement & { __photo3d?: () => Photo3dProbe }).__photo3d = () => ({ triangles: mesh ? mesh.index.length / 3 : 0, cut: mesh?.cut ?? 0, yaw: at.yaw, pitch: at.pitch, frames, look: spec.look, depth: spec.map ? "map" : "light" });
 
   const close = () => {
     cancelAnimationFrame(frame);
     frame = 0;
+    window.clearTimeout(resting);
+    sized?.disconnect();
+    sized = null;
     gl?.getExtension("WEBGL_lose_context")?.loseContext();
     canvas?.remove();
     canvas = null;
@@ -101,21 +140,17 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
   };
 
   const open = async () => {
-    if (running.size >= PHOTO3D_LIVE) return say("plain");
+    if (opening || canvas) return;
+    if (running.size >= PHOTO3D_LIVE) return say(o.hover ? "rest" : "plain");
     running.add(me);
+    opening = true;
     try {
-      const [pic, map] = await Promise.all([loaded(img.currentSrc || img.src), loaded(spec.map)]);
+      if (!got) {
+        const [pic, map] = await Promise.all([loaded(img.currentSrc || img.src), spec.map ? loaded(spec.map) : Promise.resolve(null)]);
+        got = { pic, ...depthOf(map ?? pic, !map) };
+      }
       if (gone) return;
-      // The depth picture's pixels, small (the depth is shapes, not detail).
-      const k = Math.min(1, 256 / Math.max(map.naturalWidth, map.naturalHeight));
-      const dw = Math.max(2, Math.round(map.naturalWidth * k)), dh = Math.max(2, Math.round(map.naturalHeight * k));
-      const small = document.createElement("canvas");
-      small.width = dw;
-      small.height = dh;
-      const g2 = small.getContext("2d", { willReadFrequently: true });
-      if (!g2) throw new Error("2d");
-      g2.drawImage(map, 0, 0, dw, dh);
-      const grid = depthGrid(g2.getImageData(0, 0, dw, dh).data, dw, dh);
+      const { pic, small, dw, dh, grid } = got;
       const made = document.createElement("canvas");
       made.className = "pt-3d";
       made.setAttribute("aria-hidden", "true");
@@ -174,7 +209,7 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
         const focus = { x: Number.isFinite(spot[0]) ? spot[0] : 0.5, y: Number.isFinite(spot[1]) ? spot[1] : 0.5 };
         const fit = cs.objectFit === "contain" ? "contain" : "cover";
         const box = { w: bw, h: bh }, picSize = { w: pic.naturalWidth, h: pic.naturalHeight };
-        mesh = photoMesh(grid, aspect, spec.depth * 0.75, (x, y) => fitUv(x, y, box, picSize, fit, focus), { cols: spec.look === "points" ? 150 : 180 });
+        mesh = photoMesh(grid, aspect, spec.depth * 0.75, (x, y) => fitUv(x, y, box, picSize, fit, focus), { cols: o.cols ?? (spec.look === "points" ? 150 : 180) });
         // Behind the holes: the picture flat, further back than anything of it.
         const back = -spec.depth * 0.75 * 0.6 - 0.05;
         const corners = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => fitUv(x, y, box, picSize, fit, focus) ?? { u: x, v: y });
@@ -239,15 +274,17 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
           c.drawElements(c.TRIANGLES, mesh.index.length, c.UNSIGNED_SHORT, 0);
         }
       };
-      const sized = typeof ResizeObserver === "function" ? new ResizeObserver(() => { if (!gl) return; size(); build(); kick(); }) : null;
+      sized = typeof ResizeObserver === "function" ? new ResizeObserver(() => { if (!gl) return; size(); build(); kick(); }) : null;
       sized?.observe(host);
-      stops.push(() => sized?.disconnect());
-      made.setAttribute("data-on", "");
+      // A card's: shown only while the pointer is still on it.
+      if (!o.hover || hovered) made.setAttribute("data-on", "");
       say("on");
       kick();
     } catch {
       close();
       say("plain");
+    } finally {
+      opening = false;
     }
   };
 
@@ -280,6 +317,16 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
     }
     draw();
     if ((busy || spec.move === "auto") && seen) frame = requestAnimationFrame(tick);
+    // A card's, turned back after the pointer left: it fades and is put away (a WebGL canvas less on the page).
+    else if (o.hover && !hovered && !busy && canvas && !resting) {
+      canvas.removeAttribute("data-on");
+      resting = window.setTimeout(() => {
+        resting = 0;
+        if (hovered || gone) return;
+        close();
+        say("rest");
+      }, 400);
+    }
   };
 
   // The pointer over it (a phone: its tilt), the page's scroll.
@@ -313,14 +360,32 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
     kick();
   };
   const scrolled = () => { if (spec.move === "scroll") kick(); };
+  // A card's: only a mouse brings it (a finger's touch opens the product).
+  const came = (e: PointerEvent) => {
+    if (!o.hover || e.pointerType !== "mouse" || gone) return;
+    hovered = true;
+    seen = true;
+    window.clearTimeout(resting);
+    resting = 0;
+    if (canvas) { canvas.setAttribute("data-on", ""); kick(); }
+    else void open();
+  };
+  const left = () => {
+    if (!o.hover) return;
+    hovered = false;
+    if (!canvas && !opening) return;
+    kick();
+  };
+  host.addEventListener("pointerenter", came);
+  host.addEventListener("pointerleave", left);
   host.addEventListener("pointermove", point);
   host.addEventListener("pointerleave", away);
   window.addEventListener("scroll", scrolled, { passive: true });
   // A phone's tilt where it needs no asking (Android); iOS asks, so its pictures follow the finger instead.
   const asks = typeof DeviceOrientationEvent !== "undefined" && typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === "function";
   if (!asks && "ondeviceorientation" in window) window.addEventListener("deviceorientation", tilted);
-  // Made when it first comes near the screen; it rests while out of sight.
-  const sight = typeof IntersectionObserver === "function"
+  // Made when it first comes near the screen; it rests while out of sight. (A card's waits for the pointer.)
+  const sight = o.hover ? null : typeof IntersectionObserver === "function"
     ? new IntersectionObserver(([e]) => {
         seen = e.isIntersecting;
         if (seen && !canvas && !gone) void open();
@@ -328,7 +393,7 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
       }, { rootMargin: "200px" })
     : null;
   if (sight) sight.observe(host);
-  else { seen = true; void open(); }
+  else if (!o.hover) { seen = true; void open(); }
   say("rest");
   stops.push(() => {
     gone = true;
@@ -337,6 +402,8 @@ export function runPhoto3d(host: HTMLElement, spec: Photo3d, stops: Stop[]) {
     host.removeEventListener("pointerleave", away);
     window.removeEventListener("scroll", scrolled);
     window.removeEventListener("deviceorientation", tilted);
+    host.removeEventListener("pointerenter", came);
+    host.removeEventListener("pointerleave", left);
     close();
     host.removeAttribute("data-pt-3d-state");
     delete (host as HTMLElement & { __photo3d?: unknown }).__photo3d;

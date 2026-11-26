@@ -97,6 +97,10 @@ export const UpdateVariantBody = z.object({
   reason: z.string().max(200).optional(),
 });
 
+/** A product picture's depth picture: an http(s) address (never a script or data address). */
+export const DepthUrl = z.string().trim().max(2000).url().refine((v) => /^https?:\/\//i.test(v), "DEPTH_URL");
+export const SetImageDepthBody = z.object({ depthUrl: DepthUrl.nullable() }).strict();
+
 export const AddImageBody = z.object({
   productItemId: z.string().cuid(),
   url: z.string().url(),
@@ -151,6 +155,8 @@ export const ProductDeepUpdateBody = z.object({
       position: z.number().int().nonnegative().optional(),
       isPrimary: z.boolean().optional(),
       view: z.string().nullable().optional(),
+      /** Its depth picture (left out: kept as it is, unless the picture itself changed). */
+      depthUrl: DepthUrl.nullable().optional(),
     })).optional(),
     variants: z.array(z.object({
       id: z.string().cuid().optional(),

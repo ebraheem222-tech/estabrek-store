@@ -18,6 +18,8 @@ export type ComposerPhoto = {
   error?: string;
   /** Editing: the saved photo this is (kept when it stays in its colour). */
   imageId?: string;
+  /** Its depth picture (the shop's 3D), carried with it to another colour or a copy of the product. */
+  depthUrl?: string | null;
   /** Editing: the colour it was saved under. */
   origItemId?: string;
 };
@@ -302,6 +304,7 @@ export function buildItems(d: ComposerDraft, sizes: CatalogSize[], opts?: { skuS
         // A saved photo moved to another colour is added there anew (and removed from the old one).
         ...(p.imageId && g.itemId && p.origItemId === g.itemId ? { id: p.imageId } : {}),
         url: p.url!,
+        ...(p.depthUrl ? { depthUrl: p.depthUrl } : {}),
         position: i,
         isPrimary: i === 0,
         alt: `${d.title.trim()} — ${g.name.trim()}`,
@@ -384,7 +387,7 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
     const photoKeys: string[] = [];
     for (const im of [...(it.images ?? [])].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.position - b.position)) {
       const pk = newKey("p");
-      photos[pk] = { key: pk, url: im.url, preview: im.url, status: "done", color: it.colorHex ?? null, imageId: im.id, origItemId: it.id };
+      photos[pk] = { key: pk, url: im.url, preview: im.url, status: "done", color: it.colorHex ?? null, imageId: im.id, origItemId: it.id, depthUrl: im.depthUrl ?? null };
       photoKeys.push(pk);
       meta.imageIds.push(im.id);
     }
@@ -473,7 +476,7 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
     if (opts.keepPhotos) {
       for (const im of [...(it.images ?? [])].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.position - b.position)) {
         const pk = newKey("p");
-        photos[pk] = { key: pk, url: im.url, preview: im.url, status: "done", color: it.colorHex ?? null };
+        photos[pk] = { key: pk, url: im.url, preview: im.url, status: "done", color: it.colorHex ?? null, depthUrl: im.depthUrl ?? null };
         photoKeys.push(pk);
       }
     }
