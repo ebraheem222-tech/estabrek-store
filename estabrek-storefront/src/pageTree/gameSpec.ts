@@ -11,6 +11,13 @@
  * (pulled back and let go), and the rules for them (it's shot, it comes to rest; back home, an explosion).
  * G2b: joints between two things or a thing and the world (a pin, a weld, a spring, a rope, a slider), with limits,
  * a motor (always, or while a key is held), and a stretch that breaks them; the rules (it breaks; cut it).
+ * G3: effects and sound: a thing's trail and its look's effect (glow, pulse, wobble, rainbow), the weather across the
+ * world, an effect over the whole picture, music made for a mood, more sounds, notes on instruments up a scale, confetti.
+ * G3b: on the beat of the game's tempo; a key pressed (or the first thing tapped) while two things touch; a copy made
+ * where its template stands; a thing flashed.
+ * G4a: the game seen in 3D (its world laid on the ground, or standing as a wall with depth): the camera, the light,
+ * shadows, fog; each thing's shape in 3D (a box, a ball, a cylinder, a cone, a card that faces the camera, its convex
+ * shape raised, or a GLB model), its height, how high it floats, how metal and how rough; a tile's height; a car.
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -23,18 +30,32 @@ export const LAYER_KINDS = ["color", "gradient", "image"] as const;
 export const GAME_BODIES = ["none", "static", "dynamic", "kinematic", "rigid"] as const;
 /** A rigid thing's shape: its box, a circle in it, or a convex shape of points (each in the box, -0.5…0.5). */
 export const GAME_SHAPES = ["box", "circle", "poly"] as const;
-export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"] as const;
+export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car"] as const;
+/** G4a: the 3D view: none (flat), the world on the ground, or the world standing as a wall with depth. */
+export const VIEW3D_MODES = ["", "ground", "wall"] as const;
+export const VIEW3D_CAMERAS = ["follow", "top", "angle", "fixed"] as const;
+export const VIEW3D_LIGHTS = ["day", "sunset", "night", "studio"] as const;
+/** A thing's shape in 3D ("auto": from its look; "card": a picture that faces the camera; "model": a GLB file). */
+export const SHAPES3D = ["auto", "box", "ball", "cylinder", "cone", "card", "model"] as const;
 export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
-export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break"] as const;
-export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode", "cut"] as const;
+export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level", "shot", "rest", "break", "beat", "press"] as const;
+export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry", "home", "explode", "cut", "note", "confetti", "flash"] as const;
 /** How two things are joined: a pin (they turn about it), a weld, a spring, a rope (no further than its length), a slider (along a line). */
 export const GAME_JOINTS = ["pin", "weld", "spring", "rope", "slider"] as const;
 /** How one level gives way to the next: a fade, a wipe across, a closing circle, or at once. */
 export const GAME_TRANSITIONS = ["fade", "wipe", "circle", "none"] as const;
-export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"] as const;
+export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center", "own"] as const;
 export const GAME_KEYS = ["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
-export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit"] as const;
+export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"] as const;
+/** G3: a thing's trail, its look's effect; the world's weather; an effect over the whole picture; the music's mood. */
+export const GAME_TRAILS = ["", "sparkle", "smoke", "fire", "bubbles"] as const;
+export const GAME_FX = ["", "glow", "pulse", "wobble", "rainbow"] as const;
+export const GAME_WEATHER = ["", "snow", "rain", "stars", "leaves", "bubbles"] as const;
+export const GAME_POST = ["", "vignette", "crt", "pixel", "mono", "dream"] as const;
+export const GAME_MOODS = ["", "lively", "calm", "spooky", "arcade"] as const;
+export const GAME_INSTRUMENTS = ["piano", "bell", "pluck", "bass", "drum"] as const;
+export const GAME_SCALES = ["major", "minor", "pentatonic", "blues"] as const;
 
 /** A picture of frames (a sprite sheet): `cols` × `rows` cells, each of the body's states a run of them ([first, how many]). */
 export type GameSheet = { cols: number; rows: number; fps: number; anims: Partial<Record<(typeof GAME_ANIMS)[number], [number, number]>> };
@@ -43,7 +64,7 @@ export type GameLook = { kind: (typeof GAME_LOOKS)[number]; color: string; src?:
 /** A kind of tile on the map: how it looks; solid (stops bodies), a one-way platform (only from above), its tags (rules
  *  meet it by them); or, `thing`, a template put at each of its cells when the game starts (a coin, an enemy, a flag),
  *  or a thing in the world (the player) put at its first cell: where it starts on that level. */
-export type GameTileKind = { look: GameLook; solid: boolean; oneWay: boolean; tags: string[]; thing: string };
+export type GameTileKind = { look: GameLook; solid: boolean; oneWay: boolean; tags: string[]; thing: string; height: number };
 export type GameTiles = {
   size: number; cols: number; rows: number; map: string[]; kinds: Record<string, GameTileKind>;
   /** The levels after the first (whose map is `map`), each a map of the same size. */
@@ -110,6 +131,11 @@ export type GameThing = {
   drag: number;
   spinLock: boolean;
   fast: boolean;
+  /** G3: what it leaves behind as it moves, and its look's effect. */
+  trail: (typeof GAME_TRAILS)[number];
+  fx: (typeof GAME_FX)[number];
+  /** G4a: its shape in 3D, its height (pixels; 0: from its size), how high it floats, a model's file, metal and rough. */
+  d3: { shape: (typeof SHAPES3D)[number]; height: number; lift: number; src?: string; metal: number; rough: number };
 };
 export type GameWhen =
   | { on: "start" }
@@ -128,7 +154,11 @@ export type GameWhen =
   | { on: "shot"; who: string }
   | { on: "rest"; who: string }
   /** A joint holding it breaks (stretched too far, or cut). */
-  | { on: "break"; who: string };
+  | { on: "break"; who: string }
+  /** On the beat of the game's tempo (its music's): every so many beats, from `offset` beats in. */
+  | { on: "beat"; every: number; offset: number }
+  /** `key` pressed (or `a` tapped) while `a` touches `b`: a rhythm game's hit, a lock opened while standing at it. */
+  | { on: "press"; key: (typeof GAME_KEYS)[number]; a: string; b: string };
 export type GameAct =
   | { act: "spawn"; what: string; at: (typeof GAME_SPOTS)[number]; vx: number; vy: number }
   | { act: "destroy"; who: "self" | "other" | "both" }
@@ -150,7 +180,13 @@ export type GameAct =
   /** Everything within `radius` pushed away, by up to `power` (px/s) the nearer it is. */
   | { act: "explode"; who: "self" | "other"; radius: number; power: number }
   /** Every joint holding it let go. */
-  | { act: "cut"; who: "self" | "other" };
+  | { act: "cut"; who: "self" | "other" }
+  /** A note on an instrument: the scale's next one (step -1), one at random (-2), or that step of it (0…20). */
+  | { act: "note"; instrument: (typeof GAME_INSTRUMENTS)[number]; scale: (typeof GAME_SCALES)[number]; step: number }
+  /** Confetti over the whole view. */
+  | { act: "confetti" }
+  /** The thing lit up for a moment (a pad played, a note hit). */
+  | { act: "flash"; who: "self" | "other" };
 export type GameRule = { when: GameWhen; do: GameAct[] };
 export type GameWords = { title: string; start: string; win: string; lose: string; again: string; prize: string; help: string };
 export type GameSpec = {
@@ -163,6 +199,12 @@ export type GameSpec = {
   camera: { follow: string; lerp: number };
   layers: GameLayer[];
   transition: (typeof GAME_TRANSITIONS)[number];
+  /** G3: the weather across the world, an effect over the whole picture, and music made for a mood. */
+  weather: (typeof GAME_WEATHER)[number];
+  post: (typeof GAME_POST)[number];
+  music: { mood: (typeof GAME_MOODS)[number]; tempo: number; volume: number };
+  /** G4a: the 3D view ("" mode: flat), its camera, its tilt (degrees) and distance (× the view), its light, shadows, fog. */
+  view3d: { mode: (typeof VIEW3D_MODES)[number]; camera: (typeof VIEW3D_CAMERAS)[number]; tilt: number; distance: number; light: (typeof VIEW3D_LIGHTS)[number]; shadows: boolean; fog: boolean };
   bg: string;
   gravity: number;
   edges: (typeof GAME_EDGES)[number];
@@ -225,7 +267,7 @@ function tilesOf(raw: unknown, say: Say, ids: Set<string>): GameTiles | null {
     if (look.kind === "text") look.text = say(lk.text).slice(0, 4);
     const thing = typeof kk.thing === "string" && ids.has(kk.thing) ? kk.thing : "";
     const tags = (Array.isArray(kk.tags) ? kk.tags : []).filter((t): t is string => typeof t === "string" && TAG.test(t)).slice(0, GAME_LIMITS.tags);
-    kinds[ch] = { look, solid: !thing && kk.solid === true, oneWay: !thing && kk.oneWay === true, tags, thing };
+    kinds[ch] = { look, solid: !thing && kk.solid === true, oneWay: !thing && kk.oneWay === true, tags, thing, height: num(kk.height, 0, 1000, 0) };
   }
   // Each row as long as the map is wide; what isn't a kind of tile is empty.
   const mapOf = (v: unknown) => {
@@ -293,7 +335,16 @@ function thingOf(raw: unknown, say: Say): GameThing | null {
     drag: num(x.drag, 0, 20, 0),
     spinLock: x.spinLock === true,
     fast: x.fast === true,
+    trail: pick(x.trail, GAME_TRAILS, ""),
+    fx: pick(x.fx, GAME_FX, ""),
+    d3: d3Of(x.d3),
   };
+}
+function d3Of(raw: unknown): GameThing["d3"] {
+  const x = obj(raw);
+  const src = srcOf(x.src);
+  const shape = pick(x.shape, SHAPES3D, "auto");
+  return { shape: shape === "model" && !src ? "auto" : shape, height: num(x.height, 0, 2000, 0), lift: num(x.lift, -500, 2000, 0), ...(src ? { src } : {}), metal: num(x.metal, 0, 1, 0.1), rough: num(x.rough, 0, 1, 0.6) };
 }
 function pathOf(raw: unknown): GamePath | null {
   const x = obj(raw);
@@ -317,6 +368,8 @@ function whenOf(raw: unknown): GameWhen | null {
     case "level": return { on: "level", at: int(x.at, 0, GAME_LIMITS.levels, 0) };
     case "shot": case "rest": { const who = whoOf(x.who); return who ? { on: x.on === "shot" ? "shot" : "rest", who } : null; }
     case "break": { const who = whoOf(x.who); return who ? { on: "break", who } : null; }
+    case "beat": return { on: "beat", every: num(x.every, 0.25, 16, 1), offset: num(x.offset, 0, 16, 0) };
+    case "press": { const a = whoOf(x.a), b = whoOf(x.b); return a && b ? { on: "press", key: pick(x.key, GAME_KEYS, "Space"), a, b } : null; }
     default: return null;
   }
 }
@@ -339,6 +392,9 @@ function actOf(raw: unknown): GameAct | null {
     case "retry": return { act: "retry" };
     case "home": return { act: "home", who: pick(x.who, ["self", "other"] as const, "self") };
     case "cut": return { act: "cut", who: pick(x.who, ["self", "other"] as const, "self") };
+    case "note": return { act: "note", instrument: pick(x.instrument, GAME_INSTRUMENTS, "piano"), scale: pick(x.scale, GAME_SCALES, "pentatonic"), step: int(x.step, -2, 20, -1) };
+    case "confetti": return { act: "confetti" };
+    case "flash": return { act: "flash", who: pick(x.who, ["self", "other"] as const, "self") };
     case "explode": return { act: "explode", who: pick(x.who, ["self", "other"] as const, "self"), radius: num(x.radius, 40, 1000, 160), power: num(x.power, 100, 5000, 900) };
     default: return null;
   }
@@ -396,6 +452,13 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     camera: { follow: whoOf(cam.follow), lerp: num(cam.lerp, 0.02, 1, 0.12) },
     layers: (Array.isArray(x.layers) ? x.layers : []).slice(0, GAME_LIMITS.layers).map(layerOf),
     transition: pick(x.transition, GAME_TRANSITIONS, "circle"),
+    weather: pick(x.weather, GAME_WEATHER, ""),
+    post: pick(x.post, GAME_POST, ""),
+    music: { mood: pick(obj(x.music).mood, GAME_MOODS, ""), tempo: int(obj(x.music).tempo, 60, 180, 110), volume: num(obj(x.music).volume, 0, 1, 0.5) },
+    view3d: (() => {
+      const v = obj(x.view3d);
+      return { mode: pick(v.mode, VIEW3D_MODES, ""), camera: pick(v.camera, VIEW3D_CAMERAS, "follow"), tilt: num(v.tilt, 10, 89, 55), distance: num(v.distance, 0.3, 3, 1), light: pick(v.light, VIEW3D_LIGHTS, "day"), shadows: v.shadows !== false, fog: v.fog === true };
+    })(),
     bg: colourOf(x.bg, "surface"),
     gravity: num(x.gravity, 0, 4000, 0),
     edges: pick(x.edges, GAME_EDGES, "walls"),

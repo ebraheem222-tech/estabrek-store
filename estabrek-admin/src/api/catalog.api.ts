@@ -251,6 +251,10 @@ export type ProductDeepUpdateBody = {
     eventStartsAt?: string | null;
     eventEndsAt?: string | null;
     eventLocation?: string | null;
+    /** «شوفها على حيطك»: a piece for a wall, its real size (cm) and frame (null: not one). */
+    wallWidthCm?: number | null;
+    wallHeightCm?: number | null;
+    wallFrame?: string | null;
   };
   items?: Array<{
     id?: string;

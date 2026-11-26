@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { gameOf } from "../../../estabrek-storefront/src/pageTree/gameSpec";
 import { READY_GAMES } from "../../../estabrek-storefront/src/pageTree/gameReady";
-import { ACT_NAMES, SHAPE_PICKS, WHEN_NAMES, actPossible, jointable, jointsOf, shapePick, withNewJoint, freshId, levelMaps, newAct, newWhen, nextTileChar, paintCells, pathPoints, resizedLevels, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withLevelMap, withNewLevel, withNewThing, withPathPoint, withTiles, withoutLevel, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
+import { ACT_NAMES, INSTRUMENT_NAMES, SHAPE_PICKS, SOUND_NAMES, WHEN_NAMES, actPossible, jointable, jointsOf, shapePick, withNewJoint, freshId, levelMaps, newAct, newWhen, nextTileChar, paintCells, pathPoints, resizedLevels, resizedMap, ruleText, rulesOf, thingsOf, whoOptions, withLevelMap, withNewLevel, withNewThing, withPathPoint, withTiles, withoutLevel, withoutThing, withoutTileKind, worldSize, type Obj } from "./gameEdit";
 import { say } from "./say";
 
 // G0b: editing a game by hand, and what's edited still a whole game for the shop.
@@ -155,5 +155,27 @@ describe("editing a game", () => {
     const edited = { ...one, rules: [{ when: newWhen("break", one), do: [newAct("cut", one)] }] };
     expect(read(edited).rules).toHaveLength(1);
     expect(ruleText({ when: { on: "break", who: "bag" }, do: [{ act: "cut", who: "self" }] })).toMatch(/bag/);
+  });
+
+  test("G3: a note's and confetti's first values are read whole by the shop; the effects' names", () => {
+    const g = catchGame();
+    for (const act of ["note", "confetti"] as const) {
+      const edited = { ...g, rules: [{ when: newWhen("start", g), do: [newAct(act, g)] }] };
+      expect(read(edited).rules[0].do, act).toHaveLength(1);
+    }
+    expect(read({ ...g, rules: [{ when: { on: "start" }, do: [newAct("note", g)] }] }).rules[0].do[0]).toEqual({ act: "note", instrument: "bell", scale: "pentatonic", step: -1 });
+    expect(ruleText({ when: { on: "start" }, do: [{ act: "note", instrument: "bell" }] })).toContain(say(INSTRUMENT_NAMES.bell));
+    expect(Object.keys(SOUND_NAMES)).toEqual(["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"]);
+  });
+
+  test("G3b: on the beat, a key pressed while two things touch, a copy where its template stands, a flash: read whole by the shop and told in words", () => {
+    const g = catchGame();
+    for (const on of ["beat", "press"] as const) {
+      const edited = { ...g, rules: [{ when: newWhen(on, g), do: [newAct("flash", g), { act: "spawn", what: "gift", at: "own" }] }] };
+      expect(read(edited).rules[0].do, on).toHaveLength(2);
+    }
+    expect(newWhen("press", g)).toEqual({ on: "press", key: "Space", a: "bag", b: "gift" });
+    expect(ruleText({ when: { on: "beat", every: 2, offset: 1 }, do: [{ act: "flash" }] })).toMatch(/2/);
+    expect(ruleText({ when: { on: "press", key: "ArrowLeft", a: "bar", b: "#arrow" }, do: [{ act: "flash" }] })).toMatch(/bar.*#arrow/);
   });
 });

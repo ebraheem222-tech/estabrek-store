@@ -346,4 +346,104 @@ describe("the game editor", () => {
     fireEvent.click(screen.getByTestId("game-ed-joint-remove"));
     expect(joints()).toEqual([]);
   });
+
+  test("G3: the effects tab (weather, an effect over the picture, music for a mood heard here), a thing's trail and effect, a note in a rule", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "effects")!);
+    fireEvent.change(screen.getByTestId("game-ed-weather"), { target: { value: "snow" } });
+    fireEvent.change(screen.getByTestId("game-ed-post"), { target: { value: "crt" } });
+    fireEvent.change(screen.getByTestId("game-ed-mood"), { target: { value: "spooky" } });
+    const tempo = screen.getByTestId("game-ed-tempo");
+    fireEvent.change(tempo, { target: { value: "300" } });
+    fireEvent.blur(tempo);
+    expect(last()).toMatchObject({ weather: "snow", post: "crt", music: { mood: "spooky", tempo: 180 } });
+    // Heard here (no Web Audio in this test's page: it only says it plays).
+    fireEvent.click(screen.getByTestId("game-ed-hear"));
+    expect(screen.getByTestId("game-ed-hear").textContent).toMatch(/■/);
+    fireEvent.click(screen.getByTestId("game-ed-hear"));
+    fireEvent.change(screen.getByTestId("game-ed-mood"), { target: { value: "" } });
+    expect(obj(last().music).mood).toBeUndefined();
+    // The bag: sparkles behind it, and a glow.
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-trail"), { target: { value: "sparkle" } });
+    fireEvent.change(screen.getByTestId("game-ed-fx"), { target: { value: "glow" } });
+    expect(things().find((t) => t.id === "bag")).toMatchObject({ trail: "sparkle", fx: "glow" });
+    // A rule's note: a piano, the minor scale, at random.
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "note" } });
+    fireEvent.change(screen.getByTestId("game-ed-note-instrument"), { target: { value: "piano" } });
+    fireEvent.change(screen.getByTestId("game-ed-note-scale"), { target: { value: "minor" } });
+    fireEvent.change(screen.getByTestId("game-ed-note-step"), { target: { value: "-2" } });
+    expect((last().rules as Obj[]).at(-1)!.do).toEqual([{ act: "note", instrument: "piano", scale: "minor", step: -2 }]);
+  });
+
+  test("G3: the night stars tried here: its music and sounds asked for, its particles and effects drawn, a vignette over it", async () => {
+    let now = 0;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    mount("night");
+    fireEvent.click(screen.getByTestId("game-ed-try"));
+    fireEvent.click(screen.getByTestId("game-ed-play"));
+    await act(async () => { for (let i = 0; i < 240; i++) { now += 1000 / 60; frames.shift()?.(now); } });
+    const trying = screen.getByTestId("game-ed-trying");
+    expect(trying.getAttribute("data-phase")).toBe("playing");
+    expect(trying.querySelector("canvas")!.getAttribute("data-post")).toBe("vignette");
+    expect(trying.querySelector("div.pointer-events-none")).toBeTruthy();
+  });
+
+  test("G3b: a rule on the beat (every, from), one for a key pressed as one thing touches another, a flash", () => {
+    const { last } = mount();
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "beat" } });
+    const every = screen.getByTestId("game-ed-beat-every");
+    fireEvent.change(every, { target: { value: "2" } });
+    fireEvent.blur(every);
+    const from = screen.getByTestId("game-ed-beat-offset");
+    fireEvent.change(from, { target: { value: "0.5" } });
+    fireEvent.blur(from);
+    expect((last().rules as Obj[]).at(-1)!.when).toEqual({ on: "beat", every: 2, offset: 0.5 });
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "press" } });
+    fireEvent.change(screen.getByTestId("game-ed-press-key"), { target: { value: "ArrowLeft" } });
+    fireEvent.change(screen.getByTestId("game-ed-hit-b"), { target: { value: "#good" } });
+    fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "flash" } });
+    expect((last().rules as Obj[]).at(-1)).toMatchObject({ when: { on: "press", key: "ArrowLeft", a: "bag", b: "#good" }, do: [{ act: "flash", who: "self" }] });
+  });
+
+  test("G4a: the 3D tab (on the ground, the camera, the light, shadows), a thing's 3D (a model's address, metal), the car", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "3d")!);
+    expect(screen.queryByTestId("game-ed-3d-camera")).toBeNull();
+    fireEvent.change(screen.getByTestId("game-ed-3d-mode"), { target: { value: "ground" } });
+    fireEvent.change(screen.getByTestId("game-ed-3d-camera"), { target: { value: "top" } });
+    fireEvent.change(screen.getByTestId("game-ed-3d-light"), { target: { value: "night" } });
+    fireEvent.click(screen.getByTestId("game-ed-3d-shadows"));
+    const tilt = screen.getByTestId("game-ed-3d-tilt");
+    fireEvent.change(tilt, { target: { value: "120" } });
+    fireEvent.blur(tilt);
+    expect(last().view3d).toEqual({ mode: "ground", camera: "top", light: "night", shadows: false, tilt: 89 });
+    // In 3D, a thing's own 3D settings show.
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-3d-shape"), { target: { value: "model" } });
+    const src = screen.getByTestId("game-ed-3d-src");
+    fireEvent.change(src, { target: { value: "javascript:alert(1)" } });
+    fireEvent.blur(src);
+    expect(obj(things().find((t) => t.id === "bag")!.d3).src).toBeUndefined();
+    fireEvent.change(src, { target: { value: "https://cdn.example.com/bag.glb" } });
+    fireEvent.blur(src);
+    const metal = screen.getByTestId("game-ed-3d-metal");
+    fireEvent.change(metal, { target: { value: "0.8" } });
+    fireEvent.blur(metal);
+    expect(things().find((t) => t.id === "bag")!.d3).toEqual({ shape: "model", src: "https://cdn.example.com/bag.glb", metal: 0.8 });
+    fireEvent.change(screen.getByTestId("game-ed-control"), { target: { value: "car" } });
+    expect(things().find((t) => t.id === "bag")!.control).toBe("car");
+    // Flat again: no 3D settings on the thing.
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "3d")!);
+    fireEvent.change(screen.getByTestId("game-ed-3d-mode"), { target: { value: "" } });
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    expect(screen.queryByTestId("game-ed-thing-3d")).toBeNull();
+  });
 });

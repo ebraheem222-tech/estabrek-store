@@ -1,6 +1,8 @@
 // «شيل الخلفية» for one picture: the cut is made (free on this device, or by Cloudinary
 // when switched on), fixed up with a brush (keep / erase, size, soft edge, undo), laid on
 // transparency, white or a colour, and saved as a NEW picture. The original never changes.
+// «قصّ بكبسة»: or the owner clicks the thing to keep (and what to leave out), and a small
+// model on this device picks it (lib/sam.ts); the brush still fixes it up after.
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -8,7 +10,10 @@ import { cn } from "../ui/cn";
 import { toast } from "../../lib/toast";
 import { getApiErrorMessage } from "../../api/http";
 import type { MediaImage } from "../../api/uploads.api";
-import { removeBackground, type BgProgress, type Cutout } from "../../lib/bgRemove";
+import { pictureOnly, removeBackground, type BgProgress, type Cutout } from "../../lib/bgRemove";
+import { SAM_BYTES, SamError, pickSession, type PickSession, type SamPoint, type SamProgress } from "../../lib/sam";
+import { megabytes } from "../../lib/bgEngine";
+import { say } from "../../studio/say";
 import type { CloudState, EngineId } from "../../lib/bgEngine";
 import { MaskHistory, applyMask, dab, stroke, unionRect, type Background, type Brush, type BrushMode, type Rect } from "../../lib/cutout";
 import { cutoutErrorText, firstDownloadText, planText, progressText, useCloudCutout } from "./cutoutText";
@@ -16,6 +21,21 @@ import { CHECKER, readCutoutPrefs, saveCutout, saveCutoutPrefs, startEngine, use
 import { tr } from "@/lib/words";
 
 const backgroundCss = (bg: Background) => (bg === "transparent" ? CHECKER : bg);
+
+type Picker = { kind: "off" } | { kind: "loading"; progress: SamProgress | null } | { kind: "ready"; score: number | null } | { kind: "error"; message: string };
+const PICK_ERRORS: Record<string, string> = {
+  NO_WORKER: "هالمتصفح ما بيقدر يشغّل الموديل — جرّب Chrome أو Edge.|This browser can't run the model — try Chrome or Edge.|הדפדפן הזה לא יכול להריץ את המודל — נסה Chrome או Edge.",
+  IMAGE_LOAD: "ما قدرنا نقرا الصورة.|The picture couldn't be read.|לא הצלחנו לקרוא את התמונה.",
+  MODEL_DOWNLOAD: "ما نزل الموديل — في مشكلة بالإنترنت؟|The model didn't download — is the internet working?|המודל לא ירד — האינטרנט עובד?",
+  MODEL_CHECK: "الملف اللي نزل مش الموديل الصحيح، ما استعملناه.|The downloaded file isn't the right model; it wasn't used.|הקובץ שירד אינו המודל הנכון; לא השתמשנו בו.",
+};
+const pickErrorText = (e: unknown) => say(e instanceof SamError ? PICK_ERRORS[e.code] ?? "ما زبط، جرّب كمان مرة.|It didn't work; try again.|זה לא הצליח; נסה שוב." : "ما زبط، جرّب كمان مرة.|It didn't work; try again.|זה לא הצליח; נסה שוב.");
+const pickProgressText = (p: SamProgress | null) =>
+  p?.phase === "download"
+    ? say(`عم ننزّل موديل القص بكبسة (مرة وحدة بس): ${megabytes(p.loaded ?? 0)} من ${megabytes(p.total ?? SAM_BYTES)}|Downloading the click-to-cut model (only once): ${megabytes(p.loaded ?? 0)} of ${megabytes(p.total ?? SAM_BYTES)}|מורידים את מודל הגזירה בלחיצה (פעם אחת): ${megabytes(p.loaded ?? 0)} מתוך ${megabytes(p.total ?? SAM_BYTES)}`)
+    : p?.phase === "prepare"
+      ? say("عم نجهّز الموديل…|Preparing the model…|מכינים את המודל…")
+      : say("الموديل عم يقرا الصورة (مرة وحدة لكل صورة)…|The model is reading the picture (once a picture)…|המודל קורא את התמונה (פעם אחת לכל תמונה)…");
 
 export function EnginePicker({ value, onChange, cloud, disabled }: { value: EngineId; onChange: (v: EngineId) => void; cloud: CloudState | null; disabled?: boolean }) {
   if (!cloud?.on) return null;
@@ -68,7 +88,7 @@ export function BackgroundPicker({ value, onChange }: { value: Background; onCha
 
 /* ------------------------------------------------------------------ the editor */
 
-type Status = { kind: "idle" } | { kind: "ask" } | { kind: "working"; progress: BgProgress | null } | { kind: "ready" } | { kind: "error"; message: string };
+type Status = { kind: "idle" } | { kind: "ask" } | { kind: "opening" } | { kind: "working"; progress: BgProgress | null } | { kind: "ready" } | { kind: "error"; message: string };
 
 type Props = {
   open: boolean;
@@ -78,17 +98,23 @@ type Props = {
   onSaved?: (picture: MediaImage, how: { replace: boolean }) => void;
   /** Offer "use it instead of the original" (the original stays in the media library). */
   canReplace?: boolean;
+  /** Open ready for clicks, without the background model («طلّع الغرض من الصورة»). */
+  startWith?: "pick";
+  /** On transparency only (a layer laid over its own picture). */
+  transparentOnly?: boolean;
+  title?: string;
 };
 
 const GHOST = 0.22;
 const EDIT_MAX_SIDE = 2560;
 
-export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Props) {
+export function CutoutEditor({ open, target, onClose, onSaved, canReplace, startWith, transparentOnly, title }: Props) {
   const cloud = useCloudCutout();
   const free = useFreeEngine(open);
   const [engine, setEngine] = useState<EngineId>("browser");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [background, setBackground] = useState<Background>(() => readCutoutPrefs().background);
+  const [chosenBackground, setBackground] = useState<Background>(() => readCutoutPrefs().background);
+  const background: Background = transparentOnly ? "transparent" : chosenBackground;
   const [mode, setMode] = useState<BrushMode>("erase");
   const [brushPx, setBrushPx] = useState(() => readCutoutPrefs().brush);
   const [softness, setSoftness] = useState(() => readCutoutPrefs().softness);
@@ -98,6 +124,14 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
   const [, setVersion] = useState(0);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  // «قصّ بكبسة»: clicks on what to keep (or leave out); the model picks the thing.
+  const [tool, setTool] = useState<"brush" | "pick">("brush");
+  const [pickKeep, setPickKeep] = useState(true);
+  const [points, setPoints] = useState<SamPoint[]>([]);
+  const [picker, setPicker] = useState<Picker>({ kind: "off" });
+  const pickerRef = useRef<PickSession | null>(null);
+  const pickAbort = useRef<AbortController | null>(null);
+  const picking = useRef(false);
 
   const cutRef = useRef<Cutout | null>(null);
   const modelMask = useRef<Uint8ClampedArray | null>(null);
@@ -176,15 +210,26 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
     if (!open || !target) return;
     cutRef.current = null;
     history.current = null;
+    pickerRef.current = null;
+    setPoints([]);
+    setTool("brush");
+    setPicker({ kind: "off" });
     const which = startEngine(cloud);
     setEngine(which);
     setStatus({ kind: "idle" });
-    return () => abort.current?.abort();
+    return () => {
+      abort.current?.abort();
+      pickAbort.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, target?.url]);
 
   useEffect(() => {
     if (!open || !target || status.kind !== "idle") return;
+    if (startWith === "pick") {
+      void startPicking();
+      return;
+    }
     if (engine === "cloudinary") void run("cloudinary");
     else if (free.saved === true) void run("browser");
     else if (free.saved === false) setStatus({ kind: "ask" });
@@ -195,6 +240,66 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
     saveCutoutPrefs({ engine: v });
     cutRef.current = null;
     setStatus({ kind: "idle" });
+  };
+
+  /* ---------------- «قصّ بكبسة» */
+  /** The picture ready for clicks: as it is when nothing was cut yet (no background model), then the model reads it. */
+  const startPicking = async () => {
+    if (!target) return;
+    setTool("pick");
+    if (!cutRef.current) {
+      abort.current?.abort();
+      setStatus({ kind: "opening" });
+      try {
+        const c = await pictureOnly(target.url, EDIT_MAX_SIDE);
+        cutRef.current = c;
+        modelMask.current = c.mask.slice();
+        history.current = new MaskHistory({ w: c.width, h: c.height, data: c.mask });
+        out.current = new ImageData(c.width, c.height);
+        setZoom(1);
+        setStatus({ kind: "ready" });
+        setVersion((v) => v + 1);
+      } catch (err) {
+        setStatus({ kind: "error", message: cutoutErrorText(err) });
+        return;
+      }
+    }
+    if (pickerRef.current) return setPicker((p) => (p.kind === "ready" ? p : { kind: "ready", score: null }));
+    const ctl = new AbortController();
+    pickAbort.current = ctl;
+    setPicker({ kind: "loading", progress: null });
+    try {
+      pickerRef.current = await pickSession(cutRef.current!.image, { signal: ctl.signal, onProgress: (p) => setPicker({ kind: "loading", progress: p }) });
+      if (!ctl.signal.aborted) setPicker({ kind: "ready", score: null });
+    } catch (err) {
+      setPicker(ctl.signal.aborted ? { kind: "off" } : { kind: "error", message: pickErrorText(err) });
+    }
+  };
+  /** A click: the thing there kept (or left out); the model's answer takes the cut's place as one step (undo brings the last back). */
+  const pickAt = async (p: SamPoint) => {
+    const c = cutRef.current, s = pickerRef.current;
+    if (!c || !s || !history.current || picking.current) return;
+    const next = [...points, p];
+    setPoints(next);
+    picking.current = true;
+    try {
+      const { mask, score } = await s.pick(next, c.width, c.height);
+      history.current.replace(mask);
+      redraw();
+      setPicker({ kind: "ready", score });
+      setVersion((v) => v + 1);
+    } catch (err) {
+      setPicker({ kind: "error", message: pickErrorText(err) });
+    } finally {
+      picking.current = false;
+    }
+  };
+  const clearPoints = () => {
+    setPoints([]);
+    if (history.current && modelMask.current) history.current.replace(modelMask.current);
+    redraw();
+    setPicker((p) => (p.kind === "ready" ? { kind: "ready", score: null } : p));
+    setVersion((v) => v + 1);
   };
 
   /* ---------------- the canvas's size */
@@ -235,6 +340,12 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
     const canvas = e.currentTarget;
     const c = cutRef.current;
     if (!c || !history.current || e.button > 0) return;
+    if (tool === "pick") {
+      // Alt (or ⌥) with a click does the other: leave out instead of keep.
+      const [x, y] = toImage(canvas, e);
+      if (picker.kind === "ready") void pickAt({ x, y, keep: e.altKey ? !pickKeep : pickKeep });
+      return;
+    }
     canvas.setPointerCapture(e.pointerId);
     history.current.begin();
     const p = toImage(canvas, e);
@@ -249,7 +360,7 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
     setCursor({ x: e.clientX - r.left, y: e.clientY - r.top });
     const c = cutRef.current;
     const d = drawing.current;
-    if (!c || !d) return;
+    if (!c || !d || tool === "pick") return;
     const p = toImage(canvas, e);
     const rect = stroke({ w: c.width, h: c.height, data: c.mask }, d.last, p, brushFor(canvas));
     d.last = p;
@@ -305,6 +416,7 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
   /* ---------------- saving */
   const close = () => {
     abort.current?.abort();
+    pickAbort.current?.abort();
     onClose();
   };
 
@@ -336,7 +448,7 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
     <Modal
       open={open}
       onClose={close}
-      title={tr("شيل الخلفية", "Remove background")}
+      title={title ?? tr("شيل الخلفية", "Remove background")}
       widthClassName="max-w-6xl"
       disableBackdropClose
       closeText={tr("إلغاء", "Cancel")}
@@ -365,7 +477,7 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
                 <canvas
                   ref={canvasRef}
                   className="block h-auto w-full touch-none"
-                  style={{ cursor: "none" }}
+                  style={{ cursor: tool === "pick" ? (picker.kind === "ready" ? "crosshair" : "progress") : "none" }}
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
                   onPointerUp={endStroke}
@@ -374,7 +486,21 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
                   data-testid="cutout-canvas"
                   aria-label={tr("الصورة: الفرشاة بترجّع أو بتمسح", "The picture: the brush keeps or erases")}
                 />
-                {cursor ? (
+                {tool === "pick"
+                  ? points.map((p, i) => (
+                      <span
+                        key={i}
+                        aria-hidden
+                        data-testid="cutout-point"
+                        data-keep={p.keep ? "" : undefined}
+                        className={cn("pointer-events-none absolute grid h-5 w-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white text-[11px] font-bold leading-none text-white shadow", p.keep ? "bg-emerald-500" : "bg-rose-500")}
+                        style={{ left: `${(p.x / cut.width) * 100}%`, top: `${(p.y / cut.height) * 100}%` }}
+                      >
+                        {p.keep ? "+" : "−"}
+                      </span>
+                    ))
+                  : null}
+                {cursor && tool === "brush" ? (
                   <span
                     aria-hidden
                     className={cn("pointer-events-none absolute rounded-full border-2", mode === "keep" ? "border-emerald-400" : "border-rose-400")}
@@ -401,6 +527,10 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
                     <div className="text-xs text-white/50">{planText(free.plan)}</div>
                     <Button variant="primary" onClick={() => void run("browser")} data-testid="cutout-start">
                       {tr("تنزيل النموذج وشيل الخلفية", "Download the model and remove the background")}
+                    </Button>
+                    <div className="text-xs text-white/50">{say("أو اختار الغرض بإيدك بكبسة عليه (موديل أصغر)|Or pick the thing yourself with a click on it (a smaller model)|או לבחור את הפריט בעצמך בלחיצה עליו (מודל קטן יותר)")}</div>
+                    <Button variant="secondary" onClick={() => void startPicking()} data-testid="cutout-pick-start">
+                      {say(`قصّ بكبسة (${megabytes(SAM_BYTES)})|Cut with a click (${megabytes(SAM_BYTES)})|גזירה בלחיצה (${megabytes(SAM_BYTES)})`)}
                     </Button>
                   </div>
                 ) : status.kind === "error" ? (
@@ -455,12 +585,71 @@ export function CutoutEditor({ open, target, onClose, onSaved, canReplace }: Pro
             <p className="text-xs text-white/50">{planText(free.plan)}</p>
           )}
 
-          <section className="space-y-2">
-            <div className="font-medium">{tr("الخلفية", "Background")}</div>
-            <BackgroundPicker value={background} onChange={changeBackground} />
+          {transparentOnly ? null : (
+            <section className="space-y-2">
+              <div className="font-medium">{tr("الخلفية", "Background")}</div>
+              <BackgroundPicker value={background} onChange={changeBackground} />
+            </section>
+          )}
+
+          <section className="space-y-2" data-testid="cutout-pick" data-on={tool === "pick" ? "" : undefined}>
+            <div className="font-medium">✂️ {say("قصّ بكبسة|Cut with a click|גזירה בלחיצה")}</div>
+            <p className="text-xs leading-5 text-white/50">{say("كبسة على الغرض بتختاره كله (شخص، منتج، كاسة…). كبسة كمان بتزيد أو بتشيل جزء. موديل صغير على هالجهاز، ببلاش.|A click on a thing picks all of it (a person, a product, a cup…). More clicks add or leave out a part. A small model on this device, free.|לחיצה על פריט בוחרת את כולו (אדם, מוצר, כוס…). עוד לחיצות מוסיפות או מורידות חלק. מודל קטן במכשיר הזה, בחינם.")}</p>
+            {tool !== "pick" ? (
+              <Button variant="secondary" size="sm" onClick={() => void startPicking()} disabled={busy} data-testid="cutout-pick-on">
+                {say(`اختار بكبسة${pickerRef.current ? "" : ` (${megabytes(SAM_BYTES)})`}|Pick with a click${pickerRef.current ? "" : ` (${megabytes(SAM_BYTES)})`}|בחירה בלחיצה${pickerRef.current ? "" : ` (${megabytes(SAM_BYTES)})`}`)}
+              </Button>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1" role="radiogroup" aria-label={say("الكبسة|The click|הלחיצה")}>
+                  {([[true, "+ " + say("خلّيه|Keep|השאר")], [false, "− " + say("شيله|Leave out|הסר")]] as const).map(([keep, label]) => (
+                    <button
+                      key={String(keep)}
+                      type="button"
+                      role="radio"
+                      aria-checked={pickKeep === keep}
+                      onClick={() => setPickKeep(keep)}
+                      className={cn("rounded-lg px-3 py-1.5 transition", pickKeep === keep ? "bg-white/10 font-medium text-white" : "text-white/60 hover:bg-white/5")}
+                      data-testid={keep ? "cutout-pick-keep" : "cutout-pick-leave"}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs text-white/60" role="status" data-testid="cutout-pick-status">
+                  {picker.kind === "loading"
+                    ? pickProgressText(picker.progress)
+                    : picker.kind === "error"
+                      ? <span className="text-rose-300">{picker.message}</span>
+                      : picker.kind === "ready" && picker.score !== null
+                        ? say(`الموديل متأكد ${Math.round(picker.score * 100)}%. كبسة كمان بتصلّح.|The model is ${Math.round(picker.score * 100)}% sure. Another click fixes it.|המודל בטוח ב־${Math.round(picker.score * 100)}%. עוד לחיצה מתקנת.`)
+                        : picker.kind === "ready"
+                          ? say("كبسة على الغرض اللي بدك ياه. (Alt مع الكبسة بتعمل العكس)|Click the thing you want. (Alt with the click does the other)|לחיצה על הפריט הרצוי. (Alt עם הלחיצה עושה את ההפך)")
+                          : null}
+                </div>
+                {picker.kind === "loading" && picker.progress?.phase === "download" && picker.progress.total ? (
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full bg-accent-500 transition-all" style={{ width: `${Math.round(((picker.progress.loaded ?? 0) / picker.progress.total) * 100)}%` }} />
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="ghost" size="sm" onClick={clearPoints} disabled={!points.length} data-testid="cutout-pick-clear">
+                    {say("امسح الكبسات|Clear the clicks|ניקוי הלחיצות")}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setTool("brush")} data-testid="cutout-pick-off">
+                    {say("للفرشاة|To the brush|למברשת")}
+                  </Button>
+                  {picker.kind === "error" ? (
+                    <Button variant="ghost" size="sm" onClick={() => { pickerRef.current = null; void startPicking(); }}>
+                      {say("جرّب كمان مرة|Try again|לנסות שוב")}
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            )}
           </section>
 
-          <section className={cn("space-y-3", status.kind !== "ready" && "pointer-events-none opacity-50")}>
+          <section className={cn("space-y-3", status.kind !== "ready" && "pointer-events-none opacity-50")} onPointerDown={() => setTool("brush")}>
             <div className="font-medium">{tr("تصليح بالفرشاة", "Fix up with the brush")}</div>
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1" role="radiogroup" aria-label={tr("الفرشاة", "Brush")}>
               {(

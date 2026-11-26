@@ -20,12 +20,26 @@
  *  - G2: a game with rigid things loads Rapier (its 2D deterministic build, only then) and is made again with it;
  *    Start waits for it. A sling's shot is shown as dots along its way while it's pulled back.
  *  - G2b: ropes, springs and sliders drawn as lines between their two ends; a motor's key gets its touch button.
+ *  - G3: sound and music from gameSound.ts (a sound panned by where it happened; notes; a mood's music while it plays,
+ *    quiet with the sound off, away from the screen or in a hidden tab); particles (gameParticles.ts) drawn as points
+ *    on the graphics card (trails, the weather, bursts, confetti, more of it on a win); a thing's look with an effect
+ *    (glow, pulse, wobble, rainbow) in its own shader; an effect over the whole picture (vignette, an old screen,
+ *    pixels, black and white, dreamy), the world drawn to a texture first. Less motion asked for: fewer particles, no
+ *    falling weather.
+ *  - G3b: the music started at the game's own time (its beats where the beat rules are); a flashed thing lit up a
+ *    moment; the keys the rules ask for get their touch buttons.
+ *  - G4a: a game seen in 3D is drawn by gameScene3d.ts (its own camera, light and shadows) in place of the flat
+ *    drawing; a tap or a pull is found on its ground or wall; a car gets the four arrows on a touch screen.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import type * as T from "three";
 import { saveWonCoupon } from "../lib/wonCoupon";
 import { NO_INPUT, STEP, coverOf, endGame, levelCount, newGame, startGame, stepGame, timeLeft, type Body, type GameInput, type GameState, type Phase } from "./gameEngine";
 import { needsPhysics, physJoints, type Rapier } from "./gamePhysics";
+import { Music, playNote, playSound } from "./gameSound";
+import { alphaOf, burst, confetti, newParticles, placeOf, stepParticles } from "./gameParticles";
+import { GAME_FX, GAME_POST } from "./gameSpec";
+import { scene3d, type Scene3D } from "./gameScene3d";
 import type { GameSpec } from "./gameSpec";
 import { coverCss, cssColour, lookCanvas, sheetFrame } from "./gameDraw";
 import type { GameWords as PrizeWords } from "./proWords";
@@ -51,29 +65,72 @@ const loadRapier = () => (rapierLoad ??= import("@dimforge/rapier2d-deterministi
   // Not loaded (offline): the game plays with the arcade's bodies.
   .catch(() => null));
 
-/* ---------------------------------------------------------------- sounds */
+/* ---------------------------------------------------------------- shaders (G3) */
 
-let audio: AudioContext | null = null;
-function beep(kind: string) {
-  try {
-    audio ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const a = audio, now = a.currentTime, o = a.createOscillator(), g = a.createGain();
-    const tone: Record<string, [OscillatorType, number, number, number]> = {
-      click: ["square", 520, 520, 0.05], pop: ["sine", 660, 990, 0.09], chime: ["triangle", 880, 1320, 0.25],
-      whoosh: ["sawtooth", 300, 120, 0.12], success: ["triangle", 523, 1046, 0.45], hit: ["square", 180, 70, 0.18],
-    };
-    const [type, from, to, len] = tone[kind] ?? tone.pop;
-    o.type = type;
-    o.frequency.setValueAtTime(from, now);
-    o.frequency.exponentialRampToValueAtTime(Math.max(40, to), now + len);
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + len);
-    o.connect(g).connect(a.destination);
-    o.start(now);
-    o.stop(now + len + 0.02);
-  } catch { /* no sound here */ }
-}
+const FX_VERT = `varying vec2 vUv;
+void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+/** A thing's look with an effect: glow (a halo round its shape), pulse, wobble, rainbow. */
+const FX_FRAG = `uniform sampler2D map; uniform float uTime; uniform int uKind; uniform float uPad; uniform vec3 uGlow;
+varying vec2 vUv;
+vec3 hue(vec3 c, float h) { const vec3 k = vec3(0.57735); float ca = cos(h); return c * ca + cross(k, c) * sin(h) + k * dot(k, c) * (1.0 - ca); }
+vec4 at(vec2 q) { return (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) ? vec4(0.0) : texture2D(map, q); }
+void main() {
+  vec2 uv = (vUv - 0.5) * uPad + 0.5;
+  if (uKind == 3) uv.x += sin(uv.y * 12.0 + uTime * 6.0) * 0.03;
+  vec4 c = at(uv);
+  if (uKind == 1) {
+    float g = 0.0;
+    for (int i = 0; i < 12; i++) { float a = float(i) * 0.5236; g += at(uv + vec2(cos(a), sin(a)) * 0.07).a; }
+    g = g / 12.0 * (0.8 + 0.2 * sin(uTime * 4.0));
+    c = vec4(mix(uGlow, c.rgb, c.a), max(c.a, g * 0.8));
+  } else if (uKind == 2) c.rgb *= 1.0 + 0.3 * sin(uTime * 6.0);
+  else if (uKind == 4) c.rgb = hue(c.rgb, uTime * 2.0);
+  gl_FragColor = c;
+  #include <colorspace_fragment>
+}`;
+const PT_VERT = `attribute float size; attribute float alpha; attribute float shape; attribute vec3 tint;
+uniform float uScale;
+varying float vA; varying float vS; varying vec3 vC;
+void main() { vA = alpha; vS = shape; vC = tint; gl_PointSize = max(1.0, size * uScale); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+/** A particle: a soft dot, a ring, or a little square. */
+const PT_FRAG = `varying float vA; varying float vS; varying vec3 vC;
+void main() {
+  vec2 p = gl_PointCoord - 0.5; float d = length(p), a;
+  if (vS < 0.5) a = smoothstep(0.5, 0.12, d);
+  else if (vS < 1.5) a = smoothstep(0.5, 0.42, d) * smoothstep(0.26, 0.36, d) + 0.12 * smoothstep(0.5, 0.0, d);
+  else a = step(abs(p.x), 0.42) * step(abs(p.y), 0.26);
+  gl_FragColor = vec4(vC, a * vA);
+  #include <colorspace_fragment>
+}`;
+const POST_VERT = `varying vec2 vUv;
+void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+/** Over the whole picture: vignette 1, an old screen 2, pixels 3, black and white 4, dreamy 5. */
+const POST_FRAG = `uniform sampler2D tDiffuse; uniform vec2 uRes; uniform int uKind;
+varying vec2 vUv;
+void main() {
+  vec2 uv = vUv;
+  if (uKind == 3) { vec2 px = vec2(6.0) / uRes; uv = (floor(uv / px) + 0.5) * px; }
+  if (uKind == 2) { vec2 c = uv - 0.5; uv = 0.5 + c * (1.0 + 0.08 * dot(c, c)); }
+  vec4 col = texture2D(tDiffuse, uv);
+  if (uKind == 2) {
+    col.r = texture2D(tDiffuse, uv + vec2(1.5 / uRes.x, 0.0)).r;
+    col.b = texture2D(tDiffuse, uv - vec2(1.5 / uRes.x, 0.0)).b;
+    col.rgb *= 0.86 + 0.14 * sin(uv.y * uRes.y * 1.5708);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) col = vec4(0.0, 0.0, 0.0, 1.0);
+  }
+  if (uKind == 4) col.rgb = vec3(dot(col.rgb, vec3(0.2126, 0.7152, 0.0722)));
+  if (uKind == 5) {
+    vec4 b = vec4(0.0);
+    for (int x = -2; x <= 2; x++) for (int y = -2; y <= 2; y++) b += texture2D(tDiffuse, uv + vec2(float(x), float(y)) * 2.5 / uRes);
+    b /= 25.0;
+    col.rgb = mix(col.rgb, b.rgb, 0.45) + b.rgb * 0.22;
+    float l = dot(col.rgb, vec3(0.3333));
+    col.rgb = mix(vec3(l), col.rgb, 1.25);
+  }
+  if (uKind == 1 || uKind == 2 || uKind == 5) { float d = distance(vUv, vec2(0.5)); col.rgb *= 1.0 - smoothstep(0.45, 0.85, d) * (uKind == 1 ? 0.75 : 0.5); }
+  gl_FragColor = vec4(col.rgb, 1.0);
+  #include <colorspace_fragment>
+}`;
 
 /* ---------------------------------------------------------------- the view */
 
@@ -104,6 +161,8 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const [editor, setEditor] = useState(false);
   const [saved, setSaved] = useState(false);
   const [paused, setPaused] = useState(false);
+  // The music for the game's mood, while it plays with the sound on (and is on the screen).
+  const mood = spec.music.mood, tempo = spec.music.tempo, volume = spec.music.volume, seed = spec.seed;
   const soundRef = useRef(true);
   soundRef.current = sound;
 
@@ -111,10 +170,15 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
 
   // What a touch screen needs: the controls the game's things use.
   const controls = new Set(spec.things.map((t) => t.control));
-  // A joint's motor on a key (a flipper) needs that key's button too.
-  const motorKeys = new Set(spec.joints.flatMap((j) => (j.motor?.key ? [j.motor.key] : [])));
-  const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay") || motorKeys.has("ArrowLeft") || motorKeys.has("ArrowRight");
-  const needsUpDown = controls.has("fourWay") || motorKeys.has("ArrowUp") || motorKeys.has("ArrowDown");
+  // A joint's motor on a key (a flipper), and a rule's key (a rhythm game's arrows), need that key's button too.
+  const motorKeys = new Set([
+    ...spec.joints.flatMap((j) => (j.motor?.key ? [j.motor.key] : [])),
+    ...spec.rules.flatMap((r) => (r.when.on === "key" || r.when.on === "press" ? [r.when.key] : [])),
+  ]);
+  const needsArrows = controls.has("leftRight") || controls.has("platform") || controls.has("fourWay") || controls.has("car") || motorKeys.has("ArrowLeft") || motorKeys.has("ArrowRight");
+  const needsUpDown = controls.has("fourWay") || controls.has("car") || motorKeys.has("ArrowUp") || motorKeys.has("ArrowDown");
+  // A game seen in 3D: its scene (set once three.js has loaded), for finding a tap on its ground.
+  const view3d = useRef<Scene3D | null>(null);
   const needsJump = controls.has("platform") || motorKeys.has("Space");
 
   useEffect(() => {
@@ -167,6 +231,16 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         return tx;
       };
       const meshes = new Map<number, T.Mesh>();
+      // A thing's look with an effect: its own shader (a glow drawn in a bigger square round it).
+      const glowColour = new THREE.Color(cssColour(probe, colours.accent ?? "#f59e0b"));
+      const materialOf = (b: Body, map: T.Texture): T.Material => {
+        const fx = b.thing.fx;
+        if (!fx) return new THREE.MeshBasicMaterial({ map, transparent: true, side: THREE.DoubleSide });
+        return new THREE.ShaderMaterial({
+          uniforms: { map: { value: map }, uTime: { value: 0 }, uKind: { value: GAME_FX.indexOf(fx) }, uPad: { value: fx === "glow" ? 1.5 : 1 }, uGlow: { value: glowColour } },
+          vertexShader: FX_VERT, fragmentShader: FX_FRAG, transparent: true, side: THREE.DoubleSide,
+        });
+      };
       const loader = new THREE.TextureLoader();
       loader.setCrossOrigin("anonymous");
       const sheets = new Map<string, T.Texture>();
@@ -258,9 +332,56 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         scene.add(m);
         return m;
       });
+      /* ---- particles: points on the graphics card, worked out in gameParticles.ts */
+      const parts = newParticles(1500);
+      const pGeo = new THREE.BufferGeometry();
+      pGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(parts.max * 3), 3));
+      pGeo.setAttribute("tint", new THREE.BufferAttribute(new Float32Array(parts.max * 3), 3));
+      for (const a of ["size", "alpha", "shape"]) pGeo.setAttribute(a, new THREE.BufferAttribute(new Float32Array(parts.max), 1));
+      const pMat = new THREE.ShaderMaterial({ uniforms: { uScale: { value: 1 } }, vertexShader: PT_VERT, fragmentShader: PT_FRAG, transparent: true, depthTest: false, depthWrite: false });
+      const points = new THREE.Points(pGeo, pMat);
+      points.frustumCulled = false;
+      points.renderOrder = 12;
+      scene.add(points);
+      const tints = new Map<string, T.Color>();
+      const tintOf = (c: string) => { let t = tints.get(c); if (!t) { t = new THREE.Color(cssColour(probe, c)); tints.set(c, t); } return t; };
+      const drawParticles = (s: GameState) => {
+        const n = parts.list.length, t = performance.now() / 1000;
+        const pos = pGeo.getAttribute("position") as T.BufferAttribute, tint = pGeo.getAttribute("tint") as T.BufferAttribute;
+        const size = pGeo.getAttribute("size") as T.BufferAttribute, alpha = pGeo.getAttribute("alpha") as T.BufferAttribute, shape = pGeo.getAttribute("shape") as T.BufferAttribute;
+        parts.list.forEach((q, i) => {
+          const [x, y] = placeOf(q, s.cx, s.cy), c = tintOf(q.color);
+          pos.setXYZ(i, x, y, 0.7); tint.setXYZ(i, c.r, c.g, c.b);
+          size.setX(i, q.size); alpha.setX(i, alphaOf(q, t)); shape.setX(i, q.shape);
+        });
+        for (const a of [pos, tint, size, alpha, shape]) a.needsUpdate = true;
+        pGeo.setDrawRange(0, n);
+        pMat.uniforms.uScale.value = renderer.domElement.width / spec.w;
+      };
+
+      /* ---- the effect over the whole picture */
+      const post = spec.post ? (() => {
+        const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+        const material = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: rt.texture }, uRes: { value: new THREE.Vector2(1, 1) }, uKind: { value: GAME_POST.indexOf(spec.post) } }, vertexShader: POST_VERT, fragmentShader: POST_FRAG, depthTest: false, depthWrite: false });
+        const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+        const scene2 = new THREE.Scene();
+        scene2.add(quad);
+        return { rt, material, quad, scene: scene2, camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
+      })() : null;
+
+      // Seen in 3D: its own scene, camera, light and shadows draw it.
+      const v3 = spec.view3d.mode ? scene3d({ THREE, renderer, spec, colours, css: (c) => cssColour(probe, c), font, rtl, lessMotion, sound: () => soundRef.current, parts }) : null;
+      view3d.current = v3;
+
       const resize = () => {
         const r = el.getBoundingClientRect();
         renderer.setSize(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.width * (spec.h / spec.w))), false);
+        v3?.resize(r.width, r.width * (spec.h / spec.w));
+        if (post) {
+          const v = renderer.getDrawingBufferSize(new THREE.Vector2());
+          post.rt.setSize(v.x, v.y);
+          (post.material.uniforms.uRes.value as T.Vector2).copy(v);
+        }
       };
       resize();
       const ro = new ResizeObserver(resize);
@@ -279,7 +400,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           if (!m) {
             // A sprite shares its sheet; its own square's corners pick its frame.
             const sprite = look.kind === "sprite" && look.src;
-            m = new THREE.Mesh(sprite ? new THREE.PlaneGeometry(1, 1) : square, new THREE.MeshBasicMaterial({ map: sprite ? sheetOf(look.src!) : textureOf(b), transparent: true, side: THREE.DoubleSide }));
+            m = new THREE.Mesh(sprite ? new THREE.PlaneGeometry(1, 1) : square, materialOf(b, sprite ? sheetOf(look.src!) : textureOf(b)));
             scene.add(m);
             meshes.set(b.n, m);
           }
@@ -297,24 +418,24 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
             sy *= k; sx /= Math.sqrt(k); y += (b.h - sy) / 2;
             sx *= b.face;
           }
+          if (b.thing.fx === "glow") { sx *= 1.5; sy *= 1.5; }
+          else if (b.thing.fx === "pulse" && !lessMotion()) { const k = 1 + Math.sin(performance.now() / 160) * 0.06; sx *= k; sy *= k; }
+          if (b.thing.fx) ((m.material as T.ShaderMaterial).uniforms.uTime.value = performance.now() / 1000);
+          // Flashed a moment ago: bigger and brighter, fading back.
+          const lit = Math.max(0, 1 - (s.t - b.flash) / 0.25);
+          if (lit) { sx *= 1 + 0.15 * lit; sy *= 1 + 0.15 * lit; }
+          if (!b.thing.fx) (m.material as T.MeshBasicMaterial).color.setScalar(1 + 0.9 * lit);
           m.position.set(b.x, y, i * 0.001);
           m.scale.set(sx, sy, 1);
           m.rotation.z = b.rot;
         });
         for (const [n, m] of meshes) if (!alive.has(n)) { scene.remove(m); (m.material as T.Material).dispose(); if (m.geometry !== square) m.geometry.dispose(); meshes.delete(n); }
         for (const e of s.effects.splice(0)) {
-          if (e.kind === "sound") { if (soundRef.current) beep(e.sound); }
-          else if (e.kind === "burst") {
-            const colour = new THREE.Color(cssColour(probe, colours[e.color] ?? e.color));
-            for (let k = 0; k < (lessMotion() ? 5 : 14); k++) {
-              const a = (k / 14) * Math.PI * 2 + Math.random() * 0.4, v = 160 + Math.random() * 260;
-              const m = new THREE.Mesh(square, new THREE.MeshBasicMaterial({ color: colour, transparent: true }));
-              m.position.set(e.x, e.y, 0.5);
-              m.scale.set(8, 8, 1);
-              scene.add(m);
-              sparks.push({ m, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.6 });
-            }
-          } else if (e.kind === "alert") {
+          if (e.kind === "sound") { if (soundRef.current) playSound(e.sound, e.x, s.cx, spec.w); }
+          else if (e.kind === "note") { if (soundRef.current) playNote(e.instrument, e.freq, e.x, s.cx, spec.w); }
+          else if (e.kind === "burst") burst(parts, e.x, e.y, colours[e.color] ?? e.color, lessMotion());
+          else if (e.kind === "confetti") confetti(parts, s.cx, s.cy, spec.w, lessMotion());
+          else if (e.kind === "alert") {
             // A guard has seen the player: a ❗ that rises over it and fades.
             if (!alertTx) {
               alertTx = new THREE.CanvasTexture(lookCanvas({ kind: "emoji", emoji: "❗", color: "accent" }, 32, 32, "#e11d48", font, rtl, () => { if (alertTx) alertTx.needsUpdate = true; }));
@@ -344,10 +465,17 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           pos.needsUpdate = true;
         }
         placeLayers(s.cx, s.cy);
-        renderer.render(scene, camera);
+        drawParticles(s);
+        if (post) {
+          // The world drawn to a texture, then the whole picture through its effect.
+          renderer.setRenderTarget(post.rt);
+          renderer.render(scene, camera);
+          renderer.setRenderTarget(null);
+          renderer.render(post.scene, post.camera);
+        } else renderer.render(scene, camera);
       };
 
-      let last = performance.now(), acc = 0, shown = "", wasResting = false, covered = "";
+      let last = performance.now(), acc = 0, shown = "", wasResting = false, covered = "", partied = false, modelsShown = 0;
       const ink = colours.text ?? "#111";
       // Less motion asked for: the cover only fades.
       const coverKind = lessMotion() && spec.transition !== "none" ? "fade" : spec.transition;
@@ -379,7 +507,16 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
           (p.m.material as T.MeshBasicMaterial).opacity = Math.max(0, p.life / 0.6);
           if (p.life <= 0) { scene.remove(p.m); (p.m.material as T.Material).dispose(); sparks.splice(i, 1); }
         }
-        if (running || sparks.length || shown !== s.phase) draw(s);
+        // Particles go on a little after the game ends (a win's confetti).
+        if (s.phase === "won" && !partied) { partied = true; confetti(parts, s.cx, s.cy, spec.w, lessMotion()); }
+        if (s.phase === "playing") partied = false;
+        if (running || parts.list.length) stepParticles(parts, s, dt, lessMotion());
+        // A model that has come in is shown even before the game starts.
+        const models = v3?.models() ?? 0;
+        if (models !== modelsShown) { modelsShown = models; el.dataset.ptGameModels = String(models); }
+        if (running || sparks.length || parts.list.length || shown !== s.phase || (v3 && models !== Number(el.dataset.ptGameDrawn ?? -1))) {
+          if (v3) { v3.draw(s, now); el.dataset.ptGameDrawn = String(models); } else draw(s);
+        }
         // The cover between levels, set straight on its element (each frame, no React).
         const c = coverOf(s), css = coverCss(coverKind, c.k, c.closing, ink);
         if (css !== covered && cover.current) { covered = css; cover.current.style.cssText = css; }
@@ -387,7 +524,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         const key = JSON.stringify(next);
         if (key !== shown) { shown = key; setHud(next); }
       };
-      draw(game.current!);
+      if (v3) v3.draw(game.current!, performance.now()); else draw(game.current!);
       frame = requestAnimationFrame(loop);
       cleanup = () => {
         cancelAnimationFrame(frame);
@@ -400,10 +537,15 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
         for (const t of tileTextures) t?.dispose();
         alertTx?.dispose();
         dotTx.dispose();
+        pGeo.dispose();
+        pMat.dispose();
+        if (post) { post.rt.dispose(); post.material.dispose(); post.quad.geometry.dispose(); }
         strings.geometry.dispose();
         (strings.material as T.Material).dispose();
         for (const m of dots) (m.material as T.Material).dispose();
         endGame(game.current!);
+        v3?.dispose();
+        view3d.current = null;
         for (const m of tileMeshes) m.dispose();
         for (const { tx, m } of layers) { tx.dispose(); (m.material as T.Material).dispose(); }
         square.dispose();
@@ -447,6 +589,9 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
   const toWorld = (e: RPointerEvent) => {
     const r = canvas.current!.getBoundingClientRect();
     const s = game.current!;
+    // In 3D: where the pointer's ray meets the ground (or the wall).
+    const p3 = view3d.current?.toWorld(e.clientX, e.clientY, r);
+    if (p3) return p3;
     return { x: s.cx + ((e.clientX - r.left) / r.width) * spec.w, y: s.cy + ((e.clientY - r.top) / r.height) * spec.h };
   };
   const onDown = (e: RPointerEvent) => {
@@ -466,9 +611,16 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
     startGame(s);
     setSaved(false);
     setHud({ phase: s.phase, score: s.score, lives: s.lives, time: timeLeft(s), level: s.level + 1 });
-    if (soundRef.current) beep("click");
+    if (soundRef.current) playSound("click");
     host.current?.focus({ preventScroll: true });
   }, [physReady]);
+
+  useEffect(() => {
+    if (!mood || hud.phase !== "playing" || !sound || paused) return;
+    const music = new Music();
+    music.start(mood, tempo, seed, volume, game.current?.t ?? 0);
+    return () => music.stop();
+  }, [mood, tempo, volume, seed, hud.phase, sound, paused]);
 
   // Won: the prize, and its code for the bag.
   useEffect(() => {
@@ -496,6 +648,7 @@ export function GameView({ id, spec, colours, words, prizeWords, rtl }: GameView
       data-pt-game-phase={hud.phase}
       data-pt-game-score={hud.score}
       data-pt-game-lives={hud.lives}
+      {...(spec.view3d.mode ? { "data-pt-game-3d": spec.view3d.mode } : {})}
       {...(hud.time !== null ? { "data-pt-game-time": hud.time } : {})}
       {...(levels > 1 ? { "data-pt-game-level": hud.level } : {})}
     >

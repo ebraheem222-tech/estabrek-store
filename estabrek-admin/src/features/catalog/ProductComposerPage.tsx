@@ -30,6 +30,7 @@ import { missingRequired, tidyAttributes } from "./types/typeText";
 import { PhotoColorsSection } from "./composer/PhotoColorsSection";
 import { SizesStockSection } from "./composer/SizesStockSection";
 import { SpinSection } from "./composer/SpinSection";
+import { WallBlock } from "./composer/WallBlock";
 import { Chip, Section, Swatch, Toggle } from "./composer/ui";
 import { fieldCls } from "./composer/styles";
 import { GooglePreview } from "../settings/settingsCentre";
@@ -507,6 +508,7 @@ export default function ProductComposerPage() {
 
             <SizesStockSection draft={draft} update={update} sizes={sizes} onCreateSize={onCreateSize} error={errors.sizes || errors.skus} badSkus={badSkus} />
             <SpinSection draft={draft} step={5} />
+            <WallBlock draft={draft} update={update} step={6} sizeNames={draft.sizeIds.map((id) => sizes.find((s) => s.id === id)?.name ?? "").filter(Boolean)} />
 
             <Advanced draft={draft} update={update} />
             <SearchEngine draft={draft} update={update} />

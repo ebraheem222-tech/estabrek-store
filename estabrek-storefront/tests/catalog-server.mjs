@@ -131,6 +131,8 @@ let commerceCms = false;
 let invalidCommerceCart = false;
 let legacyCommerceCart = false;
 let visualPageProps = {}, visualShopProps = {};
+/** The first product's colours as written here (see /__test/wall). */
+let wallItems = null;
 function commercePage(kind) {
   const part = type => ({ id: `fixture-${type}`, type, props: {} });
   const children = kind === "shop" ? [{ ...part("shop"), props: { columns: 3, mobileColumns: 1, showFilters: true, showSearch: true } }]
@@ -945,6 +947,30 @@ http
           // A second photo of its own for the first product: the effect has to follow the photo chosen.
           if (data.ownPictures === true && p.id === "coat") p.images = [{ url: "/editorial/hijab-campaign.webp", isPrimary: true, ...(data.depth ? { depthUrl: data.depth } : {}) }, { url: "/editorial/scarves.webp" }];
           else delete p.images;
+        }
+        res.end("{}");
+      });
+      return;
+    }
+    // «شوفها على حيطك» (wall-view.spec.ts): the first product as a piece for a wall ({ on: true }), its sizes named by
+    // their size too ({ sized: true }: Berry in 50×70 and 70×100); {} puts it back.
+    if (pathname === "/__test/wall" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        const p = products[0];
+        wallItems ??= JSON.stringify(p.items);
+        p.items = JSON.parse(wallItems);
+        // Its picture from the shop's own address, so the page may read it (the camera's file is made from it).
+        if (!productPictures.has(p.id)) productPictures.set(p.id, p.primaryImageUrl);
+        p.primaryImageUrl = data.on ? "/editorial/hijab-campaign.webp" : productPictures.get(p.id);
+        if (data.on) Object.assign(p, { wallWidthCm: 50, wallHeightCm: 70, wallFrame: data.frame ?? "wood" });
+        else { delete p.wallWidthCm; delete p.wallHeightCm; delete p.wallFrame; }
+        if (data.sized) {
+          const berry = p.items.find((it) => it.id === "berry");
+          berry.variants[0].size = { id: "m", name: "50×70" };
+          berry.variants[1].size = { id: "l", name: "70×100" };
         }
         res.end("{}");
       });

@@ -27,6 +27,8 @@ export const WHEN_NAMES = {
   shot: "لما ينضرب شي بالمقلاع|When a thing is slung|כשדבר נורה בקלע",
   rest: "لما يوقف بعد ما انضرب|When a slung thing comes to rest|כשדבר שנורה נעצר",
   break: "لما ينكسر مفصل شي|When a thing's joint breaks|כשמפרק של דבר נשבר",
+  beat: "عالإيقاع|On the beat|לפי הקצב",
+  press: "لما ينكبس زر وشي بيلمس شي|When a key is pressed as one thing touches another|כשנלחץ מקש בזמן שדבר נוגע בדבר",
 } as const;
 export const ACT_NAMES = {
   spawn: "اعمل نسخة من|Make a copy of|צרו עותק של",
@@ -45,7 +47,18 @@ export const ACT_NAMES = {
   home: "رجّعه لمكانه|Back where it started|חזרה למקום ההתחלה",
   explode: "انفجار بيدفع اللي حواليه|An explosion that pushes all round|פיצוץ שדוחף מסביב",
   cut: "فكّ مفاصله|Let go of its joints|שחררו את המפרקים שלו",
+  note: "نغمة على آلة|A note on an instrument|צליל בכלי נגינה",
+  confetti: "قصاقيص ملوّنة|Confetti|קונפטי",
+  flash: "خلّيه يلمع|Light it up|הדליקו אותו",
 } as const;
+/* G3: effects and sound. */
+export const TRAIL_NAMES = { "": "ولا إشي|Nothing|כלום", sparkle: "لمعة|Sparkles|ניצוצות", smoke: "دخان|Smoke|עשן", fire: "نار|Fire|אש", bubbles: "فقاقيع|Bubbles|בועות" } as const;
+export const FX_NAMES = { "": "ولا إشي|Nothing|כלום", glow: "توهّج|Glow|זוהר", pulse: "نبض|Pulse|פעימה", wobble: "تموّج|Wobble|רעידה", rainbow: "قوس قزح|Rainbow|קשת" } as const;
+export const WEATHER_NAMES = { "": "صافي|Clear|בהיר", snow: "تلج|Snow|שלג", rain: "شتي|Rain|גשם", stars: "نجوم بتلمع|Twinkling stars|כוכבים מנצנצים", leaves: "ورق شجر|Falling leaves|עלים נושרים", bubbles: "فقاقيع طالعة|Rising bubbles|בועות עולות" } as const;
+export const POST_NAMES = { "": "ولا إشي|Nothing|כלום", vignette: "إطار معتّم|Vignette|וינייטה", crt: "شاشة قديمة|An old screen|מסך ישן", pixel: "بكسلات|Pixels|פיקסלים", mono: "أبيض وأسود|Black and white|שחור־לבן", dream: "حالم|Dreamy|חלומי" } as const;
+export const MOOD_NAMES = { "": "بلا موسيقى|No music|בלי מוזיקה", lively: "حيوية|Lively|עליזה", calm: "هادية|Calm|רגועה", spooky: "مخيفة|Spooky|מפחידה", arcade: "ألعاب قديمة|Arcade|ארקייד" } as const;
+export const INSTRUMENT_NAMES = { piano: "بيانو|Piano|פסנתר", bell: "جرس|Bell|פעמון", pluck: "أوتار|Pluck|מיתר", bass: "باص|Bass|בס", drum: "طبل|Drum|תוף" } as const;
+export const SCALE_NAMES = { pentatonic: "خماسي|Pentatonic|פנטטוני", major: "كبير|Major|מז'ור", minor: "صغير|Minor|מינור", blues: "بلوز|Blues|בלוז" } as const;
 /** How two things are joined (G2b). */
 export const JOINT_NAMES = {
   pin: "مسمار: بيدور حواليه|A pin: turns about it|ציר: מסתובב סביבו",
@@ -58,6 +71,7 @@ export const SPOT_NAMES = {
   top: "من فوق|From the top|מלמעלה", bottom: "من تحت|From the bottom|מלמטה", left: "من الشمال|From the left|משמאל", right: "من اليمين|From the right|מימין",
   random: "بأي مكان|Anywhere|בכל מקום", floorRight: "عالأرض من اليمين|On the floor, from the right|על הרצפה, מימין", floorLeft: "عالأرض من الشمال|On the floor, from the left|על הרצפה, משמאל",
   self: "مكان الأول|Where the first one is|איפה שהראשון", other: "مكان التاني|Where the second one is|איפה שהשני", center: "بالنص|In the middle|באמצע",
+  own: "مكانه هو (وين حطّيتيه)|Where it was put|איפה שהוא הונח",
 } as const;
 export const BODY_NAMES = { none: "بلا جسم|No body|בלי גוף", static: "ثابت|Fixed|קבוע", dynamic: "بيوقع ويندفع|Falls and is pushed|נופל ונדחף", kinematic: "بيمشي بسرعته|Moves by its speed|זז במהירותו", rigid: "جسم حقيقي: بيوقع وبيدور وبينكوّم|Rigid: falls, tumbles and stacks|קשיח: נופל, מתגלגל ונערם" } as const;
 /** A rigid thing's shapes: its box, a circle, and convex shapes made of points in the box (-0.5…0.5). */
@@ -75,7 +89,12 @@ export function shapePick(thing: Obj): string {
   const pts = JSON.stringify(thing.points);
   return SHAPE_PICKS.find(([, , p]) => p && JSON.stringify(p) === pts)?.[0] ?? "poly";
 }
-export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו" } as const;
+export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר", sling: "مقلاع: اسحبه لورا وفلّته|A sling: pull it back and let go|קלע: משכו אחורה ושחררו", car: "سيارة: لفوق بتمشي، ويمين وشمال بتلف|A car: up drives, left and right turn|מכונית: למעלה נוסעת, ימינה ושמאלה פונה" } as const;
+/* G4a: the 3D view. */
+export const VIEW3D_NAMES = { "": "مسطّح (2D)|Flat (2D)|שטוח (2D)", ground: "عالأرض بالـ 3D (من فوق ولقدّام)|On the ground in 3D (seen from above and ahead)|על הקרקע בתלת־ממד", wall: "واقف بالـ 3D (من جنب، بعمق)|Standing in 3D (from the side, with depth)|עומד בתלת־ממד (מהצד, עם עומק)" } as const;
+export const CAMERA3D_NAMES = { follow: "بتلحق اللاعب|Follows the player|עוקבת אחרי השחקן", top: "من فوق|From the top|מלמעלה", angle: "من زاوية|At an angle|בזווית", fixed: "ثابتة عالعالم كله|Still, over the whole world|קבועה על כל העולם" } as const;
+export const LIGHT3D_NAMES = { day: "نهار|Day|יום", sunset: "غروب|Sunset|שקיעה", night: "ليل|Night|לילה", studio: "ستوديو|Studio|סטודיו" } as const;
+export const SHAPE3D_NAMES = { auto: "من شكله|From its look|לפי המראה", box: "مكعّب|Box|קובייה", ball: "كرة|Ball|כדור", cylinder: "أسطوانة|Cylinder|גליל", cone: "مخروط|Cone|חרוט", card: "صورة بتطلّع عالكاميرا|A picture facing the camera|תמונה מול המצלמה", model: "موديل GLB|A GLB model|מודל GLB" } as const;
 export const BEHAVE_NAMES = {
   none: "ولا إشي|Nothing|כלום", patrol: "رايح جاي|Back and forth|הלוך ושוב", chase: "بيلحق اللاعب|Chases the player|רודף אחרי השחקן", wander: "بيتجوّل|Wanders|משוטט", spin: "بيدور|Spins|מסתובב",
   guard: "حارس: بيدوّر، وإذا شافك بيلحقك|A guard: goes round, chases you once it sees you|שומר: מסתובב, ורודף כשהוא רואה אתכם",
@@ -85,7 +104,10 @@ export const BEHAVE_NAMES = {
 } as const;
 export const TRANSITION_NAMES = { circle: "دائرة بتسكّر وبتفتح|A circle closing and opening|עיגול שנסגר ונפתח", wipe: "مسحة من جنب لجنب|A wipe across|מחיקה מצד לצד", fade: "تلاشي|A fade|דהייה", none: "على طول|At once|מיד" } as const;
 export const EDGE_NAMES = { walls: "حيطان من كل الجهات|Walls all round|קירות מכל הצדדים", sides: "حيطان إلا تحت|Walls but the bottom|קירות חוץ מלמטה", floor: "أرض بس|A floor only|רק רצפה", open: "مفتوح|Open|פתוח" } as const;
-export const SOUND_NAMES = { click: "كبسة|Click|קליק", pop: "فقعة|Pop|פופ", chime: "رنّة|Chime|צלצול", whoosh: "ووش|Whoosh|ווש", success: "نجاح|Success|הצלחה", hit: "ضربة|Hit|מכה" } as const;
+export const SOUND_NAMES = {
+  click: "كبسة|Click|קליק", pop: "فقعة|Pop|פופ", chime: "رنّة|Chime|צלצול", whoosh: "ووش|Whoosh|ווש", success: "نجاح|Success|הצלחה", hit: "ضربة|Hit|מכה",
+  coin: "عملة|Coin|מטבע", jump: "نطّة|Jump|קפיצה", laser: "ليزر|Laser|לייזר", boom: "بوم|Boom|בום", power: "قوّة|Power-up|כוח", blip: "بيب|Blip|ביפ",
+} as const;
 export const KEY_NAMES = { Space: "المسافة|Space|רווח", Enter: "Enter|Enter|Enter", ArrowUp: "⬆|⬆|⬆", ArrowDown: "⬇|⬇|⬇", ArrowLeft: "⬅|⬅|⬅", ArrowRight: "➡|➡|➡" } as const;
 export const SIZES: Array<[number, number, string]> = [
   [960, 540, "عريض 16:9|Wide 16:9|רחב 16:9"], [800, 600, "4:3|4:3|4:3"], [640, 640, "مربّع|Square|ריבוע"], [540, 960, "طولي للموبايل|Tall, for phones|גבוה, לטלפון"],
@@ -157,6 +179,8 @@ export function newWhen(on: keyof typeof WHEN_NAMES, game: Obj): Obj {
     case "score": return { on, at: 10 };
     case "time": return { on, at: 10 };
     case "see": return { on, a: who, b: whoOptions(game)[1]?.[0] ?? who };
+    case "beat": return { on, every: 1, offset: 0 };
+    case "press": return { on, key: "Space", a: who, b: whoOptions(game)[1]?.[0] ?? who };
     case "level": return { on, at: 0 };
     default: return { on: "start" };
   }
@@ -172,8 +196,9 @@ export function newAct(act: keyof typeof ACT_NAMES, game: Obj): Obj {
     case "faster": return { act, by: 1.2 };
     case "sound": return { act, kind: "pop" };
     case "burst": return { act, who: "self" };
-    case "home": case "cut": return { act, who: "self" };
+    case "home": case "cut": case "flash": return { act, who: "self" };
     case "explode": return { act, who: "self", radius: 160, power: 900 };
+    case "note": return { act, instrument: "bell", scale: "pentatonic", step: -1 };
     default: return { act };
   }
 }
@@ -196,6 +221,8 @@ export function ruleText(rule: Obj): string {
       case "see": return say(`لما ${n(w.a)} يشوف ${n(w.b)}|When ${n(w.a)} sees ${n(w.b)}|כש־${n(w.a)} רואה את ${n(w.b)}`);
       case "shot": return say(`لما ينضرب ${n(w.who)}|When ${n(w.who)} is slung|כש־${n(w.who)} נורה`);
       case "rest": return say(`لما يوقف ${n(w.who)}|When ${n(w.who)} comes to rest|כש־${n(w.who)} נעצר`);
+      case "beat": return say(`كل ${n(w.every)} نبضة|Every ${n(w.every)} beats|כל ${n(w.every)} פעימות`) + (Number(w.offset) ? say(` (من ${n(w.offset)})| (from ${n(w.offset)})| (מ־${n(w.offset)})`) : "");
+      case "press": return say(`لما ينكبس ${say(KEY_NAMES[w.key as keyof typeof KEY_NAMES] ?? n(w.key))} و${n(w.a)} بيلمس ${n(w.b)}|When ${n(w.key)} is pressed as ${n(w.a)} touches ${n(w.b)}|כשנלחץ ${n(w.key)} בזמן ש־${n(w.a)} נוגע ב־${n(w.b)}`);
       case "break": return say(`لما ينكسر مفصل ${n(w.who)}|When ${n(w.who)}'s joint breaks|כשמפרק של ${n(w.who)} נשבר`);
       case "level": return Number(w.at) ? say(`لما تبلّش المرحلة ${n(w.at)}|When level ${n(w.at)} begins|כששלב ${n(w.at)} מתחיל`) : say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל");
       default: return say(WHEN_NAMES.start);
@@ -209,6 +236,7 @@ export function ruleText(rule: Obj): string {
       case "lives": return `${Number(a.add) >= 0 ? "+" : ""}${n(a.add)} ${say("أرواح|lives|חיים")}`;
       case "faster": return `${say("أسرع|faster|מהר יותר")} ×${n(a.by)}`;
       case "sound": return `${say("صوت|sound|צליל")} ${say(SOUND_NAMES[a.kind as keyof typeof SOUND_NAMES] ?? n(a.kind))}`;
+      case "note": return `${say("نغمة|a note|צליל")} ${say(INSTRUMENT_NAMES[a.instrument as keyof typeof INSTRUMENT_NAMES] ?? n(a.instrument))}`;
       default: return say(ACT_NAMES[a.act as keyof typeof ACT_NAMES] ?? n(a.act));
     }
   });

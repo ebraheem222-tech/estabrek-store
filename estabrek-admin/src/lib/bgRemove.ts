@@ -85,6 +85,13 @@ async function loadPicture(source: CutoutSource, maxSide: number, size?: { w: nu
   return { image: g.getImageData(0, 0, w, h), bitmap: c.transferToImageBitmap() };
 }
 
+/** The picture alone, nothing kept yet (for «قصّ بكبسة»: the owner clicks what to keep, no background model). */
+export async function pictureOnly(source: CutoutSource, maxSide = 4096): Promise<Cutout> {
+  const { image, bitmap } = await loadPicture(source, maxSide);
+  bitmap.close();
+  return { width: image.width, height: image.height, image, mask: new Uint8ClampedArray(image.width * image.height), engine: "wasm" };
+}
+
 /* ------------------------------------------------------------------ this device */
 
 const GPU_FAILED_KEY = "bg-remove:webgpu-failed";

@@ -355,6 +355,104 @@ const PINBALL: Raw = {
   words: words(w("كرة الدبابيس", "Pinball", "פינבול"), w("السهم الشمال والسهم اليمين (أو الأزرار تحت) بيرفعوا المضارب. خلّي الطابة فوق: كل صدّام بيعطيك 10، وعندك تلات طابات.", "The left and right arrows (or the buttons below) lift the flippers. Keep the ball up: each bumper gives 10, and you have three balls.", "החצים שמאלה וימינה (או הכפתורים למטה) מרימים את המחבטים. השאירו את הכדור למעלה: כל פגוש נותן 10, ויש לכם שלושה כדורים.")),
 };
 
+/** Night stars (G3): a glowing basket catches falling stars that sparkle, each one a bell's note up the scale (the
+ *  catching makes its own tune); comets trailing fire take a life; calm music, twinkling stars, a vignette, confetti. */
+const NIGHT: Raw = {
+  w: 960, h: 540, bg: "deep", edges: "open", lives: 3, winScore: 20, seed: 191,
+  weather: "stars", post: "vignette", music: { mood: "calm", tempo: 84, volume: 0.5 },
+  things: [
+    { id: "basket", look: emoji("🧺"), x: 480, y: 470, w: 90, h: 80, body: "kinematic", control: "leftRight", speed: 560, keepIn: true, fx: "glow", tags: ["player"] },
+    { id: "star", look: emoji("⭐"), x: 0, y: 0, w: 46, h: 46, body: "kinematic", vy: 210, template: true, behave: "spin", trail: "sparkle", tags: ["good"] },
+    { id: "comet", look: emoji("☄️"), x: 0, y: 0, w: 52, h: 52, body: "kinematic", vy: 300, template: true, trail: "fire", tags: ["bad"] },
+  ],
+  rules: [
+    { when: { on: "every", seconds: 0.9 }, do: [{ act: "spawn", what: "star", at: "top" }] },
+    { when: { on: "every", seconds: 2.4 }, do: [{ act: "spawn", what: "comet", at: "top" }] },
+    { when: { on: "hit", a: "#player", b: "#good" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "note", instrument: "bell", scale: "pentatonic", step: -1 }] },
+    { when: { on: "hit", a: "#player", b: "#bad" }, do: [{ act: "destroy", who: "other" }, { act: "lives", add: -1 }, { act: "shake" }, { act: "sound", kind: "boom" }] },
+    { when: { on: "score", at: 10 }, do: [{ act: "faster", by: 1.2 }, { act: "confetti" }, { act: "sound", kind: "power" }] },
+  ],
+  words: words(w("نجوم الليل", "Night stars", "כוכבי לילה"), w("حرّك السلّة ولقّط النجوم: كل نجمة بتعزف نغمة، والمذنّبات بتاخد روح. لمّ عشرين!", "Move the basket and catch the stars: each one plays a note, and comets take a life. Catch twenty!", "הזיזו את הסל ותפסו כוכבים: כל כוכב מנגן צליל, ושביטים לוקחים חיים. תפסו עשרים!")),
+};
+
+/** Beats (G3b): arrows fall in four lanes on the music's beat and reach their bar two beats later, on the beat; the
+ *  arrow key (or a tap on the bar) as one is on its bar plays it; one that falls past takes a life; 45 seconds. */
+const LANES = [["l", "ArrowLeft", "⬅️", 330], ["d", "ArrowDown", "⬇️", 430], ["u", "ArrowUp", "⬆️", 530], ["r", "ArrowRight", "➡️", 630]] as const;
+// Tempo 100: a beat is 0.6 s; an arrow falls 500 px from its lane's top to its bar in two beats.
+const BEATS: Raw = {
+  w: 960, h: 540, bg: "deep", edges: "open", lives: 5, time: 45, timeWins: true, seed: 211,
+  music: { mood: "lively", tempo: 100, volume: 0.6 }, weather: "stars", post: "vignette",
+  things: [
+    ...LANES.map(([k, , , x]) => ({ id: `bar-${k}`, look: { kind: "box", color: "accent" }, x, y: 470, w: 86, h: 22, body: "static", tags: ["bar"] })),
+    ...LANES.map(([k, , e, x]) => ({ id: `arrow-${k}`, look: emoji(e), x, y: -30, w: 56, h: 56, body: "kinematic", vy: 500 / 1.2, template: true, trail: "sparkle", tags: ["arrow", `arrow-${k}`] })),
+  ],
+  rules: [
+    // Each lane its beats: together, a pattern that goes round every eight beats.
+    { when: { on: "beat", every: 2, offset: 0 }, do: [{ act: "spawn", what: "arrow-l", at: "own" }] },
+    { when: { on: "beat", every: 2, offset: 1 }, do: [{ act: "spawn", what: "arrow-r", at: "own" }] },
+    { when: { on: "beat", every: 4, offset: 0.5 }, do: [{ act: "spawn", what: "arrow-u", at: "own" }] },
+    { when: { on: "beat", every: 4, offset: 2.5 }, do: [{ act: "spawn", what: "arrow-d", at: "own" }] },
+    { when: { on: "beat", every: 8, offset: 3 }, do: [{ act: "spawn", what: "arrow-u", at: "own" }] },
+    ...LANES.map(([k, key]) => ({ when: { on: "press", key, a: `bar-${k}`, b: `#arrow-${k}` }, do: [{ act: "destroy", who: "other" }, { act: "burst", who: "other" }, { act: "flash", who: "self" }, { act: "score", add: 1 }, { act: "note", instrument: "pluck", scale: "pentatonic", step: -1 }] })),
+    { when: { on: "out", who: "#arrow" }, do: [{ act: "lives", add: -1 }, { act: "sound", kind: "blip" }] },
+    { when: { on: "score", at: 30 }, do: [{ act: "confetti" }] },
+  ],
+  words: words(w("إيقاع", "Beats", "קצב"), w("الأسهم بتنزل عالإيقاع: اكبس نفس السهم (أو انقر عالخط) لما يكون عالخط. كل سهم بيفلت بياخد روح.", "Arrows fall to the beat: press the same arrow (or tap the bar) while it's on its bar. Each one that slips past takes a life.", "חצים נופלים לפי הקצב: לחצו על אותו חץ (או הקישו על הפס) כשהוא על הפס. כל חץ שמחמיץ לוקח חיים.")),
+};
+
+/** Pads (G3b): eight keys of a pentatonic piano and four drums to tap; each one played lights up and scores. */
+const PADS: Raw = {
+  w: 960, h: 540, bg: "surface", edges: "walls", lives: 0, seed: 223, post: "vignette",
+  things: [
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `key-${i + 1}`, look: { kind: "box", color: i % 2 ? "accent-soft" : "accent" }, x: 165 + i * 90, y: 190, w: 80, h: 200, body: "static", tags: ["key"] })),
+    ...([["kick", "🥁", 0], ["snare", "👏", 3], ["hat", "✨", 6], ["boom", "🔔", 1]] as const).map(([id, e], i) => ({ id, look: emoji(e), x: 255 + i * 150, y: 430, w: 110, h: 110, body: "static", tags: ["drum"] })),
+  ],
+  rules: [
+    ...Array.from({ length: 8 }, (_, i) => ({ when: { on: "tap", who: `key-${i + 1}` }, do: [{ act: "note", instrument: "piano", scale: "pentatonic", step: i + 3 }, { act: "flash", who: "self" }, { act: "score", add: 1 }] })),
+    ...([["kick", 0], ["snare", 3], ["hat", 6], ["boom", 1]] as const).map(([id, step]) => ({ when: { on: "tap", who: id }, do: [{ act: "note", instrument: id === "boom" ? "bell" : "drum", scale: "pentatonic", step }, { act: "flash", who: "self" }, { act: "burst", who: "self" }, { act: "score", add: 1 }] })),
+  ],
+  words: words(w("لوحة العزف", "Music pads", "משטח נגינה"), w("انقر على المفاتيح والطبول واعزف: كل نغمة بتلمع.", "Tap the keys and the drums and play: each note lights up.", "הקישו על הקלידים והתופים ונגנו: כל צליל נדלק.")),
+};
+
+/** Rally (G4a, in 3D): a car on a track round an island, the camera behind it as it turns; fourteen gold coins on the
+ *  way in 75 seconds. Up to go, down to brake and back, left and right to turn. */
+const RALLY_COLS = 30, RALLY_ROWS = 20;
+const rallyMap = (() => {
+  const g = Array.from({ length: RALLY_ROWS }, (_, r) => Array.from({ length: RALLY_COLS }, (_, c): string => (r === 0 || c === 0 || r === RALLY_ROWS - 1 || c === RALLY_COLS - 1 || (r >= 6 && r <= 13 && c >= 7 && c <= 22) ? "#" : ".")));
+  for (const c of [5, 10, 15, 20, 25]) { g[3][c] = "o"; g[16][c] = "o"; }
+  for (const r of [8, 11]) { g[r][3] = "o"; g[r][26] = "o"; }
+  g[15][3] = "P";
+  return g.map((r) => r.join(""));
+})();
+const RALLY: Raw = {
+  w: 960, h: 540, bg: "#5fae63", edges: "walls", gravity: 0, lives: 0, time: 75, winScore: 14, seed: 241,
+  view3d: { mode: "ground", camera: "follow", tilt: 38, distance: 0.9, light: "day", shadows: true },
+  music: { mood: "arcade", tempo: 132, volume: 0.4 },
+  tiles: {
+    size: 60, cols: RALLY_COLS, rows: RALLY_ROWS, map: rallyMap,
+    kinds: {
+      "#": { look: { kind: "box", color: "#e8e2d6" }, solid: true, height: 40 },
+      P: { look: { kind: "box", color: "accent" }, thing: "car" },
+      o: { look: { kind: "circle", color: "#ffc83d" }, thing: "coin" },
+    },
+  },
+  things: [
+    { id: "car", look: { kind: "box", color: "accent" }, x: 210, y: 930, w: 34, h: 58, body: "dynamic", control: "car", speed: 560, bounce: 0.25, trail: "smoke", d3: { shape: "box", height: 24, metal: 0.5, rough: 0.35 }, tags: ["player"] },
+    { id: "coin", look: { kind: "circle", color: "#ffc83d" }, x: 0, y: 0, w: 30, h: 30, body: "none", template: true, fx: "glow", d3: { lift: 12, metal: 0.8, rough: 0.25 }, tags: ["coin"] },
+  ],
+  rules: [
+    { when: { on: "hit", a: "#player", b: "#coin" }, do: [{ act: "burst", who: "other" }, { act: "destroy", who: "other" }, { act: "score", add: 1 }, { act: "sound", kind: "coin" }] },
+  ],
+  words: words(w("رالي", "Rally", "ראלי"), w("السهم لفوق بيمشّي السيارة، لتحت بيفرمل وبيرجّع، ويمين وشمال بيلفّوها. لمّ الأربعطعش عملة قبل ما يخلص الوقت.", "Up drives the car, down brakes and backs it, left and right turn it. Gather the fourteen coins before the time runs out.", "למעלה נוסעת המכונית, למטה בולמת ונוסעת לאחור, ימינה ושמאלה מסובבים. אספו ארבעה־עשר מטבעות לפני שהזמן נגמר.")),
+};
+
+/** Adventure 3D (G4a): the fox's two levels standing up in 3D, the tiles as blocks, in a sunset's light. */
+const ADVENTURE_3D: Raw = {
+  ...ADVENTURE,
+  view3d: { mode: "wall", camera: "follow", tilt: 40, light: "sunset", shadows: true },
+  words: words(w("مغامرة الثعلب 3D", "The fox's adventure in 3D", "ההרפתקה של השועל בתלת־ממד"), w("نفس المغامرة بالـ 3D: الأسهم بتمشّي والمسافة بتنطّ، لمّ الألماس ووصل للعلم بالمرحلتين.", "The same adventure in 3D: arrows to run, Space to jump; gather the gems and reach the flag on both levels.", "אותה הרפתקה בתלת־ממד: חצים לריצה, רווח לקפיצה; אספו יהלומים והגיעו לדגל בשני השלבים.")),
+};
+
 export const READY_GAMES: ReadyGame[] = [
   { key: "catch", name: w("لقّيط", "Catch", "תופס"), line: w("لقّط اللي بيوقع وتفادى النار", "Catch what falls, dodge the fire", "תפסו מה שנופל, התחמקו מהאש"), icon: "🛍️", game: CATCH },
   { key: "dodge", name: w("تفادي", "Dodge", "התחמקות"), line: w("ضلّك عايش للآخر", "Stay alive to the end", "שרדו עד הסוף"), icon: "🚀", game: DODGE },
@@ -366,6 +464,11 @@ export const READY_GAMES: ReadyGame[] = [
   { key: "cans", name: w("علب", "Cans", "פחיות"), line: w("طابة بالمقلاع على برج علب", "A slung ball at a tower of cans", "כדור מקלע אל מגדל פחיות"), icon: "🥫", game: CANS },
   { key: "golf", name: w("ميني غولف", "Mini golf", "מיני גולף"), line: w("تلات حفر وضربات قليلة", "Three holes, as few strokes as you can", "שלוש גומות, כמה שפחות מכות"), icon: "⛳", game: GOLF },
   { key: "pinball", name: w("دبابيس", "Pinball", "פינבול"), line: w("مضارب وصدّامات وطابة ما بتوقع", "Flippers, bumpers and a ball to keep up", "מחבטים, פגושים וכדור שלא ייפול"), icon: "🔴", game: PINBALL },
+  { key: "night", name: w("نجوم الليل", "Night stars", "כוכבי לילה"), line: w("لقّط النجوم وكل وحدة بتعزف", "Catch the stars, each one plays a note", "תפסו כוכבים, כל אחד מנגן"), icon: "🌙", game: NIGHT },
+  { key: "beats", name: w("إيقاع", "Beats", "קצב"), line: w("أسهم بتنزل عالموسيقى", "Arrows that fall to the music", "חצים שנופלים לפי המוזיקה"), icon: "🎵", game: BEATS },
+  { key: "pads", name: w("لوحة العزف", "Music pads", "משטח נגינה"), line: w("مفاتيح وطبول تعزف عليها", "Keys and drums to play", "קלידים ותופים לנגן"), icon: "🎹", game: PADS },
+  { key: "rally", name: w("رالي", "Rally", "ראלי"), line: w("سيارة بالـ 3D حوالين جزيرة", "A 3D car round an island", "מכונית בתלת־ממד סביב אי"), icon: "🏎️", game: RALLY },
+  { key: "adventure3d", name: w("مغامرة 3D", "Adventure 3D", "הרפתקה בתלת־ממד"), line: w("المغامرة واقفة بالـ 3D", "The adventure standing up in 3D", "ההרפתקה בתלת־ממד"), icon: "🦊", game: ADVENTURE_3D },
   { key: "balloons", name: w("بالونات", "Balloons", "בלונים"), line: w("فقّعها قبل ما تطير", "Pop them before they float off", "פוצצו לפני שהם עפים"), icon: "🎈", game: BALLOONS },
 ];
 export const readyGame = (key: string) => READY_GAMES.find((g) => g.key === key) ?? null;

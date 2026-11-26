@@ -101,6 +101,10 @@ export const UpdateVariantBody = z.object({
 export const DepthUrl = z.string().trim().max(2000).url().refine((v) => /^https?:\/\//i.test(v), "DEPTH_URL");
 export const SetImageDepthBody = z.object({ depthUrl: DepthUrl.nullable() }).strict();
 
+/** «شوفها على حيطك»: the frames and sizes (cm) a piece for a wall may have (kept equal to shared/wallArt.ts by a test). */
+export const WALL_FRAMES = ["none", "black", "white", "wood", "gold"] as const;
+export const WALL_CM = { min: 5, max: 500 } as const;
+
 export const AddImageBody = z.object({
   productItemId: z.string().cuid(),
   url: z.string().url(),
@@ -133,6 +137,10 @@ export const ProductDeepUpdateBody = z.object({
     shipsFrom: z.string().trim().max(80).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
     deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
     deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
+    /** «شوفها على حيطك»: a piece for a wall, its real size (cm) and frame (null: not one). */
+    wallWidthCm: z.number().min(WALL_CM.min).max(WALL_CM.max).nullable().optional(),
+    wallHeightCm: z.number().min(WALL_CM.min).max(WALL_CM.max).nullable().optional(),
+    wallFrame: z.enum(WALL_FRAMES).nullable().optional(),
     /** Codes: how to use one (shown next to it on the order page). */
     redeemNote: z.string().trim().max(500).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
     isProtected: z.boolean().optional(),

@@ -41,6 +41,9 @@ export type Layer = {
   radius?: number; opacity?: number; blend?: string; blur?: number;
   border?: { width: number; color: string; style?: "solid" | "dashed" | "dotted" };
   front?: boolean;
+  /** A picture of its own (a thing cut out of the element's picture: PopOutPanel) and how it comes toward the viewer. */
+  image?: string;
+  pop?: "hover" | "scroll";
 };
 export type Layers = { before?: Layer; after?: Layer };
 

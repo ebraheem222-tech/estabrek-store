@@ -566,6 +566,8 @@ const PartLooks = z.record(z.string().regex(PART_TARGET), LookEntry).refine(r =>
  * a colour or gradient of their own, their own place over it (inset px from top, end, bottom, start;
  * minus = beyond its edges), corners, see-through, mixing, blur and frame. Behind its content unless `front`.
  */
+/** How a layer's own picture comes toward the viewer (the shop's pageTree/pieces.ts LAYER_POPS). */
+export const LAYER_POPS = ["hover", "scroll"] as const;
 const PieceLayer = z.object({
   bg: color.optional(),
   to: color.optional(),
@@ -582,6 +584,9 @@ const PieceLayer = z.object({
   blur: px(0, 60).optional(),
   border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
   front: z.boolean().optional(),
+  // A picture of its own (a thing cut out of the element's picture) and how it comes toward the viewer.
+  image: src.optional(),
+  pop: z.enum(LAYER_POPS).optional(),
 });
 export const NodeLayers = z.object({ before: PieceLayer.optional(), after: PieceLayer.optional() });
 
@@ -884,7 +889,7 @@ const GameTiles = z.object({
   map: GameMap,
   levels: z.array(GameMap).max(7).optional(),
   gen: z.enum(["maze"]).optional(),
-  kinds: z.record(z.string().regex(/^[!-~]$/).refine((c) => c !== ".", "“.” is an empty cell"), z.object({ look: GameLook, solid: z.boolean().optional(), oneWay: z.boolean().optional(), tags: z.array(GAME_TAG).max(4).optional(), thing: GAME_ID.optional() }).strict()).refine((k) => Object.keys(k).length <= 12, "At most 12 kinds of tile"),
+  kinds: z.record(z.string().regex(/^[!-~]$/).refine((c) => c !== ".", "“.” is an empty cell"), z.object({ look: GameLook, solid: z.boolean().optional(), oneWay: z.boolean().optional(), tags: z.array(GAME_TAG).max(4).optional(), thing: GAME_ID.optional(), height: gnum(0, 1000).optional() }).strict()).refine((k) => Object.keys(k).length <= 12, "At most 12 kinds of tile"),
 }).strict();
 const GameLayer = z.object({ kind: z.enum(["color", "gradient", "image"]), color: color.optional(), color2: color.optional(), src: src.optional(), factor: gnum(0, 1).optional(), y: gnum(0, 1).optional(), h: gnum(0.05, 1).optional() }).strict();
 const GameThing = z.object({
@@ -897,7 +902,7 @@ const GameThing = z.object({
   bounce: gnum(0, 1).optional(),
   solid: z.boolean().optional(),
   vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional(),
-  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling"]).optional(),
+  control: z.enum(["none", "leftRight", "fourWay", "platform", "pointer", "drag", "sling", "car"]).optional(),
   speed: gnum(0, 2000).optional(),
   jump: gnum(0, 3000).optional(),
   behave: z.enum(["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"]).optional(),
@@ -915,6 +920,12 @@ const GameThing = z.object({
   drag: gnum(0, 20).optional(),
   spinLock: z.boolean().optional(),
   fast: z.boolean().optional(),
+  // G3: what it leaves behind as it moves, and its look's effect.
+  trail: z.enum(["", "sparkle", "smoke", "fire", "bubbles"]).optional(),
+  fx: z.enum(["", "glow", "pulse", "wobble", "rainbow"]).optional(),
+  // G4a: its shape in 3D (a model needs its file), its height, how high it floats, how metal and rough.
+  d3: z.object({ shape: z.enum(["auto", "box", "ball", "cylinder", "cone", "card", "model"]).optional(), height: gnum(0, 2000).optional(), lift: gnum(-500, 2000).optional(), src: src.optional(), metal: gnum(0, 1).optional(), rough: gnum(0, 1).optional() }).strict()
+    .refine((d) => d.shape !== "model" || Boolean(d.src), { message: "A model needs its file (.glb)", path: ["src"] }).optional(),
 }).strict().refine((t) => t.shape !== "poly" || (t.points?.length ?? 0) >= 3, { message: "A convex shape needs three points or more", path: ["points"] });
 const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("start") }).strict(),
@@ -930,10 +941,12 @@ const GameWhen = z.discriminatedUnion("on", [
   z.object({ on: z.literal("shot"), who: GAME_WHO }).strict(),
   z.object({ on: z.literal("rest"), who: GAME_WHO }).strict(),
   z.object({ on: z.literal("break"), who: GAME_WHO }).strict(),
+  z.object({ on: z.literal("beat"), every: gnum(0.25, 16), offset: gnum(0, 16).optional() }).strict(),
+  z.object({ on: z.literal("press"), key: z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]), a: GAME_WHO, b: GAME_WHO }).strict(),
 ]);
 const GAME_SELF = z.enum(["self", "other"]);
 const GameAct = z.discriminatedUnion("act", [
-  z.object({ act: z.literal("spawn"), what: GAME_ID, at: z.enum(["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"]).optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
+  z.object({ act: z.literal("spawn"), what: GAME_ID, at: z.enum(["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center", "own"]).optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
   z.object({ act: z.literal("destroy"), who: z.enum(["self", "other", "both"]).optional() }).strict(),
   z.object({ act: z.literal("score"), add: gint(-999, 999) }).strict(),
   z.object({ act: z.literal("lives"), add: gint(-9, 9) }).strict(),
@@ -942,13 +955,16 @@ const GameAct = z.discriminatedUnion("act", [
   z.object({ act: z.literal("speed"), who: GAME_SELF.optional(), vx: gnum(-3000, 3000).optional(), vy: gnum(-3000, 3000).optional() }).strict(),
   z.object({ act: z.literal("faster"), by: gnum(0.5, 2) }).strict(),
   z.object({ act: z.literal("shake") }).strict(),
-  z.object({ act: z.literal("sound"), kind: z.enum(["click", "pop", "chime", "whoosh", "success", "hit"]) }).strict(),
+  z.object({ act: z.literal("sound"), kind: z.enum(["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"]) }).strict(),
   z.object({ act: z.literal("burst"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("next") }).strict(),
   z.object({ act: z.literal("retry") }).strict(),
   z.object({ act: z.literal("home"), who: GAME_SELF.optional() }).strict(),
   z.object({ act: z.literal("explode"), who: GAME_SELF.optional(), radius: gnum(40, 1000).optional(), power: gnum(100, 5000).optional() }).strict(),
   z.object({ act: z.literal("cut"), who: GAME_SELF.optional() }).strict(),
+  z.object({ act: z.literal("note"), instrument: z.enum(["piano", "bell", "pluck", "bass", "drum"]).optional(), scale: z.enum(["major", "minor", "pentatonic", "blues"]).optional(), step: gint(-2, 20).optional() }).strict(),
+  z.object({ act: z.literal("confetti") }).strict(),
+  z.object({ act: z.literal("flash"), who: GAME_SELF.optional() }).strict(),
 ]);
 const GAME_KEY = z.enum(["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 /** A joint (G2b): a and b (another thing in the world, or "" for the world), anchors, length, a spring's stiffness,
@@ -972,6 +988,12 @@ const GameSpecSchema = z.object({
   camera: z.object({ follow: GAME_WHO.or(z.literal("")).optional(), lerp: gnum(0.02, 1).optional() }).strict().optional(),
   layers: z.array(GameLayer).max(4).optional(),
   transition: z.enum(["fade", "wipe", "circle", "none"]).optional(),
+  // G3: the weather across the world, an effect over the whole picture, music made for a mood.
+  weather: z.enum(["", "snow", "rain", "stars", "leaves", "bubbles"]).optional(),
+  post: z.enum(["", "vignette", "crt", "pixel", "mono", "dream"]).optional(),
+  music: z.object({ mood: z.enum(["", "lively", "calm", "spooky", "arcade"]).optional(), tempo: gint(60, 180).optional(), volume: gnum(0, 1).optional() }).strict().optional(),
+  // G4a: the 3D view.
+  view3d: z.object({ mode: z.enum(["", "ground", "wall"]).optional(), camera: z.enum(["follow", "top", "angle", "fixed"]).optional(), tilt: gnum(10, 89).optional(), distance: gnum(0.3, 3).optional(), light: z.enum(["day", "sunset", "night", "studio"]).optional(), shadows: z.boolean().optional(), fog: z.boolean().optional() }).strict().optional(),
   bg: color.optional(),
   gravity: gnum(0, 4000).optional(),
   edges: z.enum(["walls", "sides", "floor", "open"]).optional(),

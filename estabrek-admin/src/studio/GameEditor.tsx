@@ -12,6 +12,12 @@
  * slung thing (shot, at rest; back home, an explosion); trying a game with rigid things loads Rapier here too.
  * G2b: the joints tab (a pin, a weld, a spring, a rope or a slider between two things or a thing and the world: its
  * anchors, length, limits, a motor always or on a key, the force that breaks it), drawn in the world as lines.
+ * G3: the effects tab (the weather, an effect over the whole picture, music for a mood, heard here), a thing's trail
+ * and its look's effect, notes and confetti in the rules; trying it plays the sounds and the music and draws the
+ * particles and effects on its 2D canvas (the shop draws them on the graphics card).
+ * G4a: the 3D tab (flat, on the ground or standing; the camera, its tilt and distance, the light, shadows, fog), each
+ * thing's 3D (its shape, a GLB model's address, height, how high it floats, metal, rough), a tile's height, the car;
+ * trying it stays flat here (the store shows it in 3D).
  * Each change is one change of the page's draft (Undo takes it back); a drag is one change, made when it ends.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
@@ -22,6 +28,8 @@ import { gameOf, type GameLook } from "../../../estabrek-storefront/src/pageTree
 import { NO_INPUT, STEP, coverOf, endGame, levelCount, levelMap, newGame, startGame, stepGame, timeLeft, type GameInput, type GameState } from "../../../estabrek-storefront/src/pageTree/gameEngine";
 import { drawCover, lookCanvas, sheetFrame } from "../../../estabrek-storefront/src/pageTree/gameDraw";
 import { needsPhysics, physJoints, type Rapier } from "../../../estabrek-storefront/src/pageTree/gamePhysics";
+import { Music, playNote, playSound, type Mood } from "../../../estabrek-storefront/src/pageTree/gameSound";
+import { alphaOf, burst, confetti, newParticles, placeOf, stepParticles } from "../../../estabrek-storefront/src/pageTree/gameParticles";
 import type { ThumbColours } from "./templates/colours";
 import {
   ACT_NAMES, BEHAVE_NAMES, BODY_NAMES, CONTROL_NAMES, EDGE_NAMES, KEY_NAMES, LOOK_STARTS, SIZES, SOUND_NAMES, SPOT_NAMES, WHEN_NAMES,
@@ -30,6 +38,8 @@ import {
   TRANSITION_NAMES, levelMaps, pathPoints, resizedLevels, withLevelMap, withNewLevel, withPathPoint, withoutLevel,
   SHAPE_PICKS, shapePick,
   JOINT_NAMES, jointable, jointsOf, withNewJoint,
+  FX_NAMES, INSTRUMENT_NAMES, MOOD_NAMES, POST_NAMES, SCALE_NAMES, TRAIL_NAMES, WEATHER_NAMES,
+  CAMERA3D_NAMES, LIGHT3D_NAMES, SHAPE3D_NAMES, VIEW3D_NAMES,
 } from "./gameEdit";
 import { say } from "./say";
 
@@ -118,7 +128,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
   const tiles = obj(game.tiles);
   const hasTiles = Object.keys(tiles).length > 0;
   const things = thingsOf(game);
-  const [tab, setTab] = useState<"things" | "tiles" | "camera" | "joints">("things");
+  const [tab, setTab] = useState<"things" | "tiles" | "camera" | "joints" | "effects" | "3d">("things");
   const [joint, setJoint] = useState(0);
   const [brush, setBrush] = useState("#");
   const [stroke, setStroke] = useState<string[] | null>(null);
@@ -259,12 +269,14 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
           {/* Things: add one, pick one, its settings. The tile map. The camera and the layers behind. */}
           <div className="max-h-[62vh] space-y-2 overflow-y-auto pe-1">
             <div className="flex gap-1 rounded-lg bg-white/4 p-0.5" role="tablist">
-              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["joints", say("المفاصل|Joints|מפרקים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")]] as const).map(([k, l]) => (
+              {([["things", say("الأشياء|Things|פריטים")], ["tiles", say("البلاط|Tiles|אריחים")], ["joints", say("المفاصل|Joints|מפרקים")], ["camera", say("الكاميرا والخلفية|Camera and back|מצלמה ורקע")], ["effects", say("المؤثرات والصوت|Effects and sound|אפקטים וצליל")], ["3d", "3D"]] as const).map(([k, l]) => (
                 <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-md px-1.5 py-1 text-[11px] ${tab === k ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid="game-ed-tab" data-tab={k}>{l}</button>
               ))}
             </div>
             {tab === "tiles" ? <TilesPanel game={game} brush={brush} setBrush={setBrush} level={lv} setLevel={setLevel} busy={busy || trying} colours={pal} lang={lang} onChange={onChange} /> : null}
             {tab === "camera" ? <CameraPanel game={game} busy={busy || trying} whos={whos} onChange={onChange} /> : null}
+            {tab === "effects" ? <EffectsPanel game={game} busy={busy || trying} onChange={onChange} /> : null}
+            {tab === "3d" ? <View3DPanel game={game} busy={busy || trying} onChange={onChange} /> : null}
             {tab === "joints" ? <JointsPanel game={game} pick={joint} setPick={setJoint} busy={busy || trying} onChange={onChange} /> : null}
             {tab === "things" ? <>
             <div className="text-[11px] font-medium text-white/60">{say("ضيف شي|Add a thing|הוסיפו פריט")}</div>
@@ -278,7 +290,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
                 </button>
               ))}
             </div>
-            {thing ? <ThingSettings key={String(thing.id)} thing={thing} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
+            {thing ? <ThingSettings key={String(thing.id)} thing={thing} is3d={Boolean(obj(game.view3d).mode)} lang={lang} busy={busy || trying} set={(c, l) => setThing(String(thing.id), c, l)} onRemove={() => removeThing(String(thing.id))} onPicture={(kind) => setPicking(kind)} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : <p className="text-[11px] text-white/40">{say("اختار شي لتعدّله، أو اسحبه بالعالم.|Choose a thing to change it, or drag it in the world.|בחרו פריט כדי לשנות אותו, או גררו אותו בעולם.")}</p>}
             </> : null}
           </div>
 
@@ -367,7 +379,7 @@ export function GameEditor({ open, onClose, game, lang, colours, busy, onChange 
 
 /* ---------------------------------------------------------------- a thing's settings */
 
-function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, setPathAdd }: { thing: Obj; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void; pathAdd: boolean; setPathAdd: (on: boolean) => void }) {
+function ThingSettings({ thing, is3d, lang, busy, set, onRemove, onPicture, pathAdd, setPathAdd }: { thing: Obj; is3d: boolean; lang: Lang; busy: boolean; set: (change: Obj, label?: string) => void; onRemove: () => void; onPicture: (kind: "image" | "sprite") => void; pathAdd: boolean; setPathAdd: (on: boolean) => void }) {
   const look = obj(thing.look);
   const setLook = (c: Obj) => set({ look: { ...look, ...c } }, say("شكل الشي|A thing's look|מראה הפריט"));
   const tags = (Array.isArray(thing.tags) ? thing.tags : []).map(String).join(", ");
@@ -387,6 +399,9 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
       {thing.behave === "guard" || thing.behave === "flee" ? <Num label={say("قدّيش بيشوف|How far it sees|כמה רחוק הוא רואה")} value={num(thing.sight, 320)} min={0} max={3000} step={10} onSave={(v) => set({ sight: v })} testId="game-ed-sight" /> : null}
       {thing.behave === "path" ? <PathSettings thing={thing} busy={busy} set={set} pathAdd={pathAdd} setPathAdd={setPathAdd} /> : null}
       {thing.body === "rigid" ? <RigidSettings thing={thing} busy={busy} set={set} /> : null}
+      <Row label={say("أثره وهو ماشي|What it leaves behind|מה שהוא משאיר")}><Choose label={say("أثره|Its trail|השובל")} value={String(thing.trail ?? "")} options={named(TRAIL_NAMES)} onPick={(v) => set({ trail: v || undefined })} disabled={busy} testId="game-ed-trail" /></Row>
+      {is3d ? <Thing3DSettings thing={thing} busy={busy} set={set} /> : null}
+      <Row label={say("مؤثّر على شكله|An effect on its look|אפקט על המראה")}><Choose label={say("مؤثّر|An effect|אפקט")} value={String(thing.fx ?? "")} options={named(FX_NAMES)} onPick={(v) => set({ fx: v || undefined })} disabled={busy} testId="game-ed-fx" /></Row>
       <Num label={say("سرعته|Its speed|המהירות")} value={num(thing.speed, 360)} min={0} max={2000} step={10} onSave={(v) => set({ speed: v })} testId="game-ed-speed" />
       {thing.control === "platform" ? <Num label={say("قوّة النط|Jump strength|כוח קפיצה")} value={num(thing.jump, 720)} min={0} max={3000} step={10} onSave={(v) => set({ jump: v })} /> : null}
       <Num label={say("سرعة البداية ↔|Starting speed ↔|מהירות התחלה ↔")} value={num(thing.vx, 0)} min={-3000} max={3000} step={10} onSave={(v) => set({ vx: v })} testId="game-ed-vx" />
@@ -399,6 +414,77 @@ function ThingSettings({ thing, lang, busy, set, onRemove, onPicture, pathAdd, s
       <Row label={say("علامات (بفاصلة)|Tags (comma)|תגיות (פסיק)")}>
         <input className={`${ctl} w-28`} value={tagText} onChange={(e) => setTagText(e.target.value)} onBlur={() => { const next = tagText.split(/[,،\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => TAG.test(x)).slice(0, 4); setTagText(next.join(", ")); set({ tags: next.length ? next : undefined }); }} data-testid="game-ed-tags" />
       </Row>
+    </div>
+  );
+}
+
+/** The 3D view: flat, on the ground or standing; the camera, its tilt and distance, the light, shadows and fog. */
+function View3DPanel({ game, busy, onChange }: { game: Obj; busy: boolean; onChange: (label: string, next: Obj) => void }) {
+  const v = obj(game.view3d);
+  const set = (c: Obj) => onChange(say("عرض الـ 3D|The 3D view|תצוגת תלת־ממד"), { ...game, view3d: { ...v, ...c } });
+  return (
+    <div className="space-y-2" data-testid="game-ed-3d">
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Row label={say("كيف بتنشاف|How it's seen|איך רואים אותו")}><Choose label={say("كيف بتنشاف|How it's seen|איך רואים אותו")} value={String(v.mode ?? "")} options={named(VIEW3D_NAMES)} onPick={(m) => set({ mode: m || undefined })} disabled={busy} testId="game-ed-3d-mode" /></Row>
+        {v.mode ? <>
+          <Row label={say("الكاميرا|The camera|המצלמה")}><Choose label={say("الكاميرا|The camera|המצלמה")} value={String(v.camera ?? "follow")} options={named(CAMERA3D_NAMES)} onPick={(c) => set({ camera: c })} disabled={busy} testId="game-ed-3d-camera" /></Row>
+          <Num label={say("ميلانها (درجات)|Its tilt (degrees)|ההטיה (מעלות)")} value={num(v.tilt, 55)} min={10} max={89} onSave={(t) => set({ tilt: t })} testId="game-ed-3d-tilt" />
+          <Num label={say("بعدها (× الشاشة)|Its distance (× the view)|המרחק (× התצוגה)")} value={num(v.distance, 1)} min={0.3} max={3} step={0.1} onSave={(d) => set({ distance: d })} />
+          <Row label={say("الضو|The light|האור")}><Choose label={say("الضو|The light|האור")} value={String(v.light ?? "day")} options={named(LIGHT3D_NAMES)} onPick={(l) => set({ light: l })} disabled={busy} testId="game-ed-3d-light" /></Row>
+          <Row label={say("ظلال|Shadows|צללים")}><input type="checkbox" checked={v.shadows !== false} disabled={busy} onChange={(e) => set({ shadows: e.target.checked ? undefined : false })} data-testid="game-ed-3d-shadows" /></Row>
+          <Row label={say("ضباب|Fog|ערפל")}><input type="checkbox" checked={v.fog === true} disabled={busy} onChange={(e) => set({ fog: e.target.checked || undefined })} /></Row>
+          <p className="text-[11px] leading-4 text-white/45">{say("نفس اللعبة بقواعدها، بس بتنرسم بالـ 3D بالمتجر: «جرّبها» هون بتضل مسطّحة. البلاط بيصير مكعّبات، والأشياء بتاخد أشكالها من تبويب الأشياء.|The same game and rules, drawn in 3D in the store (trying it here stays flat). Tiles become blocks; each thing's 3D shape is set on the things tab.|אותו משחק וכללים, מצויר בתלת־ממד בחנות (הניסיון כאן נשאר שטוח). אריחים הופכים לקוביות; צורת כל פריט נקבעת בלשונית הפריטים.")}</p>
+        </> : null}
+      </div>
+    </div>
+  );
+}
+
+/** A thing in 3D: its shape (or a GLB model's address), height, how high it floats, how metal and how rough. */
+function Thing3DSettings({ thing, busy, set }: { thing: Obj; busy: boolean; set: (change: Obj, label?: string) => void }) {
+  const d = obj(thing.d3);
+  const label = say("الشي بالـ 3D|The thing in 3D|הפריט בתלת־ממד");
+  const setD = (c: Obj) => set({ d3: { ...d, ...c } }, label);
+  const [src, setSrc] = useState(String(d.src ?? ""));
+  return (
+    <div className="space-y-1 rounded-md border border-white/8 p-1.5" data-testid="game-ed-thing-3d">
+      <Row label={say("شكله بالـ 3D|Its 3D shape|הצורה בתלת־ממד")}><Choose label={say("شكله بالـ 3D|Its 3D shape|הצורה בתלת־ממד")} value={String(d.shape ?? "auto")} options={named(SHAPE3D_NAMES)} onPick={(v) => setD({ shape: v === "auto" ? undefined : v })} disabled={busy} testId="game-ed-3d-shape" /></Row>
+      {d.shape === "model" ? <Row label={say("رابط الموديل (.glb)|The model's address (.glb)|כתובת המודל (.glb)")}><input className={`${ctl} w-40`} value={src} placeholder="https://…/car.glb" onChange={(e) => setSrc(e.target.value)} onBlur={() => { const v = src.trim(); if (/^(https:\/\/|\/)\S+$/.test(v)) setD({ src: v }); }} data-testid="game-ed-3d-src" /></Row> : null}
+      <Num label={say("طوله لفوق (بكسل، 0 = من حجمه)|Its height (pixels, 0 = from its size)|הגובה (פיקסלים, 0 = לפי הגודל)")} value={num(d.height, 0)} min={0} max={2000} onSave={(v) => setD({ height: v || undefined })} testId="game-ed-3d-height" />
+      <Num label={say("قدّيش طاير فوق الأرض|How high it floats|כמה גבוה הוא מרחף")} value={num(d.lift, 0)} min={-500} max={2000} onSave={(v) => setD({ lift: v || undefined })} />
+      <Num label={say("معدن (0–1)|Metal (0–1)|מתכת (0–1)")} value={num(d.metal, 0.1)} min={0} max={1} step={0.1} onSave={(v) => setD({ metal: v })} testId="game-ed-3d-metal" />
+      <Num label={say("خشونة (0–1)|Rough (0–1)|חספוס (0–1)")} value={num(d.rough, 0.6)} min={0} max={1} step={0.1} onSave={(v) => setD({ rough: v })} />
+    </div>
+  );
+}
+
+/** The effects over the whole game: the weather, an effect over the picture, and music for a mood (heard here). */
+function EffectsPanel({ game, busy, onChange }: { game: Obj; busy: boolean; onChange: (label: string, next: Obj) => void }) {
+  const music = obj(game.music);
+  const label = say("المؤثرات والصوت|Effects and sound|אפקטים וצליל");
+  const setMusic = (c: Obj) => onChange(label, { ...game, music: { ...music, ...c } });
+  const [hearing, setHearing] = useState<Music | null>(null);
+  useEffect(() => () => hearing?.stop(), [hearing]);
+  return (
+    <div className="space-y-2" data-testid="game-ed-effects">
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Row label={say("الجو|The weather|מזג האוויר")}><Choose label={say("الجو|The weather|מזג האוויר")} value={String(game.weather ?? "")} options={named(WEATHER_NAMES)} onPick={(v) => onChange(label, { ...game, weather: v || undefined })} disabled={busy} testId="game-ed-weather" /></Row>
+        <Row label={say("مؤثّر عالصورة كلها|An effect over the picture|אפקט על כל התמונה")}><Choose label={say("مؤثّر|An effect|אפקט")} value={String(game.post ?? "")} options={named(POST_NAMES)} onPick={(v) => onChange(label, { ...game, post: v || undefined })} disabled={busy} testId="game-ed-post" /></Row>
+      </div>
+      <div className="space-y-1 rounded-lg bg-white/4 p-2">
+        <Row label={say("الموسيقى|The music|המוזיקה")}><Choose label={say("الموسيقى|The music|המוזיקה")} value={String(music.mood ?? "")} options={named(MOOD_NAMES)} onPick={(v) => { hearing?.stop(); setHearing(null); setMusic({ mood: v || undefined }); }} disabled={busy} testId="game-ed-mood" /></Row>
+        {music.mood ? <>
+          <Num label={say("سرعتها (نبضة بالدقيقة)|Its tempo (beats a minute)|הקצב (פעימות לדקה)")} value={num(music.tempo, 110)} min={60} max={180} onSave={(v) => setMusic({ tempo: Math.round(v) })} testId="game-ed-tempo" />
+          <Num label={say("علوّها (0–1)|Its volume (0–1)|העוצמה (0–1)")} value={num(music.volume, 0.5)} min={0} max={1} step={0.1} onSave={(v) => setMusic({ volume: v })} />
+          <button type="button" className={hearing ? main : btn} onClick={() => {
+            if (hearing) { hearing.stop(); setHearing(null); return; }
+            const m = new Music();
+            m.start(String(music.mood) as Mood, num(music.tempo, 110), num(game.seed, 7), num(music.volume, 0.5));
+            setHearing(m);
+          }} data-testid="game-ed-hear">{hearing ? say("■ وقّفها|■ Stop it|■ עצרו") : say("♪ سمّعيني|♪ Let me hear it|♪ השמיעו")}</button>
+          <p className="text-[11px] leading-4 text-white/45">{say("اللحن بينعمل من رقم اللعبة: «متاهة تانية» أو رقم تاني بيعطي لحن تاني.|The tune is made from the game's number: another number gives another tune.|המנגינה נוצרת ממספר המשחק: מספר אחר נותן מנגינה אחרת.")}</p>
+        </> : null}
+      </div>
     </div>
   );
 }
@@ -532,7 +618,12 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
       <div className="space-y-1">
         <Choose label={say("لما|When|כאשר")} value={String(when.on ?? "start")} options={named(WHEN_NAMES)} onPick={(v) => set({ ...rule, when: newWhen(v, game) })} disabled={busy} testId="game-ed-when" />
         {when.on === "every" ? <Num label={say("كل (ثانية)|Every (seconds)|כל (שניות)")} value={num(when.seconds, 1)} min={0.2} max={60} step={0.1} onSave={(v) => setWhen({ seconds: v })} testId="game-ed-every" /> : null}
-        {when.on === "hit" || when.on === "see" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
+        {when.on === "press" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} testId="game-ed-press-key" /> : null}
+        {when.on === "beat" ? <div className="flex gap-1">
+          <Num label={say("كل كم نبضة|Every how many beats|כל כמה פעימות")} value={num(when.every, 1)} min={0.25} max={16} step={0.25} onSave={(v) => setWhen({ every: v })} testId="game-ed-beat-every" />
+          <Num label={say("من نبضة|From beat|מפעימה")} value={num(when.offset, 0)} min={0} max={16} step={0.25} onSave={(v) => setWhen({ offset: v || undefined })} testId="game-ed-beat-offset" />
+        </div> : null}
+        {when.on === "hit" || when.on === "see" || when.on === "press" ? <div className="flex flex-wrap items-center gap-1 text-[11px] text-white/55">{who(when.a, (v) => setWhen({ a: v }), say("الأول|The first|הראשון"), "game-ed-hit-a")}<span>{when.on === "see" ? say("يشوف|sees|רואה") : when.on === "press" ? say("بيلمس|touches|נוגע ב") : say("يلمس|meets|פוגש")}</span>{who(when.b, (v) => setWhen({ b: v }), say("التاني|The second|השני"), "game-ed-hit-b")}</div> : null}
         {when.on === "level" ? <Num label={say("المرحلة (0 = كل وحدة)|The level (0 = each)|השלב (0 = כל אחד)")} value={num(when.at, 0)} min={0} max={8} onSave={(v) => setWhen({ at: Math.round(v) })} testId="game-ed-level-at" /> : null}
         {when.on === "out" || when.on === "tap" || when.on === "shot" || when.on === "rest" || when.on === "break" ? who(when.who, (v) => setWhen({ who: v }), say("مين|Which|מי"), "game-ed-who") : null}
         {when.on === "key" ? <Choose label={say("الزر|The key|המקש")} value={String(when.key ?? "Space")} options={named(KEY_NAMES)} onPick={(v) => setWhen({ key: v })} disabled={busy} /> : null}
@@ -553,7 +644,12 @@ function RuleBuilder({ rule, game, whos, templates, busy, set, onRemove }: {
             {a.act === "speed" ? <><Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /><Num label="↔" value={num(a.vx, 0)} min={-3000} max={3000} step={10} onSave={(v) => setAct(i, { vx: v })} /><Num label="↕" value={num(a.vy, 0)} min={-3000} max={3000} step={10} onSave={(v) => setAct(i, { vy: v })} /></> : null}
             {a.act === "faster" ? <Num label="×" value={num(a.by, 1.2)} min={0.5} max={2} step={0.05} onSave={(v) => setAct(i, { by: v })} /> : null}
             {a.act === "sound" ? <Choose label={say("الصوت|The sound|הצליל")} value={String(a.kind ?? "pop")} options={named(SOUND_NAMES)} onPick={(v) => setAct(i, { kind: v })} disabled={busy} /> : null}
-            {a.act === "home" || a.act === "cut" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
+            {a.act === "note" ? <div className="flex flex-wrap gap-1">
+              <Choose label={say("الآلة|The instrument|הכלי")} value={String(a.instrument ?? "bell")} options={named(INSTRUMENT_NAMES)} onPick={(v) => setAct(i, { instrument: v })} disabled={busy} testId="game-ed-note-instrument" />
+              <Choose label={say("السلّم|The scale|הסולם")} value={String(a.scale ?? "pentatonic")} options={named(SCALE_NAMES)} onPick={(v) => setAct(i, { scale: v })} disabled={busy} testId="game-ed-note-scale" />
+              <Choose label={say("أي نغمة|Which note|איזה צליל")} value={String(a.step ?? -1)} options={[["-1", say("اللي بعدها (لحن طالع)|The next (a tune going up)|הבא (מנגינה עולה)")], ["-2", say("عشوائية|At random|אקראי")], ...Array.from({ length: 15 }, (_, k) => [String(k), `${k + 1}`] as const)] as const} onPick={(v) => setAct(i, { step: Number(v) })} disabled={busy} testId="game-ed-note-step" />
+            </div> : null}
+            {a.act === "home" || a.act === "cut" || a.act === "flash" ? <Choose label={say("مين|Which|מי")} value={String(a.who ?? "self")} options={[["self", say("الأول|The first|הראשון")], ["other", say("التاني|The second|השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} /> : null}
             {a.act === "explode" ? <>
               <Choose label={say("وين|Where|איפה")} value={String(a.who ?? "self")} options={[["self", say("عند الأول|At the first|אצל הראשון")], ["other", say("عند التاني|At the second|אצל השני")]] as const} onPick={(v) => setAct(i, { who: v })} disabled={busy} />
               <Num label={say("لوين بيوصل|How far it reaches|כמה רחוק מגיע")} value={num(a.radius, 160)} min={40} max={1000} step={10} onSave={(v) => setAct(i, { radius: v })} testId="game-ed-blast-radius" />
@@ -591,6 +687,14 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
     return () => { live = false; };
   }, [physics]);
   const waiting = physics && !rapierTried;
+  // The music for the game's mood while it's played here.
+  const mood = spec?.music.mood ?? "", tempo = spec?.music.tempo ?? 110, volume = spec?.music.volume ?? 0.5, seed = spec?.seed ?? 7;
+  useEffect(() => {
+    if (!mood || hud.phase !== "playing") return;
+    const music = new Music();
+    music.start(mood, tempo, seed, volume, state.current?.t ?? 0);
+    return () => music.stop();
+  }, [mood, tempo, volume, seed, hud.phase]);
 
   useEffect(() => {
     if (!spec || waiting) return;
@@ -624,6 +728,12 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
     };
     let frame = 0, last = performance.now(), acc = 0;
     const alerts: Array<{ x: number; y: number; t: number }> = [];
+    const parts = newParticles(800);
+    let partied = false;
+    const post = spec.post;
+    // Pixels: the picture drawn small, then shown big without smoothing.
+    const k = post === "pixel" ? 0.2 : 1;
+    if (cv && k !== 1) { cv.width = Math.round(spec.w * k); cv.height = Math.round(spec.h * k); }
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);
       const dt = Math.min(0.1, (now - last) / 1000);
@@ -633,11 +743,22 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
         let n = 0;
         while (acc >= STEP && n < 5) {
           stepGame(s, input.current); input.current.pressed = []; input.current.taps = []; acc -= STEP; n++;
-          for (const e of s.effects) if (e.kind === "alert") alerts.push({ x: e.x, y: e.y, t: s.t });
+          for (const e of s.effects) {
+            if (e.kind === "alert") alerts.push({ x: e.x, y: e.y, t: s.t });
+            else if (e.kind === "sound") playSound(e.sound, e.x, s.cx, spec.w);
+            else if (e.kind === "note") playNote(e.instrument, e.freq, e.x, s.cx, spec.w);
+            else if (e.kind === "burst") burst(parts, e.x, e.y, colours[e.color] ?? e.color);
+            else if (e.kind === "confetti") confetti(parts, s.cx, s.cy, spec.w);
+          }
           s.effects.length = 0;
         }
       }
+      if (s.phase === "won" && !partied) { partied = true; confetti(parts, s.cx, s.cy, spec.w); }
+      if (s.phase === "playing") partied = false;
+      if (s.phase === "playing" || parts.list.length) stepParticles(parts, s, dt);
       if (ctx && cv) {
+        ctx.setTransform(k, 0, 0, k, 0, 0);
+        ctx.imageSmoothingEnabled = k === 1;
         ctx.fillStyle = colours[spec.bg] ?? spec.bg;
         ctx.fillRect(0, 0, spec.w, spec.h);
         // The layers behind: a colour, a gradient, or a picture repeated across at its share of the camera's speed.
@@ -673,10 +794,29 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
             }
           } else {
             if (b.thing.control === "platform") ctx.scale(b.face, 1);
+            // Its look's effect, as a 2D canvas can: a glow, a pulse, a wobble, a rainbow.
+            const fx = b.thing.fx, t = now / 1000;
+            // Flashed a moment ago: bigger and brighter.
+            const lit = Math.max(0, 1 - (s.t - b.flash) / 0.25);
+            if (lit) { ctx.scale(1 + 0.15 * lit, 1 + 0.15 * lit); ctx.filter = `brightness(${(1 + 0.9 * lit).toFixed(2)})`; }
+            if (fx === "glow") { ctx.shadowColor = colours.accent ?? "#f59e0b"; ctx.shadowBlur = 16 + Math.sin(t * 4) * 4; }
+            else if (fx === "pulse") { const p = 1 + Math.sin(t * 6) * 0.06; ctx.scale(p, p); }
+            else if (fx === "wobble") ctx.transform(1, 0, Math.sin(t * 6) * 0.12, 1, 0, 0);
+            else if (fx === "rainbow") ctx.filter = `${lit ? ctx.filter : ""} hue-rotate(${Math.round((t * 115) % 360)}deg)`.trim();
             ctx.drawImage(lookOf(b.of, look, b.thing.w, b.thing.h), -b.w / 2, -b.h / 2, b.w, b.h);
+            ctx.filter = "none";
           }
           ctx.restore();
         }
+        // The particles: trails, the weather, bursts, confetti.
+        for (const q of parts.list) {
+          const [x, y] = placeOf(q, s.cx, s.cy);
+          ctx.globalAlpha = alphaOf(q, now / 1000);
+          ctx.fillStyle = ctx.strokeStyle = colours[q.color] ?? q.color;
+          if (q.shape === 2) ctx.fillRect(x - q.size / 2, y - q.size / 3, q.size, q.size / 1.5);
+          else { ctx.beginPath(); ctx.arc(x, y, Math.max(0.5, q.size / 2), 0, Math.PI * 2); if (q.shape === 1) { ctx.lineWidth = 1.5; ctx.stroke(); } else ctx.fill(); }
+        }
+        ctx.globalAlpha = 1;
         // Ropes, springs and sliders: lines between their ends.
         ctx.strokeStyle = colours.text ?? "#111111";
         ctx.lineWidth = 2;
@@ -747,10 +887,14 @@ function GameTry({ game, colours, lang }: { game: Obj; colours: Record<string, s
           </button>
         ) : <span className="text-white/45">{say("الأسهم والمسافة والماوس|Arrows, Space and the mouse|חצים, רווח והעכבר")}</span>}
       </div>
-      <canvas ref={canvas} className="w-full touch-none rounded-xl" style={{ aspectRatio: `${spec.w} / ${spec.h}` }}
+      <div className="relative">
+      <canvas ref={canvas} className="w-full touch-none rounded-xl" data-post={spec.post || undefined} style={{ aspectRatio: `${spec.w} / ${spec.h}`, imageRendering: spec.post === "pixel" ? "pixelated" : undefined, filter: spec.post === "mono" ? "grayscale(1)" : spec.post === "dream" ? "blur(0.6px) saturate(1.35) brightness(1.05)" : undefined }}
         onPointerDown={(e) => { const p = toWorld(e); input.current.pointer = p; input.current.pointerDown = true; input.current.taps.push(p); }}
         onPointerMove={(e) => { input.current.pointer = toWorld(e); }}
         onPointerUp={() => { input.current.pointerDown = false; }} />
+      {/* A vignette and an old screen's lines over the picture. */}
+      {spec.post === "vignette" || spec.post === "crt" || spec.post === "dream" ? <div className="pointer-events-none absolute inset-0 rounded-xl" style={{ background: `${spec.post === "crt" ? "repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 3px), " : ""}radial-gradient(circle at 50% 50%, transparent 55%, rgba(0,0,0,${spec.post === "vignette" ? 0.55 : 0.35}) 100%)` }} /> : null}
+      </div>
     </div>
   );
 }
