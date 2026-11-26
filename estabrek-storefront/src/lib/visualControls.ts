@@ -10,7 +10,7 @@ export type InteractionAction =
 export type InteractionPolicy = { version: 1; bindings: Partial<Record<InteractionEvent, InteractionAction[]>> };
 /** How a card's picture, the card itself and its button move and look (kept equal to the API's lists). */
 // (The last three are drawn by the graphics card: shared/pictureFx.ts, the kinds that answer the pointer.)
-export const CARD_HOVERS = ["none", "swap", "slide", "zoom", "zoomSwap", "flip", "curtain", "circle", "cycle", "grayscale", "blur", "pan", "ripple", "liquid", "shift"] as const;
+export const CARD_HOVERS = ["none", "swap", "slide", "zoom", "zoomSwap", "flip", "curtain", "circle", "cycle", "grayscale", "blur", "pan", "ripple", "liquid", "shift", "3d"] as const;
 export const CARD_LIFTS = ["none", "lift", "shadow", "glow", "border", "scale", "tilt"] as const;
 export const CARD_ENTERS = ["none", "fade", "up", "zoom", "blur", "flip", "side"] as const;
 export const CARD_BUTTONS = ["full", "pill", "outline", "text", "icon", "hover"] as const;

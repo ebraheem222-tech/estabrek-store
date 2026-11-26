@@ -11,6 +11,9 @@ test("the product picture's effect is off until the owner picks one of the kinds
   expect(PICTURE_FX).toContain("reveal");
   expect(PICTURE_FX_POINTER).toEqual(["ripple", "liquid", "shift"]);
   for (const bad of ["reveal", "zoom", "", 3, null, { kind: "ripple" }]) expect(normalizeStorefrontSettings({ productPictureFx: bad }).productPictureFx).toBe("none");
+  // …or the picture in 3D from its depth picture (lib/usePhoto3d.ts).
+  expect(normalizeStorefrontSettings({ productPictureFx: "3d" }).productPictureFx).toBe("3d");
+  expect(normalizeStorefrontSettings({ productPictureFx: "none" }, normalizeStorefrontSettings({ productPictureFx: "3d" })).productPictureFx).toBe("none");
   expect(pointerFxOf("shift")).toBe("shift");
   expect(pointerFxOf("reveal")).toBeNull();
 });

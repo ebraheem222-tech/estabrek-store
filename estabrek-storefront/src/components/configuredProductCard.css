@@ -8,6 +8,7 @@
 .cpc-pic>img{position:absolute;inset:0}.cpc-pic>.cpc-first{position:relative}
 /* A live effect drawn by the graphics card (pageTree/pictureFxRun.ts): a canvas over the picture, seen only while it plays. */
 .cpc-pic>.pt-glfx{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0;transition:opacity .2s ease}.cpc-pic>.pt-glfx[data-on]{opacity:1}
+.cpc-pic>.pt-3d{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0;transition:opacity .3s ease}.cpc-pic>.pt-3d[data-on]{opacity:1}
 .cpc-second,.cpc-cycle{opacity:0;transition:opacity .45s ease,transform .6s cubic-bezier(.2,.7,.2,1),clip-path .6s cubic-bezier(.6,0,.2,1)}
 .cpc-first{transition:transform .7s cubic-bezier(.2,.7,.2,1),filter .5s ease,opacity .45s ease}
 .cpc-cycle[data-on]{opacity:1}

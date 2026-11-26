@@ -10,6 +10,7 @@ import {
   catalogItemLabel,
   formatMoney,
   getProductImageBlurDataUrl,
+  getProductImageDepthUrl,
   getProductPrimaryImage,
   getVariantCompareAtPrice,
   getVariantEffectivePrice,
@@ -49,6 +50,7 @@ import { RoseDeliveryCity } from "./RoseDeliveryCity";
 import { RoseCompleteLook } from "./RoseCompleteLook";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { usePictureFx } from "@/lib/usePictureFx";
+import { usePhoto3d } from "@/lib/usePhoto3d";
 import { StoreMark } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
 import { useStoreLook } from "@/store/storeLook";
@@ -217,6 +219,12 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   // Admin → الإعدادات → صفحة المنتج: a live effect on the big picture under the pointer, in place of the zoom
   // (cinematic.css). It follows the picture shown: another photo, another colour.
   usePictureFx(zoom, pageCfg.productPictureFx, currentImage);
+  // …or the picture in 3D, lifted by its depth picture. Both cut the same way (the middle, not where Cloudinary
+  // finds the subject: on a grey depth picture it would find another place), so the depth sits on the picture.
+  const in3d = pageCfg.productPictureFx === "3d";
+  const cut = { w: 1200, h: 1500, c: "fill", g: in3d ? "center" : "auto" };
+  const depth = in3d ? getProductImageDepthUrl(product, currentImage) : null;
+  usePhoto3d(zoom, { on: in3d, picture: currentImage, depth: depth ? cldUrl(depth, { ...cut, w: 600, h: 750 }) : null });
   return (
     <div className="rose-pdp" data-th-card={themeCard}>
       <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>
@@ -271,7 +279,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
               {currentImage ? (
                 <LqipImage
                   key={currentImage}
-                  src={cldUrl(currentImage, { w: 1200, h: 1500, c: "fill", g: "auto" })}
+                  src={cldUrl(currentImage, cut)}
                   alt={`${product.title}${item ? ` — ${catalogItemLabel(item, itemIndex)}` : ""}`}
                   fill
                   priority

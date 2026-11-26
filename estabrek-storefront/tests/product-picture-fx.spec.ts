@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 // product page's big picture takes a live effect drawn by the graphics card (pageTree/pictureFxRun.ts, started by
 // lib/usePictureFx.ts) in place of its zoom. The pictures come from the shop's own address here, so the page may
 // read them.
-const SERVER = "http://127.0.0.1:4100";
+const SERVER = `http://127.0.0.1:${process.env.CATALOG_PORT || 4100}`;
 const set = async (page: Page, data: Record<string, unknown>) => {
   await page.request.post(`${SERVER}/__test/product-picture`, { data });
   await page.request.post("/api/revalidate", { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["settings", "cms:bootstrap", "catalog", "catalog:products"], paths: ["/p/rose-dress"] } });

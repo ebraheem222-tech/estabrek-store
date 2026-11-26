@@ -29,6 +29,7 @@ import {
 } from "./settingsCentre";
 import { StoreIdentityCard } from "./StoreIdentityCard";
 import { PRODUCT_PICTURE_FX_OPTIONS, readProductPictureFx, type ProductPictureFx } from "./productPictureFx";
+import { ProductDepthsPanel } from "./ProductDepthsPanel";
 import { StoreLanguagesCard } from "./StoreLanguagesCard";
 import { CheckoutTermsCard } from "./CheckoutTermsCard";
 import { MailchimpCard } from "./MailchimpCard";
@@ -2724,6 +2725,7 @@ export default function SettingsPage() {
                         data-testid="settings-product-picture-fx"
                       />
                     </div>
+                    {storefrontCfg.productPictureFx === "3d" ? <ProductDepthsPanel /> : null}
                     {storefrontCfg.productPictureFx !== "none" ? (
                       <p className="mt-2 text-xs leading-5 text-white/50" data-testid="settings-product-picture-fx-hint">
                         التأثير بياخد مكان التقريب لما الماوس على الصورة، والكبسة لسا بتفتح الصور بحجم كبير. بيرسمه كرت الشاشة (WebGL): الصورة بتضل متل ما هي للي طالب حركة أقل بجهازه، ولمتصفح ما بيدعمه، ولصورة من موقع ما بيسمح نقرا ألوانها (هدول بيضل معهم التقريب).

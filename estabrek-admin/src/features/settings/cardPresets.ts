@@ -22,6 +22,8 @@ export const CARD_HOVER_NAMES: Named = [
   ["ripple", "تموّج مي (كرت الشاشة)|Water ripple (graphics card)|אדוות מים (כרטיס מסך)"],
   ["liquid", "سائل (كرت الشاشة)|Liquid (graphics card)|נוזלי (כרטיס מסך)"],
   ["shift", "انفصال ألوان (كرت الشاشة)|Colour split (graphics card)|פיצול צבעים (כרטיס מסך)"],
+  // Lifted by the picture's depth (made in the admin, Settings → the product pictures in 3D) and turning toward the pointer.
+  ["3d", "3D من عمقها (كرت الشاشة)|3D from its depth (graphics card)|תלת־ממד מהעומק (כרטיס מסך)"],
 ];
 export const CARD_LIFT_NAMES: Named = [
   ["none", "بلا حركة|Still|ללא תנועה"],

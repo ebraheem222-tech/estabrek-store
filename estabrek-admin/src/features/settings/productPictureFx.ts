@@ -5,10 +5,11 @@
  */
 import { PICTURE_FX_POINTER, pointerFxOf, type PointerFxKind } from "../../../../shared/pictureFx";
 
-export type ProductPictureFx = "none" | PointerFxKind;
+/** …or "3d": the picture lifted by its depth picture, turning with the pointer (the shop's lib/usePhoto3d.ts). */
+export type ProductPictureFx = "none" | PointerFxKind | "3d";
 
 /** The setting as saved, or the zoom for anything else. */
-export const readProductPictureFx = (raw: unknown): ProductPictureFx => pointerFxOf(raw) ?? "none";
+export const readProductPictureFx = (raw: unknown): ProductPictureFx => (raw === "3d" ? "3d" : pointerFxOf(raw) ?? "none");
 
 const NAMES: Record<PointerFxKind, string> = {
   ripple: "تموّج مي (بيرسمه كرت الشاشة)",
@@ -19,4 +20,5 @@ const NAMES: Record<PointerFxKind, string> = {
 export const PRODUCT_PICTURE_FX_OPTIONS: Array<{ value: ProductPictureFx; label: string }> = [
   { value: "none", label: "تقريب (متل ما هي هلأ)" },
   ...PICTURE_FX_POINTER.map((kind) => ({ value: kind, label: NAMES[kind] })),
+  { value: "3d", label: "3D من عمقها (بتلفّ مع الماوس، وبالموبايل مع السكرول)" },
 ];

@@ -21,7 +21,7 @@ import {
   CreateItemBody, UpdateItemBody,
   CreateSizeBody, UpdateSizeBody,
   CreateVariantBody, UpdateVariantBody,
-  AddImageBody, UpdateImageBody, ProductDeepUpdateBody, CommitImageGroupsBody,
+  AddImageBody, UpdateImageBody, ProductDeepUpdateBody, CommitImageGroupsBody, SetImageDepthBody,
   BulkProductsBody,
   ImportProductsBody,
   ProductListQuery,
@@ -643,6 +643,32 @@ r.delete("/images/:id", asyncHandler(async (req, res) => {
   await keepPartRevision(req, "image", "edit");
   await prisma.productItemImage.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
+}));
+
+/* ========== A picture's depth (the shop draws it in 3D) ========== */
+/** Every product picture and whether it has its depth picture yet (Settings → «3D»: make the ones missing). */
+r.get("/images/depths", asyncHandler(async (req, res) => {
+  const productId = typeof req.query.productId === "string" && req.query.productId.length <= 64 ? req.query.productId : undefined;
+  const rows = await prisma.productItemImage.findMany({
+    where: productId ? { item: { productId } } : undefined,
+    orderBy: [{ createdAt: "desc" }],
+    take: 5000,
+    select: { id: true, url: true, view: true, depthUrl: true, item: { select: { product: { select: { id: true, title: true } } } } },
+  });
+  // A 3D model or a 360° sheet is no photo to lift.
+  const photos = rows.filter((im) => im.view !== "3d" && !/\.(glb|gltf)(?:[?#]|$)/i.test(im.url));
+  res.json({
+    images: photos.map((im) => ({ id: im.id, url: im.url, depthUrl: im.depthUrl ?? null, productId: im.item.product.id, title: im.item.product.title })),
+    total: photos.length,
+    done: photos.filter((im) => im.depthUrl).length,
+  });
+}));
+/** Its depth picture, made in the admin (null: none). Not a version of the product: it is made from the picture. */
+r.put("/images/:id/depth", validate({ body: SetImageDepthBody }), asyncHandler(async (req, res) => {
+  const found = await prisma.productItemImage.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!found) return res.status(404).json({ error: "IMAGE_NOT_FOUND" });
+  const out = await prisma.productItemImage.update({ where: { id: req.params.id }, data: { depthUrl: req.body.depthUrl }, select: { id: true, url: true, depthUrl: true } });
+  res.json(out);
 }));
 
 

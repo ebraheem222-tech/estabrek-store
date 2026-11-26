@@ -21,6 +21,7 @@ import {
   readPrefs, rememberChoices, saveDraftLocally, validateDraft, type ComposerDraft, type ComposerErrors, type ComposerPhoto,
 } from "./composer/composerModel";
 import { saveComposedProduct, saveEditedProduct, type SaveStep, type TypedValues } from "./composer/saveProduct";
+import { depthsAfterSave } from "../../lib/productDepths";
 import { TypeFieldsBlock } from "./composer/TypeFieldsBlock";
 import { TranslationsBlock } from "./composer/TranslationsBlock";
 import { AiWriter } from "./composer/AiWriter";
@@ -312,6 +313,7 @@ export default function ProductComposerPage() {
         ]);
         setPhase({ kind: "editing" });
         toast.success(publish ? tr("حُفظت التغييرات — المنتج منشور في المتجر", "Changes saved — the product is live in the store") : tr("حُفظت التغييرات (مسودة)", "Changes saved (draft)"));
+        void depthsAfterSave(d.edit.productId);
         if (kept && (kept.variants.length || kept.items.length)) {
           const parts = [
             kept.variants.length ? tr(`مقاسات عليها طلبات بقيت كـ«نفدت»: ${kept.variants.map((v) => v.sku).join("، ")}`, "Sizes with orders were kept as “Sold out”: {0}", [kept.variants.map((v) => v.sku).join(", ")]) : "",
@@ -333,6 +335,7 @@ export default function ProductComposerPage() {
       rememberChoices(d);
       clearLocalDraft();
       createdId.current = null;
+      void depthsAfterSave(res.id);
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
       setPhase({ kind: "saved", id: res.id, slug: res.slug, published: publish, title: d.title.trim(), digital: kind?.fulfillment === "DIGITAL" });
       window.scrollTo({ top: 0, behavior: "smooth" });

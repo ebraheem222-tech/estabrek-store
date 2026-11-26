@@ -943,7 +943,7 @@ http
           if (!productPictures.has(p.id)) productPictures.set(p.id, p.primaryImageUrl);
           p.primaryImageUrl = data.ownPictures === true ? "/editorial/hijab-campaign.webp" : productPictures.get(p.id);
           // A second photo of its own for the first product: the effect has to follow the photo chosen.
-          if (data.ownPictures === true && p.id === "coat") p.images = [{ url: "/editorial/hijab-campaign.webp", isPrimary: true }, { url: "/editorial/scarves.webp" }];
+          if (data.ownPictures === true && p.id === "coat") p.images = [{ url: "/editorial/hijab-campaign.webp", isPrimary: true, ...(data.depth ? { depthUrl: data.depth } : {}) }, { url: "/editorial/scarves.webp" }];
           else delete p.images;
         }
         res.end("{}");
@@ -961,6 +961,9 @@ http
         for (const p of products) {
           if (!productPictures.has(p.id)) productPictures.set(p.id, p.primaryImageUrl);
           p.primaryImageUrl = data.ownPictures === true ? "/editorial/hijab-campaign.webp" : productPictures.get(p.id);
+          // Each picture's depth picture (the 3D card), at the address given; else none.
+          if (typeof data.depth === "string") p.images = [{ url: p.primaryImageUrl, isPrimary: true, depthUrl: data.depth }];
+          else if (p.images?.some((im) => im.depthUrl)) delete p.images;
         }
         visualPageProps = data.pageProps ?? {}; visualShopProps = data.shopProps ?? {};
         legacyCommerceCart = data.legacyCart === true;

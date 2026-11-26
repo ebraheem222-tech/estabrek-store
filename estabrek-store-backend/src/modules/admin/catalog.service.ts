@@ -242,7 +242,10 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
 
       // images
       for (const im of it.images ?? []) {
+        const depthUrl = (im as { depthUrl?: string | null }).depthUrl;
         if (im.id) {
+          // A picture changed in place loses the depth of the one before (unless a new one comes with it).
+          if (depthUrl === undefined) await tx.productItemImage.updateMany({ where: { id: im.id, NOT: { url: im.url } }, data: { depthUrl: null } });
           await tx.productItemImage.update({
             where: { id: im.id },
             data: {
@@ -253,6 +256,7 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
               view: (im as any).view ?? null,
               dominantColorHex: (im as any).dominantColorHex ?? null,
               palette: (im as any).palette ?? null,
+              ...(depthUrl !== undefined ? { depthUrl } : {}),
             },
           });
         } else {
@@ -266,6 +270,7 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
               view: (im as any).view ?? null,
               dominantColorHex: (im as any).dominantColorHex ?? null,
               palette: (im as any).palette ?? null,
+              depthUrl: depthUrl ?? null,
             },
           });
         }

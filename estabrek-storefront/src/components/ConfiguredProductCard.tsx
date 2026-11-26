@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { catalogItemKey, catalogItemLabel, formatMoney, getProductDiscountPercent, getProductMinPrice, getProductPrimaryImage, type CatalogProduct } from "@/lib/catalog";
+import { catalogItemKey, catalogItemLabel, formatMoney, getProductDiscountPercent, getProductImageDepthUrl, getProductMinPrice, getProductPrimaryImage, type CatalogProduct } from "@/lib/catalog";
 import type { CardDesign } from "@/lib/visualControls";
 import { usePictureFx } from "@/lib/usePictureFx";
+import { usePhoto3d } from "@/lib/usePhoto3d";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { emitVisualInteraction } from "@/lib/visualInteractions";
 import { QuickAddButton } from "./QuickAddButton";
@@ -77,6 +78,8 @@ export function ConfiguredProductCard({ product, design: d, preview = false }: {
   // a flow, a colour split). It starts again with the picture when the colour chosen changes it.
   const pic = useRef<HTMLSpanElement>(null);
   usePictureFx(pic, hover, first);
+  // In 3D under the pointer: lifted by the picture's depth (made in the admin) and turning toward the pointer.
+  usePhoto3d(pic, { on: hover === "3d", picture: first, depth: getProductImageDepthUrl(product, first), hover: true, cols: 110 });
 
   // Pictures in turn while the pointer is on it.
   const timer = useRef(0);
