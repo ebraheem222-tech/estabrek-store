@@ -11,6 +11,8 @@
  * (pulled back and let go), and the rules for them (it's shot, it comes to rest; back home, an explosion).
  * G2b: joints between two things or a thing and the world (a pin, a weld, a spring, a rope, a slider), with limits,
  * a motor (always, or while a key is held), and a stretch that breaks them; the rules (it breaks; cut it).
+ * G3: effects and sound: a thing's trail and its look's effect (glow, pulse, wobble, rainbow), the weather across the
+ * world, an effect over the whole picture, music made for a mood, more sounds, notes on instruments up a scale, confetti.
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
@@ -34,7 +36,15 @@ export const GAME_JOINTS = ["pin", "weld", "spring", "rope", "slider"] as const;
 export const GAME_TRANSITIONS = ["fade", "wipe", "circle", "none"] as const;
 export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"] as const;
 export const GAME_KEYS = ["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
-export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit"] as const;
+export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit", "coin", "jump", "laser", "boom", "power", "blip"] as const;
+/** G3: a thing's trail, its look's effect; the world's weather; an effect over the whole picture; the music's mood. */
+export const GAME_TRAILS = ["", "sparkle", "smoke", "fire", "bubbles"] as const;
+export const GAME_FX = ["", "glow", "pulse", "wobble", "rainbow"] as const;
+export const GAME_WEATHER = ["", "snow", "rain", "stars", "leaves", "bubbles"] as const;
+export const GAME_POST = ["", "vignette", "crt", "pixel", "mono", "dream"] as const;
+export const GAME_MOODS = ["", "lively", "calm", "spooky", "arcade"] as const;
+export const GAME_INSTRUMENTS = ["piano", "bell", "pluck", "bass", "drum"] as const;
+export const GAME_SCALES = ["major", "minor", "pentatonic", "blues"] as const;
 
 /** A picture of frames (a sprite sheet): `cols` × `rows` cells, each of the body's states a run of them ([first, how many]). */
 export type GameSheet = { cols: number; rows: number; fps: number; anims: Partial<Record<(typeof GAME_ANIMS)[number], [number, number]>> };
@@ -110,6 +120,9 @@ export type GameThing = {
   drag: number;
   spinLock: boolean;
   fast: boolean;
+  /** G3: what it leaves behind as it moves, and its look's effect. */
+  trail: (typeof GAME_TRAILS)[number];
+  fx: (typeof GAME_FX)[number];
 };
 export type GameWhen =
   | { on: "start" }
@@ -150,7 +163,11 @@ export type GameAct =
   /** Everything within `radius` pushed away, by up to `power` (px/s) the nearer it is. */
   | { act: "explode"; who: "self" | "other"; radius: number; power: number }
   /** Every joint holding it let go. */
-  | { act: "cut"; who: "self" | "other" };
+  | { act: "cut"; who: "self" | "other" }
+  /** A note on an instrument: the scale's next one (step -1), one at random (-2), or that step of it (0…20). */
+  | { act: "note"; instrument: (typeof GAME_INSTRUMENTS)[number]; scale: (typeof GAME_SCALES)[number]; step: number }
+  /** Confetti over the whole view. */
+  | { act: "confetti" };
 export type GameRule = { when: GameWhen; do: GameAct[] };
 export type GameWords = { title: string; start: string; win: string; lose: string; again: string; prize: string; help: string };
 export type GameSpec = {
@@ -163,6 +180,10 @@ export type GameSpec = {
   camera: { follow: string; lerp: number };
   layers: GameLayer[];
   transition: (typeof GAME_TRANSITIONS)[number];
+  /** G3: the weather across the world, an effect over the whole picture, and music made for a mood. */
+  weather: (typeof GAME_WEATHER)[number];
+  post: (typeof GAME_POST)[number];
+  music: { mood: (typeof GAME_MOODS)[number]; tempo: number; volume: number };
   bg: string;
   gravity: number;
   edges: (typeof GAME_EDGES)[number];
@@ -293,6 +314,8 @@ function thingOf(raw: unknown, say: Say): GameThing | null {
     drag: num(x.drag, 0, 20, 0),
     spinLock: x.spinLock === true,
     fast: x.fast === true,
+    trail: pick(x.trail, GAME_TRAILS, ""),
+    fx: pick(x.fx, GAME_FX, ""),
   };
 }
 function pathOf(raw: unknown): GamePath | null {
@@ -339,6 +362,8 @@ function actOf(raw: unknown): GameAct | null {
     case "retry": return { act: "retry" };
     case "home": return { act: "home", who: pick(x.who, ["self", "other"] as const, "self") };
     case "cut": return { act: "cut", who: pick(x.who, ["self", "other"] as const, "self") };
+    case "note": return { act: "note", instrument: pick(x.instrument, GAME_INSTRUMENTS, "piano"), scale: pick(x.scale, GAME_SCALES, "pentatonic"), step: int(x.step, -2, 20, -1) };
+    case "confetti": return { act: "confetti" };
     case "explode": return { act: "explode", who: pick(x.who, ["self", "other"] as const, "self"), radius: num(x.radius, 40, 1000, 160), power: num(x.power, 100, 5000, 900) };
     default: return null;
   }
@@ -396,6 +421,9 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     camera: { follow: whoOf(cam.follow), lerp: num(cam.lerp, 0.02, 1, 0.12) },
     layers: (Array.isArray(x.layers) ? x.layers : []).slice(0, GAME_LIMITS.layers).map(layerOf),
     transition: pick(x.transition, GAME_TRANSITIONS, "circle"),
+    weather: pick(x.weather, GAME_WEATHER, ""),
+    post: pick(x.post, GAME_POST, ""),
+    music: { mood: pick(obj(x.music).mood, GAME_MOODS, ""), tempo: int(obj(x.music).tempo, 60, 180, 110), volume: num(obj(x.music).volume, 0, 1, 0.5) },
     bg: colourOf(x.bg, "surface"),
     gravity: num(x.gravity, 0, 4000, 0),
     edges: pick(x.edges, GAME_EDGES, "walls"),

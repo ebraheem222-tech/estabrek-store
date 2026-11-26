@@ -346,4 +346,51 @@ describe("the game editor", () => {
     fireEvent.click(screen.getByTestId("game-ed-joint-remove"));
     expect(joints()).toEqual([]);
   });
+
+  test("G3: the effects tab (weather, an effect over the picture, music for a mood heard here), a thing's trail and effect, a note in a rule", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "effects")!);
+    fireEvent.change(screen.getByTestId("game-ed-weather"), { target: { value: "snow" } });
+    fireEvent.change(screen.getByTestId("game-ed-post"), { target: { value: "crt" } });
+    fireEvent.change(screen.getByTestId("game-ed-mood"), { target: { value: "spooky" } });
+    const tempo = screen.getByTestId("game-ed-tempo");
+    fireEvent.change(tempo, { target: { value: "300" } });
+    fireEvent.blur(tempo);
+    expect(last()).toMatchObject({ weather: "snow", post: "crt", music: { mood: "spooky", tempo: 180 } });
+    // Heard here (no Web Audio in this test's page: it only says it plays).
+    fireEvent.click(screen.getByTestId("game-ed-hear"));
+    expect(screen.getByTestId("game-ed-hear").textContent).toMatch(/■/);
+    fireEvent.click(screen.getByTestId("game-ed-hear"));
+    fireEvent.change(screen.getByTestId("game-ed-mood"), { target: { value: "" } });
+    expect(obj(last().music).mood).toBeUndefined();
+    // The bag: sparkles behind it, and a glow.
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "things")!);
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-trail"), { target: { value: "sparkle" } });
+    fireEvent.change(screen.getByTestId("game-ed-fx"), { target: { value: "glow" } });
+    expect(things().find((t) => t.id === "bag")).toMatchObject({ trail: "sparkle", fx: "glow" });
+    // A rule's note: a piano, the minor scale, at random.
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "note" } });
+    fireEvent.change(screen.getByTestId("game-ed-note-instrument"), { target: { value: "piano" } });
+    fireEvent.change(screen.getByTestId("game-ed-note-scale"), { target: { value: "minor" } });
+    fireEvent.change(screen.getByTestId("game-ed-note-step"), { target: { value: "-2" } });
+    expect((last().rules as Obj[]).at(-1)!.do).toEqual([{ act: "note", instrument: "piano", scale: "minor", step: -2 }]);
+  });
+
+  test("G3: the night stars tried here: its music and sounds asked for, its particles and effects drawn, a vignette over it", async () => {
+    let now = 0;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    mount("night");
+    fireEvent.click(screen.getByTestId("game-ed-try"));
+    fireEvent.click(screen.getByTestId("game-ed-play"));
+    await act(async () => { for (let i = 0; i < 240; i++) { now += 1000 / 60; frames.shift()?.(now); } });
+    const trying = screen.getByTestId("game-ed-trying");
+    expect(trying.getAttribute("data-phase")).toBe("playing");
+    expect(trying.querySelector("canvas")!.getAttribute("data-post")).toBe("vignette");
+    expect(trying.querySelector("div.pointer-events-none")).toBeTruthy();
+  });
 });

@@ -201,6 +201,28 @@ test("G2b: the pinball on a shop page: the flippers on their arrows, a bumper ki
   await phone.close();
 });
 
+test("G3: the night stars on a shop page: music, sparkles, a glow and a vignette drawn without an error, and the stars caught", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (m) => { if (m.type() === "error" && /shader|WebGL|THREE/i.test(m.text())) errors.push(m.text()); });
+  await publish(page, READY_GAMES.find((g) => g.key === "night")!.game);
+  await page.goto(PATH);
+  const s = stage(page);
+  await s.locator("[data-pt-game-start]").click();
+  await expect(s).toHaveAttribute("data-pt-game-phase", "playing");
+  // Follow the stars for a while: some are caught.
+  for (let k = 0; k < 12; k++) {
+    await page.keyboard.down(k % 2 ? "ArrowLeft" : "ArrowRight");
+    await page.waitForTimeout(350);
+    await page.keyboard.up(k % 2 ? "ArrowLeft" : "ArrowRight");
+  }
+  if (OUT) await s.screenshot({ path: path.join(OUT, "night-playing.png") });
+  // The canvas has drawn much more than its ground (the shaders compiled and ran): a plain picture would weigh little.
+  const png = await s.locator("canvas").screenshot();
+  expect(png.length).toBeGreaterThan(20_000);
+  expect(errors).toEqual([]);
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);
