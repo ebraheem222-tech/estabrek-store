@@ -5,21 +5,25 @@
  *
  * What a page's `game` prop holds, read here into a spec that is always safe to run: every number in its range,
  * every list at most so long, every name a plain word. Pure (no React, no "@/" imports): the admin reads it too.
+ * G1b: levels (more maps of the same size, or mazes made from the seed), the cover between them, a thing's sight
+ * and path, the brains (guard, flee, homing, path), and the rules for them (sees, a level begins, next, again).
  */
 
 export type Local = Partial<Record<"ar" | "en" | "he", string>>;
 type Say = (w: unknown) => string;
 
-export const GAME_LIMITS = { things: 40, rules: 40, acts: 8, tags: 4, alive: 200, tileKinds: 12, cols: 200, rows: 60, layers: 4 } as const;
+export const GAME_LIMITS = { things: 40, rules: 40, acts: 8, tags: 4, alive: 200, tileKinds: 12, cols: 200, rows: 60, layers: 4, levels: 8, path: 12 } as const;
 export const GAME_LOOKS = ["box", "circle", "image", "emoji", "text", "sprite"] as const;
 export const GAME_ANIMS = ["idle", "run", "jump", "fall"] as const;
 export const LAYER_KINDS = ["color", "gradient", "image"] as const;
 export const GAME_BODIES = ["none", "static", "dynamic", "kinematic"] as const;
 export const GAME_CONTROLS = ["none", "leftRight", "fourWay", "platform", "pointer", "drag"] as const;
-export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin"] as const;
+export const GAME_BEHAVES = ["none", "patrol", "chase", "wander", "spin", "guard", "flee", "homing", "path"] as const;
 export const GAME_EDGES = ["walls", "sides", "floor", "open"] as const;
-export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time"] as const;
-export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst"] as const;
+export const GAME_WHENS = ["start", "every", "hit", "out", "tap", "key", "score", "time", "see", "level"] as const;
+export const GAME_ACTS = ["spawn", "destroy", "score", "lives", "win", "lose", "speed", "faster", "shake", "sound", "burst", "next", "retry"] as const;
+/** How one level gives way to the next: a fade, a wipe across, a closing circle, or at once. */
+export const GAME_TRANSITIONS = ["fade", "wipe", "circle", "none"] as const;
 export const GAME_SPOTS = ["top", "bottom", "left", "right", "random", "floorRight", "floorLeft", "self", "other", "center"] as const;
 export const GAME_KEYS = ["Space", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit"] as const;
@@ -28,9 +32,18 @@ export const GAME_SOUNDS = ["click", "pop", "chime", "whoosh", "success", "hit"]
 export type GameSheet = { cols: number; rows: number; fps: number; anims: Partial<Record<(typeof GAME_ANIMS)[number], [number, number]>> };
 export type GameLook = { kind: (typeof GAME_LOOKS)[number]; color: string; src?: string; emoji?: string; text?: string; sheet?: GameSheet };
 /** A kind of tile on the map: how it looks; solid (stops bodies), a one-way platform (only from above), its tags (rules
- *  meet it by them); or, `thing`, a template put at each of its cells when the game starts (a coin, an enemy, a flag). */
+ *  meet it by them); or, `thing`, a template put at each of its cells when the game starts (a coin, an enemy, a flag),
+ *  or a thing in the world (the player) put at its first cell: where it starts on that level. */
 export type GameTileKind = { look: GameLook; solid: boolean; oneWay: boolean; tags: string[]; thing: string };
-export type GameTiles = { size: number; cols: number; rows: number; map: string[]; kinds: Record<string, GameTileKind> };
+export type GameTiles = {
+  size: number; cols: number; rows: number; map: string[]; kinds: Record<string, GameTileKind>;
+  /** The levels after the first (whose map is `map`), each a map of the same size. */
+  levels: string[][];
+  /** "maze": each level's walls made from the seed, its marks (not walls) moved to the nearest corridor. */
+  gen: "" | "maze";
+};
+/** A way a thing goes round (its `behave` "path"): the points after where it starts, from it; a loop, or there and back. */
+export type GamePath = { points: Array<[number, number]>; loop: boolean; smooth: boolean };
 /** A layer behind the world: a colour, a gradient or a picture, in a band of the view, moving `factor` as fast as the camera. */
 export type GameLayer = { kind: (typeof LAYER_KINDS)[number]; color: string; color2: string; src?: string; factor: number; y: number; h: number };
 export type GameThing = {
@@ -56,6 +69,9 @@ export type GameThing = {
   life: number;
   /** Kept inside the world (else it can leave it). */
   keepIn: boolean;
+  /** How far it sees (0: blind): a guard's, one that flees, and a rule's "sees". */
+  sight: number;
+  path: GamePath | null;
 };
 export type GameWhen =
   | { on: "start" }
@@ -65,7 +81,11 @@ export type GameWhen =
   | { on: "tap"; who: string }
   | { on: "key"; key: (typeof GAME_KEYS)[number] }
   | { on: "score"; at: number }
-  | { on: "time"; at: number };
+  | { on: "time"; at: number }
+  /** `a` comes to see `b` (in its sight, nothing solid between). */
+  | { on: "see"; a: string; b: string }
+  /** A level begins (0: each one). */
+  | { on: "level"; at: number };
 export type GameAct =
   | { act: "spawn"; what: string; at: (typeof GAME_SPOTS)[number]; vx: number; vy: number }
   | { act: "destroy"; who: "self" | "other" | "both" }
@@ -77,7 +97,11 @@ export type GameAct =
   | { act: "faster"; by: number }
   | { act: "shake" }
   | { act: "sound"; kind: (typeof GAME_SOUNDS)[number] }
-  | { act: "burst"; who: "self" | "other" };
+  | { act: "burst"; who: "self" | "other" }
+  /** The next level (after the last: won). */
+  | { act: "next" }
+  /** This level again, from its start. */
+  | { act: "retry" };
 export type GameRule = { when: GameWhen; do: GameAct[] };
 export type GameWords = { title: string; start: string; win: string; lose: string; again: string; prize: string; help: string };
 export type GameSpec = {
@@ -89,6 +113,7 @@ export type GameSpec = {
   /** What the camera follows ("#tag" or an id; "": it stays). */
   camera: { follow: string; lerp: number };
   layers: GameLayer[];
+  transition: (typeof GAME_TRANSITIONS)[number];
   bg: string;
   gravity: number;
   edges: (typeof GAME_EDGES)[number];
@@ -134,7 +159,7 @@ function sheetOf(raw: unknown): GameSheet {
   return { cols, rows, fps: int(x.fps, 1, 30, 10), anims };
 }
 const TILE_CHAR = /^[!-~]$/;
-function tilesOf(raw: unknown, say: Say, ids: Set<string>, templates: Set<string>): GameTiles | null {
+function tilesOf(raw: unknown, say: Say, ids: Set<string>): GameTiles | null {
   const x = obj(raw);
   if (!Object.keys(x).length) return null;
   const size = int(x.size, 16, 128, 48), cols = int(x.cols, 1, GAME_LIMITS.cols, 20), rows = int(x.rows, 1, GAME_LIMITS.rows, 12);
@@ -148,17 +173,20 @@ function tilesOf(raw: unknown, say: Say, ids: Set<string>, templates: Set<string
     if (look.kind === "image") { const src = srcOf(lk.src); if (src) look.src = src; else look.kind = "box"; }
     if (look.kind === "emoji") look.emoji = typeof lk.emoji === "string" && lk.emoji.length <= 8 && lk.emoji.trim() ? lk.emoji : "⬛";
     if (look.kind === "text") look.text = say(lk.text).slice(0, 4);
-    const thing = typeof kk.thing === "string" && templates.has(kk.thing) && ids.has(kk.thing) ? kk.thing : "";
+    const thing = typeof kk.thing === "string" && ids.has(kk.thing) ? kk.thing : "";
     const tags = (Array.isArray(kk.tags) ? kk.tags : []).filter((t): t is string => typeof t === "string" && TAG.test(t)).slice(0, GAME_LIMITS.tags);
     kinds[ch] = { look, solid: !thing && kk.solid === true, oneWay: !thing && kk.oneWay === true, tags, thing };
   }
-  const lines = Array.isArray(x.map) ? x.map : [];
   // Each row as long as the map is wide; what isn't a kind of tile is empty.
-  const map = Array.from({ length: rows }, (_, r) => {
-    const line = typeof lines[r] === "string" ? (lines[r] as string) : "";
-    return Array.from({ length: cols }, (_, c) => (kinds[line[c] ?? "."] ? line[c] : ".")).join("");
-  });
-  return { size, cols, rows, map, kinds };
+  const mapOf = (v: unknown) => {
+    const lines = Array.isArray(v) ? v : [];
+    return Array.from({ length: rows }, (_, r) => {
+      const line = typeof lines[r] === "string" ? (lines[r] as string) : "";
+      return Array.from({ length: cols }, (_, c) => (kinds[line[c] ?? "."] ? line[c] : ".")).join("");
+    });
+  };
+  const levels = (Array.isArray(x.levels) ? x.levels : []).slice(0, GAME_LIMITS.levels - 1).map(mapOf);
+  return { size, cols, rows, map: mapOf(x.map), kinds, levels, gen: x.gen === "maze" ? "maze" : "" };
 }
 function layerOf(raw: unknown): GameLayer {
   const x = obj(raw);
@@ -201,7 +229,15 @@ function thingOf(raw: unknown, say: Say): GameThing | null {
     tags,
     life: num(x.life, 0, 120, 0),
     keepIn: x.keepIn === true,
+    sight: num(x.sight, 0, 3000, 320),
+    path: pathOf(x.path),
   };
+}
+function pathOf(raw: unknown): GamePath | null {
+  const x = obj(raw);
+  const points = (Array.isArray(x.points) ? x.points : []).slice(0, GAME_LIMITS.path).flatMap((p): Array<[number, number]> =>
+    Array.isArray(p) && typeof p[0] === "number" && typeof p[1] === "number" && Number.isFinite(p[0]) && Number.isFinite(p[1]) ? [[num(p[0], -8000, 8000, 0), num(p[1], -8000, 8000, 0)]] : []);
+  return points.length ? { points, loop: x.loop === true, smooth: x.smooth === true } : null;
 }
 
 function whenOf(raw: unknown): GameWhen | null {
@@ -215,6 +251,8 @@ function whenOf(raw: unknown): GameWhen | null {
     case "key": return { on: "key", key: pick(x.key, GAME_KEYS, "Space") };
     case "score": return { on: "score", at: int(x.at, -9999, 99999, 10) };
     case "time": return { on: "time", at: num(x.at, 0, 600, 10) };
+    case "see": { const a = whoOf(x.a), b = whoOf(x.b); return a && b ? { on: "see", a, b } : null; }
+    case "level": return { on: "level", at: int(x.at, 0, GAME_LIMITS.levels, 0) };
     default: return null;
   }
 }
@@ -233,6 +271,8 @@ function actOf(raw: unknown): GameAct | null {
     case "shake": return { act: "shake" };
     case "sound": return { act: "sound", kind: pick(x.kind, GAME_SOUNDS, "pop") };
     case "burst": return { act: "burst", who: pick(x.who, ["self", "other"] as const, "self") };
+    case "next": return { act: "next" };
+    case "retry": return { act: "retry" };
     default: return null;
   }
 }
@@ -244,8 +284,8 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
   // Ids are names the rules use: the first of a name wins.
   const seen = new Set<string>();
   const unique = things.filter((t) => !seen.has(t.id) && Boolean(seen.add(t.id)));
-  const ids = new Set(unique.map((t) => t.id)), templates = new Set(unique.filter((t) => t.template).map((t) => t.id));
-  const tiles = tilesOf(x.tiles, say, ids, templates);
+  const ids = new Set(unique.map((t) => t.id));
+  const tiles = tilesOf(x.tiles, say, ids);
   if (!unique.some((t) => !t.template) && !tiles?.map.some((r) => /[^.]/.test(r))) return null;
   const rules = (Array.isArray(x.rules) ? x.rules : []).slice(0, GAME_LIMITS.rules).flatMap((r): GameRule[] => {
     const when = whenOf(obj(r).when);
@@ -262,6 +302,7 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
     tiles,
     camera: { follow: whoOf(cam.follow), lerp: num(cam.lerp, 0.02, 1, 0.12) },
     layers: (Array.isArray(x.layers) ? x.layers : []).slice(0, GAME_LIMITS.layers).map(layerOf),
+    transition: pick(x.transition, GAME_TRANSITIONS, "circle"),
     bg: colourOf(x.bg, "surface"),
     gravity: num(x.gravity, 0, 4000, 0),
     edges: pick(x.edges, GAME_EDGES, "walls"),
@@ -281,8 +322,8 @@ export function gameOf(raw: unknown, say: Say = (w) => (typeof w === "string" ? 
 export const isWho = (who: string, t: Pick<GameThing, "id" | "tags">) => (who.startsWith("#") ? t.tags.includes(who.slice(1)) : who === t.id);
 
 /** The stage's own words (GameView.tsx), the game's words aside. */
-export const STAGE_WORDS: Record<"ar" | "en" | "he", { start: string; again: string; win: string; lose: string; score: string; lives: string; time: string; sound: string; left: string; right: string; up: string; down: string; jump: string; paused: string }> = {
-  ar: { start: "ابدأ", again: "العب كمان مرة", win: "ربحت! 🎉", lose: "خلصت اللعبة", score: "النقاط", lives: "الأرواح", time: "الوقت", sound: "الصوت", left: "شمال", right: "يمين", up: "لفوق", down: "لتحت", jump: "نطّ", paused: "اللعبة واقفة، ارجع لعندها لتكمّل" },
-  en: { start: "Start", again: "Play again", win: "You won! 🎉", lose: "Game over", score: "Score", lives: "Lives", time: "Time", sound: "Sound", left: "Left", right: "Right", up: "Up", down: "Down", jump: "Jump", paused: "Paused: come back to it to go on" },
-  he: { start: "התחלה", again: "שחקו שוב", win: "ניצחת! 🎉", lose: "המשחק נגמר", score: "נקודות", lives: "חיים", time: "זמן", sound: "צליל", left: "שמאלה", right: "ימינה", up: "למעלה", down: "למטה", jump: "קפיצה", paused: "המשחק בהשהיה: חזרו אליו כדי להמשיך" },
+export const STAGE_WORDS: Record<"ar" | "en" | "he", { start: string; again: string; win: string; lose: string; score: string; lives: string; time: string; sound: string; left: string; right: string; up: string; down: string; jump: string; paused: string; level: string }> = {
+  ar: { start: "ابدأ", again: "العب كمان مرة", win: "ربحت! 🎉", lose: "خلصت اللعبة", score: "النقاط", lives: "الأرواح", time: "الوقت", sound: "الصوت", left: "شمال", right: "يمين", up: "لفوق", down: "لتحت", jump: "نطّ", paused: "اللعبة واقفة، ارجع لعندها لتكمّل", level: "المرحلة" },
+  en: { start: "Start", again: "Play again", win: "You won! 🎉", lose: "Game over", score: "Score", lives: "Lives", time: "Time", sound: "Sound", left: "Left", right: "Right", up: "Up", down: "Down", jump: "Jump", paused: "Paused: come back to it to go on", level: "Level" },
+  he: { start: "התחלה", again: "שחקו שוב", win: "ניצחת! 🎉", lose: "המשחק נגמר", score: "נקודות", lives: "חיים", time: "זמן", sound: "צליל", left: "שמאלה", right: "ימינה", up: "למעלה", down: "למטה", jump: "קפיצה", paused: "המשחק בהשהיה: חזרו אליו כדי להמשיך", level: "שלב" },
 };

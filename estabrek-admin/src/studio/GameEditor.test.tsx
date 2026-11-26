@@ -156,9 +156,95 @@ describe("the game editor", () => {
     fireEvent.click(screen.getByTestId("game-ed-try"));
     fireEvent.click(screen.getByTestId("game-ed-play"));
     fireEvent.keyDown(window, { key: "ArrowRight" });
-    await act(async () => { for (let i = 0; i < 180; i++) { now += 1000 / 60; frames.shift()?.(now); } });
-    // Held right for three seconds the fox runs into the first pit (and loses): the camera went with it.
-    expect(["playing", "lost"]).toContain(screen.getByTestId("game-ed-trying").getAttribute("data-phase"));
-    expect(Number(screen.getByTestId("game-ed-trying").getAttribute("data-cam"))).toBeGreaterThan(100);
+    // Held right for three seconds the fox runs on into the first pit (a life, and the level again from its start):
+    // the camera went with it on the way.
+    let far = 0;
+    for (let k = 0; k < 18; k++) {
+      await act(async () => { for (let i = 0; i < 10; i++) { now += 1000 / 60; frames.shift()?.(now); } });
+      far = Math.max(far, Number(screen.getByTestId("game-ed-trying").getAttribute("data-cam")));
+    }
+    expect(screen.getByTestId("game-ed-trying").getAttribute("data-phase")).toBe("playing");
+    expect(far).toBeGreaterThan(100);
+  });
+
+  test("G1b: levels picked, painted one at a time, added as a copy and removed; a maze made by itself, another one; the cover between levels", () => {
+    const { last } = mount("adventure");
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "tiles")!);
+    expect(screen.getAllByTestId("game-ed-level")).toHaveLength(2);
+    fireEvent.click(screen.getAllByTestId("game-ed-level").find((b) => b.getAttribute("data-level") === "1")!);
+    vi.mocked(Element.prototype.getBoundingClientRect).mockReturnValue({ ...rect, width: 2880, height: 540, right: 2880, bottom: 540 } as DOMRect);
+    const world = screen.getByTestId("game-ed-world");
+    fireEvent.pointerDown(world, { clientX: 10, clientY: 10, pointerId: 5 });
+    fireEvent.pointerUp(world, { pointerId: 5 });
+    const tiles = () => last().tiles as { map: string[]; levels: string[][]; gen?: string };
+    expect(tiles().levels[0][0][0]).toBe("#");
+    expect(tiles().map[0][0]).toBe(".");
+    fireEvent.click(screen.getByTestId("game-ed-level-add"));
+    expect(tiles().levels).toHaveLength(2);
+    expect(tiles().levels[1][0][0]).toBe("#");
+    fireEvent.click(screen.getByTestId("game-ed-level-remove"));
+    expect(tiles().levels).toHaveLength(1);
+    // A maze: its walls made from the game's number; another number, another maze.
+    fireEvent.click(screen.getByTestId("game-ed-maze"));
+    expect(tiles().gen).toBe("maze");
+    const seed = Number(last().seed);
+    fireEvent.click(screen.getByTestId("game-ed-maze-again"));
+    expect(Number(last().seed)).toBe(seed + 1);
+    fireEvent.click(screen.getByTestId("game-ed-maze"));
+    expect(tiles().gen).toBeUndefined();
+    fireEvent.click(screen.getAllByTestId("game-ed-tab").find((b) => b.getAttribute("data-tab") === "camera")!);
+    fireEvent.change(screen.getByTestId("game-ed-transition"), { target: { value: "wipe" } });
+    expect(last().transition).toBe("wipe");
+  });
+
+  test("G1b: a thing that goes along its path: points put in the world and dragged there; a guard's sight; the new rules", () => {
+    const { last, things } = mount();
+    fireEvent.click(screen.getAllByTestId("game-ed-pick").find((b) => b.getAttribute("data-thing") === "bag")!);
+    fireEvent.change(screen.getByTestId("game-ed-behave"), { target: { value: "path" } });
+    expect(things().find((t) => t.id === "bag")!.path).toEqual({ points: [[200, 0]] });
+    expect(screen.getAllByTestId("game-ed-path-point")).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("game-ed-path-add"));
+    const world = screen.getByTestId("game-ed-world");
+    fireEvent.pointerDown(world, { clientX: 600, clientY: 300, pointerId: 6 });
+    fireEvent.pointerUp(world, { pointerId: 6 });
+    // From the bag (480, 480).
+    expect((things().find((t) => t.id === "bag")!.path as Obj).points).toEqual([[200, 0], [120, -180]]);
+    fireEvent.click(screen.getByTestId("game-ed-path-add"));
+    fireEvent.pointerDown(screen.getAllByTestId("game-ed-path-point")[0], { clientX: 680, clientY: 480, pointerId: 7 });
+    fireEvent.pointerMove(world, { clientX: 700, clientY: 440, pointerId: 7 });
+    fireEvent.pointerUp(world, { pointerId: 7 });
+    expect((things().find((t) => t.id === "bag")!.path as Obj).points).toEqual([[220, -40], [120, -180]]);
+    fireEvent.click(screen.getByTestId("game-ed-path-loop"));
+    expect((things().find((t) => t.id === "bag")!.path as Obj).loop).toBe(true);
+    // A guard sees so far.
+    fireEvent.change(screen.getByTestId("game-ed-behave"), { target: { value: "guard" } });
+    const sight = screen.getByTestId("game-ed-sight");
+    fireEvent.change(sight, { target: { value: "250" } });
+    fireEvent.blur(sight);
+    expect(things().find((t) => t.id === "bag")!.sight).toBe(250);
+    // A rule: when the bag sees a gift, on to the next level.
+    fireEvent.click(screen.getByTestId("game-ed-rule-add"));
+    fireEvent.change(screen.getByTestId("game-ed-when"), { target: { value: "see" } });
+    expect(screen.getByTestId("game-ed-hit-a")).toBeTruthy();
+    fireEvent.change(screen.getAllByTestId("game-ed-act-kind").at(-1)!, { target: { value: "next" } });
+    const rule = (last().rules as Obj[]).at(-1)!;
+    expect(rule).toMatchObject({ when: { on: "see" }, do: [{ act: "next" }] });
+  });
+
+  test("G1b: the maze tried here: its level in the bar, played without a hitch", async () => {
+    let now = 0;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { frames.push(cb); return frames.length; });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    mount("maze");
+    fireEvent.click(screen.getByTestId("game-ed-try"));
+    fireEvent.click(screen.getByTestId("game-ed-play"));
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await act(async () => { for (let i = 0; i < 120; i++) { now += 1000 / 60; frames.shift()?.(now); } });
+    const trying = screen.getByTestId("game-ed-trying");
+    expect(trying.getAttribute("data-level")).toBe("1");
+    expect(["playing", "lost"]).toContain(trying.getAttribute("data-phase"));
+    expect(trying.textContent).toMatch(/1\/3/);
   });
 });

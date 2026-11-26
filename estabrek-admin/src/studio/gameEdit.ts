@@ -22,6 +22,8 @@ export const WHEN_NAMES = {
   key: "لما ينكبس زر|When a key is pressed|כשנלחץ מקש",
   score: "لما النقاط توصل|When the score reaches|כשהניקוד מגיע",
   time: "لما الوقت يوصل|When the time reaches|כשהזמן מגיע",
+  see: "لما شي يشوف شي|When one thing sees another|כשדבר רואה דבר",
+  level: "لما تبلّش مرحلة|When a level begins|כששלב מתחיל",
 } as const;
 export const ACT_NAMES = {
   spawn: "اعمل نسخة من|Make a copy of|צרו עותק של",
@@ -35,6 +37,8 @@ export const ACT_NAMES = {
   shake: "هزّ الشاشة|Shake the screen|נערו את המסך",
   sound: "صوت|A sound|צליל",
   burst: "انفجار صغير|A little burst|פיצוץ קטן",
+  next: "عالمرحلة الجاية|On to the next level|לשלב הבא",
+  retry: "المرحلة من أولها|This level again|השלב מההתחלה",
 } as const;
 export const SPOT_NAMES = {
   top: "من فوق|From the top|מלמעלה", bottom: "من تحت|From the bottom|מלמטה", left: "من الشمال|From the left|משמאל", right: "من اليمين|From the right|מימין",
@@ -43,7 +47,14 @@ export const SPOT_NAMES = {
 } as const;
 export const BODY_NAMES = { none: "بلا جسم|No body|בלי גוף", static: "ثابت|Fixed|קבוע", dynamic: "بيوقع ويندفع|Falls and is pushed|נופל ונדחף", kinematic: "بيمشي بسرعته|Moves by its speed|זז במהירותו" } as const;
 export const CONTROL_NAMES = { none: "ما حدا بيحرّكه|Nobody moves it|אף אחד לא מזיז", leftRight: "يمين وشمال|Left and right|ימינה ושמאלה", fourWay: "أربع اتجاهات|Four ways|ארבעה כיוונים", platform: "ركض ونط|Run and jump|ריצה וקפיצה", pointer: "بيلحق المؤشر|Follows the pointer|עוקב אחרי הסמן", drag: "بينسحب|Dragged|נגרר" } as const;
-export const BEHAVE_NAMES = { none: "ولا إشي|Nothing|כלום", patrol: "رايح جاي|Back and forth|הלוך ושוב", chase: "بيلحق اللاعب|Chases the player|רודף אחרי השחקן", wander: "بيتجوّل|Wanders|משוטט", spin: "بيدور|Spins|מסתובב" } as const;
+export const BEHAVE_NAMES = {
+  none: "ولا إشي|Nothing|כלום", patrol: "رايح جاي|Back and forth|הלוך ושוב", chase: "بيلحق اللاعب|Chases the player|רודף אחרי השחקן", wander: "بيتجوّل|Wanders|משוטט", spin: "بيدور|Spins|מסתובב",
+  guard: "حارس: بيدوّر، وإذا شافك بيلحقك|A guard: goes round, chases you once it sees you|שומר: מסתובב, ורודף כשהוא רואה אתכם",
+  flee: "بيهرب إذا شافك|Runs off when it sees you|בורח כשהוא רואה אתכם",
+  homing: "بيلفّ صوب اللاعب|Turns toward the player|פונה אל השחקן",
+  path: "بيمشي على مساره|Goes along its path|נע לאורך המסלול שלו",
+} as const;
+export const TRANSITION_NAMES = { circle: "دائرة بتسكّر وبتفتح|A circle closing and opening|עיגול שנסגר ונפתח", wipe: "مسحة من جنب لجنب|A wipe across|מחיקה מצד לצד", fade: "تلاشي|A fade|דהייה", none: "على طول|At once|מיד" } as const;
 export const EDGE_NAMES = { walls: "حيطان من كل الجهات|Walls all round|קירות מכל הצדדים", sides: "حيطان إلا تحت|Walls but the bottom|קירות חוץ מלמטה", floor: "أرض بس|A floor only|רק רצפה", open: "مفتوح|Open|פתוח" } as const;
 export const SOUND_NAMES = { click: "كبسة|Click|קליק", pop: "فقعة|Pop|פופ", chime: "رنّة|Chime|צלצול", whoosh: "ووش|Whoosh|ווש", success: "نجاح|Success|הצלחה", hit: "ضربة|Hit|מכה" } as const;
 export const KEY_NAMES = { Space: "المسافة|Space|רווח", Enter: "Enter|Enter|Enter", ArrowUp: "⬆|⬆|⬆", ArrowDown: "⬇|⬇|⬇", ArrowLeft: "⬅|⬅|⬅", ArrowRight: "➡|➡|➡" } as const;
@@ -114,6 +125,8 @@ export function newWhen(on: keyof typeof WHEN_NAMES, game: Obj): Obj {
     case "key": return { on, key: "Space" };
     case "score": return { on, at: 10 };
     case "time": return { on, at: 10 };
+    case "see": return { on, a: who, b: whoOptions(game)[1]?.[0] ?? who };
+    case "level": return { on, at: 0 };
     default: return { on: "start" };
   }
 }
@@ -147,6 +160,8 @@ export function ruleText(rule: Obj): string {
       case "key": return say(`لما ينكبس ${say(KEY_NAMES[w.key as keyof typeof KEY_NAMES] ?? n(w.key))}|When ${n(w.key)} is pressed|כשנלחץ ${n(w.key)}`);
       case "score": return say(`لما النقاط توصل ${n(w.at)}|When the score reaches ${n(w.at)}|כשהניקוד מגיע ל־${n(w.at)}`);
       case "time": return say(`لما الوقت يوصل ${n(w.at)} ث|At ${n(w.at)} s|ב־${n(w.at)} שנ׳`);
+      case "see": return say(`لما ${n(w.a)} يشوف ${n(w.b)}|When ${n(w.a)} sees ${n(w.b)}|כש־${n(w.a)} רואה את ${n(w.b)}`);
+      case "level": return Number(w.at) ? say(`لما تبلّش المرحلة ${n(w.at)}|When level ${n(w.at)} begins|כששלב ${n(w.at)} מתחיל`) : say("لما تبلّش أي مرحلة|When any level begins|כשכל שלב מתחיל");
       default: return say(WHEN_NAMES.start);
     }
   })();
@@ -194,14 +209,57 @@ export function paintCells(map: string[], cells: Array<[number, number]>, ch: st
   for (const [c, r] of cells) if (rows[r] && c >= 0 && c < rows[r].length) rows[r][c] = ch;
   return rows.map((r) => r.join(""));
 }
-/** The game without a kind of tile: its cells emptied, and the rules that named a tag only it had. */
+/** The game without a kind of tile: its cells emptied on every level, and the rules that named a tag only it had. */
 export function withoutTileKind(game: Obj, ch: string): Obj {
   const t = obj(game.tiles);
   const kinds = { ...obj(t.kinds) };
   delete kinds[ch];
-  const map = (Array.isArray(t.map) ? (t.map as string[]) : []).map((r) => r.split(ch).join("."));
-  const next = { ...game, tiles: { ...t, kinds, map } };
+  const clear = (m: unknown) => (Array.isArray(m) ? (m as string[]) : []).map((r) => r.split(ch).join("."));
+  const next = { ...game, tiles: { ...t, kinds, map: clear(t.map), ...(Array.isArray(t.levels) ? { levels: (t.levels as unknown[]).map(clear) } : {}) } };
   const tags = new Set([...thingsOf(next).flatMap((x) => list(x.tags).map(String)), ...Object.values(kinds).flatMap((k) => list(obj(k).tags).map(String))]);
   const known = (who: unknown) => typeof who !== "string" || !who.startsWith("#") || tags.has(who.slice(1));
   return { ...next, rules: rulesOf(next).filter((r) => [obj(r.when).a, obj(r.when).b, obj(r.when).who].every(known)) };
+}
+
+/* ---------------------------------------------------------------- G1b: levels, a thing's path */
+
+/** Every level's map, the first (the tile map's own `map`) first. */
+export function levelMaps(game: Obj): string[][] {
+  const t = obj(game.tiles);
+  const map = (Array.isArray(t.map) ? t.map : []) as string[];
+  return [map, ...((Array.isArray(t.levels) ? t.levels : []) as string[][])];
+}
+/** The game with one level's map changed. */
+export function withLevelMap(game: Obj, i: number, map: string[]): Obj {
+  const t = obj(game.tiles);
+  if (i === 0) return { ...game, tiles: { ...t, map } };
+  return { ...game, tiles: { ...t, levels: levelMaps(game).slice(1).map((m, j) => (j === i - 1 ? map : m)) } };
+}
+/** A new level after the last, a copy of level `from` to change (null: as many as there may be). */
+export function withNewLevel(game: Obj, from: number): Obj | null {
+  const maps = levelMaps(game);
+  if (maps.length >= GAME_LIMITS.levels) return null;
+  return { ...game, tiles: { ...obj(game.tiles), levels: [...maps.slice(1), [...(maps[from] ?? maps[0])]] } };
+}
+/** The game without a level (not the first), and without rules for levels that are no more. */
+export function withoutLevel(game: Obj, i: number): Obj {
+  if (i <= 0) return game;
+  const levels = levelMaps(game).slice(1).filter((_, j) => j !== i - 1);
+  const t = { ...obj(game.tiles), levels };
+  if (!levels.length) delete (t as Obj).levels;
+  const count = 1 + levels.length;
+  return { ...game, tiles: t, rules: rulesOf(game).filter((r) => obj(r.when).on !== "level" || Number(obj(r.when).at) <= count) };
+}
+/** Every level's map at a new size. */
+export function resizedLevels(game: Obj, cols: number, rows: number): Obj {
+  const [first, ...rest] = levelMaps(game);
+  return { ...game, tiles: { ...obj(game.tiles), cols, rows, map: resizedMap(first, cols, rows), ...(rest.length ? { levels: rest.map((m) => resizedMap(m, cols, rows)) } : {}) } };
+}
+/** A thing's path: its points after where it starts (from it), and the path with a point added or moved. */
+export const pathPoints = (thing: Obj): Array<[number, number]> => ((Array.isArray(obj(thing.path).points) ? obj(thing.path).points : []) as Array<[number, number]>);
+export function withPathPoint(thing: Obj, x: number, y: number, i?: number): Obj {
+  const pts = pathPoints(thing);
+  const at: [number, number] = [Math.round(x - Number(thing.x ?? 0)), Math.round(y - Number(thing.y ?? 0))];
+  const points = i === undefined ? [...pts, at].slice(0, GAME_LIMITS.path) : pts.map((p, j) => (j === i ? at : p));
+  return { ...obj(thing.path), points };
 }

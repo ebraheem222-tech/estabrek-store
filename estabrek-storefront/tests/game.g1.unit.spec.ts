@@ -33,12 +33,13 @@ function level(rows: string[], more: Record<string, unknown> = {}, hero: Record<
 }
 const hero = (s: GameState) => s.bodies.find((b) => b.of === "hero")!;
 
-test("a map is read safely: rows as wide as the map, unknown letters empty, a thing tile only for a template; the world as big as the map", () => {
+test("a map is read safely: rows as wide as the map, unknown letters empty, a thing tile only for a thing of the game; the world as big as the map", () => {
   const g = gameOf({ w: 400, h: 240, things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 9, h: 9 }], tiles: { size: 40, cols: 4, rows: 3, map: ["##", "x?#.##", null], kinds: { "#": { look: { kind: "box" }, solid: true }, "?": { look: { kind: "box" }, thing: "a" }, ".": { look: { kind: "box" } } } } }, say)!;
   expect(g.tiles!.map).toEqual(["##..", ".?#.", "...."]);
-  // "a" isn't a template: no thing tile; "." is never a kind.
+  // "a" isn't a template: its tile is where it starts (G1b); "." is never a kind; a thing the game hasn't, no thing.
   expect(Object.keys(g.tiles!.kinds)).toEqual(["#", "?"]);
-  expect(g.tiles!.kinds["?"].thing).toBe("");
+  expect(g.tiles!.kinds["?"].thing).toBe("a");
+  expect(gameOf({ things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 9, h: 9 }], tiles: { size: 40, cols: 1, rows: 1, map: ["?"], kinds: { "?": { look: { kind: "box" }, thing: "zed" } } } }, say)!.tiles!.kinds["?"].thing).toBe("");
   expect([g.ww, g.wh]).toEqual([400, 240]);
   const big = gameOf({ w: 400, h: 240, things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 9, h: 9 }], tiles: { size: 50, cols: 30, rows: 6, map: [], kinds: {} } }, say)!;
   expect([big.ww, big.wh]).toEqual([1500, 300]);

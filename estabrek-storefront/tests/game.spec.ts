@@ -114,6 +114,39 @@ test("on a phone: the buttons for the arrows, and a finger on the stage moves th
   await context.close();
 });
 
+test("G1b: the flag goes on to the next level under a closing circle, the bar shows the level, the last flag wins", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const lvl = ["............", ".P.....F....", "############"];
+  await publish(page, {
+    w: 480, h: 120, bg: "surface", edges: "walls", gravity: 2400, lives: 3, transition: "circle",
+    tiles: {
+      size: 40, cols: 12, rows: 3, map: lvl, levels: [lvl],
+      kinds: { "#": { look: { kind: "box", color: "text" }, solid: true }, P: { look: { kind: "box" }, thing: "hero" }, F: { look: { kind: "emoji", emoji: "🏁" }, thing: "flag" } },
+    },
+    things: [
+      { id: "hero", look: { kind: "emoji", emoji: "🦊", color: "accent" }, x: 60, y: 60, w: 30, h: 30, body: "dynamic", control: "platform", speed: 160, tags: ["player"] },
+      { id: "flag", look: { kind: "emoji", emoji: "🏁", color: "accent" }, x: 0, y: 0, w: 30, h: 30, body: "none", template: true, tags: ["goal"] },
+    ],
+    rules: [{ when: { on: "hit", a: "#player", b: "#goal" }, do: [{ act: "next" }] }],
+    words: { title: en("Two levels"), start: en("Play") },
+  });
+  await page.goto(PATH);
+  const s = stage(page);
+  await expect(s).toHaveAttribute("data-pt-game-level", "1");
+  await s.locator("[data-pt-game-start]").click();
+  await expect(s.locator('[data-pt-game-hud="level"]')).toContainText("1/2");
+  await page.keyboard.down("ArrowRight");
+  // The circle closes over the stage, the second level is made under it, and it opens.
+  await expect(s.locator("[data-pt-game-cover]")).toHaveAttribute("style", /radial-gradient/);
+  await expect(s).toHaveAttribute("data-pt-game-level", "2");
+  await expect(s.locator('[data-pt-game-hud="level"]')).toContainText("2/2");
+  await expect(s.locator("[data-pt-game-cover]")).toHaveAttribute("style", /display: ?none/);
+  await expect(s).toHaveAttribute("data-pt-game-phase", "won", { timeout: 10_000 });
+  await page.keyboard.up("ArrowRight");
+  expect(errors).toEqual([]);
+});
+
 test("a game with nothing in its world isn't shown", async ({ page }) => {
   await publish(page, { things: [{ id: "a", look: { kind: "box" }, x: 1, y: 1, w: 10, h: 10, template: true }] });
   await page.goto(PATH);
