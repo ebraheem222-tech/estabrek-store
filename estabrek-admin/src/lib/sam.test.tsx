@@ -42,7 +42,7 @@ beforeAll(() => {
   // jsdom has no ResizeObserver nor ImageData.
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
   if (typeof globalThis.ImageData === "undefined") {
-    (globalThis as { ImageData?: unknown }).ImageData = class { data: Uint8ClampedArray; constructor(public width: number, public height: number) { this.data = new Uint8ClampedArray(width * height * 4); } };
+    (globalThis as { ImageData?: unknown }).ImageData = class { data: Uint8ClampedArray; width: number; height: number; constructor(width: number, height: number) { this.width = width; this.height = height; this.data = new Uint8ClampedArray(width * height * 4); } };
   }
 });
 afterEach(() => {
